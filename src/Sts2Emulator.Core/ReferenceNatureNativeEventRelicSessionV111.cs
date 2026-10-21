@@ -69,9 +69,10 @@ public sealed record ReferenceNatureNativeEventRelicSessionSnapshotV111(
 /// <summary>
 /// Atomic configured Native relic-grant continuation. Supported event
 /// random-relic effects, Neow pickup triggers and card-bundle shuffles,
-/// Arcane Scroll and Phial Holster acquisition draws, event-specific relic
-/// rewards, Battleworn's setting-three reward, Pael's Wing, and Toy Box pulls
-/// share one typed ReferenceNature transcript.
+/// Arcane Scroll and Phial Holster acquisition draws, configured combat
+/// reward relic pickups, event-specific relic rewards, Battleworn's
+/// setting-three reward, Pael's Wing, and Toy Box pulls share one typed
+/// ReferenceNature transcript.
 /// </summary>
 public sealed record ReferenceNatureNativeEventRelicSessionV111(
     string SchemaId, RunState Origin, GameAction Action, RunState Run,
@@ -170,7 +171,11 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
             NeowLostCofferCardModelSiteId,
             NeowLostCofferPotionModelSiteId,
             NeowRelicAcquisitionRareCardSiteId,
-            NeowRelicAcquisitionPotionSiteId];
+            NeowRelicAcquisitionPotionSiteId,
+            NativeGloryAncientsV111.BeautifulBraceletShuffleSiteId,
+            NativeGloryAncientsV111.DistinguishedCapeCurseSiteId,
+            NativePaelRewardsV111.LegionSkinSiteId,
+            "relic.sand_castle.acquisition_upgrade.shuffle_swap_index"];
 
     public static ReferenceNatureNativeEventRelicSessionV111 Begin(
         RunState source, GameAction action, ulong natureSeed) => Begin(
@@ -246,7 +251,7 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
             CreateNatureReplayOrigin(Origin), continuation, providerDecision,
             checkpoint => new PrototypeGameEngine().Step(
                 checkpoint, CloneAction(Action)).State,
-            RequireSessionRequest);
+            request => RequireSessionRequest(Origin, Action, request));
         var providerDecisions = replay.Continuation?.Decisions ??
             ProviderDecisions.Append(providerDecision.Fork()).ToArray();
         var transcript = DecisionTranscript.Append(
@@ -289,6 +294,8 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
                     ExpectedNeowLostCofferRequestCount(
                         Origin, Action) +
                     ExpectedNeowRelicAcquisitionModelRequestCount(
+                        Origin, Action) +
+                    ExpectedCombatRewardRelicAcquisitionRequestCount(
                         Origin, Action) ||
             string.IsNullOrWhiteSpace(Action.Kind))
             throw new InvalidDataException(
@@ -402,6 +409,12 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
         var neowRelicAcquisitionPotionRequestCount = ProviderDecisions.Count(
             decision => decision.IndexDecision?.Request.SiteId ==
                 NeowRelicAcquisitionPotionSiteId);
+        var combatRewardRelicAcquisitionRequestCount =
+            IsCombatRewardRelicAcquisitionAction(Origin, Action)
+                ? ProviderDecisions.Count(decision =>
+                    StochasticSiteRegistryV111.IsRunActionShopPurchaseSite(
+                        decision.Request.SiteId))
+                : 0;
         if ((replay.Continuation is null) != Complete ||
             !SameRequest(replay.Continuation?.PendingRequest, PendingRequest) ||
             !SameLabels(replay.Continuation?.PendingCandidateLabels,
@@ -445,6 +458,12 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
                 expectedNeowRelicAcquisitionPotionRequestCount ||
             Complete && neowRelicAcquisitionPotionRequestCount !=
                 expectedNeowRelicAcquisitionPotionRequestCount ||
+            combatRewardRelicAcquisitionRequestCount >
+                ExpectedCombatRewardRelicAcquisitionRequestCount(
+                    Origin, Action) ||
+            Complete && combatRewardRelicAcquisitionRequestCount !=
+                ExpectedCombatRewardRelicAcquisitionRequestCount(
+                    Origin, Action) ||
             ProviderDecisions.Length != rarityRequestCount +
                 identityRequestCount + unownedRelicRequestCount +
                 neowPickupShuffleRequestCount +
@@ -453,7 +472,8 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
                 neowLostCofferCardModelRequestCount +
                 neowLostCofferPotionModelRequestCount +
                 neowRelicAcquisitionRareCardRequestCount +
-                neowRelicAcquisitionPotionRequestCount)
+                neowRelicAcquisitionPotionRequestCount +
+                combatRewardRelicAcquisitionRequestCount)
             throw new InvalidDataException(
                 "Native event relic continuation differs from its replay.");
 
@@ -745,6 +765,52 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
                 lawEventId, indexRequest);
         }
 
+        if (IsCombatRewardRelicAcquisitionAction(source, action) &&
+            request.IndexRequest is { } acquisitionRequest &&
+            IsSupportedCombatRewardRelicAcquisitionRequest(
+                source, action, acquisitionRequest))
+        {
+            var legionSkinRequest = acquisitionRequest.SiteId ==
+                NativePaelRewardsV111.LegionSkinSiteId;
+            var labelsValid = legionSkinRequest
+                ? candidateLabels is null &&
+                    acquisitionRequest.StreamId == "reward" &&
+                    acquisitionRequest.Ordinal == 0 &&
+                    acquisitionRequest.SupportCount ==
+                        NativePaelRewardsV111.LegionSkins.Length &&
+                    acquisitionRequest.OrderedCandidates.SequenceEqual(
+                        Enumerable.Range(0,
+                            NativePaelRewardsV111.LegionSkins.Length)) &&
+                    acquisitionRequest.OwnerId ==
+                        $"relic:paels_legion:instance:{source.Player.Relics.Length}"
+                : candidateLabels is not null &&
+                    candidateLabels.Length ==
+                        acquisitionRequest.SupportCount &&
+                    candidateLabels.All(label =>
+                        !string.IsNullOrWhiteSpace(label)) &&
+                    candidateLabels.Distinct(StringComparer.Ordinal).Count() ==
+                        candidateLabels.Length;
+            if (!ControlledRunActionEngineV111
+                    .IsSupportedShopPurchaseStream(acquisitionRequest) ||
+                !labelsValid)
+                throw new InvalidDataException(
+                    "Combat reward relic acquisition request differs from its registered source support.");
+
+            var eventId = CanonicalJson.Sha256(new
+            {
+                boundary = "native-combat-reward-relic-acquisition",
+                relicId = SelectedCombatRewardRelicId(source, action),
+                actionId = PrototypeAiEnvironment.StableActionId(action),
+                mechanicsBoundary =
+                    SimulationMechanicsProjectionEngineV111.Fingerprint(source),
+                request = acquisitionRequest,
+                candidateLabels,
+                prefixFingerprint = CanonicalJson.Sha256(prefix)
+            });
+            return ChanceLawEngineV111.QueryRandomIndex(
+                eventId, acquisitionRequest);
+        }
+
         throw new NotSupportedException(
             $"Native event relic replay does not support stochastic site '{request.SiteId}'.");
     }
@@ -805,7 +871,7 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
             decisions,
             checkpoint => new PrototypeGameEngine().Step(
                 checkpoint, CloneAction(action)).State,
-            RequireSessionRequest);
+            request => RequireSessionRequest(source, action, request));
 
     private static RunState CreateNatureReplayOrigin(RunState source) =>
         ReferenceNatureRunProjectionV111.CreateNatureReplayOrigin(
@@ -821,9 +887,16 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
             NeowRelicAcquisitionPotionSiteId;
 
     private static bool RequireSessionRequest(
+        RunState source, GameAction action,
         ControlledStochasticRequestV111 request)
     {
-        if (IsSessionRequest(request))
+        if (IsSessionRequest(request) ||
+            IsCombatRewardRelicAcquisitionAction(source, action) &&
+            request.IndexRequest is { } acquisitionRequest &&
+            IsSupportedCombatRewardRelicAcquisitionRequest(
+                source, action, acquisitionRequest) &&
+            ControlledRunActionEngineV111.IsSupportedShopPurchaseStream(
+                acquisitionRequest))
             return true;
         throw new NotSupportedException(
             $"Native event relic replay does not support stochastic site '{request.SiteId}'.");
@@ -874,11 +947,13 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
         var battlewornRelicVictory =
             IsBattlewornSettingThreeCombat(source);
         var paelWingRelicReward = IsPaelWingRelicReward(source, action);
+        var combatRewardRelicAcquisition =
+            IsCombatRewardRelicAcquisitionAction(source, action);
         var supportedBoundary =
             (eventRelicChoice && eventState is
                 { ControlledChoice: null, ChosenChoiceId: null }) ||
             neowRelicPickup || battlewornRelicVictory ||
-            paelWingRelicReward;
+            paelWingRelicReward || combatRewardRelicAcquisition;
         if (world is null || source.NativeRunRng is null ||
             source.ControlledRunActionChoice is not null ||
             !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
@@ -887,8 +962,78 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
                 PrototypeAiEnvironment.StableActionId(candidate) ==
                 PrototypeAiEnvironment.StableActionId(action)))
             throw new InvalidOperationException(
-                "Native relic session requires a current legal configured Native event choice, Neow pickup, Battleworn victory action, or Pael's Wing reward sacrifice.");
+                "Native relic session requires a current legal configured Native event choice, relic pickup, Battleworn victory action, or Pael's Wing reward sacrifice.");
         PrototypeStateInvariants.Validate(source);
+    }
+
+    private static int ExpectedCombatRewardRelicAcquisitionRequestCount(
+        RunState source, GameAction action)
+    {
+        var relicId = SelectedCombatRewardRelicId(source, action);
+        if (relicId is null)
+            return 0;
+
+        if (relicId == NativeGloryAncientsV111.BeautifulBraceletId)
+            return Math.Max(0, source.Player.Deck.Count(card =>
+                PrototypeGameEngine.CanSelectEventDeckCard(
+                    card, PrototypePersistentDeckChoiceKind.Enchant,
+                    null, PrototypeCardEnchantmentKind.Swift, false)) - 1);
+        if (relicId == NativeGloryAncientsV111.DistinguishedCapeId)
+            return 2;
+        if (relicId == NativePaelRewardsV111.LegionId)
+            return 1;
+        if (relicId == PrototypeNativeOrobasRelics.SandCastleId)
+            return Math.Max(0, source.Player.Deck.Count(card =>
+                PrototypeGameEngine.CanSelectEventDeckCard(
+                    card, PrototypePersistentDeckChoiceKind.Upgrade,
+                    null, null, false)) - 1);
+
+        return 0;
+    }
+
+    private static bool IsCombatRewardRelicAcquisitionAction(
+        RunState source, GameAction action) =>
+        ExpectedCombatRewardRelicAcquisitionRequestCount(source, action) > 0;
+
+    private static bool IsSupportedCombatRewardRelicAcquisitionRequest(
+        RunState source, GameAction action,
+        RandomIndexRequestV111 request)
+    {
+        var relicId = SelectedCombatRewardRelicId(source, action);
+        return relicId switch
+        {
+            NativeGloryAncientsV111.BeautifulBraceletId =>
+                request.SiteId == NativeGloryAncientsV111
+                    .BeautifulBraceletShuffleSiteId,
+            NativeGloryAncientsV111.DistinguishedCapeId =>
+                request.SiteId == NativeGloryAncientsV111
+                    .DistinguishedCapeCurseSiteId,
+            NativePaelRewardsV111.LegionId =>
+                request.SiteId == NativePaelRewardsV111.LegionSkinSiteId,
+            PrototypeNativeOrobasRelics.SandCastleId =>
+                request.SiteId ==
+                    "relic.sand_castle.acquisition_upgrade.shuffle_swap_index",
+            _ => false
+        };
+    }
+
+    private static string? SelectedCombatRewardRelicId(
+        RunState source, GameAction action)
+    {
+        if (source.Phase != RunPhase.Reward ||
+            source.NativeRunRng is null || source.World is not { } world ||
+            !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
+            action.Kind != "take_reward_relic" ||
+            world.Reward is not { PendingDeckChoice: null,
+                RelicResolved: false } reward)
+            return null;
+
+        var payload = action.Payload.Deserialize<ChooseRelicPayload>();
+        var options = reward.CurrentRelicOptions;
+        return payload is not null &&
+            (uint)payload.Index < (uint)options.Length
+                ? options[payload.Index]
+                : null;
     }
 
     private static int ExpectedRelicBagDrawCount(
