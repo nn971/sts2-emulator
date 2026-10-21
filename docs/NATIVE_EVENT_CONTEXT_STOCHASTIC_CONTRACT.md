@@ -53,7 +53,9 @@ Endless Conveyor exposes read-only weighted dish laws, a first-dish Observe
 upgrade law, a Spicy Snappy upgrade law, and a Fried Eel Colorless-card law.
 Dish queries condition on the ordinary event-selection result and pre-draw
 weights without inspecting the sampled float outcome; card queries bind their
-ordered `choose_index` supports to the persisted event cursor. The existing
+ordered `choose_index` supports to the request stream and ordinal. Native
+queries do not inspect the saved event cursor, while legacy fallback queries
+derive the request ordinal from the saved `event` call count. The existing
 event-specific session can sample a Spicy upgrade or Fried Eel card index
 before the next dish ticket, then replay both typed requests in one atomic
 continuation ([Endless Conveyor contract](REFERENCE_NATURE_ENDLESS_CONVEYOR_D3.md)).
@@ -61,14 +63,17 @@ continuation ([Endless Conveyor contract](REFERENCE_NATURE_ENDLESS_CONVEYOR_D3.m
 Reflections exposes read-only conditional laws for its downgrade and upgrade
 card-pick sites. The query rebuilds the projected deck and remaining ordered
 physical-card support from the complete prior index prefix, including the
-eligibility changes caused by prior downgrades. Its index outcomes use exact
-Native `NextInt(supportCount)` preimage counts on the uniform 53-bit
-`NextDouble` grid, including binary64 multiplication rounding. The atomic
-`ReferenceNatureGloryReflectionsSessionV111` uses these laws as an ordered
-prefix, then replays the ordinary `touch_mirror` action once all picks are
-resolved and commits its mechanic result with the Nature cursor. The Native
-event cursor remains at entry under scripted replay. The session is limited to
-the pending configured action when at least one card-pick draw exists.
+eligibility changes caused by prior downgrades. Configured Native index
+outcomes use exact `NextInt(supportCount)` preimage counts on the uniform
+53-bit `NextDouble` grid, including binary64 multiplication rounding. The
+atomic `ReferenceNatureGloryReflectionsSessionV111` uses these laws as an
+ordered prefix, then replays the ordinary `touch_mirror` action once all picks
+are resolved and commits its mechanic result with the Nature cursor. Native
+replay preserves the event cursor. Native-regional runs without
+`NativeRunRng` use the saved legacy `event` call count plus the prefix length
+for typed request ordinals, with equal-index `UNVERIFIED` laws; the selected
+legacy calls remain unadvanced. The session is limited to the pending action
+when at least one card-pick draw exists.
 
 Pinned Native event gold index formulas for Dense Vegetation, Whispering
 Hollow, both Sunken Statues, Luminous Choir, Sunken Treasury, Punch Off, and
@@ -155,10 +160,10 @@ effect once.
 
 ## Provenance and unsupported handling
 
-The Reflections downgrade and upgrade, configured Native Infested Automaton
-card-pick, Endless Conveyor card-index, and pinned Native generated-gold
-index laws mark their bounded-index transform `SOURCE_VERIFIED` on the
-declared support. Lost Wisp
+Configured Native Reflections downgrade and upgrade, configured Native
+Infested Automaton card-pick, configured Native Endless Conveyor card-index,
+and pinned Native generated-gold index laws mark their bounded-index
+transform `SOURCE_VERIFIED` on the declared support. Lost Wisp
 and Jungle Maze Adventure gold laws mark their unit-float-to-integer mappings
 `SOURCE_VERIFIED` on the three declared formulas. The Trial's three-case
 bounded-index transform is `SOURCE_VERIFIED`; its Chance Law query does not

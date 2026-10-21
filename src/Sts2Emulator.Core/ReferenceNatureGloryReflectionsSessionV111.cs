@@ -153,15 +153,8 @@ public sealed record ReferenceNatureGloryReflectionsSessionV111(
         var nextRun = Run;
         if (complete)
         {
-            var decisions = BuildNativeDecisions(Origin, transcript);
-            var replay = ReferenceNatureNativeEventIndexReplayV111
-                .ReplayControlledIndices(
-                    Origin, decisions,
-                    run => new PrototypeGameEngine().Step(
-                        run, GameAction.Create("event_choice",
-                            new EventChoicePayload("touch_mirror"))).State,
-                    PrototypeNativeGloryEvents.ReflectionsNativeRngEventId,
-                    "Glory Reflections");
+            var decisions = BuildIndexDecisions(Origin, transcript);
+            var replay = ReplayTouchMirror(Origin, decisions);
             nextRun = ReferenceNatureRunCursorV111.Commit(
                 replay, nextNature);
         }
@@ -219,15 +212,8 @@ public sealed record ReferenceNatureGloryReflectionsSessionV111(
         var expectedRun = Origin.Fork();
         if (complete)
         {
-            expectedRun = ReferenceNatureNativeEventIndexReplayV111
-                .ReplayControlledIndices(
-                    Origin,
-                    BuildNativeDecisions(Origin, DecisionTranscript),
-                    run => new PrototypeGameEngine().Step(
-                        run, GameAction.Create("event_choice",
-                            new EventChoicePayload("touch_mirror"))).State,
-                    PrototypeNativeGloryEvents.ReflectionsNativeRngEventId,
-                    "Glory Reflections");
+            expectedRun = ReplayTouchMirror(
+                Origin, BuildIndexDecisions(Origin, DecisionTranscript));
             expectedRun = ReferenceNatureRunCursorV111.Commit(
                 expectedRun, expectedNature);
         }
@@ -242,7 +228,7 @@ public sealed record ReferenceNatureGloryReflectionsSessionV111(
                 "Reflections Nature replay differs from its session envelope.");
     }
 
-    private static RandomIndexDecisionV111[] BuildNativeDecisions(
+    private static RandomIndexDecisionV111[] BuildIndexDecisions(
         RunState origin, ReferenceNatureDecisionV111[] transcript)
     {
         var priorIndices = new List<int>();
@@ -264,6 +250,64 @@ public sealed record ReferenceNatureGloryReflectionsSessionV111(
             priorIndices.Add(selectedIndex);
         }
         return decisions;
+    }
+
+    private static RunState ReplayTouchMirror(
+        RunState origin, RandomIndexDecisionV111[] decisions)
+    {
+        RunState ReplayAction(RunState run) =>
+            new PrototypeGameEngine().Step(
+                run, GameAction.Create("event_choice",
+                    new EventChoicePayload("touch_mirror"))).State;
+
+        if (origin.NativeRunRng is not null)
+            return ReferenceNatureNativeEventIndexReplayV111
+                .ReplayControlledIndices(
+                    origin, decisions, ReplayAction,
+                    PrototypeNativeGloryEvents.ReflectionsNativeRngEventId,
+                    "Glory Reflections");
+
+        var typedDecisions = decisions.Select(decision =>
+            ControlledStochasticDecisionV111.FromIndex(
+                new RandomIndexDecisionV111(
+                    decision.Request, decision.SelectedIndex,
+                    "controlled-v111"))).ToArray();
+        var requests = decisions.Select(decision =>
+            ControlledStochasticRequestV111.FromIndex(
+                decision.Request)).ToArray();
+        var replay = ControlledChanceContinuationExecutorV111
+            .CaptureStochastic(
+                origin,
+                ControlledStochasticContinuationStateV111.CurrentSchemaId,
+                typedDecisions,
+                ReplayAction,
+                candidate => requests.Any(request =>
+                    ControlledStochasticChanceReplayV111.SameRequest(
+                        candidate, request)));
+        if (replay.Suspended || replay.Run is not { } fallbackRun)
+            throw new InvalidDataException(
+                "Reflections fallback replay did not consume its selected request prefix.");
+        var originalEvent = origin.World?.Event;
+        var replayEvent = fallbackRun.World?.Event;
+        if (originalEvent?.NativeEventRng is not null ||
+            originalEvent?.NativeEventRngProviderMode is not null ||
+            replayEvent?.NativeEventRng is not null ||
+            replayEvent?.NativeEventRngProviderMode is not null ||
+            GetLegacyEventCallCount(fallbackRun) !=
+                GetLegacyEventCallCount(origin))
+            throw new InvalidDataException(
+                "Reflections fallback replay changed an event RNG cursor or provider marker.");
+        return fallbackRun;
+    }
+
+    private static ulong GetLegacyEventCallCount(RunState run)
+    {
+        var streams = run.Rng.Streams.Where(stream =>
+            stream.StreamId == "event").ToArray();
+        if (streams.Length != 1)
+            throw new InvalidDataException(
+                "Reflections fallback requires one legacy event stream.");
+        return streams[0].CallCount ?? 0;
     }
 
     public static string Save(

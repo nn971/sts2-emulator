@@ -86,7 +86,6 @@ internal static class TrashHeapChoicePlanBuilderV111
             playerHp = origin.Player.Hp,
             playerMaxHp = origin.Player.MaxHp,
             nativePageIndex = evt.NativePageIndex,
-            providerRoute = nativeRoute ? "native" : "legacy-fallback",
             request,
             outcomeIds,
             policy = ChanceLawEngineV111.TrashHeapConditioningPolicyId

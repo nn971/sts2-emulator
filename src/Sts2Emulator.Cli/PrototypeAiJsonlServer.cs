@@ -4648,15 +4648,12 @@ internal static class PrototypeAiJsonlServer
                                 RequireState(request), siteId, ordinal,
                                 priorIndices,
                                 OptionalString(request, "action_id"));
-                            var infestedLegacyFallback =
-                                siteId == PrototypeNativeHiveEvents
-                                    .InfestedAutomatonCardOfferSiteId &&
+                            var legacyCardPickFallback =
                                 law.ProbabilityStatus ==
-                                    ChanceLawV111.UnverifiedStatus &&
-                                ordinal == 0;
+                                    ChanceLawV111.UnverifiedStatus;
                             if (law.SiteId != siteId ||
                                 law.Ordinal != ordinal &&
-                                    !infestedLegacyFallback)
+                                    !legacyCardPickFallback)
                                 throw new ArgumentException(
                                     $"Native event card-pick query expects site '{law.SiteId}' and ordinal {law.Ordinal}.");
                             Write(new

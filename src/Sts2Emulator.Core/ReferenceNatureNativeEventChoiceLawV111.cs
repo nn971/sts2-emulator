@@ -82,7 +82,6 @@ internal static class NativeEventInfestedAutomatonCardPickPlanBuilderV111
             boundary = "hive.infested_automaton.card_offer",
             eventId = evt.EventId,
             actionId,
-            providerRoute = nativeRoute ? "native" : "legacy-fallback",
             candidateCardIds = candidates,
             request,
             policy = ChanceLawEngineV111
@@ -127,8 +126,9 @@ internal static class NativeEventReflectionsChoicePlanBuilderV111
             priorIndices.Any(index => index < 0))
             throw new InvalidOperationException(
                 "Reflections Chance Law requires its complete nonnegative index prefix.");
-        if (origin.NativeRunRng is null || origin.Phase != RunPhase.Event ||
-            origin.World is not { Act: 3, Event: { } evt } ||
+        var world = origin.World;
+        if (origin.Phase != RunPhase.Event ||
+            world is not { Act: 3, Event: { } evt } ||
             evt.EventId != PrototypeNativeGloryEvents.ReflectionsId ||
             evt.NativePageIndex != 0 || evt.ChosenChoiceId is not null ||
             evt.ControlledChoice is not null ||
@@ -137,7 +137,15 @@ internal static class NativeEventReflectionsChoicePlanBuilderV111
             origin.ControlledEventRewardChoice is not null ||
             actionId is not (null or "touch_mirror"))
             throw new InvalidOperationException(
-                "Reflections card-pick laws require the pending configured touch_mirror action.");
+                "Reflections card-pick laws require a supported pending touch_mirror action.");
+
+        var nativeRoute = origin.NativeRunRng is not null;
+        var legacyFallbackRoute = origin.NativeRunRng is null &&
+            PrototypeGameEngine.UsesNativeRegionalSystems(world) &&
+            evt.NativeEventRng is null;
+        if (!nativeRoute && !legacyFallbackRoute)
+            throw new InvalidOperationException(
+                "Reflections requires a configured Native or Native-regional legacy event RNG route.");
 
         var action = GameAction.Create("event_choice",
             new EventChoicePayload("touch_mirror"));
@@ -153,10 +161,6 @@ internal static class NativeEventReflectionsChoicePlanBuilderV111
             savedStream.StreamId != expectedStreamId)
             throw new InvalidOperationException(
                 "Reflections has the wrong Native event stream identity.");
-        if (evt.NativeEventRng is null && evt.NativePageIndex != 0)
-            throw new InvalidOperationException(
-                "Reflections cannot reconstruct a missing event stream after page progress.");
-
         var projectedDeck = origin.Player.Deck.ToList();
         var selectedCardIds = new List<long>();
         var globalOrdinal = 0;
@@ -216,10 +220,16 @@ internal static class NativeEventReflectionsChoicePlanBuilderV111
         var evt = origin.World!.Event!;
         var ownerId = $"event:reflections:{stage}:{stageOrdinal}:pool:" +
             CanonicalJson.Sha256(candidates);
-        var streamId = NativeRngV111Contexts.EventStreamId(
-            PrototypeNativeGloryEvents.ReflectionsNativeRngEventId);
+        var nativeRoute = origin.NativeRunRng is not null;
+        var streamId = nativeRoute
+            ? NativeRngV111Contexts.EventStreamId(
+                PrototypeNativeGloryEvents.ReflectionsNativeRngEventId)
+            : "event";
+        var requestOrdinal = nativeRoute
+            ? ordinal
+            : GetLegacyEventOrdinal(origin, ordinal);
         var request = new RandomIndexRequestV111(
-            expectedSiteId, streamId, ownerId, ordinal,
+            expectedSiteId, streamId, ownerId, requestOrdinal,
             Enumerable.Range(0, candidates.Count).ToArray());
         var conditioningFingerprint = CanonicalJson.Sha256(new
         {
@@ -235,6 +245,23 @@ internal static class NativeEventReflectionsChoicePlanBuilderV111
         });
         return new(candidates.ToArray(), request,
             conditioningFingerprint);
+    }
+
+    private static int GetLegacyEventOrdinal(
+        RunState origin, int drawOrdinal)
+    {
+        if (drawOrdinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(drawOrdinal));
+        var streams = origin.Rng.Streams.Where(stream =>
+            stream.StreamId == "event").ToArray();
+        if (streams.Length != 1)
+            throw new InvalidDataException(
+                "Reflections fallback requires one legacy event stream.");
+        var ordinal = streams[0].CallCount ?? 0;
+        if (ordinal > (ulong)int.MaxValue - (ulong)drawOrdinal)
+            throw new NotSupportedException(
+                "Reflections legacy event ordinal exceeds the typed request range.");
+        return (int)(ordinal + (ulong)drawOrdinal);
     }
 
     private static long SelectPrior(
@@ -1041,7 +1068,12 @@ public static partial class ChanceLawEngineV111
         }
         var plan = NativeEventReflectionsChoicePlanBuilderV111.BuildNext(
             origin, siteId, ordinal, priorIndices, actionId);
-        var weights = NativeNextIntGridWeights(plan.Request.SupportCount);
+        var nativeIndexLaw = NativeRngV111.IsCanonicalStreamId(
+            plan.Request.StreamId);
+        var weights = nativeIndexLaw
+            ? NativeNextIntGridWeights(plan.Request.SupportCount)
+            : Enumerable.Repeat(1L,
+                plan.Request.SupportCount).ToArray();
         var outcomes = plan.CandidateCardInstanceIds.Select((instanceId, index) =>
             new ChanceLawOutcomeV111(
                 "card_instance:" + instanceId.ToString(
@@ -1055,7 +1087,12 @@ public static partial class ChanceLawEngineV111
             plan.Request.OperationKind, plan.Request.OwnerId,
             plan.Request.Ordinal, NativeEventCardPickConditioningPolicyId,
             plan.ConditioningFingerprint,
-            NativeBoundedIndexSourceVerifiedProvenance, outcomes,
-            ChanceLawV111.SourceVerifiedStatus);
+            nativeIndexLaw
+                ? NativeBoundedIndexSourceVerifiedProvenance
+                : "uniform-saved-index-support-unverified",
+            outcomes,
+            nativeIndexLaw
+                ? ChanceLawV111.SourceVerifiedStatus
+                : ChanceLawV111.UnverifiedStatus);
     }
 }
