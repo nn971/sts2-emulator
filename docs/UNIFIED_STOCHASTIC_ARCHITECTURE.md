@@ -615,7 +615,12 @@ actions to recover their exact mechanics actions. The capture starts at that
 initial player boundary, so route setup and initial-intent decisions are
 excluded; its boundary trace contains only subsequent player-action outcomes.
 The JSONL operation accepts `<side>_semantic_native_policy_handle` for this
-capture path. It does not establish Native source-hook parity or law fidelity.
+capture path. `FromReferenceNatureEventChoiceSession` restores and replays the
+session's interleaved player-action/Nature chronology, checks the completed
+controlled-choice trace against its Nature outcomes and prior history, then
+materializes its typed requests through the same boundary journal. JSONL accepts
+`<side>_reference_nature_event_choice_handle` for this path. It does not
+establish Native source-hook parity or law fidelity.
 `FromReferenceNatureRunActionSession` adds a completed unconfigured prototype
 `continue_act` path: it replays and validates the session, checks that the
 appended controlled action trace covers the complete saved Chance Law

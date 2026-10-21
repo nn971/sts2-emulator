@@ -126,11 +126,14 @@ public static class SimulationProviderReplayCaptureProvenanceV111
         "semantic-native-policy-replay-validated-v1";
     public const string ReferenceNatureRunActionReplayValidated =
         "reference-nature-run-action-replay-validated-v1";
+    public const string ReferenceNatureEventChoiceReplayValidated =
+        "reference-nature-event-choice-replay-validated-v1";
 
     public static bool IsKnown(string? provenance) => provenance is
         CallerSupplied or ScriptedRunReplayValidated or
         ScriptedActionReplayValidated or SemanticNativePolicyReplayValidated or
-        ReferenceNatureRunActionReplayValidated;
+        ReferenceNatureRunActionReplayValidated or
+        ReferenceNatureEventChoiceReplayValidated;
 }
 
 /// <summary>
@@ -280,6 +283,82 @@ public sealed record SimulationProviderReplayCaptureV111(
             session.Origin, [session.Action], decisions, session.Run,
             SimulationProviderReplayCaptureProvenanceV111
                 .ReferenceNatureRunActionReplayValidated);
+    }
+
+    /// <summary>
+    /// Builds a capture from a completed ReferenceNature event-choice
+    /// session. Restore replays the mixed player-action and Nature chronology;
+    /// the completed controlled trace supplies the typed stochastic requests.
+    /// </summary>
+    public static SimulationProviderReplayCaptureV111
+        FromReferenceNatureEventChoiceSession(
+            ReferenceNatureControlledEventChoiceSessionV111 session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        ReferenceNatureControlledEventChoiceSessionV111 replay;
+        using (RandomBoundaryJournalV111.Begin())
+            replay = ReferenceNatureControlledEventChoiceSessionV111.Restore(
+                ReferenceNatureControlledEventChoiceSessionV111.Save(session));
+        if (!replay.Complete)
+            throw new InvalidOperationException(
+                "Provider replay capture requires a completed ReferenceNature event choice.");
+
+        var originHistory = replay.Origin.ControlledEventChoiceHistory ?? [];
+        var resultHistory = replay.Run.ControlledEventChoiceHistory ?? [];
+        if (resultHistory.Length < originHistory.Length)
+            throw new InvalidDataException(
+                "ReferenceNature event-choice history lost its origin prefix.");
+        for (var index = 0; index < originHistory.Length; index++)
+            if (CanonicalJson.Sha256(originHistory[index]) !=
+                CanonicalJson.Sha256(resultHistory[index]))
+                throw new InvalidDataException(
+                    "ReferenceNature event-choice history changed before the captured choice.");
+        var natureSteps = replay.Steps
+            .Where(step => step.Kind == "nature")
+            .Select(step => step.NatureDecision ?? throw new InvalidDataException(
+                "ReferenceNature event-choice step has no Nature decision."))
+            .ToArray();
+        ControlledStochasticDecisionV111[] decisions;
+        if (natureSteps.Length == 0)
+        {
+            if (resultHistory.Length != originHistory.Length)
+                throw new NotSupportedException(
+                    "ReferenceNature event choice appended an unpaired stochastic trace.");
+            decisions = [];
+        }
+        else
+        {
+            if (resultHistory.Length != originHistory.Length + 1)
+                throw new NotSupportedException(
+                    "ReferenceNature event-choice trace does not isolate one committed choice.");
+
+            var trace = resultHistory[^1];
+            trace.Validate();
+            if (trace.EventId != replay.Origin.World?.Event?.EventId ||
+                trace.ChoiceId != replay.ChoiceId ||
+                trace.Decisions.Length != natureSteps.Length)
+                throw new NotSupportedException(
+                    "ReferenceNature event-choice trace does not cover its Nature chronology.");
+            for (var index = 0; index < natureSteps.Length; index++)
+                if (trace.Decisions[index].SelectedIndex !=
+                    natureSteps[index].OutcomeIndex)
+                    throw new InvalidDataException(
+                        "ReferenceNature event-choice outcomes differ from the typed action trace.");
+
+            decisions = trace.Decisions.Select((decision, index) =>
+                ControlledStochasticDecisionV111.FromIndex(
+                    decision, trace.CandidateLabels[index])).ToArray();
+        }
+
+        var actions = replay.Steps
+            .Where(step => step.Kind == "player_action")
+            .Select(step => step.PlayerAction ?? throw new InvalidDataException(
+                "ReferenceNature event-choice step has no player action."))
+            .ToArray();
+        return FromScriptedDecisions(
+            replay.Origin, actions, decisions, replay.Run,
+            SimulationProviderReplayCaptureProvenanceV111
+                .ReferenceNatureEventChoiceReplayValidated);
     }
 
     /// <summary>

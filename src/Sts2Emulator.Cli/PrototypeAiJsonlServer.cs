@@ -2909,6 +2909,7 @@ internal static class PrototypeAiJsonlServer
                                 "<side>_scripted_run_action_handle",
                                 "<side>_semantic_native_policy_handle",
                                 "<side>_reference_nature_run_action_handle (legacy continue_act)",
+                                "<side>_reference_nature_event_choice_handle",
                                 "<side>_origin_snapshot, <side>_actions, <side>_boundaries, and <side>_result_snapshot"
                             },
                             simulationProviderReplayComparisonScope =
@@ -9709,6 +9710,8 @@ internal static class PrototypeAiJsonlServer
                                 side + "_semantic_native_policy_handle";
                             var referenceNatureRunActionHandleName =
                                 side + "_reference_nature_run_action_handle";
+                            var referenceNatureEventChoiceHandleName =
+                                side + "_reference_nature_event_choice_handle";
                             var originName = side + "_origin_snapshot";
                             var actionsName = side + "_actions";
                             var boundariesName = side + "_boundaries";
@@ -9728,15 +9731,21 @@ internal static class PrototypeAiJsonlServer
                                 request.TryGetProperty(
                                     referenceNatureRunActionHandleName,
                                     out var referenceNatureRunActionHandleElement);
+                            bool hasReferenceNatureEventChoiceHandle =
+                                request.TryGetProperty(
+                                    referenceNatureEventChoiceHandleName,
+                                    out var referenceNatureEventChoiceHandleElement);
                             if (hasScriptedRunHandle ||
                                 hasScriptedActionHandle ||
                                 hasSemanticNativeHandle ||
-                                hasReferenceNatureRunActionHandle)
+                                hasReferenceNatureRunActionHandle ||
+                                hasReferenceNatureEventChoiceHandle)
                             {
                                 if ((hasScriptedRunHandle ? 1 : 0) +
                                     (hasScriptedActionHandle ? 1 : 0) +
                                     (hasSemanticNativeHandle ? 1 : 0) +
-                                    (hasReferenceNatureRunActionHandle ? 1 : 0) > 1)
+                                    (hasReferenceNatureRunActionHandle ? 1 : 0) +
+                                    (hasReferenceNatureEventChoiceHandle ? 1 : 0) > 1)
                                     throw new ArgumentException(
                                         "Provide only one replay handle for " +
                                         side + ".");
@@ -9746,14 +9755,18 @@ internal static class PrototypeAiJsonlServer
                                         ? scriptedActionHandleElement
                                         : hasSemanticNativeHandle
                                             ? semanticNativeHandleElement
-                                            : referenceNatureRunActionHandleElement;
+                                            : hasReferenceNatureRunActionHandle
+                                                ? referenceNatureRunActionHandleElement
+                                                : referenceNatureEventChoiceHandleElement;
                                 var handleName = hasScriptedRunHandle
                                     ? scriptedHandleName
                                     : hasScriptedActionHandle
                                         ? scriptedActionHandleName
                                         : hasSemanticNativeHandle
                                             ? semanticNativeHandleName
-                                            : referenceNatureRunActionHandleName;
+                                            : hasReferenceNatureRunActionHandle
+                                                ? referenceNatureRunActionHandleName
+                                                : referenceNatureEventChoiceHandleName;
                                 if (handleElement.ValueKind !=
                                         JsonValueKind.String ||
                                     string.IsNullOrWhiteSpace(
@@ -9796,6 +9809,16 @@ internal static class PrototypeAiJsonlServer
                                                 referenceNatureRunAction)
                                         : throw new InvalidOperationException(
                                             "Unknown ReferenceNature run-action handle: " +
+                                            handle);
+                                if (hasReferenceNatureEventChoiceHandle)
+                                    return referenceNatureEventChoiceStates
+                                        .TryGetValue(handle,
+                                            out var referenceNatureEventChoice)
+                                        ? SimulationProviderReplayCaptureV111
+                                            .FromReferenceNatureEventChoiceSession(
+                                                referenceNatureEventChoice)
+                                        : throw new InvalidOperationException(
+                                            "Unknown ReferenceNature event-choice handle: " +
                                             handle);
                                 return semanticStates.TryGetValue(handle,
                                         out var semanticNative)
