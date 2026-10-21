@@ -6311,6 +6311,35 @@ internal static class PrototypeAiJsonlServer
                         break;
                     }
 
+                    case "semantic_nature_public_observe":
+                    {
+                        // Read-only view using exactly the existing fair player
+                        // observation record/serializer, prior to resolving Nature.
+                        var handle = RequiredString(request, "semantic_handle");
+                        var current = RequireSemantic(request);
+                        if (current.CombatTerminal ||
+                            current.AtPlayerBoundary ||
+                            current.AtPlayerChoiceBoundary)
+                            throw new InvalidOperationException(
+                                "Nature's public observation requires a pending Nature boundary.");
+                        if (RequiredString(request, "policy_id") != FairPolicyId)
+                            throw new NotSupportedException(
+                                "Nature's public observation requires the existing fair policy.");
+                        var visible = environment.ObservePublic(current.Run);
+                        Write(new
+                        {
+                            requestId,
+                            ok = true,
+                            schemaId = SemanticChanceSchemaId,
+                            policyId = FairPolicyId,
+                            semanticHandle = handle,
+                            fingerprint = current.Fingerprint,
+                            payloadJson = CanonicalJson.Serialize(visible),
+                            observationHash = CanonicalJson.Sha256(visible)
+                        });
+                        break;
+                    }
+
                     case "semantic_nature_observe":
                     {
                         var handle = RequiredString(request, "semantic_handle");

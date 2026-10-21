@@ -267,6 +267,15 @@ public sealed class PrototypeAiEnvironment
 
     public RunState Fork(RunState state) => state.Fork();
 
+    /// <summary>
+    /// The same player-visible observation at any suspended semantic boundary.
+    /// Nature additionally receives its own legal outcome support through the
+    /// pending Chance Law, but never the engine's hidden shuffle/order state.
+    /// This path does not compute player legal actions at a Nature boundary.
+    /// </summary>
+    public PrototypeAiObservation ObservePublic(RunState state) =>
+        CreateObservation(state);
+
     public PrototypeAiFrame Observe(RunState state)
     {
         var observation = CreateObservation(state);
