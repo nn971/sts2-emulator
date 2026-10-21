@@ -133,9 +133,8 @@ public sealed record PrototypeAutomaticPipelineMechanicsStateV111(
             if (combat.Turn != 1 || combat.IsPlayerTurn ||
                 combat.PendingChoice is not null ||
                 combat.PendingKnowledgeDemonChoice is not null ||
-                NextStepIndex !=
-                    PrototypeContent.Rules.EndTurnPipeline.Length ||
-                PendingPostDispatchEventKind is not null)
+                !IsAtOpeningBoundary(
+                    PrototypeOpeningCombatStage.InitialEnemyIntents))
                 throw new InvalidOperationException(
                     "Invalid suspended initial-enemy-intent stage.");
         }
@@ -144,15 +143,12 @@ public sealed record PrototypeAutomaticPipelineMechanicsStateV111(
                 || opening <= PrototypeOpeningCombatStage.PlayerSideStart
                 || combat.Turn != 1 || !combat.IsPlayerTurn
                 || combat.PendingChoice is null
-                || NextStepIndex !=
-                    PrototypeContent.Rules.EndTurnPipeline.Length
-                || PendingPostDispatchEventKind is not null))
+                || !IsAtOpeningBoundary(opening)))
             throw new InvalidOperationException(
                 "Invalid suspended opening-combat stage.");
 
         if (OpeningStage is null &&
-            (NextStepIndex < 0 ||
-             NextStepIndex > PrototypeContent.Rules.EndTurnPipeline.Length ||
+            (!HasValidIndex ||
              PendingPostDispatchEventKind is { } eventKind &&
                 !Enum.IsDefined(eventKind)))
             throw new InvalidOperationException(
