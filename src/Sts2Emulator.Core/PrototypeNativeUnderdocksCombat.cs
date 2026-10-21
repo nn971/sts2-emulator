@@ -77,12 +77,15 @@ public sealed partial class PrototypeGameEngine
                 PrototypeContent.Encounter(selectedElite),
                 world with
                 {
-                    ActOneEncounterPool = pool with
+                    Stochastic = world.Stochastic with
                     {
-                        RemainingEliteEncounterIds = availableElites
-                            .Where(id => !StringComparer.Ordinal.Equals(
-                                id, selectedElite))
-                            .ToArray()
+                        ActOneEncounterPool = pool with
+                        {
+                            RemainingEliteEncounterIds = availableElites
+                                .Where(id => !StringComparer.Ordinal.Equals(
+                                    id, selectedElite))
+                                .ToArray()
+                        }
                     }
                 });
         }
@@ -154,6 +157,12 @@ public sealed partial class PrototypeGameEngine
         };
         return (
             PrototypeContent.Encounter(encounterId),
-            world with { ActOneEncounterPool = nextPool });
+            world with
+            {
+                Stochastic = world.Stochastic with
+                {
+                    ActOneEncounterPool = nextPool
+                }
+            });
     }
 }

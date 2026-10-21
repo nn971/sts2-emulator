@@ -64,7 +64,13 @@ internal static class ReferenceNatureRunProjectionV111
         };
         return source with
         {
-            World = world with { RelicBag = projectedBag }
+            World = world with
+            {
+                Stochastic = world.Stochastic with
+                {
+                    RelicBag = projectedBag
+                }
+            }
         };
     }
 }

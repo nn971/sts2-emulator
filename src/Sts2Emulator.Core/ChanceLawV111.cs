@@ -7698,7 +7698,10 @@ public sealed record ReferenceNatureRunActionSessionV111(
             World = world with
             {
                 Map = committedMap ?? world.Map,
-                PreparedLaterActEncounterBags = preparation.Bags
+                Stochastic = world.Stochastic with
+                {
+                    PreparedLaterActEncounterBags = preparation.Bags
+                }
             }
         }, preparation.NatureState);
         return this with

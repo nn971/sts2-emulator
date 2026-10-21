@@ -221,7 +221,10 @@ public static class PrototypeNativeLaterActFixture
                 Reward = null,
                 Shop = null,
                 ActOneRegion = null,
-                ActOneEncounterPool = null,
+                Stochastic = world.Stochastic with
+                {
+                    ActOneEncounterPool = null
+                },
                 NativeOvergrowthOpening = false,
                 NextCardInstanceId = world.NextCardInstanceId + lanternKeys
             },

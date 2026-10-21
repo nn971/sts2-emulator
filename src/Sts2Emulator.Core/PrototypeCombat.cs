@@ -626,10 +626,13 @@ public sealed partial class PrototypeGameEngine
             encounter,
             world with
             {
-                ActOneEncounterPool = pool with
+                Stochastic = world.Stochastic with
                 {
-                    RemainingEliteEncounterIds =
-                        nextRemaining
+                    ActOneEncounterPool = pool with
+                    {
+                        RemainingEliteEncounterIds =
+                            nextRemaining
+                    }
                 }
             });
     }
@@ -690,7 +693,10 @@ public sealed partial class PrototypeGameEngine
             encounter,
             world with
             {
-                ActOneEncounterPool = nextPool
+                Stochastic = world.Stochastic with
+                {
+                    ActOneEncounterPool = nextPool
+                }
             });
     }
 
@@ -764,12 +770,15 @@ public sealed partial class PrototypeGameEngine
             encounter,
             world with
             {
-                ActOneEncounterPool = pool with
+                Stochastic = world.Stochastic with
                 {
-                    OrdinaryCombatsStarted =
-                        pool.OrdinaryCombatsStarted + 1,
-                    RemainingNormalEncounterIds =
-                        nextRemaining
+                    ActOneEncounterPool = pool with
+                    {
+                        OrdinaryCombatsStarted =
+                            pool.OrdinaryCombatsStarted + 1,
+                        RemainingNormalEncounterIds =
+                            nextRemaining
+                    }
                 }
             });
     }

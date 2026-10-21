@@ -103,7 +103,13 @@ public sealed partial class PrototypeGameEngine
             world, room, state.Rng);
         return StartCombat(state with
         {
-            World = world with { LaterActEncounterBag = selected.Bag }
+            World = world with
+            {
+                Stochastic = world.Stochastic with
+                {
+                    LaterActEncounterBag = selected.Bag
+                }
+            }
         }, room, selected.Encounter);
     }
 

@@ -1441,19 +1441,23 @@ public static class PrototypeNativeUnderdocksRunFactory
             World = world with
             {
                 ActOneRegion = PrototypeActOneRegion.Underdocks,
-                ActOneEncounterPool = new PrototypeActOneEncounterPoolState(
-                    PrototypeActOneRegion.Underdocks,
-                    OrdinaryCombatsStarted: 0,
-                    RemainingWeakEncounterIds:
-                        (string[])PrototypeNativeUnderdocks
-                            .SupportedWeakEncounterIds.Clone(),
-                    RemainingNormalEncounterIds:
-                        (string[])PrototypeNativeUnderdocks
-                            .SupportedNormalEncounterIds.Clone(),
-                    RemainingEliteEncounterIds:
-                        (string[])PrototypeNativeUnderdocks
-                            .SupportedEliteEncounterIds.Clone(),
-                    BossEncounterId: boss),
+                Stochastic = world.Stochastic with
+                {
+                    ActOneEncounterPool =
+                        new PrototypeActOneEncounterPoolState(
+                            PrototypeActOneRegion.Underdocks,
+                            OrdinaryCombatsStarted: 0,
+                            RemainingWeakEncounterIds:
+                                (string[])PrototypeNativeUnderdocks
+                                    .SupportedWeakEncounterIds.Clone(),
+                            RemainingNormalEncounterIds:
+                                (string[])PrototypeNativeUnderdocks
+                                    .SupportedNormalEncounterIds.Clone(),
+                            RemainingEliteEncounterIds:
+                                (string[])PrototypeNativeUnderdocks
+                                    .SupportedEliteEncounterIds.Clone(),
+                            BossEncounterId: boss)
+                },
                 Map = map
             }
         };

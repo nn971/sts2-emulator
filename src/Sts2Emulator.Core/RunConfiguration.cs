@@ -565,8 +565,11 @@ public static class V111RunFactory
             {
                 RulesetId = config.RulesetId,
                 ActIdentity = config.Acts[0],
-                RelicBag = relicBag,
-                PreparedLaterActEncounterBags = preparedLaterActBags
+                Stochastic = opening.World!.Stochastic with
+                {
+                    RelicBag = relicBag,
+                    PreparedLaterActEncounterBags = preparedLaterActBags
+                }
             }
         };
     }

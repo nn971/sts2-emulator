@@ -478,10 +478,15 @@ public static class ExperimentalSilentThreeActRouteV111
             Floor = 0,
             ActiveRoom = null, Combat = null, Reward = null,
             Shop = null, Event = null, Map = map.Fork(),
-            ActOneRegion = null, ActOneEncounterPool = null,
-            LaterActEncounterBag = nextBag.Fork(),
-            PreparedLaterActEncounterBags = prepared
-                .Where(bag => bag.Act != nextAct).Select(bag => bag.Fork()).ToArray(),
+            ActOneRegion = null,
+            Stochastic = world.Stochastic with
+            {
+                ActOneEncounterPool = null,
+                LaterActEncounterBag = nextBag.Fork(),
+                PreparedLaterActEncounterBags = prepared
+                    .Where(bag => bag.Act != nextAct)
+                    .Select(bag => bag.Fork()).ToArray()
+            },
             UnknownRoomOdds = null
         };
         var continued = state with

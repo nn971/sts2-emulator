@@ -701,7 +701,10 @@ public sealed record PrototypeRelicBagPullPlanV111
             Rare = Prune(bag.Rare, owned),
             Shop = Prune(bag.Shop, owned)
         };
-        return world with { RelicBag = pruned };
+        return world with
+        {
+            Stochastic = world.Stochastic with { RelicBag = pruned }
+        };
     }
 
     public static (RunWorldState World, string? Id) Draw(
@@ -852,7 +855,10 @@ public sealed record PrototypeRelicBagPullPlanV111
             pull = Pull(bag, rarity, merchant, player);
         }
         var (remaining, id) = pull;
-        return (world with { RelicBag = remaining }, id);
+        return (world with
+        {
+            Stochastic = world.Stochastic with { RelicBag = remaining }
+        }, id);
     }
 
     public static string MerchantModelOwnerId(

@@ -127,7 +127,11 @@ public sealed record RunWorldStochasticStateV111
                 throw new InvalidOperationException(
                     "An unvisited act's prepared encounter history has already been consumed.");
             ValidateLaterActEncounterBag(
-                world with { Act = bag.Act, LaterActEncounterBag = bag },
+                world with
+                {
+                    Act = bag.Act,
+                    Stochastic = this with { LaterActEncounterBag = bag }
+                },
                 ascension, darvRevealed);
         }
     }
