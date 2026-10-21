@@ -75,7 +75,8 @@ public static class ReferenceNatureChanceLawDecisionV111
             selection.OutcomeIndex >= law.Outcomes.Length ||
             selection.OutcomeId !=
                 law.Outcomes[selection.OutcomeIndex].OutcomeId ||
-            law.SiteId != request.SiteId || law.OwnerId != request.OwnerId)
+            law.SiteId != request.SiteId || law.OwnerId != request.OwnerId ||
+            law.Ordinal != request.Ordinal)
             throw new InvalidDataException(
                 "ReferenceNature selection does not match the typed provider request.");
 
