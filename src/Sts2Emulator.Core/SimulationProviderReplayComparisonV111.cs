@@ -314,12 +314,61 @@ public sealed record SimulationProviderReplayCaptureV111(
                 .FromIndex(decision, trace.CandidateLabels[index]))
             .ToArray();
         if (decisions.Length != session.DecisionTranscript.Length)
+        {
+            using (RandomBoundaryJournalV111.Begin())
+                decisions = TryBuildConfiguredRunStartPrefix(
+                    session, trace) ?? decisions;
+        }
+        if (decisions.Length != session.DecisionTranscript.Length)
             throw new NotSupportedException(
                 "ReferenceNature run-action trace does not cover every sampled provider request.");
         return FromScriptedDecisions(
             session.Origin, [session.Action], decisions, session.Run,
             SimulationProviderReplayCaptureProvenanceV111
                 .ReferenceNatureRunActionReplayValidated);
+    }
+
+    private static ControlledStochasticDecisionV111[]?
+        TryBuildConfiguredRunStartPrefix(
+            ReferenceNatureRunActionSessionV111 session,
+            ControlledRunActionTraceV111 trace)
+    {
+        var initialization = session.Run
+            .ReferenceNatureRunInitializationTranscript;
+        if (session.Action.Kind != "start_run" ||
+            session.Origin.Configuration?.Acts[0] != ActIdentity.Overgrowth ||
+            initialization is null ||
+            initialization.ActOneMapGeneration is not { } mapGeneration)
+            return null;
+        if (initialization.LaterActPreparationInitialPrototypeRng is not null)
+            return null;
+        initialization.Validate(replayMapGeneration: true);
+        if (!initialization.DecisionTranscript.SequenceEqual(
+                session.DecisionTranscript))
+            return null;
+
+        var bossLaw = ChanceLawEngineV111.QueryOvergrowthBossEncounter(0);
+        var expectedBossRequest = new RandomIndexRequestV111(
+            bossLaw.SiteId, "combat", bossLaw.OwnerId, bossLaw.Ordinal,
+            Enumerable.Range(0, bossLaw.Outcomes.Length).ToArray(),
+            OperationKind: bossLaw.OperationKind);
+        if (trace.Decisions.Length != 1 ||
+            CanonicalJson.Sha256(trace.Decisions[0].Request) !=
+                CanonicalJson.Sha256(expectedBossRequest) ||
+            trace.Decisions[0].SelectedIndex !=
+                initialization.DecisionTranscript[0].OutcomeIndex)
+            return null;
+
+        var prefix = new List<ControlledStochasticDecisionV111>
+        {
+            ControlledStochasticDecisionV111.FromIndex(
+                trace.Decisions[0], trace.CandidateLabels[0])
+        };
+        prefix.AddRange(mapGeneration.Decisions.Select(decision =>
+            decision.Fork()));
+        return prefix.Count == session.DecisionTranscript.Length
+            ? prefix.ToArray()
+            : null;
     }
 
     /// <summary>

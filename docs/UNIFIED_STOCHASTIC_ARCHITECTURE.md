@@ -638,11 +638,15 @@ inputs. This adds replay-capture coverage without changing the action or
 provider owners.
 `FromReferenceNatureRunActionSession` accepts a completed ReferenceNature
 run action when the appended controlled action trace identifies the exact
-saved action and covers every saved Nature decision. It replays and validates
-the session, preserves the prior action-history prefix, and materializes the
-trace's typed decisions as the interval boundary trace. Completed deterministic
-actions with no appended trace and an empty Nature transcript remain valid;
-specialized continuations whose trace omits part of the prefix are rejected.
+saved action and covers every saved Nature decision. For configured run starts,
+it combines the validated boss trace with the completed Act 1 map audit when
+those requests together cover the initialization transcript. It replays and
+validates the session, preserves the prior action-history prefix, and
+materializes the typed prefix as the interval boundary trace. Completed
+deterministic actions with no appended trace and an empty Nature transcript
+remain valid. It rejects specialized continuations with incomplete traces and
+experimental starts with later-act preparation, which this capture path does
+not currently assemble.
 JSONL accepts
 `<side>_reference_nature_run_action_handle` for this path.
 `FromReferenceNatureRunSetupSession` shares one capture path for completed
