@@ -14,11 +14,11 @@ internal static class TrashHeapChoicePlanBuilderV111
         RunState origin, string siteId)
     {
         ArgumentNullException.ThrowIfNull(origin);
-        if (origin.NativeRunRng is null ||
-            origin.Phase != RunPhase.Event ||
-            origin.World?.Map.GenerationProfileId !=
+        var world = origin.World;
+        if (origin.Phase != RunPhase.Event || world is null ||
+            world.Map.GenerationProfileId !=
                 PrototypeNativeUnderdocks.GenerationProfileId ||
-            origin.World?.Event is not { } evt ||
+            world.Event is not { } evt ||
             evt.EventId != PrototypeNativeUnderdocksTrashHeap.EventId ||
             evt.NativePageIndex != 0 || evt.ChosenChoiceId is not null ||
             evt.ControlledChoice is not null ||
@@ -26,7 +26,16 @@ internal static class TrashHeapChoicePlanBuilderV111
             evt.NativeEventRngProviderMode is not null ||
             origin.ControlledEventRewardChoice is not null)
             throw new InvalidOperationException(
-                "Trash Heap Nature choices require an unchosen configured Native event.");
+                "Trash Heap Nature choices require an unchosen supported Native-regional event.");
+
+        var nativeRoute = origin.NativeRunRng is not null &&
+            PrototypeGameEngine.UsesNativeRegionalSystems(world);
+        var legacyFallbackRoute = origin.NativeRunRng is null &&
+            PrototypeGameEngine.UsesNativeRegionalSystems(world) &&
+            evt.NativeEventRng is null;
+        if (!nativeRoute && !legacyFallbackRoute)
+            throw new InvalidOperationException(
+                "Trash Heap Nature choices require a configured Native or Native-regional legacy event RNG route.");
 
         string choiceId;
         string ownerId;
@@ -59,11 +68,15 @@ internal static class TrashHeapChoicePlanBuilderV111
             throw new InvalidOperationException(
                 $"Trash Heap choice '{choiceId}' is not legal in the current state.");
 
+        var streamId = nativeRoute
+            ? NativeRngV111Contexts.EventStreamId(
+                PrototypeNativeUnderdocksTrashHeap.NativeRngEventId)
+            : "event";
+        var ordinal = nativeRoute ? 0 : GetLegacyEventOrdinal(origin);
         var request = new RandomIndexRequestV111(
             siteId,
-            NativeRngV111Contexts.EventStreamId(
-                PrototypeNativeUnderdocksTrashHeap.NativeRngEventId),
-            ownerId, 0,
+            streamId,
+            ownerId, ordinal,
             Enumerable.Range(0, outcomeIds.Length).ToArray());
         var conditioningFingerprint = CanonicalJson.Sha256(new
         {
@@ -73,6 +86,7 @@ internal static class TrashHeapChoicePlanBuilderV111
             playerHp = origin.Player.Hp,
             playerMaxHp = origin.Player.MaxHp,
             nativePageIndex = evt.NativePageIndex,
+            providerRoute = nativeRoute ? "native" : "legacy-fallback",
             request,
             outcomeIds,
             policy = ChanceLawEngineV111.TrashHeapConditioningPolicyId
@@ -81,15 +95,43 @@ internal static class TrashHeapChoicePlanBuilderV111
             conditioningFingerprint);
     }
 
-    public static void ValidateNativeEventEntryCursor(RunState origin)
+    private static int GetLegacyEventOrdinal(RunState origin)
+    {
+        var streams = origin.Rng.Streams.Where(stream =>
+            stream.StreamId == "event").ToArray();
+        if (streams.Length != 1)
+            throw new InvalidDataException(
+                "Trash Heap fallback requires one legacy event stream.");
+        var ordinal = streams[0].CallCount ?? 0;
+        if (ordinal > int.MaxValue)
+            throw new NotSupportedException(
+                "Trash Heap legacy event ordinal exceeds the typed request range.");
+        return (int)ordinal;
+    }
+
+    public static void ValidateReplayOrigin(RunState origin)
     {
         ArgumentNullException.ThrowIfNull(origin);
         var evt = origin.World?.Event;
-        if (string.IsNullOrWhiteSpace(origin.RunSeed) ||
-            origin.NativeRunRng is null || evt is null ||
+        var world = origin.World;
+        if (world is null || world.Map.GenerationProfileId !=
+                PrototypeNativeUnderdocks.GenerationProfileId ||
+            evt is null ||
             evt.EventId != PrototypeNativeUnderdocksTrashHeap.EventId)
             throw new InvalidOperationException(
-                "Trash Heap session replay requires its configured Native event context.");
+                "Trash Heap session replay requires its Native-regional event context.");
+        if (origin.NativeRunRng is null)
+        {
+            if (!PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
+                evt.NativeEventRng is not null ||
+                evt.NativeEventRngProviderMode is not null)
+                throw new InvalidOperationException(
+                    "Trash Heap fallback replay requires the legacy event stream without a Native event cursor.");
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(origin.RunSeed))
+            throw new InvalidOperationException(
+                "Trash Heap Native replay requires its run seed.");
         var expected = NativeRngV111Contexts.ForEvent(
             origin.RunSeed,
             PrototypeNativeUnderdocksTrashHeap.NativeRngEventId);
@@ -186,7 +228,7 @@ public sealed record ReferenceNatureTrashHeapSessionV111(
         ArgumentNullException.ThrowIfNull(initial);
         _ = TrashHeapChoicePlanBuilderV111.Build(
             origin, SiteIdForChoice(choiceId));
-        TrashHeapChoicePlanBuilderV111.ValidateNativeEventEntryCursor(origin);
+        TrashHeapChoicePlanBuilderV111.ValidateReplayOrigin(origin);
         ReferenceNatureRunCursorV111.ValidateInitial(
             origin, initial, "Trash Heap");
         var session = new ReferenceNatureTrashHeapSessionV111(
@@ -248,7 +290,7 @@ public sealed record ReferenceNatureTrashHeapSessionV111(
         PrototypeStateInvariants.Validate(Origin);
         PrototypeStateInvariants.Validate(Run);
         TrashHeapChoicePlanBuilderV111
-            .ValidateNativeEventEntryCursor(Origin);
+            .ValidateReplayOrigin(Origin);
         InitialNatureState.Validate();
         NatureState.Validate();
         var plan = TrashHeapChoicePlanBuilderV111.Build(
@@ -351,6 +393,25 @@ public sealed record ReferenceNatureTrashHeapSessionV111(
         var selected = ReferenceNatureChanceLawDecisionV111
             .FromOrderedIndexSelection(
                 law, request, selection, orderedOutcomeIds);
+        if (origin.NativeRunRng is null)
+        {
+            var replay = ControlledChanceContinuationExecutorV111
+                .CaptureStochastic(
+                    origin,
+                    ControlledStochasticContinuationStateV111
+                        .CurrentSchemaId,
+                    [selected],
+                    run => new PrototypeGameEngine().Step(
+                        run, GameAction.Create("event_choice",
+                            new EventChoicePayload(choiceId))).State,
+                    candidate =>
+                        ControlledStochasticChanceReplayV111.SameRequest(
+                            candidate, request));
+            if (replay.Suspended || replay.Run is not { } fallbackRun)
+                throw new InvalidDataException(
+                    "Trash Heap fallback replay did not consume its selected request.");
+            return fallbackRun;
+        }
         return ReferenceNatureNativeEventIndexReplayV111
             .ReplayControlledIndex(
                 origin, plan.Request, selected,
@@ -386,8 +447,11 @@ public static partial class ChanceLawEngineV111
     {
         ArgumentNullException.ThrowIfNull(origin);
         var plan = TrashHeapChoicePlanBuilderV111.Build(origin, siteId);
-        var indexWeights = NativeNextIntGridWeights(
-            plan.Request.SupportCount);
+        var nativeIndexLaw = NativeRngV111.IsCanonicalStreamId(
+            plan.Request.StreamId);
+        var indexWeights = nativeIndexLaw
+            ? NativeNextIntGridWeights(plan.Request.SupportCount)
+            : Enumerable.Repeat(1L, plan.Request.SupportCount).ToArray();
         var outcomes = plan.OutcomeIds.Select((id, index) =>
             new ChanceLawOutcomeV111(
                 $"trash_heap_reward:{id}:index:{index}",
@@ -402,7 +466,12 @@ public static partial class ChanceLawEngineV111
             plan.Request.OperationKind, plan.Request.OwnerId,
             plan.Request.Ordinal, TrashHeapConditioningPolicyId,
             plan.ConditioningFingerprint,
-            NativeBoundedIndexSourceVerifiedProvenance, outcomes,
-            ChanceLawV111.SourceVerifiedStatus);
+            nativeIndexLaw
+                ? NativeBoundedIndexSourceVerifiedProvenance
+                : "uniform-saved-index-support-unverified",
+            outcomes,
+            nativeIndexLaw
+                ? ChanceLawV111.SourceVerifiedStatus
+                : ChanceLawV111.UnverifiedStatus);
     }
 }
