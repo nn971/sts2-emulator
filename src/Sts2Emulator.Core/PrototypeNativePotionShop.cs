@@ -345,11 +345,9 @@ public static class PrototypeNativePotionShop
             selected.Add(potionId);
             remaining.Remove(potionId);
         }
-        var initialStreams = rng.Streams;
-        var workingStreams = workingRng.Streams;
-        for (var streamIndex = 0; streamIndex < initialStreams.Length; streamIndex++)
-            rng.ReplaceStream(initialStreams[streamIndex].StreamId,
-                workingStreams[streamIndex].Fork());
+        foreach (var initialStream in rng.Streams)
+            rng.ReplaceStream(initialStream.StreamId,
+                workingRng.GetStream(initialStream.StreamId).Fork());
         return new NativePotionModelSelectionAuditV111(
             selected.ToArray(), choices.ToArray(), rarityRolls.ToArray(),
             effectiveIndexProvider.Mode, effectiveFloatProvider.Mode);
