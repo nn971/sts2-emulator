@@ -204,7 +204,7 @@ The semantic draw continuation boundaries now use `AdvanceControlledSemanticDraw
 
 When the resumed ordinary pipeline ends in Reward or Terminal after hand draw, `SemanticEndTurnV111` now completes with that engine result and keeps the completed draw projection for transcript replay. It still rejects an unfinished draw and checks the next-player boundary for combat-phase completion.
 
-`PrototypeGameEngine.ResumeAutomaticPipelineContinuation` now owns the shared handoff after controlled choices and semantic end-turn hand draw. Its explicit guarded semantic pre-draw entry also resumes Hello World's admitted shuffle continuation through the saved `DrawPlayerHand` stage. The common owner clears the saved cursor, runs the remaining ordinary pipeline, and settles terminal combat rewards; the established choice method remains a compatibility facade.
+`PrototypeGameEngine.ResumeAutomaticPipelineContinuation` now owns the shared handoff after controlled choices and semantic end-turn hand draw. Its explicit guarded semantic pre-draw entry also resumes Hello World's admitted shuffle continuation through the saved `DrawPlayerHand` stage. The common owner clears the saved opening or ordinary cursor, runs the remaining mechanics, and settles terminal combat rewards; `ResumeOpeningCombat` leaves reward publication to this owner, and the established choice method remains a compatibility facade.
 
 Controlled automatic enemy-action replay also enters this owner at its saved `ResolveEnemyActions` cursor. The handoff validates that the cursor-only run matches the typed replay checkpoint, then passes the saved decision prefix to the ordinary pipeline runner; enemy-action request capture and site validation remain with their existing typed continuation.
 

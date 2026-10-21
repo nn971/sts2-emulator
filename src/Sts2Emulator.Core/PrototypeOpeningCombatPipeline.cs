@@ -39,7 +39,7 @@ public sealed partial class PrototypeGameEngine
             var world = RequireWorld(state);
             var combat = world.Combat ?? throw new InvalidOperationException("Opening combat disappeared.");
             if (AllEnemiesDefeated(combat))
-                return EnterCombatReward(state);
+                return state;
             var eventKind = stage switch
             {
                 PrototypeOpeningCombatStage.PlayerSideStart => PrototypeCombatEventKind.PlayerSideTurnStarted,
@@ -86,9 +86,6 @@ public sealed partial class PrototypeGameEngine
                     state, OpeningCombatStages[stageIndex + 1]);
         }
         var finishedWorld = RequireWorld(state);
-        if (finishedWorld.Combat is { } finishedCombat
-            && AllEnemiesDefeated(finishedCombat))
-            return EnterCombatReward(state);
         return state with { World = finishedWorld with { Combat = finishedWorld.Combat! with
         { AutomaticPipelineContinuation = null } } };
     }
