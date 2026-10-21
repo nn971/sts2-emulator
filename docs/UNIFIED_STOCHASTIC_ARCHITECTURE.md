@@ -588,10 +588,20 @@ or Chance Law fidelity.
 each session replays its completed action history from the origin, and the
 existing typed boundary journal materializes its saved outcomes into the
 capture. They accept only sessions at committed action boundaries.
+`FromSemanticNativePolicySession` provides a corresponding path for a
+replay-validated Native-policy baseline. It reconstructs the initial player
+boundary from the seeded entry, verifies that the saved provider trace begins
+with the same setup and committed-intent prefix, and replays the saved player
+actions to recover their exact mechanics actions. The capture starts at that
+initial player boundary, so route setup and initial-intent decisions are
+excluded; its boundary trace contains only subsequent player-action outcomes.
+The JSONL operation accepts `<side>_semantic_native_policy_handle` for this
+capture path. It does not establish Native source-hook parity or law fidelity.
 The JSONL `provider_replay_compare` operation constructs a current capture for
 each side either from a completed scripted-run or scripted-action handle, or
-from exact origin/result snapshots plus action and boundary arrays, with
-optional Native cursor equality and a mechanics-difference bound.
+from a replay-validated semantic Native-policy handle, or from exact
+origin/result snapshots plus action and boundary arrays, with optional Native
+cursor equality and a mechanics-difference bound.
 `hello` advertises its capture and result schemas, operation, and inputs. These
 provider traces are privileged diagnostic data and are not part of the fair
 player observation.

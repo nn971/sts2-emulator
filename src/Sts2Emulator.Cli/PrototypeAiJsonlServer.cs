@@ -2907,6 +2907,7 @@ internal static class PrototypeAiJsonlServer
                                 "each side accepts one of:",
                                 "<side>_scripted_run_handle",
                                 "<side>_scripted_run_action_handle",
+                                "<side>_semantic_native_policy_handle",
                                 "<side>_origin_snapshot, <side>_actions, <side>_boundaries, and <side>_result_snapshot"
                             },
                             simulationProviderReplayComparisonScope =
@@ -9703,6 +9704,8 @@ internal static class PrototypeAiJsonlServer
                                 side + "_scripted_run_handle";
                             var scriptedActionHandleName =
                                 side + "_scripted_run_action_handle";
+                            var semanticNativeHandleName =
+                                side + "_semantic_native_policy_handle";
                             var originName = side + "_origin_snapshot";
                             var actionsName = side + "_actions";
                             var boundariesName = side + "_boundaries";
@@ -9714,20 +9717,30 @@ internal static class PrototypeAiJsonlServer
                                 request.TryGetProperty(
                                     scriptedActionHandleName,
                                     out var scriptedActionHandleElement);
+                            bool hasSemanticNativeHandle =
+                                request.TryGetProperty(
+                                    semanticNativeHandleName,
+                                    out var semanticNativeHandleElement);
                             if (hasScriptedRunHandle ||
-                                hasScriptedActionHandle)
+                                hasScriptedActionHandle ||
+                                hasSemanticNativeHandle)
                             {
-                                if (hasScriptedRunHandle &&
-                                    hasScriptedActionHandle)
+                                if ((hasScriptedRunHandle ? 1 : 0) +
+                                    (hasScriptedActionHandle ? 1 : 0) +
+                                    (hasSemanticNativeHandle ? 1 : 0) > 1)
                                     throw new ArgumentException(
-                                        "Provide only one scripted handle for " +
+                                        "Provide only one replay handle for " +
                                         side + ".");
                                 var handleElement = hasScriptedRunHandle
                                     ? scriptedHandleElement
-                                    : scriptedActionHandleElement;
+                                    : hasScriptedActionHandle
+                                        ? scriptedActionHandleElement
+                                        : semanticNativeHandleElement;
                                 var handleName = hasScriptedRunHandle
                                     ? scriptedHandleName
-                                    : scriptedActionHandleName;
+                                    : hasScriptedActionHandle
+                                        ? scriptedActionHandleName
+                                        : semanticNativeHandleName;
                                 if (handleElement.ValueKind !=
                                         JsonValueKind.String ||
                                     string.IsNullOrWhiteSpace(
@@ -9740,7 +9753,7 @@ internal static class PrototypeAiJsonlServer
                                     request.TryGetProperty(boundariesName, out _) ||
                                     request.TryGetProperty(resultName, out _))
                                     throw new ArgumentException(
-                                        "Provide a scripted handle or the four " +
+                                        "Provide a replay handle or the four " +
                                         "explicit capture fields.");
                                 var handle = handleElement.GetString()!;
                                 if (hasScriptedRunHandle)
@@ -9752,13 +9765,22 @@ internal static class PrototypeAiJsonlServer
                                         : throw new InvalidOperationException(
                                             "Unknown scripted run handle: " +
                                             handle);
-                                return scriptedRunActionStates.TryGetValue(
-                                        handle, out var scriptedAction)
+                                if (hasScriptedActionHandle)
+                                    return scriptedRunActionStates.TryGetValue(
+                                            handle, out var scriptedAction)
+                                        ? SimulationProviderReplayCaptureV111
+                                            .FromScriptedRunActionSession(
+                                                scriptedAction)
+                                        : throw new InvalidOperationException(
+                                            "Unknown scripted run-action handle: " +
+                                            handle);
+                                return semanticStates.TryGetValue(handle,
+                                        out var semanticNative)
                                     ? SimulationProviderReplayCaptureV111
-                                        .FromScriptedRunActionSession(
-                                            scriptedAction)
+                                        .FromSemanticNativePolicySession(
+                                            semanticNative)
                                     : throw new InvalidOperationException(
-                                        "Unknown scripted run-action handle: " +
+                                        "Unknown semantic session handle: " +
                                         handle);
                             }
 

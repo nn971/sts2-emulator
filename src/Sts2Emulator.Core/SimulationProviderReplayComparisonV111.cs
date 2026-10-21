@@ -195,6 +195,78 @@ public sealed record SimulationProviderReplayCaptureV111(
             session.Origin, [session.Action], session.Decisions, session.Run);
     }
 
+    /// <summary>
+    /// Builds a capture for the player-action interval of a validated Native
+    /// policy baseline. The baseline's setup and initial-intent trace is used
+    /// only to locate the beginning of the interval; it is excluded from the
+    /// capture because the origin is the resulting initial player boundary.
+    /// </summary>
+    public static SimulationProviderReplayCaptureV111
+        FromSemanticNativePolicySession(SemanticPilotCombatV111 session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        // Restore and action replay invoke provider callbacks. Keep them out
+        // of any journal owned by the caller.
+        using var validationJournal = RandomBoundaryJournalV111.Begin();
+        var validated = SemanticPilotCombatEngineV111.Restore(
+            SemanticPilotCombatEngineV111.Save(session));
+        var entry = validated.SeededEntry;
+        if (entry is not { NativePolicyBaseline: true } ||
+            !validated.UsesNativePolicyBaseline)
+            throw new InvalidOperationException(
+                "Provider replay capture requires a seeded Native policy baseline.");
+
+        var finalAudit = validated.NativePolicyAudit ??
+            throw new InvalidDataException(
+                "Native policy session is missing its provider trace.");
+        var replay = SemanticPilotCombatEngineV111.BeginSeeded(entry);
+        var initialAudit = replay.NativePolicyAudit ??
+            throw new InvalidDataException(
+                "Native policy entry replay is missing its provider trace.");
+        var initialTrace = initialAudit.ProviderTrace;
+        var completeTrace = finalAudit.ProviderTrace;
+        if (initialTrace.Length > completeTrace.Length)
+            throw new InvalidDataException(
+                "Native policy entry trace is longer than the saved session trace.");
+        for (var index = 0; index < initialTrace.Length; index++)
+            if (CanonicalJson.Sha256(initialTrace[index]) !=
+                CanonicalJson.Sha256(completeTrace[index]))
+                throw new InvalidDataException(
+                    "Native policy entry trace is not a prefix of the saved session trace.");
+
+        var engine = new PrototypeGameEngine();
+        var actions = new List<GameAction>(validated.History.Length);
+        foreach (var transition in validated.History)
+        {
+            if (transition.Kind != "player" ||
+                string.IsNullOrWhiteSpace(transition.ActionId))
+                throw new NotSupportedException(
+                    "Native policy capture requires a player-action-only history.");
+            var candidates = engine.GetLegalActions(replay.Run)
+                .Where(action => PrototypeAiEnvironment.StableActionId(action) ==
+                    transition.ActionId)
+                .ToArray();
+            if (candidates.Length != 1)
+                throw new InvalidDataException(
+                    "Native policy history action is illegal or ambiguous at " +
+                    actions.Count + ".");
+            actions.Add(candidates[0]);
+            replay = SemanticPilotCombatEngineV111.Step(
+                replay, replay.Fingerprint, transition.ActionId);
+        }
+        if (CanonicalJson.Sha256(replay) !=
+            CanonicalJson.Sha256(validated))
+            throw new InvalidDataException(
+                "Native policy action replay differs from the saved session.");
+
+        var boundaries = completeTrace.Skip(initialTrace.Length)
+            .Select((boundary, index) => boundary with
+            {
+                Sequence = index + 1
+            }).ToArray();
+        return Create(initial.Run, actions, boundaries, validated.Run);
+    }
+
     private static SimulationProviderReplayCaptureV111 FromScriptedDecisions(
         RunState origin, IReadOnlyList<GameAction> actions,
         IEnumerable<ControlledStochasticDecisionV111> decisions,
