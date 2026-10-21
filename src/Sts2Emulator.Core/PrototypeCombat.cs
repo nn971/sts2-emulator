@@ -1722,7 +1722,8 @@ public sealed partial class PrototypeGameEngine
             if (!ControlledChanceGuardV111.Active)
                 throw new InvalidOperationException(
                     "Semantic BeforeHandDraw choice requires the RNG guard.");
-            return ResumeSemanticBeforeHandDrawActionChoice(state).Run;
+            var resumed = ResumeSemanticBeforeHandDrawActionChoice(state).Run;
+            return ResumeAutomaticPipelineContinuation(resumed);
         }
 
         if (state.World?.Combat is
