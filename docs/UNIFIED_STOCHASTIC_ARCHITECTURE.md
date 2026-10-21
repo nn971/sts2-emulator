@@ -362,11 +362,13 @@ revalidates that support before applying the selected removal. Event-relic,
 Shovel, and combat-reward replay use those operations to rebuild later
 supports from the earlier selected identities. The merchant,
 Treasure, and combat reward sessions own their relic identity choices during
-their respective room/reward boundaries; queue construction, later Treasure
-draws after purchases, and subsequent purchase effects remain outside those
-boundaries. Nature residual
-sets retain canonical identity support only; unsupported queue-order pulls
-fail closed until their matching Chance Law continuation is implemented.
+their respective room/reward boundaries; queue construction and later Treasure
+draws after purchases remain outside those boundaries. The merchant session
+also handles Alchemical Coffer's four rarity/model pairs, Toy Box's five
+rarity/identity pairs, and registered index-only Shop-purchase effects;
+unregistered stochastic purchase effects remain outside its coverage. Nature
+residual sets retain canonical identity support only; unsupported queue-order
+pulls fail closed until their matching Chance Law continuation is implemented.
 
 When a mixed controlled replay is active, merchant `Draw` now inserts the
 Nature-only typed site `shop.merchant.relic_model.index_draw` before removing

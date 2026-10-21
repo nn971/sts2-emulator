@@ -171,12 +171,15 @@ cursor parity. Legacy merchant percentage-bin requests and hidden relic queue
 identity retain their separate `UNVERIFIED` status.
 
 Native queue construction and queue shuffling, unregistered stochastic Shop
-hooks, non-index purchase effects, and other later Treasure draws remain
-outside the merchant session. Ordinary non-Native legacy Shop-node generation
-continues to use the run-action boundary. The Native-regional fallback session
-uses equal request-index weights for its captured legacy `shop` and `reward`
-requests; this controls the emulator request prefix without certifying Native
-RNG behavior or legacy cursor advancement.
+hooks, and other later Treasure draws remain outside the merchant session.
+Alchemical Coffer's four rarity-float/model-index pairs and Toy Box's five
+rarity-float/relic-identity pairs are supported purchase effects; the
+registered index-only purchase sites described above are also supported.
+Ordinary non-Native legacy Shop-node generation continues to use the run-action
+boundary. The Native-regional fallback session uses equal request-index
+weights for its captured legacy `shop` and `reward` requests; this controls the
+emulator request prefix without certifying Native RNG behavior or legacy
+cursor advancement.
 
 ## Unsupported scope
 
@@ -195,10 +198,12 @@ shape. A snapshot carrying the tag uses
 Nature-owned set unless a controlled Chance Law replay selects an identity.
 Native bag construction and queue shuffling remain outside this session, and
 the completeness of the modeled eligible sets remains unverified. Unregistered
-stochastic Shop hooks, non-index purchase effects, later Treasure draws, and
-Native cursor parity remain unsupported. Ordinary non-Native legacy Shop-node
-generation continues to use its existing run-action contract. The
-Native-regional fallback is now included in the atomic merchant session. Its
+stochastic Shop hooks, later Treasure draws, and Native cursor parity remain
+unsupported. Alchemical Coffer, Toy Box, and the registered index-only purchase
+sites are covered as described above; other purchase effects remain unsupported
+unless they reach a registered continuation boundary. Ordinary non-Native
+legacy Shop-node generation continues to use its existing run-action contract.
+The Native-regional fallback is now included in the atomic merchant session. Its
 price requests retain the discrete integer-percentage approximations to the
 Native unit-float price sites, and its 10,000-way card-upgrade ticket is
 mechanically inert for merchant cards. Read-only Chance Law queries expose
