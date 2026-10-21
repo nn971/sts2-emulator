@@ -315,6 +315,18 @@ public sealed partial class PrototypeGameEngine
     /// </summary>
     internal static RunState ResumeControlledDrawInsertion(
         RunState state, int chosen)
+        => ResumeControlledDrawInsertionCore(state, chosen, null);
+
+    internal static RunState ResumeControlledDrawInsertionByCardModel(
+        RunState state, string selectedCardModelId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(selectedCardModelId);
+        return ResumeControlledDrawInsertionCore(
+            state, null, selectedCardModelId);
+    }
+
+    private static RunState ResumeControlledDrawInsertionCore(
+        RunState state, int? chosenPosition, string? selectedCardModelId)
     {
         if (!ControlledChanceGuardV111.Active)
             throw new InvalidOperationException(
@@ -332,9 +344,23 @@ public sealed partial class PrototypeGameEngine
                 "Pending draw insertion is not source-reachable.");
         if (choice.Stage == "card_model")
         {
-            if (chosen < 0 || chosen >= choice.CandidateCardIds.Length)
-                throw new ArgumentOutOfRangeException(nameof(chosen));
-            var selected = choice.CandidateCardIds[chosen];
+            string selected;
+            if (selectedCardModelId is { } selectedModelId)
+            {
+                if (!choice.CandidateCardIds.Contains(
+                        selectedModelId, StringComparer.Ordinal))
+                    throw new ArgumentOutOfRangeException(
+                        nameof(selectedCardModelId));
+                selected = selectedModelId;
+            }
+            else
+            {
+                if (chosenPosition is not { } chosen || chosen < 0 ||
+                    chosen >= choice.CandidateCardIds.Length)
+                    throw new ArgumentOutOfRangeException(
+                        nameof(chosenPosition));
+                selected = choice.CandidateCardIds[chosen];
+            }
             return state with
             {
                 World = world with
@@ -354,9 +380,11 @@ public sealed partial class PrototypeGameEngine
             };
         }
 
-        if (chosen < 0 || chosen > combat.DrawPile.Length ||
+        if (selectedCardModelId is not null ||
+            chosenPosition is not { } chosen || chosen < 0 ||
+            chosen > combat.DrawPile.Length ||
             choice.SelectedCardId is not { } cardId)
-            throw new ArgumentOutOfRangeException(nameof(chosen));
+            throw new ArgumentOutOfRangeException(nameof(chosenPosition));
         var instanceId = combat.NextCardInstanceId;
         CombatCardInstance? newCard = null;
         if (choice.AfterShuffleRelic is not null)

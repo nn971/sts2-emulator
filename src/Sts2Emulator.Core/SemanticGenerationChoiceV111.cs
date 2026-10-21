@@ -255,8 +255,9 @@ public static class SemanticGenerationChoiceV111
         using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
         {
             if (drawInsertionModelChoice)
-                resumed = PrototypeGameEngine.ResumeControlledDrawInsertion(
-                    checkpoint.Fork(), decision.SelectedIndex);
+                resumed = PrototypeGameEngine
+                    .ResumeControlledDrawInsertionByCardModel(
+                        checkpoint.Fork(), decision.SelectedCardId);
             else if (crossbowTurnStartHandoff)
                 resumed = PrototypeGameEngine
                     .ResumeControlledGeneratedCardForSemanticHandoff(
