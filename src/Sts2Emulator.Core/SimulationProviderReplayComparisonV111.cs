@@ -115,6 +115,21 @@ public sealed record SimulationProviderReplayStochasticCaptureV111
     }
 }
 
+public static class SimulationProviderReplayCaptureProvenanceV111
+{
+    public const string CallerSupplied = "caller-supplied-unverified-v1";
+    public const string ScriptedRunReplayValidated =
+        "scripted-run-replay-validated-v1";
+    public const string ScriptedActionReplayValidated =
+        "scripted-action-replay-validated-v1";
+    public const string SemanticNativePolicyReplayValidated =
+        "semantic-native-policy-replay-validated-v1";
+
+    public static bool IsKnown(string? provenance) => provenance is
+        CallerSupplied or ScriptedRunReplayValidated or
+        ScriptedActionReplayValidated or SemanticNativePolicyReplayValidated;
+}
+
 /// <summary>
 /// Versioned, detached capture of one provider replay interval. Mechanics and
 /// stochastic evidence are grouped through the shared simulation envelope.
@@ -125,7 +140,11 @@ public sealed record SimulationProviderReplayCaptureV111(
         SimulationProviderReplayStochasticCaptureV111> Simulation)
 {
     public const string CurrentSchemaId =
-        "sts2-v111-simulation-provider-replay-capture-v1";
+        "sts2-v111-simulation-provider-replay-capture-v2";
+
+    [System.Text.Json.Serialization.JsonInclude]
+    public string CaptureProvenance { get; private init; } =
+        SimulationProviderReplayCaptureProvenanceV111.CallerSupplied;
 
     public SimulationProviderReplayMechanicsCaptureV111 Mechanics =>
         Simulation.Mechanics;
@@ -177,7 +196,9 @@ public sealed record SimulationProviderReplayCaptureV111(
             session.Origin,
             completedActions.Select(action => action.Action).ToArray(),
             completedActions.SelectMany(action => action.Decisions),
-            session.Run);
+            session.Run,
+            SimulationProviderReplayCaptureProvenanceV111
+                .ScriptedRunReplayValidated);
     }
 
     /// <summary>Builds a capture from one completed scripted player action.</summary>
@@ -192,7 +213,9 @@ public sealed record SimulationProviderReplayCaptureV111(
             throw new InvalidOperationException(
                 "Provider replay capture requires a completed scripted action.");
         return FromScriptedDecisions(
-            session.Origin, [session.Action], session.Decisions, session.Run);
+            session.Origin, [session.Action], session.Decisions, session.Run,
+            SimulationProviderReplayCaptureProvenanceV111
+                .ScriptedActionReplayValidated);
     }
 
     /// <summary>
@@ -264,13 +287,19 @@ public sealed record SimulationProviderReplayCaptureV111(
             {
                 Sequence = index + 1
             }).ToArray();
-        return Create(initial.Run, actions, boundaries, validated.Run);
+        var capture = Create(initial.Run, actions, boundaries, validated.Run) with
+        {
+            CaptureProvenance = SimulationProviderReplayCaptureProvenanceV111
+                .SemanticNativePolicyReplayValidated
+        };
+        capture.Validate();
+        return capture;
     }
 
     private static SimulationProviderReplayCaptureV111 FromScriptedDecisions(
         RunState origin, IReadOnlyList<GameAction> actions,
         IEnumerable<ControlledStochasticDecisionV111> decisions,
-        RunState result)
+        RunState result, string captureProvenance)
     {
         using var journal = RandomBoundaryJournalV111.Begin();
         foreach (var decision in decisions)
@@ -294,7 +323,12 @@ public sealed record SimulationProviderReplayCaptureV111(
         }
 
         var boundaries = journal.OrderedTranscript;
-        return Create(origin, actions, boundaries, result);
+        var capture = Create(origin, actions, boundaries, result) with
+        {
+            CaptureProvenance = captureProvenance
+        };
+        capture.Validate();
+        return capture;
     }
 
     public SimulationProviderReplayCaptureV111 Fork()
@@ -302,6 +336,7 @@ public sealed record SimulationProviderReplayCaptureV111(
         Validate();
         return this with
         {
+            CaptureProvenance = CaptureProvenance,
             Simulation = new SimulationStateV111<
                 SimulationProviderReplayMechanicsCaptureV111,
                 SimulationProviderReplayStochasticCaptureV111>(
@@ -311,7 +346,9 @@ public sealed record SimulationProviderReplayCaptureV111(
 
     public void Validate()
     {
-        if (SchemaId != CurrentSchemaId || Simulation is null ||
+        if (SchemaId != CurrentSchemaId ||
+            !SimulationProviderReplayCaptureProvenanceV111
+                .IsKnown(CaptureProvenance) || Simulation is null ||
             Simulation.Mechanics is null || Simulation.Stochastic is null)
             throw new InvalidDataException(
                 "Provider replay capture envelope is invalid.");
@@ -336,7 +373,12 @@ public sealed record SimulationProviderReplayComparisonV111(
     bool RequireNativeCursorEquality)
 {
     public const string CurrentSchemaId =
-        "sts2-v111-simulation-provider-replay-comparison-v1";
+        "sts2-v111-simulation-provider-replay-comparison-v2";
+
+    public string LeftCaptureProvenance { get; init; } =
+        SimulationProviderReplayCaptureProvenanceV111.CallerSupplied;
+    public string RightCaptureProvenance { get; init; } =
+        SimulationProviderReplayCaptureProvenanceV111.CallerSupplied;
 
     public bool SamePlayerActions => StringComparer.Ordinal.Equals(
         LeftActionFingerprint, RightActionFingerprint);
@@ -372,12 +414,17 @@ public static class SimulationProviderReplayComparisonEngineV111
         ArgumentNullException.ThrowIfNull(right);
         left.Validate();
         right.Validate();
-        return Compare(
+        var comparison = Compare(
             left.Mechanics.Origin, left.Mechanics.Actions,
             left.Stochastic.Boundaries, left.Mechanics.Result,
             right.Mechanics.Origin, right.Mechanics.Actions,
             right.Stochastic.Boundaries, right.Mechanics.Result,
             requireNativeCursorEquality, maximumMechanicsDifferences);
+        return comparison with
+        {
+            LeftCaptureProvenance = left.CaptureProvenance,
+            RightCaptureProvenance = right.CaptureProvenance
+        };
     }
 
     public static SimulationProviderReplayComparisonV111 Compare(

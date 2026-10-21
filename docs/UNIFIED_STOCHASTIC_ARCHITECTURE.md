@@ -572,17 +572,18 @@ diagnostic result immutable to callers.
 
 `SimulationProviderReplayCaptureV111` groups an origin run, player-action
 sequence, ordered typed random-boundary trace, and result run in the existing
-`SimulationStateV111` envelope. It copies the states and arrays and validates
-the capture schema and typed boundary sequence. `SimulationProviderReplayComparisonEngineV111`
-compares two such captures by fingerprinting their action sequences, comparing
-origin mechanics, comparing every supplied typed boundary in order, and
-comparing the resulting mechanics, returning each agreement separately.
+`SimulationStateV111` envelope. Its v2 schema includes capture provenance:
+explicit fields are marked caller-supplied and unverified, while scripted and
+Native-policy factories mark the histories they replay-validate.
+`SimulationProviderReplayComparisonEngineV111` compares two such captures by
+fingerprinting their action sequences, comparing origin mechanics, comparing
+every supplied typed boundary in order, and comparing the resulting mechanics,
+returning each agreement and both capture provenance values separately.
 Callers must provide captures covering the same interval and all typed
-boundaries in it; the envelope cannot verify capture completeness or prove
-that its states and traces came from those actions. Native cursor equality is
-an optional additional boundary check. This is diagnostic evidence under the
-supplied captures, not proof of source-hook parity, complete Native coverage,
-or Chance Law fidelity.
+boundaries in it; caller-supplied provenance remains an assertion and does not
+prove capture completeness. Native cursor equality is an optional additional
+boundary check. This is diagnostic evidence under the supplied captures, not
+proof of source-hook parity, complete Native coverage, or Chance Law fidelity.
 `SimulationProviderReplayCaptureV111.FromScriptedRunSession` and
 `FromScriptedRunActionSession` provide a stronger path for scripted replays:
 each session replays its completed action history from the origin, and the
