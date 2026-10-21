@@ -1,6 +1,6 @@
 # Native event relic ReferenceNature continuation
 
-**Snapshot:** 2026-10-19. **Status:** implemented for supported configured Native event-choice relic draws, Round Tea Party, Trial, Neow's Bones Large Capsule pickup, Battleworn Dummy setting-three victory, and Pael's Wing; identity-pool fidelity and Native cursor parity remain open.
+**Snapshot:** 2026-10-21. **Status:** implemented for supported configured Native event-choice relic draws, Neow Small Capsule and Large Capsule pickups, Round Tea Party, Trial, Battleworn Dummy setting-three victory, and Pael's Wing; identity-pool fidelity and Native cursor parity remain open.
 
 ## Boundary
 
@@ -25,6 +25,14 @@ and its follow-up rewards with the Nature cursor. If the bag has no eligible
 identity, the session resolves the rarity request and follows the source's
 no-relic result without an identity request.
 
+The session also captures Neow's Small Capsule when selected from the opening
+Neow options or from a Neow relic reward. Its `OfferRandomRelic` follow-up uses
+one `unowned_relic_selection` bounded index on `player.rewards`; the request
+owner fingerprints the configured relic pool after excluding the acquired
+Small Capsule and all previously owned relics. The selected event choice or
+reward and the Nature cursor commit together. Other Neow pickup effects remain
+outside this boundary.
+
 The session also accepts a legal combat action during Battleworn Dummy's
 setting-three fight. Replay must finish the combat as a victory and reach its
 single relic reward draw; unsupported stochastic requests encountered earlier
@@ -41,12 +49,13 @@ cursor. Other reward actions remain outside this boundary.
 Event selection happens before this boundary and keeps its current provider.
 The session rejects unsupported event choices and Neow pickups, Battleworn
 actions outside the setting-three victory boundary, Pael's Wing actions that
-do not draw a relic, and stochastic sites outside the declared relic rarity
-and model requests. Event choices with another fixed relic effect are excluded
-because their effect ordering changes the live owned relic support. Other Neow
-pickup triggers remain outside this boundary. Until all expected requests
-resolve, its published run remains at the projected origin. On completion it
-commits the event result and Nature cursor together.
+do not draw a relic, and stochastic sites outside the declared request set.
+Event choices with another fixed relic effect are excluded because their effect
+ordering changes the live owned relic support; the exact Small Capsule pickup
+is admitted with its post-acquisition support reconstructed from the selected
+relic. Until all expected requests resolve, its published run remains at the
+projected origin. On completion it commits the event result and Nature cursor
+together.
 
 ## Law and replay
 
@@ -64,6 +73,11 @@ bounded-index law. The sorted Nature set deliberately omits Native queue
 order. The bounded transform is `SOURCE_VERIFIED`; candidate-pool completeness
 and the conditional Native identity distribution over its hidden queue remain
 `UNVERIFIED`.
+
+The Small Capsule request uses the exact Native bounded-index transform for
+`unowned_relic_selection` on the declared ordered pool. Its support follows the
+emulator's configured relic pool after the acquired relic is added; source-pool
+completeness and Native cursor parity remain separate evidence.
 
 The transcript follows actual source request order. An action that also
 reaches another stochastic site fails closed rather than partially

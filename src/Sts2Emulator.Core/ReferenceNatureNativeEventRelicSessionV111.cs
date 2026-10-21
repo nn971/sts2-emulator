@@ -128,6 +128,8 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
         StochasticSiteRegistryV111.RelicGrabBagRaritySiteId;
     private const string RelicModelSiteId =
         PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId;
+    private const string UnownedRelicSiteId =
+        StochasticSiteRegistryV111.UnownedRandomRelicSelectionSiteId;
 
     [JsonIgnore]
     public string Fingerprint => CanonicalJson.Sha256(this);
@@ -145,7 +147,8 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
 
     public static string[] SessionSiteIds =>
         [StochasticSiteRegistryV111.RelicGrabBagRaritySiteId,
-            PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId];
+            PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId,
+            StochasticSiteRegistryV111.UnownedRandomRelicSelectionSiteId];
 
     public static ReferenceNatureNativeEventRelicSessionV111 Begin(
         RunState source, GameAction action, ulong natureSeed) => Begin(
@@ -253,7 +256,8 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
             ProviderDecisions is null || DecisionTranscript is null ||
             ProviderDecisions.Length != DecisionTranscript.Length ||
             DecisionTranscript.Length >
-                ExpectedDrawCount(Origin, Action) * 2 ||
+                ExpectedRelicBagDrawCount(Origin, Action) * 2 +
+                    ExpectedNeowUnownedRelicRequestCount(Origin, Action) ||
             string.IsNullOrWhiteSpace(Action.Kind))
             throw new InvalidDataException(
                 "Invalid ReferenceNature Native event relic session envelope.");
@@ -318,20 +322,31 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
         }
 
         var replay = Replay(Origin, Action, ProviderDecisions);
+        var expectedRelicBagDrawCount =
+            ExpectedRelicBagDrawCount(Origin, Action);
+        var expectedNeowUnownedRelicRequestCount =
+            ExpectedNeowUnownedRelicRequestCount(Origin, Action);
         var rarityRequestCount = ProviderDecisions.Count(decision =>
             decision.UnitFloatDecision?.Request.SiteId == RelicRaritySiteId);
         var identityRequestCount = ProviderDecisions.Count(decision =>
             decision.IndexDecision?.Request.SiteId == RelicModelSiteId);
+        var unownedRelicRequestCount = ProviderDecisions.Count(decision =>
+            decision.IndexDecision?.Request.SiteId == UnownedRelicSiteId);
         if ((replay.Continuation is null) != Complete ||
             !SameRequest(replay.Continuation?.PendingRequest, PendingRequest) ||
             !SameLabels(replay.Continuation?.PendingCandidateLabels,
                 PendingCandidateLabels) ||
             CanonicalJson.Sha256(expectedNatureState) !=
                 CanonicalJson.Sha256(NatureState) ||
-            rarityRequestCount > ExpectedDrawCount(Origin, Action) ||
+            rarityRequestCount > expectedRelicBagDrawCount ||
+            Complete && rarityRequestCount != expectedRelicBagDrawCount ||
             identityRequestCount > rarityRequestCount ||
-            Complete && rarityRequestCount !=
-                ExpectedDrawCount(Origin, Action))
+            unownedRelicRequestCount >
+                expectedNeowUnownedRelicRequestCount ||
+            Complete && unownedRelicRequestCount !=
+                expectedNeowUnownedRelicRequestCount ||
+            ProviderDecisions.Length != rarityRequestCount +
+                identityRequestCount + unownedRelicRequestCount)
             throw new InvalidDataException(
                 "Native event relic continuation differs from its replay.");
 
@@ -411,6 +426,35 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
                 throw new InvalidDataException(
                     "Native event relic rarity request differs from the declared draw mechanics.");
             return ChanceLawEngineV111.QueryNativeRelicRarity(floatRequest);
+        }
+
+        if (request.IndexRequest is { } unownedRelicRequest &&
+            unownedRelicRequest.SiteId == UnownedRelicSiteId)
+        {
+            var expected = NeowUnownedRelicSupport(source, action);
+            if (expected is null ||
+                unownedRelicRequest.StreamId !=
+                    NativePlayerRngV111.RewardsStreamId ||
+                unownedRelicRequest.OperationKind != "choose_index" ||
+                unownedRelicRequest.SupportCount !=
+                    expected.Value.CandidateIds.Length ||
+                !unownedRelicRequest.OrderedCandidates.SequenceEqual(
+                    Enumerable.Range(0,
+                        expected.Value.CandidateIds.Length)) ||
+                unownedRelicRequest.OwnerId != expected.Value.OwnerId ||
+                candidateLabels is not null && !candidateLabels.SequenceEqual(
+                    expected.Value.CandidateIds, StringComparer.Ordinal))
+                throw new InvalidDataException(
+                    "Neow Small Capsule relic support differs from the acquired-relic pool.");
+
+            return ChanceLawEngineV111.QueryRandomIndex(
+                CanonicalJson.Sha256(new
+                {
+                    boundary = "native-neow-small-capsule-relic",
+                    eventId = PrototypeNativeOvergrowthEvents.NeowEventId,
+                    actionId = PrototypeAiEnvironment.StableActionId(action),
+                    request = unownedRelicRequest
+                }), unownedRelicRequest);
         }
 
         if (request.IndexRequest is { } indexRequest &&
@@ -555,7 +599,8 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
 
     private static bool IsSessionRequest(
         ControlledStochasticRequestV111 request) =>
-        request.SiteId is RelicRaritySiteId or RelicModelSiteId;
+        request.SiteId is RelicRaritySiteId or RelicModelSiteId or
+            UnownedRelicSiteId;
 
     private static bool RequireSessionRequest(
         ControlledStochasticRequestV111 request)
@@ -578,14 +623,17 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
             choiceId is not null &&
             PrototypeGameEngine.IsControlledEventChoice(
                 eventState.EventId, choiceId) &&
-            ExpectedEventRelicDrawCount(source, action) > 0 &&
-            !HasUnsupportedFixedRelicEffect(eventState.EventId, choiceId);
+            ExpectedEventRelicDrawCount(source, action) +
+                ExpectedNeowUnownedRelicRequestCount(source, action) > 0 &&
+            (!HasUnsupportedFixedRelicEffect(eventState.EventId, choiceId) ||
+             ExpectedNeowUnownedRelicRequestCount(source, action) > 0);
         var eventRelicChoice = source.Phase == RunPhase.Event &&
             action.Kind == "event_choice" &&
             eventState is not null && choiceId is not null &&
             (nativeDirectEventRelicDrawCount > 0 ||
                 controlledEventRelicChoice);
-        var neowRelicPickup = NeowRelicPickupDrawCount(source, action) > 0;
+        var neowRelicPickup = NeowRelicPickupDrawCount(source, action) > 0 ||
+            ExpectedNeowUnownedRelicRequestCount(source, action) > 0;
         var battlewornRelicVictory =
             IsBattlewornSettingThreeCombat(source);
         var paelWingRelicReward = IsPaelWingRelicReward(source, action);
@@ -606,7 +654,8 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
         PrototypeStateInvariants.Validate(source);
     }
 
-    private static int ExpectedDrawCount(RunState source, GameAction action)
+    private static int ExpectedRelicBagDrawCount(
+        RunState source, GameAction action)
     {
         if (action.Kind != "event_choice")
         {
@@ -616,6 +665,81 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
                 PaelWingRelicDrawCount(source, action);
         }
         return ExpectedEventRelicDrawCount(source, action);
+    }
+
+    private static int ExpectedNeowUnownedRelicRequestCount(
+        RunState source, GameAction action)
+    {
+        var effects = NeowPickupEffects(source, action);
+        return effects is { Length: 2 } &&
+            effects[0].Kind == PrototypeRunEffectKind.GainRelic &&
+            StringComparer.Ordinal.Equals(effects[0].RelicId,
+                PrototypeNativeOvergrowthEvents.NeowRelicId("SmallCapsule")) &&
+            effects[1].Kind == PrototypeRunEffectKind.OfferRandomRelic
+                ? 1
+                : 0;
+    }
+
+    private static (string[] CandidateIds, string OwnerId)?
+        NeowUnownedRelicSupport(RunState source, GameAction action)
+    {
+        if (ExpectedNeowUnownedRelicRequestCount(source, action) == 0)
+            return null;
+        var effects = NeowPickupEffects(source, action)!;
+        var acquiredRelicId = effects[0].RelicId ??
+            throw new InvalidDataException(
+                "Neow Small Capsule acquisition lost its relic identity.");
+        var ownedRelics = source.Player.Relics.Select(relic => relic.RelicId)
+            .Append(acquiredRelicId)
+            .ToHashSet(StringComparer.Ordinal);
+        var candidates = PrototypeContent.RelicPool.Where(id =>
+            !ownedRelics.Contains(id)).ToArray();
+        if (candidates.Length == 0)
+            throw new InvalidDataException(
+                "Neow Small Capsule has no unowned relic support.");
+        var prefix = "Event:" + PrototypeNativeOvergrowthEvents.NeowEventId;
+        return (candidates, prefix + ":unowned_relic_pool:" +
+            CanonicalJson.Sha256(candidates));
+    }
+
+    private static PrototypeRunEffectSpec[]? NeowPickupEffects(
+        RunState source, GameAction action)
+    {
+        var world = source.World;
+        if (world?.Event?.EventId !=
+            PrototypeNativeOvergrowthEvents.NeowEventId)
+            return null;
+
+        if (source.Phase == RunPhase.Event && action.Kind == "event_choice" &&
+            EventChoiceId(action) is { } choiceId)
+        {
+            return PrototypeNativeOvergrowthEvents.NeowDefinition.Choices
+                .SingleOrDefault(choice => StringComparer.Ordinal.Equals(
+                    choice.Id, choiceId))?.Effects;
+        }
+
+        if (source.Phase != RunPhase.Reward ||
+            action.Kind is not ("take_reward_relic" or
+                "take_reward_extra_relic") ||
+            world.Reward is not { RelicResolved: true,
+                ExtraRelicRewardIds: { } ids } reward)
+            return null;
+
+        var payload = action.Payload.Deserialize<ChooseRelicPayload>();
+        var groupIndex = action.Kind == "take_reward_relic"
+            ? reward.FirstPendingExtraRelicGroupIndex
+            : payload?.Index ?? -1;
+        if (payload is null ||
+            action.Kind == "take_reward_relic" && payload.Index != 0 ||
+            groupIndex < 0 || groupIndex >= ids.Length ||
+            reward.IsExtraRelicGroupResolved(groupIndex))
+            return null;
+
+        var relicId = ids[groupIndex];
+        var pickupChoiceId = "take_" + relicId;
+        return PrototypeNativeOvergrowthEvents.NeowDefinition.Choices
+            .SingleOrDefault(choice => StringComparer.Ordinal.Equals(
+                choice.Id, pickupChoiceId))?.Effects;
     }
 
     private static int ExpectedEventRelicDrawCount(
