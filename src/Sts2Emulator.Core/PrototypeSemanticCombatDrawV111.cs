@@ -54,6 +54,15 @@ public sealed partial class PrototypeGameEngine
             recycleOperation: "unsupported_nested_stage");
     }
 
+    internal static (RunState Run, int RemainingCount)
+        ResumeSemanticAutomaticHandDraw(
+            RunState checkpoint, int remainingCount)
+    {
+        using (ControlledChanceGuardV111.Enter())
+            return BeginSemanticCombatDraw(
+                checkpoint, remainingCount, fromHandDraw: true);
+    }
+
     /// <summary>
     /// Continue a semantic card draw *after* the physical card entered hand.
     /// Snecko/relic cost runs first; Slither, if present, overrides it. Only
@@ -277,9 +286,8 @@ public sealed partial class PrototypeGameEngine
             return (run, requested, remaining, decision);
         }
 
-        using (ControlledChanceGuardV111.Enter())
-            (run, remaining) = BeginSemanticCombatDraw(
-                run, remaining, fromHandDraw: true);
+        (run, remaining) = ResumeSemanticAutomaticHandDraw(
+            run, remaining);
         return (run, requested, remaining, decision);
     }
 
@@ -316,9 +324,8 @@ public sealed partial class PrototypeGameEngine
                 "Automatic Stratagem selection lost its pipeline cursor.");
         RunState resumedRun;
         int resumedRemaining;
-        using (ControlledChanceGuardV111.Enter())
-            (resumedRun, resumedRemaining) = BeginSemanticCombatDraw(
-                selectedRun, remaining, fromHandDraw: true);
+        (resumedRun, resumedRemaining) =
+            ResumeSemanticAutomaticHandDraw(selectedRun, remaining);
         return (resumedRun, resumedRemaining, decision);
     }
 

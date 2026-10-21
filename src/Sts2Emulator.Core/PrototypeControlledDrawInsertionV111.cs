@@ -465,9 +465,8 @@ public sealed partial class PrototypeGameEngine
                 {
                     World = world with { Combat = combat }
                 };
-                return BeginSemanticCombatDraw(
-                    drawRun, semanticDraw.RemainingCount,
-                    fromHandDraw: true).Run;
+                return ResumeSemanticAutomaticHandDraw(
+                    drawRun, semanticDraw.RemainingCount).Run;
             }
 
             var resumedDraw = DrawCards(
