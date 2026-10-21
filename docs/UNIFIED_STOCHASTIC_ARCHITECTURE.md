@@ -648,7 +648,11 @@ remain valid. It rejects specialized continuations with incomplete traces and
 experimental starts whose saved later-act prefix does not replay completely.
 That prefix is rebuilt from the saved initial prototype RNG, configuration,
 and Nature transcript through the existing later-act generator; no new
-snapshot field is required.
+snapshot field is required. Completed experimental `continue_act` sessions
+without an appended action trace reconstruct their boundary prefix from the
+new map audit and optional replay-validated assigned Ancient-offer audit;
+legacy Native Ancient completions remain unsupported because their provider
+boundaries are not captured by this path.
 JSONL accepts
 `<side>_reference_nature_run_action_handle` for this path.
 `FromReferenceNatureRunSetupSession` shares one capture path for completed

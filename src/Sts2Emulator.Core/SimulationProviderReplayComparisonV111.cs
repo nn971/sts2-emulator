@@ -285,6 +285,20 @@ public sealed record SimulationProviderReplayCaptureV111(
                 throw new InvalidDataException(
                     "ReferenceNature run-action history changed before the captured action.");
         if (resultHistory.Length == originHistory.Length &&
+            session.DecisionTranscript.Length != 0)
+        {
+            ControlledStochasticDecisionV111[]? transitionDecisions;
+            using (RandomBoundaryJournalV111.Begin())
+                transitionDecisions =
+                    TryBuildConfiguredExperimentalActTransitionPrefix(
+                        session);
+            if (transitionDecisions is not null)
+                return FromScriptedDecisions(
+                    session.Origin, [session.Action], transitionDecisions,
+                    session.Run, SimulationProviderReplayCaptureProvenanceV111
+                        .ReferenceNatureRunActionReplayValidated);
+        }
+        if (resultHistory.Length == originHistory.Length &&
             session.DecisionTranscript.Length == 0)
             return FromScriptedDecisions(
                 session.Origin, [session.Action], [], session.Run,
@@ -413,6 +427,81 @@ public sealed record SimulationProviderReplayCaptureV111(
         }
         return prefix.Count == session.DecisionTranscript.Length
             ? prefix.ToArray()
+            : null;
+    }
+
+    private static ControlledStochasticDecisionV111[]?
+        TryBuildConfiguredExperimentalActTransitionPrefix(
+            ReferenceNatureRunActionSessionV111 session)
+    {
+        var configuration = session.Origin.Configuration;
+        if (session.Action.Kind != "continue_act" ||
+            configuration?.UsesExperimentalSilentThreeActRoute != true ||
+            session.LegacyNativeAncientOfferCompletion ||
+            session.Origin.World is not { } originWorld)
+            return null;
+
+        var originMapHistory = session.Origin
+                .ReferenceNatureMapGenerationHistory ?? [];
+        var resultMapHistory = session.Run
+                .ReferenceNatureMapGenerationHistory ?? [];
+        if (resultMapHistory.Length != originMapHistory.Length + 1)
+            return null;
+        for (var index = 0; index < originMapHistory.Length; index++)
+            if (CanonicalJson.Sha256(originMapHistory[index]) !=
+                CanonicalJson.Sha256(resultMapHistory[index]))
+                throw new InvalidDataException(
+                    "Experimental transition changed its prior map audit history.");
+
+        var mapAudit = resultMapHistory[^1];
+        mapAudit.Validate();
+        if (mapAudit.Seed != session.Origin.RunSeed ||
+            mapAudit.Act != checked(originWorld.Act + 1) ||
+            mapAudit.Ascension != session.Origin.Ascension ||
+            !mapAudit.InitialNatureState.SameCursor(
+                session.InitialNatureState))
+            return null;
+
+        var originAncientHistory = session.Origin
+                .ReferenceNatureAncientOfferHistory ?? [];
+        var resultAncientHistory = session.Run
+                .ReferenceNatureAncientOfferHistory ?? [];
+        if (resultAncientHistory.Length < originAncientHistory.Length ||
+            resultAncientHistory.Length > originAncientHistory.Length + 1)
+            return null;
+        for (var index = 0; index < originAncientHistory.Length; index++)
+            if (CanonicalJson.Sha256(originAncientHistory[index]) !=
+                CanonicalJson.Sha256(resultAncientHistory[index]))
+                throw new InvalidDataException(
+                    "Experimental transition changed its prior Ancient-offer audit history.");
+
+        ReferenceNatureDecisionV111[] ancientTranscript = [];
+        ControlledStochasticDecisionV111[] ancientProviderDecisions = [];
+        if (resultAncientHistory.Length == originAncientHistory.Length + 1)
+        {
+            var ancientOffer = ReferenceNatureAncientOfferSessionV111.Restore(
+                resultAncientHistory[^1]);
+            if (!ancientOffer.Complete ||
+                !ancientOffer.InitialNatureState.SameCursor(
+                    mapAudit.NatureState))
+                return null;
+            ancientTranscript = ancientOffer.DecisionTranscript;
+            ancientProviderDecisions = ancientOffer.ProviderDecisions;
+        }
+
+        var reconstructedTranscript = mapAudit.DecisionTranscript
+            .Concat(ancientTranscript).ToArray();
+        if (!reconstructedTranscript.SequenceEqual(
+                session.DecisionTranscript))
+            return null;
+
+        var decisions = mapAudit.Decisions.Select(decision =>
+                decision.Fork())
+            .Concat(ancientProviderDecisions.Select(decision =>
+                decision.Fork()))
+            .ToArray();
+        return decisions.Length == session.DecisionTranscript.Length
+            ? decisions
             : null;
     }
 
