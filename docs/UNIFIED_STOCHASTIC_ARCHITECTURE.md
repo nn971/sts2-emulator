@@ -407,10 +407,11 @@ run-action session's nested map/preparation/Ancient continuation owners.
 
 `ReferenceNatureStochasticStateV111<TDecision>` owns the initial/current
 sampler cursor and defensive typed transcript used by the run-action and
-controlled-action stochastic owners. Native event-gold and Glory Reflections
-sessions compose it directly with `PrototypeMechanicsContinuationStateV111`
-under the `ReferenceNatureRunSession` continuation kind; they retain their
-event-specific law replay and run-cursor checks.
+controlled-action stochastic owners. Native event-gold, Glory Reflections,
+Neow-offer, Tablet of Truth, and Trial sessions compose it directly with
+`PrototypeMechanicsContinuationStateV111` under the
+`ReferenceNatureRunSession` continuation kind; each retains its event-specific
+law replay and run-cursor checks.
 
 The **same game mechanics** issues semantic stochastic operations and applies their resolved outcomes regardless of provider:
 
