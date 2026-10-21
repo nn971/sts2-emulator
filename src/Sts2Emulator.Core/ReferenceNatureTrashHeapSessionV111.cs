@@ -177,6 +177,7 @@ public sealed record ReferenceNatureTrashHeapSessionV111(
     ReferenceNatureStateV111 InitialNatureState,
     ReferenceNatureStateV111 NatureState,
     ReferenceNatureDecisionV111[] DecisionTranscript)
+    : IReferenceNatureControlledActionSessionV111
 {
     [JsonIgnore]
     public SimulationStateV111<PrototypeMechanicsContinuationStateV111,
@@ -232,6 +233,28 @@ public sealed record ReferenceNatureTrashHeapSessionV111(
     {
         get => Stochastic.DecisionTranscript;
         init => Stochastic = Stochastic with { DecisionTranscript = value };
+    }
+
+    [JsonIgnore]
+    public GameAction Action => GameAction.Create("event_choice",
+        new EventChoicePayload(ChoiceId));
+
+    [JsonIgnore]
+    public ControlledStochasticDecisionV111[] ProviderDecisions
+    {
+        get
+        {
+            if (!Complete)
+                throw new InvalidOperationException(
+                    "A pending ReferenceNature Trash Heap session has no completed provider prefix.");
+            var plan = TrashHeapChoicePlanBuilderV111.Build(
+                Origin, SiteIdForChoice(ChoiceId));
+            var law = ChanceLawEngineV111.QueryTrashHeap(
+                Origin, SiteIdForChoice(ChoiceId));
+            return [ReferenceNatureChanceLawDecisionV111.FromInitialState(
+                law, ControlledStochasticRequestV111.FromIndex(plan.Request),
+                InitialNatureState, plan.OutcomeIds)];
+        }
     }
 
     public const string CurrentSchemaId =

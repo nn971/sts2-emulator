@@ -11,6 +11,27 @@ public static class ReferenceNatureChanceLawDecisionV111
 {
     private const uint OneFloatBits = 0x3f800000;
 
+    public static ControlledStochasticDecisionV111 FromInitialState(
+        ChanceLawV111 law,
+        ControlledStochasticRequestV111 request,
+        ReferenceNatureStateV111 initialNatureState,
+        IReadOnlyList<string> orderedOutcomeIds)
+    {
+        ArgumentNullException.ThrowIfNull(initialNatureState);
+        ArgumentNullException.ThrowIfNull(orderedOutcomeIds);
+        var selection = ReferenceNatureV111.SampleValidated(
+            law, initialNatureState);
+        var decision = FromOrderedIndexSelection(
+            law, request, selection, orderedOutcomeIds);
+        var indexDecision = decision.IndexDecision ??
+            throw new InvalidDataException(
+                "An ordered index selection did not produce an index decision.");
+        var controlled = ControlledStochasticDecisionV111.FromIndex(
+            indexDecision, orderedOutcomeIds.ToArray());
+        controlled.Validate();
+        return controlled;
+    }
+
     public static ControlledStochasticDecisionV111 FromOrderedIndexSelection(
         ChanceLawV111 law,
         ControlledStochasticRequestV111 request,

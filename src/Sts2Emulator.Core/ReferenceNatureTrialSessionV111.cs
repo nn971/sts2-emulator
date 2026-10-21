@@ -156,6 +156,7 @@ public sealed record ReferenceNatureTrialSessionV111(
     ReferenceNatureStateV111 InitialNatureState,
     ReferenceNatureStateV111 NatureState,
     ReferenceNatureDecisionV111[] DecisionTranscript)
+    : IReferenceNatureControlledActionSessionV111
 {
     [JsonIgnore]
     public SimulationStateV111<PrototypeMechanicsContinuationStateV111,
@@ -211,6 +212,26 @@ public sealed record ReferenceNatureTrialSessionV111(
     {
         get => Stochastic.DecisionTranscript;
         init => Stochastic = Stochastic with { DecisionTranscript = value };
+    }
+
+    [JsonIgnore]
+    public GameAction Action => GameAction.Create("event_choice",
+        new EventChoicePayload("accept"));
+
+    [JsonIgnore]
+    public ControlledStochasticDecisionV111[] ProviderDecisions
+    {
+        get
+        {
+            if (!Complete)
+                throw new InvalidOperationException(
+                    "A pending ReferenceNature Trial session has no completed provider prefix.");
+            var plan = TrialCaseChoicePlanBuilderV111.Build(Origin);
+            var law = ChanceLawEngineV111.QueryTrial(Origin);
+            return [ReferenceNatureChanceLawDecisionV111.FromInitialState(
+                law, ControlledStochasticRequestV111.FromIndex(plan.Request),
+                InitialNatureState, plan.OutcomeIds)];
+        }
     }
 
     public const string CurrentSchemaId =

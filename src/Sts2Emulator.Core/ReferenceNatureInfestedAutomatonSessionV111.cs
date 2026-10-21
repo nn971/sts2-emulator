@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Sts2Emulator.Core;
 
@@ -34,6 +35,7 @@ public sealed record ReferenceNatureInfestedAutomatonSessionV111(
     ReferenceNatureStateV111 InitialNatureState,
     ReferenceNatureStateV111 NatureState,
     ReferenceNatureDecisionV111[] DecisionTranscript)
+    : IReferenceNatureControlledActionSessionV111
 {
     [System.Text.Json.Serialization.JsonIgnore]
     public SimulationStateV111<PrototypeMechanicsContinuationStateV111,
@@ -89,6 +91,34 @@ public sealed record ReferenceNatureInfestedAutomatonSessionV111(
     {
         get => Stochastic.DecisionTranscript;
         init => Stochastic = Stochastic with { DecisionTranscript = value };
+    }
+
+    [JsonIgnore]
+    public GameAction Action => GameAction.Create("event_choice",
+        new EventChoicePayload(ChoiceId));
+
+    [JsonIgnore]
+    public ControlledStochasticDecisionV111[] ProviderDecisions
+    {
+        get
+        {
+            if (!Complete)
+                throw new InvalidOperationException(
+                    "A pending Infested Automaton session has no completed provider prefix.");
+            var plan = NativeEventInfestedAutomatonCardPickPlanBuilderV111
+                .Build(Origin,
+                    PrototypeNativeHiveEvents.InfestedAutomatonCardOfferSiteId,
+                    0, ChoiceId);
+            var law = ChanceLawEngineV111.QueryNativeEventCardPick(
+                Origin,
+                PrototypeNativeHiveEvents.InfestedAutomatonCardOfferSiteId,
+                0, actionId: ChoiceId);
+            var labels = plan.CandidateCardIds
+                .Select(cardId => "card:" + cardId).ToArray();
+            return [ReferenceNatureChanceLawDecisionV111.FromInitialState(
+                law, ControlledStochasticRequestV111.FromIndex(plan.Request),
+                InitialNatureState, labels)];
+        }
     }
 
     public const string CurrentSchemaId =

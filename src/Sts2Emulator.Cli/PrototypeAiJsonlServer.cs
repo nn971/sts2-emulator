@@ -2914,6 +2914,13 @@ internal static class PrototypeAiJsonlServer
                                 "<side>_reference_nature_treasure_handle",
                                 "<side>_reference_nature_combat_reward_handle",
                                 "<side>_reference_nature_native_shovel_handle",
+                                "<side>_reference_nature_trial_handle",
+                                "<side>_reference_nature_trash_heap_handle",
+                                "<side>_reference_nature_tablet_of_truth_handle",
+                                "<side>_reference_nature_native_event_relic_handle",
+                                "<side>_reference_nature_native_event_gold_handle",
+                                "<side>_reference_nature_infested_automaton_handle",
+                                "<side>_reference_nature_glory_reflections_handle",
                                 "<side>_origin_snapshot, <side>_actions, <side>_boundaries, and <side>_result_snapshot"
                             },
                             simulationProviderReplayComparisonScope =
@@ -9724,6 +9731,20 @@ internal static class PrototypeAiJsonlServer
                                 side + "_reference_nature_combat_reward_handle";
                             var referenceNatureNativeShovelHandleName =
                                 side + "_reference_nature_native_shovel_handle";
+                            var referenceNatureTrialHandleName =
+                                side + "_reference_nature_trial_handle";
+                            var referenceNatureTrashHeapHandleName =
+                                side + "_reference_nature_trash_heap_handle";
+                            var referenceNatureTabletOfTruthHandleName =
+                                side + "_reference_nature_tablet_of_truth_handle";
+                            var referenceNatureNativeEventRelicHandleName =
+                                side + "_reference_nature_native_event_relic_handle";
+                            var referenceNatureNativeEventGoldHandleName =
+                                side + "_reference_nature_native_event_gold_handle";
+                            var referenceNatureInfestedAutomatonHandleName =
+                                side + "_reference_nature_infested_automaton_handle";
+                            var referenceNatureGloryReflectionsHandleName =
+                                side + "_reference_nature_glory_reflections_handle";
                             var originName = side + "_origin_snapshot";
                             var actionsName = side + "_actions";
                             var boundariesName = side + "_boundaries";
@@ -9763,6 +9784,34 @@ internal static class PrototypeAiJsonlServer
                                 request.TryGetProperty(
                                     referenceNatureNativeShovelHandleName,
                                     out var referenceNatureNativeShovelHandleElement);
+                            bool hasReferenceNatureTrialHandle =
+                                request.TryGetProperty(
+                                    referenceNatureTrialHandleName,
+                                    out var referenceNatureTrialHandleElement);
+                            bool hasReferenceNatureTrashHeapHandle =
+                                request.TryGetProperty(
+                                    referenceNatureTrashHeapHandleName,
+                                    out var referenceNatureTrashHeapHandleElement);
+                            bool hasReferenceNatureTabletOfTruthHandle =
+                                request.TryGetProperty(
+                                    referenceNatureTabletOfTruthHandleName,
+                                    out var referenceNatureTabletOfTruthHandleElement);
+                            bool hasReferenceNatureNativeEventRelicHandle =
+                                request.TryGetProperty(
+                                    referenceNatureNativeEventRelicHandleName,
+                                    out var referenceNatureNativeEventRelicHandleElement);
+                            bool hasReferenceNatureNativeEventGoldHandle =
+                                request.TryGetProperty(
+                                    referenceNatureNativeEventGoldHandleName,
+                                    out var referenceNatureNativeEventGoldHandleElement);
+                            bool hasReferenceNatureInfestedAutomatonHandle =
+                                request.TryGetProperty(
+                                    referenceNatureInfestedAutomatonHandleName,
+                                    out var referenceNatureInfestedAutomatonHandleElement);
+                            bool hasReferenceNatureGloryReflectionsHandle =
+                                request.TryGetProperty(
+                                    referenceNatureGloryReflectionsHandleName,
+                                    out var referenceNatureGloryReflectionsHandleElement);
                             if (hasScriptedRunHandle ||
                                 hasScriptedActionHandle ||
                                 hasSemanticNativeHandle ||
@@ -9771,7 +9820,14 @@ internal static class PrototypeAiJsonlServer
                                 hasReferenceNatureMerchantHandle ||
                                 hasReferenceNatureTreasureHandle ||
                                 hasReferenceNatureCombatRewardHandle ||
-                                hasReferenceNatureNativeShovelHandle)
+                                hasReferenceNatureNativeShovelHandle ||
+                                hasReferenceNatureTrialHandle ||
+                                hasReferenceNatureTrashHeapHandle ||
+                                hasReferenceNatureTabletOfTruthHandle ||
+                                hasReferenceNatureNativeEventRelicHandle ||
+                                hasReferenceNatureNativeEventGoldHandle ||
+                                hasReferenceNatureInfestedAutomatonHandle ||
+                                hasReferenceNatureGloryReflectionsHandle)
                             {
                                 if ((hasScriptedRunHandle ? 1 : 0) +
                                     (hasScriptedActionHandle ? 1 : 0) +
@@ -9781,7 +9837,14 @@ internal static class PrototypeAiJsonlServer
                                     (hasReferenceNatureMerchantHandle ? 1 : 0) +
                                     (hasReferenceNatureTreasureHandle ? 1 : 0) +
                                     (hasReferenceNatureCombatRewardHandle ? 1 : 0) +
-                                    (hasReferenceNatureNativeShovelHandle ? 1 : 0) > 1)
+                                    (hasReferenceNatureNativeShovelHandle ? 1 : 0) +
+                                    (hasReferenceNatureTrialHandle ? 1 : 0) +
+                                    (hasReferenceNatureTrashHeapHandle ? 1 : 0) +
+                                    (hasReferenceNatureTabletOfTruthHandle ? 1 : 0) +
+                                    (hasReferenceNatureNativeEventRelicHandle ? 1 : 0) +
+                                    (hasReferenceNatureNativeEventGoldHandle ? 1 : 0) +
+                                    (hasReferenceNatureInfestedAutomatonHandle ? 1 : 0) +
+                                    (hasReferenceNatureGloryReflectionsHandle ? 1 : 0) > 1)
                                     throw new ArgumentException(
                                         "Provide only one replay handle for " +
                                         side + ".");
@@ -9811,9 +9874,30 @@ internal static class PrototypeAiJsonlServer
                                 else if (hasReferenceNatureCombatRewardHandle)
                                     (handleElement, handleName) =
                                         (referenceNatureCombatRewardHandleElement, referenceNatureCombatRewardHandleName);
-                                else
+                                else if (hasReferenceNatureNativeShovelHandle)
                                     (handleElement, handleName) =
                                         (referenceNatureNativeShovelHandleElement, referenceNatureNativeShovelHandleName);
+                                else if (hasReferenceNatureTrialHandle)
+                                    (handleElement, handleName) =
+                                        (referenceNatureTrialHandleElement, referenceNatureTrialHandleName);
+                                else if (hasReferenceNatureTrashHeapHandle)
+                                    (handleElement, handleName) =
+                                        (referenceNatureTrashHeapHandleElement, referenceNatureTrashHeapHandleName);
+                                else if (hasReferenceNatureTabletOfTruthHandle)
+                                    (handleElement, handleName) =
+                                        (referenceNatureTabletOfTruthHandleElement, referenceNatureTabletOfTruthHandleName);
+                                else if (hasReferenceNatureNativeEventRelicHandle)
+                                    (handleElement, handleName) =
+                                        (referenceNatureNativeEventRelicHandleElement, referenceNatureNativeEventRelicHandleName);
+                                else if (hasReferenceNatureNativeEventGoldHandle)
+                                    (handleElement, handleName) =
+                                        (referenceNatureNativeEventGoldHandleElement, referenceNatureNativeEventGoldHandleName);
+                                else if (hasReferenceNatureInfestedAutomatonHandle)
+                                    (handleElement, handleName) =
+                                        (referenceNatureInfestedAutomatonHandleElement, referenceNatureInfestedAutomatonHandleName);
+                                else
+                                    (handleElement, handleName) =
+                                        (referenceNatureGloryReflectionsHandleElement, referenceNatureGloryReflectionsHandleName);
                                 if (handleElement.ValueKind !=
                                         JsonValueKind.String ||
                                     string.IsNullOrWhiteSpace(
@@ -9902,6 +9986,69 @@ internal static class PrototypeAiJsonlServer
                                                 nativeShovel)
                                         : throw new InvalidOperationException(
                                             "Unknown ReferenceNature Native Shovel handle: " +
+                                            handle);
+                                if (hasReferenceNatureTrialHandle)
+                                    return referenceNatureTrialRunStateHandles
+                                        .TryGetValue(handle, out var trial)
+                                        ? SimulationProviderReplayCaptureV111
+                                            .FromReferenceNatureControlledActionSession(
+                                                trial)
+                                        : throw new InvalidOperationException(
+                                            "Unknown ReferenceNature Trial handle: " +
+                                            handle);
+                                if (hasReferenceNatureTrashHeapHandle)
+                                    return referenceNatureTrashHeapRunStateHandles
+                                        .TryGetValue(handle, out var trashHeap)
+                                        ? SimulationProviderReplayCaptureV111
+                                            .FromReferenceNatureControlledActionSession(
+                                                trashHeap)
+                                        : throw new InvalidOperationException(
+                                            "Unknown ReferenceNature Trash Heap handle: " +
+                                            handle);
+                                if (hasReferenceNatureTabletOfTruthHandle)
+                                    return referenceNatureTabletOfTruthRunStateHandles
+                                        .TryGetValue(handle, out var tabletOfTruth)
+                                        ? SimulationProviderReplayCaptureV111
+                                            .FromReferenceNatureControlledActionSession(
+                                                tabletOfTruth)
+                                        : throw new InvalidOperationException(
+                                            "Unknown ReferenceNature Tablet of Truth handle: " +
+                                            handle);
+                                if (hasReferenceNatureNativeEventRelicHandle)
+                                    return referenceNatureNativeEventRelicRunStateHandles
+                                        .TryGetValue(handle, out var nativeEventRelic)
+                                        ? SimulationProviderReplayCaptureV111
+                                            .FromReferenceNatureControlledActionSession(
+                                                nativeEventRelic)
+                                        : throw new InvalidOperationException(
+                                            "Unknown ReferenceNature Native event-relic handle: " +
+                                            handle);
+                                if (hasReferenceNatureNativeEventGoldHandle)
+                                    return referenceNatureNativeEventGoldRunStateHandles
+                                        .TryGetValue(handle, out var nativeEventGold)
+                                        ? SimulationProviderReplayCaptureV111
+                                            .FromReferenceNatureControlledActionSession(
+                                                nativeEventGold)
+                                        : throw new InvalidOperationException(
+                                            "Unknown ReferenceNature Native event-gold handle: " +
+                                            handle);
+                                if (hasReferenceNatureInfestedAutomatonHandle)
+                                    return referenceNatureInfestedAutomatonRunStateHandles
+                                        .TryGetValue(handle, out var infestedAutomaton)
+                                        ? SimulationProviderReplayCaptureV111
+                                            .FromReferenceNatureControlledActionSession(
+                                                infestedAutomaton)
+                                        : throw new InvalidOperationException(
+                                            "Unknown ReferenceNature Infested Automaton handle: " +
+                                            handle);
+                                if (hasReferenceNatureGloryReflectionsHandle)
+                                    return referenceNatureGloryReflectionsRunStateHandles
+                                        .TryGetValue(handle, out var gloryReflections)
+                                        ? SimulationProviderReplayCaptureV111
+                                            .FromReferenceNatureControlledActionSession(
+                                                gloryReflections)
+                                        : throw new InvalidOperationException(
+                                            "Unknown ReferenceNature Glory Reflections handle: " +
                                             handle);
                                 return semanticStates.TryGetValue(handle,
                                         out var semanticNative)

@@ -387,13 +387,19 @@ public sealed record SimulationProviderReplayCaptureV111(
             IReferenceNatureControlledActionSessionV111 session)
     {
         ArgumentNullException.ThrowIfNull(session);
+        bool complete;
+        ControlledStochasticDecisionV111[] decisions;
         using (RandomBoundaryJournalV111.Begin())
+        {
             session.Validate();
-        if (!session.Complete)
+            complete = session.Complete;
+            decisions = complete ? session.ProviderDecisions : [];
+        }
+        if (!complete)
             throw new InvalidOperationException(
                 "Provider replay capture requires a completed ReferenceNature controlled action.");
         return FromScriptedDecisions(
-            session.Origin, [session.Action], session.ProviderDecisions,
+            session.Origin, [session.Action], decisions,
             session.Run,
             SimulationProviderReplayCaptureProvenanceV111
                 .ReferenceNatureControlledActionReplayValidated);

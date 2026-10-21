@@ -82,6 +82,7 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
     ReferenceNatureNativeEventRelicDecisionV111[] DecisionTranscript,
     ControlledStochasticRequestV111? PendingRequest,
     string[]? PendingCandidateLabels)
+    : IReferenceNatureControlledActionSessionV111
 {
     [JsonIgnore]
     public SimulationStateV111<ReferenceNatureRunActionMechanicsStateV111,

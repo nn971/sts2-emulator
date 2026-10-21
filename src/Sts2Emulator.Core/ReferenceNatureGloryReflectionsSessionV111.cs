@@ -32,6 +32,7 @@ public sealed record ReferenceNatureGloryReflectionsSessionV111(
     ReferenceNatureStateV111 InitialNatureState,
     ReferenceNatureStateV111 NatureState,
     ReferenceNatureDecisionV111[] DecisionTranscript)
+    : IReferenceNatureControlledActionSessionV111
 {
     [JsonIgnore]
     public SimulationStateV111<PrototypeMechanicsContinuationStateV111,
@@ -87,6 +88,63 @@ public sealed record ReferenceNatureGloryReflectionsSessionV111(
     {
         get => Stochastic.DecisionTranscript;
         init => Stochastic = Stochastic with { DecisionTranscript = value };
+    }
+
+    [JsonIgnore]
+    public GameAction Action => GameAction.Create("event_choice",
+        new EventChoicePayload("touch_mirror"));
+
+    [JsonIgnore]
+    public ControlledStochasticDecisionV111[] ProviderDecisions
+    {
+        get
+        {
+            if (!Complete)
+                throw new InvalidOperationException(
+                    "A pending Glory Reflections session has no completed provider prefix.");
+            var natureState = InitialNatureState.Fork();
+            var priorIndices = new List<int>();
+            var decisions = new List<ControlledStochasticDecisionV111>(
+                DecisionTranscript.Length);
+            for (var ordinal = 0;
+                 ordinal < DecisionTranscript.Length; ordinal++)
+            {
+                var prior = priorIndices.ToArray();
+                var plan = NativeEventReflectionsChoicePlanBuilderV111
+                    .TryBuildNext(Origin, null, ordinal, prior,
+                        "touch_mirror")
+                    ?? throw new InvalidDataException(
+                        "Reflections provider prefix extends beyond its draw sequence.");
+                var law = ChanceLawEngineV111.QueryNativeEventCardPick(
+                    Origin, plan.Request.SiteId, ordinal, prior,
+                    "touch_mirror");
+                var selection = ReferenceNatureV111.SampleValidated(
+                    law, natureState);
+                var expected = new ReferenceNatureDecisionV111(
+                    law.LawId, law.EventId, selection.OutcomeId,
+                    selection.OutcomeIndex);
+                if (CanonicalJson.Sha256(expected) !=
+                    CanonicalJson.Sha256(DecisionTranscript[ordinal]))
+                    throw new InvalidDataException(
+                        "Reflections provider prefix differs from its Nature transcript.");
+                var labels = plan.CandidateCardInstanceIds.Select(instanceId =>
+                    "card_instance:" + instanceId.ToString(
+                        System.Globalization.CultureInfo.InvariantCulture))
+                    .ToArray();
+                var decision = ReferenceNatureChanceLawDecisionV111
+                    .FromOrderedIndexSelection(law,
+                        ControlledStochasticRequestV111.FromIndex(
+                            plan.Request), selection, labels);
+                var indexDecision = decision.IndexDecision ??
+                    throw new InvalidDataException(
+                        "Reflections provider replay requires an index decision.");
+                decisions.Add(ControlledStochasticDecisionV111.FromIndex(
+                    indexDecision, labels));
+                priorIndices.Add(selection.OutcomeIndex);
+                natureState = selection.NextState;
+            }
+            return decisions.ToArray();
+        }
     }
 
     public const string CurrentSchemaId =

@@ -31,6 +31,7 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
     ReferenceNatureStateV111 InitialNatureState,
     ReferenceNatureStateV111 NatureState,
     ReferenceNatureDecisionV111[] DecisionTranscript)
+    : IReferenceNatureControlledActionSessionV111
 {
     [JsonIgnore]
     public SimulationStateV111<PrototypeMechanicsContinuationStateV111,
@@ -87,6 +88,18 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
         get => Stochastic.DecisionTranscript;
         init => Stochastic = Stochastic with { DecisionTranscript = value };
     }
+
+    [JsonIgnore]
+    public GameAction Action => new PrototypeGameEngine()
+        .GetLegalActions(Origin)
+        .SingleOrDefault(candidate =>
+            PrototypeAiEnvironment.StableActionId(candidate) == ActionId)
+        ?? throw new InvalidOperationException(
+            "Native event-gold action is no longer legal at its saved origin.");
+
+    [JsonIgnore]
+    public ControlledStochasticDecisionV111[] ProviderDecisions =>
+        CreateProviderPrefix();
 
     public const string CurrentSchemaId =
         "sts2-v111-reference-nature-native-event-gold-session-v1";

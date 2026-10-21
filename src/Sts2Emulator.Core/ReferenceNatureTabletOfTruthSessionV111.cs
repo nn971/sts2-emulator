@@ -133,6 +133,7 @@ public sealed record ReferenceNatureTabletOfTruthSessionV111(
     ReferenceNatureStateV111 InitialNatureState,
     ReferenceNatureStateV111 NatureState,
     ReferenceNatureDecisionV111[] DecisionTranscript)
+    : IReferenceNatureControlledActionSessionV111
 {
     [JsonIgnore]
     public SimulationStateV111<PrototypeMechanicsContinuationStateV111,
@@ -188,6 +189,29 @@ public sealed record ReferenceNatureTabletOfTruthSessionV111(
     {
         get => Stochastic.DecisionTranscript;
         init => Stochastic = Stochastic with { DecisionTranscript = value };
+    }
+
+    [JsonIgnore]
+    public GameAction Action => GameAction.Create("event_choice",
+        new EventChoicePayload("decipher"));
+
+    [JsonIgnore]
+    public ControlledStochasticDecisionV111[] ProviderDecisions
+    {
+        get
+        {
+            if (!Complete)
+                throw new InvalidOperationException(
+                    "A pending ReferenceNature Tablet of Truth session has no completed provider prefix.");
+            var plan = TabletOfTruthChoicePlanBuilderV111.Build(Origin);
+            var law = ChanceLawEngineV111.QueryTabletOfTruth(Origin);
+            var labels = plan.CandidateCardInstanceIds.Select(instanceId =>
+                "card_instance:" + instanceId.ToString(
+                    System.Globalization.CultureInfo.InvariantCulture)).ToArray();
+            return [ReferenceNatureChanceLawDecisionV111.FromInitialState(
+                law, ControlledStochasticRequestV111.FromIndex(plan.Request),
+                InitialNatureState, labels)];
+        }
     }
 
     public const string CurrentSchemaId =
