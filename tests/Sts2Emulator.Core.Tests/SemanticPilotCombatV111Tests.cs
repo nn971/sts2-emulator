@@ -155,8 +155,13 @@ public sealed class SemanticPilotCombatV111Tests
     [Fact]
     public void NatureBoundaryPublicViewReusesFairPlayerObservationWithoutHiddenDrawOrder()
     {
+        // A supported source-audited A10 normal encounter, unlike the
+        // legacy Hive test fixture whose floor-history validation is stale.
         var state = SemanticPilotCombatEngineV111.BeginSeeded(
-            Seeded("semantic-nature-public-observation-test"));
+            new SemanticSeededEntryV111(
+                "semantic-nature-public-observation-test",
+                1, "proto.encounter.mawler_normal", "MawlerNormal",
+                2, 10, 1, 3, 1, ReplayOpeningDrawHooks: true));
         for (var stage = 0; state.DrawPending is null; stage++)
         {
             Assert.True(stage < 200);
