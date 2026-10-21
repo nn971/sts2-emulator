@@ -651,7 +651,7 @@ public static class ControlledPlayableCombatEngineV111
 
     public static ControlledPlayableCombatV111 Begin(
         ControlledIntentStateV111 completed, string seed,
-        string? encounterId = null)
+        string? encounterId = null, string? fixtureDeckPresetId = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(seed);
         var verified = ControlledIntentsV111.Restore(
@@ -679,6 +679,21 @@ public static class ControlledPlayableCombatEngineV111
             : PrototypeNativeLaterActFixture.Create(
                 seed, act, verified.Combat.Ascension);
         var player = run.Player;
+        if (fixtureDeckPresetId is not null)
+        {
+            if (act != 1)
+                throw new NotSupportedException(
+                    "UNSUPPORTED_SEMANTIC_LOADOUT site=combat.conditioned_deck " +
+                    "operation=requires_act1_silent");
+            player = player with
+            {
+                Deck = SemanticConditionedDeckPresetV111.Apply(
+                    player.Deck, fixtureDeckPresetId)
+            };
+            // The player's persistent deck and physical combat registry must
+            // refer to exactly the same card instance IDs and model IDs.
+            run = run with { Player = player };
+        }
         var cards = player.Deck.Select((c, i) => new CombatCardInstance(
             i + 1L, c.InstanceId, c.CardId, c.UpgradeLevel, false,
             c.PersistentState.Clone(), Enchantment: c.Enchantment)).ToArray();
