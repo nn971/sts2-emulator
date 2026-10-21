@@ -237,7 +237,22 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             .ToArray();
     }
 
-    public TransitionResult Step(RunState state, GameAction action)
+    public TransitionResult Step(RunState state, GameAction action) =>
+        StepCore(state, action, actTransitionMap: null);
+
+    internal TransitionResult StepWithActTransitionMap(
+        RunState state, GameAction action, MapState map)
+    {
+        if (state.Configuration?.UsesExperimentalSilentThreeActRoute != true ||
+            action.Kind != "continue_act")
+            throw new InvalidOperationException(
+                "An explicit transition map requires the configured experimental act-transition action.");
+        ArgumentNullException.ThrowIfNull(map);
+        return StepCore(state, action, map);
+    }
+
+    private TransitionResult StepCore(
+        RunState state, GameAction action, MapState? actTransitionMap)
     {
         RunConfiguration.ValidateState(state);
         if (state.ReferenceNatureRunInitializationPending)
@@ -281,7 +296,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             RunPhase.Shop => StepShop(fork, action),
             RunPhase.Event => StepEvent(fork, action),
             RunPhase.Rest => StepRest(fork, action),
-            RunPhase.ActTransition => StepActTransition(fork, action),
+            RunPhase.ActTransition => StepActTransition(
+                fork, action, actTransitionMap),
             RunPhase.Terminal => throw new InvalidOperationException("A terminal run has no legal actions."),
             _ => throw new NotSupportedException($"Prototype phase '{state.Phase}' is unsupported.")
         };
@@ -1114,13 +1130,17 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         };
     }
 
-    private static RunState StepActTransition(RunState state, GameAction action)
+    private static RunState StepActTransition(
+        RunState state, GameAction action, MapState? actTransitionMap)
     {
         RequireKind(action, "continue_act");
         var world = RequireWorld(state);
 
         if (state.Configuration?.UsesExperimentalSilentThreeActRoute == true)
-            return ExperimentalSilentThreeActRouteV111.ContinueAct(state);
+            return actTransitionMap is null
+                ? ExperimentalSilentThreeActRouteV111.ContinueAct(state)
+                : ExperimentalSilentThreeActRouteV111.ContinueAct(
+                    state, actTransitionMap);
 
         if (state.Configuration is not null)
             throw new NotSupportedException("Native Hive/Glory mechanics are not implemented; prototype later-act fallback is disabled for v111 runs.");

@@ -789,7 +789,9 @@ internal static class PrototypeAiJsonlServer
                 kind = laterActPreparation is not null
                     ? "run_action_later_act_preparation"
                     : mapGeneration is not null
-                    ? "run_action_map_generation"
+                    ? session.Action.Kind == "continue_act"
+                        ? "run_action_act_transition_map_generation"
+                        : "run_action_map_generation"
                     : "run_action_random_choice",
                 eventId = chanceLaw.EventId,
                 boundaryFingerprint,

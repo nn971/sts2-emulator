@@ -6785,6 +6785,34 @@ public sealed record ReferenceNatureRunActionSessionV111(
         ReferenceNatureRunCursorV111.ValidateInitial(
             source, initialNatureState, "Run-action");
         var detachedAction = CloneAction(action);
+        if (IsConfiguredExperimentalActTransitionAction(
+                source, detachedAction))
+        {
+            var actionId = PrototypeAiEnvironment.StableActionId(
+                detachedAction);
+            if (!new PrototypeGameEngine().GetLegalActions(source).Any(
+                    candidate => StringComparer.Ordinal.Equals(
+                        PrototypeAiEnvironment.StableActionId(candidate),
+                        actionId)))
+                throw new InvalidOperationException(
+                    "ReferenceNature act-transition session requires a current legal action.");
+            var nextAct = checked(source.World!.Act + 1);
+            var mapGeneration = ReferenceNatureMapGenerationSessionV111.Begin(
+                source.RunSeed, nextAct, source.Ascension,
+                initialNatureState);
+            var transitionSession = new ReferenceNatureRunActionSessionV111(
+                CurrentSchemaId, source.Fork(), detachedAction,
+                source.Fork(), initialNatureState.Fork(),
+                initialNatureState.Fork(), [])
+            {
+                MapGeneration = mapGeneration
+            };
+            if (mapGeneration.Complete)
+                transitionSession = transitionSession
+                    .CommitExperimentalActTransitionMap(mapGeneration);
+            transitionSession.Validate();
+            return transitionSession;
+        }
         var configuredNativeRunStart =
             ControlledRunActionEngineV111
                 .IsConfiguredNativeReferenceNatureRunStartAction(
@@ -6807,6 +6835,14 @@ public sealed record ReferenceNatureRunActionSessionV111(
         session.Validate();
         return session;
     }
+
+    private static bool IsConfiguredExperimentalActTransitionAction(
+        RunState source, GameAction action) =>
+        action.Kind == "continue_act"
+        && source.Configuration?.UsesExperimentalSilentThreeActRoute == true
+        && source.Configuration.CharacterId == "silent"
+        && source.Phase == RunPhase.ActTransition
+        && source.World is { Act: >= 1 and < 3 };
 
     public ReferenceNatureRunActionSessionV111 Fork()
     {
@@ -6938,10 +6974,38 @@ public sealed record ReferenceNatureRunActionSessionV111(
             MapGeneration = nextMapGeneration
         };
         if (nextMapGeneration.Complete)
-            next = next.ContinueAfterOvergrowthRunStartMap(
-                nextMapGeneration);
+            next = IsConfiguredExperimentalActTransitionAction(
+                    Origin, Action)
+                ? next.CommitExperimentalActTransitionMap(
+                    nextMapGeneration)
+                : next.ContinueAfterOvergrowthRunStartMap(
+                    nextMapGeneration);
         next.Validate();
         return next;
+    }
+
+    private ReferenceNatureRunActionSessionV111
+        CommitExperimentalActTransitionMap(
+            ReferenceNatureMapGenerationSessionV111 mapGeneration)
+    {
+        if (!IsConfiguredExperimentalActTransitionAction(Origin, Action) ||
+            !mapGeneration.Complete ||
+            mapGeneration.Act != checked(Origin.World!.Act + 1) ||
+            !mapGeneration.NatureState.SameCursor(NatureState))
+            throw new InvalidOperationException(
+                "Experimental act transition cannot commit before its map session completes.");
+        var map = mapGeneration.Map ?? throw new InvalidDataException(
+            "Completed experimental act-transition map session has no map.");
+        var continued = new PrototypeGameEngine()
+            .StepWithActTransitionMap(Run, Action, map).State;
+        continued = ReferenceNatureRunCursorV111.Commit(
+            continued, mapGeneration.NatureState);
+        return this with
+        {
+            Run = continued,
+            NatureState = mapGeneration.NatureState,
+            MapGeneration = null
+        };
     }
 
     private ReferenceNatureRunActionSessionV111
@@ -7115,6 +7179,9 @@ public sealed record ReferenceNatureRunActionSessionV111(
                     Origin);
         var configuredExperimentalRunStart = configuredNativeRunStart
             && Origin.Configuration?.UsesExperimentalSilentThreeActRoute == true;
+        var configuredExperimentalActTransition = Origin is not null
+            && Action is not null
+            && IsConfiguredExperimentalActTransitionAction(Origin, Action);
         var immediateShopAction = Origin is not null
             && Action is not null
             && ControlledRunActionEngineV111.IsShopPurchaseAction(
@@ -7136,7 +7203,8 @@ public sealed record ReferenceNatureRunActionSessionV111(
             (Run.ControlledRunActionChoice is null &&
              Run.ControlledRunActionHistory is not { Length: > 0 } &&
              !immediateShopAction && !immediateActOneCombatAction &&
-             !immediateNativeActOneCombatAction))
+             !immediateNativeActOneCombatAction &&
+             !configuredExperimentalActTransition))
             throw new InvalidDataException(
                 "Invalid ReferenceNature run-action session envelope.");
         PrototypeStateInvariants.Validate(Origin);
@@ -7158,42 +7226,62 @@ public sealed record ReferenceNatureRunActionSessionV111(
         {
             mapGeneration.Validate();
             var mapDecisions = mapGeneration.DecisionTranscript;
-            var expectedMapCursor = LaterActPreparation?.InitialNatureState
-                ?? NatureState;
-            if (!configuredOvergrowthRunStart || Complete
-                || Run.ControlledRunActionChoice is not null
-                || Run.ReferenceNatureRunInitializationTranscript is not null
-                || mapGeneration.Seed != Origin.RunSeed
-                || mapGeneration.Act != 1
-                || mapGeneration.Ascension != Origin.Ascension
-                || DecisionTranscript.Length < mapDecisions.Length + 1
-                || !DecisionTranscript.Skip(1).Take(mapDecisions.Length)
-                    .SequenceEqual(mapDecisions)
-                || mapGeneration.Complete !=
-                    (LaterActPreparation is not null)
-                || LaterActPreparation is null &&
-                    DecisionTranscript.Length != mapDecisions.Length + 1)
-                throw new InvalidDataException(
-                    "Pending Overgrowth map generation differs from its run-action transcript.");
+            if (configuredExperimentalActTransition)
+            {
+                if (Complete || LaterActPreparation is not null ||
+                    Run.ControlledRunActionChoice is not null ||
+                    mapGeneration.Seed != Origin.RunSeed ||
+                    mapGeneration.Act != checked(Origin.World!.Act + 1) ||
+                    mapGeneration.Ascension != Origin.Ascension ||
+                    mapGeneration.Complete ||
+                    !mapGeneration.InitialNatureState.SameCursor(
+                        InitialNatureState) ||
+                    !mapGeneration.NatureState.SameCursor(NatureState) ||
+                    !DecisionTranscript.SequenceEqual(mapDecisions) ||
+                    CanonicalJson.Sha256(Run) !=
+                        CanonicalJson.Sha256(Origin))
+                    throw new InvalidDataException(
+                        "Pending experimental act-transition map differs from its run-action transcript.");
+            }
+            else
+            {
+                var expectedMapCursor = LaterActPreparation?.InitialNatureState
+                    ?? NatureState;
+                if (!configuredOvergrowthRunStart || Complete
+                    || Run.ControlledRunActionChoice is not null
+                    || Run.ReferenceNatureRunInitializationTranscript is not null
+                    || mapGeneration.Seed != Origin.RunSeed
+                    || mapGeneration.Act != 1
+                    || mapGeneration.Ascension != Origin.Ascension
+                    || DecisionTranscript.Length < mapDecisions.Length + 1
+                    || !DecisionTranscript.Skip(1).Take(mapDecisions.Length)
+                        .SequenceEqual(mapDecisions)
+                    || mapGeneration.Complete !=
+                        (LaterActPreparation is not null)
+                    || LaterActPreparation is null &&
+                        DecisionTranscript.Length != mapDecisions.Length + 1)
+                    throw new InvalidDataException(
+                        "Pending Overgrowth map generation differs from its run-action transcript.");
 
-            var bossLaw = ChanceLawEngineV111.QueryOvergrowthBossEncounter(0);
-            var bossSelection = ReferenceNatureV111.SampleValidated(
-                bossLaw, InitialNatureState);
-            var expectedBossDecision = new ReferenceNatureDecisionV111(
-                bossLaw.LawId, bossLaw.EventId,
-                bossSelection.OutcomeId, bossSelection.OutcomeIndex);
-            var selectedBossId = Run.World?.ActOneEncounterPool?
-                .BossEncounterId;
-            if (CanonicalJson.Sha256(DecisionTranscript[0]) !=
-                    CanonicalJson.Sha256(expectedBossDecision)
-                || selectedBossId is null
-                || bossSelection.OutcomeId != "encounter:" + selectedBossId
-                || !bossSelection.NextState.SameCursor(
-                    mapGeneration.InitialNatureState)
-                || !mapGeneration.NatureState.SameCursor(
-                    expectedMapCursor))
-                throw new InvalidDataException(
-                    "Pending Overgrowth map sampler does not follow the selected boss.");
+                var bossLaw = ChanceLawEngineV111.QueryOvergrowthBossEncounter(0);
+                var bossSelection = ReferenceNatureV111.SampleValidated(
+                    bossLaw, InitialNatureState);
+                var expectedBossDecision = new ReferenceNatureDecisionV111(
+                    bossLaw.LawId, bossLaw.EventId,
+                    bossSelection.OutcomeId, bossSelection.OutcomeIndex);
+                var selectedBossId = Run.World?.ActOneEncounterPool?
+                    .BossEncounterId;
+                if (CanonicalJson.Sha256(DecisionTranscript[0]) !=
+                        CanonicalJson.Sha256(expectedBossDecision)
+                    || selectedBossId is null
+                    || bossSelection.OutcomeId != "encounter:" + selectedBossId
+                    || !bossSelection.NextState.SameCursor(
+                        mapGeneration.InitialNatureState)
+                    || !mapGeneration.NatureState.SameCursor(
+                        expectedMapCursor))
+                    throw new InvalidDataException(
+                        "Pending Overgrowth map sampler does not follow the selected boss.");
+            }
         }
 
         if (LaterActPreparation is { } laterActPreparation)
@@ -7275,16 +7363,51 @@ public sealed record ReferenceNatureRunActionSessionV111(
         else if (MapGeneration is not null ||
             LaterActPreparation is not null)
         {
-            var trace = Run.ControlledRunActionHistory![^1];
-            trace.Validate();
-            if (!configuredNativeRunStart || trace.ActionId != Action.Kind ||
-                trace.Decisions.Length != 1 ||
-                DecisionTranscript.Length < 1 ||
-                trace.Decisions[0].ProviderMode != "controlled-v111" ||
-                trace.Decisions[0].SelectedIndex !=
-                    DecisionTranscript[0].OutcomeIndex)
+            if (!configuredExperimentalActTransition)
+            {
+                var trace = Run.ControlledRunActionHistory![^1];
+                trace.Validate();
+                if (!configuredNativeRunStart || trace.ActionId != Action.Kind ||
+                    trace.Decisions.Length != 1 ||
+                    DecisionTranscript.Length < 1 ||
+                    trace.Decisions[0].ProviderMode != "controlled-v111" ||
+                    trace.Decisions[0].SelectedIndex !=
+                        DecisionTranscript[0].OutcomeIndex)
+                    throw new InvalidDataException(
+                        "Pending run initialization boss choice differs from its controlled trace.");
+            }
+        }
+        else if (configuredExperimentalActTransition)
+        {
+            var mapGeneration = ReferenceNatureMapGenerationSessionV111.Begin(
+                Origin.RunSeed, checked(Origin.World!.Act + 1),
+                Origin.Ascension, InitialNatureState);
+            foreach (var expected in DecisionTranscript)
+            {
+                if (mapGeneration.Complete)
+                    throw new InvalidDataException(
+                        "Experimental act-transition map ended before its transcript.");
+                mapGeneration = mapGeneration.ResolveNext();
+                if (!mapGeneration.DecisionTranscript[^1].Equals(expected))
+                    throw new InvalidDataException(
+                        "Experimental act-transition map differs from its Nature transcript.");
+            }
+            if (!mapGeneration.Complete ||
+                !mapGeneration.NatureState.SameCursor(NatureState))
                 throw new InvalidDataException(
-                    "Pending run initialization boss choice differs from its controlled trace.");
+                    "Completed experimental act-transition map has an incomplete sampler transcript.");
+            var expectedRun = new PrototypeGameEngine()
+                .StepWithActTransitionMap(
+                    Origin.Fork(), Action,
+                    mapGeneration.Map ?? throw new InvalidDataException(
+                        "Replayed act-transition map has no output."))
+                .State;
+            expectedRun = ReferenceNatureRunCursorV111.Commit(
+                expectedRun, NatureState);
+            if (CanonicalJson.Sha256(expectedRun) !=
+                CanonicalJson.Sha256(Run))
+                throw new InvalidDataException(
+                    "Completed experimental act transition differs from its map replay.");
         }
         else if (immediateShopAction || immediateActOneCombatAction ||
             immediateNativeActOneCombatAction)

@@ -1054,6 +1054,7 @@ public static class StochasticSiteRegistryV111
         .Concat(RunActionCombatSites)
         .Concat(RunActionUnderdocksCombatSites)
         .Concat(RunActionCombatEntryPotionSites)
+        .Concat(NativeMapGenerationSessionSites)
         .Distinct(StringComparer.Ordinal)
         .ToArray();
     private static readonly string[] NatureChoiceSiteCandidates =

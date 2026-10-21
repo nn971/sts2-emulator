@@ -11,7 +11,35 @@ public sealed record ReferenceNatureLaterActPreparationSessionSnapshotV111(
     int Ascension,
     SimulationProfile Profile,
     ReferenceNatureStateV111 InitialNatureState,
-    ReferenceNatureDecisionV111[] DecisionTranscript);
+    ReferenceNatureDecisionV111[] DecisionTranscript)
+{
+    private RngBundle? _initialPrototypeRng = InitialPrototypeRng?.Fork();
+    private SimulationProfile? _profile = Profile?.Fork();
+    private ReferenceNatureDecisionV111[]? _decisionTranscript =
+        Clone(DecisionTranscript);
+
+    public RngBundle InitialPrototypeRng
+    {
+        get => _initialPrototypeRng?.Fork()!;
+        init => _initialPrototypeRng = value?.Fork();
+    }
+
+    public SimulationProfile Profile
+    {
+        get => _profile?.Fork()!;
+        init => _profile = value?.Fork();
+    }
+
+    public ReferenceNatureDecisionV111[] DecisionTranscript
+    {
+        get => Clone(_decisionTranscript)!;
+        init => _decisionTranscript = Clone(value);
+    }
+
+    private static ReferenceNatureDecisionV111[]? Clone(
+        ReferenceNatureDecisionV111[]? values) => values is null ? null :
+        (ReferenceNatureDecisionV111[])values.Clone();
+}
 
 /// <summary>
 /// Resumable Nature continuation for the existing experimental Hive/Glory
@@ -234,6 +262,8 @@ public sealed record ReferenceNatureLaterActPreparationSessionV111(
         ArgumentNullException.ThrowIfNull(initialNatureState);
         if (ascension is < 0 or > 10)
             throw new ArgumentOutOfRangeException(nameof(ascension));
+        PrototypeRng.ValidateBundle(initialPrototypeRng,
+            allowEmpty: false);
         initialNatureState.Validate();
         var assignmentCount = profile.RevealedEpochs.Contains(
             NativeDarvEventV111.EpochId, StringComparer.Ordinal) ? 4 : 2;

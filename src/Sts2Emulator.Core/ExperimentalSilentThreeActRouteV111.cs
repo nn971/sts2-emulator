@@ -436,7 +436,17 @@ public static class ExperimentalSilentThreeActRouteV111
             pool.Length).SelectedIndex];
     }
 
-    public static RunState ContinueAct(RunState state)
+    public static RunState ContinueAct(RunState state) =>
+        ContinueActCore(state, map: null);
+
+    internal static RunState ContinueAct(RunState state, MapState map)
+    {
+        ArgumentNullException.ThrowIfNull(map);
+        return ContinueActCore(state, map);
+    }
+
+    private static RunState ContinueActCore(
+        RunState state, MapState? suppliedMap)
     {
         if (state.Configuration?.UsesExperimentalSilentThreeActRoute != true
             || state.Configuration.CharacterId != "silent"
@@ -454,15 +464,19 @@ public static class ExperimentalSilentThreeActRouteV111
         var nextBag = prepared.SingleOrDefault(bag => bag.Act == nextAct)
             ?? throw new InvalidOperationException(
                 "The next act has no prepared encounter history.");
-        var map = PrototypeNativeLaterActMap.GenerateNative(
+        var map = suppliedMap ?? PrototypeNativeLaterActMap.GenerateNative(
             state.RunSeed, nextAct, state.Ascension);
+        if (!StringComparer.Ordinal.Equals(map.GenerationProfileId,
+                PrototypeNativeLaterActMap.ProfileId(nextAct)))
+            throw new InvalidDataException(
+                "Three-act continuation received a map from a different act generator.");
         var nextWorld = world with
         {
             Act = nextAct,
             ActIdentity = state.Configuration.Acts[nextAct - 1],
             Floor = 0,
             ActiveRoom = null, Combat = null, Reward = null,
-            Shop = null, Event = null, Map = map,
+            Shop = null, Event = null, Map = map.Fork(),
             ActOneRegion = null, ActOneEncounterPool = null,
             LaterActEncounterBag = nextBag.Fork(),
             PreparedLaterActEncounterBags = prepared
