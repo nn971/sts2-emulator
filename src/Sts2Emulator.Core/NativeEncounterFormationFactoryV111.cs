@@ -297,12 +297,10 @@ internal sealed class ReferenceNatureEncounterFormationIndexProviderV111
             request.Ordinal != _decisions.Count ||
             request.SupportCount < 1 ||
             !request.OrderedCandidates.SequenceEqual(
-                Enumerable.Range(0, request.SupportCount)) ||
-            streams.Streams.Count(stream =>
-                stream.StreamId == request.StreamId) != 1 ||
-            streams.Streams.Single(stream =>
-                stream.StreamId == request.StreamId).Codec !=
-                    NativeRngV111.Codec)
+                Enumerable.Range(0, request.SupportCount)))
+            throw new InvalidDataException(
+                "Native encounter formation request differs from its source-local boundary.");
+        if (streams.GetStream(request.StreamId).Codec != NativeRngV111.Codec)
             throw new InvalidDataException(
                 "Native encounter formation request differs from its source-local boundary.");
 

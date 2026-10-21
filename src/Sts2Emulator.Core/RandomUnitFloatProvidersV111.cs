@@ -81,18 +81,14 @@ public sealed class NativeRandomUnitFloatProviderV111
                 request.SiteId))
             throw new NotSupportedException(
                 $"Native unit-float sampling does not support site '{request.SiteId}'.");
-        var matches = streams.Streams
-            .Where(stream => stream.StreamId == request.StreamId).ToArray();
-        if (matches.Length != 1)
-            throw new InvalidOperationException(
-                "Native random stream ownership is ambiguous.");
         using var nativeBoundary =
             ControlledChanceGuardV111.AuthorizeEngineOwnedNativeBoundary(
                 request.SiteId, request.StreamId, "unit_float");
-        var before = NativeRngV111.ToSnapshot(matches[0]);
+        var before = NativeRngV111.ToSnapshot(
+            streams.GetStream(request.StreamId));
         var value = NativeRngV111.NextFloat(streams, request.StreamId);
-        var after = NativeRngV111.ToSnapshot(streams.Streams.Single(
-            stream => stream.StreamId == request.StreamId));
+        var after = NativeRngV111.ToSnapshot(
+            streams.GetStream(request.StreamId));
         var decision = new RandomUnitFloatDecisionV111(
             request with { }, value, Mode, before, after);
         decision.Validate();

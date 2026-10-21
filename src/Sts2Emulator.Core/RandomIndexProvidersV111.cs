@@ -164,16 +164,14 @@ public sealed class NativeRandomIndexProviderV111 : IRandomIndexProviderV111
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(streams);
         request.ValidateForNativeProvider();
-        var matches = streams.Streams.Where(s => s.StreamId == request.StreamId).ToArray();
-        if (matches.Length != 1)
-            throw new InvalidOperationException("Native random stream ownership is ambiguous.");
         using var nativeBoundary =
             ControlledChanceGuardV111.AuthorizeEngineOwnedNativeBoundary(
                 request.SiteId, request.StreamId, request.OperationKind);
-        var before = NativeRngV111.ToSnapshot(matches[0]);
+        var before = NativeRngV111.ToSnapshot(
+            streams.GetStream(request.StreamId));
         int index = NativeRngV111.NextInt(streams, request.StreamId, request.SupportCount);
-        var after = NativeRngV111.ToSnapshot(streams.Streams.Single(s =>
-            s.StreamId == request.StreamId));
+        var after = NativeRngV111.ToSnapshot(
+            streams.GetStream(request.StreamId));
         var decision = new RandomIndexDecisionV111(
             request with { OrderedCandidates = (int[])request.OrderedCandidates.Clone() },
             index, Mode, before, after);
@@ -210,11 +208,9 @@ public sealed class LegacyPrototypeRandomIndexProviderV111
                 " stream=" + request.StreamId +
                 " operation=" + request.OperationKind +
                 " : Native control cannot fall back to prototype RNG.");
-        var matches = streams.Streams
-            .Where(stream => stream.StreamId == request.StreamId).ToArray();
-        if (matches.Length != 1 ||
-            matches[0].Codec != PrototypeRng.Codec ||
-            matches[0].StateBytes.Length != sizeof(ulong))
+        var stream = streams.GetStream(request.StreamId);
+        if (stream.Codec != PrototypeRng.Codec ||
+            stream.StateBytes.Length != sizeof(ulong))
             throw new InvalidOperationException(
                 "Legacy prototype random stream ownership or codec is invalid.");
 
@@ -310,11 +306,7 @@ public static class LegacyRandomChoiceV111
         if (!StochasticSiteRegistryV111.IsLegacyRandomChoiceSite(siteId))
             throw new NotSupportedException(
                 $"Legacy random choice does not support site '{siteId}'.");
-        var matchingStreams = streams.Streams.Where(stream =>
-            stream.StreamId == streamId).ToArray();
-        if (matchingStreams.Length != 1)
-            throw new InvalidOperationException(
-                "Legacy random-choice stream ownership is ambiguous.");
+        var matchingStream = streams.GetStream(streamId);
         int streamOrdinal;
         if (ordinal is { } explicitOrdinal)
         {
@@ -327,7 +319,7 @@ public static class LegacyRandomChoiceV111
         }
         else
         {
-            var providerOrdinal = matchingStreams[0].CallCount ?? 0;
+            var providerOrdinal = matchingStream.CallCount ?? 0;
             if (providerOrdinal > int.MaxValue)
                 throw new NotSupportedException(
                     "Legacy random-choice provider ordinal exceeds the request range.");
@@ -415,12 +407,7 @@ public static class LegacyFisherYatesV111
                 $"UNSUPPORTED_CONTROLLED_CHANCE site={siteId} " +
                 "operation=shuffle requires a saved continuation.");
 
-        var matchingStreams = streams.Streams.Where(stream =>
-            stream.StreamId == streamId).ToArray();
-        if (matchingStreams.Length != 1)
-            throw new InvalidOperationException(
-                "Legacy shuffle stream ownership is ambiguous.");
-        var streamOrdinal = matchingStreams[0].CallCount ?? 0;
+        var streamOrdinal = streams.GetStream(streamId).CallCount ?? 0;
         if (streamOrdinal < 0 || streamOrdinal > int.MaxValue)
             throw new NotSupportedException(
                 "Legacy shuffle provider ordinal exceeds the request range.");

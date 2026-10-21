@@ -83,21 +83,17 @@ public sealed class NativeRandomGaussianIntProviderV111
                 request.SiteId))
             throw new NotSupportedException(
                 $"Native Gaussian-integer sampling does not support site '{request.SiteId}'.");
-        var matches = streams.Streams
-            .Where(stream => stream.StreamId == request.StreamId).ToArray();
-        if (matches.Length != 1)
-            throw new InvalidOperationException(
-                "Native random stream ownership is ambiguous.");
         using var nativeBoundary =
             ControlledChanceGuardV111.AuthorizeEngineOwnedNativeBoundary(
                 request.SiteId, request.StreamId, "gaussian_int");
-        var before = NativeRngV111.ToSnapshot(matches[0]);
+        var before = NativeRngV111.ToSnapshot(
+            streams.GetStream(request.StreamId));
         var value = NativeRngV111.NextGaussianInt(
             streams, request.StreamId, request.Mean,
             request.StandardDeviation, request.MinInclusive,
             request.MaxInclusive);
-        var after = NativeRngV111.ToSnapshot(streams.Streams.Single(
-            stream => stream.StreamId == request.StreamId));
+        var after = NativeRngV111.ToSnapshot(
+            streams.GetStream(request.StreamId));
         var decision = new RandomGaussianIntDecisionV111(
             request with { }, value, Mode, before, after);
         decision.Validate();

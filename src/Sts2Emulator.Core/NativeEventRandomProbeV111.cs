@@ -65,12 +65,8 @@ internal sealed class NativeEventRandomProbeV111 : IDisposable
         {
             if (streams is null)
                 throw new ArgumentNullException(nameof(streams));
-            var matching = streams.Streams.Where(stream =>
-                stream.StreamId == nativeStreamId).ToArray();
-            if (matching.Length != 1)
-                throw new InvalidOperationException(
-                    "Native shuffle capture requires exactly one matching stream.");
-            cursor = NativeRngV111.ToSnapshot(matching[0]);
+            cursor = NativeRngV111.ToSnapshot(
+                streams.GetStream(nativeStreamId));
         }
         probe._captures.Add(new NativeEventShuffleCaptureV111(
             siteId, ownerId,

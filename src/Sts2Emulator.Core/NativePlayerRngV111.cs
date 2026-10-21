@@ -15,12 +15,8 @@ internal static class NativePlayerRngV111
         if (StochasticProviderScopeV111.GetNextOrdinal(
                 streams, streamId) is { } scopedOrdinal)
             return scopedOrdinal;
-        var matching = streams.Streams.Where(stream =>
-            stream.StreamId == streamId).ToArray();
-        if (matching.Length != 1)
-            throw new InvalidOperationException(
-                "Native merchant RNG stream ownership is ambiguous.");
-        return NativeRngV111.ToSnapshot(matching[0]).Counter;
+        return NativeRngV111.ToSnapshot(
+            streams.GetStream(streamId)).Counter;
     }
 
     public static int ChooseIndex(

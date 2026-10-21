@@ -257,12 +257,7 @@ public static class NativeGloryAncientsV111
                         CultureInfo.InvariantCulture));
         else
         {
-            var nicheStreams = nativeRunRng.Streams.Where(stream =>
-                stream.StreamId == "run.niche").ToArray();
-            if (nicheStreams.Length != 1)
-                throw new InvalidOperationException(
-                    "Beautiful Bracelet shuffle has ambiguous run.niche ownership.");
-            var ordinal = nicheStreams[0].CallCount ?? 0;
+            var ordinal = nativeRunRng.GetStream("run.niche").CallCount ?? 0;
             if (ordinal < 0 || ordinal > int.MaxValue)
                 throw new NotSupportedException(
                     "Beautiful Bracelet run.niche ordinal exceeds the request range.");

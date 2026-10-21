@@ -445,11 +445,6 @@ internal static class StochasticProviderScopeV111
     private static ulong GetStreamCallCount(
         RngBundle streams, string streamId)
     {
-        var matches = streams.Streams.Where(stream =>
-            stream.StreamId == streamId).ToArray();
-        if (matches.Length != 1)
-            throw new InvalidOperationException(
-                "Scoped native random stream ownership is ambiguous.");
-        return matches[0].CallCount ?? 0;
+        return streams.GetStream(streamId).CallCount ?? 0;
     }
 }

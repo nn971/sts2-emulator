@@ -79,20 +79,16 @@ public sealed class NativeRandomRangedDoubleProviderV111
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(streams);
         request.Validate();
-        var matches = streams.Streams
-            .Where(stream => stream.StreamId == request.StreamId).ToArray();
-        if (matches.Length != 1)
-            throw new InvalidOperationException(
-                "Native random stream ownership is ambiguous.");
         using var nativeBoundary =
             ControlledChanceGuardV111.AuthorizeEngineOwnedNativeBoundary(
                 request.SiteId, request.StreamId, "ranged_double");
-        var before = NativeRngV111.ToSnapshot(matches[0]);
+        var before = NativeRngV111.ToSnapshot(
+            streams.GetStream(request.StreamId));
         var value = NativeRngV111.NextDouble(
             streams, request.StreamId,
             request.MinInclusive, request.MaxInclusive);
-        var after = NativeRngV111.ToSnapshot(streams.Streams.Single(
-            stream => stream.StreamId == request.StreamId));
+        var after = NativeRngV111.ToSnapshot(
+            streams.GetStream(request.StreamId));
         var decision = new RandomRangedDoubleDecisionV111(
             request with { }, value, Mode, before, after);
         decision.Validate();
