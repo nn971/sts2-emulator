@@ -2,6 +2,8 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 ReferenceNature run-action checkpoint envelope increment (2026-10-21):** The existing `ReferenceNatureRunActionSessionV111` now composes its source run, selected action, current run, Nature cursor/history, and typed Native combat-entry prefix through `SimulationStateV111` and the shared `PrototypeMechanicsContinuationStateV111`. Its flattened session fields and snapshot schema remain unchanged; nested map, later-act preparation, and Ancient-offer sessions keep their existing owners. Static review and `git diff --check` only; no tests or builds were run.
+
 **S7 PotionFactory model-law stream alignment (2026-10-21):** `QueryNativePotionFactoryModelIndex` now accepts the same registered Native streams as its rarity law: `run.combat_potion_generation`, `player.rewards`, and `player.shops`. It still validates the declared rarity and remaining source-ordered pool, and does not claim cursor or prefix validation. Static review and `git diff --check` only; no tests or builds were run.
 
 **S4 shared combat potion model-pool increment (2026-10-21):** Ordinary `AcquireRandomCombatPotion` sampling, controlled suspension, and replay validation now use `CombatPotionModelPool`. This keeps the current ordered potion support under one source-pool owner without changing provider requests or continuation behavior. Native stream attribution, pool completeness, and seeded parity remain open. Static review and `git diff --check` only; no tests or builds were run.

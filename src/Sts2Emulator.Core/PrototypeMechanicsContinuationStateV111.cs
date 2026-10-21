@@ -2,8 +2,9 @@ namespace Sts2Emulator.Core;
 
 /// <summary>
 /// Shared mechanics checkpoint for a suspended source-shaped run action.
-/// Semantic transitions retain their origin as well as the current run;
-/// controlled continuations that only need a resume checkpoint omit origin.
+/// ReferenceNature and semantic transitions retain their origin as well as
+/// the current run; controlled continuations that only need a resume
+/// checkpoint omit origin.
 /// Boundary-specific cursors and stochastic transcripts remain with their
 /// owning continuation.
 /// </summary>
@@ -24,7 +25,8 @@ public sealed record PrototypeMechanicsContinuationStateV111(
         bool requiresOrigin = expectedKind is
             PrototypeMechanicsContinuationKindV111.SemanticEndTurn or
             PrototypeMechanicsContinuationKindV111.SemanticCombatDraw or
-            PrototypeMechanicsContinuationKindV111.SemanticPilot;
+            PrototypeMechanicsContinuationKindV111.SemanticPilot or
+            PrototypeMechanicsContinuationKindV111.ReferenceNatureRunAction;
         if (!Enum.IsDefined(Kind) || Kind != expectedKind ||
             requiresOrigin != (Origin is not null) ||
             string.IsNullOrWhiteSpace(Current.RunId) ||
@@ -49,6 +51,7 @@ public enum PrototypeMechanicsContinuationKindV111
     ControlledPlayableCombat,
     ControlledEnemyAction,
     ControlledRunAction,
+    ReferenceNatureRunAction,
     ControlledEventChoice,
     ControlledEventRewardChoice
 }

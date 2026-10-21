@@ -391,6 +391,13 @@ Nature cursor after replay completes.
 
 ## Semantic lifecycle and provider interchangeability
 
+`ReferenceNatureRunActionSessionV111` now composes its origin/current run
+checkpoint and selected action with the Nature cursor/history and typed Native
+combat-entry provider prefix through `SimulationStateV111`. The mechanics
+owner uses `PrototypeMechanicsContinuationStateV111` for shared run identity
+and origin/current validation. Existing flattened session fields, snapshot
+schema, and nested map/preparation/Ancient continuation owners remain intact.
+
 The **same game mechanics** issues semantic stochastic operations and applies their resolved outcomes regardless of provider:
 
 1. **Commit / initialize** a source-triggered shuffle, offer, or intent decision. Native may immediately record a complete hidden result; Nature may record an unresolved object with constraints.

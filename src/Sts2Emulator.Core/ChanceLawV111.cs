@@ -6771,13 +6771,67 @@ public sealed record ReferenceNatureRunActionSessionV111(
     ReferenceNatureStateV111 NatureState,
     ReferenceNatureDecisionV111[] DecisionTranscript)
 {
-    private ReferenceNatureDecisionV111[]? _decisionTranscript =
-        Clone(DecisionTranscript);
+    /// <summary>
+    /// Atomic mechanics/provider envelope for the saved run action. The
+    /// session's existing flattened properties remain its snapshot contract.
+    /// </summary>
+    [JsonIgnore]
+    public SimulationStateV111<ReferenceNatureRunActionMechanicsStateV111,
+        ReferenceNatureRunActionStochasticStateV111> Simulation { get; init; } =
+        new(
+            new ReferenceNatureRunActionMechanicsStateV111(
+                Origin, Action, Run),
+            new ReferenceNatureRunActionStochasticStateV111(
+                InitialNatureState, NatureState, DecisionTranscript));
+
+    [JsonIgnore]
+    public ReferenceNatureRunActionMechanicsStateV111 Mechanics
+    {
+        get => Simulation.Mechanics;
+        init => Simulation = Simulation with { Mechanics = value };
+    }
+
+    [JsonIgnore]
+    public ReferenceNatureRunActionStochasticStateV111 Stochastic
+    {
+        get => Simulation.Stochastic;
+        init => Simulation = Simulation with { Stochastic = value };
+    }
+
+    public RunState Origin
+    {
+        get => Mechanics.Origin;
+        init => Mechanics = Mechanics with { Origin = value };
+    }
+
+    public GameAction Action
+    {
+        get => Mechanics.Action;
+        init => Mechanics = Mechanics with { Action = value };
+    }
+
+    public RunState Run
+    {
+        get => Mechanics.Run;
+        init => Mechanics = Mechanics with { Run = value };
+    }
+
+    public ReferenceNatureStateV111 InitialNatureState
+    {
+        get => Stochastic.InitialNatureState;
+        init => Stochastic = Stochastic with { InitialNatureState = value };
+    }
+
+    public ReferenceNatureStateV111 NatureState
+    {
+        get => Stochastic.NatureState;
+        init => Stochastic = Stochastic with { NatureState = value };
+    }
 
     public ReferenceNatureDecisionV111[] DecisionTranscript
     {
-        get => Clone(_decisionTranscript)!;
-        init => _decisionTranscript = Clone(value);
+        get => Stochastic.DecisionTranscript;
+        init => Stochastic = Stochastic with { DecisionTranscript = value };
     }
 
     public ReferenceNatureMapGenerationSessionV111? MapGeneration
@@ -6790,32 +6844,28 @@ public sealed record ReferenceNatureRunActionSessionV111(
     { get; init; }
 
     public ControlledStochasticContinuationStateV111?
-        NativeCombatEntryContinuation { get; init; }
-
-    private ControlledStochasticDecisionV111[]?
-        _nativeCombatEntryProviderDecisions = [];
+        NativeCombatEntryContinuation
+    {
+        get => Stochastic.NativeCombatEntryContinuation;
+        init => Stochastic = Stochastic with
+        {
+            NativeCombatEntryContinuation = value
+        };
+    }
 
     public ControlledStochasticDecisionV111[] NativeCombatEntryProviderDecisions
     {
-        get => CloneProviderDecisions(_nativeCombatEntryProviderDecisions)!;
-        init => _nativeCombatEntryProviderDecisions =
-            CloneProviderDecisions(value);
+        get => Stochastic.NativeCombatEntryProviderDecisions;
+        init => Stochastic = Stochastic with
+        {
+            NativeCombatEntryProviderDecisions = value
+        };
     }
 
     public bool LegacyNativeAncientOfferCompletion { get; init; }
 
     public const string CurrentSchemaId =
         "sts2-v111-reference-nature-run-action-session-v1";
-
-    private static ReferenceNatureDecisionV111[]? Clone(
-        ReferenceNatureDecisionV111[]? transcript) => transcript is null
-        ? null
-        : (ReferenceNatureDecisionV111[])transcript.Clone();
-
-    private static ControlledStochasticDecisionV111[]?
-        CloneProviderDecisions(
-            ControlledStochasticDecisionV111[]? decisions) => decisions?
-                .Select(decision => decision?.Fork()!).ToArray();
 
     [JsonIgnore]
     public string Fingerprint => CanonicalJson.Sha256(this);
@@ -6975,20 +7025,11 @@ public sealed record ReferenceNatureRunActionSessionV111(
         Validate();
         return this with
         {
-            Origin = Origin.Fork(),
-            Action = CloneAction(Action),
-            Run = Run.Fork(),
-            InitialNatureState = InitialNatureState.Fork(),
-            NatureState = NatureState.Fork(),
+            Mechanics = Mechanics.Fork(),
+            Stochastic = Stochastic.Fork(),
             MapGeneration = MapGeneration?.Fork(),
             LaterActPreparation = LaterActPreparation?.Fork(),
-            AncientOffer = AncientOffer?.Fork(),
-            NativeCombatEntryContinuation =
-                NativeCombatEntryContinuation?.Fork(),
-            NativeCombatEntryProviderDecisions =
-                NativeCombatEntryProviderDecisions,
-            DecisionTranscript = (ReferenceNatureDecisionV111[])
-                DecisionTranscript.Clone()
+            AncientOffer = AncientOffer?.Fork()
         };
     }
 
@@ -7672,6 +7713,9 @@ public sealed record ReferenceNatureRunActionSessionV111(
                 "Invalid ReferenceNature run-action session envelope.");
         PrototypeStateInvariants.Validate(Origin);
         PrototypeStateInvariants.Validate(Run);
+        Mechanics.Continuation.Validate(
+            PrototypeMechanicsContinuationKindV111.ReferenceNatureRunAction);
+        Stochastic.Validate();
         if (ControlledRunActionEngineV111
                 .IsLegacyNativeTreasureEntryAction(Origin, Action)
             || ControlledRunActionEngineV111
@@ -7685,15 +7729,11 @@ public sealed record ReferenceNatureRunActionSessionV111(
         var actionMapNodeId = Action.Kind == "choose_map_node"
             ? Action.ReadPayload<ChooseMapNodePayload>().NodeId
             : null;
-        InitialNatureState.Validate();
-        NatureState.Validate();
         if (!ReferenceNatureRunCursorV111.MatchesRunSession(
                 Origin, Run, InitialNatureState, NatureState,
                 DecisionTranscript.Length, Complete))
             throw new InvalidDataException(
                 "ReferenceNature run-action cursor differs from the run envelope.");
-        for (int index = 0; index < DecisionTranscript.Length; index++)
-            DecisionTranscript[index].Validate();
 
         if (MapGeneration is { } mapGeneration)
         {
