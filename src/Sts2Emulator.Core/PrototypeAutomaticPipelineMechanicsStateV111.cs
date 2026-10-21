@@ -48,6 +48,20 @@ public sealed record PrototypeAutomaticPipelineMechanicsStateV111(
             pipeline[NextStepIndex - 1].Kind == completedStep;
     }
 
+    public bool IsImmediatelyAfterDispatch(
+        PrototypeCombatEventKind eventKind)
+    {
+        if (OpeningStage is not null ||
+            PendingPostDispatchEventKind != eventKind)
+            return false;
+        var pipeline = PrototypeContent.Rules.EndTurnPipeline;
+        return NextStepIndex > 0 && NextStepIndex <= pipeline.Length &&
+            pipeline[NextStepIndex - 1] is
+                { Kind: PrototypeAutomaticStepKind.DispatchCombatEvent,
+                  EventKind: { } previousEvent } &&
+            previousEvent == eventKind;
+    }
+
     public PrototypeAutomaticPipelineMechanicsStateV111 AdvancePastStep(
         PrototypeAutomaticStepKind completedStep)
     {

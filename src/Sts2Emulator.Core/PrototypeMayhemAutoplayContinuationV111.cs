@@ -1499,9 +1499,8 @@ public sealed partial class PrototypeGameEngine
             !IsAtSupportedAutomaticPipelineTargetBoundary(combat))
             return false;
 
-        var playerTurnStartedIndex = PlayerTurnStartedPipelineStepIndex();
-        if (playerTurnStartedIndex < 0 ||
-            continuation.NextStepIndex != playerTurnStartedIndex + 1)
+        if (!continuation.Mechanics.IsImmediatelyAfterDispatch(
+                PrototypeCombatEventKind.PlayerTurnStarted))
             return false;
 
         var discardCount = combat.PlayerPowers.Sum(power =>
@@ -1637,8 +1636,7 @@ public sealed partial class PrototypeGameEngine
         CombatState combat,
         PrototypeAutomaticPipelineContinuationState continuation)
     {
-        var playerTurnStartedIndex = PlayerTurnStartedPipelineStepIndex();
-        return combat.IsPlayerTurn && playerTurnStartedIndex >= 0 &&
+        return combat.IsPlayerTurn &&
             continuation is
                 { OpeningStage: null,
                   PendingPostDispatchEventKind:
@@ -1653,13 +1651,9 @@ public sealed partial class PrototypeGameEngine
                   ControlledBeforeHandDrawHookChoicePending: false,
                   ControlledEnemyAction: null,
                   ControlledTurnIntents: null } &&
-            continuation.NextStepIndex == playerTurnStartedIndex + 1;
+            continuation.Mechanics.IsImmediatelyAfterDispatch(
+                PrototypeCombatEventKind.PlayerTurnStarted);
     }
-
-    private static int PlayerTurnStartedPipelineStepIndex() =>
-        Array.FindIndex(PrototypeContent.Rules.EndTurnPipeline, step =>
-            step.Kind == PrototypeAutomaticStepKind.DispatchCombatEvent &&
-            step.EventKind == PrototypeCombatEventKind.PlayerTurnStarted);
 
     internal static bool IsAutomaticPipelineSemanticDrawHookChoiceContinuation(
         CombatState combat, PendingCombatChoiceState pending)
@@ -1901,16 +1895,8 @@ public sealed partial class PrototypeGameEngine
                 PrototypeContent.Rules.EndTurnPipeline.Length &&
             pipeline.PendingPostDispatchEventKind is null;
 
-        var autoPrePlayIndex = Array.FindIndex(
-            PrototypeContent.Rules.EndTurnPipeline,
-            step => step.Kind == PrototypeAutomaticStepKind.DispatchCombatEvent &&
-                    step.EventKind ==
-                        PrototypeCombatEventKind.AutoPrePlayPhaseEntered);
-        bool turnContinuation = autoPrePlayIndex >= 0 &&
-            pipeline.OpeningStage is null &&
-            pipeline.NextStepIndex == autoPrePlayIndex + 1 &&
-            pipeline.PendingPostDispatchEventKind ==
-                PrototypeCombatEventKind.AutoPrePlayPhaseEntered;
+        bool turnContinuation = pipeline.Mechanics.IsImmediatelyAfterDispatch(
+            PrototypeCombatEventKind.AutoPrePlayPhaseEntered);
 
         return openingContinuation || turnContinuation;
     }
