@@ -85,9 +85,7 @@ public sealed partial class PrototypeGameEngine
                 return SetOpeningCombatContinuation(
                     state, OpeningCombatStages[stageIndex + 1]);
         }
-        var finishedWorld = RequireWorld(state);
-        return state with { World = finishedWorld with { Combat = finishedWorld.Combat! with
-        { AutomaticPipelineContinuation = null } } };
+        return state;
     }
 
     private static RunState SetOpeningCombatContinuation(

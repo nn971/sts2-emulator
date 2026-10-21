@@ -128,7 +128,17 @@ public sealed record PrototypeAutomaticPipelineMechanicsStateV111(
     public void Validate(CombatState combat)
     {
         ArgumentNullException.ThrowIfNull(combat);
-        if (OpeningStage == PrototypeOpeningCombatStage.InitialEnemyIntents)
+        if (OpeningStage == PrototypeOpeningCombatStage.PlayerSideStart)
+        {
+            if (combat.Turn != 1 ||
+                combat.PendingChoice is not null ||
+                combat.PendingKnowledgeDemonChoice is not null ||
+                !IsAtOpeningBoundary(
+                    PrototypeOpeningCombatStage.PlayerSideStart))
+                throw new InvalidOperationException(
+                    "Invalid initial player-side opening stage.");
+        }
+        else if (OpeningStage == PrototypeOpeningCombatStage.InitialEnemyIntents)
         {
             if (combat.Turn != 1 || combat.IsPlayerTurn ||
                 combat.PendingChoice is not null ||
@@ -142,7 +152,7 @@ public sealed record PrototypeAutomaticPipelineMechanicsStateV111(
             (!Enum.IsDefined(opening)
                 || opening <= PrototypeOpeningCombatStage.PlayerSideStart
                 || combat.Turn != 1 || !combat.IsPlayerTurn
-                || combat.PendingChoice is null
+                || combat.PendingKnowledgeDemonChoice is not null
                 || !IsAtOpeningBoundary(opening)))
             throw new InvalidOperationException(
                 "Invalid suspended opening-combat stage.");

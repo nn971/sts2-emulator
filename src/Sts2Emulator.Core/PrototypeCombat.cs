@@ -1768,6 +1768,7 @@ public sealed partial class PrototypeGameEngine
               PendingKnowledgeDemonChoice: null,
               AutomaticPipelineContinuation: { } continuation } combat)
         {
+            continuation.Validate(combat);
             var stochastic = continuation.Stochastic;
             if (combat.SemanticDeck?.Pending is not null ||
                 stochastic.HandDrawProgress is not null ||

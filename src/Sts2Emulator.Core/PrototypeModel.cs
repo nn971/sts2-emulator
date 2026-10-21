@@ -700,6 +700,7 @@ public sealed record PrototypeAutomaticPipelineContinuationState(
     public void Validate(CombatState combat)
     {
         Mechanics.Validate(combat);
+        Stochastic.Validate(combat, this);
     }
 
     public PrototypeAutomaticPipelineContinuationState Fork() => this with
