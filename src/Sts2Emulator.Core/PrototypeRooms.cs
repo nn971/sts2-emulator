@@ -1495,12 +1495,15 @@ public sealed partial class PrototypeGameEngine
             decisions,
             decisionCandidateLabels);
         trace.Validate();
+        var nextHistory =
+            (result.ControlledEventChoiceHistory
+                ?? Array.Empty<ControlledEventChoiceTraceV111>())
+            .Append(trace).ToArray();
         return result with
         {
-            ControlledEventChoiceHistory =
-                (result.ControlledEventChoiceHistory
-                    ?? Array.Empty<ControlledEventChoiceTraceV111>())
-                .Append(trace).ToArray()
+            Stochastic =
+                RunStochasticStateV111.WithControlledEventChoiceHistory(
+                    result.Stochastic, nextHistory)
         };
     }
 
@@ -5407,7 +5410,12 @@ public sealed partial class PrototypeGameEngine
         completedTrace.Validate();
         var nextHistory = (ControlledEventChoiceTraceV111[])history.Clone();
         nextHistory[^1] = completedTrace;
-        return result with { ControlledEventChoiceHistory = nextHistory };
+        return result with
+        {
+            Stochastic =
+                RunStochasticStateV111.WithControlledEventChoiceHistory(
+                    result.Stochastic, nextHistory)
+        };
     }
 
     private static RunState EnterReward(RunState state)
@@ -5899,7 +5907,9 @@ public sealed partial class PrototypeGameEngine
                     continuation.Validate();
                     return state with
                     {
-                        ControlledEventRewardChoice = continuation
+                        Stochastic = RunStochasticStateV111
+                            .WithControlledEventRewardChoice(
+                                state.Stochastic, continuation)
                     };
                 }
                 player = AppendCard(player, nextId++, curseId, state.Rng);

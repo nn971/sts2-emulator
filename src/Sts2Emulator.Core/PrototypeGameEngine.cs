@@ -355,15 +355,18 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         next = NativeRunRngV111.ReconcileAfterStep(state, next);
         if (next.ControlledEventRewardChoice is { } rewardChoice)
         {
+            var partialState = next with
+            {
+                Stochastic =
+                    RunStochasticStateV111.WithControlledEventRewardChoice(
+                        next.Stochastic, null)
+            };
             next = next with
             {
-                ControlledEventRewardChoice = rewardChoice with
-                {
-                    PartialState = next with
-                    {
-                        ControlledEventRewardChoice = null
-                    }
-                }
+                Stochastic = RunStochasticStateV111
+                    .WithControlledEventRewardChoice(
+                        next.Stochastic,
+                        rewardChoice with { PartialState = partialState })
             };
         }
         if (next.ControlledRunActionChoice is { } runActionChoice)

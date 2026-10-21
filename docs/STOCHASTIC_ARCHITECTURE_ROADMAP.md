@@ -20,6 +20,8 @@
 
 **S3 controlled run-action publication increment (2026-10-22):** Start-run suspension, post-step continuation reconstruction, controlled run-action resolution, and completed run-action history now publish through `RunState.Stochastic` and the existing `RunStochasticStateV111` helpers. Partial-state replay semantics and flattened choice/history snapshot members remain unchanged. Static source review and `git diff --check` only; no tests or builds were run.
 
+**S3 controlled event-choice publication increment (2026-10-22):** Suspended event-reward frames and controlled event-choice histories now publish through the run stochastic owner in the event continuation and post-step reconstruction paths. Nested partial-state snapshots keep the same replay boundary and flattened snapshot members. Static source review and `git diff --check` only; no tests or builds were run.
+
 **S3 named RNG result publication increment (2026-10-22):** Native event-context commits, configured event offer audits, combat formation state, map audit snapshots, and the private energy-cost provider now read their resulting stream by its owner ID from `RngBundle`. Runtime bundle consumers no longer publish a stream by assuming it occupies slot zero; serialized stream arrays remain unchanged. Static source review and `git diff --check` only; no tests or builds were run.
 
 **S3 named speculative RNG copy-back increment (2026-10-22):** Potion model generation now copies speculative stream advances back into the original `RngBundle` by stream ID, not by parallel array position. The same streams advance with unchanged provider calls and cursor values. Static source review and `git diff --check` only; no tests or builds were run.
