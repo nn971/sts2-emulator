@@ -703,6 +703,21 @@ public sealed record PrototypeAutomaticPipelineContinuationState(
         Stochastic.Validate(combat, this);
     }
 
+    /// <summary>
+    /// Validate the composed cursor and provider payload, then report
+    /// whether all blocking provider outcomes have been committed so the
+    /// automatic mechanics runner may advance.
+    /// </summary>
+    public bool IsReadyForAutomaticPipelineResume(CombatState combat)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        Validate(combat);
+        return combat.SemanticDeck?.Pending is null &&
+            Stochastic.HandDrawProgress is null &&
+            Stochastic.ControlledEnemyAction is null &&
+            Stochastic.ControlledTurnIntents is null;
+    }
+
     public PrototypeAutomaticPipelineContinuationState Fork() => this with
     {
         Stochastic = Stochastic.Fork()
