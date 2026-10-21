@@ -520,7 +520,8 @@ public sealed partial class PrototypeGameEngine
                   PendingKnowledgeDemonChoice: null,
                   AutomaticPipelineContinuation:
                     { ControlledSemanticBeforeHandDrawPending: true } })
-            updated = ResumeSemanticBeforeHandDrawActionChoice(updated).Run;
+            updated = ResumeAutomaticPipelineContinuation(
+                updated, resumeSemanticBeforeHandDraw: true);
         else
             updated = ResumeAutomaticPipelineContinuation(updated);
         return updated;

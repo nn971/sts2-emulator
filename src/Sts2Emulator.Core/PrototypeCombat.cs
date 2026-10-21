@@ -1694,7 +1694,8 @@ public sealed partial class PrototypeGameEngine
     /// remaining stages, and reward timing stay consistent.
     /// </summary>
     internal static RunState ResumeAutomaticPipelineContinuation(
-        RunState state)
+        RunState state,
+        bool resumeSemanticBeforeHandDraw = false)
     {
         if (state.World?.Combat is
             { PendingChoice: null,
@@ -1707,6 +1708,21 @@ public sealed partial class PrototypeGameEngine
                     "Controlled BeforeHandDraw choice requires the RNG guard.");
             return ResumeAutomaticPipeline(
                 state, beforeDraw.AutomaticPipelineContinuation!.NextStepIndex);
+        }
+
+        if (resumeSemanticBeforeHandDraw)
+        {
+            if (state.World?.Combat is not
+                { PendingChoice: null,
+                  PendingKnowledgeDemonChoice: null,
+                  AutomaticPipelineContinuation:
+                    { ControlledSemanticBeforeHandDrawPending: true } })
+                throw new InvalidDataException(
+                    "Semantic BeforeHandDraw resume has no saved boundary.");
+            if (!ControlledChanceGuardV111.Active)
+                throw new InvalidOperationException(
+                    "Semantic BeforeHandDraw choice requires the RNG guard.");
+            return ResumeSemanticBeforeHandDrawActionChoice(state).Run;
         }
 
         if (state.World?.Combat is
