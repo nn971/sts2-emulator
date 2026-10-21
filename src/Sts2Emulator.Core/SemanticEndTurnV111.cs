@@ -1132,22 +1132,8 @@ public static class SemanticEndTurnEngineV111
             TargetTranscript = targetTranscript,
             BoundaryTranscript = boundaryTranscript
         };
-        if (PrototypeGameEngine
-                .IsAtCombatRewardOrTerminalBoundary(resumed))
-            return CompleteAtBoundary(
-                next, resumed,
-                discardSuspendedFrames: next.HandDraw is not
-                    { AtBoundary: true });
-
-        if (PrototypeGameEngine
-                .HasPendingControlledAutomaticPipelineChoice(resumed) &&
-            (next.HandDraw is null ||
-             resumed.World?.Combat?.PendingChoice?.ControlledTarget is not null))
-            return next with { Run = resumed };
-
-        if (PrototypeGameEngine
-                .HasPendingSupportedAutomaticPipelineSemanticChoice(resumed))
-            return next with { Run = resumed };
+        if (TryPublishResumedPipelineBoundary(next, resumed, out var published))
+            return published;
 
         if (source.Run.World?.Combat is
                 { PendingChoice: { } pending } sourceCombat &&
@@ -1187,6 +1173,40 @@ public static class SemanticEndTurnEngineV111
         throw new NotSupportedException(
             "UNSUPPORTED_CONTROLLED_CHANCE site=" + siteId +
             " operation=unexpected_pipeline_boundary");
+    }
+
+    private static bool TryPublishResumedPipelineBoundary(
+        SemanticEndTurnV111 source, RunState resumed,
+        out SemanticEndTurnV111 published)
+    {
+        if (PrototypeGameEngine
+                .IsAtCombatRewardOrTerminalBoundary(resumed))
+        {
+            published = CompleteAtBoundary(
+                source, resumed,
+                discardSuspendedFrames: source.HandDraw is not
+                    { AtBoundary: true });
+            return true;
+        }
+
+        if (PrototypeGameEngine
+                .HasPendingControlledAutomaticPipelineChoice(resumed) &&
+            (source.HandDraw is null ||
+             resumed.World?.Combat?.PendingChoice?.ControlledTarget is not null))
+        {
+            published = source with { Run = resumed };
+            return true;
+        }
+
+        if (PrototypeGameEngine
+                .HasPendingSupportedAutomaticPipelineSemanticChoice(resumed))
+        {
+            published = source with { Run = resumed };
+            return true;
+        }
+
+        published = source;
+        return false;
     }
 
     internal static SemanticEndTurnV111 ResumeNestedSemanticChoice(
@@ -1368,14 +1388,8 @@ public static class SemanticEndTurnEngineV111
         using (ControlledChanceGuardV111.Enter())
             result = PrototypeGameEngine.ResumeAutomaticPipelineContinuation(
                 draw.Run.Fork());
-        if (PrototypeGameEngine
-                .IsAtCombatRewardOrTerminalBoundary(result))
-            return CompleteAtBoundary(
-                state, result, discardSuspendedFrames: false);
-        if (result.World?.Combat?.PendingChoice?.ControlledTarget is not null ||
-            PrototypeGameEngine
-                .HasPendingSupportedAutomaticPipelineSemanticChoice(result))
-            return state with { Run = result };
+        if (TryPublishResumedPipelineBoundary(state, result, out var published))
+            return published;
         return CompleteHandDrawAtPlayerBoundary(state, result);
     }
 
