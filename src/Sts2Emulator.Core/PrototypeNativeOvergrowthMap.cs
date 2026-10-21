@@ -139,7 +139,8 @@ public static class PrototypeNativeOvergrowthMap
         var map = GenerateCore(
             new MapRandom(bundle, stream.StreamId, native: true),
             ascension, GenerationProfileId);
-        return (map, NativeRngV111.ToSnapshot(bundle.Streams[0]));
+        return (map, NativeRngV111.ToSnapshot(
+            bundle.GetStream(stream.StreamId)));
     }
 
     private static MapState GenerateCore(

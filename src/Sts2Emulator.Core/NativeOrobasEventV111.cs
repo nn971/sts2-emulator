@@ -170,7 +170,7 @@ public static class NativeOrobasEventV111
             World = fork.World! with
             {
                 Event = new EventState(EventId, OfferedChoiceIds: offers,
-                    NativeEventRng: rng.Streams[0],
+                    NativeEventRng: rng.GetStream(context.StreamId),
                     NativeEventRngProviderMode: providerMode == "native-v111"
                         ? null : providerMode),
                 EventHistory = world.EventIds.Append(EventId).ToArray()
@@ -244,7 +244,8 @@ public static class NativeOrobasEventV111
                 }).ToArray();
             if (!offers.SequenceEqual(expectedOffers, StringComparer.Ordinal)
                 || NativeRngV111.ToSnapshot(stream)
-                    != NativeRngV111.ToSnapshot(bundle.Streams[0]))
+                    != NativeRngV111.ToSnapshot(
+                        bundle.GetStream(initial.StreamId)))
                 throw new InvalidOperationException(
                     "Orobas offers or event RNG cursor do not match its native offer draws.");
         }

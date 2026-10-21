@@ -98,7 +98,7 @@ public static class NativeNeowEventV111
             .GenerateNeowOfferedChoiceIds(ChooseIndex, Shuffle);
         return new NativeNeowOfferAuditV111(
             offers,
-            bundle.Streams[0].Fork(),
+            bundle.GetStream(stream.StreamId).Fork(),
             decisions.ToArray(),
             provider.Mode);
     }

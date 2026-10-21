@@ -208,11 +208,12 @@ public static class NativeDarvEventV111
         var world = state.World!;
 
         var fork = state.Fork();
-        var bundle = new RngBundle([NativeRngV111Contexts.ForEvent(
-            fork.RunSeed, NativeRngEventId)]);
+        var stream = NativeRngV111Contexts.ForEvent(
+            fork.RunSeed, NativeRngEventId);
+        var bundle = new RngBundle([stream]);
         // Source sets do not exclude relics already owned by the player.
         // Sozu is only eligible in Hive; its source set is filtered in Glory.
-        var streamId = bundle.Streams[0].StreamId;
+        var streamId = stream.StreamId;
         var ownerId = $"event:DARV:act:{world.Act}:floor:0";
         var decisions = new List<RandomIndexDecisionV111>();
         var variant = StochasticProviderScopeV111.ResolveIndex(
@@ -238,7 +239,7 @@ public static class NativeDarvEventV111
             {
                 Event = new EventState(EventId,
                     OfferedChoiceIds: offers,
-                    NativeEventRng: bundle.Streams[0],
+                    NativeEventRng: bundle.GetStream(streamId),
                     NativeEventRngProviderMode: providerMode == "native-v111"
                         ? null : providerMode),
                 EventHistory = world.EventIds.Append(EventId).ToArray()
@@ -327,7 +328,8 @@ public static class NativeDarvEventV111
                 .ToArray();
             if (!offers.SequenceEqual(expectedOffers, StringComparer.Ordinal)
                 || NativeRngV111.ToSnapshot(stream)
-                    != NativeRngV111.ToSnapshot(bundle.Streams[0]))
+                    != NativeRngV111.ToSnapshot(
+                        bundle.GetStream(initial.StreamId)))
                 throw new InvalidOperationException(
                     "Darv offers or event RNG cursor do not match its native offer draws.");
         }

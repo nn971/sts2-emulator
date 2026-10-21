@@ -172,7 +172,7 @@ public static class NativeTanxEventV111
             {
                 Event = new EventState(EventId,
                     OfferedChoiceIds: offers,
-                    NativeEventRng: bundle.Streams[0],
+                    NativeEventRng: bundle.GetStream(stream.StreamId),
                     NativeTanxTriEligible: includeTriBoomerang,
                     NativeEventRngProviderMode: providerMode == "native-v111"
                         ? null : providerMode),
@@ -238,7 +238,8 @@ public static class NativeTanxEventV111
             throw new InvalidOperationException(
                 "Tanx offers do not match its native event shuffle.");
         if (NativeRngV111.ToSnapshot(stream)
-            != NativeRngV111.ToSnapshot(bundle.Streams[0]))
+            != NativeRngV111.ToSnapshot(
+                bundle.GetStream(initial.StreamId)))
             throw new InvalidOperationException("Tanx event RNG cursor does not match its completed offer shuffle.");
     }
 }

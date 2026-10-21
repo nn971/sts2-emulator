@@ -157,7 +157,7 @@ public static class NativeNonupeipeEventV111
                 Event = new EventState(EventId,
                     OfferedChoiceIds: candidates.Take(3)
                         .Select(ChoiceId).ToArray(),
-                    NativeEventRng: bundle.Streams[0],
+                    NativeEventRng: bundle.GetStream(stream.StreamId),
                     NativeNonupeipeBraceletEligible: includeBracelet,
                     NativeEventRngProviderMode: providerMode == "native-v111"
                         ? null : providerMode),
@@ -220,7 +220,8 @@ public static class NativeNonupeipeEventV111
             throw new InvalidOperationException(
                 "Nonupeipe offers do not match its native shuffle.");
         if (NativeRngV111.ToSnapshot(saved)
-            != NativeRngV111.ToSnapshot(bundle.Streams[0]))
+            != NativeRngV111.ToSnapshot(
+                bundle.GetStream(initial.StreamId)))
             throw new InvalidOperationException(
                 "Nonupeipe event RNG cursor does not match the completed offer shuffle.");
     }

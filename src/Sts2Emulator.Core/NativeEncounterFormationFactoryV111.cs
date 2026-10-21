@@ -209,7 +209,8 @@ public static class NativeEncounterFormationFactoryV111
 
         var result = new NativeEncounterFormationV111(
             nativeEncounterEntry, totalFloor,
-            formation, ownedBundle.Streams[0].Fork(), monsters,
+            formation, ownedBundle.GetStream(ownedStream.StreamId).Fork(),
+            monsters,
             openingOffset, seed, currentActIndex, mapColumn, mapRow);
         return new NativeEncounterFormationAuditV111(
             result, choices.ToArray(), provider.Mode);

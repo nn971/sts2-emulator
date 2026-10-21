@@ -170,10 +170,17 @@ public static class SemanticOtherChanceEngineV111
                 "Engine-owned cost provider has no stream collection.");
         if (state.Streams.Streams.Length == 1)
         {
-            var costStream = state.Streams.Streams[0];
-            if (costStream is null || costStream.StreamId != CostStreamId)
+            RngStreamState costStream;
+            try
+            {
+                costStream = state.Streams.GetStream(CostStreamId);
+            }
+            catch (InvalidOperationException exception)
+            {
                 throw new InvalidDataException(
-                    "Engine-owned cost provider must own only its named cost stream.");
+                    "Engine-owned cost provider must own only its named cost stream.",
+                    exception);
+            }
             _ = NativeRngV111.ToSnapshot(costStream);
         }
         else

@@ -637,7 +637,7 @@ public static class NativeCombatRngEntryV111
         var contexts = formation.MonsterContexts;
         contexts[index] = owned with
         {
-            Rng = bundle.Streams[0]
+            Rng = bundle.GetStream(owned.Rng.StreamId)
         };
         native = native with
         {

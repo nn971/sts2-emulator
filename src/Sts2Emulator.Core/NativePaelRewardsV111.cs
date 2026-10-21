@@ -336,7 +336,7 @@ public static class NativePaelRewardsV111
             World = fork.World! with
             {
                 Event = new EventState(PaelId, OfferedChoiceIds: offers,
-                    NativeEventRng: bundle.Streams[0],
+                    NativeEventRng: bundle.GetStream(stream.StreamId),
                     NativeEventRngProviderMode: providerMode == "native-v111"
                         ? null : providerMode),
                 EventHistory = world.EventIds.Append(PaelId).ToArray()
@@ -392,7 +392,8 @@ public static class NativePaelRewardsV111
         }).ToArray();
         if (!offers.SequenceEqual(expectedOffers, StringComparer.Ordinal))
             throw new InvalidOperationException("Pael offers do not match its source pools and event RNG draws.");
-        if (NativeRngV111.ToSnapshot(stream) != NativeRngV111.ToSnapshot(expected.Streams[0]))
+        if (NativeRngV111.ToSnapshot(stream) != NativeRngV111.ToSnapshot(
+                expected.GetStream(initial.StreamId)))
             throw new InvalidOperationException("Pael event RNG does not match its seed and completed offer draws.");
     }
 

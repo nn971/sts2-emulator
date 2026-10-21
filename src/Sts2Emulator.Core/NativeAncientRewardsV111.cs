@@ -272,7 +272,8 @@ public static class NativeAncientRewardsV111
         }).ToArray();
         if (!offers.SequenceEqual(expectedOffers, StringComparer.Ordinal))
             throw new InvalidOperationException("Tezcatara offers do not match its source pools and event RNG draws.");
-        if (NativeRngV111.ToSnapshot(stream) != NativeRngV111.ToSnapshot(expected.Streams[0]))
+        if (NativeRngV111.ToSnapshot(stream) != NativeRngV111.ToSnapshot(
+                expected.GetStream(initial.StreamId)))
             throw new InvalidOperationException("Tezcatara event RNG does not match its seed and completed offer draws.");
     }
 
@@ -324,7 +325,7 @@ public static class NativeAncientRewardsV111
             World = fork.World! with
             {
                 Event = new EventState(TezcataraId, OfferedChoiceIds: offers,
-                    NativeEventRng: bundle.Streams[0],
+                    NativeEventRng: bundle.GetStream(stream.StreamId),
                     NativeEventRngProviderMode: providerMode == "native-v111"
                         ? null : providerMode),
                 EventHistory = world.EventIds.Append(TezcataraId).ToArray()

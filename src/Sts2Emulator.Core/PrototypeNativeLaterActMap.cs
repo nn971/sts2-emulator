@@ -183,7 +183,8 @@ public static class PrototypeNativeLaterActMap
             new MapRandom(bundle, stream.StreamId, native: true,
                 ownerId: $"map:act:{act}"),
             act, ascension);
-        return (map, NativeRngV111.ToSnapshot(bundle.Streams[0]));
+        return (map, NativeRngV111.ToSnapshot(
+            bundle.GetStream(stream.StreamId)));
     }
 
     private static MapState GenerateCore(

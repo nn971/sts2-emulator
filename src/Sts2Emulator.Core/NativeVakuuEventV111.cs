@@ -164,7 +164,7 @@ public static class NativeVakuuEventV111
                 Event = new EventState(
                     EventId,
                     OfferedChoiceIds: offers,
-                    NativeEventRng: bundle.Streams[0],
+                    NativeEventRng: bundle.GetStream(stream.StreamId),
                     NativeEventRngProviderMode: providerMode == "native-v111"
                         ? null : providerMode),
                 EventHistory = world.EventIds.Append(EventId).ToArray()
@@ -238,7 +238,8 @@ public static class NativeVakuuEventV111
             throw new InvalidOperationException(
                 "Vakuu must retain one offer from each native relic pool.");
         if (NativeRngV111.ToSnapshot(stream)
-            != NativeRngV111.ToSnapshot(bundle.Streams[0]))
+            != NativeRngV111.ToSnapshot(
+                bundle.GetStream(initial.StreamId)))
             throw new InvalidOperationException(
                 "Vakuu event RNG cursor does not match its three pool shuffles.");
     }

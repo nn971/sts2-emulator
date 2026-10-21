@@ -322,7 +322,8 @@ public static class NativeGloryAncientsV111
                 FurCoatShuffleSiteId,
                 controlledCandidateLabel: node => node.NodeId);
             if (!controlledEventReplay)
-                snapshot = NativeRngV111.ToSnapshot(bundle.Streams[0]);
+                snapshot = NativeRngV111.ToSnapshot(
+                    bundle.GetStream(stream.StreamId));
         }
         else
         {

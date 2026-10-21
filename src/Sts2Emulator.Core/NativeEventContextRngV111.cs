@@ -74,7 +74,7 @@ public static class NativeEventContextRngV111
             {
                 Event = eventState with
                 {
-                    NativeEventRng = bundle.Streams[0],
+                    NativeEventRng = bundle.GetStream(nativeStream.StreamId),
                     NativeEventRngProviderMode =
                         ProviderModeAfterResolution(
                             eventState, decision.ProviderMode)
@@ -138,7 +138,7 @@ public static class NativeEventContextRngV111
             {
                 Event = eventState with
                 {
-                    NativeEventRng = bundle.Streams[0],
+                    NativeEventRng = bundle.GetStream(nativeStream.StreamId),
                     NativeEventRngProviderMode =
                         ProviderModeAfterResolution(
                             eventState, decision.ProviderMode)
@@ -194,7 +194,7 @@ public static class NativeEventContextRngV111
             {
                 Event = eventState with
                 {
-                    NativeEventRng = bundle.Streams[0],
+                    NativeEventRng = bundle.GetStream(nativeStream.StreamId),
                     NativeEventRngProviderMode =
                         ProviderModeAfterResolution(
                             eventState, decision.ProviderMode)
@@ -248,7 +248,7 @@ public static class NativeEventContextRngV111
         var world = state.World
             ?? throw new InvalidOperationException(
                 "A native event RNG requires an active run world.");
-        var shuffledStream = bundle.Streams[0];
+        var shuffledStream = bundle.GetStream(nativeStream.StreamId);
         return state with
         {
             World = world with
