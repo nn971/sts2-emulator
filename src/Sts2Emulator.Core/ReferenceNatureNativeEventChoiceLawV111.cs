@@ -20,9 +20,9 @@ internal static class NativeEventInfestedAutomatonCardPickPlanBuilderV111
     {
         ArgumentNullException.ThrowIfNull(origin);
         ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
-        if (ordinal != 0 || origin.NativeRunRng is null ||
-            origin.Phase != RunPhase.Event ||
-            origin.World is not { Act: 2, Event: { } evt } ||
+        var world = origin.World;
+        if (ordinal != 0 || origin.Phase != RunPhase.Event ||
+            world is not { Act: 2, Event: { } evt } ||
             evt.EventId != PrototypeNativeHiveEvents.InfestedAutomatonId ||
             evt.NativePageIndex != 0 || evt.ChosenChoiceId is not null ||
             evt.ControlledChoice is not null ||
@@ -31,7 +31,15 @@ internal static class NativeEventInfestedAutomatonCardPickPlanBuilderV111
             origin.ControlledEventRewardChoice is not null ||
             actionId is not ("study" or "touch_core"))
             throw new InvalidOperationException(
-                "Infested Automaton card-pick laws require a pending study or touch_core choice at ordinal 0.");
+                "Infested Automaton card-pick laws require a supported pending study or touch_core choice at ordinal 0.");
+
+        var nativeRoute = origin.NativeRunRng is not null;
+        var legacyFallbackRoute = origin.NativeRunRng is null &&
+            PrototypeGameEngine.UsesNativeRegionalSystems(world) &&
+            evt.NativeEventRng is null;
+        if (!nativeRoute && !legacyFallbackRoute)
+            throw new InvalidOperationException(
+                "Infested Automaton requires a configured Native or Native-regional legacy event RNG route.");
         if (siteId != PrototypeNativeHiveEvents
                 .InfestedAutomatonCardOfferSiteId)
             throw new InvalidOperationException(
@@ -59,21 +67,42 @@ internal static class NativeEventInfestedAutomatonCardPickPlanBuilderV111
                 "Infested Automaton has an incorrect Native event stream identity.");
         var ownerId = $"event:{evt.EventId}:choice:{actionId}:pool:" +
             CanonicalJson.Sha256(candidates);
+        var streamId = nativeRoute
+            ? expectedStreamId
+            : "event";
+        var requestOrdinal = nativeRoute
+            ? ordinal
+            : GetLegacyEventOrdinal(origin);
         var request = new RandomIndexRequestV111(
             PrototypeNativeHiveEvents.InfestedAutomatonCardOfferSiteId,
-            expectedStreamId, ownerId, ordinal,
+            streamId, ownerId, requestOrdinal,
             Enumerable.Range(0, candidates.Length).ToArray());
         var conditioningFingerprint = CanonicalJson.Sha256(new
         {
             boundary = "hive.infested_automaton.card_offer",
             eventId = evt.EventId,
             actionId,
+            providerRoute = nativeRoute ? "native" : "legacy-fallback",
             candidateCardIds = candidates,
             request,
             policy = ChanceLawEngineV111
                 .NativeEventCardPickConditioningPolicyId
         });
         return new(candidates, request, conditioningFingerprint, actionId);
+    }
+
+    private static int GetLegacyEventOrdinal(RunState origin)
+    {
+        var streams = origin.Rng.Streams.Where(stream =>
+            stream.StreamId == "event").ToArray();
+        if (streams.Length != 1)
+            throw new InvalidDataException(
+                "Infested Automaton fallback requires one legacy event stream.");
+        var ordinal = streams[0].CallCount ?? 0;
+        if (ordinal > int.MaxValue)
+            throw new NotSupportedException(
+                "Infested Automaton legacy event ordinal exceeds the typed request range.");
+        return (int)ordinal;
     }
 }
 
@@ -981,8 +1010,13 @@ public static partial class ChanceLawEngineV111
             var infestedPlan =
                 NativeEventInfestedAutomatonCardPickPlanBuilderV111.Build(
                     origin, siteId, ordinal, actionId);
-            var infestedWeights = NativeNextIntGridWeights(
-                infestedPlan.Request.SupportCount);
+            var nativeIndexLaw = NativeRngV111.IsCanonicalStreamId(
+                infestedPlan.Request.StreamId);
+            var infestedWeights = nativeIndexLaw
+                ? NativeNextIntGridWeights(
+                    infestedPlan.Request.SupportCount)
+                : Enumerable.Repeat(1L,
+                    infestedPlan.Request.SupportCount).ToArray();
             var infestedOutcomes = infestedPlan.CandidateCardIds.Select(
                 (cardId, index) => new ChanceLawOutcomeV111(
                     "card:" + cardId, infestedWeights[index])).ToArray();
@@ -997,9 +1031,13 @@ public static partial class ChanceLawEngineV111
                 infestedPlan.Request.Ordinal,
                 NativeEventCardPickConditioningPolicyId,
                 infestedPlan.ConditioningFingerprint,
-                NativeBoundedIndexSourceVerifiedProvenance,
+                nativeIndexLaw
+                    ? NativeBoundedIndexSourceVerifiedProvenance
+                    : "uniform-saved-index-support-unverified",
                 infestedOutcomes,
-                ChanceLawV111.SourceVerifiedStatus);
+                nativeIndexLaw
+                    ? ChanceLawV111.SourceVerifiedStatus
+                    : ChanceLawV111.UnverifiedStatus);
         }
         var plan = NativeEventReflectionsChoicePlanBuilderV111.BuildNext(
             origin, siteId, ordinal, priorIndices, actionId);

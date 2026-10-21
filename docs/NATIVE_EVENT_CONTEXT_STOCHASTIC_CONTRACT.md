@@ -155,9 +155,10 @@ effect once.
 
 ## Provenance and unsupported handling
 
-The Reflections downgrade and upgrade, Infested Automaton card-pick, Endless
-Conveyor card-index, and pinned Native generated-gold index laws mark their
-bounded-index transform `SOURCE_VERIFIED` on the declared support. Lost Wisp
+The Reflections downgrade and upgrade, configured Native Infested Automaton
+card-pick, Endless Conveyor card-index, and pinned Native generated-gold
+index laws mark their bounded-index transform `SOURCE_VERIFIED` on the
+declared support. Lost Wisp
 and Jungle Maze Adventure gold laws mark their unit-float-to-integer mappings
 `SOURCE_VERIFIED` on the three declared formulas. The Trial's three-case
 bounded-index transform is `SOURCE_VERIFIED`; its Chance Law query does not
@@ -169,8 +170,16 @@ indices are source-verified for each declared rarity-derived support. Infested
 Automaton's pool remains restricted to supported cards, and Endless
 Conveyor's Colorless pool remains restricted to implemented solo-safe models.
 A source-ordered Trash Heap card or relic pool has exact bounded-index
-preimages; those queries do not read the event cursor, while the atomic
-session checks that replay begins at the untouched event-entry cursor.
+preimages. Configured Native queries do not read the Native event cursor;
+Native-regional fallback queries read the legacy `event` call count only to
+derive the typed request ordinal. The atomic session validates its replay
+origin before applying the choice.
+Native-regional Infested Automaton sessions also accept the legacy event
+stream fallback when `NativeRunRng` is absent. Its law assigns equal weights
+to the saved candidate support and remains `UNVERIFIED`; replay leaves the
+Nature-selected legacy request unadvanced. The JSONL card-pick query still
+uses semantic choice-draw ordinal 0; the returned law carries the saved
+legacy request ordinal.
 Tablet of Truth also counts exact bounded-index preimages for each ordered
 eligible physical-card support without using the run seed or saved cursor in
 the law; its page-by-page scripted session preserves the cursor captured at

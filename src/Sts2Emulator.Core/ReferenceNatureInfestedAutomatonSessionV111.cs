@@ -148,6 +148,25 @@ public sealed record ReferenceNatureInfestedAutomatonSessionV111(
             .FromOrderedIndexSelection(law, request, selection,
                 plan.CandidateCardIds.Select(cardId => "card:" + cardId)
                     .ToArray());
+        if (origin.NativeRunRng is null)
+        {
+            var replay = ControlledChanceContinuationExecutorV111
+                .CaptureStochastic(
+                    origin,
+                    ControlledStochasticContinuationStateV111
+                        .CurrentSchemaId,
+                    [selected],
+                    run => new PrototypeGameEngine().Step(
+                        run, GameAction.Create("event_choice",
+                            new EventChoicePayload(choiceId))).State,
+                    candidate =>
+                        ControlledStochasticChanceReplayV111.SameRequest(
+                            candidate, request));
+            if (replay.Suspended || replay.Run is not { } fallbackRun)
+                throw new InvalidDataException(
+                    "Infested Automaton fallback replay did not consume its selected request.");
+            return fallbackRun;
+        }
         return ReferenceNatureNativeEventIndexReplayV111
             .ReplayControlledIndex(
                 origin, plan.Request, selected,
