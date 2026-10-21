@@ -518,27 +518,11 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                         index.ToString(CultureInfo.InvariantCulture)).ToArray();
                 }
                 else if (state.Configuration is null
-                    && ControlledEventChoiceReplayV111.IsRunActionSite(
-                    PendingRequest.SiteId)
-                    && PendingRequest.SiteId.StartsWith(
-                        "map.legacy.", StringComparison.Ordinal))
+                    && IsLegacyMapRequest(PendingRequest))
                 {
-                    expectedSite = PendingRequest.SiteId;
-                    var mapStream = "map";
-                    var mapOwner = PendingRequest.OwnerId;
-                    expectedLabels = PendingRequest.SupportCount >
-                        ControlledRunActionEngineV111.MaximumInlineOutcomeActions
-                        ? []
-                        : Enumerable.Range(
-                            0, PendingRequest.SupportCount).Select(index =>
-                                index.ToString(CultureInfo.InvariantCulture)).ToArray();
-                    var mapCandidates = PendingRequest.OperationKind
-                        == "bounded_integer"
-                        ? []
-                        : (int[])PendingRequest.OrderedCandidates.Clone();
-                    expectedStream = mapStream;
-                    expectedOwner = mapOwner;
-                    expectedCandidates = mapCandidates;
+                    (expectedSite, expectedStream, expectedOwner,
+                        expectedCandidates, expectedLabels) =
+                        ResolveLegacyMapRequest(PendingRequest);
                 }
                 else
                 {
@@ -555,26 +539,12 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                     || state.World is not { } world
                     || world.Act >= PrototypeContent.Rules.Acts
                     || !new PrototypeGameEngine().GetLegalActions(state)
-                        .Any(action => action.Kind == "continue_act")
-                    || !ControlledEventChoiceReplayV111.IsRunActionSite(
-                        PendingRequest.SiteId)
-                    || !PendingRequest.SiteId.StartsWith(
-                        "map.legacy.", StringComparison.Ordinal))
+                        .Any(action => action.Kind == "continue_act"))
                     throw new InvalidDataException(
                         "Controlled act-transition frame is outside the legacy prototype map boundary.");
-                expectedSite = PendingRequest.SiteId;
-                expectedStream = "map";
-                expectedOwner = PendingRequest.OwnerId;
-                expectedCandidates = PendingRequest.OperationKind ==
-                    "bounded_integer"
-                    ? []
-                    : (int[])PendingRequest.OrderedCandidates.Clone();
-                expectedLabels = PendingRequest.SupportCount >
-                    ControlledRunActionEngineV111.MaximumInlineOutcomeActions
-                    ? []
-                    : Enumerable.Range(0, PendingRequest.SupportCount)
-                        .Select(index => index.ToString(
-                            CultureInfo.InvariantCulture)).ToArray();
+                (expectedSite, expectedStream, expectedOwner,
+                    expectedCandidates, expectedLabels) =
+                    ResolveLegacyMapRequest(PendingRequest);
                 break;
             }
             case PrototypeNativeRestSiteActionsV111.Dig:
@@ -1058,6 +1028,28 @@ public sealed record PrototypeControlledRunActionContinuationV111(
             PrototypeNativeRelicGrabBag.TreasureModelOwnerId(
                 world, rarity, candidates),
             Enumerable.Range(0, candidates.Length).ToArray(), candidates);
+    }
+
+    private static bool IsLegacyMapRequest(RandomIndexRequestV111 request) =>
+        ControlledEventChoiceReplayV111.IsRunActionSite(request.SiteId)
+        && request.SiteId.StartsWith("map.legacy.", StringComparison.Ordinal);
+
+    private static (string SiteId, string StreamId, string OwnerId,
+        int[] OrderedCandidates, string[] CandidateLabels)
+        ResolveLegacyMapRequest(RandomIndexRequestV111 request)
+    {
+        if (!IsLegacyMapRequest(request) || request.StreamId != "map")
+            throw new InvalidDataException(
+                "Controlled legacy map request is outside its registered map stream.");
+        var labels = request.SupportCount >
+            ControlledRunActionEngineV111.MaximumInlineOutcomeActions
+            ? []
+            : Enumerable.Range(0, request.SupportCount).Select(index =>
+                index.ToString(CultureInfo.InvariantCulture)).ToArray();
+        var candidates = request.OperationKind == "bounded_integer"
+            ? []
+            : (int[])request.OrderedCandidates.Clone();
+        return (request.SiteId, "map", request.OwnerId, candidates, labels);
     }
 }
 
