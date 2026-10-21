@@ -2910,6 +2910,10 @@ internal static class PrototypeAiJsonlServer
                                 "<side>_semantic_native_policy_handle",
                                 "<side>_reference_nature_run_action_handle (legacy continue_act)",
                                 "<side>_reference_nature_event_choice_handle",
+                                "<side>_reference_nature_merchant_handle",
+                                "<side>_reference_nature_treasure_handle",
+                                "<side>_reference_nature_combat_reward_handle",
+                                "<side>_reference_nature_native_shovel_handle",
                                 "<side>_origin_snapshot, <side>_actions, <side>_boundaries, and <side>_result_snapshot"
                             },
                             simulationProviderReplayComparisonScope =
@@ -9712,6 +9716,14 @@ internal static class PrototypeAiJsonlServer
                                 side + "_reference_nature_run_action_handle";
                             var referenceNatureEventChoiceHandleName =
                                 side + "_reference_nature_event_choice_handle";
+                            var referenceNatureMerchantHandleName =
+                                side + "_reference_nature_merchant_handle";
+                            var referenceNatureTreasureHandleName =
+                                side + "_reference_nature_treasure_handle";
+                            var referenceNatureCombatRewardHandleName =
+                                side + "_reference_nature_combat_reward_handle";
+                            var referenceNatureNativeShovelHandleName =
+                                side + "_reference_nature_native_shovel_handle";
                             var originName = side + "_origin_snapshot";
                             var actionsName = side + "_actions";
                             var boundariesName = side + "_boundaries";
@@ -9735,38 +9747,73 @@ internal static class PrototypeAiJsonlServer
                                 request.TryGetProperty(
                                     referenceNatureEventChoiceHandleName,
                                     out var referenceNatureEventChoiceHandleElement);
+                            bool hasReferenceNatureMerchantHandle =
+                                request.TryGetProperty(
+                                    referenceNatureMerchantHandleName,
+                                    out var referenceNatureMerchantHandleElement);
+                            bool hasReferenceNatureTreasureHandle =
+                                request.TryGetProperty(
+                                    referenceNatureTreasureHandleName,
+                                    out var referenceNatureTreasureHandleElement);
+                            bool hasReferenceNatureCombatRewardHandle =
+                                request.TryGetProperty(
+                                    referenceNatureCombatRewardHandleName,
+                                    out var referenceNatureCombatRewardHandleElement);
+                            bool hasReferenceNatureNativeShovelHandle =
+                                request.TryGetProperty(
+                                    referenceNatureNativeShovelHandleName,
+                                    out var referenceNatureNativeShovelHandleElement);
                             if (hasScriptedRunHandle ||
                                 hasScriptedActionHandle ||
                                 hasSemanticNativeHandle ||
                                 hasReferenceNatureRunActionHandle ||
-                                hasReferenceNatureEventChoiceHandle)
+                                hasReferenceNatureEventChoiceHandle ||
+                                hasReferenceNatureMerchantHandle ||
+                                hasReferenceNatureTreasureHandle ||
+                                hasReferenceNatureCombatRewardHandle ||
+                                hasReferenceNatureNativeShovelHandle)
                             {
                                 if ((hasScriptedRunHandle ? 1 : 0) +
                                     (hasScriptedActionHandle ? 1 : 0) +
                                     (hasSemanticNativeHandle ? 1 : 0) +
                                     (hasReferenceNatureRunActionHandle ? 1 : 0) +
-                                    (hasReferenceNatureEventChoiceHandle ? 1 : 0) > 1)
+                                    (hasReferenceNatureEventChoiceHandle ? 1 : 0) +
+                                    (hasReferenceNatureMerchantHandle ? 1 : 0) +
+                                    (hasReferenceNatureTreasureHandle ? 1 : 0) +
+                                    (hasReferenceNatureCombatRewardHandle ? 1 : 0) +
+                                    (hasReferenceNatureNativeShovelHandle ? 1 : 0) > 1)
                                     throw new ArgumentException(
                                         "Provide only one replay handle for " +
                                         side + ".");
-                                var handleElement = hasScriptedRunHandle
-                                    ? scriptedHandleElement
-                                    : hasScriptedActionHandle
-                                        ? scriptedActionHandleElement
-                                        : hasSemanticNativeHandle
-                                            ? semanticNativeHandleElement
-                                            : hasReferenceNatureRunActionHandle
-                                                ? referenceNatureRunActionHandleElement
-                                                : referenceNatureEventChoiceHandleElement;
-                                var handleName = hasScriptedRunHandle
-                                    ? scriptedHandleName
-                                    : hasScriptedActionHandle
-                                        ? scriptedActionHandleName
-                                        : hasSemanticNativeHandle
-                                            ? semanticNativeHandleName
-                                            : hasReferenceNatureRunActionHandle
-                                                ? referenceNatureRunActionHandleName
-                                                : referenceNatureEventChoiceHandleName;
+                                JsonElement handleElement;
+                                string handleName;
+                                if (hasScriptedRunHandle)
+                                    (handleElement, handleName) =
+                                        (scriptedHandleElement, scriptedHandleName);
+                                else if (hasScriptedActionHandle)
+                                    (handleElement, handleName) =
+                                        (scriptedActionHandleElement, scriptedActionHandleName);
+                                else if (hasSemanticNativeHandle)
+                                    (handleElement, handleName) =
+                                        (semanticNativeHandleElement, semanticNativeHandleName);
+                                else if (hasReferenceNatureRunActionHandle)
+                                    (handleElement, handleName) =
+                                        (referenceNatureRunActionHandleElement, referenceNatureRunActionHandleName);
+                                else if (hasReferenceNatureEventChoiceHandle)
+                                    (handleElement, handleName) =
+                                        (referenceNatureEventChoiceHandleElement, referenceNatureEventChoiceHandleName);
+                                else if (hasReferenceNatureMerchantHandle)
+                                    (handleElement, handleName) =
+                                        (referenceNatureMerchantHandleElement, referenceNatureMerchantHandleName);
+                                else if (hasReferenceNatureTreasureHandle)
+                                    (handleElement, handleName) =
+                                        (referenceNatureTreasureHandleElement, referenceNatureTreasureHandleName);
+                                else if (hasReferenceNatureCombatRewardHandle)
+                                    (handleElement, handleName) =
+                                        (referenceNatureCombatRewardHandleElement, referenceNatureCombatRewardHandleName);
+                                else
+                                    (handleElement, handleName) =
+                                        (referenceNatureNativeShovelHandleElement, referenceNatureNativeShovelHandleName);
                                 if (handleElement.ValueKind !=
                                         JsonValueKind.String ||
                                     string.IsNullOrWhiteSpace(
@@ -9819,6 +9866,42 @@ internal static class PrototypeAiJsonlServer
                                                 referenceNatureEventChoice)
                                         : throw new InvalidOperationException(
                                             "Unknown ReferenceNature event-choice handle: " +
+                                            handle);
+                                if (hasReferenceNatureMerchantHandle)
+                                    return referenceNatureMerchantStates
+                                        .TryGetValue(handle, out var merchant)
+                                        ? SimulationProviderReplayCaptureV111
+                                            .FromReferenceNatureControlledActionSession(
+                                                merchant)
+                                        : throw new InvalidOperationException(
+                                            "Unknown ReferenceNature merchant handle: " +
+                                            handle);
+                                if (hasReferenceNatureTreasureHandle)
+                                    return referenceNatureTreasureStates
+                                        .TryGetValue(handle, out var treasure)
+                                        ? SimulationProviderReplayCaptureV111
+                                            .FromReferenceNatureControlledActionSession(
+                                                treasure)
+                                        : throw new InvalidOperationException(
+                                            "Unknown ReferenceNature treasure handle: " +
+                                            handle);
+                                if (hasReferenceNatureCombatRewardHandle)
+                                    return referenceNatureCombatRewardStates
+                                        .TryGetValue(handle, out var combatReward)
+                                        ? SimulationProviderReplayCaptureV111
+                                            .FromReferenceNatureControlledActionSession(
+                                                combatReward)
+                                        : throw new InvalidOperationException(
+                                            "Unknown ReferenceNature combat-reward handle: " +
+                                            handle);
+                                if (hasReferenceNatureNativeShovelHandle)
+                                    return referenceNatureNativeShovelStates
+                                        .TryGetValue(handle, out var nativeShovel)
+                                        ? SimulationProviderReplayCaptureV111
+                                            .FromReferenceNatureControlledActionSession(
+                                                nativeShovel)
+                                        : throw new InvalidOperationException(
+                                            "Unknown ReferenceNature Native Shovel handle: " +
                                             handle);
                                 return semanticStates.TryGetValue(handle,
                                         out var semanticNative)

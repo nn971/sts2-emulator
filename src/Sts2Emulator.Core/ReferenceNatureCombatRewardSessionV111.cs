@@ -80,6 +80,7 @@ public sealed record ReferenceNatureCombatRewardSessionV111(
     ReferenceNatureCombatRewardLawDecisionV111[] DecisionTranscript,
     ControlledStochasticRequestV111? PendingRequest,
     string[]? PendingCandidateLabels)
+    : IReferenceNatureControlledActionSessionV111
 {
     [JsonIgnore]
     public SimulationStateV111<ReferenceNatureRunActionMechanicsStateV111,

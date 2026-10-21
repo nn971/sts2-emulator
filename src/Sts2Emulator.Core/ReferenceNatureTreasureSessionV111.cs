@@ -79,6 +79,7 @@ public sealed record ReferenceNatureTreasureSessionV111(
     ReferenceNatureTreasureLawDecisionV111[] DecisionTranscript,
     ControlledStochasticRequestV111? PendingRequest,
     string[]? PendingCandidateLabels)
+    : IReferenceNatureControlledActionSessionV111
 {
     [JsonIgnore]
     public SimulationStateV111<ReferenceNatureRunActionMechanicsStateV111,

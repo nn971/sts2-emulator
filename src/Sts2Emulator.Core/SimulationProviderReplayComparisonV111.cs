@@ -128,12 +128,29 @@ public static class SimulationProviderReplayCaptureProvenanceV111
         "reference-nature-run-action-replay-validated-v1";
     public const string ReferenceNatureEventChoiceReplayValidated =
         "reference-nature-event-choice-replay-validated-v1";
+    public const string ReferenceNatureControlledActionReplayValidated =
+        "reference-nature-controlled-action-replay-validated-v1";
 
     public static bool IsKnown(string? provenance) => provenance is
         CallerSupplied or ScriptedRunReplayValidated or
         ScriptedActionReplayValidated or SemanticNativePolicyReplayValidated or
         ReferenceNatureRunActionReplayValidated or
-        ReferenceNatureEventChoiceReplayValidated;
+        ReferenceNatureEventChoiceReplayValidated or
+        ReferenceNatureControlledActionReplayValidated;
+}
+
+/// <summary>
+/// Common replay-validated shape for ReferenceNature sessions that suspend
+/// one ordinary run action on a typed controlled-stochastic prefix.
+/// </summary>
+public interface IReferenceNatureControlledActionSessionV111
+{
+    RunState Origin { get; }
+    GameAction Action { get; }
+    RunState Run { get; }
+    bool Complete { get; }
+    ControlledStochasticDecisionV111[] ProviderDecisions { get; }
+    void Validate();
 }
 
 /// <summary>
@@ -359,6 +376,27 @@ public sealed record SimulationProviderReplayCaptureV111(
             replay.Origin, actions, decisions, replay.Run,
             SimulationProviderReplayCaptureProvenanceV111
                 .ReferenceNatureEventChoiceReplayValidated);
+    }
+
+    /// <summary>
+    /// Builds a capture from a completed ReferenceNature session that owns
+    /// one player action and its replay-validated typed stochastic prefix.
+    /// </summary>
+    public static SimulationProviderReplayCaptureV111
+        FromReferenceNatureControlledActionSession(
+            IReferenceNatureControlledActionSessionV111 session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        using (RandomBoundaryJournalV111.Begin())
+            session.Validate();
+        if (!session.Complete)
+            throw new InvalidOperationException(
+                "Provider replay capture requires a completed ReferenceNature controlled action.");
+        return FromScriptedDecisions(
+            session.Origin, [session.Action], session.ProviderDecisions,
+            session.Run,
+            SimulationProviderReplayCaptureProvenanceV111
+                .ReferenceNatureControlledActionReplayValidated);
     }
 
     /// <summary>

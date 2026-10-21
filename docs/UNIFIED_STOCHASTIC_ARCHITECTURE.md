@@ -621,6 +621,13 @@ controlled-choice trace against its Nature outcomes and prior history, then
 materializes its typed requests through the same boundary journal. JSONL accepts
 `<side>_reference_nature_event_choice_handle` for this path. It does not
 establish Native source-hook parity or law fidelity.
+`FromReferenceNatureControlledActionSession` uses one shared interface for
+completed Merchant, Treasure, combat-reward, and Native Shovel sessions. Each
+session first replays its own action and typed stochastic prefix; the capture
+then records that prefix through the same journal. JSONL accepts the matching
+`<side>_reference_nature_{merchant,treasure,combat_reward,native_shovel}_handle`
+input. This adds replay-capture coverage without changing the action or
+provider owners.
 `FromReferenceNatureRunActionSession` adds a completed unconfigured prototype
 `continue_act` path: it replays and validates the session, checks that the
 appended controlled action trace covers the complete saved Chance Law
@@ -630,8 +637,9 @@ continuations do not publish a complete trace. JSONL accepts
 `<side>_reference_nature_run_action_handle` for this path.
 The JSONL `provider_replay_compare` operation constructs a current capture for
 each side either from a completed scripted-run or scripted-action handle, or
-from replay-validated semantic Native-policy or ReferenceNature run-action
-handles, or from exact origin/result snapshots plus action and boundary arrays,
+from replay-validated semantic Native-policy, ReferenceNature event-choice,
+controlled-action or run-action handles, or from exact origin/result snapshots
+plus action and boundary arrays,
 with optional Native cursor equality and a mechanics-difference bound.
 `hello` advertises its capture and result schemas, operation, and inputs. These
 provider traces are privileged diagnostic data and are not part of the fair
