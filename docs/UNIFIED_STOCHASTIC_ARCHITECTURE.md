@@ -583,9 +583,15 @@ that its states and traces came from those actions. Native cursor equality is
 an optional additional boundary check. This is diagnostic evidence under the
 supplied captures, not proof of source-hook parity, complete Native coverage,
 or Chance Law fidelity.
+`SimulationProviderReplayCaptureV111.FromScriptedRunSession` and
+`FromScriptedRunActionSession` provide a stronger path for scripted replays:
+each session replays its completed action history from the origin, and the
+existing typed boundary journal materializes its saved outcomes into the
+capture. They accept only sessions at committed action boundaries.
 The JSONL `provider_replay_compare` operation constructs a current capture for
-each side from exact origin/result snapshots plus action and boundary arrays,
-with optional Native cursor equality and a mechanics-difference bound.
+each side either from a completed scripted-run or scripted-action handle, or
+from exact origin/result snapshots plus action and boundary arrays, with
+optional Native cursor equality and a mechanics-difference bound.
 `hello` advertises its capture and result schemas, operation, and inputs. These
 provider traces are privileged diagnostic data and are not part of the fair
 player observation.

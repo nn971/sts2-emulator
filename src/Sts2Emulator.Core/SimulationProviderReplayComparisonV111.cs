@@ -155,6 +155,76 @@ public sealed record SimulationProviderReplayCaptureV111(
         return capture;
     }
 
+    /// <summary>
+    /// Builds a capture from a completed scripted run. Session validation
+    /// replays its committed actions from the origin before the existing
+    /// boundary journal materializes the saved typed decisions.
+    /// </summary>
+    public static SimulationProviderReplayCaptureV111 FromScriptedRunSession(
+        ScriptedRunSessionV111 session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        // Validation replays mechanics too. Keep its provider callbacks out
+        // of any journal owned by the caller.
+        using (RandomBoundaryJournalV111.Begin())
+            session.Validate();
+        if (session.ActiveAction is not null)
+            throw new InvalidOperationException(
+                "Provider replay capture requires a committed scripted-run boundary.");
+
+        var completedActions = session.CompletedActions;
+        return FromScriptedDecisions(
+            session.Origin,
+            completedActions.Select(action => action.Action).ToArray(),
+            completedActions.SelectMany(action => action.Decisions),
+            session.Run);
+    }
+
+    /// <summary>Builds a capture from one completed scripted player action.</summary>
+    public static SimulationProviderReplayCaptureV111
+        FromScriptedRunActionSession(
+            ScriptedRunActionSessionV111 session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        using (RandomBoundaryJournalV111.Begin())
+            session.Validate();
+        if (!session.Complete || session.Run is null)
+            throw new InvalidOperationException(
+                "Provider replay capture requires a completed scripted action.");
+        return FromScriptedDecisions(
+            session.Origin, [session.Action], session.Decisions, session.Run);
+    }
+
+    private static SimulationProviderReplayCaptureV111 FromScriptedDecisions(
+        RunState origin, IReadOnlyList<GameAction> actions,
+        IEnumerable<ControlledStochasticDecisionV111> decisions,
+        RunState result)
+    {
+        using var journal = RandomBoundaryJournalV111.Begin();
+        foreach (var decision in decisions)
+        {
+            decision.Validate();
+            if (decision.IndexDecision is { } index)
+                RandomBoundaryJournalV111.Record(index);
+            else if (decision.UnitFloatDecision is { } unitFloat)
+                RandomBoundaryJournalV111.Record(unitFloat);
+            else if (decision.RangedFloatDecision is { } rangedFloat)
+                RandomBoundaryJournalV111.Record(rangedFloat);
+            else if (decision.RangedDoubleDecision is { } rangedDouble)
+                RandomBoundaryJournalV111.Record(rangedDouble);
+            else if (decision.GaussianIntDecision is { } gaussianInt)
+                RandomBoundaryJournalV111.Record(gaussianInt);
+            else
+                RandomBoundaryJournalV111.Record(
+                    decision.GaussianDoubleDecision ??
+                    throw new InvalidDataException(
+                        "Scripted run history contains an empty typed decision."));
+        }
+
+        var boundaries = journal.OrderedTranscript;
+        return Create(origin, actions, boundaries, result);
+    }
+
     public SimulationProviderReplayCaptureV111 Fork()
     {
         Validate();

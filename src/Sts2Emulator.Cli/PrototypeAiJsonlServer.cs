@@ -2904,7 +2904,10 @@ internal static class PrototypeAiJsonlServer
                                 new[] { "provider_replay_compare" },
                             simulationProviderReplayComparisonInputs = new[]
                             {
-                                "each side: <side>_origin_snapshot, <side>_actions, <side>_boundaries, and <side>_result_snapshot"
+                                "each side accepts one of:",
+                                "<side>_scripted_run_handle",
+                                "<side>_scripted_run_action_handle",
+                                "<side>_origin_snapshot, <side>_actions, <side>_boundaries, and <side>_result_snapshot"
                             },
                             simulationProviderReplayComparisonScope =
                                 "privileged-provider-trace-and-mechanics-diagnostic; not a fair player observation",
@@ -9696,10 +9699,69 @@ internal static class PrototypeAiJsonlServer
                         SimulationProviderReplayCaptureV111
                             ReadProviderReplayCapture(string side)
                         {
+                            var scriptedHandleName =
+                                side + "_scripted_run_handle";
+                            var scriptedActionHandleName =
+                                side + "_scripted_run_action_handle";
                             var originName = side + "_origin_snapshot";
                             var actionsName = side + "_actions";
                             var boundariesName = side + "_boundaries";
                             var resultName = side + "_result_snapshot";
+                            bool hasScriptedRunHandle =
+                                request.TryGetProperty(scriptedHandleName,
+                                    out var scriptedHandleElement);
+                            bool hasScriptedActionHandle =
+                                request.TryGetProperty(
+                                    scriptedActionHandleName,
+                                    out var scriptedActionHandleElement);
+                            if (hasScriptedRunHandle ||
+                                hasScriptedActionHandle)
+                            {
+                                if (hasScriptedRunHandle &&
+                                    hasScriptedActionHandle)
+                                    throw new ArgumentException(
+                                        "Provide only one scripted handle for " +
+                                        side + ".");
+                                var handleElement = hasScriptedRunHandle
+                                    ? scriptedHandleElement
+                                    : scriptedActionHandleElement;
+                                var handleName = hasScriptedRunHandle
+                                    ? scriptedHandleName
+                                    : scriptedActionHandleName;
+                                if (handleElement.ValueKind !=
+                                        JsonValueKind.String ||
+                                    string.IsNullOrWhiteSpace(
+                                        handleElement.GetString()))
+                                    throw new ArgumentException(
+                                        handleName +
+                                        " must be a nonempty session handle.");
+                                if (request.TryGetProperty(originName, out _) ||
+                                    request.TryGetProperty(actionsName, out _) ||
+                                    request.TryGetProperty(boundariesName, out _) ||
+                                    request.TryGetProperty(resultName, out _))
+                                    throw new ArgumentException(
+                                        "Provide a scripted handle or the four " +
+                                        "explicit capture fields.");
+                                var handle = handleElement.GetString()!;
+                                if (hasScriptedRunHandle)
+                                    return scriptedRunStates.TryGetValue(
+                                            handle, out var scriptedRun)
+                                        ? SimulationProviderReplayCaptureV111
+                                            .FromScriptedRunSession(
+                                                scriptedRun)
+                                        : throw new InvalidOperationException(
+                                            "Unknown scripted run handle: " +
+                                            handle);
+                                return scriptedRunActionStates.TryGetValue(
+                                        handle, out var scriptedAction)
+                                    ? SimulationProviderReplayCaptureV111
+                                        .FromScriptedRunActionSession(
+                                            scriptedAction)
+                                    : throw new InvalidOperationException(
+                                        "Unknown scripted run-action handle: " +
+                                        handle);
+                            }
+
                             var actionsElement = RequiredArray(
                                 request, actionsName);
                             var boundariesElement = RequiredArray(
