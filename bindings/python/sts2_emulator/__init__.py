@@ -2809,6 +2809,26 @@ class SemanticCombat:
             policy_id="prototype-fair-v0")
         return json.loads(result["payloadJson"])
 
+    def observe_for_nature(self):
+        """Fair public combat state at a pending Nature decision.
+
+        The server reuses the player's observation projection and records its
+        parent semantic fingerprint. The pending Chance Law remains separate.
+        """
+        if self.boundary != "nature":
+            raise EmulatorError("Expected Nature boundary for public observation")
+        result = self.session.call(
+            "semantic_nature_public_observe", semantic_handle=self.handle,
+            policy_id="prototype-fair-v0")
+        if (result.get("semanticHandle") != self.handle
+                or result.get("fingerprint") != self.fingerprint
+                or result.get("policyId") != "prototype-fair-v0"):
+            raise EmulatorError("Nature public observation belongs to another state")
+        observation = json.loads(result["payloadJson"])
+        if not isinstance(observation, dict):
+            raise EmulatorError("Invalid public Nature observation")
+        return observation
+
     def actions(self):
         result = self.session.call(
             "semantic_observe", semantic_handle=self.handle,
