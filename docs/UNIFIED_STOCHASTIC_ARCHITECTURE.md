@@ -570,6 +570,17 @@ approximations at other bounds remain `UNVERIFIED`.
 construction and replacement, then returns defensive copies to keep the
 diagnostic result immutable to callers.
 
+`SimulationProviderReplayComparisonEngineV111` composes that projection with
+`RandomBoundaryComparisonV111.CompareOrdered` for cross-provider replay review.
+It fingerprints each supplied player-action sequence, compares origin
+mechanics, compares every supplied typed random boundary in order, and compares
+the resulting mechanics, returning each agreement separately. Callers must
+provide captures covering the same interval and all typed boundaries in it;
+the comparison cannot verify capture completeness or that the states and
+traces came from those actions. Native cursor equality is an optional additional
+boundary check. This is diagnostic evidence under the supplied captures, not
+proof of source-hook parity, complete Native coverage, or Chance Law fidelity.
+
 **ReferenceNature cannot certify its own Chance Law** merely by sampling from it. Correctness of `p` needs an independent oracle: exact enumeration for small decks, separately specified analytic weights/rules, and eventually pinned original-game evidence. A statistical comparison between Native and ReferenceNature is helpful only when Native's distribution at the compared information boundary is well specified.
 
 ## Compatibility rules
