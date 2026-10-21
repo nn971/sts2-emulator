@@ -287,13 +287,15 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidDataException(
                 "Automatic hand-draw completion is not at a clean boundary.");
 
+        var completedMechanics = cursor.Mechanics.AdvancePastStep(
+            PrototypeAutomaticStepKind.DrawPlayerHand);
         combat = ApplyAutomaticHandDrawPostStagePowerTiming(combat);
         var completedCursor = cursor.WithHandDrawProgress(null)
             .WithCompletedSemanticHandDrawReceipt(
                 completedSemanticDrawRequested);
         completedCursor = completedCursor with
         {
-            NextStepIndex = cursor.NextStepIndex + 1
+            Mechanics = completedMechanics
         };
         combat = combat with
         {

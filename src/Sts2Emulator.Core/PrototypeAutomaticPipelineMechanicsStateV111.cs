@@ -33,6 +33,30 @@ public sealed record PrototypeAutomaticPipelineMechanicsStateV111(
         TryGetCurrentStepKind(out var stepKind) &&
         stepKind == expectedStep;
 
+    /// <summary>
+    /// True when the cursor points immediately after the requested ordinary
+    /// pipeline step, with no opening or post-dispatch boundary active.
+    /// </summary>
+    public bool IsImmediatelyAfterStep(
+        PrototypeAutomaticStepKind completedStep)
+    {
+        if (OpeningStage is not null ||
+            PendingPostDispatchEventKind is not null)
+            return false;
+        var pipeline = PrototypeContent.Rules.EndTurnPipeline;
+        return NextStepIndex > 0 && NextStepIndex <= pipeline.Length &&
+            pipeline[NextStepIndex - 1].Kind == completedStep;
+    }
+
+    public PrototypeAutomaticPipelineMechanicsStateV111 AdvancePastStep(
+        PrototypeAutomaticStepKind completedStep)
+    {
+        if (!IsAtStep(completedStep))
+            throw new InvalidDataException(
+                "Automatic pipeline cannot advance past a different step.");
+        return this with { NextStepIndex = NextStepIndex + 1 };
+    }
+
     public bool TryGetCurrentStepKind(
         out PrototypeAutomaticStepKind stepKind)
     {

@@ -280,8 +280,8 @@ public sealed record SemanticCombatDrawV111(
         bool completedAutomaticHandDraw = this.AutomaticHandDraw &&
             this.RequestedCount == 0 && this.RemainingCount == 0 &&
             completedHookCursor is { } completedCursor &&
-            completedCursor.NextStepIndex ==
-                PrototypeGameEngine.SemanticHandDrawStepIndex + 1 &&
+            completedCursor.Mechanics.IsImmediatelyAfterStep(
+                PrototypeAutomaticStepKind.DrawPlayerHand) &&
             completedCursor.Stochastic.HandDrawProgress is null &&
             this.Run.World?.Combat is
                 { PendingChoice: null,
@@ -397,8 +397,8 @@ public sealed record SemanticCombatDrawV111(
                   cursor.ControlledSemanticDrawRequested != this.RequestedCount)) ||
                 (!awaiting &&
                  (this.RemainingCount != 0 ||
-                  cursor.NextStepIndex !=
-                      PrototypeGameEngine.SemanticHandDrawStepIndex + 1 ||
+                  !cursor.Mechanics.IsImmediatelyAfterStep(
+                      PrototypeAutomaticStepKind.DrawPlayerHand) ||
                   cursor.ControlledSemanticDrawRemaining is not null)))
                 throw new InvalidDataException(
                     "Semantic automatic hand-draw cursor is inconsistent.");

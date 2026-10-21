@@ -60,7 +60,8 @@ public sealed partial class PrototypeGameEngine
                  after.PendingChoice?.AutomaticSemanticDrawHookChoice == true);
             bool completedWithoutPendingDraw =
                 after.AutomaticPipelineContinuation is { } completed &&
-                completed.NextStepIndex == SemanticHandDrawStepIndex + 1 &&
+                completed.Mechanics.IsImmediatelyAfterStep(
+                    PrototypeAutomaticStepKind.DrawPlayerHand) &&
                 completed.ControlledSemanticDrawRemaining is null &&
                 completed.ControlledSemanticDrawRequested is null &&
                 after.PendingChoice is null &&
@@ -203,7 +204,8 @@ public sealed partial class PrototypeGameEngine
         if (after.PendingChoice is not null ||
             after.PendingKnowledgeDemonChoice is not null ||
             completed is null ||
-            completed.NextStepIndex != SemanticHandDrawStepIndex + 1 ||
+            !completed.Mechanics.IsImmediatelyAfterStep(
+                PrototypeAutomaticStepKind.DrawPlayerHand) ||
             completed.ControlledSemanticBeforeHandDrawPending ||
             completed.ControlledSemanticDrawRemaining is not null ||
             after.SemanticDeck is not { Pending: null })

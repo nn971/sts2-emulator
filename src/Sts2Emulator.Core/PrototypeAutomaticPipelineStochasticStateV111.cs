@@ -562,8 +562,8 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
 
         if (CompletedSemanticHandDrawRequested is not null &&
             (CompletedSemanticHandDrawRequested is not > 0 ||
-             continuation.NextStepIndex !=
-                PrototypeGameEngine.SemanticHandDrawStepIndex + 1 ||
+             !continuation.Mechanics.IsImmediatelyAfterStep(
+                 PrototypeAutomaticStepKind.DrawPlayerHand) ||
              HandDrawProgress is not null ||
              ControlledEnemyAction is not null ||
              ControlledTurnIntents is not null ||
