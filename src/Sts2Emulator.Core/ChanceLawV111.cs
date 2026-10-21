@@ -6728,6 +6728,9 @@ public sealed record ReferenceNatureRunActionSessionV111(
     public ReferenceNatureLaterActPreparationSessionV111?
         LaterActPreparation { get; init; }
 
+    public ReferenceNatureAncientOfferSessionV111? AncientOffer
+    { get; init; }
+
     public const string CurrentSchemaId =
         "sts2-v111-reference-nature-run-action-session-v1";
 
@@ -6741,7 +6744,8 @@ public sealed record ReferenceNatureRunActionSessionV111(
 
     [JsonIgnore]
     public bool Complete => Run.ControlledRunActionChoice is null
-        && MapGeneration is null && LaterActPreparation is null;
+        && MapGeneration is null && LaterActPreparation is null
+        && AncientOffer is null;
 
     [JsonIgnore]
     public ChanceLawV111? PendingLaw
@@ -6750,6 +6754,8 @@ public sealed record ReferenceNatureRunActionSessionV111(
         {
             if (LaterActPreparation is { } laterActPreparation)
                 return laterActPreparation.PendingLaw;
+            if (AncientOffer is { } ancientOffer)
+                return ancientOffer.PendingLaw;
             if (MapGeneration is { Complete: false } mapGeneration)
                 return mapGeneration.PendingLaw;
             if (Run.ControlledRunActionChoice is null)
@@ -6809,7 +6815,8 @@ public sealed record ReferenceNatureRunActionSessionV111(
             };
             if (mapGeneration.Complete)
                 transitionSession = transitionSession
-                    .CommitExperimentalActTransitionMap(mapGeneration);
+                    .AdvanceAfterExperimentalActTransitionMap(
+                        mapGeneration);
             transitionSession.Validate();
             return transitionSession;
         }
@@ -6856,6 +6863,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
             NatureState = NatureState.Fork(),
             MapGeneration = MapGeneration?.Fork(),
             LaterActPreparation = LaterActPreparation?.Fork(),
+            AncientOffer = AncientOffer?.Fork(),
             DecisionTranscript = (ReferenceNatureDecisionV111[])
                 DecisionTranscript.Clone()
         };
@@ -6866,6 +6874,8 @@ public sealed record ReferenceNatureRunActionSessionV111(
         Validate();
         if (LaterActPreparation is not null)
             return ResolveNextLaterActPreparationOutcome();
+        if (AncientOffer is not null)
+            return ResolveNextAncientOfferOutcome();
         if (MapGeneration is not null)
             return ResolveNextMapGenerationOutcome();
         var law = PendingLaw ?? throw new InvalidOperationException(
@@ -6976,7 +6986,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
         if (nextMapGeneration.Complete)
             next = IsConfiguredExperimentalActTransitionAction(
                     Origin, Action)
-                ? next.CommitExperimentalActTransitionMap(
+                ? next.AdvanceAfterExperimentalActTransitionMap(
                     nextMapGeneration)
                 : next.ContinueAfterOvergrowthRunStartMap(
                     nextMapGeneration);
@@ -6985,7 +6995,35 @@ public sealed record ReferenceNatureRunActionSessionV111(
     }
 
     private ReferenceNatureRunActionSessionV111
-        CommitExperimentalActTransitionMap(
+        ResolveNextAncientOfferOutcome()
+    {
+        var ancientOffer = AncientOffer ?? throw new InvalidOperationException(
+            "No ReferenceNature Ancient-offer choice is pending.");
+        var nextAncientOffer = ancientOffer.ResolveNext();
+        var next = this with
+        {
+            AncientOffer = nextAncientOffer,
+            NatureState = nextAncientOffer.NatureState,
+            DecisionTranscript = DecisionTranscript.Append(
+                nextAncientOffer.DecisionTranscript[^1]).ToArray()
+        };
+        if (nextAncientOffer.Complete)
+        {
+            var mapGeneration = MapGeneration ??
+                throw new InvalidDataException(
+                    "Experimental act transition lost its completed map session.");
+            var completedStep = new PrototypeGameEngine()
+                .CompleteActTransitionStep(Origin, nextAncientOffer.Run);
+            next = next.CompleteExperimentalActTransition(
+                completedStep, mapGeneration,
+                nextAncientOffer.NatureState);
+        }
+        next.Validate();
+        return next;
+    }
+
+    private ReferenceNatureRunActionSessionV111
+        AdvanceAfterExperimentalActTransitionMap(
             ReferenceNatureMapGenerationSessionV111 mapGeneration)
     {
         if (!IsConfiguredExperimentalActTransitionAction(Origin, Action) ||
@@ -6996,8 +7034,37 @@ public sealed record ReferenceNatureRunActionSessionV111(
                 "Experimental act transition cannot commit before its map session completes.");
         var map = mapGeneration.Map ?? throw new InvalidDataException(
             "Completed experimental act-transition map session has no map.");
-        var continued = new PrototypeGameEngine()
-            .StepWithActTransitionMap(Run, Action, map).State;
+        var engine = new PrototypeGameEngine();
+        var transitionState = engine.BeginActTransitionWithMap(
+            Origin, Action, map);
+        var siteId = AssignedAncientOfferSite(transitionState);
+        if (siteId is not null)
+        {
+            var ancientOfferOrigin = ReferenceNatureRunCursorV111.Commit(
+                transitionState, mapGeneration.NatureState);
+            var ancientOffer = ReferenceNatureAncientOfferSessionV111.Begin(
+                ancientOfferOrigin, siteId);
+            var pending = this with
+            {
+                MapGeneration = mapGeneration,
+                NatureState = mapGeneration.NatureState,
+                AncientOffer = ancientOffer
+            };
+            pending.Validate();
+            return pending;
+        }
+        var completedStep = engine.CompleteActTransitionStep(
+            Origin, transitionState);
+        return CompleteExperimentalActTransition(
+            completedStep, mapGeneration, mapGeneration.NatureState);
+    }
+
+    private ReferenceNatureRunActionSessionV111
+        CompleteExperimentalActTransition(
+            RunState continued,
+            ReferenceNatureMapGenerationSessionV111 mapGeneration,
+            ReferenceNatureStateV111 finalNatureState)
+    {
         var mapHistory = continued.ReferenceNatureMapGenerationHistory
             ?? Array.Empty<ReferenceNatureMapGenerationAuditV111>();
         continued = continued with
@@ -7006,12 +7073,36 @@ public sealed record ReferenceNatureRunActionSessionV111(
                 mapGeneration.ToAudit()).ToArray()
         };
         continued = ReferenceNatureRunCursorV111.Commit(
-            continued, mapGeneration.NatureState);
+            continued, finalNatureState);
         return this with
         {
             Run = continued,
-            NatureState = mapGeneration.NatureState,
-            MapGeneration = null
+            NatureState = finalNatureState,
+            MapGeneration = null,
+            AncientOffer = null
+        };
+    }
+
+    private static string? AssignedAncientOfferSite(RunState state)
+    {
+        var ancientId = state.World?.LaterActEncounterBag?.AssignedAncientId;
+        return ancientId switch
+        {
+            null => null,
+            NativeOrobasEventV111.EventId =>
+                NativeOrobasEventV111.OfferSiteId,
+            NativePaelRewardsV111.PaelId => NativePaelRewardsV111.OfferSiteId,
+            NativeAncientRewardsV111.TezcataraId =>
+                NativeAncientRewardsV111.TezcataraOfferSiteId,
+            NativeDarvEventV111.EventId =>
+                NativeDarvEventV111.OfferVariantSiteId,
+            NativeNonupeipeEventV111.EventId =>
+                NativeNonupeipeEventV111.ShuffleSiteId,
+            NativeTanxEventV111.EventId => NativeTanxEventV111.ShuffleSiteId,
+            NativeVakuuEventV111.EventId =>
+                NativeVakuuEventV111.ShuffleSiteId,
+            _ => throw new NotSupportedException(
+                $"Assigned Ancient '{ancientId}' has no resumable offer session.")
         };
     }
 
@@ -7211,7 +7302,9 @@ public sealed record ReferenceNatureRunActionSessionV111(
              Run.ControlledRunActionHistory is not { Length: > 0 } &&
              !immediateShopAction && !immediateActOneCombatAction &&
              !immediateNativeActOneCombatAction &&
-             !configuredExperimentalActTransition))
+             !configuredExperimentalActTransition) ||
+            AncientOffer is not null &&
+                !configuredExperimentalActTransition)
             throw new InvalidDataException(
                 "Invalid ReferenceNature run-action session envelope.");
         PrototypeStateInvariants.Validate(Origin);
@@ -7240,15 +7333,47 @@ public sealed record ReferenceNatureRunActionSessionV111(
                     mapGeneration.Seed != Origin.RunSeed ||
                     mapGeneration.Act != checked(Origin.World!.Act + 1) ||
                     mapGeneration.Ascension != Origin.Ascension ||
-                    mapGeneration.Complete ||
                     !mapGeneration.InitialNatureState.SameCursor(
                         InitialNatureState) ||
-                    !mapGeneration.NatureState.SameCursor(NatureState) ||
-                    !DecisionTranscript.SequenceEqual(mapDecisions) ||
                     CanonicalJson.Sha256(Run) !=
                         CanonicalJson.Sha256(Origin))
                     throw new InvalidDataException(
                         "Pending experimental act-transition map differs from its run-action transcript.");
+                if (AncientOffer is null)
+                {
+                    if (mapGeneration.Complete ||
+                        !mapGeneration.NatureState.SameCursor(NatureState) ||
+                        !DecisionTranscript.SequenceEqual(mapDecisions))
+                        throw new InvalidDataException(
+                            "Pending experimental act-transition map differs from its run-action transcript.");
+                }
+                else
+                {
+                    AncientOffer.Validate();
+                    if (!mapGeneration.Complete || AncientOffer.Complete ||
+                        !AncientOffer.InitialNatureState.SameCursor(
+                            mapGeneration.NatureState) ||
+                        !AncientOffer.NatureState.SameCursor(NatureState) ||
+                        !DecisionTranscript.Take(mapDecisions.Length)
+                            .SequenceEqual(mapDecisions) ||
+                        !DecisionTranscript.Skip(mapDecisions.Length)
+                            .SequenceEqual(AncientOffer.DecisionTranscript))
+                        throw new InvalidDataException(
+                            "Pending experimental Ancient offer differs from its completed map prefix.");
+                    var transitionState = new PrototypeGameEngine()
+                        .BeginActTransitionWithMap(
+                            Origin, Action,
+                            mapGeneration.Map ?? throw new InvalidDataException(
+                                "Completed transition map has no output."));
+                    var siteId = AssignedAncientOfferSite(transitionState);
+                    var expectedOfferOrigin = ReferenceNatureRunCursorV111.Commit(
+                        transitionState, mapGeneration.NatureState);
+                    if (siteId != AncientOffer.SiteId ||
+                        CanonicalJson.Sha256(expectedOfferOrigin) !=
+                            CanonicalJson.Sha256(AncientOffer.Origin))
+                        throw new InvalidDataException(
+                            "Pending experimental Ancient offer differs from its assigned transition boundary.");
+                }
             }
             else
             {
@@ -7389,26 +7514,66 @@ public sealed record ReferenceNatureRunActionSessionV111(
             var mapGeneration = ReferenceNatureMapGenerationSessionV111.Begin(
                 Origin.RunSeed, checked(Origin.World!.Act + 1),
                 Origin.Ascension, InitialNatureState);
-            foreach (var expected in DecisionTranscript)
+            var transcriptIndex = 0;
+            while (!mapGeneration.Complete)
             {
-                if (mapGeneration.Complete)
+                if (transcriptIndex >= DecisionTranscript.Length)
                     throw new InvalidDataException(
-                        "Experimental act-transition map ended before its transcript.");
+                        "Experimental act-transition transcript ended before its map.");
                 mapGeneration = mapGeneration.ResolveNext();
-                if (!mapGeneration.DecisionTranscript[^1].Equals(expected))
+                if (!mapGeneration.DecisionTranscript[^1].Equals(
+                        DecisionTranscript[transcriptIndex++]))
                     throw new InvalidDataException(
                         "Experimental act-transition map differs from its Nature transcript.");
             }
-            if (!mapGeneration.Complete ||
-                !mapGeneration.NatureState.SameCursor(NatureState))
+            var engine = new PrototypeGameEngine();
+            var transitionState = engine.BeginActTransitionWithMap(
+                Origin, Action,
+                mapGeneration.Map ?? throw new InvalidDataException(
+                    "Replayed act-transition map has no output."));
+            var siteId = AssignedAncientOfferSite(transitionState);
+            RunState transitioned;
+            var finalNatureState = mapGeneration.NatureState;
+            if (siteId is null)
+            {
+                if (transcriptIndex != DecisionTranscript.Length)
+                    throw new InvalidDataException(
+                        "Experimental act-transition transcript has outcomes after its map.");
+                transitioned = transitionState;
+            }
+            else
+            {
+                var offerOrigin = ReferenceNatureRunCursorV111.Commit(
+                    transitionState, mapGeneration.NatureState);
+                var offer = ReferenceNatureAncientOfferSessionV111.Begin(
+                    offerOrigin, siteId);
+                while (!offer.Complete)
+                {
+                    if (transcriptIndex >= DecisionTranscript.Length)
+                        throw new InvalidDataException(
+                            "Experimental act-transition transcript ended before its assigned Ancient offer.");
+                    offer = offer.ResolveNext();
+                    if (!offer.DecisionTranscript[^1].Equals(
+                            DecisionTranscript[transcriptIndex++]))
+                        throw new InvalidDataException(
+                            "Experimental assigned Ancient offer differs from its Nature transcript.");
+                }
+                transitioned = offer.Run;
+                finalNatureState = offer.NatureState;
+            }
+            if (transcriptIndex != DecisionTranscript.Length ||
+                !finalNatureState.SameCursor(NatureState))
                 throw new InvalidDataException(
-                    "Completed experimental act-transition map has an incomplete sampler transcript.");
-            var expectedRun = new PrototypeGameEngine()
-                .StepWithActTransitionMap(
-                    Origin.Fork(), Action,
-                    mapGeneration.Map ?? throw new InvalidDataException(
-                        "Replayed act-transition map has no output."))
-                .State;
+                    "Completed experimental act-transition transcript is incomplete.");
+            var expectedRun = engine.CompleteActTransitionStep(
+                Origin, transitioned);
+            var mapHistory = expectedRun.ReferenceNatureMapGenerationHistory
+                ?? Array.Empty<ReferenceNatureMapGenerationAuditV111>();
+            expectedRun = expectedRun with
+            {
+                ReferenceNatureMapGenerationHistory = mapHistory.Append(
+                    mapGeneration.ToAudit()).ToArray()
+            };
             expectedRun = ReferenceNatureRunCursorV111.Commit(
                 expectedRun, NatureState);
             if (CanonicalJson.Sha256(expectedRun) !=

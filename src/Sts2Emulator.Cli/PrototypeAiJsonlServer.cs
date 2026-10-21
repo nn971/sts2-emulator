@@ -770,10 +770,13 @@ internal static class PrototypeAiJsonlServer
             var continuation = session.Run.ControlledRunActionChoice;
             var mapGeneration = session.MapGeneration;
             var laterActPreparation = session.LaterActPreparation;
+            var ancientOffer = session.AncientOffer;
             var chanceLaw = session.PendingLaw;
             var runFingerprint = CanonicalJson.Sha256(session.Run);
             var boundaryFingerprint = laterActPreparation is not null
                 ? laterActPreparation.Fingerprint
+                : ancientOffer is not null
+                ? ancientOffer.Fingerprint
                 : mapGeneration is not null
                 ? mapGeneration.Fingerprint
                 : continuation is null ? null
@@ -781,6 +784,8 @@ internal static class PrototypeAiJsonlServer
                     session.Run);
             object? pendingRequest = laterActPreparation is not null
                 ? laterActPreparation.PendingRequest
+                : ancientOffer is not null
+                ? null
                 : mapGeneration is not null
                 ? mapGeneration.PendingRequest
                 : continuation?.PendingRequest;
@@ -788,6 +793,8 @@ internal static class PrototypeAiJsonlServer
             {
                 kind = laterActPreparation is not null
                     ? "run_action_later_act_preparation"
+                    : ancientOffer is not null
+                    ? "run_action_assigned_ancient_offer"
                     : mapGeneration is not null
                     ? session.Action.Kind == "continue_act"
                         ? "run_action_act_transition_map_generation"

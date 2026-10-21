@@ -240,15 +240,45 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
     public TransitionResult Step(RunState state, GameAction action) =>
         StepCore(state, action, actTransitionMap: null);
 
-    internal TransitionResult StepWithActTransitionMap(
+    internal RunState BeginActTransitionWithMap(
         RunState state, GameAction action, MapState map)
     {
         if (state.Configuration?.UsesExperimentalSilentThreeActRoute != true ||
-            action.Kind != "continue_act")
+            action.Kind != "continue_act" ||
+            state.Phase != RunPhase.ActTransition)
             throw new InvalidOperationException(
                 "An explicit transition map requires the configured experimental act-transition action.");
         ArgumentNullException.ThrowIfNull(map);
-        return StepCore(state, action, map);
+        RunConfiguration.ValidateState(state);
+        if (state.ReferenceNatureRunInitializationPending)
+            throw new InvalidOperationException(
+                "A ReferenceNature run-start session must finish before run actions are available.");
+        using var providerScope = StochasticProviderScopeV111.Enter(
+            new NativeRandomIndexProviderV111(),
+            new NativeRandomUnitFloatProviderV111(),
+            overrideExplicitProviders: false);
+        var fork = state.Fork() with
+        {
+            DecisionIndex = checked(state.DecisionIndex + 1)
+        };
+        return StepActTransition(fork, action, map,
+            deferAssignedAncientOpening: true);
+    }
+
+    internal RunState CompleteActTransitionStep(
+        RunState origin, RunState transitioned)
+    {
+        ArgumentNullException.ThrowIfNull(origin);
+        ArgumentNullException.ThrowIfNull(transitioned);
+        if (origin.Phase != RunPhase.ActTransition ||
+            transitioned.DecisionIndex != checked(origin.DecisionIndex + 1))
+            throw new InvalidOperationException(
+                "Deferred act-transition completion differs from its original action boundary.");
+        using var providerScope = StochasticProviderScopeV111.Enter(
+            new NativeRandomIndexProviderV111(),
+            new NativeRandomUnitFloatProviderV111(),
+            overrideExplicitProviders: false);
+        return FinalizeStep(origin, transitioned);
     }
 
     private TransitionResult StepCore(
@@ -297,11 +327,18 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             RunPhase.Event => StepEvent(fork, action),
             RunPhase.Rest => StepRest(fork, action),
             RunPhase.ActTransition => StepActTransition(
-                fork, action, actTransitionMap),
+                fork, action, actTransitionMap,
+                deferAssignedAncientOpening: false),
             RunPhase.Terminal => throw new InvalidOperationException("A terminal run has no legal actions."),
             _ => throw new NotSupportedException($"Prototype phase '{state.Phase}' is unsupported.")
         };
 
+        next = FinalizeStep(state, next);
+        return new TransitionResult(next, Array.Empty<string>());
+    }
+
+    private RunState FinalizeStep(RunState state, RunState next)
+    {
         next = ApplyToyBoxAcquisitionReward(state, next);
         next = ApplyGlassEyeAcquisitionReward(state, next);
         next = ApplyNeowRelicPickupRewards(state, next);
@@ -346,7 +383,7 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                 }
             };
         }
-        return new TransitionResult(next, Array.Empty<string>());
+        return next;
     }
 
     private static IReadOnlyList<GameAction>
@@ -1131,7 +1168,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
     }
 
     private static RunState StepActTransition(
-        RunState state, GameAction action, MapState? actTransitionMap)
+        RunState state, GameAction action, MapState? actTransitionMap,
+        bool deferAssignedAncientOpening)
     {
         RequireKind(action, "continue_act");
         var world = RequireWorld(state);
@@ -1139,8 +1177,9 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         if (state.Configuration?.UsesExperimentalSilentThreeActRoute == true)
             return actTransitionMap is null
                 ? ExperimentalSilentThreeActRouteV111.ContinueAct(state)
-                : ExperimentalSilentThreeActRouteV111.ContinueAct(
-                    state, actTransitionMap);
+                : ExperimentalSilentThreeActRouteV111.ContinueActWithMap(
+                    state, actTransitionMap,
+                    deferAssignedAncientOpening);
 
         if (state.Configuration is not null)
             throw new NotSupportedException("Native Hive/Glory mechanics are not implemented; prototype later-act fallback is disabled for v111 runs.");

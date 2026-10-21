@@ -437,16 +437,19 @@ public static class ExperimentalSilentThreeActRouteV111
     }
 
     public static RunState ContinueAct(RunState state) =>
-        ContinueActCore(state, map: null);
+        ContinueActCore(state, map: null,
+            deferAssignedAncientOpening: false);
 
-    internal static RunState ContinueAct(RunState state, MapState map)
+    internal static RunState ContinueActWithMap(
+        RunState state, MapState map, bool deferAssignedAncientOpening)
     {
         ArgumentNullException.ThrowIfNull(map);
-        return ContinueActCore(state, map);
+        return ContinueActCore(state, map, deferAssignedAncientOpening);
     }
 
     private static RunState ContinueActCore(
-        RunState state, MapState? suppliedMap)
+        RunState state, MapState? suppliedMap,
+        bool deferAssignedAncientOpening)
     {
         if (state.Configuration?.UsesExperimentalSilentThreeActRoute != true
             || state.Configuration.CharacterId != "silent"
@@ -488,6 +491,9 @@ public static class ExperimentalSilentThreeActRouteV111
             World = nextWorld,
             Phase = RunPhase.MapChoice
         };
+
+        if (deferAssignedAncientOpening)
+            return continued;
 
         // An assigned Ancient executes at the act boundary before map choice.
         // Run-start assignment and its RNG policy remain separate.
