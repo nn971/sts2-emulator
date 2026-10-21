@@ -6675,22 +6675,17 @@ public sealed partial class PrototypeGameEngine
                 case PrototypeCombatEffectKind.ChooseGeneratedCards:
                 case PrototypeCombatEffectKind.ChooseGeneratedColorlessCards:
                 {
+                    var sourcePool = SourcePoolForShuffle(
+                        combat, operation, sourceCardInstanceId)
+                        ?? throw new InvalidOperationException(
+                            "Generated-card choice has no source pool.");
                     var generated = AddGeneratedChoiceCards(
                         combat,
-                        operation.GeneratedChoiceCardType,
+                        sourcePool,
                         operation.Amount,
                         operation.GeneratedChoiceCardsFreeThisTurn,
                         operation.GeneratedChoiceCardsUpgraded,
                         rng,
-                        operation.Kind
-                            == PrototypeCombatEffectKind
-                                .ChooseGeneratedColorlessCards
-                            ? PrototypeColorlessCards
-                                .ImplementedCombatGenerationPool
-                            : operation.GeneratedChoiceCharacterCards
-                                ? PrototypeContent.NativeSilentCardPool
-                                : null,
-                        operation.GeneratedChoiceCharacterCards,
                         operation.GeneratedChoiceCardsRetain,
                         operation.GeneratedChoiceUsesNativeCardGenerationRng);
                     combat = generated.Combat;
@@ -7642,13 +7637,10 @@ public sealed partial class PrototypeGameEngine
                         ? combat.PlayerPowers.Single(power => power.ApplicationOrder == order).StoredValue
                         : operation.Amount;
                     if (count <= 0) break;
-                    var pool = PrototypeContent.NativeSilentCardPool.Where(id =>
-                    {
-                        var definition = PrototypeContent.Card(id);
-                        return definition.Rarity == PrototypeCardRarity.Common
-                            && definition.MechanicsImplemented && definition.CanBeGeneratedInCombat
-                            && !definition.MultiplayerOnly;
-                    }).ToArray();
+                    var pool = SourcePoolForShuffle(
+                        combat, operation, sourceCardInstanceId)
+                        ?? throw new InvalidOperationException(
+                            "Distinct Common-card generation has no source pool.");
                     // Native TakeRandom shuffles the whole filtered pool before
                     // taking a distinct prefix, even for a single generated card.
                     combat = ShuffleCombatCardPool(
@@ -8962,9 +8954,7 @@ public sealed partial class PrototypeGameEngine
             throw new NotSupportedException(
                 "Native distinct-colorless generation needs the complete unlocked " +
                 "card pool before it can consume run.combat_card_generation.");
-        var candidates = PrototypeColorlessCards.ImplementedCombatGenerationPool
-            .Where(id => !StringComparer.Ordinal.Equals(id, sourceCardId))
-            .ToArray();
+        var candidates = DistinctColorlessGenerationPool(sourceCardId);
         if (candidates.Length == 0)
         {
             return combat;
@@ -9004,32 +8994,15 @@ public sealed partial class PrototypeGameEngine
 
     private static PrototypeGeneratedChoiceResult AddGeneratedChoiceCards(
         CombatState combat,
-        PrototypeCardType? cardType,
+        string[] candidates,
         int count,
         bool freeThisTurn,
         bool upgraded,
         RngBundle rng,
-        IEnumerable<string>? sourcePool = null,
-        bool characterCombatPool = false,
         bool retain = false,
         bool useNativeCardGenerationRng = false)
     {
-        var candidates = (sourcePool ?? PrototypeContent.RewardCardPool)
-            .Where(cardId =>
-            {
-                var definition = PrototypeContent.Card(cardId);
-                return (cardType is null
-                        || definition.Type == cardType.Value)
-                    && definition.CanBeGeneratedInCombat
-                    && (!characterCombatPool
-                        || definition.Rarity is not
-                            (PrototypeCardRarity.Basic
-                             or PrototypeCardRarity.Ancient
-                             or PrototypeCardRarity.Event))
-                    && definition.MechanicsImplemented
-                    && !definition.MultiplayerOnly;
-            })
-            .ToArray();
+        ArgumentNullException.ThrowIfNull(candidates);
         if (candidates.Length == 0 || count <= 0)
         {
             return new PrototypeGeneratedChoiceResult(

@@ -61,20 +61,12 @@ public sealed partial class PrototypeGameEngine
         }
 
         if (op.Kind == PrototypeCombatEffectKind.CreateDistinctCharacterCommonCardsInHand)
-            return PrototypeContent.NativeSilentCardPool.Where(id =>
-            {
-                var card = PrototypeContent.Card(id);
-                return card.Rarity == PrototypeCardRarity.Common
-                    && card.MechanicsImplemented && card.CanBeGeneratedInCombat
-                    && !card.MultiplayerOnly;
-            }).ToArray();
+            return CharacterCommonGenerationPool();
         if (op.Kind == PrototypeCombatEffectKind.CreateDistinctColorlessCardsInHand)
         {
             var sourceId = sourceCardInstanceId is null ? null
                 : RequireCombatCard(combat, sourceCardInstanceId.Value).CardId;
-            return PrototypeColorlessCards.ImplementedCombatGenerationPool
-                .Where(id => !StringComparer.Ordinal.Equals(id, sourceId))
-                .ToArray();
+            return DistinctColorlessGenerationPool(sourceId);
         }
 
         if (op.Kind is not (PrototypeCombatEffectKind.ChooseGeneratedCards or
@@ -99,6 +91,21 @@ public sealed partial class PrototypeGameEngine
                 && definition.MechanicsImplemented && !definition.MultiplayerOnly;
         }).ToArray();
     }
+
+    internal static string[] CharacterCommonGenerationPool() =>
+        PrototypeContent.NativeSilentCardPool.Where(id =>
+        {
+            var card = PrototypeContent.Card(id);
+            return card.Rarity == PrototypeCardRarity.Common
+                && card.MechanicsImplemented && card.CanBeGeneratedInCombat
+                && !card.MultiplayerOnly;
+        }).ToArray();
+
+    internal static string[] DistinctColorlessGenerationPool(
+        string? sourceCardId) =>
+        PrototypeColorlessCards.ImplementedCombatGenerationPool
+            .Where(id => !StringComparer.Ordinal.Equals(id, sourceCardId))
+            .ToArray();
 
     private static int ControlledPoolSelectedCount(
         CombatState combat, PrototypeQueuedOperation op, int poolCount)
