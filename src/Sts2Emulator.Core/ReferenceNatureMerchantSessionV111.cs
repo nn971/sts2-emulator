@@ -433,6 +433,12 @@ public sealed record ReferenceNatureMerchantSessionV111(
     {
         request.Validate();
         var siteId = request.SiteId;
+        if (IsLegacyNativeMerchantFallbackBoundary(source, action) &&
+            StochasticSiteRegistryV111
+                .IsLegacyNativeMerchantFallbackSite(siteId))
+            return QueryLegacyNativeMerchantFallback(
+                source, action, request, candidateLabels, prefix);
+
         if (request.IndexRequest is { } playerModelRequest &&
             playerModelRequest.StreamId == NativePlayerRngV111.RewardsStreamId &&
             siteId is "relic.acquisition.random_rare_card.model" or
@@ -524,7 +530,7 @@ public sealed record ReferenceNatureMerchantSessionV111(
                     relicRequest);
                 return law with
                 {
-                    EventId = PurchaseRequestEventId(source, action,
+                    EventId = MerchantRequestEventId(source, action,
                         request, candidateLabels, prefix)
                 };
             }
@@ -564,7 +570,7 @@ public sealed record ReferenceNatureMerchantSessionV111(
                     "Toy Box relic identity request differs from its rarity-conditioned support.");
 
             return ChanceLawEngineV111.QueryUniformLabeledIndexSupport(
-                PurchaseRequestEventId(source, action, request, labels,
+                MerchantRequestEventId(source, action, request, labels,
                     prefix), indexRequest, labels,
                 "native-toy-box-relic-identity-over-unordered-bag-v1",
                 "Uniform identity over the captured remaining Native relic-bag support; queue identity and source-pool completeness remain unverified.");
@@ -626,6 +632,139 @@ public sealed record ReferenceNatureMerchantSessionV111(
             $"ReferenceNature merchant replay does not support stochastic site '{siteId}'.");
     }
 
+    private static ChanceLawV111 QueryLegacyNativeMerchantFallback(
+        RunState source, GameAction action,
+        ControlledStochasticRequestV111 request,
+        string[]? candidateLabels,
+        ControlledStochasticDecisionV111[] prefix)
+    {
+        if (request.IndexRequest is not { } indexRequest)
+            throw new InvalidDataException(
+                "Legacy Native merchant fallback requires an index request.");
+        ValidateLegacyNativeMerchantRequest(
+            source, indexRequest, candidateLabels);
+
+        if (indexRequest.SiteId is
+                "shop.merchant.card_price_modifier.index_draw" or
+                "shop.merchant.card_upgrade_roll.ticket" or
+                "shop.merchant.potion_price_modifier.index_draw" or
+                "shop.merchant.relic_price_modifier.index_draw")
+            return ChanceLawEngineV111.QueryLegacyMerchantIndexRequest(
+                indexRequest.SiteId, indexRequest.OwnerId,
+                indexRequest.Ordinal, indexRequest.SupportCount);
+
+        return ChanceLawEngineV111.QueryRandomIndex(
+            MerchantRequestEventId(source, action, request,
+                candidateLabels, prefix), indexRequest);
+    }
+
+    private static void ValidateLegacyNativeMerchantRequest(
+        RunState source, RandomIndexRequestV111 request,
+        string[]? candidateLabels)
+    {
+        if (!StochasticSiteRegistryV111
+                .IsLegacyNativeMerchantFallbackSite(request.SiteId))
+            throw new NotSupportedException(
+                $"Legacy Native merchant replay does not support stochastic site '{request.SiteId}'.");
+
+        var expectedStream = request.SiteId is "card_rarity.roll.ticket" or
+            "relic_grab_bag.rarity.ticket"
+                ? "reward" : "shop";
+        var expectedBound = request.SiteId switch
+        {
+            "shop.merchant.sale_slot.index_draw" => 5,
+            "card_rarity.roll.ticket" or
+                "shop.merchant.card_upgrade_roll.ticket" => 10000,
+            "shop.merchant.card_price_modifier.index_draw" or
+                "shop.merchant.potion_price_modifier.index_draw" => 11,
+            "shop.merchant.relic_price_modifier.index_draw" => 31,
+            "potion.rarity_roll.ticket" or
+                "relic_grab_bag.rarity.ticket" => 100,
+            _ => request.SupportCount
+        };
+        var boundedInteger = request.SiteId is "card_rarity.roll.ticket" or
+            "shop.merchant.card_upgrade_roll.ticket" or
+            "potion.rarity_roll.ticket" or
+            "relic_grab_bag.rarity.ticket";
+        var expectedOperation = boundedInteger
+            ? "bounded_integer" : "choose_index";
+        if (request.StreamId != expectedStream ||
+            request.OperationKind != expectedOperation ||
+            request.SupportCount != expectedBound ||
+            request.OrderedCandidates.Length !=
+                (boundedInteger ? 0 : expectedBound) ||
+            !boundedInteger && !request.OrderedCandidates.SequenceEqual(
+                Enumerable.Range(0, expectedBound)) ||
+            candidateLabels is not null &&
+                (candidateLabels.Length != request.SupportCount ||
+                 candidateLabels.Any(string.IsNullOrWhiteSpace) ||
+                 candidateLabels.Distinct(StringComparer.Ordinal).Count() !=
+                    candidateLabels.Length))
+            throw new InvalidDataException(
+                "Legacy Native merchant request differs from its declared stream and support.");
+
+        if (request.SiteId == "shop.merchant.sale_slot.index_draw" &&
+            source.World is { } world && request.OwnerId !=
+                $"act:{world.Act}:floor:{world.Floor}")
+            throw new InvalidDataException(
+                "Legacy Native merchant sale-slot owner differs from the current Shop.");
+
+        if (request.SiteId ==
+                PrototypeNativeRelicGrabBag.NativeMerchantModelSiteId)
+        {
+            if (candidateLabels is not { Length: > 0 } labels ||
+                source.World is not { } merchantWorld)
+                throw new InvalidDataException(
+                    "Legacy Native merchant relic identity request lost its ordered candidates.");
+            var ordinal = ParseOrdinal(request.OwnerId,
+                ":merchant_relic:", ":rarity:");
+            var rarityText = SegmentAfter(request.OwnerId,
+                ":rarity:", ":pool:");
+            if (ordinal is < 0 or >= 3 ||
+                !Enum.TryParse<PrototypeRelicRarity>(rarityText,
+                    ignoreCase: false, out var rarity) ||
+                !Enum.IsDefined(rarity) ||
+                !labels.SequenceEqual(labels.OrderBy(
+                    label => label, StringComparer.Ordinal),
+                    StringComparer.Ordinal) ||
+                request.OwnerId != PrototypeNativeRelicGrabBag
+                    .MerchantModelOwnerId(
+                        merchantWorld, ordinal, rarity, labels))
+                throw new InvalidDataException(
+                    "Legacy Native merchant relic identity owner differs from its canonical rarity support.");
+        }
+        else if (request.SiteId == "relic_grab_bag.rarity.ticket")
+        {
+            var merchantOrdinal = ParseOrdinal(request.OwnerId,
+                ":merchant_relic:", ":merchant");
+            if (merchantOrdinal is < 0 or >= 2 ||
+                candidateLabels is not { Length: 100 } rarityTickets ||
+                !rarityTickets.SequenceEqual(Enumerable.Range(0, 100)
+                    .Select(ticket => (ticket < 50 ? "common:" :
+                        ticket < 83 ? "uncommon:" : "rare:") +
+                        ticket.ToString(CultureInfo.InvariantCulture)),
+                    StringComparer.Ordinal))
+                throw new InvalidDataException(
+                    "Legacy Native merchant relic rarity request differs from its two rolled offers.");
+        }
+        else if (candidateLabels is not null)
+        {
+            throw new InvalidDataException(
+                "Legacy Native merchant request has unexpected candidate labels.");
+        }
+    }
+
+    private static bool IsLegacyNativeMerchantFallbackBoundary(
+        RunState source, GameAction action) =>
+        source.NativeRunRng is null && source.Phase == RunPhase.MapChoice &&
+        source.World is { } world &&
+        PrototypeGameEngine.UsesNativeRegionalSystems(world) &&
+        action.Kind == "choose_map_node" &&
+        PrototypeNativeWingedBoots.AvailableNodes(world, source.Player)
+            .Any(node => node.NodeId ==
+                    action.ReadPayload<ChooseMapNodePayload>().NodeId &&
+                node.RoomType == PrototypeRoomType.Shop);
+
     private static string[] ValidateRegisteredPurchaseIndexSupport(
         ControlledStochasticRequestV111 request, string[]? candidateLabels)
     {
@@ -655,11 +794,11 @@ public sealed record ReferenceNatureMerchantSessionV111(
     private static void ValidateOpeningBoundary(
         RunState source, GameAction action)
     {
-        if (source.World is not { } world || source.NativeRunRng is null ||
+        if (source.World is not { } world ||
             source.ControlledRunActionChoice is not null ||
             !PrototypeGameEngine.UsesNativeRegionalSystems(world))
             throw new InvalidOperationException(
-                "ReferenceNature merchant session requires configured Native Shop state.");
+                "ReferenceNature merchant session requires a Native-regional Shop state.");
         var legal = new PrototypeGameEngine().GetLegalActions(source).Any(
             candidate => PrototypeAiEnvironment.StableActionId(candidate) ==
                 PrototypeAiEnvironment.StableActionId(action));
@@ -670,11 +809,12 @@ public sealed record ReferenceNatureMerchantSessionV111(
                     action.ReadPayload<ChooseMapNodePayload>().NodeId &&
                     node.RoomType == PrototypeRoomType.Shop);
         var validConfiguredShopPurchase =
+            source.NativeRunRng is not null &&
             ControlledRunActionEngineV111.IsShopPurchaseAction(source, action)
             && source.World?.Shop is not null;
         if ((!validShopEntry && !validConfiguredShopPurchase) || !legal)
             throw new InvalidOperationException(
-                "ReferenceNature merchant session requires a current legal configured Shop-entry or purchase action.");
+                "ReferenceNature merchant session requires a current legal Native Shop-entry or configured purchase action.");
         PrototypeStateInvariants.Validate(source);
     }
 
@@ -701,7 +841,7 @@ public sealed record ReferenceNatureMerchantSessionV111(
             !offer.Sold && offer.ItemId == NativeAncientRewardsV111.ToyBoxId);
     }
 
-    private static string PurchaseRequestEventId(
+    private static string MerchantRequestEventId(
         RunState source, GameAction action,
         ControlledStochasticRequestV111 request,
         string[]? candidateLabels,

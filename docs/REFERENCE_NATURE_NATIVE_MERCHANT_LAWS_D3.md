@@ -1,19 +1,23 @@
 # Native merchant Chance Laws and session (D3 contract)
 
 This contract defines read-only Chance Law queries and an atomic
-ReferenceNature session for configured Native Shop entry, offer and price
-outcomes, the Alchemical Coffer potion-generation effect, and registered
-Native player reward-index draws reached from Shop purchases. It also
-continues Toy Box's five configured Native relic-bag pulls when Toy Box is
-bought. It uses the
+ReferenceNature session for configured Native Shop entry, the Native-regional
+legacy-RNG Shop fallback, offer and price outcomes, the Alchemical Coffer
+potion-generation effect, and registered Native player reward-index draws
+reached from Shop purchases. It also continues Toy Box's five configured
+Native relic-bag pulls when Toy Box is bought. It uses the
 versioned `chance_law_query` coverage and
 `ReferenceNatureMerchantSessionV111`; player observation fields stay unchanged.
 
 ## Boundary and inputs
 
-Merchant offer and price queries require a run at `MapChoice`, a native run
-RNG bundle, native regional systems, and at least one currently available Shop
-node. They describe the merchant boundary conditional on entering that Shop.
+Configured Native merchant offer and price queries require a run at
+`MapChoice`, a native run RNG bundle, native regional systems, and at least
+one currently available Shop node. They describe the merchant boundary
+conditional on entering that Shop. The session also accepts a legal
+Native-regional Shop-entry action when the run has no `NativeRunRng` bundle;
+that retained fallback is replayed from the action checkpoint using its
+legacy `shop` and `reward` index requests.
 For existing offer and price laws, `ordinal` is the zero-based occurrence
 within the named offer group. Card-rarity and card-model merchant laws require
 `card_type`; a card-model query also requires the preceding rarity result.
@@ -149,12 +153,16 @@ current Chance Law exposes only the request support conditioned on declared
 branch inputs and the saved decision prefix; this contract adds no privileged
 inspector projection.
 
-`ReferenceNatureMerchantSessionV111` resolves configured Native Shop entry and
-supported purchase boundaries by replaying the ordinary
-source action from its saved state through the ordered request prefix. It
-commits the completed mechanics result and Nature cursor together. A pending
-request resumes at its current source boundary, so prior shop generation and
-purchase effects are not applied twice.
+`ReferenceNatureMerchantSessionV111` resolves configured Native Shop entry,
+Native-regional legacy-RNG Shop entry, and supported configured purchase
+boundaries by replaying the ordinary source action from its saved state
+through the ordered request prefix. It commits the completed mechanics result
+and Nature cursor together. A pending request resumes at its current source
+boundary, so prior shop generation and purchase effects are not applied
+twice. The fallback includes the sale slot, card rarity/model and upgrade
+ticket, Colorless-card models, weighted potion rarity/models, relic rarity and
+Nature-only hidden relic identity, and the three integer-percent price
+requests. Those legacy request-index laws remain `UNVERIFIED`.
 
 The declared Native bounded-index and float-grid transforms are
 `SOURCE_VERIFIED` for their listed supports. That status does not establish
@@ -162,11 +170,13 @@ candidate-pool completeness, stream attribution, seed frequencies, or Native
 cursor parity. Legacy merchant percentage-bin requests and hidden relic queue
 identity retain their separate `UNVERIFIED` status.
 
-Native queue construction and queue shuffling, unregistered or non-index
-purchase effects, other later Treasure draws, and the listed legacy merchant requests remain outside
-the atomic Native merchant session. Those paths keep their source-owned or
-existing run-action boundary; this contract does not infer a Nature law or
-continuation for them.
+Native queue construction and queue shuffling, unregistered stochastic Shop
+hooks, non-index purchase effects, and other later Treasure draws remain
+outside the merchant session. Ordinary non-Native legacy Shop-node generation
+continues to use the run-action boundary. The Native-regional fallback session
+uses equal request-index weights for its captured legacy `shop` and `reward`
+requests; this controls the emulator request prefix without certifying Native
+RNG behavior or legacy cursor advancement.
 
 ## Unsupported scope
 
@@ -185,21 +195,17 @@ shape. A snapshot carrying the tag uses
 Nature-owned set unless a controlled Chance Law replay selects an identity.
 Native bag construction and queue shuffling remain outside this session, and
 the completeness of the modeled eligible sets remains unverified. Unregistered
-or non-index stochastic purchase effects, later Treasure draws, and Native
-cursor parity remain unsupported. Legacy Shop-node generation continues to
-use its existing run-action contract. The four legacy `shop.merchant.*` rows linked from the
-migration matrix remain separate: three price rows use discrete integer
-percentage bins that approximate the Native unit-float price sites, and the
-legacy card-upgrade row consumes a 10,000-way ticket even though the generated
-merchant card cannot be upgraded. These legacy requests do not enter the
-configured Native merchant session. Read-only Chance Law queries now expose
-their source-shaped saved-index supports: eleven request indices mapped to the
-integer-percent card and potion prices, thirty-one indices mapped to relic
-prices, and the 10,000-way card-upgrade ticket. Their equal request weights
-remain `UNVERIFIED`; the price bins approximate the Native float paths, and
-the query does not certify legacy cursor behavior. No atomic ReferenceNature
-continuation covers these legacy merchant requests, so a session that reaches
-one still fails closed.
+stochastic Shop hooks, non-index purchase effects, later Treasure draws, and
+Native cursor parity remain unsupported. Ordinary non-Native legacy Shop-node
+generation continues to use its existing run-action contract. The
+Native-regional fallback is now included in the atomic merchant session. Its
+price requests retain the discrete integer-percentage approximations to the
+Native unit-float price sites, and its 10,000-way card-upgrade ticket is
+mechanically inert for merchant cards. Read-only Chance Law queries expose
+eleven request indices for card and potion prices, thirty-one for relic prices,
+and 10,000 for the upgrade ticket. All fallback requests use equal
+request-index weights and remain `UNVERIFIED`; the price bins approximate the
+Native float paths, and the session does not certify legacy cursor behavior.
 For `chance_law_query`, callers declare the request `owner_id`, `ordinal`, and
 the fixed `support_count` (11, 31, or 10,000) for the selected site.
 
@@ -212,6 +218,7 @@ law also accepts `offer_ordinal`, `relic_candidate_ids`, and
 `colorless_offer`, and `sale_reprice`. The no-effect float law accepts its
 typed `owner_id`. These arguments affect only the returned law and are not
 submitted as player actions. `State.begin_reference_nature_merchant(action_id,
-nature_seed=...)` starts the session from a legal configured Shop entry or
-purchase action; its Python object exposes status, fork, save/load,
+nature_seed=...)` starts the session from a legal Native-regional Shop entry
+(including the legacy-RNG fallback) or configured purchase action; its Python
+object exposes status, fork, save/load,
 release, and the committed playable state.

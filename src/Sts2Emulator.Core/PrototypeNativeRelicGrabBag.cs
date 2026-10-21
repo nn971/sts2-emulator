@@ -710,10 +710,15 @@ public sealed record PrototypeRelicBagPullPlanV111
             ControlledEventChoiceReplayV111.IsActive &&
             ControlledEventChoiceReplayV111.IsEventChoiceSite(
                 NativeTreasureModelSiteId);
-        var legacyNaturePull = !merchant && nativeRunRng is null &&
+        var legacyNatureTreasurePull = !merchant && nativeRunRng is null &&
             PrototypeGameEngine.UsesNativeRegionalSystems(world) &&
             ControlledStochasticChanceReplayV111.IsActive;
-        var naturePull = legacyNaturePull ||
+        var legacyNatureMerchantPull = merchant &&
+            nativeRunRng is null &&
+            PrototypeGameEngine.UsesNativeRegionalSystems(world) &&
+            ControlledStochasticChanceReplayV111.IsActive;
+        var naturePull = legacyNatureTreasurePull ||
+            legacyNatureMerchantPull ||
             (nativeRunRng is not null &&
                 (ControlledStochasticChanceReplayV111.IsActive ||
                  nativeEventChoicePull));
@@ -801,6 +806,36 @@ public sealed record PrototypeRelicBagPullPlanV111
                         nativeRunRng, NativeMerchantModelSiteId,
                         NativePlayerRngV111.ShopsStreamId, ownerId,
                         candidates.Length, ordinal).SelectedIndex;
+                }
+                var selected = PullNatureSelected(
+                    bag, rarity, candidates, selectedIndex,
+                    merchant: true, player);
+                pull = (selected.Bag, selected.Id);
+            }
+        }
+        else if (legacyNatureMerchantPull)
+        {
+            if (merchantOfferOrdinal < 0 || merchantOfferOrdinal >= 3)
+                throw new ArgumentOutOfRangeException(
+                    nameof(merchantOfferOrdinal));
+            var plan = PlanNaturePull(
+                bag, rarity, merchant: true, player);
+            if (plan.CandidateIds.Length == 0)
+            {
+                pull = (bag, null);
+            }
+            else
+            {
+                var candidates = plan.CandidateIds;
+                var ownerId = MerchantModelOwnerId(
+                    world, merchantOfferOrdinal, rarity, candidates);
+                int selectedIndex;
+                using (ControlledStochasticChanceReplayV111
+                    .DescribeCandidates(candidates))
+                {
+                    selectedIndex = LegacyRandomChoiceV111.ChooseIndexRange(
+                        rng, NativeMerchantModelSiteId, "shop", ownerId,
+                        candidates.Length).SelectedIndex;
                 }
                 var selected = PullNatureSelected(
                     bag, rarity, candidates, selectedIndex,

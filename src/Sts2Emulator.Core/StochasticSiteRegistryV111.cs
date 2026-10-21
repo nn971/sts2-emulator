@@ -850,24 +850,41 @@ public static class StochasticSiteRegistryV111
         "shop.merchant.relic_price_modifier.unit_float"
     ];
 
-    private static readonly string[] NativeMerchantSessionSites =
+    private static readonly string[] LegacyNativeMerchantFallbackSites =
     [
         "shop.merchant.sale_slot.index_draw",
-        "card_rarity.roll.unit_float",
+        "card_rarity.roll.ticket",
         "shop.merchant.card_model.index_draw",
-        "shop.merchant.card_upgrade_roll.unit_float",
+        "shop.merchant.card_upgrade_roll.ticket",
+        "shop.merchant.card_price_modifier.index_draw",
         "shop.colorless_card_model.index_draw",
+        PrototypeNativePotionShop.RarityRollSiteId,
+        PrototypeNativePotionShop.ModelWithinRaritySiteId,
+        "shop.merchant.potion_price_modifier.index_draw",
+        "relic_grab_bag.rarity.ticket",
+        PrototypeNativeRelicGrabBag.NativeMerchantModelSiteId,
+        "shop.merchant.relic_price_modifier.index_draw"
+    ];
+
+    private static readonly HashSet<string>
+        LegacyNativeMerchantFallbackSiteSet = new(
+            LegacyNativeMerchantFallbackSites, StringComparer.Ordinal);
+
+    private static readonly string[] NativeMerchantSessionSites =
+    [
+        "card_rarity.roll.unit_float",
+        "shop.merchant.card_upgrade_roll.unit_float",
         "relic.acquisition.random_rare_card.model",
         "relic.acquisition.random_potion.model",
         "run.potion.fill_empty_slots.model",
         "potion_factory.rarity_roll.unit_float",
         "potion_factory.model_within_rarity.index_draw",
         RelicGrabBagRaritySiteId,
-        PrototypeNativeRelicGrabBag.NativeMerchantModelSiteId,
         PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId,
         "shop.merchant.card_price_modifier.unit_float",
         "shop.merchant.potion_price_modifier.unit_float",
-        "shop.merchant.relic_price_modifier.unit_float"
+        "shop.merchant.relic_price_modifier.unit_float",
+        .. LegacyNativeMerchantFallbackSites
     ];
 
     private static readonly string[] NativeTreasureSessionSites =
@@ -1167,6 +1184,8 @@ public static class StochasticSiteRegistryV111
         (string[])AncientOfferSessionSites.Clone();
     public static string[] NativeMerchantSessionSiteIds =>
         (string[])NativeMerchantSessionSites.Clone();
+    public static string[] LegacyNativeMerchantFallbackSiteIds =>
+        (string[])LegacyNativeMerchantFallbackSites.Clone();
     public static string[] NativeTreasureSessionSiteIds =>
         (string[])NativeTreasureSessionSites.Clone();
     public static string[] NativeCombatRewardSessionSiteIds =>
@@ -1438,6 +1457,9 @@ public static class StochasticSiteRegistryV111
 
     public static bool IsNativeMerchantPriceSite(string siteId) =>
         NativeMerchantPriceSites.Contains(siteId, StringComparer.Ordinal);
+
+    public static bool IsLegacyNativeMerchantFallbackSite(string siteId) =>
+        LegacyNativeMerchantFallbackSiteSet.Contains(siteId);
 
     public static StochasticChanceLawQueryCoverageV111
         CreateChanceLawQueryCoverage()
