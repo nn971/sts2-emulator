@@ -76,8 +76,12 @@ public sealed record RunWorldStochasticStateV111
     {
         ArgumentNullException.ThrowIfNull(owner);
         ArgumentNullException.ThrowIfNull(run);
-        ValidateActOneEncounterPool(owner);
-        if (RelicBag is { } relicBag)
+        var actOneEncounterPool = ActOneEncounterPool;
+        var relicBag = RelicBag;
+        var laterActEncounterBag = LaterActEncounterBag;
+        var preparedLaterActEncounterBags = PreparedLaterActEncounterBags;
+        ValidateActOneEncounterPool(owner, actOneEncounterPool);
+        if (relicBag is not null)
             PrototypeNativeRelicGrabBag.Validate(relicBag, run.Player);
 
         if (run.Configuration is { UsesExperimentalSilentThreeActRoute: true }
@@ -86,22 +90,24 @@ public sealed record RunWorldStochasticStateV111
             var darvRevealed = configuration.Profile.RevealedEpochs.Contains(
                 NativeDarvEventV111.EpochId, StringComparer.Ordinal);
             if (run.ReferenceNatureRunInitializationPending &&
-                owner.PreparedLaterActEncounterBags is null)
+                preparedLaterActEncounterBags is null)
             {
-                if (owner.Act != 1 || owner.LaterActEncounterBag is not null)
+                if (owner.Act != 1 || laterActEncounterBag is not null)
                     throw new InvalidOperationException(
                         "Pending run initialization has an invalid Act 1 encounter-bag boundary.");
                 return;
             }
             ValidatePreparedLaterActEncounterBags(
-                owner, run.Ascension, darvRevealed);
+                owner, preparedLaterActEncounterBags, run.Ascension,
+                darvRevealed);
             if (owner.Act > 1)
                 ValidateLaterActEncounterBag(
-                    owner, run.Ascension, darvRevealed);
-            var darvAssignments = (LaterActEncounterBag is { } activeBag
+                    owner, laterActEncounterBag, run.Ascension,
+                    darvRevealed);
+            var darvAssignments = (laterActEncounterBag is { } activeBag
                     ? new[] { activeBag.AssignedAncientId }
                     : Array.Empty<string?>())
-                .Concat((PreparedLaterActEncounterBags ?? [])
+                .Concat((preparedLaterActEncounterBags ?? [])
                     .Select(bag => bag.AssignedAncientId))
                 .Count(id => id == NativeDarvEventV111.EventId);
             if (darvAssignments > 1)
@@ -110,36 +116,36 @@ public sealed record RunWorldStochasticStateV111
         }
     }
 
-    private void ValidatePreparedLaterActEncounterBags(
-        RunWorldState world, int ascension, bool darvRevealed)
+    private static void ValidatePreparedLaterActEncounterBags(
+        RunWorldState world,
+        PrototypeLaterActEncounterBagV111[]? prepared,
+        int ascension, bool darvRevealed)
     {
-        var prepared = PreparedLaterActEncounterBags
+        var bags = prepared
             ?? throw new InvalidOperationException(
                 "Experimental routes require run-start prepared encounter histories.");
         var expectedActs = Enumerable.Range(world.Act + 1, 3 - world.Act).ToArray();
-        if (prepared.Any(bag => bag is null)
-            || !prepared.Select(bag => bag.Act).SequenceEqual(expectedActs))
+        if (bags.Any(bag => bag is null)
+            || !bags.Select(bag => bag.Act).SequenceEqual(expectedActs))
             throw new InvalidOperationException(
                 "Prepared encounter histories must belong to each future act in route order.");
-        foreach (var bag in prepared)
+        foreach (var bag in bags)
         {
             if (bag.OrdinaryCombatsStarted != 0 || bag.RemainingElite?.Length != 15)
                 throw new InvalidOperationException(
                     "An unvisited act's prepared encounter history has already been consumed.");
             ValidateLaterActEncounterBag(
-                world with
-                {
-                    Act = bag.Act,
-                    Stochastic = this with { LaterActEncounterBag = bag }
-                },
-                ascension, darvRevealed);
+                world with { Act = bag.Act }, bag, ascension,
+                darvRevealed);
         }
     }
 
     private static void ValidateLaterActEncounterBag(
-        RunWorldState world, int ascension, bool darvRevealed)
+        RunWorldState world,
+        PrototypeLaterActEncounterBagV111? candidate,
+        int ascension, bool darvRevealed)
     {
-        var bag = world.LaterActEncounterBag
+        var bag = candidate
             ?? throw new InvalidOperationException(
                 "Configured Hive/Glory requires pre-generated encounter queues.");
         var ordinaryRooms = ExperimentalSilentThreeActRouteV111.OrdinaryRoomCount(
@@ -205,9 +211,9 @@ public sealed record RunWorldStochasticStateV111
                 "Regional second-boss assignment disagrees with act and Ascension rules.");
     }
 
-    private void ValidateActOneEncounterPool(RunWorldState world)
+    private static void ValidateActOneEncounterPool(
+        RunWorldState world, PrototypeActOneEncounterPoolState? pool)
     {
-        var pool = ActOneEncounterPool;
         if (pool is null) return;
         if (world.ActOneRegion is { } region && region != pool.Region)
             throw new InvalidOperationException(
