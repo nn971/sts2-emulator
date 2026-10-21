@@ -6687,6 +6687,8 @@ public sealed record ReferenceNatureRunActionSessionSnapshotV111(
     ReferenceNatureStateV111 NatureState,
     ReferenceNatureDecisionV111[] DecisionTranscript)
 {
+    public bool LegacyNativeAncientOfferCompletion { get; init; }
+
     private ReferenceNatureDecisionV111[]? _decisionTranscript =
         Clone(DecisionTranscript);
 
@@ -6730,6 +6732,8 @@ public sealed record ReferenceNatureRunActionSessionV111(
 
     public ReferenceNatureAncientOfferSessionV111? AncientOffer
     { get; init; }
+
+    public bool LegacyNativeAncientOfferCompletion { get; init; }
 
     public const string CurrentSchemaId =
         "sts2-v111-reference-nature-run-action-session-v1";
@@ -7304,7 +7308,12 @@ public sealed record ReferenceNatureRunActionSessionV111(
              !immediateNativeActOneCombatAction &&
              !configuredExperimentalActTransition) ||
             AncientOffer is not null &&
-                !configuredExperimentalActTransition)
+                !configuredExperimentalActTransition ||
+            LegacyNativeAncientOfferCompletion &&
+                (!configuredExperimentalActTransition ||
+                 MapGeneration is not null ||
+                 LaterActPreparation is not null ||
+                 AncientOffer is not null))
             throw new InvalidDataException(
                 "Invalid ReferenceNature run-action session envelope.");
         PrototypeStateInvariants.Validate(Origin);
@@ -7509,6 +7518,36 @@ public sealed record ReferenceNatureRunActionSessionV111(
                         "Pending run initialization boss choice differs from its controlled trace.");
             }
         }
+        else if (configuredExperimentalActTransition &&
+            LegacyNativeAncientOfferCompletion)
+        {
+            var legacyReplay = ReplayLegacyNativeAncientTransition(
+                Origin, Action, InitialNatureState, DecisionTranscript);
+            if (legacyReplay is null ||
+                !legacyReplay.Value.MapGeneration.NatureState.SameCursor(
+                    NatureState))
+                throw new InvalidDataException(
+                    "Legacy Native Ancient transition has an invalid map transcript.");
+            var expectedWithoutMapAudit =
+                ReferenceNatureRunCursorV111.Commit(
+                    legacyReplay.Value.Run, NatureState);
+            var mapHistory = legacyReplay.Value.Run
+                .ReferenceNatureMapGenerationHistory
+                ?? Array.Empty<ReferenceNatureMapGenerationAuditV111>();
+            var expectedWithMapAudit = legacyReplay.Value.Run with
+            {
+                ReferenceNatureMapGenerationHistory = mapHistory.Append(
+                    legacyReplay.Value.MapGeneration.ToAudit()).ToArray()
+            };
+            expectedWithMapAudit = ReferenceNatureRunCursorV111.Commit(
+                expectedWithMapAudit, NatureState);
+            if (CanonicalJson.Sha256(expectedWithoutMapAudit) !=
+                    CanonicalJson.Sha256(Run) &&
+                CanonicalJson.Sha256(expectedWithMapAudit) !=
+                    CanonicalJson.Sha256(Run))
+                throw new InvalidDataException(
+                    "Legacy Native Ancient transition differs from its saved run.");
+        }
         else if (configuredExperimentalActTransition)
         {
             var mapGeneration = ReferenceNatureMapGenerationSessionV111.Begin(
@@ -7654,7 +7693,11 @@ public sealed record ReferenceNatureRunActionSessionV111(
             CloneAction(session.Action), RunSnapshot.Save(session.Run),
             session.InitialNatureState, session.NatureState,
             (ReferenceNatureDecisionV111[])
-                session.DecisionTranscript.Clone());
+                session.DecisionTranscript.Clone())
+        {
+            LegacyNativeAncientOfferCompletion =
+                session.LegacyNativeAncientOfferCompletion
+        };
         return JsonSerializer.Serialize(snapshot);
     }
 
@@ -7675,6 +7718,15 @@ public sealed record ReferenceNatureRunActionSessionV111(
                 "Invalid ReferenceNature run-action snapshot.");
         var origin = RunSnapshot.Load(snapshot.OriginSnapshotJson);
         var savedRun = RunSnapshot.Load(snapshot.RunSnapshotJson);
+        var legacyAncientTransition = TryRestoreLegacyNativeAncientTransition(
+            origin, snapshot.Action, savedRun,
+            snapshot.InitialNatureState, snapshot.NatureState,
+            snapshot.DecisionTranscript);
+        if (legacyAncientTransition is not null)
+            return legacyAncientTransition;
+        if (snapshot.LegacyNativeAncientOfferCompletion)
+            throw new InvalidDataException(
+                "Legacy Native Ancient transition snapshot does not replay.");
         var replay = Begin(origin, snapshot.Action,
             snapshot.InitialNatureState);
         for (int index = 0; index < snapshot.DecisionTranscript.Length; index++)
@@ -7693,6 +7745,16 @@ public sealed record ReferenceNatureRunActionSessionV111(
             {
                 ReferenceNatureState = snapshot.NatureState.Fork()
             };
+        if (replay.Complete &&
+            IsConfiguredExperimentalActTransitionAction(
+                origin, snapshot.Action) &&
+            savedRun.ReferenceNatureMapGenerationHistory is null &&
+            replay.Run.ReferenceNatureMapGenerationHistory is { Length: > 0 }
+                transitionMapHistory)
+            savedRun = savedRun with
+            {
+                ReferenceNatureMapGenerationHistory = transitionMapHistory
+            };
         if (CanonicalJson.Sha256(replay.Run) != CanonicalJson.Sha256(savedRun) ||
             CanonicalJson.Sha256(replay.NatureState) !=
                 CanonicalJson.Sha256(snapshot.NatureState) ||
@@ -7701,6 +7763,84 @@ public sealed record ReferenceNatureRunActionSessionV111(
                 "ReferenceNature run-action replay differs from its snapshot.");
         replay.Validate();
         return replay;
+    }
+
+    private static ReferenceNatureRunActionSessionV111?
+        TryRestoreLegacyNativeAncientTransition(
+            RunState origin, GameAction action, RunState savedRun,
+            ReferenceNatureStateV111 initialNatureState,
+            ReferenceNatureStateV111 natureState,
+            ReferenceNatureDecisionV111[] decisionTranscript)
+    {
+        var replay = ReplayLegacyNativeAncientTransition(
+            origin, action, initialNatureState, decisionTranscript);
+        if (replay is null ||
+            !replay.Value.MapGeneration.NatureState.SameCursor(natureState))
+            return null;
+        var expectedWithoutMapAudit = ReferenceNatureRunCursorV111.Commit(
+            replay.Value.Run, natureState);
+        var mapHistory = replay.Value.Run.ReferenceNatureMapGenerationHistory
+            ?? Array.Empty<ReferenceNatureMapGenerationAuditV111>();
+        var expectedWithMapAudit = replay.Value.Run with
+        {
+            ReferenceNatureMapGenerationHistory = mapHistory.Append(
+                replay.Value.MapGeneration.ToAudit()).ToArray()
+        };
+        expectedWithMapAudit = ReferenceNatureRunCursorV111.Commit(
+            expectedWithMapAudit, natureState);
+        if (CanonicalJson.Sha256(expectedWithoutMapAudit) !=
+                CanonicalJson.Sha256(savedRun) &&
+            CanonicalJson.Sha256(expectedWithMapAudit) !=
+                CanonicalJson.Sha256(savedRun))
+            return null;
+
+        var session = new ReferenceNatureRunActionSessionV111(
+            CurrentSchemaId, origin.Fork(), CloneAction(action),
+            expectedWithMapAudit.Fork(), initialNatureState.Fork(),
+            natureState.Fork(),
+            (ReferenceNatureDecisionV111[])decisionTranscript.Clone())
+        {
+            LegacyNativeAncientOfferCompletion = true
+        };
+        session.Validate();
+        return session;
+    }
+
+    private static (ReferenceNatureMapGenerationSessionV111 MapGeneration,
+        RunState Run)? ReplayLegacyNativeAncientTransition(
+            RunState origin, GameAction action,
+            ReferenceNatureStateV111 initialNatureState,
+            ReferenceNatureDecisionV111[] decisionTranscript)
+    {
+        if (!IsConfiguredExperimentalActTransitionAction(origin, action))
+            return null;
+        var mapGeneration = ReferenceNatureMapGenerationSessionV111.Begin(
+            origin.RunSeed, checked(origin.World!.Act + 1), origin.Ascension,
+            initialNatureState);
+        var transcriptIndex = 0;
+        while (!mapGeneration.Complete)
+        {
+            if (transcriptIndex >= decisionTranscript.Length)
+                return null;
+            mapGeneration = mapGeneration.ResolveNext();
+            if (!mapGeneration.DecisionTranscript[^1].Equals(
+                    decisionTranscript[transcriptIndex++]))
+                return null;
+        }
+        if (transcriptIndex != decisionTranscript.Length)
+            return null;
+        var map = mapGeneration.Map ?? throw new InvalidDataException(
+            "Legacy experimental transition map replay has no output.");
+        var engine = new PrototypeGameEngine();
+        var deferredTransition = engine.BeginActTransitionWithMap(
+            origin, action, map);
+        if (AssignedAncientOfferSite(deferredTransition) is null)
+            return null;
+        var completed = engine.StepActTransitionWithMapForReplay(
+            origin.Fork(), action, map).State;
+        completed = ReferenceNatureRunCursorV111.Commit(
+            completed, mapGeneration.NatureState);
+        return (mapGeneration, completed);
     }
 
     private static GameAction CloneAction(GameAction action) => action with

@@ -265,6 +265,18 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             deferAssignedAncientOpening: true);
     }
 
+    internal TransitionResult StepActTransitionWithMapForReplay(
+        RunState state, GameAction action, MapState map)
+    {
+        if (state.Configuration?.UsesExperimentalSilentThreeActRoute != true ||
+            action.Kind != "continue_act" ||
+            state.Phase != RunPhase.ActTransition)
+            throw new InvalidOperationException(
+                "An explicit transition map requires the configured experimental act-transition action.");
+        ArgumentNullException.ThrowIfNull(map);
+        return StepCore(state, action, map);
+    }
+
     internal RunState CompleteActTransitionStep(
         RunState origin, RunState transitioned)
     {
