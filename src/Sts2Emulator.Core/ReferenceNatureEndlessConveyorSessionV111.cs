@@ -297,22 +297,160 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
     }
 
     private static ChanceLawV111 QuerySite(
-        RunState origin, string actionId, string siteId) => siteId switch
+        RunState origin, string actionId, string siteId)
     {
-        PrototypeNativeEndlessConveyor.DishWeightedTicketSiteId =>
-            ChanceLawEngineV111.QueryNativeEndlessConveyorDishEntry(
-                origin, actionId),
-        PrototypeNativeEndlessConveyor.UpgradeCardSiteId =>
-            ChanceLawEngineV111.QueryNativeEndlessConveyorUpgrade(
-                origin, actionId),
-        PrototypeNativeEndlessConveyor.ColorlessCardSiteId =>
-            ChanceLawEngineV111.QueryNativeEndlessConveyorColorlessCard(
-                origin, actionId),
-        PrototypeNativePotionShop.UniformModelSiteId =>
-            QuerySuspiciousCondimentPotion(origin, actionId),
-        _ => throw new NotSupportedException(
-            "Endless Conveyor session has no query for site '" + siteId + "'.")
-    };
+        if (IsLegacyNativeFallback(origin))
+            return QueryLegacyFallbackSite(origin, actionId, siteId);
+
+        return siteId switch
+        {
+            PrototypeNativeEndlessConveyor.DishWeightedTicketSiteId =>
+                ChanceLawEngineV111.QueryNativeEndlessConveyorDishEntry(
+                    origin, actionId),
+            PrototypeNativeEndlessConveyor.UpgradeCardSiteId =>
+                ChanceLawEngineV111.QueryNativeEndlessConveyorUpgrade(
+                    origin, actionId),
+            PrototypeNativeEndlessConveyor.ColorlessCardSiteId =>
+                ChanceLawEngineV111.QueryNativeEndlessConveyorColorlessCard(
+                    origin, actionId),
+            PrototypeNativePotionShop.UniformModelSiteId =>
+                QuerySuspiciousCondimentPotion(origin, actionId),
+            _ => throw new NotSupportedException(
+                "Endless Conveyor session has no query for site '" + siteId + "'.")
+        };
+    }
+
+    private static bool IsLegacyNativeFallback(RunState state) =>
+        state.NativeRunRng is null && state.World is { } world &&
+        PrototypeGameEngine.UsesNativeRegionalSystems(world);
+
+    private static ChanceLawV111 QueryLegacyFallbackSite(
+        RunState origin, string actionId, string siteId)
+    {
+        var (probedRun, requests) = ProbeLegacyAction(origin, actionId);
+        var matching = requests.Where(request => request.SiteId == siteId)
+            .ToArray();
+        if (matching.Length != 1)
+            throw new InvalidOperationException(
+                "Native-regional Endless Conveyor fallback action must reach exactly one '"
+                + siteId + "' request.");
+        var request = matching[0];
+        ValidateLegacyFallbackRequest(
+            origin, probedRun, request, siteId);
+        var eventId = CanonicalJson.Sha256(new
+        {
+            boundary = "reference_nature.endless_conveyor.legacy_fallback",
+            actionId,
+            eventId = PrototypeNativeEndlessConveyor.EventId,
+            request
+        });
+        return ChanceLawEngineV111.QueryRandomIndex(eventId, request);
+    }
+
+    private static (RunState Run, RandomIndexRequestV111[] Requests)
+        ProbeLegacyAction(RunState origin, string actionId)
+    {
+        var action = RequireAction(origin, actionId);
+        RunState run;
+        RandomIndexRequestV111[] requests;
+        using (var journal = RandomBoundaryJournalV111.Begin())
+        {
+            run = new PrototypeGameEngine().Step(origin.Fork(), action).State;
+            requests = journal.Entries.Select(entry => entry.Request)
+                .Select(request => request with
+                {
+                    OrderedCandidates =
+                        (int[])request.OrderedCandidates.Clone()
+                }).ToArray();
+        }
+        if (run.World?.Event?.EventId !=
+            PrototypeNativeEndlessConveyor.EventId)
+            throw new InvalidOperationException(
+                "The source event-selection result did not enter Endless Conveyor.");
+        return (run, requests);
+    }
+
+    private static void ValidateLegacyFallbackRequest(
+        RunState origin, RunState probedRun,
+        RandomIndexRequestV111 request, string siteId)
+    {
+        var expectedStream = siteId ==
+                PrototypeNativePotionShop.UniformModelSiteId
+            ? "reward" : "event";
+        if (request.StreamId != expectedStream)
+            throw new InvalidDataException(
+                "Endless Conveyor fallback request uses an unexpected legacy stream.");
+
+        if (siteId == PrototypeNativeEndlessConveyor.DishWeightedTicketSiteId)
+        {
+            var candidates = GetLegacyDishCandidates(origin, probedRun);
+            var previousCount = origin.World?.Event?.NativeDishCount ?? 0;
+            var totalWeight = candidates.Sum(candidate => candidate.Weight);
+            var ownerId = $"dish:{previousCount + 1}:pool:"
+                + CanonicalJson.Sha256(candidates);
+            if (request.OperationKind != "bounded_integer" ||
+                request.BoundedCount != totalWeight ||
+                request.OwnerId != ownerId || totalWeight <= 0)
+                throw new InvalidDataException(
+                    "Endless Conveyor fallback dish ticket differs from its weighted source support.");
+            return;
+        }
+
+        var (expectedOwner, expectedCount) = siteId switch
+        {
+            PrototypeNativeEndlessConveyor.UpgradeCardSiteId =>
+                UpgradeFallbackSupport(origin),
+            PrototypeNativeEndlessConveyor.ColorlessCardSiteId =>
+                ($"dish:{origin.World?.Event?.NativeDishCount ?? 0}:pool:"
+                    + CanonicalJson.Sha256(
+                        PrototypeNativeEndlessConveyor.GetColorlessCardCandidates()),
+                 PrototypeNativeEndlessConveyor.GetColorlessCardCandidates().Length),
+            PrototypeNativePotionShop.UniformModelSiteId =>
+                ($"event:endless_conveyor:dish:{origin.World?.Event?.NativeDishCount ?? 0}:potion:pool:"
+                    + CanonicalJson.Sha256(
+                        PrototypeNativePotionShop.NativePotionPoolOrder),
+                 PrototypeNativePotionShop.NativePotionPoolOrder.Count),
+            _ => throw new NotSupportedException(
+                "Endless Conveyor fallback has no support validator for '" + siteId + "'.")
+        };
+        if (request.OperationKind != "choose_index" ||
+            request.SupportCount != expectedCount ||
+            request.OwnerId != expectedOwner || expectedCount <= 0 ||
+            !request.OrderedCandidates.SequenceEqual(
+                Enumerable.Range(0, expectedCount)) ||
+            siteId == PrototypeNativePotionShop.UniformModelSiteId &&
+                request.StreamId != "reward")
+            throw new InvalidDataException(
+                "Endless Conveyor fallback index differs from its ordered source support.");
+    }
+
+    private static (string OwnerId, int Count) UpgradeFallbackSupport(
+        RunState origin)
+    {
+        var candidates = PrototypeNativeEndlessConveyor
+            .GetUpgradeCardCandidates(origin);
+        return ("endless_conveyor:deck:" + CanonicalJson.Sha256(candidates),
+            candidates.Length);
+    }
+
+    private static (string Id, int Weight)[] GetLegacyDishCandidates(
+        RunState origin, RunState probedRun)
+    {
+        var previous = origin.World?.Event;
+        var current = new EventState(PrototypeNativeEndlessConveyor.EventId)
+        {
+            NativeDishCount = previous?.NativeDishCount ?? 0,
+            NativeLastDishId = previous?.NativeLastDishId
+        };
+        var world = probedRun.World
+            ?? throw new InvalidDataException(
+                "Endless Conveyor fallback probe lost its event world.");
+        return PrototypeNativeEndlessConveyor.GetWeightedDishCandidates(
+            probedRun with
+            {
+                World = world with { Event = current }
+            }, current);
+    }
 
     private static ChanceLawV111 QuerySuspiciousCondimentPotion(
         RunState origin, string actionId)
@@ -404,6 +542,10 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
         (ChanceLawV111 Law,
             ReferenceNatureSelectionV111 Selection)[] selections)
     {
+        if (IsLegacyNativeFallback(origin))
+            return ReplayLegacyFallbackSelections(
+                origin, actionId, selections);
+
         if (selections.Length == 1)
         {
             var (law, selection) = selections[0];
@@ -445,6 +587,75 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
         ValidateSelectedEffect(origin, run, indexChoice.Law,
             indexChoice.Selection);
         ValidateSelectedDish(run, dishChoice.Selection);
+        return run;
+    }
+
+    private static RunState ReplayLegacyFallbackSelections(
+        RunState origin, string actionId,
+        (ChanceLawV111 Law,
+            ReferenceNatureSelectionV111 Selection)[] selections)
+    {
+        if (selections.Length == 0)
+            throw new InvalidDataException(
+                "Endless Conveyor fallback replay requires a nonempty transcript.");
+        var probed = ProbeLegacyAction(origin, actionId);
+        var requests = selections.Select(entry =>
+        {
+            var matching = probed.Requests.Where(request =>
+                request.SiteId == entry.Law.SiteId).ToArray();
+            if (matching.Length != 1)
+                throw new InvalidDataException(
+                    "Endless Conveyor fallback replay no longer reaches one request for '"
+                    + entry.Law.SiteId + "'.");
+            ValidateLegacyFallbackRequest(
+                origin, probed.Run, matching[0], entry.Law.SiteId);
+            if (matching[0].OwnerId != entry.Law.OwnerId ||
+                matching[0].Ordinal != entry.Law.Ordinal ||
+                matching[0].OperationKind != entry.Law.OperationKind ||
+                matching[0].SupportCount != entry.Law.Outcomes.Length)
+                throw new InvalidDataException(
+                    "Endless Conveyor fallback request differs from its sampled law.");
+            return matching[0];
+        }).ToArray();
+        var decisions = selections.Select((entry, index) =>
+        {
+            var decision = new RandomIndexDecisionV111(
+                requests[index], entry.Selection.OutcomeIndex,
+                "controlled-v111");
+            decision.Validate();
+            return ControlledStochasticDecisionV111.FromIndex(decision);
+        }).ToArray();
+        var requestSet = requests.Select(request =>
+            ControlledStochasticRequestV111.FromIndex(request)).ToArray();
+        var action = RequireAction(origin, actionId);
+        var replay = ControlledChanceContinuationExecutorV111.CaptureStochastic(
+            origin,
+            ControlledStochasticContinuationStateV111.CurrentSchemaId,
+            decisions,
+            checkpoint => new PrototypeGameEngine().Step(
+                checkpoint, action).State,
+            request => request.IndexRequest is not null &&
+                requestSet.Any(expected =>
+                    ControlledStochasticChanceReplayV111.SameRequest(
+                        request, expected)));
+        if (replay.Suspended || replay.Run is not { } run)
+            throw new InvalidDataException(
+                "Endless Conveyor fallback action did not consume its complete Nature prefix.");
+
+        for (var index = 0; index < selections.Length; index++)
+        {
+            var (law, selection) = selections[index];
+            if (law.SiteId ==
+                PrototypeNativeEndlessConveyor.DishWeightedTicketSiteId)
+            {
+                ValidateLegacySelectedDish(
+                    origin, probed.Run, run, law, selection);
+            }
+            else
+            {
+                ValidateSelectedEffect(origin, run, law, selection);
+            }
+        }
         return run;
     }
 
@@ -540,9 +751,14 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
         {
             var candidates = PrototypeNativeEndlessConveyor
                 .GetUpgradeCardCandidates(origin);
+            var expectedOutcomeId = origin.NativeRunRng is null
+                ? "choice_index:" + selection.OutcomeIndex
+                : (uint)selection.OutcomeIndex < (uint)candidates.Length
+                    ? $"card-instance:{candidates[selection.OutcomeIndex]}:index:{selection.OutcomeIndex}"
+                    : string.Empty;
             if ((uint)selection.OutcomeIndex >= (uint)candidates.Length ||
                 law.Outcomes[selection.OutcomeIndex].OutcomeId !=
-                    $"card-instance:{candidates[selection.OutcomeIndex]}:index:{selection.OutcomeIndex}")
+                    expectedOutcomeId)
                 throw new InvalidDataException(
                     "Endless Conveyor upgrade law differs from its ordered card support.");
             var selectedInstanceId = candidates[selection.OutcomeIndex];
@@ -560,9 +776,14 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
         {
             var candidates = PrototypeNativeEndlessConveyor
                 .GetColorlessCardCandidates();
+            var expectedOutcomeId = origin.NativeRunRng is null
+                ? "choice_index:" + selection.OutcomeIndex
+                : (uint)selection.OutcomeIndex < (uint)candidates.Length
+                    ? $"card-model:{candidates[selection.OutcomeIndex]}:index:{selection.OutcomeIndex}"
+                    : string.Empty;
             if ((uint)selection.OutcomeIndex >= (uint)candidates.Length ||
                 law.Outcomes[selection.OutcomeIndex].OutcomeId !=
-                    $"card-model:{candidates[selection.OutcomeIndex]}:index:{selection.OutcomeIndex}")
+                    expectedOutcomeId)
                 throw new InvalidDataException(
                     "Endless Conveyor Colorless law differs from its ordered card support.");
             var cardId = candidates[selection.OutcomeIndex];
@@ -581,9 +802,14 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
         {
             var candidates = PrototypeNativePotionShop.NativePotionPoolOrder;
             var eventState = run.World?.Event;
+            var expectedOutcomeId = origin.NativeRunRng is null
+                ? "choice_index:" + selection.OutcomeIndex
+                : (uint)selection.OutcomeIndex < (uint)candidates.Count
+                    ? "potion:" + candidates[selection.OutcomeIndex]
+                    : string.Empty;
             if ((uint)selection.OutcomeIndex >= (uint)candidates.Count ||
                 law.Outcomes[selection.OutcomeIndex].OutcomeId !=
-                    "potion:" + candidates[selection.OutcomeIndex] ||
+                    expectedOutcomeId ||
                 run.Phase != RunPhase.Event || eventState is null ||
                 eventState.EventId != PrototypeNativeEndlessConveyor.EventId ||
                 eventState.NativePageIndex != 1 ||
@@ -613,6 +839,34 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
             run.World?.Event?.NativeDishId != selection.OutcomeId[5..])
             throw new InvalidDataException(
                 "Scripted Endless Conveyor ticket resolved a different dish than its Nature outcome.");
+    }
+
+    private static void ValidateLegacySelectedDish(
+        RunState origin, RunState probedRun, RunState run,
+        ChanceLawV111 law, ReferenceNatureSelectionV111 selection)
+    {
+        var candidates = GetLegacyDishCandidates(origin, probedRun);
+        if (law.OperationKind != "bounded_integer" ||
+            (uint)selection.OutcomeIndex >= (uint)law.Outcomes.Length ||
+            law.Outcomes[selection.OutcomeIndex].OutcomeId !=
+                "choice_index:" + selection.OutcomeIndex)
+            throw new InvalidDataException(
+                "Endless Conveyor fallback ticket outcome is outside its ordered support.");
+        var ticket = selection.OutcomeIndex;
+        string? expectedDish = null;
+        foreach (var candidate in candidates)
+        {
+            if (ticket < candidate.Weight)
+            {
+                expectedDish = candidate.Id;
+                break;
+            }
+            ticket -= candidate.Weight;
+        }
+        if (expectedDish is null ||
+            run.World?.Event?.NativeDishId != expectedDish)
+            throw new InvalidDataException(
+                "Scripted Endless Conveyor fallback ticket resolved a different dish.");
     }
 
     private static RunState CaptureDishPreDrawState(

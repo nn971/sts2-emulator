@@ -11,6 +11,12 @@ Condiment Grab. That action commits the queued potion and Nature cursor
 atomically; resolving or skipping the potion and rolling the next dish remain a
 separate player action and session.
 
+The same session accepts Native-regional runs without `NativeRunRng`. In that
+fallback, it captures the legacy request from a fork and uses the equal-index
+Chance Law for its saved support. Those laws are `UNVERIFIED`. Event selection
+and any other requests made by the action stay on their existing providers;
+the Nature-selected fallback request does not advance its legacy stream.
+
 ## Dish law
 
 `ChanceLawEngineV111.QueryNativeEndlessConveyorDishEntry` accepts a stable
@@ -47,6 +53,11 @@ on the 53-bit `NextDouble` grid. Those mapping weights sum to `2^53` and are
 completeness, stream attribution, seed frequencies, and Native cursor parity
 remain separate.
 
+On the Native-regional fallback, a dish law instead exposes the raw bounded
+integer ticket support from zero up to, but not including, the total dish
+weight. The ordinary weighted-ticket loop maps those tickets to dishes in
+source order. This equal-ticket fallback law remains `UNVERIFIED`.
+
 ## Card index laws
 
 `QueryNativeEndlessConveyorUpgrade` handles two boundaries: first-dish Observe
@@ -77,11 +88,16 @@ the saved legacy `reward` stream call count. The Chance Law gives equal weights
 to the complete ordered emulator pool and fingerprints the owner, ordinal, and
 pool; equal weighting and Native pool completeness remain `UNVERIFIED`.
 
-The Endless Conveyor session covers this one index request only. Replay checks
+A Suspicious Condiment session covers this one index request only. Replay checks
 that the ordinary action queues the Nature-selected potion, retains the pending
 next-dish roll, preserves potion slots and gold mechanics, and leaves both the
 legacy stream and Native event cursor unchanged. After the player takes or
 skips the potion, a separate session handles the deferred dish ticket.
+
+Fallback card and potion indices use the captured legacy `event` or `reward`
+request and its ordered integer support. The same atomic replay handles an
+index followed by a fallback dish ticket, including Spicy Snappy and Fried
+Eel. These equal-index laws remain `UNVERIFIED`.
 
 The player-visible event projection may expose these ordered supports only
 through the Nature choice view. It does not expose deck order, card pools, or
@@ -100,9 +116,10 @@ For Suspicious Condiment, the legal Grab samples its uniform potion model
 index and commits the pending potion reward before the player takes or skips
 it. That later action can then be handled by a separate next-dish session.
 
-For multi-draw Grabs, the session samples the typed index and float laws in
-request order, keeps the playable run at its origin while the prefix is
-pending, then replays the complete ordinary action with both requests scripted.
+For multi-draw Grabs, the session samples the typed index and Native float or
+fallback bounded-ticket laws in request order, keeps the playable run at its
+origin while the prefix is pending, then replays the complete ordinary action
+with the complete request prefix scripted.
 It verifies the selected upgrade or appended Colorless card and the resulting
 dish. The event mechanics and ReferenceNature cursor commit together. The
 Native `ENDLESS_CONVEYOR` cursor remains at its pre-action position. The same
