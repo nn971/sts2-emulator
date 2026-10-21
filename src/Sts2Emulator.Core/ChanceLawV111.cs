@@ -6513,7 +6513,11 @@ internal static class ReferenceNatureRunCursorV111
         ArgumentNullException.ThrowIfNull(run);
         ArgumentNullException.ThrowIfNull(cursor);
         cursor.Validate();
-        return run with { ReferenceNatureState = cursor.Fork() };
+        return run with
+        {
+            Stochastic = RunStochasticStateV111.WithReferenceNature(
+                run.Stochastic, cursor.Fork())
+        };
     }
 }
 
@@ -6690,10 +6694,8 @@ public sealed record ReferenceNatureSessionV111(
             snapshot.CombatSnapshotJson);
         if (combat.CombatTerminal && combat.Run.ReferenceNatureState is null)
         {
-            var committedRun = combat.Run with
-            {
-                ReferenceNatureState = snapshot.NatureState.Fork()
-            };
+            var committedRun = ReferenceNatureRunCursorV111.Commit(
+                combat.Run, snapshot.NatureState);
             combat = combat with
             {
                 Run = committedRun,
@@ -7163,7 +7165,8 @@ public sealed record ReferenceNatureRunActionSessionV111(
                 initializationTranscript.Validate();
                 resolvedRun = resolvedRun with
                 {
-                    ReferenceNatureState = selection.NextState.Fork(),
+                    Stochastic = RunStochasticStateV111.WithReferenceNature(
+                        resolvedRun.Stochastic, selection.NextState.Fork()),
                     ReferenceNatureRunInitializationTranscript =
                         initializationTranscript
                 };
@@ -7609,9 +7612,8 @@ public sealed record ReferenceNatureRunActionSessionV111(
                 ActOneMapGeneration = mapGeneration.ToAudit()
             };
         initializationTranscript.Validate(replayMapGeneration: true);
-        var committedRun = Run with
+        var committedRun = ReferenceNatureRunCursorV111.Commit(Run with
         {
-            ReferenceNatureState = mapGeneration.NatureState.Fork(),
             ReferenceNatureRunInitializationTranscript =
                 initializationTranscript,
             World = (Run.World ?? throw new InvalidDataException(
@@ -7619,7 +7621,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
             {
                 Map = map
             }
-        };
+        }, mapGeneration.NatureState);
         return this with
         {
             Run = committedRun,
@@ -7685,9 +7687,8 @@ public sealed record ReferenceNatureRunActionSessionV111(
             replayMapGeneration: mapAudit is not null);
         var world = Run.World ?? throw new InvalidDataException(
             "Completed experimental start has no world.");
-        var committedRun = Run with
+        var committedRun = ReferenceNatureRunCursorV111.Commit(Run with
         {
-            ReferenceNatureState = preparation.NatureState.Fork(),
             ReferenceNatureRunInitializationTranscript =
                 initializationTranscript,
             ReferenceNatureRunInitializationPending = false,
@@ -7696,7 +7697,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
                 Map = committedMap ?? world.Map,
                 PreparedLaterActEncounterBags = preparation.Bags
             }
-        };
+        }, preparation.NatureState);
         return this with
         {
             Run = committedRun,
@@ -8288,10 +8289,8 @@ public sealed record ReferenceNatureRunActionSessionV111(
                     "ReferenceNature run-action replay selected a different outcome.");
         }
         if (replay.Complete && savedRun.ReferenceNatureState is null)
-            savedRun = savedRun with
-            {
-                ReferenceNatureState = snapshot.NatureState.Fork()
-            };
+            savedRun = ReferenceNatureRunCursorV111.Commit(
+                savedRun, snapshot.NatureState);
         if (replay.Complete &&
             IsConfiguredExperimentalActTransitionAction(
                 origin, snapshot.Action) &&
@@ -9262,10 +9261,8 @@ public sealed record ReferenceNatureControlledEventChoiceSessionV111(
         if (next.Complete)
             next = next with
             {
-                Run = next.Run with
-                {
-                    ReferenceNatureState = selection.NextState
-                }
+                Run = ReferenceNatureRunCursorV111.Commit(
+                    next.Run, selection.NextState)
             };
         next.Validate();
         return next;
@@ -9435,10 +9432,8 @@ public sealed record ReferenceNatureControlledEventChoiceSessionV111(
                     "ReferenceNature event-choice replay diverged from its transcript.");
         }
         if (replay.Complete && savedRun.ReferenceNatureState is null)
-            savedRun = savedRun with
-            {
-                ReferenceNatureState = snapshot.NatureState.Fork()
-            };
+            savedRun = ReferenceNatureRunCursorV111.Commit(
+                savedRun, snapshot.NatureState);
         if (CanonicalJson.Sha256(replay.Run) != CanonicalJson.Sha256(savedRun) ||
             CanonicalJson.Sha256(replay.NatureState) !=
                 CanonicalJson.Sha256(snapshot.NatureState) ||
