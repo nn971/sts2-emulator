@@ -1695,7 +1695,8 @@ public sealed partial class PrototypeGameEngine
     /// </summary>
     internal static RunState ResumeAutomaticPipelineContinuation(
         RunState state,
-        bool resumeSemanticBeforeHandDraw = false)
+        bool resumeSemanticBeforeHandDraw = false,
+        bool stopBeforeSemanticHandDraw = false)
     {
         if (state.World?.Combat is
             { PendingChoice: null,
@@ -1758,7 +1759,9 @@ public sealed partial class PrototypeGameEngine
             state = continuation.OpeningStage is { } openingStage
                 ? ResumeOpeningCombat(state, openingStage)
                 : ResumeAutomaticPipeline(state, continuation.NextStepIndex,
-                    continuation.PendingPostDispatchEventKind);
+                    continuation.PendingPostDispatchEventKind,
+                    stopBeforeSemanticHandDraw:
+                        stopBeforeSemanticHandDraw);
         }
         return state.Phase == RunPhase.Combat &&
             state.World?.Combat is
@@ -1883,12 +1886,31 @@ public sealed partial class PrototypeGameEngine
             {
                 AutomaticPipelineContinuation = null
             });
+        var resumedCursor = continuation with
+        {
+            Mechanics = nextCursor,
+            ControlledTurnIntents = null
+        };
+        var advancedCombat = advanced.World?.Combat ??
+            throw new InvalidDataException(
+                "AdvanceTurn completion removed active combat unexpectedly.");
+        advanced = advanced with
+        {
+            World = advanced.World! with
+            {
+                Combat = advancedCombat with
+                {
+                    AutomaticPipelineContinuation = resumedCursor
+                }
+            }
+        };
         var resumed = state with
         {
             World = world with { Combat = advanced }
         };
-        return ResumeAutomaticPipeline(resumed, nextCursor.NextStepIndex,
-            stopBeforeSemanticHandDraw: stopBeforeSemanticHandDraw);
+        return ResumeAutomaticPipelineContinuation(
+            resumed, stopBeforeSemanticHandDraw:
+                stopBeforeSemanticHandDraw);
     }
 
     internal static RunState ResumeControlledEnemyAction(
