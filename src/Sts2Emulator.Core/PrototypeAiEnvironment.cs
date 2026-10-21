@@ -306,8 +306,14 @@ public sealed class PrototypeAiEnvironment
     public TransitionResult Step(RunState state, string actionId)
     {
         var resolved = ResolveAction(state, actionId);
-        return _engine.Step(state, resolved.Action);
+        return StepResolved(state, resolved.Action);
     }
+
+    internal (GameAction Action, PrototypeAiAction View) ResolvePlayerAction(
+        RunState state, string actionId) => ResolveAction(state, actionId);
+
+    internal TransitionResult StepResolved(RunState state, GameAction action) =>
+        _engine.Step(state, action);
 
     public PrototypeAiStepFrame StepFrame(RunState state, string actionId)
     {

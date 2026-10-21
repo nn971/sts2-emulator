@@ -2205,8 +2205,10 @@ public static class SemanticPilotCombatEngineV111
             throw new InvalidOperationException("Nature decision or combat terminal is pending.");
         if (current.UsesNativePolicyBaseline)
             return StepNativePolicyBaseline(current, actionId);
-        var (environment, action) = ResolveLegalPlayerAction(
-            current.Run, actionId, "Illegal semantic player action.");
+        var environment = new PrototypeAiEnvironment();
+        var resolvedAction = environment.ResolvePlayerAction(
+            current.Run, actionId);
+        var action = resolvedAction.View;
         var source = current.Run.Fork();
         SemanticEndTurnV111? endTurn = null;
         RunState result;
@@ -2260,7 +2262,8 @@ public static class SemanticPilotCombatEngineV111
             // provider-owned semantic deck at their source boundary.
             using (ControlledChanceGuardV111.Enter())
             using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
-                result = environment.Step(source, actionId).State;
+                result = environment.StepResolved(
+                    source, resolvedAction.Action).State;
             if (!PrototypeGameEngine.IsAtCombatActionResultBoundary(result))
                 throw new NotSupportedException(
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
@@ -2348,7 +2351,8 @@ public static class SemanticPilotCombatEngineV111
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
                     "operation=potion_effect_requires_semantic_audit");
             using (ControlledChanceGuardV111.Enter())
-                result = environment.Step(source, actionId).State;
+                result = environment.StepResolved(
+                    source, resolvedAction.Action).State;
             if (result.Phase != RunPhase.Combat &&
                 !(isDistilledChaos &&
                   PrototypeGameEngine.IsAtCombatActionResultBoundary(result)))
@@ -2654,9 +2658,9 @@ public static class SemanticPilotCombatEngineV111
     private static SemanticPilotCombatV111 StepNativePolicyBaseline(
         SemanticPilotCombatV111 current, string actionId)
     {
-        var (environment, _) = ResolveLegalPlayerAction(
-            current.Run, actionId,
-            "Illegal or ambiguous native-policy player action.");
+        var environment = new PrototypeAiEnvironment();
+        var resolvedAction = environment.ResolvePlayerAction(
+            current.Run, actionId);
         RunState result;
         using var boundaries = RandomBoundaryJournalV111.Begin();
         using (ControlledChanceGuardV111.Enter())
@@ -2665,7 +2669,8 @@ public static class SemanticPilotCombatEngineV111
         using (StochasticProviderScopeV111.EnterBoundary(
             new NativeRandomBoundaryProviderV111(),
             overrideExplicitProviders: false))
-            result = environment.Step(current.Run.Fork(), actionId).State;
+            result = environment.StepResolved(
+                current.Run.Fork(), resolvedAction.Action).State;
 
         var audit = current.NativePolicyAudit ??
             throw new InvalidDataException(
@@ -2703,22 +2708,6 @@ public static class SemanticPilotCombatEngineV111
         };
         Validate(next);
         return next;
-    }
-
-    private static (PrototypeAiEnvironment Environment,
-        PrototypeAiAction Action) ResolveLegalPlayerAction(
-            RunState run, string actionId, string invalidActionMessage)
-    {
-        ArgumentNullException.ThrowIfNull(run);
-        ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
-        var environment = new PrototypeAiEnvironment();
-        var matches = environment.Observe(run).LegalActions
-            .Where(action => action.ActionId == actionId)
-            .Take(2)
-            .ToArray();
-        if (matches.Length != 1)
-            throw new InvalidOperationException(invalidActionMessage);
-        return (environment, matches[0]);
     }
 
     private static SemanticRewardAuditV111 RecordRewardAudit(
