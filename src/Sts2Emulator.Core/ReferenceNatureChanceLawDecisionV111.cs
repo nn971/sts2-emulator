@@ -17,23 +17,10 @@ public static class ReferenceNatureChanceLawDecisionV111
         ReferenceNatureSelectionV111 selection,
         IReadOnlyList<string> orderedOutcomeIds)
     {
-        ArgumentNullException.ThrowIfNull(law);
-        ArgumentNullException.ThrowIfNull(request);
-        ArgumentNullException.ThrowIfNull(selection);
         ArgumentNullException.ThrowIfNull(orderedOutcomeIds);
-        law.Validate();
-        request.Validate();
+        _ = ValidateSelection(law, request, selection);
         if (request.IndexRequest is not { } indexRequest ||
-            selection.LawId != law.LawId ||
-            selection.EventId != law.EventId ||
-            selection.OutcomeIndex < 0 ||
-            selection.OutcomeIndex >= law.Outcomes.Length ||
-            selection.OutcomeId !=
-                law.Outcomes[selection.OutcomeIndex].OutcomeId ||
-            law.SiteId != indexRequest.SiteId ||
             law.OperationKind != indexRequest.OperationKind ||
-            law.OwnerId != indexRequest.OwnerId ||
-            law.Ordinal != indexRequest.Ordinal ||
             law.Outcomes.Length != indexRequest.SupportCount ||
             orderedOutcomeIds.Count != indexRequest.SupportCount)
             throw new InvalidDataException(
@@ -64,23 +51,7 @@ public static class ReferenceNatureChanceLawDecisionV111
         RunState? conditioningRun = null,
         string[]? candidateLabels = null)
     {
-        ArgumentNullException.ThrowIfNull(law);
-        ArgumentNullException.ThrowIfNull(request);
-        ArgumentNullException.ThrowIfNull(selection);
-        law.Validate();
-        request.Validate();
-        if (selection.LawId != law.LawId ||
-            selection.EventId != law.EventId ||
-            selection.OutcomeIndex < 0 ||
-            selection.OutcomeIndex >= law.Outcomes.Length ||
-            selection.OutcomeId !=
-                law.Outcomes[selection.OutcomeIndex].OutcomeId ||
-            law.SiteId != request.SiteId || law.OwnerId != request.OwnerId ||
-            law.Ordinal != request.Ordinal)
-            throw new InvalidDataException(
-                "ReferenceNature selection does not match the typed provider request.");
-
-        var outcome = law.Outcomes[selection.OutcomeIndex];
+        var outcome = ValidateSelection(law, request, selection);
         if (request.IndexRequest is { } indexRequest)
         {
             if (indexRequest.SiteId ==
@@ -287,6 +258,30 @@ public static class ReferenceNatureChanceLawDecisionV111
             floatDecision);
         result.Validate();
         return result;
+    }
+
+    private static ChanceLawOutcomeV111 ValidateSelection(
+        ChanceLawV111 law,
+        ControlledStochasticRequestV111 request,
+        ReferenceNatureSelectionV111 selection)
+    {
+        ArgumentNullException.ThrowIfNull(law);
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(selection);
+        law.Validate();
+        request.Validate();
+        if (selection.LawId != law.LawId ||
+            selection.EventId != law.EventId ||
+            selection.OutcomeIndex < 0 ||
+            selection.OutcomeIndex >= law.Outcomes.Length ||
+            selection.OutcomeId !=
+                law.Outcomes[selection.OutcomeIndex].OutcomeId ||
+            law.SiteId != request.SiteId ||
+            law.OwnerId != request.OwnerId ||
+            law.Ordinal != request.Ordinal)
+            throw new InvalidDataException(
+                "ReferenceNature selection does not match the typed provider request.");
+        return law.Outcomes[selection.OutcomeIndex];
     }
 
     private static float ResolveUnitFloatOutcome(
