@@ -7,7 +7,6 @@ public sealed partial record RunState
         var state = this;
         RunConfiguration.ValidateState(state);
         state.Stochastic.Validate(state);
-        state.Stochastic.ValidateControlledRunActionChoice(state);
         NativeAncientRewardsV111.ValidateEventContext(state);
         state.Stochastic.ValidateNativeEventContexts(state);
         if (state.Ascension < 0)

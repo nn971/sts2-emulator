@@ -158,6 +158,7 @@ public sealed record RunStochasticStateV111
         global::Sts2Emulator.Core.PrototypeRng.ValidateBundle(
             PrototypeRng,
             allowEmpty: owner.Phase == RunPhase.RunStart);
+        ValidateControlledRunActionChoice(owner);
         if (ControlledEventChoiceHistory is { } controlledEventHistory)
         {
             if (controlledEventHistory.Any(trace => trace is null))
@@ -368,7 +369,7 @@ public sealed record RunStochasticStateV111
             world.Stochastic.Validate(world, owner);
     }
 
-    internal void ValidateControlledRunActionChoice(RunState owner)
+    private void ValidateControlledRunActionChoice(RunState owner)
     {
         ArgumentNullException.ThrowIfNull(owner);
         if (ControlledRunActionChoice is not { } controlledRunActionChoice)
