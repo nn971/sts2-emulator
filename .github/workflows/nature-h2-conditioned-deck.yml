@@ -1,0 +1,87 @@
+name: nature-h2-conditioned-deck
+on:
+  push:
+    paths:
+      - 'src/Sts2Emulator.Core/SemanticConditionedDeckPresetV111.cs'
+      - 'src/Sts2Emulator.Core/ControlledPlayableCombatV111.cs'
+      - 'src/Sts2Emulator.Core/SemanticPilotCombatV111.cs'
+      - 'src/Sts2Emulator.Cli/PrototypeAiJsonlServer.cs'
+      - 'bindings/python/sts2_emulator/__init__.py'
+      - '.github/workflows/nature-h2-conditioned-deck.yml'
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  conditioned-deck-semantic-replay:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build pinned semantic emulator + new research deck option
+        run: |
+          dotnet restore Sts2Emulator.sln
+          dotnet build Sts2Emulator.sln -c Release --no-restore
+      - name: Smoke starter/attack/defense/poison research presets and exact snapshot
+        run: |
+          python - <<'PY'
+          import json
+          import sys
+          from collections import Counter
+
+          sys.path.insert(0, 'bindings/python')
+          from sts2_emulator import Session
+
+          def get_decks(obj):
+              if isinstance(obj, dict):
+                  for k, v in obj.items():
+                      if (k.lower() == 'deck' and isinstance(v, list)
+                              and v and all(isinstance(c, dict) for c in v)
+                              and all(any(q.lower() == 'cardid' for q in c)
+                                      for c in v)):
+                          yield tuple(next(val for q, val in c.items()
+                                           if q.lower() == 'cardid') for c in v)
+                      yield from get_decks(v)
+              elif isinstance(obj, list):
+                  for item in obj:
+                      yield from get_decks(item)
+
+          presets = ['silent-starter-v1', 'silent-strike-heavy-v1',
+                     'silent-defend-heavy-v1', 'silent-poison-kit-v1']
+          with Session(['dotnet', 'src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll',
+                        'prototype-ai-jsonl']) as session:
+              decks = {}
+              for preset in presets:
+                  state = session.begin_seeded_semantic_combat(
+                      'nature-h2-research-deck-fixture', act=1,
+                      encounter_id='proto.encounter.shrinker_beetle_weak',
+                      native_entry='ShrinkerBeetleWeak',
+                      total_floor=2, ascension=0, first_monster_combat_id=1,
+                      map_column=3, map_row=1, replay_opening_draw_hooks=True,
+                      fixture_deck_preset_id=preset,
+                  )
+                  assert state.boundary == 'player'
+                  assert state.fingerprint
+                  restored = session.load_semantic_snapshot(state.save_snapshot())
+                  assert restored.fingerprint == state.fingerprint
+                  views = list(get_decks(json.loads(state.save_snapshot())))
+                  assert views, 'Source snapshot missing a persistent deck'
+                  assert all(Counter(deck) == Counter(views[0]) for deck in views), \
+                      'Inconsistent source/player persistent decks'
+                  decks[preset] = Counter(views[0])
+                  print(f'[nature-h2-deck] preset={preset} '
+                        f'counts={dict(decks[preset])} '
+                        f'snapshot_match=True', flush=True)
+                  session.release_semantic_many([state, restored])
+              starter = decks['silent-starter-v1']
+              assert sum(starter.values()) == 13
+              assert sum(deck.values() == starter.values() for deck in decks.values()) < 4
+              assert decks['silent-strike-heavy-v1']['proto.silent.strike'] > starter['proto.silent.strike']
+              assert decks['silent-defend-heavy-v1']['proto.silent.defend'] > starter['proto.silent.defend']
+              assert decks['silent-poison-kit-v1']['proto.silent.poisoned_stab'] > starter['proto.silent.poisoned_stab']
+              print('[nature-h2-deck] PASS engine-owned deck diversity', flush=True)
+          PY
