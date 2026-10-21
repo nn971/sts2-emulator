@@ -1,8 +1,8 @@
 namespace Sts2Emulator.Core;
 
 /// <summary>
-/// Isolated source-pinned Act 1 fixed weak-encounter entry for the first
-/// semantic Nature victory pilot. The separate later-act fixture keeps
+/// Isolated source-pinned Act 1 fixed single-enemy entry for Nature H1/H2.
+/// H2 adds selected native normal encounters, preserving H1 weak semantics. The separate later-act fixture keeps
 /// its original Hive/Glory-only public contract. This object produces
 /// only a pre-playable source-shaped RNG formation and starter combat;
 /// the controlled opening attaches the real starting Silent player.
@@ -25,20 +25,26 @@ public static class PrototypeNativeActOneWeakNatureFixtureV111
         {
             "proto.encounter.shrinker_beetle_weak" => "ShrinkerBeetleWeak",
             "proto.encounter.nibbits_weak" => "NibbitsWeak",
+            // NativeActOneNormalCombatEntryV111 explicitly audits these
+            // fixed single-enemy source formations and encounter-local RNG.
+            "proto.encounter.mawler_normal" => "MawlerNormal",
+            "proto.encounter.cubex_construct_normal" => "CubexConstructNormal",
+            "proto.encounter.vine_shambler_normal" => "VineShamblerNormal",
             _ => throw new NotSupportedException(
-                "UNSUPPORTED_SEMANTIC_OPENING site=act1.weak_formation operation=" +
+                "UNSUPPORTED_SEMANTIC_OPENING site=act1.fixed_single_formation operation=" +
                 encounterId)
         };
         if (nativeEntry != requiredName)
             throw new ArgumentException(
-                "Act 1 weak fixture requires its source-pinned native entry name.",
+                "Act 1 fixture requires its source-pinned native entry name.",
                 nameof(nativeEntry));
 
         var encounter = PrototypeContent.Encounter(encounterId);
         if (encounter.MinAct != 1 || encounter.MaxAct != 1 ||
+            encounter.RoomType != PrototypeRoomType.Combat ||
             encounter.FixedEnemySpecs.Length != 1)
             throw new InvalidDataException(
-                "Pinned Act 1 single-weak source encounter has changed.");
+                "Pinned Act 1 fixed single-enemy source encounter has changed.");
 
         var formation = NativeEncounterFormationFactoryV111.Generate(
             seed, encounter, nativeEntry, totalFloor,
@@ -47,7 +53,7 @@ public static class PrototypeNativeActOneWeakNatureFixtureV111
         if (formation.EncounterOpeningOffset is not null ||
             !formation.Enemies.SequenceEqual(encounter.FixedEnemySpecs))
             throw new InvalidDataException(
-                "Pinned Act 1 fixed weak formation no longer matches the source.");
+                "Pinned Act 1 fixed single-enemy formation no longer matches the source.");
 
         var enemies = formation.Enemies.Select((spec, index) =>
         {

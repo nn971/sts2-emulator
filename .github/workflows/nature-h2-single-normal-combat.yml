@@ -1,0 +1,72 @@
+name: nature-h2-single-normal-combat
+on:
+  push:
+    paths:
+      - 'src/Sts2Emulator.Core/PrototypeNativeActOneWeakNatureFixtureV111.cs'
+      - '.github/workflows/nature-h2-single-normal-combat.yml'
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  conditioned-normal-source-entry:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile emulator
+        run: |
+          dotnet restore Sts2Emulator.sln
+          dotnet build Sts2Emulator.sln -c Release --no-restore
+      - name: Probe A10 normal initial snapshots and engine-owned decks
+        run: |
+          python - <<'PY'
+          import sys
+          sys.path.insert(0, 'bindings/python')
+          from sts2_emulator import Session
+
+          encounters = {
+              'proto.encounter.mawler_normal': 'MawlerNormal',
+              'proto.encounter.cubex_construct_normal': 'CubexConstructNormal',
+              'proto.encounter.vine_shambler_normal': 'VineShamblerNormal',
+          }
+          decks = (
+              'silent-starter-v1',
+              'silent-strike-heavy-v1',
+              'silent-defend-heavy-v1',
+              'silent-poison-kit-v1',
+          )
+          cmd = [
+              'dotnet',
+              'src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll',
+              'prototype-ai-jsonl',
+          ]
+          with Session(cmd) as session:
+              for encounter, native_entry in encounters.items():
+                  for deck in decks:
+                      opts = dict(
+                          act=1, encounter_id=encounter, native_entry=native_entry,
+                          total_floor=2, ascension=10,
+                          first_monster_combat_id=1,
+                          map_column=3, map_row=1,
+                          replay_opening_draw_hooks=True,
+                          fixture_deck_preset_id=deck,
+                      )
+                      seed = 'h2-a10-normal-ci-' + encounter + '-' + deck
+                      state = session.begin_seeded_semantic_combat(seed, **opts)
+                      assert state.boundary == 'player'
+                      assert state.fingerprint
+                      snapshot = state.save_snapshot()
+                      restored = session.load_semantic_snapshot(snapshot)
+                      assert restored.fingerprint == state.fingerprint
+                      session.release_semantic_many([state, restored])
+                      print(
+                          f'[h2-normal] {encounter} deck={deck} '
+                          'ascension=10 initial_replay=PASS',
+                          flush=True,
+                      )
+          PY
