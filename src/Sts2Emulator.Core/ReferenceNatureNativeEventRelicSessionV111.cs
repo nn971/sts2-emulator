@@ -69,8 +69,9 @@ public sealed record ReferenceNatureNativeEventRelicSessionSnapshotV111(
 /// <summary>
 /// Atomic configured Native relic-grant continuation. Supported event
 /// random-relic effects, Neow pickup triggers and card-bundle shuffles,
-/// event-specific relic rewards, Battleworn's setting-three reward, Pael's
-/// Wing, and Toy Box pulls share one typed ReferenceNature transcript.
+/// Arcane Scroll and Phial Holster acquisition draws, event-specific relic
+/// rewards, Battleworn's setting-three reward, Pael's Wing, and Toy Box pulls
+/// share one typed ReferenceNature transcript.
 /// </summary>
 public sealed record ReferenceNatureNativeEventRelicSessionV111(
     string SchemaId, RunState Origin, GameAction Action, RunState Run,
@@ -140,6 +141,10 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
         "reward.card_model.index_draw";
     private const string NeowLostCofferPotionModelSiteId =
         "event.reward.offer_potion.model.index_draw";
+    private const string NeowRelicAcquisitionRareCardSiteId =
+        "relic.acquisition.random_rare_card.model";
+    private const string NeowRelicAcquisitionPotionSiteId =
+        "relic.acquisition.random_potion.model";
 
     [JsonIgnore]
     public string Fingerprint => CanonicalJson.Sha256(this);
@@ -163,7 +168,9 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
             StochasticSiteRegistryV111.EventRewardCardBundleShuffleSiteId,
             NeowLostCofferCardRaritySiteId,
             NeowLostCofferCardModelSiteId,
-            NeowLostCofferPotionModelSiteId];
+            NeowLostCofferPotionModelSiteId,
+            NeowRelicAcquisitionRareCardSiteId,
+            NeowRelicAcquisitionPotionSiteId];
 
     public static ReferenceNatureNativeEventRelicSessionV111 Begin(
         RunState source, GameAction action, ulong natureSeed) => Begin(
@@ -280,6 +287,8 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
                     ExpectedNeowCardBundleShuffleRequestCount(
                         Origin, Action) +
                     ExpectedNeowLostCofferRequestCount(
+                        Origin, Action) +
+                    ExpectedNeowRelicAcquisitionModelRequestCount(
                         Origin, Action) ||
             string.IsNullOrWhiteSpace(Action.Kind))
             throw new InvalidDataException(
@@ -360,6 +369,12 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
             neowLostCofferPlan?.CardPickCount ?? 0;
         var expectedNeowLostCofferPotionRequestCount =
             neowLostCofferPlan?.OffersPotion == true ? 1 : 0;
+        var expectedNeowRelicAcquisitionRareCardRequestCount =
+            ExpectedNeowRelicAcquisitionModelRequestCount(
+                Origin, Action, NeowRelicAcquisitionRareCardSiteId);
+        var expectedNeowRelicAcquisitionPotionRequestCount =
+            ExpectedNeowRelicAcquisitionModelRequestCount(
+                Origin, Action, NeowRelicAcquisitionPotionSiteId);
         var rarityRequestCount = ProviderDecisions.Count(decision =>
             decision.UnitFloatDecision?.Request.SiteId == RelicRaritySiteId);
         var identityRequestCount = ProviderDecisions.Count(decision =>
@@ -381,6 +396,12 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
         var neowLostCofferPotionModelRequestCount = ProviderDecisions.Count(
             decision => decision.IndexDecision?.Request.SiteId ==
                 NeowLostCofferPotionModelSiteId);
+        var neowRelicAcquisitionRareCardRequestCount = ProviderDecisions.Count(
+            decision => decision.IndexDecision?.Request.SiteId ==
+                NeowRelicAcquisitionRareCardSiteId);
+        var neowRelicAcquisitionPotionRequestCount = ProviderDecisions.Count(
+            decision => decision.IndexDecision?.Request.SiteId ==
+                NeowRelicAcquisitionPotionSiteId);
         if ((replay.Continuation is null) != Complete ||
             !SameRequest(replay.Continuation?.PendingRequest, PendingRequest) ||
             !SameLabels(replay.Continuation?.PendingCandidateLabels,
@@ -416,13 +437,23 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
                 expectedNeowLostCofferPotionRequestCount ||
             Complete && neowLostCofferPotionModelRequestCount !=
                 expectedNeowLostCofferPotionRequestCount ||
+            neowRelicAcquisitionRareCardRequestCount >
+                expectedNeowRelicAcquisitionRareCardRequestCount ||
+            Complete && neowRelicAcquisitionRareCardRequestCount !=
+                expectedNeowRelicAcquisitionRareCardRequestCount ||
+            neowRelicAcquisitionPotionRequestCount >
+                expectedNeowRelicAcquisitionPotionRequestCount ||
+            Complete && neowRelicAcquisitionPotionRequestCount !=
+                expectedNeowRelicAcquisitionPotionRequestCount ||
             ProviderDecisions.Length != rarityRequestCount +
                 identityRequestCount + unownedRelicRequestCount +
                 neowPickupShuffleRequestCount +
                 neowCardBundleShuffleRequestCount +
                 neowLostCofferCardRarityRequestCount +
                 neowLostCofferCardModelRequestCount +
-                neowLostCofferPotionModelRequestCount)
+                neowLostCofferPotionModelRequestCount +
+                neowRelicAcquisitionRareCardRequestCount +
+                neowRelicAcquisitionPotionRequestCount)
             throw new InvalidDataException(
                 "Native event relic continuation differs from its replay.");
 
@@ -617,6 +648,29 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
                 }), neowLostCofferRequest);
         }
 
+        if (request.IndexRequest is { } neowRelicAcquisitionRequest &&
+            IsNeowRelicAcquisitionModelSite(
+                neowRelicAcquisitionRequest.SiteId))
+        {
+            var boundaryId = NeowRelicAcquisitionRequestBoundary(
+                source, action, neowRelicAcquisitionRequest,
+                candidateLabels, prefix);
+            if (boundaryId is null)
+                throw new InvalidDataException(
+                    "Neow relic-acquisition model request differs from its saved pickup.");
+
+            var eventId = CanonicalJson.Sha256(new
+            {
+                boundary = boundaryId,
+                eventId = PrototypeNativeOvergrowthEvents.NeowEventId,
+                actionId = PrototypeAiEnvironment.StableActionId(action),
+                prefixFingerprint = CanonicalJson.Sha256(prefix),
+                request = neowRelicAcquisitionRequest
+            });
+            return ChanceLawEngineV111.QueryRandomIndex(
+                eventId, neowRelicAcquisitionRequest);
+        }
+
         if (request.IndexRequest is { } indexRequest &&
             indexRequest.SiteId == RelicModelSiteId)
         {
@@ -762,7 +816,9 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
         request.SiteId is RelicRaritySiteId or RelicModelSiteId or
             UnownedRelicSiteId or NeowPickupShuffleSiteId or
             NeowCardBundleShuffleSiteId or NeowLostCofferCardRaritySiteId or
-            NeowLostCofferCardModelSiteId or NeowLostCofferPotionModelSiteId;
+            NeowLostCofferCardModelSiteId or NeowLostCofferPotionModelSiteId or
+            NeowRelicAcquisitionRareCardSiteId or
+            NeowRelicAcquisitionPotionSiteId;
 
     private static bool RequireSessionRequest(
         ControlledStochasticRequestV111 request)
@@ -791,12 +847,16 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
                     source, action) +
                 ExpectedNeowCardBundleShuffleRequestCount(
                     source, action) +
-                ExpectedNeowLostCofferRequestCount(source, action) > 0 &&
+                ExpectedNeowLostCofferRequestCount(source, action) +
+                ExpectedNeowRelicAcquisitionModelRequestCount(
+                    source, action) > 0 &&
             (!HasUnsupportedFixedRelicEffect(eventState.EventId, choiceId) ||
              ExpectedNeowUnownedRelicRequestCount(source, action) > 0 ||
              ExpectedNeowPickupShuffleRequestCount(source, action) > 0 ||
              ExpectedNeowCardBundleShuffleRequestCount(source, action) > 0 ||
-             ExpectedNeowLostCofferRequestCount(source, action) > 0);
+             ExpectedNeowLostCofferRequestCount(source, action) > 0 ||
+             ExpectedNeowRelicAcquisitionModelRequestCount(
+                 source, action) > 0);
         var punchOffUnownedRelicOffer =
             ExpectedPunchOffUnownedRelicRequestCount(source, action) > 0;
         var eventRelicChoice = source.Phase == RunPhase.Event &&
@@ -808,7 +868,9 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
             ExpectedNeowUnownedRelicRequestCount(source, action) > 0 ||
             ExpectedNeowPickupShuffleRequestCount(source, action) > 0 ||
             ExpectedNeowCardBundleShuffleRequestCount(source, action) > 0 ||
-            ExpectedNeowLostCofferRequestCount(source, action) > 0;
+            ExpectedNeowLostCofferRequestCount(source, action) > 0 ||
+            ExpectedNeowRelicAcquisitionModelRequestCount(
+                source, action) > 0;
         var battlewornRelicVictory =
             IsBattlewornSettingThreeCombat(source);
         var paelWingRelicReward = IsPaelWingRelicReward(source, action);
@@ -901,6 +963,148 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
             ? 0
             : plan.Value.CardPickCount * 2 +
                 (plan.Value.OffersPotion ? 1 : 0);
+    }
+
+    private static int ExpectedNeowRelicAcquisitionModelRequestCount(
+        RunState source, GameAction action) =>
+        ExpectedNeowRelicAcquisitionModelRequestCount(
+            source, action, NeowRelicAcquisitionRareCardSiteId) +
+        ExpectedNeowRelicAcquisitionModelRequestCount(
+            source, action, NeowRelicAcquisitionPotionSiteId);
+
+    private static int ExpectedNeowRelicAcquisitionModelRequestCount(
+        RunState source, GameAction action, string siteId)
+    {
+        if (!IsNeowRelicAcquisitionModelSite(siteId))
+            return 0;
+        return NeowRelicAcquisitionEffects(source, action).Count(effect =>
+            siteId switch
+            {
+                NeowRelicAcquisitionRareCardSiteId =>
+                    effect.Kind == PrototypeRunEffectKind.GainRandomRareCard,
+                NeowRelicAcquisitionPotionSiteId =>
+                    effect.Kind == PrototypeRunEffectKind.GainRandomPotion,
+                _ => false
+            });
+    }
+
+    private static PrototypeRunEffectSpec[] NeowRelicAcquisitionEffects(
+        RunState source, GameAction action)
+    {
+        var pickupEffects = NeowPickupEffects(source, action);
+        if (pickupEffects is null)
+            return [];
+        var acquiredRelicIds = pickupEffects.Where(effect =>
+                effect.Kind == PrototypeRunEffectKind.GainRelic)
+            .Select(effect => effect.RelicId)
+            .ToArray();
+        if (acquiredRelicIds.Length != 1)
+            return [];
+        var relicId = acquiredRelicIds[0];
+        if (relicId is null ||
+            !PrototypeContent.Relics.TryGetValue(relicId, out var definition))
+            return [];
+        return (definition.RunTriggers ??
+                Array.Empty<PrototypeRelicRunTriggerSpec>())
+            .Where(trigger => trigger.EventKind ==
+                PrototypeRunEventKind.RelicAcquired)
+            .SelectMany(trigger => trigger.Effects)
+            .ToArray();
+    }
+
+    private static bool IsNeowRelicAcquisitionModelSite(string siteId) =>
+        siteId is NeowRelicAcquisitionRareCardSiteId or
+            NeowRelicAcquisitionPotionSiteId;
+
+    private static string? NeowRelicAcquisitionRequestBoundary(
+        RunState source, GameAction action, RandomIndexRequestV111 request,
+        string[]? candidateLabels,
+        ControlledStochasticDecisionV111[] prefix)
+    {
+        var expectedCount = ExpectedNeowRelicAcquisitionModelRequestCount(
+            source, action, request.SiteId);
+        var priorCount = prefix.Count(decision =>
+            decision.IndexDecision?.Request.SiteId == request.SiteId);
+        if (expectedCount == 0 || priorCount >= expectedCount ||
+            request.StreamId != NativePlayerRngV111.RewardsStreamId ||
+            request.OperationKind != "choose_index")
+            return null;
+
+        var pool = request.SiteId == NeowRelicAcquisitionRareCardSiteId
+            ? PrototypeContent.RewardCardPool.Where(cardId =>
+                PrototypeContent.Card(cardId).Rarity ==
+                PrototypeCardRarity.Rare).ToArray()
+            : PrototypeContent.PotionPool;
+        if (pool.Length == 0 || request.SupportCount != pool.Length ||
+            !request.OrderedCandidates.SequenceEqual(
+                Enumerable.Range(0, pool.Length)))
+            throw new InvalidDataException(
+                "Neow relic-acquisition model support differs from its ordered pool.");
+
+        string expectedOwner;
+        if (request.SiteId == NeowRelicAcquisitionRareCardSiteId)
+        {
+            expectedOwner = "player:rare_pool:" + CanonicalJson.Sha256(pool);
+        }
+        else
+        {
+            var acquisitionEffects = NeowRelicAcquisitionEffects(
+                source, action);
+            var addedSlots = acquisitionEffects
+                .TakeWhile(effect => effect.Kind !=
+                    PrototypeRunEffectKind.GainRandomPotion)
+                .Where(effect => effect.Kind ==
+                    PrototypeRunEffectKind.GainPotionSlots)
+                .Sum(effect => effect.Amount);
+            var slots = source.Player.PotionSlots.ToList();
+            for (var index = 0; index < addedSlots; index++)
+                slots.Add(null);
+
+            foreach (var decision in prefix.Where(decision =>
+                decision.IndexDecision?.Request.SiteId ==
+                    NeowRelicAcquisitionPotionSiteId))
+            {
+                var previousSlot = slots.FindIndex(potion => potion is null);
+                if (previousSlot < 0)
+                    throw new InvalidDataException(
+                        "Neow Phial Holster has no open slot for its saved potion prefix.");
+                var previousIndex = decision.IndexDecision!;
+                var previousOwner = "player:potion_slot:" + previousSlot +
+                    ":pool:" + CanonicalJson.Sha256(pool);
+                if (previousIndex.Request.OwnerId != previousOwner ||
+                    previousIndex.SelectedIndex >= pool.Length)
+                    throw new InvalidDataException(
+                        "Neow Phial Holster potion prefix differs from its next open slot.");
+                slots[previousSlot] = new PotionInstance(
+                    pool[previousIndex.SelectedIndex],
+                    PrototypeJson.EmptyObject());
+            }
+
+            var slot = slots.FindIndex(potion => potion is null);
+            if (slot < 0)
+                throw new InvalidDataException(
+                    "Neow Phial Holster has no open potion slot.");
+            expectedOwner = "player:potion_slot:" + slot + ":pool:" +
+                CanonicalJson.Sha256(pool);
+        }
+
+        if (request.OwnerId != expectedOwner ||
+            candidateLabels is not null &&
+                candidateLabels.Length != pool.Length)
+            throw new InvalidDataException(
+                "Neow relic-acquisition model owner differs from its picked-up relic.");
+
+        var expected = Replay(source, action, prefix).Continuation;
+        if (expected is null ||
+            !SameRequest(expected.PendingRequest,
+                ControlledStochasticRequestV111.FromIndex(request)) ||
+            !SameLabels(expected.PendingCandidateLabels, candidateLabels))
+            throw new InvalidDataException(
+                "Neow relic-acquisition request differs from replay at its saved prefix.");
+
+        return request.SiteId == NeowRelicAcquisitionRareCardSiteId
+            ? "native-neow-arcane-scroll-rare-card"
+            : "native-neow-phial-holster-potion";
     }
 
     private static (int CardPickCount, bool OffersPotion)?

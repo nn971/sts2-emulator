@@ -1,6 +1,6 @@
 # Native event relic ReferenceNature continuation
 
-**Snapshot:** 2026-10-21. **Status:** implemented for supported configured Native event-choice relic draws, Neow Small Capsule and Large Capsule pickups, Neow's Bones relic offer, Hefty Tablet and Lead Paperweight card offers, Lost Coffer card and potion offers, Scroll Boxes card bundles, Punch Off's `nab` relic offer, Round Tea Party, Trial, Battleworn Dummy setting-three victory, and Pael's Wing; source-pool fidelity and Native cursor parity remain open.
+**Snapshot:** 2026-10-21. **Status:** implemented for supported configured Native event-choice relic draws, Neow Small Capsule and Large Capsule pickups, Arcane Scroll and Phial Holster acquisition effects, Neow's Bones relic offer, Hefty Tablet and Lead Paperweight card offers, Lost Coffer card and potion offers, Scroll Boxes card bundles, Punch Off's `nab` relic offer, Round Tea Party, Trial, Battleworn Dummy setting-three victory, and Pael's Wing; source-pool fidelity and Native cursor parity remain open.
 
 ## Boundary
 
@@ -65,14 +65,24 @@ allowed. Every pending request and candidate-label prefix is checked against
 the ordinary Neow action replay. These legacy `reward` index laws remain
 `UNVERIFIED`; reward-pool fidelity and Native cursor parity are open.
 
+The same pickup boundary captures Arcane Scroll's random Rare card and Phial
+Holster's two random potions when either relic is acquired from Neow. Arcane
+Scroll validates the ordered Rare reward pool and owner fingerprint. Phial
+Holster adds its acquired potion slot, then validates each request against the
+next open slot after earlier potion picks. Both use their registered
+`relic.acquisition.*.model` requests on Native `player.rewards`; the bounded
+index transform is `SOURCE_VERIFIED` on each declared support, while pool
+completeness and Native cursor parity remain open.
+
 The session also captures Neow's Small Capsule when selected from the opening
 Neow options or from a Neow relic reward. Its `OfferRandomRelic` follow-up uses
 one `unowned_relic_selection` bounded index on `player.rewards`; the request
 owner fingerprints the configured relic pool after excluding the acquired
 Small Capsule and all previously owned relics. The selected event choice or
-reward and the Nature cursor commit together. Neow pickup effects other than
-the documented Bones, Hefty Tablet, Lead Paperweight, Lost Coffer, Scroll
-Boxes, and Small Capsule paths remain outside this boundary.
+reward and the Nature cursor commit together. Neow pickup effects beyond the
+documented Bones, Hefty Tablet, Lead Paperweight, Lost Coffer, Scroll Boxes,
+Small Capsule, Arcane Scroll, and Phial Holster paths remain outside this
+boundary.
 
 The same session captures configured Native Punch Off's legal page-zero `nab`
 choice. After appending its Injury, the ordinary action creates the one-relic
@@ -141,8 +151,8 @@ resolve, fork, save, load, release, and the committed playable run.
 
 The session does not cover legacy event rewards, choices with additional fixed
 relic effects, other Neow relic-pickup effects, other Punch Off choices or its
-later combat reward, Battleworn settings one or two, or choices/actions that
-request a non-relic random operation. The Neow's Bones offer shuffle remains a
+later combat reward, Battleworn settings one or two, or actions with unregistered stochastic
+requests. The Neow's Bones offer shuffle remains a
 legacy `reward`-stream approximation and does not establish Native source or
 cursor parity. The session does not establish source-pool completeness,
 hidden queue identity probabilities, event-selection parity, seeded Native
