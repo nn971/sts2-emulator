@@ -12,6 +12,8 @@ public sealed record RunStochasticStateV111
 {
     private ControlledEventChoiceTraceV111[]? _controlledEventChoiceHistory;
     private ControlledRunActionTraceV111[]? _controlledRunActionHistory;
+    private ReferenceNatureMapGenerationAuditV111[]?
+        _referenceNatureMapGenerationHistory;
 
     [JsonConstructor]
     public RunStochasticStateV111(
@@ -28,7 +30,9 @@ public sealed record RunStochasticStateV111
         SemanticRewardAuditV111? SemanticRewardAudit = null,
         ReferenceNatureRunInitializationTranscriptV111?
             ReferenceNatureRunInitializationTranscript = null,
-        bool ReferenceNatureRunInitializationPending = false)
+        bool ReferenceNatureRunInitializationPending = false,
+        ReferenceNatureMapGenerationAuditV111[]?
+            ReferenceNatureMapGenerationHistory = null)
     {
         this.PrototypeRng = PrototypeRng;
         this.NativeRunRng = NativeRunRng;
@@ -45,6 +49,9 @@ public sealed record RunStochasticStateV111
             ReferenceNatureRunInitializationTranscript?.Fork();
         this.ReferenceNatureRunInitializationPending =
             ReferenceNatureRunInitializationPending;
+        _referenceNatureMapGenerationHistory = Clone(
+            ReferenceNatureMapGenerationHistory,
+            audit => audit.Fork());
     }
 
     public RngBundle PrototypeRng { get; init; }
@@ -73,6 +80,14 @@ public sealed record RunStochasticStateV111
     public ReferenceNatureRunInitializationTranscriptV111?
         ReferenceNatureRunInitializationTranscript { get; init; }
     public bool ReferenceNatureRunInitializationPending { get; init; }
+    public ReferenceNatureMapGenerationAuditV111[]?
+        ReferenceNatureMapGenerationHistory
+    {
+        get => Clone(_referenceNatureMapGenerationHistory,
+            audit => audit.Fork());
+        init => _referenceNatureMapGenerationHistory = Clone(value,
+            audit => audit.Fork());
+    }
 
     public RunStochasticStateV111 Fork() => this with
     {
@@ -87,7 +102,10 @@ public sealed record RunStochasticStateV111
         ControlledRunActionChoice = ControlledRunActionChoice?.Fork(),
         SemanticOtherChance = SemanticOtherChance?.Fork(),
         ReferenceNatureRunInitializationTranscript =
-            ReferenceNatureRunInitializationTranscript?.Fork()
+            ReferenceNatureRunInitializationTranscript?.Fork(),
+        ReferenceNatureMapGenerationHistory = Clone(
+            _referenceNatureMapGenerationHistory,
+            audit => audit.Fork())
     };
 
     public void Deconstruct(
@@ -187,10 +205,51 @@ public sealed record RunStochasticStateV111
                  mapGeneration.Act != 1 ||
                  mapGeneration.Ascension != owner.Ascension ||
                  owner.World is not { } world ||
-                 CanonicalJson.Sha256(world.Map) !=
-                    mapGeneration.MapFingerprint))
+                 world.Act == 1 && world.Floor == 0 &&
+                    world.Map.CurrentNodeId is null &&
+                    CanonicalJson.Sha256(world.Map) !=
+                        mapGeneration.MapFingerprint))
                 throw new InvalidDataException(
                     "Overgrowth map audit does not match the configured run boundary or committed map.");
+        }
+        if (ReferenceNatureMapGenerationHistory is { Length: > 0 } mapHistory)
+        {
+            if (mapHistory.Length > 2 ||
+                owner.Configuration is not
+                    { UsesExperimentalSilentThreeActRoute: true,
+                      CharacterId: "silent" } ||
+                owner.World is not { } currentWorld ||
+                ReferenceNature is not { } currentNature)
+                throw new InvalidDataException(
+                    "Later-act map audit history requires a configured experimental run with a ReferenceNature cursor.");
+            var previousAct = 1;
+            ReferenceNatureStateV111? previousMapCursor = null;
+            foreach (var audit in mapHistory)
+            {
+                if (audit is null || audit.Act is < 2 or > 3 ||
+                    audit.Act <= previousAct || audit.Act > currentWorld.Act ||
+                    audit.Seed != owner.RunSeed ||
+                    audit.Ascension != owner.Ascension)
+                    throw new InvalidDataException(
+                        "Later-act map audit history differs from its run or act order.");
+                audit.Validate();
+                if (previousMapCursor is { } previousCursor &&
+                    (audit.InitialNatureState.SampleCount <
+                        previousCursor.SampleCount ||
+                     audit.InitialNatureState.SampleCount ==
+                        previousCursor.SampleCount &&
+                     !audit.InitialNatureState.SameCursor(previousCursor)))
+                    throw new InvalidDataException(
+                        "Later-act map audits do not follow the ReferenceNature cursor chronology.");
+                previousAct = audit.Act;
+                previousMapCursor = audit.NatureState;
+            }
+            var finalMapCursor = mapHistory[^1].NatureState;
+            if (currentNature.SampleCount < finalMapCursor.SampleCount ||
+                currentNature.SampleCount == finalMapCursor.SampleCount &&
+                !currentNature.SameCursor(finalMapCursor))
+                throw new InvalidDataException(
+                    "ReferenceNature cursor precedes or conflicts with its later-act map audit history.");
         }
         if (SemanticRewardAudit is { } reward &&
             (owner.Phase != RunPhase.Reward ||
@@ -404,6 +463,16 @@ public sealed record RunStochasticStateV111
         WithReferenceNatureRunInitializationPending(
             RunStochasticStateV111 current, bool pending) =>
         current with { ReferenceNatureRunInitializationPending = pending };
+
+    internal static RunStochasticStateV111
+        WithReferenceNatureMapGenerationHistory(
+            RunStochasticStateV111 current,
+            ReferenceNatureMapGenerationAuditV111[]? history) =>
+        current with
+        {
+            ReferenceNatureMapGenerationHistory = Clone(history,
+                audit => audit.Fork())
+        };
 
     private static T[]? Clone<T>(T[]? values, Func<T, T> clone)
         where T : class => values?.Select(value =>

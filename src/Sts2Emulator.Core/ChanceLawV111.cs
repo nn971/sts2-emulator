@@ -6998,6 +6998,13 @@ public sealed record ReferenceNatureRunActionSessionV111(
             "Completed experimental act-transition map session has no map.");
         var continued = new PrototypeGameEngine()
             .StepWithActTransitionMap(Run, Action, map).State;
+        var mapHistory = continued.ReferenceNatureMapGenerationHistory
+            ?? Array.Empty<ReferenceNatureMapGenerationAuditV111>();
+        continued = continued with
+        {
+            ReferenceNatureMapGenerationHistory = mapHistory.Append(
+                mapGeneration.ToAudit()).ToArray()
+        };
         continued = ReferenceNatureRunCursorV111.Commit(
             continued, mapGeneration.NatureState);
         return this with
