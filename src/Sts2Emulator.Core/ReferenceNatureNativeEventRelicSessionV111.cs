@@ -261,6 +261,8 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
             DecisionTranscript.Length >
                 ExpectedRelicBagDrawCount(Origin, Action) * 2 +
                     ExpectedNeowUnownedRelicRequestCount(Origin, Action) +
+                    ExpectedPunchOffUnownedRelicRequestCount(
+                        Origin, Action) +
                     ExpectedNeowBonesRelicShuffleRequestCount(
                         Origin, Action) ||
             string.IsNullOrWhiteSpace(Action.Kind))
@@ -331,6 +333,8 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
             ExpectedRelicBagDrawCount(Origin, Action);
         var expectedNeowUnownedRelicRequestCount =
             ExpectedNeowUnownedRelicRequestCount(Origin, Action);
+        var expectedPunchOffUnownedRelicRequestCount =
+            ExpectedPunchOffUnownedRelicRequestCount(Origin, Action);
         var expectedNeowBonesRelicShuffleRequestCount =
             ExpectedNeowBonesRelicShuffleRequestCount(Origin, Action);
         var rarityRequestCount = ProviderDecisions.Count(decision =>
@@ -352,9 +356,11 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
             Complete && rarityRequestCount != expectedRelicBagDrawCount ||
             identityRequestCount > rarityRequestCount ||
             unownedRelicRequestCount >
-                expectedNeowUnownedRelicRequestCount ||
+                expectedNeowUnownedRelicRequestCount +
+                    expectedPunchOffUnownedRelicRequestCount ||
             Complete && unownedRelicRequestCount !=
-                expectedNeowUnownedRelicRequestCount ||
+                expectedNeowUnownedRelicRequestCount +
+                    expectedPunchOffUnownedRelicRequestCount ||
             neowBonesRelicShuffleRequestCount >
                 expectedNeowBonesRelicShuffleRequestCount ||
             Complete && neowBonesRelicShuffleRequestCount !=
@@ -446,7 +452,7 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
         if (request.IndexRequest is { } unownedRelicRequest &&
             unownedRelicRequest.SiteId == UnownedRelicSiteId)
         {
-            var expected = NeowUnownedRelicSupport(source, action);
+            var expected = UnownedRelicSupport(source, action);
             if (expected is null ||
                 unownedRelicRequest.StreamId !=
                     NativePlayerRngV111.RewardsStreamId ||
@@ -460,16 +466,27 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
                 candidateLabels is not null && !candidateLabels.SequenceEqual(
                     expected.Value.CandidateIds, StringComparer.Ordinal))
                 throw new InvalidDataException(
-                    "Neow Small Capsule relic support differs from the acquired-relic pool.");
+                    "Native event unowned-relic support differs from its saved action.");
 
-            return ChanceLawEngineV111.QueryRandomIndex(
-                CanonicalJson.Sha256(new
+            var isPunchOffOffer =
+                ExpectedPunchOffUnownedRelicRequestCount(source, action) > 0;
+            var lawEventId = isPunchOffOffer
+                ? CanonicalJson.Sha256(new
+                {
+                    boundary = "native-punch-off-unowned-relic-offer",
+                    eventId = PrototypeNativePunchOff.EventId,
+                    actionId = PrototypeAiEnvironment.StableActionId(action),
+                    request = unownedRelicRequest
+                })
+                : CanonicalJson.Sha256(new
                 {
                     boundary = "native-neow-small-capsule-relic",
                     eventId = PrototypeNativeOvergrowthEvents.NeowEventId,
                     actionId = PrototypeAiEnvironment.StableActionId(action),
                     request = unownedRelicRequest
-                }), unownedRelicRequest);
+                });
+            return ChanceLawEngineV111.QueryRandomIndex(
+                lawEventId, unownedRelicRequest);
         }
 
         if (request.IndexRequest is { } neowBonesShuffleRequest &&
@@ -671,11 +688,13 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
             (!HasUnsupportedFixedRelicEffect(eventState.EventId, choiceId) ||
              ExpectedNeowUnownedRelicRequestCount(source, action) > 0 ||
              ExpectedNeowBonesRelicShuffleRequestCount(source, action) > 0);
+        var punchOffUnownedRelicOffer =
+            ExpectedPunchOffUnownedRelicRequestCount(source, action) > 0;
         var eventRelicChoice = source.Phase == RunPhase.Event &&
             action.Kind == "event_choice" &&
             eventState is not null && choiceId is not null &&
             (nativeDirectEventRelicDrawCount > 0 ||
-                controlledEventRelicChoice);
+                controlledEventRelicChoice || punchOffUnownedRelicOffer);
         var neowRelicPickup = NeowRelicPickupDrawCount(source, action) > 0 ||
             ExpectedNeowUnownedRelicRequestCount(source, action) > 0 ||
             ExpectedNeowBonesRelicShuffleRequestCount(source, action) > 0;
@@ -723,6 +742,25 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
             effects[1].Kind == PrototypeRunEffectKind.OfferRandomRelic
                 ? 1
                 : 0;
+    }
+
+    private static int ExpectedPunchOffUnownedRelicRequestCount(
+        RunState source, GameAction action)
+    {
+        var world = source.World;
+        var eventState = world?.Event;
+        if (source.Phase != RunPhase.Event || action.Kind != "event_choice" ||
+            eventState is null ||
+            eventState.EventId != PrototypeNativePunchOff.EventId ||
+            eventState.NativePageIndex != 0 ||
+            EventChoiceId(action) != "nab" || world is null ||
+            !PrototypeGameEngine.UsesNativeRegionalSystems(world))
+            return 0;
+
+        var ownedRelics = source.Player.Relics.Select(relic => relic.RelicId)
+            .ToHashSet(StringComparer.Ordinal);
+        return PrototypeContent.RelicPool.Any(id =>
+            !ownedRelics.Contains(id)) ? 1 : 0;
     }
 
     private static int ExpectedNeowBonesRelicShuffleRequestCount(
@@ -790,25 +828,39 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
     }
 
     private static (string[] CandidateIds, string OwnerId)?
-        NeowUnownedRelicSupport(RunState source, GameAction action)
+        UnownedRelicSupport(RunState source, GameAction action)
     {
-        if (ExpectedNeowUnownedRelicRequestCount(source, action) == 0)
-            return null;
-        var effects = NeowPickupEffects(source, action)!;
-        var acquiredRelicId = effects[0].RelicId ??
-            throw new InvalidDataException(
-                "Neow Small Capsule acquisition lost its relic identity.");
-        var ownedRelics = source.Player.Relics.Select(relic => relic.RelicId)
-            .Append(acquiredRelicId)
-            .ToHashSet(StringComparer.Ordinal);
-        var candidates = PrototypeContent.RelicPool.Where(id =>
-            !ownedRelics.Contains(id)).ToArray();
-        if (candidates.Length == 0)
-            throw new InvalidDataException(
-                "Neow Small Capsule has no unowned relic support.");
-        var prefix = "Event:" + PrototypeNativeOvergrowthEvents.NeowEventId;
-        return (candidates, prefix + ":unowned_relic_pool:" +
-            CanonicalJson.Sha256(candidates));
+        if (ExpectedNeowUnownedRelicRequestCount(source, action) > 0)
+        {
+            var effects = NeowPickupEffects(source, action)!;
+            var acquiredRelicId = effects[0].RelicId ??
+                throw new InvalidDataException(
+                    "Neow Small Capsule acquisition lost its relic identity.");
+            var ownedRelics = source.Player.Relics.Select(relic => relic.RelicId)
+                .Append(acquiredRelicId)
+                .ToHashSet(StringComparer.Ordinal);
+            var candidates = PrototypeContent.RelicPool.Where(id =>
+                !ownedRelics.Contains(id)).ToArray();
+            if (candidates.Length == 0)
+                throw new InvalidDataException(
+                    "Neow Small Capsule has no unowned relic support.");
+            var prefix = "Event:" + PrototypeNativeOvergrowthEvents.NeowEventId;
+            return (candidates, prefix + ":unowned_relic_pool:" +
+                CanonicalJson.Sha256(candidates));
+        }
+
+        if (ExpectedPunchOffUnownedRelicRequestCount(source, action) > 0)
+        {
+            var ownedRelics = source.Player.Relics.Select(relic => relic.RelicId)
+                .ToHashSet(StringComparer.Ordinal);
+            var candidates = PrototypeContent.RelicPool.Where(id =>
+                !ownedRelics.Contains(id)).ToArray();
+            var prefix = "Event:" + PrototypeNativePunchOff.EventId;
+            return (candidates, prefix + ":unowned_relic_pool:" +
+                CanonicalJson.Sha256(candidates));
+        }
+
+        return null;
     }
 
     private static PrototypeRunEffectSpec[]? NeowPickupEffects(

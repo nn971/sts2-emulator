@@ -1,6 +1,6 @@
 # Native event relic ReferenceNature continuation
 
-**Snapshot:** 2026-10-21. **Status:** implemented for supported configured Native event-choice relic draws, Neow Small Capsule and Large Capsule pickups, Neow's Bones relic offers, Round Tea Party, Trial, Battleworn Dummy setting-three victory, and Pael's Wing; identity-pool fidelity and Native cursor parity remain open.
+**Snapshot:** 2026-10-21. **Status:** implemented for supported configured Native event-choice relic draws, Neow Small Capsule and Large Capsule pickups, Neow's Bones relic offers, Punch Off's `nab` relic offer, Round Tea Party, Trial, Battleworn Dummy setting-three victory, and Pael's Wing; identity-pool fidelity and Native cursor parity remain open.
 
 ## Boundary
 
@@ -43,6 +43,15 @@ owner fingerprints the configured relic pool after excluding the acquired
 Small Capsule and all previously owned relics. The selected event choice or
 reward and the Nature cursor commit together. Neow pickup effects other than
 the documented Bones and Small Capsule paths remain outside this boundary.
+
+The same session captures configured Native Punch Off's legal page-zero `nab`
+choice. After appending its Injury, the ordinary action creates the one-relic
+reward with `unowned_relic_selection` on `player.rewards`; the owner identifies
+the event and fingerprints the ordered configured relic pool after excluding
+owned relics. Replay validates this support and commits the event result and
+Nature cursor together. The bounded-index transform is `SOURCE_VERIFIED` on
+the declared request. Other Punch Off choices and its later combat reward are
+outside this boundary.
 
 The session also accepts a legal combat action during Battleworn Dummy's
 setting-three fight. Replay must finish the combat as a victory and reach its
@@ -101,11 +110,11 @@ resolve, fork, save, load, release, and the committed playable run.
 ## Scope limits
 
 The session does not cover legacy event rewards, choices with additional fixed
-relic effects, other Neow relic-pickup effects, Battleworn settings one or two,
-or choices/actions that request a non-relic random operation. The Neow's Bones
-offer shuffle remains a legacy `reward`-stream approximation and does not
-establish Native source or cursor parity. The session does not establish
-source-pool completeness, hidden queue identity probabilities, event-selection
-parity, seeded Native result parity, or Native cursor parity. The Native
-reference mod and Fidelity Inspector remain needed for those source-evidence
-tasks.
+relic effects, other Neow relic-pickup effects, other Punch Off choices or its
+later combat reward, Battleworn settings one or two, or choices/actions that
+request a non-relic random operation. The Neow's Bones offer shuffle remains a
+legacy `reward`-stream approximation and does not establish Native source or
+cursor parity. The session does not establish source-pool completeness,
+hidden queue identity probabilities, event-selection parity, seeded Native
+result parity, or Native cursor parity. The Native reference mod and Fidelity
+Inspector remain needed for those source-evidence tasks.
