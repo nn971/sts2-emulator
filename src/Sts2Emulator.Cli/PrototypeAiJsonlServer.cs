@@ -4385,6 +4385,7 @@ internal static class PrototypeAiJsonlServer
                             .NativeEventShuffleSessionSiteIds.Contains(
                                 siteId, StringComparer.Ordinal))
                         {
+                            var legacyEventShuffleOrdinal = false;
                             if (siteId == PrototypeGameEngine
                                 .FishingRodUpgradeSiteId)
                             {
@@ -4468,20 +4469,34 @@ internal static class PrototypeAiJsonlServer
                                     throw new ArgumentException(
                                         "Native event shuffle queries accept only state_handle, site_id, ordinal, prior_indices and action_id.");
                                 var actionId = OptionalString(request, "action_id");
+                                var shuffleOrigin = RequireState(request);
                                 law = siteId ==
                                     "event.war_historian.repy.potion_offer.index_draw"
                                     ? ChanceLawEngineV111
                                         .QueryNativeRepyPotionOffer(
-                                            RequireState(request), ordinal,
+                                            shuffleOrigin, ordinal,
                                             priorIndices, actionId)
                                     : ChanceLawEngineV111.QueryNativeEventShuffle(
-                                        RequireState(request), siteId, ordinal,
+                                        shuffleOrigin, siteId, ordinal,
                                         priorIndices, actionId);
+                                legacyEventShuffleOrdinal =
+                                    law.ProbabilityStatus ==
+                                        ChanceLawV111.UnverifiedStatus &&
+                                    law.ProbabilityProvenance ==
+                                        "uniform-saved-index-support-unverified" &&
+                                    shuffleOrigin.NativeRunRng is null &&
+                                    siteId is (
+                                        PrototypeNativeUnderdocksDoors.ShuffleSiteId or
+                                        PrototypeNativeGloryEvents.HungryForMushroomsShuffleSiteId or
+                                        PrototypeNativeGloryEvents.TinkerTypeOfferShuffleSiteId or
+                                        PrototypeNativeGloryEvents.TinkerRiderOfferShuffleSiteId or
+                                        PrototypeNativeGloryEvents.BattlewornUpgradeShuffleSiteId);
                             }
                             if (law.SiteId != siteId ||
                                 siteId !=
                                     "event.war_historian.repy.potion_offer.index_draw" &&
-                                    law.Ordinal != ordinal)
+                                    law.Ordinal != ordinal &&
+                                    !legacyEventShuffleOrdinal)
                                 throw new ArgumentException(
                                     $"Native event shuffle expects site '{law.SiteId}' and ordinal {law.Ordinal}.");
                             Write(new

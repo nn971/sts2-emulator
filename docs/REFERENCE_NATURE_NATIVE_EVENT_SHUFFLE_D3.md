@@ -1,7 +1,10 @@
 # ReferenceNature Native shuffle contract
 
 This contract records source-independent ReferenceNature sessions for Native
-Fisher–Yates shuffles and admitted combat-victory index hooks. The event resolvers
+Fisher–Yates shuffles and admitted combat-victory index hooks. In addition to
+configured Native event streams, Doors of Light and Dark, Fragrant Mushroom,
+both Tinker Time shuffle stages, and Battleworn Dummy setting 2 admit the
+Native-regional legacy `event` stream when `NativeRunRng` is absent. The event resolvers
 are the Light option in Doors of Light and Dark, Fragrant Mushroom's eligible
 card shuffle, Tinker Time's type and rider offer stages, and Battleworn
 Dummy's setting 2 upgrade shuffle. It also covers Fake Merchant's six-of-nine
@@ -92,12 +95,15 @@ privileged state.
 Each pending shuffle law represents one descending Fisher–Yates swap. Its
 bounded integer support is `0..(candidate count - ordinal - 1)`, and its
 conditioning fingerprint includes the ordered eligible identities and every
-preceding swap index. Outcomes use stable `swap_index:<index>` identifiers
-and exact integer weights. Source-backed Native shuffle laws use each index's
+preceding swap index. Outcomes use stable `swap_index:<index>` identifiers.
+Configured Native shuffle laws use exact integer weights: each index's
 exact preimage count on the 53-bit `NextDouble` grid, including the
 binary64-multiplication rounding boundary, and are `SOURCE_VERIFIED` under the
 uniform-grid input model. Power-of-two bounds have equal weights; other bounds
-can have unequal weights. This status does not establish stream
+can have unequal weights. The supported Native-regional fallback laws use
+equal weights over the saved legacy `event` request support and remain
+`UNVERIFIED`; their typed ordinal is the saved event call count plus the swap
+offset. These statuses do not establish stream
 attribution, seed frequencies, or seeded parity. Repy's two potion laws expose
 indices into the configured potion pool, use stable potion-and-index
 identities, and include the full preceding shuffle and potion prefix. Their
@@ -141,8 +147,10 @@ stream attribution, seed frequencies, or seeded parity.
 `ReferenceNatureNativeEventShuffleSessionV111` stores the original run and
 sampler cursor while outcomes are pending. Once every swap has been sampled,
 it replays the ordinary event action through the existing scripted Native
-event-index resolver. The run result and ReferenceNature cursor commit
-together. For event-context shuffles, the Native event stream remains at its
+event-index resolver, or through a controlled legacy request prefix for the
+supported fallback sites. Fallback replay leaves the selected `event` calls
+unadvanced and creates no Native event cursor or provider marker. The run
+result and ReferenceNature cursor commit together. For configured event-context shuffles, the Native event stream remains at its
 entry cursor and the saved `scripted-v111` marker is validated against the
 terminal Light result page, Tinker offer page, Battleworn victory page, or
 Fake Merchant stock page. The stream stays at entry across the two scripted

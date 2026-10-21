@@ -17,7 +17,8 @@ internal sealed record NativeEventShufflePlanV111(
     NativeRngSnapshot? NativeCursorBefore = null,
     bool PreserveEventRng = true,
     string? ExpectedUnscriptedStreamId = null,
-    int ExpectedUnscriptedDrawCount = 0)
+    int ExpectedUnscriptedDrawCount = 0,
+    int? LegacyEventOrdinalBase = null)
 {
     public bool IsFishingRodUpgrade =>
         SiteId == PrototypeGameEngine.FishingRodUpgradeSiteId;
@@ -44,10 +45,15 @@ internal sealed record NativeEventShufflePlanV111(
         if (ordinal < 0 || ordinal >= SwapCount)
             throw new ArgumentOutOfRangeException(nameof(ordinal));
         var request = new RandomIndexRequestV111(
-            SiteId, StreamId, OwnerId, ordinal, [],
+            SiteId, StreamId, OwnerId,
+            LegacyEventOrdinalBase is { } legacyOrdinalBase
+                ? checked(legacyOrdinalBase + ordinal) : ordinal, [],
             OperationKind: "bounded_integer",
             BoundedCount: CandidateCount - ordinal);
-        request.ValidateForNativeProvider();
+        if (LegacyEventOrdinalBase is null)
+            request.ValidateForNativeProvider();
+        else
+            request.ValidateForLegacyProvider();
         return request;
     }
 
@@ -118,10 +124,7 @@ internal static class NativeEventShufflePlanBuilderV111
                 NativePaelRewardsV111.ToothCards(relic).Length > 0);
         var world = origin.World;
         var activeEvent = world?.Event;
-        if (string.IsNullOrWhiteSpace(origin.RunSeed) ||
-            origin.NativeRunRng is null && !improvementVictoryAction &&
-                !paelsToothVictoryAction ||
-            world is null ||
+        if (world is null ||
             activeEvent is null && !fakeMerchantEntryAction &&
                 !warHammerEliteVictoryAction &&
                 !fishingRodVictoryAction &&
@@ -172,6 +175,19 @@ internal static class NativeEventShufflePlanBuilderV111
                 "No native event shuffle is pending at this event page.")
         };
         ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        var legacyEventShuffleFallback = origin.NativeRunRng is null &&
+            activeEvent is not null &&
+            PrototypeGameEngine.UsesNativeRegionalSystems(world) &&
+            activeEvent.NativeEventRng is null &&
+            activeEvent.NativeEventRngProviderMode is null &&
+            StochasticSiteRegistryV111.NativeEventContextShuffleSiteIds
+                .Contains(siteId, StringComparer.Ordinal);
+        if (origin.NativeRunRng is null && !improvementVictoryAction &&
+                !paelsToothVictoryAction && !legacyEventShuffleFallback ||
+            string.IsNullOrWhiteSpace(origin.RunSeed) &&
+                !legacyEventShuffleFallback)
+            throw new InvalidOperationException(
+                "Native shuffle Nature choices require configured Native RNG, a supported legacy event shuffle, or an admitted combat-end fallback.");
         if (evt.EventId == PrototypeNativeHiveEvents.WarHistorianRepyId &&
             siteId == "event.war_historian.repy.potion_offer.index_draw")
             siteId = PrototypeNativeHiveEvents
@@ -578,7 +594,9 @@ internal static class NativeEventShufflePlanBuilderV111
                     evt.OfferedChoiceIds?.Contains(
                         resolvedActionId, StringComparer.Ordinal) != true ||
                     evt.NativeTinkerType is not null ||
-                    evt.NativeEventRngProviderMode != "scripted-v111")
+                    (legacyEventShuffleFallback
+                        ? evt.NativeEventRngProviderMode is not null
+                        : evt.NativeEventRngProviderMode != "scripted-v111"))
                     throw new InvalidOperationException(
                         "Tinker Time rider shuffle requires a type offered by the prior scripted Nature shuffle.");
                 orderedCandidateIds =
@@ -602,6 +620,10 @@ internal static class NativeEventShufflePlanBuilderV111
                 PrototypeAiEnvironment.StableActionId(action) == stableActionId))
             throw new InvalidOperationException(
                 "Native event shuffle action is not legal in the current state.");
+        if (legacyEventShuffleFallback)
+            ValidateLegacyEventShuffleBoundary(
+                origin, replayAction, siteId, ownerId,
+                orderedCandidateIds, candidateCount);
 
         var isFishingRodUpgrade = siteId ==
             PrototypeGameEngine.FishingRodUpgradeSiteId;
@@ -617,6 +639,7 @@ internal static class NativeEventShufflePlanBuilderV111
             .WarHistorianRepyRelicShuffleSiteId;
         NativeRngSnapshot? streamSnapshot;
         string streamId;
+        int? legacyEventOrdinalBase = null;
         if (isWarHammerShuffle || isFishingRodUpgrade)
         {
             if (nativeCursorBefore is null)
@@ -642,6 +665,12 @@ internal static class NativeEventShufflePlanBuilderV111
                     "War Historian Repy shuffle plan is missing its player.rewards pre-draw cursor.");
             streamSnapshot = nativeCursorBefore;
             streamId = NativePlayerRngV111.RewardsStreamId;
+        }
+        else if (legacyEventShuffleFallback)
+        {
+            legacyEventOrdinalBase = GetLegacyEventOrdinal(origin);
+            streamSnapshot = null;
+            streamId = "event";
         }
         else
         {
@@ -759,7 +788,64 @@ internal static class NativeEventShufflePlanBuilderV111
             PreserveEventRng: !isRepyShuffle,
             ExpectedUnscriptedStreamId: isRepyShuffle
                 ? NativePlayerRngV111.RewardsStreamId : null,
-            ExpectedUnscriptedDrawCount: 0);
+            ExpectedUnscriptedDrawCount: 0,
+            LegacyEventOrdinalBase: legacyEventOrdinalBase);
+    }
+
+    private static int GetLegacyEventOrdinal(RunState origin)
+    {
+        var streams = origin.Rng.Streams.Where(stream =>
+            stream.StreamId == "event").ToArray();
+        if (streams.Length != 1)
+            throw new InvalidDataException(
+                "Native event shuffle fallback requires one legacy event stream.");
+        var ordinal = streams[0].CallCount ?? 0;
+        if (ordinal > int.MaxValue)
+            throw new NotSupportedException(
+                "Native event shuffle legacy ordinal exceeds the typed request range.");
+        return (int)ordinal;
+    }
+
+    private static void ValidateLegacyEventShuffleBoundary(
+        RunState origin, GameAction action, string siteId, string ownerId,
+        string[] orderedCandidateIds, int candidateCount)
+    {
+        var eventOrdinal = GetLegacyEventOrdinal(origin);
+        RunState projected;
+        RandomBoundaryEventV111[] eventRequests;
+        NativeEventShuffleCaptureV111[] captures;
+        using (var shuffleProbe = NativeEventRandomProbeV111.Begin())
+        using (var boundaryJournal = RandomBoundaryJournalV111.Begin())
+        {
+            projected = new PrototypeGameEngine().Step(
+                origin.Fork(), action).State;
+            eventRequests = boundaryJournal.Entries.Where(entry =>
+                entry.Request.StreamId == "event").ToArray();
+            captures = shuffleProbe.ShuffleCaptures.Where(capture =>
+                capture.SiteId == siteId).ToArray();
+        }
+
+        var swapCount = candidateCount - 1;
+        if (captures.Length != 1 ||
+            captures[0].OwnerId != ownerId ||
+            !captures[0].OrderedCandidateIds.SequenceEqual(
+                orderedCandidateIds, StringComparer.Ordinal) ||
+            eventRequests.Length != swapCount ||
+            eventRequests.Where((entry, index) =>
+                entry.Request.SiteId != siteId ||
+                entry.Request.OwnerId != ownerId ||
+                entry.Request.Ordinal != checked(eventOrdinal + index) ||
+                entry.Request.OperationKind != "bounded_integer" ||
+                entry.Request.BoundedCount != candidateCount - index ||
+                entry.ProviderMode != "legacy-prototype-v0" ||
+                entry.NativeCursorBefore is not null ||
+                entry.NativeCursorAfter is not null).Any() ||
+            GetLegacyEventOrdinal(projected) !=
+                checked(eventOrdinal + swapCount) ||
+            projected.World?.Event?.NativeEventRng is not null ||
+            projected.World?.Event?.NativeEventRngProviderMode is not null)
+            throw new InvalidOperationException(
+                "Native-regional event shuffle must emit only its complete legacy event swap prefix.");
     }
 
     internal sealed record CombatEndIndexCaptureV111(
@@ -1237,18 +1323,7 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
                 new RandomIndexDecisionV111(
                     plan.RequestForChoice(ordinal), decision.OutcomeIndex,
                     "scripted-v111")).ToArray();
-            var replay = ReferenceNatureNativeEventIndexReplayV111.Replay(
-                Origin, decisions, plan.ReplayAction,
-                plan.NativeRngEventId, plan.EventId,
-                SelectiveReplaySite(plan), plan.OrderedCandidateIds,
-                plan.SiteId ==
-                    StochasticSiteRegistryV111.WarHammerEliteUpgradeShuffleSiteId
-                    ? plan.NativeCursorBefore : null,
-                plan.PreserveEventRng,
-                plan.ExpectedUnscriptedStreamId,
-                plan.ExpectedUnscriptedStreamId is null
-                    ? null : plan.NativeCursorBefore,
-                plan.ExpectedUnscriptedDrawCount);
+            var replay = ReplayBoundary(Origin, plan, decisions);
             nextRun = ReferenceNatureRunCursorV111.Commit(
                 replay, nextNature);
         }
@@ -1315,18 +1390,7 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
                 new RandomIndexDecisionV111(
                     plan.RequestForChoice(ordinal), decision.OutcomeIndex,
                     "scripted-v111")).ToArray();
-            expectedRun = ReferenceNatureNativeEventIndexReplayV111.Replay(
-                Origin, decisions, plan.ReplayAction,
-                plan.NativeRngEventId, plan.EventId,
-                SelectiveReplaySite(plan), plan.OrderedCandidateIds,
-                plan.SiteId ==
-                    StochasticSiteRegistryV111.WarHammerEliteUpgradeShuffleSiteId
-                    ? plan.NativeCursorBefore : null,
-                plan.PreserveEventRng,
-                plan.ExpectedUnscriptedStreamId,
-                plan.ExpectedUnscriptedStreamId is null
-                    ? null : plan.NativeCursorBefore,
-                plan.ExpectedUnscriptedDrawCount);
+            expectedRun = ReplayBoundary(Origin, plan, decisions);
             expectedRun = ReferenceNatureRunCursorV111.Commit(
                 expectedRun, expectedNatureState);
         }
@@ -1478,6 +1542,73 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
                 origin, ordinal - plan.SwapCount, priorIndices, actionId,
                 plannedCandidateIds);
 
+    private static RunState ReplayBoundary(
+        RunState origin, NativeEventShufflePlanV111 plan,
+        RandomIndexDecisionV111[] decisions)
+    {
+        if (plan.LegacyEventOrdinalBase is null)
+            return ReferenceNatureNativeEventIndexReplayV111.Replay(
+                origin, decisions, plan.ReplayAction,
+                plan.NativeRngEventId, plan.EventId,
+                SelectiveReplaySite(plan), plan.OrderedCandidateIds,
+                plan.SiteId ==
+                    StochasticSiteRegistryV111.WarHammerEliteUpgradeShuffleSiteId
+                    ? plan.NativeCursorBefore : null,
+                plan.PreserveEventRng,
+                plan.ExpectedUnscriptedStreamId,
+                plan.ExpectedUnscriptedStreamId is null
+                    ? null : plan.NativeCursorBefore,
+                plan.ExpectedUnscriptedDrawCount);
+
+        var selected = decisions.Select(decision =>
+            ControlledStochasticDecisionV111.FromIndex(decision)).ToArray();
+        var requests = selected.Select(decision => decision.ToRequest())
+            .ToArray();
+        NativeEventShuffleCaptureV111[] captures;
+        ControlledStochasticContinuationResultV111 replay;
+        using (var shuffleProbe = NativeEventRandomProbeV111.Begin())
+        {
+            replay = ControlledChanceContinuationExecutorV111
+                .CaptureStochastic(
+                    origin,
+                    ControlledStochasticContinuationStateV111
+                        .CurrentSchemaId,
+                    selected,
+                    run => new PrototypeGameEngine().Step(
+                        run, plan.ReplayAction).State,
+                    request => requests.Any(selectedRequest =>
+                        ControlledStochasticChanceReplayV111.SameRequest(
+                            request, selectedRequest)));
+            captures = shuffleProbe.ShuffleCaptures.Where(capture =>
+                capture.SiteId == plan.SiteId).ToArray();
+        }
+        if (replay.Suspended || replay.Run is not { } resolved)
+            throw new InvalidDataException(
+                "Native-regional event shuffle did not consume its selected legacy request prefix.");
+        if (captures.Length != 1 || captures[0].OwnerId != plan.OwnerId ||
+            !captures[0].OrderedCandidateIds.SequenceEqual(
+                plan.OrderedCandidateIds, StringComparer.Ordinal) ||
+            GetLegacyEventCallCount(resolved) !=
+                GetLegacyEventCallCount(origin) ||
+            origin.World?.Event?.NativeEventRng is not null ||
+            origin.World?.Event?.NativeEventRngProviderMode is not null ||
+            resolved.World?.Event?.NativeEventRng is not null ||
+            resolved.World?.Event?.NativeEventRngProviderMode is not null)
+            throw new InvalidDataException(
+                "Native-regional event shuffle replay changed its legacy call count, Native cursor, provider marker, or candidate order.");
+        return resolved;
+    }
+
+    private static ulong GetLegacyEventCallCount(RunState run)
+    {
+        var streams = run.Rng.Streams.Where(stream =>
+            stream.StreamId == "event").ToArray();
+        if (streams.Length != 1)
+            throw new InvalidDataException(
+                "Native event shuffle replay requires one legacy event stream.");
+        return streams[0].CallCount ?? 0;
+    }
+
     private static string? SelectiveReplaySite(
         NativeEventShufflePlanV111 plan) =>
         plan.SiteId is StochasticSiteRegistryV111.WarHammerEliteUpgradeShuffleSiteId or
@@ -1620,7 +1751,11 @@ public static partial class ChanceLawEngineV111
                     "Native event shuffle prefix contains an unsupported bounded index.");
 
         var request = plan.Request(ordinal);
-        var weights = NativeNextIntGridWeights(request.BoundedCount!.Value);
+        var nativeIndexLaw = NativeRngV111.IsCanonicalStreamId(
+            request.StreamId);
+        var weights = nativeIndexLaw
+            ? NativeNextIntGridWeights(request.BoundedCount!.Value)
+            : Enumerable.Repeat(1L, request.BoundedCount!.Value).ToArray();
         var conditioningFingerprint = CanonicalJson.Sha256(new
         {
             plan.ConditioningFingerprint,
@@ -1642,9 +1777,13 @@ public static partial class ChanceLawEngineV111
             request.OperationKind, request.OwnerId, request.Ordinal,
             NativeEventShuffleConditioningPolicyId,
             conditioningFingerprint,
-            NativeBoundedIndexSourceVerifiedProvenance,
+            nativeIndexLaw
+                ? NativeBoundedIndexSourceVerifiedProvenance
+                : "uniform-saved-index-support-unverified",
             outcomes,
-            ChanceLawV111.SourceVerifiedStatus);
+            nativeIndexLaw
+                ? ChanceLawV111.SourceVerifiedStatus
+                : ChanceLawV111.UnverifiedStatus);
     }
 
     private static ChanceLawV111 QueryCombatEndIndex(

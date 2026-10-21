@@ -196,6 +196,12 @@ cursor captured at that page's boundary. Native-regional fallback derives its
 typed request ordinal from the saved legacy `event` call count, uses
 equal-index `UNVERIFIED` weights, and leaves the selected request unadvanced
 without creating a Native cursor or provider marker.
+Doors of Light and Dark, Fragrant Mushroom, both Tinker Time shuffle stages,
+and Battleworn Dummy setting 2 also admit Native-regional fallback without
+`NativeRunRng`. Their shuffle laws use equal-index `UNVERIFIED` weights, derive
+typed request ordinals from the saved legacy `event` call count plus the swap
+offset, and leave selected calls unadvanced without creating a Native event
+cursor or provider marker.
 A pinned event RNG seed
 derivation and a persisted cursor establish provider ownership, not seed
 frequencies, source-pool completeness, or call-order parity. Other remaining
