@@ -1502,7 +1502,9 @@ public sealed partial class PrototypeGameEngine
             World = world with { Combat = combat }
         };
 
-        return ResumeAutomaticPipeline(state, 0);
+        return ResumeAutomaticPipelineContinuation(
+            SetAutomaticPipelineContinuation(state, 0,
+                pendingPostDispatchEventKind: null));
     }
 
     private static RunState ResumeAutomaticPipeline(
@@ -2278,8 +2280,10 @@ public sealed partial class PrototypeGameEngine
                         ? power with { StoredValue = power.Stacks } : power).ToArray(),
                 Counters = AdvanceTurnCounters(turnCombat.CounterState)
             };
-            return ResumeAutomaticPipeline(state with
-            { World = turnWorld with { Combat = turnCombat } }, resetBlockIndex);
+            return ResumeAutomaticPipelineContinuation(
+                SetAutomaticPipelineContinuation(state with
+                { World = turnWorld with { Combat = turnCombat } },
+                    resetBlockIndex, pendingPostDispatchEventKind: null));
         }
 
         if (eventKind != PrototypeCombatEventKind.PlayerTurnStarted)
