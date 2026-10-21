@@ -273,6 +273,8 @@ public sealed record ReferenceNatureMerchantSessionV111(
                 "Completed ReferenceNature merchant session has pending candidate labels.");
         }
         ValidateOpeningBoundary(Origin, Action);
+        if (IsToyBoxPurchase(Origin, Action))
+            ValidateToyBoxPurchasePrefix();
         PrototypeStateInvariants.Validate(Origin);
         PrototypeStateInvariants.Validate(Run);
         ReferenceNatureRunProjectionV111.ValidateNatureRelicBagProjection(
@@ -339,6 +341,41 @@ public sealed record ReferenceNatureMerchantSessionV111(
 
         foreach (var decision in DecisionTranscript)
             decision.Validate();
+    }
+
+    private void ValidateToyBoxPurchasePrefix()
+    {
+        var expectedSites = Enumerable.Range(0, 5)
+            .SelectMany(_ => new[]
+            {
+                "relic_grab_bag.rarity.unit_float",
+                PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId
+            }).ToArray();
+        if (ProviderDecisions.Length > expectedSites.Length)
+            throw new InvalidDataException(
+                "Toy Box purchase replay differs from its five rarity/identity request pairs.");
+        for (var index = 0; index < ProviderDecisions.Length; index++)
+        {
+            var decision = ProviderDecisions[index];
+            if (decision is null ||
+                AsRequest(decision).SiteId != expectedSites[index])
+                throw new InvalidDataException(
+                    "Toy Box purchase replay differs from its five rarity/identity request pairs.");
+        }
+        if (PendingRequest is { } pending &&
+            (ProviderDecisions.Length >= expectedSites.Length ||
+             pending.SiteId != expectedSites[ProviderDecisions.Length]))
+            throw new InvalidDataException(
+                "Toy Box purchase replay differs from its five rarity/identity request pairs.");
+
+        if (!Complete)
+            return;
+        var reward = Run.World?.Reward;
+        if (ProviderDecisions.Length != expectedSites.Length ||
+            reward is not
+                { SourceRoom: "Relic:ToyBox", ExtraRelicRewardIds: { Length: 5 } })
+            throw new InvalidDataException(
+                "Completed Toy Box purchase does not contain all five controlled relic offers.");
     }
 
     public static string Save(ReferenceNatureMerchantSessionV111 session)
