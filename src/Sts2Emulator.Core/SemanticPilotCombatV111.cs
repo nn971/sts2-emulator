@@ -4003,14 +4003,10 @@ public static class SemanticPilotCombatEngineV111
     internal static void ValidateNativePolicyBoundary(RunState run)
     {
         NativeRunRngV111.Validate(run);
-        if (run.Phase != RunPhase.Combat || run.World?.Combat is not { } combat)
+        if (!PrototypeGameEngine.IsAtCombatPlayerDecisionBoundary(run))
             throw new InvalidDataException(
                 "Native policy action did not reach an active combat boundary.");
-        if (!combat.IsPlayerTurn || combat.PendingChoice is not null ||
-            combat.PendingKnowledgeDemonChoice is not null ||
-            combat.AutomaticPipelineContinuation is not null)
-            throw new InvalidDataException(
-                "Native policy action did not reach an idle player boundary.");
+        var combat = run.World!.Combat!;
         if (combat.NativeRng is null || run.NativeRunRng is null)
             throw new InvalidDataException(
                 "Native policy combat lost its RNG stream owner.");
