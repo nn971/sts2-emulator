@@ -2923,8 +2923,13 @@ public static class SemanticPilotCombatEngineV111
         var choice = new SemanticEndTurnNestedChoiceV111(
             "semantic_draw_insertion",
             DrawInsertionDecision: decision.Fork());
-        var (result, _) = SemanticChoiceResumeV111.Resume(
-            current.Run, choice);
+        var next = ResumeAndPublishNestedChoice(
+            current, choice,
+            new SemanticPilotContinuationV111(
+                "semantic_draw_insertion",
+                DrawInsertionDecision: decision.Fork()),
+            validate: false);
+        var result = next.Run;
         var resultCombat = result.World?.Combat;
         var expectedPile = priorCombat.DrawPile.ToList();
         expectedPile.Insert(position, insertedInstanceId);
@@ -3008,12 +3013,6 @@ public static class SemanticPilotCombatEngineV111
                     ValidateSemanticCombatBoundary(result);
             }
         }
-        var next = PublishRunContinuation(
-            current, result, null,
-            new SemanticPilotContinuationV111(
-                "semantic_draw_insertion",
-                DrawInsertionDecision: decision.Fork()),
-            preservePendingEndTurn: result.Phase == RunPhase.Combat);
         Validate(next);
         return next;
     }

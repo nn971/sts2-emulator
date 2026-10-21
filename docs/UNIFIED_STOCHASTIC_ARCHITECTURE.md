@@ -610,8 +610,10 @@ nested effect draw/cost outcomes. It dispatches mechanics through the shared
 owner, continues a saved end-turn frame when present, then publishes pilot
 history and the pending-frame transition together, taking the run from the
 completed end-turn continuation when it advances beyond the immediate choice
-resume. Draw insertion retains its special paired-zone commit and validation
-path. Live card-selection validates the typed event and action first, then uses
+resume. Non-end-turn draw insertion now publishes through the same pilot helper
+while retaining its special paired-zone commit and validation path; end-turn
+insertion continues through its hand-draw facade. Live card-selection validates
+the typed event and action first, then uses
 the same dispatcher that replay uses. End-turn and pilot target resolution
 also share `SemanticChoiceResumeV111.ResumeTarget`, while preserving
 the target-specific transcript and boundary chronology.
