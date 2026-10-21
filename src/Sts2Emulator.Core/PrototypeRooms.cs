@@ -4055,7 +4055,10 @@ public sealed partial class PrototypeGameEngine
                     pendingAction.Validate();
                     return state with
                     {
-                        ControlledRunActionChoice = pendingAction
+                        Stochastic =
+                            RunStochasticStateV111
+                                .WithControlledRunActionChoice(
+                                    state.Stochastic, pendingAction)
                     };
                 }
             }
@@ -4364,7 +4367,12 @@ public sealed partial class PrototypeGameEngine
 
             var nextContinuation =
                 new PrototypeControlledRunActionContinuationV111(
-                    state with { ControlledRunActionChoice = null },
+                    state with
+                    {
+                        Stochastic = RunStochasticStateV111
+                            .WithControlledRunActionChoice(
+                                state.Stochastic, null)
+                    },
                     continuation.ActionId,
                     decisions,
                     decisionCandidateLabels,
@@ -4375,7 +4383,9 @@ public sealed partial class PrototypeGameEngine
             nextContinuation.Validate();
             return state with
             {
-                ControlledRunActionChoice = nextContinuation
+                Stochastic = RunStochasticStateV111
+                    .WithControlledRunActionChoice(
+                        state.Stochastic, nextContinuation)
             };
         }
 
@@ -4395,13 +4405,17 @@ public sealed partial class PrototypeGameEngine
                 : PrototypeAiEnvironment.StableActionId(
                     continuation.RunAction));
         trace.Validate();
+        var nextHistory =
+            (result.ControlledRunActionHistory
+                ?? Array.Empty<ControlledRunActionTraceV111>())
+            .Append(trace).ToArray();
+        var nextStochastic =
+            RunStochasticStateV111.WithControlledRunActionHistory(
+                result.Stochastic, nextHistory);
         return result with
         {
-            ControlledRunActionHistory =
-                (result.ControlledRunActionHistory
-                    ?? Array.Empty<ControlledRunActionTraceV111>())
-                .Append(trace).ToArray(),
-            ControlledRunActionChoice = null
+            Stochastic = RunStochasticStateV111
+                .WithControlledRunActionChoice(nextStochastic, null)
         };
     }
 

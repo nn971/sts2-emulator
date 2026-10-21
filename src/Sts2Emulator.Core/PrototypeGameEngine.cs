@@ -368,15 +368,18 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         }
         if (next.ControlledRunActionChoice is { } runActionChoice)
         {
+            var partialState = next with
+            {
+                Stochastic =
+                    RunStochasticStateV111.WithControlledRunActionChoice(
+                        next.Stochastic, null)
+            };
             next = next with
             {
-                ControlledRunActionChoice = runActionChoice with
-                {
-                    PartialState = next with
-                    {
-                        ControlledRunActionChoice = null
-                    }
-                }
+                Stochastic = RunStochasticStateV111
+                    .WithControlledRunActionChoice(
+                        next.Stochastic,
+                        runActionChoice with { PartialState = partialState })
             };
         }
         return next;
@@ -1071,7 +1074,12 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                     exception.Request,
                     exception.CandidateLabels);
             continuation.Validate();
-            return state with { ControlledRunActionChoice = continuation };
+            return state with
+            {
+                Stochastic = RunStochasticStateV111
+                    .WithControlledRunActionChoice(
+                        state.Stochastic, continuation)
+            };
         }
     }
 

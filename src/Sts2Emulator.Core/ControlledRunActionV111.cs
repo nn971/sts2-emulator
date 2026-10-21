@@ -1321,7 +1321,9 @@ public static class ControlledRunActionEngineV111
                 continuation.Validate();
                 var suspended = partialState with
                 {
-                    ControlledRunActionChoice = continuation
+                    Stochastic =
+                        RunStochasticStateV111.WithControlledRunActionChoice(
+                            partialState.Stochastic, continuation)
                 };
                 PrototypeStateInvariants.Validate(suspended);
                 return suspended;
