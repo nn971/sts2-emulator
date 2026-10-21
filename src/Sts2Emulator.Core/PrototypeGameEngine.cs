@@ -987,7 +987,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         if (!ControlledChanceGuardV111.Active
             || !ControlledEventChoiceReplayV111.IsActive
             || action.Kind != "start_run"
-            || state.Configuration is not null)
+            || state.Configuration is not null
+            || V111RunFactory.ControlledReferenceNatureRunStartActive)
             return StartRun(state, action);
 
         try

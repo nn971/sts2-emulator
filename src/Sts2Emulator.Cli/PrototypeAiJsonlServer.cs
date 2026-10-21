@@ -768,20 +768,27 @@ internal static class PrototypeAiJsonlServer
             string? parent = null)
         {
             var continuation = session.Run.ControlledRunActionChoice;
-            var chanceLaw = continuation is null ? null :
-                ChanceLawEngineV111.QueryControlledRunAction(session.Run);
+            var mapGeneration = session.MapGeneration;
+            var chanceLaw = session.PendingLaw;
             var runFingerprint = CanonicalJson.Sha256(session.Run);
-            var boundaryFingerprint = continuation is null ? null :
-                ChanceLawEngineV111.ControlledRunActionBoundaryFingerprint(
+            var boundaryFingerprint = mapGeneration is not null
+                ? mapGeneration.Fingerprint
+                : continuation is null ? null
+                : ChanceLawEngineV111.ControlledRunActionBoundaryFingerprint(
                     session.Run);
-            object? pending = continuation is null ? null : new
+            object? pendingRequest = mapGeneration is not null
+                ? mapGeneration.PendingRequest
+                : continuation?.PendingRequest;
+            object? pending = chanceLaw is null ? null : new
             {
-                kind = "run_action_random_choice",
-                eventId = chanceLaw!.EventId,
+                kind = mapGeneration is not null
+                    ? "run_action_map_generation"
+                    : "run_action_random_choice",
+                eventId = chanceLaw.EventId,
                 boundaryFingerprint,
-                actionId = continuation.ActionId,
-                request = continuation.PendingRequest,
-                candidateLabels = continuation.PendingCandidateLabels,
+                actionId = continuation?.ActionId ?? session.Action.Kind,
+                request = pendingRequest,
+                candidateLabels = continuation?.PendingCandidateLabels,
                 chanceLaw,
                 probabilityStatus = chanceLaw.ProbabilityStatus
             };

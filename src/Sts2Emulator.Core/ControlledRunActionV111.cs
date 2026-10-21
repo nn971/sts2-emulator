@@ -336,14 +336,22 @@ public sealed record PrototypeControlledRunActionContinuationV111(
             {
                 var configuredUnderdocksStart =
                     ControlledRunActionEngineV111
-                        .IsConfiguredNativeReferenceNatureRunStartSource(state);
+                        .IsConfiguredNativeReferenceNatureUnderdocksRunStartSource(
+                            state);
+                var configuredOvergrowthStart =
+                    ControlledRunActionEngineV111
+                        .IsConfiguredNativeReferenceNatureOvergrowthRunStartSource(
+                            state);
+                var configuredNativeStart = configuredUnderdocksStart
+                    || configuredOvergrowthStart;
                 if (state.Phase != RunPhase.RunStart
                     || state.World is not null
                     || state.Configuration is not null
-                        && !configuredUnderdocksStart)
+                        && !configuredNativeStart)
                     throw new InvalidDataException(
                         "Controlled run-start frame is outside a supported run-start boundary.");
-                if (!configuredUnderdocksStart && PendingRequest.SiteId ==
+                if ((!configuredNativeStart || configuredOvergrowthStart)
+                    && PendingRequest.SiteId ==
                     "run.encounter.overgrowth_boss.index_draw")
                 {
                     expectedSite = "run.encounter.overgrowth_boss.index_draw";
@@ -796,11 +804,21 @@ public static class ControlledRunActionEngineV111
             && source.EmulatorSchema == V111Build.StateSchema
             && source.NativeRunRng is not null
             && acts is { Length: 3 }
-            && acts[0] == ActIdentity.Underdocks
+            && (acts[0] is ActIdentity.Overgrowth or ActIdentity.Underdocks)
             && configuration!.CharacterId == "silent"
             && configuration.Profile.FullyUnlocked
             && !configuration!.UsesExperimentalSilentThreeActRoute;
     }
+
+    internal static bool IsConfiguredNativeReferenceNatureOvergrowthRunStartSource(
+        RunState source) =>
+        IsConfiguredNativeReferenceNatureRunStartSource(source)
+        && source.Configuration!.Acts[0] == ActIdentity.Overgrowth;
+
+    internal static bool IsConfiguredNativeReferenceNatureUnderdocksRunStartSource(
+        RunState source) =>
+        IsConfiguredNativeReferenceNatureRunStartSource(source)
+        && source.Configuration!.Acts[0] == ActIdentity.Underdocks;
 
     internal static bool IsConfiguredNativeReferenceNatureRunStartAction(
         RunState source, GameAction action) =>
@@ -810,7 +828,26 @@ public static class ControlledRunActionEngineV111
     internal static bool IsConfiguredNativeReferenceNatureRunStartRequest(
         RunState source, ControlledStochasticRequestV111 request) =>
         IsConfiguredNativeReferenceNatureRunStartSource(source)
-        && IsConfiguredNativeUnderdocksBossRequest(request);
+        && (IsConfiguredNativeReferenceNatureOvergrowthRunStartSource(source)
+                ? IsConfiguredNativeOvergrowthBossRequest(request)
+                : IsConfiguredNativeUnderdocksBossRequest(request));
+
+    internal static bool IsConfiguredNativeOvergrowthBossRequest(
+        ControlledStochasticRequestV111 request)
+    {
+        if (request.IndexRequest is not { } index)
+            return false;
+        var bossPool = PrototypeContent.OvergrowthBossEncounterPool;
+        return index.SiteId == "run.encounter.overgrowth_boss.index_draw"
+            && index.StreamId == "combat"
+            && index.OperationKind == "choose_index"
+            && index.OwnerId == "run:act:1:boss_pool:"
+                + CanonicalJson.Sha256(bossPool)
+            && index.Ordinal == 0
+            && index.SupportCount == bossPool.Length
+            && index.OrderedCandidates.SequenceEqual(
+                Enumerable.Range(0, bossPool.Length));
+    }
 
     internal static bool IsConfiguredNativeUnderdocksBossRequest(
         ControlledStochasticRequestV111 request)

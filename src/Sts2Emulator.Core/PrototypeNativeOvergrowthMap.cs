@@ -407,7 +407,8 @@ public static class PrototypeNativeOvergrowthRunFactory
             string seed,
             int ascension = 0,
             IRandomIndexProviderV111? neowProvider = null,
-            IRandomIndexProviderV111? startRunProvider = null)
+            IRandomIndexProviderV111? startRunProvider = null,
+            bool generateNativeMap = true)
     {
         var engine = new PrototypeGameEngine();
         RunState state;
@@ -440,7 +441,13 @@ public static class PrototypeNativeOvergrowthRunFactory
             stream.StreamId == "map");
         rng.ReplaceStreamAt(index, clean.Streams[cleanIndex].Fork());
 
-        var map = PrototypeNativeOvergrowthMap.GenerateNative(seed, ascension);
+        var map = generateNativeMap
+            ? PrototypeNativeOvergrowthMap.GenerateNative(seed, ascension)
+            : world.Map with
+            {
+                GenerationProfileId =
+                    PrototypeNativeOvergrowthMap.LegacyGenerationProfileId
+            };
         // The A5 native curse belongs to run initialization rather
         // than a random reward. Our A0 profile retains the previously
         // captured Restlessness starter for the existing training gate;

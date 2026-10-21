@@ -6722,6 +6722,9 @@ public sealed record ReferenceNatureRunActionSessionV111(
         init => _decisionTranscript = Clone(value);
     }
 
+    public ReferenceNatureMapGenerationSessionV111? MapGeneration
+    { get; init; }
+
     public const string CurrentSchemaId =
         "sts2-v111-reference-nature-run-action-session-v1";
 
@@ -6734,7 +6737,26 @@ public sealed record ReferenceNatureRunActionSessionV111(
     public string Fingerprint => CanonicalJson.Sha256(this);
 
     [JsonIgnore]
-    public bool Complete => Run.ControlledRunActionChoice is null;
+    public bool Complete => Run.ControlledRunActionChoice is null
+        && MapGeneration is null;
+
+    [JsonIgnore]
+    public ChanceLawV111? PendingLaw
+    {
+        get
+        {
+            if (MapGeneration is { } mapGeneration)
+                return mapGeneration.PendingLaw;
+            if (Run.ControlledRunActionChoice is null)
+                return null;
+            return ControlledRunActionEngineV111
+                .IsConfiguredNativeReferenceNatureOvergrowthRunStartSource(
+                    Origin)
+                && Action.Kind == "start_run"
+                ? ChanceLawEngineV111.QueryOvergrowthBossEncounter(0)
+                : ChanceLawEngineV111.QueryControlledRunAction(Run);
+        }
+    }
 
     public static ReferenceNatureRunActionSessionV111 Begin(
         RunState source, GameAction action, ulong seed) =>
@@ -6791,6 +6813,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
             Run = Run.Fork(),
             InitialNatureState = InitialNatureState.Fork(),
             NatureState = NatureState.Fork(),
+            MapGeneration = MapGeneration?.Fork(),
             DecisionTranscript = (ReferenceNatureDecisionV111[])
                 DecisionTranscript.Clone()
         };
@@ -6799,7 +6822,10 @@ public sealed record ReferenceNatureRunActionSessionV111(
     public ReferenceNatureRunActionSessionV111 ResolveNext()
     {
         Validate();
-        var law = ChanceLawEngineV111.QueryControlledRunAction(Run);
+        if (MapGeneration is not null)
+            return ResolveNextMapGenerationOutcome();
+        var law = PendingLaw ?? throw new InvalidOperationException(
+            "No ReferenceNature run-action choice is pending.");
         var selection = ReferenceNatureV111.SampleValidated(law, NatureState);
         var configuredNativeRunStart =
             ControlledRunActionEngineV111
@@ -6816,6 +6842,26 @@ public sealed record ReferenceNatureRunActionSessionV111(
             selection.OutcomeIndex);
         if (resolvedRun.ControlledRunActionChoice is null)
         {
+            if (ControlledRunActionEngineV111
+                .IsConfiguredNativeReferenceNatureOvergrowthRunStartSource(
+                    Origin) && Action.Kind == "start_run")
+            {
+                var mapGeneration = ReferenceNatureMapGenerationSessionV111
+                    .Begin(Origin.RunSeed, 1, Origin.Ascension,
+                        selection.NextState);
+                var next = this with
+                {
+                    Run = resolvedRun,
+                    NatureState = selection.NextState,
+                    DecisionTranscript = DecisionTranscript.Append(
+                        decision).ToArray(),
+                    MapGeneration = mapGeneration
+                };
+                if (mapGeneration.Complete)
+                    next = next.CommitOvergrowthRunStartMap(mapGeneration);
+                next.Validate();
+                return next;
+            }
             if (configuredNativeRunStart)
             {
                 var initializationTranscript =
@@ -6847,8 +6893,70 @@ public sealed record ReferenceNatureRunActionSessionV111(
         return next;
     }
 
+    private ReferenceNatureRunActionSessionV111
+        ResolveNextMapGenerationOutcome()
+    {
+        var mapGeneration = MapGeneration ?? throw new InvalidOperationException(
+            "No ReferenceNature map-generation choice is pending.");
+        var nextMapGeneration = mapGeneration.ResolveNext();
+        var next = this with
+        {
+            NatureState = nextMapGeneration.NatureState,
+            DecisionTranscript = DecisionTranscript.Append(
+                nextMapGeneration.DecisionTranscript[^1]).ToArray(),
+            MapGeneration = nextMapGeneration
+        };
+        if (nextMapGeneration.Complete)
+            next = next.CommitOvergrowthRunStartMap(nextMapGeneration);
+        next.Validate();
+        return next;
+    }
+
+    private ReferenceNatureRunActionSessionV111 CommitOvergrowthRunStartMap(
+        ReferenceNatureMapGenerationSessionV111 mapGeneration)
+    {
+        var map = mapGeneration.Map ?? throw new InvalidDataException(
+            "Completed Overgrowth run-start map session has no map.");
+        var bossLaw = ChanceLawEngineV111.QueryOvergrowthBossEncounter(0);
+        var mapLaws = mapGeneration.Decisions.Select(decision =>
+            ChanceLawEngineV111.QueryNativeMapRequest(
+                decision.ToRequest())).ToArray();
+        var initializationTranscript =
+            new ReferenceNatureRunInitializationTranscriptV111(
+                InitialNatureState, mapGeneration.NatureState,
+                new[] { bossLaw }.Concat(mapLaws).ToArray(),
+                DecisionTranscript)
+            {
+                ActOneMapGeneration = mapGeneration.ToAudit()
+            };
+        initializationTranscript.Validate(replayMapGeneration: true);
+        var committedRun = Run with
+        {
+            ReferenceNatureState = mapGeneration.NatureState.Fork(),
+            ReferenceNatureRunInitializationTranscript =
+                initializationTranscript,
+            World = (Run.World ?? throw new InvalidDataException(
+                "Completed Overgrowth start has no world.")) with
+            {
+                Map = map
+            }
+        };
+        return this with
+        {
+            Run = committedRun,
+            NatureState = mapGeneration.NatureState,
+            MapGeneration = null
+        };
+    }
+
     public void Validate()
     {
+        var configuredOvergrowthRunStart = Origin is not null
+            && Action is not null
+            && Action.Kind == "start_run"
+            && ControlledRunActionEngineV111
+                .IsConfiguredNativeReferenceNatureOvergrowthRunStartSource(
+                    Origin);
         var immediateShopAction = Origin is not null
             && Action is not null
             && ControlledRunActionEngineV111.IsShopPurchaseAction(
@@ -6888,6 +6996,42 @@ public sealed record ReferenceNatureRunActionSessionV111(
         for (int index = 0; index < DecisionTranscript.Length; index++)
             DecisionTranscript[index].Validate();
 
+        if (MapGeneration is { } mapGeneration)
+        {
+            mapGeneration.Validate();
+            var mapDecisions = mapGeneration.DecisionTranscript;
+            if (!configuredOvergrowthRunStart || Complete
+                || Run.ControlledRunActionChoice is not null
+                || Run.ReferenceNatureRunInitializationTranscript is not null
+                || mapGeneration.Complete
+                || mapGeneration.Seed != Origin.RunSeed
+                || mapGeneration.Act != 1
+                || mapGeneration.Ascension != Origin.Ascension
+                || DecisionTranscript.Length != mapDecisions.Length + 1
+                || !DecisionTranscript.Skip(1).SequenceEqual(
+                    mapDecisions))
+                throw new InvalidDataException(
+                    "Pending Overgrowth map generation differs from its run-action transcript.");
+
+            var bossLaw = ChanceLawEngineV111.QueryOvergrowthBossEncounter(0);
+            var bossSelection = ReferenceNatureV111.SampleValidated(
+                bossLaw, InitialNatureState);
+            var expectedBossDecision = new ReferenceNatureDecisionV111(
+                bossLaw.LawId, bossLaw.EventId,
+                bossSelection.OutcomeId, bossSelection.OutcomeIndex);
+            var selectedBossId = Run.World?.ActOneEncounterPool?
+                .BossEncounterId;
+            if (CanonicalJson.Sha256(DecisionTranscript[0]) !=
+                    CanonicalJson.Sha256(expectedBossDecision)
+                || selectedBossId is null
+                || bossSelection.OutcomeId != "encounter:" + selectedBossId
+                || !bossSelection.NextState.SameCursor(
+                    mapGeneration.InitialNatureState)
+                || !mapGeneration.NatureState.SameCursor(NatureState))
+                throw new InvalidDataException(
+                    "Pending Overgrowth map sampler does not follow the selected boss.");
+        }
+
         if (Run.ControlledRunActionChoice is { } continuation)
         {
             continuation.Validate();
@@ -6911,24 +7055,25 @@ public sealed record ReferenceNatureRunActionSessionV111(
                     throw new InvalidDataException(
                         "Pending run-action decisions differ from ReferenceNature history.");
         }
+        else if (immediateShopAction || immediateActOneCombatAction ||
+            immediateNativeActOneCombatAction)
+        {
+            var replayedRun = ControlledRunActionEngineV111.Begin(
+                Origin.Fork(), CloneAction(Action));
+            replayedRun = ReferenceNatureRunCursorV111.Commit(
+                replayedRun, InitialNatureState);
+            if (CanonicalJson.Sha256(replayedRun) !=
+                CanonicalJson.Sha256(Run))
+                throw new InvalidDataException(
+                    "Deterministic ReferenceNature run action differs from its replay.");
+            return;
+        }
         else
         {
-            if (immediateShopAction || immediateActOneCombatAction ||
-                immediateNativeActOneCombatAction)
-            {
-                var replayedRun = ControlledRunActionEngineV111.Begin(
-                    Origin.Fork(), CloneAction(Action));
-                replayedRun = ReferenceNatureRunCursorV111.Commit(
-                    replayedRun, InitialNatureState);
-                if (CanonicalJson.Sha256(replayedRun) !=
-                    CanonicalJson.Sha256(Run))
-                    throw new InvalidDataException(
-                        "Deterministic ReferenceNature run action differs from its replay.");
-                return;
-            }
-
             var trace = Run.ControlledRunActionHistory![^1];
             trace.Validate();
+            var expectedTraceDecisionCount = configuredOvergrowthRunStart
+                ? 1 : DecisionTranscript.Length;
             if (trace.ActionId != Action.Kind ||
                 trace.MapNodeId != actionMapNodeId ||
                 (ControlledRunActionEngineV111.IsShopPurchaseAction(
@@ -6936,7 +7081,8 @@ public sealed record ReferenceNatureRunActionSessionV111(
                     ? trace.ActionFingerprint !=
                       PrototypeAiEnvironment.StableActionId(Action)
                     : trace.ActionFingerprint is not null) ||
-                trace.Decisions.Length != DecisionTranscript.Length)
+                trace.Decisions.Length != expectedTraceDecisionCount
+                || DecisionTranscript.Length < trace.Decisions.Length)
                 throw new InvalidDataException(
                     "Completed run-action trace differs from ReferenceNature history.");
             for (int index = 0; index < trace.Decisions.Length; index++)
@@ -6945,6 +7091,23 @@ public sealed record ReferenceNatureRunActionSessionV111(
                         DecisionTranscript[index].OutcomeIndex)
                     throw new InvalidDataException(
                         "Completed run-action outcomes differ from ReferenceNature history.");
+
+            if (configuredOvergrowthRunStart)
+            {
+                var initialization =
+                    Run.ReferenceNatureRunInitializationTranscript;
+                if (initialization is null
+                    || initialization.ActOneMapGeneration is null
+                    || initialization.DecisionTranscript.Length !=
+                        DecisionTranscript.Length
+                    || !initialization.DecisionTranscript.SequenceEqual(
+                        DecisionTranscript)
+                    || initialization.DecisionTranscript[0].OutcomeId !=
+                        "encounter:" + Run.World?.ActOneEncounterPool?
+                            .BossEncounterId)
+                    throw new InvalidDataException(
+                        "Completed Overgrowth run-start audit differs from its saved session transcript.");
+            }
         }
     }
 

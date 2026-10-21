@@ -22,10 +22,20 @@ request. It replays the existing configured initializer with the selected
 boss index, then stores the sampled law and decision in the run-initialization
 transcript with the committed Nature cursor. The request filter leaves the
 initializer's other draws on their current providers; the hidden Overgrowth
-boss draw inside the shared starter is not selected by Nature. This does not
-make configured Overgrowth start or map generation resumable, or include the
-experimental three-act prepared bags. The equal-index boss law remains
-`UNVERIFIED`.
+boss draw inside the shared starter is not selected by Nature. The configured
+Underdocks path does not include experimental three-act prepared bags. The
+equal-index boss law remains `UNVERIFIED`.
+
+For configured Act 1 Overgrowth, the same session suspends first on the
+Overgrowth boss index and then composes the existing
+`ReferenceNatureMapGenerationSessionV111`. Each resolve advances one boss or
+typed map request. While map generation is pending, the run remains private;
+the completed session installs the map and commits the complete ordered
+run-initialization transcript, map audit, controlled boss trace, and Nature
+cursor together. JSONL reports map requests with pending kind
+`run_action_map_generation`. Other initializer draws retain their current
+providers. Boss equal-index probability, Gaussian quota masses, Native map
+fidelity, and Native cursor parity remain open.
 
 For a configured Act 1 run using the experimental Native combat-entry profile,
 the same boundary can also suspend on the regional weak, normal, or elite

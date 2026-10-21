@@ -452,12 +452,15 @@ public static class V111RunFactory
             throw new NotSupportedException($"v111 '{config.CharacterId}' mechanics are not implemented; no Silent substitution is allowed.");
         if (!config.Profile.FullyUnlocked)
             throw new NotSupportedException("Restricted-profile acquisition/progression rules are not implemented; choose an explicit fully unlocked profile.");
-        var controlledReferenceNatureUnderdocksStart =
+        var controlledReferenceNatureRunStart =
             ControlledReferenceNatureRunStartActive
-            && config.Acts[0] == ActIdentity.Underdocks
+            && (config.Acts[0] is ActIdentity.Overgrowth or ActIdentity.Underdocks)
             && !config.UsesExperimentalSilentThreeActRoute;
+        var controlledReferenceNatureOvergrowthStart =
+            controlledReferenceNatureRunStart
+            && config.Acts[0] == ActIdentity.Overgrowth;
         RunState opening;
-        var initialNatureState = controlledReferenceNatureUnderdocksStart
+        var initialNatureState = controlledReferenceNatureRunStart
             ? null
             : input.ReferenceNatureState?.Fork();
         var runStartChanceLaws = new List<ChanceLawV111>();
@@ -465,7 +468,13 @@ public static class V111RunFactory
         ReferenceNatureMapGenerationAuditV111? actOneMapGeneration = null;
         if (config.Acts[0] == ActIdentity.Overgrowth)
         {
-            if (initialNatureState is { } overgrowthNatureState)
+            if (controlledReferenceNatureOvergrowthStart)
+            {
+                opening = PrototypeNativeOvergrowthRunFactory
+                    .CreateWithAudit(input.RunSeed, config.Ascension,
+                        generateNativeMap: false).State;
+            }
+            else if (initialNatureState is { } overgrowthNatureState)
             {
                 var result = PrototypeNativeOvergrowthRunFactory
                     .CreateWithReferenceNature(input.RunSeed,
