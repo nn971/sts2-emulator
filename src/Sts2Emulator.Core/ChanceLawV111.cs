@@ -3939,7 +3939,9 @@ public static partial class ChanceLawEngineV111
         ArgumentNullException.ThrowIfNull(excludedPotionIds);
         request.Validate();
         if (request.SiteId != "potion_factory.model_within_rarity.index_draw" ||
-            request.StreamId != NativePlayerRngV111.RewardsStreamId ||
+            request.StreamId is not ("run.combat_potion_generation" or
+                NativePlayerRngV111.RewardsStreamId or
+                NativePlayerRngV111.ShopsStreamId) ||
             request.OperationKind != "choose_index" ||
             !Enum.IsDefined(rarity) || request.Ordinal != excludedPotionIds.Length ||
             excludedPotionIds.Any(string.IsNullOrWhiteSpace) ||
