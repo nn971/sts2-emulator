@@ -579,8 +579,13 @@ public static partial class ChanceLawEngineV111
                     PrototypeNativeStoneOfAllTime.NativeRngEventId);
         var legacyRoute = origin.NativeRunRng is null &&
             !PrototypeGameEngine.UsesNativeRegionalSystems(world) &&
-            evt.NativeEventRng is null;
-        if (!nativeRoute && !legacyRoute)
+            evt.NativeEventRng is null &&
+            evt.NativeEventRngProviderMode is null;
+        var nativeRegionalLegacyRoute = origin.NativeRunRng is null &&
+            PrototypeGameEngine.UsesNativeRegionalSystems(world) &&
+            evt.NativeEventRng is null &&
+            evt.NativeEventRngProviderMode is null;
+        if (!nativeRoute && !legacyRoute && !nativeRegionalLegacyRoute)
             throw new InvalidOperationException(
                 "Stone of All Time ticket laws require a complete Native or legacy event RNG route.");
         var streamId = nativeRoute

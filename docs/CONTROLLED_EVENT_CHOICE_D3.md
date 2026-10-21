@@ -30,7 +30,8 @@ advance either provider cursor.
 The serialized request includes site, stream, owner, ordinal, operation kind
 and ordered integer support. Generic D3 event requests use the legacy stream;
 Stone push and lift use their Native event stream on configured Native runs
-and the legacy `event` stream on the retained prototype route. Candidate
+and the legacy `event` stream on retained prototype and Native-regional
+fallback routes. Candidate
 labels identify event card instances, card models, potion models, eligible relics,
 and Sand Castle's physical deck-card instances where those identities describe
 the request support; other swap positions and rarity tickets retain numeric
@@ -93,10 +94,11 @@ The supported event-choice sites are:
   post-reward modifier-curse offer is completed
 - `event.stone_of_all_time.push_ticket` after its player deck-card choice and
   `event.stone_of_all_time.lift_ticket` at the lift action; on the configured
-  Native and retained legacy routes, all 100 ticket indices map to one
-  `no_effect` outcome and the pending Chance Law is `SOURCE_VERIFIED`; direct
-  pre-choice queries also support both routes, using Native ordinal 1 or a
-  caller-supplied retained `event` request ordinal; replay matches that typed
+  Native, retained legacy, and Native-regional fallback routes, all 100
+  ticket indices map to one `no_effect` outcome and the pending Chance Law is
+  `SOURCE_VERIFIED`; direct
+  pre-choice queries support all three routes, using Native ordinal 1 or a
+  legacy `event` request ordinal; replay matches that typed
   request against its saved boundary and chronological prefix
 - `relic_grab_bag.queue_shuffle.swap_index` and
   `relic_grab_bag.rarity.ticket` while acquiring Toy Box through a supported
@@ -141,12 +143,12 @@ multi-draw event effects, the frame re-enters only the current effect from its
 saved start and injects that effect's saved decision prefix; all completed
 earlier effects remain in the partial run.
 
-Stone of All Time push and lift sessions accept the configured Native event
-route and the retained legacy event route. Their pending Chance Law collapses
-the discarded ticket to `no_effect`. Direct pre-choice ticket-law queries
-accept both routes; the legacy query takes its source-call ordinal explicitly
-and leaves cursor validation to chronological request replay. Seeded stream
-parity remains open.
+Stone of All Time push and lift sessions accept the configured Native event,
+retained legacy event, and Native-regional legacy fallback routes. Their
+pending Chance Law collapses the discarded ticket to `no_effect`. Direct
+pre-choice ticket-law queries accept all three routes; legacy queries take
+their source-call ordinal explicitly and leave cursor validation to
+chronological request replay. Seeded stream parity remains open.
 
 Legacy run-start and Shovel action draws use the separate
 [`CONTROLLED_RUN_ACTION_D3.md`](CONTROLLED_RUN_ACTION_D3.md) boundary.

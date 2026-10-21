@@ -5901,8 +5901,7 @@ public static partial class ChanceLawEngineV111
             (partialWorld is not { Act: 2 } ||
              !PrototypeGameEngine.UsesNativeRegionalSystems(partialWorld!));
         var legacyRouteMismatch = !nativeRoute &&
-            (partialWorld is not { Act: 2 } ||
-             PrototypeGameEngine.UsesNativeRegionalSystems(partialWorld!));
+            partialWorld is not { Act: 2 };
         var eventRngMismatch = nativeRoute
             ? partialEvent.NativeEventRng?.StreamId != expectedStreamId ||
                 partialEvent.NativeEventRngProviderMode is not null

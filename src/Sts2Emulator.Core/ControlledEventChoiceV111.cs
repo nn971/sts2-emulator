@@ -39,7 +39,13 @@ public static class ControlledEventChoiceEngineV111
                 && !PrototypeGameEngine.UsesNativeRegionalSystems(world)
                 && eventState.NativeEventRng is null
                 && eventState.NativeEventRngProviderMode is null;
-            if (!nativeRoute && !legacyRoute)
+            var nativeRegionalLegacyRoute = source.NativeRunRng is null
+                && world is { Act: 2 } nativeRegionalWorld
+                && PrototypeGameEngine.UsesNativeRegionalSystems(
+                    nativeRegionalWorld)
+                && eventState.NativeEventRng is null
+                && eventState.NativeEventRngProviderMode is null;
+            if (!nativeRoute && !legacyRoute && !nativeRegionalLegacyRoute)
                 throw new NotSupportedException(
                     "ReferenceNature Stone of All Time requires a complete Native or legacy event RNG route.");
         }
@@ -470,6 +476,13 @@ public sealed record PrototypeControlledEventChoiceContinuationV111(
             && !PrototypeGameEngine.UsesNativeRegionalSystems(legacyWorld)
             && stoneEvent.NativeEventRng is null
             && stoneEvent.NativeEventRngProviderMode is null;
+        var nativeRegionalLegacyStoneRoute =
+            PartialState.NativeRunRng is null
+            && partialWorld is { Act: 2 } nativeRegionalWorld
+            && PrototypeGameEngine.UsesNativeRegionalSystems(
+                nativeRegionalWorld)
+            && stoneEvent.NativeEventRng is null
+            && stoneEvent.NativeEventRngProviderMode is null;
         var isStoneTicketRequest = EventId ==
                 PrototypeNativeStoneOfAllTime.EventId
             && expectedStoneSiteId is not null
@@ -481,6 +494,8 @@ public sealed record PrototypeControlledEventChoiceContinuationV111(
                 && PendingRequest.StreamId == expectedStoneStreamId
                 && PendingRequest.Ordinal == 1
                 || legacyStoneRoute
+                && PendingRequest.StreamId == "event"
+                || nativeRegionalLegacyStoneRoute
                 && PendingRequest.StreamId == "event");
         var hasStonePotion = stoneEvent.NativeEventPotionSlot is
                 { } potionSlot
