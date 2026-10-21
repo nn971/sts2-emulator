@@ -415,7 +415,10 @@ directly with `PrototypeMechanicsContinuationStateV111` under the
 law replay and run-cursor checks.
 Map-generation and later-act preparation sessions use the same stochastic
 owner while retaining their generator checkpoints, request prefixes, laws,
-and outputs in their existing fields.
+and outputs in their existing fields. The completed map audit and the
+run-initialization transcript reuse it for their cursor and decision history;
+the map fingerprint, Chance Laws, and nested preparation metadata keep their
+existing owners.
 
 The **same game mechanics** issues semantic stochastic operations and applies their resolved outcomes regardless of provider:
 

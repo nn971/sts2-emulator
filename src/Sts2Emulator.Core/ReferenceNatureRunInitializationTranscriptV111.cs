@@ -13,11 +13,25 @@ public sealed record ReferenceNatureRunInitializationTranscriptV111(
 {
     private ChanceLawV111[]? _chanceLaws = ChanceLaws?.Select(law =>
         law.Fork()).ToArray();
-    private ReferenceNatureDecisionV111[]? _decisionTranscript =
-        DecisionTranscript is null ? null :
-            (ReferenceNatureDecisionV111[])DecisionTranscript.Clone();
     private ReferenceNatureMapGenerationAuditV111? _actOneMapGeneration;
     private RngBundle? _laterActPreparationInitialPrototypeRng;
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public ReferenceNatureStochasticStateV111<ReferenceNatureDecisionV111>
+        Stochastic { get; init; } = new(InitialNatureState, FinalNatureState,
+            DecisionTranscript);
+
+    public ReferenceNatureStateV111 InitialNatureState
+    {
+        get => Stochastic.InitialNatureState;
+        init => Stochastic = Stochastic with { InitialNatureState = value };
+    }
+
+    public ReferenceNatureStateV111 FinalNatureState
+    {
+        get => Stochastic.NatureState;
+        init => Stochastic = Stochastic with { NatureState = value };
+    }
 
     public ChanceLawV111[] ChanceLaws
     {
@@ -26,10 +40,8 @@ public sealed record ReferenceNatureRunInitializationTranscriptV111(
     }
     public ReferenceNatureDecisionV111[] DecisionTranscript
     {
-        get => _decisionTranscript is null ? null! :
-            (ReferenceNatureDecisionV111[])_decisionTranscript.Clone();
-        init => _decisionTranscript = value is null ? null :
-            (ReferenceNatureDecisionV111[])value.Clone();
+        get => Stochastic.DecisionTranscript;
+        init => Stochastic = Stochastic with { DecisionTranscript = value };
     }
     public ReferenceNatureMapGenerationAuditV111? ActOneMapGeneration
     {
@@ -46,10 +58,8 @@ public sealed record ReferenceNatureRunInitializationTranscriptV111(
 
     public ReferenceNatureRunInitializationTranscriptV111 Fork() => this with
     {
-        InitialNatureState = InitialNatureState.Fork(),
-        FinalNatureState = FinalNatureState.Fork(),
+        Stochastic = Stochastic.Fork(),
         ChanceLaws = ChanceLaws,
-        DecisionTranscript = DecisionTranscript,
         ActOneMapGeneration = ActOneMapGeneration,
         LaterActPreparationInitialPrototypeRng =
             LaterActPreparationInitialPrototypeRng
@@ -57,10 +67,7 @@ public sealed record ReferenceNatureRunInitializationTranscriptV111(
 
     public void Validate(bool replayMapGeneration = false)
     {
-        ArgumentNullException.ThrowIfNull(InitialNatureState);
-        ArgumentNullException.ThrowIfNull(FinalNatureState);
-        InitialNatureState.Validate();
-        FinalNatureState.Validate();
+        Stochastic.Validate();
         var laws = ChanceLaws;
         var decisions = DecisionTranscript;
         if (laws is null || decisions is null || laws.Length == 0 ||
