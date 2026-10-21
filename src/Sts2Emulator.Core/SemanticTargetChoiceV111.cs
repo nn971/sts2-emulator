@@ -222,7 +222,7 @@ public static class SemanticTargetChoiceV111
         using (ControlledChanceGuardV111.Enter())
         using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
             resumed = PrototypeGameEngine.ResumeControlledRandomTarget(
-                checkpoint.Fork(), decision.SelectedIndex);
+                checkpoint.Fork(), decision.SelectedEnemyInstanceId);
         if (resumed.Phase == RunPhase.Combat)
         {
             var priorCombat = checkpoint.World?.Combat ??

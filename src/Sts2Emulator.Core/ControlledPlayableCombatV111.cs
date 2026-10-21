@@ -985,7 +985,9 @@ public static class ControlledPlayableCombatEngineV111
             throw new InvalidOperationException("No controlled target ticket.");
         var (result, choice) = ResolveIndexAndRun(
             state, request, selectedIndex,
-            PrototypeGameEngine.ResumeControlledRandomTarget);
+            (checkpoint, replayedIndex) =>
+                PrototypeGameEngine.ResumeControlledRandomTarget(
+                    checkpoint, request.OrderedCandidates[replayedIndex]));
         var next = state.Fork() with
         {
             Run = result,

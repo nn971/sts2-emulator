@@ -14294,11 +14294,11 @@ public sealed partial class PrototypeGameEngine
     /// <summary>
     /// Resume from an effect/Sly target choice within the live combat engine.
     /// The already-applied card/discard/event effects are preserved. The
-    /// selected target is injected into the saved first operation or Sly
-    /// autoplay; then the original queued continuation is resumed.
+    /// selected enemy identity is injected into the saved first operation or
+    /// Sly autoplay; then the original queued continuation is resumed.
     /// </summary>
     internal static RunState ResumeControlledRandomTarget(
-        RunState state, int selectedIndex)
+        RunState state, int selectedEnemyInstanceId)
     {
         if (!ControlledChanceGuardV111.Active)
             throw new InvalidOperationException(
@@ -14314,8 +14314,6 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidOperationException(
                 "The pending combat choice belongs to the player.");
         var eligible = target.EligibleEnemyInstanceIds;
-        if (selectedIndex < 0 || selectedIndex >= eligible.Length)
-            throw new ArgumentOutOfRangeException(nameof(selectedIndex));
         var currentEligible = combat.Enemies
             .Where(e => e.Hp > 0 &&
                 (target.Kind != "sly_auto_play" || !e.Escaped))
@@ -14323,6 +14321,11 @@ public sealed partial class PrototypeGameEngine
         if (!currentEligible.SequenceEqual(eligible))
             throw new InvalidDataException(
                 "Saved target support disagrees with current live enemies.");
+        var selectedIndex = Array.IndexOf(eligible,
+            selectedEnemyInstanceId);
+        if (selectedIndex < 0)
+            throw new InvalidOperationException(
+                "Selected enemy identity is outside the saved target support.");
 
         combat = combat with { PendingChoice = null };
         (PlayerState Player, CombatState Combat) resolved;
@@ -14332,7 +14335,7 @@ public sealed partial class PrototypeGameEngine
                 throw new InvalidDataException("Missing suspended target operation.");
             var fixedOperation = continuation.Operations[0] with
             {
-                TargetEnemyId = eligible[selectedIndex],
+                TargetEnemyId = selectedEnemyInstanceId,
                 TargetMode = PrototypeEffectTarget.ActionTargetEnemy
             };
             resolved = ResumeChoiceResolutionContinuation(
@@ -14347,7 +14350,8 @@ public sealed partial class PrototypeGameEngine
             if (target.SlyCardInstanceId is not { } cardId)
                 throw new InvalidDataException("Sly choice lost its source card.");
             resolved = AutoPlaySlyCard(
-                state.Player, combat, cardId, state.Rng, selectedIndex);
+                state.Player, combat, cardId, state.Rng,
+                selectedEnemyInstanceId);
             if (resolved.Combat.PendingChoice is not null)
                 resolved = (resolved.Player, AttachOuterChoiceContinuation(
                     resolved.Combat, continuation));
@@ -14369,7 +14373,7 @@ public sealed partial class PrototypeGameEngine
                     "Auto-play target choice lost its suspended source operation.");
             var fixedOperation = suspendedOperation with
             {
-                TargetEnemyId = eligible[selectedIndex]
+                TargetEnemyId = selectedEnemyInstanceId
             };
             resolved = ResumeChoiceResolutionContinuation(
                 state.Player, combat, state.Rng, continuation with
@@ -14476,7 +14480,7 @@ public sealed partial class PrototypeGameEngine
         CombatState combat,
         long cardInstanceId,
         RngBundle rng,
-        int? controlledSelectedIndex = null)
+        int? controlledSelectedEnemyInstanceId = null)
     {
         if (!combat.DiscardPile.Contains(cardInstanceId))
         {
@@ -14515,14 +14519,18 @@ public sealed partial class PrototypeGameEngine
                 return (player, combat);
             }
             if (ControlledChanceGuardV111.Active &&
-                controlledSelectedIndex is null)
+                controlledSelectedEnemyInstanceId is null)
                 throw new NotSupportedException(
                     "UNSUPPORTED_CONTROLLED_CHANCE site=combat.sly_autoplay.target " +
                     "operation=choose_index requires a saved target continuation.");
             int selectedIndex;
-            if (controlledSelectedIndex is { } selected)
+            if (controlledSelectedEnemyInstanceId is { } selectedEnemyId)
             {
-                selectedIndex = selected;
+                selectedIndex = Array.FindIndex(eligible,
+                    enemy => enemy.InstanceId == selectedEnemyId);
+                if (selectedIndex < 0)
+                    throw new InvalidOperationException(
+                        "Selected Sly target identity is outside current support.");
             }
             else
             {
