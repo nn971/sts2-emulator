@@ -413,6 +413,9 @@ Conveyor, Punch Off fight/reward, and Native event-shuffle sessions compose it
 directly with `PrototypeMechanicsContinuationStateV111` under the
 `ReferenceNatureRunSession` continuation kind; each retains its event-specific
 law replay and run-cursor checks.
+Map-generation and later-act preparation sessions use the same stochastic
+owner while retaining their generator checkpoints, request prefixes, laws,
+and outputs in their existing fields.
 
 The **same game mechanics** issues semantic stochastic operations and applies their resolved outcomes regardless of provider:
 

@@ -63,11 +63,26 @@ public sealed record ReferenceNatureLaterActPreparationSessionV111(
     private ChanceLawV111[]? _chanceLaws = ChanceLaws?.Select(law =>
         law.Fork()).ToArray();
     private ChanceLawV111? _pendingLaw = PendingLaw?.Fork();
-    private ReferenceNatureDecisionV111[]? _decisionTranscript =
-        Clone(DecisionTranscript);
     private RandomIndexRequestV111? _pendingRequest = Copy(PendingRequest);
     private PrototypeLaterActEncounterBagV111[]? _bags = Bags?.Select(bag =>
         bag.Fork()).ToArray();
+
+    [JsonIgnore]
+    public ReferenceNatureStochasticStateV111<ReferenceNatureDecisionV111>
+        Stochastic { get; init; } = new(InitialNatureState, NatureState,
+            DecisionTranscript);
+
+    public ReferenceNatureStateV111 InitialNatureState
+    {
+        get => Stochastic.InitialNatureState;
+        init => Stochastic = Stochastic with { InitialNatureState = value };
+    }
+
+    public ReferenceNatureStateV111 NatureState
+    {
+        get => Stochastic.NatureState;
+        init => Stochastic = Stochastic with { NatureState = value };
+    }
 
     public const string CurrentSchemaId =
         "sts2-v111-reference-nature-later-act-preparation-session-v1";
@@ -92,8 +107,8 @@ public sealed record ReferenceNatureLaterActPreparationSessionV111(
 
     public ReferenceNatureDecisionV111[] DecisionTranscript
     {
-        get => Clone(_decisionTranscript)!;
-        init => _decisionTranscript = Clone(value);
+        get => Stochastic.DecisionTranscript;
+        init => Stochastic = Stochastic with { DecisionTranscript = value };
     }
 
     public RandomIndexRequestV111? PendingRequest
@@ -137,11 +152,8 @@ public sealed record ReferenceNatureLaterActPreparationSessionV111(
         {
             InitialPrototypeRng = InitialPrototypeRng.Fork(),
             Profile = Profile.Fork(),
-            InitialNatureState = InitialNatureState.Fork(),
-            NatureState = NatureState.Fork(),
+            Stochastic = Stochastic.Fork(),
             ChanceLaws = ChanceLaws,
-            DecisionTranscript = (ReferenceNatureDecisionV111[])
-                DecisionTranscript.Clone(),
             PendingRequest = PendingRequest,
             Bags = Bags
         };
@@ -168,14 +180,11 @@ public sealed record ReferenceNatureLaterActPreparationSessionV111(
     public void Validate()
     {
         if (SchemaId != CurrentSchemaId || InitialPrototypeRng is null ||
-            Profile is null || InitialNatureState is null || NatureState is null ||
-            ChanceLaws is null || DecisionTranscript is null ||
-            Ascension is < 0 or > 10 ||
-            DecisionTranscript.Any(decision => decision is null))
+            Profile is null || ChanceLaws is null ||
+            Ascension is < 0 or > 10)
             throw new InvalidDataException(
                 "Invalid ReferenceNature later-act preparation session.");
-        InitialNatureState.Validate();
-        NatureState.Validate();
+        Stochastic.Validate();
         var capture = Capture(InitialPrototypeRng, Ascension, Profile,
             InitialNatureState, DecisionTranscript);
         if (!NatureState.SameCursor(capture.NatureState) ||
@@ -383,7 +392,4 @@ public sealed record ReferenceNatureLaterActPreparationSessionV111(
             OrderedCandidates = (int[])request.OrderedCandidates.Clone()
         };
 
-    private static ReferenceNatureDecisionV111[]? Clone(
-        ReferenceNatureDecisionV111[]? values) => values is null ? null :
-        (ReferenceNatureDecisionV111[])values.Clone();
 }

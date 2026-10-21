@@ -155,11 +155,26 @@ public sealed record ReferenceNatureMapGenerationSessionV111(
 {
     private ControlledStochasticDecisionV111[]? _decisions =
         ReferenceNatureSessionValueCopiesV111.CopyProviderDecisions(Decisions);
-    private ReferenceNatureDecisionV111[]? _decisionTranscript =
-        ReferenceNatureSessionValueCopiesV111.CopyArray(DecisionTranscript);
     private ControlledStochasticRequestV111? _pendingRequest =
         ReferenceNatureSessionValueCopiesV111.CopyRequest(PendingRequest);
     private MapState? _map = Map?.Fork();
+
+    [JsonIgnore]
+    public ReferenceNatureStochasticStateV111<ReferenceNatureDecisionV111>
+        Stochastic { get; init; } = new(InitialNatureState, NatureState,
+            DecisionTranscript);
+
+    public ReferenceNatureStateV111 InitialNatureState
+    {
+        get => Stochastic.InitialNatureState;
+        init => Stochastic = Stochastic with { InitialNatureState = value };
+    }
+
+    public ReferenceNatureStateV111 NatureState
+    {
+        get => Stochastic.NatureState;
+        init => Stochastic = Stochastic with { NatureState = value };
+    }
 
     public ControlledStochasticDecisionV111[] Decisions
     {
@@ -170,10 +185,8 @@ public sealed record ReferenceNatureMapGenerationSessionV111(
     }
     public ReferenceNatureDecisionV111[] DecisionTranscript
     {
-        get => ReferenceNatureSessionValueCopiesV111
-            .CopyArray(_decisionTranscript)!;
-        init => _decisionTranscript = ReferenceNatureSessionValueCopiesV111
-            .CopyArray(value);
+        get => Stochastic.DecisionTranscript;
+        init => Stochastic = Stochastic with { DecisionTranscript = value };
     }
     public ControlledStochasticRequestV111? PendingRequest
     {
@@ -245,11 +258,8 @@ public sealed record ReferenceNatureMapGenerationSessionV111(
         Validate();
         return this with
         {
-            InitialNatureState = InitialNatureState.Fork(),
-            NatureState = NatureState.Fork(),
+            Stochastic = Stochastic.Fork(),
             Decisions = Decisions.Select(decision => decision.Fork()).ToArray(),
-            DecisionTranscript = (ReferenceNatureDecisionV111[])
-                DecisionTranscript.Clone(),
             PendingRequest = PendingRequest?.Fork(),
             Map = Map?.Fork()
         };
@@ -302,14 +312,11 @@ public sealed record ReferenceNatureMapGenerationSessionV111(
     public void Validate()
     {
         if (SchemaId != CurrentSchemaId ||
-            string.IsNullOrWhiteSpace(Seed) || InitialNatureState is null ||
-            NatureState is null || Decisions is null ||
-            DecisionTranscript is null)
+            string.IsNullOrWhiteSpace(Seed) || Decisions is null)
             throw new InvalidDataException(
                 "Invalid ReferenceNature map-generation session envelope.");
+        Stochastic.Validate();
         ValidateMapParameters(Act, Ascension);
-        InitialNatureState.Validate();
-        NatureState.Validate();
         if (Decisions.Length != DecisionTranscript.Length ||
             NatureState.SampleCount != checked(
                 InitialNatureState.SampleCount + Decisions.Length) ||
