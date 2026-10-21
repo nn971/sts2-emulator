@@ -405,6 +405,13 @@ specialized owner. Each session retains its typed law and replay validation.
 Existing flattened session fields and snapshot schemas remain intact, as do the
 run-action session's nested map/preparation/Ancient continuation owners.
 
+`ReferenceNatureStochasticStateV111<TDecision>` owns the initial/current
+sampler cursor and defensive typed transcript used by the run-action and
+controlled-action stochastic owners. Native event-gold and Glory Reflections
+sessions compose it directly with `PrototypeMechanicsContinuationStateV111`
+under the `ReferenceNatureRunSession` continuation kind; they retain their
+event-specific law replay and run-cursor checks.
+
 The **same game mechanics** issues semantic stochastic operations and applies their resolved outcomes regardless of provider:
 
 1. **Commit / initialize** a source-triggered shuffle, offer, or intent decision. Native may immediately record a complete hidden result; Nature may record an unresolved object with constraints.

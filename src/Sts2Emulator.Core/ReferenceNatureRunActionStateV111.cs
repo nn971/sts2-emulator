@@ -1,6 +1,63 @@
 namespace Sts2Emulator.Core;
 
 /// <summary>
+/// ReferenceNature's initial/current sampler cursor and typed decision
+/// transcript, shared by sessions with or without a controlled provider
+/// prefix.
+/// </summary>
+public sealed record ReferenceNatureStochasticStateV111<TDecision>
+    where TDecision : class
+{
+    private TDecision[]? _decisionTranscript = [];
+
+    public ReferenceNatureStateV111 InitialNatureState { get; init; }
+    public ReferenceNatureStateV111 NatureState { get; init; }
+
+    public TDecision[] DecisionTranscript
+    {
+        get => ReferenceNatureSessionValueCopiesV111
+            .CopyArray(_decisionTranscript)!;
+        init => _decisionTranscript = ReferenceNatureSessionValueCopiesV111
+            .CopyArray(value);
+    }
+
+    public ReferenceNatureStochasticStateV111(
+        ReferenceNatureStateV111 initialNatureState,
+        ReferenceNatureStateV111 natureState,
+        TDecision[] decisionTranscript)
+    {
+        InitialNatureState = initialNatureState ??
+            throw new ArgumentNullException(nameof(initialNatureState));
+        NatureState = natureState ??
+            throw new ArgumentNullException(nameof(natureState));
+        DecisionTranscript = decisionTranscript;
+    }
+
+    public ReferenceNatureStochasticStateV111<TDecision> Fork() => this with
+    {
+        InitialNatureState = InitialNatureState.Fork(),
+        NatureState = NatureState.Fork(),
+        DecisionTranscript = DecisionTranscript
+    };
+
+    public void Validate()
+    {
+        ArgumentNullException.ThrowIfNull(InitialNatureState);
+        ArgumentNullException.ThrowIfNull(NatureState);
+        var transcript = DecisionTranscript;
+        if (transcript is null)
+            throw new InvalidDataException(
+                "ReferenceNature stochastic transcript is missing.");
+        InitialNatureState.Validate();
+        NatureState.Validate();
+        foreach (var decision in transcript)
+            if (decision is null)
+                throw new InvalidDataException(
+                    "ReferenceNature stochastic transcript contains a null decision.");
+    }
+}
+
+/// <summary>
 /// Source run checkpoint, selected action, and current run for ReferenceNature
 /// sessions that replay an ordinary run action. The common continuation owns
 /// both run snapshots.
@@ -57,19 +114,36 @@ public sealed record ReferenceNatureRunActionMechanicsStateV111
 /// </summary>
 public sealed record ReferenceNatureRunActionStochasticStateV111
 {
-    private ReferenceNatureDecisionV111[]? _decisionTranscript = [];
+    private ReferenceNatureStochasticStateV111<ReferenceNatureDecisionV111>
+        _cursor = null!;
     private ControlledStochasticContinuationStateV111?
         _nativeCombatEntryContinuation;
     private ControlledStochasticDecisionV111[]?
         _nativeCombatEntryProviderDecisions = [];
 
-    public ReferenceNatureStateV111 InitialNatureState { get; init; }
-    public ReferenceNatureStateV111 NatureState { get; init; }
+    public ReferenceNatureStochasticStateV111<ReferenceNatureDecisionV111>
+        Cursor
+    {
+        get => _cursor;
+        init => _cursor = value ?? throw new ArgumentNullException(nameof(Cursor));
+    }
+
+    public ReferenceNatureStateV111 InitialNatureState
+    {
+        get => Cursor.InitialNatureState;
+        init => Cursor = Cursor with { InitialNatureState = value };
+    }
+
+    public ReferenceNatureStateV111 NatureState
+    {
+        get => Cursor.NatureState;
+        init => Cursor = Cursor with { NatureState = value };
+    }
 
     public ReferenceNatureDecisionV111[] DecisionTranscript
     {
-        get => Clone(_decisionTranscript)!;
-        init => _decisionTranscript = Clone(value);
+        get => Cursor.DecisionTranscript;
+        init => Cursor = Cursor with { DecisionTranscript = value };
     }
 
     public ControlledStochasticContinuationStateV111?
@@ -93,18 +167,14 @@ public sealed record ReferenceNatureRunActionStochasticStateV111
         ReferenceNatureStateV111 NatureState,
         ReferenceNatureDecisionV111[] DecisionTranscript)
     {
-        ArgumentNullException.ThrowIfNull(InitialNatureState);
-        ArgumentNullException.ThrowIfNull(NatureState);
-        this.InitialNatureState = InitialNatureState.Fork();
-        this.NatureState = NatureState.Fork();
-        this.DecisionTranscript = DecisionTranscript;
+        Cursor = new ReferenceNatureStochasticStateV111<
+            ReferenceNatureDecisionV111>(InitialNatureState, NatureState,
+            DecisionTranscript);
     }
 
     public ReferenceNatureRunActionStochasticStateV111 Fork() => this with
     {
-        InitialNatureState = InitialNatureState.Fork(),
-        NatureState = NatureState.Fork(),
-        DecisionTranscript = DecisionTranscript,
+        Cursor = Cursor.Fork(),
         NativeCombatEntryContinuation = NativeCombatEntryContinuation,
         NativeCombatEntryProviderDecisions =
             NativeCombatEntryProviderDecisions
@@ -112,30 +182,20 @@ public sealed record ReferenceNatureRunActionStochasticStateV111
 
     public void Validate()
     {
-        ArgumentNullException.ThrowIfNull(InitialNatureState);
-        ArgumentNullException.ThrowIfNull(NatureState);
+        Cursor.Validate();
         var transcript = DecisionTranscript;
         var providerDecisions = NativeCombatEntryProviderDecisions;
-        if (transcript is null || providerDecisions is null)
+        if (providerDecisions is null)
             throw new InvalidDataException(
                 "ReferenceNature run-action stochastic transcript is missing.");
-        InitialNatureState.Validate();
-        NatureState.Validate();
         foreach (var decision in transcript)
-            (decision ?? throw new InvalidDataException(
-                "ReferenceNature run-action transcript contains a null decision."))
-                .Validate();
+            decision.Validate();
         NativeCombatEntryContinuation?.Validate();
         foreach (var decision in providerDecisions)
             (decision ?? throw new InvalidDataException(
                 "Native combat-entry provider transcript contains a null decision."))
                 .Validate();
     }
-
-    private static ReferenceNatureDecisionV111[]? Clone(
-        ReferenceNatureDecisionV111[]? transcript) => transcript is null
-        ? null
-        : (ReferenceNatureDecisionV111[])transcript.Clone();
 
     private static ControlledStochasticDecisionV111[]?
         CloneProviderDecisions(
@@ -151,12 +211,28 @@ public sealed record ReferenceNatureControlledActionStochasticStateV111<TLawDeci
     where TLawDecision : class
 {
     private ControlledStochasticDecisionV111[]? _providerDecisions = [];
-    private TLawDecision[]? _decisionTranscript = [];
     private ControlledStochasticRequestV111? _pendingRequest;
     private string[]? _pendingCandidateLabels;
 
-    public ReferenceNatureStateV111 InitialNatureState { get; init; }
-    public ReferenceNatureStateV111 NatureState { get; init; }
+    private ReferenceNatureStochasticStateV111<TLawDecision> _cursor = null!;
+
+    public ReferenceNatureStochasticStateV111<TLawDecision> Cursor
+    {
+        get => _cursor;
+        init => _cursor = value ?? throw new ArgumentNullException(nameof(Cursor));
+    }
+
+    public ReferenceNatureStateV111 InitialNatureState
+    {
+        get => Cursor.InitialNatureState;
+        init => Cursor = Cursor with { InitialNatureState = value };
+    }
+
+    public ReferenceNatureStateV111 NatureState
+    {
+        get => Cursor.NatureState;
+        init => Cursor = Cursor with { NatureState = value };
+    }
 
     public ControlledStochasticDecisionV111[] ProviderDecisions
     {
@@ -168,10 +244,8 @@ public sealed record ReferenceNatureControlledActionStochasticStateV111<TLawDeci
 
     public TLawDecision[] DecisionTranscript
     {
-        get => ReferenceNatureSessionValueCopiesV111
-            .CopyArray(_decisionTranscript)!;
-        init => _decisionTranscript = ReferenceNatureSessionValueCopiesV111
-            .CopyArray(value);
+        get => Cursor.DecisionTranscript;
+        init => Cursor = Cursor with { DecisionTranscript = value };
     }
 
     public ControlledStochasticRequestV111? PendingRequest
@@ -198,12 +272,9 @@ public sealed record ReferenceNatureControlledActionStochasticStateV111<TLawDeci
         ControlledStochasticRequestV111? pendingRequest,
         string[]? pendingCandidateLabels)
     {
-        InitialNatureState = initialNatureState ??
-            throw new ArgumentNullException(nameof(initialNatureState));
-        NatureState = natureState ??
-            throw new ArgumentNullException(nameof(natureState));
+        Cursor = new ReferenceNatureStochasticStateV111<TLawDecision>(
+            initialNatureState, natureState, decisionTranscript);
         ProviderDecisions = providerDecisions;
-        DecisionTranscript = decisionTranscript;
         PendingRequest = pendingRequest;
         PendingCandidateLabels = pendingCandidateLabels;
     }
@@ -211,27 +282,22 @@ public sealed record ReferenceNatureControlledActionStochasticStateV111<TLawDeci
     public ReferenceNatureControlledActionStochasticStateV111<TLawDecision>
         Fork() => this with
         {
-            InitialNatureState = InitialNatureState.Fork(),
-            NatureState = NatureState.Fork(),
+            Cursor = Cursor.Fork(),
             ProviderDecisions = ProviderDecisions,
-            DecisionTranscript = DecisionTranscript,
             PendingRequest = PendingRequest,
             PendingCandidateLabels = PendingCandidateLabels
         };
 
     public void Validate()
     {
-        ArgumentNullException.ThrowIfNull(InitialNatureState);
-        ArgumentNullException.ThrowIfNull(NatureState);
+        Cursor.Validate();
         var providerDecisions = ProviderDecisions;
         var decisionTranscript = DecisionTranscript;
-        if (providerDecisions is null || decisionTranscript is null ||
+        if (providerDecisions is null ||
             providerDecisions.Length != decisionTranscript.Length)
             throw new InvalidDataException(
                 "ReferenceNature controlled-action prefixes are inconsistent.");
 
-        InitialNatureState.Validate();
-        NatureState.Validate();
         foreach (var decision in providerDecisions)
             (decision ?? throw new InvalidDataException(
                 "ReferenceNature controlled-action provider prefix contains a null decision."))

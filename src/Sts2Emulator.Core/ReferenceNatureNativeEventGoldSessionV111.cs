@@ -32,15 +32,60 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
     ReferenceNatureStateV111 NatureState,
     ReferenceNatureDecisionV111[] DecisionTranscript)
 {
-    private ReferenceNatureDecisionV111[]? _decisionTranscript =
-        ReferenceNatureSessionValueCopiesV111.CopyArray(DecisionTranscript);
+    [JsonIgnore]
+    public SimulationStateV111<PrototypeMechanicsContinuationStateV111,
+        ReferenceNatureStochasticStateV111<ReferenceNatureDecisionV111>>
+        Simulation { get; init; } = new(
+            new PrototypeMechanicsContinuationStateV111(
+                PrototypeMechanicsContinuationKindV111.ReferenceNatureRunSession,
+                Origin, Run),
+            new ReferenceNatureStochasticStateV111<
+                ReferenceNatureDecisionV111>(InitialNatureState, NatureState,
+                DecisionTranscript));
+
+    [JsonIgnore]
+    public PrototypeMechanicsContinuationStateV111 Mechanics
+    {
+        get => Simulation.Mechanics;
+        init => Simulation = Simulation with { Mechanics = value };
+    }
+
+    [JsonIgnore]
+    public ReferenceNatureStochasticStateV111<ReferenceNatureDecisionV111>
+        Stochastic
+    {
+        get => Simulation.Stochastic;
+        init => Simulation = Simulation with { Stochastic = value };
+    }
+
+    public RunState Origin
+    {
+        get => Mechanics.Origin!;
+        init => Mechanics = Mechanics with { Origin = value };
+    }
+
+    public RunState Run
+    {
+        get => Mechanics.Current;
+        init => Mechanics = Mechanics with { Current = value };
+    }
+
+    public ReferenceNatureStateV111 InitialNatureState
+    {
+        get => Stochastic.InitialNatureState;
+        init => Stochastic = Stochastic with { InitialNatureState = value };
+    }
+
+    public ReferenceNatureStateV111 NatureState
+    {
+        get => Stochastic.NatureState;
+        init => Stochastic = Stochastic with { NatureState = value };
+    }
 
     public ReferenceNatureDecisionV111[] DecisionTranscript
     {
-        get => ReferenceNatureSessionValueCopiesV111
-            .CopyArray(_decisionTranscript)!;
-        init => _decisionTranscript = ReferenceNatureSessionValueCopiesV111
-            .CopyArray(value);
+        get => Stochastic.DecisionTranscript;
+        init => Stochastic = Stochastic with { DecisionTranscript = value };
     }
 
     public const string CurrentSchemaId =
@@ -122,12 +167,8 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
         Validate();
         return this with
         {
-            Origin = Origin.Fork(),
-            Run = Run.Fork(),
-            InitialNatureState = InitialNatureState.Fork(),
-            NatureState = NatureState.Fork(),
-            DecisionTranscript =
-                (ReferenceNatureDecisionV111[])DecisionTranscript.Clone()
+            Mechanics = Mechanics.Fork(),
+            Stochastic = Stochastic.Fork()
         };
     }
 
@@ -171,10 +212,13 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
     {
         if (SchemaId != CurrentSchemaId ||
             !IsSupportedEventId(EventId) ||
-            string.IsNullOrWhiteSpace(ActionId) || Origin is null || Run is null ||
-            InitialNatureState is null || NatureState is null ||
-            DecisionTranscript is null ||
-            DecisionTranscript.Length > DecisionCount(EventId, Origin))
+            string.IsNullOrWhiteSpace(ActionId) || Origin is null || Run is null)
+            throw new InvalidDataException(
+                "Invalid ReferenceNature Native event gold session envelope.");
+        Mechanics.Validate(
+            PrototypeMechanicsContinuationKindV111.ReferenceNatureRunSession);
+        Stochastic.Validate();
+        if (DecisionTranscript.Length > DecisionCount(EventId, Origin))
             throw new InvalidDataException(
                 "Invalid ReferenceNature Native event gold session envelope.");
         ValidateOpeningBoundary(Origin, ActionId);
@@ -184,8 +228,6 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
             Origin, "Native event-gold session origin", allowMissing: true);
         ReferenceNatureRunProjectionV111.ValidateNatureRelicBagProjection(
             Run, "Native event-gold session replay", allowMissing: true);
-        InitialNatureState.Validate();
-        NatureState.Validate();
         ReferenceNatureRunCursorV111.ValidateInitial(
             Origin, InitialNatureState, "Native event gold");
 
