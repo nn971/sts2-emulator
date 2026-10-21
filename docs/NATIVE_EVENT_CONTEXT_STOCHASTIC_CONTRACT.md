@@ -168,7 +168,11 @@ and Jungle Maze Adventure gold laws mark their unit-float-to-integer mappings
 `SOURCE_VERIFIED` on the three declared formulas. The Trial's three-case
 bounded-index transform is `SOURCE_VERIFIED`; its Chance Law query does not
 inspect the event cursor, while atomic-session admission separately requires
-the untouched entry cursor for replay. Stone of All Time's two ignored ticket
+the untouched entry cursor for configured Native replay. Native-regional
+fallback without `NativeRunRng` derives its typed request ordinal from the
+saved legacy `event` call count, uses equal-index `UNVERIFIED` weights, and
+leaves the selected request unadvanced without creating a Native cursor or
+provider marker. Stone of All Time's two ignored ticket
 results map to a single `no_effect` outcome, and its potion-slot index is
 source-verified on the occupied-slot support. Future of Potions card-type
 indices are source-verified for each declared rarity-derived support. Infested
@@ -187,8 +191,11 @@ uses semantic choice-draw ordinal 0; the returned law carries the saved
 legacy request ordinal.
 Tablet of Truth also counts exact bounded-index preimages for each ordered
 eligible physical-card support without using the run seed or saved cursor in
-the law; its page-by-page scripted session preserves the cursor captured at
-that page's boundary.
+the configured Native law; its page-by-page scripted session preserves the
+cursor captured at that page's boundary. Native-regional fallback derives its
+typed request ordinal from the saved legacy `event` call count, uses
+equal-index `UNVERIFIED` weights, and leaves the selected request unadvanced
+without creating a Native cursor or provider marker.
 A pinned event RNG seed
 derivation and a persisted cursor establish provider ownership, not seed
 frequencies, source-pool completeness, or call-order parity. Other remaining

@@ -22,8 +22,7 @@ internal static class TrialCaseChoicePlanBuilderV111
     {
         ArgumentNullException.ThrowIfNull(origin);
         var world = origin.World;
-        if (string.IsNullOrWhiteSpace(origin.RunSeed) ||
-            origin.NativeRunRng is null || origin.Phase != RunPhase.Event ||
+        if (origin.Phase != RunPhase.Event ||
             world is null || world.Act != 3 || world.Event is not { } evt ||
             evt.EventId != PrototypeNativeGloryEvents.TrialId ||
             evt.NativePageIndex is not (0 or 1) ||
@@ -33,7 +32,18 @@ internal static class TrialCaseChoicePlanBuilderV111
             evt.NativeEventRngProviderMode is not null ||
             origin.ControlledEventRewardChoice is not null)
             throw new InvalidOperationException(
-                "Trial Nature choices require a pending configured case draw.");
+                "Trial Nature choices require a pending supported case draw.");
+
+        var nativeRoute = origin.NativeRunRng is not null;
+        var legacyFallbackRoute = origin.NativeRunRng is null &&
+            PrototypeGameEngine.UsesNativeRegionalSystems(world) &&
+            evt.NativeEventRng is null;
+        if (!nativeRoute && !legacyFallbackRoute)
+            throw new InvalidOperationException(
+                "Trial requires a configured Native or Native-regional legacy event RNG route.");
+        if (nativeRoute && string.IsNullOrWhiteSpace(origin.RunSeed))
+            throw new InvalidOperationException(
+                "Configured Native Trial choices require the run seed.");
 
         var legalActionId = PrototypeAiEnvironment.StableActionId(
             GameAction.Create("event_choice",
@@ -46,9 +56,12 @@ internal static class TrialCaseChoicePlanBuilderV111
         const string ownerId = "event:glory_trial:trial_case";
         var request = new RandomIndexRequestV111(
             "event.glory_trial.damage_amount.index_draw",
-            NativeRngV111Contexts.EventStreamId(
-                PrototypeNativeGloryEvents.TrialNativeRngEventId),
-            ownerId, 0, [],
+            nativeRoute
+                ? NativeRngV111Contexts.EventStreamId(
+                    PrototypeNativeGloryEvents.TrialNativeRngEventId)
+                : "event",
+            ownerId,
+            nativeRoute ? 0 : GetLegacyEventOrdinal(origin), [],
             OperationKind: "bounded_integer", BoundedCount: 3);
         var conditioningFingerprint = CanonicalJson.Sha256(new
         {
@@ -63,15 +76,42 @@ internal static class TrialCaseChoicePlanBuilderV111
             (string[])OutcomeIds.Clone(), conditioningFingerprint);
     }
 
-    public static void ValidateNativeEventEntryCursor(RunState origin)
+    public static int GetLegacyEventOrdinal(RunState origin)
+    {
+        var streams = origin.Rng.Streams.Where(stream =>
+            stream.StreamId == "event").ToArray();
+        if (streams.Length != 1)
+            throw new InvalidDataException(
+                "Trial fallback requires one legacy event stream.");
+        var ordinal = streams[0].CallCount ?? 0;
+        if (ordinal > int.MaxValue)
+            throw new NotSupportedException(
+                "Trial legacy event ordinal exceeds the typed request range.");
+        return (int)ordinal;
+    }
+
+    public static void ValidateReplayOrigin(RunState origin)
     {
         ArgumentNullException.ThrowIfNull(origin);
         var evt = origin.World?.Event;
-        if (string.IsNullOrWhiteSpace(origin.RunSeed) ||
-            origin.NativeRunRng is null || evt is null ||
+        var world = origin.World;
+        if (world is null || world.Act != 3 || evt is null ||
             evt.EventId != PrototypeNativeGloryEvents.TrialId)
             throw new InvalidOperationException(
-                "Trial session replay requires its configured Native event context.");
+                "Trial session replay requires its Glory event context.");
+
+        if (origin.NativeRunRng is null)
+        {
+            if (!PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
+                evt.NativeEventRng is not null ||
+                evt.NativeEventRngProviderMode is not null)
+                throw new InvalidOperationException(
+                    "Trial fallback replay requires the legacy event stream without a Native event cursor.");
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(origin.RunSeed))
+            throw new InvalidOperationException(
+                "Configured Native Trial replay requires the run seed.");
 
         var expectedStream = NativeRngV111Contexts.ForEvent(
             origin.RunSeed, PrototypeNativeGloryEvents.TrialNativeRngEventId);
@@ -162,7 +202,7 @@ public sealed record ReferenceNatureTrialSessionV111(
         ArgumentNullException.ThrowIfNull(initial);
         _ = TrialCaseChoicePlanBuilderV111.Build(origin);
         TrialCaseChoicePlanBuilderV111
-            .ValidateNativeEventEntryCursor(origin);
+            .ValidateReplayOrigin(origin);
         ReferenceNatureRunCursorV111.ValidateInitial(
             origin, initial, "Trial");
         var session = new ReferenceNatureTrialSessionV111(
@@ -221,7 +261,7 @@ public sealed record ReferenceNatureTrialSessionV111(
         PrototypeStateInvariants.Validate(Origin);
         PrototypeStateInvariants.Validate(Run);
         TrialCaseChoicePlanBuilderV111
-            .ValidateNativeEventEntryCursor(Origin);
+            .ValidateReplayOrigin(Origin);
         InitialNatureState.Validate();
         NatureState.Validate();
         var plan = TrialCaseChoicePlanBuilderV111.Build(Origin);
@@ -317,6 +357,37 @@ public sealed record ReferenceNatureTrialSessionV111(
         var selected = ReferenceNatureChanceLawDecisionV111
             .FromOrderedIndexSelection(
                 law, request, selection, plan.OutcomeIds);
+        if (origin.NativeRunRng is null)
+        {
+            var replay = ControlledChanceContinuationExecutorV111
+                .CaptureStochastic(
+                    origin,
+                    ControlledStochasticContinuationStateV111
+                        .CurrentSchemaId,
+                    [selected],
+                    run => new PrototypeGameEngine().Step(
+                        run, GameAction.Create("event_choice",
+                            new EventChoicePayload("accept"))).State,
+                    candidate =>
+                        ControlledStochasticChanceReplayV111.SameRequest(
+                            candidate, request));
+            if (replay.Suspended || replay.Run is not { } fallbackRun)
+                throw new InvalidDataException(
+                    "Trial fallback replay did not consume its selected request.");
+            var originEvent = origin.World?.Event;
+            var replayEvent = fallbackRun.World?.Event;
+            if (originEvent?.NativeEventRng is not null ||
+                originEvent?.NativeEventRngProviderMode is not null ||
+                replayEvent?.NativeEventRng is not null ||
+                replayEvent?.NativeEventRngProviderMode is not null ||
+                TrialCaseChoicePlanBuilderV111.GetLegacyEventOrdinal(
+                    fallbackRun) !=
+                    TrialCaseChoicePlanBuilderV111.GetLegacyEventOrdinal(
+                        origin))
+                throw new InvalidDataException(
+                    "Trial fallback replay changed an event RNG cursor or provider marker.");
+            return fallbackRun;
+        }
         return ReferenceNatureNativeEventIndexReplayV111
             .ReplayControlledIndex(
                 origin, plan.Request, selected,
@@ -340,8 +411,12 @@ public static partial class ChanceLawEngineV111
     {
         ArgumentNullException.ThrowIfNull(origin);
         var plan = TrialCaseChoicePlanBuilderV111.Build(origin);
-        var indexWeights = NativeNextIntGridWeights(
-            plan.Request.BoundedCount!.Value);
+        var nativeIndexLaw = NativeRngV111.IsCanonicalStreamId(
+            plan.Request.StreamId);
+        var indexWeights = nativeIndexLaw
+            ? NativeNextIntGridWeights(plan.Request.BoundedCount!.Value)
+            : Enumerable.Repeat(1L, plan.Request.BoundedCount!.Value)
+                .ToArray();
         var outcomes = plan.OutcomeIds.Select((outcomeId, index) =>
             new ChanceLawOutcomeV111(outcomeId, indexWeights[index])).ToArray();
         var eventId = CanonicalJson.Sha256(new
@@ -353,7 +428,12 @@ public static partial class ChanceLawEngineV111
             plan.Request.OperationKind, plan.Request.OwnerId,
             plan.Request.Ordinal, TrialConditioningPolicyId,
             plan.ConditioningFingerprint,
-            NativeBoundedIndexSourceVerifiedProvenance, outcomes,
-            ChanceLawV111.SourceVerifiedStatus);
+            nativeIndexLaw
+                ? NativeBoundedIndexSourceVerifiedProvenance
+                : "uniform-saved-index-support-unverified",
+            outcomes,
+            nativeIndexLaw
+                ? ChanceLawV111.SourceVerifiedStatus
+                : ChanceLawV111.UnverifiedStatus);
     }
 }

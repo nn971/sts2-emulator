@@ -3,17 +3,19 @@
 `ReferenceNatureTrialSessionV111` handles the Glory Trial `accept` draw on
 either the opening page or its post-rejection page. The bounded integer call
 selects one of the Merchant, Noble, or Nondescript cases. Its Chance Law
-counts the exact `NextInt(3)` preimages on the uniform 53-bit `NextDouble`
-grid, including the binary64 multiply boundary. The bounded-index mapping is
-`SOURCE_VERIFIED` under that input model; stream attribution, seed
-frequencies, and seeded Native cursor parity remain separate claims.
+counts exact `NextInt(3)` preimages on the uniform 53-bit `NextDouble` grid
+for configured Native runs, including the binary64 multiply boundary. A
+Native-regional run without `NativeRunRng` uses the saved legacy `event`
+request ordinal and equal weights over the three cases; this fallback law is
+`UNVERIFIED`.
 
 The session replays `accept` through the ordinary Trial event action with the
-scripted index provider. It commits the resulting case page and
-ReferenceNature cursor together while preserving the `TRIAL` Native event
-cursor. The completed EventState records the `scripted-v111` provider marker;
-the event invariant checks that the stream is still at its entry cursor and
-the event has advanced to a case page or completed result page.
+route's controlled index provider. It commits the resulting case page and
+ReferenceNature cursor together. Configured Native replay preserves the
+`TRIAL` event cursor and records the `scripted-v111` provider marker. Fallback
+replay leaves the selected legacy request unadvanced and does not create a
+Native event cursor or provider marker. Stream attribution, seed frequencies,
+and seeded Native cursor parity remain separate claims.
 
 The session handles only this case draw. Rejecting the event and resolving
 Merchant, Noble, or Nondescript choices continue through ordinary player
@@ -33,10 +35,11 @@ cursor parity, and probability calibration remain open.
 | `reference_nature_trial_release_many` | `reference_nature_trial_handles` | Number of released sessions |
 
 The site is `event.glory_trial.damage_amount.index_draw`. Session and Chance
-Law query coverage are advertised separately. The read-only query does not
-inspect the saved Native event cursor; only session admission checks that the
-source event action can be replayed from its untouched event-entry cursor.
-The session does not change the player-facing event observation.
+Law query coverage are advertised separately. The JSONL query's `ordinal: 0`
+is the semantic case-draw ordinal; a fallback law reports the current saved
+legacy `event` call count as its typed request ordinal. Configured Native
+queries do not inspect the Native event cursor. The session does not change
+the player-facing event observation.
 
 ## Python binding
 

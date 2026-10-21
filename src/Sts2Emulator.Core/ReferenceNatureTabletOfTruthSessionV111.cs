@@ -15,9 +15,9 @@ internal static class TabletOfTruthChoicePlanBuilderV111
     public static TabletOfTruthChoicePlanV111 Build(RunState origin)
     {
         ArgumentNullException.ThrowIfNull(origin);
-        if (origin.NativeRunRng is null ||
-            origin.Phase != RunPhase.Event ||
-            origin.World?.Event is not { } evt ||
+        var world = origin.World;
+        if (origin.Phase != RunPhase.Event || world is null ||
+            world.Event is not { } evt ||
             evt.EventId != PrototypeNativeTabletOfTruth.EventId ||
             evt.NativePageIndex is < 0 or > 3 ||
             evt.ChosenChoiceId is not null || evt.ControlledChoice is not null ||
@@ -25,7 +25,16 @@ internal static class TabletOfTruthChoicePlanBuilderV111
             evt.NativeEventRngProviderMode is not (null or "scripted-v111") ||
             origin.ControlledEventRewardChoice is not null)
             throw new InvalidOperationException(
-                "Tablet of Truth Nature choices require a pending configured page draw.");
+                "Tablet of Truth Nature choices require a pending supported page draw.");
+
+        var nativeRoute = origin.NativeRunRng is not null;
+        var legacyFallbackRoute = origin.NativeRunRng is null &&
+            PrototypeGameEngine.UsesNativeRegionalSystems(world) &&
+            evt.NativeEventRng is null &&
+            evt.NativeEventRngProviderMode is null;
+        if (!nativeRoute && !legacyFallbackRoute)
+            throw new InvalidOperationException(
+                "Tablet of Truth requires a configured Native or Native-regional legacy event RNG route.");
 
         var page = evt.NativePageIndex;
         var cost = PrototypeNativeTabletOfTruth.DecipherCost(
@@ -49,20 +58,23 @@ internal static class TabletOfTruthChoicePlanBuilderV111
             throw new InvalidOperationException(
                 "Tablet of Truth decipher is not legal on the current page.");
 
-        var streamId = NativeRngV111Contexts.EventStreamId(
-            PrototypeNativeTabletOfTruth.NativeRngEventId);
+        var streamId = nativeRoute
+            ? NativeRngV111Contexts.EventStreamId(
+                PrototypeNativeTabletOfTruth.NativeRngEventId)
+            : "event";
         if (evt.NativeEventRng is { } savedStream &&
             savedStream.StreamId != streamId)
             throw new InvalidOperationException(
                 "Tablet of Truth has the wrong Native event stream context.");
-        if (evt.NativeEventRng is null && page != 0)
+        if (nativeRoute && evt.NativeEventRng is null && page != 0)
             throw new InvalidOperationException(
                 "Tablet of Truth cannot reconstruct a missing event stream after page progress.");
         var ownerId = "event:tablet_of_truth:eligible_cards:" +
             CanonicalJson.Sha256(candidates);
         var request = new RandomIndexRequestV111(
             PrototypeNativeTabletOfTruth.CardDrawSiteId,
-            streamId, ownerId, page,
+            streamId, ownerId,
+            nativeRoute ? page : GetLegacyEventOrdinal(origin),
             Enumerable.Range(0, candidates.Length).ToArray());
         var conditioningFingerprint = CanonicalJson.Sha256(new
         {
@@ -77,6 +89,20 @@ internal static class TabletOfTruthChoicePlanBuilderV111
             policy = ChanceLawEngineV111.TabletOfTruthConditioningPolicyId
         });
         return new(page, cost, request, candidates, conditioningFingerprint);
+    }
+
+    public static int GetLegacyEventOrdinal(RunState origin)
+    {
+        var streams = origin.Rng.Streams.Where(stream =>
+            stream.StreamId == "event").ToArray();
+        if (streams.Length != 1)
+            throw new InvalidDataException(
+                "Tablet of Truth fallback requires one legacy event stream.");
+        var ordinal = streams[0].CallCount ?? 0;
+        if (ordinal > int.MaxValue)
+            throw new NotSupportedException(
+                "Tablet of Truth legacy event ordinal exceeds the typed request range.");
+        return (int)ordinal;
     }
 }
 
@@ -190,14 +216,17 @@ public sealed record ReferenceNatureTabletOfTruthSessionV111(
                 law.LawId, law.EventId, selection.OutcomeId,
                 selection.OutcomeIndex)).ToArray();
         var replay = Replay(Origin, plan, law, selection);
-        var expectedStream = Origin.World?.Event?.NativeEventRng ??
-            NativeRngV111Contexts.ForEvent(
-                Origin.RunSeed,
-                PrototypeNativeTabletOfTruth.NativeRngEventId);
-        if (CanonicalJson.Sha256(replay.World?.Event?.NativeEventRng) !=
-            CanonicalJson.Sha256(expectedStream))
-            throw new InvalidDataException(
-                "Scripted Tablet of Truth resolution advanced its Native event cursor.");
+        if (Origin.NativeRunRng is not null)
+        {
+            var expectedStream = Origin.World?.Event?.NativeEventRng ??
+                NativeRngV111Contexts.ForEvent(
+                    Origin.RunSeed,
+                    PrototypeNativeTabletOfTruth.NativeRngEventId);
+            if (CanonicalJson.Sha256(replay.World?.Event?.NativeEventRng) !=
+                CanonicalJson.Sha256(expectedStream))
+                throw new InvalidDataException(
+                    "Scripted Tablet of Truth resolution advanced its Native event cursor.");
+        }
         var next = this with
         {
             Run = ReferenceNatureRunCursorV111.Commit(
@@ -317,6 +346,37 @@ public sealed record ReferenceNatureTabletOfTruthSessionV111(
         var selected = ReferenceNatureChanceLawDecisionV111
             .FromOrderedIndexSelection(
                 law, request, selection, orderedOutcomeIds);
+        if (origin.NativeRunRng is null)
+        {
+            var replay = ControlledChanceContinuationExecutorV111
+                .CaptureStochastic(
+                    origin,
+                    ControlledStochasticContinuationStateV111
+                        .CurrentSchemaId,
+                    [selected],
+                    run => new PrototypeGameEngine().Step(
+                        run, GameAction.Create("event_choice",
+                            new EventChoicePayload("decipher"))).State,
+                    candidate =>
+                        ControlledStochasticChanceReplayV111.SameRequest(
+                            candidate, request));
+            if (replay.Suspended || replay.Run is not { } fallbackRun)
+                throw new InvalidDataException(
+                    "Tablet of Truth fallback replay did not consume its selected request.");
+            var originEvent = origin.World?.Event;
+            var replayEvent = fallbackRun.World?.Event;
+            if (originEvent?.NativeEventRng is not null ||
+                originEvent?.NativeEventRngProviderMode is not null ||
+                replayEvent?.NativeEventRng is not null ||
+                replayEvent?.NativeEventRngProviderMode is not null ||
+                TabletOfTruthChoicePlanBuilderV111.GetLegacyEventOrdinal(
+                    fallbackRun) !=
+                    TabletOfTruthChoicePlanBuilderV111.GetLegacyEventOrdinal(
+                        origin))
+                throw new InvalidDataException(
+                    "Tablet of Truth fallback replay changed an event RNG cursor or provider marker.");
+            return fallbackRun;
+        }
         return ReferenceNatureNativeEventIndexReplayV111
             .ReplayControlledIndex(
                 origin, plan.Request, selected,
@@ -340,8 +400,11 @@ public static partial class ChanceLawEngineV111
     {
         ArgumentNullException.ThrowIfNull(origin);
         var plan = TabletOfTruthChoicePlanBuilderV111.Build(origin);
-        var indexWeights = NativeNextIntGridWeights(
-            plan.Request.SupportCount);
+        var nativeIndexLaw = NativeRngV111.IsCanonicalStreamId(
+            plan.Request.StreamId);
+        var indexWeights = nativeIndexLaw
+            ? NativeNextIntGridWeights(plan.Request.SupportCount)
+            : Enumerable.Repeat(1L, plan.Request.SupportCount).ToArray();
         var outcomes = plan.CandidateCardInstanceIds.Select((instanceId, index) =>
             new ChanceLawOutcomeV111(
                 "card_instance:" + instanceId.ToString(
@@ -357,7 +420,12 @@ public static partial class ChanceLawEngineV111
             plan.Request.OperationKind, plan.Request.OwnerId,
             plan.Request.Ordinal, TabletOfTruthConditioningPolicyId,
             plan.ConditioningFingerprint,
-            NativeBoundedIndexSourceVerifiedProvenance, outcomes,
-            ChanceLawV111.SourceVerifiedStatus);
+            nativeIndexLaw
+                ? NativeBoundedIndexSourceVerifiedProvenance
+                : "uniform-saved-index-support-unverified",
+            outcomes,
+            nativeIndexLaw
+                ? ChanceLawV111.SourceVerifiedStatus
+                : ChanceLawV111.UnverifiedStatus);
     }
 }

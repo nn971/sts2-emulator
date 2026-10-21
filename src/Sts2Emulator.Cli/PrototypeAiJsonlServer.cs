@@ -4131,9 +4131,17 @@ internal static class PrototypeAiJsonlServer
                                     "excluded_relic_ids") is not null)
                                 throw new ArgumentException(
                                     "Tablet of Truth queries accept only state_handle, site_id and page ordinal.");
+                            var tabletOrigin = RequireState(request);
                             law = ChanceLawEngineV111.QueryTabletOfTruth(
-                                RequireState(request));
-                            if (law.SiteId != siteId || law.Ordinal != ordinal)
+                                tabletOrigin);
+                            var tabletLegacyFallbackPage =
+                                law.ProbabilityStatus ==
+                                    ChanceLawV111.UnverifiedStatus &&
+                                tabletOrigin.World?.Event?.NativePageIndex ==
+                                    ordinal;
+                            if (law.SiteId != siteId ||
+                                law.Ordinal != ordinal &&
+                                    !tabletLegacyFallbackPage)
                                 throw new ArgumentException(
                                     $"Tablet of Truth page expects site '{law.SiteId}' and ordinal {law.Ordinal}.");
                             Write(new
@@ -4170,7 +4178,13 @@ internal static class PrototypeAiJsonlServer
                                     "Trial queries accept only state_handle, site_id and ordinal.");
                             law = ChanceLawEngineV111.QueryTrial(
                                 RequireState(request));
-                            if (law.SiteId != siteId || law.Ordinal != ordinal)
+                            var trialLegacyFallback =
+                                law.ProbabilityStatus ==
+                                    ChanceLawV111.UnverifiedStatus &&
+                                ordinal == 0;
+                            if (law.SiteId != siteId ||
+                                law.Ordinal != ordinal &&
+                                    !trialLegacyFallback)
                                 throw new ArgumentException(
                                     $"Trial case query expects site '{law.SiteId}' and ordinal {law.Ordinal}.");
                             Write(new
