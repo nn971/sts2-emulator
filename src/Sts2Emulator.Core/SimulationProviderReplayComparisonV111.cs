@@ -258,7 +258,7 @@ public sealed record SimulationProviderReplayCaptureV111(
                 throw new InvalidDataException(
                     "Native policy entry trace is not a prefix of the saved session trace.");
 
-        var engine = new PrototypeGameEngine();
+        var environment = new PrototypeAiEnvironment();
         var actions = new List<GameAction>(validated.History.Length);
         foreach (var transition in validated.History)
         {
@@ -266,15 +266,9 @@ public sealed record SimulationProviderReplayCaptureV111(
                 string.IsNullOrWhiteSpace(transition.ActionId))
                 throw new NotSupportedException(
                     "Native policy capture requires a player-action-only history.");
-            var candidates = engine.GetLegalActions(replay.Run)
-                .Where(action => PrototypeAiEnvironment.StableActionId(action) ==
-                    transition.ActionId)
-                .ToArray();
-            if (candidates.Length != 1)
-                throw new InvalidDataException(
-                    "Native policy history action is illegal or ambiguous at " +
-                    actions.Count + ".");
-            actions.Add(candidates[0]);
+            var resolvedAction = environment.ResolvePlayerAction(
+                replay.Run, transition.ActionId);
+            actions.Add(resolvedAction.Action);
             replay = SemanticPilotCombatEngineV111.Step(
                 replay, replay.Fingerprint, transition.ActionId);
         }
