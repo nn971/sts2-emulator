@@ -339,9 +339,23 @@ public sealed record ReferenceNatureNativeEncounterFormationResultV111(
 {
     private ChanceLawV111[]? _chanceLaws = ChanceLaws?.Select(law =>
         law.Fork()).ToArray();
-    private ReferenceNatureDecisionV111[]? _decisionTranscript =
-        DecisionTranscript is null ? null :
-            (ReferenceNatureDecisionV111[])DecisionTranscript.Clone();
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public ReferenceNatureStochasticStateV111<ReferenceNatureDecisionV111>
+        Stochastic { get; init; } = new(InitialNatureState, NatureState,
+            DecisionTranscript);
+
+    public ReferenceNatureStateV111 InitialNatureState
+    {
+        get => Stochastic.InitialNatureState;
+        init => Stochastic = Stochastic with { InitialNatureState = value };
+    }
+
+    public ReferenceNatureStateV111 NatureState
+    {
+        get => Stochastic.NatureState;
+        init => Stochastic = Stochastic with { NatureState = value };
+    }
 
     public ChanceLawV111[] ChanceLaws
     {
@@ -351,26 +365,21 @@ public sealed record ReferenceNatureNativeEncounterFormationResultV111(
 
     public ReferenceNatureDecisionV111[] DecisionTranscript
     {
-        get => _decisionTranscript is null ? null! :
-            (ReferenceNatureDecisionV111[])_decisionTranscript.Clone();
-        init => _decisionTranscript = value is null ? null :
-            (ReferenceNatureDecisionV111[])value.Clone();
+        get => Stochastic.DecisionTranscript;
+        init => Stochastic = Stochastic with { DecisionTranscript = value };
     }
 
     public void Validate()
     {
         ArgumentNullException.ThrowIfNull(Audit);
         ArgumentNullException.ThrowIfNull(Audit.Formation);
-        ArgumentNullException.ThrowIfNull(InitialNatureState);
-        ArgumentNullException.ThrowIfNull(NatureState);
+        Stochastic.Validate();
         if (Audit.ProviderMode != ReferenceNatureV111.ProviderId ||
             ChanceLaws is null || DecisionTranscript is null ||
             Audit.Choices.Length != ChanceLaws.Length ||
             Audit.Choices.Length != DecisionTranscript.Length)
             throw new InvalidDataException(
                 "Invalid ReferenceNature encounter formation result.");
-        InitialNatureState.Validate();
-        NatureState.Validate();
         var formation = Audit.Formation;
         var expectedStream = NativeRngV111Contexts
             .EncounterFormationStreamId(

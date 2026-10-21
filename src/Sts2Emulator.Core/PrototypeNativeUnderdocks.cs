@@ -1542,9 +1542,23 @@ public sealed record ReferenceNatureUnderdocksRunResultV111(
     private RunState? _run = Run?.Fork();
     private ChanceLawV111[]? _chanceLaws = ChanceLaws?.Select(law =>
         law.Fork()).ToArray();
-    private ReferenceNatureDecisionV111[]? _decisionTranscript =
-        DecisionTranscript is null ? null :
-            (ReferenceNatureDecisionV111[])DecisionTranscript.Clone();
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public ReferenceNatureStochasticStateV111<ReferenceNatureDecisionV111>
+        Stochastic { get; init; } = new(InitialNatureState, NatureState,
+            DecisionTranscript);
+
+    public ReferenceNatureStateV111 InitialNatureState
+    {
+        get => Stochastic.InitialNatureState;
+        init => Stochastic = Stochastic with { InitialNatureState = value };
+    }
+
+    public ReferenceNatureStateV111 NatureState
+    {
+        get => Stochastic.NatureState;
+        init => Stochastic = Stochastic with { NatureState = value };
+    }
 
     public RunState Run
     {
@@ -1560,18 +1574,15 @@ public sealed record ReferenceNatureUnderdocksRunResultV111(
 
     public ReferenceNatureDecisionV111[] DecisionTranscript
     {
-        get => _decisionTranscript is null ? null! :
-            (ReferenceNatureDecisionV111[])_decisionTranscript.Clone();
-        init => _decisionTranscript = value is null ? null :
-            (ReferenceNatureDecisionV111[])value.Clone();
+        get => Stochastic.DecisionTranscript;
+        init => Stochastic = Stochastic with { DecisionTranscript = value };
     }
 
     public void Validate()
     {
         var run = Run;
         ArgumentNullException.ThrowIfNull(run);
-        ArgumentNullException.ThrowIfNull(InitialNatureState);
-        ArgumentNullException.ThrowIfNull(NatureState);
+        Stochastic.Validate();
         var laws = ChanceLaws;
         var transcript = DecisionTranscript;
         var world = run.World;
@@ -1587,8 +1598,6 @@ public sealed record ReferenceNatureUnderdocksRunResultV111(
             throw new InvalidDataException(
                 "Invalid ReferenceNature Underdocks run result.");
         PrototypeStateInvariants.Validate(run);
-        InitialNatureState.Validate();
-        NatureState.Validate();
         var law = laws[0];
         var decision = transcript[0];
         law.Validate();

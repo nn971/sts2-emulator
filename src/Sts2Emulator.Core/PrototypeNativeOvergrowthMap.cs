@@ -622,10 +622,24 @@ public sealed record ReferenceNatureOvergrowthRunResultV111(
     private RunState? _run = Run?.Fork();
     private ChanceLawV111[]? _chanceLaws = ChanceLaws?.Select(law =>
         law.Fork()).ToArray();
-    private ReferenceNatureDecisionV111[]? _decisionTranscript =
-        DecisionTranscript is null ? null :
-            (ReferenceNatureDecisionV111[])DecisionTranscript.Clone();
     private ReferenceNatureMapGenerationAuditV111? _mapGenerationAudit;
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public ReferenceNatureStochasticStateV111<ReferenceNatureDecisionV111>
+        Stochastic { get; init; } = new(InitialNatureState, NatureState,
+            DecisionTranscript);
+
+    public ReferenceNatureStateV111 InitialNatureState
+    {
+        get => Stochastic.InitialNatureState;
+        init => Stochastic = Stochastic with { InitialNatureState = value };
+    }
+
+    public ReferenceNatureStateV111 NatureState
+    {
+        get => Stochastic.NatureState;
+        init => Stochastic = Stochastic with { NatureState = value };
+    }
 
     public RunState Run
     {
@@ -641,10 +655,8 @@ public sealed record ReferenceNatureOvergrowthRunResultV111(
 
     public ReferenceNatureDecisionV111[] DecisionTranscript
     {
-        get => _decisionTranscript is null ? null! :
-            (ReferenceNatureDecisionV111[])_decisionTranscript.Clone();
-        init => _decisionTranscript = value is null ? null :
-            (ReferenceNatureDecisionV111[])value.Clone();
+        get => Stochastic.DecisionTranscript;
+        init => Stochastic = Stochastic with { DecisionTranscript = value };
     }
 
     public ReferenceNatureMapGenerationAuditV111? MapGenerationAudit
@@ -657,8 +669,7 @@ public sealed record ReferenceNatureOvergrowthRunResultV111(
     {
         var run = Run;
         ArgumentNullException.ThrowIfNull(run);
-        ArgumentNullException.ThrowIfNull(InitialNatureState);
-        ArgumentNullException.ThrowIfNull(NatureState);
+        Stochastic.Validate();
         var world = run.World;
         var laws = ChanceLaws;
         var transcript = DecisionTranscript;
@@ -677,8 +688,6 @@ public sealed record ReferenceNatureOvergrowthRunResultV111(
             throw new InvalidDataException(
                 "Invalid ReferenceNature Overgrowth run result.");
 
-        InitialNatureState.Validate();
-        NatureState.Validate();
         mapAudit.Validate();
         var law = laws[0];
         var decision = transcript[0];

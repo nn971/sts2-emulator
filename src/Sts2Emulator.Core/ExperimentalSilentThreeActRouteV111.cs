@@ -758,9 +758,23 @@ public sealed record ReferenceNatureLaterActAssignmentsV111(
     private string[]? _assignments = Clone(Assignments);
     private ChanceLawV111[]? _chanceLaws = ChanceLaws?.Select(law =>
         law.Fork()).ToArray();
-    private ReferenceNatureDecisionV111[]? _decisionTranscript =
-        DecisionTranscript is null ? null :
-            (ReferenceNatureDecisionV111[])DecisionTranscript.Clone();
+
+    [JsonIgnore]
+    public ReferenceNatureStochasticStateV111<ReferenceNatureDecisionV111>
+        Stochastic { get; init; } = new(InitialNatureState, NatureState,
+            DecisionTranscript);
+
+    public ReferenceNatureStateV111 InitialNatureState
+    {
+        get => Stochastic.InitialNatureState;
+        init => Stochastic = Stochastic with { InitialNatureState = value };
+    }
+
+    public ReferenceNatureStateV111 NatureState
+    {
+        get => Stochastic.NatureState;
+        init => Stochastic = Stochastic with { NatureState = value };
+    }
 
     public string[] Assignments
     {
@@ -776,31 +790,23 @@ public sealed record ReferenceNatureLaterActAssignmentsV111(
 
     public ReferenceNatureDecisionV111[] DecisionTranscript
     {
-        get => _decisionTranscript is null ? null! :
-            (ReferenceNatureDecisionV111[])_decisionTranscript.Clone();
-        init => _decisionTranscript = value is null ? null :
-            (ReferenceNatureDecisionV111[])value.Clone();
+        get => Stochastic.DecisionTranscript;
+        init => Stochastic = Stochastic with { DecisionTranscript = value };
     }
 
     public ReferenceNatureLaterActAssignmentsV111 Fork() => this with
     {
         Assignments = _assignments!,
-        InitialNatureState = InitialNatureState.Fork(),
-        NatureState = NatureState.Fork(),
+        Stochastic = Stochastic.Fork(),
         ChanceLaws = _chanceLaws!,
-        DecisionTranscript = _decisionTranscript!
     };
 
     public void Validate(SimulationProfile profile)
     {
         ArgumentNullException.ThrowIfNull(profile);
         ArgumentNullException.ThrowIfNull(Assignments);
-        ArgumentNullException.ThrowIfNull(InitialNatureState);
-        ArgumentNullException.ThrowIfNull(NatureState);
         ArgumentNullException.ThrowIfNull(ChanceLaws);
-        ArgumentNullException.ThrowIfNull(DecisionTranscript);
-        InitialNatureState.Validate();
-        NatureState.Validate();
+        Stochastic.Validate();
         var hasDarv = profile.RevealedEpochs.Contains(
             NativeDarvEventV111.EpochId, StringComparer.Ordinal);
         var expectedCount = hasDarv ? 4 : 2;
@@ -1167,9 +1173,23 @@ public sealed record ReferenceNatureLaterActEncounterPreparationV111(
     private RngBundle? _initialPrototypeRng = InitialPrototypeRng?.Fork();
     private ChanceLawV111[]? _chanceLaws = ChanceLaws?.Select(law =>
         law.Fork()).ToArray();
-    private ReferenceNatureDecisionV111[]? _decisionTranscript =
-        DecisionTranscript is null ? null :
-            (ReferenceNatureDecisionV111[])DecisionTranscript.Clone();
+
+    [JsonIgnore]
+    public ReferenceNatureStochasticStateV111<ReferenceNatureDecisionV111>
+        Stochastic { get; init; } = new(InitialNatureState, NatureState,
+            DecisionTranscript);
+
+    public ReferenceNatureStateV111 InitialNatureState
+    {
+        get => Stochastic.InitialNatureState;
+        init => Stochastic = Stochastic with { InitialNatureState = value };
+    }
+
+    public ReferenceNatureStateV111 NatureState
+    {
+        get => Stochastic.NatureState;
+        init => Stochastic = Stochastic with { NatureState = value };
+    }
 
     public PrototypeLaterActEncounterBagV111[] Bags
     {
@@ -1191,10 +1211,8 @@ public sealed record ReferenceNatureLaterActEncounterPreparationV111(
 
     public ReferenceNatureDecisionV111[] DecisionTranscript
     {
-        get => _decisionTranscript is null ? null! :
-            (ReferenceNatureDecisionV111[])_decisionTranscript.Clone();
-        init => _decisionTranscript = value is null ? null :
-            (ReferenceNatureDecisionV111[])value.Clone();
+        get => Stochastic.DecisionTranscript;
+        init => Stochastic = Stochastic with { DecisionTranscript = value };
     }
 
     public void Validate(SimulationProfile profile)
@@ -1202,12 +1220,8 @@ public sealed record ReferenceNatureLaterActEncounterPreparationV111(
         ArgumentNullException.ThrowIfNull(profile);
         ArgumentNullException.ThrowIfNull(Bags);
         ArgumentNullException.ThrowIfNull(InitialPrototypeRng);
-        ArgumentNullException.ThrowIfNull(InitialNatureState);
-        ArgumentNullException.ThrowIfNull(NatureState);
         ArgumentNullException.ThrowIfNull(ChanceLaws);
-        ArgumentNullException.ThrowIfNull(DecisionTranscript);
-        InitialNatureState.Validate();
-        NatureState.Validate();
+        Stochastic.Validate();
         var queueDrawCount =
             ExperimentalSilentThreeActRouteV111.OrdinaryRoomCount(2) + 15 +
             ExperimentalSilentThreeActRouteV111.OrdinaryRoomCount(3) + 15;

@@ -418,7 +418,16 @@ owner while retaining their generator checkpoints, request prefixes, laws,
 and outputs in their existing fields. The completed map audit and the
 run-initialization transcript reuse it for their cursor and decision history;
 the map fingerprint, Chance Laws, and nested preparation metadata keep their
-existing owners.
+existing owners. The Ancient-offer session and later-act assignment and
+encounter-preparation results use it as well. The Ancient-offer session also
+composes it with `SimulationStateV111` and the shared run mechanics checkpoint.
+Underdocks and Overgrowth run results and native encounter-formation results
+keep their mechanics, laws, map audit, and Native formation audit alongside the
+shared cursor/transcript owner. The controlled event-choice session reuses the
+shared run mechanics checkpoint; its ordered mixed player-action and Nature
+steps remain the authoritative chronology. Flattened serialized properties
+remain stable; snapshot types continue to own their explicit flat
+representations.
 
 The **same game mechanics** issues semantic stochastic operations and applies their resolved outcomes regardless of provider:
 
