@@ -7657,7 +7657,7 @@ public sealed partial class PrototypeGameEngine
 
                 case PrototypeCombatEffectKind.AcquireRandomCombatPotion:
                 {
-                    var pool = PrototypeContent.PotionPool;
+                    var pool = CombatPotionModelPool();
                     for (var i = 0; i < operation.Amount; i++)
                     {
                         if (ControlledChanceGuardV111.Active &&

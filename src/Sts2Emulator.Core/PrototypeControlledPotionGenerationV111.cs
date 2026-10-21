@@ -2,7 +2,7 @@ namespace Sts2Emulator.Core;
 
 public sealed partial class PrototypeGameEngine
 {
-    private static string[] ControlledPotionGenerationPool() =>
+    internal static string[] CombatPotionModelPool() =>
         PrototypeContent.PotionPool;
 
     internal static bool ValidateControlledPotionGeneration(
@@ -16,7 +16,7 @@ public sealed partial class PrototypeGameEngine
             choice.Operation.Amount > 0 &&
             choice.CandidatePotionIds is { Length: > 0 } &&
             choice.CandidatePotionIds.SequenceEqual(
-                ControlledPotionGenerationPool()) &&
+                CombatPotionModelPool()) &&
             choice.CandidatePotionIds.Distinct(StringComparer.Ordinal)
                 .Count() == choice.CandidatePotionIds.Length &&
             pending is
@@ -34,7 +34,7 @@ public sealed partial class PrototypeGameEngine
         CombatState combat, PrototypeQueuedOperation operation,
         PrototypeChoiceResolutionContinuationState continuation)
     {
-        var candidates = ControlledPotionGenerationPool();
+        var candidates = CombatPotionModelPool();
         if (!ControlledChanceGuardV111.Active || operation.Amount <= 0 ||
             operation.Kind !=
                 PrototypeCombatEffectKind.AcquireRandomCombatPotion ||
