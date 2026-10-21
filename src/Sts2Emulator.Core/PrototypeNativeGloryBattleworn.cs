@@ -147,12 +147,14 @@ public sealed partial class PrototypeGameEngine
                     return SetBattlewornResultPage(state with
                     {
                         Phase = RunPhase.Event,
-                        NativeRunRng = nativeRunRng ?? state.NativeRunRng,
+                        Stochastic = RunStochasticStateV111.WithNativeRunRng(
+                            state.Stochastic, nativeRunRng ?? state.NativeRunRng),
                         World = drawn.World with { Combat = null }
                     }, "victory");
                 var rewardState = state with
                 {
-                    NativeRunRng = nativeRunRng ?? state.NativeRunRng,
+                    Stochastic = RunStochasticStateV111.WithNativeRunRng(
+                        state.Stochastic, nativeRunRng ?? state.NativeRunRng),
                     World = drawn.World with
                     {
                         Combat = null,

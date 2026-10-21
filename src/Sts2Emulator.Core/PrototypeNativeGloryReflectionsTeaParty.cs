@@ -190,7 +190,8 @@ public sealed partial class PrototypeGameEngine
         state = state with
         {
             Player = playerAfterHit,
-            NativeRunRng = nativeRunRng ?? state.NativeRunRng
+            Stochastic = RunStochasticStateV111.WithNativeRunRng(
+                state.Stochastic, nativeRunRng ?? state.NativeRunRng)
         };
         if (playerAfterHit.Hp == 0)
             return EndRun(state, "defeat");
@@ -216,7 +217,8 @@ public sealed partial class PrototypeGameEngine
         return PreserveNativeEventCompletionPage(state with
         {
             Player = playerAfterHit,
-            NativeRunRng = nativeRunRng ?? state.NativeRunRng,
+            Stochastic = RunStochasticStateV111.WithNativeRunRng(
+                state.Stochastic, nativeRunRng ?? state.NativeRunRng),
             World = world
         }, choice);
     }

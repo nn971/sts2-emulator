@@ -386,7 +386,11 @@ public sealed partial class PrototypeGameEngine
             nativeShuffleStreams is null ? "combat" : "run.shuffle",
             "player:0", NativeFisherYatesV111.SiteId);
         if (nativeShuffleStreams is not null)
-            state = state with { NativeRunRng = nativeShuffleStreams };
+            state = state with
+            {
+                Stochastic = RunStochasticStateV111.WithNativeRunRng(
+                    state.Stochastic, nativeShuffleStreams)
+            };
         var boomingConchAtElite = roomType == PrototypeRoomType.Elite
             && state.Player.ActiveRelics.Any(relic =>
                 relic.RelicId ==
@@ -461,8 +465,10 @@ public sealed partial class PrototypeGameEngine
         };
         SemanticInitialIntentCaptureV111.CaptureAndSuspend(state with
         {
-            NativeRunRng = combat.NativeRng?.RunStreams.Fork()
-                ?? state.NativeRunRng?.Fork(),
+            Stochastic = RunStochasticStateV111.WithNativeRunRng(
+                state.Stochastic,
+                combat.NativeRng?.RunStreams.Fork()
+                    ?? state.NativeRunRng?.Fork()),
             World = entryWorld,
             Phase = RunPhase.Combat
         });
@@ -474,7 +480,8 @@ public sealed partial class PrototypeGameEngine
         if (combat.NativeRng is not null)
             state = state with
             {
-                NativeRunRng = combat.NativeRng.RunStreams.Fork()
+                Stochastic = RunStochasticStateV111.WithNativeRunRng(
+                    state.Stochastic, combat.NativeRng.RunStreams.Fork())
             };
 
         return ResumeSemanticInitialCombatEntry(state with
@@ -498,7 +505,8 @@ public sealed partial class PrototypeGameEngine
             ?? source.NativeRunRng?.Fork();
         var advanced = source with
         {
-            NativeRunRng = nativeStreams,
+            Stochastic = RunStochasticStateV111.WithNativeRunRng(
+                source.Stochastic, nativeStreams),
             World = world with { Combat = combat.Fork() }
         };
         if (nativeStreams is not null && combat.NativeRng is not null)
@@ -10290,7 +10298,8 @@ public sealed partial class PrototypeGameEngine
         return state with
         {
             Player = state.Player with { PotionSlots = slots },
-            NativeRunRng = nativeRunRng ?? state.NativeRunRng
+            Stochastic = RunStochasticStateV111.WithNativeRunRng(
+                state.Stochastic, nativeRunRng ?? state.NativeRunRng)
         };
     }
 

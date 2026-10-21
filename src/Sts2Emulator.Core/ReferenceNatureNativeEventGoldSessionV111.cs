@@ -330,7 +330,8 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
         if (replay.Complete && savedRun.ReferenceNatureState is null)
             savedRun = savedRun with
             {
-                ReferenceNatureState = snapshot.NatureState.Fork()
+                Stochastic = RunStochasticStateV111.WithReferenceNature(
+                    savedRun.Stochastic, snapshot.NatureState.Fork())
             };
         if (CanonicalJson.Sha256(replay.Run) !=
                 CanonicalJson.Sha256(savedRun) ||

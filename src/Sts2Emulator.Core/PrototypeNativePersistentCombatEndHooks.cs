@@ -171,7 +171,8 @@ public sealed partial class PrototypeGameEngine
         var updated = state with
         {
             Player = player,
-            NativeRunRng = nativeRunStreams ?? state.NativeRunRng,
+            Stochastic = RunStochasticStateV111.WithNativeRunRng(
+                state.Stochastic, nativeRunStreams ?? state.NativeRunRng),
             World = world is null || combat is null
                 ? world
                 : world with { Combat = combat }

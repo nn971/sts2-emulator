@@ -578,7 +578,8 @@ public sealed partial class PrototypeGameEngine
             return AdvanceEventContinuations(state with
             {
                 Player = player,
-                NativeRunRng = nativeRunRng ?? state.NativeRunRng,
+                Stochastic = RunStochasticStateV111.WithNativeRunRng(
+                    state.Stochastic, nativeRunRng ?? state.NativeRunRng),
                 World = world with
                 {
                     NextCardInstanceId = world.NextCardInstanceId + 1,
@@ -726,7 +727,8 @@ public sealed partial class PrototypeGameEngine
             IndependentSelection: true);
         return state with
         {
-            NativeRunRng = nativeRunRng ?? state.NativeRunRng,
+            Stochastic = RunStochasticStateV111.WithNativeRunRng(
+                state.Stochastic, nativeRunRng ?? state.NativeRunRng),
             World = world with
             {
                 Combat = null,

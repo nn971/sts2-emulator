@@ -195,7 +195,8 @@ public sealed partial class PrototypeGameEngine
             };
             state = state with
             {
-                NativeRunRng = nativeRunRng ?? state.NativeRunRng,
+                Stochastic = RunStochasticStateV111.WithNativeRunRng(
+                    state.Stochastic, nativeRunRng ?? state.NativeRunRng),
                 World = RequireWorld(state) with { Event = evt }
             };
         }

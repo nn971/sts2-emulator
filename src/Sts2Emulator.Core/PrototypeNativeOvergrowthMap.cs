@@ -519,7 +519,8 @@ public static class PrototypeNativeOvergrowthRunFactory
                 "ReferenceNature Overgrowth map generation did not complete.");
         var run = runAfterStart with
         {
-            ReferenceNatureState = mapSession.NatureState,
+            Stochastic = RunStochasticStateV111.WithReferenceNature(
+                runAfterStart.Stochastic, mapSession.NatureState),
             World = runAfterStart.World! with { Map = map }
         };
         var mapLaws = mapSession.Decisions.Select(decision =>

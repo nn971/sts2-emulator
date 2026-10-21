@@ -1716,7 +1716,8 @@ public sealed partial class PrototypeGameEngine
                 state = state with
                 {
                     Player = player,
-                    NativeRunRng = nativeRunRng ?? state.NativeRunRng,
+                    Stochastic = RunStochasticStateV111.WithNativeRunRng(
+                        state.Stochastic, nativeRunRng ?? state.NativeRunRng),
                     World = world with
                     {
                         Event = eventState
@@ -1942,10 +1943,12 @@ public sealed partial class PrototypeGameEngine
                 && effectIndex == resume.NextEffectIndex
                     ? resume.EffectDecisionStartIndex
                     : decisions.Length;
-            var effectStartState = state.Fork() with
+            var effectStartRun = state.Fork();
+            var effectStartState = effectStartRun with
             {
                 Player = player.Fork(),
-                NativeRunRng = nativeRunRng?.Fork(),
+                Stochastic = RunStochasticStateV111.WithNativeRunRng(
+                    effectStartRun.Stochastic, nativeRunRng?.Fork()),
                 World = world.Fork() with
                 {
                     NextCardInstanceId = nextId,
@@ -2506,7 +2509,8 @@ public sealed partial class PrototypeGameEngine
         state = state with
         {
             Player = player,
-            NativeRunRng = nativeRunRng,
+            Stochastic = RunStochasticStateV111.WithNativeRunRng(
+                state.Stochastic, nativeRunRng),
             World = world with
             {
                 NextCardInstanceId = nextId,
@@ -3247,7 +3251,8 @@ public sealed partial class PrototypeGameEngine
             Player = player,
             World = world,
             Phase = RunPhase.Shop,
-            NativeRunRng = nativeRunRng ?? state.NativeRunRng
+            Stochastic = RunStochasticStateV111.WithNativeRunRng(
+                state.Stochastic, nativeRunRng ?? state.NativeRunRng)
         };
         return AdvanceLordsParasolPurchases(started);
     }
@@ -3427,7 +3432,8 @@ public sealed partial class PrototypeGameEngine
             return state with
             {
                 Player = resolvedPlayer,
-                NativeRunRng = nativeRunRng ?? state.NativeRunRng,
+                Stochastic = RunStochasticStateV111.WithNativeRunRng(
+                    state.Stochastic, nativeRunRng ?? state.NativeRunRng),
                 World = world with
                 {
                     Shop = shop with
@@ -3664,7 +3670,8 @@ public sealed partial class PrototypeGameEngine
         return state with
         {
             Player = player,
-            NativeRunRng = nativeRunRng ?? state.NativeRunRng,
+            Stochastic = RunStochasticStateV111.WithNativeRunRng(
+                state.Stochastic, nativeRunRng ?? state.NativeRunRng),
             World = world
         };
     }
@@ -4454,7 +4461,8 @@ public sealed partial class PrototypeGameEngine
 
         return state with
         {
-            NativeRunRng = nativeRunRng ?? state.NativeRunRng,
+            Stochastic = RunStochasticStateV111.WithNativeRunRng(
+                state.Stochastic, nativeRunRng ?? state.NativeRunRng),
             World = world with
             {
                 Reward = new RewardState(
@@ -4905,7 +4913,8 @@ public sealed partial class PrototypeGameEngine
             state = state with
             {
                 Player = player,
-                NativeRunRng = nativeRunRng ?? state.NativeRunRng,
+                Stochastic = RunStochasticStateV111.WithNativeRunRng(
+                    state.Stochastic, nativeRunRng ?? state.NativeRunRng),
                 World = world with
                 {
                     Reward = reward,
@@ -4966,7 +4975,8 @@ public sealed partial class PrototypeGameEngine
                     return EndRun(state with
                     {
                         Player = player,
-                        NativeRunRng = nativeRunRng ?? state.NativeRunRng,
+                        Stochastic = RunStochasticStateV111.WithNativeRunRng(
+                            state.Stochastic, nativeRunRng ?? state.NativeRunRng),
                         World = world
                     }, "defeat");
                 }
@@ -5325,7 +5335,8 @@ public sealed partial class PrototypeGameEngine
             state = state with
             {
                 Player = player,
-                NativeRunRng = nativeRunRng ?? state.NativeRunRng,
+                Stochastic = RunStochasticStateV111.WithNativeRunRng(
+                    state.Stochastic, nativeRunRng ?? state.NativeRunRng),
                 World = world with
                 {
                     Reward = reward,
@@ -5344,7 +5355,8 @@ public sealed partial class PrototypeGameEngine
         return state with
         {
             Player = player,
-            NativeRunRng = nativeRunRng ?? state.NativeRunRng,
+            Stochastic = RunStochasticStateV111.WithNativeRunRng(
+                state.Stochastic, nativeRunRng ?? state.NativeRunRng),
             World = world
         };
     }
@@ -5808,7 +5820,8 @@ public sealed partial class PrototypeGameEngine
                 Gold = lavaRock.Player.Gold
                     + (nativeOvergrowth ? 0 : gold)
             },
-            NativeRunRng = nativeRunRng ?? state.NativeRunRng,
+            Stochastic = RunStochasticStateV111.WithNativeRunRng(
+                state.Stochastic, nativeRunRng ?? state.NativeRunRng),
             World = world,
             Phase = RunPhase.Reward
         };

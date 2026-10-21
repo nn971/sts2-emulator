@@ -66,7 +66,8 @@ public sealed partial class PrototypeGameEngine
                 }
                 state = state with
                 {
-                    NativeRunRng = nativeStreams,
+                    Stochastic = RunStochasticStateV111.WithNativeRunRng(
+                        state.Stochastic, nativeStreams),
                     World = state.World is null || combat is null
                         ? state.World
                         : state.World with { Combat = combat }

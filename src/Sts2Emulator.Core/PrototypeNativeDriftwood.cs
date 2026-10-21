@@ -156,7 +156,8 @@ public sealed partial class PrototypeGameEngine
 
         return state with
         {
-            NativeRunRng = nativeRunRng ?? state.NativeRunRng,
+            Stochastic = RunStochasticStateV111.WithNativeRunRng(
+                state.Stochastic, nativeRunRng ?? state.NativeRunRng),
             World = world with { Reward = reward }
         };
     }

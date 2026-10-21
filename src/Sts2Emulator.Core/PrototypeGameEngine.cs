@@ -449,7 +449,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         state = state with
         {
             Player = player,
-            NativeRunRng = nativeRunRng ?? state.NativeRunRng
+            Stochastic = RunStochasticStateV111.WithNativeRunRng(
+                state.Stochastic, nativeRunRng ?? state.NativeRunRng)
         };
 
         // An event's full-belt potion offer is still pending when a

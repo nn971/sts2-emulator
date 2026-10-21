@@ -30,7 +30,8 @@ public sealed partial class PrototypeGameEngine
             after = after with
             {
                 Phase = RunPhase.Reward,
-                NativeRunRng = nativeRunRng ?? after.NativeRunRng,
+                Stochastic = RunStochasticStateV111.WithNativeRunRng(
+                    after.Stochastic, nativeRunRng ?? after.NativeRunRng),
                 World = world
             };
         }

@@ -2035,7 +2035,8 @@ public static class SemanticPilotCombatEngineV111
             };
             semanticRun = run with
             {
-                NativeRunRng = null,
+                Stochastic = RunStochasticStateV111.WithNativeRunRng(
+                    run.Stochastic, null),
                 World = routeWorld with { Combat = semanticCombat }
             };
             pendingInitialIntents = ControlledTurnIntentEngineV111.Begin(
@@ -2110,7 +2111,8 @@ public static class SemanticPilotCombatEngineV111
         NativeCombatRngEntryV111.Validate(nativeCombat);
         var nativeRun = run with
         {
-            NativeRunRng = nativeStreams.Fork(),
+            Stochastic = RunStochasticStateV111.WithNativeRunRng(
+                run.Stochastic, nativeStreams.Fork()),
             World = world with { Combat = nativeCombat }
         };
         NativeRunRngV111.Validate(nativeRun);

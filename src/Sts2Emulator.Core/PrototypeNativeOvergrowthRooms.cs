@@ -111,7 +111,8 @@ public sealed partial class PrototypeGameEngine
             // Constrained catalog exhaustion. Native uses Circlet.
             return CompleteRoomToMap(state with
             {
-                NativeRunRng = nativeRunRng ?? state.NativeRunRng,
+                Stochastic = RunStochasticStateV111.WithNativeRunRng(
+                    state.Stochastic, nativeRunRng ?? state.NativeRunRng),
                 World = world
             });
         }
@@ -126,7 +127,8 @@ public sealed partial class PrototypeGameEngine
             EndsAct: false);
         return state with
         {
-            NativeRunRng = nativeRunRng ?? state.NativeRunRng,
+            Stochastic = RunStochasticStateV111.WithNativeRunRng(
+                state.Stochastic, nativeRunRng ?? state.NativeRunRng),
             World = world with { Reward = reward },
             Phase = RunPhase.Reward
         };

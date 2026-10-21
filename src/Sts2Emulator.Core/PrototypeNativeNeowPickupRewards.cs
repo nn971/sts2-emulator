@@ -142,7 +142,8 @@ public sealed partial class PrototypeGameEngine
             return after with
             {
                 Player = player,
-                NativeRunRng = nativeRunRng ?? after.NativeRunRng,
+                Stochastic = RunStochasticStateV111.WithNativeRunRng(
+                    after.Stochastic, nativeRunRng ?? after.NativeRunRng),
                 World = world with { NextCardInstanceId = nextId }
             };
         }
@@ -152,7 +153,8 @@ public sealed partial class PrototypeGameEngine
         return after with
         {
             Player = player,
-            NativeRunRng = nativeRunRng ?? after.NativeRunRng,
+            Stochastic = RunStochasticStateV111.WithNativeRunRng(
+                after.Stochastic, nativeRunRng ?? after.NativeRunRng),
             Phase = RunPhase.Reward,
             World = world with
             {

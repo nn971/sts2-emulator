@@ -1372,9 +1372,11 @@ public static class PrototypeNativeUnderdocksRunFactory
         initialNatureState.Validate();
         var provider = new ReferenceNatureUnderdocksBossIndexProviderV111(
             initialNatureState);
-        var run = CreateCore(seed, ascension, provider) with
+        var createdRun = CreateCore(seed, ascension, provider);
+        var run = createdRun with
         {
-            ReferenceNatureState = provider.NatureState
+            Stochastic = RunStochasticStateV111.WithReferenceNature(
+                createdRun.Stochastic, provider.NatureState)
         };
         var result = new ReferenceNatureUnderdocksRunResultV111(
             run, initialNatureState.Fork(), provider.NatureState,

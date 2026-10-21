@@ -429,21 +429,27 @@ public static class V111RunFactory
     {
         var owned = (configuration ?? RunConfiguration.Create()).Fork();
         owned.Validate();
-        return PrototypeGameFactory.Create(seed, owned.Ascension) with
+        var run = PrototypeGameFactory.Create(seed, owned.Ascension);
+        return run with
         {
             GameBuild = V111Build.Id, EmulatorSchema = V111Build.StateSchema,
             RunId = $"v111-{owned.CharacterId}-{seed}", Configuration = owned,
-            NativeRunRng = NativeRngV111.CreateBundle(seed)
+            Stochastic = RunStochasticStateV111.WithNativeRunRng(
+                run.Stochastic, NativeRngV111.CreateBundle(seed))
         };
     }
 
     public static RunState CreateWithReferenceNature(string seed,
-        ulong natureSeed, RunConfiguration? configuration = null) =>
-        Create(seed, configuration) with
+        ulong natureSeed, RunConfiguration? configuration = null)
+    {
+        var run = Create(seed, configuration);
+        return run with
         {
-            ReferenceNatureState = ReferenceNatureStateV111.Create(
-                natureSeed)
+            Stochastic = RunStochasticStateV111.WithReferenceNature(
+                run.Stochastic,
+                ReferenceNatureStateV111.Create(natureSeed))
         };
+    }
 
     internal static RunState Initialize(RunState input)
     {
@@ -541,13 +547,16 @@ public static class V111RunFactory
                         ? opening.Rng.Fork() : null
             };
         runStartTranscript?.Validate();
+        var stochastic = RunStochasticStateV111.WithNativeRunRng(
+            opening.Stochastic, nativeRunRng);
+        stochastic = RunStochasticStateV111.WithReferenceNature(
+            stochastic, natureState);
         return opening with
         {
             GameBuild = input.GameBuild, EmulatorSchema = input.EmulatorSchema,
             RunId = input.RunId, DecisionIndex = input.DecisionIndex,
             Configuration = config.Fork(), Player = opening.Player with { Deck = deck },
-            NativeRunRng = nativeRunRng,
-            ReferenceNatureState = natureState,
+            Stochastic = stochastic,
             ReferenceNatureRunInitializationTranscript = runStartTranscript,
             ReferenceNatureRunInitializationPending =
                 controlledReferenceNatureRunStart &&

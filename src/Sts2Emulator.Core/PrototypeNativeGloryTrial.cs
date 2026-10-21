@@ -227,7 +227,8 @@ public sealed partial class PrototypeGameEngine
         state = state with
         {
             Player = player,
-            NativeRunRng = nativeRunRng ?? state.NativeRunRng,
+            Stochastic = RunStochasticStateV111.WithNativeRunRng(
+                state.Stochastic, nativeRunRng ?? state.NativeRunRng),
             World = world with
             {
                 NextCardInstanceId = nextId,
