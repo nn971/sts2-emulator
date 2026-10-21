@@ -1,6 +1,6 @@
 # Native event relic ReferenceNature continuation
 
-**Snapshot:** 2026-10-21. **Status:** implemented for supported configured Native event-choice relic draws, Neow Small Capsule and Large Capsule pickups, Round Tea Party, Trial, Battleworn Dummy setting-three victory, and Pael's Wing; identity-pool fidelity and Native cursor parity remain open.
+**Snapshot:** 2026-10-21. **Status:** implemented for supported configured Native event-choice relic draws, Neow Small Capsule and Large Capsule pickups, Neow's Bones relic offers, Round Tea Party, Trial, Battleworn Dummy setting-three victory, and Pael's Wing; identity-pool fidelity and Native cursor parity remain open.
 
 ## Boundary
 
@@ -25,13 +25,24 @@ and its follow-up rewards with the Nature cursor. If the bag has no eligible
 identity, the session resolves the rarity request and follows the source's
 no-relic result without an identity request.
 
+When Neow's Bones itself is selected from the opening offers or a Neow relic
+reward, the session also captures its `OfferNeowsBonesRelics` follow-up. That
+emulator path constructs the ordered eligible relic pool after adding Bones,
+then selects two distinct relics by a full descending Fisher–Yates shuffle on
+the legacy `reward` stream. The session records each conditional bounded
+integer swap, rebuilds the pool and owner from the saved origin, and commits
+the ordinary Neow result with the Nature cursor after replay. This request
+uses `run.random_pool_distinct.shuffle_swap_index`; its equal-index law on
+`reward` remains `UNVERIFIED` and makes no claim of Native source or cursor
+parity.
+
 The session also captures Neow's Small Capsule when selected from the opening
 Neow options or from a Neow relic reward. Its `OfferRandomRelic` follow-up uses
 one `unowned_relic_selection` bounded index on `player.rewards`; the request
 owner fingerprints the configured relic pool after excluding the acquired
 Small Capsule and all previously owned relics. The selected event choice or
-reward and the Nature cursor commit together. Other Neow pickup effects remain
-outside this boundary.
+reward and the Nature cursor commit together. Neow pickup effects other than
+the documented Bones and Small Capsule paths remain outside this boundary.
 
 The session also accepts a legal combat action during Battleworn Dummy's
 setting-three fight. Replay must finish the combat as a victory and reach its
@@ -91,8 +102,10 @@ resolve, fork, save, load, release, and the committed playable run.
 
 The session does not cover legacy event rewards, choices with additional fixed
 relic effects, other Neow relic-pickup effects, Battleworn settings one or two,
-or choices/actions that request a non-relic random operation. It does not
-establish source-pool completeness, hidden queue identity probabilities,
-event-selection parity, seeded Native result parity, or Native cursor parity.
-The Native reference mod and Fidelity Inspector remain needed for those
-source-evidence tasks.
+or choices/actions that request a non-relic random operation. The Neow's Bones
+offer shuffle remains a legacy `reward`-stream approximation and does not
+establish Native source or cursor parity. The session does not establish
+source-pool completeness, hidden queue identity probabilities, event-selection
+parity, seeded Native result parity, or Native cursor parity. The Native
+reference mod and Fidelity Inspector remain needed for those source-evidence
+tasks.

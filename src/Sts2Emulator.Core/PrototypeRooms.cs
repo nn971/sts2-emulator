@@ -6337,9 +6337,8 @@ public sealed partial class PrototypeGameEngine
             count,
             rng,
             streamId,
-            "run.random_pool_distinct.shuffle_swap_index",
-            streamId + ":take:" + count + ":pool:"
-                + CanonicalJson.Sha256(pool));
+            StochasticSiteRegistryV111.RandomPoolDistinctShuffleSiteId,
+            DistinctPoolShuffleOwnerId(streamId, count, pool));
 
     private static string[] PickDistinct(
         string[] pool,
@@ -6360,7 +6359,17 @@ public sealed partial class PrototypeGameEngine
             rng,
             streamId,
             siteId,
-            ownerId + ":pool:" + CanonicalJson.Sha256(pool));
+            ownerId);
         return copy.Take(Math.Min(count, copy.Length)).ToArray();
+    }
+
+    internal static string DistinctPoolShuffleOwnerId(
+        string streamId, int count, string[] pool)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
+        ArgumentNullException.ThrowIfNull(pool);
+        var fingerprint = CanonicalJson.Sha256(pool);
+        return streamId + ":take:" + count + ":pool:" + fingerprint +
+            ":pool:" + fingerprint;
     }
 }

@@ -352,6 +352,8 @@ public static class StochasticSiteRegistryV111
         "combat.relic.after_shuffle.generated_card.random_insert_index";
     public const string UnownedRandomRelicSelectionSiteId =
         "relic.unowned_random_selection.index_draw";
+    public const string RandomPoolDistinctShuffleSiteId =
+        "run.random_pool_distinct.shuffle_swap_index";
     public const string CombatEffectRandomTargetSiteId =
         "combat.effect.random_enemy";
     public const string CombatSlyAutoplayRandomTargetSiteId =
@@ -445,7 +447,7 @@ public static class StochasticSiteRegistryV111
                 "reward", "bounded_integer", 2),
             ["relic.sand_castle.acquisition_upgrade.shuffle_swap_index"] =
                 new("event", "bounded_integer", 2),
-            ["run.random_pool_distinct.shuffle_swap_index"] = new(
+            [RandomPoolDistinctShuffleSiteId] = new(
                 "reward", "bounded_integer", 2),
             ["shop.potion_offer.shuffle_swap_index"] = new(
                 "shop", "bounded_integer", 2),
@@ -697,7 +699,7 @@ public static class StochasticSiteRegistryV111
         PrototypeNativePotionShop.UniformModelSiteId,
         "reward.card_rarity.ticket",
         "reward.card_model.index_draw",
-        "run.random_pool_distinct.shuffle_swap_index",
+        RandomPoolDistinctShuffleSiteId,
         "event.reward.random_modifier_curse.index_draw",
         "event.fake_merchant.relic_offer.shuffle_swap_index",
         "event.stone_of_all_time.lift_ticket",
@@ -1012,7 +1014,7 @@ public static class StochasticSiteRegistryV111
             "combat.draw.recycle.shuffle_swap_index",
             "event.reward.card_bundle.shuffle_swap_index",
             "relic.sand_castle.acquisition_upgrade.shuffle_swap_index",
-            "run.random_pool_distinct.shuffle_swap_index",
+            RandomPoolDistinctShuffleSiteId,
             "shop.potion_offer.shuffle_swap_index",
             "shop.relic_offer.shuffle_swap_index"
         }).Distinct(StringComparer.Ordinal).ToArray();

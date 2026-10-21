@@ -130,6 +130,8 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
         PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId;
     private const string UnownedRelicSiteId =
         StochasticSiteRegistryV111.UnownedRandomRelicSelectionSiteId;
+    private const string NeowBonesRelicShuffleSiteId =
+        StochasticSiteRegistryV111.RandomPoolDistinctShuffleSiteId;
 
     [JsonIgnore]
     public string Fingerprint => CanonicalJson.Sha256(this);
@@ -148,7 +150,8 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
     public static string[] SessionSiteIds =>
         [StochasticSiteRegistryV111.RelicGrabBagRaritySiteId,
             PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId,
-            StochasticSiteRegistryV111.UnownedRandomRelicSelectionSiteId];
+            StochasticSiteRegistryV111.UnownedRandomRelicSelectionSiteId,
+            StochasticSiteRegistryV111.RandomPoolDistinctShuffleSiteId];
 
     public static ReferenceNatureNativeEventRelicSessionV111 Begin(
         RunState source, GameAction action, ulong natureSeed) => Begin(
@@ -257,7 +260,9 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
             ProviderDecisions.Length != DecisionTranscript.Length ||
             DecisionTranscript.Length >
                 ExpectedRelicBagDrawCount(Origin, Action) * 2 +
-                    ExpectedNeowUnownedRelicRequestCount(Origin, Action) ||
+                    ExpectedNeowUnownedRelicRequestCount(Origin, Action) +
+                    ExpectedNeowBonesRelicShuffleRequestCount(
+                        Origin, Action) ||
             string.IsNullOrWhiteSpace(Action.Kind))
             throw new InvalidDataException(
                 "Invalid ReferenceNature Native event relic session envelope.");
@@ -326,12 +331,17 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
             ExpectedRelicBagDrawCount(Origin, Action);
         var expectedNeowUnownedRelicRequestCount =
             ExpectedNeowUnownedRelicRequestCount(Origin, Action);
+        var expectedNeowBonesRelicShuffleRequestCount =
+            ExpectedNeowBonesRelicShuffleRequestCount(Origin, Action);
         var rarityRequestCount = ProviderDecisions.Count(decision =>
             decision.UnitFloatDecision?.Request.SiteId == RelicRaritySiteId);
         var identityRequestCount = ProviderDecisions.Count(decision =>
             decision.IndexDecision?.Request.SiteId == RelicModelSiteId);
         var unownedRelicRequestCount = ProviderDecisions.Count(decision =>
             decision.IndexDecision?.Request.SiteId == UnownedRelicSiteId);
+        var neowBonesRelicShuffleRequestCount = ProviderDecisions.Count(
+            decision => decision.IndexDecision?.Request.SiteId ==
+                NeowBonesRelicShuffleSiteId);
         if ((replay.Continuation is null) != Complete ||
             !SameRequest(replay.Continuation?.PendingRequest, PendingRequest) ||
             !SameLabels(replay.Continuation?.PendingCandidateLabels,
@@ -345,8 +355,13 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
                 expectedNeowUnownedRelicRequestCount ||
             Complete && unownedRelicRequestCount !=
                 expectedNeowUnownedRelicRequestCount ||
+            neowBonesRelicShuffleRequestCount >
+                expectedNeowBonesRelicShuffleRequestCount ||
+            Complete && neowBonesRelicShuffleRequestCount !=
+                expectedNeowBonesRelicShuffleRequestCount ||
             ProviderDecisions.Length != rarityRequestCount +
-                identityRequestCount + unownedRelicRequestCount)
+                identityRequestCount + unownedRelicRequestCount +
+                neowBonesRelicShuffleRequestCount)
             throw new InvalidDataException(
                 "Native event relic continuation differs from its replay.");
 
@@ -455,6 +470,32 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
                     actionId = PrototypeAiEnvironment.StableActionId(action),
                     request = unownedRelicRequest
                 }), unownedRelicRequest);
+        }
+
+        if (request.IndexRequest is { } neowBonesShuffleRequest &&
+            neowBonesShuffleRequest.SiteId == NeowBonesRelicShuffleSiteId)
+        {
+            var expected = NeowBonesRelicShuffleBoundary(
+                source, action, prefix);
+            if (expected is null || candidateLabels is not null ||
+                neowBonesShuffleRequest.StreamId != "reward" ||
+                neowBonesShuffleRequest.OperationKind != "bounded_integer" ||
+                neowBonesShuffleRequest.SupportCount !=
+                    expected.Value.SupportCount ||
+                neowBonesShuffleRequest.OrderedCandidates.Length != 0 ||
+                neowBonesShuffleRequest.OwnerId != expected.Value.OwnerId)
+                throw new InvalidDataException(
+                    "Neow's Bones relic shuffle differs from its current eligible pool.");
+
+            return ChanceLawEngineV111.QueryRandomIndex(
+                CanonicalJson.Sha256(new
+                {
+                    boundary = "native-neow-bones-relic-offer",
+                    eventId = PrototypeNativeOvergrowthEvents.NeowEventId,
+                    actionId = PrototypeAiEnvironment.StableActionId(action),
+                    prefixFingerprint = CanonicalJson.Sha256(prefix),
+                    request = neowBonesShuffleRequest
+                }), neowBonesShuffleRequest);
         }
 
         if (request.IndexRequest is { } indexRequest &&
@@ -600,7 +641,7 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
     private static bool IsSessionRequest(
         ControlledStochasticRequestV111 request) =>
         request.SiteId is RelicRaritySiteId or RelicModelSiteId or
-            UnownedRelicSiteId;
+            UnownedRelicSiteId or NeowBonesRelicShuffleSiteId;
 
     private static bool RequireSessionRequest(
         ControlledStochasticRequestV111 request)
@@ -624,16 +665,20 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
             PrototypeGameEngine.IsControlledEventChoice(
                 eventState.EventId, choiceId) &&
             ExpectedEventRelicDrawCount(source, action) +
-                ExpectedNeowUnownedRelicRequestCount(source, action) > 0 &&
+                ExpectedNeowUnownedRelicRequestCount(source, action) +
+                ExpectedNeowBonesRelicShuffleRequestCount(
+                    source, action) > 0 &&
             (!HasUnsupportedFixedRelicEffect(eventState.EventId, choiceId) ||
-             ExpectedNeowUnownedRelicRequestCount(source, action) > 0);
+             ExpectedNeowUnownedRelicRequestCount(source, action) > 0 ||
+             ExpectedNeowBonesRelicShuffleRequestCount(source, action) > 0);
         var eventRelicChoice = source.Phase == RunPhase.Event &&
             action.Kind == "event_choice" &&
             eventState is not null && choiceId is not null &&
             (nativeDirectEventRelicDrawCount > 0 ||
                 controlledEventRelicChoice);
         var neowRelicPickup = NeowRelicPickupDrawCount(source, action) > 0 ||
-            ExpectedNeowUnownedRelicRequestCount(source, action) > 0;
+            ExpectedNeowUnownedRelicRequestCount(source, action) > 0 ||
+            ExpectedNeowBonesRelicShuffleRequestCount(source, action) > 0;
         var battlewornRelicVictory =
             IsBattlewornSettingThreeCombat(source);
         var paelWingRelicReward = IsPaelWingRelicReward(source, action);
@@ -678,6 +723,70 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
             effects[1].Kind == PrototypeRunEffectKind.OfferRandomRelic
                 ? 1
                 : 0;
+    }
+
+    private static int ExpectedNeowBonesRelicShuffleRequestCount(
+        RunState source, GameAction action)
+    {
+        var pool = NeowBonesRelicPool(source, action);
+        return pool is { Length: >= 2 } ? pool.Length - 1 : 0;
+    }
+
+    private static string[]? NeowBonesRelicPool(
+        RunState source, GameAction action)
+    {
+        var effects = NeowPickupEffects(source, action);
+        var bonesId = PrototypeNativeOvergrowthEvents.NeowRelicId(
+            "NeowsBones");
+        if (effects is not { Length: 2 } ||
+            effects[0].Kind != PrototypeRunEffectKind.GainRelic ||
+            !StringComparer.Ordinal.Equals(effects[0].RelicId, bonesId) ||
+            effects[1].Kind != PrototypeRunEffectKind.OfferNeowsBonesRelics)
+            return null;
+
+        var owned = source.Player.Relics.Select(relic => relic.RelicId)
+            .Append(bonesId)
+            .ToHashSet(StringComparer.Ordinal);
+        return PrototypeNativeOvergrowthEvents.NeowBonesSupportedRelicNames
+            .Select(PrototypeNativeOvergrowthEvents.NeowRelicId)
+            .Where(id => !owned.Contains(id)).ToArray();
+    }
+
+    private static (int SupportCount, string OwnerId)?
+        NeowBonesRelicShuffleBoundary(
+            RunState source, GameAction action,
+            ControlledStochasticDecisionV111[] prefix)
+    {
+        var pool = NeowBonesRelicPool(source, action);
+        if (pool is not { Length: >= 2 })
+            return null;
+
+        var ownerId = PrototypeGameEngine.DistinctPoolShuffleOwnerId(
+            "reward", 2, pool);
+        var nextEnd = pool.Length - 1;
+        foreach (var savedDecision in prefix.Where(decision =>
+            decision.IndexDecision?.Request.SiteId ==
+                NeowBonesRelicShuffleSiteId))
+        {
+            var decision = savedDecision.IndexDecision!;
+            var expectedBound = nextEnd + 1;
+            if (nextEnd <= 0 || savedDecision.CandidateLabels is not null ||
+                decision.Request.StreamId != "reward" ||
+                decision.Request.OperationKind != "bounded_integer" ||
+                decision.Request.OwnerId != ownerId ||
+                decision.Request.SupportCount != expectedBound ||
+                decision.Request.OrderedCandidates.Length != 0 ||
+                decision.SelectedIndex < 0 ||
+                decision.SelectedIndex >= expectedBound)
+                throw new InvalidDataException(
+                    "Neow's Bones saved shuffle prefix differs from its source pool.");
+
+            (pool[nextEnd], pool[decision.SelectedIndex]) =
+                (pool[decision.SelectedIndex], pool[nextEnd]);
+            nextEnd--;
+        }
+
+        return nextEnd > 0 ? (nextEnd + 1, ownerId) : null;
     }
 
     private static (string[] CandidateIds, string OwnerId)?
