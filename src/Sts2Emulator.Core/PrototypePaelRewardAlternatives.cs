@@ -15,8 +15,9 @@ public sealed partial class PrototypeGameEngine
         var world = RequireWorld(state);
         var player = state.Player;
         var nativeRunRng = UsesNativeRegionalSystems(world)
-            ? state.Stochastic.NativeRunRngMutable?.Fork()
+            ? state.Stochastic.NativeRunRng?.Fork()
             : null;
+        var prototypeRng = state.Stochastic.PrototypeRng;
         var wingIndex = Array.FindIndex(player.Relics, relic =>
             relic.RelicId == NativePaelRewardsV111.WingId && !relic.IsMelted);
         var count = checked(NativePaelRewardsV111.RewardsSacrificed(player.Relics[wingIndex]) + 1);
@@ -24,14 +25,14 @@ public sealed partial class PrototypeGameEngine
         if (count % 2 == 0)
         {
             var draw = PrototypeNativeRelicGrabBag.Draw(
-                world, player, state.Stochastic.PrototypeRngMutable, merchant: false,
+                world, player, prototypeRng, merchant: false,
                 nativeRunRng: nativeRunRng);
             world = draw.World;
             var id = draw.Id ?? throw new NotSupportedException("Pael's Wing requires an available front-bag relic.");
             player = player with { Relics = [..player.Relics, new(id, PrototypeJson.EmptyObject())] };
             var nextId = world.NextCardInstanceId;
             player = ApplyRelicRunEvent(player, PrototypeRunEventKind.RelicAcquired,
-                acquiredRelicId: id, rng: state.Stochastic.PrototypeRngMutable,
+                acquiredRelicId: id, rng: prototypeRng,
                 allocateCardId: () => nextId++,
                 nativeRunRng: nativeRunRng);
             world = world with { NextCardInstanceId = nextId, Reward = world.Reward! with
@@ -40,8 +41,11 @@ public sealed partial class PrototypeGameEngine
         return state with
         {
             Player = player,
-            Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRngMutable),
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                RunStochasticStateV111.WithNativeRunRng(
+                    state.Stochastic,
+                    nativeRunRng ?? state.Stochastic.NativeRunRng),
+                prototypeRng),
             World = world
         };
     }

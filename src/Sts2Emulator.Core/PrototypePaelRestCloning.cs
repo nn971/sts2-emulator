@@ -8,6 +8,7 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidOperationException("Clone rest requires an active Pael's Growth.");
         var world = RequireWorld(state);
         var player = state.Player;
+        var prototypeRng = state.Stochastic.PrototypeRng;
         var nextId = world.NextCardInstanceId;
         // Snapshot the original pile; newly added copies are for future rests.
         foreach (var original in player.Deck.Where(card =>
@@ -21,9 +22,14 @@ public sealed partial class PrototypeGameEngine
             var card = ApplyNewCardEnchantments(player, original with
             { InstanceId = nextId++, UpgradeLevel = upgrade, PersistentState = original.PersistentState.Clone() });
             player = player with { Deck = [..player.Deck, card] };
-            player = ApplyRelicRunEvent(player, PrototypeRunEventKind.CardAdded, addedCard: card, rng: state.Stochastic.PrototypeRngMutable);
+            player = ApplyRelicRunEvent(player, PrototypeRunEventKind.CardAdded, addedCard: card, rng: prototypeRng);
         }
         return CompleteRoomToMap(state with
-        { Player = player, World = world with { NextCardInstanceId = nextId } });
+        {
+            Player = player,
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, prototypeRng),
+            World = world with { NextCardInstanceId = nextId }
+        });
     }
 }

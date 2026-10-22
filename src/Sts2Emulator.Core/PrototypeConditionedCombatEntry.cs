@@ -70,7 +70,7 @@ public static class PrototypeConditionedCombatEntry
             var combatStream = PrototypeRng.CreateBundle(
                 $"local-combat-condition-v1:{independentSearchSeed.ToLowerInvariant()}:{trial}")
                 .GetStream("combat");
-            var candidateRng = candidate.Stochastic.PrototypeRngMutable.Fork();
+            var candidateRng = candidate.Stochastic.PrototypeRng;
             candidateRng.ReplaceStream("combat", combatStream);
             candidate = candidate with
             {

@@ -125,16 +125,19 @@ public sealed partial class PrototypeGameEngine
             new PrototypeCompletedRoomRecord(
                 world.Act, world.Floor, nodeId, roomType));
 
+        var prototypeRng = state.Stochastic.PrototypeRng;
         var player = ApplyRelicRunEvent(
             state.Player,
             PrototypeRunEventKind.RoomCompleted,
-            rng: state.Stochastic.PrototypeRngMutable,
+            rng: prototypeRng,
             world: world);
 
         return state with
         {
             World = world,
-            Player = player
+            Player = player,
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, prototypeRng)
         };
     }
 }

@@ -1126,9 +1126,10 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         // Ordinary starts use the historical correlated run-seed streams.
         // A distinct, hypothetical factorized prior may instead supply
         // all six independent stream states *before* the first RNG event.
-        var rng = state.Stochastic.PrototypeRngMutable.Streams.Length == 0
+        var existingRng = state.Stochastic.PrototypeRng;
+        var rng = existingRng.Streams.Length == 0
             ? PrototypeRng.CreateBundle(state.RunSeed)
-            : state.Stochastic.PrototypeRngMutable.Fork();
+            : existingRng.Fork();
         var bossPool = PrototypeContent.OvergrowthBossEncounterPool;
         var actOneBossEncounterId = bossPool[
             ResolveLegacyRandomIndex(
@@ -1237,11 +1238,14 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             Shop = null,
             Event = null
         };
-        world = world with { Map = GenerateActMap(world.Act, state.Stochastic.PrototypeRngMutable) };
+        var prototypeRng = state.Stochastic.PrototypeRng;
+        world = world with { Map = GenerateActMap(world.Act, prototypeRng) };
 
         return state with
         {
             World = world,
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, prototypeRng),
             Phase = RunPhase.MapChoice
         };
     }

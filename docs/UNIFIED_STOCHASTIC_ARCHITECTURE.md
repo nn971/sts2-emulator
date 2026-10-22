@@ -903,6 +903,8 @@ Pending combat card selections and controlled target/card-draw resumes now use l
 
 Opening combat event dispatch and the opening hand draw also use local prototype bundles and publish them with the corresponding combat stage result.
 
+Room completion relic hooks, Pael's rest and combat-reward alternatives, and act-transition map generation now publish local prototype bundle updates with the state they produce. The run-start and hypothetical proposal paths read defensive projections when they copy or replace streams.
+
 ## Reading order
 
 1. This architecture contract.

@@ -12,6 +12,7 @@ public sealed partial class PrototypeGameEngine
 
         var player = state.Player;
         var nextCardId = world.NextCardInstanceId;
+        var prototypeRng = state.Stochastic.PrototypeRng;
         var toothIndexes = player.Relics
             .Select((relic, index) => (Relic: relic, Index: index))
             .Where(item => !item.Relic.IsMelted
@@ -26,7 +27,7 @@ public sealed partial class PrototypeGameEngine
                 continue;
 
             var selectedIndex = LegacyRandomChoiceV111.ChooseIndexRange(
-                state.Stochastic.PrototypeRngMutable,
+                prototypeRng,
                 PaelsToothCardReturnSiteId,
                 "reward",
                 $"player:0:relic:{relicIndex}:saved_cards:"
@@ -45,13 +46,15 @@ public sealed partial class PrototypeGameEngine
             };
             player = player with { Deck = player.Deck.Append(returned).ToArray() };
             player = ApplyRelicRunEvent(player, PrototypeRunEventKind.CardAdded,
-                addedCard: returned, rng: state.Stochastic.PrototypeRngMutable);
+                addedCard: returned, rng: prototypeRng);
         }
 
         return state with
         {
             Player = player,
-            World = world with { NextCardInstanceId = nextCardId }
+            World = world with { NextCardInstanceId = nextCardId },
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, prototypeRng)
         };
     }
 }
