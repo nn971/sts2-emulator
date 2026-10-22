@@ -1513,16 +1513,10 @@ public sealed partial class PrototypeGameEngine
             continuation.ChoiceId,
             decisions,
             decisionCandidateLabels);
-        trace.Validate();
-        var nextHistory =
-            (result.Stochastic.ControlledEventChoiceHistory
-                ?? Array.Empty<ControlledEventChoiceTraceV111>())
-            .Append(trace).ToArray();
         return result with
         {
-            Stochastic =
-                RunStochasticStateV111.WithControlledEventChoiceHistory(
-                    result.Stochastic, nextHistory)
+            Stochastic = result.Stochastic
+                .AppendControlledEventChoiceTrace(trace)
         };
     }
 
@@ -4490,18 +4484,10 @@ public sealed partial class PrototypeGameEngine
                 ? null
                 : PrototypeAiEnvironment.StableActionId(
                     continuation.RunAction));
-        trace.Validate();
-        var nextHistory =
-            (result.Stochastic.ControlledRunActionHistory
-                ?? Array.Empty<ControlledRunActionTraceV111>())
-            .Append(trace).ToArray();
-        var nextStochastic =
-            RunStochasticStateV111.WithControlledRunActionHistory(
-                result.Stochastic, nextHistory);
         return result with
         {
-            Stochastic = RunStochasticStateV111
-                .WithControlledRunActionChoice(nextStochastic, null)
+            Stochastic = result.Stochastic
+                .CompleteControlledRunActionTrace(trace)
         };
     }
 
@@ -5496,14 +5482,10 @@ public sealed partial class PrototypeGameEngine
             Decisions = decisions,
             CandidateLabels = decisionCandidateLabels
         };
-        completedTrace.Validate();
-        var nextHistory = (ControlledEventChoiceTraceV111[])history.Clone();
-        nextHistory[^1] = completedTrace;
         return result with
         {
-            Stochastic =
-                RunStochasticStateV111.WithControlledEventChoiceHistory(
-                    result.Stochastic, nextHistory)
+            Stochastic = result.Stochastic
+                .ReplaceLatestControlledEventChoiceTrace(completedTrace)
         };
     }
 

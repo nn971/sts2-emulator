@@ -7279,17 +7279,10 @@ public sealed record ReferenceNatureRunActionSessionV111(
         {
             TypedDecisions = decisions
         };
-        trace.Validate();
-        var nextHistory = (run.Stochastic.ControlledRunActionHistory ??
-            Array.Empty<ControlledRunActionTraceV111>())
-            .Append(trace).ToArray();
-        var nextStochastic =
-            RunStochasticStateV111.WithControlledRunActionHistory(
-                run.Stochastic, nextHistory);
         return run with
         {
-            Stochastic = RunStochasticStateV111
-                .WithControlledRunActionChoice(nextStochastic, null)
+            Stochastic = run.Stochastic
+                .CompleteControlledRunActionTrace(trace)
         };
     }
 

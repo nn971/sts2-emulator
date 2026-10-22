@@ -128,6 +128,49 @@ public sealed record RunStochasticStateV111
             _referenceNatureAncientOfferHistory, audit => audit.Fork())
     };
 
+    internal RunStochasticStateV111 AppendControlledEventChoiceTrace(
+        ControlledEventChoiceTraceV111 trace)
+    {
+        ArgumentNullException.ThrowIfNull(trace);
+        return this with
+        {
+            ControlledEventChoiceHistory = AppendValidatedTrace(
+                _controlledEventChoiceHistory, trace,
+                entry => entry.Validate(), entry => entry.Fork())
+        };
+    }
+
+    internal RunStochasticStateV111 ReplaceLatestControlledEventChoiceTrace(
+        ControlledEventChoiceTraceV111 trace)
+    {
+        ArgumentNullException.ThrowIfNull(trace);
+        trace.Validate();
+        var history = _controlledEventChoiceHistory ?? [];
+        if (history.Length == 0 || history.Any(entry => entry is null) ||
+            history[^1].EventId != trace.EventId ||
+            history[^1].ChoiceId != trace.ChoiceId)
+            throw new InvalidDataException(
+                "Controlled event-choice replacement does not match the latest trace.");
+        foreach (var entry in history)
+            entry.Validate();
+        var updated = (ControlledEventChoiceTraceV111[])history.Clone();
+        updated[^1] = trace.Fork();
+        return this with { ControlledEventChoiceHistory = updated };
+    }
+
+    internal RunStochasticStateV111 CompleteControlledRunActionTrace(
+        ControlledRunActionTraceV111 trace)
+    {
+        ArgumentNullException.ThrowIfNull(trace);
+        return this with
+        {
+            ControlledRunActionHistory = AppendValidatedTrace(
+                _controlledRunActionHistory, trace,
+                entry => entry.Validate(), entry => entry.Fork()),
+            ControlledRunActionChoice = null
+        };
+    }
+
     public void Deconstruct(
         out RngBundle PrototypeRng,
         out RngBundle? NativeRunRng,
@@ -605,4 +648,20 @@ public sealed record RunStochasticStateV111
     private static T[]? CopyTranscript<T>(T[]? values, Func<T, T> clone)
         where T : class => values?.Select(value =>
             value is null ? null! : clone(value)).ToArray();
+
+    private static T[] AppendValidatedTrace<T>(
+        T[]? transcript, T entry, Action<T> validate, Func<T, T> fork)
+        where T : class
+    {
+        validate(entry);
+        var prefix = transcript ?? [];
+        foreach (var previous in prefix)
+        {
+            if (previous is null)
+                throw new InvalidDataException(
+                    "Stochastic history contains a null trace.");
+            validate(previous);
+        }
+        return prefix.Select(fork).Append(fork(entry)).ToArray();
+    }
 }

@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 controlled run history append ownership increment (2026-10-22):**
+`RunStochasticStateV111` now validates and appends completed controlled
+event-choice and run-action traces. It also owns replacement of the latest
+event-choice trace when its deferred reward completes, and publishes a
+completed run-action trace together with clearing its continuation. Static
+source review and `git diff --check` only; no tests or builds were run.
+
 **S3 controlled playable history append ownership increment (2026-10-22):**
 `ControlledPlayableCombatStochasticStateV111` now appends each live controlled
 decision to its mixed transcript and typed projection in one validated owner
