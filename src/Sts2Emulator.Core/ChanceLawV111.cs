@@ -8308,10 +8308,13 @@ public sealed record ReferenceNatureRunActionSessionV111(
             replay.Run.Stochastic.ReferenceNatureMapGenerationHistory
                 is { Length: > 0 }
                 transitionMapHistory)
-            savedRun = savedRun with
-            {
-                ReferenceNatureMapGenerationHistory = transitionMapHistory
-            };
+        {
+            var stochastic = savedRun.Stochastic;
+            foreach (var audit in transitionMapHistory)
+                stochastic = stochastic
+                    .AppendReferenceNatureMapGenerationAudit(audit);
+            savedRun = savedRun with { Stochastic = stochastic };
+        }
         if (CanonicalJson.Sha256(replay.Run) != CanonicalJson.Sha256(savedRun) ||
             CanonicalJson.Sha256(replay.NatureState) !=
                 CanonicalJson.Sha256(snapshot.NatureState) ||

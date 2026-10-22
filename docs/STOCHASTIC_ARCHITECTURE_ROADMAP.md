@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 ReferenceNature map-audit restore ownership increment (2026-10-22):**
+Legacy run-action snapshot restoration now imports missing map-generation
+audits by replaying each entry through
+`RunStochasticStateV111.AppendReferenceNatureMapGenerationAudit`, preserving
+the owner validation and fork boundary. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S3 controlled run suspension publication increment (2026-10-22):**
 `RunStochasticStateV111.SuspendControlledRunActionChoice` and
 `SuspendControlledEventRewardChoice` now validate each continuation against

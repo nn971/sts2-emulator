@@ -117,6 +117,8 @@ The present run and combat types have overlapping representation/lifecycle respo
 
 `RunStochasticStateV111` validates and appends completed ReferenceNature map-generation audits and Ancient-offer snapshots, including when a legacy Native Ancient transition is replayed for validation.
 
+Legacy run-action snapshot restoration also imports missing map-generation audits through `RunStochasticStateV111.AppendReferenceNatureMapGenerationAudit`; the compatibility upgrade no longer replaces the complete history array directly.
+
 `RunWorldMechanicsStateV111.AppendEventId` owns event-history updates. Ordinary event entry, Native Ancient setup, and source-backed event fixtures publish the append through the world mechanics owner while retaining the flattened snapshot field.
 
 The same world mechanics owner now appends encounter IDs and completed-room records. Ordinary and controlled-playable combat entry plus map-room completion use those transitions.
