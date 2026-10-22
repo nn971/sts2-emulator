@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 automatic-pipeline cursor publication validation increment (2026-10-22):**
+`SetAutomaticPipelineContinuation` now validates the composed cursor and its
+live combat suspension payload before publishing the new continuation.
+Malformed indices and post-dispatch markers therefore fail at the shared
+writer as well as during snapshot validation. Snapshot fields are unchanged.
+Static source review and `git diff --check` only; no tests or builds were run.
+
 **S4 active hand-draw cursor validation increment (2026-10-22):** The
 automatic-pipeline stochastic owner now requires every active hand-draw
 progress mode to sit at `DrawPlayerHand` and rejects overlap with enemy-action

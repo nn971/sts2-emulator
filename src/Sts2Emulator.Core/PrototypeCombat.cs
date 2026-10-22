@@ -2132,16 +2132,16 @@ public sealed partial class PrototypeGameEngine
         var combat = world.Combat
             ?? throw new InvalidOperationException(
                 "Combat unexpectedly disappeared.");
+        var continuation = new PrototypeAutomaticPipelineContinuationState(
+            nextStepIndex, pendingPostDispatchEventKind);
+        continuation.Validate(combat);
         return state with
         {
             World = world with
             {
                 Combat = combat with
                 {
-                    AutomaticPipelineContinuation =
-                        new PrototypeAutomaticPipelineContinuationState(
-                            nextStepIndex,
-                            pendingPostDispatchEventKind)
+                    AutomaticPipelineContinuation = continuation
                 }
             }
         };
