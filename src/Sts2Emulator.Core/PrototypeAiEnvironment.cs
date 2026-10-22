@@ -631,10 +631,10 @@ public sealed class PrototypeAiEnvironment
                         ? null
                         : (string[])world.Event.OfferedChoiceIds.Clone(),
                     world.Event.EventId == PrototypeNativeEndlessConveyor.EventId
-                        ? world.Event.NativeDishId
+                        ? world.Event.Stochastic.RandomOutcomes.NativeDishId
                         : null,
                     world.Event.EventId == PrototypeNativeEndlessConveyor.EventId
-                        ? world.Event.NativeDishCount
+                        ? world.Event.Stochastic.RandomOutcomes.NativeDishCount
                         : null,
                     VisibleEventChoiceValues(world.Event, state.Player)),
             MapGenerationProfileId:
@@ -784,7 +784,7 @@ public sealed class PrototypeAiEnvironment
                 new("nab", GuaranteedCardId: "proto.native.neow.injury")
             ],
             PrototypeNativeEndlessConveyor.EventId =>
-                evt.NativeDishId == "GOLDEN_FYSH"
+                evt.Stochastic.RandomOutcomes.NativeDishId == "GOLDEN_FYSH"
                     ?
                     [
                         new("grab", GoldGain: 75)
@@ -792,9 +792,9 @@ public sealed class PrototypeAiEnvironment
                     :
                     [
                         new("grab", GoldCost: 40,
-                            Heal: evt.NativeDishId == "CLAM_ROLL" ? 10 : null,
-                            MaxHpDelta: evt.NativeDishId == "CAVIAR" ? 4 : null,
-                            GuaranteedCardId: evt.NativeDishId == "SEAPUNK_SALAD"
+                            Heal: evt.Stochastic.RandomOutcomes.NativeDishId == "CLAM_ROLL" ? 10 : null,
+                            MaxHpDelta: evt.Stochastic.RandomOutcomes.NativeDishId == "CAVIAR" ? 4 : null,
+                            GuaranteedCardId: evt.Stochastic.RandomOutcomes.NativeDishId == "SEAPUNK_SALAD"
                                 ? PrototypeNativeEndlessConveyor.FeedingFrenzyId
                                 : null)
                     ],

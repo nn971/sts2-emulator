@@ -378,7 +378,7 @@ public sealed partial class PrototypeGameEngine
                 // All pending dish effects have settled. The source rolls
                 // the next dish here, after Jelly Liver transformation or
                 // Suspicious Condiment's optional potion reward completes.
-                if (eventState.NativeDishRollPending)
+                if (eventState.Stochastic.RandomOutcomes.NativeDishRollPending)
                 {
                     return PrototypeNativeEndlessConveyor.RollNextDish(
                         state with

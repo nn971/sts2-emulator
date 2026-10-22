@@ -128,7 +128,7 @@ public sealed partial record EventState
                 || eventState.DeferredHpLoss != 0
                 || eventState.DeferredGoldLoss != 0
                 || eventState.DeferredCardId is not null
-                || eventState.NativeDishRollPending)
+                || eventState.Stochastic.RandomOutcomes.NativeDishRollPending)
                 throw new InvalidOperationException(
                     "Native event completion page has unresolved or invalid state.");
             return;
@@ -501,9 +501,9 @@ public sealed partial record EventState
     {
         if (evt.NativePageIndex == 0)
         {
-            if (evt.NativeDishCount != 1
+            if (evt.Stochastic.RandomOutcomes.NativeDishCount != 1
                 || evt.ChosenChoiceId is not null
-                || evt.NativeDishRollPending)
+                || evt.Stochastic.RandomOutcomes.NativeDishRollPending)
             {
                 throw new InvalidOperationException(
                     "Endless Conveyor initial page is inconsistent.");
@@ -521,7 +521,7 @@ public sealed partial record EventState
             throw new InvalidOperationException(
                 "Endless Conveyor has two active selection prompts.");
         }
-        if (evt.NativeDishRollPending
+        if (evt.Stochastic.RandomOutcomes.NativeDishRollPending
             && evt.PendingDeckChoice is null
             && evt.PendingPotionReplacement is null
             && evt.RemainingDeckChoices.Length == 0
@@ -534,7 +534,7 @@ public sealed partial record EventState
             || evt.PendingPotionReplacement is not null
             || evt.RemainingDeckChoices.Length > 0
             || evt.RemainingPotionIds.Length > 0)
-            && !evt.NativeDishRollPending)
+            && !evt.Stochastic.RandomOutcomes.NativeDishRollPending)
         {
             throw new InvalidOperationException(
                 "Endless Conveyor selection lacks a deferred dish roll.");

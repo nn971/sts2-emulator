@@ -14,6 +14,8 @@
 
 **S3 event potion-slot owner read increment (2026-10-22):** Stone of All Time entry validation, event-choice/session guards, and Native event replay now read the committed potion slot through `EventStochasticStateV111.RandomOutcomes`. Flattened event fields, selected slots, and serialized snapshots are unchanged. Static source review and `git diff --check` only; no tests or builds were run.
 
+**S3 committed Conveyor outcome owner read increment (2026-10-22):** Endless Conveyor dish identity, previous dish, count, and deferred-roll status now flow through `EventStochasticStateV111.RandomOutcomes` in event mechanics, validation, Native event replay, Nature sessions, and observations. Flattened event fields and serialized snapshots are unchanged. Static source review and `git diff --check` only; no tests or builds were run.
+
 **S3 controlled event/run-action continuation read increment (2026-10-22):** Controlled event-choice admission, validation, enumeration, scripted run-action admission, run-action validation, and provider replay capture now read pending continuations and committed histories through `RunStochasticStateV111` and `EventStochasticStateV111`. Snapshot projections and replay outcomes are unchanged. Static source review and `git diff --check` only; no tests or builds were run.
 
 **S3 JSONL controlled-continuation owner read increment (2026-10-22):** JSONL session results, event/run-action observations, and pending-choice inspection now read suspended continuations and committed histories through the run and event stochastic owners. Serialized JSON fields and session handles remain unchanged. Static source review and `git diff --check` only; no tests or builds were run.

@@ -406,16 +406,16 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
                 ChosenChoiceId: "grab",
                 NativeDishRollPending: false
             } &&
-            preDrawEvent.NativeDishCount == expectedPreDrawDishCount &&
-            preDrawEvent.NativeDishId is not null &&
-            preDrawEvent.NativeDishId == preDrawEvent.NativeLastDishId;
+            preDrawEvent.Stochastic.RandomOutcomes.NativeDishCount == expectedPreDrawDishCount &&
+            preDrawEvent.Stochastic.RandomOutcomes.NativeDishId is not null &&
+            preDrawEvent.Stochastic.RandomOutcomes.NativeDishId == preDrawEvent.Stochastic.RandomOutcomes.NativeLastDishId;
         if (capture is null || preDrawEvent is null ||
             CanonicalJson.Sha256(capture.Request) !=
                 CanonicalJson.Sha256(decision.Request) ||
             capture.PreDrawState.Phase != RunPhase.Event ||
             capture.PreDrawState.World?.Combat is not null ||
             preDrawEvent.EventId != expectedEventId ||
-            preDrawEvent.NativeDishRollPending ||
+            preDrawEvent.Stochastic.RandomOutcomes.NativeDishRollPending ||
             preDrawEvent.Stochastic.RandomOutcomes.NativeEventPotionSlot
                 is not null ||
             preDrawStream is null ||

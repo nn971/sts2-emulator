@@ -516,7 +516,7 @@ public static class ReferenceNatureChanceLawDecisionV111
             var candidates = PrototypeNativeEndlessConveyor
                 .GetWeightedDishCandidates(conditioningRun, eventState);
             var totalWeight = candidates.Sum(candidate => candidate.Weight);
-            var rollNumber = eventState.NativeDishCount + 1;
+            var rollNumber = eventState.Stochastic.RandomOutcomes.NativeDishCount + 1;
             var gridWeights = ChanceLawEngineV111
                 .NativeNextFloatWeightedTicketGridWeights(candidates
                     .Select(candidate => candidate.Weight).ToArray());

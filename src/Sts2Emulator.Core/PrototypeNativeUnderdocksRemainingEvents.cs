@@ -53,7 +53,7 @@ public static class PrototypeNativeEndlessConveyor
         var current = world.Event
             ?? throw new InvalidOperationException(
                 "Endless Conveyor has no active event.");
-        var nextRoll = current.NativeDishCount + 1;
+        var nextRoll = current.Stochastic.RandomOutcomes.NativeDishCount + 1;
         if (nextRoll % 5 == 0)
         {
             // The source forces Seapunk Salad without calling NextFloat.
@@ -89,7 +89,7 @@ public static class PrototypeNativeEndlessConveyor
         var ownerId = $"dish:{nextRoll}:pool:{CanonicalJson.Sha256(candidates)}";
         if (state.Stochastic.NativeRunRng is not null
             && (current.Stochastic.NativeRng is not null
-                || current.NativeDishCount == 0))
+                || current.Stochastic.RandomOutcomes.NativeDishCount == 0))
         {
             var draw = NativeEventContextRngV111.ResolveUnitFloat(
                 state,
@@ -148,7 +148,7 @@ public static class PrototypeNativeEndlessConveyor
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(current);
         if (current.EventId != EventId ||
-            (current.NativeDishCount + 1) % 5 == 0)
+            (current.Stochastic.RandomOutcomes.NativeDishCount + 1) % 5 == 0)
             throw new InvalidOperationException(
                 "Endless Conveyor dish candidate query is not at a weighted roll.");
         var candidates = BaseDishes.ToList();
@@ -156,9 +156,9 @@ public static class PrototypeNativeEndlessConveyor
             candidates.Add(("SUSPICIOUS_CONDIMENT", 3));
         if (state.Player.Hp < state.Player.MaxHp)
             candidates.Add(("CLAM_ROLL", 6));
-        if (current.NativeDishCount + 1 > 1)
+        if (current.Stochastic.RandomOutcomes.NativeDishCount + 1 > 1)
             candidates.Add(("GOLDEN_FYSH", 1));
-        candidates.RemoveAll(dish => dish.Id == current.NativeLastDishId);
+        candidates.RemoveAll(dish => dish.Id == current.Stochastic.RandomOutcomes.NativeLastDishId);
         return candidates.ToArray();
     }
 
@@ -180,33 +180,33 @@ public static class PrototypeNativeEndlessConveyor
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(current);
         var initialEntryBoundary = current.NativePageIndex == 0 &&
-            current.ChosenChoiceId is null && !current.NativeDishRollPending;
+            current.ChosenChoiceId is null && !current.Stochastic.RandomOutcomes.NativeDishRollPending;
         var completedObserveBoundary =
             current.NativePageIndex ==
                 PrototypeNativeEventCompletionPages.TerminalChoicePageIndex(
                     EventId) &&
             current.ChosenChoiceId == "observe" &&
-            !current.NativeDishRollPending;
+            !current.Stochastic.RandomOutcomes.NativeDishRollPending;
         var deferredGrabBoundary = current.NativePageIndex == 1 &&
-            current.ChosenChoiceId == "grab" && current.NativeDishRollPending &&
-            (current.NativeDishId == "JELLY_LIVER" &&
+            current.ChosenChoiceId == "grab" && current.Stochastic.RandomOutcomes.NativeDishRollPending &&
+            (current.Stochastic.RandomOutcomes.NativeDishId == "JELLY_LIVER" &&
                 (current.PendingDeckChoice is not null ||
                  current.RemainingDeckChoices.Length > 0) ||
-             current.NativeDishId == "SUSPICIOUS_CONDIMENT" &&
+             current.Stochastic.RandomOutcomes.NativeDishId == "SUSPICIOUS_CONDIMENT" &&
                 (current.PendingPotionReplacement is not null ||
                  current.RemainingPotionIds.Length > 0));
         var completedGrabBoundary = current.NativePageIndex == 1 &&
-            current.ChosenChoiceId == "grab" && !current.NativeDishRollPending &&
-            current.NativeDishCount >= 2;
+            current.ChosenChoiceId == "grab" && !current.Stochastic.RandomOutcomes.NativeDishRollPending &&
+            current.Stochastic.RandomOutcomes.NativeDishCount >= 2;
         if (state.Phase != RunPhase.Event ||
             state.World?.Combat is not null ||
             current.EventId != EventId ||
             !(initialEntryBoundary || completedObserveBoundary || deferredGrabBoundary ||
                 completedGrabBoundary) ||
-            current.NativeDishCount < 1 || current.NativeDishCount % 5 == 0 ||
-            current.NativeDishId is null ||
-            current.NativeDishId != current.NativeLastDishId ||
-            current.NativeDishId == "SEAPUNK_SALAD" ||
+            current.Stochastic.RandomOutcomes.NativeDishCount < 1 || current.Stochastic.RandomOutcomes.NativeDishCount % 5 == 0 ||
+            current.Stochastic.RandomOutcomes.NativeDishId is null ||
+            current.Stochastic.RandomOutcomes.NativeDishId != current.Stochastic.RandomOutcomes.NativeLastDishId ||
+            current.Stochastic.RandomOutcomes.NativeDishId == "SEAPUNK_SALAD" ||
             string.IsNullOrWhiteSpace(state.RunSeed) ||
             state.Stochastic.NativeRunRng is null || current.Stochastic.NativeRng is not { } stream)
             return false;
@@ -216,7 +216,7 @@ public static class PrototypeNativeEndlessConveyor
         if (stream.StreamId != expected.StreamId)
             return false;
         var precedingRollCount = initialEntryBoundary
-            ? 0 : current.NativeDishCount - 1;
+            ? 0 : current.Stochastic.RandomOutcomes.NativeDishCount - 1;
         var precedingEvent = new EventState(EventId);
         precedingEvent = precedingEvent with
         {
@@ -230,7 +230,7 @@ public static class PrototypeNativeEndlessConveyor
         var candidates = GetWeightedDishCandidates(
             state, precedingEvent);
         return candidates.Any(candidate =>
-            candidate.Id == current.NativeDishId);
+            candidate.Id == current.Stochastic.RandomOutcomes.NativeDishId);
     }
 }
 
@@ -317,7 +317,7 @@ public sealed partial class PrototypeGameEngine
         result.Add(GameAction.Create(
             "event_choice",
             new EventChoicePayload(
-                evt.NativeDishCount == 1 ? "observe" : "leave")));
+                evt.Stochastic.RandomOutcomes.NativeDishCount == 1 ? "observe" : "leave")));
         return result;
     }
 
@@ -328,7 +328,7 @@ public sealed partial class PrototypeGameEngine
         var evt = world.Event
             ?? throw new InvalidOperationException("No Conveyor event.");
         var choice = action.ReadPayload<EventChoicePayload>().ChoiceId;
-        if (choice == "observe" && evt.NativeDishCount == 1)
+        if (choice == "observe" && evt.Stochastic.RandomOutcomes.NativeDishCount == 1)
         {
             state = UpgradeRandomEligibleConveyorCard(state);
             world = RequireWorld(state);
@@ -348,7 +348,7 @@ public sealed partial class PrototypeGameEngine
             };
             return PreserveNativeEventCompletionPage(result, choice);
         }
-        if (choice == "leave" && evt.NativeDishCount > 1)
+        if (choice == "leave" && evt.Stochastic.RandomOutcomes.NativeDishCount > 1)
         {
             var result = state with
             {
@@ -368,12 +368,12 @@ public sealed partial class PrototypeGameEngine
         var playerAfter = state.Player with
         {
             Gold = state.Player.Gold
-                - (evt.NativeDishId == "GOLDEN_FYSH" ? 0 : 40)
+                - (evt.Stochastic.RandomOutcomes.NativeDishId == "GOLDEN_FYSH" ? 0 : 40)
         };
         var nextCardId = world.NextCardInstanceId;
         PrototypePendingEventDeckChoiceState[] pendingCards = [];
         string[] pendingPotions = [];
-        switch (evt.NativeDishId)
+        switch (evt.Stochastic.RandomOutcomes.NativeDishId)
         {
             case "CAVIAR":
                 playerAfter = playerAfter with
@@ -412,7 +412,7 @@ public sealed partial class PrototypeGameEngine
                     throw new NotSupportedException(
                         "Fried Eel has no supported Colorless card.");
                 }
-                var ownerId = $"dish:{evt.NativeDishCount}:pool:"
+                var ownerId = $"dish:{evt.Stochastic.RandomOutcomes.NativeDishCount}:pool:"
                     + CanonicalJson.Sha256(pool);
                 int selectedIndex;
                 if (state.Stochastic.NativeRunRng is not null
@@ -456,7 +456,7 @@ public sealed partial class PrototypeGameEngine
                     PrototypeNativePotionShop.PickUniform(
                         state.Stochastic.PrototypeRng,
                         "reward",
-                        $"event:endless_conveyor:dish:{evt.NativeDishCount}:potion")
+                        $"event:endless_conveyor:dish:{evt.Stochastic.RandomOutcomes.NativeDishCount}:potion")
                 ];
                 break;
 
@@ -483,7 +483,7 @@ public sealed partial class PrototypeGameEngine
 
             default:
                 throw new InvalidOperationException(
-                    $"Unknown Conveyor dish '{evt.NativeDishId}'.");
+                    $"Unknown Conveyor dish '{evt.Stochastic.RandomOutcomes.NativeDishId}'.");
         }
 
         // Native awaits the entire dish action, including a card-selection

@@ -395,18 +395,18 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
             var choice = action.ReadPayload<EventChoicePayload>().ChoiceId;
             if (choice == "observe")
                 return [PrototypeNativeEndlessConveyor.UpgradeCardSiteId];
-            if (choice == "grab" && evt.NativeDishId == "FRIED_EEL" &&
+            if (choice == "grab" && evt.Stochastic.RandomOutcomes.NativeDishId == "FRIED_EEL" &&
                 origin.Player.Gold >= 40)
                 return [PrototypeNativeEndlessConveyor.ColorlessCardSiteId,
                     PrototypeNativeEndlessConveyor.DishWeightedTicketSiteId];
-            if (choice == "grab" && evt.NativeDishId == "SPICY_SNAPPY" &&
+            if (choice == "grab" && evt.Stochastic.RandomOutcomes.NativeDishId == "SPICY_SNAPPY" &&
                 origin.Player.Gold >= 40 &&
                 PrototypeNativeEndlessConveyor
                     .GetUpgradeCardCandidates(origin).Length > 0)
                 return [PrototypeNativeEndlessConveyor.UpgradeCardSiteId,
                     PrototypeNativeEndlessConveyor.DishWeightedTicketSiteId];
             if (choice == "grab" &&
-                evt.NativeDishId == "SUSPICIOUS_CONDIMENT")
+                evt.Stochastic.RandomOutcomes.NativeDishId == "SUSPICIOUS_CONDIMENT")
                 return [PrototypeNativePotionShop.UniformModelSiteId];
         }
         return [PrototypeNativeEndlessConveyor.DishWeightedTicketSiteId];
@@ -500,7 +500,7 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
         if (siteId == PrototypeNativeEndlessConveyor.DishWeightedTicketSiteId)
         {
             var candidates = GetLegacyDishCandidates(origin, probedRun);
-            var previousCount = origin.World?.Event?.NativeDishCount ?? 0;
+            var previousCount = origin.World?.Event?.Stochastic.RandomOutcomes.NativeDishCount ?? 0;
             var totalWeight = candidates.Sum(candidate => candidate.Weight);
             var ownerId = $"dish:{previousCount + 1}:pool:"
                 + CanonicalJson.Sha256(candidates);
@@ -517,12 +517,12 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
             PrototypeNativeEndlessConveyor.UpgradeCardSiteId =>
                 UpgradeFallbackSupport(origin),
             PrototypeNativeEndlessConveyor.ColorlessCardSiteId =>
-                ($"dish:{origin.World?.Event?.NativeDishCount ?? 0}:pool:"
+                ($"dish:{origin.World?.Event?.Stochastic.RandomOutcomes.NativeDishCount ?? 0}:pool:"
                     + CanonicalJson.Sha256(
                         PrototypeNativeEndlessConveyor.GetColorlessCardCandidates()),
                  PrototypeNativeEndlessConveyor.GetColorlessCardCandidates().Length),
             PrototypeNativePotionShop.UniformModelSiteId =>
-                ($"event:endless_conveyor:dish:{origin.World?.Event?.NativeDishCount ?? 0}:potion:pool:"
+                ($"event:endless_conveyor:dish:{origin.World?.Event?.Stochastic.RandomOutcomes.NativeDishCount ?? 0}:potion:pool:"
                     + CanonicalJson.Sha256(
                         PrototypeNativePotionShop.NativePotionPoolOrder),
                  PrototypeNativePotionShop.NativePotionPoolOrder.Count),
@@ -560,8 +560,8 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
                 current.Stochastic,
                 current.Stochastic.RandomOutcomes with
                 {
-                    NativeDishCount = previous?.NativeDishCount ?? 0,
-                    NativeLastDishId = previous?.NativeLastDishId
+                    NativeDishCount = previous?.Stochastic.RandomOutcomes.NativeDishCount ?? 0,
+                    NativeLastDishId = previous?.Stochastic.RandomOutcomes.NativeLastDishId
                 })
         };
         var world = probedRun.World
@@ -583,8 +583,8 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
             action.ReadPayload<EventChoicePayload>().ChoiceId != "grab" ||
             evt is null ||
             evt.EventId != PrototypeNativeEndlessConveyor.EventId ||
-            evt.NativeDishId != "SUSPICIOUS_CONDIMENT" ||
-            evt.NativeDishRollPending ||
+            evt.Stochastic.RandomOutcomes.NativeDishId != "SUSPICIOUS_CONDIMENT" ||
+            evt.Stochastic.RandomOutcomes.NativeDishRollPending ||
             evt.PendingPotionReplacement is not null ||
             evt.RemainingPotionIds.Length != 0 ||
             string.IsNullOrWhiteSpace(origin.RunSeed) ||
@@ -597,7 +597,7 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
                 "Suspicious Condiment potion law requires its legal Grab action before the queued potion is resolved.");
 
         var ownerPrefix =
-            $"event:endless_conveyor:dish:{evt.NativeDishCount}:potion";
+            $"event:endless_conveyor:dish:{evt.Stochastic.RandomOutcomes.NativeDishCount}:potion";
         return ChanceLawEngineV111.QueryLegacyUniformPotionModel(
             "reward", ownerPrefix,
             GetLegacyStreamOrdinal(origin, "reward"));
@@ -934,8 +934,8 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
                 eventState.EventId != PrototypeNativeEndlessConveyor.EventId ||
                 eventState.NativePageIndex != 1 ||
                 eventState.ChosenChoiceId != "grab" ||
-                eventState.NativeDishId != "SUSPICIOUS_CONDIMENT" ||
-                !eventState.NativeDishRollPending ||
+                eventState.Stochastic.RandomOutcomes.NativeDishId != "SUSPICIOUS_CONDIMENT" ||
+                !eventState.Stochastic.RandomOutcomes.NativeDishRollPending ||
                 eventState.PendingPotionReplacement?.PotionId !=
                     candidates[selection.OutcomeIndex] ||
                 run.Player.Gold != origin.Player.Gold - 40 ||
@@ -956,7 +956,7 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
         RunState run, ReferenceNatureSelectionV111 selection)
     {
         if (!selection.OutcomeId.StartsWith("dish:", StringComparison.Ordinal) ||
-            run.World?.Event?.NativeDishId != selection.OutcomeId[5..])
+            run.World?.Event?.Stochastic.RandomOutcomes.NativeDishId != selection.OutcomeId[5..])
             throw new InvalidDataException(
                 "Scripted Endless Conveyor ticket resolved a different dish than its Nature outcome.");
     }
@@ -984,7 +984,7 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
             ticket -= candidate.Weight;
         }
         if (expectedDish is null ||
-            run.World?.Event?.NativeDishId != expectedDish)
+            run.World?.Event?.Stochastic.RandomOutcomes.NativeDishId != expectedDish)
             throw new InvalidDataException(
                 "Scripted Endless Conveyor fallback ticket resolved a different dish.");
     }
