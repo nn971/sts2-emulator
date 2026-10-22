@@ -44,15 +44,12 @@ public sealed partial class PrototypeGameEngine
                 "Automatic hand-draw progress is outside its pipeline checkpoint.");
 
         var world = RequireWorld(state);
-        combat = combat with
-        {
-            AutomaticPipelineContinuation =
-                cursor.WithHandDrawProgress(progress)
-        };
+        var updatedCombat = AttachValidatedAutomaticPipelineContinuation(
+            combat, cursor.WithHandDrawProgress(progress));
         return state with
         {
             Player = player,
-            World = world with { Combat = combat }
+            World = world with { Combat = updatedCombat }
         };
     }
 
@@ -294,10 +291,8 @@ public sealed partial class PrototypeGameEngine
         {
             Mechanics = completedMechanics
         };
-        combat = combat with
-        {
-            AutomaticPipelineContinuation = completedCursor
-        };
+        combat = AttachValidatedAutomaticPipelineContinuation(
+            combat, completedCursor);
         return state with { World = world with { Combat = combat } };
     }
 

@@ -1885,20 +1885,20 @@ public sealed partial class PrototypeGameEngine
         if (pipeline is null)
             return state;
 
+        var updatedPipeline = pipeline with
+        {
+            Stochastic = pipeline.Stochastic with
+            {
+                ControlledTurnIntents = intents?.Fork()
+            }
+        };
+        var updatedCombat = AttachValidatedAutomaticPipelineContinuation(
+            combat, updatedPipeline);
         return state with
         {
             World = world! with
             {
-                Combat = combat with
-                {
-                    AutomaticPipelineContinuation = pipeline with
-                    {
-                        Stochastic = pipeline.Stochastic with
-                        {
-                            ControlledTurnIntents = intents?.Fork()
-                        }
-                    }
-                }
+                Combat = updatedCombat
             }
         };
     }
@@ -1952,14 +1952,14 @@ public sealed partial class PrototypeGameEngine
         var advancedCombat = advanced.World?.Combat ??
             throw new InvalidDataException(
                 "AdvanceTurn completion removed active combat unexpectedly.");
+        var updatedAdvancedCombat =
+            AttachValidatedAutomaticPipelineContinuation(
+                advancedCombat, resumedCursor);
         advanced = advanced with
         {
             World = advanced.World! with
             {
-                Combat = advancedCombat with
-                {
-                    AutomaticPipelineContinuation = resumedCursor
-                }
+                Combat = updatedAdvancedCombat
             }
         };
         var resumed = state with
@@ -2009,16 +2009,16 @@ public sealed partial class PrototypeGameEngine
         var checkpointCombat = checkpointWorld.Combat ??
             throw new InvalidDataException(
                 "Enemy-action replay checkpoint has no active combat.");
+        var checkpointCombatWithCursor =
+            AttachValidatedAutomaticPipelineContinuation(
+                checkpointCombat,
+                new PrototypeAutomaticPipelineContinuationState(
+                    replay.StepIndex));
         checkpoint = checkpoint with
         {
             World = checkpointWorld with
             {
-                Combat = checkpointCombat with
-                {
-                    AutomaticPipelineContinuation =
-                        new PrototypeAutomaticPipelineContinuationState(
-                            replay.StepIndex)
-                }
+                Combat = checkpointCombatWithCursor
             }
         };
         return ResumeAutomaticPipelineContinuation(
@@ -2134,17 +2134,29 @@ public sealed partial class PrototypeGameEngine
                 "Combat unexpectedly disappeared.");
         var continuation = new PrototypeAutomaticPipelineContinuationState(
             nextStepIndex, pendingPostDispatchEventKind);
-        continuation.Validate(combat);
+        var updatedCombat = AttachValidatedAutomaticPipelineContinuation(
+            combat, continuation);
         return state with
         {
             World = world with
             {
-                Combat = combat with
-                {
-                    AutomaticPipelineContinuation = continuation
-                }
+                Combat = updatedCombat
             }
         };
+    }
+
+    internal static CombatState AttachValidatedAutomaticPipelineContinuation(
+        CombatState combat,
+        PrototypeAutomaticPipelineContinuationState continuation)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(continuation);
+        var updatedCombat = combat with
+        {
+            AutomaticPipelineContinuation = continuation
+        };
+        continuation.Validate(updatedCombat);
+        return updatedCombat;
     }
 
     private static RunState SetControlledEnemyActionContinuation(
@@ -2162,21 +2174,15 @@ public sealed partial class PrototypeGameEngine
         var replay = new PrototypeControlledEnemyActionContinuationV111(
             savedCheckpoint, stepIndex, decisions, pendingRequest);
         replay.Validate(PrototypeContent.Rules.EndTurnPipeline.Length);
+        var continuation = new PrototypeAutomaticPipelineContinuationState(
+            stepIndex, ControlledEnemyAction: replay);
+        var updatedCombat = AttachValidatedAutomaticPipelineContinuation(
+            combat, continuation);
         return savedCheckpoint with
         {
             World = savedCheckpoint.World! with
             {
-                Combat = combat with
-                {
-                    AutomaticPipelineContinuation =
-                        new PrototypeAutomaticPipelineContinuationState(
-                            stepIndex)
-                        {
-                            Stochastic =
-                                new PrototypeAutomaticPipelineStochasticStateV111(
-                                    ControlledEnemyAction: replay)
-                        }
-                }
+                Combat = updatedCombat
             }
         };
     }

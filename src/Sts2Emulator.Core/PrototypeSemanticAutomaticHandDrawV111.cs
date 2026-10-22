@@ -218,11 +218,8 @@ public sealed partial class PrototypeGameEngine
                 after.CounterState.CardsDrawnThisCombat - cardsDrawnBefore);
         var completedCursor = completed.WithHandDrawProgress(null)
             .WithCompletedSemanticHandDrawReceipt(requested);
-        after = after with
-        {
-            AutomaticPipelineContinuation =
-                completedCursor
-        };
+        after = AttachValidatedAutomaticPipelineContinuation(
+            after, completedCursor);
         result = result with
         {
             World = RequireWorld(result) with { Combat = after }

@@ -99,17 +99,16 @@ public sealed partial class PrototypeGameEngine
         var combat = world.Combat ??
             throw new InvalidOperationException(
                 "Opening combat disappeared before its cursor was saved.");
+        var continuation = new PrototypeAutomaticPipelineContinuationState(
+            PrototypeContent.Rules.EndTurnPipeline.Length,
+            OpeningStage: nextStage);
+        var updatedCombat = AttachValidatedAutomaticPipelineContinuation(
+            combat, continuation);
         return state with
         {
             World = world with
             {
-                Combat = combat with
-                {
-                    AutomaticPipelineContinuation =
-                        new PrototypeAutomaticPipelineContinuationState(
-                            PrototypeContent.Rules.EndTurnPipeline.Length,
-                            OpeningStage: nextStage)
-                }
+                Combat = updatedCombat
             }
         };
     }

@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 automatic-pipeline continuation publication owner increment (2026-10-22):**
+`AttachValidatedAutomaticPipelineContinuation` now validates and publishes
+non-null pipeline cursors through one runtime boundary. Opening-stage,
+hand-draw, turn-intent, and enemy-action writers use it, so cursor and payload
+validation happen against the candidate combat before publication. Snapshot
+fields remain unchanged. Static source review and `git diff --check` only; no
+tests or builds were run.
+
 **S4 automatic-pipeline cursor publication validation increment (2026-10-22):**
 `SetAutomaticPipelineContinuation` now validates the composed cursor and its
 live combat suspension payload before publishing the new continuation.
