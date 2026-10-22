@@ -2692,14 +2692,26 @@ public static class SemanticPilotCombatEngineV111
                 "No semantic potion-generation event is pending.");
         var expected = SemanticPotionGenerationChoiceV111.Select(
             pending, eventId, potionId);
+        return ResumePotionGenerationDecision(current, expected);
+    }
+
+    private static SemanticPilotCombatV111 ResumePotionGenerationDecision(
+        SemanticPilotCombatV111 current,
+        SemanticPotionGenerationDecisionV111 decision)
+    {
+        var pending = current.PotionGenerationPending ??
+            throw new InvalidOperationException(
+                "No semantic potion-generation event is pending.");
+        SemanticPotionGenerationChoiceV111.ValidateDecision(
+            pending, decision, decision.SelectedPotionId);
         var choice = new SemanticEndTurnNestedChoiceV111(
             "semantic_potion_generation",
-            PotionGenerationDecision: expected.Fork());
+            PotionGenerationDecision: decision.Fork());
         return ResumeAndPublishNestedChoice(
             current, choice,
             new SemanticPilotContinuationV111(
                 "semantic_potion_generation",
-                PotionGenerationDecision: expected.Fork()),
+                PotionGenerationDecision: decision.Fork()),
             normalizeNoncontrolledCosts: true,
             validate: false);
     }
@@ -4012,9 +4024,8 @@ public static class SemanticPilotCombatEngineV111
                         replay, transition.GeneratedCardDecision),
                 "semantic_potion_generation" when
                     transition.PotionGenerationDecision is not null =>
-                    ResolvePotionGeneration(replay, replay.Fingerprint,
-                        transition.PotionGenerationDecision.Event.EventId,
-                        transition.PotionGenerationDecision.SelectedPotionId),
+                    ResumePotionGenerationDecision(
+                        replay, transition.PotionGenerationDecision),
                 "semantic_card_transform" when
                     transition.CardTransformDecision is not null =>
                     ResumeCardTransformDecision(

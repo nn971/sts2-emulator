@@ -2,15 +2,16 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
-**S4 Native combat-card generation stream attribution increment (2026-10-22):**
+**S4 Native combat-generation stream attribution increment (2026-10-22):**
 Supported generated-model, random draw-Attack, and transform choices now label
-their typed semantic events with `run.combat_card_generation` when Native
-combat run streams are present, matching ordinary Native execution.
-Prototype-only choices retain `prototype.combat`; prior prototype-labeled
-decisions remain valid when replaying Native-backed histories, and pilot
-restore republishes the saved typed decision so its original transcript is
-preserved. Probability status and Native cursor parity remain unverified.
-Static source review and `git diff --check` only; no tests or builds were run.
+their typed semantic events with `run.combat_card_generation`, while random
+combat-potion choices use `run.combat_potion_generation`, when Native combat
+run streams are present. These match ordinary Native execution. Prototype-only
+choices retain `prototype.combat`; prior prototype-labeled decisions remain
+valid when replaying Native-backed histories, and pilot restore republishes the
+saved typed decision so its original transcript is preserved. Probability
+status and Native cursor parity remain unverified. Static source review and
+`git diff --check` only; no tests or builds were run.
 
 **S4 turn-start selection inventory correction (2026-10-22):** The current
 continuation already admits source-driven player-turn discard counts and

@@ -26,7 +26,8 @@ public sealed record SemanticPotionGenerationEventV111(
         if (SchemaId != SemanticPotionGenerationChoiceV111.SchemaId ||
             string.IsNullOrWhiteSpace(EventId) ||
             SiteId != SemanticPotionGenerationChoiceV111.SiteId ||
-            StreamId != "prototype.combat" ||
+            (StreamId != SemanticPotionGenerationChoiceV111.StreamId &&
+             StreamId != SemanticPotionGenerationChoiceV111.NativeStreamId) ||
             string.IsNullOrWhiteSpace(OwnerId) || Ordinal < 0 ||
             OperationKind != "choose_potion_model" ||
             candidatePotionIds is not { Length: > 0 } ||
@@ -68,18 +69,25 @@ public static class SemanticPotionGenerationChoiceV111
 {
     public const string SchemaId = "sts2-v111-semantic-potion-generation-v1";
     public const string SiteId = "combat.potion_generation.random_model";
+    internal const string StreamId = "prototype.combat";
+    internal const string NativeStreamId = "run.combat_potion_generation";
 
     internal static RandomIndexRequestV111 CreateRequest(
-        string ownerId, int ordinal, int supportCount)
+        string ownerId, int ordinal, int supportCount,
+        string streamId = StreamId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
         if (ordinal < 0)
             throw new ArgumentOutOfRangeException(nameof(ordinal));
         if (supportCount <= 0)
             throw new ArgumentOutOfRangeException(nameof(supportCount));
+        if (streamId is not (StreamId or NativeStreamId))
+            throw new NotSupportedException(
+                "UNSUPPORTED_RANDOM_SITE site=" + SiteId +
+                " operation=potion_generation_stream.");
 
         var request = new RandomIndexRequestV111(
-            SiteId, "prototype.combat", ownerId, ordinal,
+            SiteId, streamId, ownerId, ordinal,
             Enumerable.Range(0, supportCount).ToArray(),
             OperationKind: "choose_index");
         request.Validate();
@@ -88,7 +96,7 @@ public static class SemanticPotionGenerationChoiceV111
 
     internal static SemanticPotionGenerationEventV111 CreateEvent(
         string boundaryFingerprint, string ownerId, int ordinal,
-        string[] candidatePotionIds)
+        string[] candidatePotionIds, string streamId = StreamId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(boundaryFingerprint);
         ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
@@ -96,8 +104,10 @@ public static class SemanticPotionGenerationChoiceV111
         if (ordinal < 0)
             throw new ArgumentOutOfRangeException(nameof(ordinal));
         var candidates = (string[])candidatePotionIds.Clone();
-        var request = CreateRequest(ownerId, ordinal, candidates.Length);
+        var request = CreateRequest(
+            ownerId, ordinal, candidates.Length, streamId);
         var supportFingerprint = CanonicalJson.Sha256(candidates);
+        // Keep saved event IDs stable across stream-label attribution.
         var eventId = CanonicalJson.Sha256(new
         {
             SchemaId,
@@ -127,12 +137,15 @@ public static class SemanticPotionGenerationChoiceV111
             throw new InvalidDataException(
                 "Potion-generation request has no controlled choice.");
         ValidateBoundary(run);
+        var combat = run.World?.Combat;
+        var streamId = combat?.Stochastic.NativeRngMutable is not null
+            ? NativeStreamId : StreamId;
         var ownerId = "effect:" + generation.Operation.Kind + ":source:" +
             (choice!.SourceCardInstanceId?.ToString() ?? "none") + ":pool:" +
             CanonicalJson.Sha256(generation.CandidatePotionIds);
         return CreateEvent(
             boundaryFingerprint, ownerId, ordinal,
-            generation.CandidatePotionIds);
+            generation.CandidatePotionIds, streamId);
     }
 
     internal static void ValidateBoundary(RunState run)
@@ -187,9 +200,17 @@ public static class SemanticPotionGenerationChoiceV111
         ArgumentException.ThrowIfNullOrWhiteSpace(selectedPotionId);
         pending?.Validate();
         decision.Validate();
+        bool legacyPrototypeStream = pending is not null &&
+            pending.StreamId == NativeStreamId &&
+            decision.Event.StreamId == StreamId &&
+            CanonicalJson.Sha256(pending with
+            {
+                StreamId = decision.Event.StreamId
+            }) == CanonicalJson.Sha256(decision.Event);
         if (pending is null || selectedPotionId != decision.SelectedPotionId ||
-            CanonicalJson.Sha256(pending) !=
-                CanonicalJson.Sha256(decision.Event))
+            (CanonicalJson.Sha256(pending) !=
+                CanonicalJson.Sha256(decision.Event) &&
+             !legacyPrototypeStream))
             throw new InvalidDataException(
                 "Potion-generation decision no longer matches the pending event.");
     }
@@ -207,6 +228,10 @@ public static class SemanticPotionGenerationChoiceV111
             throw new InvalidDataException(
                 "Potion-generation choice lost its source combat.");
         var generation = combat.PendingChoice?.ControlledPotionGeneration;
+        if (decision.Event.StreamId == NativeStreamId &&
+            combat.Stochastic.NativeRngMutable is null)
+            throw new InvalidDataException(
+                "Native potion-generation stream attribution has no Native combat RNG owner.");
         if (generation is null ||
             !generation.CandidatePotionIds.SequenceEqual(
                 decision.Event.CandidatePotionIds))
