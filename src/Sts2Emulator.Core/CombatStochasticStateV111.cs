@@ -3,12 +3,31 @@ namespace Sts2Emulator.Core;
 /// <summary>
 /// Atomic combat-level ownership of provider-private RNG and unresolved deck
 /// state. Compatibility properties on <see cref="CombatState"/> preserve the
-/// current snapshot wire representation during the migration.
+/// current snapshot wire representation during the migration. Native RNG
+/// sidecars are copied on assignment; defensive owner projections remain in
+/// progress.
 /// </summary>
-public sealed record CombatStochasticStateV111(
-    NativeCombatRngV111? NativeRng = null,
-    SemanticDeckStateV111? SemanticDeck = null)
+public sealed record CombatStochasticStateV111
 {
+    private NativeCombatRngV111? _nativeRng;
+
+    [System.Text.Json.Serialization.JsonConstructor]
+    public CombatStochasticStateV111(
+        NativeCombatRngV111? NativeRng = null,
+        SemanticDeckStateV111? SemanticDeck = null)
+    {
+        this.NativeRng = NativeRng;
+        this.SemanticDeck = SemanticDeck;
+    }
+
+    public NativeCombatRngV111? NativeRng
+    {
+        get => _nativeRng;
+        init => _nativeRng = value?.Fork();
+    }
+
+    public SemanticDeckStateV111? SemanticDeck { get; init; }
+
     public CombatStochasticStateV111 Fork() => this with
     {
         NativeRng = NativeRng?.Fork(),
