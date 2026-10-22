@@ -14,7 +14,8 @@ public static class NativeEventContextRngV111
         RunState state, string? nativeEventEntry)
     {
         ArgumentNullException.ThrowIfNull(state);
-        return state.NativeRunRng is null || nativeEventEntry is null
+        return state.Stochastic.NativeRunRng is null ||
+            nativeEventEntry is null
             ? null
             : NativeRngV111Contexts.ForEvent(
                 state.RunSeed, nativeEventEntry);
@@ -35,8 +36,9 @@ public static class NativeEventContextRngV111
         if (candidateCount <= 0)
             throw new ArgumentOutOfRangeException(nameof(candidateCount));
 
-        var nativeStream = eventState.NativeEventRng;
-        if (nativeStream is null && state.NativeRunRng is not null)
+        var nativeStream = eventState.Stochastic.NativeRng;
+        if (nativeStream is null &&
+            state.Stochastic.NativeRunRng is not null)
         {
             if (eventState.NativePageIndex != 0
                 || eventState.ChosenChoiceId is not null
@@ -52,7 +54,7 @@ public static class NativeEventContextRngV111
         if (nativeStream is null)
         {
             return (state, LegacyRandomChoiceV111.ChooseIndexRange(
-                state.Rng, siteId, "event", ownerId,
+                state.Stochastic.PrototypeRng, siteId, "event", ownerId,
                 candidateCount).SelectedIndex);
         }
 
@@ -101,8 +103,9 @@ public static class NativeEventContextRngV111
         if (boundedCount <= 0)
             throw new ArgumentOutOfRangeException(nameof(boundedCount));
 
-        var nativeStream = eventState.NativeEventRng;
-        if (nativeStream is null && state.NativeRunRng is not null)
+        var nativeStream = eventState.Stochastic.NativeRng;
+        if (nativeStream is null &&
+            state.Stochastic.NativeRunRng is not null)
         {
             if (eventState.NativePageIndex != 0
                 || eventState.ChosenChoiceId is not null
@@ -116,7 +119,7 @@ public static class NativeEventContextRngV111
         {
             return (state,
                 LegacyRandomChoiceV111.ChooseBoundedInteger(
-                    state.Rng, siteId, "event", ownerId,
+                    state.Stochastic.PrototypeRng, siteId, "event", ownerId,
                     boundedCount).SelectedIndex);
         }
 
@@ -165,8 +168,9 @@ public static class NativeEventContextRngV111
         if (ordinal < 0)
             throw new ArgumentOutOfRangeException(nameof(ordinal));
 
-        var nativeStream = eventState.NativeEventRng;
-        if (nativeStream is null && state.NativeRunRng is not null)
+        var nativeStream = eventState.Stochastic.NativeRng;
+        if (nativeStream is null &&
+            state.Stochastic.NativeRunRng is not null)
         {
             if (eventState.NativePageIndex != 0
                 || eventState.ChosenChoiceId is not null
@@ -227,8 +231,9 @@ public static class NativeEventContextRngV111
 
         NativeEventRandomProbeV111.CaptureShuffle(siteId, ownerId, values);
 
-        var nativeStream = eventState.NativeEventRng;
-        if (nativeStream is null && state.NativeRunRng is not null)
+        var nativeStream = eventState.Stochastic.NativeRng;
+        if (nativeStream is null &&
+            state.Stochastic.NativeRunRng is not null)
         {
             if (eventState.NativePageIndex != 0
                 || eventState.ChosenChoiceId is not null
@@ -241,7 +246,8 @@ public static class NativeEventContextRngV111
         if (nativeStream is null)
         {
             _ = LegacyFisherYatesV111.ShuffleInPlace(
-                values, state.Rng, "event", siteId, ownerId,
+                values, state.Stochastic.PrototypeRng, "event", siteId,
+                ownerId,
                 ordinalOffset);
             return state;
         }
@@ -281,10 +287,12 @@ public static class NativeEventContextRngV111
             || eventState.EventId != prototypeEventId)
             return;
 
-        if (state.NativeRunRng is null)
+        var runStochastic = state.Stochastic;
+        var eventStochastic = eventState.Stochastic;
+        if (runStochastic.NativeRunRng is null)
         {
-            if (eventState.NativeEventRng is not null ||
-                eventState.NativeEventRngProviderMode is not null)
+            if (eventStochastic.NativeRng is not null ||
+                eventStochastic.ProviderMode is not null)
                 throw new InvalidOperationException(
                     "Legacy event state cannot own a native event RNG.");
             return;
@@ -292,9 +300,9 @@ public static class NativeEventContextRngV111
 
         // Null is accepted for a pre-migration save. ResolveIndex can rebuild
         // the unadvanced entry stream only while the event is still on page 0.
-        if (eventState.NativeEventRng is not { } stream)
+        if (eventStochastic.NativeRng is not { } stream)
         {
-            if (eventState.NativeEventRngProviderMode is not null)
+            if (eventStochastic.ProviderMode is not null)
                 throw new InvalidOperationException(
                     "Native event provider mode is present without its context stream.");
             return;
@@ -304,7 +312,7 @@ public static class NativeEventContextRngV111
         if (stream.StreamId != initial.StreamId)
             throw new InvalidOperationException(
                 "Event RNG has the wrong native context.");
-        if (eventState.NativeEventRngProviderMode is not { } providerMode)
+        if (eventStochastic.ProviderMode is not { } providerMode)
             return;
         var scriptedTrashHeapRewardPresent =
             eventState.ChosenChoiceId switch
@@ -582,16 +590,16 @@ public static class NativeEventContextRngV111
 
     private static string? ProviderModeAfterResolution(
         EventState eventState, string decisionProviderMode) =>
-        eventState.NativeEventRngProviderMode == "scripted-v111" &&
+        eventState.Stochastic.ProviderMode == "scripted-v111" &&
         decisionProviderMode == "native-v111"
             ? null
-            : eventState.NativeEventRngProviderMode;
+            : eventState.Stochastic.ProviderMode;
 
     private static string? ProviderModeAfterShuffle(
         EventState eventState, RngStreamState before,
         RngStreamState after) =>
-        eventState.NativeEventRngProviderMode == "scripted-v111" &&
+        eventState.Stochastic.ProviderMode == "scripted-v111" &&
         NativeRngV111.ToSnapshot(before) != NativeRngV111.ToSnapshot(after)
             ? null
-            : eventState.NativeEventRngProviderMode;
+            : eventState.Stochastic.ProviderMode;
 }
