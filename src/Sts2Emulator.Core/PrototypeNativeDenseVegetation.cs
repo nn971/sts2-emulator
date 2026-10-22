@@ -43,15 +43,18 @@ public sealed partial class PrototypeGameEngine
                     }, "defeat");
                 }
 
+                var prototypeRng = state.Stochastic.PrototypeRng;
                 var gold = current.Stochastic.RandomOutcomes.NativeEventGold
                     is >= 61 and <= 99
                     ? current.Stochastic.RandomOutcomes.NativeEventGold
                     : 61 + LegacyRandomChoiceV111.ChooseBoundedInteger(
-                        state.Stochastic.PrototypeRngMutable,
+                        prototypeRng,
                         "event.generated_gold.index_draw",
                         "event",
                         "event:dense_vegetation:trudge_gold",
                         39).SelectedIndex;
+                var stochastic = RunStochasticStateV111.WithPrototypeRng(
+                    state.Stochastic, prototypeRng);
                 var result = state with
                 {
                     Player = state.Player with
@@ -59,6 +62,7 @@ public sealed partial class PrototypeGameEngine
                         Hp = hpAfter,
                         Gold = GoldAfterGain(state.Player, gold)
                     },
+                    Stochastic = stochastic,
                     World = world with
                     {
                         Event = current with { ChosenChoiceId = choiceId }
@@ -78,13 +82,17 @@ public sealed partial class PrototypeGameEngine
                     Hp = Math.Min(state.Player.MaxHp,
                         state.Player.Hp + healing)
                 };
+                var prototypeRng = state.Stochastic.PrototypeRng;
                 player = ApplyRelicRunEvent(
                     player,
                     PrototypeRunEventKind.RestSiteHealed,
-                    rng: state.Stochastic.PrototypeRngMutable);
+                    rng: prototypeRng);
+                var stochastic = RunStochasticStateV111.WithPrototypeRng(
+                    state.Stochastic, prototypeRng);
                 return state with
                 {
                     Player = player,
+                    Stochastic = stochastic,
                     World = world with
                     {
                         Event = current with { NativePageIndex = 1 }
