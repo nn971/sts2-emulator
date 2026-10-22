@@ -486,7 +486,7 @@ public sealed partial class PrototypeGameEngine
         {
             Stochastic = RunStochasticStateV111.WithNativeRunRng(
                 state.Stochastic,
-                combat.Stochastic.NativeRng?.RunStreams.Fork()
+                combat.Stochastic.NativeRngMutable?.RunStreams.Fork()
                     ?? state.Stochastic.NativeRunRngMutable?.Fork()),
             World = entryWorld,
             Phase = RunPhase.Combat
@@ -498,10 +498,10 @@ public sealed partial class PrototypeGameEngine
         // owner; later Step() calls continue from these precise positions.
         var nextStochastic = RunStochasticStateV111.WithPrototypeRng(
             state.Stochastic, prototypeRng.Fork());
-        if (combat.Stochastic.NativeRng is not null)
+        if (combat.Stochastic.NativeRngMutable is not null)
             nextStochastic = RunStochasticStateV111.WithNativeRunRng(
                 nextStochastic,
-                combat.Stochastic.NativeRng.RunStreams.Fork());
+                combat.Stochastic.NativeRngMutable.RunStreams.Fork());
         state = state with { Stochastic = nextStochastic };
 
         return ResumeSemanticInitialCombatEntry(state with
@@ -521,7 +521,7 @@ public sealed partial class PrototypeGameEngine
             world.Combat is null || combat.Act != world.Act)
             throw new InvalidOperationException(
                 "Initial intent continuation has an invalid combat-entry source.");
-        var nativeStreams = combat.Stochastic.NativeRng?.RunStreams.Fork()
+        var nativeStreams = combat.Stochastic.NativeRngMutable?.RunStreams.Fork()
             ?? source.Stochastic.NativeRunRngMutable?.Fork();
         var advanced = source with
         {
@@ -529,7 +529,7 @@ public sealed partial class PrototypeGameEngine
                 source.Stochastic, nativeStreams),
             World = world with { Combat = combat.Fork() }
         };
-        if (nativeStreams is not null && combat.Stochastic.NativeRng is not null)
+        if (nativeStreams is not null && combat.Stochastic.NativeRngMutable is not null)
             NativeRunRngV111.Validate(advanced);
         advanced = ApplyOpeningRoyalPoison(advanced);
         return ResumeAutomaticPipelineContinuation(
@@ -3438,7 +3438,7 @@ public sealed partial class PrototypeGameEngine
         CombatState combat, RngBundle rng,
         string siteId = NativeCombatRngEntryV111.CommittedIntentSiteId)
     {
-        if (combat.Stochastic.NativeRng is null)
+        if (combat.Stochastic.NativeRngMutable is null)
             throw new InvalidOperationException("Native intent audit requires attached native RNG.");
         var decisions = new List<RandomIndexDecisionV111>();
         var result = CommitEnemyIntentsCore(combat, rng, decisions, siteId);
@@ -3454,7 +3454,7 @@ public sealed partial class PrototypeGameEngine
             throw new NotSupportedException(
                 $"UNSUPPORTED_RANDOM_SITE site={siteId} " +
                 "operation=enemy_intent_commit.");
-        var ownedNative = combat.Stochastic.NativeRng?.Fork();
+        var ownedNative = combat.Stochastic.NativeRngMutable?.Fork();
         var formation = combat.Enemies.Select(enemy => enemy.Fork()).ToArray();
         var provider = new NativeRandomIndexProviderV111();
         int occurrence = 0;
@@ -4039,7 +4039,7 @@ public sealed partial class PrototypeGameEngine
         for (var index = 0; index < enemies.Count; index++)
         {
             var enemy = enemies[index];
-            var enemyCombatId = combat.Stochastic.NativeRng is { } nativeRng
+            var enemyCombatId = combat.Stochastic.NativeRngMutable is { } nativeRng
                 ? index < nativeRng.Formation.MonsterContexts.Length
                     ? nativeRng.Formation.MonsterContexts[index].CombatId
                     : throw new InvalidDataException(
@@ -4592,9 +4592,9 @@ public sealed partial class PrototypeGameEngine
                             if (effect.EnemyId is null)
                                 throw new InvalidOperationException(
                                     "Enemy transformation requires a model ID.");
-                            if (combat.Stochastic.NativeRng is not null)
+                            if (combat.Stochastic.NativeRngMutable is not null)
                             {
-                                if (combat.Stochastic.NativeRng.Formation.NativeEncounterEntry
+                                if (combat.Stochastic.NativeRngMutable.Formation.NativeEncounterEntry
                                         == "OvicopterNormal"
                                     && enemy.EnemyId ==
                                         PrototypeNativeHiveSummoningNormals.ToughEggId
@@ -4828,7 +4828,7 @@ public sealed partial class PrototypeGameEngine
                         case PrototypeEnemyEffectKind.SummonEnemy:
                         {
                             var summonId = effect.EnemyId;
-                            if (combat.Stochastic.NativeRng is not null
+                            if (combat.Stochastic.NativeRngMutable is not null
                                 && effect.SummonEnemyPool is { Length: > 0 })
                                 throw new NotSupportedException(
                                     "Native summon pools need audited source RNG selection.");
@@ -4876,7 +4876,7 @@ public sealed partial class PrototypeGameEngine
                             // run.niche after selecting a legal summon
                             // slot. Do not consume prototype combat RNG.
                             var summonedHp =
-                                combat.Stochastic.NativeRng is not null
+                                combat.Stochastic.NativeRngMutable is not null
                                     ? hpRange.Max
                                     : hpRange.Min == hpRange.Max
                                         ? hpRange.Min
@@ -4916,7 +4916,7 @@ public sealed partial class PrototypeGameEngine
                                 // source slot (bomb1 -> bomb5). The
                                 // prototype's default last-slot preference
                                 // remains intact for all other encounters.
-                                var sourceFirst = combat.Stochastic.NativeRng?.Formation
+                                var sourceFirst = combat.Stochastic.NativeRngMutable?.Formation
                                         .NativeEncounterEntry == "LivingFogNormal"
                                     && enemy.EnemyId == "proto.enemy.living_fog"
                                     && summonId == "proto.enemy.gas_bomb";
@@ -4977,7 +4977,7 @@ public sealed partial class PrototypeGameEngine
                                         definition.MaxCoordinatedSummons > 0
                                             ? enemy.SharedSummonsUsed + 1
                                             : 0);
-                            if (combat.Stochastic.NativeRng is not null)
+                            if (combat.Stochastic.NativeRngMutable is not null)
                             {
                                 combat = NativeCombatRngEntryV111.AppendSummonedEnemy(
                                     combat, enemies, spawnedEnemy);
@@ -5231,14 +5231,14 @@ public sealed partial class PrototypeGameEngine
             // (new CombatId, new niche roll), then Add(precreated Fat).
             // The legacy emulator lists Sneaky first: reorder only the
             // opt-in native creation calls, not legacy behavior.
-            var nativeMerc = combat.Stochastic.NativeRng?.Formation.NativeEncounterEntry
+            var nativeMerc = combat.Stochastic.NativeRngMutable?.Formation.NativeEncounterEntry
                     == "GremlinMercNormal"
                 && source.EnemyId == "proto.enemy.gremlin_merc";
             var orderedSummons = nativeMerc
                 ? summons.Reverse().ToArray()
                 : summons;
             var nativePhrog =
-                combat.Stochastic.NativeRng?.Formation.NativeEncounterEntry
+                combat.Stochastic.NativeRngMutable?.Formation.NativeEncounterEntry
                     == "PhrogParasiteElite"
                 && source.EnemyId == "proto.enemy.phrog_parasite";
             if (nativePhrog
@@ -5274,7 +5274,7 @@ public sealed partial class PrototypeGameEngine
                         : enemies.Max(enemy =>
                             enemy.InstanceId) + 1;
                 var hp =
-                    combat.Stochastic.NativeRng is not null
+                    combat.Stochastic.NativeRngMutable is not null
                         ? hpRange.Max
                         : hpRange.Min == hpRange.Max
                             ? hpRange.Min
@@ -5336,7 +5336,7 @@ public sealed partial class PrototypeGameEngine
                             summon.SkipEnemyActions == 1
                                 ? Math.Max(0, enemyActionSkips)
                                 : Math.Max(0, summon.SkipEnemyActions));
-                if (combat.Stochastic.NativeRng is not null)
+                if (combat.Stochastic.NativeRngMutable is not null)
                 {
                     combat = NativeCombatRngEntryV111.AppendSummonedEnemy(
                         combat, enemies, spawnedEnemy,
@@ -7070,7 +7070,7 @@ public sealed partial class PrototypeGameEngine
                             combat, candidates, continuation));
                     }
 
-                    var nativeRunStreams = combat.Stochastic.NativeRng?.RunStreams.Fork();
+                    var nativeRunStreams = combat.Stochastic.NativeRngMutable?.RunStreams.Fork();
                     var streamId = nativeRunStreams is null
                         ? "combat"
                         : "run.combat_card_selection";
@@ -7117,8 +7117,8 @@ public sealed partial class PrototypeGameEngine
                         Stochastic = CombatStochasticStateV111.WithNativeRng(
                             committedDraw.Stochastic,
                             nativeRunStreams is null
-                                ? committedDraw.Stochastic.NativeRng
-                                : committedDraw.Stochastic.NativeRng! with
+                                ? committedDraw.Stochastic.NativeRngMutable
+                                : committedDraw.Stochastic.NativeRngMutable! with
                                 {
                                     RunStreams = nativeRunStreams
                                 })
@@ -7805,7 +7805,7 @@ public sealed partial class PrototypeGameEngine
                                 "UNSUPPORTED_CONTROLLED_CHANCE " +
                                 "site=combat.potion_generation.random_model " +
                                 "operation=choose_index requires a saved potion continuation.");
-                        var native = combat.Stochastic.NativeRng;
+                        var native = combat.Stochastic.NativeRngMutable;
                         var streamId = native is null
                             ? "combat"
                             : "run.combat_potion_generation";
@@ -9144,7 +9144,7 @@ public sealed partial class PrototypeGameEngine
 
         var selectedCount = Math.Min(count, candidates.Length);
         var useNativeProvider = useNativeCardGenerationRng &&
-            combat.Stochastic.NativeRng is not null;
+            combat.Stochastic.NativeRngMutable is not null;
         // GetDistinctForCombat delegates to TakeRandom, which shuffles the
         // full filtered pool before taking a prefix. Preserve that RNG call
         // count even when the effect asks for only a few cards.
@@ -10362,7 +10362,7 @@ public sealed partial class PrototypeGameEngine
             throw new ArgumentOutOfRangeException(nameof(bound));
         if (cardInstanceId <= 0)
             throw new ArgumentOutOfRangeException(nameof(cardInstanceId));
-        var native = combat.Stochastic.NativeRng;
+        var native = combat.Stochastic.NativeRngMutable;
         if (ControlledChanceGuardV111.Active &&
             ControlledChanceGuardV111.EngineOwnedNativeProviderActive &&
             native is null)
@@ -13816,7 +13816,7 @@ public sealed partial class PrototypeGameEngine
                 "Random enemy selection requires a nonempty unique support.",
                 nameof(eligibleEnemyInstanceIds));
 
-        var native = combat.Stochastic.NativeRng;
+        var native = combat.Stochastic.NativeRngMutable;
         var streamId = native is null
             ? legacyStreamId
             : "run.combat_targets";
@@ -13880,7 +13880,7 @@ public sealed partial class PrototypeGameEngine
                 "UNSUPPORTED_CONTROLLED_CHANCE site=combat.random_hand_card " +
                 "operation=provider_dispatch requires a saved hand-cost continuation.");
 
-        var native = combat.Stochastic.NativeRng;
+        var native = combat.Stochastic.NativeRngMutable;
         var streamId = native is null
             ? "combat"
             : selectingCard
@@ -13949,7 +13949,7 @@ public sealed partial class PrototypeGameEngine
                 "Random combat-card selection requires ordered unique instances.",
                 nameof(orderedCardInstanceIds));
 
-        var native = combat.Stochastic.NativeRng;
+        var native = combat.Stochastic.NativeRngMutable;
         var streamId = native is null
             ? legacyStreamId
             : nativeStreamId;
@@ -14036,7 +14036,7 @@ public sealed partial class PrototypeGameEngine
                 "site=" + siteId + " " +
                 "operation=shuffle requires a saved shortlist continuation.");
 
-        var native = forceLegacyProfile ? null : combat.Stochastic.NativeRng;
+        var native = forceLegacyProfile ? null : combat.Stochastic.NativeRngMutable;
         var streamId = native is null
             ? legacyStreamId
             : nativeStreamId;
@@ -14095,7 +14095,7 @@ public sealed partial class PrototypeGameEngine
         if (ordinal < 0)
             throw new ArgumentOutOfRangeException(nameof(ordinal));
 
-        var native = combat.Stochastic.NativeRng;
+        var native = combat.Stochastic.NativeRngMutable;
         var streamId = native is null
             ? "combat"
             : "run.combat_card_generation";
@@ -14155,7 +14155,7 @@ public sealed partial class PrototypeGameEngine
                 "Random insertion support requires unique card instances.",
                 nameof(orderedDrawPile));
 
-        var native = combat.Stochastic.NativeRng;
+        var native = combat.Stochastic.NativeRngMutable;
         var streamId = native is null
             ? "combat"
             : "run.shuffle";
@@ -14909,7 +14909,7 @@ public sealed partial class PrototypeGameEngine
     {
         if (combat.Stochastic.SemanticDeck is
                 { Mode: SemanticDeckStateV111.NativeMode } &&
-            combat.Stochastic.NativeRng is null)
+            combat.Stochastic.NativeRngMutable is null)
             throw new NotSupportedException(
                 $"UNSUPPORTED_SEMANTIC_NATIVE site={siteId} " +
                 "operation=missing_native_stream_owner");
@@ -15274,7 +15274,7 @@ public sealed partial class PrototypeGameEngine
         // generalized HP-threshold behavior unless native combat owns
         // one of these source-audited bosses.
         var nativeDamageOnlyThreshold =
-            (combat.Stochastic.NativeRng?.Formation.NativeEncounterEntry,
+            (combat.Stochastic.NativeRngMutable?.Formation.NativeEncounterEntry,
                 enemy.EnemyId) is
             ("CeremonialBeastBoss", "proto.enemy.ceremonial_beast")
             or ("TerrorEelElite", "proto.enemy.terror_eel");
@@ -16297,7 +16297,7 @@ public sealed partial class PrototypeGameEngine
                     "operation=missing_semantic_continuation");
             if (semanticDeck is
                     { Mode: SemanticDeckStateV111.NativeMode } &&
-                combat.Stochastic.NativeRng is null)
+                combat.Stochastic.NativeRngMutable is null)
                 throw new NotSupportedException(
                     "UNSUPPORTED_SEMANTIC_NATIVE site=combat.draw " +
                     "operation=missing_native_stream_owner");

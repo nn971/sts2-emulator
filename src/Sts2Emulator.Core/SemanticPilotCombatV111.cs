@@ -653,7 +653,7 @@ public sealed record SemanticPilotCombatV111(
                     CanonicalJson.Sha256(
                         PrototypeGameEngine.ClearAutomaticPipelineContinuation(
                             initialIntents.BaselineCombat)) ||
-                entryCombat.Stochastic.NativeRng is not null ||
+                entryCombat.Stochastic.NativeRngMutable is not null ||
                 entryCombat.Stochastic.SemanticDeck is not null ||
                 this.Run.Stochastic.NativeRunRngMutable is not null)
                 throw new InvalidDataException(
@@ -1900,7 +1900,7 @@ public static class SemanticPilotCombatEngineV111
             combat.AutomaticPipelineContinuation is not null ||
             combat.Enemies.Any(enemy => enemy.PlannedMoveIndex is not null ||
                 enemy.PlannedNextAiStateId is not null) ||
-            combat.Stochastic.NativeRng is not { } nativeCombat ||
+            combat.Stochastic.NativeRngMutable is not { } nativeCombat ||
             run.Stochastic.NativeRunRngMutable is null)
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_ROUTE site=act1.entry " +
@@ -2113,7 +2113,7 @@ public static class SemanticPilotCombatEngineV111
             "Native policy entry is missing its run world.");
         var combat = world.Combat ?? throw new InvalidDataException(
             "Native policy entry is missing its combat.");
-        if (run.Stochastic.NativeRunRngMutable is not null || combat.Stochastic.NativeRng is not null ||
+        if (run.Stochastic.NativeRunRngMutable is not null || combat.Stochastic.NativeRngMutable is not null ||
             combat.Stochastic.SemanticDeck is null ||
             combat.Stochastic.SemanticDeck.Mode != SemanticDeckStateV111.NatureMode)
             throw new InvalidOperationException(
@@ -4043,7 +4043,7 @@ public static class SemanticPilotCombatEngineV111
             throw new InvalidDataException(
                 "Native policy action did not reach an active combat boundary.");
         var combat = run.World!.Combat!;
-        if (combat.Stochastic.NativeRng is null || run.Stochastic.NativeRunRngMutable is null)
+        if (combat.Stochastic.NativeRngMutable is null || run.Stochastic.NativeRunRngMutable is null)
             throw new InvalidDataException(
                 "Native policy combat lost its RNG stream owner.");
         if (combat.Stochastic.SemanticDeck is not { } deck ||

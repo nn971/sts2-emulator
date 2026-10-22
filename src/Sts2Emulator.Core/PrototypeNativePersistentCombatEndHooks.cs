@@ -23,7 +23,7 @@ public sealed partial class PrototypeGameEngine
         var player = state.Player;
         var rng = state.Stochastic.PrototypeRngMutable.Fork();
         var nativeRunStreams =
-            state.World?.Combat?.Stochastic.NativeRng?.RunStreams.Fork()
+            state.World?.Combat?.Stochastic.NativeRngMutable?.RunStreams.Fork()
             ?? state.Stochastic.NativeRunRngMutable?.Fork();
 
         // Guilty counts every completed combat and leaves the deck
@@ -159,7 +159,7 @@ public sealed partial class PrototypeGameEngine
         var world = state.World;
         var combat = world?.Combat;
         if (nativeRunStreams is not null &&
-            combat?.Stochastic.NativeRng is { } active)
+            combat?.Stochastic.NativeRngMutable is { } active)
         {
             var sourceCombat = combat;
             combat = sourceCombat with
@@ -186,7 +186,7 @@ public sealed partial class PrototypeGameEngine
                 : world with { Combat = combat }
         };
         if (nativeRunStreams is not null &&
-            combat?.Stochastic.NativeRng is not null)
+            combat?.Stochastic.NativeRngMutable is not null)
             NativeRunRngV111.Validate(updated);
         return updated;
     }

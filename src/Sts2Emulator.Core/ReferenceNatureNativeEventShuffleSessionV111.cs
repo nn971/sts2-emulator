@@ -277,7 +277,7 @@ internal static class NativeEventShufflePlanBuilderV111
             candidateCount = firstRequest.SupportCount;
             ownerId = firstRequest.OwnerId;
             nativeRngEventId = string.Empty;
-            var nativeStreams = origin.World?.Combat?.Stochastic.NativeRng
+            var nativeStreams = origin.World?.Combat?.Stochastic.NativeRngMutable
                 ?.RunStreams
                 ?? origin.Stochastic.NativeRunRngMutable;
             if (nativeStreams is null ||
@@ -1015,7 +1015,7 @@ internal static class NativeEventShufflePlanBuilderV111
         ArgumentNullException.ThrowIfNull(origin);
         ArgumentNullException.ThrowIfNull(action);
         ArgumentNullException.ThrowIfNull(scriptedPrefix);
-        var beforeStreams = origin.World?.Combat?.Stochastic.NativeRng
+        var beforeStreams = origin.World?.Combat?.Stochastic.NativeRngMutable
             ?.RunStreams
             ?? origin.Stochastic.NativeRunRngMutable;
         if (beforeStreams is null ||

@@ -648,7 +648,7 @@ public sealed partial class PrototypeGameEngine
             {
                 var enemy = combat.Enemies[index];
                 int selectedIndex;
-                if (combat.Stochastic.NativeRng is not null)
+                if (combat.Stochastic.NativeRngMutable is not null)
                 {
                     combat = NativeCombatRngEntryV111.AdvanceMonsterLocal(
                         combat,

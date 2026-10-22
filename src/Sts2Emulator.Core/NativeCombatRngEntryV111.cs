@@ -130,7 +130,7 @@ public static class NativeCombatRngEntryV111
         ArgumentNullException.ThrowIfNull(combat);
         ArgumentNullException.ThrowIfNull(formation);
         ArgumentNullException.ThrowIfNull(nativeRunStreams);
-        if (combat.Stochastic.NativeRng is not null)
+        if (combat.Stochastic.NativeRngMutable is not null)
             throw new InvalidOperationException(
                 "Native RNG ownership is already attached to this combat.");
 
@@ -213,7 +213,7 @@ public static class NativeCombatRngEntryV111
     public static void Validate(CombatState combat)
     {
         ArgumentNullException.ThrowIfNull(combat);
-        Validate(combat, combat.Stochastic.NativeRng);
+        Validate(combat, combat.Stochastic.NativeRngMutable);
     }
 
     internal static void Validate(
@@ -321,7 +321,7 @@ public static class NativeCombatRngEntryV111
     {
         ArgumentNullException.ThrowIfNull(combat);
         ArgumentNullException.ThrowIfNull(currentEgg);
-        var native = combat.Stochastic.NativeRng?.Fork() ??
+        var native = combat.Stochastic.NativeRngMutable?.Fork() ??
             throw new InvalidOperationException(
                 "Native Tough Egg hatching requires native combat ownership.");
         if (native.Formation.NativeEncounterEntry != "OvicopterNormal"
@@ -404,7 +404,7 @@ public static class NativeCombatRngEntryV111
         ArgumentNullException.ThrowIfNull(combat);
         ArgumentNullException.ThrowIfNull(currentEnemies);
         ArgumentNullException.ThrowIfNull(spawned);
-        var nativeOwner = combat.Stochastic.NativeRng;
+        var nativeOwner = combat.Stochastic.NativeRngMutable;
         if (nativeOwner is null)
             throw new InvalidOperationException(
                 "Native creature creation requires native combat ownership.");
@@ -518,7 +518,7 @@ public static class NativeCombatRngEntryV111
     public static CombatState SortGremlinMercDeathPair(CombatState combat)
     {
         ArgumentNullException.ThrowIfNull(combat);
-        if (combat.Stochastic.NativeRng is not { } currentNative ||
+        if (combat.Stochastic.NativeRngMutable is not { } currentNative ||
             currentNative.Formation.NativeEncounterEntry
                 != "GremlinMercNormal")
             throw new NotSupportedException(
@@ -560,7 +560,7 @@ public static class NativeCombatRngEntryV111
                 != "proto.enemy.sneaky_gremlin"
             || reordered.Enemies[2].EnemyId
                 != "proto.enemy.fat_gremlin"
-            || reordered.Stochastic.NativeRng!.Formation.MonsterContexts[1]
+            || reordered.Stochastic.NativeRngMutable!.Formation.MonsterContexts[1]
                 .CombatId
                 != currentNative.Formation.MonsterContexts[2].CombatId)
             throw new InvalidOperationException(
@@ -576,7 +576,7 @@ public static class NativeCombatRngEntryV111
     public static CombatState CommitIntents(CombatState combat)
     {
         ArgumentNullException.ThrowIfNull(combat);
-        if (combat.Stochastic.NativeRng is null)
+        if (combat.Stochastic.NativeRngMutable is null)
             throw new InvalidOperationException(
                 "Only a native-RNG combat can use this isolated intent API.");
         return PrototypeGameEngine.CommitEnemyIntents(
@@ -586,7 +586,7 @@ public static class NativeCombatRngEntryV111
     public static NativeIntentAuditV111 CommitIntentsWithAudit(CombatState combat)
     {
         ArgumentNullException.ThrowIfNull(combat);
-        if (combat.Stochastic.NativeRng is null)
+        if (combat.Stochastic.NativeRngMutable is null)
             throw new InvalidOperationException("Native intent audit requires attached native RNG.");
         var result = PrototypeGameEngine.CommitEnemyIntentsWithAudit(
             combat, RngBundle.Empty, CommittedIntentSiteId);
@@ -628,7 +628,7 @@ public static class NativeCombatRngEntryV111
         if (ordinal < 0)
             throw new ArgumentOutOfRangeException(nameof(ordinal));
         Validate(combat);
-        var native = combat.Stochastic.NativeRng?.Fork() ??
+        var native = combat.Stochastic.NativeRngMutable?.Fork() ??
             throw new InvalidOperationException(
                 "Combat has no native RNG owner.");
         var index = Array.FindIndex(native.Formation.MonsterContexts,

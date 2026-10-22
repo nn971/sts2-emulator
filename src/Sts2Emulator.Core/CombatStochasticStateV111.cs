@@ -4,8 +4,8 @@ namespace Sts2Emulator.Core;
 /// Atomic combat-level ownership of provider-private RNG and unresolved deck
 /// state. Compatibility properties on <see cref="CombatState"/> preserve the
 /// current snapshot wire representation during the migration. Native RNG
-/// sidecars are copied on assignment; defensive owner projections remain in
-/// progress.
+/// sidecars are copied on assignment and exposed through defensive public
+/// projections.
 /// </summary>
 public sealed record CombatStochasticStateV111
 {
@@ -22,28 +22,37 @@ public sealed record CombatStochasticStateV111
 
     public NativeCombatRngV111? NativeRng
     {
-        get => _nativeRng;
+        get => _nativeRng?.Fork();
         init => _nativeRng = value?.Fork();
     }
+    internal NativeCombatRngV111? NativeRngMutable => _nativeRng;
 
     public SemanticDeckStateV111? SemanticDeck { get; init; }
 
+    public void Deconstruct(
+        out NativeCombatRngV111? NativeRng,
+        out SemanticDeckStateV111? SemanticDeck)
+    {
+        NativeRng = this.NativeRng;
+        SemanticDeck = this.SemanticDeck;
+    }
+
     public CombatStochasticStateV111 Fork() => this with
     {
-        NativeRng = NativeRng?.Fork(),
+        NativeRng = _nativeRng?.Fork(),
         SemanticDeck = SemanticDeck?.Fork()
     };
 
     public void Validate(CombatState owner)
     {
         ArgumentNullException.ThrowIfNull(owner);
-        NativeCombatRngEntryV111.Validate(owner, NativeRng);
+        NativeCombatRngEntryV111.Validate(owner, _nativeRng);
         if (SemanticDeck is not { } semanticDeck) return;
 
         SemanticDrawPileAdapterV111.ValidateSynchronized(
             owner, semanticDeck);
         if (semanticDeck.Mode == SemanticDeckStateV111.NativeMode &&
-            NativeRng is null)
+            _nativeRng is null)
             throw new InvalidOperationException(
                 "Native exact semantic deck has no native combat RNG owner.");
     }

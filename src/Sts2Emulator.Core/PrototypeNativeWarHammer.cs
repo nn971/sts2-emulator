@@ -37,7 +37,7 @@ public sealed partial class PrototypeGameEngine
                 // Native War Hammer uses the persistent run.niche stream.
                 // Resolve each swap through the typed boundary and keep the
                 // run and active-combat cursor copies synchronized.
-                var nativeStreams = (state.World?.Combat?.Stochastic.NativeRng
+                var nativeStreams = (state.World?.Combat?.Stochastic.NativeRngMutable
                     ?.RunStreams
                     ?? state.Stochastic.NativeRunRngMutable).Fork();
                 NativeEventRandomProbeV111.CaptureShuffle(
@@ -54,7 +54,7 @@ public sealed partial class PrototypeGameEngine
                     StochasticSiteRegistryV111
                         .WarHammerEliteUpgradeShuffleSiteId);
                 var activeNativeRng =
-                    state.World?.Combat?.Stochastic.NativeRng;
+                    state.World?.Combat?.Stochastic.NativeRngMutable;
                 var combat = state.World?.Combat;
                 if (activeNativeRng is not null && combat is not null)
                 {
