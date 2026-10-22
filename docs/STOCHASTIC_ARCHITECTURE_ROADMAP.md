@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 later-act encounter-bag shape guard increment (2026-10-22):** The
+run-world stochastic owner now checks active and prepared later-act bag act
+IDs, cursor-dependent weak/normal queue lengths, pool membership, boss
+identities, and second-boss shape on construction and replacement. Ascension,
+profile unlock, route ordering, and shared-assignment checks remain at the
+run boundary and validating commit transitions. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S5 native-policy fair-view capability increment (2026-10-22):** The shared
 `fair_observe` envelope now advertises a `semantic_native_policy` view kind.
 It accepts only baseline-enabled semantic sessions at player boundaries and

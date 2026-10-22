@@ -28,6 +28,8 @@ public sealed record RunWorldStochasticStateV111
         if (RelicBag is not null)
             PrototypeNativeRelicGrabBag.ValidateBagStructure(RelicBag);
         _relicBag = RelicBag?.Fork();
+        if (LaterActEncounterBag is not null)
+            ValidateLaterActEncounterBagStructure(LaterActEncounterBag);
         _laterActEncounterBag = LaterActEncounterBag?.Fork();
         _preparedLaterActEncounterBags = CloneBags(
             PreparedLaterActEncounterBags);
@@ -56,7 +58,12 @@ public sealed record RunWorldStochasticStateV111
     public PrototypeLaterActEncounterBagV111? LaterActEncounterBag
     {
         get => _laterActEncounterBag?.Fork();
-        init => _laterActEncounterBag = value?.Fork();
+        init
+        {
+            if (value is not null)
+                ValidateLaterActEncounterBagStructure(value);
+            _laterActEncounterBag = value?.Fork();
+        }
     }
     public PrototypeLaterActEncounterBagV111[]? PreparedLaterActEncounterBags
     {
@@ -155,52 +162,11 @@ public sealed record RunWorldStochasticStateV111
         var bag = candidate
             ?? throw new InvalidOperationException(
                 "Configured Hive/Glory requires pre-generated encounter queues.");
-        var ordinaryRooms = ExperimentalSilentThreeActRouteV111.OrdinaryRoomCount(
-            world.Act);
-        if (bag.Act != world.Act
-            || bag.OrdinaryCombatsStarted < 0
-            || bag.OrdinaryCombatsStarted > ordinaryRooms)
+        if (bag.Act != world.Act)
             throw new InvalidOperationException(
-                "Regional encounter queues have an invalid act/count.");
+                "Regional encounter queue belongs to another act.");
+        ValidateLaterActEncounterBagStructure(bag);
 
-        // In v111 ActModel.GenerateRooms the act creates two weak encounters,
-        // ordinaryRooms - 2 normal encounters, and fifteen elite encounters
-        // before rooms are visited. Refill may duplicate IDs across bag cycles.
-        // Validate the queue cursor via its remaining lengths, not uniqueness.
-        var expectedWeak = Math.Max(0, 2 - bag.OrdinaryCombatsStarted);
-        var expectedNormal = ordinaryRooms - 2
-            - Math.Max(0, bag.OrdinaryCombatsStarted - 2);
-        if (bag.RemainingWeak is null
-            || bag.RemainingNormal is null
-            || bag.RemainingElite is null
-            || bag.RemainingWeak.Length != expectedWeak
-            || bag.RemainingNormal.Length != expectedNormal
-            || bag.RemainingElite.Length > 15)
-            throw new InvalidOperationException(
-                "Regional encounter queue lengths disagree with their cursors.");
-
-        foreach (var (values, pool) in new[]
-        {
-            (bag.RemainingWeak,
-                ExperimentalSilentThreeActRouteV111.Pool(
-                    world.Act, PrototypeRoomType.Combat, true)),
-            (bag.RemainingNormal,
-                ExperimentalSilentThreeActRouteV111.Pool(
-                    world.Act, PrototypeRoomType.Combat, false)),
-            (bag.RemainingElite,
-                ExperimentalSilentThreeActRouteV111.Pool(
-                    world.Act, PrototypeRoomType.Elite, false))
-        })
-        {
-            if (values.Any(id => !pool.Contains(id, StringComparer.Ordinal)))
-                throw new InvalidOperationException(
-                    "Regional encounter queue contains foreign entries.");
-        }
-        if (!ExperimentalSilentThreeActRouteV111.Pool(
-            world.Act, PrototypeRoomType.Boss, false)
-            .Contains(bag.BossEncounterId, StringComparer.Ordinal))
-            throw new InvalidOperationException(
-                "Regional preselected boss is not eligible for this act.");
         if (bag.AssignedAncientId is { } ancientId
             && !ExperimentalSilentThreeActRouteV111.AncientPool(world.Act,
                 includeDarv: darvRevealed)
@@ -216,6 +182,71 @@ public sealed record RunWorldStochasticStateV111
                     || secondBoss == bag.BossEncounterId))
             throw new InvalidOperationException(
                 "Regional second-boss assignment disagrees with act and Ascension rules.");
+    }
+
+    internal static void ValidateLaterActEncounterBagStructure(
+        PrototypeLaterActEncounterBagV111 bag)
+    {
+        ArgumentNullException.ThrowIfNull(bag);
+        if (bag.Act is < 2 or > 3)
+            throw new InvalidOperationException(
+                "Regional encounter queue has an invalid act.");
+        var ordinaryRooms = ExperimentalSilentThreeActRouteV111
+            .OrdinaryRoomCount(bag.Act);
+        if (bag.OrdinaryCombatsStarted < 0 ||
+            bag.OrdinaryCombatsStarted > ordinaryRooms)
+            throw new InvalidOperationException(
+                "Regional encounter queue has an invalid combat cursor.");
+
+        // In v111 ActModel.GenerateRooms the act creates two weak encounters,
+        // ordinaryRooms - 2 normal encounters, and fifteen elite encounters
+        // before rooms are visited. Refill may duplicate IDs across bag cycles.
+        // Validate the queue cursor via its remaining lengths, not uniqueness.
+        var expectedWeak = Math.Max(0, 2 - bag.OrdinaryCombatsStarted);
+        var expectedNormal = ordinaryRooms - 2
+            - Math.Max(0, bag.OrdinaryCombatsStarted - 2);
+        if (bag.RemainingWeak is null || bag.RemainingNormal is null ||
+            bag.RemainingElite is null ||
+            bag.RemainingWeak.Length != expectedWeak ||
+            bag.RemainingNormal.Length != expectedNormal ||
+            bag.RemainingElite.Length > 15)
+            throw new InvalidOperationException(
+                "Regional encounter queue lengths disagree with their cursors.");
+
+        foreach (var (values, pool) in new[]
+        {
+            (bag.RemainingWeak,
+                ExperimentalSilentThreeActRouteV111.Pool(
+                    bag.Act, PrototypeRoomType.Combat, true)),
+            (bag.RemainingNormal,
+                ExperimentalSilentThreeActRouteV111.Pool(
+                    bag.Act, PrototypeRoomType.Combat, false)),
+            (bag.RemainingElite,
+                ExperimentalSilentThreeActRouteV111.Pool(
+                    bag.Act, PrototypeRoomType.Elite, false))
+        })
+        {
+            if (values.Any(id => !pool.Contains(id, StringComparer.Ordinal)))
+                throw new InvalidOperationException(
+                    "Regional encounter queue contains foreign entries.");
+        }
+        var bossPool = ExperimentalSilentThreeActRouteV111.Pool(
+            bag.Act, PrototypeRoomType.Boss, false);
+        if (!bossPool.Contains(bag.BossEncounterId, StringComparer.Ordinal))
+            throw new InvalidOperationException(
+                "Regional preselected boss is not eligible for this act.");
+        if (bag.AssignedAncientId is { } ancientId
+            && !ExperimentalSilentThreeActRouteV111.AncientPool(
+                bag.Act, includeDarv: true)
+                .Contains(ancientId, StringComparer.Ordinal))
+            throw new InvalidOperationException(
+                "Regional Ancient assignment is unsupported for this act.");
+        if (bag.SecondBossEncounterId is { } secondBoss
+            && (bag.Act != 3 || !bossPool.Contains(
+                    secondBoss, StringComparer.Ordinal) ||
+                secondBoss == bag.BossEncounterId))
+            throw new InvalidOperationException(
+                "Regional second boss is unsupported or duplicates the selected boss.");
     }
 
     private static void ValidateActOneEncounterPool(
@@ -441,5 +472,11 @@ public sealed record RunWorldStochasticStateV111
 
     private static PrototypeLaterActEncounterBagV111[]? CloneBags(
         PrototypeLaterActEncounterBagV111[]? bags) => bags?.Select(bag =>
-            bag is null ? null! : bag.Fork()).ToArray();
+        {
+            if (bag is null)
+                throw new InvalidDataException(
+                    "Prepared encounter histories cannot contain null bags.");
+            ValidateLaterActEncounterBagStructure(bag);
+            return bag.Fork();
+        }).ToArray();
 }
