@@ -37,6 +37,19 @@ public sealed record ControlledPlayableCombatMechanicsStateV111
             _playerActions = (string[])value.Clone();
         }
     }
+
+    internal ControlledPlayableCombatMechanicsStateV111 AppendPlayerAction(
+        string actionId, RunState run)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
+        ArgumentNullException.ThrowIfNull(run);
+        return this with
+        {
+            Run = run,
+            PlayerActions = PlayerActions.Append(actionId).ToArray()
+        };
+    }
+
     public string Mode { get; init; }
 
     public ControlledPlayableCombatMechanicsStateV111(

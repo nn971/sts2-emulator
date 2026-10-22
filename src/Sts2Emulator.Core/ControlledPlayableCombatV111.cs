@@ -801,11 +801,10 @@ public static class ControlledPlayableCombatEngineV111
                         {
                             World = fresh.Run.World with { Combat = combat }
                         },
-                        NextShuffleIndex = nextIndex,
-                        ShuffleTranscript = fresh.Stochastic.ShuffleTranscript
-                            .Append(decision).ToArray(),
-                        Pending = MakePending(
-                            nextIndex, fresh.Stochastic.ShuffleTranscript.Length + 1)
+                        Stochastic = fresh.Stochastic.AdvanceOpeningShuffle(
+                            decision, nextIndex,
+                            MakePending(nextIndex,
+                                fresh.Stochastic.ShuffleTranscript.Length + 1))
                     };
                 });
         return next.Stochastic.Pending is null
@@ -835,8 +834,7 @@ public static class ControlledPlayableCombatEngineV111
             result = environment.Step(input, actionId).State;
         var next = state.Fork() with
         {
-            Run = result,
-            PlayerActions = state.PlayerActions.Append(actionId).ToArray()
+            Mechanics = state.Mechanics.AppendPlayerAction(actionId, result)
         };
         return StartPendingTurn(next);
     }
@@ -852,9 +850,8 @@ public static class ControlledPlayableCombatEngineV111
         var next = state.Fork() with
         {
             Run = result,
-            DrawCostTranscript = state.Stochastic.DrawCostTranscript
-                .Append(decision).ToArray(),
-            LiveTranscript = state.Stochastic.LiveTranscript.Append(decision).ToArray()
+            Stochastic = state.Stochastic.AppendLiveDecision(
+                ControlledPlayableLiveDecisionKindV111.DrawCost, decision)
         };
         return StartPendingTurn(next);
     }
@@ -870,9 +867,8 @@ public static class ControlledPlayableCombatEngineV111
         var next = state.Fork() with
         {
             Run = result,
-            RandomCostTranscript = state.Stochastic.RandomCostTranscript
-                .Append(decision).ToArray(),
-            LiveTranscript = state.Stochastic.LiveTranscript.Append(decision).ToArray()
+            Stochastic = state.Stochastic.AppendLiveDecision(
+                ControlledPlayableLiveDecisionKindV111.RandomCost, decision)
         };
         return StartPendingTurn(next);
     }
@@ -888,9 +884,8 @@ public static class ControlledPlayableCombatEngineV111
         var next = state.Fork() with
         {
             Run = result,
-            PoolShuffleTranscript = state.Stochastic.PoolShuffleTranscript
-                .Append(choice).ToArray(),
-            LiveTranscript = state.Stochastic.LiveTranscript.Append(choice).ToArray()
+            Stochastic = state.Stochastic.AppendLiveDecision(
+                ControlledPlayableLiveDecisionKindV111.PoolShuffle, choice)
         };
         return StartPendingTurn(next);
     }
@@ -906,9 +901,8 @@ public static class ControlledPlayableCombatEngineV111
         var next = state.Fork() with
         {
             Run = result,
-            DrawInsertionTranscript = state.Stochastic.DrawInsertionTranscript
-                .Append(choice).ToArray(),
-            LiveTranscript = state.Stochastic.LiveTranscript.Append(choice).ToArray()
+            Stochastic = state.Stochastic.AppendLiveDecision(
+                ControlledPlayableLiveDecisionKindV111.DrawInsertion, choice)
         };
         return StartPendingTurn(next);
     }
@@ -925,7 +919,8 @@ public static class ControlledPlayableCombatEngineV111
         var next = state.Fork() with
         {
             Run = result,
-            LiveTranscript = state.Stochastic.LiveTranscript.Append(decision).ToArray()
+            Stochastic = state.Stochastic.AppendLiveDecision(
+                ControlledPlayableLiveDecisionKindV111.LiveOnly, decision)
         };
         return StartPendingTurn(next);
     }
@@ -951,9 +946,8 @@ public static class ControlledPlayableCombatEngineV111
         var next = state.Fork() with
         {
             Run = result,
-            GeneratedCardTranscript = state.Stochastic.GeneratedCardTranscript
-                .Append(choice).ToArray(),
-            LiveTranscript = state.Stochastic.LiveTranscript.Append(choice).ToArray()
+            Stochastic = state.Stochastic.AppendLiveDecision(
+                ControlledPlayableLiveDecisionKindV111.GeneratedCard, choice)
         };
         return StartPendingTurn(next);
     }
@@ -982,9 +976,9 @@ public static class ControlledPlayableCombatEngineV111
         var next = state.Fork() with
         {
             Run = result,
-            PotionGenerationTranscript = state.Stochastic.PotionGenerationTranscript
-                .Append(choice).ToArray(),
-            LiveTranscript = state.Stochastic.LiveTranscript.Append(choice).ToArray()
+            Stochastic = state.Stochastic.AppendLiveDecision(
+                ControlledPlayableLiveDecisionKindV111.PotionGeneration,
+                choice)
         };
         return StartPendingTurn(next);
     }
@@ -1013,9 +1007,8 @@ public static class ControlledPlayableCombatEngineV111
         var next = state.Fork() with
         {
             Run = result,
-            CardTransformTranscript = state.Stochastic.CardTransformTranscript
-                .Append(choice).ToArray(),
-            LiveTranscript = state.Stochastic.LiveTranscript.Append(choice).ToArray()
+            Stochastic = state.Stochastic.AppendLiveDecision(
+                ControlledPlayableLiveDecisionKindV111.CardTransform, choice)
         };
         return StartPendingTurn(next);
     }
@@ -1033,9 +1026,8 @@ public static class ControlledPlayableCombatEngineV111
         var next = state.Fork() with
         {
             Run = result,
-            TargetTranscript = state.Stochastic.TargetTranscript
-                .Append(choice).ToArray(),
-            LiveTranscript = state.Stochastic.LiveTranscript.Append(choice).ToArray()
+            Stochastic = state.Stochastic.AppendLiveDecision(
+                ControlledPlayableLiveDecisionKindV111.Target, choice)
         };
         return StartPendingTurn(next);
     }
@@ -1118,10 +1110,9 @@ public static class ControlledPlayableCombatEngineV111
         var fresh = state.Fork() with
         {
             TurnIntents = nextIntents,
-            TurnTranscript = state.Stochastic.TurnTranscript.Append(
-                nextIntents.Transcript[^1]).ToArray(),
-            LiveTranscript = state.Stochastic.LiveTranscript.Append(
-                nextIntents.Transcript[^1]).ToArray()
+            Stochastic = state.Stochastic.AppendLiveDecision(
+                ControlledPlayableLiveDecisionKindV111.TurnIntent,
+                nextIntents.Transcript[^1])
         };
         return nextIntents.Complete ? FinishTurnIntents(fresh) : fresh;
     }
@@ -1136,8 +1127,11 @@ public static class ControlledPlayableCombatEngineV111
         var choice = next.Transcript[^1];
         var updated = state.Fork() with
         {
-            Recycle = next,
-            LiveTranscript = state.Stochastic.LiveTranscript.Append(choice).ToArray()
+            Stochastic = state.Stochastic.AppendLiveDecision(
+                ControlledPlayableLiveDecisionKindV111.LiveOnly, choice) with
+            {
+                Recycle = next
+            }
         };
         return next.Complete ? FinishRecycle(updated) : updated;
     }

@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 controlled playable history append ownership increment (2026-10-22):**
+`ControlledPlayableCombatStochasticStateV111` now appends each live controlled
+decision to its mixed transcript and typed projection in one validated owner
+transition, and advances the fixture shuffle cursor with its decision and next
+request. `ControlledPlayableCombatMechanicsStateV111` now publishes the player
+action and resulting run together. Static source review and `git diff --check`
+only; no tests or builds were run.
+
 **S3 semantic pilot mechanics history append increment (2026-10-22):**
 `SemanticPilotMechanicsStateV111` now validates, forks, and appends each
 typed continuation history entry. Pilot publication delegates the history

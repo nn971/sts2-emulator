@@ -1,5 +1,19 @@
 namespace Sts2Emulator.Core;
 
+internal enum ControlledPlayableLiveDecisionKindV111
+{
+    LiveOnly,
+    TurnIntent,
+    Target,
+    GeneratedCard,
+    DrawInsertion,
+    PoolShuffle,
+    RandomCost,
+    DrawCost,
+    PotionGeneration,
+    CardTransform
+}
+
 /// <summary>
 /// Provider cursor, unresolved requests and outcome transcripts for the
 /// controlled playable combat session. The session keeps its established
@@ -116,6 +130,131 @@ public sealed record ControlledPlayableCombatStochasticStateV111
         CardTransformTranscript = DeepCopy(_cardTransformTranscript)!
     };
 
+    internal ControlledPlayableCombatStochasticStateV111 AppendLiveDecision(
+        ControlledPlayableLiveDecisionKindV111 kind,
+        RandomIndexDecisionV111 decision)
+    {
+        ValidateControlledDecision(decision);
+        if (kind == ControlledPlayableLiveDecisionKindV111.TurnIntent &&
+            decision.Request.SiteId != ControlledTurnIntentEngineV111.SiteId)
+            throw new InvalidDataException(
+                "Controlled playable turn-intent decision has an unexpected site.");
+        if (kind == ControlledPlayableLiveDecisionKindV111.LiveOnly &&
+            !PrototypeControlledEnemyActionContinuationV111.IsEnemyActionSite(
+                decision.Request.SiteId) &&
+            decision.Request.SiteId != ControlledRecycleShuffleV111.SiteId)
+            throw new InvalidDataException(
+                "Controlled playable live decision has no typed transcript owner.");
+
+        var liveTranscript = AppendDecision(_liveTranscript, decision);
+        return kind switch
+        {
+            ControlledPlayableLiveDecisionKindV111.LiveOnly => this with
+            {
+                LiveTranscript = liveTranscript
+            },
+            ControlledPlayableLiveDecisionKindV111.TurnIntent => this with
+            {
+                TurnTranscript = AppendDecision(_turnTranscript, decision),
+                LiveTranscript = liveTranscript
+            },
+            ControlledPlayableLiveDecisionKindV111.Target => this with
+            {
+                TargetTranscript = AppendDecision(_targetTranscript, decision),
+                LiveTranscript = liveTranscript
+            },
+            ControlledPlayableLiveDecisionKindV111.GeneratedCard => this with
+            {
+                GeneratedCardTranscript = AppendDecision(
+                    _generatedCardTranscript, decision),
+                LiveTranscript = liveTranscript
+            },
+            ControlledPlayableLiveDecisionKindV111.DrawInsertion => this with
+            {
+                DrawInsertionTranscript = AppendDecision(
+                    _drawInsertionTranscript, decision),
+                LiveTranscript = liveTranscript
+            },
+            ControlledPlayableLiveDecisionKindV111.PoolShuffle => this with
+            {
+                PoolShuffleTranscript = AppendDecision(
+                    _poolShuffleTranscript, decision),
+                LiveTranscript = liveTranscript
+            },
+            ControlledPlayableLiveDecisionKindV111.RandomCost => this with
+            {
+                RandomCostTranscript = AppendDecision(
+                    _randomCostTranscript, decision),
+                LiveTranscript = liveTranscript
+            },
+            ControlledPlayableLiveDecisionKindV111.DrawCost => this with
+            {
+                DrawCostTranscript = AppendDecision(
+                    _drawCostTranscript, decision),
+                LiveTranscript = liveTranscript
+            },
+            ControlledPlayableLiveDecisionKindV111.PotionGeneration => this with
+            {
+                PotionGenerationTranscript = AppendDecision(
+                    _potionGenerationTranscript, decision),
+                LiveTranscript = liveTranscript
+            },
+            ControlledPlayableLiveDecisionKindV111.CardTransform => this with
+            {
+                CardTransformTranscript = AppendDecision(
+                    _cardTransformTranscript, decision),
+                LiveTranscript = liveTranscript
+            },
+            _ => throw new ArgumentOutOfRangeException(nameof(kind))
+        };
+    }
+
+    internal ControlledPlayableCombatStochasticStateV111 AdvanceOpeningShuffle(
+        RandomIndexDecisionV111 decision, int nextShuffleIndex,
+        RandomIndexRequestV111? nextPending)
+    {
+        ValidateControlledDecision(decision);
+        if (NextShuffleIndex < 1 || nextShuffleIndex < 0 ||
+            decision.Request.SiteId != ControlledPlayableCombatV111.ShuffleSite ||
+            decision.Request.StreamId != "run.shuffle" ||
+            decision.Request.OwnerId != "player:0" ||
+            decision.Request.OperationKind != "bounded_integer" ||
+            decision.Request.Ordinal != _shuffleTranscript.Length ||
+            decision.Request.SupportCount != NextShuffleIndex + 1 ||
+            nextShuffleIndex != NextShuffleIndex - 1 ||
+            (nextShuffleIndex < 1) != (nextPending is null) ||
+            (nextPending is { } pending &&
+             (pending.SiteId != ControlledPlayableCombatV111.ShuffleSite ||
+              pending.Ordinal != _shuffleTranscript.Length + 1 ||
+              pending.SupportCount != nextShuffleIndex + 1)))
+            throw new InvalidDataException(
+                "Opening shuffle decision does not advance its saved cursor.");
+        return this with
+        {
+            NextShuffleIndex = nextShuffleIndex,
+            ShuffleTranscript = AppendDecision(_shuffleTranscript, decision),
+            Pending = nextPending
+        };
+    }
+
+    private static void ValidateControlledDecision(
+        RandomIndexDecisionV111 decision)
+    {
+        ArgumentNullException.ThrowIfNull(decision);
+        decision.Validate();
+        if (decision.ProviderMode != "controlled-v111" ||
+            decision.NativeCursorBefore is not null ||
+            decision.NativeCursorAfter is not null ||
+            decision.ProbabilityStatus != "UNVERIFIED")
+            throw new InvalidDataException(
+                "Controlled playable transcript has invalid provenance.");
+    }
+
+    private static RandomIndexDecisionV111[] AppendDecision(
+        RandomIndexDecisionV111[] transcript,
+        RandomIndexDecisionV111 decision) => transcript.Append(
+            CloneDecision(decision)).ToArray();
+
     private static RandomIndexRequestV111? CloneRequest(
         RandomIndexRequestV111? request) => request is null ? null : request with
     {
@@ -126,6 +265,14 @@ public sealed record ControlledPlayableCombatStochasticStateV111
         RandomIndexDecisionV111[]? decisions) => decisions?.Select(decision =>
         decision is null
             ? null!
-            : PrototypeControlledEventChoiceContinuationV111
-                .CloneDecision(decision)).ToArray();
+            : CloneDecision(decision)).ToArray();
+
+    private static RandomIndexDecisionV111 CloneDecision(
+        RandomIndexDecisionV111 decision) => decision with
+    {
+        Request = decision.Request with
+        {
+            OrderedCandidates = (int[])decision.Request.OrderedCandidates.Clone()
+        }
+    };
 }
