@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 controlled committed-intent append ownership increment (2026-10-22):**
+`ControlledIntentStateV111.AppendResolvedDecision` checks the chosen ticket
+against the exact pending request and ordinal, then appends it while clearing
+the request. Live intent resolution and source-reachability replay share the
+same transition. Static source review and `git diff --check` only; no tests or
+builds were run.
+
 **S3 controlled initial HP choice transition ownership increment (2026-10-22):**
 `ControlledInitialHpStateV111.ApplyChoice` now validates a selected ticket and
 publishes the enemy HP, enemy cursor, transcript, and next request together.

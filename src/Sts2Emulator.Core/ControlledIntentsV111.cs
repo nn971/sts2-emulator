@@ -62,6 +62,33 @@ public sealed record ControlledIntentStateV111(
         Pending = _pending
     };
 
+    internal ControlledIntentStateV111 AppendResolvedDecision(
+        RandomIndexDecisionV111 choice)
+    {
+        ArgumentNullException.ThrowIfNull(choice);
+        choice.Validate();
+        var pending = _pending ?? throw new InvalidOperationException(
+            "No pending controlled intent request can be resolved.");
+        if (choice.ProviderMode != "controlled-v111" ||
+            choice.NativeCursorBefore is not null ||
+            choice.NativeCursorAfter is not null ||
+            choice.ProbabilityStatus != "UNVERIFIED" ||
+            choice.Request.SiteId !=
+                NativeCombatRngEntryV111.CommittedIntentSiteId ||
+            choice.Request.StreamId != "run.monster_ai" ||
+            choice.Request.Ordinal != _transcript.Length ||
+            !StringComparer.Ordinal.Equals(
+                CanonicalJson.Sha256(choice.Request),
+                CanonicalJson.Sha256(pending)))
+            throw new InvalidDataException(
+                "Controlled intent decision does not resolve the saved request.");
+        return this with
+        {
+            Transcript = _transcript.Append(CloneDecision(choice)).ToArray(),
+            Pending = null
+        };
+    }
+
     private static RandomIndexDecisionV111[] CloneTranscript(
         RandomIndexDecisionV111[] decisions)
     {
@@ -85,6 +112,12 @@ public sealed record ControlledIntentStateV111(
                 OrderedCandidates =
                     (int[])request.OrderedCandidates.Clone()
             };
+
+    private static RandomIndexDecisionV111 CloneDecision(
+        RandomIndexDecisionV111 decision) => decision with
+    {
+        Request = CloneRequest(decision.Request)!
+    };
 }
 
 public static class ControlledIntentsV111
@@ -188,13 +221,8 @@ public static class ControlledIntentsV111
                             OrderedCandidates = (int[])
                                 request.OrderedCandidates.Clone()
                         }, replayedIndex, "controlled-v111");
-                    choice.Validate();
-                    return AdvanceToBoundary(checkpoint.Fork() with
-                    {
-                        Transcript = checkpoint.Transcript
-                            .Append(choice).ToArray(),
-                        Pending = null
-                    });
+                    return AdvanceToBoundary(checkpoint.Fork()
+                        .AppendResolvedDecision(choice));
                 });
     }
 
