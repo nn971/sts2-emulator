@@ -183,7 +183,7 @@ internal static class NativePunchOffFightPlanBuilderV111
 public static partial class ChanceLawEngineV111
 {
     public static string[] NativePunchOffFightQuerySiteIds =>
-        ["event.punch_off.construct_hp_offset.index_draw"];
+        StochasticSiteRegistryV111.NativePunchOffFightSiteIds;
 
     public static ChanceLawV111 QueryNativePunchOffFight(
         RunState origin, string siteId, int ordinal, int[]? priorIndices,
@@ -382,7 +382,7 @@ public sealed record ReferenceNaturePunchOffFightSessionV111(
                 .ToArray(), ActionId);
 
     public static string[] SessionSiteIds =>
-        [.. ChanceLawEngineV111.NativePunchOffFightQuerySiteIds];
+        StochasticSiteRegistryV111.NativePunchOffFightSiteIds;
 
     public static ReferenceNaturePunchOffFightSessionV111 Begin(
         RunState origin, string actionId, ulong natureSeed) => Begin(

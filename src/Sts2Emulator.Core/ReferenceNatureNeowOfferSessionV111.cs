@@ -42,7 +42,7 @@ internal static class NeowOfferDecisionPlanBuilderV111
             int? boundedCount = null,
             int requestOrdinal = 0)
         {
-            if (!ChanceLawEngineV111.NeowOfferSessionSiteIds.Contains(
+            if (!NeowOfferSessionSiteIds.Contains(
                     siteId, StringComparer.Ordinal))
                 throw new NotSupportedException(
                     $"Neow offer decision does not support site '{siteId}'.");
@@ -457,7 +457,7 @@ public sealed record ReferenceNatureNeowOfferSessionV111(
                     generated.State, generated.NeowOffers);
             },
             requestFilter: candidate => candidate.IndexRequest is { } request &&
-                ChanceLawEngineV111.NeowOfferSessionSiteIds.Contains(
+                NeowOfferSessionSiteIds.Contains(
                     request.SiteId, StringComparer.Ordinal));
         if (captured.Suspended || captured.Value is not { } replay)
             throw new InvalidDataException(

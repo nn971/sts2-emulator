@@ -297,17 +297,17 @@ public static partial class ChanceLawEngineV111
     public const string NativeEventCardPickConditioningPolicyId =
         "native-event-card-pick-prefix-v1";
     public const string NativeEventGoldIndexSiteId =
-        "event.generated_gold.index_draw";
+        StochasticSiteRegistryV111.NativeEventGoldIndexSiteId;
     public const string NativeEventGoldUnitFloatSiteId =
-        "event.generated_gold.unit_float";
+        StochasticSiteRegistryV111.NativeEventGoldUnitFloatSiteId;
     public const string NativeStoneOfAllTimePotionSlotSiteId =
-        "event.stone_of_all_time.potion_slot.index_draw";
+        StochasticSiteRegistryV111.NativeStoneOfAllTimePotionSlotSiteId;
     public const string NativeFutureOfPotionsCardTypeSiteId =
-        "event.future_of_potions.card_type.index_draw";
+        StochasticSiteRegistryV111.NativeFutureOfPotionsCardTypeSiteId;
     public const string NativeStoneOfAllTimePushTicketSiteId =
-        "event.stone_of_all_time.push_ticket";
+        StochasticSiteRegistryV111.NativeStoneOfAllTimePushTicketSiteId;
     public const string NativeStoneOfAllTimeLiftTicketSiteId =
-        "event.stone_of_all_time.lift_ticket";
+        StochasticSiteRegistryV111.NativeStoneOfAllTimeLiftTicketSiteId;
 
     private const string NativeStoneOfAllTimeNoEffectProvenance =
         "v0.111.0 Stone of All Time consumes the bounded ticket after the " +
@@ -333,26 +333,16 @@ public static partial class ChanceLawEngineV111
         "legacy seed frequencies and exact provider parity remain unverified.";
 
     public static string[] NativeEventGoldQuerySiteIds =>
-        [NativeEventGoldIndexSiteId, NativeEventGoldUnitFloatSiteId];
+        StochasticSiteRegistryV111.NativeEventGoldSiteIds;
 
     public static string[] NativeEventEntryIndexQuerySiteIds =>
-    [
-        NativeStoneOfAllTimePotionSlotSiteId,
-        NativeFutureOfPotionsCardTypeSiteId
-    ];
+        StochasticSiteRegistryV111.NativeEventEntryIndexSiteIds;
 
     public static string[] NativeEventNoEffectIndexQuerySiteIds =>
-    [
-        NativeStoneOfAllTimePushTicketSiteId,
-        NativeStoneOfAllTimeLiftTicketSiteId
-    ];
+        StochasticSiteRegistryV111.NativeEventNoEffectIndexSiteIds;
 
     public static string[] NativeEventCardPickQuerySiteIds =>
-    [
-        PrototypeNativeGloryEvents.ReflectionsDowngradeSiteId,
-        PrototypeNativeGloryEvents.ReflectionsUpgradeSiteId,
-        PrototypeNativeHiveEvents.InfestedAutomatonCardOfferSiteId
-    ];
+        StochasticSiteRegistryV111.NativeEventCardPickSiteIds;
 
     /// <summary>
     /// Query Stone of All Time's event-entry potion-slot draw, conditional on

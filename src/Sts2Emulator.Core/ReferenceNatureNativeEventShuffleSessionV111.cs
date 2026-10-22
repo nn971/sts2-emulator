@@ -1983,23 +1983,11 @@ public static partial class ChanceLawEngineV111
         "native-event-endless-conveyor-colorless-card-v1";
 
     public static string[] NativeEventShufflePlanSiteIds =>
-    [
-        "relic.persistent_combat_end.random_upgrade.index_draw",
-        "combat.glory_tinker.improvement_card.index_draw",
-        "relic.paels_tooth.card_return.index_draw",
-        StochasticSiteRegistryV111.WarHammerEliteUpgradeShuffleSiteId,
-        PrototypeNativeUnderdocksDoors.ShuffleSiteId,
-        PrototypeNativeGloryEvents.HungryForMushroomsShuffleSiteId,
-        PrototypeNativeGloryEvents.TinkerTypeOfferShuffleSiteId,
-        PrototypeNativeGloryEvents.TinkerRiderOfferShuffleSiteId,
-        PrototypeNativeGloryEvents.BattlewornUpgradeShuffleSiteId,
-        PrototypeNativeFakeMerchant.RelicOfferShuffleSiteId,
-        PrototypeNativeHiveEvents.WarHistorianRepyRelicShuffleSiteId
-    ];
+        StochasticSiteRegistryV111.NativeEventShufflePlanSiteIds;
 
     public static string[] NativeEventShuffleSessionSiteIds =>
     [
-        .. ChanceLawEngineV111.NativeEventShufflePlanSiteIds,
+        .. StochasticSiteRegistryV111.NativeEventShufflePlanSiteIds,
         PrototypeNativeHiveEvents.WarHistorianRepyPotionOfferSiteId
     ];
 

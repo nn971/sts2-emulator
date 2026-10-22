@@ -193,11 +193,16 @@ internal static class StochasticProviderScopeV111
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(streams);
-        request.Validate();
-        return SelectIndexProvider(
-                explicitProvider,
-                ControlledStochasticRequestV111.FromIndex(request))
-            .Resolve(request, streams);
+        var provider = SelectIndexProvider(
+            explicitProvider,
+            ControlledStochasticRequestV111.FromIndex(request));
+        if (provider.Mode == "native-v111")
+            request.ValidateForNativeProvider();
+        else if (provider.Mode == "legacy-prototype-v0")
+            request.ValidateForLegacyProvider();
+        else
+            request.Validate();
+        return provider.Resolve(request, streams);
     }
 
     public static IRandomUnitFloatProviderV111 SelectUnitFloatProvider(

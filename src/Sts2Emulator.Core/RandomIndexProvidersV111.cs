@@ -31,6 +31,17 @@ public sealed record RandomIndexRequestV111(
 
     public void Validate()
     {
+        ValidateShape();
+
+        if (!StochasticSiteRegistryV111
+                .IsRegisteredRandomIndexRequestSite(SiteId))
+            throw new ArgumentException(
+                $"Random-choice site '{SiteId}' is not registered.",
+                nameof(SiteId));
+    }
+
+    private void ValidateShape()
+    {
         if (string.IsNullOrWhiteSpace(SiteId)
             || string.IsNullOrWhiteSpace(StreamId)
             || string.IsNullOrWhiteSpace(OwnerId)
@@ -42,17 +53,13 @@ public sealed record RandomIndexRequestV111(
             || (OperationKind == "bounded_integer" &&
                 (_orderedCandidates.Length != 0 || BoundedCount is null or <= 0)))
             throw new ArgumentException("Invalid source-pinned random-choice request.");
-
-        if (!StochasticSiteRegistryV111
-                .IsRegisteredRandomIndexRequestSite(SiteId))
-            throw new ArgumentException(
-                $"Random-choice site '{SiteId}' is not registered.",
-                nameof(SiteId));
     }
 
     internal void ValidateForNativeProvider()
     {
-        Validate();
+        // Native admission is source-operation based; do not consult the
+        // provider-neutral legacy/query registration set here.
+        ValidateShape();
         if (!StochasticSiteRegistryV111.IsNativeRandomIndexSite(SiteId))
             throw new NotSupportedException(
                 $"Native random choice does not support site '{SiteId}'.");
@@ -67,7 +74,7 @@ public sealed record RandomIndexRequestV111(
 
     internal void ValidateForLegacyProvider()
     {
-        Validate();
+        ValidateShape();
         if (!StochasticSiteRegistryV111.IsLegacyRandomChoiceSite(SiteId))
             throw new NotSupportedException(
                 $"Legacy random choice does not support site '{SiteId}'.");

@@ -204,10 +204,7 @@ public static partial class ChanceLawEngineV111
         "native-punch-off-reward-prefix-v1";
 
     public static string[] NativePunchOffRewardQuerySiteIds =>
-    [
-        "event.punch_off.relic_reward.index_draw",
-        "event.punch_off.potion_reward.index_draw"
-    ];
+        StochasticSiteRegistryV111.NativePunchOffRewardSiteIds;
 
     public static ChanceLawV111 QueryLegacyPunchOffReward(
         string siteId, string ownerId, int supportCount, int ordinal)
@@ -442,7 +439,7 @@ public sealed record ReferenceNaturePunchOffRewardSessionV111(
     }
 
     public static string[] SessionSiteIds =>
-        [.. ChanceLawEngineV111.NativePunchOffRewardQuerySiteIds];
+        StochasticSiteRegistryV111.NativePunchOffRewardSiteIds;
 
     public static ReferenceNaturePunchOffRewardSessionV111 Begin(
         RunState origin, string actionId, ulong natureSeed) => Begin(

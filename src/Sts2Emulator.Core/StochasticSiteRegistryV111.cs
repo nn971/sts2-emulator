@@ -386,6 +386,18 @@ public static class StochasticSiteRegistryV111
         "reward.lava_rock.relic_offer.shuffle_swap_index";
     public const string WarHammerEliteUpgradeShuffleSiteId =
         "relic.war_hammer.elite_upgrade.shuffle_swap_index";
+    public const string NativeEventGoldIndexSiteId =
+        "event.generated_gold.index_draw";
+    public const string NativeEventGoldUnitFloatSiteId =
+        "event.generated_gold.unit_float";
+    public const string NativeStoneOfAllTimePotionSlotSiteId =
+        "event.stone_of_all_time.potion_slot.index_draw";
+    public const string NativeFutureOfPotionsCardTypeSiteId =
+        "event.future_of_potions.card_type.index_draw";
+    public const string NativeStoneOfAllTimePushTicketSiteId =
+        "event.stone_of_all_time.push_ticket";
+    public const string NativeStoneOfAllTimeLiftTicketSiteId =
+        "event.stone_of_all_time.lift_ticket";
 
     private static readonly Dictionary<string,
         LegacyCallerBoundIndexQuerySiteV111>
@@ -763,7 +775,52 @@ public static class StochasticSiteRegistryV111
         PrototypeGameEngine.FishingRodUpgradeSiteId
     ];
 
-    private static readonly string[] ChanceLawQuerySites =
+    private static readonly string[] NativeEventGoldSites =
+    [
+        NativeEventGoldIndexSiteId,
+        NativeEventGoldUnitFloatSiteId
+    ];
+    private static readonly string[] NativeEventEntryIndexSites =
+    [
+        NativeStoneOfAllTimePotionSlotSiteId,
+        NativeFutureOfPotionsCardTypeSiteId
+    ];
+    private static readonly string[] NativeEventNoEffectIndexSites =
+    [
+        NativeStoneOfAllTimePushTicketSiteId,
+        NativeStoneOfAllTimeLiftTicketSiteId
+    ];
+    private static readonly string[] NativeEventCardPickSites =
+    [
+        PrototypeNativeGloryEvents.ReflectionsDowngradeSiteId,
+        PrototypeNativeGloryEvents.ReflectionsUpgradeSiteId,
+        PrototypeNativeHiveEvents.InfestedAutomatonCardOfferSiteId
+    ];
+    private static readonly string[] NativePunchOffRewardSites =
+    [
+        PrototypeNativePunchOff.RelicRewardSiteId,
+        PrototypeNativePunchOff.PotionRewardSiteId
+    ];
+    private static readonly string[] NativePunchOffFightSites =
+    [
+        PrototypeNativePunchOff.ConstructHpOffsetSiteId
+    ];
+    private static readonly string[] NativeEventShufflePlanSites =
+    [
+        PrototypeGameEngine.FishingRodUpgradeSiteId,
+        PrototypeGameEngine.ImprovementCardSiteId,
+        PrototypeGameEngine.PaelsToothCardReturnSiteId,
+        WarHammerEliteUpgradeShuffleSiteId,
+        PrototypeNativeUnderdocksDoors.ShuffleSiteId,
+        PrototypeNativeGloryEvents.HungryForMushroomsShuffleSiteId,
+        PrototypeNativeGloryEvents.TinkerTypeOfferShuffleSiteId,
+        PrototypeNativeGloryEvents.TinkerRiderOfferShuffleSiteId,
+        PrototypeNativeGloryEvents.BattlewornUpgradeShuffleSiteId,
+        PrototypeNativeFakeMerchant.RelicOfferShuffleSiteId,
+        PrototypeNativeHiveEvents.WarHistorianRepyRelicShuffleSiteId
+    ];
+
+    private static string[] BuildChanceLawQuerySites() =>
     [
         .. ChanceLawEngineV111.LegacyMerchantIndexQuerySiteIds,
         .. ChanceLawEngineV111.LegacyRarityTicketQuerySiteIds,
@@ -777,7 +834,7 @@ public static class StochasticSiteRegistryV111
         .. ChanceLawEngineV111.LegacyShopPotionPriceQuerySiteIds,
         .. ChanceLawEngineV111.LegacyShopRelicPriceQuerySiteIds,
         .. LegacyCallerBoundIndexQuerySiteIds,
-        .. ChanceLawEngineV111.NativeMapGaussianIntQuerySiteIds,
+        .. NativeGaussianIntSites,
         .. ChanceLawEngineV111.LegacyPotionDropTicketQuerySiteIds,
         .. ChanceLawEngineV111.LegacyRewardPotionModelQuerySiteIds,
         .. ChanceLawEngineV111.LegacyPotionRewardOddsTicketQuerySiteIds,
@@ -803,17 +860,18 @@ public static class StochasticSiteRegistryV111
         NativeVakuuEventV111.ShuffleSiteId,
         NativeDarvEventV111.OfferVariantSiteId,
         NativeDarvEventV111.RelicShuffleSiteId,
-        .. ChanceLawEngineV111.NeowOfferSessionSiteIds,
-        .. ChanceLawEngineV111.TrashHeapSessionSiteIds,
-        .. ChanceLawEngineV111.TabletOfTruthSessionSiteIds,
-        .. ChanceLawEngineV111.TrialSessionSiteIds,
-        .. ChanceLawEngineV111.NativeEventShuffleSessionSiteIds,
-        .. ChanceLawEngineV111.NativeEventEntryIndexQuerySiteIds,
-        .. ChanceLawEngineV111.NativeEventGoldQuerySiteIds,
-        .. ChanceLawEngineV111.NativeEventNoEffectIndexQuerySiteIds,
-        .. ChanceLawEngineV111.NativeEventCardPickQuerySiteIds,
-        .. ChanceLawEngineV111.NativePunchOffRewardQuerySiteIds,
-        .. ChanceLawEngineV111.NativePunchOffFightQuerySiteIds,
+        .. ReferenceNatureNeowOfferSessionV111.NeowOfferSessionSiteIds,
+        .. ReferenceNatureTrashHeapSessionV111.TrashHeapSessionSiteIds,
+        .. ReferenceNatureTabletOfTruthSessionV111.TabletOfTruthSessionSiteIds,
+        .. ReferenceNatureTrialSessionV111.TrialSessionSiteIds,
+        .. ReferenceNatureNativeEventShuffleSessionV111
+            .NativeEventShuffleSessionSiteIds,
+        .. NativeEventEntryIndexSites,
+        .. NativeEventGoldSites,
+        .. NativeEventNoEffectIndexSites,
+        .. NativeEventCardPickSites,
+        .. NativePunchOffRewardSites,
+        .. NativePunchOffFightSites,
         ExperimentalSilentThreeActRouteV111.DarvHiveAssignmentSiteId,
         ExperimentalSilentThreeActRouteV111.DarvGloryAssignmentSiteId,
         ExperimentalSilentThreeActRouteV111.AncientAssignmentSiteId,
@@ -942,15 +1000,16 @@ public static class StochasticSiteRegistryV111
     ];
 
     private static readonly string[] NeowOfferSessionSites =
-        ChanceLawEngineV111.NeowOfferSessionSiteIds;
+        ReferenceNatureNeowOfferSessionV111.NeowOfferSessionSiteIds;
     private static readonly string[] TrashHeapSessionSites =
-        ChanceLawEngineV111.TrashHeapSessionSiteIds;
+        ReferenceNatureTrashHeapSessionV111.TrashHeapSessionSiteIds;
     private static readonly string[] TabletOfTruthSessionSites =
-        ChanceLawEngineV111.TabletOfTruthSessionSiteIds;
+        ReferenceNatureTabletOfTruthSessionV111.TabletOfTruthSessionSiteIds;
     private static readonly string[] TrialSessionSites =
-        ChanceLawEngineV111.TrialSessionSiteIds;
+        ReferenceNatureTrialSessionV111.TrialSessionSiteIds;
     private static readonly string[] NativeEventShuffleSessionSites =
-        ChanceLawEngineV111.NativeEventShuffleSessionSiteIds;
+        ReferenceNatureNativeEventShuffleSessionV111
+            .NativeEventShuffleSessionSiteIds;
     private static readonly string[] EndlessConveyorSessionSites =
         ReferenceNatureEndlessConveyorSessionV111.SessionSiteIds;
     private static readonly string[] GloryReflectionsSessionSites =
@@ -963,22 +1022,22 @@ public static class StochasticSiteRegistryV111
         ReferenceNaturePunchOffFightSessionV111.SessionSiteIds;
     private static readonly string[] NativeEventContextIndexSites =
     [
-        .. ChanceLawEngineV111.NativeEventEntryIndexQuerySiteIds,
-        .. ChanceLawEngineV111.NativeEventCardPickQuerySiteIds,
-        .. ChanceLawEngineV111.TrashHeapSessionSiteIds,
-        .. ChanceLawEngineV111.TabletOfTruthSessionSiteIds,
+        .. NativeEventEntryIndexSites,
+        .. NativeEventCardPickSites,
+        .. ReferenceNatureTrashHeapSessionV111.TrashHeapSessionSiteIds,
+        .. ReferenceNatureTabletOfTruthSessionV111.TabletOfTruthSessionSiteIds,
         PrototypeNativeEndlessConveyor.UpgradeCardSiteId,
         PrototypeNativeEndlessConveyor.ColorlessCardSiteId
     ];
     private static readonly string[] NativeEventContextBoundedIntegerSites =
     [
-        ChanceLawEngineV111.NativeEventGoldIndexSiteId,
-        ChanceLawEngineV111.NativeStoneOfAllTimeLiftTicketSiteId,
-        .. ChanceLawEngineV111.TrialSessionSiteIds
+        NativeEventGoldIndexSiteId,
+        NativeStoneOfAllTimeLiftTicketSiteId,
+        .. ReferenceNatureTrialSessionV111.TrialSessionSiteIds
     ];
     private static readonly string[] NativeEventContextUnitFloatSites =
     [
-        ChanceLawEngineV111.NativeEventGoldUnitFloatSiteId,
+        NativeEventGoldUnitFloatSiteId,
         PrototypeNativeEndlessConveyor.DishWeightedTicketSiteId
     ];
     private static readonly string[] NativeUnitFloatSites =
@@ -1086,8 +1145,13 @@ public static class StochasticSiteRegistryV111
         new(RunActionShovelSites, StringComparer.Ordinal);
     private static readonly HashSet<string> ControlledEventChoiceSiteSet =
         new(ControlledEventChoiceSites, StringComparer.Ordinal);
-    private static readonly HashSet<string> ChanceLawQuerySiteSet =
-        new(ChanceLawQuerySites, StringComparer.Ordinal);
+    private static class ChanceLawQueryRegistration
+    {
+        internal static readonly string[] SiteIds =
+            BuildChanceLawQuerySites();
+        internal static readonly HashSet<string> SiteSet =
+            new(SiteIds, StringComparer.Ordinal);
+    }
     private static readonly string[] RunActionSessionSites = RunActionSites
         .Concat(RunActionEventEntrySites)
         .Concat(RunActionShopSites)
@@ -1119,20 +1183,18 @@ public static class StochasticSiteRegistryV111
         .. NativeTreasureSessionSites,
         .. NativeCombatRewardSessionSites,
         .. NativeMapGenerationSessionSites,
-        .. ChanceLawEngineV111.NeowOfferSessionSiteIds,
-        .. ChanceLawEngineV111.TrashHeapSessionSiteIds,
-        .. ChanceLawEngineV111.TabletOfTruthSessionSiteIds,
-        .. ChanceLawEngineV111.TrialSessionSiteIds,
-        .. ChanceLawEngineV111.NativeEventShuffleSessionSiteIds,
+        .. ReferenceNatureNeowOfferSessionV111.NeowOfferSessionSiteIds,
+        .. ReferenceNatureTrashHeapSessionV111.TrashHeapSessionSiteIds,
+        .. ReferenceNatureTabletOfTruthSessionV111.TabletOfTruthSessionSiteIds,
+        .. ReferenceNatureTrialSessionV111.TrialSessionSiteIds,
+        .. ReferenceNatureNativeEventShuffleSessionV111
+            .NativeEventShuffleSessionSiteIds,
         .. ReferenceNatureEndlessConveyorSessionV111.SessionSiteIds,
         .. ReferenceNatureInfestedAutomatonSessionV111.SessionSiteIds,
     ];
 
     private static readonly string[] NatureChoiceSites =
         NatureChoiceSiteCandidates
-            .Concat(ChanceLawEngineV111.NativeEventCardPickQuerySiteIds)
-            .Concat(ChanceLawEngineV111.NativePunchOffRewardQuerySiteIds)
-            .Concat(ChanceLawEngineV111.NativePunchOffFightQuerySiteIds)
             .Concat(ReferenceNatureNativeEventGoldSessionV111.SessionSiteIds)
             .Concat(ReferenceNatureNativeEventRelicSessionV111.SessionSiteIds)
             .Concat(ReferenceNatureNativeShovelSessionV111.SessionSiteIds)
@@ -1201,7 +1263,7 @@ public static class StochasticSiteRegistryV111
     public static string[] ControlledPlayableSiteIds =>
         (string[])ControlledPlayableSites.Clone();
     public static string[] ChanceLawQuerySiteIds =>
-        (string[])ChanceLawQuerySites.Clone();
+        (string[])ChanceLawQueryRegistration.SiteIds.Clone();
     public static string[] NativeUnitFloatSiteIds =>
         (string[])NativeUnitFloatSites.Clone();
     public static string[] NativeRangedFloatSiteIds =>
@@ -1240,6 +1302,20 @@ public static class StochasticSiteRegistryV111
         (string[])NativeEventShuffleSessionSites.Clone();
     public static string[] NativeEventContextSiteIds =>
         (string[])NativeEventContextSites.Clone();
+    public static string[] NativeEventGoldSiteIds =>
+        (string[])NativeEventGoldSites.Clone();
+    public static string[] NativeEventEntryIndexSiteIds =>
+        (string[])NativeEventEntryIndexSites.Clone();
+    public static string[] NativeEventNoEffectIndexSiteIds =>
+        (string[])NativeEventNoEffectIndexSites.Clone();
+    public static string[] NativeEventCardPickSiteIds =>
+        (string[])NativeEventCardPickSites.Clone();
+    public static string[] NativePunchOffRewardSiteIds =>
+        (string[])NativePunchOffRewardSites.Clone();
+    public static string[] NativePunchOffFightSiteIds =>
+        (string[])NativePunchOffFightSites.Clone();
+    public static string[] NativeEventShufflePlanSiteIds =>
+        (string[])NativeEventShufflePlanSites.Clone();
     public static string[] NativeEventContextIndexSiteIds =>
         (string[])NativeEventContextIndexSites.Clone();
     public static string[] NativeEventContextBoundedIntegerSiteIds =>
@@ -1309,7 +1385,7 @@ public static class StochasticSiteRegistryV111
         ControlledEventChoiceSiteSet.Contains(siteId);
 
     public static bool IsChanceLawQuerySite(string siteId) =>
-        ChanceLawQuerySiteSet.Contains(siteId);
+        ChanceLawQueryRegistration.SiteSet.Contains(siteId);
 
     public static bool IsLegacyRandomChoiceSite(string siteId) =>
         IsChanceLawQuerySite(siteId)

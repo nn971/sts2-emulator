@@ -193,7 +193,7 @@ public sealed record ReferenceNatureGloryReflectionsSessionV111(
     }
 
     public static string[] SessionSiteIds =>
-        [.. ChanceLawEngineV111.NativeEventCardPickQuerySiteIds];
+        StochasticSiteRegistryV111.NativeEventCardPickSiteIds;
 
     public static ReferenceNatureGloryReflectionsSessionV111 Begin(
         RunState origin, ulong natureSeed) => Begin(origin,
