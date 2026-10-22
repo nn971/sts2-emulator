@@ -33,6 +33,18 @@ public sealed record PrototypeAutomaticPipelineMechanicsStateV111(
         TryGetCurrentStepKind(out var stepKind) &&
         stepKind == expectedStep;
 
+    public bool IsAtStepIndex(int expectedIndex) =>
+        OpeningStage is null && PendingPostDispatchEventKind is null &&
+        HasValidIndex && NextStepIndex == expectedIndex;
+
+    public int RequireResumeStepIndex()
+    {
+        if (OpeningStage is not null || !HasValidIndex)
+            throw new InvalidDataException(
+                "Automatic pipeline cursor has no resumable step index.");
+        return NextStepIndex;
+    }
+
     public bool HasValidIndex
     {
         get

@@ -1739,9 +1739,8 @@ public sealed partial class PrototypeGameEngine
                 { PendingChoice: null,
                   PendingKnowledgeDemonChoice: null,
                   AutomaticPipelineContinuation: { } enemyActionCursor } ||
-                enemyActionCursor.Mechanics.OpeningStage is not null ||
-                enemyActionCursor.Mechanics.PendingPostDispatchEventKind is not null ||
-                enemyActionCursor.Mechanics.NextStepIndex != enemyActionReplay.StepIndex ||
+                !enemyActionCursor.Mechanics.IsAtStepIndex(
+                    enemyActionReplay.StepIndex) ||
                 enemyActionCursor.Stochastic !=
                     new PrototypeAutomaticPipelineStochasticStateV111() ||
                 state.World?.Combat?.Stochastic.SemanticDeck?.Pending is not null ||
@@ -1764,7 +1763,7 @@ public sealed partial class PrototypeGameEngine
                     "Controlled BeforeHandDraw choice requires the RNG guard.");
             var resumed = ResumeAutomaticPipeline(
                 state, beforeDraw.AutomaticPipelineContinuation!.Mechanics
-                    .NextStepIndex);
+                    .RequireResumeStepIndex());
             return ResumeAutomaticPipelineContinuation(resumed);
         }
 
@@ -1812,7 +1811,8 @@ public sealed partial class PrototypeGameEngine
             };
             state = continuation.Mechanics.OpeningStage is { } openingStage
                 ? ResumeOpeningCombat(state, openingStage)
-                : ResumeAutomaticPipeline(state, continuation.Mechanics.NextStepIndex,
+                : ResumeAutomaticPipeline(state,
+                    continuation.Mechanics.RequireResumeStepIndex(),
                     continuation.Mechanics.PendingPostDispatchEventKind,
                     stopBeforeSemanticHandDraw:
                         stopBeforeSemanticHandDraw,

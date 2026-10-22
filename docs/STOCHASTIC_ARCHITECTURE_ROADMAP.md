@@ -50,6 +50,13 @@ unknown-profile offers fail closed. Unconfigured legacy states retain their
 catalog-wide compatibility validation. Static source review and
 `git diff --check` only; no tests or builds were run.
 
+**S4 automatic-pipeline validated resume-index increment (2026-10-22):**
+The pipeline mechanics owner now validates ordinary resume-index projection
+and suspended step-index matching. The shared engine uses those operations
+instead of directly interpreting `NextStepIndex`; post-dispatch context and
+the serialized cursor shape remain unchanged. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S4 opening Imbued autoplay target increment (2026-10-22):** The shared
 automatic-pipeline target boundary now validates the saved `LateRelicAutoPlay`
 cursor against the exact remaining Imbued driver queue in persistent-card
