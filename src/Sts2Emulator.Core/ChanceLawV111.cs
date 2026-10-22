@@ -7147,7 +7147,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
                 var profile = Origin.Configuration!.Profile;
                 var laterActPreparation =
                     ReferenceNatureLaterActPreparationSessionV111.Begin(
-                        resolvedRun.Stochastic.PrototypeRngMutable, Origin.Ascension, profile,
+                        resolvedRun.Stochastic.PrototypeRng, Origin.Ascension, profile,
                         selection.NextState);
                 var next = this with
                 {
@@ -7556,7 +7556,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
             return CommitOvergrowthRunStartMap(mapGeneration);
         var preparation =
             ReferenceNatureLaterActPreparationSessionV111.Begin(
-                Run.Stochastic.PrototypeRngMutable, Origin.Ascension, Origin.Configuration.Profile,
+                Run.Stochastic.PrototypeRng, Origin.Ascension, Origin.Configuration.Profile,
                 mapGeneration.NatureState);
         var next = this with
         {
@@ -7920,7 +7920,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
                 bossSelection.OutcomeId != "encounter:" + selectedBossId ||
                 laterActPreparation.Ascension != Origin.Ascension ||
                 CanonicalJson.Sha256(laterActPreparation.InitialPrototypeRng) !=
-                    CanonicalJson.Sha256(Run.Stochastic.PrototypeRngMutable) ||
+                    CanonicalJson.Sha256(Run.Stochastic.PrototypeRng) ||
                 CanonicalJson.Sha256(laterActPreparation.Profile) !=
                     CanonicalJson.Sha256(config!.Profile) ||
                 !laterActPreparation.InitialNatureState.SameCursor(

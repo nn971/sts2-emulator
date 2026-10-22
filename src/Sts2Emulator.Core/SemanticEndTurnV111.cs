@@ -890,7 +890,7 @@ public static class SemanticEndTurnEngineV111
         else if (state.Intents is { Pending: not null } pending)
         {
             var next = ControlledTurnIntentEngineV111.Resolve(
-                pending, selectedIndex, state.Run.Stochastic.PrototypeRngMutable);
+                pending, selectedIndex, state.Run.Stochastic.PrototypeRng);
             var intentTranscript = next.Transcript;
             var existingIntentTranscript = state.Stochastic.IntentTranscript;
             var previousIntentCount = existingIntentTranscript.Length;

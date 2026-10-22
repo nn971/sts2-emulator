@@ -2005,7 +2005,7 @@ public static class SemanticPilotCombatEngineV111
                 using (ControlledChanceGuardV111.AllowEngineOwnedNativeProvider())
                 using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
                     committed = PrototypeGameEngine.CommitEnemyIntentsWithAudit(
-                        combat, run.Stochastic.PrototypeRngMutable,
+                        combat, RngBundle.Empty,
                         NativeCombatRngEntryV111.CommittedIntentSiteId);
                 using (ControlledChanceGuardV111.Enter())
                 using (ControlledChanceGuardV111.AllowEngineOwnedNativeProvider())
@@ -2813,7 +2813,7 @@ public static class SemanticPilotCombatEngineV111
     {
         static ulong Count(RunState run)
         {
-            if (!run.Stochastic.PrototypeRngMutable.TryGetStream("reward", out var stream) ||
+            if (!run.Stochastic.PrototypeRng.TryGetStream("reward", out var stream) ||
                 stream.Codec != PrototypeRng.Codec)
                 throw new InvalidDataException(
                     "Reward RNG stream is missing or has an unsupported codec.");
@@ -3200,7 +3200,7 @@ public static class SemanticPilotCombatEngineV111
         if (current.PendingInitialIntents is { Pending: not null } initialIntents)
         {
             var resolvedInitial = ControlledTurnIntentEngineV111.Resolve(
-                initialIntents, selectedIndex, current.Run.Stochastic.PrototypeRngMutable);
+                initialIntents, selectedIndex, current.Run.Stochastic.PrototypeRng);
             var nextRun = current.Run;
             ControlledTurnIntentsV111? pendingInitial = resolvedInitial.Complete
                 ? null : resolvedInitial;
