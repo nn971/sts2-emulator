@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 automatic-pipeline resume alias cleanup (2026-10-22):** Removed the
+unused internal `ResumeAutomaticPipelineAfterChoiceResolution` forwarding
+method after confirming all repository call sites use
+`ResumeAutomaticPipelineContinuation`. The shared resume owner remains the
+single entry point. Static source review and `git diff --check` only; no tests
+or builds were run.
+
 **S4 semantic pilot opening-cursor projection increment (2026-10-22):**
 `PendingInitialIntents` now reads the source-route intent frame through
 `PrototypeAutomaticPipelineMechanicsStateV111.IsAtOpeningBoundary`, checking

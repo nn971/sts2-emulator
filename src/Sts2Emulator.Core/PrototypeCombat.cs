@@ -1830,10 +1830,6 @@ public sealed partial class PrototypeGameEngine
                 : state;
     }
 
-    /// <summary>Compatibility name retained for controlled-choice adapters.</summary>
-    internal static RunState ResumeAutomaticPipelineAfterChoiceResolution(
-        RunState state) => ResumeAutomaticPipelineContinuation(state);
-
     /// <summary>
     /// Attach the semantic intent provider frame to the ordinary automatic
     /// pipeline cursor. The end-turn facade projects this value into its
