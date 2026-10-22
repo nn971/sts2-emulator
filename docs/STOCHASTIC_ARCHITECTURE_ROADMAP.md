@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 controlled recycle swap transition ownership increment (2026-10-22):**
+`ControlledRecycleShuffleV111.AdvanceSwap` now validates the selected ticket
+against the saved request and advances its permutation, cursor, transcript, and
+next request together. Live resolution and replay validation share the same
+transition. Static source review and `git diff --check` only; no tests or
+builds were run.
+
 **S3 controlled intent ticket append ownership increment (2026-10-22):**
 `ControlledTurnIntentStochasticStateV111` now validates a selected outcome
 against its pending request and transcript ordinal, then appends the decision

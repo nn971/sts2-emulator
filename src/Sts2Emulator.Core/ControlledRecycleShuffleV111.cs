@@ -53,6 +53,44 @@ public sealed record ControlledRecycleShuffleV111(
         Pending = _pending
     };
 
+    internal ControlledRecycleShuffleV111 AdvanceSwap(
+        RandomIndexDecisionV111 decision)
+    {
+        ArgumentNullException.ThrowIfNull(decision);
+        decision.Validate();
+        var pending = _pending ?? throw new InvalidOperationException(
+            "Recycle has no pending swap.");
+        if (NextSwapIndex < 1 ||
+            decision.ProviderMode != "controlled-v111" ||
+            decision.NativeCursorBefore is not null ||
+            decision.NativeCursorAfter is not null ||
+            decision.ProbabilityStatus != "UNVERIFIED" ||
+            decision.Request.SiteId != ControlledRecycleShuffleEngineV111.SiteId ||
+            decision.Request.StreamId != "run.shuffle" ||
+            decision.Request.OwnerId != "player:0" ||
+            decision.Request.Ordinal != FirstOrdinal + _transcript.Length ||
+            decision.Request.SupportCount != NextSwapIndex + 1 ||
+            CanonicalJson.Sha256(decision.Request) !=
+                CanonicalJson.Sha256(pending))
+            throw new InvalidDataException(
+                "Recycle decision does not advance its saved swap request.");
+
+        var shuffled = (long[])_shuffled.Clone();
+        (shuffled[NextSwapIndex], shuffled[decision.SelectedIndex]) =
+            (shuffled[decision.SelectedIndex], shuffled[NextSwapIndex]);
+        var nextTranscript = _transcript.Append(CloneDecision(decision))
+            .ToArray();
+        var nextIndex = NextSwapIndex - 1;
+        return this with
+        {
+            Shuffled = shuffled,
+            NextSwapIndex = nextIndex,
+            Transcript = nextTranscript,
+            Pending = ControlledRecycleShuffleEngineV111.MakePending(
+                this, nextIndex, nextTranscript.Length)
+        };
+    }
+
     private static long[] CloneRequired(long[] values, string parameterName)
     {
         ArgumentNullException.ThrowIfNull(values, parameterName);
@@ -78,6 +116,12 @@ public sealed record ControlledRecycleShuffleV111(
                 OrderedCandidates =
                     (int[])request.OrderedCandidates.Clone()
             };
+
+    private static RandomIndexDecisionV111 CloneDecision(
+        RandomIndexDecisionV111 decision) => decision with
+    {
+        Request = CloneRequest(decision.Request)!
+    };
 }
 
 public static class ControlledRecycleShuffleEngineV111
@@ -95,7 +139,11 @@ public static class ControlledRecycleShuffleEngineV111
         var stage = new ControlledRecycleShuffleV111(
             (long[])discardPile.Clone(), (long[])discardPile.Clone(),
             discardPile.Length - 1, ordinal, [], null);
-        return stage with { Pending = MakePending(stage) };
+        return stage with
+        {
+            Pending = MakePending(stage, stage.NextSwapIndex,
+                stage.Transcript.Length)
+        };
     }
 
     public static ControlledRecycleShuffleV111 Resolve(
@@ -113,22 +161,9 @@ public static class ControlledRecycleShuffleEngineV111
                 ControlledRecycleShuffleV111>(
                 working, request, selectedIndex, (checkpoint, replayedIndex) =>
                 {
-                    var values = (long[])checkpoint.Shuffled.Clone();
-                    (values[checkpoint.NextSwapIndex], values[replayedIndex]) =
-                        (values[replayedIndex],
-                            values[checkpoint.NextSwapIndex]);
                     var decision = new RandomIndexDecisionV111(
                         request, replayedIndex, "controlled-v111");
-                    decision.Validate();
-                    var next = checkpoint with
-                    {
-                        Shuffled = values,
-                        NextSwapIndex = checkpoint.NextSwapIndex - 1,
-                        Transcript = checkpoint.Transcript
-                            .Append(decision).ToArray(),
-                        Pending = null
-                    };
-                    return next with { Pending = MakePending(next) };
+                    return checkpoint.AdvanceSwap(decision);
                 });
     }
 
@@ -143,35 +178,18 @@ public static class ControlledRecycleShuffleEngineV111
         var replay = Begin(stage.Baseline, stage.FirstOrdinal);
         foreach (var decision in stage.Transcript)
         {
-            decision.Validate();
-            if (replay.Pending is null ||
-                decision.ProviderMode != "controlled-v111" ||
-                decision.NativeCursorBefore is not null ||
-                decision.NativeCursorAfter is not null ||
-                CanonicalJson.Sha256(replay.Pending) !=
-                    CanonicalJson.Sha256(decision.Request))
-                throw new InvalidDataException("Recycle transcript diverged from source eligibility.");
-            // Pure swap reconstruction, without invoking the journaling provider.
-            var cards = (long[])replay.Shuffled.Clone();
-            (cards[replay.NextSwapIndex], cards[decision.SelectedIndex]) =
-                (cards[decision.SelectedIndex], cards[replay.NextSwapIndex]);
-            replay = replay with
-            {
-                Shuffled = cards,
-                NextSwapIndex = replay.NextSwapIndex - 1,
-                Transcript = replay.Transcript.Append(decision).ToArray()
-            };
-            replay = replay with { Pending = MakePending(replay) };
+            replay = replay.AdvanceSwap(decision);
         }
         if (CanonicalJson.Sha256(replay) != CanonicalJson.Sha256(stage))
             throw new InvalidDataException("Recycle continuation is not source-reachable.");
     }
 
-    private static RandomIndexRequestV111? MakePending(
-        ControlledRecycleShuffleV111 state) =>
-        state.NextSwapIndex < 1 ? null : new RandomIndexRequestV111(
+    internal static RandomIndexRequestV111? MakePending(
+        ControlledRecycleShuffleV111 state, int nextSwapIndex,
+        int transcriptLength) =>
+        nextSwapIndex < 1 ? null : new RandomIndexRequestV111(
             SiteId, "run.shuffle", "player:0",
-            state.FirstOrdinal + state.Transcript.Length,
+            state.FirstOrdinal + transcriptLength,
             [], OperationKind: "bounded_integer",
-            BoundedCount: state.NextSwapIndex + 1);
+            BoundedCount: nextSwapIndex + 1);
 }
