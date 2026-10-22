@@ -298,24 +298,21 @@ public sealed partial class PrototypeGameEngine
     }
 
     /// <summary>
-    /// Publish a completed semantic hand-draw receipt at the already
-    /// advanced DrawPlayerHand cursor. This also handles semantic adapters
-    /// whose source step advanced before the facade consumed its result.
+    /// Publish the completed semantic hand-draw receipt state at the already
+    /// advanced DrawPlayerHand cursor. A zero count clears the optional
+    /// receipt. This also handles adapters whose source step advanced before
+    /// the facade consumed its result.
     /// </summary>
     internal static CombatState AttachCompletedSemanticHandDrawReceipt(
         CombatState combat,
         PrototypeAutomaticPipelineContinuationState cursor,
-        int requestedCount)
+        int? requestedCount)
     {
         if (!ControlledChanceGuardV111.Active)
             throw new InvalidOperationException(
                 "Semantic hand-draw receipt publication requires the RNG guard.");
         ArgumentNullException.ThrowIfNull(combat);
         ArgumentNullException.ThrowIfNull(cursor);
-        if (requestedCount <= 0)
-            throw new InvalidDataException(
-                "Completed semantic hand-draw receipt must be positive.");
-
         var completedCursor = cursor.WithHandDrawProgress(null)
             .WithCompletedSemanticHandDrawReceipt(requestedCount);
         return AttachValidatedAutomaticPipelineContinuation(
