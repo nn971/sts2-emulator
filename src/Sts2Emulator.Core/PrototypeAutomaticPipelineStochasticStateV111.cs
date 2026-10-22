@@ -681,7 +681,7 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
 
         if (ControlledEnemyAction is not { } enemyAction) return;
         enemyAction.Validate(PrototypeContent.Rules.EndTurnPipeline.Length);
-        if (continuation.Mechanics.NextStepIndex != enemyAction.StepIndex ||
+        if (!continuation.Mechanics.IsAtStepIndex(enemyAction.StepIndex) ||
             combat.IsPlayerTurn || combat.PendingChoice is not null ||
             combat.PendingKnowledgeDemonChoice is not null ||
             CanonicalJson.Sha256(enemyAction.Checkpoint.World?.Combat) !=
