@@ -893,6 +893,8 @@ Combat card plays, potion use, automatic death prevention, and combat-win dispat
 
 Combat Imbued autoplay and the opening player-turn event dispatch also use local prototype bundles and publish their cursor with the resulting combat state, including suspended autoplay or event choices.
 
+Automatic turn steps now pass a local prototype bundle through combat-event dispatch, hand effects, enemy status/death summons, enemy actions, intent commitment, and hand draw. They publish the cursor with each step result or before handing a suspended draw to its saved continuation; late relic autoplay refreshes its local projection after the dedicated transition returns.
+
 ## Reading order
 
 1. This architecture contract.

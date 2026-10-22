@@ -2407,6 +2407,12 @@ public sealed partial class PrototypeGameEngine
         var combat = world.Combat
             ?? throw new InvalidOperationException("Combat phase has no combat state.");
         var player = state.Player;
+        var prototypeRng = state.Stochastic.PrototypeRng;
+        RunState PublishPrototypeRng(RunState current) => current with
+        {
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                current.Stochastic, prototypeRng)
+        };
 
         switch (automaticStep.Kind)
         {
@@ -2427,7 +2433,7 @@ public sealed partial class PrototypeGameEngine
                     var exhausted = ResolveOperations(player, combat,
                         new Queue<PrototypeQueuedOperation>([
                             new(PrototypeCombatEffectKind.ExhaustHand, 1)
-                        ]), state.Stochastic.PrototypeRngMutable);
+                        ]), prototypeRng);
                     player = exhausted.Player;
                     combat = exhausted.Combat;
                 }
@@ -2545,7 +2551,7 @@ public sealed partial class PrototypeGameEngine
                     player,
                     combat,
                     new PrototypeCombatEvent(automaticStep.EventKind.Value),
-                    state.Stochastic.PrototypeRngMutable,
+                    prototypeRng,
                     allowSuspension: true);
                 player = dispatched.Player;
                 combat = dispatched.Combat;
@@ -2648,7 +2654,7 @@ public sealed partial class PrototypeGameEngine
                             PrototypeCombatEventKind.CardExhausted,
                             SourceCardInstanceId: cardInstanceId,
                             CardId: exhaustedCard.CardId),
-                        state.Stochastic.PrototypeRngMutable);
+                        prototypeRng);
                     player = exhausted.Player;
                     combat = exhausted.Combat;
                 }
@@ -2656,7 +2662,7 @@ public sealed partial class PrototypeGameEngine
                 var discardHooks = ResumeChoiceResolutionContinuation(
                     player,
                     combat,
-                    state.Stochastic.PrototypeRngMutable,
+                    prototypeRng,
                     new PrototypeChoiceResolutionContinuationState(
                         SourceCardInstanceId: null,
                         SourceCardDestination: PrototypeCardZone.DiscardPile,
@@ -2700,7 +2706,7 @@ public sealed partial class PrototypeGameEngine
                 combat = ResolveEnemyStatusStage(
                     combat,
                     automaticStep.Stage.Value,
-                    state.Stochastic.PrototypeRngMutable);
+                    prototypeRng);
                 if (automaticStep.Stage.Value
                     == PrototypeTurnStage.EnemyTurnEnd)
                 {
@@ -2722,7 +2728,7 @@ public sealed partial class PrototypeGameEngine
 
                 combat = ResolveEnemyDeathSummons(
                     combat,
-                    state.Stochastic.PrototypeRngMutable,
+                    prototypeRng,
                     enemyActionSkips:
                         automaticStep.Stage.Value
                             == PrototypeTurnStage.EnemyTurnStart
@@ -2756,7 +2762,7 @@ public sealed partial class PrototypeGameEngine
                     combat,
                     world.Act,
                     state.Ascension,
-                    state.Stochastic.PrototypeRngMutable);
+                    prototypeRng);
                 player = result.Player;
                 combat = result.Combat;
                 break;
@@ -2766,7 +2772,7 @@ public sealed partial class PrototypeGameEngine
                 // The controlled pipeline suspends *before* this stage.
                 combat = CompleteAdvanceTurnAfterCommittedIntents(
                     CommitEnemyIntents(
-                        combat, state.Stochastic.PrototypeRngMutable,
+                        combat, prototypeRng,
                         NativeCombatRngEntryV111.NextTurnIntentSiteId));
                 break;
 
@@ -2851,7 +2857,7 @@ public sealed partial class PrototypeGameEngine
                     definition => definition.RemoveAfterEnergyReset);
                 var sideStarted = DispatchCombatEvent(player, combat,
                     new PrototypeCombatEvent(PrototypeCombatEventKind.PlayerSideTurnStarted),
-                    state.Stochastic.PrototypeRngMutable, allowSuspension: true);
+                    prototypeRng, allowSuspension: true);
                 player = sideStarted.Player;
                 combat = TickPaelsLegionAtPlayerTurnStart(sideStarted.Combat);
                 break;
@@ -2868,7 +2874,9 @@ public sealed partial class PrototypeGameEngine
                 if (resumedAfterSemanticHook || resumedAfterControlledHook)
                 {
                     state = CommitAutomaticHandDrawProgress(
-                        state, player, combat, progress: null);
+                        PublishPrototypeRng(state), player, combat,
+                        progress: null);
+                    prototypeRng = state.Stochastic.PrototypeRng;
                     world = RequireWorld(state);
                     player = state.Player;
                     combat = world.Combat!;
@@ -2880,7 +2888,7 @@ public sealed partial class PrototypeGameEngine
                         combat,
                         new PrototypeCombatEvent(
                             PrototypeCombatEventKind.BeforeHandDraw),
-                        state.Stochastic.PrototypeRngMutable,
+                        prototypeRng,
                         allowSuspension: ControlledChanceGuardV111.Active &&
                             (combat.Stochastic.SemanticDeck is
                                 { Mode: SemanticDeckStateV111.NatureMode } ||
@@ -2892,7 +2900,7 @@ public sealed partial class PrototypeGameEngine
                     if (combat.PendingChoice?.ControlledRandomPileCard is not null)
                     {
                         return CommitAutomaticHandDrawProgress(
-                            state, player, combat,
+                            PublishPrototypeRng(state), player, combat,
                             PrototypeAutomaticHandDrawProgressV111
                                 .SemanticBeforeHandDraw(),
                             createCheckpoint: true);
@@ -2943,7 +2951,7 @@ public sealed partial class PrototypeGameEngine
                                 : pending
                         };
                         return CommitAutomaticHandDrawProgress(
-                            state, player, combat, progress,
+                            PublishPrototypeRng(state), player, combat, progress,
                             createCheckpoint: true);
                     }
                 }
@@ -2973,7 +2981,7 @@ public sealed partial class PrototypeGameEngine
                     player,
                     combat,
                     requestedHandDraw,
-                    state.Stochastic.PrototypeRngMutable,
+                    prototypeRng,
                     fromHandDraw: true,
                     suspensionPolicy:
                         PrototypeDrawCardsSuspensionPolicyV111
@@ -2999,6 +3007,8 @@ public sealed partial class PrototypeGameEngine
                     var advanced = state with
                     {
                         Player = player,
+                        Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                            state.Stochastic, prototypeRng),
                         World = world with { Combat = combat }
                     };
                     var drawFrame = CreateSemanticDrawResultFrame(
@@ -3019,10 +3029,11 @@ public sealed partial class PrototypeGameEngine
                          PrototypeDrawCardsBoundaryKind.ShuffleSelection or
                          PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice))
                 {
+                    var published = PublishPrototypeRng(state);
                     return combat.AutomaticPipelineContinuation is null
                         ? ContinueInitialControlledHandDrawBoundary(
-                            state, drawn)
-                        : ContinueControlledHandDraw(state, drawn);
+                            published, drawn)
+                        : ContinueControlledHandDraw(published, drawn);
                 }
                 if (drawBoundary ==
                     PrototypeDrawCardsBoundaryKind.ShuffleSelection)
@@ -3036,7 +3047,7 @@ public sealed partial class PrototypeGameEngine
                                 drawn.RemainingCount, FromHandDraw: true)
                         });
                     var resumed = ResolveOperations(
-                        player, combat, pendingDraw, state.Stochastic.PrototypeRngMutable,
+                        player, combat, pendingDraw, prototypeRng,
                         moveSourceCardOnCompletion: false);
                     player = resumed.Player;
                     combat = resumed.Combat;
@@ -3050,6 +3061,8 @@ public sealed partial class PrototypeGameEngine
                     var completedInput = state with
                     {
                         Player = player,
+                        Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                            state.Stochastic, prototypeRng),
                         World = world with { Combat = combat }
                     };
                     return CompleteAutomaticHandDrawStage(
@@ -3061,6 +3074,8 @@ public sealed partial class PrototypeGameEngine
                     var completed = state with
                     {
                         Player = player,
+                        Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                            state.Stochastic, prototypeRng),
                         World = world with { Combat = combat }
                     };
                     return CompleteAutomaticHandDrawStage(
@@ -3073,6 +3088,7 @@ public sealed partial class PrototypeGameEngine
 
             case PrototypeAutomaticStepKind.ResolveLateRelicAutoplay:
                 state = ResolveWhisperingEarringAutoPlay(state);
+                prototypeRng = state.Stochastic.PrototypeRng;
                 world = RequireWorld(state);
                 combat = world.Combat!;
                 player = state.Player;
@@ -3085,6 +3101,8 @@ public sealed partial class PrototypeGameEngine
         return state with
         {
             Player = player,
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, prototypeRng),
             World = world with { Combat = combat }
         };
     }
