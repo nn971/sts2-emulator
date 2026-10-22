@@ -3186,11 +3186,120 @@ class Session:
                 raise EmulatorError("Emulator does not support exact snapshot v1")
             if self.capabilities.get("batchSchemaId") != "sts2-deterministic-batch-v1":
                 raise EmulatorError("Emulator does not support deterministic batch v1")
+            self._validate_stochastic_capabilities()
         except BaseException:
             self._process.terminate()
             self._process.wait(timeout=5)
             self._close_pipes()
             raise
+
+    def _validate_stochastic_capabilities(self):
+        """Reject internally inconsistent stochastic hello advertisements."""
+        manifest = self.capabilities.get("stochasticCapabilities")
+        stochastic_fields = (
+            "stochasticSessionCoverage",
+            "stochasticChanceLawQueryCoverage",
+            "semanticNatureChoiceViewSchemaId",
+            "semanticNatureChoiceViewOperations",
+            "semanticNatureChoiceViewSessionKinds",
+        )
+        if manifest is None:
+            if any(field in self.capabilities for field in stochastic_fields):
+                raise EmulatorError(
+                    "Emulator returned partial stochastic capabilities")
+            return
+        if not isinstance(manifest, dict):
+            raise EmulatorError("Invalid stochastic capability manifest")
+        if (manifest.get("schemaId") != "sts2-v111-stochastic-capabilities-v3"
+                or manifest.get("chanceLawSchemaId") !=
+                "sts2-v111-chance-law-v1"
+                or manifest.get("playerObservationSchemaId") !=
+                self.capabilities.get("aiSchemaId")):
+            raise EmulatorError(
+                "Unsupported stochastic capability or observation schema")
+
+        def string_list(value, field):
+            if (not isinstance(value, list)
+                    or any(not isinstance(item, str) or not item
+                           for item in value)
+                    or len(value) != len(set(value))):
+                raise EmulatorError(
+                    f"Invalid stochastic capability list {field!r}")
+            return value
+
+        nature_sites = set(string_list(
+            manifest.get("natureChoiceSiteIds"), "natureChoiceSiteIds"))
+        for field in ("providerModes", "referenceNatureOperations",
+                      "probabilityStatuses", "scriptedRunActionOperations",
+                      "scriptedRunSessionOperations"):
+            string_list(manifest.get(field), field)
+
+        view_schema = manifest.get("semanticNatureChoiceViewSchemaId")
+        view_operations = string_list(
+            manifest.get("semanticNatureChoiceViewOperations"),
+            "semanticNatureChoiceViewOperations")
+        view_session_kinds = string_list(
+            manifest.get("semanticNatureChoiceViewSessionKinds"),
+            "semanticNatureChoiceViewSessionKinds")
+        if (view_schema !=
+                "sts2-v111-semantic-nature-choice-view-v2"
+                or self.capabilities.get(
+                    "semanticNatureChoiceViewSchemaId") != view_schema):
+            raise EmulatorError(
+                "Nature-choice schema differs from the stochastic manifest")
+        for field, advertised in (
+                ("semanticNatureChoiceViewOperations", view_operations),
+                ("semanticNatureChoiceViewSessionKinds",
+                 view_session_kinds)):
+            top_level = string_list(self.capabilities.get(field), field)
+            if any(item not in advertised for item in top_level):
+                raise EmulatorError(
+                    f"Nature-choice {field} differs from the stochastic manifest")
+            if (field == "semanticNatureChoiceViewSessionKinds"
+                    and top_level != advertised):
+                raise EmulatorError(
+                    "Nature-choice session kinds differ from the stochastic manifest")
+        if ("nature_choice_observe" not in view_operations
+                or "nature_choice_observe" not in self.capabilities.get(
+                    "semanticNatureChoiceViewOperations", [])):
+            raise EmulatorError(
+                "Nature-choice observation is missing from its manifest")
+
+        coverage = self.capabilities.get("stochasticSessionCoverage")
+        if (not isinstance(coverage, dict)
+                or coverage.get("schemaId") !=
+                "sts2-v111-stochastic-session-coverage-v1"):
+            raise EmulatorError("Invalid stochastic session coverage")
+        for field, schema in coverage.items():
+            if not field.endswith("SessionSchemaId"):
+                continue
+            manifest_field = ("referenceNatureSessionSchemaId"
+                              if field ==
+                              "semanticReferenceNatureSessionSchemaId"
+                              else field)
+            if (not isinstance(schema, str) or not schema
+                    or manifest.get(manifest_field) != schema):
+                raise EmulatorError(
+                    f"Stochastic session schema {field!r} is inconsistent")
+        for field, site_ids in coverage.items():
+            if not field.endswith("SiteIds"):
+                continue
+            advertised_sites = string_list(site_ids, field)
+            if any(site_id not in nature_sites
+                   for site_id in advertised_sites):
+                raise EmulatorError(
+                    f"Stochastic session coverage {field!r} contains an "
+                    "unadvertised Nature-choice site")
+
+        query_coverage = self.capabilities.get(
+            "stochasticChanceLawQueryCoverage")
+        if (not isinstance(query_coverage, dict)
+                or query_coverage.get("schemaId") !=
+                "sts2-v111-stochastic-chance-law-query-coverage-v1"
+                or query_coverage.get("queryOperation") !=
+                "chance_law_query"):
+            raise EmulatorError("Invalid Chance Law query coverage")
+        string_list(query_coverage.get("siteIds"), "chanceLawQuerySiteIds")
 
     def supports_reference_nature_site(self, site_id: str, *,
                                        session: str = "any") -> bool:
@@ -3239,6 +3348,92 @@ class Session:
                 and coverage.get("queryOperation") == "chance_law_query"
                 and site_id in coverage.get("siteIds", []))
 
+    def _validate_nature_choice_view(self, choice):
+        if not isinstance(choice, dict):
+            raise EmulatorError("Nature-choice response is not an object")
+
+        def required_string(value, field):
+            if not isinstance(value, str) or not value:
+                raise EmulatorError(
+                    f"Nature-choice response has invalid {field!r}")
+            return value
+
+        manifest = self.capabilities["stochasticCapabilities"]
+        supported_statuses = set(manifest["probabilityStatuses"])
+        if choice.get("schemaId") != manifest.get(
+                "semanticNatureChoiceViewSchemaId"):
+            raise EmulatorError("Nature-choice envelope schema is invalid")
+        law = choice.get("chanceLaw")
+        if not isinstance(law, dict):
+            raise EmulatorError("Nature-choice response has no Chance Law")
+        if law.get("schemaId") != manifest.get("chanceLawSchemaId"):
+            raise EmulatorError("Nature-choice Chance Law schema is invalid")
+
+        for field in ("eventKind", "eventId", "siteId", "operationKind",
+                      "eventSupportFingerprint", "lawSupportFingerprint",
+                      "conditioningPolicyId", "conditioningFingerprint",
+                      "probabilityStatus", "probabilityProvenance"):
+            required_string(choice.get(field), field)
+        for field in ("lawId", "eventId", "siteId", "operationKind",
+                      "ownerId", "supportFingerprint",
+                      "conditioningPolicyId", "conditioningFingerprint",
+                      "probabilityStatus", "probabilityProvenance"):
+            required_string(law.get(field), f"chanceLaw.{field}")
+
+        if (choice.get("eventId") != law.get("eventId")
+                or choice.get("siteId") != law.get("siteId")
+                or choice.get("operationKind") != law.get("operationKind")
+                or choice.get("lawSupportFingerprint") !=
+                law.get("supportFingerprint")
+                or choice.get("conditioningPolicyId") !=
+                law.get("conditioningPolicyId")
+                or choice.get("conditioningFingerprint") !=
+                law.get("conditioningFingerprint")
+                or choice.get("probabilityStatus") !=
+                law.get("probabilityStatus")
+                or choice.get("probabilityProvenance") !=
+                law.get("probabilityProvenance")):
+            raise EmulatorError(
+                "Nature-choice envelope and Chance Law disagree")
+        if choice.get("probabilityStatus") not in supported_statuses:
+            raise EmulatorError(
+                "Nature-choice probability status was not negotiated")
+
+        outcomes = law.get("outcomes")
+        total_weight = law.get("totalWeight")
+        if (not isinstance(outcomes, list) or not outcomes
+                or type(total_weight) is not int or total_weight <= 0):
+            raise EmulatorError("Nature-choice Chance Law support is invalid")
+        outcome_ids = set()
+        weight_sum = 0
+        for outcome in outcomes:
+            if not isinstance(outcome, dict):
+                raise EmulatorError("Nature-choice outcome is not an object")
+            outcome_id = required_string(outcome.get("outcomeId"),
+                                         "chanceLaw.outcomeId")
+            weight = outcome.get("weight")
+            if type(weight) is not int or weight <= 0 or outcome_id in outcome_ids:
+                raise EmulatorError("Nature-choice outcome support is invalid")
+            outcome_ids.add(outcome_id)
+            weight_sum += weight
+        if weight_sum != total_weight:
+            raise EmulatorError(
+                "Nature-choice Chance Law total weight is inconsistent")
+
+        metadata = choice.get("eventMetadata")
+        if not isinstance(metadata, dict) or "chanceLaw" in metadata:
+            raise EmulatorError("Nature-choice event metadata is invalid")
+        for field, envelope_field in (
+                ("kind", "eventKind"), ("eventId", "eventId"),
+                ("siteId", "siteId"), ("operationKind", "operationKind"),
+                ("supportFingerprint", "eventSupportFingerprint"),
+                ("probabilityStatus", "probabilityStatus"),
+                ("boundaryFingerprint", "boundaryFingerprint")):
+            if (field in metadata
+                    and metadata[field] != choice.get(envelope_field)):
+                raise EmulatorError(
+                    "Nature-choice metadata differs from its envelope")
+
     def observe_nature_choice(self, session_kind: str,
                               session_handle: str) -> dict:
         """Return the negotiated Nature-only view of one pending chance.
@@ -3278,6 +3473,8 @@ class Session:
                     and not isinstance(result.get("natureChoice"), dict))):
             raise EmulatorError(
                 "Nature-choice response differs from the negotiated session")
+        if result.get("natureChoice") is not None:
+            self._validate_nature_choice_view(result["natureChoice"])
         return result
 
     def call(self, operation, **payload):
