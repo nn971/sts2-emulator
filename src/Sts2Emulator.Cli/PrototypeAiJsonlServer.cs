@@ -2524,6 +2524,13 @@ internal static class PrototypeAiJsonlServer
                     ? "nature-extended-fixture"
                     : "nature-two-site";
 
+        PrototypeAiFairObservationEnvelopeV111 FairObservation(
+            string viewKind, string handle, RunState state, bool terminal) =>
+            PrototypeAiFairObservationEnvelopeV111.Create(
+                viewKind, handle,
+                PrototypeAiFairObservationEnvelopeV111.FairPolicyId,
+                environment.Observe(state), terminal);
+
         object SemanticResult(
             SemanticPilotCombatV111 state, string handle,
             string? parent = null)
@@ -2875,6 +2882,16 @@ internal static class PrototypeAiJsonlServer
                             aiSchemaId = PrototypeAiEnvironment.SchemaId,
                             rulesetId = PrototypeContent.RulesetId,
                             fairPolicyId = FairPolicyId,
+                            fairObservationEnvelopeSchemaId =
+                                PrototypeAiFairObservationEnvelopeV111
+                                    .CurrentSchemaId,
+                            fairObservationOperations = new[]
+                            {
+                                "fair_observe"
+                            },
+                            fairObservationViewKinds =
+                                PrototypeAiFairObservationEnvelopeV111
+                                    .ViewKinds,
                             hypotheticalDrawOrderId = PrototypeHypotheticalDrawOrder.SchemaId,
                             conditionalCombatEntryId = PrototypeConditionedCombatEntry.SchemaId,
                             factorizedInitialStreamsId = PrototypeFactorizedRunFactory.SchemaId,
@@ -10539,6 +10556,56 @@ internal static class PrototypeAiJsonlServer
                             observationHash = frame.ObservationHash,
                             schemaId = frame.SchemaId
                         });
+                        break;
+                    }
+
+                    case "fair_observe":
+                    {
+                        var viewKind = RequiredString(request, "view_kind");
+                        var handle = RequiredString(request, "view_handle");
+                        RunState run;
+                        bool terminal;
+                        switch (viewKind)
+                        {
+                            case "run_state":
+                                run = states.TryGetValue(handle, out var runState)
+                                    ? runState
+                                    : throw new InvalidOperationException(
+                                        $"Unknown state handle '{handle}'.");
+                                terminal = run.Phase == RunPhase.Terminal;
+                                break;
+                            case "controlled_combat":
+                                if (!controlledStates.TryGetValue(handle,
+                                        out var controlled))
+                                    throw new InvalidOperationException(
+                                        $"Unknown controlled handle '{handle}'.");
+                                if (!controlled.AtPlayerBoundary)
+                                    throw new InvalidOperationException(
+                                        "Controlled fair observation requires a player boundary.");
+                                run = controlled.Run;
+                                terminal = run.Phase == RunPhase.Terminal;
+                                break;
+                            case "semantic_combat":
+                                if (!semanticStates.TryGetValue(handle,
+                                        out var semantic))
+                                    throw new InvalidOperationException(
+                                        $"Unknown semantic handle '{handle}'.");
+                                if (!semantic.AtPlayerBoundary &&
+                                    !semantic.AtPlayerChoiceBoundary)
+                                    throw new InvalidOperationException(
+                                        "Semantic fair observation requires a player boundary.");
+                                run = semantic.Run;
+                                terminal = semantic.CombatTerminal;
+                                break;
+                            default:
+                                throw new NotSupportedException(
+                                    "Unsupported fair observation view kind: " +
+                                    viewKind);
+                        }
+
+                        var frame = FairObservation(viewKind, handle, run,
+                            terminal);
+                        Write(new { requestId, ok = true, frame });
                         break;
                     }
 

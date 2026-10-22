@@ -72,6 +72,7 @@ snapshots encode enums as canonical numeric values; reset uses the names above.
 | `reset_v111` | `seed`, optional configuration and `nature_seed` | `stateHandle`, `exactHash`, schema/fidelity, optional ReferenceNature state schema |
 | `legal_actions` | `state_handle` | semantic `actions` and stable `actionId` |
 | `observe` | `state_handle`, `policy_id: prototype-fair-v0` | fair `payloadJson` |
+| `fair_observe` | `view_kind`, `view_handle` | versioned common fair observation, action menu, observation hash and terminal flag |
 | `step` | `state_handle`, `action_id` | independent `child`, preserved `parent` |
 | `fork` | `state_handle` | independent `child` with equal hash |
 | `save_snapshot` | `state_handle` | exact hidden-state string `snapshot` |
@@ -88,8 +89,14 @@ existing `batch_step` and frame APIs keep their original contract.
 Snapshots contain hidden RNG state, draw order and pending continuations.
 They are trusted emulator state exchange. Restore checks schema, build/state
 identity, canonical hash and engine invariants; hashes establish consistency,
-not authenticity. This version rejects unknown properties. Use `observe` for
-player-visible information.
+not authenticity. This version rejects unknown properties. Use `observe` or
+the additive `fair_observe` frame for player-visible information.
+
+`fair_observe` negotiates `sts2-v111-fair-observation-envelope-v1` and accepts
+`run_state`, `controlled_combat`, or `semantic_combat` handles. Its payload
+uses the unchanged `prototype-ai-v0` observation schema; the envelope binds
+the view kind, handle, policy, observation hash, legal action menu, and terminal
+flag. All three views are produced by the same `PrototypeAiEnvironment`.
 
 ## Replay
 

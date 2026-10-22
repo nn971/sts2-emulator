@@ -22,9 +22,15 @@ class State:
     handle: str
 
     def actions(self):
+        if self.session._fair_observation_supported:
+            return self.session.observe_fair(
+                "run_state", self.handle)["actions"]
         return self.session.call("legal_actions", state_handle=self.handle)["actions"]
 
     def observe(self):
+        if self.session._fair_observation_supported:
+            return self.session.observe_fair(
+                "run_state", self.handle)["observation"]
         result = self.session.call("observe", state_handle=self.handle,
                                    policy_id="prototype-fair-v0")
         return json.loads(result["payloadJson"])
@@ -2754,12 +2760,18 @@ class ControlledCombat:
                               selected_index=selected_index))
 
     def observe(self):
+        if self.session._fair_observation_supported:
+            return self.session.observe_fair(
+                "controlled_combat", self.handle)["observation"]
         result = self.session.call("controlled_observe",
                                    controlled_handle=self.handle,
                                    policy_id="prototype-fair-v0")
         return json.loads(result["payloadJson"])
 
     def actions(self):
+        if self.session._fair_observation_supported:
+            return self.session.observe_fair(
+                "controlled_combat", self.handle)["actions"]
         return self.session.call("controlled_legal_actions",
                                  controlled_handle=self.handle)["actions"]
 
@@ -2814,12 +2826,18 @@ class SemanticCombat:
 
     def observe(self):
         """Fair player-only observation: never a privileged Nature event."""
+        if self.session._fair_observation_supported:
+            return self.session.observe_fair(
+                "semantic_combat", self.handle)["observation"]
         result = self.session.call(
             "semantic_observe", semantic_handle=self.handle,
             policy_id="prototype-fair-v0")
         return json.loads(result["payloadJson"])
 
     def actions(self):
+        if self.session._fair_observation_supported:
+            return self.session.observe_fair(
+                "semantic_combat", self.handle)["actions"]
         result = self.session.call(
             "semantic_observe", semantic_handle=self.handle,
             policy_id="prototype-fair-v0")
@@ -3197,11 +3215,101 @@ class Session:
             if self.capabilities.get("batchSchemaId") != "sts2-deterministic-batch-v1":
                 raise EmulatorError("Emulator does not support deterministic batch v1")
             self._validate_stochastic_capabilities()
+            self._fair_observation_supported = (
+                self._validate_fair_observation_capabilities())
         except BaseException:
             self._process.terminate()
             self._process.wait(timeout=5)
             self._close_pipes()
             raise
+
+    def _validate_fair_observation_capabilities(self):
+        fields = ("fairObservationOperations",
+                  "fairObservationViewKinds")
+        schema_id = self.capabilities.get(
+            "fairObservationEnvelopeSchemaId")
+        if schema_id is None:
+            if any(field in self.capabilities for field in fields):
+                raise EmulatorError(
+                    "Emulator returned partial fair-observation capabilities")
+            return False
+        if schema_id != "sts2-v111-fair-observation-envelope-v1":
+            raise EmulatorError("Unsupported fair-observation envelope schema")
+        operations = self.capabilities.get(fields[0])
+        view_kinds = self.capabilities.get(fields[1])
+        expected_view_kinds = [
+            "run_state", "controlled_combat", "semantic_combat"]
+        if (not isinstance(operations, list)
+                or any(not isinstance(item, str) or not item
+                       for item in operations)
+                or len(operations) != len(set(operations))
+                or "fair_observe" not in operations
+                or not isinstance(view_kinds, list)
+                or view_kinds != expected_view_kinds):
+            raise EmulatorError("Invalid fair-observation capabilities")
+        if not isinstance(self.capabilities.get("aiSchemaId"), str):
+            raise EmulatorError(
+                "Fair-observation capability is missing the player schema")
+        return True
+
+    def observe_fair(self, view_kind: str, handle: str) -> dict:
+        """Return one validated public observation/action frame across modes."""
+        if not self._fair_observation_supported:
+            raise EmulatorError(
+                "Emulator does not expose the shared fair-observation frame")
+        if not isinstance(view_kind, str) or view_kind not in \
+                self.capabilities["fairObservationViewKinds"]:
+            raise EmulatorError(
+                f"Emulator does not advertise fair view kind {view_kind!r}")
+        if not isinstance(handle, str) or not handle:
+            raise ValueError("handle must be a nonempty string")
+
+        result = self.call("fair_observe", view_kind=view_kind,
+                           view_handle=handle)
+        frame = result.get("frame")
+        if not isinstance(frame, dict):
+            raise EmulatorError("Fair-observation response has no frame")
+        expected_schema = self.capabilities[
+            "fairObservationEnvelopeSchemaId"]
+        if (frame.get("schemaId") != expected_schema
+                or frame.get("viewKind") != view_kind
+                or frame.get("handle") != handle
+                or frame.get("policyId") != "prototype-fair-v0"
+                or frame.get("observationSchemaId") !=
+                self.capabilities.get("aiSchemaId")):
+            raise EmulatorError(
+                "Fair-observation envelope differs from negotiation")
+
+        payload_json = frame.get("payloadJson")
+        observation_hash = frame.get("observationHash")
+        if (not isinstance(payload_json, str)
+                or not isinstance(observation_hash, str)
+                or not observation_hash):
+            raise EmulatorError("Fair-observation payload is malformed")
+        try:
+            observation = json.loads(payload_json)
+        except (TypeError, json.JSONDecodeError) as error:
+            raise EmulatorError(
+                "Fair-observation payload is not valid JSON") from error
+        actual_hash = hashlib.sha256(
+            payload_json.encode("utf-8")).hexdigest()
+        actions = frame.get("actions")
+        if (not isinstance(observation, dict)
+                or actual_hash != observation_hash
+                or not isinstance(actions, list)
+                or any(not isinstance(action, dict)
+                       or not isinstance(action.get("actionId"), str)
+                       or not action["actionId"]
+                       or not isinstance(action.get("kind"), str)
+                       or not action["kind"]
+                       or not isinstance(action.get("payloadJson"), str)
+                       for action in actions)
+                or len({action["actionId"] for action in actions}) !=
+                len(actions)
+                or type(frame.get("terminal")) is not bool):
+            raise EmulatorError(
+                "Fair-observation payload, hash, or action menu is invalid")
+        return {**frame, "observation": observation}
 
     def _validate_stochastic_capabilities(self):
         """Reject internally inconsistent stochastic hello advertisements."""
