@@ -27,9 +27,9 @@ public sealed record SemanticEndTurnStochasticStateV111
         SemanticIntentTranscriptEntryV111[]? SemanticIntentTranscript = null)
     {
         _intentTranscript = CopyTranscript(IntentTranscript,
-            PrototypeControlledEventChoiceContinuationV111.CloneDecision);
+            CloneIndexDecision);
         _enemyActionTranscript = CopyTranscript(EnemyActionTranscript,
-            PrototypeControlledEventChoiceContinuationV111.CloneDecision);
+            CloneIndexDecision);
         _targetTranscript = CopyTranscript(TargetTranscript,
             decision => decision.Fork());
         _boundaryTranscript = CopyTranscript(BoundaryTranscript,
@@ -42,9 +42,9 @@ public sealed record SemanticEndTurnStochasticStateV111
     public RandomIndexDecisionV111[] IntentTranscript
     {
         get => CopyTranscript(_intentTranscript,
-            PrototypeControlledEventChoiceContinuationV111.CloneDecision)!;
+            CloneIndexDecision)!;
         init => _intentTranscript = CopyTranscript(value,
-            PrototypeControlledEventChoiceContinuationV111.CloneDecision);
+            CloneIndexDecision);
     }
     public SemanticIntentTranscriptEntryV111[] SemanticIntentTranscript
     {
@@ -56,9 +56,9 @@ public sealed record SemanticEndTurnStochasticStateV111
     public RandomIndexDecisionV111[] EnemyActionTranscript
     {
         get => CopyTranscript(_enemyActionTranscript,
-            PrototypeControlledEventChoiceContinuationV111.CloneDecision)!;
+            CloneIndexDecision)!;
         init => _enemyActionTranscript = CopyTranscript(value,
-            PrototypeControlledEventChoiceContinuationV111.CloneDecision);
+            CloneIndexDecision);
     }
     public SemanticTargetDecisionV111[] TargetTranscript
     {
@@ -95,14 +95,87 @@ public sealed record SemanticEndTurnStochasticStateV111
         };
     }
 
+    internal SemanticEndTurnStochasticStateV111 AppendEnemyAction(
+        RandomIndexDecisionV111 decision)
+    {
+        ArgumentNullException.ThrowIfNull(decision);
+        decision.Validate();
+        if (decision.ProviderMode != "controlled-v111" ||
+            decision.NativeCursorBefore is not null ||
+            decision.NativeCursorAfter is not null ||
+            !PrototypeControlledEnemyActionContinuationV111
+                .IsEnemyActionSite(decision.Request.SiteId))
+            throw new InvalidDataException(
+                "Invalid semantic enemy-action Nature decision.");
+        var transcript = EnemyActionTranscript;
+        var boundaries = BoundaryTranscriptForAppend().Append(
+            new SemanticEndTurnBoundaryChoiceV111(
+                "enemy_action", transcript.Length)).ToArray();
+        return this with
+        {
+            EnemyActionTranscript = transcript
+                .Append(CloneIndexDecision(decision)).ToArray(),
+            BoundaryTranscript = boundaries
+        };
+    }
+
+    internal SemanticEndTurnStochasticStateV111 AppendTarget(
+        SemanticTargetDecisionV111 decision)
+    {
+        ArgumentNullException.ThrowIfNull(decision);
+        decision.Validate();
+        var transcript = TargetTranscript;
+        if (decision.Event.Ordinal != transcript.Length)
+            throw new InvalidDataException(
+                "Semantic end-turn target ordinal differs from its transcript.");
+        var boundaries = BoundaryTranscriptForAppend().Append(
+            new SemanticEndTurnBoundaryChoiceV111(
+                "random_target", transcript.Length)).ToArray();
+        return this with
+        {
+            TargetTranscript = transcript.Append(decision.Fork()).ToArray(),
+            BoundaryTranscript = boundaries
+        };
+    }
+
+    internal SemanticEndTurnStochasticStateV111 AppendNestedChoice(
+        SemanticEndTurnNestedChoiceV111 choice)
+    {
+        ArgumentNullException.ThrowIfNull(choice);
+        choice.Validate();
+        var transcript = NestedChoiceTranscript;
+        var boundaries = BoundaryTranscriptForAppend().Append(
+            new SemanticEndTurnBoundaryChoiceV111(
+                choice.Kind,
+                transcript.Count(item => item.Kind == choice.Kind))).ToArray();
+        return this with
+        {
+            NestedChoiceTranscript = transcript.Append(choice.Fork()).ToArray(),
+            BoundaryTranscript = boundaries
+        };
+    }
+
+    internal SemanticEndTurnStochasticStateV111 CarryBoundaryChronologyTo(
+        SemanticEndTurnStochasticStateV111 nextTurn)
+    {
+        ArgumentNullException.ThrowIfNull(nextTurn);
+        return nextTurn with
+        {
+            EnemyActionTranscript = EnemyActionTranscript,
+            TargetTranscript = TargetTranscript,
+            BoundaryTranscript = BoundaryTranscript,
+            NestedChoiceTranscript = NestedChoiceTranscript
+        };
+    }
+
     public SemanticEndTurnStochasticStateV111 Fork() => this with
     {
         IntentTranscript = CopyTranscript(_intentTranscript,
-            PrototypeControlledEventChoiceContinuationV111.CloneDecision)!,
+            CloneIndexDecision)!,
         SemanticIntentTranscript = CopyTranscript(_semanticIntentTranscript,
             decision => decision.Fork())!,
         EnemyActionTranscript = CopyTranscript(_enemyActionTranscript,
-            PrototypeControlledEventChoiceContinuationV111.CloneDecision)!,
+            CloneIndexDecision)!,
         TargetTranscript = CopyTranscript(_targetTranscript,
             decision => decision.Fork())!,
         BoundaryTranscript = CopyTranscript(_boundaryTranscript,
@@ -426,6 +499,29 @@ public sealed record SemanticEndTurnStochasticStateV111
     private static T[]? CopyTranscript<T>(T[]? transcript, Func<T, T> clone)
         where T : class => transcript?.Select(decision =>
             decision is null ? null! : clone(decision)).ToArray();
+
+    private SemanticEndTurnBoundaryChoiceV111[] BoundaryTranscriptForAppend()
+    {
+        var boundaries = BoundaryTranscript;
+        if (boundaries.Length > 0)
+            return boundaries;
+        return Enumerable.Range(0, EnemyActionTranscript.Length)
+            .Select(index => new SemanticEndTurnBoundaryChoiceV111(
+                "enemy_action", index))
+            .Concat(Enumerable.Range(0, TargetTranscript.Length)
+                .Select(index => new SemanticEndTurnBoundaryChoiceV111(
+                    "random_target", index)))
+            .ToArray();
+    }
+
+    private static RandomIndexDecisionV111 CloneIndexDecision(
+        RandomIndexDecisionV111 decision) => decision with
+    {
+        Request = decision.Request with
+        {
+            OrderedCandidates = (int[])decision.Request.OrderedCandidates.Clone()
+        }
+    };
 
     private static void ValidateDecision(
         RandomIndexDecisionV111 decision, string kind)

@@ -737,17 +737,9 @@ public static class SemanticEndTurnEngineV111
                                 .ResumeControlledEnemyAction(
                                     checkpoint.Run.Fork(), replayedIndex);
                     });
-            var transcript = state.Stochastic.EnemyActionTranscript
-                .Append(decision).ToArray();
-            var boundaries = EnsureBoundaryTranscript(state).Append(
-                new SemanticEndTurnBoundaryChoiceV111(
-                    "enemy_action",
-                    state.Stochastic.EnemyActionTranscript.Length)).ToArray();
+            var stochastic = state.Stochastic.AppendEnemyAction(decision);
             state = ContinueAutomaticPipelineBoundaryChoice(
-                state, resumed, transcript,
-                (SemanticTargetDecisionV111[])
-                    state.Stochastic.TargetTranscript.Clone(),
-                boundaries, "combat.enemy_action");
+                state, resumed, stochastic, "combat.enemy_action");
         }
         else if (state.TargetPending is { } target)
         {
@@ -1138,16 +1130,9 @@ public static class SemanticEndTurnEngineV111
         var resumed = SemanticChoiceResumeV111.ResumeTarget(
             source.Run, decision);
 
-        var targetTranscript = source.Stochastic.TargetTranscript
-            .Append(decision.Fork()).ToArray();
-        var boundaryTranscript = EnsureBoundaryTranscript(source).Append(
-            new SemanticEndTurnBoundaryChoiceV111(
-                "random_target", source.Stochastic.TargetTranscript.Length)).ToArray();
+        var stochastic = source.Stochastic.AppendTarget(decision);
         var next = ContinueAutomaticPipelineBoundaryChoice(
-            source, resumed,
-            (RandomIndexDecisionV111[])
-                source.Stochastic.EnemyActionTranscript.Clone(),
-            targetTranscript, boundaryTranscript, pending.SiteId);
+            source, resumed, stochastic, pending.SiteId);
         Validate(next);
         return next;
     }
@@ -1194,16 +1179,12 @@ public static class SemanticEndTurnEngineV111
     private static SemanticEndTurnV111 ContinueAutomaticPipelineBoundaryChoice(
         SemanticEndTurnV111 source,
         RunState resumed,
-        RandomIndexDecisionV111[] enemyActionTranscript,
-        SemanticTargetDecisionV111[] targetTranscript,
-        SemanticEndTurnBoundaryChoiceV111[] boundaryTranscript,
+        SemanticEndTurnStochasticStateV111 stochastic,
         string siteId)
     {
         var next = source with
         {
-            EnemyActionTranscript = enemyActionTranscript,
-            TargetTranscript = targetTranscript,
-            BoundaryTranscript = boundaryTranscript
+            Stochastic = stochastic
         };
         if (TryPublishResumedPipelineBoundary(next, resumed, out var published))
             return published;
@@ -1232,14 +1213,14 @@ public static class SemanticEndTurnEngineV111
                 .ClassifyAutomaticPipelineResumeBoundary(resumed) ==
             PrototypeAutomaticPipelineResumeBoundaryKindV111.AdvanceTurn)
         {
-            return BeginAtAdvanceTurn(
-                resumed, source.NativeEncounterEntry) with
+            var nextTurn = BeginAtAdvanceTurn(
+                resumed, source.NativeEncounterEntry);
+            return nextTurn with
             {
                 PlayerActionSource = source.PlayerActionSource?.Fork(),
                 PlayerActionId = source.PlayerActionId,
-                EnemyActionTranscript = enemyActionTranscript,
-                TargetTranscript = targetTranscript,
-                BoundaryTranscript = boundaryTranscript
+                Stochastic = stochastic.CarryBoundaryChronologyTo(
+                    nextTurn.Stochastic)
             };
         }
 
@@ -1318,22 +1299,9 @@ public static class SemanticEndTurnEngineV111
         SemanticEndTurnV111 source, RunState resumed,
         SemanticEndTurnNestedChoiceV111 choice, string siteId)
     {
-        var expectedKind = choice.Kind;
-        var nestedTranscript = source.Stochastic.NestedChoiceTranscript.Append(
-            choice.Fork()).ToArray();
-        var boundaries = EnsureBoundaryTranscript(source).Append(
-            new SemanticEndTurnBoundaryChoiceV111(
-                expectedKind,
-                source.Stochastic.NestedChoiceTranscript.Count(item =>
-                    item.Kind == expectedKind))).ToArray();
+        var stochastic = source.Stochastic.AppendNestedChoice(choice);
         var next = ContinueAutomaticPipelineBoundaryChoice(
-            source with { NestedChoiceTranscript = nestedTranscript },
-            resumed,
-            (RandomIndexDecisionV111[])
-                source.Stochastic.EnemyActionTranscript.Clone(),
-            (SemanticTargetDecisionV111[])
-                source.Stochastic.TargetTranscript.Clone(),
-            boundaries, siteId);
+            source, resumed, stochastic, siteId);
         Validate(next);
         return next;
     }
@@ -1406,21 +1374,6 @@ public static class SemanticEndTurnEngineV111
         var state = ContinueHandDraw(source, nextHand);
         Validate(state);
         return state;
-    }
-
-    private static SemanticEndTurnBoundaryChoiceV111[] EnsureBoundaryTranscript(
-        SemanticEndTurnV111 state)
-    {
-        if (state.Stochastic.BoundaryTranscript.Length > 0)
-            return (SemanticEndTurnBoundaryChoiceV111[])
-                state.Stochastic.BoundaryTranscript.Clone();
-        return Enumerable.Range(0, state.Stochastic.EnemyActionTranscript.Length)
-            .Select(index => new SemanticEndTurnBoundaryChoiceV111(
-                "enemy_action", index))
-            .Concat(Enumerable.Range(0, state.Stochastic.TargetTranscript.Length)
-                .Select(index => new SemanticEndTurnBoundaryChoiceV111(
-                    "random_target", index)))
-            .ToArray();
     }
 
     private static SemanticEndTurnV111 CompleteIntents(SemanticEndTurnV111 state)

@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 semantic end-turn chronology append ownership increment (2026-10-22):**
+`SemanticEndTurnStochasticStateV111` now appends enemy-action, target, and
+nested-choice decisions with their boundary references as one transition. It
+reconstructs legacy enemy/target chronology before appending and carries the
+completed boundary history into the next intent frame. Static source review
+and `git diff --check` only; no tests or builds were run.
+
 **S4 semantic intent transcript append ownership increment (2026-10-22):**
 `SemanticEndTurnStochasticStateV111` now validates and appends semantic intent
 annotations. The resolver publishes the annotation through the stochastic
