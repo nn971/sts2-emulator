@@ -4477,10 +4477,10 @@ public static partial class ChanceLawEngineV111
                 ParseCardRarity(rarity) != selectedRarity)
                 throw new ArgumentException(
                     "Colorless merchant offer rarity is fixed by its ordinal.", nameof(rarity));
-            var candidates = PrototypeColorlessCards.Implemented
-                .Where(card => card.Rarity == selectedRarity &&
-                    !card.MultiplayerOnly && card.MechanicsImplemented)
-                .Select(card => card.Id).ToArray();
+            var profile = run.Configuration!.Profile;
+            var candidates = PrototypeColorlessCards.MerchantPoolForProfile(
+                selectedRarity, profile.FullyUnlocked,
+                profile.UnlockedColorlessEpochs);
             if (candidates.Length == 0)
                 throw new InvalidOperationException(
                     "Native merchant colorless pool is empty for this rarity.");

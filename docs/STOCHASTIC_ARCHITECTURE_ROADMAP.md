@@ -12,6 +12,13 @@ retains its conservative pool. The operation uses
 unverified. Static source review and `git diff --check` only; no tests or
 builds were run.
 
+**S6 Native merchant Colorless unlock-pool increment (2026-10-22):** Ordinary
+Native Shop generation, the read-only merchant model law, and atomic
+ReferenceNature replay now resolve their ordered Colorless support through
+the configured run unlock profile. Unknown partial-profile unlock data fails
+closed. Static source review and `git diff --check` only; no tests or builds
+were run.
+
 **S4 opening Imbued autoplay target increment (2026-10-22):** The shared
 automatic-pipeline target boundary now validates the saved `LateRelicAutoPlay`
 cursor against the exact remaining Imbued driver queue in persistent-card

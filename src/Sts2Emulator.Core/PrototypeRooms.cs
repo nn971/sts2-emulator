@@ -3128,17 +3128,24 @@ public sealed partial class PrototypeGameEngine
 
         // Native MerchantInventory has two dedicated ColorlessCardPool
         // slots, one Uncommon and one Rare, after the five character
-        // slots. Use only implemented single-player cards until more
-        // mechanics are added. The legacy six-floor prototype is unchanged.
+        // slots. Filter the implemented single-player pool by the configured
+        // account epoch unlocks. The legacy six-floor prototype is unchanged.
         if (nativeMerchant)
         {
+            var profile = state.Configuration?.Profile ??
+                throw new NotSupportedException(
+                    "Native Colorless merchant offers require configured run profile data.");
             var colorless = new[]
             {
-                PrototypeColorlessCards.PickMerchantCard(
+                PrototypeColorlessCards.PickMerchantCardForProfile(
                     PrototypeCardRarity.Uncommon, state.Stochastic.PrototypeRng,
+                    fullyUnlocked: profile.FullyUnlocked,
+                    unlockedEpochs: profile.UnlockedColorlessEpochs,
                     nativeRunRng: nativeRunRng),
-                PrototypeColorlessCards.PickMerchantCard(
+                PrototypeColorlessCards.PickMerchantCardForProfile(
                     PrototypeCardRarity.Rare, state.Stochastic.PrototypeRng,
+                    fullyUnlocked: profile.FullyUnlocked,
+                    unlockedEpochs: profile.UnlockedColorlessEpochs,
                     nativeRunRng: nativeRunRng)
             };
             offers = offers.Concat(colorless.Select((cardId, index) =>

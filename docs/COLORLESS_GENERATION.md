@@ -43,9 +43,9 @@ Pinned game source: STS2 v0.111.0, `Flaaax/STS2-source` at
   requests, and random insertion positions use `run.shuffle`; other existing
   generated-card paths still need their source streams migrated. These routes
   **do not assert exact native RNG parity**.
-- Merchant colorless selection also needs epoch-aware filtering at
-  run level; catalog membership and implemented mechanics alone
-  do not imply a player has unlocked a card.
+- Native merchant Colorless offers filter their ordered implemented
+  single-player candidate pool through the configured epoch unlock profile.
+  Unknown unlock data on a partial profile fails closed.
 
 ## Integration work remaining
 
@@ -53,9 +53,10 @@ The run profile represents Colorless epoch unlocks as optional exact epoch
 IDs. Null means unknown for a partial profile, while an empty array means no
 Colorless epochs are unlocked. Combat mechanics carries the configured
 fully-unlocked bit and optional epoch set so generated-card continuations use
-the same eligibility resolver as ordinary effect execution. Native Colorless
-generation uses the existing `run.combat_card_generation` stream, but its
-source attribution and cursor parity remain unverified. Character card-pool
+the same eligibility resolver as ordinary effect execution. Native combat
+generation uses the existing `run.combat_card_generation` stream, and Native
+merchant generation uses its profile-filtered shop pool; source attribution,
+pool completeness, and cursor parity remain unverified. Character card-pool
 membership and stream partitioning for other generated-card paths still need
 explicit modeling.
 Compare actual Native candidate IDs and stream consumption using the passive

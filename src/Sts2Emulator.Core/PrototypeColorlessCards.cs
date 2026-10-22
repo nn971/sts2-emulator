@@ -891,9 +891,49 @@ public static class PrototypeColorlessCards
             .ToArray();
     }
 
+    internal static string[] MerchantPoolForProfile(
+        PrototypeCardRarity rarity, bool fullyUnlocked,
+        string[]? unlockedEpochs)
+    {
+        if (rarity is not (PrototypeCardRarity.Uncommon or
+            PrototypeCardRarity.Rare))
+            throw new ArgumentOutOfRangeException(nameof(rarity));
+        if (!fullyUnlocked && unlockedEpochs is null)
+            throw new NotSupportedException(
+                "Native Colorless merchant offers require the partial epoch " +
+                "unlock set or a fully unlocked profile.");
+        if (unlockedEpochs is not null &&
+            (unlockedEpochs.Any(epoch => string.IsNullOrWhiteSpace(epoch) ||
+                !NativeEpochIdValues.Contains(epoch, StringComparer.Ordinal)) ||
+             unlockedEpochs.Distinct(StringComparer.Ordinal).Count() !=
+                unlockedEpochs.Length))
+            throw new InvalidDataException(
+                "Native Colorless merchant offers have invalid epoch unlock metadata.");
+
+        var unlocked = unlockedEpochs?.ToHashSet(StringComparer.Ordinal);
+        return Implemented
+            .Where(card => card.Rarity == rarity && !card.MultiplayerOnly &&
+                card.MechanicsImplemented &&
+                (fullyUnlocked || !EpochByCardId.TryGetValue(card.Id,
+                    out var epoch) || unlocked!.Contains(epoch)))
+            .Select(card => card.Id)
+            .ToArray();
+    }
+
     public static string PickMerchantCard(
         PrototypeCardRarity rarity,
         RngBundle rng,
+        IReadOnlyCollection<string>? excluded = null,
+        RngBundle? nativeRunRng = null) =>
+        PickMerchantCardForProfile(
+            rarity, rng, fullyUnlocked: true, unlockedEpochs: null,
+            excluded: excluded, nativeRunRng: nativeRunRng);
+
+    internal static string PickMerchantCardForProfile(
+        PrototypeCardRarity rarity,
+        RngBundle rng,
+        bool fullyUnlocked,
+        string[]? unlockedEpochs,
         IReadOnlyCollection<string>? excluded = null,
         RngBundle? nativeRunRng = null)
     {
@@ -902,12 +942,9 @@ public static class PrototypeColorlessCards
             throw new ArgumentOutOfRangeException(nameof(rarity));
         }
 
-        var eligible = Implemented
-            .Where(c => c.Rarity == rarity
-                && !c.MultiplayerOnly
-                && c.MechanicsImplemented
-                && (excluded is null || !excluded.Contains(c.Id)))
-            .Select(c => c.Id)
+        var eligible = MerchantPoolForProfile(
+                rarity, fullyUnlocked, unlockedEpochs)
+            .Where(cardId => excluded is null || !excluded.Contains(cardId))
             .ToArray();
         if (eligible.Length == 0)
         {

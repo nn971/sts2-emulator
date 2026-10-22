@@ -111,7 +111,7 @@ stream assignment.
 | `shop.merchant.sale_slot.index_draw` | Five character-card slots, with exact Native bounded-index grid masses |
 | `card_rarity.roll.unit_float` | Rare, Uncommon, Common, using the current rarity offset and Ascension shop thresholds; merchant branch counts exact rounded Native `NextFloat` grid masses |
 | `shop.merchant.card_model.index_draw` | Ordered native Silent card models matching card type and supplied rarity, with exact Native bounded-index grid masses |
-| `shop.colorless_card_model.index_draw` | Ordered implemented single-player Colorless models; ordinal 0 is Uncommon and ordinal 1 is Rare, with exact Native bounded-index grid masses |
+| `shop.colorless_card_model.index_draw` | Ordered implemented single-player Colorless models filtered by configured unlocked epochs; ordinal 0 is Uncommon and ordinal 1 is Rare, with exact Native bounded-index grid masses |
 | `potion_factory.rarity_roll.unit_float` | Common, Uncommon, Rare using the PotionFactory's inclusive float thresholds and exact rounded Native `NextFloat` grid masses; standalone law queries bind the declared supported stream and owner |
 | `potion_factory.model_within_rarity.index_draw` | Ordered potion models in the requested tier after supplied exclusions, with exact Native bounded-index grid masses on the merchant branch |
 | `relic_grab_bag.rarity.unit_float` | Common, Uncommon, Rare using the grab bag's float thresholds and exact rounded Native `NextFloat` grid masses; the third merchant relic offer is forced Shop rarity and has no draw; Toy Box purchase uses this draw for each wax relic |
