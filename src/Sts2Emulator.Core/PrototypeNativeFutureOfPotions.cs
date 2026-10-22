@@ -185,7 +185,8 @@ public sealed partial class PrototypeGameEngine
                 "The Future of Potions card pool cannot supply three distinct options.");
         }
 
-        var cardOptions = PickDistinct(pool, 3, state.Stochastic.PrototypeRngMutable, "reward");
+        var prototypeRng = state.Stochastic.PrototypeRng;
+        var cardOptions = PickDistinct(pool, 3, prototypeRng, "reward");
         var potionSlots = (PotionInstance?[])state.Player.PotionSlots.Clone();
         potionSlots[slot] = null;
         var silverCrucible = ApplySilverCrucibleToCardRewardGeneration(
@@ -211,6 +212,8 @@ public sealed partial class PrototypeGameEngine
 
         state = state with
         {
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, prototypeRng),
             Player = silverCrucible.Player with
             {
                 PotionSlots = potionSlots

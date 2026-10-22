@@ -32,14 +32,16 @@ public sealed partial class PrototypeGameEngine
             if (candidates.Count == 0)
                 continue;
 
-            if (state.Stochastic.NativeRunRngMutable is not null)
+            if (state.Stochastic.NativeRunRng is not null)
             {
                 // Native War Hammer uses the persistent run.niche stream.
                 // Resolve each swap through the typed boundary and keep the
                 // run and active-combat cursor copies synchronized.
-                var nativeStreams = (state.World?.Combat?.Stochastic.NativeRngMutable
-                    ?.RunStreams
-                    ?? state.Stochastic.NativeRunRngMutable).Fork();
+                var sourceRunStreams = state.World?.Combat?.Stochastic.NativeRng
+                    ?.RunStreams ?? state.Stochastic.NativeRunRng ??
+                    throw new InvalidOperationException(
+                        "Native War Hammer requires run RNG ownership.");
+                var nativeStreams = sourceRunStreams.Fork();
                 NativeEventRandomProbeV111.CaptureShuffle(
                     StochasticSiteRegistryV111
                         .WarHammerEliteUpgradeShuffleSiteId,
@@ -54,7 +56,7 @@ public sealed partial class PrototypeGameEngine
                     StochasticSiteRegistryV111
                         .WarHammerEliteUpgradeShuffleSiteId);
                 var activeNativeRng =
-                    state.World?.Combat?.Stochastic.NativeRngMutable;
+                    state.World?.Combat?.Stochastic.NativeRng;
                 var combat = state.World?.Combat;
                 if (activeNativeRng is not null && combat is not null)
                 {
@@ -83,14 +85,20 @@ public sealed partial class PrototypeGameEngine
                 // Prototype runs do not own run.niche. Keep their test path
                 // on the legacy event stream without claiming native parity.
                 var shuffled = candidates.ToArray();
+                var prototypeRng = state.Stochastic.PrototypeRng;
                 _ = LegacyFisherYatesV111.ShuffleInPlace(
                     shuffled,
-                    state.Stochastic.PrototypeRngMutable,
+                    prototypeRng,
                     "event",
                     StochasticSiteRegistryV111
                         .WarHammerEliteUpgradeShuffleSiteId,
                     $"player:0:war_hammer:{hammer}:eligible_cards");
                 candidates = shuffled.ToList();
+                state = state with
+                {
+                    Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                        state.Stochastic, prototypeRng)
+                };
             }
 
             var upgradedIds = candidates.Take(4)

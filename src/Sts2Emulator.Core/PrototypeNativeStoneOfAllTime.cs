@@ -106,7 +106,7 @@ public sealed partial class PrototypeGameEngine
             }
         };
 
-        if (result.Stochastic.NativeRunRngMutable is not null)
+        if (result.Stochastic.NativeRunRng is not null)
         {
             if (current.Stochastic.NativeRng is null)
                 throw new InvalidOperationException(
@@ -122,12 +122,18 @@ public sealed partial class PrototypeGameEngine
         }
         else
         {
+            var prototypeRng = result.Stochastic.PrototypeRng;
             _ = LegacyRandomChoiceV111.ChooseBoundedInteger(
-                result.Stochastic.PrototypeRngMutable,
+                prototypeRng,
                 "event.stone_of_all_time.lift_ticket",
                 "event",
                 "event:stone_of_all_time:lift",
                 100);
+            result = result with
+            {
+                Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                    result.Stochastic, prototypeRng)
+            };
         }
         return PreserveNativeEventCompletionPage(result, "lift");
     }
