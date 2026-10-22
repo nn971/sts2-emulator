@@ -68,14 +68,15 @@ public sealed record ReferenceNatureRunInitializationTranscriptV111(
     public void Validate(bool replayMapGeneration = false)
     {
         Stochastic.Validate();
+        var stochastic = Stochastic;
         var laws = ChanceLaws;
-        var decisions = DecisionTranscript;
+        var decisions = stochastic.DecisionTranscript;
         if (laws is null || decisions is null || laws.Length == 0 ||
             laws.Length != decisions.Length)
             throw new InvalidDataException(
                 "Invalid ReferenceNature run-initialization transcript length.");
 
-        var cursor = InitialNatureState.Fork();
+        var cursor = stochastic.InitialNatureState.Fork();
         for (var index = 0; index < laws.Length; index++)
         {
             var law = laws[index];
@@ -95,16 +96,16 @@ public sealed record ReferenceNatureRunInitializationTranscriptV111(
             cursor = selection.NextState;
         }
 
-        if (!cursor.SameCursor(FinalNatureState) ||
-            FinalNatureState.SampleCount != checked(
-                InitialNatureState.SampleCount + laws.Length))
+        if (!cursor.SameCursor(stochastic.NatureState) ||
+            stochastic.NatureState.SampleCount != checked(
+                stochastic.InitialNatureState.SampleCount + laws.Length))
             throw new InvalidDataException(
                 "ReferenceNature run-initialization cursor does not match its transcript.");
 
         if (ActOneMapGeneration is { } mapGeneration)
         {
             mapGeneration.ValidateEnvelope();
-            var mapDecisions = mapGeneration.DecisionTranscript;
+            var mapDecisions = mapGeneration.Stochastic.DecisionTranscript;
             var typedMapDecisions = mapGeneration.Decisions;
             if (laws.Length < checked(mapDecisions.Length + 1) ||
                 typedMapDecisions.Length != mapDecisions.Length)
@@ -112,8 +113,9 @@ public sealed record ReferenceNatureRunInitializationTranscriptV111(
                     "Run-initialization transcript omits part of its Overgrowth map prefix.");
 
             var mapCursor = ReferenceNatureV111.SampleValidated(
-                laws[0], InitialNatureState).NextState;
-            if (!mapCursor.SameCursor(mapGeneration.InitialNatureState))
+                laws[0], stochastic.InitialNatureState).NextState;
+            if (!mapCursor.SameCursor(
+                    mapGeneration.Stochastic.InitialNatureState))
                 throw new InvalidDataException(
                     "Overgrowth map prefix does not follow its boss selection.");
             for (var index = 0; index < mapDecisions.Length; index++)
@@ -131,7 +133,7 @@ public sealed record ReferenceNatureRunInitializationTranscriptV111(
                         $"Overgrowth map prefix differs from run-start transcript at {index}.");
                 mapCursor = mapSelection.NextState;
             }
-            if (!mapCursor.SameCursor(mapGeneration.NatureState))
+            if (!mapCursor.SameCursor(mapGeneration.Stochastic.NatureState))
                 throw new InvalidDataException(
                     "Overgrowth map audit cursor differs from the run-start law prefix.");
             if (replayMapGeneration)
