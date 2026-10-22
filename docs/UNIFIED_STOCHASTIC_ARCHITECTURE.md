@@ -897,6 +897,8 @@ Automatic turn steps now pass a local prototype bundle through combat-event disp
 
 Controlled recycle resumption now uses a local prototype bundle for after-shuffle relic hooks and remaining hand draws, publishing it before transferring to a stratagem or hand-draw continuation.
 
+Combat resolution now reads Native combat RNG through its defensive projection. Native stream consumers fork run streams locally and attach the updated combat RNG through `CombatStochasticStateV111.WithNativeRng`, so formation checks and Native combat choices do not expose the owner's mutable sidecar.
+
 ## Reading order
 
 1. This architecture contract.
