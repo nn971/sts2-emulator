@@ -14683,7 +14683,8 @@ public sealed partial class PrototypeGameEngine
 
                 // Native combat transforms into a different eligible
                 // card from the ORIGINAL card's own generation pool.
-                var eligible = EligibleCombatTransformPool(original.CardId);
+                var eligible = EligibleCombatTransformPool(
+                    original.CardId, combat);
                 if (eligible.Length == 0)
                 {
                     throw new NotSupportedException(

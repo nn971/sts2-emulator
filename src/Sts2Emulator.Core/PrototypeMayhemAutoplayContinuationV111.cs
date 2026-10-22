@@ -715,7 +715,7 @@ public sealed partial class PrototypeGameEngine
             !candidates.SequenceEqual(expectedCandidates) ||
             expectedCandidates.Any(id =>
                 EligibleCombatTransformPool(combat.Cards.Single(card =>
-                    card.InstanceId == id).CardId).Length == 0))
+                    card.InstanceId == id).CardId, combat).Length == 0))
             return false;
 
         var expectedSelection = sourceSelection with

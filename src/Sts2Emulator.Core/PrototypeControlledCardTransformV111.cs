@@ -2,11 +2,12 @@ namespace Sts2Emulator.Core;
 
 public sealed partial class PrototypeGameEngine
 {
-    private static string[] EligibleCombatTransformPool(string originalCardId)
+    private static string[] EligibleCombatTransformPool(
+        string originalCardId, CombatState combat)
     {
         var pool = originalCardId.StartsWith(
                 "proto.colorless.", StringComparison.Ordinal)
-            ? PrototypeColorlessCards.ImplementedCombatGenerationPool
+            ? ColorlessCombatGenerationPool(combat)
             : PrototypeContent.RewardCardPool;
         return pool.Where(id =>
         {
@@ -44,7 +45,7 @@ public sealed partial class PrototypeGameEngine
         if (PrototypeCardRules.IsEternal(original))
             throw new InvalidOperationException(
                 "Eternal combat cards cannot be transformed.");
-        var candidates = EligibleCombatTransformPool(original.CardId);
+        var candidates = EligibleCombatTransformPool(original.CardId, combat);
         if (candidates.Length == 0)
             throw new NotSupportedException(
                 "No eligible native-pool solo transform targets.");
@@ -103,7 +104,7 @@ public sealed partial class PrototypeGameEngine
             var original = RequireCombatCard(combat, selected[index]);
             if (PrototypeCardRules.IsEternal(original))
                 return false;
-            var pool = EligibleCombatTransformPool(original.CardId);
+            var pool = EligibleCombatTransformPool(original.CardId, combat);
             if (pool.Length == 0 ||
                 (index < transform.NextTransformIndex
                     ? string.IsNullOrWhiteSpace(replacements[index]) ||
@@ -115,7 +116,7 @@ public sealed partial class PrototypeGameEngine
         var currentOriginal = RequireCombatCard(
             combat, selected[transform.NextTransformIndex]);
         return candidates.SequenceEqual(
-            EligibleCombatTransformPool(currentOriginal.CardId));
+            EligibleCombatTransformPool(currentOriginal.CardId, combat));
     }
 
     internal static RunState ResumeControlledCardTransform(

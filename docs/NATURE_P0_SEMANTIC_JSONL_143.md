@@ -853,7 +853,10 @@ controlled chance guard is active, the engine saves that completed selection
 and exposes one ordered replacement pool at a time through
 `combat.card_transform.replacement.index_draw`. The pool follows the source
 card's own Colorless or reward generation pool, excludes that card model, and
-keeps only supported Common, Uncommon, and Rare combat cards. Resolving each
+keeps only supported Common, Uncommon, and Rare combat cards. Colorless
+transform pools use the combat snapshot's configured epoch unlocks; an
+explicit epoch list filters the pool, and unknown partial-profile data fails
+closed. Resolving each
 `card_transform` event records a replacement model; after the final outcome,
 the existing card-zone and semantic draw-pile transform logic resumes once.
 Python clients call `SemanticCombat.resolve_card_transform(card_model_id)`.

@@ -27,6 +27,13 @@ the configured epoch unlocks. The existing reward RNG treatment and native
 pool fidelity remain open. Static source review and `git diff --check` only;
 no tests or builds were run.
 
+**S6 Colorless transform unlock-pool increment (2026-10-22):** Ordinary
+combat transforms, saved transform choices, and Mayhem transform validation
+now resolve Colorless replacement support through the configured combat
+profile. Profile-filtered support stays consistent through choice suspension
+and replay validation. Native pool assignment and cursor parity remain open.
+Static source review and `git diff --check` only; no tests or builds were run.
+
 **S4 opening Imbued autoplay target increment (2026-10-22):** The shared
 automatic-pipeline target boundary now validates the saved `LateRelicAutoPlay`
 cursor against the exact remaining Imbued driver queue in persistent-card
