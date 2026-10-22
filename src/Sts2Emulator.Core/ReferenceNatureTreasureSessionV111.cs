@@ -437,7 +437,7 @@ public sealed record ReferenceNatureTreasureSessionV111(
         RunState source, GameAction action)
     {
         if (source.Phase != RunPhase.MapChoice || source.World is not { } world ||
-            source.NativeRunRng is null ||
+            source.Stochastic.NativeRunRng is null ||
             source.ControlledRunActionChoice is not null ||
             !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
             PrototypeGameEngine.WillSkipNextTreasure(source.Player) ||

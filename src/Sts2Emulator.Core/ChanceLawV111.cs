@@ -5885,7 +5885,7 @@ public static partial class ChanceLawEngineV111
         var partialEvent = partialWorld?.Event ??
             throw new InvalidOperationException(
                 "Pending Stone of All Time ticket has no event state.");
-        var nativeRoute = partialState.NativeRunRng is not null;
+        var nativeRoute = partialState.Stochastic.NativeRunRng is not null;
         var expectedStreamId = nativeRoute
             ? NativeRngV111Contexts.EventStreamId(
                 PrototypeNativeStoneOfAllTime.NativeRngEventId)
@@ -7141,7 +7141,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
                 var profile = Origin.Configuration!.Profile;
                 var laterActPreparation =
                     ReferenceNatureLaterActPreparationSessionV111.Begin(
-                        resolvedRun.Rng, Origin.Ascension, profile,
+                        resolvedRun.Stochastic.PrototypeRng, Origin.Ascension, profile,
                         selection.NextState);
                 var next = this with
                 {
@@ -7564,7 +7564,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
             return CommitOvergrowthRunStartMap(mapGeneration);
         var preparation =
             ReferenceNatureLaterActPreparationSessionV111.Begin(
-                Run.Rng, Origin.Ascension, Origin.Configuration.Profile,
+                Run.Stochastic.PrototypeRng, Origin.Ascension, Origin.Configuration.Profile,
                 mapGeneration.NatureState);
         var next = this with
         {
@@ -7918,7 +7918,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
                 bossSelection.OutcomeId != "encounter:" + selectedBossId ||
                 laterActPreparation.Ascension != Origin.Ascension ||
                 CanonicalJson.Sha256(laterActPreparation.InitialPrototypeRng) !=
-                    CanonicalJson.Sha256(Run.Rng) ||
+                    CanonicalJson.Sha256(Run.Stochastic.PrototypeRng) ||
                 CanonicalJson.Sha256(laterActPreparation.Profile) !=
                     CanonicalJson.Sha256(config!.Profile) ||
                 !laterActPreparation.InitialNatureState.SameCursor(
@@ -9243,7 +9243,7 @@ public sealed record ReferenceNatureControlledEventChoiceSessionV111(
     private static bool NeedsNatureCallingBellBag(
         RunState source, string choiceId)
     {
-        if (source.NativeRunRng is null ||
+        if (source.Stochastic.NativeRunRng is null ||
             source.World is not { } world || world.Event is not
                 { EventId: NativeDarvEventV111.EventId } eventState ||
             !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||

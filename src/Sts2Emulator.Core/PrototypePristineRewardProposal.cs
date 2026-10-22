@@ -67,11 +67,17 @@ public static class PrototypePristineRewardProposal
         var candidate = source.Fork();
         var bytes = new byte[sizeof(ulong)];
         BinaryPrimitives.WriteUInt64LittleEndian(bytes, newInitialState);
-        candidate.Rng.ReplaceStream("reward", existing with
+        var candidateRng = candidate.Stochastic.PrototypeRng.Fork();
+        candidateRng.ReplaceStream("reward", existing with
         {
             StateBytes = bytes,
             CallCount = 0
         });
+        candidate = candidate with
+        {
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                candidate.Stochastic, candidateRng)
+        };
 
         var result = environment.Step(candidate, publicActionId).State;
         if (result.Phase != RunPhase.Reward)

@@ -656,7 +656,7 @@ public sealed record SemanticPilotCombatV111(
                     }) ||
                 entryCombat.NativeRng is not null ||
                 entryCombat.SemanticDeck is not null ||
-                this.Run.NativeRunRng is not null)
+                this.Run.Stochastic.NativeRunRng is not null)
                 throw new InvalidDataException(
                     "Initial intent continuation diverged from the source-route boundary.");
         }
@@ -3093,7 +3093,7 @@ public static class SemanticPilotCombatEngineV111
         if (current.PendingInitialIntents is { Pending: not null } initialIntents)
         {
             var resolvedInitial = ControlledTurnIntentEngineV111.Resolve(
-                initialIntents, selectedIndex, current.Run.Rng);
+                initialIntents, selectedIndex, current.Run.Stochastic.PrototypeRng);
             var nextRun = current.Run;
             ControlledTurnIntentsV111? pendingInitial = resolvedInitial.Complete
                 ? null : resolvedInitial;

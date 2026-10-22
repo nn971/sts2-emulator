@@ -358,7 +358,7 @@ public sealed record ReferenceNatureGloryReflectionsSessionV111(
                 run, GameAction.Create("event_choice",
                     new EventChoicePayload("touch_mirror"))).State;
 
-        if (origin.NativeRunRng is not null)
+        if (origin.Stochastic.NativeRunRng is not null)
             return ReferenceNatureNativeEventIndexReplayV111
                 .ReplayControlledIndices(
                     origin, decisions, ReplayAction,

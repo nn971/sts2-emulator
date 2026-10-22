@@ -27,8 +27,8 @@ internal static class TabletOfTruthChoicePlanBuilderV111
             throw new InvalidOperationException(
                 "Tablet of Truth Nature choices require a pending supported page draw.");
 
-        var nativeRoute = origin.NativeRunRng is not null;
-        var legacyFallbackRoute = origin.NativeRunRng is null &&
+        var nativeRoute = origin.Stochastic.NativeRunRng is not null;
+        var legacyFallbackRoute = origin.Stochastic.NativeRunRng is null &&
             PrototypeGameEngine.UsesNativeRegionalSystems(world) &&
             evt.NativeEventRng is null &&
             evt.NativeEventRngProviderMode is null;
@@ -93,7 +93,7 @@ internal static class TabletOfTruthChoicePlanBuilderV111
 
     public static int GetLegacyEventOrdinal(RunState origin)
     {
-        if (!origin.Rng.TryGetStream("event", out var stream))
+        if (!origin.Stochastic.PrototypeRng.TryGetStream("event", out var stream))
             throw new InvalidDataException(
                 "Tablet of Truth fallback requires one legacy event stream.");
         var ordinal = stream.CallCount ?? 0;
@@ -279,7 +279,7 @@ public sealed record ReferenceNatureTabletOfTruthSessionV111(
                 law.LawId, law.EventId, selection.OutcomeId,
                 selection.OutcomeIndex)).ToArray();
         var replay = Replay(Origin, plan, law, selection);
-        if (Origin.NativeRunRng is not null)
+        if (Origin.Stochastic.NativeRunRng is not null)
         {
             var expectedStream = Origin.World?.Event?.NativeEventRng ??
                 NativeRngV111Contexts.ForEvent(
@@ -408,7 +408,7 @@ public sealed record ReferenceNatureTabletOfTruthSessionV111(
         var selected = ReferenceNatureChanceLawDecisionV111
             .FromOrderedIndexSelection(
                 law, request, selection, orderedOutcomeIds);
-        if (origin.NativeRunRng is null)
+        if (origin.Stochastic.NativeRunRng is null)
         {
             var replay = ControlledChanceContinuationExecutorV111
                 .CaptureStochastic(

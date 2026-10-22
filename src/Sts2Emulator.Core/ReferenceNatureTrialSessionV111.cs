@@ -34,8 +34,8 @@ internal static class TrialCaseChoicePlanBuilderV111
             throw new InvalidOperationException(
                 "Trial Nature choices require a pending supported case draw.");
 
-        var nativeRoute = origin.NativeRunRng is not null;
-        var legacyFallbackRoute = origin.NativeRunRng is null &&
+        var nativeRoute = origin.Stochastic.NativeRunRng is not null;
+        var legacyFallbackRoute = origin.Stochastic.NativeRunRng is null &&
             PrototypeGameEngine.UsesNativeRegionalSystems(world) &&
             evt.NativeEventRng is null;
         if (!nativeRoute && !legacyFallbackRoute)
@@ -78,7 +78,7 @@ internal static class TrialCaseChoicePlanBuilderV111
 
     public static int GetLegacyEventOrdinal(RunState origin)
     {
-        if (!origin.Rng.TryGetStream("event", out var stream))
+        if (!origin.Stochastic.PrototypeRng.TryGetStream("event", out var stream))
             throw new InvalidDataException(
                 "Trial fallback requires one legacy event stream.");
         var ordinal = stream.CallCount ?? 0;
@@ -98,7 +98,7 @@ internal static class TrialCaseChoicePlanBuilderV111
             throw new InvalidOperationException(
                 "Trial session replay requires its Glory event context.");
 
-        if (origin.NativeRunRng is null)
+        if (origin.Stochastic.NativeRunRng is null)
         {
             if (!PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
                 evt.NativeEventRng is not null ||
@@ -416,7 +416,7 @@ public sealed record ReferenceNatureTrialSessionV111(
         var selected = ReferenceNatureChanceLawDecisionV111
             .FromOrderedIndexSelection(
                 law, request, selection, plan.OutcomeIds);
-        if (origin.NativeRunRng is null)
+        if (origin.Stochastic.NativeRunRng is null)
         {
             var replay = ControlledChanceContinuationExecutorV111
                 .CaptureStochastic(

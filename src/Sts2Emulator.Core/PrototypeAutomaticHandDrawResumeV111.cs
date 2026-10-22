@@ -204,7 +204,7 @@ public sealed partial class PrototypeGameEngine
             checkpoint, checkpoint.Player, combat, progress: null);
         return DrawCards(
             cleared.Player, RequireWorld(cleared).Combat!, remaining,
-            cleared.Rng,
+            cleared.Stochastic.PrototypeRng,
             fromHandDraw: true, eventDepth: eventDepth,
             suspensionPolicy: suspensionPolicy);
     }

@@ -97,7 +97,7 @@ public sealed partial class PrototypeGameEngine
             }
         };
 
-        if (result.NativeRunRng is not null)
+        if (result.Stochastic.NativeRunRng is not null)
         {
             if (current.NativeEventRng is null)
                 throw new InvalidOperationException(
@@ -114,7 +114,7 @@ public sealed partial class PrototypeGameEngine
         else
         {
             _ = LegacyRandomChoiceV111.ChooseBoundedInteger(
-                result.Rng,
+                result.Stochastic.PrototypeRng,
                 "event.stone_of_all_time.lift_ticket",
                 "event",
                 "event:stone_of_all_time:lift",

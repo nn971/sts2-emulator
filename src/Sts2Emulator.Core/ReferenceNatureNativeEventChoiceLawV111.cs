@@ -33,8 +33,8 @@ internal static class NativeEventInfestedAutomatonCardPickPlanBuilderV111
             throw new InvalidOperationException(
                 "Infested Automaton card-pick laws require a supported pending study or touch_core choice at ordinal 0.");
 
-        var nativeRoute = origin.NativeRunRng is not null;
-        var legacyFallbackRoute = origin.NativeRunRng is null &&
+        var nativeRoute = origin.Stochastic.NativeRunRng is not null;
+        var legacyFallbackRoute = origin.Stochastic.NativeRunRng is null &&
             PrototypeGameEngine.UsesNativeRegionalSystems(world) &&
             evt.NativeEventRng is null;
         if (!nativeRoute && !legacyFallbackRoute)
@@ -92,7 +92,7 @@ internal static class NativeEventInfestedAutomatonCardPickPlanBuilderV111
 
     private static int GetLegacyEventOrdinal(RunState origin)
     {
-        if (!origin.Rng.TryGetStream("event", out var stream))
+        if (!origin.Stochastic.PrototypeRng.TryGetStream("event", out var stream))
             throw new InvalidDataException(
                 "Infested Automaton fallback requires one legacy event stream.");
         var ordinal = stream.CallCount ?? 0;
@@ -137,8 +137,8 @@ internal static class NativeEventReflectionsChoicePlanBuilderV111
             throw new InvalidOperationException(
                 "Reflections card-pick laws require a supported pending touch_mirror action.");
 
-        var nativeRoute = origin.NativeRunRng is not null;
-        var legacyFallbackRoute = origin.NativeRunRng is null &&
+        var nativeRoute = origin.Stochastic.NativeRunRng is not null;
+        var legacyFallbackRoute = origin.Stochastic.NativeRunRng is null &&
             PrototypeGameEngine.UsesNativeRegionalSystems(world) &&
             evt.NativeEventRng is null;
         if (!nativeRoute && !legacyFallbackRoute)
@@ -218,7 +218,7 @@ internal static class NativeEventReflectionsChoicePlanBuilderV111
         var evt = origin.World!.Event!;
         var ownerId = $"event:reflections:{stage}:{stageOrdinal}:pool:" +
             CanonicalJson.Sha256(candidates);
-        var nativeRoute = origin.NativeRunRng is not null;
+        var nativeRoute = origin.Stochastic.NativeRunRng is not null;
         var streamId = nativeRoute
             ? NativeRngV111Contexts.EventStreamId(
                 PrototypeNativeGloryEvents.ReflectionsNativeRngEventId)
@@ -250,7 +250,7 @@ internal static class NativeEventReflectionsChoicePlanBuilderV111
     {
         if (drawOrdinal < 0)
             throw new ArgumentOutOfRangeException(nameof(drawOrdinal));
-        if (!origin.Rng.TryGetStream("event", out var stream))
+        if (!origin.Stochastic.PrototypeRng.TryGetStream("event", out var stream))
             throw new InvalidDataException(
                 "Reflections fallback requires one legacy event stream.");
         var ordinal = stream.CallCount ?? 0;
@@ -382,9 +382,9 @@ public static partial class ChanceLawEngineV111
             throw new InvalidOperationException(
                 "Stone of All Time potion-slot laws require a pre-entry Event-node boundary and explicit Stone branch.");
 
-        var nativeRoute = origin.NativeRunRng is not null &&
+        var nativeRoute = origin.Stochastic.NativeRunRng is not null &&
             PrototypeGameEngine.UsesNativeRegionalSystems(world);
-        var legacyRoute = origin.NativeRunRng is null &&
+        var legacyRoute = origin.Stochastic.NativeRunRng is null &&
             !PrototypeGameEngine.UsesNativeRegionalSystems(world);
         if (!nativeRoute && !legacyRoute)
             throw new InvalidOperationException(
@@ -510,7 +510,7 @@ public static partial class ChanceLawEngineV111
             eventId != PrototypeNativeFutureOfPotions.EventId ||
             origin.Phase != RunPhase.MapChoice ||
             origin.World is not { Event: null } world ||
-            origin.NativeRunRng is null ||
+            origin.Stochastic.NativeRunRng is null ||
             !PrototypeGameEngine.UsesNativeRegionalSystems(world))
             throw new InvalidOperationException(
                 "Future of Potions card-type laws require a configured pre-entry Native Event-node boundary and explicit event branch.");
@@ -624,16 +624,16 @@ public static partial class ChanceLawEngineV111
             throw new InvalidOperationException(
                 "Stone of All Time ticket laws require its active event-choice boundary.");
 
-        var nativeRoute = origin.NativeRunRng is not null &&
+        var nativeRoute = origin.Stochastic.NativeRunRng is not null &&
             PrototypeGameEngine.UsesNativeRegionalSystems(world) &&
             evt.NativeEventRng?.StreamId ==
                 NativeRngV111Contexts.EventStreamId(
                     PrototypeNativeStoneOfAllTime.NativeRngEventId);
-        var legacyRoute = origin.NativeRunRng is null &&
+        var legacyRoute = origin.Stochastic.NativeRunRng is null &&
             !PrototypeGameEngine.UsesNativeRegionalSystems(world) &&
             evt.NativeEventRng is null &&
             evt.NativeEventRngProviderMode is null;
-        var nativeRegionalLegacyRoute = origin.NativeRunRng is null &&
+        var nativeRegionalLegacyRoute = origin.Stochastic.NativeRunRng is null &&
             PrototypeGameEngine.UsesNativeRegionalSystems(world) &&
             evt.NativeEventRng is null &&
             evt.NativeEventRngProviderMode is null;

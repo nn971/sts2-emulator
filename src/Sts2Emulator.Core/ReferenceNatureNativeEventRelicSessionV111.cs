@@ -973,7 +973,7 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
                 { ControlledChoice: null, ChosenChoiceId: null }) ||
             neowRelicPickup || battlewornRelicVictory ||
             paelWingRelicReward || combatRewardRelicAcquisition;
-        if (world is null || source.NativeRunRng is null ||
+        if (world is null || source.Stochastic.NativeRunRng is null ||
             source.ControlledRunActionChoice is not null ||
             !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
             !supportedBoundary ||
@@ -1040,7 +1040,7 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
         RunState source, GameAction action)
     {
         if (source.Phase != RunPhase.Reward ||
-            source.NativeRunRng is null || source.World is not { } world ||
+            source.Stochastic.NativeRunRng is null || source.World is not { } world ||
             !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
             action.Kind != "take_reward_relic" ||
             world.Reward is not { PendingDeckChoice: null,

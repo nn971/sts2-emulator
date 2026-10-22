@@ -464,20 +464,20 @@ public sealed record PrototypeControlledEventChoiceContinuationV111(
             : null;
         var expectedStoneStreamId = NativeRngV111Contexts.EventStreamId(
             PrototypeNativeStoneOfAllTime.NativeRngEventId);
-        var nativeStoneRoute = PartialState.NativeRunRng is not null
+        var nativeStoneRoute = PartialState.Stochastic.NativeRunRng is not null
             && partialWorld is { Act: 2 } nativeWorld
             && PrototypeGameEngine.UsesNativeRegionalSystems(nativeWorld)
             && stoneEvent.NativeEventRng?.StreamId ==
                 expectedStoneStreamId
             && stoneEvent.NativeEventRngProviderMode is
                 null or "scripted-v111";
-        var legacyStoneRoute = PartialState.NativeRunRng is null
+        var legacyStoneRoute = PartialState.Stochastic.NativeRunRng is null
             && partialWorld is { Act: 2 } legacyWorld
             && !PrototypeGameEngine.UsesNativeRegionalSystems(legacyWorld)
             && stoneEvent.NativeEventRng is null
             && stoneEvent.NativeEventRngProviderMode is null;
         var nativeRegionalLegacyStoneRoute =
-            PartialState.NativeRunRng is null
+            PartialState.Stochastic.NativeRunRng is null
             && partialWorld is { Act: 2 } nativeRegionalWorld
             && PrototypeGameEngine.UsesNativeRegionalSystems(
                 nativeRegionalWorld)

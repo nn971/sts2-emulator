@@ -514,7 +514,7 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
         if (origin.Phase != RunPhase.MapChoice ||
             origin.World is not { Event: null } world ||
             string.IsNullOrWhiteSpace(origin.RunSeed) ||
-            origin.NativeRunRng is null ||
+            origin.Stochastic.NativeRunRng is null ||
             origin.ControlledRunActionChoice is not null ||
             !PrototypeGameEngine.UsesNativeRegionalSystems(world))
             throw new InvalidOperationException(

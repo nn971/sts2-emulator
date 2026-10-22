@@ -219,7 +219,7 @@ public sealed record ReferenceNatureInfestedAutomatonSessionV111(
             .FromOrderedIndexSelection(law, request, selection,
                 plan.CandidateCardIds.Select(cardId => "card:" + cardId)
                     .ToArray());
-        if (origin.NativeRunRng is null)
+        if (origin.Stochastic.NativeRunRng is null)
         {
             var replay = ControlledChanceContinuationExecutorV111
                 .CaptureStochastic(

@@ -134,7 +134,7 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
         if (expectedUnscriptedStreamId is { } unscriptedStreamId)
         {
             RngStreamState? stream = null;
-            if (origin.NativeRunRng is { } nativeRunRng)
+            if (origin.Stochastic.NativeRunRng is { } nativeRunRng)
                 nativeRunRng.TryGetStream(unscriptedStreamId, out stream);
             if (stream is null ||
                 NativeRngV111.ToSnapshot(stream) !=
@@ -357,7 +357,7 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
         if (decision.Request.SiteId != scriptedSiteId ||
             expectedPreDrawDishCount < 0 ||
             string.IsNullOrWhiteSpace(origin.RunSeed) ||
-            origin.NativeRunRng is null)
+            origin.Stochastic.NativeRunRng is null)
             throw new InvalidOperationException(
                 "Scripted event unit-float replay requires its configured native run and exact site.");
 
@@ -465,7 +465,7 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
             originEvent.EventId != expectedEventId ||
             originEvent.NativeEventRng is not { } originStream ||
             string.IsNullOrWhiteSpace(origin.RunSeed) ||
-            origin.NativeRunRng is null ||
+            origin.Stochastic.NativeRunRng is null ||
             indexDecision.Request.SiteId != scriptedIndexSiteId ||
             unitFloatDecision.Request.SiteId != scriptedUnitFloatSiteId ||
             indexDecision.Request.StreamId != originStream.StreamId ||

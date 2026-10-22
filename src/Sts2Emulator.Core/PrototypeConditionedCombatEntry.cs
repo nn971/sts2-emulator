@@ -70,7 +70,13 @@ public static class PrototypeConditionedCombatEntry
             var combatStream = PrototypeRng.CreateBundle(
                 $"local-combat-condition-v1:{independentSearchSeed.ToLowerInvariant()}:{trial}")
                 .GetStream("combat");
-            candidate.Rng.ReplaceStream("combat", combatStream);
+            var candidateRng = candidate.Stochastic.PrototypeRng.Fork();
+            candidateRng.ReplaceStream("combat", combatStream);
+            candidate = candidate with
+            {
+                Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                    candidate.Stochastic, candidateRng)
+            };
 
             var result = environment.Step(candidate, actionId).State;
             if (result.Phase != RunPhase.Combat)

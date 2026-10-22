@@ -1394,7 +1394,7 @@ public static class PrototypeNativeUnderdocksRunFactory
             seed, ascension);
         var world = baseState.World
             ?? throw new InvalidOperationException("Missing Act 1 world.");
-        var rng = baseState.Rng.Fork();
+        var rng = baseState.Stochastic.PrototypeRng.Fork();
 
         // The prototype StartRun had already rolled an Overgrowth boss.
         // Replace its combat stream with the clean initial stream before

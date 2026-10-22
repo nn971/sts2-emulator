@@ -74,7 +74,7 @@ internal static class NativePunchOffFightPlanBuilderV111
             throw new InvalidOperationException(
                 "Punch Off fight queries require the complete preceding HP-offset prefix.");
         if (string.IsNullOrWhiteSpace(origin.RunSeed) ||
-            origin.NativeRunRng is null || origin.Phase != RunPhase.Event ||
+            origin.Stochastic.NativeRunRng is null || origin.Phase != RunPhase.Event ||
             origin.World is not { Act: 1, Event: { } evt, Combat: null } world ||
             evt.EventId != PrototypeNativePunchOff.EventId ||
             evt.NativePageIndex != 1 || evt.ChosenChoiceId is not null ||
