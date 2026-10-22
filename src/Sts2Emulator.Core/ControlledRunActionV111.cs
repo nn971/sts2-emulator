@@ -452,9 +452,9 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                 "Malformed controlled run-action continuation.");
 
         var state = PartialState;
-        if (state.ControlledRunActionChoice is not null
-            || state.ControlledEventRewardChoice is not null
-            || state.World?.Event?.ControlledChoice is not null)
+        if (state.Stochastic.ControlledRunActionChoice is not null
+            || state.Stochastic.ControlledEventRewardChoice is not null
+            || state.World?.Event?.Stochastic.ControlledChoice is not null)
             throw new InvalidDataException(
                 "Controlled run-action frame contains another pending controller.");
 
@@ -1076,7 +1076,7 @@ public static class ControlledRunActionEngineV111
     {
         ArgumentNullException.ThrowIfNull(source);
         if (source.Phase != RunPhase.ActTransition
-            || source.ControlledRunActionChoice is not null
+            || source.Stochastic.ControlledRunActionChoice is not null
             || source.Configuration is not null
             || source.Stochastic.NativeRunRng is not null
             || source.World is not { } world
@@ -1090,7 +1090,7 @@ public static class ControlledRunActionEngineV111
     {
         ArgumentNullException.ThrowIfNull(source);
         if (source.Phase != RunPhase.Rest
-            || source.ControlledRunActionChoice is not null
+            || source.Stochastic.ControlledRunActionChoice is not null
             || !PrototypeNativeRestSiteRelics.CanDig(source.Player))
             throw new InvalidOperationException(
                 "Controlled Shovel dig requires an unsuspended rest-site action.");
@@ -1279,7 +1279,7 @@ public static class ControlledRunActionEngineV111
             && source.Stochastic.NativeRunRng is null
             && source.World is { } transitionWorld
             && transitionWorld.Act < PrototypeContent.Rules.Acts;
-        if (source.ControlledRunActionChoice is not null
+        if (source.Stochastic.ControlledRunActionChoice is not null
             || (action.Kind is not ("start_run" or "continue_act"
                 or PrototypeNativeRestSiteActionsV111.Dig
                 or "choose_map_node")
@@ -1394,7 +1394,7 @@ public static class ControlledRunActionEngineV111
             result = replay.Run ?? throw new InvalidDataException(
                 "Controlled run-action begin returned neither a run nor a pending chance request.");
         }
-        if (result.ControlledRunActionChoice is null)
+        if (result.Stochastic.ControlledRunActionChoice is null)
         {
             if (shopPurchaseAction || supportedLegacyActTransitionAction ||
                 legacyActOneCombatEntryAction ||
@@ -1648,7 +1648,7 @@ public static class ControlledRunActionEngineV111
     public static RunState Resolve(RunState source, int selectedIndex)
     {
         ArgumentNullException.ThrowIfNull(source);
-        if (source.ControlledRunActionChoice is null)
+        if (source.Stochastic.ControlledRunActionChoice is null)
             throw new InvalidOperationException(
                 "No controlled run-action outcome is pending.");
         return Step(source, GameAction.Create(

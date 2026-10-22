@@ -51,7 +51,7 @@ public static class ControlledEventChoiceEngineV111
         }
         var result = Step(source, GameAction.Create(
             "event_choice", new EventChoicePayload(choiceId)));
-        if (result.World?.Event?.ControlledChoice is null
+        if (result.World?.Event?.Stochastic.ControlledChoice is null
             && !IsStonePushDeckChoiceBoundary(result)
             && !IsStonePushNoChanceTerminal(result, source, choiceId))
             throw new NotSupportedException(
@@ -60,17 +60,19 @@ public static class ControlledEventChoiceEngineV111
         return result;
     }
 
-    internal static bool IsStonePushDeckChoiceBoundary(RunState run) =>
-        run.Phase == RunPhase.Event
-        && run.World?.Event is
-        {
-            EventId: var eventId,
-            ChosenChoiceId: "push",
-            ControlledChoice: null,
-            PendingDeckChoice: not null
-        }
-        && eventId == PrototypeNativeStoneOfAllTime.EventId
-        && run.ControlledEventRewardChoice is null;
+    internal static bool IsStonePushDeckChoiceBoundary(RunState run)
+    {
+        var eventState = run.World?.Event;
+        return run.Phase == RunPhase.Event
+            && eventState is
+            {
+                EventId: PrototypeNativeStoneOfAllTime.EventId,
+                ChosenChoiceId: "push",
+                PendingDeckChoice: not null
+            }
+            && eventState.Stochastic.ControlledChoice is null
+            && run.Stochastic.ControlledEventRewardChoice is null;
+    }
 
     internal static bool IsStonePushNoChanceTerminal(
         RunState run, RunState origin, string choiceId) =>
@@ -84,8 +86,8 @@ public static class ControlledEventChoiceEngineV111
     public static RunState Resolve(RunState source, int selectedIndex)
     {
         ArgumentNullException.ThrowIfNull(source);
-        if (source.World?.Event?.ControlledChoice is null
-            && source.ControlledEventRewardChoice is null)
+        if (source.World?.Event?.Stochastic.ControlledChoice is null
+            && source.Stochastic.ControlledEventRewardChoice is null)
             throw new InvalidOperationException(
                 "No controlled event outcome is pending.");
         return Step(source, GameAction.Create(
@@ -126,13 +128,14 @@ public static class ControlledEventChoiceEngineV111
             return pushResult;
         }
 
-        var trace = source.ControlledEventChoiceHistory is { Length: > 0 } history
+        var trace = source.Stochastic.ControlledEventChoiceHistory is
+            { Length: > 0 } history
             ? history[^1]
             : null;
         if (source.Phase != RunPhase.Reward
-            || source.ControlledEventRewardChoice is not null
+            || source.Stochastic.ControlledEventRewardChoice is not null
             || eventState is null
-            || eventState.ControlledChoice is not null
+            || eventState.Stochastic.ControlledChoice is not null
             || eventState.ChosenChoiceId is not { } choiceId
             || reward is null
             || reward.SourceRoom != "Event:" + eventState.EventId
@@ -444,7 +447,7 @@ public sealed record PrototypeControlledEventChoiceContinuationV111(
             || partialEvent is null
             || partialEvent.EventId != EventId
             || (partialEvent.ChosenChoiceId is not null && !chosenStonePush)
-            || partialEvent.ControlledChoice is not null
+            || partialEvent.Stochastic.ControlledChoice is not null
             || !PrototypeGameEngine.IsControlledEventChoice(EventId, ChoiceId))
             throw new InvalidDataException(
                 "Controlled event-choice frame is outside its event option boundary.");
@@ -731,9 +734,9 @@ public sealed record PrototypeControlledEventRewardChoiceContinuationV111(
         var eventState = world?.Event;
         var reward = world?.Reward;
         if (PartialState.Phase != RunPhase.Reward
-            || PartialState.ControlledEventRewardChoice is not null
+            || PartialState.Stochastic.ControlledEventRewardChoice is not null
             || eventState is null
-            || eventState.ControlledChoice is not null
+            || eventState.Stochastic.ControlledChoice is not null
             || eventState.EventId != EventId
             || eventState.ChosenChoiceId != ChoiceId
             || reward?.SourceRoom != "Event:" + EventId
@@ -742,7 +745,7 @@ public sealed record PrototypeControlledEventRewardChoiceContinuationV111(
             throw new InvalidDataException(
                 "Controlled event-reward frame is outside its post-reward boundary.");
 
-        var history = PartialState.ControlledEventChoiceHistory;
+        var history = PartialState.Stochastic.ControlledEventChoiceHistory;
         var trace = history is { Length: > 0 } ? history[^1] : null;
         if (trace is null
             || trace.EventId != EventId

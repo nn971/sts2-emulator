@@ -274,8 +274,10 @@ public sealed record SimulationProviderReplayCaptureV111(
         if (!session.Complete || session.Run is null)
             throw new InvalidOperationException(
                 "Provider replay capture requires a completed ReferenceNature run action.");
-        var originHistory = session.Origin.ControlledRunActionHistory ?? [];
-        var resultHistory = session.Run.ControlledRunActionHistory ?? [];
+        var originHistory =
+            session.Origin.Stochastic.ControlledRunActionHistory ?? [];
+        var resultHistory =
+            session.Run.Stochastic.ControlledRunActionHistory ?? [];
         if (resultHistory.Length < originHistory.Length)
             throw new InvalidDataException(
                 "ReferenceNature run-action history lost its origin prefix.");
@@ -523,8 +525,10 @@ public sealed record SimulationProviderReplayCaptureV111(
             throw new InvalidOperationException(
                 "Provider replay capture requires a completed ReferenceNature event choice.");
 
-        var originHistory = replay.Origin.ControlledEventChoiceHistory ?? [];
-        var resultHistory = replay.Run.ControlledEventChoiceHistory ?? [];
+        var originHistory =
+            replay.Origin.Stochastic.ControlledEventChoiceHistory ?? [];
+        var resultHistory =
+            replay.Run.Stochastic.ControlledEventChoiceHistory ?? [];
         if (resultHistory.Length < originHistory.Length)
             throw new InvalidDataException(
                 "ReferenceNature event-choice history lost its origin prefix.");

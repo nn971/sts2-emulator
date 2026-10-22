@@ -67,8 +67,8 @@ public static class ControlledEventChoiceEnumeratorV111
                 CanonicalJson.Sha256(current), fingerprint))
             throw new InvalidOperationException(
                 "Stale controlled event-choice enumeration fingerprint.");
-        var eventContinuation = current.World?.Event?.ControlledChoice;
-        var rewardContinuation = current.ControlledEventRewardChoice;
+        var eventContinuation = current.World?.Event?.Stochastic.ControlledChoice;
+        var rewardContinuation = current.Stochastic.ControlledEventRewardChoice;
         if (eventContinuation is not null && rewardContinuation is not null)
             throw new InvalidDataException(
                 "A state cannot suspend both an event effect and its reward.");

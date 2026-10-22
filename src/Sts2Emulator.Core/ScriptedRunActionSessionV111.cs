@@ -432,9 +432,9 @@ public sealed record ScriptedRunActionSessionV111(
         RunState source, GameAction action)
     {
         RunConfiguration.ValidateState(source);
-        if (source.ControlledEventRewardChoice is not null ||
-            source.ControlledRunActionChoice is not null ||
-            source.World?.Event?.ControlledChoice is not null ||
+        if (source.Stochastic.ControlledEventRewardChoice is not null ||
+            source.Stochastic.ControlledRunActionChoice is not null ||
+            source.World?.Event?.Stochastic.ControlledChoice is not null ||
             new PrototypeGameEngine().GetLegalActions(source).All(candidate =>
                 CanonicalJson.Sha256(candidate) != CanonicalJson.Sha256(action)))
             throw new InvalidOperationException(
