@@ -21,7 +21,7 @@ public sealed partial class PrototypeGameEngine
         PrototypeRoomType? roomType)
     {
         var player = state.Player;
-        var rng = state.Stochastic.PrototypeRng;
+        var rng = state.Stochastic.PrototypeRng.Fork();
         var nativeRunStreams =
             state.World?.Combat?.Stochastic.NativeRng?.RunStreams.Fork()
             ?? state.Stochastic.NativeRunRng?.Fork();
@@ -172,12 +172,15 @@ public sealed partial class PrototypeGameEngine
             };
         }
 
+        var stochastic = RunStochasticStateV111.WithNativeRunRng(
+            state.Stochastic,
+            nativeRunStreams ?? state.Stochastic.NativeRunRng);
+        stochastic = RunStochasticStateV111.WithPrototypeRng(
+            stochastic, rng);
         var updated = state with
         {
             Player = player,
-            Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                state.Stochastic,
-                nativeRunStreams ?? state.Stochastic.NativeRunRng),
+            Stochastic = stochastic,
             World = world is null || combat is null
                 ? world
                 : world with { Combat = combat }
