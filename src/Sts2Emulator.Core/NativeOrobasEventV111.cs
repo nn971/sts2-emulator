@@ -187,13 +187,13 @@ public static class NativeOrobasEventV111
     {
         if (state.World?.Event is not { EventId: EventId } evt)
             return;
-        if (evt.NativeEventRng is not { } stream
+        if (evt.Stochastic.NativeRng is not { } stream
             || stream.StreamId != "context.event.OROBAS.player_0"
             || evt.OfferedChoiceIds is not { Length: 3 } offers)
             throw new InvalidOperationException(
                 "Orobas requires three persisted offers and its event RNG context.");
         var initial = NativeRngV111Contexts.ForEvent(state.RunSeed, "OROBAS");
-        if (evt.NativeEventRngProviderMode is { } mode)
+        if (evt.Stochastic.ProviderMode is { } mode)
         {
             if (mode is not ("scripted-v111" or "controlled-v111"))
                 throw new InvalidOperationException(
@@ -222,7 +222,7 @@ public static class NativeOrobasEventV111
             throw new InvalidOperationException(
                 "Orobas selected a locked or unoffered choice.");
 
-        if (evt.NativeEventRngProviderMode is null
+        if (evt.Stochastic.ProviderMode is null
             && evt.ChosenChoiceId is null)
         {
             var bundle = new RngBundle([initial]);

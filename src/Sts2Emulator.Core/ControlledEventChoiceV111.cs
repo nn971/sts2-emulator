@@ -31,20 +31,20 @@ public static class ControlledEventChoiceEngineV111
             var nativeRoute = source.Stochastic.NativeRunRng is not null
                 && world is not null
                 && PrototypeGameEngine.UsesNativeRegionalSystems(world)
-                && eventState.NativeEventRng?.StreamId == nativeStreamId
-                && eventState.NativeEventRngProviderMode is
+                && eventState.Stochastic.NativeRng?.StreamId == nativeStreamId
+                && eventState.Stochastic.ProviderMode is
                     null or "scripted-v111";
             var legacyRoute = source.Stochastic.NativeRunRng is null
                 && world is not null
                 && !PrototypeGameEngine.UsesNativeRegionalSystems(world)
-                && eventState.NativeEventRng is null
-                && eventState.NativeEventRngProviderMode is null;
+                && eventState.Stochastic.NativeRng is null
+                && eventState.Stochastic.ProviderMode is null;
             var nativeRegionalLegacyRoute = source.Stochastic.NativeRunRng is null
                 && world is { Act: 2 } nativeRegionalWorld
                 && PrototypeGameEngine.UsesNativeRegionalSystems(
                     nativeRegionalWorld)
-                && eventState.NativeEventRng is null
-                && eventState.NativeEventRngProviderMode is null;
+                && eventState.Stochastic.NativeRng is null
+                && eventState.Stochastic.ProviderMode is null;
             if (!nativeRoute && !legacyRoute && !nativeRegionalLegacyRoute)
                 throw new NotSupportedException(
                     "ReferenceNature Stone of All Time requires a complete Native or legacy event RNG route.");
@@ -467,22 +467,22 @@ public sealed record PrototypeControlledEventChoiceContinuationV111(
         var nativeStoneRoute = PartialState.Stochastic.NativeRunRng is not null
             && partialWorld is { Act: 2 } nativeWorld
             && PrototypeGameEngine.UsesNativeRegionalSystems(nativeWorld)
-            && stoneEvent.NativeEventRng?.StreamId ==
+            && stoneEvent.Stochastic.NativeRng?.StreamId ==
                 expectedStoneStreamId
-            && stoneEvent.NativeEventRngProviderMode is
+            && stoneEvent.Stochastic.ProviderMode is
                 null or "scripted-v111";
         var legacyStoneRoute = PartialState.Stochastic.NativeRunRng is null
             && partialWorld is { Act: 2 } legacyWorld
             && !PrototypeGameEngine.UsesNativeRegionalSystems(legacyWorld)
-            && stoneEvent.NativeEventRng is null
-            && stoneEvent.NativeEventRngProviderMode is null;
+            && stoneEvent.Stochastic.NativeRng is null
+            && stoneEvent.Stochastic.ProviderMode is null;
         var nativeRegionalLegacyStoneRoute =
             PartialState.Stochastic.NativeRunRng is null
             && partialWorld is { Act: 2 } nativeRegionalWorld
             && PrototypeGameEngine.UsesNativeRegionalSystems(
                 nativeRegionalWorld)
-            && stoneEvent.NativeEventRng is null
-            && stoneEvent.NativeEventRngProviderMode is null;
+            && stoneEvent.Stochastic.NativeRng is null
+            && stoneEvent.Stochastic.ProviderMode is null;
         var isStoneTicketRequest = EventId ==
                 PrototypeNativeStoneOfAllTime.EventId
             && expectedStoneSiteId is not null

@@ -27,7 +27,7 @@ internal static class NativeEventInfestedAutomatonCardPickPlanBuilderV111
             evt.NativePageIndex != 0 || evt.ChosenChoiceId is not null ||
             evt.ControlledChoice is not null ||
             evt.NativeEventPotionSlot is not null ||
-            evt.NativeEventRngProviderMode is not null ||
+            evt.Stochastic.ProviderMode is not null ||
             origin.ControlledEventRewardChoice is not null ||
             actionId is not ("study" or "touch_core"))
             throw new InvalidOperationException(
@@ -36,7 +36,7 @@ internal static class NativeEventInfestedAutomatonCardPickPlanBuilderV111
         var nativeRoute = origin.Stochastic.NativeRunRng is not null;
         var legacyFallbackRoute = origin.Stochastic.NativeRunRng is null &&
             PrototypeGameEngine.UsesNativeRegionalSystems(world) &&
-            evt.NativeEventRng is null;
+            evt.Stochastic.NativeRng is null;
         if (!nativeRoute && !legacyFallbackRoute)
             throw new InvalidOperationException(
                 "Infested Automaton requires a configured Native or Native-regional legacy event RNG route.");
@@ -61,7 +61,7 @@ internal static class NativeEventInfestedAutomatonCardPickPlanBuilderV111
 
         var expectedStreamId = NativeRngV111Contexts.EventStreamId(
             PrototypeNativeHiveEvents.InfestedAutomatonNativeRngEventId);
-        if (evt.NativeEventRng is { } savedStream &&
+        if (evt.Stochastic.NativeRng is { } savedStream &&
             savedStream.StreamId != expectedStreamId)
             throw new InvalidOperationException(
                 "Infested Automaton has an incorrect Native event stream identity.");
@@ -131,7 +131,7 @@ internal static class NativeEventReflectionsChoicePlanBuilderV111
             evt.NativePageIndex != 0 || evt.ChosenChoiceId is not null ||
             evt.ControlledChoice is not null ||
             evt.NativeEventPotionSlot is not null ||
-            evt.NativeEventRngProviderMode is not null ||
+            evt.Stochastic.ProviderMode is not null ||
             origin.ControlledEventRewardChoice is not null ||
             actionId is not (null or "touch_mirror"))
             throw new InvalidOperationException(
@@ -140,7 +140,7 @@ internal static class NativeEventReflectionsChoicePlanBuilderV111
         var nativeRoute = origin.Stochastic.NativeRunRng is not null;
         var legacyFallbackRoute = origin.Stochastic.NativeRunRng is null &&
             PrototypeGameEngine.UsesNativeRegionalSystems(world) &&
-            evt.NativeEventRng is null;
+            evt.Stochastic.NativeRng is null;
         if (!nativeRoute && !legacyFallbackRoute)
             throw new InvalidOperationException(
                 "Reflections requires a configured Native or Native-regional legacy event RNG route.");
@@ -155,7 +155,7 @@ internal static class NativeEventReflectionsChoicePlanBuilderV111
 
         var expectedStreamId = NativeRngV111Contexts.EventStreamId(
             PrototypeNativeGloryEvents.ReflectionsNativeRngEventId);
-        if (evt.NativeEventRng is { } savedStream &&
+        if (evt.Stochastic.NativeRng is { } savedStream &&
             savedStream.StreamId != expectedStreamId)
             throw new InvalidOperationException(
                 "Reflections has the wrong Native event stream identity.");
@@ -619,24 +619,24 @@ public static partial class ChanceLawEngineV111
             evt.EventId != PrototypeNativeStoneOfAllTime.EventId ||
             evt.NativePageIndex != 0 || evt.ChosenChoiceId is not null ||
             evt.ControlledChoice is not null ||
-            evt.NativeEventRngProviderMode is not (null or "scripted-v111") ||
+            evt.Stochastic.ProviderMode is not (null or "scripted-v111") ||
             origin.ControlledEventRewardChoice is not null)
             throw new InvalidOperationException(
                 "Stone of All Time ticket laws require its active event-choice boundary.");
 
         var nativeRoute = origin.Stochastic.NativeRunRng is not null &&
             PrototypeGameEngine.UsesNativeRegionalSystems(world) &&
-            evt.NativeEventRng?.StreamId ==
+            evt.Stochastic.NativeRng?.StreamId ==
                 NativeRngV111Contexts.EventStreamId(
                     PrototypeNativeStoneOfAllTime.NativeRngEventId);
         var legacyRoute = origin.Stochastic.NativeRunRng is null &&
             !PrototypeGameEngine.UsesNativeRegionalSystems(world) &&
-            evt.NativeEventRng is null &&
-            evt.NativeEventRngProviderMode is null;
+            evt.Stochastic.NativeRng is null &&
+            evt.Stochastic.ProviderMode is null;
         var nativeRegionalLegacyRoute = origin.Stochastic.NativeRunRng is null &&
             PrototypeGameEngine.UsesNativeRegionalSystems(world) &&
-            evt.NativeEventRng is null &&
-            evt.NativeEventRngProviderMode is null;
+            evt.Stochastic.NativeRng is null &&
+            evt.Stochastic.ProviderMode is null;
         if (!nativeRoute && !legacyRoute && !nativeRegionalLegacyRoute)
             throw new InvalidOperationException(
                 "Stone of All Time ticket laws require a complete Native or legacy event RNG route.");

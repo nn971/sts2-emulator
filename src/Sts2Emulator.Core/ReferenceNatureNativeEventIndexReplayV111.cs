@@ -62,7 +62,7 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
                 decision is null || !decision.IsIndexOrUnitFloat()))
             throw new InvalidDataException(
                 $"{eventName} replay requires a nonempty index/unit-float prefix.");
-        var expectedStream = origin.World?.Event?.NativeEventRng ??
+        var expectedStream = origin.World?.Event?.Stochastic.NativeRng ??
             NativeRngV111Contexts.ForEvent(
                 origin.RunSeed, nativeEventRngEventId);
         var replay = ControlledChanceContinuationExecutorV111.CaptureStochastic(
@@ -75,7 +75,7 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
                 $"{eventName} action did not consume exactly its selected index prefix.");
         if (validateNativeEventCursor &&
             CanonicalJson.Sha256(
-                resolved.World?.Event?.NativeEventRng) !=
+                resolved.World?.Event?.Stochastic.NativeRng) !=
                 CanonicalJson.Sha256(expectedStream))
             throw new InvalidDataException(
                 $"Scripted {eventName} resolution advanced its Native event cursor.");
@@ -158,12 +158,12 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
         if (expectedRunNicheCursor is null && preserveEventRng)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(nativeEventRngEventId);
-            expectedStream = origin.World?.Event?.NativeEventRng ??
+            expectedStream = origin.World?.Event?.Stochastic.NativeRng ??
                 NativeRngV111Contexts.ForEvent(
                     origin.RunSeed, nativeEventRngEventId);
         }
         else if (!preserveEventRng &&
-            origin.World?.Event?.NativeEventRng is not null)
+            origin.World?.Event?.Stochastic.NativeRng is not null)
             throw new InvalidOperationException(
                 "This replay boundary requires the event RNG context to remain absent.");
         var scripted = new ScriptedRandomIndexProviderV111(decisionArray);
@@ -251,8 +251,8 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
         {
             var replayEventState = run.World?.Event;
             if (replayEventState is null ||
-                replayEventState.NativeEventRng is not null ||
-                replayEventState.NativeEventRngProviderMode is not null)
+                replayEventState.Stochastic.NativeRng is not null ||
+                replayEventState.Stochastic.ProviderMode is not null)
                 throw new InvalidDataException(
                     "Scripted player-stream replay changed the absent Native event RNG context.");
             var expectedRewardsCursor = expectedUnscriptedCursorBefore
@@ -320,7 +320,7 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
                     "Scripted player-stream replay did not retain the complete ordered Repy shuffle and potion request sequence.");
             return run;
         }
-        if (CanonicalJson.Sha256(run.World?.Event?.NativeEventRng) !=
+        if (CanonicalJson.Sha256(run.World?.Event?.Stochastic.NativeRng) !=
             CanonicalJson.Sha256(expectedStream))
             throw new InvalidDataException(
                 $"Scripted {eventName} resolution advanced its Native event cursor.");
@@ -387,7 +387,7 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
         var capture = matchingCaptures.Length == 1
             ? matchingCaptures[0] : null;
         var preDrawEvent = capture?.PreDrawState.World?.Event;
-        var preDrawStream = preDrawEvent?.NativeEventRng;
+        var preDrawStream = preDrawEvent?.Stochastic.NativeRng;
         var expectedStream = NativeRngV111Contexts.ForEvent(
             origin.RunSeed, nativeEventRngEventId);
         var entryDishBoundary = expectedPreDrawDishCount == 0 &&
@@ -423,7 +423,7 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
             throw new InvalidDataException(
                 "Scripted event unit-float request differs from the replay plan.");
         var expectedPostPrefixCursor = NativeRngV111.ToSnapshot(preDrawStream);
-        if (run.World?.Event?.NativeEventRng is not { } replayStream ||
+        if (run.World?.Event?.Stochastic.NativeRng is not { } replayStream ||
             NativeRngV111.ToSnapshot(replayStream) != expectedPostPrefixCursor)
             throw new InvalidDataException(
                 $"Scripted {expectedEventId} resolution advanced its Native event cursor.");
@@ -463,7 +463,7 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
         if (origin.Phase != RunPhase.Event ||
             origin.World?.Event is not { } originEvent ||
             originEvent.EventId != expectedEventId ||
-            originEvent.NativeEventRng is not { } originStream ||
+            originEvent.Stochastic.NativeRng is not { } originStream ||
             string.IsNullOrWhiteSpace(origin.RunSeed) ||
             origin.Stochastic.NativeRunRng is null ||
             indexDecision.Request.SiteId != scriptedIndexSiteId ||
@@ -513,7 +513,7 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
         if (matching.Length != 1 ||
             CanonicalJson.Sha256(matching[0].Request) !=
                 CanonicalJson.Sha256(unitFloatDecision.Request) ||
-            matching[0].PreDrawState.World?.Event?.NativeEventRng is not
+            matching[0].PreDrawState.World?.Event?.Stochastic.NativeRng is not
                 { } preDrawStream ||
             preDrawStream.StreamId != originStream.StreamId ||
             NativeRngV111.ToSnapshot(preDrawStream) !=
@@ -522,7 +522,7 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
                 "Mixed Endless Conveyor replay did not reach the scripted ticket after its counterfactual index.");
         if (run.World?.Event is not { } eventState ||
             eventState.EventId != expectedEventId ||
-            eventState.NativeEventRng is not { } replayStream ||
+            eventState.Stochastic.NativeRng is not { } replayStream ||
             NativeRngV111.ToSnapshot(replayStream) !=
                 NativeRngV111.ToSnapshot(originStream))
             throw new InvalidDataException(

@@ -109,9 +109,9 @@ public static class NativeNeowEventV111
                 PrototypeNativeOvergrowthEvents.NeowEventId } evt)
             return;
 
-        if (evt.NativeEventRng is not { } stream)
+        if (evt.Stochastic.NativeRng is not { } stream)
         {
-            if (evt.NativeEventRngProviderMode is not null)
+            if (evt.Stochastic.ProviderMode is not null)
                 throw new InvalidOperationException(
                     "Neow provider mode is present without its persisted native event context.");
             // Older saved Overgrowth runs only retained the prototype
@@ -129,7 +129,7 @@ public static class NativeNeowEventV111
             throw new InvalidOperationException(
                 "Native Neow offers must contain two eligible positives and one curse.");
 
-        var mode = evt.NativeEventRngProviderMode;
+        var mode = evt.Stochastic.ProviderMode;
         if (mode is not null
             && mode is not ("scripted-v111" or "controlled-v111"))
             throw new InvalidOperationException(
@@ -150,7 +150,7 @@ public static class NativeNeowEventV111
         if (!offers.SequenceEqual(replay.OfferedChoiceIds,
                 StringComparer.Ordinal)
             || NativeRngV111.ToSnapshot(stream)
-                != NativeRngV111.ToSnapshot(replay.NativeEventRng))
+                != NativeRngV111.ToSnapshot(replay.Stochastic.NativeRng))
             throw new InvalidOperationException(
                 "Neow offers or event cursor disagree with their native context draws.");
     }

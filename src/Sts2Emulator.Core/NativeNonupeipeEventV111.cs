@@ -196,7 +196,7 @@ public static class NativeNonupeipeEventV111
             && !offers.Contains(chosen, StringComparer.Ordinal))
             throw new InvalidOperationException(
                 "Nonupeipe selected a relic outside its three offers.");
-        if (evt.NativeEventRngProviderMode is { } mode)
+        if (evt.Stochastic.ProviderMode is { } mode)
         {
             if (mode is not ("scripted-v111" or "controlled-v111"))
                 throw new InvalidOperationException(

@@ -23,7 +23,7 @@ internal static class TrashHeapChoicePlanBuilderV111
             evt.NativePageIndex != 0 || evt.ChosenChoiceId is not null ||
             evt.ControlledChoice is not null ||
             evt.NativeEventPotionSlot is not null ||
-            evt.NativeEventRngProviderMode is not null ||
+            evt.Stochastic.ProviderMode is not null ||
             origin.ControlledEventRewardChoice is not null)
             throw new InvalidOperationException(
                 "Trash Heap Nature choices require an unchosen supported Native-regional event.");
@@ -32,7 +32,7 @@ internal static class TrashHeapChoicePlanBuilderV111
             PrototypeGameEngine.UsesNativeRegionalSystems(world);
         var legacyFallbackRoute = origin.Stochastic.NativeRunRng is null &&
             PrototypeGameEngine.UsesNativeRegionalSystems(world) &&
-            evt.NativeEventRng is null;
+            evt.Stochastic.NativeRng is null;
         if (!nativeRoute && !legacyFallbackRoute)
             throw new InvalidOperationException(
                 "Trash Heap Nature choices require a configured Native or Native-regional legacy event RNG route.");
@@ -120,8 +120,8 @@ internal static class TrashHeapChoicePlanBuilderV111
         if (origin.Stochastic.NativeRunRng is null)
         {
             if (!PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
-                evt.NativeEventRng is not null ||
-                evt.NativeEventRngProviderMode is not null)
+                evt.Stochastic.NativeRng is not null ||
+                evt.Stochastic.ProviderMode is not null)
                 throw new InvalidOperationException(
                     "Trash Heap fallback replay requires the legacy event stream without a Native event cursor.");
             return;
@@ -132,14 +132,14 @@ internal static class TrashHeapChoicePlanBuilderV111
         var expected = NativeRngV111Contexts.ForEvent(
             origin.RunSeed,
             PrototypeNativeUnderdocksTrashHeap.NativeRngEventId);
-        if (evt.NativeEventRng is { } saved &&
+        if (evt.Stochastic.NativeRng is { } saved &&
             saved.StreamId != expected.StreamId)
             throw new InvalidOperationException(
                 "Trash Heap has the wrong Native event stream context.");
-        if (evt.NativeEventRng is null && evt.NativePageIndex != 0)
+        if (evt.Stochastic.NativeRng is null && evt.NativePageIndex != 0)
             throw new InvalidOperationException(
                 "Trash Heap cannot reconstruct a missing event stream after page progress.");
-        if (NativeRngV111.ToSnapshot(evt.NativeEventRng ?? expected) !=
+        if (NativeRngV111.ToSnapshot(evt.Stochastic.NativeRng ?? expected) !=
             NativeRngV111.ToSnapshot(expected))
             throw new InvalidOperationException(
                 "Trash Heap session must start at the event-entry Native cursor.");

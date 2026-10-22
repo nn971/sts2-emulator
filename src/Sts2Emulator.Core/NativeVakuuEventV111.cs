@@ -204,7 +204,7 @@ public static class NativeVakuuEventV111
             && !offers.Contains(selected, StringComparer.Ordinal))
             throw new InvalidOperationException(
                 "Vakuu selected a relic outside its three offers.");
-        if (evt.NativeEventRngProviderMode is { } mode)
+        if (evt.Stochastic.ProviderMode is { } mode)
         {
             if (mode is not ("scripted-v111" or "controlled-v111"))
                 throw new InvalidOperationException(

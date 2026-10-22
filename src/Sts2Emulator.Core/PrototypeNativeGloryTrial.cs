@@ -45,7 +45,7 @@ public sealed partial class PrototypeGameEngine
             {
                 Stochastic = EventStochasticStateV111.WithNativeRng(
                     evt.Stochastic,
-                    evt.NativeEventRng
+                    evt.Stochastic.NativeRng
                         ?? NativeEventContextRngV111.CreateAtEntry(
                             state,
                             PrototypeNativeGloryEvents.TrialNativeRngEventId))

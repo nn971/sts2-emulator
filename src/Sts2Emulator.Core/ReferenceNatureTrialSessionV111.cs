@@ -29,7 +29,7 @@ internal static class TrialCaseChoicePlanBuilderV111
             evt.ChosenChoiceId is not null ||
             evt.ControlledChoice is not null ||
             evt.NativeEventPotionSlot is not null ||
-            evt.NativeEventRngProviderMode is not null ||
+            evt.Stochastic.ProviderMode is not null ||
             origin.ControlledEventRewardChoice is not null)
             throw new InvalidOperationException(
                 "Trial Nature choices require a pending supported case draw.");
@@ -37,7 +37,7 @@ internal static class TrialCaseChoicePlanBuilderV111
         var nativeRoute = origin.Stochastic.NativeRunRng is not null;
         var legacyFallbackRoute = origin.Stochastic.NativeRunRng is null &&
             PrototypeGameEngine.UsesNativeRegionalSystems(world) &&
-            evt.NativeEventRng is null;
+            evt.Stochastic.NativeRng is null;
         if (!nativeRoute && !legacyFallbackRoute)
             throw new InvalidOperationException(
                 "Trial requires a configured Native or Native-regional legacy event RNG route.");
@@ -101,8 +101,8 @@ internal static class TrialCaseChoicePlanBuilderV111
         if (origin.Stochastic.NativeRunRng is null)
         {
             if (!PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
-                evt.NativeEventRng is not null ||
-                evt.NativeEventRngProviderMode is not null)
+                evt.Stochastic.NativeRng is not null ||
+                evt.Stochastic.ProviderMode is not null)
                 throw new InvalidOperationException(
                     "Trial fallback replay requires the legacy event stream without a Native event cursor.");
             return;
@@ -113,14 +113,14 @@ internal static class TrialCaseChoicePlanBuilderV111
 
         var expectedStream = NativeRngV111Contexts.ForEvent(
             origin.RunSeed, PrototypeNativeGloryEvents.TrialNativeRngEventId);
-        if (evt.NativeEventRng is { } savedStream &&
+        if (evt.Stochastic.NativeRng is { } savedStream &&
             savedStream.StreamId != expectedStream.StreamId)
             throw new InvalidOperationException(
                 "Trial has the wrong Native event stream context.");
-        if (evt.NativeEventRng is null && evt.NativePageIndex != 0)
+        if (evt.Stochastic.NativeRng is null && evt.NativePageIndex != 0)
             throw new InvalidOperationException(
                 "Trial cannot reconstruct a missing event stream after page progress.");
-        var stream = evt.NativeEventRng ?? expectedStream;
+        var stream = evt.Stochastic.NativeRng ?? expectedStream;
         if (NativeRngV111.ToSnapshot(stream) !=
             NativeRngV111.ToSnapshot(expectedStream))
             throw new InvalidOperationException(
@@ -435,10 +435,10 @@ public sealed record ReferenceNatureTrialSessionV111(
                     "Trial fallback replay did not consume its selected request.");
             var originEvent = origin.World?.Event;
             var replayEvent = fallbackRun.World?.Event;
-            if (originEvent?.NativeEventRng is not null ||
-                originEvent?.NativeEventRngProviderMode is not null ||
-                replayEvent?.NativeEventRng is not null ||
-                replayEvent?.NativeEventRngProviderMode is not null ||
+            if (originEvent?.Stochastic.NativeRng is not null ||
+                originEvent?.Stochastic.ProviderMode is not null ||
+                replayEvent?.Stochastic.NativeRng is not null ||
+                replayEvent?.Stochastic.ProviderMode is not null ||
                 TrialCaseChoicePlanBuilderV111.GetLegacyEventOrdinal(
                     fallbackRun) !=
                     TrialCaseChoicePlanBuilderV111.GetLegacyEventOrdinal(

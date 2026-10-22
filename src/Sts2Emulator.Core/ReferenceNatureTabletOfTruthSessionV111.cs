@@ -22,7 +22,7 @@ internal static class TabletOfTruthChoicePlanBuilderV111
             evt.NativePageIndex is < 0 or > 3 ||
             evt.ChosenChoiceId is not null || evt.ControlledChoice is not null ||
             evt.NativeEventPotionSlot is not null ||
-            evt.NativeEventRngProviderMode is not (null or "scripted-v111") ||
+            evt.Stochastic.ProviderMode is not (null or "scripted-v111") ||
             origin.ControlledEventRewardChoice is not null)
             throw new InvalidOperationException(
                 "Tablet of Truth Nature choices require a pending supported page draw.");
@@ -30,8 +30,8 @@ internal static class TabletOfTruthChoicePlanBuilderV111
         var nativeRoute = origin.Stochastic.NativeRunRng is not null;
         var legacyFallbackRoute = origin.Stochastic.NativeRunRng is null &&
             PrototypeGameEngine.UsesNativeRegionalSystems(world) &&
-            evt.NativeEventRng is null &&
-            evt.NativeEventRngProviderMode is null;
+            evt.Stochastic.NativeRng is null &&
+            evt.Stochastic.ProviderMode is null;
         if (!nativeRoute && !legacyFallbackRoute)
             throw new InvalidOperationException(
                 "Tablet of Truth requires a configured Native or Native-regional legacy event RNG route.");
@@ -62,11 +62,11 @@ internal static class TabletOfTruthChoicePlanBuilderV111
             ? NativeRngV111Contexts.EventStreamId(
                 PrototypeNativeTabletOfTruth.NativeRngEventId)
             : "event";
-        if (evt.NativeEventRng is { } savedStream &&
+        if (evt.Stochastic.NativeRng is { } savedStream &&
             savedStream.StreamId != streamId)
             throw new InvalidOperationException(
                 "Tablet of Truth has the wrong Native event stream context.");
-        if (nativeRoute && evt.NativeEventRng is null && page != 0)
+        if (nativeRoute && evt.Stochastic.NativeRng is null && page != 0)
             throw new InvalidOperationException(
                 "Tablet of Truth cannot reconstruct a missing event stream after page progress.");
         var ownerId = "event:tablet_of_truth:eligible_cards:" +
@@ -281,11 +281,11 @@ public sealed record ReferenceNatureTabletOfTruthSessionV111(
         var replay = Replay(Origin, plan, law, selection);
         if (Origin.Stochastic.NativeRunRng is not null)
         {
-            var expectedStream = Origin.World?.Event?.NativeEventRng ??
+            var expectedStream = Origin.World?.Event?.Stochastic.NativeRng ??
                 NativeRngV111Contexts.ForEvent(
                     Origin.RunSeed,
                     PrototypeNativeTabletOfTruth.NativeRngEventId);
-            if (CanonicalJson.Sha256(replay.World?.Event?.NativeEventRng) !=
+            if (CanonicalJson.Sha256(replay.World?.Event?.Stochastic.NativeRng) !=
                 CanonicalJson.Sha256(expectedStream))
                 throw new InvalidDataException(
                     "Scripted Tablet of Truth resolution advanced its Native event cursor.");
@@ -427,10 +427,10 @@ public sealed record ReferenceNatureTabletOfTruthSessionV111(
                     "Tablet of Truth fallback replay did not consume its selected request.");
             var originEvent = origin.World?.Event;
             var replayEvent = fallbackRun.World?.Event;
-            if (originEvent?.NativeEventRng is not null ||
-                originEvent?.NativeEventRngProviderMode is not null ||
-                replayEvent?.NativeEventRng is not null ||
-                replayEvent?.NativeEventRngProviderMode is not null ||
+            if (originEvent?.Stochastic.NativeRng is not null ||
+                originEvent?.Stochastic.ProviderMode is not null ||
+                replayEvent?.Stochastic.NativeRng is not null ||
+                replayEvent?.Stochastic.ProviderMode is not null ||
                 TabletOfTruthChoicePlanBuilderV111.GetLegacyEventOrdinal(
                     fallbackRun) !=
                     TabletOfTruthChoicePlanBuilderV111.GetLegacyEventOrdinal(

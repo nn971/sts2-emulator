@@ -5905,10 +5905,10 @@ public static partial class ChanceLawEngineV111
         var legacyRouteMismatch = !nativeRoute &&
             partialWorld is not { Act: 2 };
         var eventRngMismatch = nativeRoute
-            ? partialEvent.NativeEventRng?.StreamId != expectedStreamId ||
-                partialEvent.NativeEventRngProviderMode is not null
-            : partialEvent.NativeEventRng is not null ||
-                partialEvent.NativeEventRngProviderMode is not null;
+            ? partialEvent.Stochastic.NativeRng?.StreamId != expectedStreamId ||
+                partialEvent.Stochastic.ProviderMode is not null
+            : partialEvent.Stochastic.NativeRng is not null ||
+                partialEvent.Stochastic.ProviderMode is not null;
         if (partialState.Phase != RunPhase.Event ||
             partialWorld is not { Act: 2 } ||
             partialEvent.EventId != PrototypeNativeStoneOfAllTime.EventId ||

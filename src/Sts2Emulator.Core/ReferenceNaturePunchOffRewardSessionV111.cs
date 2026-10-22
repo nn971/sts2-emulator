@@ -32,7 +32,7 @@ internal static class NativePunchOffRewardPlanBuilderV111
             evt.EventId != PrototypeNativePunchOff.EventId ||
             evt.NativePageIndex != 2 || evt.ChosenChoiceId is not null ||
             evt.NativeEventPotionSlot is not null ||
-            evt.NativeEventRngProviderMode is not null ||
+            evt.Stochastic.ProviderMode is not null ||
             world.ActiveRoom != PrototypeRoomType.Combat ||
             world.Reward is not null || combat.Enemies.Any(enemy => enemy.Hp <= 0) ||
             origin.ControlledEventRewardChoice is not null ||
@@ -84,10 +84,10 @@ internal static class NativePunchOffRewardPlanBuilderV111
                 projectedRng.TryGetStream(
                     NativePlayerRngV111.RewardsStreamId,
                     out projectedRewardsStream);
-            var projectedEventCursor = projected.World?.Event?.NativeEventRng
+            var projectedEventCursor = projected.World?.Event?.Stochastic.NativeRng
                 is { } projectedEventStream
                     ? NativeRngV111.ToSnapshot(projectedEventStream) : null;
-            var originEventCursor = evt.NativeEventRng is { } originEventStream
+            var originEventCursor = evt.Stochastic.NativeRng is { } originEventStream
                 ? NativeRngV111.ToSnapshot(originEventStream) : null;
             if (projected.Phase != RunPhase.Reward ||
                 projected.World?.Combat is not null ||
@@ -155,7 +155,7 @@ internal static class NativePunchOffRewardPlanBuilderV111
             throw new InvalidOperationException(
                 "Punch Off reward law requires the complete earlier relic-index prefix and request ordinal.");
 
-        var eventCursorBefore = origin.World.Event?.NativeEventRng is { } eventStream
+        var eventCursorBefore = origin.World.Event?.Stochastic.NativeRng is { } eventStream
             ? NativeRngV111.ToSnapshot(eventStream) : null;
         var conditioningFingerprint = CanonicalJson.Sha256(new
         {
@@ -664,7 +664,7 @@ public sealed record ReferenceNaturePunchOffRewardSessionV111(
             nativeRunRng.TryGetStream(
                 NativePlayerRngV111.RewardsStreamId, out rewardsStream);
         var originRewards = relicPlan.RewardsCursorBefore;
-        var eventStream = run.World?.Event?.NativeEventRng;
+        var eventStream = run.World?.Event?.Stochastic.NativeRng;
         var relicId = relicPlan.RelicCandidates[transcript[0].OutcomeIndex];
         var potionId = potionPlan.PotionCandidates[transcript[1].OutcomeIndex];
         var expectedEventCursor = relicPlan.EventCursorBefore;

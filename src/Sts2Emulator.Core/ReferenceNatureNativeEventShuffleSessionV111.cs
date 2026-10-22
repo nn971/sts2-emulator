@@ -207,8 +207,8 @@ internal static class NativeEventShufflePlanBuilderV111
         var legacyEventShuffleFallback = origin.Stochastic.NativeRunRng is null &&
             activeEvent is not null &&
             PrototypeGameEngine.UsesNativeRegionalSystems(world) &&
-            activeEvent.NativeEventRng is null &&
-            activeEvent.NativeEventRngProviderMode is null &&
+            activeEvent.Stochastic.NativeRng is null &&
+            activeEvent.Stochastic.ProviderMode is null &&
             StochasticSiteRegistryV111.NativeEventContextShuffleSiteIds
                 .Contains(siteId, StringComparer.Ordinal);
         int? legacyRewardOrdinalBase = null;
@@ -216,8 +216,8 @@ internal static class NativeEventShufflePlanBuilderV111
             siteId == PrototypeNativeHiveEvents
                 .WarHistorianRepyRelicShuffleSiteId && activeEvent is not null &&
             PrototypeGameEngine.UsesNativeRegionalSystems(world) &&
-            activeEvent.NativeEventRng is null &&
-            activeEvent.NativeEventRngProviderMode is null;
+            activeEvent.Stochastic.NativeRng is null &&
+            activeEvent.Stochastic.ProviderMode is null;
         if (origin.Stochastic.NativeRunRng is null && !improvementVictoryAction &&
                 !paelsToothVictoryAction && !legacyEventShuffleFallback &&
                 !legacyRepyFallback ||
@@ -432,8 +432,8 @@ internal static class NativeEventShufflePlanBuilderV111
                 evt.RepyChestPotionIds is not null ||
                 evt.RepyChestRelicIds is not null ||
                 evt.RepyChestGroupsResolved != 0 ||
-                evt.NativeEventRng is not null ||
-                evt.NativeEventRngProviderMode is not null ||
+                evt.Stochastic.NativeRng is not null ||
+                evt.Stochastic.ProviderMode is not null ||
                 resolvedActionId != "unlock_chest")
                 throw new InvalidOperationException(
                     "War Historian Repy shuffle requires its initial native chest action before reward generation.");
@@ -588,7 +588,7 @@ internal static class NativeEventShufflePlanBuilderV111
             resolvedActionId = actionId ?? throw new InvalidOperationException(
                 "Battleworn upgrade shuffle requires the stable ID of its victory action.");
             if (!battlewornVictoryAction || origin.World?.Act != 3 ||
-                evt.NativeEventRngProviderMode is not null ||
+                evt.Stochastic.ProviderMode is not null ||
                 origin.World.Combat is not { } combat ||
                 combat.Enemies.Any(enemy => enemy.Escaped))
                 throw new InvalidOperationException(
@@ -613,7 +613,7 @@ internal static class NativeEventShufflePlanBuilderV111
         {
             resolvedActionId = actionId ?? "light";
             if (evt.NativePageIndex != 0 || resolvedActionId != "light" ||
-                evt.NativeEventRngProviderMode is not null)
+                evt.Stochastic.ProviderMode is not null)
                 throw new InvalidOperationException(
                     "Doors of Light and Dark shuffle requires its pending Light action.");
             var candidateCardInstanceIds = origin.Player.Deck
@@ -639,7 +639,7 @@ internal static class NativeEventShufflePlanBuilderV111
             resolvedActionId = actionId ?? "fragrant_mushroom";
             if (origin.World?.Act != 3 || evt.NativePageIndex != 0 ||
                 resolvedActionId != "fragrant_mushroom" ||
-                evt.NativeEventRngProviderMode is not null ||
+                evt.Stochastic.ProviderMode is not null ||
                 origin.Player.Hp <= 15)
                 throw new InvalidOperationException(
                     "Fragrant Mushroom shuffle requires its survivable initial action.");
@@ -670,7 +670,7 @@ internal static class NativeEventShufflePlanBuilderV111
                 resolvedActionId = actionId ?? "choose_card_type";
                 if (evt.NativePageIndex != 0 ||
                     resolvedActionId != "choose_card_type" ||
-                    evt.NativeEventRngProviderMode is not null)
+                    evt.Stochastic.ProviderMode is not null)
                     throw new InvalidOperationException(
                         "Tinker Time type shuffle requires its initial action.");
                 orderedCandidateIds =
@@ -687,8 +687,8 @@ internal static class NativeEventShufflePlanBuilderV111
                         resolvedActionId, StringComparer.Ordinal) != true ||
                     evt.NativeTinkerType is not null ||
                     (legacyEventShuffleFallback
-                        ? evt.NativeEventRngProviderMode is not null
-                        : evt.NativeEventRngProviderMode != "scripted-v111"))
+                        ? evt.Stochastic.ProviderMode is not null
+                        : evt.Stochastic.ProviderMode != "scripted-v111"))
                     throw new InvalidOperationException(
                         "Tinker Time rider shuffle requires a type offered by the prior scripted Nature shuffle.");
                 orderedCandidateIds =
@@ -774,14 +774,14 @@ internal static class NativeEventShufflePlanBuilderV111
         {
             var expectedStream = NativeRngV111Contexts.ForEvent(
                 origin.RunSeed, nativeRngEventId);
-            if (evt.NativeEventRng is { } savedStream &&
+            if (evt.Stochastic.NativeRng is { } savedStream &&
                 savedStream.StreamId != expectedStream.StreamId)
                 throw new InvalidOperationException(
                     "Native event shuffle has the wrong Native event stream context.");
-            if (evt.NativeEventRng is null && evt.NativePageIndex != 0)
+            if (evt.Stochastic.NativeRng is null && evt.NativePageIndex != 0)
                 throw new InvalidOperationException(
                     "Native event shuffle cannot reconstruct a missing event stream after page progress.");
-            var stream = evt.NativeEventRng ?? expectedStream;
+            var stream = evt.Stochastic.NativeRng ?? expectedStream;
             if (NativeRngV111.ToSnapshot(stream) !=
                 NativeRngV111.ToSnapshot(expectedStream))
                 throw new InvalidOperationException(
@@ -965,8 +965,8 @@ internal static class NativeEventShufflePlanBuilderV111
                 entry.NativeCursorAfter is not null).Any() ||
             GetLegacyEventOrdinal(projected) !=
                 checked(eventOrdinal + swapCount) ||
-            projected.World?.Event?.NativeEventRng is not null ||
-            projected.World?.Event?.NativeEventRngProviderMode is not null)
+            projected.World?.Event?.Stochastic.NativeRng is not null ||
+            projected.World?.Event?.Stochastic.ProviderMode is not null)
             throw new InvalidOperationException(
                 "Native-regional event shuffle must emit only its complete legacy event swap prefix.");
     }
@@ -1859,10 +1859,10 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
                 plan.OrderedCandidateIds, StringComparer.Ordinal) ||
             GetLegacyEventCallCount(resolved) !=
                 GetLegacyEventCallCount(origin) ||
-            origin.World?.Event?.NativeEventRng is not null ||
-            origin.World?.Event?.NativeEventRngProviderMode is not null ||
-            resolved.World?.Event?.NativeEventRng is not null ||
-            resolved.World?.Event?.NativeEventRngProviderMode is not null)
+            origin.World?.Event?.Stochastic.NativeRng is not null ||
+            origin.World?.Event?.Stochastic.ProviderMode is not null ||
+            resolved.World?.Event?.Stochastic.NativeRng is not null ||
+            resolved.World?.Event?.Stochastic.ProviderMode is not null)
             throw new InvalidDataException(
                 "Native-regional event shuffle replay changed its legacy call count, Native cursor, provider marker, or candidate order.");
         return resolved;
@@ -2237,7 +2237,7 @@ public static partial class ChanceLawEngineV111
 
         var expectedStream = NativeRngV111Contexts.ForEvent(
             preDraw.RunSeed, PrototypeNativeEndlessConveyor.NativeRngEventId);
-        if (evt.NativeEventRng is not { } stream ||
+        if (evt.Stochastic.NativeRng is not { } stream ||
             NativeRngV111.ToSnapshot(stream) !=
                 NativeRngV111.ToSnapshot(expectedStream) ||
             capture.Request.StreamId != expectedStream.StreamId ||
@@ -2316,7 +2316,7 @@ public static partial class ChanceLawEngineV111
             evt.NativeDishCount < 1 || evt.NativeDishId is null ||
             evt.NativeDishId != evt.NativeLastDishId ||
             evt.NativeDishRollPending || evt.NativeEventPotionSlot is not null ||
-            evt.NativeEventRngProviderMode is not (null or "scripted-v111") ||
+            evt.Stochastic.ProviderMode is not (null or "scripted-v111") ||
             evt.ControlledChoice is not null ||
             origin.ControlledEventRewardChoice is not null)
             throw new InvalidOperationException(
@@ -2342,7 +2342,7 @@ public static partial class ChanceLawEngineV111
         if (candidates.Length == 0)
             throw new InvalidOperationException(
                 "Endless Conveyor upgrade has no eligible card and performs no index draw.");
-        var stream = evt.NativeEventRng
+        var stream = evt.Stochastic.NativeRng
             ?? throw new InvalidOperationException(
                 "Endless Conveyor upgrade requires its persisted Native event cursor.");
         var expectedStreamId = NativeRngV111Contexts.ForEvent(
@@ -2375,7 +2375,7 @@ public static partial class ChanceLawEngineV111
             dishCount = evt.NativeDishCount,
             dishId = evt.NativeDishId,
             nativeEventCursor = NativeRngV111.ToSnapshot(stream),
-            providerMode = evt.NativeEventRngProviderMode,
+            providerMode = evt.Stochastic.ProviderMode,
             candidates,
             request,
             policy = NativeEndlessConveyorUpgradeConditioningPolicyId
@@ -2412,7 +2412,7 @@ public static partial class ChanceLawEngineV111
             evt.NativeDishCount < 1 || evt.NativeDishId != "FRIED_EEL" ||
             evt.NativeDishId != evt.NativeLastDishId ||
             evt.NativeDishRollPending || evt.NativeEventPotionSlot is not null ||
-            evt.NativeEventRngProviderMode is not (null or "scripted-v111") ||
+            evt.Stochastic.ProviderMode is not (null or "scripted-v111") ||
             evt.ControlledChoice is not null ||
             origin.ControlledEventRewardChoice is not null ||
             origin.Player.Gold < 40)
@@ -2435,7 +2435,7 @@ public static partial class ChanceLawEngineV111
         if (candidates.Length == 0)
             throw new InvalidOperationException(
                 "Fried Eel has no supported Colorless card and performs no index draw.");
-        var stream = evt.NativeEventRng
+        var stream = evt.Stochastic.NativeRng
             ?? throw new InvalidOperationException(
                 "Endless Conveyor Colorless draw requires its persisted Native event cursor.");
         var expectedStreamId = NativeRngV111Contexts.ForEvent(
@@ -2468,7 +2468,7 @@ public static partial class ChanceLawEngineV111
             dishCount = evt.NativeDishCount,
             dishId = evt.NativeDishId,
             nativeEventCursor = NativeRngV111.ToSnapshot(stream),
-            providerMode = evt.NativeEventRngProviderMode,
+            providerMode = evt.Stochastic.ProviderMode,
             candidates,
             request,
             policy = NativeEndlessConveyorColorlessConditioningPolicyId
@@ -2499,7 +2499,7 @@ public static partial class ChanceLawEngineV111
             origin.Stochastic.NativeRunRng is null || origin.Phase != RunPhase.Event ||
             origin.World is not { Event: { } eventState, Combat: null } world ||
             eventState.EventId != PrototypeNativeEndlessConveyor.EventId ||
-            eventState.NativeEventRngProviderMode is not (null or "scripted-v111") ||
+            eventState.Stochastic.ProviderMode is not (null or "scripted-v111") ||
             eventState.NativeEventPotionSlot is not null ||
             eventState.ControlledChoice is not null ||
             origin.ControlledEventRewardChoice is not null)
@@ -2541,7 +2541,7 @@ public static partial class ChanceLawEngineV111
             throw new InvalidOperationException(
                 "Endless Conveyor continuation law was not captured at a weighted post-grab dish boundary.");
 
-        var stream = evt.NativeEventRng
+        var stream = evt.Stochastic.NativeRng
             ?? throw new InvalidOperationException(
                 "Endless Conveyor continuation requires its Native event stream.");
         if (stream.StreamId != capture.Request.StreamId ||

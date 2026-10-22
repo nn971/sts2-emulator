@@ -589,7 +589,7 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
             evt.RemainingPotionIds.Length != 0 ||
             string.IsNullOrWhiteSpace(origin.RunSeed) ||
             origin.Stochastic.NativeRunRng is null ||
-            evt.NativeEventRng?.StreamId != NativeRngV111Contexts
+            evt.Stochastic.NativeRng?.StreamId != NativeRngV111Contexts
                 .ForEvent(origin.RunSeed,
                     PrototypeNativeEndlessConveyor.NativeRngEventId).StreamId ||
             !origin.Player.PotionSlots.Any(slot => slot is null))
@@ -845,7 +845,7 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
             request.Validate();
             return request;
         }
-        var stream = origin.World?.Event?.NativeEventRng
+        var stream = origin.World?.Event?.Stochastic.NativeRng
             ?? throw new InvalidDataException(
                 "Endless Conveyor index replay lost its Native event cursor.");
         return new RandomIndexRequestV111(
@@ -856,7 +856,7 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
     private static RandomUnitFloatRequestV111 BuildUnitFloatRequest(
         RunState origin, ChanceLawV111 law) => new(
             law.SiteId,
-            origin.World?.Event?.NativeEventRng?.StreamId ??
+            origin.World?.Event?.Stochastic.NativeRng?.StreamId ??
                 NativeRngV111Contexts.ForEvent(
                     origin.RunSeed,
                     PrototypeNativeEndlessConveyor.NativeRngEventId).StreamId,

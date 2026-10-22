@@ -88,7 +88,7 @@ public static class PrototypeNativeEndlessConveyor
         float roll;
         var ownerId = $"dish:{nextRoll}:pool:{CanonicalJson.Sha256(candidates)}";
         if (state.Stochastic.NativeRunRng is not null
-            && (current.NativeEventRng is not null
+            && (current.Stochastic.NativeRng is not null
                 || current.NativeDishCount == 0))
         {
             var draw = NativeEventContextRngV111.ResolveUnitFloat(
@@ -208,7 +208,7 @@ public static class PrototypeNativeEndlessConveyor
             current.NativeDishId != current.NativeLastDishId ||
             current.NativeDishId == "SEAPUNK_SALAD" ||
             string.IsNullOrWhiteSpace(state.RunSeed) ||
-            state.Stochastic.NativeRunRng is null || current.NativeEventRng is not { } stream)
+            state.Stochastic.NativeRunRng is null || current.Stochastic.NativeRng is not { } stream)
             return false;
 
         var expected = NativeRngV111Contexts.ForEvent(
@@ -416,7 +416,7 @@ public sealed partial class PrototypeGameEngine
                     + CanonicalJson.Sha256(pool);
                 int selectedIndex;
                 if (state.Stochastic.NativeRunRng is not null
-                    && evt.NativeEventRng is null)
+                    && evt.Stochastic.NativeRng is null)
                 {
                     selectedIndex = LegacyRandomChoiceV111.ChooseIndexRange(
                         state.Stochastic.PrototypeRng,
@@ -528,7 +528,7 @@ public sealed partial class PrototypeGameEngine
         var ownerId = "endless_conveyor:deck:"
             + CanonicalJson.Sha256(candidates);
         int selectedIndex;
-        if (state.Stochastic.NativeRunRng is not null && evt.NativeEventRng is null)
+        if (state.Stochastic.NativeRunRng is not null && evt.Stochastic.NativeRng is null)
         {
             selectedIndex = LegacyRandomChoiceV111.ChooseIndexRange(
                 state.Stochastic.PrototypeRng,

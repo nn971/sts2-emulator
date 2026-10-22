@@ -475,11 +475,11 @@ public sealed record ReferenceNatureNeowOfferSessionV111(
             origin.RunSeed,
             PrototypeNativeOvergrowthEvents.NeowRngEventEntry);
         if (eventState.EventId != PrototypeNativeOvergrowthEvents.NeowEventId ||
-            eventState.NativeEventRng is not { } eventStream ||
+            eventState.Stochastic.NativeRng is not { } eventStream ||
             NativeRngV111.ToSnapshot(eventStream) !=
                 NativeRngV111.ToSnapshot(expectedEventStream) ||
             NativeRngV111.ToSnapshot(eventStream) !=
-                NativeRngV111.ToSnapshot(replay.Audit.NativeEventRng))
+                NativeRngV111.ToSnapshot(replay.Audit.Stochastic.NativeRng))
             throw new InvalidDataException(
                 "Native Neow generation changed its audited event stream.");
         return replay.Run with

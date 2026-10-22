@@ -356,10 +356,10 @@ public static class NativePaelRewardsV111
         if (evt.OfferedChoiceIds is not { Length: 3 } offers
             || offers.Any(id => !id.StartsWith("take_", StringComparison.Ordinal)))
             throw new InvalidOperationException("Sampled Pael requires one persisted offer from each source pool, in order.");
-        if (evt.NativeEventRngProviderMode is { } mode
+        if (evt.Stochastic.ProviderMode is { } mode
             && mode is not ("scripted-v111" or "controlled-v111"))
             throw new InvalidOperationException("Pael has an unsupported persisted random provider mode.");
-        if (evt.NativeEventRngProviderMode is not null)
+        if (evt.Stochastic.ProviderMode is not null)
         {
             var counterfactualInitial = NativeRngV111Contexts.ForEvent(
                 state.RunSeed, "PAEL");

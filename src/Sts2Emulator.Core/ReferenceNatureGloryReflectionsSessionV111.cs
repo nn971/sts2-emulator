@@ -387,10 +387,10 @@ public sealed record ReferenceNatureGloryReflectionsSessionV111(
                 "Reflections fallback replay did not consume its selected request prefix.");
         var originalEvent = origin.World?.Event;
         var replayEvent = fallbackRun.World?.Event;
-        if (originalEvent?.NativeEventRng is not null ||
-            originalEvent?.NativeEventRngProviderMode is not null ||
-            replayEvent?.NativeEventRng is not null ||
-            replayEvent?.NativeEventRngProviderMode is not null ||
+        if (originalEvent?.Stochastic.NativeRng is not null ||
+            originalEvent?.Stochastic.ProviderMode is not null ||
+            replayEvent?.Stochastic.NativeRng is not null ||
+            replayEvent?.Stochastic.ProviderMode is not null ||
             GetLegacyEventCallCount(fallbackRun) !=
                 GetLegacyEventCallCount(origin))
             throw new InvalidDataException(

@@ -260,7 +260,7 @@ public static class NativeDarvEventV111
         var initial = NativeRngV111Contexts.ForEvent(
             state.RunSeed, NativeRngEventId);
         if (state.World.Act is not (2 or 3)
-            || evt.NativeEventRng is not { } stream
+            || evt.Stochastic.NativeRng is not { } stream
             || stream.StreamId != "context.event.DARV.player_0"
             || evt.OfferedChoiceIds is not { Length: 3 } offers
             || offers.Distinct(StringComparer.Ordinal).Count() != 3
@@ -281,7 +281,7 @@ public static class NativeDarvEventV111
             && !offers.Contains(selected, StringComparer.Ordinal))
             throw new InvalidOperationException(
                 "Darv selected a relic that was not offered.");
-        if (evt.NativeEventRngProviderMode is { } mode)
+        if (evt.Stochastic.ProviderMode is { } mode)
         {
             if (mode is not ("scripted-v111" or "controlled-v111"))
                 throw new InvalidOperationException(
@@ -302,7 +302,7 @@ public static class NativeDarvEventV111
                     "Darv pool-one offer is outside its eligible relic pool.");
         }
 
-        if (evt.NativeEventRngProviderMode is null
+        if (evt.Stochastic.ProviderMode is null
             && evt.ChosenChoiceId is null)
         {
             var bundle = new RngBundle([initial]);

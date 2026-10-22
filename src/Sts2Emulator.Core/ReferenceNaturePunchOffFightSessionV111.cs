@@ -78,7 +78,7 @@ internal static class NativePunchOffFightPlanBuilderV111
             origin.World is not { Act: 1, Event: { } evt, Combat: null } world ||
             evt.EventId != PrototypeNativePunchOff.EventId ||
             evt.NativePageIndex != 1 || evt.ChosenChoiceId is not null ||
-            evt.NativeEventRngProviderMode is not null ||
+            evt.Stochastic.ProviderMode is not null ||
             world.ActiveRoom != PrototypeRoomType.Event ||
             world.Reward is not null ||
             origin.ControlledEventRewardChoice is not null ||
@@ -96,7 +96,7 @@ internal static class NativePunchOffFightPlanBuilderV111
             throw new InvalidOperationException(
                 "Punch Off fight law requires the Fight choice.");
 
-        var eventCursorBefore = evt.NativeEventRng is { } eventRng
+        var eventCursorBefore = evt.Stochastic.NativeRng is { } eventRng
             ? NativeRngV111.ToSnapshot(eventRng) : null;
         using var journal = RandomBoundaryJournalV111.Begin();
         using var providerScope = StochasticProviderScopeV111.Enter(
@@ -123,7 +123,7 @@ internal static class NativePunchOffFightPlanBuilderV111
                 entry.NativeCursorAfter is null) ||
             entries.Select(entry => entry.Request.OwnerId)
                 .Distinct(StringComparer.Ordinal).Count() != 2 ||
-            eventCursorBefore != (projectedEvent.NativeEventRng is { } afterEvent
+            eventCursorBefore != (projectedEvent.Stochastic.NativeRng is { } afterEvent
                 ? NativeRngV111.ToSnapshot(afterEvent) : null))
             throw new InvalidOperationException(
                 "Punch Off Fight must produce exactly two ordered monster-local 2–9 HP requests and preserve its event cursor.");
@@ -569,7 +569,7 @@ public sealed record ReferenceNaturePunchOffFightSessionV111(
             entry.Request.SiteId ==
                 PrototypeNativePunchOff.ConstructHpOffsetSiteId).ToArray();
         var combat = run.World?.Combat;
-        var eventCursor = run.World?.Event?.NativeEventRng is { } eventRng
+        var eventCursor = run.World?.Event?.Stochastic.NativeRng is { } eventRng
             ? NativeRngV111.ToSnapshot(eventRng) : null;
         var relicOffsets = transcript.Select(decision =>
             int.Parse(decision.OutcomeId["hp_offset:".Length..],

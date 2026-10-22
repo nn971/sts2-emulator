@@ -215,7 +215,7 @@ public static class NativeTanxEventV111
             && !offers.Contains(chosen, StringComparer.Ordinal))
             throw new InvalidOperationException(
                 "Tanx selected a relic that was not among its three offers.");
-        if (evt.NativeEventRngProviderMode is { } mode)
+        if (evt.Stochastic.ProviderMode is { } mode)
         {
             if (mode is not ("scripted-v111" or "controlled-v111"))
                 throw new InvalidOperationException(

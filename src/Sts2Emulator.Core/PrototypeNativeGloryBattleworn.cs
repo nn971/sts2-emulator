@@ -42,7 +42,7 @@ public sealed partial class PrototypeGameEngine
                     NativePageIndex = page,
                     Stochastic = EventStochasticStateV111.WithNativeRng(
                         evt.Stochastic,
-                        evt.NativeEventRng
+                        evt.Stochastic.NativeRng
                             ?? NativeEventContextRngV111.CreateAtEntry(
                                 state,
                                 PrototypeNativeGloryEvents

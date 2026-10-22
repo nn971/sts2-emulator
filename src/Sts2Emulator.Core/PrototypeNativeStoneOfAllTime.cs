@@ -99,7 +99,7 @@ public sealed partial class PrototypeGameEngine
 
         if (result.Stochastic.NativeRunRng is not null)
         {
-            if (current.NativeEventRng is null)
+            if (current.Stochastic.NativeRng is null)
                 throw new InvalidOperationException(
                     "Native Stone of All Time has no saved event RNG.");
             var draw = NativeEventContextRngV111.ResolveBoundedInteger(
