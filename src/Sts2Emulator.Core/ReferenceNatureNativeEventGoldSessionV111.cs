@@ -340,7 +340,8 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
                 throw new InvalidDataException(
                     "Native event gold replay selected a different outcome.");
         }
-        if (replay.Complete && savedRun.ReferenceNatureState is null)
+        if (replay.Complete &&
+            savedRun.Stochastic.ReferenceNature is null)
             savedRun = savedRun with
             {
                 Stochastic = RunStochasticStateV111.WithReferenceNature(

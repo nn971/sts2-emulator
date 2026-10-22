@@ -467,7 +467,7 @@ public static class V111RunFactory
         RunState opening;
         var initialNatureState = controlledReferenceNatureRunStart
             ? null
-            : input.ReferenceNatureState?.Fork();
+            : input.Stochastic.ReferenceNature?.Fork();
         var runStartChanceLaws = new List<ChanceLawV111>();
         var runStartDecisions = new List<ReferenceNatureDecisionV111>();
         ReferenceNatureMapGenerationAuditV111? actOneMapGeneration = null;
@@ -519,8 +519,8 @@ public static class V111RunFactory
         var relicBag = opening.World!.RelicBag
             ?? PrototypeNativeRelicGrabBag.CreateNative(
                 opening.Player, nativeRunRng);
-        var natureState = opening.ReferenceNatureState
-            ?? input.ReferenceNatureState;
+        var natureState = opening.Stochastic.ReferenceNature
+            ?? input.Stochastic.ReferenceNature;
         PrototypeLaterActEncounterBagV111[]? preparedLaterActBags = null;
         if (config.UsesExperimentalSilentThreeActRoute)
         {

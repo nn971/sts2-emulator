@@ -326,9 +326,9 @@ public sealed record RunStochasticStateV111
                     !session.InitialNatureState.SameCursor(
                         mapAudit.NatureState) ||
                     !session.InitialNatureState.SameCursor(
-                        origin.ReferenceNatureState) ||
+                        origin.Stochastic.ReferenceNature) ||
                     !session.NatureState.SameCursor(
-                        session.Run.ReferenceNatureState) ||
+                        session.Run.Stochastic.ReferenceNature) ||
                     session.Run.World?.Event?.EventId != assignedAncientId)
                     throw new InvalidDataException(
                         "Ancient-offer audit differs from its configured map boundary or Nature cursor.");

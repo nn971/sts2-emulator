@@ -674,7 +674,7 @@ public sealed record ReferenceNatureOvergrowthRunResultV111(
         var encounterPool = world?.ActOneEncounterPool;
         if (laws is null || transcript is null || laws.Length < 2 ||
             transcript.Length != laws.Length || mapAudit is null ||
-            run.ReferenceNatureState is not { } savedCursor ||
+            run.Stochastic.ReferenceNature is not { } savedCursor ||
             !savedCursor.SameCursor(NatureState) ||
             world?.ActOneRegion != PrototypeActOneRegion.Overgrowth ||
             encounterPool is null ||

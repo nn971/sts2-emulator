@@ -29,7 +29,7 @@ public static class RunSnapshot
             PrototypeRelicBagOrderMode.NatureUnordered;
         var schema = hasNatureRelicBag
             ? NatureRelicBagOrderSchemaId
-            : owned.ReferenceNatureState is null
+            : owned.Stochastic.ReferenceNature is null
                 ? SchemaId : ReferenceNatureSchemaId;
         return CanonicalJson.Serialize(new RunSnapshotEnvelope(
             schema,
@@ -50,9 +50,9 @@ public static class RunSnapshot
         var hasNatureRelicBag = envelope.State.World?.RelicBag?.OrderMode ==
             PrototypeRelicBagOrderMode.NatureUnordered;
         if ((envelope.Schema == SchemaId &&
-             envelope.State.ReferenceNatureState is not null) ||
+             envelope.State.Stochastic.ReferenceNature is not null) ||
             (envelope.Schema == ReferenceNatureSchemaId &&
-             envelope.State.ReferenceNatureState is null) ||
+             envelope.State.Stochastic.ReferenceNature is null) ||
             (envelope.Schema == NatureRelicBagOrderSchemaId &&
              !hasNatureRelicBag))
             throw new InvalidDataException(

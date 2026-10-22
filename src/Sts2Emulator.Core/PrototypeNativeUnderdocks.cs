@@ -1584,7 +1584,7 @@ public sealed record ReferenceNatureUnderdocksRunResultV111(
         var world = run.World;
         if (laws is null || transcript is null ||
             laws.Length != 1 || transcript.Length != 1 ||
-            run.ReferenceNatureState is not { } savedCursor ||
+            run.Stochastic.ReferenceNature is not { } savedCursor ||
             !savedCursor.SameCursor(NatureState) ||
             world is null ||
             world.ActOneRegion != PrototypeActOneRegion.Underdocks ||
