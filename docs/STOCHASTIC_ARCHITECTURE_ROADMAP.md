@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 semantic pilot run-provider publication increment (2026-10-22):**
+`SemanticPilotCombatEngineV111.PublishRunContinuation` now publishes the
+run-scoped `SemanticOtherChanceStateV111` through
+`RunStochasticStateV111.PublishSemanticOtherChance`, preserving the mechanics
+result and validating the provider before the pilot transition is committed.
+The pilot `OtherChance` member remains a compatibility projection. Static
+source review and `git diff --check` only; no tests or builds were run.
+
 **S3 ReferenceNature run-initialization publication increment (2026-10-22):**
 `RunStochasticStateV111.CommitReferenceNatureRunInitialization` now publishes
 the run's Nature cursor, completed initialization transcript, and pending

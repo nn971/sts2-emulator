@@ -748,6 +748,19 @@ public sealed record RunStochasticStateV111
         SemanticOtherChanceStateV111? semanticOtherChance) =>
         current with { SemanticOtherChance = semanticOtherChance };
 
+    internal static RunStochasticStateV111 PublishSemanticOtherChance(
+        RunStochasticStateV111 mechanicsResult,
+        RunStochasticStateV111 source,
+        SemanticOtherChanceStateV111? updated = null)
+    {
+        ArgumentNullException.ThrowIfNull(mechanicsResult);
+        ArgumentNullException.ThrowIfNull(source);
+        var provider = updated ?? source.SemanticOtherChance;
+        if (provider is not null)
+            SemanticOtherChanceEngineV111.Validate(provider);
+        return mechanicsResult with { SemanticOtherChance = provider };
+    }
+
     internal static RunStochasticStateV111 WithSemanticRewardAudit(
         RunStochasticStateV111 current,
         SemanticRewardAuditV111? semanticRewardAudit) =>

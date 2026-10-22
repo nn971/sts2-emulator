@@ -99,6 +99,8 @@ The present run and combat types have overlapping representation/lifecycle respo
 
 `RunStochasticStateV111.CommitReferenceNatureRunInitialization` publishes the run's Nature cursor, completed initialization transcript, and pending marker together. A completed transcript must replay to the committed cursor or an earlier prefix of the same seed. Configured run creation and ReferenceNature run-start completion use this transition, while the flat snapshot members remain compatibility projections.
 
+`SemanticPilotCombatEngineV111.PublishRunContinuation` publishes the run-scoped `SemanticOtherChanceStateV111` through `RunStochasticStateV111.PublishSemanticOtherChance`, preserving the mechanics result and validating the provider before committing the pilot transition. The pilot's `OtherChance` member remains a compatibility projection.
+
 `ScriptedRunStochasticStateV111` validates and appends completed action records while clearing the active action. The scripted run envelope publishes that stochastic update with the resulting run mechanics checkpoint.
 
 `ControlledTurnIntentStochasticStateV111` validates a selected ticket against its saved pending request and ordinal, then appends it and clears the request as one transition. Both live resolution and transcript-prefix validation use this operation.
