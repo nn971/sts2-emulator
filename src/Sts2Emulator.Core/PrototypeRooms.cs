@@ -856,7 +856,8 @@ public sealed partial class PrototypeGameEngine
                         {
                             NativeEventGold = primaryGold,
                             NativeEventSecondaryGold = secondaryGold
-                                ?? evt.NativeEventSecondaryGold
+                                ?? evt.Stochastic.RandomOutcomes
+                                    .NativeEventSecondaryGold
                         })
                 }
             }
@@ -2627,7 +2628,7 @@ public sealed partial class PrototypeGameEngine
             return effect.Amount;
         }
 
-        var rolled = eventState.NativeEventGold;
+        var rolled = eventState.Stochastic.RandomOutcomes.NativeEventGold;
         if (eventState.EventId == PrototypeNativeSharedEvents.ThisOrThatId
             && choiceId == "plain"
             && effect.Kind == PrototypeRunEffectKind.GainGold
@@ -2642,7 +2643,8 @@ public sealed partial class PrototypeGameEngine
             return choiceId switch
             {
                 "first_chest" => rolled,
-                "second_chest" => eventState.NativeEventSecondaryGold,
+                "second_chest" => eventState.Stochastic.RandomOutcomes
+                    .NativeEventSecondaryGold,
                 _ => effect.Amount
             };
         }
@@ -2679,9 +2681,11 @@ public sealed partial class PrototypeGameEngine
         if (eventState.EventId == "proto.native.event.jungle_maze_adventure"
             && choiceId == "join"
             && effect.Kind == PrototypeRunEffectKind.GainGold
-            && eventState.NativeEventSecondaryGold is >= 35 and <= 64)
+            && eventState.Stochastic.RandomOutcomes.NativeEventSecondaryGold
+                is >= 35 and <= 64)
         {
-            return eventState.NativeEventSecondaryGold;
+            return eventState.Stochastic.RandomOutcomes
+                .NativeEventSecondaryGold;
         }
 
         return effect.Amount;

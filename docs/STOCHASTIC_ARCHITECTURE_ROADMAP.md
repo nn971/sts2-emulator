@@ -10,6 +10,8 @@
 
 **S3 semantic deck owner read increment (2026-10-22):** Semantic draw, selection, cost, pool-shuffle, replay projection, and combat-entry paths now read the Nature deck through `CombatStochasticStateV111`. The flattened `CombatState.SemanticDeck` projection remains for snapshot compatibility. Deck transcripts, mechanics, and outcomes are unchanged. Static source review and `git diff --check` only; no tests or builds were run.
 
+**S3 committed event-gold owner read increment (2026-10-22):** Native event gold outcomes now flow through `EventStochasticStateV111.RandomOutcomes` in source-boundary validation, event resolution, and Nature observations. Flattened event snapshot fields and result values are unchanged. Static source review and `git diff --check` only; no tests or builds were run.
+
 **S3 controlled event/run-action continuation read increment (2026-10-22):** Controlled event-choice admission, validation, enumeration, scripted run-action admission, run-action validation, and provider replay capture now read pending continuations and committed histories through `RunStochasticStateV111` and `EventStochasticStateV111`. Snapshot projections and replay outcomes are unchanged. Static source review and `git diff --check` only; no tests or builds were run.
 
 **S3 JSONL controlled-continuation owner read increment (2026-10-22):** JSONL session results, event/run-action observations, and pending-choice inspection now read suspended continuations and committed histories through the run and event stochastic owners. Serialized JSON fields and session handles remain unchanged. Static source review and `git diff --check` only; no tests or builds were run.

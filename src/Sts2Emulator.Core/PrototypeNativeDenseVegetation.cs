@@ -43,8 +43,9 @@ public sealed partial class PrototypeGameEngine
                     }, "defeat");
                 }
 
-                var gold = current.NativeEventGold is >= 61 and <= 99
-                    ? current.NativeEventGold
+                var gold = current.Stochastic.RandomOutcomes.NativeEventGold
+                    is >= 61 and <= 99
+                    ? current.Stochastic.RandomOutcomes.NativeEventGold
                     : 61 + LegacyRandomChoiceV111.ChooseBoundedInteger(
                         state.Stochastic.PrototypeRng,
                         "event.generated_gold.index_draw",

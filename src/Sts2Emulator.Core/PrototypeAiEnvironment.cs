@@ -667,37 +667,45 @@ public sealed class PrototypeAiEnvironment
         {
             "proto.native.underdocks.sunken_treasury" =>
             [
-                new("first_chest", GoldGain: evt.NativeEventGold),
-                new("second_chest", GoldGain: evt.NativeEventSecondaryGold,
+                new("first_chest", GoldGain:
+                    evt.Stochastic.RandomOutcomes.NativeEventGold),
+                new("second_chest", GoldGain:
+                    evt.Stochastic.RandomOutcomes.NativeEventSecondaryGold,
                     GuaranteedCardId: "proto.native.underdocks.greed")
             ],
             "proto.native.underdocks.sunken_statue"
                 or "proto.native.event.sunken_statue" =>
             [
-                new("dive", GoldGain: evt.NativeEventGold, HpLoss: 7),
+                new("dive", GoldGain:
+                    evt.Stochastic.RandomOutcomes.NativeEventGold, HpLoss: 7),
                 new(evt.EventId == "proto.native.underdocks.sunken_statue"
                         ? "sword" : "grab",
                     GuaranteedRelicId: "proto.native.event.sword_of_stone")
             ],
             "proto.native.event.whispering_hollow" =>
             [
-                new("gold", GoldCost: evt.NativeEventGold),
+                new("gold", GoldCost:
+                    evt.Stochastic.RandomOutcomes.NativeEventGold),
                 new("hug", HpLoss: 9)
             ],
             "proto.native.event.luminous_choir" =>
             [
-                new("tribute", GoldCost: evt.NativeEventGold),
+                new("tribute", GoldCost:
+                    evt.Stochastic.RandomOutcomes.NativeEventGold),
                 new("reach", GuaranteedCardId:
                     "proto.native.event.spore_mind")
             ],
             "proto.native.event.jungle_maze_adventure" =>
             [
-                new("solo", GoldGain: evt.NativeEventGold, HpLoss: 18),
-                new("join", GoldGain: evt.NativeEventSecondaryGold)
+                new("solo", GoldGain:
+                    evt.Stochastic.RandomOutcomes.NativeEventGold, HpLoss: 18),
+                new("join", GoldGain:
+                    evt.Stochastic.RandomOutcomes.NativeEventSecondaryGold)
             ],
             PrototypeNativeDenseVegetation.EventId =>
             [
-                new("trudge", GoldGain: evt.NativeEventGold, HpLoss: 8),
+                new("trudge", GoldGain:
+                    evt.Stochastic.RandomOutcomes.NativeEventGold, HpLoss: 8),
                 new("rest", Heal: Math.Min(
                     player.MaxHp - player.Hp,
                     Math.Max(1, player.MaxHp *

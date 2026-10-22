@@ -362,8 +362,9 @@ public static class NativeEventContextRngV111
             state.Phase == RunPhase.Event &&
             NativeRngV111.ToSnapshot(stream) ==
                 NativeRngV111.ToSnapshot(initial) &&
-            stonePage && eventState.NativeEventGold == 0 &&
-            eventState.NativeEventSecondaryGold == 0;
+            stonePage &&
+            eventState.Stochastic.RandomOutcomes.NativeEventGold == 0 &&
+            eventState.Stochastic.RandomOutcomes.NativeEventSecondaryGold == 0;
         if (providerMode == "scripted-v111" &&
             scriptedStoneEntryIsExpected)
             return;
@@ -527,33 +528,51 @@ public static class NativeEventContextRngV111
             (prototypeEventId switch
             {
                 var id when id == PrototypeNativeDenseVegetation.EventId =>
-                    eventState.NativeEventGold is >= 61 and <= 99 &&
-                    eventState.NativeEventSecondaryGold == 0,
+                    eventState.Stochastic.RandomOutcomes.NativeEventGold
+                        is >= 61 and <= 99 &&
+                    eventState.Stochastic.RandomOutcomes.NativeEventSecondaryGold
+                        == 0,
                 "proto.native.event.whispering_hollow" =>
-                    eventState.NativeEventGold is >= 26 and <= 44 &&
-                    eventState.NativeEventSecondaryGold == 0,
+                    eventState.Stochastic.RandomOutcomes.NativeEventGold
+                        is >= 26 and <= 44 &&
+                    eventState.Stochastic.RandomOutcomes.NativeEventSecondaryGold
+                        == 0,
                 "proto.native.event.sunken_statue" or
                     "proto.native.underdocks.sunken_statue" =>
-                    eventState.NativeEventGold is >= 101 and <= 121 &&
-                    eventState.NativeEventSecondaryGold == 0,
+                    eventState.Stochastic.RandomOutcomes.NativeEventGold
+                        is >= 101 and <= 121 &&
+                    eventState.Stochastic.RandomOutcomes.NativeEventSecondaryGold
+                        == 0,
                 "proto.native.event.luminous_choir" =>
-                    eventState.NativeEventGold is >= 100 and <= 149 &&
-                    eventState.NativeEventSecondaryGold == 0,
+                    eventState.Stochastic.RandomOutcomes.NativeEventGold
+                        is >= 100 and <= 149 &&
+                    eventState.Stochastic.RandomOutcomes.NativeEventSecondaryGold
+                        == 0,
                 "proto.native.underdocks.sunken_treasury" =>
-                    eventState.NativeEventGold is >= 52 and <= 67 &&
-                    eventState.NativeEventSecondaryGold is >= 303 and <= 363,
+                    eventState.Stochastic.RandomOutcomes.NativeEventGold
+                        is >= 52 and <= 67 &&
+                    eventState.Stochastic.RandomOutcomes.NativeEventSecondaryGold
+                        is >= 303 and <= 363,
                 var id when id == PrototypeNativePunchOff.EventId =>
-                    eventState.NativeEventGold is >= 91 and <= 98 &&
-                    eventState.NativeEventSecondaryGold == 0,
+                    eventState.Stochastic.RandomOutcomes.NativeEventGold
+                        is >= 91 and <= 98 &&
+                    eventState.Stochastic.RandomOutcomes.NativeEventSecondaryGold
+                        == 0,
                 var id when id == PrototypeNativeSharedEvents.ThisOrThatId =>
-                    eventState.NativeEventGold is >= 41 and <= 68 &&
-                    eventState.NativeEventSecondaryGold == 0,
+                    eventState.Stochastic.RandomOutcomes.NativeEventGold
+                        is >= 41 and <= 68 &&
+                    eventState.Stochastic.RandomOutcomes.NativeEventSecondaryGold
+                        == 0,
                 var id when id == PrototypeNativeHiveEvents.LostWispId =>
-                    eventState.NativeEventGold is >= 45 and <= 75 &&
-                    eventState.NativeEventSecondaryGold == 0,
+                    eventState.Stochastic.RandomOutcomes.NativeEventGold
+                        is >= 45 and <= 75 &&
+                    eventState.Stochastic.RandomOutcomes.NativeEventSecondaryGold
+                        == 0,
                 "proto.native.event.jungle_maze_adventure" =>
-                    eventState.NativeEventGold is >= 135 and <= 165 &&
-                    eventState.NativeEventSecondaryGold is >= 35 and <= 65,
+                    eventState.Stochastic.RandomOutcomes.NativeEventGold
+                        is >= 135 and <= 165 &&
+                    eventState.Stochastic.RandomOutcomes.NativeEventSecondaryGold
+                        is >= 35 and <= 65,
                 _ => false
             });
         if (providerMode == "scripted-v111" &&
