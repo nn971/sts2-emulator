@@ -32,7 +32,7 @@ public sealed partial class PrototypeGameEngine
         RequireKind(action, "event_choice");
         var world = RequireWorld(state);
         var nativeRunRng = UsesNativeRegionalSystems(world)
-            ? state.NativeRunRng?.Fork()
+            ? state.Stochastic.NativeRunRng?.Fork()
             : null;
         var evt = world.Event;
         if (world.Act != 3 ||
@@ -126,13 +126,13 @@ public sealed partial class PrototypeGameEngine
             case "merchant_guilty":
             {
                 player = AppendCard(player, nextId++,
-                    PrototypeNativeGloryEvents.RegretId, state.Rng);
+                    PrototypeNativeGloryEvents.RegretId, state.Stochastic.PrototypeRng);
                 // Native obtains two front-of-bag relics directly;
                 // each can enqueue an acquisition-driven deck choice.
                 for (var i = 0; i < 2; i++)
                 {
                     var drawn = PrototypeNativeRelicGrabBag.Draw(
-                        world, player, state.Rng, merchant: false,
+                        world, player, state.Stochastic.PrototypeRng, merchant: false,
                         nativeRunRng: nativeRunRng);
                     world = drawn.World;
                     if (drawn.Id is not { } relicId)
@@ -144,7 +144,7 @@ public sealed partial class PrototypeGameEngine
                     };
                     player = ApplyRelicRunEvent(player,
                         PrototypeRunEventKind.RelicAcquired,
-                        acquiredRelicId: relicId, rng: state.Rng,
+                        acquiredRelicId: relicId, rng: state.Stochastic.PrototypeRng,
                         nativeRunRng: nativeRunRng);
                     var deckChoice = CreateRelicEventDeckChoice(
                         choice, PrototypeContent.Relic(relicId));
@@ -156,7 +156,7 @@ public sealed partial class PrototypeGameEngine
 
             case "merchant_innocent":
                 player = AppendCard(player, nextId++,
-                    PrototypeNativeGloryEvents.ShameId, state.Rng);
+                    PrototypeNativeGloryEvents.ShameId, state.Stochastic.PrototypeRng);
                 choices.Add(new PrototypePendingEventDeckChoiceState(
                     choice, PrototypePersistentDeckChoiceKind.Upgrade, 2,
                     Array.Empty<long>()));
@@ -171,7 +171,7 @@ public sealed partial class PrototypeGameEngine
 
             case "noble_innocent":
                 player = AppendCard(player, nextId++,
-                    PrototypeNativeGloryEvents.RegretId, state.Rng);
+                    PrototypeNativeGloryEvents.RegretId, state.Stochastic.PrototypeRng);
                 player = player with
                 {
                     Gold = GoldAfterGain(player, 300)
@@ -181,15 +181,15 @@ public sealed partial class PrototypeGameEngine
             case "nondescript_guilty":
             {
                 player = AppendCard(player, nextId++,
-                    PrototypeNativeGloryEvents.DoubtId, state.Rng);
+                    PrototypeNativeGloryEvents.DoubtId, state.Stochastic.PrototypeRng);
                 // Native presents two independently selectable
                 // three-card rewards from the character's pool.
                 var cards1 = PickDistinct(
                     PrototypeContent.NativeSilentRewardCardPool, 3,
-                    state.Rng, "reward");
+                    state.Stochastic.PrototypeRng, "reward");
                 var cards2 = PickDistinct(
                     PrototypeContent.NativeSilentRewardCardPool, 3,
-                    state.Rng, "reward");
+                    state.Stochastic.PrototypeRng, "reward");
                 reward = new RewardState(
                     SourceRoom: "Event:" + evt.EventId,
                     CardOptions: [],
@@ -213,7 +213,7 @@ public sealed partial class PrototypeGameEngine
 
             case "nondescript_innocent":
                 player = AppendCard(player, nextId++,
-                    PrototypeNativeGloryEvents.DoubtId, state.Rng);
+                    PrototypeNativeGloryEvents.DoubtId, state.Stochastic.PrototypeRng);
                 choices.Add(new PrototypePendingEventDeckChoiceState(
                     choice, PrototypePersistentDeckChoiceKind.Transform, 2,
                     Array.Empty<long>()));
@@ -230,7 +230,7 @@ public sealed partial class PrototypeGameEngine
         {
             Player = player,
             Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                state.Stochastic, nativeRunRng ?? state.NativeRunRng),
+                state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRng),
             World = world with
             {
                 NextCardInstanceId = nextId,

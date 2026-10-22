@@ -84,7 +84,7 @@ public sealed partial class PrototypeGameEngine
                         == PrototypeCardRarity.Rare)
                     .ToArray();
                 var cards = PickDistinct(
-                    rarePool, 3, state.Rng, "reward");
+                    rarePool, 3, state.Stochastic.PrototypeRng, "reward");
                 return new RewardState(
                     SourceRoom: prefix,
                     CardOptions: cards,
@@ -104,7 +104,7 @@ public sealed partial class PrototypeGameEngine
             case PrototypeRunEffectKind.OfferThreeCardsAndPotion:
             {
                 var cards = PickRewardCards(
-                    RequireWorld(state).Act, 3, state.Rng);
+                    RequireWorld(state).Act, 3, state.Stochastic.PrototypeRng);
                 string? potion = null;
                 if (CanAcquirePotion(player))
                 {
@@ -114,7 +114,7 @@ public sealed partial class PrototypeGameEngine
                             (string[])potionPool.Clone());
                     potion = potionPool[
                         LegacyRandomChoiceV111.ChooseIndexRange(
-                            state.Rng,
+                            state.Stochastic.PrototypeRng,
                             "event.reward.offer_potion.model.index_draw",
                             "reward",
                             prefix + ":potion_pool:"
@@ -138,7 +138,7 @@ public sealed partial class PrototypeGameEngine
 
             case PrototypeRunEffectKind.OfferFiveClassCards:
             {
-                var cards = PickRewardCards(world.Act, 5, state.Rng);
+                var cards = PickRewardCards(world.Act, 5, state.Stochastic.PrototypeRng);
                 if (cards.Length != 5)
                 {
                     throw new InvalidOperationException(
@@ -173,7 +173,7 @@ public sealed partial class PrototypeGameEngine
                 return new RewardState(
                     SourceRoom: prefix,
                     CardOptions: PickDistinct(
-                        pool, 3, state.Rng, "reward"),
+                        pool, 3, state.Stochastic.PrototypeRng, "reward"),
                     PotionOption: null,
                     RelicOption: null,
                     CardResolved: false,
@@ -194,7 +194,7 @@ public sealed partial class PrototypeGameEngine
                 return new RewardState(
                     SourceRoom: prefix,
                     CardOptions: PickDistinct(
-                        pool, 2, state.Rng, "reward"),
+                        pool, 2, state.Stochastic.PrototypeRng, "reward"),
                     PotionOption: null,
                     RelicOption: null,
                     CardResolved: false,
@@ -223,13 +223,13 @@ public sealed partial class PrototypeGameEngine
                 // Defect-specific Claw bundle exception.
                 _ = LegacyFisherYatesV111.ShuffleInPlace(
                     commons,
-                    state.Rng,
+                    state.Stochastic.PrototypeRng,
                     "reward",
                     StochasticSiteRegistryV111.EventRewardCardBundleShuffleSiteId,
                     prefix + ":common_bundle");
                 _ = LegacyFisherYatesV111.ShuffleInPlace(
                     uncommons,
-                    state.Rng,
+                    state.Stochastic.PrototypeRng,
                     "reward",
                     StochasticSiteRegistryV111.EventRewardCardBundleShuffleSiteId,
                     prefix + ":uncommon_bundle");
@@ -262,7 +262,7 @@ public sealed partial class PrototypeGameEngine
                     .ToArray();
                 var chosen = PickDistinct(
                     available, Math.Min(2, available.Length),
-                    state.Rng, "reward");
+                    state.Stochastic.PrototypeRng, "reward");
                 if (chosen.Length != 2)
                 {
                     throw new InvalidOperationException(
@@ -317,7 +317,7 @@ public sealed partial class PrototypeGameEngine
                         ControlledEventChoiceReplayV111.DescribeCandidates(
                             (string[])available.Clone());
                     relicIndex = LegacyRandomChoiceV111.ChooseIndexRange(
-                        state.Rng,
+                        state.Stochastic.PrototypeRng,
                         StochasticSiteRegistryV111
                             .UnownedRandomRelicSelectionSiteId,
                         "reward",
