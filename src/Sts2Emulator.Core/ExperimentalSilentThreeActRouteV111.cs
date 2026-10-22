@@ -815,16 +815,18 @@ public sealed record ReferenceNatureLaterActAssignmentsV111(
         ArgumentNullException.ThrowIfNull(Assignments);
         ArgumentNullException.ThrowIfNull(ChanceLaws);
         Stochastic.Validate();
+        var stochastic = Stochastic;
+        var transcript = stochastic.DecisionTranscript;
         var hasDarv = profile.RevealedEpochs.Contains(
             NativeDarvEventV111.EpochId, StringComparer.Ordinal);
         var expectedCount = hasDarv ? 4 : 2;
         if (Assignments.Length != 2 || InitialEventOrdinal < 0 ||
             ChanceLaws.Length != expectedCount ||
-            DecisionTranscript.Length != expectedCount)
+            transcript.Length != expectedCount)
             throw new InvalidDataException(
                 "Invalid ReferenceNature later-act assignment result.");
 
-        var expectedState = InitialNatureState;
+        var expectedState = stochastic.InitialNatureState;
         var lawIndex = 0;
         var ordinal = InitialEventOrdinal;
         string? hiveAssignment = null;
@@ -847,14 +849,14 @@ public sealed record ReferenceNatureLaterActAssignmentsV111(
             CheckAncient(2, false, ordinal++, 0);
             CheckAncient(3, false, ordinal, 1);
         }
-        if (!expectedState.SameCursor(NatureState))
+        if (!expectedState.SameCursor(stochastic.NatureState))
             throw new InvalidDataException(
                 "ReferenceNature later-act assignment cursor does not replay.");
 
         void Check(ChanceLawV111 expectedLaw, params string[] allowedOutcomes)
         {
             var law = ChanceLaws[lawIndex];
-            var decision = DecisionTranscript[lawIndex];
+            var decision = transcript[lawIndex];
             law.Validate();
             decision.Validate();
             if (CanonicalJson.Sha256(expectedLaw) !=
@@ -889,7 +891,7 @@ public sealed record ReferenceNatureLaterActAssignmentsV111(
             var law = ChanceLawEngineV111.QueryLaterActAncientAssignment(
                 act, includeDarv, drawOrdinal);
             Check(law, pool.Select(id => "ancient_event:" + id).ToArray());
-            var selected = DecisionTranscript[lawIndex - 1].OutcomeId;
+            var selected = transcript[lawIndex - 1].OutcomeId;
             var selectedId = selected["ancient_event:".Length..];
             if (Assignments[assignmentIndex] != selectedId)
                 throw new InvalidDataException(
@@ -1232,6 +1234,8 @@ public sealed record ReferenceNatureLaterActEncounterPreparationV111(
         ArgumentNullException.ThrowIfNull(InitialPrototypeRng);
         ArgumentNullException.ThrowIfNull(ChanceLaws);
         Stochastic.Validate();
+        var stochastic = Stochastic;
+        var transcript = stochastic.DecisionTranscript;
         var queueDrawCount =
             ExperimentalSilentThreeActRouteV111.OrdinaryRoomCount(2) + 15 +
             ExperimentalSilentThreeActRouteV111.OrdinaryRoomCount(3) + 15;
@@ -1240,7 +1244,7 @@ public sealed record ReferenceNatureLaterActEncounterPreparationV111(
         if (Bags.Length != 2 || InitialCombatOrdinal < 0 ||
             Ascension is < 0 or > 10 ||
             ChanceLaws.Length != expectedDecisionCount ||
-            DecisionTranscript.Length != expectedDecisionCount)
+            transcript.Length != expectedDecisionCount)
             throw new InvalidDataException(
                 "Invalid ReferenceNature later-act encounter preparation result.");
         if (!InitialPrototypeRng.TryGetStream(
@@ -1256,12 +1260,12 @@ public sealed record ReferenceNatureLaterActEncounterPreparationV111(
             ?? throw new InvalidDataException(
                 "ReferenceNature encounter result is missing the Glory bag.");
 
-        var expectedState = InitialNatureState;
+        var expectedState = stochastic.InitialNatureState;
         var script = new RandomIndexDecisionV111[expectedDecisionCount];
         for (var index = 0; index < ChanceLaws.Length; index++)
         {
             var law = ChanceLaws[index];
-            var decision = DecisionTranscript[index];
+            var decision = transcript[index];
             law.Validate();
             decision.Validate();
             var request = RequestFromLaw(law);
@@ -1283,9 +1287,10 @@ public sealed record ReferenceNatureLaterActEncounterPreparationV111(
                 request, selection.OutcomeIndex, "scripted-v111");
             expectedState = selection.NextState;
         }
-        if (!expectedState.SameCursor(NatureState) ||
-            NatureState.SampleCount != checked(
-                InitialNatureState.SampleCount + expectedDecisionCount))
+        if (!expectedState.SameCursor(stochastic.NatureState) ||
+            stochastic.NatureState.SampleCount != checked(
+                stochastic.InitialNatureState.SampleCount +
+                expectedDecisionCount))
             throw new InvalidDataException(
                 "ReferenceNature later-act encounter cursor does not replay.");
 
@@ -1348,7 +1353,8 @@ public sealed record ReferenceNatureLaterActEncounterPreparationV111(
     private string EncounterOutcomeAt(int index)
     {
         var law = ChanceLaws[index];
-        var outcome = law.Outcomes[DecisionTranscript[index].OutcomeIndex]
+        var outcome = law.Outcomes[
+            Stochastic.DecisionTranscript[index].OutcomeIndex]
             .OutcomeId;
         return outcome.StartsWith("encounter:", StringComparison.Ordinal)
             ? outcome["encounter:".Length..]
