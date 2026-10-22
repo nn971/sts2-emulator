@@ -135,20 +135,20 @@ public sealed record ScriptedRunSessionV111(
     ];
 
     [JsonIgnore]
-    public bool Complete => ActiveAction is null &&
+    public bool Complete => Stochastic.ActiveAction is null &&
         Run.Phase == RunPhase.Terminal;
 
     [JsonIgnore]
     public ControlledStochasticRequestV111? PendingRequest =>
-        ActiveAction?.PendingRequest;
+        Stochastic.ActiveAction?.PendingRequest;
 
     [JsonIgnore]
     public string[]? PendingCandidateLabels =>
-        ActiveAction?.PendingCandidateLabels;
+        Stochastic.ActiveAction?.PendingCandidateLabels;
 
     [JsonIgnore]
     public IReadOnlyList<GameAction> LegalActions =>
-        ActiveAction is null && !Complete &&
+        Stochastic.ActiveAction is null && !Complete &&
             Run.Stochastic.ControlledEventRewardChoice is null &&
             Run.Stochastic.ControlledRunActionChoice is null &&
             Run.World?.Event?.Stochastic.ControlledChoice is null
@@ -172,7 +172,7 @@ public sealed record ScriptedRunSessionV111(
     {
         Validate();
         ArgumentNullException.ThrowIfNull(action);
-        if (ActiveAction is not null)
+        if (Stochastic.ActiveAction is not null)
             throw new InvalidOperationException(
                 "Resolve the active scripted action before starting another.");
         if (Complete)
@@ -193,11 +193,11 @@ public sealed record ScriptedRunSessionV111(
     {
         Validate();
         ArgumentNullException.ThrowIfNull(outcome);
-        if (ActiveAction is null)
+        if (Stochastic.ActiveAction is null)
             throw new InvalidOperationException(
                 "No scripted random request is pending for the run.");
 
-        var actionSession = ActiveAction.ResolveNext(outcome);
+        var actionSession = Stochastic.ActiveAction.ResolveNext(outcome);
         var next = actionSession.Complete
             ? CommitAction(this, actionSession)
             : this with { ActiveAction = actionSession };
@@ -212,9 +212,9 @@ public sealed record ScriptedRunSessionV111(
         {
             Origin = Origin.Fork(),
             Run = Run.Fork(),
-            CompletedActions = CompletedActions
+            CompletedActions = Stochastic.CompletedActions
                 .Select(action => action.Fork()).ToArray(),
-            ActiveAction = ActiveAction?.Fork()
+            ActiveAction = Stochastic.ActiveAction?.Fork()
         };
     }
 
@@ -222,7 +222,7 @@ public sealed record ScriptedRunSessionV111(
     {
         Mechanics.Validate();
         Stochastic.Validate();
-        var completedActions = CompletedActions;
+        var completedActions = Stochastic.CompletedActions;
         if (SchemaId != CurrentSchemaId || Origin is null || Run is null ||
             completedActions is null)
             throw new InvalidDataException(
@@ -251,7 +251,7 @@ public sealed record ScriptedRunSessionV111(
             replayedRun = completed.Run!.Fork();
         }
 
-        if (ActiveAction is { } active)
+        if (Stochastic.ActiveAction is { } active)
         {
             if (active.Complete ||
                 CanonicalJson.Sha256(active.Origin) !=
@@ -273,11 +273,11 @@ public sealed record ScriptedRunSessionV111(
         var snapshot = new ScriptedRunSessionSnapshotV111(
             CurrentSchemaId, RunSnapshot.Save(session.Origin),
             RunSnapshot.Save(session.Run),
-            session.CompletedActions
+            session.Stochastic.CompletedActions
                 .Select(action => action.Fork()).ToArray(),
-            session.ActiveAction is null
+            session.Stochastic.ActiveAction is null
                 ? null
-                : ScriptedRunActionSessionV111.Save(session.ActiveAction));
+                : ScriptedRunActionSessionV111.Save(session.Stochastic.ActiveAction));
         return JsonSerializer.Serialize(snapshot);
     }
 
@@ -327,7 +327,7 @@ public sealed record ScriptedRunSessionV111(
         return session with
         {
             Run = actionSession.Run.Fork(),
-            CompletedActions = session.CompletedActions
+            CompletedActions = session.Stochastic.CompletedActions
                 .Append(record).ToArray(),
             ActiveAction = null
         };

@@ -256,15 +256,15 @@ public sealed record ScriptedRunActionSessionV111(
     ];
 
     [JsonIgnore]
-    public bool Complete => Run is not null && Continuation is null;
+    public bool Complete => Run is not null && Stochastic.Continuation is null;
 
     [JsonIgnore]
     public ControlledStochasticRequestV111? PendingRequest =>
-        Continuation?.PendingRequest;
+        Stochastic.Continuation?.PendingRequest;
 
     [JsonIgnore]
     public string[]? PendingCandidateLabels =>
-        Continuation?.PendingCandidateLabels;
+        Stochastic.Continuation?.PendingCandidateLabels;
 
     [JsonIgnore]
     public string Fingerprint => CanonicalJson.Sha256(this);
@@ -291,8 +291,8 @@ public sealed record ScriptedRunActionSessionV111(
             Origin = Origin.Fork(),
             Action = CloneAction(Action),
             Run = Run?.Fork(),
-            Decisions = Decisions.Select(decision => decision.Fork()).ToArray(),
-            Continuation = Continuation?.Fork()
+            Decisions = Stochastic.Decisions.Select(decision => decision.Fork()).ToArray(),
+            Continuation = Stochastic.Continuation?.Fork()
         };
     }
 
@@ -305,16 +305,16 @@ public sealed record ScriptedRunActionSessionV111(
             throw new InvalidOperationException(
                 "Scripted run-action session is already complete.");
         outcome.Validate();
-        if (outcome.Entry.Sequence != Decisions.Length + 1)
+        if (outcome.Entry.Sequence != Stochastic.Decisions.Length + 1)
             throw new InvalidDataException(
                 "Scripted run-action transcript sequence is not contiguous.");
         var selected = outcome.ToDecision();
         var replay = ControlledChanceContinuationExecutorV111.ResolveStochastic(
-            Origin, Continuation!, selected,
+            Origin, Stochastic.Continuation!, selected,
             checkpoint => new PrototypeGameEngine().Step(
                 checkpoint, CloneAction(Action)).State);
         var decisions = replay.Continuation?.Decisions ??
-            Decisions.Append(selected.Fork()).ToArray();
+            Stochastic.Decisions.Append(selected.Fork()).ToArray();
         var next = this with
         {
             Run = replay.Run,
@@ -330,23 +330,23 @@ public sealed record ScriptedRunActionSessionV111(
         Mechanics.Validate();
         Stochastic.Validate();
         if (SchemaId != CurrentSchemaId || Origin is null || Action is null ||
-            Decisions is null || string.IsNullOrWhiteSpace(Action.Kind) ||
-            (Run is null) == (Continuation is null))
+            Stochastic.Decisions is null || string.IsNullOrWhiteSpace(Action.Kind) ||
+            (Run is null) == (Stochastic.Continuation is null))
             throw new InvalidDataException(
                 "Invalid scripted run-action session envelope.");
         ValidateOpeningBoundary(Origin, Action);
         PrototypeStateInvariants.Validate(Origin);
-        if (Continuation is { } continuation)
+        if (Stochastic.Continuation is { } continuation)
         {
             if (continuation.SchemaId !=
                     ControlledStochasticContinuationStateV111.MixedPrimitiveSchemaId ||
                 CanonicalJson.Sha256(continuation.Decisions) !=
-                    CanonicalJson.Sha256(Decisions))
+                    CanonicalJson.Sha256(Stochastic.Decisions))
                 throw new InvalidDataException(
                     "Scripted run-action session prefix differs from its continuation.");
         }
-        var replay = Capture(Origin, Action, Decisions);
-        if (!SameContinuation(replay.Continuation, Continuation) ||
+        var replay = Capture(Origin, Action, Stochastic.Decisions);
+        if (!SameContinuation(replay.Continuation, Stochastic.Continuation) ||
             (replay.Run is null) != (Run is null) ||
             replay.Run is { } expectedRun &&
                 CanonicalJson.Sha256(expectedRun) != CanonicalJson.Sha256(Run))
@@ -364,8 +364,8 @@ public sealed record ScriptedRunActionSessionV111(
             CurrentSchemaId, RunSnapshot.Save(session.Origin),
             CloneAction(session.Action),
             session.Run is null ? null : RunSnapshot.Save(session.Run),
-            session.Decisions.Select(decision => decision.Fork()).ToArray(),
-            session.Continuation?.Fork());
+            session.Stochastic.Decisions.Select(decision => decision.Fork()).ToArray(),
+            session.Stochastic.Continuation?.Fork());
         return JsonSerializer.Serialize(snapshot);
     }
 

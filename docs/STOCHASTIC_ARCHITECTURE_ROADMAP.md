@@ -2,6 +2,12 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 scripted run session owner read increment (2026-10-22):** Scripted action
+decision prefixes and continuations, plus whole-run completed actions and active
+action, now read through their stochastic owners for resolve, replay, validation,
+and save. Existing flat snapshots and replay order are unchanged. Static source
+review and `git diff --check` only; no tests or builds were run.
+
 **S3 Native event stochastic session owner read increment (2026-10-22):**
 Native event-relic logic now reads its sampler cursor, provider prefix, pending
 request, and labels through its controlled-action stochastic owner; Native
