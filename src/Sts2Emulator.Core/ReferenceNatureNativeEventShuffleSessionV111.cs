@@ -1353,9 +1353,9 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
             var natureState = InitialNatureState.Fork();
             var priorIndices = new List<int>();
             var decisions = new List<ControlledStochasticDecisionV111>(
-                DecisionTranscript.Length);
+                Stochastic.DecisionTranscript.Length);
             for (var ordinal = 0;
-                 ordinal < DecisionTranscript.Length; ordinal++)
+                 ordinal < Stochastic.DecisionTranscript.Length; ordinal++)
             {
                 var prior = priorIndices.ToArray();
                 var request = combatEndPrefix is null
@@ -1371,7 +1371,7 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
                     law.LawId, law.EventId, selection.OutcomeId,
                     selection.OutcomeIndex);
                 if (CanonicalJson.Sha256(expected) !=
-                    CanonicalJson.Sha256(DecisionTranscript[ordinal]))
+                    CanonicalJson.Sha256(Stochastic.DecisionTranscript[ordinal]))
                     throw new InvalidDataException(
                         "Native event-shuffle provider prefix differs from its Nature transcript.");
                 var outcomeIds = law.Outcomes.Select(
@@ -1414,7 +1414,7 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
     });
 
     [JsonIgnore]
-    public int NextOrdinal => DecisionTranscript.Length;
+    public int NextOrdinal => Stochastic.DecisionTranscript.Length;
 
     [JsonIgnore]
     public bool Complete
@@ -1425,8 +1425,8 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
                 Origin, SiteId, ActionId, PlannedCandidateIds);
             return plan.IsCombatEndIndex
                 ? BuildCombatEndIndexPrefix().Capture.SiteRequests.Length ==
-                    DecisionTranscript.Length
-                : DecisionTranscript.Length == plan.TotalChoiceCount;
+                    Stochastic.DecisionTranscript.Length
+                : Stochastic.DecisionTranscript.Length == plan.TotalChoiceCount;
         }
     }
 
@@ -1451,7 +1451,7 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
             }
             return QueryBoundaryLaw(
                 plan, Origin, NextOrdinal,
-                DecisionTranscript.Select(decision => decision.OutcomeIndex)
+                Stochastic.DecisionTranscript.Select(decision => decision.OutcomeIndex)
                     .ToArray(), ActionId, PlannedCandidateIds);
         }
     }
@@ -1532,13 +1532,13 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
             Origin, SiteId, ActionId, PlannedCandidateIds);
         if (plan.IsCombatEndIndex)
             return ResolveCombatEndIndexNext();
-        var priorIndices = DecisionTranscript.Select(
+        var priorIndices = Stochastic.DecisionTranscript.Select(
             decision => decision.OutcomeIndex).ToArray();
         var law = QueryBoundaryLaw(
             plan, Origin, NextOrdinal, priorIndices, ActionId,
             PlannedCandidateIds);
         var selection = ReferenceNatureV111.SampleValidated(law, NatureState);
-        var transcript = DecisionTranscript.Append(
+        var transcript = Stochastic.DecisionTranscript.Append(
             new ReferenceNatureDecisionV111(
                 law.LawId, law.EventId, selection.OutcomeId,
                 selection.OutcomeIndex)).ToArray();
@@ -1584,27 +1584,27 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
             ValidateCombatEndIndex(plan);
             return;
         }
-        if (DecisionTranscript.Length > plan.TotalChoiceCount ||
+        if (Stochastic.DecisionTranscript.Length > plan.TotalChoiceCount ||
             !ReferenceNatureRunCursorV111.MatchesRunSession(
                 Origin, Run, InitialNatureState, NatureState,
-                DecisionTranscript.Length, Complete))
+                Stochastic.DecisionTranscript.Length, Complete))
             throw new InvalidDataException(
                 "ReferenceNature native event shuffle cursor differs from its session envelope.");
 
         var expectedNatureState = InitialNatureState.Fork();
         var priorIndices = new List<int>();
-        for (var ordinal = 0; ordinal < DecisionTranscript.Length; ordinal++)
+        for (var ordinal = 0; ordinal < Stochastic.DecisionTranscript.Length; ordinal++)
         {
             var law = QueryBoundaryLaw(
                 plan, Origin, ordinal, priorIndices.ToArray(), ActionId,
                 PlannedCandidateIds);
             var selection = ReferenceNatureV111.SampleValidated(
                 law, expectedNatureState);
-            DecisionTranscript[ordinal].Validate();
+            Stochastic.DecisionTranscript[ordinal].Validate();
             if (CanonicalJson.Sha256(new ReferenceNatureDecisionV111(
                     law.LawId, law.EventId, selection.OutcomeId,
                     selection.OutcomeIndex)) !=
-                CanonicalJson.Sha256(DecisionTranscript[ordinal]))
+                CanonicalJson.Sha256(Stochastic.DecisionTranscript[ordinal]))
                 throw new InvalidDataException(
                     "ReferenceNature native event shuffle transcript does not replay.");
             expectedNatureState = selection.NextState;
@@ -1614,7 +1614,7 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
         var expectedRun = Origin.Fork();
         if (Complete)
         {
-            var decisions = DecisionTranscript.Select((decision, ordinal) =>
+            var decisions = Stochastic.DecisionTranscript.Select((decision, ordinal) =>
                 new RandomIndexDecisionV111(
                     plan.RequestForChoice(ordinal), decision.OutcomeIndex,
                     "scripted-v111")).ToArray();
@@ -1644,7 +1644,7 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
         var law = QueryCombatEndLaw(plan, request);
         var selection = ReferenceNatureV111.SampleValidated(
             law, prefix.NatureState);
-        var transcript = DecisionTranscript.Append(
+        var transcript = Stochastic.DecisionTranscript.Append(
             new ReferenceNatureDecisionV111(
                 law.LawId, law.EventId, selection.OutcomeId,
                 selection.OutcomeIndex)).ToArray();
@@ -1690,7 +1690,7 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
         var decisions = new List<RandomIndexDecisionV111>();
         var nature = InitialNatureState.Fork();
         for (var ordinal = 0;
-             ordinal < DecisionTranscript.Length; ordinal++)
+             ordinal < Stochastic.DecisionTranscript.Length; ordinal++)
         {
             var capture = NativeEventShufflePlanBuilderV111
                 .CaptureCombatEndIndexRequests(
@@ -1704,9 +1704,9 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
             var expected = new ReferenceNatureDecisionV111(
                 law.LawId, law.EventId, selection.OutcomeId,
                 selection.OutcomeIndex);
-            DecisionTranscript[ordinal].Validate();
+            Stochastic.DecisionTranscript[ordinal].Validate();
             if (CanonicalJson.Sha256(expected) != CanonicalJson.Sha256(
-                    DecisionTranscript[ordinal]))
+                    Stochastic.DecisionTranscript[ordinal]))
                 throw new InvalidDataException(
                     "ReferenceNature combat-end index transcript does not replay.");
             decisions.Add(new RandomIndexDecisionV111(
@@ -1739,7 +1739,7 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
         if (prefix.Capture.SiteRequests.Length < prefix.Decisions.Length ||
             !ReferenceNatureRunCursorV111.MatchesRunSession(
                 Origin, Run, InitialNatureState, NatureState,
-                DecisionTranscript.Length, complete))
+                Stochastic.DecisionTranscript.Length, complete))
             throw new InvalidDataException(
                 "ReferenceNature combat-end index cursor differs from its session envelope.");
         var expectedRun = Origin.Fork();
@@ -1901,7 +1901,7 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
                 RunSnapshot.Save(session.Run), session.InitialNatureState,
                 session.NatureState,
                 (ReferenceNatureDecisionV111[])
-                    session.DecisionTranscript.Clone());
+                    session.Stochastic.DecisionTranscript.Clone());
         return JsonSerializer.Serialize(snapshot);
     }
 
@@ -1957,7 +1957,7 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
                 CanonicalJson.Sha256(savedRun) ||
             CanonicalJson.Sha256(replay.NatureState) !=
                 CanonicalJson.Sha256(snapshot.NatureState) ||
-            !replay.DecisionTranscript.SequenceEqual(
+            !replay.Stochastic.DecisionTranscript.SequenceEqual(
                 snapshot.DecisionTranscript))
             throw new InvalidDataException(
                 "ReferenceNature native event shuffle snapshot does not replay from its origin.");

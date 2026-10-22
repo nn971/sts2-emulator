@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 Native event-shuffle transcript owner read increment (2026-10-22):**
+Native event-shuffle support construction, sampling, replay, validation, and
+snapshot restoration now read the ordered Nature decision prefix through
+`ReferenceNatureStochasticStateV111`. Combat-end index replay and its request
+checks are unchanged; snapshot fields remain flat. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S3 map and later-act preparation transcript owner read increment (2026-10-22):**
 Map-generation audit/session and later-act preparation session validation and
 replay now read their Nature decision histories through the shared stochastic
