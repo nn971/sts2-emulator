@@ -466,18 +466,24 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         var player = ConsumePotionSlot(
             state.Player,
             payload.Slot);
-        var nativeRunRng = state.Stochastic.NativeRunRngMutable?.Fork();
+        var prototypeRng = state.Stochastic.PrototypeRng;
+        var nativeRunRng = state.Stochastic.NativeRunRng;
         player = ApplyPotionRunEffects(
             player,
             definition,
-            state.Stochastic.PrototypeRngMutable,
+            prototypeRng,
             nativeRunRng);
+
+        var stochastic = RunStochasticStateV111.WithPrototypeRng(
+            state.Stochastic, prototypeRng);
+        if (nativeRunRng is not null)
+            stochastic = RunStochasticStateV111.WithNativeRunRng(
+                stochastic, nativeRunRng);
 
         state = state with
         {
             Player = player,
-            Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRngMutable)
+            Stochastic = stochastic
         };
 
         // An event's full-belt potion offer is still pending when a
