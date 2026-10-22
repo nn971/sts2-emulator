@@ -117,7 +117,7 @@ public sealed record ReferenceNatureInfestedAutomatonSessionV111(
                 .Select(cardId => "card:" + cardId).ToArray();
             return [ReferenceNatureChanceLawDecisionV111.FromInitialState(
                 law, ControlledStochasticRequestV111.FromIndex(plan.Request),
-                InitialNatureState, labels)];
+                Stochastic.InitialNatureState, labels)];
         }
     }
 
@@ -188,7 +188,7 @@ public sealed record ReferenceNatureInfestedAutomatonSessionV111(
         var law = PendingLaw ?? throw new InvalidOperationException(
             "Infested Automaton ReferenceNature session is already complete.");
         var selection = ReferenceNatureV111.SampleValidated(
-            law, NatureState);
+            law, Stochastic.NatureState);
         var transcript = new[]
         {
             new ReferenceNatureDecisionV111(
@@ -267,7 +267,7 @@ public sealed record ReferenceNatureInfestedAutomatonSessionV111(
             Origin, PrototypeNativeHiveEvents.InfestedAutomatonCardOfferSiteId,
             0, ChoiceId);
 
-        var expectedNature = InitialNatureState.Fork();
+        var expectedNature = Stochastic.InitialNatureState.Fork();
         var expectedRun = Origin.Fork();
         if (Complete)
         {
@@ -291,10 +291,11 @@ public sealed record ReferenceNatureInfestedAutomatonSessionV111(
                 expectedRun, expectedNature);
         }
         if (!ReferenceNatureRunCursorV111.MatchesRunSession(
-                Origin, Run, InitialNatureState, NatureState,
+                Origin, Run, Stochastic.InitialNatureState,
+                Stochastic.NatureState,
                 Stochastic.DecisionTranscript.Length, Complete) ||
             CanonicalJson.Sha256(expectedNature) !=
-                CanonicalJson.Sha256(NatureState) ||
+                CanonicalJson.Sha256(Stochastic.NatureState) ||
             CanonicalJson.Sha256(expectedRun) != CanonicalJson.Sha256(Run))
             throw new InvalidDataException(
                 "Infested Automaton Native replay differs from its session envelope.");
@@ -309,8 +310,9 @@ public sealed record ReferenceNatureInfestedAutomatonSessionV111(
             new ReferenceNatureInfestedAutomatonSessionSnapshotV111(
                 CurrentSchemaId, session.ChoiceId,
                 RunSnapshot.Save(session.Origin),
-                RunSnapshot.Save(session.Run), session.InitialNatureState,
-                session.NatureState,
+                RunSnapshot.Save(session.Run),
+                session.Stochastic.InitialNatureState,
+                session.Stochastic.NatureState,
                 (ReferenceNatureDecisionV111[])
                     session.Stochastic.DecisionTranscript.Clone()));
     }
@@ -341,7 +343,7 @@ public sealed record ReferenceNatureInfestedAutomatonSessionV111(
         session.Validate();
         if (CanonicalJson.Sha256(session.Run) !=
                 CanonicalJson.Sha256(savedRun) ||
-            CanonicalJson.Sha256(session.NatureState) !=
+            CanonicalJson.Sha256(session.Stochastic.NatureState) !=
                 CanonicalJson.Sha256(snapshot.NatureState) ||
             !session.Stochastic.DecisionTranscript.SequenceEqual(
                 snapshot.DecisionTranscript))

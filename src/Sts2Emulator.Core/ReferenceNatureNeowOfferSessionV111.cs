@@ -348,7 +348,8 @@ public sealed record ReferenceNatureNeowOfferSessionV111(
             decision => decision.OutcomeIndex).ToArray();
         var law = ChanceLawEngineV111.QueryNeowOffer(
             Origin.RunSeed, Origin.Ascension, NextOrdinal, priorIndices);
-        var selection = ReferenceNatureV111.SampleValidated(law, NatureState);
+        var selection = ReferenceNatureV111.SampleValidated(
+            law, Stochastic.NatureState);
         var transcript = Stochastic.DecisionTranscript.Append(
             new ReferenceNatureDecisionV111(
                 law.LawId, law.EventId, selection.OutcomeId,
@@ -390,12 +391,13 @@ public sealed record ReferenceNatureNeowOfferSessionV111(
             Stochastic.DecisionTranscript.Select(decision => decision.OutcomeIndex)
                 .ToArray());
         if (!ReferenceNatureRunCursorV111.MatchesRunSession(
-                Origin, Run, InitialNatureState, NatureState,
+                Origin, Run, Stochastic.InitialNatureState,
+                Stochastic.NatureState,
                 Stochastic.DecisionTranscript.Length, plan.Complete))
             throw new InvalidDataException(
                 "ReferenceNature Neow-offer cursor differs from its session envelope.");
 
-        var expectedNatureState = InitialNatureState.Fork();
+        var expectedNatureState = Stochastic.InitialNatureState.Fork();
         var priorIndices = new List<int>();
         for (int ordinal = 0; ordinal < Stochastic.DecisionTranscript.Length; ordinal++)
         {
@@ -425,7 +427,7 @@ public sealed record ReferenceNatureNeowOfferSessionV111(
         }
 
         if (CanonicalJson.Sha256(expectedNatureState) !=
-                CanonicalJson.Sha256(NatureState) ||
+                CanonicalJson.Sha256(Stochastic.NatureState) ||
             CanonicalJson.Sha256(expectedRun) != CanonicalJson.Sha256(Run))
             throw new InvalidDataException(
                 "ReferenceNature Neow-offer replay differs from its session envelope.");
@@ -501,8 +503,9 @@ public sealed record ReferenceNatureNeowOfferSessionV111(
         session.Validate();
         var snapshot = new ReferenceNatureNeowOfferSessionSnapshotV111(
             CurrentSchemaId, RunSnapshot.Save(session.Origin),
-            RunSnapshot.Save(session.Run), session.InitialNatureState,
-            session.NatureState,
+            RunSnapshot.Save(session.Run),
+            session.Stochastic.InitialNatureState,
+            session.Stochastic.NatureState,
             (ReferenceNatureDecisionV111[])
                 session.Stochastic.DecisionTranscript.Clone());
         return JsonSerializer.Serialize(snapshot);
@@ -530,7 +533,7 @@ public sealed record ReferenceNatureNeowOfferSessionV111(
             replay = replay.ResolveNext();
         replay.Validate();
         if (CanonicalJson.Sha256(replay.Run) != CanonicalJson.Sha256(savedRun) ||
-            CanonicalJson.Sha256(replay.NatureState) !=
+            CanonicalJson.Sha256(replay.Stochastic.NatureState) !=
                 CanonicalJson.Sha256(snapshot.NatureState) ||
             !replay.Stochastic.DecisionTranscript.SequenceEqual(snapshot.DecisionTranscript))
             throw new InvalidDataException(

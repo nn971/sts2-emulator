@@ -211,7 +211,7 @@ public sealed record ReferenceNatureTabletOfTruthSessionV111(
                     System.Globalization.CultureInfo.InvariantCulture)).ToArray();
             return [ReferenceNatureChanceLawDecisionV111.FromInitialState(
                 law, ControlledStochasticRequestV111.FromIndex(plan.Request),
-                InitialNatureState, labels)];
+                Stochastic.InitialNatureState, labels)];
         }
     }
 
@@ -274,7 +274,8 @@ public sealed record ReferenceNatureTabletOfTruthSessionV111(
                 "ReferenceNature Tablet of Truth session is already complete.");
         var plan = TabletOfTruthChoicePlanBuilderV111.Build(Origin);
         var law = ChanceLawEngineV111.QueryTabletOfTruth(Origin);
-        var selection = ReferenceNatureV111.SampleValidated(law, NatureState);
+        var selection = ReferenceNatureV111.SampleValidated(
+            law, Stochastic.NatureState);
         var transcript = Stochastic.DecisionTranscript.Append(
             new ReferenceNatureDecisionV111(
                 law.LawId, law.EventId, selection.OutcomeId,
@@ -315,12 +316,13 @@ public sealed record ReferenceNatureTabletOfTruthSessionV111(
         var plan = TabletOfTruthChoicePlanBuilderV111.Build(Origin);
         if (Stochastic.DecisionTranscript.Length > 1 ||
             !ReferenceNatureRunCursorV111.MatchesRunSession(
-                Origin, Run, InitialNatureState, NatureState,
+                Origin, Run, Stochastic.InitialNatureState,
+                Stochastic.NatureState,
                 Stochastic.DecisionTranscript.Length, Complete))
             throw new InvalidDataException(
                 "ReferenceNature Tablet of Truth cursor differs from its session envelope.");
 
-        var expectedNatureState = InitialNatureState.Fork();
+        var expectedNatureState = Stochastic.InitialNatureState.Fork();
         RunState expectedRun;
         if (Complete)
         {
@@ -345,7 +347,7 @@ public sealed record ReferenceNatureTabletOfTruthSessionV111(
         }
 
         if (CanonicalJson.Sha256(expectedNatureState) !=
-                CanonicalJson.Sha256(NatureState) ||
+                CanonicalJson.Sha256(Stochastic.NatureState) ||
             CanonicalJson.Sha256(expectedRun) != CanonicalJson.Sha256(Run))
             throw new InvalidDataException(
                 "ReferenceNature Tablet of Truth replay differs from its session envelope.");
@@ -357,8 +359,9 @@ public sealed record ReferenceNatureTabletOfTruthSessionV111(
         session.Validate();
         var snapshot = new ReferenceNatureTabletOfTruthSessionSnapshotV111(
             CurrentSchemaId, RunSnapshot.Save(session.Origin),
-            RunSnapshot.Save(session.Run), session.InitialNatureState,
-            session.NatureState,
+            RunSnapshot.Save(session.Run),
+            session.Stochastic.InitialNatureState,
+            session.Stochastic.NatureState,
             (ReferenceNatureDecisionV111[])
                 session.Stochastic.DecisionTranscript.Clone());
         return JsonSerializer.Serialize(snapshot);
@@ -389,7 +392,7 @@ public sealed record ReferenceNatureTabletOfTruthSessionV111(
         replay.Validate();
         if (CanonicalJson.Sha256(replay.Run) !=
                 CanonicalJson.Sha256(savedRun) ||
-            CanonicalJson.Sha256(replay.NatureState) !=
+            CanonicalJson.Sha256(replay.Stochastic.NatureState) !=
                 CanonicalJson.Sha256(snapshot.NatureState) ||
             !replay.Stochastic.DecisionTranscript.SequenceEqual(
                 snapshot.DecisionTranscript))

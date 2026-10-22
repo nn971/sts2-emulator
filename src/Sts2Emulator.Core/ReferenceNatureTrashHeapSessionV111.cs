@@ -253,7 +253,7 @@ public sealed record ReferenceNatureTrashHeapSessionV111(
                 Origin, SiteIdForChoice(ChoiceId));
             return [ReferenceNatureChanceLawDecisionV111.FromInitialState(
                 law, ControlledStochasticRequestV111.FromIndex(plan.Request),
-                InitialNatureState, plan.OutcomeIds)];
+                Stochastic.InitialNatureState, plan.OutcomeIds)];
         }
     }
 
@@ -323,7 +323,8 @@ public sealed record ReferenceNatureTrashHeapSessionV111(
             Origin, SiteIdForChoice(ChoiceId));
         var law = ChanceLawEngineV111.QueryTrashHeap(
             Origin, plan.Request.SiteId);
-        var selection = ReferenceNatureV111.SampleValidated(law, NatureState);
+        var selection = ReferenceNatureV111.SampleValidated(
+            law, Stochastic.NatureState);
         var transcript = Stochastic.DecisionTranscript.Append(
             new ReferenceNatureDecisionV111(
                 law.LawId, law.EventId, selection.OutcomeId,
@@ -357,12 +358,13 @@ public sealed record ReferenceNatureTrashHeapSessionV111(
             Origin, SiteIdForChoice(ChoiceId));
         if (Stochastic.DecisionTranscript.Length > 1 ||
             !ReferenceNatureRunCursorV111.MatchesRunSession(
-                Origin, Run, InitialNatureState, NatureState,
+                Origin, Run, Stochastic.InitialNatureState,
+                Stochastic.NatureState,
                 Stochastic.DecisionTranscript.Length, Complete))
             throw new InvalidDataException(
                 "ReferenceNature Trash Heap cursor differs from its session envelope.");
 
-        var expectedNatureState = InitialNatureState.Fork();
+        var expectedNatureState = Stochastic.InitialNatureState.Fork();
         RunState expectedRun;
         if (Complete)
         {
@@ -388,7 +390,7 @@ public sealed record ReferenceNatureTrashHeapSessionV111(
         }
 
         if (CanonicalJson.Sha256(expectedNatureState) !=
-                CanonicalJson.Sha256(NatureState) ||
+                CanonicalJson.Sha256(Stochastic.NatureState) ||
             CanonicalJson.Sha256(expectedRun) != CanonicalJson.Sha256(Run))
             throw new InvalidDataException(
                 "ReferenceNature Trash Heap replay differs from its session envelope.");
@@ -401,7 +403,8 @@ public sealed record ReferenceNatureTrashHeapSessionV111(
         var snapshot = new ReferenceNatureTrashHeapSessionSnapshotV111(
             CurrentSchemaId, RunSnapshot.Save(session.Origin),
             RunSnapshot.Save(session.Run), session.ChoiceId,
-            session.InitialNatureState, session.NatureState,
+            session.Stochastic.InitialNatureState,
+            session.Stochastic.NatureState,
             (ReferenceNatureDecisionV111[])
                 session.Stochastic.DecisionTranscript.Clone());
         return JsonSerializer.Serialize(snapshot);
@@ -433,7 +436,7 @@ public sealed record ReferenceNatureTrashHeapSessionV111(
         replay.Validate();
         if (CanonicalJson.Sha256(replay.Run) !=
                 CanonicalJson.Sha256(savedRun) ||
-            CanonicalJson.Sha256(replay.NatureState) !=
+            CanonicalJson.Sha256(replay.Stochastic.NatureState) !=
                 CanonicalJson.Sha256(snapshot.NatureState) ||
             !replay.Stochastic.DecisionTranscript.SequenceEqual(
                 snapshot.DecisionTranscript))
