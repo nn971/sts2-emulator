@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 turn-intent ticket append ownership increment (2026-10-22):** The
+semantic end-turn resolver now verifies that one selected intent ticket
+extends the saved prefix, then publishes it through
+`SemanticEndTurnStochasticStateV111.AppendIntentDecision`. The stochastic
+owner validates the controlled provider and site before copying the request
+support. Static source review and `git diff --check` only; no tests or builds
+were run.
+
 **S4 semantic end-turn chronology append ownership increment (2026-10-22):**
 `SemanticEndTurnStochasticStateV111` now appends enemy-action, target, and
 nested-choice decisions with their boundary references as one transition. It

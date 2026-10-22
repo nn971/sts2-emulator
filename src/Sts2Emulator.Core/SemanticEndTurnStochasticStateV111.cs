@@ -95,6 +95,24 @@ public sealed record SemanticEndTurnStochasticStateV111
         };
     }
 
+    internal SemanticEndTurnStochasticStateV111 AppendIntentDecision(
+        RandomIndexDecisionV111 decision)
+    {
+        ArgumentNullException.ThrowIfNull(decision);
+        decision.Validate();
+        if (decision.ProviderMode != "controlled-v111" ||
+            decision.NativeCursorBefore is not null ||
+            decision.NativeCursorAfter is not null ||
+            decision.Request.SiteId != ControlledTurnIntentEngineV111.SiteId)
+            throw new InvalidDataException(
+                "Invalid semantic turn-intent Nature decision.");
+        return this with
+        {
+            IntentTranscript = IntentTranscript
+                .Append(CloneIndexDecision(decision)).ToArray()
+        };
+    }
+
     internal SemanticEndTurnStochasticStateV111 AppendEnemyAction(
         RandomIndexDecisionV111 decision)
     {
