@@ -112,7 +112,8 @@ internal static class NativePunchOffFightPlanBuilderV111
             projected.World is not { Act: 1, ActiveRoom: PrototypeRoomType.Combat } ||
             projectedEvent is not
                 { EventId: PrototypeNativePunchOff.EventId, NativePageIndex: 2 } ||
-            projectedCombat is not { Enemies.Length: 2, NativeRng: not null } ||
+            projectedCombat is not
+                { Enemies.Length: 2, Stochastic.NativeRng: not null } ||
             entries.Length != 2 ||
             entries.Any(entry => entry.ProviderMode != "native-v111" ||
                 entry.Request.OperationKind != "bounded_integer" ||
@@ -575,12 +576,13 @@ public sealed record ReferenceNaturePunchOffFightSessionV111(
             int.Parse(decision.OutcomeId["hp_offset:".Length..],
                 System.Globalization.CultureInfo.InvariantCulture)).ToArray();
         var expectedCursors = plan.RunCursorsAfterProbe;
-        var actualCursors = combat?.NativeRng?.RunStreams.Streams
+        var actualCursors = combat?.Stochastic.NativeRng?.RunStreams.Streams
             .OrderBy(stream => stream.StreamId, StringComparer.Ordinal)
             .Select(NativeRngV111.ToSnapshot).ToArray();
         var expectedMonsterCursors = plan.MonsterCursorsBefore;
         if (run.Phase != RunPhase.Combat ||
-            combat is not { Enemies.Length: 2, NativeRng: not null } ||
+            combat is not
+                { Enemies.Length: 2, Stochastic.NativeRng: not null } ||
             run.World?.Event is not
                 { EventId: PrototypeNativePunchOff.EventId, NativePageIndex: 2 } ||
             !combat.Enemies.Select(enemy => enemy.Hp).SequenceEqual(

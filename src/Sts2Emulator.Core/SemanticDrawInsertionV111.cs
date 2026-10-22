@@ -226,7 +226,7 @@ public static class SemanticDrawInsertionChoiceV111
             (appendPileIdentityToNativeOwner ? pileSuffix : "");
         var request = SemanticDrawInsertionEventV111.CreateRequest(
             insertion.RequestSiteId,
-            combat!.NativeRng?.RunStreams is not null,
+            combat!.Stochastic.NativeRng?.RunStreams is not null,
             legacyOwnerId, nativeOwnerId, ordinal, pile.Length + 1);
         return SemanticDrawInsertionEventV111.CreateEvent(
             boundaryFingerprint, request, cardId, pile);
