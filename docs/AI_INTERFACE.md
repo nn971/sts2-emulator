@@ -132,8 +132,9 @@ so its public observation and legal action menu use the same versioned envelope 
 ordinary, controlled-combat, and semantic-combat views. Python clients can begin
 this mode with `Session.begin_semantic_reference_combat()` and use
 `SemanticReferenceCombat.observe()`, `actions()`, `step()`, `resolve_next()`,
-`fork()`, `save_snapshot()`, and `release()`; loading uses
-`Session.load_semantic_reference_snapshot()`.
+`observe_nature_choice()`, `fork()`, `save_snapshot()`, and `release()`; loading
+uses `Session.load_semantic_reference_snapshot()`. Its fair observation and
+Nature-only chance view remain separate operations.
 
 ## Native-shaped Overgrowth training reset (live-run JSONL)
 

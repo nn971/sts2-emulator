@@ -3244,6 +3244,11 @@ class SemanticReferenceCombat:
             policy_id="prototype-fair-v0")
         return result["actions"]
 
+    def observe_nature_choice(self):
+        """Return the separate Nature-only view at a pending chance boundary."""
+        return self.session.observe_nature_choice(
+            "reference_combat", self.handle)
+
     def step(self, action_id: str):
         if self.boundary not in ("player", "player_choice"):
             raise EmulatorError("Expected a semantic ReferenceNature player decision")
