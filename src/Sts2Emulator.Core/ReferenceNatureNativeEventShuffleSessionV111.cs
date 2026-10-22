@@ -2429,7 +2429,7 @@ public static partial class ChanceLawEngineV111
                 "Endless Conveyor Colorless law requires the Grab action.");
 
         var candidates = PrototypeNativeEndlessConveyor
-            .GetColorlessCardCandidates();
+            .GetColorlessCardCandidates(origin);
         if (candidates.Length == 0)
             throw new InvalidOperationException(
                 "Fried Eel has no supported Colorless card and performs no index draw.");

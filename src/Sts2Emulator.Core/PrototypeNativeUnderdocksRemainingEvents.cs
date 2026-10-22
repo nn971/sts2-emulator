@@ -169,10 +169,15 @@ public static class PrototypeNativeEndlessConveyor
                 null, null, false))
             .Select(card => card.InstanceId).ToArray();
 
-    internal static string[] GetColorlessCardCandidates() =>
-        PrototypeColorlessCards.Implemented
-            .Where(card => card.MechanicsImplemented && !card.MultiplayerOnly)
-            .Select(card => card.Id).ToArray();
+    internal static string[] GetColorlessCardCandidates(RunState state)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        var profile = state.Configuration?.Profile ??
+            throw new NotSupportedException(
+                "Fried Eel requires configured run profile data.");
+        return PrototypeColorlessCards.ImplementedSoloPoolForProfile(
+            profile.FullyUnlocked, profile.UnlockedColorlessEpochs);
+    }
 
     internal static bool IsValidScriptedDishState(
         RunState state, EventState current)
@@ -402,11 +407,10 @@ public sealed partial class PrototypeGameEngine
 
             case "FRIED_EEL":
             {
-                // Only implemented, solo-safe Colorless cards are
-                // currently catalogued. This restricted generation
-                // pool is intentionally disclosed in the docs.
+                // Keep the implemented solo-safe pool in source order and
+                // honor the run's configured Colorless epoch unlocks.
                 var pool = PrototypeNativeEndlessConveyor
-                    .GetColorlessCardCandidates();
+                    .GetColorlessCardCandidates(state);
                 if (pool.Length == 0)
                 {
                     throw new NotSupportedException(

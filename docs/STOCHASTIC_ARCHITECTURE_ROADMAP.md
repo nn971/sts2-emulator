@@ -34,6 +34,14 @@ profile. Profile-filtered support stays consistent through choice suspension
 and replay validation. Native pool assignment and cursor parity remain open.
 Static source review and `git diff --check` only; no tests or builds were run.
 
+**S6 Fried Eel Colorless epoch-pool increment (2026-10-22):** Endless
+Conveyor's ordinary Fried Eel draw, Chance Law query, and atomic
+ReferenceNature replay now share the configured epoch-filtered implemented
+solo Colorless pool. Fully unlocked profiles retain the current supported
+pool order; unknown partial-profile data fails closed. Source pool fidelity,
+event-stream assignment, and seeded cursor parity remain open. Static source
+review and `git diff --check` only; no tests or builds were run.
+
 **S4 opening Imbued autoplay target increment (2026-10-22):** The shared
 automatic-pipeline target boundary now validates the saved `LateRelicAutoPlay`
 cursor against the exact remaining Imbued driver queue in persistent-card

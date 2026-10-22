@@ -521,8 +521,8 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
             PrototypeNativeEndlessConveyor.ColorlessCardSiteId =>
                 ($"dish:{origin.World?.Event?.Stochastic.RandomOutcomes.NativeDishCount ?? 0}:pool:"
                     + CanonicalJson.Sha256(
-                        PrototypeNativeEndlessConveyor.GetColorlessCardCandidates()),
-                 PrototypeNativeEndlessConveyor.GetColorlessCardCandidates().Length),
+                        PrototypeNativeEndlessConveyor.GetColorlessCardCandidates(origin)),
+                 PrototypeNativeEndlessConveyor.GetColorlessCardCandidates(origin).Length),
             PrototypeNativePotionShop.UniformModelSiteId =>
                 ($"event:endless_conveyor:dish:{origin.World?.Event?.Stochastic.RandomOutcomes.NativeDishCount ?? 0}:potion:pool:"
                     + CanonicalJson.Sha256(
@@ -897,7 +897,7 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
         if (law.SiteId == PrototypeNativeEndlessConveyor.ColorlessCardSiteId)
         {
             var candidates = PrototypeNativeEndlessConveyor
-                .GetColorlessCardCandidates();
+                .GetColorlessCardCandidates(origin);
             var expectedOutcomeId = origin.Stochastic.NativeRunRng is null
                 ? "choice_index:" + selection.OutcomeIndex
                 : (uint)selection.OutcomeIndex < (uint)candidates.Length

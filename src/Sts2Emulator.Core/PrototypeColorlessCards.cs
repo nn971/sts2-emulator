@@ -798,6 +798,20 @@ public static class PrototypeColorlessCards
             .ToArray();
     }
 
+    internal static string[] ImplementedSoloPoolForProfile(
+        bool fullyUnlocked, string[]? unlockedEpochs)
+    {
+        var unlocked = ResolveUnlockedEpochs(
+            fullyUnlocked, unlockedEpochs,
+            "Native Colorless event offers");
+        return ImplementedDefinitions
+            .Where(card => card.MechanicsImplemented &&
+                !card.MultiplayerOnly &&
+                IsEpochUnlocked(card.Id, fullyUnlocked, unlocked))
+            .Select(card => card.Id)
+            .ToArray();
+    }
+
     // Native Colorless1..5Epoch.Cards (pinned v0.111.0).
     public static string[] NativeEpochIds =>
         (string[])NativeEpochIdValues.Clone();
