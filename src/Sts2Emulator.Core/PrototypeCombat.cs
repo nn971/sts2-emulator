@@ -13330,6 +13330,8 @@ public sealed partial class PrototypeGameEngine
             return state with { World = world with { Combat = combat } };
         }
 
+        var prototypeRng = state.Stochastic.PrototypeRng;
+
         var slyCards = pending.Selection.SourceZone == PrototypeCardZone.Hand
             && pending.Selection.Resolution == PrototypeCardSelectionResolutionKind.MoveToDiscard
                 ? selected
@@ -13344,7 +13346,7 @@ public sealed partial class PrototypeGameEngine
                 : Array.Empty<long>();
 
         combat = ApplyCardSelection(
-            combat, pending.Selection, selected, state.Stochastic.PrototypeRngMutable,
+            combat, pending.Selection, selected, prototypeRng,
             transformReplacementCardIds);
         combat = combat with { PendingChoice = null };
 
@@ -13454,12 +13456,14 @@ public sealed partial class PrototypeGameEngine
         var resolved = ResumeChoiceResolutionContinuation(
             state.Player,
             combat,
-            state.Stochastic.PrototypeRngMutable,
+            prototypeRng,
             resolutionContinuation);
 
         state = state with
         {
             Player = resolved.Player,
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, prototypeRng),
             World = world with { Combat = resolved.Combat }
         };
 
@@ -14395,6 +14399,7 @@ public sealed partial class PrototypeGameEngine
         var world = RequireWorld(state);
         var combat = world.Combat ??
             throw new InvalidOperationException("No combat for target choice.");
+        var prototypeRng = state.Stochastic.PrototypeRng;
         var pending = combat.PendingChoice ??
             throw new InvalidOperationException("Missing target choice.");
         if (pending.ChoiceId != "controlled_random_target" ||
@@ -14428,7 +14433,7 @@ public sealed partial class PrototypeGameEngine
                 TargetMode = PrototypeEffectTarget.ActionTargetEnemy
             };
             resolved = ResumeChoiceResolutionContinuation(
-                state.Player, combat, state.Stochastic.PrototypeRngMutable, continuation with
+                state.Player, combat, prototypeRng, continuation with
                 {
                     Operations = (new[] { fixedOperation })
                         .Concat(continuation.Operations.Skip(1)).ToArray()
@@ -14439,14 +14444,14 @@ public sealed partial class PrototypeGameEngine
             if (target.SlyCardInstanceId is not { } cardId)
                 throw new InvalidDataException("Sly choice lost its source card.");
             resolved = AutoPlaySlyCard(
-                state.Player, combat, cardId, state.Stochastic.PrototypeRngMutable,
+                state.Player, combat, cardId, prototypeRng,
                 selectedEnemyInstanceId);
             if (resolved.Combat.PendingChoice is not null)
                 resolved = (resolved.Player, AttachOuterChoiceContinuation(
                     resolved.Combat, continuation));
             else
                 resolved = ResumeChoiceResolutionContinuation(
-                    resolved.Player, resolved.Combat, state.Stochastic.PrototypeRngMutable, continuation);
+                    resolved.Player, resolved.Combat, prototypeRng, continuation);
         }
         else if (target.Kind == "autoplay_random_enemy")
         {
@@ -14465,7 +14470,7 @@ public sealed partial class PrototypeGameEngine
                 TargetEnemyId = selectedEnemyInstanceId
             };
             resolved = ResumeChoiceResolutionContinuation(
-                state.Player, combat, state.Stochastic.PrototypeRngMutable, continuation with
+                state.Player, combat, prototypeRng, continuation with
                 {
                     Operations = (new[] { fixedOperation })
                         .Concat(continuation.Operations.Skip(1)).ToArray()
@@ -14477,6 +14482,8 @@ public sealed partial class PrototypeGameEngine
         var result = state with
         {
             Player = resolved.Player,
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, prototypeRng),
             World = world with { Combat = resolved.Combat }
         };
         result = ResumeAutomaticPipelineContinuation(result);
@@ -14496,6 +14503,7 @@ public sealed partial class PrototypeGameEngine
         var world = RequireWorld(state);
         var combat = world.Combat ?? throw new InvalidOperationException(
             "No combat for semantic card-effect draw.");
+        var prototypeRng = state.Stochastic.PrototypeRng;
         var pending = combat.PendingChoice;
         var draw = pending?.ControlledSemanticDraw;
         var continuation = pending?.OuterChoiceContinuation;
@@ -14530,10 +14538,12 @@ public sealed partial class PrototypeGameEngine
             PrototypeCombatEffectKind.AutoPlayTopDrawCards)
         {
             var resumed = ResumeChoiceResolutionContinuation(
-                state.Player, combat, state.Stochastic.PrototypeRngMutable, continuation);
+                state.Player, combat, prototypeRng, continuation);
             var resumedState = state with
             {
                 Player = resumed.Player,
+                Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                    state.Stochastic, prototypeRng),
                 World = world with { Combat = resumed.Combat }
             };
             resumedState = ResumeAutomaticPipelineContinuation(
@@ -14541,13 +14551,17 @@ public sealed partial class PrototypeGameEngine
             return resumedState;
         }
         var drawn = DrawCards(
-            state.Player, combat, draw.RemainingCount, state.Stochastic.PrototypeRngMutable,
+            state.Player, combat, draw.RemainingCount, prototypeRng,
             draw.FromHandDraw, eventDepth: draw.EventDepth,
             suspensionPolicy:
                 PrototypeDrawCardsSuspensionPolicyV111
                     .SemanticDrawCards(effectDraw: true));
         var continued = ContinueControlledSemanticEffectDraw(
-            state, drawn, draw, continuation);
+            state with
+            {
+                Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                    state.Stochastic, prototypeRng)
+            }, drawn, draw, continuation);
         return ResumeAutomaticPipelineContinuation(continued);
     }
 

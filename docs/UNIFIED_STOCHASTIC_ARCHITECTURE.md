@@ -899,6 +899,8 @@ Controlled recycle resumption now uses a local prototype bundle for after-shuffl
 
 Combat resolution now reads Native combat RNG through its defensive projection. Native stream consumers fork run streams locally and attach the updated combat RNG through `CombatStochasticStateV111.WithNativeRng`, so formation checks and Native combat choices do not expose the owner's mutable sidecar.
 
+Pending combat card selections and controlled target/card-draw resumes now use local prototype bundles and publish them before resuming nested choice or automatic-pipeline continuations.
+
 ## Reading order
 
 1. This architecture contract.
