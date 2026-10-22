@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 active hand-draw cursor validation increment (2026-10-22):** The
+automatic-pipeline stochastic owner now requires every active hand-draw
+progress mode to sit at `DrawPlayerHand` and rejects overlap with enemy-action
+or turn-intent frames. This covers ordinary controlled draw and draw-cost
+progress in addition to the more specialized semantic and hook checks.
+Snapshot shape and valid resume behavior are unchanged. Static source review
+and `git diff --check` only; no tests or builds were run.
+
 **S4 automatic-pipeline resume alias cleanup (2026-10-22):** Removed the
 unused internal `ResumeAutomaticPipelineAfterChoiceResolution` forwarding
 method after confirming all repository call sites use

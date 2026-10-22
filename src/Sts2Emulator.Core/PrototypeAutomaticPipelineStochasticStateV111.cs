@@ -574,6 +574,14 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
 
         ValidateHandDrawProgress();
 
+        if (HandDrawProgress is not null &&
+            (!continuation.Mechanics.IsAtStep(
+                 PrototypeAutomaticStepKind.DrawPlayerHand) ||
+             ControlledEnemyAction is not null ||
+             ControlledTurnIntents is not null))
+            throw new InvalidOperationException(
+                "Automatic hand-draw progress disagrees with the pipeline stage.");
+
         if (continuation.Mechanics.IsAtOpeningBoundary(
                 PrototypeOpeningCombatStage.InitialEnemyIntents) &&
             ControlledTurnIntents is null)
