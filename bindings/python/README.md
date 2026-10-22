@@ -663,6 +663,10 @@ the returned view is checked against its Chance Law identity, support and
 conditioning fingerprints, probability metadata, and outcome weights. Use
 `State.observe()` separately for the fair player view.
 
+`State.query_chance_law()` checks the advertised query site and validates the
+returned Chance Law schema, negotiated probability status, unique positive
+outcomes, and total weight before returning it.
+
 All mechanics remain in C#. Search, learning and strategy belong in the parent
 AI repository. See [the versioned contract](../../docs/V111_INTERFACE.md).
 

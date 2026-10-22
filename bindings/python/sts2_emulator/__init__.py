@@ -314,7 +314,9 @@ class State:
             payload["prior_variant_index"] = prior_variant_index
         result = self.session.call(
             "chance_law_query", **payload)
-        return result["law"]
+        law = result.get("law")
+        self.session._validate_chance_law(law)
+        return law
 
     def save_snapshot(self):
         """Return hidden exact state; this is not a fair-policy observation."""
@@ -3348,38 +3350,64 @@ class Session:
                 and coverage.get("queryOperation") == "chance_law_query"
                 and site_id in coverage.get("siteIds", []))
 
-    def _validate_nature_choice_view(self, choice):
-        if not isinstance(choice, dict):
-            raise EmulatorError("Nature-choice response is not an object")
+    def _validate_chance_law(self, law):
+        if not isinstance(law, dict):
+            raise EmulatorError("Chance Law response is not an object")
 
         def required_string(value, field):
             if not isinstance(value, str) or not value:
                 raise EmulatorError(
-                    f"Nature-choice response has invalid {field!r}")
+                    f"Chance Law response has invalid {field!r}")
             return value
 
         manifest = self.capabilities["stochasticCapabilities"]
         supported_statuses = set(manifest["probabilityStatuses"])
-        if choice.get("schemaId") != manifest.get(
-                "semanticNatureChoiceViewSchemaId"):
-            raise EmulatorError("Nature-choice envelope schema is invalid")
-        law = choice.get("chanceLaw")
-        if not isinstance(law, dict):
-            raise EmulatorError("Nature-choice response has no Chance Law")
         if law.get("schemaId") != manifest.get("chanceLawSchemaId"):
-            raise EmulatorError("Nature-choice Chance Law schema is invalid")
-
-        for field in ("eventKind", "eventId", "siteId", "operationKind",
-                      "eventSupportFingerprint", "lawSupportFingerprint",
-                      "conditioningPolicyId", "conditioningFingerprint",
-                      "probabilityStatus", "probabilityProvenance"):
-            required_string(choice.get(field), field)
+            raise EmulatorError("Chance Law schema differs from negotiation")
         for field in ("lawId", "eventId", "siteId", "operationKind",
                       "ownerId", "supportFingerprint",
                       "conditioningPolicyId", "conditioningFingerprint",
                       "probabilityStatus", "probabilityProvenance"):
-            required_string(law.get(field), f"chanceLaw.{field}")
+            required_string(law.get(field), field)
+        if law.get("probabilityStatus") not in supported_statuses:
+            raise EmulatorError("Chance Law probability status was not negotiated")
 
+        outcomes = law.get("outcomes")
+        total_weight = law.get("totalWeight")
+        if (not isinstance(outcomes, list) or not outcomes
+                or type(total_weight) is not int or total_weight <= 0):
+            raise EmulatorError("Chance Law support is invalid")
+        outcome_ids = set()
+        weight_sum = 0
+        for outcome in outcomes:
+            if not isinstance(outcome, dict):
+                raise EmulatorError("Chance Law outcome is not an object")
+            outcome_id = required_string(outcome.get("outcomeId"),
+                                         "outcomeId")
+            weight = outcome.get("weight")
+            if type(weight) is not int or weight <= 0 or outcome_id in outcome_ids:
+                raise EmulatorError("Chance Law outcome support is invalid")
+            outcome_ids.add(outcome_id)
+            weight_sum += weight
+        if weight_sum != total_weight:
+            raise EmulatorError("Chance Law total weight is inconsistent")
+
+    def _validate_nature_choice_view(self, choice):
+        if not isinstance(choice, dict):
+            raise EmulatorError("Nature-choice response is not an object")
+        manifest = self.capabilities["stochasticCapabilities"]
+        if choice.get("schemaId") != manifest.get(
+                "semanticNatureChoiceViewSchemaId"):
+            raise EmulatorError("Nature-choice envelope schema is invalid")
+        law = choice.get("chanceLaw")
+        self._validate_chance_law(law)
+        for field in ("eventKind", "eventId", "siteId", "operationKind",
+                      "eventSupportFingerprint", "lawSupportFingerprint",
+                      "conditioningPolicyId", "conditioningFingerprint",
+                      "probabilityStatus", "probabilityProvenance"):
+            if not isinstance(choice.get(field), str) or not choice[field]:
+                raise EmulatorError(
+                    f"Nature-choice response has invalid {field!r}")
         if (choice.get("eventId") != law.get("eventId")
                 or choice.get("siteId") != law.get("siteId")
                 or choice.get("operationKind") != law.get("operationKind")
@@ -3395,30 +3423,6 @@ class Session:
                 law.get("probabilityProvenance")):
             raise EmulatorError(
                 "Nature-choice envelope and Chance Law disagree")
-        if choice.get("probabilityStatus") not in supported_statuses:
-            raise EmulatorError(
-                "Nature-choice probability status was not negotiated")
-
-        outcomes = law.get("outcomes")
-        total_weight = law.get("totalWeight")
-        if (not isinstance(outcomes, list) or not outcomes
-                or type(total_weight) is not int or total_weight <= 0):
-            raise EmulatorError("Nature-choice Chance Law support is invalid")
-        outcome_ids = set()
-        weight_sum = 0
-        for outcome in outcomes:
-            if not isinstance(outcome, dict):
-                raise EmulatorError("Nature-choice outcome is not an object")
-            outcome_id = required_string(outcome.get("outcomeId"),
-                                         "chanceLaw.outcomeId")
-            weight = outcome.get("weight")
-            if type(weight) is not int or weight <= 0 or outcome_id in outcome_ids:
-                raise EmulatorError("Nature-choice outcome support is invalid")
-            outcome_ids.add(outcome_id)
-            weight_sum += weight
-        if weight_sum != total_weight:
-            raise EmulatorError(
-                "Nature-choice Chance Law total weight is inconsistent")
 
         metadata = choice.get("eventMetadata")
         if not isinstance(metadata, dict) or "chanceLaw" in metadata:
