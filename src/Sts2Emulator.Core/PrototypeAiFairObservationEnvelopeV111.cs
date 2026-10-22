@@ -6,9 +6,9 @@ public sealed record PrototypeAiFairActionV111(
     string ActionId, string Kind, string PayloadJson);
 
 /// <summary>
-/// One versioned fair-player frame shared by ordinary, controlled, and
-/// semantic combat handles. It contains only the existing public observation
-/// schema and its legal actions.
+/// One versioned fair-player frame shared by ordinary, controlled, semantic,
+/// and native-policy combat handles. It contains only the existing public
+/// observation schema and its legal actions.
 /// </summary>
 public sealed record PrototypeAiFairObservationEnvelopeV111(
     string SchemaId,
@@ -30,7 +30,7 @@ public sealed record PrototypeAiFairObservationEnvelopeV111(
     private static readonly string[] SupportedViewKinds =
     [
         "run_state", "controlled_combat", "semantic_combat",
-        "semantic_reference"
+        "semantic_reference", "semantic_native_policy"
     ];
 
     public PrototypeAiFairActionV111[] Actions

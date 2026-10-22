@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S5 native-policy fair-view capability increment (2026-10-22):** The shared
+`fair_observe` envelope now advertises a `semantic_native_policy` view kind.
+It accepts only baseline-enabled semantic sessions at player boundaries and
+uses the same `PrototypeAiEnvironment` projection as other fair views. The
+Python `SemanticCombat` selects the mode-specific view automatically; the
+existing `semantic_combat` view remains compatible. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S3 Act 1 encounter-pool projection guard increment (2026-10-22):** The
 run-world stochastic owner now validates Act 1 pool structure, region,
 remaining queues, cursor, and boss identity during construction and every

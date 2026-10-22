@@ -10671,6 +10671,23 @@ internal static class PrototypeAiJsonlServer
                                 run = semantic.Run;
                                 terminal = semantic.CombatTerminal;
                                 break;
+                            case "semantic_native_policy":
+                                if (!semanticStates.TryGetValue(handle,
+                                        out var semanticNativePolicy))
+                                    throw new InvalidOperationException(
+                                        $"Unknown semantic handle '{handle}'.");
+                                if (!semanticNativePolicy
+                                        .UsesNativePolicyBaseline)
+                                    throw new InvalidOperationException(
+                                        "Native-policy fair observation requires a native-policy baseline session.");
+                                if (!semanticNativePolicy.AtPlayerBoundary &&
+                                    !semanticNativePolicy
+                                        .AtPlayerChoiceBoundary)
+                                    throw new InvalidOperationException(
+                                        "Native-policy fair observation requires a player boundary.");
+                                run = semanticNativePolicy.Run;
+                                terminal = semanticNativePolicy.CombatTerminal;
+                                break;
                             case "semantic_reference":
                                 if (!referenceNatureStates.TryGetValue(handle,
                                         out var referenceNature))

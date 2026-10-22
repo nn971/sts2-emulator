@@ -2823,6 +2823,7 @@ class SemanticCombat:
     terminal: bool
     outcome: str | None
     exit_hp: int | None
+    native_policy_baseline: bool
 
     @classmethod
     def from_wire(cls, session, payload):
@@ -2830,7 +2831,8 @@ class SemanticCombat:
         return cls(
             session, data["semanticHandle"], data["fingerprint"],
             data["boundary"], data["pending"], data["terminal"],
-            data["outcome"], data["exitHp"])
+            data["outcome"], data["exitHp"],
+            data.get("nativePolicyProvider") is not None)
 
     def status(self):
         return self.session.call(
@@ -2838,18 +2840,22 @@ class SemanticCombat:
 
     def observe(self):
         """Fair player-only observation: never a privileged Nature event."""
-        if self.session._fair_observation_supported:
+        view_kind = ("semantic_native_policy" if self.native_policy_baseline
+                     else "semantic_combat")
+        if self.session.supports_fair_observation_view(view_kind):
             return self.session.observe_fair(
-                "semantic_combat", self.handle)["observation"]
+                view_kind, self.handle)["observation"]
         result = self.session.call(
             "semantic_observe", semantic_handle=self.handle,
             policy_id="prototype-fair-v0")
         return json.loads(result["payloadJson"])
 
     def actions(self):
-        if self.session._fair_observation_supported:
+        view_kind = ("semantic_native_policy" if self.native_policy_baseline
+                     else "semantic_combat")
+        if self.session.supports_fair_observation_view(view_kind):
             return self.session.observe_fair(
-                "semantic_combat", self.handle)["actions"]
+                view_kind, self.handle)["actions"]
         result = self.session.call(
             "semantic_observe", semantic_handle=self.handle,
             policy_id="prototype-fair-v0")
