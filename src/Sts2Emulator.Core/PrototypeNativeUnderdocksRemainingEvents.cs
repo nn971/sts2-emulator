@@ -593,20 +593,25 @@ public sealed partial class PrototypeGameEngine
         if (evt.NativePageIndex == 0 && choice == "nab")
         {
             var nativeRunRng = UsesNativeRegionalSystems(world)
-                ? state.Stochastic.NativeRunRngMutable?.Fork()
+                ? state.Stochastic.NativeRunRng
                 : null;
+            var prototypeRng = state.Stochastic.PrototypeRng;
             var player = AppendCard(
                 state.Player, world.NextCardInstanceId,
-                "proto.native.neow.injury", state.Stochastic.PrototypeRngMutable,
+                "proto.native.neow.injury", prototypeRng,
                 nativeRunRng);
             var reward = CreateDeferredEventReward(
                 state, PrototypeRunEffectKind.OfferRandomRelic,
-                player, evt.EventId, nativeRunRng);
+                player, evt.EventId, prototypeRng, nativeRunRng);
+            var stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, prototypeRng);
+            if (nativeRunRng is not null)
+                stochastic = RunStochasticStateV111.WithNativeRunRng(
+                    stochastic, nativeRunRng);
             return AdvanceEventContinuations(state with
             {
                 Player = player,
-                Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                    state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRngMutable),
+                Stochastic = stochastic,
                 World = world with
                 {
                     NextCardInstanceId = world.NextCardInstanceId + 1,

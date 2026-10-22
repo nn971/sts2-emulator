@@ -2218,14 +2218,20 @@ public sealed partial class PrototypeGameEngine
                             throw new InvalidOperationException(
                                 "Only one custom reward offer per event option is supported.");
                         }
+                        var prototypeRng = state.Stochastic.PrototypeRng;
                         deferredReward = CreateDeferredEventReward(
                             state,
                             effect.Kind,
                             ref player,
-                            eventState.EventId, ref world,
+                            eventState.EventId, ref world, prototypeRng,
                             UsesNativeRegionalSystems(world)
                                 ? nativeRunRng
                                 : null);
+                        state = state with
+                        {
+                            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                                state.Stochastic, prototypeRng)
+                        };
                         break;
 
                     case PrototypeRunEffectKind.GainPotionSlots:
@@ -2390,21 +2396,34 @@ public sealed partial class PrototypeGameEngine
                         {
                             if (deferredReward is not null)
                                 throw new InvalidOperationException("Toy Box acquisition already has a custom reward.");
+                            var prototypeRng = state.Stochastic.PrototypeRng;
                             deferredReward = CreateDeferredEventReward(state,
                                 PrototypeRunEffectKind.OfferWaxRelics, ref player,
-                                eventState.EventId, ref world, nativeRunRng);
+                                eventState.EventId, ref world, prototypeRng,
+                                nativeRunRng);
+                            state = state with
+                            {
+                                Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                                    state.Stochastic, prototypeRng)
+                            };
                         }
                         if (relicId == NativeDarvEventV111.CallingBellId)
                         {
                             if (deferredReward is not null)
                                 throw new InvalidOperationException(
                                     "Calling Bell acquisition already has a custom reward.");
+                            var prototypeRng = state.Stochastic.PrototypeRng;
                             deferredReward = CreateCallingBellRelicReward(
                                 player, eventState.EventId,
-                                state.Stochastic.PrototypeRngMutable, ref world,
+                                prototypeRng, ref world,
                                 UsesNativeRegionalSystems(world)
                                     ? nativeRunRng
                                     : null);
+                            state = state with
+                            {
+                                Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                                    state.Stochastic, prototypeRng)
+                            };
                         }
 
                         var relicChoice =

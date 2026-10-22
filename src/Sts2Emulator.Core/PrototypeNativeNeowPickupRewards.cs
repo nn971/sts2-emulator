@@ -63,19 +63,14 @@ public sealed partial class PrototypeGameEngine
                         "A Neow relic pickup cannot queue multiple reward groups yet.");
                 }
 
-                var rewardSource = after with
-                {
-                    Stochastic = RunStochasticStateV111.WithPrototypeRng(
-                        after.Stochastic, prototypeRng)
-                };
                 nestedReward = CreateDeferredEventReward(
-                    rewardSource, effect.Kind, ref player,
+                    after, effect.Kind, ref player,
                     PrototypeNativeOvergrowthEvents.NeowEventId,
                     ref world,
+                    prototypeRng,
                     UsesNativeRegionalSystems(world)
                         ? nativeRunRng
                         : null);
-                prototypeRng = rewardSource.Stochastic.PrototypeRng;
                 continue;
             }
 
