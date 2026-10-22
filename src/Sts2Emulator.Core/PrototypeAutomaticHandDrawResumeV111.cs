@@ -43,12 +43,12 @@ public sealed partial class PrototypeGameEngine
                     { Mode: SemanticDeckStateV111.NatureMode, Pending: null } ||
                 choice!.SemanticStratagemDrawSelection ||
                 !choice.AutomaticSemanticStratagemDrawSelection ||
-                (cursor?.ControlledSemanticDrawRequested is { } savedRequested &&
+                (cursor?.Stochastic.ControlledSemanticDrawRequested is { } savedRequested &&
                  savedRequested != requested) ||
-                cursor?.ControlledDrawRemaining is not null ||
-                cursor?.ControlledDrawCostRemaining is not null ||
-                cursor?.ControlledSemanticBeforeHandDrawPending == true ||
-                cursor?.ControlledBeforeHandDrawHookChoicePending == true)
+                cursor?.Stochastic.ControlledDrawRemaining is not null ||
+                cursor?.Stochastic.ControlledDrawCostRemaining is not null ||
+                cursor?.Stochastic.ControlledSemanticBeforeHandDrawPending == true ||
+                cursor?.Stochastic.ControlledBeforeHandDrawHookChoicePending == true)
                 throw new InvalidDataException(
                     "Semantic automatic Stratagem cursor is inconsistent.");
             progress = PrototypeAutomaticHandDrawProgressV111.SemanticDraw(
@@ -59,10 +59,10 @@ public sealed partial class PrototypeGameEngine
             if (combat.Stochastic.SemanticDeck is not null ||
                 choice!.AutomaticSemanticStratagemDrawSelection ||
                 choice.SemanticStratagemDrawSelection ||
-                cursor?.ControlledSemanticDrawRequested is not null ||
-                cursor?.ControlledSemanticDrawRemaining is not null ||
-                cursor?.ControlledSemanticBeforeHandDrawPending == true ||
-                cursor?.ControlledBeforeHandDrawHookChoicePending == true)
+                cursor?.Stochastic.ControlledSemanticDrawRequested is not null ||
+                cursor?.Stochastic.ControlledSemanticDrawRemaining is not null ||
+                cursor?.Stochastic.ControlledSemanticBeforeHandDrawPending == true ||
+                cursor?.Stochastic.ControlledBeforeHandDrawHookChoicePending == true)
                 throw new InvalidDataException(
                     "Controlled automatic Stratagem cursor is inconsistent.");
             progress = PrototypeAutomaticHandDrawProgressV111

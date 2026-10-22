@@ -2169,8 +2169,12 @@ public sealed partial class PrototypeGameEngine
                 {
                     AutomaticPipelineContinuation =
                         new PrototypeAutomaticPipelineContinuationState(
-                            stepIndex,
-                            ControlledEnemyAction: replay)
+                            stepIndex)
+                        {
+                            Stochastic =
+                                new PrototypeAutomaticPipelineStochasticStateV111(
+                                    ControlledEnemyAction: replay)
+                        }
                 }
             }
         };

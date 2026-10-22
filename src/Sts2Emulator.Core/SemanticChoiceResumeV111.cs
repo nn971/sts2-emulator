@@ -117,7 +117,7 @@ internal static class SemanticChoiceResumeV111
         if (combat.PendingChoice?.AutomaticSemanticDrawHookChoice == true)
         {
             remaining = combat.AutomaticPipelineContinuation?
-                .ControlledSemanticDrawRemaining ??
+                .Stochastic.ControlledSemanticDrawRemaining ??
                 throw new InvalidDataException(
                     "Automatic draw-hook choice lost its cursor.");
             return (run, requested, remaining, decision);

@@ -434,7 +434,7 @@ public sealed record SemanticEndTurnV111(
                 throw new InvalidDataException(
                     "Invalid pending semantic enemy-action stage.");
             var cursor = this.Run.World!.Combat!
-                .AutomaticPipelineContinuation!.ControlledEnemyAction!;
+                .AutomaticPipelineContinuation!.Stochastic.ControlledEnemyAction!;
             cursor.Validate(PrototypeContent.Rules.EndTurnPipeline.Length);
             if (CanonicalJson.Sha256(cursor.Decisions) !=
                 CanonicalJson.Sha256(this.Stochastic.EnemyActionTranscript))
@@ -1693,10 +1693,10 @@ public static class SemanticEndTurnEngineV111
             combat.AutomaticPipelineContinuation is not { } checkpoint ||
             !checkpoint.Mechanics.IsAtStep(
                 PrototypeAutomaticStepKind.AdvanceTurn) ||
-            checkpoint.ControlledDrawRemaining is not null ||
-            checkpoint.ControlledDrawCostRemaining is not null ||
-            checkpoint.ControlledSemanticDrawRemaining is not null ||
-            checkpoint.ControlledSemanticDrawRequested is not null ||
+            checkpoint.Stochastic.ControlledDrawRemaining is not null ||
+            checkpoint.Stochastic.ControlledDrawCostRemaining is not null ||
+            checkpoint.Stochastic.ControlledSemanticDrawRemaining is not null ||
+            checkpoint.Stochastic.ControlledSemanticDrawRequested is not null ||
             checkpoint.OpeningStage is not null ||
             checkpoint.PendingPostDispatchEventKind is not null ||
             !SemanticDrawPileAdapterV111
