@@ -18,6 +18,7 @@ public sealed partial class PrototypeGameEngine
         if (gained <= 0)
             return after;
 
+        var prototypeRng = after.Stochastic.PrototypeRng;
         for (var instance = 0; instance < gained; instance++)
         {
             var world = RequireWorld(after);
@@ -39,7 +40,7 @@ public sealed partial class PrototypeGameEngine
                 if (pool.Length < 3)
                     throw new NotSupportedException(
                         $"Glass Eye requires three {rarity} Silent cards.");
-                return PickDistinct(pool, 3, after.Stochastic.PrototypeRngMutable, "reward");
+                return PickDistinct(pool, 3, prototypeRng, "reward");
             }).ToArray();
             var generators = rarities.Select(rarity =>
                 (PrototypeCardRewardGenerator?)new(
@@ -70,6 +71,10 @@ public sealed partial class PrototypeGameEngine
             };
         }
 
-        return after;
+        return after with
+        {
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                after.Stochastic, prototypeRng)
+        };
     }
 }
