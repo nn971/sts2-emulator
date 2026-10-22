@@ -3,11 +3,12 @@
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
 **S4 opening Imbued autoplay target increment (2026-10-22):** The shared
-automatic-pipeline target boundary now admits an opening Imbued autoplay when
-the saved cursor and single triggered card instance match the pending target
-operation or autoplay frame. It reuses the existing semantic target and nested
-choice continuations; multiple simultaneous Imbued cards remain gated. Static
-source review and `git diff --check` only; no tests or builds were run.
+automatic-pipeline target boundary now validates the saved `LateRelicAutoPlay`
+cursor against the exact remaining Imbued driver queue in persistent-card
+order. Target choices must name its head; nested choices must retain the
+current autoplay frame and exact queue suffix. This reuses the existing
+semantic target and nested-choice continuations. Static source review and
+`git diff --check` only; no tests or builds were run.
 
 **S1 exact deck-prefix JSONL query increment (2026-10-22):** The bounded
 Nature-only prefix distribution is now available through the opt-in

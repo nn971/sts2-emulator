@@ -1762,37 +1762,64 @@ public sealed partial class PrototypeGameEngine
             return false;
 
         var triggeredImbuedCards = combat.Cards.Where(card =>
-            card.Enchantment is
-                { Kind: PrototypeCardEnchantmentKind.Imbued } &&
-            card.EnchantmentTriggeredThisCombat &&
-            combat.PlayCardIds.Contains(card.InstanceId)).ToArray();
-        if (triggeredImbuedCards.Length != 1)
+                card.Enchantment is
+                    { Kind: PrototypeCardEnchantmentKind.Imbued } &&
+                card.EnchantmentTriggeredThisCombat &&
+                combat.PlayCardIds.Contains(card.InstanceId))
+            .OrderBy(card => card.PersistentCardInstanceId).ToArray();
+        if (triggeredImbuedCards.Length == 0)
             return false;
 
-        var sourceCardId = triggeredImbuedCards[0].InstanceId;
-        bool suspendedBeforeTarget =
-            pending.ControlledTarget is
-                { Kind: "autoplay_random_enemy",
-                  AutoPlayCardInstanceId: { } targetCardId } &&
-            targetCardId == sourceCardId &&
-            root.Operations is { Length: 1 } targetOperations &&
-            CanonicalJson.Sha256(targetOperations[0]) ==
-            CanonicalJson.Sha256(new PrototypeQueuedOperation(
+        var driverOperations = triggeredImbuedCards.Select(card =>
+            new PrototypeQueuedOperation(
                 PrototypeCombatEffectKind.AutoPlayCombatCard, 0,
                 SourceKind: PrototypeEffectSourceKind.Card,
-                CardInstanceId: sourceCardId));
+                CardInstanceId: card.InstanceId)).ToArray();
+        var firstSourceCardId = triggeredImbuedCards[0].InstanceId;
+        var remainingOperations = driverOperations.Skip(1).ToArray();
+        bool suspendedBeforeTarget = pending.ControlledTarget is
+                { Kind: "autoplay_random_enemy",
+                  AutoPlayCardInstanceId: { } targetCardId } &&
+            targetCardId == firstSourceCardId &&
+            IsImbuedDriverContinuation(root, driverOperations);
 
         bool suspendedWithinAutoplay = false;
         for (var frame = root; frame is not null; frame = frame.Parent)
+        {
             if (frame.CardPlaySeries is
                     { IsAutoPlay: true } series &&
-                series.SourceCardInstanceId == sourceCardId)
+                series.SourceCardInstanceId == firstSourceCardId)
             {
-                suspendedWithinAutoplay = true;
-                break;
+                for (var parent = frame.Parent; parent is not null;
+                     parent = parent.Parent)
+                {
+                    if (!IsImbuedDriverContinuation(
+                            parent, remainingOperations))
+                        continue;
+                    suspendedWithinAutoplay = true;
+                    break;
+                }
+                if (suspendedWithinAutoplay)
+                    break;
             }
+        }
 
         return suspendedBeforeTarget || suspendedWithinAutoplay;
+    }
+
+    private static bool IsImbuedDriverContinuation(
+        PrototypeChoiceResolutionContinuationState root,
+        PrototypeQueuedOperation[] operations)
+    {
+        var expected = new PrototypeChoiceResolutionContinuationState(
+            SourceCardInstanceId: null,
+            SourceCardDestination: PrototypeCardZone.DiscardPile,
+            Operations: operations,
+            PendingDiscardEvents: [],
+            PendingSlyCardInstanceIds: [],
+            CompletionEvents: [],
+            MoveSourceCardOnCompletion: false);
+        return CanonicalJson.Sha256(root) == CanonicalJson.Sha256(expected);
     }
 
     private static bool IsWhisperingEarringDriverOperation(
