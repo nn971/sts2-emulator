@@ -40,7 +40,8 @@ public sealed partial class PrototypeGameEngine
         var player = after.Player;
         var world = RequireWorld(after);
         var nextId = world.NextCardInstanceId;
-        var nativeRunRng = after.Stochastic.NativeRunRngMutable?.Fork();
+        var prototypeRng = after.Stochastic.PrototypeRng;
+        var nativeRunRng = after.Stochastic.NativeRunRng;
         RewardState? nestedReward = null;
         var cardsAfterReward = new List<string>();
 
@@ -62,13 +63,19 @@ public sealed partial class PrototypeGameEngine
                         "A Neow relic pickup cannot queue multiple reward groups yet.");
                 }
 
+                var rewardSource = after with
+                {
+                    Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                        after.Stochastic, prototypeRng)
+                };
                 nestedReward = CreateDeferredEventReward(
-                    after, effect.Kind, ref player,
+                    rewardSource, effect.Kind, ref player,
                     PrototypeNativeOvergrowthEvents.NeowEventId,
                     ref world,
                     UsesNativeRegionalSystems(world)
                         ? nativeRunRng
                         : null);
+                prototypeRng = rewardSource.Stochastic.PrototypeRng;
                 continue;
             }
 
@@ -78,7 +85,7 @@ public sealed partial class PrototypeGameEngine
                 if (UsesNativeRegionalSystems(world))
                 {
                     var draw = PrototypeNativeRelicGrabBag.Draw(
-                        world, player, after.Stochastic.PrototypeRngMutable, merchant: false,
+                        world, player, prototypeRng, merchant: false,
                         nativeRunRng: nativeRunRng);
                     world = draw.World;
                     relicId = draw.Id ?? throw new InvalidOperationException(
@@ -88,7 +95,7 @@ public sealed partial class PrototypeGameEngine
                 {
                     relicId = PickUnownedEventRelic(
                         player,
-                        after.Stochastic.PrototypeRngMutable,
+                        prototypeRng,
                         "event:" + PrototypeNativeOvergrowthEvents.NeowEventId
                             + ":random_relic");
                 }
@@ -101,7 +108,7 @@ public sealed partial class PrototypeGameEngine
                     player,
                     PrototypeRunEventKind.RelicAcquired,
                     acquiredRelicId: relicId,
-                    rng: after.Stochastic.PrototypeRngMutable,
+                    rng: prototypeRng,
                     allocateCardId: () => nextId++,
                     nativeRunRng: nativeRunRng);
                 continue;
@@ -128,7 +135,7 @@ public sealed partial class PrototypeGameEngine
         {
             foreach (var cardId in cardsAfterReward)
             {
-                player = AppendCard(player, nextId++, cardId, after.Stochastic.PrototypeRngMutable);
+                player = AppendCard(player, nextId++, cardId, prototypeRng);
             }
         }
         else if (cardsAfterReward.Count > 0)
@@ -139,22 +146,30 @@ public sealed partial class PrototypeGameEngine
 
         if (nestedReward is null)
         {
+            var stochastic = RunStochasticStateV111.WithPrototypeRng(
+                after.Stochastic, prototypeRng);
+            if (nativeRunRng is not null)
+                stochastic = RunStochasticStateV111.WithNativeRunRng(
+                    stochastic, nativeRunRng);
             return after with
             {
                 Player = player,
-                Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                    after.Stochastic, nativeRunRng ?? after.Stochastic.NativeRunRngMutable),
+                Stochastic = stochastic,
                 World = world with { NextCardInstanceId = nextId }
             };
         }
 
         var returnState = new PrototypeCustomRewardReturnState(
             after.Phase, world.Reward, world.CustomRewardReturn);
+        var rewardStochastic = RunStochasticStateV111.WithPrototypeRng(
+            after.Stochastic, prototypeRng);
+        if (nativeRunRng is not null)
+            rewardStochastic = RunStochasticStateV111.WithNativeRunRng(
+                rewardStochastic, nativeRunRng);
         return after with
         {
             Player = player,
-            Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                after.Stochastic, nativeRunRng ?? after.Stochastic.NativeRunRngMutable),
+            Stochastic = rewardStochastic,
             Phase = RunPhase.Reward,
             World = world with
             {
