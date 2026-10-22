@@ -1690,17 +1690,11 @@ public static class SemanticEndTurnEngineV111
     {
         if (run.Phase != RunPhase.Combat ||
             run.World?.Combat is not { } combat ||
-            combat.AutomaticPipelineContinuation is not { } checkpoint ||
-            !checkpoint.Mechanics.IsAtStep(
-                PrototypeAutomaticStepKind.AdvanceTurn) ||
-            checkpoint.Stochastic.ControlledDrawRemaining is not null ||
-            checkpoint.Stochastic.ControlledDrawCostRemaining is not null ||
-            checkpoint.Stochastic.ControlledSemanticDrawRemaining is not null ||
-            checkpoint.Stochastic.ControlledSemanticDrawRequested is not null ||
+            PrototypeGameEngine
+                .ClassifyAutomaticPipelineResumeBoundary(run) !=
+                PrototypeAutomaticPipelineResumeBoundaryKindV111.AdvanceTurn ||
             !SemanticDrawPileAdapterV111
-                .IsSupportedSemanticHandDrawSourceDeck(combat) ||
-            combat.PendingChoice is not null ||
-            combat.PendingKnowledgeDemonChoice is not null)
+                .IsSupportedSemanticHandDrawSourceDeck(combat))
             throw new InvalidOperationException(
                 "Semantic end-turn requires an exhausted draw pile or an " +
                 "existing idle Nature deck at the genuine post-enemy-action " +

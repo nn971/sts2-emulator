@@ -28,9 +28,9 @@ review and `git diff --check` only; no tests or builds were run.
 **S4 clean hand-draw boundary admission increment (2026-10-22):** The shared
 resume classifier now checks the composed continuation's readiness before
 reporting `AdvanceTurn` or `DrawPlayerHand`. Semantic hand-draw entry and its
-engine owner use that classification instead of separate lists of active
-progress fields. Static source review and `git diff --check` only; no tests or
-builds were run.
+engine owner, plus semantic end-turn origin validation, use that classification
+instead of separate lists of active progress fields. Static source review and
+`git diff --check` only; no tests or builds were run.
 
 **S4 automatic-pipeline cursor clear owner increment (2026-10-22):** Runtime
 cursor consumption and cursor-free checkpoint projection now use

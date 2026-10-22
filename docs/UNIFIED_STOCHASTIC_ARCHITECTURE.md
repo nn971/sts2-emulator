@@ -200,8 +200,9 @@ clean cursor with no active progress or unresolved choice or Nature request.
 Supported choices keep their typed classification, while unknown pending
 payloads remain suspended so controlled-playable turn-intent staging cannot
 mistake them for a completed boundary. Semantic draw entry uses the same
-classification to admit a clean hand-draw checkpoint. Semantic end-turn also
-sends the post-intent checkpoint through its shared boundary publisher,
+classification to admit a clean hand-draw checkpoint, and end-turn origin
+validation uses it for the clean `AdvanceTurn` checkpoint. Semantic end-turn
+also sends the post-intent checkpoint through its shared boundary publisher,
 preserving supported choices that suspend before `DrawPlayerHand`.
 
 The ordinary pipeline resumer also consumes the tagged semantic
