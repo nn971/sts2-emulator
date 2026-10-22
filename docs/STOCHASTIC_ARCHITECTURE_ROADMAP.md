@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 ReferenceNature run-cursor commit guard increment (2026-10-22):**
+`ReferenceNatureRunCursorV111.Commit` now delegates publication to
+`RunStochasticStateV111.CommitReferenceNatureCursor`, which rejects a seed
+replacement, cursor rewind, or same-count branch change against the run's
+committed cursor. Static source review and `git diff --check` only; no tests or
+builds were run.
+
 **S3 ReferenceNature map-audit restore ownership increment (2026-10-22):**
 Legacy run-action snapshot restoration now imports missing map-generation
 audits by replaying each entry through

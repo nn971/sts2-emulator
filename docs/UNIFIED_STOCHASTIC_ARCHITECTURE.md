@@ -115,6 +115,8 @@ The present run and combat types have overlapping representation/lifecycle respo
 
 `ReferenceNatureRunActionStochasticStateV111.Advance` publishes a ReferenceNature cursor advance with its decision transcript append. Run-action resolution and nested Native combat-entry, map-generation, Ancient-offer, and later-act continuations use the same owner transition.
 
+`ReferenceNatureRunCursorV111.Commit` publishes through `RunStochasticStateV111.CommitReferenceNatureCursor`; it rejects changing a committed seed, moving the sample count backward, or replacing the cursor at the same sample count. Session owners still validate the complete decision prefix before committing an advanced cursor.
+
 `RunStochasticStateV111` validates and appends completed ReferenceNature map-generation audits and Ancient-offer snapshots, including when a legacy Native Ancient transition is replayed for validation.
 
 Legacy run-action snapshot restoration also imports missing map-generation audits through `RunStochasticStateV111.AppendReferenceNatureMapGenerationAudit`; the compatibility upgrade no longer replaces the complete history array directly.

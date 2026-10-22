@@ -718,6 +718,23 @@ public sealed record RunStochasticStateV111
         return current with { ReferenceNature = referenceNature };
     }
 
+    internal static RunStochasticStateV111 CommitReferenceNatureCursor(
+        RunStochasticStateV111 current,
+        ReferenceNatureStateV111 cursor)
+    {
+        ArgumentNullException.ThrowIfNull(current);
+        ArgumentNullException.ThrowIfNull(cursor);
+        cursor.Validate();
+        if (current.ReferenceNature is { } previous &&
+            (!StringComparer.Ordinal.Equals(previous.Seed, cursor.Seed) ||
+             cursor.SampleCount < previous.SampleCount ||
+             (cursor.SampleCount == previous.SampleCount &&
+              !cursor.SameCursor(previous))))
+            throw new InvalidDataException(
+                "ReferenceNature cursor commit rewinds or replaces the run's committed cursor.");
+        return current with { ReferenceNature = cursor.Fork() };
+    }
+
     internal static RunStochasticStateV111 CommitReferenceNatureRunInitialization(
         RunStochasticStateV111 current,
         ReferenceNatureStateV111? natureState,
@@ -731,20 +748,23 @@ public sealed record RunStochasticStateV111
             throw new InvalidDataException(
                 "Pending ReferenceNature run initialization cannot have a completed transcript.");
         if (transcript is { } completed &&
-            (natureState is not { } committed ||
+            (natureState is not { } committedCursor ||
              !StringComparer.Ordinal.Equals(
-                 committed.Seed, completed.FinalNatureState.Seed) ||
-             committed.SampleCount <
+                 committedCursor.Seed, completed.FinalNatureState.Seed) ||
+             committedCursor.SampleCount <
                  completed.FinalNatureState.SampleCount ||
-             (committed.SampleCount ==
+             (committedCursor.SampleCount ==
                   completed.FinalNatureState.SampleCount &&
-              !committed.SameCursor(completed.FinalNatureState))))
+              !committedCursor.SameCursor(
+                  completed.FinalNatureState))))
             throw new InvalidDataException(
                 "ReferenceNature run initialization transcript differs from its committed cursor.");
 
-        return current with
+        var committed = natureState is null
+            ? current with { ReferenceNature = null }
+            : CommitReferenceNatureCursor(current, natureState);
+        return committed with
         {
-            ReferenceNature = natureState?.Fork(),
             ReferenceNatureRunInitializationTranscript = transcript?.Fork(),
             ReferenceNatureRunInitializationPending = pending
         };

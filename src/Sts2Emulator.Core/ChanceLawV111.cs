@@ -6517,11 +6517,10 @@ internal static class ReferenceNatureRunCursorV111
     {
         ArgumentNullException.ThrowIfNull(run);
         ArgumentNullException.ThrowIfNull(cursor);
-        cursor.Validate();
         return run with
         {
-            Stochastic = RunStochasticStateV111.WithReferenceNature(
-                run.Stochastic, cursor.Fork())
+            Stochastic = RunStochasticStateV111.CommitReferenceNatureCursor(
+                run.Stochastic, cursor)
         };
     }
 }
