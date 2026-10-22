@@ -258,6 +258,8 @@ For a live automatic hand draw, `PrototypeAutomaticPipelineStochasticStateV111` 
 
 The pipeline stochastic owner provides `TryGetSemanticHandDrawProgress` for the engine guard and continuation validator, plus `TryGetSemanticHandDrawProjection` for the semantic draw facade's active requested/remaining counts and zero-count `BeforeHandDraw` suspension. This keeps tagged-stage interpretation with the owner of the saved cursor.
 
+`SemanticCombatDrawMechanicsStateV111` owns the draw facade's fallback count projections and the state transition rules when its `Run`, requested/remaining counts, or automatic-draw mode changes. `SemanticCombatDrawV111` keeps the established flattened snapshot properties as delegates, and end-turn's saved draw projection asks the mechanics owner whether the pipeline owns its counts.
+
 Semantic automatic-hand-draw entry, continuation, and cost handling now read tagged progress through `PrototypeAutomaticPipelineContinuationState.Stochastic`; draw-stage and opening-cursor checks read through its mechanics owner. Flattened progress members remain snapshot projections.
 
 Automatic pipeline execution, validation, and semantic-pilot checkpoint projection now read intent, enemy-action, and hand-draw progress through `PrototypeAutomaticPipelineContinuationState.Stochastic`. Intent and enemy-action frames are published through that owner; intent resumption also clears its frame there. Flattened continuation members remain snapshot projections, and semantic-end-turn and controlled-playable facades keep their established adapter projections.

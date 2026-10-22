@@ -59,7 +59,8 @@ public sealed record SemanticEndTurnMechanicsStateV111
             }
 
             bool pipelineOwnsDrawCursor =
-                SemanticCombatDrawV111.HasAutomaticPipelineDrawCursor(
+                SemanticCombatDrawMechanicsStateV111
+                    .HasAutomaticPipelineDrawCursor(
                     value.Run, value.AutomaticHandDraw);
             _handDraw = new SemanticEndTurnHandDrawProjectionV111(
                 value.Origin.Fork(),

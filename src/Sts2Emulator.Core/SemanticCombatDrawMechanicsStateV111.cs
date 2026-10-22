@@ -28,6 +28,89 @@ public sealed record SemanticCombatDrawMechanicsStateV111
     public bool FromHandDraw { get; init; }
     public bool AutomaticHandDraw { get; init; }
 
+    internal int ProjectRequestedCount() =>
+        ReadAutomaticPipelineDrawProgress(Run, AutomaticHandDraw)?.Requested ??
+        RequestedCount;
+
+    internal SemanticCombatDrawMechanicsStateV111 SetRequestedCount(
+        int value) => this with
+        {
+            RequestedCount = ReadAutomaticPipelineDrawProgress(
+                Run, AutomaticHandDraw) is null ? value : 0
+        };
+
+    internal int ProjectRemainingCount() =>
+        ReadAutomaticPipelineDrawProgress(Run, AutomaticHandDraw)?.Remaining ??
+        RemainingCount;
+
+    internal SemanticCombatDrawMechanicsStateV111 SetRemainingCount(
+        int value) => this with
+        {
+            RemainingCount = ReadAutomaticPipelineDrawProgress(
+                Run, AutomaticHandDraw) is null ? value : 0
+        };
+
+    internal SemanticCombatDrawMechanicsStateV111 SetRun(RunState value)
+    {
+        var priorProgress = ReadAutomaticPipelineDrawProgress(
+            Run, AutomaticHandDraw);
+        var nextProgress = ReadAutomaticPipelineDrawProgress(
+            value, AutomaticHandDraw);
+        int requested = RequestedCount;
+        int remaining = RemainingCount;
+        if (nextProgress is not null)
+        {
+            requested = 0;
+            remaining = 0;
+        }
+        else if (priorProgress is { } progress)
+        {
+            requested = value.World?.Combat?.AutomaticPipelineContinuation
+                ?.Stochastic.ControlledSemanticDrawRequested ??
+                (progress.Requested > 0 ? progress.Requested : requested);
+            remaining = 0;
+        }
+        return this with
+        {
+            Continuation = Continuation with { Current = value },
+            RequestedCount = requested,
+            RemainingCount = remaining
+        };
+    }
+
+    internal SemanticCombatDrawMechanicsStateV111 SetAutomaticHandDraw(
+        bool value)
+    {
+        var pipelineProgress = ReadAutomaticPipelineDrawProgress(Run, value);
+        return this with
+        {
+            AutomaticHandDraw = value,
+            RequestedCount = pipelineProgress is null ? RequestedCount : 0,
+            RemainingCount = pipelineProgress is null ? RemainingCount : 0
+        };
+    }
+
+    internal bool HasAutomaticPipelineDrawProgress =>
+        ReadAutomaticPipelineDrawProgress(Run, AutomaticHandDraw) is not null;
+
+    internal static bool HasAutomaticPipelineDrawCursor(
+        RunState run, bool automaticHandDraw) =>
+        ReadAutomaticPipelineDrawProgress(run, automaticHandDraw) is not null;
+
+    private static (int Requested, int Remaining)?
+        ReadAutomaticPipelineDrawProgress(
+            RunState run, bool automaticHandDraw)
+    {
+        if (!automaticHandDraw ||
+            run.World?.Combat?.AutomaticPipelineContinuation is not
+                { } cursor)
+            return null;
+        if (!cursor.Stochastic.TryGetSemanticHandDrawProjection(
+                cursor.Mechanics, out var requested, out var remaining))
+            return null;
+        return (requested, remaining);
+    }
+
     public SemanticCombatDrawMechanicsStateV111(
         RunState Origin,
         RunState Run,

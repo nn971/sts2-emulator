@@ -40,6 +40,13 @@ counts and the zero-count `BeforeHandDraw` suspension to the semantic draw
 facade. That facade no longer interprets the tagged pre-draw mode itself.
 Static source review and `git diff --check` only; no tests or builds were run.
 
+**S4 semantic draw mechanics projection ownership increment (2026-10-22):**
+`SemanticCombatDrawMechanicsStateV111` now owns Run, requested/remaining count,
+and automatic-pipeline progress projection transitions. The semantic draw
+record keeps its flattened properties as delegates, and end-turn projection
+queries the mechanics owner directly. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S4 automatic-pipeline cursor clear owner increment (2026-10-22):** Runtime
 cursor consumption and cursor-free checkpoint projection now use
 `PrototypeGameEngine.ClearAutomaticPipelineContinuation`. End-turn setup,
