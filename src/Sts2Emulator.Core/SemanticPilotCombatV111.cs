@@ -647,14 +647,12 @@ public sealed record SemanticPilotCombatV111(
             if (initialIntents.Complete || this.PendingEndTurn is not null ||
                 this.Stochastic.SeededEntry?.SourceRouteEntry != true ||
                 this.Run.World?.Combat is not { } entryCombat ||
-                CanonicalJson.Sha256(entryCombat with
-                {
-                    AutomaticPipelineContinuation = null
-                }) !=
-                    CanonicalJson.Sha256(initialIntents.BaselineCombat with
-                    {
-                        AutomaticPipelineContinuation = null
-                    }) ||
+                CanonicalJson.Sha256(
+                    PrototypeGameEngine.ClearAutomaticPipelineContinuation(
+                        entryCombat)) !=
+                    CanonicalJson.Sha256(
+                        PrototypeGameEngine.ClearAutomaticPipelineContinuation(
+                            initialIntents.BaselineCombat)) ||
                 entryCombat.Stochastic.NativeRng is not null ||
                 entryCombat.Stochastic.SemanticDeck is not null ||
                 this.Run.Stochastic.NativeRunRng is not null)

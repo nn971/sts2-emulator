@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 automatic-pipeline cursor clear owner increment (2026-10-22):** Runtime
+cursor consumption and cursor-free checkpoint projection now use
+`PrototypeGameEngine.ClearAutomaticPipelineContinuation`. End-turn setup,
+resume, extra turns, intent checkpoints, and enemy-action/initial-intent
+validation no longer write ad hoc null cursor projections. Snapshot fields and
+resume behavior remain unchanged. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S4 semantic hand-draw receipt publication owner increment (2026-10-22):**
 `AttachCompletedSemanticHandDrawReceipt` now publishes the completed semantic
 draw receipt through the automatic-pipeline owner. Both ordinary hand-draw

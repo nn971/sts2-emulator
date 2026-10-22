@@ -1516,10 +1516,9 @@ public sealed partial class PrototypeGameEngine
         var combat = world.Combat
             ?? throw new InvalidOperationException("Combat phase has no combat state.");
 
-        combat = combat with
+        combat = ClearAutomaticPipelineContinuation(combat) with
         {
-            IsPlayerTurn = false,
-            AutomaticPipelineContinuation = null
+            IsPlayerTurn = false
         };
         state = state with
         {
@@ -1707,10 +1706,7 @@ public sealed partial class PrototypeGameEngine
         {
             World = world with
             {
-                Combat = combat with
-                {
-                    AutomaticPipelineContinuation = null
-                }
+                Combat = ClearAutomaticPipelineContinuation(combat)
             }
         };
     }
@@ -1803,10 +1799,7 @@ public sealed partial class PrototypeGameEngine
             {
                 World = world with
                 {
-                    Combat = combat with
-                    {
-                        AutomaticPipelineContinuation = null
-                    }
+                    Combat = ClearAutomaticPipelineContinuation(combat)
                 }
             };
             state = continuation.Mechanics.OpeningStage is { } openingStage
@@ -1937,10 +1930,7 @@ public sealed partial class PrototypeGameEngine
         var nextCursor = continuation.Mechanics.AdvancePastStep(
             PrototypeAutomaticStepKind.AdvanceTurn);
         var advanced = CompleteAdvanceTurnAfterCommittedIntents(
-            intents.Combat.Fork() with
-            {
-                AutomaticPipelineContinuation = null
-            });
+            ClearAutomaticPipelineContinuation(intents.Combat.Fork()));
         var resumedCursor = continuation with
         {
             Mechanics = nextCursor,
@@ -2199,12 +2189,18 @@ public sealed partial class PrototypeGameEngine
             {
                 World = world with
                 {
-                    Combat = combat with
-                    {
-                        AutomaticPipelineContinuation = null
-                    }
+                    Combat = ClearAutomaticPipelineContinuation(combat)
                 }
             };
+    }
+
+    internal static CombatState ClearAutomaticPipelineContinuation(
+        CombatState combat)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        return combat.AutomaticPipelineContinuation is null
+            ? combat
+            : combat with { AutomaticPipelineContinuation = null };
     }
 
     private static RunState ResolveImbuedAutoPlay(RunState state)
@@ -2298,14 +2294,14 @@ public sealed partial class PrototypeGameEngine
                 relics[eyeIndex] = relics[eyeIndex] with
                 { PaelsEyeUsedThisCombat = true };
             }
+            turnCombat = ClearAutomaticPipelineContinuation(turnCombat);
             turnCombat = turnCombat with
             {
                 Relics = relics,
                 PaelsEyeExtraTurnPending = false,
                 PotionExtraTurnsPending = Math.Max(
                     0, turnCombat.PotionExtraTurnsPending
-                        - (eyeExtraTurn ? 0 : 1)),
-                AutomaticPipelineContinuation = null
+                        - (eyeExtraTurn ? 0 : 1))
             };
             var resetBlockIndex = Array.FindIndex(PrototypeContent.Rules.EndTurnPipeline,
                 step => step.Kind == PrototypeAutomaticStepKind.ResetPlayerBlock);

@@ -652,14 +652,12 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
             // prefix. Combat contains any intents already committed before
             // the next ticket suspended; ControlledTurnIntents.Validate
             // independently proves that prefix from its baseline.
-            var intentCheckpoint = turnIntents.Combat with
-            {
-                AutomaticPipelineContinuation = null
-            };
-            var checkpoint = combat with
-            {
-                AutomaticPipelineContinuation = null
-            };
+            var intentCheckpoint =
+                PrototypeGameEngine.ClearAutomaticPipelineContinuation(
+                    turnIntents.Combat);
+            var checkpoint =
+                PrototypeGameEngine.ClearAutomaticPipelineContinuation(
+                    combat);
             if (turnIntents.SiteId != (initialIntentStage
                     ? NativeCombatRngEntryV111.CommittedIntentSiteId
                     : ControlledTurnIntentEngineV111.SiteId) ||
@@ -687,10 +685,9 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
             combat.IsPlayerTurn || combat.PendingChoice is not null ||
             combat.PendingKnowledgeDemonChoice is not null ||
             CanonicalJson.Sha256(enemyAction.Checkpoint.World?.Combat) !=
-                CanonicalJson.Sha256(combat with
-                {
-                    AutomaticPipelineContinuation = null
-                }))
+                CanonicalJson.Sha256(
+                    PrototypeGameEngine.ClearAutomaticPipelineContinuation(
+                        combat)))
             throw new InvalidOperationException(
                 "Controlled enemy-action checkpoint disagrees with combat state.");
     }
