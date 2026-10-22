@@ -1565,7 +1565,13 @@ public sealed partial class PrototypeGameEngine
         var eventState = world.Event!;
         var player = state.Player;
         var nextId = world.NextCardInstanceId;
-        var nativeRunRng = state.Stochastic.NativeRunRngMutable?.Fork();
+        var nativeRunRng = state.Stochastic.NativeRunRng;
+        var prototypeRng = state.Stochastic.PrototypeRng;
+        RunStochasticStateV111 PublishStochastic(
+            RunStochasticStateV111 current) =>
+            RunStochasticStateV111.WithNativeRunRng(
+                RunStochasticStateV111.WithPrototypeRng(
+                    current, prototypeRng), nativeRunRng);
 
         if (resume is not null
             && eventState.EventId == PrototypeNativeStoneOfAllTime.EventId
@@ -1753,8 +1759,7 @@ public sealed partial class PrototypeGameEngine
                 state = state with
                 {
                     Player = player,
-                    Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                        state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRngMutable),
+                    Stochastic = PublishStochastic(state.Stochastic),
                     World = world with
                     {
                         Event = eventState
@@ -1797,7 +1802,7 @@ public sealed partial class PrototypeGameEngine
                     player,
                     pending,
                     payload.CardInstanceId,
-                    state.Stochastic.PrototypeRngMutable);
+                    prototypeRng);
 
                 var remainingCandidates =
                     pending.CandidateCardInstanceIds
@@ -1833,6 +1838,7 @@ public sealed partial class PrototypeGameEngine
                     return state with
                     {
                         Player = player,
+                        Stochastic = PublishStochastic(state.Stochastic),
                         World = world with
                         {
                             Event = eventState
@@ -1847,6 +1853,7 @@ public sealed partial class PrototypeGameEngine
                 state = state with
                 {
                     Player = player,
+                    Stochastic = PublishStochastic(state.Stochastic),
                     World = world with
                     {
                         Event = eventState
@@ -1984,8 +1991,7 @@ public sealed partial class PrototypeGameEngine
             var effectStartState = effectStartRun with
             {
                 Player = player.Fork(),
-                Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                    effectStartRun.Stochastic, nativeRunRng?.Fork()),
+                Stochastic = PublishStochastic(effectStartRun.Stochastic),
                 World = world.Fork() with
                 {
                     NextCardInstanceId = nextId,
@@ -2081,7 +2087,12 @@ public sealed partial class PrototypeGameEngine
                         // rewards (e.g. Jungle Maze's gold after damage).
                         if (player.Hp == 0)
                         {
-                            return EndRun(state with { Player = player },
+                            return EndRun(state with
+                            {
+                                Player = player,
+                                Stochastic = PublishStochastic(state.Stochastic),
+                                World = world with { NextCardInstanceId = nextId }
+                            },
                                 "defeat");
                         }
                         break;
@@ -2134,7 +2145,7 @@ public sealed partial class PrototypeGameEngine
                         {
                             var selectedId = candidates[
                                 ResolveLegacyRandomIndex(
-                                    state.Stochastic.PrototypeRngMutable,
+                                    prototypeRng,
                                     "event.random_upgrade.card_instance",
                                     "event:" + eventState.EventId + ":choice:"
                                         + choice.Id + ":pool:"
@@ -2195,7 +2206,7 @@ public sealed partial class PrototypeGameEngine
                             player,
                             nextId++,
                             effect.CardId,
-                            state.Stochastic.PrototypeRngMutable);
+                            prototypeRng);
                         break;
 
                     case PrototypeRunEffectKind.TransformFirstCardOfId:
@@ -2208,7 +2219,7 @@ public sealed partial class PrototypeGameEngine
                         if (first is not null)
                         {
                             player = TransformPersistentDeckCard(
-                                player, first.InstanceId, false, state.Stochastic.PrototypeRngMutable);
+                                player, first.InstanceId, false, prototypeRng);
                         }
 
                         break;
@@ -2228,7 +2239,6 @@ public sealed partial class PrototypeGameEngine
                             throw new InvalidOperationException(
                                 "Only one custom reward offer per event option is supported.");
                         }
-                        var prototypeRng = state.Stochastic.PrototypeRng;
                         deferredReward = CreateDeferredEventReward(
                             state,
                             effect.Kind,
@@ -2237,11 +2247,6 @@ public sealed partial class PrototypeGameEngine
                             UsesNativeRegionalSystems(world)
                                 ? nativeRunRng
                                 : null);
-                        state = state with
-                        {
-                            Stochastic = RunStochasticStateV111.WithPrototypeRng(
-                                state.Stochastic, prototypeRng)
-                        };
                         break;
 
                     case PrototypeRunEffectKind.GainPotionSlots:
@@ -2275,7 +2280,7 @@ public sealed partial class PrototypeGameEngine
                         }
 
                         var cardId = rares[ResolveLegacyRandomIndex(
-                            state.Stochastic.PrototypeRngMutable,
+                            prototypeRng,
                             "event.reward.random_rare_card.model",
                             "event:" + eventState.EventId + ":choice:"
                                 + choice.Id + ":pool:" + CanonicalJson.Sha256(rares),
@@ -2283,7 +2288,7 @@ public sealed partial class PrototypeGameEngine
                             streamId: "reward",
                             controlledCandidateLabels: (string[])rares.Clone())];
                         player = AppendCard(
-                            player, nextId++, cardId, state.Stochastic.PrototypeRngMutable);
+                            player, nextId++, cardId, prototypeRng);
                         break;
                     }
 
@@ -2295,7 +2300,7 @@ public sealed partial class PrototypeGameEngine
                             && UsesNativeRegionalSystems(world))
                         {
                             var draw = PrototypeNativeRelicGrabBag.Draw(
-                                world, player, state.Stochastic.PrototypeRngMutable, merchant: false,
+                                world, player, prototypeRng, merchant: false,
                                 nativeRunRng: nativeRunRng);
                             world = draw.World;
                             relicId = draw.Id
@@ -2308,7 +2313,7 @@ public sealed partial class PrototypeGameEngine
                                 == PrototypeRunEffectKind.GainRandomRelic
                                 ? PickUnownedEventRelic(
                                     player,
-                                    state.Stochastic.PrototypeRngMutable,
+                                    prototypeRng,
                                     "event:" + eventState.EventId
                                         + ":choice:" + choice.Id)
                                 : effect.RelicId
@@ -2347,7 +2352,7 @@ public sealed partial class PrototypeGameEngine
                             player,
                             PrototypeRunEventKind.RelicAcquired,
                             acquiredRelicId: relicId,
-                            rng: state.Stochastic.PrototypeRngMutable, allocateCardId: () => nextId++,
+                            rng: prototypeRng, allocateCardId: () => nextId++,
                             nativeRunRng: nativeRunRng);
 
                         if (eventState.EventId == NativeDarvEventV111.EventId
@@ -2357,7 +2362,7 @@ public sealed partial class PrototypeGameEngine
                             player = AppendCard(
                                 player, cardInstanceId,
                                 NativeDarvEventV111.DustyTomeCardId,
-                                state.Stochastic.PrototypeRngMutable);
+                                prototypeRng);
                             var maxUpgradeLevel = PrototypeContent.Card(
                                 NativeDarvEventV111.DustyTomeCardId).MaxUpgradeLevel;
                             player = player with
@@ -2381,7 +2386,7 @@ public sealed partial class PrototypeGameEngine
                             foreach (var cardInstanceId in transformedCardIds)
                             {
                                 player = TransformPersistentDeckCard(
-                                    player, cardInstanceId, false, state.Stochastic.PrototypeRngMutable);
+                                    player, cardInstanceId, false, prototypeRng);
                             }
                         }
 
@@ -2399,41 +2404,29 @@ public sealed partial class PrototypeGameEngine
                         {
                             player = NativeGloryAncientsV111.MarkFurCoatCombats(
                                 player, world.Map, world.Act, state.RunSeed,
-                                state.Stochastic.PrototypeRngMutable, nativeRunRng is not null);
+                                prototypeRng, nativeRunRng is not null);
                         }
 
                         if (relicId == NativeAncientRewardsV111.ToyBoxId)
                         {
                             if (deferredReward is not null)
                                 throw new InvalidOperationException("Toy Box acquisition already has a custom reward.");
-                            var prototypeRng = state.Stochastic.PrototypeRng;
                             deferredReward = CreateDeferredEventReward(state,
                                 PrototypeRunEffectKind.OfferWaxRelics, ref player,
                                 eventState.EventId, ref world, prototypeRng,
                                 nativeRunRng);
-                            state = state with
-                            {
-                                Stochastic = RunStochasticStateV111.WithPrototypeRng(
-                                    state.Stochastic, prototypeRng)
-                            };
                         }
                         if (relicId == NativeDarvEventV111.CallingBellId)
                         {
                             if (deferredReward is not null)
                                 throw new InvalidOperationException(
                                     "Calling Bell acquisition already has a custom reward.");
-                            var prototypeRng = state.Stochastic.PrototypeRng;
                             deferredReward = CreateCallingBellRelicReward(
                                 player, eventState.EventId,
                                 prototypeRng, ref world,
                                 UsesNativeRegionalSystems(world)
                                     ? nativeRunRng
                                     : null);
-                            state = state with
-                            {
-                                Stochastic = RunStochasticStateV111.WithPrototypeRng(
-                                    state.Stochastic, prototypeRng)
-                            };
                         }
 
                         var relicChoice =
@@ -2456,19 +2449,19 @@ public sealed partial class PrototypeGameEngine
                         var potionId = effect.Kind
                             == PrototypeRunEffectKind.GainRandomUncommonPotion
                             ? PrototypeNativePotionCourier.PickRandomUncommonPotion(
-                                state.Stochastic.PrototypeRngMutable, "event")
+                                prototypeRng, "event")
                             : effect.Kind == PrototypeRunEffectKind.GainRandomPotion
                             ? nativeOvergrowth && eventState.EventId
                                 == "proto.native.event.wellspring"
                                 ? PrototypeNativePotionShop.PickUniform(
-                                    state.Stochastic.PrototypeRngMutable, "reward")
+                                    prototypeRng, "reward")
                                 : nativeOvergrowth && eventState.EventId
                                     == "proto.native.event.whispering_hollow"
                                     ? PrototypeNativePotionShop.PickWeighted(
-                                        state.Stochastic.PrototypeRngMutable, "reward")
+                                        prototypeRng, "reward")
                                     : PrototypeContent.PotionPool[
                                         ResolveLegacyRandomIndex(
-                                            state.Stochastic.PrototypeRngMutable,
+                                            prototypeRng,
                                             "event.reward.random_potion.model",
                                             "event:" + eventState.EventId
                                                 + ":choice:" + choice.Id
@@ -2524,7 +2517,7 @@ public sealed partial class PrototypeGameEngine
                         player =
                             FillEmptyPotionSlots(
                                 player,
-                                state.Stochastic.PrototypeRngMutable);
+                                prototypeRng);
                         break;
 
                     default:
@@ -2563,6 +2556,11 @@ public sealed partial class PrototypeGameEngine
                     }
                 };
             }
+
+            state = state with
+            {
+                Stochastic = PublishStochastic(state.Stochastic)
+            };
         }
 
         var explicitDeckChoice =
@@ -2576,8 +2574,7 @@ public sealed partial class PrototypeGameEngine
         state = state with
         {
             Player = player,
-            Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                state.Stochastic, nativeRunRng),
+            Stochastic = PublishStochastic(state.Stochastic),
             World = world with
             {
                 NextCardInstanceId = nextId,

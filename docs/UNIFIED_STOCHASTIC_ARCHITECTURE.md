@@ -883,6 +883,8 @@ the pilot enters the end-turn owner's validate-then-resume path before publishin
 the resulting run and frame together. Standalone and automatic hand-draw hook
 progress remains with the draw facade.
 
+Generic event-choice resolution now uses local prototype and optional Native run RNG bundles for event effects and event deck-card choices, publishing provider updates with each completed effect checkpoint and the resulting event state. An early lethal effect also retains the updated world bag and card-instance cursor before ending the run. A controlled chance suspension retains the cursor from the start of its current effect in the saved partial state, so resumption does not publish a partial effect.
+
 Reward-step resolution now reads defensive prototype and optional Native run RNG projections, passes the local bundles through card grants and relic-acquisition hooks, and publishes the advanced providers with ordinary reward progress, completed rewards, or lethal relic deck-choice outcomes. Controlled reward continuations, Pael sacrifices, and Driftwood rerolls remain owned by their dedicated transitions.
 
 ## Reading order
