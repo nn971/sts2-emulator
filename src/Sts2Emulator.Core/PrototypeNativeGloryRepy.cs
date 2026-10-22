@@ -114,13 +114,16 @@ public sealed partial class PrototypeGameEngine
                     PrototypeNativeHiveEvents.HistoryCourseId,
                     PrototypeJson.EmptyObject())).ToArray()
             };
+            var prototypeRng = state.Stochastic.PrototypeRng;
             player = ApplyRelicRunEvent(
                 player, PrototypeRunEventKind.RelicAcquired,
                 acquiredRelicId: PrototypeNativeHiveEvents.HistoryCourseId,
-                rng: state.Stochastic.PrototypeRngMutable);
+                rng: prototypeRng);
             state = state with
             {
                 Player = player,
+                Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                    state.Stochastic, prototypeRng),
                 World = RequireWorld(state) with { FreedRepy = true }
             };
         }
@@ -138,8 +141,9 @@ public sealed partial class PrototypeGameEngine
                     "War Historian chest requires two implemented relic offers and a potion pool.");
 
             var nativeRunRng = UsesNativeRegionalSystems(world)
-                ? state.Stochastic.NativeRunRngMutable?.Fork()
+                ? state.Stochastic.NativeRunRng
                 : null;
+            var prototypeRng = state.Stochastic.PrototypeRng;
             string[] offers;
             if (nativeRunRng is { } nativeRelicRng)
             {
@@ -161,7 +165,7 @@ public sealed partial class PrototypeGameEngine
             }
             else
             {
-                offers = PickDistinct(available, 2, state.Stochastic.PrototypeRngMutable, "reward");
+                offers = PickDistinct(available, 2, prototypeRng, "reward");
             }
             int PotionIndex(int ordinal)
             {
@@ -175,7 +179,7 @@ public sealed partial class PrototypeGameEngine
                         ownerId,
                         potions.Length)
                     : LegacyRandomChoiceV111.ChooseIndexRange(
-                        state.Stochastic.PrototypeRngMutable,
+                        prototypeRng,
                         PrototypeNativeHiveEvents
                             .WarHistorianRepyPotionOfferSiteId,
                         "reward",
@@ -198,10 +202,14 @@ public sealed partial class PrototypeGameEngine
                         }),
                 RepyChestGroupsResolved = 0
             };
+            var stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, prototypeRng);
+            if (nativeRunRng is not null)
+                stochastic = RunStochasticStateV111.WithNativeRunRng(
+                    stochastic, nativeRunRng);
             state = state with
             {
-                Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                    state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRngMutable),
+                Stochastic = stochastic,
                 World = RequireWorld(state) with { Event = evt }
             };
         }
