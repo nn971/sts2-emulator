@@ -1626,3 +1626,5 @@ Run matched source-state/seed sets; frozen player policy; fair observations/lega
 **S3 event-provider projection read migration increment (2026-10-22):** Native event-local stream and provider-mode checks across controlled event choices, ReferenceNature replay sessions, and event handlers now read `EventStochasticStateV111` directly. Event cursor checks, request order, and event mechanics remain unchanged. Static source review and `git diff --check` only; no tests or builds were run.
 
 **S5 JSONL provider-owner projection increment (2026-10-22):** The JSONL session and pending Nature result adapters now read event, run, combat RNG, and semantic deck data through their stochastic owners. Response shapes and advertised session capabilities are unchanged. Static source review and `git diff --check` only; no tests or builds were run.
+
+**S3 exact trace provider-owner increment (2026-10-22):** Exact trace replay now compares RunState prototype providers through `RunStochasticStateV111`. Trace serialization, RNG-before/after evidence, and replay result semantics are unchanged. Static source review and `git diff --check` only; no tests or builds were run.

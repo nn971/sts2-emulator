@@ -40,8 +40,16 @@ public static class ExactReplay
             if (transition.Before.Hash != CanonicalJson.Sha256(before)
                 || transition.After.Hash != CanonicalJson.Sha256(after))
                 throw new InvalidDataException("Trace canonical state hash is corrupt.");
-            var difference = Compare(transition.DecisionIndex, "trace-rng-before", before.Rng, transition.RngBefore)
-                ?? Compare(transition.DecisionIndex, "trace-rng-after", after.Rng, transition.RngAfter);
+            var difference = Compare(
+                transition.DecisionIndex,
+                "trace-rng-before",
+                before.Stochastic.PrototypeRng,
+                transition.RngBefore)
+                ?? Compare(
+                    transition.DecisionIndex,
+                    "trace-rng-after",
+                    after.Stochastic.PrototypeRng,
+                    transition.RngAfter);
             if (difference is not null) return new(false, checkedCount, difference);
             if (current is not null)
             {
@@ -60,7 +68,11 @@ public static class ExactReplay
                 return new(false, checkedCount, new(transition.DecisionIndex, "action", "$",
                     CanonicalJson.Serialize(transition.Action), "illegal action"));
             var next = engine.Step(current, transition.Action).State;
-            difference = Compare(transition.DecisionIndex, "after-rng", after.Rng, next.Rng)
+            difference = Compare(
+                transition.DecisionIndex,
+                "after-rng",
+                after.Stochastic.PrototypeRng,
+                next.Stochastic.PrototypeRng)
                 ?? Compare(transition.DecisionIndex, "after-state", after, next);
             if (difference is not null) return new(false, checkedCount, difference);
             if (transition.LegalActionsAfter is not null)
