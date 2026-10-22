@@ -31,6 +31,21 @@ public sealed record ScriptedRunActionRecordV111(
         Decisions = _decisions!
     };
 
+    public void Validate()
+    {
+        if (_action is null || string.IsNullOrWhiteSpace(_action.Kind) ||
+            _decisions is null)
+            throw new InvalidDataException(
+                "Invalid scripted run-action record.");
+        foreach (var decision in _decisions)
+        {
+            if (decision is null)
+                throw new InvalidDataException(
+                    "Scripted run-action record contains a null decision.");
+            decision.Validate();
+        }
+    }
+
     private static GameAction? CloneAction(GameAction? action) =>
         action is null ? null : action with
         {
@@ -324,12 +339,14 @@ public sealed record ScriptedRunSessionV111(
             CloneAction(actionSession.Action),
             actionSession.Decisions.Select(decision => decision.Fork())
                 .ToArray());
+        record.Validate();
         return session with
         {
-            Run = actionSession.Run.Fork(),
-            CompletedActions = session.Stochastic.CompletedActions
-                .Append(record).ToArray(),
-            ActiveAction = null
+            Mechanics = session.Mechanics with
+            {
+                Run = actionSession.Run.Fork()
+            },
+            Stochastic = session.Stochastic.AppendCompletedAction(record)
         };
     }
 

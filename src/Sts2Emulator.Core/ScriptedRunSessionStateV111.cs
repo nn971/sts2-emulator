@@ -193,12 +193,34 @@ public sealed record ScriptedRunStochasticStateV111
                 "Scripted run history is missing.");
         foreach (var action in _completedActions)
         {
-            if (action is null || action.Action is null ||
-                action.Decisions is null)
+            if (action is null)
                 throw new InvalidDataException(
                     "Scripted run history contains an invalid action record.");
+            action.Validate();
         }
         ActiveAction?.Validate();
+    }
+
+    internal ScriptedRunStochasticStateV111 AppendCompletedAction(
+        ScriptedRunActionRecordV111 action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        action.Validate();
+        var completed = _completedActions ?? throw new InvalidDataException(
+            "Scripted run history is missing.");
+        foreach (var entry in completed)
+        {
+            if (entry is null)
+                throw new InvalidDataException(
+                    "Scripted run history contains a null action record.");
+            entry.Validate();
+        }
+        return this with
+        {
+            CompletedActions = completed.Select(entry => entry.Fork())
+                .Append(action.Fork()).ToArray(),
+            ActiveAction = null
+        };
     }
 
     private static ScriptedRunActionRecordV111[]? CloneActions(

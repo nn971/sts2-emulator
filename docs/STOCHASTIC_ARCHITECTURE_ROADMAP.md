@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 scripted run completed-action publication increment (2026-10-22):**
+`ScriptedRunStochasticStateV111` now validates completed action records and
+appends them while clearing the active action. `ScriptedRunSessionV111`
+publishes that provider transition with the resulting run through its
+mechanics and stochastic envelope. Static source review and `git diff --check`
+only; no tests or builds were run.
+
 **S3 controlled run history append ownership increment (2026-10-22):**
 `RunStochasticStateV111` now validates and appends completed controlled
 event-choice and run-action traces. It also owns replacement of the latest
