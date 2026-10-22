@@ -464,10 +464,9 @@ public sealed partial class PrototypeGameEngine
 
         // Intents must be committed before an opening player choice is visible.
         combat = GrantEnemyAllyBlockOnPlayerTurnStart(combat);
-        var entryWorld = world with
+        var entryWorld = world.AppendEncounterId(encounter.Id) with
         {
-            Combat = combat,
-            EncounterHistory = world.EncounterIds.Append(encounter.Id).ToArray()
+            Combat = combat
         };
         SemanticInitialIntentCaptureV111.CaptureAndSuspend(state with
         {

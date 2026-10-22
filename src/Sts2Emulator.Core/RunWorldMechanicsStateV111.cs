@@ -59,6 +59,28 @@ public sealed record RunWorldMechanicsStateV111(
         };
     }
 
+    internal RunWorldMechanicsStateV111 AppendEncounterId(
+        string encounterId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(encounterId);
+        return this with
+        {
+            EncounterHistory = (_encounterHistory ?? [])
+                .Append(encounterId).ToArray()
+        };
+    }
+
+    internal RunWorldMechanicsStateV111 AppendCompletedRoom(
+        PrototypeCompletedRoomRecord completedRoom)
+    {
+        ArgumentNullException.ThrowIfNull(completedRoom);
+        return this with
+        {
+            CompletedRoomHistory = (_completedRoomHistory ?? [])
+                .Append(completedRoom).ToArray()
+        };
+    }
+
     public PrototypeCompletedRoomRecord[]? CompletedRoomHistory
     {
         get => Clone(_completedRoomHistory);

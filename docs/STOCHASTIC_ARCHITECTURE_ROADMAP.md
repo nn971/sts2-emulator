@@ -2,6 +2,12 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 run-world encounter and completed-room history ownership increment (2026-10-22):**
+`RunWorldMechanicsStateV111` now appends encounter IDs and completed-room
+records through owner methods. Ordinary combat entry, controlled-playable
+fixture entry, and room completion use those transitions. Static source review
+and `git diff --check` only; no tests or builds were run.
+
 **S3 run-world event history append ownership increment (2026-10-22):**
 `RunWorldMechanicsStateV111.AppendEventId` owns event-history appends, and
 ordinary event entry, Native Ancient fixtures, and source-backed event

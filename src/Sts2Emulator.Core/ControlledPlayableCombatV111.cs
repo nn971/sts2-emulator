@@ -731,11 +731,7 @@ public static class ControlledPlayableCombatEngineV111
                 "Playable combat fixture lost its run world.");
             run = run with
             {
-                World = world with
-                {
-                    EncounterHistory = (world.EncounterHistory ?? [])
-                        .Append(encounterId).ToArray()
-                }
+                World = world.AppendEncounterId(encounterId)
             };
         }
         int nextIndex = combat.DrawPile.Length - 1;

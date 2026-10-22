@@ -121,17 +121,9 @@ public sealed partial class PrototypeGameEngine
                 "A map floor cannot be completed twice.");
         }
 
-        world = world with
-        {
-            CompletedRoomHistory =
-                world.CompletedRooms
-                    .Append(new PrototypeCompletedRoomRecord(
-                        world.Act,
-                        world.Floor,
-                        nodeId,
-                        roomType))
-                    .ToArray()
-        };
+        world = world.AppendCompletedRoom(
+            new PrototypeCompletedRoomRecord(
+                world.Act, world.Floor, nodeId, roomType));
 
         var player = ApplyRelicRunEvent(
             state.Player,

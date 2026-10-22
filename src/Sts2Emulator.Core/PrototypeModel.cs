@@ -4261,6 +4261,11 @@ public sealed record RunWorldState(
         init => Mechanics = Mechanics with { EncounterHistory = value };
     }
 
+    internal RunWorldState AppendEncounterId(string encounterId) => this with
+    {
+        Mechanics = Mechanics.AppendEncounterId(encounterId)
+    };
+
     public string[]? EventHistory
     {
         get => Mechanics.EventHistory;
@@ -4283,6 +4288,12 @@ public sealed record RunWorldState(
         get => Mechanics.CompletedRoomHistory;
         init => Mechanics = Mechanics with { CompletedRoomHistory = value };
     }
+
+    internal RunWorldState AppendCompletedRoom(
+        PrototypeCompletedRoomRecord completedRoom) => this with
+    {
+        Mechanics = Mechanics.AppendCompletedRoom(completedRoom)
+    };
 
     public PrototypeUnknownRoomOddsState? UnknownRoomOdds
     {
