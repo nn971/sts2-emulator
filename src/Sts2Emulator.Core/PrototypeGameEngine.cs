@@ -411,41 +411,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                     next.World, next.Player)
             };
         next = NativeRunRngV111.ReconcileAfterStep(state, next);
-        if (next.Stochastic.ControlledEventRewardChoice is
-            { } rewardChoice)
-        {
-            var partialState = next with
-            {
-                Stochastic =
-                    RunStochasticStateV111.WithControlledEventRewardChoice(
-                        next.Stochastic, null)
-            };
-            next = next with
-            {
-                Stochastic = RunStochasticStateV111
-                    .WithControlledEventRewardChoice(
-                        next.Stochastic,
-                        rewardChoice with { PartialState = partialState })
-            };
-        }
-        if (next.Stochastic.ControlledRunActionChoice is
-            { } runActionChoice)
-        {
-            var partialState = next with
-            {
-                Stochastic =
-                    RunStochasticStateV111.WithControlledRunActionChoice(
-                        next.Stochastic, null)
-            };
-            next = next with
-            {
-                Stochastic = RunStochasticStateV111
-                    .WithControlledRunActionChoice(
-                        next.Stochastic,
-                        runActionChoice with { PartialState = partialState })
-            };
-        }
-        return next;
+        return RunStochasticStateV111
+            .RebasePendingContinuationCheckpoints(next);
     }
 
     private static IReadOnlyList<GameAction>

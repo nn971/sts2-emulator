@@ -171,6 +171,68 @@ public sealed record RunStochasticStateV111
         };
     }
 
+    /// <summary>
+    /// Rebase suspended run continuations after the enclosing step has
+    /// published all mechanics and provider updates. Each saved partial run
+    /// is the same owner with only its own continuation removed, so replay
+    /// compares against the complete committed state.
+    /// </summary>
+    internal static RunState RebasePendingContinuationCheckpoints(
+        RunState owner)
+    {
+        ArgumentNullException.ThrowIfNull(owner);
+        var current = owner;
+        var stochastic = owner.Stochastic;
+
+        if (stochastic.ControlledEventRewardChoice is
+            { } rewardContinuation)
+        {
+            var partialState = current with
+            {
+                Stochastic = stochastic with
+                {
+                    ControlledEventRewardChoice = null
+                }
+            };
+            var rebased = rewardContinuation with
+            {
+                PartialState = partialState
+            };
+            rebased.Validate();
+            stochastic = stochastic with
+            {
+                ControlledEventRewardChoice = rebased
+            };
+            current = current with { Stochastic = stochastic };
+            stochastic.ValidateControlledEventRewardChoice(current);
+        }
+
+        if (stochastic.ControlledRunActionChoice is
+            { } runActionContinuation)
+        {
+            var partialState = current with
+            {
+                Stochastic = stochastic with
+                {
+                    ControlledRunActionChoice = null
+                }
+            };
+            var rebased = runActionContinuation with
+            {
+                PartialState = partialState
+            };
+            rebased.Validate();
+            stochastic = stochastic with
+            {
+                ControlledRunActionChoice = rebased
+            };
+            current = current with { Stochastic = stochastic };
+            stochastic.ValidateControlledRunActionChoice(current);
+        }
+
+        return current;
+    }
+
     internal RunStochasticStateV111 AppendReferenceNatureMapGenerationAudit(
         ReferenceNatureMapGenerationAuditV111 audit)
     {

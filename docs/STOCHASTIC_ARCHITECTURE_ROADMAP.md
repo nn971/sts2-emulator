@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 controlled run-continuation checkpoint publication increment (2026-10-22):**
+`RunStochasticStateV111.RebasePendingContinuationCheckpoints` now republishes
+event-reward and run-action partial checkpoints after step mechanics and Native
+provider reconciliation. It validates each rebased continuation against the
+complete run owner, and `PrototypeGameEngine.FinalizeStep` delegates this
+transition to the stochastic owner. Snapshot fields remain unchanged. Static
+source review and `git diff --check` only; no tests or builds were run.
+
 **S3 run-world encounter and completed-room history ownership increment (2026-10-22):**
 `RunWorldMechanicsStateV111` now appends encounter IDs and completed-room
 records through owner methods. Ordinary combat entry, controlled-playable

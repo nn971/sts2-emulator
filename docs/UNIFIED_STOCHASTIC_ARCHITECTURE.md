@@ -95,6 +95,8 @@ The present run and combat types have overlapping representation/lifecycle respo
 
 `RunStochasticStateV111` validates and owns completed controlled event-choice and run-action trace appends. Event-reward completion replaces the latest event-choice trace through the same owner, and run-action completion publishes its trace while clearing the active continuation in one transition.
 
+`RunStochasticStateV111.RebasePendingContinuationCheckpoints` now owns publication of active event-reward and run-action partial checkpoints after a step has committed mechanics and reconciled Native provider state. It builds each checkpoint with that continuation removed, updates the saved frame, and validates it against the complete run owner. `PrototypeGameEngine.FinalizeStep` delegates both rebases through this transition; the flattened snapshot members remain unchanged.
+
 `ScriptedRunStochasticStateV111` validates and appends completed action records while clearing the active action. The scripted run envelope publishes that stochastic update with the resulting run mechanics checkpoint.
 
 `ControlledTurnIntentStochasticStateV111` validates a selected ticket against its saved pending request and ordinal, then appends it and clears the request as one transition. Both live resolution and transcript-prefix validation use this operation.
