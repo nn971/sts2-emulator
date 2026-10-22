@@ -349,7 +349,7 @@ public sealed record SimulationProviderReplayCaptureV111(
             ReferenceNatureRunActionSessionV111 session,
             ControlledRunActionTraceV111 trace)
     {
-        var initialization = session.Run
+        var initialization = session.Run.Stochastic
             .ReferenceNatureRunInitializationTranscript;
         var configuration = session.Origin.Configuration;
         if (session.Action.Kind != "start_run" || configuration is null ||
@@ -443,9 +443,9 @@ public sealed record SimulationProviderReplayCaptureV111(
             session.Origin.World is not { } originWorld)
             return null;
 
-        var originMapHistory = session.Origin
+        var originMapHistory = session.Origin.Stochastic
                 .ReferenceNatureMapGenerationHistory ?? [];
-        var resultMapHistory = session.Run
+        var resultMapHistory = session.Run.Stochastic
                 .ReferenceNatureMapGenerationHistory ?? [];
         if (resultMapHistory.Length != originMapHistory.Length + 1)
             return null;
@@ -464,9 +464,9 @@ public sealed record SimulationProviderReplayCaptureV111(
                 session.InitialNatureState))
             return null;
 
-        var originAncientHistory = session.Origin
+        var originAncientHistory = session.Origin.Stochastic
                 .ReferenceNatureAncientOfferHistory ?? [];
-        var resultAncientHistory = session.Run
+        var resultAncientHistory = session.Run.Stochastic
                 .ReferenceNatureAncientOfferHistory ?? [];
         if (resultAncientHistory.Length < originAncientHistory.Length ||
             resultAncientHistory.Length > originAncientHistory.Length + 1)

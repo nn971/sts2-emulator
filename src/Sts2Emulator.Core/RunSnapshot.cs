@@ -71,12 +71,13 @@ public static class RunSnapshot
             throw new NotSupportedException("Snapshot state requires a supported, explicit engine/build identity.");
         RunConfiguration.ValidateState(state);
         PrototypeStateInvariants.Validate(state);
-        state.ReferenceNatureRunInitializationTranscript?.Validate(
+        state.Stochastic.ReferenceNatureRunInitializationTranscript?.Validate(
             replayMapGeneration: true);
-        if (!state.ReferenceNatureRunInitializationPending &&
+        if (!state.Stochastic.ReferenceNatureRunInitializationPending &&
             state.Configuration?.UsesExperimentalSilentThreeActRoute == true &&
             state.World?.Act == 1 &&
-            state.ReferenceNatureRunInitializationTranscript is { } transcript)
+            state.Stochastic.ReferenceNatureRunInitializationTranscript is
+                { } transcript)
             ValidateExperimentalLaterActPreparation(state, transcript);
     }
 

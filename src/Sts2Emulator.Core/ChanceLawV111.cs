@@ -7550,16 +7550,17 @@ public sealed record ReferenceNatureRunActionSessionV111(
         ReferenceNatureAncientOfferSessionSnapshotV111?
             ancientOfferAudit)
     {
-        var mapHistory = continued.ReferenceNatureMapGenerationHistory
+        var mapHistory = continued.Stochastic.ReferenceNatureMapGenerationHistory
             ?? Array.Empty<ReferenceNatureMapGenerationAuditV111>();
-        var ancientOfferHistory = continued.ReferenceNatureAncientOfferHistory
+        var ancientOfferHistory = continued.Stochastic
+            .ReferenceNatureAncientOfferHistory
             ?? Array.Empty<ReferenceNatureAncientOfferSessionSnapshotV111>();
         continued = continued with
         {
             ReferenceNatureMapGenerationHistory = mapHistory.Append(
                 mapGeneration.ToAudit()).ToArray(),
             ReferenceNatureAncientOfferHistory = ancientOfferAudit is null
-                ? continued.ReferenceNatureAncientOfferHistory
+                ? continued.Stochastic.ReferenceNatureAncientOfferHistory
                 : ancientOfferHistory.Append(ancientOfferAudit.Fork()).ToArray()
         };
         return ReferenceNatureRunCursorV111.Commit(
@@ -7868,7 +7869,8 @@ public sealed record ReferenceNatureRunActionSessionV111(
                     ?? NatureState;
                 if (!configuredOvergrowthRunStart || Complete
                     || Run.Stochastic.ControlledRunActionChoice is not null
-                    || Run.ReferenceNatureRunInitializationTranscript is not null
+                    || Run.Stochastic
+                        .ReferenceNatureRunInitializationTranscript is not null
                     || mapGeneration.Seed != Origin.RunSeed
                     || mapGeneration.Act != 1
                     || mapGeneration.Ascension != Origin.Ascension
@@ -7929,9 +7931,10 @@ public sealed record ReferenceNatureRunActionSessionV111(
                 expectedLaterActInitialState = completedMap.NatureState;
             }
             if (!configuredExperimentalRunStart ||
-                Run.ReferenceNatureRunInitializationPending != true ||
+                Run.Stochastic.ReferenceNatureRunInitializationPending != true ||
                 Run.Stochastic.ControlledRunActionChoice is not null ||
-                Run.ReferenceNatureRunInitializationTranscript is not null ||
+                Run.Stochastic.ReferenceNatureRunInitializationTranscript
+                    is not null ||
                 selectedBossId is null ||
                 bossSelection.OutcomeId != "encounter:" + selectedBossId ||
                 laterActPreparation.Ascension != Origin.Ascension ||
@@ -7950,7 +7953,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
                     "Pending experimental later-act preparation differs from the run-start transcript.");
         }
 
-        if (Run.ReferenceNatureRunInitializationPending !=
+        if (Run.Stochastic.ReferenceNatureRunInitializationPending !=
             (configuredExperimentalRunStart &&
              (MapGeneration is not null || LaterActPreparation is not null)))
             throw new InvalidDataException(
@@ -8020,7 +8023,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
             var expectedWithoutMapAudit =
                 ReferenceNatureRunCursorV111.Commit(
                     legacyReplay.Value.Run, NatureState);
-            var mapHistory = legacyReplay.Value.Run
+            var mapHistory = legacyReplay.Value.Run.Stochastic
                 .ReferenceNatureMapGenerationHistory
                 ?? Array.Empty<ReferenceNatureMapGenerationAuditV111>();
             var expectedWithMapAudit = legacyReplay.Value.Run with
@@ -8146,7 +8149,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
             if (configuredNativeRunStart)
             {
                 var initialization =
-                    Run.ReferenceNatureRunInitializationTranscript;
+                    Run.Stochastic.ReferenceNatureRunInitializationTranscript;
                 var expectedBossSite = Origin.Configuration!.Acts[0] ==
                     ActIdentity.Overgrowth
                     ? "run.encounter.overgrowth_boss.index_draw"
@@ -8320,8 +8323,9 @@ public sealed record ReferenceNatureRunActionSessionV111(
         if (replay.Complete &&
             IsConfiguredExperimentalActTransitionAction(
                 origin, snapshot.Action) &&
-            savedRun.ReferenceNatureMapGenerationHistory is null &&
-            replay.Run.ReferenceNatureMapGenerationHistory is { Length: > 0 }
+            savedRun.Stochastic.ReferenceNatureMapGenerationHistory is null &&
+            replay.Run.Stochastic.ReferenceNatureMapGenerationHistory
+                is { Length: > 0 }
                 transitionMapHistory)
             savedRun = savedRun with
             {
@@ -8355,7 +8359,8 @@ public sealed record ReferenceNatureRunActionSessionV111(
             return null;
         var expectedWithoutMapAudit = ReferenceNatureRunCursorV111.Commit(
             replay.Value.Run, natureState);
-        var mapHistory = replay.Value.Run.ReferenceNatureMapGenerationHistory
+        var mapHistory = replay.Value.Run.Stochastic
+            .ReferenceNatureMapGenerationHistory
             ?? Array.Empty<ReferenceNatureMapGenerationAuditV111>();
         var expectedWithMapAudit = replay.Value.Run with
         {

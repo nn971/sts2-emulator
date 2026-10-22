@@ -167,7 +167,7 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
     public IReadOnlyList<GameAction> GetLegalActions(RunState state)
     {
         RunConfiguration.ValidateState(state);
-        if (state.ReferenceNatureRunInitializationPending)
+        if (state.Stochastic.ReferenceNatureRunInitializationPending)
             throw new InvalidOperationException(
                 "A ReferenceNature run-start session must finish before run actions are available.");
         if (state.Stochastic.ControlledEventRewardChoice is
@@ -236,7 +236,7 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                 "An explicit transition map requires the configured experimental act-transition action.");
         ArgumentNullException.ThrowIfNull(map);
         RunConfiguration.ValidateState(state);
-        if (state.ReferenceNatureRunInitializationPending)
+        if (state.Stochastic.ReferenceNatureRunInitializationPending)
             throw new InvalidOperationException(
                 "A ReferenceNature run-start session must finish before run actions are available.");
         using var providerScope = StochasticProviderScopeV111.Enter(
@@ -283,7 +283,7 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         RunState state, GameAction action, MapState? actTransitionMap)
     {
         RunConfiguration.ValidateState(state);
-        if (state.ReferenceNatureRunInitializationPending)
+        if (state.Stochastic.ReferenceNatureRunInitializationPending)
             throw new InvalidOperationException(
                 "A ReferenceNature run-start session must finish before run actions are available.");
         using var providerScope = StochasticProviderScopeV111.Enter(

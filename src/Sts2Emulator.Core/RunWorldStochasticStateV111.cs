@@ -89,7 +89,7 @@ public sealed record RunWorldStochasticStateV111
         {
             var darvRevealed = configuration.Profile.RevealedEpochs.Contains(
                 NativeDarvEventV111.EpochId, StringComparer.Ordinal);
-            if (run.ReferenceNatureRunInitializationPending &&
+            if (run.Stochastic.ReferenceNatureRunInitializationPending &&
                 preparedLaterActEncounterBags is null)
             {
                 if (owner.Act != 1 || laterActEncounterBag is not null)
