@@ -79,12 +79,13 @@ public sealed partial class PrototypeGameEngine
         }
 
         var world = RequireWorld(state);
-        var nativeRunRng = state.Stochastic.NativeRunRngMutable?.Fork();
+        var nativeRunRng = state.Stochastic.NativeRunRng;
+        var prototypeRng = state.Stochastic.PrototypeRng;
         string? relicId;
         if (UsesNativeRegionalSystems(world))
         {
             var draw = PrototypeNativeRelicGrabBag.Draw(
-                world, state.Player, state.Stochastic.PrototypeRngMutable, merchant: false,
+                world, state.Player, prototypeRng, merchant: false,
                 nativeRunRng: nativeRunRng);
             world = draw.World;
             relicId = draw.Id;
@@ -98,7 +99,7 @@ public sealed partial class PrototypeGameEngine
             relicId = available.Length == 0
                 ? null
                 : available[LegacyRandomChoiceV111.ChooseIndexRange(
-                    state.Stochastic.PrototypeRngMutable,
+                    prototypeRng,
                     "treasure.relic_model.index_draw",
                     "reward",
                     $"act:{world.Act}:floor:{world.Floor}:pool:"
@@ -106,13 +107,17 @@ public sealed partial class PrototypeGameEngine
                     available.Length).SelectedIndex];
         }
 
+        var stochastic = RunStochasticStateV111.WithPrototypeRng(
+            state.Stochastic, prototypeRng);
+        if (nativeRunRng is not null)
+            stochastic = RunStochasticStateV111.WithNativeRunRng(
+                stochastic, nativeRunRng);
         if (relicId is null)
         {
             // Constrained catalog exhaustion. Native uses Circlet.
             return CompleteRoomToMap(state with
             {
-                Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                    state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRngMutable),
+                Stochastic = stochastic,
                 World = world
             });
         }
@@ -127,8 +132,7 @@ public sealed partial class PrototypeGameEngine
             EndsAct: false);
         return state with
         {
-            Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRngMutable),
+            Stochastic = stochastic,
             World = world with { Reward = reward },
             Phase = RunPhase.Reward
         };

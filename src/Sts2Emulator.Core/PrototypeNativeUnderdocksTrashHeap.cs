@@ -191,11 +191,15 @@ public sealed partial class PrototypeGameEngine
                 {
                     Gold = GoldAfterGain(state.Player, 100)
                 };
+                var prototypeRng = state.Stochastic.PrototypeRng;
                 player = AppendCard(
-                    player, world.NextCardInstanceId, chosen, state.Stochastic.PrototypeRngMutable);
+                    player, world.NextCardInstanceId, chosen, prototypeRng);
+                var stochastic = RunStochasticStateV111.WithPrototypeRng(
+                    state.Stochastic, prototypeRng);
                 var result = state with
                 {
                     Player = player,
+                    Stochastic = stochastic,
                     World = world with
                     {
                         NextCardInstanceId = world.NextCardInstanceId + 1
@@ -236,12 +240,16 @@ public sealed partial class PrototypeGameEngine
                         new RelicInstance(
                             relicId, PrototypeJson.EmptyObject())).ToArray()
                 };
+                var prototypeRng = state.Stochastic.PrototypeRng;
                 player = ApplyRelicRunEvent(
                     player, PrototypeRunEventKind.RelicAcquired,
-                    acquiredRelicId: relicId, rng: state.Stochastic.PrototypeRngMutable);
+                    acquiredRelicId: relicId, rng: prototypeRng);
+                var stochastic = RunStochasticStateV111.WithPrototypeRng(
+                    state.Stochastic, prototypeRng);
                 var result = state with
                 {
                     Player = player,
+                    Stochastic = stochastic,
                     World = world with { Event = evt }
                 };
                 return PreserveNativeEventCompletionPage(result, choice);

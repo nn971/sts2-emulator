@@ -385,13 +385,17 @@ public sealed partial class PrototypeGameEngine
             Gold = state.Player.Gold - PrototypeNativeFakeMerchant.RelicCost,
             Relics = state.Player.Relics.Append(purchased).ToArray()
         };
+        var prototypeRng = state.Stochastic.PrototypeRng;
         player = ApplyRelicRunEvent(player,
             PrototypeRunEventKind.RelicAcquired,
             acquiredRelicId: relicId,
-            rng: state.Stochastic.PrototypeRngMutable);
+            rng: prototypeRng);
+        var stochastic = RunStochasticStateV111.WithPrototypeRng(
+            state.Stochastic, prototypeRng);
         return state with
         {
             Player = player,
+            Stochastic = stochastic,
             World = world with
             {
                 Event = evt with

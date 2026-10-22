@@ -78,7 +78,8 @@ public sealed partial class PrototypeGameEngine
         // after the RestSite heal. No card reward is given on train or
         // smith actions. Each relic adds its own reward group.
         var native = UsesNativeActOneSystems(world);
-        var nativeRunRng = state.Stochastic.NativeRunRngMutable?.Fork();
+        var nativeRunRng = state.Stochastic.NativeRunRng;
+        var prototypeRng = state.Stochastic.PrototypeRng;
         var groups = new List<string[]>();
         var upgrades = new List<bool[]>();
         foreach (var count in rewardCounts)
@@ -87,7 +88,7 @@ public sealed partial class PrototypeGameEngine
             {
                 var next = PrototypeNativeCardRarityOdds.GenerateEncounterCards(
                     count, state.Ascension, PrototypeRoomType.Combat,
-                    world.CardRarityOffsetBasisPoints, state.Stochastic.PrototypeRngMutable,
+                    world.CardRarityOffsetBasisPoints, prototypeRng,
                     act: world.Act, nativeRunRng: nativeRunRng);
                 groups.Add(next.Cards);
                 upgrades.Add(next.UpgradeFlags);
@@ -95,7 +96,7 @@ public sealed partial class PrototypeGameEngine
             }
             else
             {
-                groups.Add(PickRewardCards(world.Act, count, state.Stochastic.PrototypeRngMutable));
+                groups.Add(PickRewardCards(world.Act, count, prototypeRng));
             }
         }
         var reward = new RewardState(
@@ -121,10 +122,14 @@ public sealed partial class PrototypeGameEngine
                     world.Act,
                     native ? PrototypeRoomType.Combat : null)).ToArray());
 
+        var stochastic = RunStochasticStateV111.WithPrototypeRng(
+            state.Stochastic, prototypeRng);
+        if (nativeRunRng is not null)
+            stochastic = RunStochasticStateV111.WithNativeRunRng(
+                stochastic, nativeRunRng);
         return state with
         {
-            Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRngMutable),
+            Stochastic = stochastic,
             World = world with { Reward = reward },
             Phase = RunPhase.Reward
         };
