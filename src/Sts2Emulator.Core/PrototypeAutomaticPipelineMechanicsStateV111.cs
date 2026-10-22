@@ -175,7 +175,8 @@ public sealed record PrototypeAutomaticPipelineMechanicsStateV111(
         if (OpeningStage is null &&
             (!HasValidIndex ||
              PendingPostDispatchEventKind is { } eventKind &&
-                !Enum.IsDefined(eventKind)))
+                (!Enum.IsDefined(eventKind) ||
+                 !IsImmediatelyAfterDispatch(eventKind))))
             throw new InvalidOperationException(
                 "Invalid suspended automatic-combat pipeline.");
     }

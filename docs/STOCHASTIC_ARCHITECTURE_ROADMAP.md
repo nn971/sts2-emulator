@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 post-dispatch cursor validation increment (2026-10-22):** The automatic
+pipeline mechanics owner now requires a saved post-dispatch event marker to
+match the dispatch immediately before its resume cursor. Unknown event kinds
+and mismatched cursor/event pairs fail validation; valid continuation shape
+and snapshot fields remain unchanged. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S4 configured Native Colorless pool increment (2026-10-22):** Run profiles
 and combat snapshots carry the fully-unlocked bit and optional exact
 Colorless epoch unlock IDs, with an explicit list overriding the full-profile
