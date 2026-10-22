@@ -29,7 +29,8 @@ public sealed record PrototypeAiFairObservationEnvelopeV111(
 
     private static readonly string[] SupportedViewKinds =
     [
-        "run_state", "controlled_combat", "semantic_combat"
+        "run_state", "controlled_combat", "semantic_combat",
+        "semantic_reference"
     ];
 
     public PrototypeAiFairActionV111[] Actions

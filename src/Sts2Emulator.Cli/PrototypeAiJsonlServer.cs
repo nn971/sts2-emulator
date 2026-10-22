@@ -9185,7 +9185,7 @@ internal static class PrototypeAiJsonlServer
                             ? ReferenceNatureSessionV111.Begin(combat, natureSeed)
                             : ReferenceNatureSessionV111.Begin(combat);
                         var handle = StoreReferenceNature(session);
-                        Write(new { requestId, result =
+                        Write(new { requestId, ok = true, result =
                             ReferenceNatureResult(session, handle) });
                         break;
                     }
@@ -9195,7 +9195,7 @@ internal static class PrototypeAiJsonlServer
                         var handle = RequiredString(request,
                             "reference_nature_handle");
                         var session = RequireReferenceNature(request);
-                        Write(new { requestId, result =
+                        Write(new { requestId, ok = true, result =
                             ReferenceNatureResult(session, handle) });
                         break;
                     }
@@ -9235,7 +9235,7 @@ internal static class PrototypeAiJsonlServer
                         var next = session with { Combat = combat };
                         next.Validate();
                         var handle = StoreReferenceNature(next);
-                        Write(new { requestId, result =
+                        Write(new { requestId, ok = true, result =
                             ReferenceNatureResult(next, handle, parentHandle) });
                         break;
                     }
@@ -9250,7 +9250,7 @@ internal static class PrototypeAiJsonlServer
                                 "Stale ReferenceNature session fingerprint.");
                         var next = session.ResolveNext();
                         var handle = StoreReferenceNature(next);
-                        Write(new { requestId, result =
+                        Write(new { requestId, ok = true, result =
                             ReferenceNatureResult(next, handle, parentHandle) });
                         break;
                     }
@@ -9261,7 +9261,7 @@ internal static class PrototypeAiJsonlServer
                             "reference_nature_handle");
                         var next = RequireReferenceNature(request).Fork();
                         var handle = StoreReferenceNature(next);
-                        Write(new { requestId, result =
+                        Write(new { requestId, ok = true, result =
                             ReferenceNatureResult(next, handle, parentHandle) });
                         break;
                     }
@@ -9280,7 +9280,7 @@ internal static class PrototypeAiJsonlServer
                         var session = ReferenceNatureSessionV111.Restore(
                             RequiredString(request, "snapshot"));
                         var handle = StoreReferenceNature(session);
-                        Write(new { requestId, result =
+                        Write(new { requestId, ok = true, result =
                             ReferenceNatureResult(session, handle) });
                         break;
                     }
@@ -9302,7 +9302,7 @@ internal static class PrototypeAiJsonlServer
                             if (referenceNatureStates.Remove(element.GetString()!))
                                 released++;
                         }
-                        Write(new { requestId, released });
+                        Write(new { requestId, ok = true, released });
                         break;
                     }
 
@@ -10596,6 +10596,18 @@ internal static class PrototypeAiJsonlServer
                                         "Semantic fair observation requires a player boundary.");
                                 run = semantic.Run;
                                 terminal = semantic.CombatTerminal;
+                                break;
+                            case "semantic_reference":
+                                if (!referenceNatureStates.TryGetValue(handle,
+                                        out var referenceNature))
+                                    throw new InvalidOperationException(
+                                        $"Unknown ReferenceNature handle '{handle}'.");
+                                if (!referenceNature.Combat.AtPlayerBoundary &&
+                                    !referenceNature.Combat.AtPlayerChoiceBoundary)
+                                    throw new InvalidOperationException(
+                                        "ReferenceNature fair observation requires a player boundary.");
+                                run = referenceNature.Combat.Run;
+                                terminal = referenceNature.Combat.CombatTerminal;
                                 break;
                             default:
                                 throw new NotSupportedException(

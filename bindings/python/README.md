@@ -664,12 +664,21 @@ conditioning fingerprints, probability metadata, and outcome weights. Use
 `State.observe()` separately for the fair player view.
 
 The negotiated `Session.observe_fair(view_kind, handle)` returns one common
-fair observation frame for `run_state`, `controlled_combat`, and
-`semantic_combat` handles. It verifies the envelope schema, policy, handle,
-observation schema and hash, and unique legal action IDs. The existing
-`State.observe()`, `ControlledCombat.observe()`, and `SemanticCombat.observe()`
-methods use this frame when the server advertises it, and fall back to their
-existing operations with older compatible servers.
+fair observation frame for `run_state`, `controlled_combat`, `semantic_combat`,
+and `semantic_reference` handles. It verifies the envelope schema, policy,
+handle, observation schema and hash, and unique legal action IDs. The existing
+`State.observe()`, `ControlledCombat.observe()`, `SemanticCombat.observe()`, and
+`SemanticReferenceCombat.observe()` methods use this frame when the server
+advertises it, and fall back to their existing operations with older compatible
+servers. Clients should accept additional advertised view kinds while rejecting
+unknown envelope schemas.
+
+Replay semantic combat with the ReferenceNature sampler using
+`Session.begin_semantic_reference_combat(combat, nature_seed=None)`. The returned
+`SemanticReferenceCombat` exposes the shared fair observation and action menu,
+legal player `step()`, automatic `resolve_next()` for pending Nature events,
+`status()`, `fork()`, `save_snapshot()`, and `release()`. Restore a saved session
+with `Session.load_semantic_reference_snapshot()`.
 
 `State.query_chance_law()` checks the advertised query site and validates the
 returned Chance Law schema, negotiated probability status, unique positive

@@ -3191,6 +3191,98 @@ class SemanticEnumeration:
         return cls(payload["eventKind"], payload["eventId"], branches)
 
 
+@dataclass(frozen=True)
+class SemanticReferenceCombat:
+    """Semantic combat replayed with the isolated ReferenceNature sampler."""
+    session: "Session"
+    handle: str
+    fingerprint: str
+    boundary: str
+    pending: dict | None
+    terminal: bool
+    outcome: str | None
+    nature_sample_count: int
+
+    @classmethod
+    def from_wire(cls, session, payload):
+        data = payload.get("result", payload)
+        if data.get("schemaId") != session.capabilities.get(
+                "referenceNatureSessionSchemaId"):
+            raise EmulatorError(
+                "Unsupported semantic ReferenceNature session schema")
+        return cls(
+            session, data["referenceNatureHandle"], data["fingerprint"],
+            data["boundary"], data.get("pending"), data["terminal"],
+            data.get("outcome"), data["natureSampleCount"])
+
+    def status(self):
+        result = self.session.call(
+            "semantic_reference_status",
+            reference_nature_handle=self.handle)
+        return SemanticReferenceCombat.from_wire(self.session, result)
+
+    def observe(self):
+        """Return the fair player view, excluding the sampler cursor."""
+        if self.session.supports_fair_observation_view(
+                "semantic_reference"):
+            return self.session.observe_fair(
+                "semantic_reference", self.handle)["observation"]
+        result = self.session.call(
+            "semantic_reference_observe",
+            reference_nature_handle=self.handle,
+            policy_id="prototype-fair-v0")
+        return json.loads(result["payloadJson"])
+
+    def actions(self):
+        if self.session.supports_fair_observation_view(
+                "semantic_reference"):
+            return self.session.observe_fair(
+                "semantic_reference", self.handle)["actions"]
+        result = self.session.call(
+            "semantic_reference_observe",
+            reference_nature_handle=self.handle,
+            policy_id="prototype-fair-v0")
+        return result["actions"]
+
+    def step(self, action_id: str):
+        if self.boundary not in ("player", "player_choice"):
+            raise EmulatorError("Expected a semantic ReferenceNature player decision")
+        return SemanticReferenceCombat.from_wire(
+            self.session, self.session.call(
+                "semantic_reference_step",
+                reference_nature_handle=self.handle,
+                fingerprint=self.fingerprint, action_id=action_id))
+
+    def resolve_next(self):
+        if self.boundary != "nature":
+            raise EmulatorError(
+                "Expected a pending semantic ReferenceNature chance")
+        return SemanticReferenceCombat.from_wire(
+            self.session, self.session.call(
+                "semantic_reference_resolve_next",
+                reference_nature_handle=self.handle,
+                fingerprint=self.fingerprint))
+
+    def fork(self):
+        return SemanticReferenceCombat.from_wire(
+            self.session, self.session.call(
+                "semantic_reference_fork",
+                reference_nature_handle=self.handle))
+
+    def save_snapshot(self):
+        result = self.session.call(
+            "semantic_reference_save",
+            reference_nature_handle=self.handle)
+        if result.get("schemaId") != self.session.capabilities.get(
+                "referenceNatureSessionSchemaId"):
+            raise EmulatorError(
+                "Semantic ReferenceNature snapshot schema differs from negotiation")
+        return result["snapshot"]
+
+    def release(self):
+        return self.session.release_semantic_reference_many([self])
+
+
 class Session:
     def __init__(self, command, *, cwd=None):
         if isinstance(command, str):
@@ -3237,7 +3329,7 @@ class Session:
             raise EmulatorError("Unsupported fair-observation envelope schema")
         operations = self.capabilities.get(fields[0])
         view_kinds = self.capabilities.get(fields[1])
-        expected_view_kinds = [
+        required_view_kinds = [
             "run_state", "controlled_combat", "semantic_combat"]
         if (not isinstance(operations, list)
                 or any(not isinstance(item, str) or not item
@@ -3245,11 +3337,15 @@ class Session:
                 or len(operations) != len(set(operations))
                 or "fair_observe" not in operations
                 or not isinstance(view_kinds, list)
-                or view_kinds != expected_view_kinds):
+                or any(not isinstance(item, str) or not item
+                       for item in view_kinds)
+                or len(view_kinds) != len(set(view_kinds))
+                or any(item not in view_kinds
+                       for item in required_view_kinds)):
             raise EmulatorError("Invalid fair-observation capabilities")
-        if not isinstance(self.capabilities.get("aiSchemaId"), str):
+        if self.capabilities.get("aiSchemaId") != "prototype-ai-v0":
             raise EmulatorError(
-                "Fair-observation capability is missing the player schema")
+                "Fair-observation capability has an unsupported player schema")
         return True
 
     def observe_fair(self, view_kind: str, handle: str) -> dict:
@@ -3257,8 +3353,7 @@ class Session:
         if not self._fair_observation_supported:
             raise EmulatorError(
                 "Emulator does not expose the shared fair-observation frame")
-        if not isinstance(view_kind, str) or view_kind not in \
-                self.capabilities["fairObservationViewKinds"]:
+        if not self.supports_fair_observation_view(view_kind):
             raise EmulatorError(
                 f"Emulator does not advertise fair view kind {view_kind!r}")
         if not isinstance(handle, str) or not handle:
@@ -3310,6 +3405,13 @@ class Session:
             raise EmulatorError(
                 "Fair-observation payload, hash, or action menu is invalid")
         return {**frame, "observation": observation}
+
+    def supports_fair_observation_view(self, view_kind: str) -> bool:
+        """Check whether this server negotiated one advertised fair view kind."""
+        return (self._fair_observation_supported
+                and isinstance(view_kind, str)
+                and view_kind in self.capabilities.get(
+                    "fairObservationViewKinds", []))
 
     def _validate_stochastic_capabilities(self):
         """Reject internally inconsistent stochastic hello advertisements."""
@@ -3756,6 +3858,26 @@ class Session:
         return SemanticCombat.from_wire(self, self.call(
             "semantic_begin", controlled_handle=completed_opening.handle))
 
+    def begin_semantic_reference_combat(
+            self, combat: SemanticCombat, nature_seed: int | None = None):
+        """Replay semantic combat through the isolated ReferenceNature sampler."""
+        if self.capabilities.get("referenceNatureSessionSchemaId") != (
+                "sts2-v111-reference-nature-session-v1"):
+            raise EmulatorError(
+                "Emulator does not expose semantic ReferenceNature sessions")
+        if not isinstance(combat, SemanticCombat) or combat.session is not self:
+            raise ValueError("Semantic combat handle belongs to another session")
+        if nature_seed is not None and (
+                isinstance(nature_seed, bool) or not isinstance(nature_seed, int)
+                or nature_seed < 0 or nature_seed > 0xffffffffffffffff):
+            raise ValueError(
+                "nature_seed must be an unsigned 64-bit integer")
+        payload = {"semantic_handle": combat.handle}
+        if nature_seed is not None:
+            payload["nature_seed"] = nature_seed
+        return SemanticReferenceCombat.from_wire(
+            self, self.call("semantic_reference_begin", **payload))
+
     def begin_seeded_semantic_combat(
             self, seed: str, *, act: int, encounter_id: str,
             native_entry: str, total_floor: int, ascension: int = 0,
@@ -3876,6 +3998,24 @@ class Session:
             raise ValueError("Semantic handle belongs to another session")
         return self.call("semantic_release_many",
                          semantic_handles=[s.handle for s in states])["released"]
+
+    def load_semantic_reference_snapshot(self, snapshot: str):
+        if self.capabilities.get("referenceNatureSessionSchemaId") != (
+                "sts2-v111-reference-nature-session-v1"):
+            raise EmulatorError(
+                "Emulator does not expose semantic ReferenceNature sessions")
+        return SemanticReferenceCombat.from_wire(
+            self, self.call("semantic_reference_load", snapshot=snapshot))
+
+    def release_semantic_reference_many(self, sessions):
+        sessions = list(sessions)
+        if any(item.session is not self for item in sessions):
+            raise ValueError(
+                "Semantic ReferenceNature handle belongs to another session")
+        return self.call(
+            "semantic_reference_release_many",
+            reference_nature_handles=[item.handle for item in sessions])[
+                "released"]
 
     def load_reference_nature_run_action_snapshot(self, snapshot: str):
         if self.capabilities.get(

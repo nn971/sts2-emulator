@@ -127,6 +127,13 @@ continue the cursor persisted by an earlier committed ReferenceNature session.
 `semantic_reference_step` advances a legal player action through the same semantic combat engine.
 Status, observation, fork, save/load, and release operations use the separate
 `reference_nature_handle`. Its observation operation uses the existing fair policy.
+The additive `fair_observe` operation accepts this handle as `semantic_reference`,
+so its public observation and legal action menu use the same versioned envelope as
+ordinary, controlled-combat, and semantic-combat views. Python clients can begin
+this mode with `Session.begin_semantic_reference_combat()` and use
+`SemanticReferenceCombat.observe()`, `actions()`, `step()`, `resolve_next()`,
+`fork()`, `save_snapshot()`, and `release()`; loading uses
+`Session.load_semantic_reference_snapshot()`.
 
 ## Native-shaped Overgrowth training reset (live-run JSONL)
 

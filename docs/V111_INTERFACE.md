@@ -93,10 +93,12 @@ not authenticity. This version rejects unknown properties. Use `observe` or
 the additive `fair_observe` frame for player-visible information.
 
 `fair_observe` negotiates `sts2-v111-fair-observation-envelope-v1` and accepts
-`run_state`, `controlled_combat`, or `semantic_combat` handles. Its payload
-uses the unchanged `prototype-ai-v0` observation schema; the envelope binds
-the view kind, handle, policy, observation hash, legal action menu, and terminal
-flag. All three views are produced by the same `PrototypeAiEnvironment`.
+`run_state`, `controlled_combat`, `semantic_combat`, or `semantic_reference`
+handles. Its payload uses the unchanged `prototype-ai-v0` observation schema;
+the envelope binds the view kind, handle, policy, observation hash, legal
+action menu, and terminal flag. All four views are produced by the same
+`PrototypeAiEnvironment`. Clients should accept additional advertised view
+kinds while continuing to reject unknown envelope schema IDs.
 
 ## Replay
 
