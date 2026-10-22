@@ -32,7 +32,8 @@ public sealed partial class PrototypeGameEngine
             (combat.AutomaticPipelineContinuation is not null && !automatic) ||
             (automatic && (!fromHandDraw ||
                            combat.AutomaticPipelineContinuation!
-                               .ControlledSemanticDrawRemaining != count)))
+                               .Stochastic.ControlledSemanticDrawRemaining !=
+                               count)))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.draw " +
                 "operation=nested_choice_or_automatic_pipeline");
@@ -48,7 +49,7 @@ public sealed partial class PrototypeGameEngine
             run, result, fromHandDraw, eventDepth: 0,
             automaticHandDrawRequested: automatic
                 ? combat.AutomaticPipelineContinuation!
-                    .ControlledSemanticDrawRequested
+                    .Stochastic.ControlledSemanticDrawRequested
                 : null,
             recycleSite: "combat.draw",
             recycleOperation: "unsupported_nested_stage");
@@ -89,7 +90,8 @@ public sealed partial class PrototypeGameEngine
             (automatic && (
                 !cost.FromHandDraw ||
                 combat.AutomaticPipelineContinuation!
-                    .ControlledSemanticDrawRemaining != cost.RemainingCount)) ||
+                    .Stochastic.ControlledSemanticDrawRemaining !=
+                    cost.RemainingCount)) ||
             combat.PendingKnowledgeDemonChoice is not null ||
             cost.RemainingCount < 0 || cost.EventDepth != 0 ||
             !ValidateControlledDrawCost(
@@ -99,7 +101,7 @@ public sealed partial class PrototypeGameEngine
 
         int? automaticRequested = automatic
             ? combat.AutomaticPipelineContinuation!
-                .ControlledSemanticDrawRequested ??
+                .Stochastic.ControlledSemanticDrawRequested ??
                 throw new InvalidDataException(
                     "Automatic semantic draw lost its requested count.")
             : null;
@@ -638,7 +640,7 @@ public sealed partial class PrototypeGameEngine
             return remaining;
         if (IsSemanticAutomaticHandDraw(combat))
             return combat.AutomaticPipelineContinuation!
-                .ControlledSemanticDrawRemaining!.Value;
+                .Stochastic.ControlledSemanticDrawRemaining!.Value;
         if (combat.Stochastic.SemanticDeck?.Pending is not null)
             return Math.Max(0, previousRemaining -
                 (combat.CounterState.CardsDrawnThisCombat - drawnBefore));
