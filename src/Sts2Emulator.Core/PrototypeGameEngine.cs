@@ -439,18 +439,18 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         var player = ConsumePotionSlot(
             state.Player,
             payload.Slot);
-        var nativeRunRng = state.NativeRunRng?.Fork();
+        var nativeRunRng = state.Stochastic.NativeRunRng?.Fork();
         player = ApplyPotionRunEffects(
             player,
             definition,
-            state.Rng,
+            state.Stochastic.PrototypeRng,
             nativeRunRng);
 
         state = state with
         {
             Player = player,
             Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                state.Stochastic, nativeRunRng ?? state.NativeRunRng)
+                state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRng)
         };
 
         // An event's full-belt potion offer is still pending when a
@@ -1098,9 +1098,9 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         // Ordinary starts use the historical correlated run-seed streams.
         // A distinct, hypothetical factorized prior may instead supply
         // all six independent stream states *before* the first RNG event.
-        var rng = state.Rng.Streams.Length == 0
+        var rng = state.Stochastic.PrototypeRng.Streams.Length == 0
             ? PrototypeRng.CreateBundle(state.RunSeed)
-            : state.Rng.Fork();
+            : state.Stochastic.PrototypeRng.Fork();
         var bossPool = PrototypeContent.OvergrowthBossEncounterPool;
         var actOneBossEncounterId = bossPool[
             ResolveLegacyRandomIndex(
@@ -1209,7 +1209,7 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             Shop = null,
             Event = null
         };
-        world = world with { Map = GenerateActMap(world.Act, state.Rng) };
+        world = world with { Map = GenerateActMap(world.Act, state.Stochastic.PrototypeRng) };
 
         return state with
         {

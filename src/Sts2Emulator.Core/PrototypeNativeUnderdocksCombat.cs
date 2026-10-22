@@ -67,7 +67,7 @@ public sealed partial class PrototypeGameEngine
             if (eligibleElites.Length == 0)
                 eligibleElites = availableElites;
             var index = LegacyRandomChoiceV111.ChooseIndexRange(
-                state.Rng,
+                state.Stochastic.PrototypeRng,
                 "combat.encounter.underdocks.elite.index_draw",
                 "combat",
                 "act:1:elite:pool:" + CanonicalJson.Sha256(eligibleElites),
@@ -138,7 +138,7 @@ public sealed partial class PrototypeGameEngine
 
         var kind = isWeak ? "weak" : "normal";
         var selected = LegacyRandomChoiceV111.ChooseIndexRange(
-            state.Rng,
+            state.Stochastic.PrototypeRng,
             "combat.encounter.underdocks." + kind + ".index_draw",
             "combat",
             $"act:1:{kind}:pool:{CanonicalJson.Sha256(eligible)}",

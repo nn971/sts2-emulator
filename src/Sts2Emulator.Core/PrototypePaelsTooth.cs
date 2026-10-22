@@ -26,7 +26,7 @@ public sealed partial class PrototypeGameEngine
                 continue;
 
             var selectedIndex = LegacyRandomChoiceV111.ChooseIndexRange(
-                state.Rng,
+                state.Stochastic.PrototypeRng,
                 PaelsToothCardReturnSiteId,
                 "reward",
                 $"player:0:relic:{relicIndex}:saved_cards:"
@@ -45,7 +45,7 @@ public sealed partial class PrototypeGameEngine
             };
             player = player with { Deck = player.Deck.Append(returned).ToArray() };
             player = ApplyRelicRunEvent(player, PrototypeRunEventKind.CardAdded,
-                addedCard: returned, rng: state.Rng);
+                addedCard: returned, rng: state.Stochastic.PrototypeRng);
         }
 
         return state with

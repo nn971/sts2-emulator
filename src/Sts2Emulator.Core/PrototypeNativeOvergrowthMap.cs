@@ -434,7 +434,7 @@ public static class PrototypeNativeOvergrowthRunFactory
         // The legacy prototype boot generates its own map first. Reset only
         // the map substream; the source-shaped replacement map consumes the
         // separate act_1_map context stream and leaves prototype RNG alone.
-        var rng = state.Rng.Fork();
+        var rng = state.Stochastic.PrototypeRng.Fork();
         var clean = PrototypeRng.CreateBundle(seed);
         rng.ReplaceStream("map", clean.GetStream("map").Fork());
 

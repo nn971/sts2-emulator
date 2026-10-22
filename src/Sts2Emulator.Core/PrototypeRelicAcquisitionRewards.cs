@@ -46,7 +46,7 @@ public sealed partial class PrototypeGameEngine
         for (var index = 0; index < ids.Length; index++)
         {
             var draw = PrototypeNativeRelicGrabBag.Draw(
-                world, player, state.Rng, merchant: false,
+                world, player, state.Stochastic.PrototypeRng, merchant: false,
                 nativeRunRng: nativeRunRng);
             world = draw.World;
             ids[index] = draw.Id ?? throw new NotSupportedException(

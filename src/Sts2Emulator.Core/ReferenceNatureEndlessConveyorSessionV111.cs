@@ -437,7 +437,7 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
     }
 
     private static bool IsLegacyNativeFallback(RunState state) =>
-        state.NativeRunRng is null && state.World is { } world &&
+        state.Stochastic.NativeRunRng is null && state.World is { } world &&
         PrototypeGameEngine.UsesNativeRegionalSystems(world);
 
     private static ChanceLawV111 QueryLegacyFallbackSite(

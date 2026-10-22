@@ -194,7 +194,7 @@ public static class PrototypeNativeLaterActFixture
         // Remove unrelated six-floor prototype map consumption from the
         // compatibility state. Native map generation itself uses a fresh
         // act-local stream and leaves this bundle untouched.
-        var rng = state.Rng.Fork();
+        var rng = state.Stochastic.PrototypeRng.Fork();
         var clean = PrototypeRng.CreateBundle(seed);
         rng.ReplaceStream("map", clean.GetStream("map").Fork());
 

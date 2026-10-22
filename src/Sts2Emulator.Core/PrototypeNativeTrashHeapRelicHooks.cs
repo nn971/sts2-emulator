@@ -78,7 +78,7 @@ public sealed partial class PrototypeGameEngine
         // after the RestSite heal. No card reward is given on train or
         // smith actions. Each relic adds its own reward group.
         var native = UsesNativeActOneSystems(world);
-        var nativeRunRng = state.NativeRunRng?.Fork();
+        var nativeRunRng = state.Stochastic.NativeRunRng?.Fork();
         var groups = new List<string[]>();
         var upgrades = new List<bool[]>();
         foreach (var count in rewardCounts)
@@ -87,7 +87,7 @@ public sealed partial class PrototypeGameEngine
             {
                 var next = PrototypeNativeCardRarityOdds.GenerateEncounterCards(
                     count, state.Ascension, PrototypeRoomType.Combat,
-                    world.CardRarityOffsetBasisPoints, state.Rng,
+                    world.CardRarityOffsetBasisPoints, state.Stochastic.PrototypeRng,
                     act: world.Act, nativeRunRng: nativeRunRng);
                 groups.Add(next.Cards);
                 upgrades.Add(next.UpgradeFlags);
@@ -95,7 +95,7 @@ public sealed partial class PrototypeGameEngine
             }
             else
             {
-                groups.Add(PickRewardCards(world.Act, count, state.Rng));
+                groups.Add(PickRewardCards(world.Act, count, state.Stochastic.PrototypeRng));
             }
         }
         var reward = new RewardState(
@@ -124,7 +124,7 @@ public sealed partial class PrototypeGameEngine
         return state with
         {
             Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                state.Stochastic, nativeRunRng ?? state.NativeRunRng),
+                state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRng),
             World = world with { Reward = reward },
             Phase = RunPhase.Reward
         };

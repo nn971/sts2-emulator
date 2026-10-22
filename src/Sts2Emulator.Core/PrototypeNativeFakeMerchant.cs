@@ -388,7 +388,7 @@ public sealed partial class PrototypeGameEngine
         player = ApplyRelicRunEvent(player,
             PrototypeRunEventKind.RelicAcquired,
             acquiredRelicId: relicId,
-            rng: state.Rng);
+            rng: state.Stochastic.PrototypeRng);
         return state with
         {
             Player = player,
