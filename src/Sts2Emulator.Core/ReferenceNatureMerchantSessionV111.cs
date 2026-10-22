@@ -169,15 +169,17 @@ public sealed record ReferenceNatureMerchantSessionV111(
     public string Fingerprint => CanonicalJson.Sha256(this);
 
     [JsonIgnore]
-    public bool Complete => PendingRequest is null;
+    public bool Complete => Stochastic.PendingRequest is null;
 
     [JsonIgnore]
-    public int NextOrdinal => ProviderDecisions.Length;
+    public int NextOrdinal => Stochastic.ProviderDecisions.Length;
 
     [JsonIgnore]
-    public ChanceLawV111? PendingLaw => PendingRequest is null ? null :
-        QueryLaw(Origin, Action, PendingRequest, PendingCandidateLabels,
-            ProviderDecisions);
+    public ChanceLawV111? PendingLaw =>
+        Stochastic.PendingRequest is null ? null :
+            QueryLaw(Origin, Action, Stochastic.PendingRequest,
+                Stochastic.PendingCandidateLabels,
+                Stochastic.ProviderDecisions);
 
     public static ReferenceNatureMerchantSessionV111 Begin(
         RunState source, GameAction action, ulong seed) =>
@@ -235,22 +237,24 @@ public sealed record ReferenceNatureMerchantSessionV111(
             throw new InvalidOperationException(
                 "ReferenceNature merchant session is already complete.");
 
-        var law = QueryLaw(Origin, Action, PendingRequest!, PendingCandidateLabels,
-            ProviderDecisions);
-        var selection = ReferenceNatureV111.SampleValidated(law, NatureState);
+        var law = QueryLaw(Origin, Action, Stochastic.PendingRequest!,
+            Stochastic.PendingCandidateLabels,
+            Stochastic.ProviderDecisions);
+        var selection = ReferenceNatureV111.SampleValidated(law, Stochastic.NatureState);
         var providerDecision = ReferenceNatureChanceLawDecisionV111.FromSelection(
-            law, PendingRequest!, selection, Origin,
-            PendingCandidateLabels);
+            law, Stochastic.PendingRequest!, selection, Origin,
+            Stochastic.PendingCandidateLabels);
         var continuation = new ControlledStochasticContinuationStateV111(
             ControlledStochasticContinuationStateV111.CurrentSchemaId,
-            ProviderDecisions, PendingRequest!, PendingCandidateLabels);
+            Stochastic.ProviderDecisions, Stochastic.PendingRequest!,
+            Stochastic.PendingCandidateLabels);
         var replay = ControlledChanceContinuationExecutorV111.ResolveStochastic(
             ReferenceNatureRunProjectionV111.CreateNatureReplayOrigin(Origin),
             continuation, providerDecision,
             checkpoint => new PrototypeGameEngine().Step(
                 checkpoint, CloneAction(Action)).State);
         var providerDecisions = replay.Continuation?.Decisions ??
-            ProviderDecisions.Append(providerDecision.Fork()).ToArray();
+            Stochastic.ProviderDecisions.Append(providerDecision.Fork()).ToArray();
         var transcript = Stochastic.DecisionTranscript.Append(
             new ReferenceNatureMerchantLawDecisionV111(
                 law.LawId, law.EventId, selection.OutcomeId,
@@ -283,12 +287,12 @@ public sealed record ReferenceNatureMerchantSessionV111(
         Mechanics.Continuation.Validate(
             PrototypeMechanicsContinuationKindV111.ReferenceNatureRunAction);
         Stochastic.Validate();
-        if (PendingRequest is { } pendingRequest)
+        if (Stochastic.PendingRequest is { } pendingRequest)
         {
             if (StochasticSiteRegistryV111.IsRunActionShopPurchaseSite(
                     pendingRequest.SiteId))
                 ValidateRegisteredPurchaseIndexSupport(
-                    pendingRequest, PendingCandidateLabels);
+                    pendingRequest, Stochastic.PendingCandidateLabels);
         }
         ValidateOpeningBoundary(Origin, Action);
         if (IsToyBoxPurchase(Origin, Action))
@@ -300,19 +304,19 @@ public sealed record ReferenceNatureMerchantSessionV111(
         ReferenceNatureRunProjectionV111.ValidateNatureRelicBagProjection(
             Run, "Native merchant session replay");
         ReferenceNatureRunCursorV111.ValidateInitial(
-            Origin, InitialNatureState, "Native merchant");
+            Origin, Stochastic.InitialNatureState, "Native merchant");
 
-        var expectedNatureState = InitialNatureState.Fork();
-        for (var index = 0; index < ProviderDecisions.Length; index++)
+        var expectedNatureState = Stochastic.InitialNatureState.Fork();
+        for (var index = 0; index < Stochastic.ProviderDecisions.Length; index++)
         {
-            var prefix = ProviderDecisions.Take(index).ToArray();
+            var prefix = Stochastic.ProviderDecisions.Take(index).ToArray();
             var replayAtBoundary = Replay(Origin, Action, prefix);
             var continuationAtBoundary = replayAtBoundary.Continuation;
             var request = continuationAtBoundary?.PendingRequest
                 ?? throw new InvalidDataException(
                     "Merchant replay completed before its saved decision transcript.");
             var labels = continuationAtBoundary!.PendingCandidateLabels;
-            var savedDecision = ProviderDecisions[index];
+            var savedDecision = Stochastic.ProviderDecisions[index];
             savedDecision.Validate();
             if (!SameRequest(request, AsRequest(savedDecision)) ||
                 !SameLabels(labels, savedDecision.CandidateLabels))
@@ -335,13 +339,13 @@ public sealed record ReferenceNatureMerchantSessionV111(
             expectedNatureState = selection.NextState;
         }
 
-        var replay = Replay(Origin, Action, ProviderDecisions);
+        var replay = Replay(Origin, Action, Stochastic.ProviderDecisions);
         if ((replay.Continuation is null) != Complete ||
-            !SameRequest(replay.Continuation?.PendingRequest, PendingRequest) ||
+            !SameRequest(replay.Continuation?.PendingRequest, Stochastic.PendingRequest) ||
             !SameLabels(replay.Continuation?.PendingCandidateLabels,
-                PendingCandidateLabels) ||
+                Stochastic.PendingCandidateLabels) ||
             CanonicalJson.Sha256(expectedNatureState) !=
-                CanonicalJson.Sha256(NatureState))
+                CanonicalJson.Sha256(Stochastic.NatureState))
             throw new InvalidDataException(
                 "ReferenceNature merchant continuation differs from its replay.");
 
@@ -350,7 +354,7 @@ public sealed record ReferenceNatureMerchantSessionV111(
             : Origin.Fork();
         if (CanonicalJson.Sha256(expectedRun) != CanonicalJson.Sha256(Run) ||
             !ReferenceNatureRunCursorV111.MatchesRunSession(
-                Origin, Run, InitialNatureState, NatureState,
+                Origin, Run, Stochastic.InitialNatureState, Stochastic.NatureState,
                 Stochastic.DecisionTranscript.Length, Complete))
             throw new InvalidDataException(
                 "ReferenceNature merchant run differs from its atomic cursor.");
@@ -367,27 +371,27 @@ public sealed record ReferenceNatureMerchantSessionV111(
                 "relic_grab_bag.rarity.unit_float",
                 PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId
             }).ToArray();
-        if (ProviderDecisions.Length > expectedSites.Length)
+        if (Stochastic.ProviderDecisions.Length > expectedSites.Length)
             throw new InvalidDataException(
                 "Toy Box purchase replay differs from its five rarity/identity request pairs.");
-        for (var index = 0; index < ProviderDecisions.Length; index++)
+        for (var index = 0; index < Stochastic.ProviderDecisions.Length; index++)
         {
-            var decision = ProviderDecisions[index];
+            var decision = Stochastic.ProviderDecisions[index];
             if (decision is null ||
                 AsRequest(decision).SiteId != expectedSites[index])
                 throw new InvalidDataException(
                     "Toy Box purchase replay differs from its five rarity/identity request pairs.");
         }
-        if (PendingRequest is { } pending &&
-            (ProviderDecisions.Length >= expectedSites.Length ||
-             pending.SiteId != expectedSites[ProviderDecisions.Length]))
+        if (Stochastic.PendingRequest is { } pending &&
+            (Stochastic.ProviderDecisions.Length >= expectedSites.Length ||
+             pending.SiteId != expectedSites[Stochastic.ProviderDecisions.Length]))
             throw new InvalidDataException(
                 "Toy Box purchase replay differs from its five rarity/identity request pairs.");
 
         if (!Complete)
             return;
         var reward = Run.World?.Reward;
-        if (ProviderDecisions.Length != expectedSites.Length ||
+        if (Stochastic.ProviderDecisions.Length != expectedSites.Length ||
             reward is not
                 { SourceRoom: "Relic:ToyBox", ExtraRelicRewardIds: { Length: 5 } })
             throw new InvalidDataException(
@@ -401,13 +405,13 @@ public sealed record ReferenceNatureMerchantSessionV111(
         var snapshot = new ReferenceNatureMerchantSessionSnapshotV111(
             CurrentSchemaId, RunSnapshot.Save(session.Origin),
             CloneAction(session.Action), RunSnapshot.Save(session.Run),
-            session.InitialNatureState, session.NatureState,
-            session.ProviderDecisions.Select(decision => decision.Fork()).ToArray(),
+            session.Stochastic.InitialNatureState, session.Stochastic.NatureState,
+            session.Stochastic.ProviderDecisions.Select(decision => decision.Fork()).ToArray(),
             (ReferenceNatureMerchantLawDecisionV111[])
                 session.Stochastic.DecisionTranscript.Clone(),
-            session.PendingRequest?.Fork(),
-            session.PendingCandidateLabels is null ? null :
-                (string[])session.PendingCandidateLabels.Clone());
+            session.Stochastic.PendingRequest?.Fork(),
+            session.Stochastic.PendingCandidateLabels is null ? null :
+                (string[])session.Stochastic.PendingCandidateLabels.Clone());
         return JsonSerializer.Serialize(snapshot);
     }
 

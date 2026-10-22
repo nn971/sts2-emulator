@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 controlled-action stochastic session owner read increment (2026-10-22):**
+Merchant, Treasure, combat-reward, and Native Shovel session logic now reads
+the Nature cursors, provider prefixes, pending requests, and candidate labels
+through `ReferenceNatureControlledActionStochasticStateV111`. Snapshots and
+writes remain flat-compatible; request support and replay order are unchanged.
+Static source review and `git diff --check` only; no tests or builds were run.
+
 **S3 Native event-shuffle transcript owner read increment (2026-10-22):**
 Native event-shuffle support construction, sampling, replay, validation, and
 snapshot restoration now read the ordered Nature decision prefix through

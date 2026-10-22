@@ -168,15 +168,15 @@ public sealed record ReferenceNatureCombatRewardSessionV111(
     public string Fingerprint => CanonicalJson.Sha256(this);
 
     [JsonIgnore]
-    public bool Complete => PendingRequest is null;
+    public bool Complete => Stochastic.PendingRequest is null;
 
     [JsonIgnore]
-    public int NextOrdinal => ProviderDecisions.Length;
+    public int NextOrdinal => Stochastic.ProviderDecisions.Length;
 
     [JsonIgnore]
-    public ChanceLawV111? PendingLaw => PendingRequest is null ? null :
-        QueryLaw(Origin, Action, PendingRequest, PendingCandidateLabels,
-            ProviderDecisions);
+    public ChanceLawV111? PendingLaw => Stochastic.PendingRequest is null ? null :
+        QueryLaw(Origin, Action, Stochastic.PendingRequest, Stochastic.PendingCandidateLabels,
+            Stochastic.ProviderDecisions);
 
     public static ReferenceNatureCombatRewardSessionV111 Begin(
         RunState source, GameAction action, ulong seed) =>
@@ -232,20 +232,21 @@ public sealed record ReferenceNatureCombatRewardSessionV111(
             throw new InvalidOperationException(
                 "ReferenceNature combat reward session is already complete.");
 
-        var law = QueryLaw(Origin, Action, PendingRequest!,
-            PendingCandidateLabels, ProviderDecisions);
-        var selection = ReferenceNatureV111.SampleValidated(law, NatureState);
+        var law = QueryLaw(Origin, Action, Stochastic.PendingRequest!,
+            Stochastic.PendingCandidateLabels, Stochastic.ProviderDecisions);
+        var selection = ReferenceNatureV111.SampleValidated(law, Stochastic.NatureState);
         var providerDecision = ReferenceNatureChanceLawDecisionV111.FromSelection(
-            law, PendingRequest!, selection, Origin, PendingCandidateLabels);
+            law, Stochastic.PendingRequest!, selection, Origin, Stochastic.PendingCandidateLabels);
         var continuation = new ControlledStochasticContinuationStateV111(
             ControlledStochasticContinuationStateV111.CurrentSchemaId,
-            ProviderDecisions, PendingRequest!, PendingCandidateLabels);
+            Stochastic.ProviderDecisions, Stochastic.PendingRequest!,
+            Stochastic.PendingCandidateLabels);
         var replay = ControlledChanceContinuationExecutorV111.ResolveStochastic(
             CreateNatureReplayOrigin(Origin), continuation, providerDecision,
             checkpoint => new PrototypeGameEngine().Step(
                 checkpoint, CloneAction(Action)).State);
         var providerDecisions = replay.Continuation?.Decisions ??
-            ProviderDecisions.Append(providerDecision.Fork()).ToArray();
+            Stochastic.ProviderDecisions.Append(providerDecision.Fork()).ToArray();
         var transcript = Stochastic.DecisionTranscript.Append(
             new ReferenceNatureCombatRewardLawDecisionV111(
                 law.LawId, law.EventId, selection.OutcomeId,
@@ -289,19 +290,19 @@ public sealed record ReferenceNatureCombatRewardSessionV111(
                 Run, "Combat reward session replay");
         }
         ReferenceNatureRunCursorV111.ValidateInitial(
-            Origin, InitialNatureState, "Combat reward");
+            Origin, Stochastic.InitialNatureState, "Combat reward");
 
-        var expectedNatureState = InitialNatureState.Fork();
-        for (var index = 0; index < ProviderDecisions.Length; index++)
+        var expectedNatureState = Stochastic.InitialNatureState.Fork();
+        for (var index = 0; index < Stochastic.ProviderDecisions.Length; index++)
         {
-            var prefix = ProviderDecisions.Take(index).ToArray();
+            var prefix = Stochastic.ProviderDecisions.Take(index).ToArray();
             var replayAtBoundary = Replay(Origin, Action, prefix);
             var continuationAtBoundary = replayAtBoundary.Continuation;
             var request = continuationAtBoundary?.PendingRequest
                 ?? throw new InvalidDataException(
                     "Combat reward replay completed before its saved decision transcript.");
             var labels = continuationAtBoundary!.PendingCandidateLabels;
-            var savedDecision = ProviderDecisions[index];
+            var savedDecision = Stochastic.ProviderDecisions[index];
             savedDecision.Validate();
             if (!SameRequest(request, AsRequest(savedDecision)) ||
                 !SameLabels(labels, savedDecision.CandidateLabels))
@@ -324,13 +325,13 @@ public sealed record ReferenceNatureCombatRewardSessionV111(
             expectedNatureState = selection.NextState;
         }
 
-        var replay = Replay(Origin, Action, ProviderDecisions);
+        var replay = Replay(Origin, Action, Stochastic.ProviderDecisions);
         if ((replay.Continuation is null) != Complete ||
-            !SameRequest(replay.Continuation?.PendingRequest, PendingRequest) ||
+            !SameRequest(replay.Continuation?.PendingRequest, Stochastic.PendingRequest) ||
             !SameLabels(replay.Continuation?.PendingCandidateLabels,
-                PendingCandidateLabels) ||
+                Stochastic.PendingCandidateLabels) ||
             CanonicalJson.Sha256(expectedNatureState) !=
-                CanonicalJson.Sha256(NatureState))
+                CanonicalJson.Sha256(Stochastic.NatureState))
             throw new InvalidDataException(
                 "ReferenceNature combat reward continuation differs from its replay.");
 
@@ -339,7 +340,7 @@ public sealed record ReferenceNatureCombatRewardSessionV111(
             : Origin.Fork();
         if (CanonicalJson.Sha256(expectedRun) != CanonicalJson.Sha256(Run) ||
             !ReferenceNatureRunCursorV111.MatchesRunSession(
-                Origin, Run, InitialNatureState, NatureState,
+                Origin, Run, Stochastic.InitialNatureState, Stochastic.NatureState,
                 Stochastic.DecisionTranscript.Length, Complete))
             throw new InvalidDataException(
                 "ReferenceNature combat reward run differs from its atomic cursor.");
@@ -355,13 +356,13 @@ public sealed record ReferenceNatureCombatRewardSessionV111(
         var snapshot = new ReferenceNatureCombatRewardSessionSnapshotV111(
             CurrentSchemaId, RunSnapshot.Save(session.Origin),
             CloneAction(session.Action), RunSnapshot.Save(session.Run),
-            session.InitialNatureState, session.NatureState,
-            session.ProviderDecisions.Select(decision => decision.Fork()).ToArray(),
+            session.Stochastic.InitialNatureState, session.Stochastic.NatureState,
+            session.Stochastic.ProviderDecisions.Select(decision => decision.Fork()).ToArray(),
             (ReferenceNatureCombatRewardLawDecisionV111[])
                 session.Stochastic.DecisionTranscript.Clone(),
-            session.PendingRequest?.Fork(),
-            session.PendingCandidateLabels is null ? null :
-                (string[])session.PendingCandidateLabels.Clone());
+            session.Stochastic.PendingRequest?.Fork(),
+            session.Stochastic.PendingCandidateLabels is null ? null :
+                (string[])session.Stochastic.PendingCandidateLabels.Clone());
         return JsonSerializer.Serialize(snapshot);
     }
 
