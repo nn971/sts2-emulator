@@ -277,6 +277,7 @@ public sealed partial class PrototypeGameEngine
             };
 
         combat = combat with { PendingChoice = null };
+        var prototypeRng = state.Stochastic.PrototypeRng;
         var op = shuffle.Operation;
         if (op.Kind is (PrototypeCombatEffectKind.ChooseGeneratedCards or
             PrototypeCombatEffectKind.ChooseGeneratedColorlessCards))
@@ -361,12 +362,15 @@ public sealed partial class PrototypeGameEngine
             if (candidates.Length == 0 || maximum <= 0)
             {
                 var resumed = ResumeChoiceResolutionContinuation(
-                    state.Player, combat, state.Stochastic.PrototypeRngMutable, continuation);
-                return ResumeAutomaticPipelineContinuation(state with
+                    state.Player, combat, prototypeRng, continuation);
+                var updated = state with
                 {
                     Player = resumed.Player,
+                    Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                        state.Stochastic, prototypeRng),
                     World = world with { Combat = resumed.Combat }
-                });
+                };
+                return ResumeAutomaticPipelineContinuation(updated);
             }
 
             var effective = selection with
@@ -440,7 +444,7 @@ public sealed partial class PrototypeGameEngine
                 };
             }
             if (afterShuffleInsertions.Length > 0)
-                combat = ApplyRelicAfterShuffleCards(combat, state.Stochastic.PrototypeRngMutable);
+                combat = ApplyRelicAfterShuffleCards(combat, prototypeRng);
         }
         else if (op.Kind ==
             PrototypeCombatEffectKind.MoveRandomRareDrawCardsToHand)
@@ -495,7 +499,7 @@ public sealed partial class PrototypeGameEngine
                 };
             }
             if (afterShuffleInsertions.Length > 0)
-                combat = ApplyRelicAfterShuffleCards(combat, state.Stochastic.PrototypeRngMutable);
+                combat = ApplyRelicAfterShuffleCards(combat, prototypeRng);
         }
         else
         {
@@ -522,10 +526,12 @@ public sealed partial class PrototypeGameEngine
             }
         }
         var resolved = ResumeChoiceResolutionContinuation(
-            state.Player, combat, state.Stochastic.PrototypeRngMutable, continuation);
+            state.Player, combat, prototypeRng, continuation);
         var updated = state with
         {
             Player = resolved.Player,
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, prototypeRng),
             World = world with { Combat = resolved.Combat }
         };
         return ResumeAutomaticPipelineContinuation(updated);
@@ -566,12 +572,15 @@ public sealed partial class PrototypeGameEngine
         var world = RequireWorld(state);
         var combat = world.Combat ??
             throw new InvalidOperationException("No combat for fixture.");
+        var prototypeRng = state.Stochastic.PrototypeRng;
         var resolved = ResolveOperations(state.Player, combat,
-            new Queue<PrototypeQueuedOperation>([operation]), state.Stochastic.PrototypeRngMutable,
+            new Queue<PrototypeQueuedOperation>([operation]), prototypeRng,
             moveSourceCardOnCompletion: false);
         return state with
         {
             Player = resolved.Player,
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, prototypeRng),
             World = world with { Combat = resolved.Combat }
         };
     }

@@ -373,11 +373,14 @@ public sealed partial class PrototypeGameEngine
                 selectedCardId, upgrade, PrototypeJson.EmptyObject(),
                 TemporaryEnergyCost: free), 1);
 
+        var prototypeRng = state.Stochastic.PrototypeRng;
         var resolved = ResumeChoiceResolutionContinuation(
-            state.Player, combat, state.Stochastic.PrototypeRngMutable, continuation);
+            state.Player, combat, prototypeRng, continuation);
         var updated = state with
         {
             Player = resolved.Player,
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, prototypeRng),
             World = world with { Combat = resolved.Combat }
         };
         if (resumeAutomaticPipeline)

@@ -248,12 +248,18 @@ public sealed partial class PrototypeGameEngine
                     Amount = shortlist.Operation.Amount - 1
                 });
             resumedOperations.AddRange(continuation.Operations);
+            var prototypeRng = state.Stochastic.PrototypeRng;
             var autoplay = ResumeChoiceResolutionContinuation(
-                state.Player, combat, state.Stochastic.PrototypeRngMutable, continuation with
+                state.Player, combat, prototypeRng, continuation with
                 {
                     Operations = resumedOperations.ToArray()
                 });
-            return ResumeAfterCardShortlist(state, world, autoplay);
+            var updatedState = state with
+            {
+                Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                    state.Stochastic, prototypeRng)
+            };
+            return ResumeAfterCardShortlist(updatedState, world, autoplay);
         }
 
         if (shortlist.Operation.Kind ==
@@ -274,12 +280,18 @@ public sealed partial class PrototypeGameEngine
                         }
                         : card).ToArray()
             };
+            var prototypeRng = state.Stochastic.PrototypeRng;
             var resumed = ResumeChoiceResolutionContinuation(
-                state.Player, combat, state.Stochastic.PrototypeRngMutable, continuation with
+                state.Player, combat, prototypeRng, continuation with
                 {
                     Operations = continuation.Operations.ToArray()
                 });
-            return ResumeAfterCardShortlist(state, world, resumed);
+            var updatedState = state with
+            {
+                Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                    state.Stochastic, prototypeRng)
+            };
+            return ResumeAfterCardShortlist(updatedState, world, resumed);
         }
 
         combat = combat with { PendingChoice = null };
@@ -305,9 +317,15 @@ public sealed partial class PrototypeGameEngine
             Math.Min(selection.MaxSelections, candidates.Length), capacity);
         if (candidates.Length == 0 || maximum <= 0)
         {
+            var prototypeRng = state.Stochastic.PrototypeRng;
             var resumed = ResumeChoiceResolutionContinuation(
-                state.Player, combat, state.Stochastic.PrototypeRngMutable, continuation);
-            return ResumeAfterCardShortlist(state, world, resumed);
+                state.Player, combat, prototypeRng, continuation);
+            var updatedState = state with
+            {
+                Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                    state.Stochastic, prototypeRng)
+            };
+            return ResumeAfterCardShortlist(updatedState, world, resumed);
         }
 
         var effective = selection with

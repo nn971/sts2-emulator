@@ -112,13 +112,16 @@ public sealed partial class PrototypeGameEngine
         {
             Operations = remainingOperations
         };
+        var prototypeRng = state.Stochastic.PrototypeRng;
         var resumed = ResumeChoiceResolutionContinuation(
             state.Player with { PotionSlots = slots },
-            combat with { PendingChoice = null }, state.Stochastic.PrototypeRngMutable,
+            combat with { PendingChoice = null }, prototypeRng,
             resumedContinuation);
         var updated = state with
         {
             Player = resumed.Player,
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, prototypeRng),
             World = world with { Combat = resumed.Combat }
         };
         updated = ResumeAutomaticPipelineContinuation(updated);

@@ -905,6 +905,8 @@ Opening combat event dispatch and the opening hand draw also use local prototype
 
 Room completion relic hooks, Pael's rest and combat-reward alternatives, and act-transition map generation now publish local prototype bundle updates with the state they produce. The run-start and hypothetical proposal paths read defensive projections when they copy or replace streams.
 
+Controlled combat cost, potion/card generation, card shortlist, and pool-shuffle continuations now resume from local prototype bundles and publish the updated cursor before the automatic pipeline continues.
+
 ## Reading order
 
 1. This architecture contract.

@@ -119,11 +119,14 @@ public sealed partial class PrototypeGameEngine
         }
 
         combat = combat with { PendingChoice = null };
+        var prototypeRng = state.Stochastic.PrototypeRng;
         var resolved = ResumeChoiceResolutionContinuation(
-            state.Player, combat, state.Stochastic.PrototypeRngMutable, continuation);
+            state.Player, combat, prototypeRng, continuation);
         var updated = state with
         {
             Player = resolved.Player,
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, prototypeRng),
             World = world with { Combat = resolved.Combat }
         };
         updated = ResumeAutomaticPipelineContinuation(updated);
@@ -161,11 +164,14 @@ public sealed partial class PrototypeGameEngine
                 PrototypeTemporaryCardCostExpiry.EndOfTurn |
                     PrototypeTemporaryCardCostExpiry.WhenPlayed));
         combat = combat with { PendingChoice = null };
+        var prototypeRng = state.Stochastic.PrototypeRng;
         var resolved = ResumeChoiceResolutionContinuation(
-            state.Player, combat, state.Stochastic.PrototypeRngMutable, continuation);
+            state.Player, combat, prototypeRng, continuation);
         var updated = state with
         {
             Player = resolved.Player,
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, prototypeRng),
             World = world with { Combat = resolved.Combat }
         };
         return ResumeAutomaticPipelineContinuation(updated);
@@ -185,12 +191,15 @@ public sealed partial class PrototypeGameEngine
         var world = RequireWorld(state);
         var combat = world.Combat ??
             throw new InvalidOperationException("Missing fixture combat.");
+        var prototypeRng = state.Stochastic.PrototypeRng;
         var resolved = ResolveOperations(state.Player, combat,
-            new Queue<PrototypeQueuedOperation>([operation]), state.Stochastic.PrototypeRngMutable,
+            new Queue<PrototypeQueuedOperation>([operation]), prototypeRng,
             moveSourceCardOnCompletion: false);
         return state with
         {
             Player = resolved.Player,
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, prototypeRng),
             World = world with { Combat = resolved.Combat }
         };
     }
