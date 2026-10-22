@@ -233,17 +233,18 @@ internal static class RandomBoundaryCursorSpanV111
     }
 }
 
+/// <summary>
+/// Stores one chronological mixed transcript. The typed entry collections
+/// are projections over that transcript, with independent per-operation
+/// sequence numbers retained in each payload.
+/// </summary>
 public sealed class RandomBoundaryJournalV111 : IDisposable
 {
     private static readonly AsyncLocal<RandomBoundaryJournalV111?> Active = new();
     private readonly RandomBoundaryJournalV111? _previous;
-    private readonly List<RandomBoundaryEventV111> _events = [];
-    private readonly List<RandomUnitFloatBoundaryEventV111> _unitFloatEvents = [];
-    private readonly List<RandomRangedFloatBoundaryEventV111> _rangedFloatEvents = [];
-    private readonly List<RandomRangedDoubleBoundaryEventV111> _rangedDoubleEvents = [];
-    private readonly List<RandomGaussianIntBoundaryEventV111> _gaussianIntEvents = [];
-    private readonly List<RandomGaussianDoubleBoundaryEventV111> _gaussianDoubleEvents = [];
     private readonly List<RandomBoundaryTranscriptEntryV111> _orderedTranscript = [];
+    private readonly Dictionary<string, int> _operationSequences =
+        new(StringComparer.Ordinal);
     private bool _disposed;
 
     private RandomBoundaryJournalV111()
@@ -255,17 +256,17 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
     public static RandomBoundaryJournalV111 Begin() => new();
 
     public IReadOnlyList<RandomBoundaryEventV111> Entries =>
-        _events.ToArray();
+        Project<RandomBoundaryEventV111>("index");
     public IReadOnlyList<RandomUnitFloatBoundaryEventV111> UnitFloatEntries =>
-        _unitFloatEvents.ToArray();
+        Project<RandomUnitFloatBoundaryEventV111>("unit_float");
     public IReadOnlyList<RandomRangedFloatBoundaryEventV111> RangedFloatEntries =>
-        _rangedFloatEvents.ToArray();
+        Project<RandomRangedFloatBoundaryEventV111>("ranged_float");
     public IReadOnlyList<RandomRangedDoubleBoundaryEventV111> RangedDoubleEntries =>
-        _rangedDoubleEvents.ToArray();
+        Project<RandomRangedDoubleBoundaryEventV111>("ranged_double");
     public IReadOnlyList<RandomGaussianIntBoundaryEventV111> GaussianIntEntries =>
-        _gaussianIntEvents.ToArray();
+        Project<RandomGaussianIntBoundaryEventV111>("gaussian_int");
     public IReadOnlyList<RandomGaussianDoubleBoundaryEventV111> GaussianDoubleEntries =>
-        _gaussianDoubleEvents.ToArray();
+        Project<RandomGaussianDoubleBoundaryEventV111>("gaussian_double");
     public IReadOnlyList<RandomBoundaryTranscriptEntryV111> OrderedTranscript =>
         _orderedTranscript.ToArray();
 
@@ -311,7 +312,7 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
         // All request/cursor data are copied after provider validation.
         // Neither game RNG nor mechanical continuation is touched.
         var entry = new RandomBoundaryEventV111(
-            scope._events.Count + 1,
+            scope.NextOperationSequence("index"),
             decision.Request with
             {
                 OrderedCandidates = (int[])decision.Request.OrderedCandidates.Clone()
@@ -321,7 +322,6 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
             decision.ProviderMode,
             decision.NativeCursorBefore,
             decision.NativeCursorAfter);
-        scope._events.Add(entry);
         scope.RecordOrdered("index", entry);
     }
 
@@ -332,13 +332,12 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
         if (scope._disposed)
             throw new InvalidOperationException("Random boundary journal is closed.");
         var entry = new RandomUnitFloatBoundaryEventV111(
-            scope._unitFloatEvents.Count + 1,
+            scope.NextOperationSequence("unit_float"),
             decision.Request with { },
             decision.SelectedValue,
             decision.ProviderMode,
             decision.NativeCursorBefore,
             decision.NativeCursorAfter);
-        scope._unitFloatEvents.Add(entry);
         scope.RecordOrdered("unit_float", entry);
     }
 
@@ -349,13 +348,12 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
         if (scope._disposed)
             throw new InvalidOperationException("Random boundary journal is closed.");
         var entry = new RandomRangedFloatBoundaryEventV111(
-            scope._rangedFloatEvents.Count + 1,
+            scope.NextOperationSequence("ranged_float"),
             decision.Request with { },
             decision.SelectedValue,
             decision.ProviderMode,
             decision.NativeCursorBefore,
             decision.NativeCursorAfter);
-        scope._rangedFloatEvents.Add(entry);
         scope.RecordOrdered("ranged_float", entry);
     }
 
@@ -366,13 +364,12 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
         if (scope._disposed)
             throw new InvalidOperationException("Random boundary journal is closed.");
         var entry = new RandomRangedDoubleBoundaryEventV111(
-            scope._rangedDoubleEvents.Count + 1,
+            scope.NextOperationSequence("ranged_double"),
             decision.Request with { },
             decision.SelectedValue,
             decision.ProviderMode,
             decision.NativeCursorBefore,
             decision.NativeCursorAfter);
-        scope._rangedDoubleEvents.Add(entry);
         scope.RecordOrdered("ranged_double", entry);
     }
 
@@ -383,13 +380,12 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
         if (scope._disposed)
             throw new InvalidOperationException("Random boundary journal is closed.");
         var entry = new RandomGaussianIntBoundaryEventV111(
-            scope._gaussianIntEvents.Count + 1,
+            scope.NextOperationSequence("gaussian_int"),
             decision.Request with { },
             decision.SelectedValue,
             decision.ProviderMode,
             decision.NativeCursorBefore,
             decision.NativeCursorAfter);
-        scope._gaussianIntEvents.Add(entry);
         scope.RecordOrdered("gaussian_int", entry);
     }
 
@@ -400,23 +396,48 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
         if (scope._disposed)
             throw new InvalidOperationException("Random boundary journal is closed.");
         var entry = new RandomGaussianDoubleBoundaryEventV111(
-            scope._gaussianDoubleEvents.Count + 1,
+            scope.NextOperationSequence("gaussian_double"),
             decision.Request with { },
             decision.SelectedValue,
             decision.ProviderMode,
             decision.NativeCursorBefore,
             decision.NativeCursorAfter);
-        scope._gaussianDoubleEvents.Add(entry);
         scope.RecordOrdered("gaussian_double", entry);
     }
 
+    private TEvent[] Project<TEvent>(string operationKind)
+        where TEvent : class => _orderedTranscript
+        .Where(entry => entry.OperationKind == operationKind)
+        .Select(entry => entry.DeserializeEvent<TEvent>())
+        .ToArray();
+
+    private int NextOperationSequence(string operationKind) =>
+        _operationSequences.TryGetValue(operationKind, out var current)
+            ? checked(current + 1) : 1;
+
     private void RecordOrdered(string operationKind, object boundaryEvent)
     {
+        int operationSequence = boundaryEvent switch
+        {
+            RandomBoundaryEventV111 value => value.Sequence,
+            RandomUnitFloatBoundaryEventV111 value => value.Sequence,
+            RandomRangedFloatBoundaryEventV111 value => value.Sequence,
+            RandomRangedDoubleBoundaryEventV111 value => value.Sequence,
+            RandomGaussianIntBoundaryEventV111 value => value.Sequence,
+            RandomGaussianDoubleBoundaryEventV111 value => value.Sequence,
+            _ => throw new ArgumentException(
+                "Unsupported random-boundary event type.",
+                nameof(boundaryEvent))
+        };
+        if (operationSequence != NextOperationSequence(operationKind))
+            throw new InvalidDataException(
+                "Random-boundary operation sequence is not contiguous.");
         var transcript = new RandomBoundaryTranscriptEntryV111(
             _orderedTranscript.Count + 1, operationKind,
             RandomBoundaryTranscriptEntryV111.SerializeEvent(boundaryEvent));
         transcript.Validate();
         _orderedTranscript.Add(transcript);
+        _operationSequences[operationKind] = operationSequence;
     }
 
     public void Dispose()
