@@ -83,6 +83,18 @@ public sealed record SemanticEndTurnStochasticStateV111
             choice => choice.Fork());
     }
 
+    internal SemanticEndTurnStochasticStateV111 AppendSemanticIntent(
+        SemanticIntentTranscriptEntryV111 entry)
+    {
+        ArgumentNullException.ThrowIfNull(entry);
+        entry.Validate();
+        return this with
+        {
+            SemanticIntentTranscript = SemanticIntentTranscript
+                .Append(entry.Fork()).ToArray()
+        };
+    }
+
     public SemanticEndTurnStochasticStateV111 Fork() => this with
     {
         IntentTranscript = CopyTranscript(_intentTranscript,

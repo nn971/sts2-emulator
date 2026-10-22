@@ -2,6 +2,12 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 semantic intent transcript append ownership increment (2026-10-22):**
+`SemanticEndTurnStochasticStateV111` now validates and appends semantic intent
+annotations. The resolver publishes the annotation through the stochastic
+owner after checking that the primitive intent ticket advanced once. Static
+source review and `git diff --check` only; no tests or builds were run.
+
 **S4 common automatic-pipeline resume boundary classifier increment (2026-10-22):**
 `ClassifyAutomaticPipelineResumeBoundary` now classifies reward/terminal,
 controlled and semantic choices, player decisions, `AdvanceTurn`,

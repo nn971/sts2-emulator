@@ -957,11 +957,9 @@ public static class SemanticEndTurnEngineV111
                 "Semantic intent resolution did not append one primitive ticket.");
         var next = advanced with
         {
-            SemanticIntentTranscript =
-                advanced.Stochastic.SemanticIntentTranscript.Append(
-                    new SemanticIntentTranscriptEntryV111(
-                        transcriptIndex,
-                        selection.Decision.Fork())).ToArray()
+            Stochastic = advanced.Stochastic.AppendSemanticIntent(
+                new SemanticIntentTranscriptEntryV111(
+                    transcriptIndex, selection.Decision))
         };
         Validate(next);
         return next;
