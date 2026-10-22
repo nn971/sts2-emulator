@@ -328,9 +328,15 @@ public sealed partial class PrototypeGameEngine
                 new RelicInstance(relicId,
                     PrototypeJson.EmptyObject())).ToArray()
         };
+        var prototypeRng = state.Stochastic.PrototypeRng;
         player = ApplyRelicRunEvent(
             player, PrototypeRunEventKind.RelicAcquired,
-            acquiredRelicId: relicId, rng: state.Stochastic.PrototypeRngMutable);
+            acquiredRelicId: relicId, rng: prototypeRng);
+        state = state with
+        {
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, prototypeRng)
+        };
 
         if (choice == "big_mushroom")
         {
