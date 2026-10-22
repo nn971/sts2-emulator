@@ -715,7 +715,17 @@ public sealed record RunStochasticStateV111
         RunStochasticStateV111 current,
         ReferenceNatureStateV111? referenceNature)
     {
-        return current with { ReferenceNature = referenceNature };
+        ArgumentNullException.ThrowIfNull(current);
+        return referenceNature is null
+            ? ClearReferenceNatureCursor(current)
+            : CommitReferenceNatureCursor(current, referenceNature);
+    }
+
+    internal static RunStochasticStateV111 ClearReferenceNatureCursor(
+        RunStochasticStateV111 current)
+    {
+        ArgumentNullException.ThrowIfNull(current);
+        return current with { ReferenceNature = null };
     }
 
     internal static RunStochasticStateV111 CommitReferenceNatureCursor(
@@ -761,7 +771,7 @@ public sealed record RunStochasticStateV111
                 "ReferenceNature run initialization transcript differs from its committed cursor.");
 
         var committed = natureState is null
-            ? current with { ReferenceNature = null }
+            ? ClearReferenceNatureCursor(current)
             : CommitReferenceNatureCursor(current, natureState);
         return committed with
         {

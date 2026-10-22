@@ -117,6 +117,8 @@ The present run and combat types have overlapping representation/lifecycle respo
 
 `ReferenceNatureRunCursorV111.Commit` publishes through `RunStochasticStateV111.CommitReferenceNatureCursor`; it rejects changing a committed seed, moving the sample count backward, or replacing the cursor at the same sample count. Session owners still validate the complete decision prefix before committing an advanced cursor.
 
+The flattened `RunState.ReferenceNatureState` projection routes non-null writes through the same guarded owner transition. Explicit cursor clearing uses `RunStochasticStateV111.ClearReferenceNatureCursor`.
+
 `RunStochasticStateV111` validates and appends completed ReferenceNature map-generation audits and Ancient-offer snapshots, including when a legacy Native Ancient transition is replayed for validation.
 
 Legacy run-action snapshot restoration also imports missing map-generation audits through `RunStochasticStateV111.AppendReferenceNatureMapGenerationAudit`; the compatibility upgrade no longer replaces the complete history array directly.
