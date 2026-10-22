@@ -7,10 +7,12 @@
 bounded full-order completions by ordered physical-card prefix and returns
 integer completion counts with defensive state and outcome fingerprints. This
 provides a sampler-independent joint distribution for source-independent
-ReferenceNature comparisons under the existing uniform-pool model; its law is
-still `UNVERIFIED`, and no native calibration or distribution-suite acceptance
-is claimed. Static source review and `git diff --check` only; no tests or builds
-were run.
+ReferenceNature comparisons under the existing uniform-pool model.
+`AuditPrefixDistributionAgainstSequentialChanceLaws` also composes each
+successive physical-card `QueryDraw` support and checks exact prefix counts
+against full-order enumeration. The uniform-pool law remains `UNVERIFIED`, and
+no native calibration or distribution-suite acceptance is claimed. Static
+source review and `git diff --check` only; no tests or builds were run.
 
 **S3 automatic-pipeline mechanics owner read increment (2026-10-22):**
 Pipeline execution, hand-draw boundaries, end-turn validation, and the

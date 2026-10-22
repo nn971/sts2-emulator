@@ -702,6 +702,7 @@ public static class SemanticDeckEngineV111
     public const string UniformPoolPrefixDistributionPolicyId =
         "uniform-independent-shared-pool-prefix-counts-unverified-v1";
     public const int MaximumEnumeratedDeckOrders = 65_536;
+    public const int MaximumSequentialPrefixAuditLength = 64;
 
     public static SemanticDeckStateV111 BeginNature(
         IReadOnlyCollection<long> cardInstanceIds)
@@ -1408,6 +1409,119 @@ public static class SemanticDeckEngineV111
             outcomes);
         distribution.Validate();
         return distribution;
+    }
+
+    /// <summary>
+    /// Independently compose each sequential draw law for a bounded prefix
+    /// and require its exact joint completion counts to match full-order
+    /// enumeration. This checks the declared uniform-pool model, not Native
+    /// game calibration.
+    /// </summary>
+    public static void AuditPrefixDistributionAgainstSequentialChanceLaws(
+        SemanticDeckStateV111 state, int prefixLength,
+        int maximumOrders = 4096)
+    {
+        if (prefixLength > MaximumSequentialPrefixAuditLength)
+            throw new ArgumentOutOfRangeException(nameof(prefixLength),
+                $"Sequential prefix audit length cannot exceed {MaximumSequentialPrefixAuditLength}.");
+        var enumerated = EnumeratePrefixDistribution(
+            state, prefixLength, maximumOrders);
+        var sequential = new SortedDictionary<string,
+            (long[] Cards, long Weight)>(StringComparer.Ordinal);
+        var prefix = new long[prefixLength];
+        long terminalPathCount = 0;
+        Visit(state, 0);
+
+        var sequentialOutcomes = sequential.Values.Select(entry =>
+            new SemanticDeckPrefixOutcomeV111(entry.Cards, entry.Weight))
+            .ToArray();
+        var sequentialTotal = sequentialOutcomes.Aggregate(0L,
+            (total, outcome) => checked(total + outcome.Weight));
+        if (terminalPathCount > maximumOrders ||
+            sequentialTotal != enumerated.TotalWeight ||
+            sequentialOutcomes.Length != enumerated.Outcomes.Length)
+            throw new InvalidDataException(
+                "Sequential Chance Law enumeration does not cover the full-order support.");
+
+        var fullOrderOutcomes = enumerated.Outcomes;
+        for (var index = 0; index < fullOrderOutcomes.Length; index++)
+        {
+            var actual = sequentialOutcomes[index];
+            var expected = fullOrderOutcomes[index];
+            if (actual.Weight != expected.Weight ||
+                !actual.CardInstanceIds.SequenceEqual(
+                    expected.CardInstanceIds))
+                throw new InvalidDataException(
+                    "Sequential draw laws disagree with exact constrained-order counts.");
+        }
+
+        void Visit(SemanticDeckStateV111 deck, int prefixIndex)
+        {
+            if (prefixIndex == prefixLength)
+            {
+                terminalPathCount = checked(terminalPathCount + 1);
+                if (terminalPathCount > maximumOrders)
+                    throw new InvalidOperationException(
+                        "Sequential prefix support exceeds the requested enumeration cap.");
+                var suffixCompletionCount = deck.Pools.Aggregate(
+                    BigInteger.One,
+                    (count, pool) => count * Factorial(
+                        pool.RemainingCardInstanceIds.Length));
+                if (suffixCompletionCount > maximumOrders)
+                    throw new InvalidDataException(
+                        "Sequential prefix suffix exceeds the full-order cap.");
+                var weight = (long)suffixCompletionCount;
+                var prefixCopy = (long[])prefix.Clone();
+                var key = CanonicalJson.Serialize(prefixCopy);
+                if (sequential.TryGetValue(key, out var existing))
+                    sequential[key] = (existing.Cards,
+                        checked(existing.Weight + weight));
+                else
+                    sequential.Add(key, (prefixCopy, weight));
+                return;
+            }
+
+            var required = Require(deck, 0, "draw");
+            if (required.Pending is null)
+            {
+                var (next, cardId) = DrawKnown(required);
+                prefix[prefixIndex] = cardId;
+                Visit(next, prefixIndex + 1);
+                return;
+            }
+
+            var law = ChanceLawEngineV111.QueryDraw(required);
+            law.Validate();
+            var lawOutcomes = law.Outcomes;
+            if (law.ProbabilityStatus != "UNVERIFIED" ||
+                lawOutcomes.Length == 0 ||
+                law.TotalWeight != lawOutcomes.Length ||
+                lawOutcomes.Any(outcome => outcome.Weight != 1))
+                throw new InvalidDataException(
+                    "Sequential deck audit requires the declared equal-index draw law.");
+
+            const string cardOutcomePrefix = "card_instance:";
+            foreach (var outcome in lawOutcomes)
+            {
+                if (!outcome.OutcomeId.StartsWith(
+                        cardOutcomePrefix, StringComparison.Ordinal) ||
+                    !long.TryParse(
+                        outcome.OutcomeId.AsSpan(cardOutcomePrefix.Length),
+                        NumberStyles.Integer, CultureInfo.InvariantCulture,
+                        out var cardId))
+                    throw new InvalidDataException(
+                        "Sequential deck law contains a malformed physical-card identity.");
+
+                var resolved = Resolve(
+                    required, required.Fingerprint, cardId);
+                var (next, drawnCardId) = DrawKnown(resolved);
+                if (drawnCardId != cardId)
+                    throw new InvalidDataException(
+                        "Sequential deck resolver drew a different physical card than its law outcome.");
+                prefix[prefixIndex] = cardId;
+                Visit(next, prefixIndex + 1);
+            }
+        }
     }
 
     /// <summary>Used only by mechanics to validate physical card-zone

@@ -21,7 +21,7 @@ from urllib.parse import unquote, urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v38"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v40"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 
 CALL_PATTERN = re.compile(
@@ -1197,7 +1197,7 @@ def _resolve_site_array_property(
     arrays without copying their stable IDs. Follow those references for the
     census as well.
     """
-    reference = expression.strip()
+    reference = re.sub(r"\s+", "", expression)
     if reference.startswith(".."):
         reference = reference[2:].strip()
     match = re.fullmatch(
@@ -1254,6 +1254,23 @@ def _resolve_site_array_property(
     identity = f"{class_name}.{property_name}"
     if identity in active:
         return [], [expression.strip()]
+    if (class_name, property_name) == (
+            "StochasticSiteRegistryV111", "ChanceLawQuerySiteIds"):
+        registry_source = SITE_REGISTRY_PATH.read_text(encoding="utf-8")
+        query_builder = re.search(
+            r"private\s+static\s+string\[\]\s+"
+            r"BuildChanceLawQuerySites\s*\(\)\s*=>\s*"
+            r"\[(?P<body>.*?)\];",
+            registry_source,
+            re.DOTALL,
+        )
+        if query_builder is None:
+            return [], [expression.strip()]
+        return _resolve_site_array_items(
+            query_builder.group("body"), global_constants,
+            active | {identity}, registry_source,
+            "StochasticSiteRegistryV111",
+        )
     class_file = SOURCE_ROOT / f"{class_name}.cs"
     candidate_files = (
         [class_file] if class_file.is_file()
@@ -1609,6 +1626,13 @@ def _registry_site_ids(
                 unresolved.append(expression)
             else:
                 site_ids.add(site_id)
+
+    query_site_ids, query_unresolved = _resolve_site_array_property(
+        "StochasticSiteRegistryV111.ChanceLawQuerySiteIds",
+        global_constants,
+    )
+    site_ids.update(query_site_ids)
+    unresolved.extend(query_unresolved)
     return site_ids, sorted(set(unresolved))
 
 
