@@ -249,7 +249,7 @@ public sealed partial class PrototypeGameEngine
                 });
             resumedOperations.AddRange(continuation.Operations);
             var autoplay = ResumeChoiceResolutionContinuation(
-                state.Player, combat, state.Rng, continuation with
+                state.Player, combat, state.Stochastic.PrototypeRng, continuation with
                 {
                     Operations = resumedOperations.ToArray()
                 });
@@ -275,7 +275,7 @@ public sealed partial class PrototypeGameEngine
                         : card).ToArray()
             };
             var resumed = ResumeChoiceResolutionContinuation(
-                state.Player, combat, state.Rng, continuation with
+                state.Player, combat, state.Stochastic.PrototypeRng, continuation with
                 {
                     Operations = continuation.Operations.ToArray()
                 });
@@ -306,7 +306,7 @@ public sealed partial class PrototypeGameEngine
         if (candidates.Length == 0 || maximum <= 0)
         {
             var resumed = ResumeChoiceResolutionContinuation(
-                state.Player, combat, state.Rng, continuation);
+                state.Player, combat, state.Stochastic.PrototypeRng, continuation);
             return ResumeAfterCardShortlist(state, world, resumed);
         }
 

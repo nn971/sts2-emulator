@@ -164,7 +164,7 @@ public sealed partial class PrototypeGameEngine
                     state.Player,
                     world.NextCardInstanceId,
                     deferredCardId,
-                    state.Rng);
+                    state.Stochastic.PrototypeRng);
                 state = state with
                 {
                     Player = player,
@@ -228,7 +228,7 @@ public sealed partial class PrototypeGameEngine
             {
                 try
                 {
-                    if (state.NativeRunRng is not null)
+                    if (state.Stochastic.NativeRunRng is not null)
                     {
                         var draw = NativeEventContextRngV111
                             .ResolveBoundedInteger(
@@ -243,7 +243,7 @@ public sealed partial class PrototypeGameEngine
                     else
                     {
                         _ = LegacyRandomChoiceV111.ChooseBoundedInteger(
-                            state.Rng,
+                            state.Stochastic.PrototypeRng,
                             "event.stone_of_all_time.push_ticket",
                             "event",
                             "event:stone_of_all_time:push",

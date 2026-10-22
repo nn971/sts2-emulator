@@ -535,7 +535,7 @@ public sealed record PrototypeControlledRunActionContinuationV111(
             {
                 if (state.Phase != RunPhase.ActTransition
                     || state.Configuration is not null
-                    || state.NativeRunRng is not null
+                    || state.Stochastic.NativeRunRng is not null
                     || state.World is not { } world
                     || world.Act >= PrototypeContent.Rules.Acts
                     || !new PrototypeGameEngine().GetLegalActions(state)
@@ -553,7 +553,7 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                     || !PrototypeNativeRestSiteRelics.CanDig(state.Player))
                     throw new InvalidDataException(
                         "Controlled Shovel frame is outside the rest-site boundary.");
-                var nativeShovelFallback = state.NativeRunRng is null
+                var nativeShovelFallback = state.Stochastic.NativeRunRng is null
                     && state.World is { } shovelWorld
                     && PrototypeGameEngine
                         .UsesNativeRegionalSystems(shovelWorld);
@@ -602,7 +602,7 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                             state, nativeMapAction);
                 if (state.Phase != RunPhase.MapChoice
                     || state.World is not { } world
-                    || state.NativeRunRng is not null &&
+                    || state.Stochastic.NativeRunRng is not null &&
                         !(nativeActOneCombatRequest &&
                             nativeActOneCombatEntry)
                     || string.IsNullOrWhiteSpace(MapNodeId))
@@ -636,13 +636,13 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                 var legacyUnknownRoomNode = node?.RoomType ==
                         PrototypeRoomType.Unknown
                     && state.Configuration is null
-                    && state.NativeRunRng is null
+                    && state.Stochastic.NativeRunRng is null
                     && PrototypeGameEngine.UsesNativeRegionalSystems(world);
                 var legacyShopNode = node?.RoomType == PrototypeRoomType.Shop
                     && !PrototypeGameEngine.UsesNativeRegionalSystems(world);
                 var legacyNativeTreasureNode = node?.RoomType ==
                         PrototypeRoomType.Treasure
-                    && state.NativeRunRng is null
+                    && state.Stochastic.NativeRunRng is null
                     && PrototypeGameEngine.UsesNativeRegionalSystems(world)
                     && !PrototypeGameEngine.WillSkipNextTreasure(state.Player);
                 var availableRelics = node?.RoomType == PrototypeRoomType.Treasure
@@ -1419,7 +1419,7 @@ public static class ControlledRunActionEngineV111
         RunState state, PrototypeRoomType roomType) =>
         state.Phase == RunPhase.MapChoice
         && state.Configuration is null
-        && state.NativeRunRng is null
+        && state.Stochastic.NativeRunRng is null
         && state.World is
         {
             Act: 1,
@@ -1432,7 +1432,7 @@ public static class ControlledRunActionEngineV111
         RunState state, PrototypeRoomType roomType) =>
         state.Phase == RunPhase.MapChoice
         && state.Configuration is null
-        && state.NativeRunRng is null
+        && state.Stochastic.NativeRunRng is null
         && state.World is
         {
             Act: 1,
