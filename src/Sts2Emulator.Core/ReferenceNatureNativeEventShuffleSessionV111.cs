@@ -431,8 +431,8 @@ internal static class NativeEventShufflePlanBuilderV111
                 evt.NativePageIndex != 0 ||
                 evt.ChosenChoiceId is not null ||
                 evt.RepyFirstChoiceId is not null ||
-                evt.RepyChestPotionIds is not null ||
-                evt.RepyChestRelicIds is not null ||
+                evt.Stochastic.RandomOutcomes.RepyChestPotionIds is not null ||
+                evt.Stochastic.RandomOutcomes.RepyChestRelicIds is not null ||
                 evt.RepyChestGroupsResolved != 0 ||
                 evt.Stochastic.NativeRng is not null ||
                 evt.Stochastic.ProviderMode is not null ||
@@ -687,7 +687,7 @@ internal static class NativeEventShufflePlanBuilderV111
                     resolvedActionId is not ("attack" or "skill" or "power") ||
                     evt.OfferedChoiceIds?.Contains(
                         resolvedActionId, StringComparer.Ordinal) != true ||
-                    evt.NativeTinkerType is not null ||
+                    evt.Stochastic.RandomOutcomes.NativeTinkerType is not null ||
                     (legacyEventShuffleFallback
                         ? evt.Stochastic.ProviderMode is not null
                         : evt.Stochastic.ProviderMode != "scripted-v111"))
@@ -862,7 +862,8 @@ internal static class NativeEventShufflePlanBuilderV111
             page = evt.NativePageIndex,
             actionId = resolvedActionId,
             offeredChoiceIds = evt.OfferedChoiceIds,
-            selectedTinkerType = evt.NativeTinkerType,
+            selectedTinkerType =
+                evt.Stochastic.RandomOutcomes.NativeTinkerType,
             orderedCandidateIds,
             stream = streamSnapshot,
             siteId,

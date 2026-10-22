@@ -59,10 +59,10 @@ public sealed partial class PrototypeGameEngine
             return false;
         return evt.NativePageIndex switch
         {
-            1 => evt.NativeTinkerType is null &&
+            1 => evt.Stochastic.RandomOutcomes.NativeTinkerType is null &&
                 offers.All(type => TinkerTypes.Contains(
                     type, StringComparer.Ordinal)),
-            2 => evt.NativeTinkerType is { } type &&
+            2 => evt.Stochastic.RandomOutcomes.NativeTinkerType is { } type &&
                 TinkerTypes.Contains(type, StringComparer.Ordinal) &&
                 offers.All(rider => TinkerRiders(type).Contains(
                     rider, StringComparer.Ordinal)),
@@ -167,7 +167,8 @@ public sealed partial class PrototypeGameEngine
             };
         }
 
-        if (evt.NativePageIndex != 2 || evt.NativeTinkerType is null)
+        if (evt.NativePageIndex != 2 ||
+            evt.Stochastic.RandomOutcomes.NativeTinkerType is null)
             throw new InvalidOperationException(
                 "Tinker Time has no rider selection in progress.");
 
@@ -176,7 +177,7 @@ public sealed partial class PrototypeGameEngine
         // both and stays attached to the physical deck instance.
         var payload = JsonSerializer.SerializeToElement(new
         {
-            tinkerType = evt.NativeTinkerType,
+            tinkerType = evt.Stochastic.RandomOutcomes.NativeTinkerType,
             tinkerRider = choice
         });
         var added = new CardInstance(world.NextCardInstanceId,

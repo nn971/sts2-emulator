@@ -158,7 +158,8 @@ public sealed partial class PrototypeGameEngine
                 continue;
             }
 
-            if (eventState.DeferredCardId is { } deferredCardId)
+            if (eventState.Stochastic.RandomOutcomes.DeferredCardId
+                is { } deferredCardId)
             {
                 var player = AppendCard(
                     state.Player,

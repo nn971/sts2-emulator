@@ -218,8 +218,10 @@ public sealed partial class PrototypeGameEngine
         if (evt.EventId != PrototypeNativeHiveEvents.WarHistorianRepyId)
             throw new InvalidOperationException("Foreign Repy continuation.");
 
-        if (evt.RepyChestPotionIds is { Length: 2 } potions
-            && evt.RepyChestRelicIds is { Length: 2 } relics
+        if (evt.Stochastic.RandomOutcomes.RepyChestPotionIds
+                is { Length: 2 } potions
+            && evt.Stochastic.RandomOutcomes.RepyChestRelicIds
+                is { Length: 2 } relics
             && evt.RepyChestGroupsResolved == 0)
         {
             var reward = new RewardState(

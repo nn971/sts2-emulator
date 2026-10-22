@@ -127,7 +127,7 @@ public sealed partial record EventState
                 || eventState.PendingReward is not null
                 || eventState.DeferredHpLoss != 0
                 || eventState.DeferredGoldLoss != 0
-                || eventState.DeferredCardId is not null
+                || eventState.Stochastic.RandomOutcomes.DeferredCardId is not null
                 || eventState.Stochastic.RandomOutcomes.NativeDishRollPending)
                 throw new InvalidOperationException(
                     "Native event completion page has unresolved or invalid state.");
