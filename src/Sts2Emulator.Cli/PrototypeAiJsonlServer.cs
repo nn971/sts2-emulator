@@ -762,11 +762,14 @@ internal static class PrototypeAiJsonlServer
                 probabilityStatus = ChanceLawV111.UnverifiedStatus,
                 sourceOpeningFingerprint = combat.SourceOpeningFingerprint,
                 sourceRouteProvider = combat.Stochastic.SourceRouteAudit?.ProviderId,
-                otherChanceProvider = combat.OtherChance?.ProviderId ??
+                otherChanceProvider =
+                    combat.Run.Stochastic.SemanticOtherChance?.ProviderId ??
                     "engine-owned-deterministic-unverified-v1",
-                otherChanceDecisionCount = combat.OtherChance?.Decisions.Length ?? 0,
-                rewardProvider = combat.RewardAudit?.ProviderId,
-                rewardDrawCount = combat.RewardAudit?.Calls
+                otherChanceDecisionCount =
+                    combat.Run.Stochastic.SemanticOtherChance?.Decisions.Length ?? 0,
+                rewardProvider =
+                    combat.Run.Stochastic.SemanticRewardAudit?.ProviderId,
+                rewardDrawCount = combat.Run.Stochastic.SemanticRewardAudit?.Calls
             };
         }
 
@@ -2556,11 +2559,13 @@ internal static class PrototypeAiJsonlServer
                         NativeFisherYatesV111.SiteId) ?? 0,
                 otherChanceProvider = state.UsesNativePolicyBaseline
                     ? null
-                    : state.OtherChance?.ProviderId ??
+                    : state.Run.Stochastic.SemanticOtherChance?.ProviderId ??
                         "engine-owned-deterministic-unverified-v1",
-                otherChanceDecisionCount = state.OtherChance?.Decisions.Length ?? 0,
-                rewardProvider = state.RewardAudit?.ProviderId,
-                rewardDrawCount = state.RewardAudit?.Calls,
+                otherChanceDecisionCount =
+                    state.Run.Stochastic.SemanticOtherChance?.Decisions.Length ?? 0,
+                rewardProvider =
+                    state.Run.Stochastic.SemanticRewardAudit?.ProviderId,
+                rewardDrawCount = state.Run.Stochastic.SemanticRewardAudit?.Calls,
                 sourceOpeningProvider = state.Stochastic.SeededEntry is null
                     ? "precommitted-fixture-v1"
                     : state.Stochastic.SeededEntry.ReplayOpeningDrawHooks

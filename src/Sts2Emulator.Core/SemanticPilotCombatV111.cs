@@ -1036,10 +1036,13 @@ public sealed record SemanticPilotCombatV111(
                 entry.Act != this.OpeningSource.Origin.Combat.Act ||
                 entry.NativeEncounterEntry != this.NativeEncounterEntry ||
                 entry.TotalFloor != this.OpeningSource.Origin.Formation.TotalFloor ||
-                otherChanceExpected != (this.OtherChance is not null) ||
+                otherChanceExpected !=
+                    (this.Run.Stochastic.SemanticOtherChance is not null) ||
                 (entry.OtherChanceProviderId is not null &&
-                 entry.OtherChanceProviderId != this.OtherChance?.ProviderId) ||
-                (routeCostProviderExpected && this.OtherChance?.ProviderId !=
+                 entry.OtherChanceProviderId !=
+                    this.Run.Stochastic.SemanticOtherChance?.ProviderId) ||
+                (routeCostProviderExpected &&
+                 this.Run.Stochastic.SemanticOtherChance?.ProviderId !=
                  SemanticOtherChanceEngineV111.ProviderId))
                 throw new InvalidDataException(
                     "Seeded Nature entry provenance disagrees with its opening.");
@@ -1069,7 +1072,8 @@ public sealed record SemanticPilotCombatV111(
                 "Fixture semantic session cannot retain a source-route audit.");
         if (this.UsesNativePolicyBaseline)
         {
-            if (this.OtherChance is not null || this.PendingEndTurn is not null ||
+            if (this.Run.Stochastic.SemanticOtherChance is not null ||
+                this.PendingEndTurn is not null ||
                 this.PendingInitialIntents is not null)
                 throw new InvalidDataException(
                     "Native policy baseline cannot retain Nature-only continuations.");
@@ -3862,7 +3866,7 @@ public static class SemanticPilotCombatEngineV111
                 throw new InvalidDataException("Invalid engine-owned cost bound.");
             SemanticOtherChanceStateV111? nextOther = null;
             int index;
-            if (current.OtherChance is { } other)
+            if (current.Run.Stochastic.SemanticOtherChance is { } other)
             {
                 var choice = SemanticOtherChanceEngineV111.ResolveDrawCost(
                     other, cost);
@@ -3900,8 +3904,9 @@ public static class SemanticPilotCombatEngineV111
             Run = run,
             RewardAudit = run.Phase == RunPhase.Reward
                 ? RecordRewardAudit(current.Run, run)
-                : current.RewardAudit,
-            OtherChance = otherChance ?? current.OtherChance
+                : current.Run.Stochastic.SemanticRewardAudit,
+            OtherChance = otherChance ??
+                current.Run.Stochastic.SemanticOtherChance
         };
         if (!preservePendingEndTurn)
             next = next with
