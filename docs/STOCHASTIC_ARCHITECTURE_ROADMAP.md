@@ -2,6 +2,12 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 ReferenceNature run audit history append ownership increment (2026-10-22):**
+`RunStochasticStateV111` now validates and appends completed map-generation
+audits and Ancient-offer session snapshots. Run-action completion and legacy
+Ancient replay use those owner methods instead of assembling history arrays.
+Static source review and `git diff --check` only; no tests or builds were run.
+
 **S3 ReferenceNature run-action cursor append ownership increment (2026-10-22):**
 The run-action stochastic owner now advances its Nature cursor and appends the
 matching decision as one transition. Ordinary actions, Native combat entry,

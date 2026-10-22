@@ -171,6 +171,54 @@ public sealed record RunStochasticStateV111
         };
     }
 
+    internal RunStochasticStateV111 AppendReferenceNatureMapGenerationAudit(
+        ReferenceNatureMapGenerationAuditV111 audit)
+    {
+        ArgumentNullException.ThrowIfNull(audit);
+        audit.Validate();
+        var history = _referenceNatureMapGenerationHistory ?? [];
+        foreach (var previous in history)
+        {
+            if (previous is null)
+                throw new InvalidDataException(
+                    "ReferenceNature map history contains a null audit.");
+            previous.Validate();
+        }
+        return this with
+        {
+            ReferenceNatureMapGenerationHistory = history
+                .Select(previous => previous.Fork())
+                .Append(audit.Fork()).ToArray()
+        };
+    }
+
+    internal RunStochasticStateV111 AppendReferenceNatureAncientOfferAudit(
+        ReferenceNatureAncientOfferSessionSnapshotV111 audit)
+    {
+        ArgumentNullException.ThrowIfNull(audit);
+        var completed = ReferenceNatureAncientOfferSessionV111.Restore(audit);
+        if (!completed.Complete)
+            throw new InvalidDataException(
+                "ReferenceNature Ancient-offer audit is incomplete.");
+        var history = _referenceNatureAncientOfferHistory ?? [];
+        foreach (var previous in history)
+        {
+            if (previous is null)
+                throw new InvalidDataException(
+                    "ReferenceNature Ancient-offer history contains a null audit.");
+            if (!ReferenceNatureAncientOfferSessionV111.Restore(previous)
+                    .Complete)
+                throw new InvalidDataException(
+                    "ReferenceNature Ancient-offer history contains an incomplete audit.");
+        }
+        return this with
+        {
+            ReferenceNatureAncientOfferHistory = history
+                .Select(previous => previous.Fork())
+                .Append(audit.Fork()).ToArray()
+        };
+    }
+
     public void Deconstruct(
         out RngBundle PrototypeRng,
         out RngBundle? NativeRunRng,

@@ -7530,19 +7530,13 @@ public sealed record ReferenceNatureRunActionSessionV111(
         ReferenceNatureAncientOfferSessionSnapshotV111?
             ancientOfferAudit)
     {
-        var mapHistory = continued.Stochastic.ReferenceNatureMapGenerationHistory
-            ?? Array.Empty<ReferenceNatureMapGenerationAuditV111>();
-        var ancientOfferHistory = continued.Stochastic
-            .ReferenceNatureAncientOfferHistory
-            ?? Array.Empty<ReferenceNatureAncientOfferSessionSnapshotV111>();
-        continued = continued with
-        {
-            ReferenceNatureMapGenerationHistory = mapHistory.Append(
-                mapGeneration.ToAudit()).ToArray(),
-            ReferenceNatureAncientOfferHistory = ancientOfferAudit is null
-                ? continued.Stochastic.ReferenceNatureAncientOfferHistory
-                : ancientOfferHistory.Append(ancientOfferAudit.Fork()).ToArray()
-        };
+        var stochastic = continued.Stochastic
+            .AppendReferenceNatureMapGenerationAudit(
+                mapGeneration.ToAudit());
+        if (ancientOfferAudit is not null)
+            stochastic = stochastic.AppendReferenceNatureAncientOfferAudit(
+                ancientOfferAudit);
+        continued = continued with { Stochastic = stochastic };
         return ReferenceNatureRunCursorV111.Commit(
             continued, finalNatureState);
     }
@@ -8003,13 +7997,11 @@ public sealed record ReferenceNatureRunActionSessionV111(
             var expectedWithoutMapAudit =
                 ReferenceNatureRunCursorV111.Commit(
                     legacyReplay.Value.Run, NatureState);
-            var mapHistory = legacyReplay.Value.Run.Stochastic
-                .ReferenceNatureMapGenerationHistory
-                ?? Array.Empty<ReferenceNatureMapGenerationAuditV111>();
             var expectedWithMapAudit = legacyReplay.Value.Run with
             {
-                ReferenceNatureMapGenerationHistory = mapHistory.Append(
-                    legacyReplay.Value.MapGeneration.ToAudit()).ToArray()
+                Stochastic = legacyReplay.Value.Run.Stochastic
+                    .AppendReferenceNatureMapGenerationAudit(
+                        legacyReplay.Value.MapGeneration.ToAudit())
             };
             expectedWithMapAudit = ReferenceNatureRunCursorV111.Commit(
                 expectedWithMapAudit, NatureState);
@@ -8339,13 +8331,11 @@ public sealed record ReferenceNatureRunActionSessionV111(
             return null;
         var expectedWithoutMapAudit = ReferenceNatureRunCursorV111.Commit(
             replay.Value.Run, natureState);
-        var mapHistory = replay.Value.Run.Stochastic
-            .ReferenceNatureMapGenerationHistory
-            ?? Array.Empty<ReferenceNatureMapGenerationAuditV111>();
         var expectedWithMapAudit = replay.Value.Run with
         {
-            ReferenceNatureMapGenerationHistory = mapHistory.Append(
-                replay.Value.MapGeneration.ToAudit()).ToArray()
+            Stochastic = replay.Value.Run.Stochastic
+                .AppendReferenceNatureMapGenerationAudit(
+                    replay.Value.MapGeneration.ToAudit())
         };
         expectedWithMapAudit = ReferenceNatureRunCursorV111.Commit(
             expectedWithMapAudit, natureState);
