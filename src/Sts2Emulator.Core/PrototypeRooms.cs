@@ -5570,7 +5570,8 @@ public sealed partial class PrototypeGameEngine
         }
 
         var nativeOvergrowth = UsesNativeRegionalSystems(world);
-        var nativeRunRng = state.Stochastic.NativeRunRngMutable?.Fork();
+        var nativeRunRng = state.Stochastic.NativeRunRng;
+        var prototypeRng = state.Stochastic.PrototypeRng;
 
         // RewardsSet.GenerateRewardsFor rolls the potion pity check
         // before rewards are populated; GoldReward.Populate runs first,
@@ -5585,7 +5586,7 @@ public sealed partial class PrototypeGameEngine
             var (offered, nextOdds) = PrototypeNativePotionRewardOdds.Roll(
                 world.PotionRewardOddsThousandths,
                 room == PrototypeRoomType.Elite,
-                state.Stochastic.PrototypeRngMutable,
+                prototypeRng,
                 forced: forced,
                 nativeRunRng: nativeRunRng);
             nativePotionOffered = offered;
@@ -5600,7 +5601,7 @@ public sealed partial class PrototypeGameEngine
         var preventsGoldGain = PreventsGoldGain(state.Player);
         var nativeGold = nativeOvergrowth && !preventsGoldGain
             ? PrototypeNativeCombatGoldReward.Roll(
-                room, state.Ascension, state.Stochastic.PrototypeRngMutable,
+                room, state.Ascension, prototypeRng,
                 nativeRunRng: nativeRunRng)
             : null;
         var gold = 0;
@@ -5652,7 +5653,7 @@ public sealed partial class PrototypeGameEngine
                             new NativeRandomUnitFloatProviderV111())
                         .PotionIds[0]
                     : PrototypeNativePotionShop.PickWeighted(
-                        state.Stochastic.PrototypeRngMutable, "reward")
+                        prototypeRng, "reward")
                 : null;
 
         var cardChoiceCount =
@@ -5673,7 +5674,7 @@ public sealed partial class PrototypeGameEngine
         {
             var offset = world.CardRarityOffsetBasisPoints;
             var first = PrototypeNativeCardRarityOdds.GenerateEncounterCards(
-                cardChoiceCount, state.Ascension, room, offset, state.Stochastic.PrototypeRngMutable,
+                cardChoiceCount, state.Ascension, room, offset, prototypeRng,
                 act: world.Act,
                 nativeRunRng: nativeRunRng);
             cardOptions = first.Cards;
@@ -5690,14 +5691,14 @@ public sealed partial class PrototypeGameEngine
             cardOptions = PickRewardCards(
                 world.Act,
                 cardChoiceCount,
-                state.Stochastic.PrototypeRngMutable,
+                prototypeRng,
                 $"act:{world.Act}:floor:{world.Floor}:room:{room}:group:0");
             extraCardOptions = Enumerable.Range(
                     0, extraCardRewardGroups)
                 .Select((_, groupIndex) => PickRewardCards(
                     world.Act,
                     cardChoiceCount,
-                    state.Stochastic.PrototypeRngMutable,
+                    prototypeRng,
                     $"act:{world.Act}:floor:{world.Floor}:room:{room}:extra_group:{groupIndex}"))
                 .ToArray();
         }
@@ -5706,7 +5707,7 @@ public sealed partial class PrototypeGameEngine
         {
             var potionDrop = CanAcquirePotion(state.Player)
                 && ResolveLegacyBoundedInteger(
-                    state.Stochastic.PrototypeRngMutable,
+                    prototypeRng,
                     "reward.random_potion.drop.ticket",
                     $"act:{world.Act}:floor:{world.Floor}:room:{room}",
                     2,
@@ -5714,7 +5715,7 @@ public sealed partial class PrototypeGameEngine
             potion = potionDrop
                 ? PrototypeContent.PotionPool[
                     ResolveLegacyRandomIndex(
-                        state.Stochastic.PrototypeRngMutable,
+                        prototypeRng,
                         "reward.random_potion.model",
                         $"act:{world.Act}:floor:{world.Floor}:room:{room}:pool:"
                             + CanonicalJson.Sha256(
@@ -5731,7 +5732,7 @@ public sealed partial class PrototypeGameEngine
             if (UsesNativeRegionalSystems(world))
             {
                 var draw = PrototypeNativeRelicGrabBag.Draw(
-                    world, state.Player, state.Stochastic.PrototypeRngMutable, merchant: false,
+                    world, state.Player, prototypeRng, merchant: false,
                     nativeRunRng: nativeRunRng);
                 world = draw.World;
                 relic = draw.Id;
@@ -5740,7 +5741,7 @@ public sealed partial class PrototypeGameEngine
             {
                 relic = PrototypeContent.RelicPool[
                     ResolveLegacyRandomIndex(
-                        state.Stochastic.PrototypeRngMutable,
+                        prototypeRng,
                         "reward.elite_relic.model",
                         $"act:{world.Act}:floor:{world.Floor}:pool:"
                             + CanonicalJson.Sha256(
@@ -5760,7 +5761,7 @@ public sealed partial class PrototypeGameEngine
             if (nativeRunRng is null)
             {
                 relicOptions = PickDistinct(
-                    bossRelicPool, 3, state.Stochastic.PrototypeRngMutable, "reward",
+                    bossRelicPool, 3, prototypeRng, "reward",
                     StochasticSiteRegistryV111
                         .RewardBossRelicOfferShuffleSiteId,
                     $"act:{world.Act}:floor:{world.Floor}");
@@ -5790,7 +5791,7 @@ public sealed partial class PrototypeGameEngine
                 var next = PrototypeNativeCardRarityOdds
                     .GenerateEncounterCards(
                         cardChoiceCount, state.Ascension, room, offset,
-                        state.Stochastic.PrototypeRngMutable, act: world.Act,
+                        prototypeRng, act: world.Act,
                         nativeRunRng: nativeRunRng);
                 extras.Add(next.Cards);
                 upgrades.Add(next.UpgradeFlags);
@@ -5809,7 +5810,7 @@ public sealed partial class PrototypeGameEngine
             for (var index = 0; index < blackStarRewards; index++)
             {
                 var draw = PrototypeNativeRelicGrabBag.Draw(
-                    world, state.Player, state.Stochastic.PrototypeRngMutable, merchant: false,
+                    world, state.Player, prototypeRng, merchant: false,
                     nativeRunRng: nativeRunRng);
                 world = draw.World;
                 if (draw.Id is { } relicId)
@@ -5829,7 +5830,7 @@ public sealed partial class PrototypeGameEngine
             {
                 var next = PrototypeNativeCardRarityOdds.GenerateEncounterCards(
                     cardChoiceCount, state.Ascension,
-                    PrototypeRoomType.Combat, offset, state.Stochastic.PrototypeRngMutable,
+                    PrototypeRoomType.Combat, offset, prototypeRng,
                     act: world.Act,
                     nativeRunRng: nativeRunRng);
                 extras.Add(next.Cards);
@@ -5857,7 +5858,7 @@ public sealed partial class PrototypeGameEngine
 
         var lavaRock = ApplyLavaRockBossRewards(
             silverCrucible.Player, room, world.Act,
-            relicOptions, state.Stochastic.PrototypeRngMutable, nativeRunRng);
+            relicOptions, prototypeRng, nativeRunRng);
         var extraRelicRewardIds = lavaRock.AdditionalRelicIds
             .Concat(blackStarRelicRewardIds).ToList();
         var extraRelicRewards = extraRelicRewardIds.ToArray();
@@ -5917,6 +5918,11 @@ public sealed partial class PrototypeGameEngine
             Reward = reward
         };
 
+        var stochastic = RunStochasticStateV111.WithPrototypeRng(
+            state.Stochastic, prototypeRng);
+        if (nativeRunRng is not null)
+            stochastic = RunStochasticStateV111.WithNativeRunRng(
+                stochastic, nativeRunRng);
         return state with
         {
             Player = lavaRock.Player with
@@ -5925,8 +5931,7 @@ public sealed partial class PrototypeGameEngine
                 Gold = lavaRock.Player.Gold
                     + (nativeOvergrowth ? 0 : gold)
             },
-            Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRngMutable),
+            Stochastic = stochastic,
             World = world,
             Phase = RunPhase.Reward
         };
