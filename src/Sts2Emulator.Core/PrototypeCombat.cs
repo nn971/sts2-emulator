@@ -416,7 +416,11 @@ public sealed partial class PrototypeGameEngine
             Act: world.Act,
             Ascension: state.Ascension,
             Pets: NativePaelRewardsV111.CreateCombatPets(state.Player),
-            CurrentMapNodeId: world.Map.CurrentNodeId);
+            CurrentMapNodeId: world.Map.CurrentNodeId)
+        {
+            ConfiguredColorlessGenerationFullyUnlocked =
+                state.Configuration?.Profile.FullyUnlocked
+        };
 
         var teaOfDiscourtesy = ApplyTeaOfDiscourtesyBeforeCombat(
             state.Player, combat, state.Stochastic.PrototypeRng);
@@ -9077,27 +9081,21 @@ public sealed partial class PrototypeGameEngine
             combat.Hand.Length);
         if (capacity == 0 || count <= 0)
             return combat;
-        if (combat.Stochastic.NativeRng is not null)
-            throw new NotSupportedException(
-                "Native distinct-colorless generation needs the complete unlocked " +
-                "card pool before it can consume run.combat_card_generation.");
-        var candidates = DistinctColorlessGenerationPool(sourceCardId);
+        var candidates = DistinctColorlessGenerationPool(
+            combat, sourceCardId);
         if (candidates.Length == 0)
         {
             return combat;
         }
 
-        // Native GetDistinctForCombat uses CombatCardGeneration and a
-        // fully-unlocked card pool. Synthetic RNG currently shares the
-        // combat stream, and we intentionally omit locked/unimplemented
-        // models until the native unlock bridge exists.
+        // Fully unlocked Native runs include the implemented epoch-gated
+        // combat cards. Synthetic runs keep the conservative base pool.
         combat = ShuffleCombatCardPool(
             combat, rng, candidates,
             StochasticSiteRegistryV111.CombatFullPoolShuffleSiteId,
             "combat", "run.combat_card_generation",
             "effect:CreateDistinctColorlessCardsInHand:source:" +
-                (sourceCardId ?? "none"),
-            forceLegacyProfile: true);
+                (sourceCardId ?? "none"));
         foreach (var cardId in candidates.Take(
                      Math.Min(Math.Min(count, capacity), candidates.Length)))
         {

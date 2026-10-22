@@ -788,10 +788,9 @@ public static class PrototypeColorlessCards
                 or PrototypeCardRarity.Rare))
         .ToArray();
 
-    // Native Colorless1..5Epoch.Cards (pinned v0.111.0).
-    // Until unlock state is available, combat generation deliberately
-    // uses the conservative base-pool subset. This does not reproduce a
-    // fully-unlocked game and should not be used for RNG parity tests.
+    // Native Colorless1..5Epoch.Cards (pinned v0.111.0). The conservative
+    // synthetic pool excludes these IDs; a configured fully unlocked Native
+    // profile admits the implemented, solo-eligible subset below.
     public static string[] EpochGatedIds =>
         (string[])EpochGatedIdValues.Clone();
 
@@ -817,16 +816,26 @@ public static class PrototypeColorlessCards
     public static string[] ImplementedCombatGenerationPool =>
         (string[])ImplementedCombatGenerationPoolValues.Clone();
 
-    private static readonly string[] ImplementedCombatGenerationPoolValues =
+    // Fully unlocked combat generation includes the source-ordered epoch
+    // cards once the run profile confirms that all Colorless epochs are open.
+    public static string[] ImplementedUnlockedCombatGenerationPool =>
+        (string[])ImplementedUnlockedCombatGenerationPoolValues.Clone();
+
+    private static readonly string[] ImplementedUnlockedCombatGenerationPoolValues =
         NativePoolIdValues.Where(id =>
             ImplementedDefinitions.Any(card => card.Id == id
                 && card.CanBeGeneratedInCombat
                 && card.MechanicsImplemented
                 && !card.MultiplayerOnly
                 && card.Rarity is
-                    PrototypeCardRarity.Uncommon or PrototypeCardRarity.Rare)
-            && !EpochGatedIdValues.Contains(id, StringComparer.Ordinal))
+                    PrototypeCardRarity.Uncommon or PrototypeCardRarity.Rare))
         .ToArray();
+
+    private static readonly string[] ImplementedCombatGenerationPoolValues =
+        ImplementedUnlockedCombatGenerationPoolValues
+            .Where(id => !EpochGatedIdValues.Contains(
+                id, StringComparer.Ordinal))
+            .ToArray();
 
     public static string PickMerchantCard(
         PrototypeCardRarity rarity,

@@ -30,11 +30,14 @@ Pinned game source: STS2 v0.111.0, `Flaaax/STS2-source` at
   affliction handling. The total hand size is limited to 10.
 - Discovery's choices use the current fully implemented Silent reward
   card list (not a complete native character unlock registry).
-- Jack's candidate list is the supported single-player colorless subset
-  with `CanBeGeneratedInCombat`, non-basic rarity, **and no epoch gates**.
-  This deliberately removes unknown, unavailable or not-yet-implemented
-  candidates rather than silently manufacturing unsupported cards.
-  It does **not** reflect all cards of a fully unlocked account.
+- Synthetic combat generation uses the supported single-player Colorless
+  subset with `CanBeGeneratedInCombat`, non-basic rarity, and no epoch gates.
+  Native combat generation uses the source-ordered implemented solo pool,
+  including epoch-gated cards that pass combat-generation eligibility,
+  when the configured run profile is fully unlocked.
+  Native execution with a missing or partially unlocked profile fails closed
+  because the current profile does not identify individually unlocked
+  Colorless epochs.
 - The synthetic adapter currently provides six SplitMix64 streams. Native
   Metamorphosis card-model draws now use typed `run.combat_card_generation`
   requests, and random insertion positions use `run.shuffle`; other existing
@@ -46,12 +49,15 @@ Pinned game source: STS2 v0.111.0, `Flaaax/STS2-source` at
 
 ## Integration work remaining
 
-Introduce native unlock-state/epoch metadata in the run state (or in
-the run initialization capabilities), character card-pool membership,
-and separate combat-generation/selection RNG streams under an explicit
-schema/version migration. Then compare actual native candidate IDs
-and stream consumption using the passive oracle before asserting
-seed-for-seed fidelity.
+Partial Colorless epoch unlock state is not represented by the run profile;
+Native generation therefore only admits the complete source-filtered pool
+for a configured fully unlocked profile, and fails closed for partial or
+missing profile data. Native Colorless generation uses the existing
+`run.combat_card_generation` stream, but its source attribution and cursor
+parity remain unverified. Character card-pool membership and stream
+partitioning for other generated-card paths still need explicit modeling.
+Compare actual Native candidate IDs and stream consumption using the passive
+oracle before asserting seed-for-seed fidelity.
 
 ## Seventh single-player batch
 

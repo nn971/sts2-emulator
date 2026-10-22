@@ -2745,6 +2745,20 @@ public sealed partial record CombatState(
     }
 
     /// <summary>
+    /// Optional profile snapshot needed to resolve Native Colorless epoch
+    /// cards. Null legacy snapshots remain readable but fail closed if a
+    /// Native Colorless generation operation needs this information.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public bool? ConfiguredColorlessGenerationFullyUnlocked
+    {
+        get => Mechanics.ConfiguredColorlessGenerationFullyUnlocked;
+        init => Mechanics = Mechanics with
+        { ConfiguredColorlessGenerationFullyUnlocked = value };
+    }
+
+    /// <summary>
     /// Atomically publishes a draw-pile mechanics/provider transition. The
     /// adapter validates the candidate correspondence before using this
     /// internal path around the compatibility envelope setter guard.

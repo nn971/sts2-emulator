@@ -66,7 +66,7 @@ public sealed partial class PrototypeGameEngine
         {
             var sourceId = sourceCardInstanceId is null ? null
                 : RequireCombatCard(combat, sourceCardInstanceId.Value).CardId;
-            return DistinctColorlessGenerationPool(sourceId);
+            return DistinctColorlessGenerationPool(combat, sourceId);
         }
 
         if (op.Kind is not (PrototypeCombatEffectKind.ChooseGeneratedCards or
@@ -74,7 +74,7 @@ public sealed partial class PrototypeGameEngine
             return null;
 
         var source = op.Kind == PrototypeCombatEffectKind.ChooseGeneratedColorlessCards
-            ? PrototypeColorlessCards.ImplementedCombatGenerationPool
+            ? ColorlessCombatGenerationPool(combat)
             : op.GeneratedChoiceCharacterCards
                 ? PrototypeContent.NativeSilentCardPool
                 : PrototypeContent.RewardCardPool;
@@ -102,10 +102,26 @@ public sealed partial class PrototypeGameEngine
         }).ToArray();
 
     internal static string[] DistinctColorlessGenerationPool(
-        string? sourceCardId) =>
-        PrototypeColorlessCards.ImplementedCombatGenerationPool
+        CombatState combat, string? sourceCardId)
+    {
+        return ColorlessCombatGenerationPool(combat)
             .Where(id => !StringComparer.Ordinal.Equals(id, sourceCardId))
             .ToArray();
+    }
+
+    private static string[] ColorlessCombatGenerationPool(
+        CombatState combat)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        if (combat.Stochastic.NativeRng is null)
+            return PrototypeColorlessCards.ImplementedCombatGenerationPool;
+        if (combat.ConfiguredColorlessGenerationFullyUnlocked == true)
+            return PrototypeColorlessCards
+                .ImplementedUnlockedCombatGenerationPool;
+        throw new NotSupportedException(
+            "Native Colorless generation requires a fully unlocked run " +
+            "profile to resolve epoch-gated cards.");
+    }
 
     private static int ControlledPoolSelectedCount(
         CombatState combat, PrototypeQueuedOperation op, int poolCount)

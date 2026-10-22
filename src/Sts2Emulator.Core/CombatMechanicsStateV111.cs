@@ -54,6 +54,8 @@ public sealed record CombatMechanicsStateV111(
         PendingKnowledgeDemonChoice?.Fork();
     private PrototypeCombatCounters? _counters = Counters?.Fork();
 
+    public bool? ConfiguredColorlessGenerationFullyUnlocked { get; init; }
+
     public EnemyCombatState[] Enemies
     {
         get => CloneEnemies(_enemies);

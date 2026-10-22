@@ -216,6 +216,13 @@ public sealed record RunConfiguration
             throw new InvalidDataException("World ruleset, character or act does not match its configuration.");
         if (state.World is { } initialized)
         {
+            if (initialized.Combat is { } combat &&
+                combat.ConfiguredColorlessGenerationFullyUnlocked is
+                    { } colorlessFullyUnlocked &&
+                colorlessFullyUnlocked !=
+                    configuration.Profile.FullyUnlocked)
+                throw new InvalidDataException(
+                    "Combat Colorless-generation profile differs from run configuration.");
             if (configuration.CharacterId != "silent")
                 throw new NotSupportedException("Initialized v111 character mechanics are currently limited to Silent.");
             if (initialized.Act > 1)
