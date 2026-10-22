@@ -45,6 +45,12 @@ class State:
     def exact_hash(self):
         return self.session.call("exact_hash", state_handle=self.handle)["exactHash"]
 
+    def query_deck_prefix_distribution(self, prefix_length: int, *,
+                                       maximum_orders: int = 4096):
+        """Return exact Nature deck prefix counts under their UNVERIFIED model."""
+        return self.session.query_semantic_deck_prefix_distribution(
+            self.handle, prefix_length, maximum_orders=maximum_orders)
+
     def query_chance_law(self, site_id: str, *, ordinal: int = 0,
                          prior_indices=None, card_type=None, rarity=None,
                          excluded_potion_ids=None, card_id=None,
@@ -3312,6 +3318,8 @@ class Session:
             if self.capabilities.get("batchSchemaId") != "sts2-deterministic-batch-v1":
                 raise EmulatorError("Emulator does not support deterministic batch v1")
             self._validate_stochastic_capabilities()
+            self._semantic_deck_prefix_distribution_supported = (
+                self._validate_semantic_deck_prefix_distribution_capabilities())
             self._fair_observation_supported = (
                 self._validate_fair_observation_capabilities())
         except BaseException:
@@ -3597,6 +3605,141 @@ class Session:
                 "sts2-v111-stochastic-chance-law-query-coverage-v1"
                 and coverage.get("queryOperation") == "chance_law_query"
                 and site_id in coverage.get("siteIds", []))
+
+    def _validate_semantic_deck_prefix_distribution_capabilities(self):
+        fields = (
+            "semanticDeckPrefixDistributionSchemaId",
+            "semanticDeckPrefixDistributionOperations",
+            "semanticDeckPrefixDistributionInputs",
+            "semanticDeckPrefixDistributionScope",
+        )
+        present = [field in self.capabilities for field in fields]
+        if not any(present):
+            return False
+        if not all(present):
+            raise EmulatorError(
+                "Emulator returned partial semantic deck distribution capabilities")
+        if self.capabilities[fields[0]] != (
+                "sts2-v111-semantic-deck-prefix-distribution-v1"):
+            raise EmulatorError(
+                "Unsupported semantic deck prefix distribution schema")
+
+        def string_list(value, field):
+            if (not isinstance(value, list)
+                    or any(not isinstance(item, str) or not item
+                           for item in value)
+                    or len(value) != len(set(value))):
+                raise EmulatorError(
+                    f"Invalid semantic deck distribution capability {field!r}")
+            return value
+
+        operations = string_list(self.capabilities[fields[1]], fields[1])
+        inputs = string_list(self.capabilities[fields[2]], fields[2])
+        required_inputs = {
+            "state_handle (run with an idle Nature-owned combat deck)",
+            "prefix_length (integer from 1 through the deck size)",
+            "maximum_orders (optional integer from 1 through 65536; default 4096)",
+        }
+        scope = self.capabilities[fields[3]]
+        if ("semantic_deck_prefix_distribution" not in operations
+                or not required_inputs.issubset(inputs)
+                or not isinstance(scope, str)
+                or "Nature-only" not in scope
+                or "UNVERIFIED" not in scope
+                or "excluded from fair player observations" not in scope):
+            raise EmulatorError(
+                "Invalid semantic deck prefix distribution contract")
+        return True
+
+    def query_semantic_deck_prefix_distribution(
+            self, state_handle: str, prefix_length: int, *,
+            maximum_orders: int = 4096):
+        """Enumerate a hidden Nature deck's exact ordered-prefix masses.
+
+        This returns exact combinatorial counts for the declared uniform-pool
+        model. The model is UNVERIFIED and the result is not a player view.
+        """
+        if not self._semantic_deck_prefix_distribution_supported:
+            raise EmulatorError(
+                "Emulator does not expose exact semantic deck prefix queries")
+        if not isinstance(state_handle, str) or not state_handle:
+            raise ValueError("state_handle must be a nonempty string")
+        if type(prefix_length) is not int or prefix_length < 1:
+            raise ValueError("prefix_length must be a positive integer")
+        if (type(maximum_orders) is not int or
+                maximum_orders < 1 or maximum_orders > 65536):
+            raise ValueError(
+                "maximum_orders must be an integer from 1 through 65536")
+
+        result = self.call(
+            "semantic_deck_prefix_distribution",
+            state_handle=state_handle,
+            prefix_length=prefix_length,
+            maximum_orders=maximum_orders,
+        )
+        distribution = result.get("distribution")
+        self._validate_semantic_deck_prefix_distribution(
+            distribution, prefix_length=prefix_length)
+        return distribution
+
+    @staticmethod
+    def _validate_semantic_deck_prefix_distribution(
+            distribution, *, prefix_length):
+        if not isinstance(distribution, dict):
+            raise EmulatorError(
+                "Semantic deck prefix distribution is not an object")
+        required_text = (
+            "schemaId", "stateFingerprint", "conditioningPolicyId",
+            "probabilityStatus", "probabilityProvenance",
+            "outcomeFingerprint",
+        )
+        if any(not isinstance(distribution.get(field), str)
+               or not distribution[field] for field in required_text):
+            raise EmulatorError(
+                "Semantic deck prefix distribution identity is malformed")
+        if (distribution["schemaId"] !=
+                "sts2-v111-semantic-deck-prefix-distribution-v1"
+                or distribution["probabilityStatus"] != "UNVERIFIED"
+                or type(distribution.get("prefixLength")) is not int
+                or distribution["prefixLength"] != prefix_length):
+            raise EmulatorError(
+                "Semantic deck prefix distribution differs from negotiation")
+
+        outcomes = distribution.get("outcomes")
+        total_weight = distribution.get("totalWeight")
+        if (not isinstance(outcomes, list) or not outcomes
+                or type(total_weight) is not int or total_weight <= 0):
+            raise EmulatorError(
+                "Semantic deck prefix support is malformed")
+        keys = set()
+        support = []
+        weight_sum = 0
+        for outcome in outcomes:
+            if not isinstance(outcome, dict):
+                raise EmulatorError(
+                    "Semantic deck prefix outcome is not an object")
+            card_ids = outcome.get("cardInstanceIds")
+            weight = outcome.get("weight")
+            if (not isinstance(card_ids, list)
+                    or len(card_ids) != prefix_length
+                    or any(type(card_id) is not int for card_id in card_ids)
+                    or len(card_ids) != len(set(card_ids))
+                    or type(weight) is not int or weight <= 0):
+                raise EmulatorError(
+                    "Semantic deck prefix outcome is malformed")
+            key = tuple(card_ids)
+            if key in keys:
+                raise EmulatorError(
+                    "Semantic deck prefix support contains duplicates")
+            keys.add(key)
+            weight_sum += weight
+            support.append({"card_instance_ids": card_ids,
+                            "weight": weight})
+        if (weight_sum != total_weight
+                or _canonical_protocol_hash(support) !=
+                distribution["outcomeFingerprint"]):
+            raise EmulatorError(
+                "Semantic deck prefix weights or fingerprint are invalid")
 
     def _validate_chance_law(self, law, *, expected_site_id=None,
                              expected_ordinal=None):

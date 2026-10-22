@@ -2922,6 +2922,18 @@ internal static class PrototypeAiJsonlServer
                             },
                             simulationMechanicsComparisonScope =
                                 "provider-independent-mechanics-after-matched-semantic-outcomes",
+                            semanticDeckPrefixDistributionSchemaId =
+                                SemanticDeckPrefixDistributionV111.CurrentSchemaId,
+                            semanticDeckPrefixDistributionOperations =
+                                new[] { "semantic_deck_prefix_distribution" },
+                            semanticDeckPrefixDistributionInputs = new[]
+                            {
+                                "state_handle (run with an idle Nature-owned combat deck)",
+                                "prefix_length (integer from 1 through the deck size)",
+                                "maximum_orders (optional integer from 1 through 65536; default 4096)"
+                            },
+                            semanticDeckPrefixDistributionScope =
+                                "Nature-only exact constrained-order counts; UNVERIFIED uniform-pool model; excluded from fair player observations",
                             simulationProviderReplayCaptureSchemaId =
                                 SimulationProviderReplayCaptureV111
                                     .CurrentSchemaId,
@@ -9171,6 +9183,46 @@ internal static class PrototypeAiJsonlServer
                                 released++;
                         }
                         Write(new { requestId, ok = true, released });
+                        break;
+                    }
+
+                    case "semantic_deck_prefix_distribution":
+                    {
+                        var allowedFields = new HashSet<string>(new[]
+                        {
+                            "op", "request_id", "state_handle",
+                            "prefix_length", "maximum_orders"
+                        }, StringComparer.Ordinal);
+                        var unexpectedFields = request.EnumerateObject()
+                            .Select(property => property.Name)
+                            .Where(name => !allowedFields.Contains(name))
+                            .Distinct(StringComparer.Ordinal).ToArray();
+                        if (unexpectedFields.Length > 0)
+                            throw new ArgumentException(
+                                "Semantic deck prefix distribution does not accept field(s): " +
+                                string.Join(", ", unexpectedFields) + ".");
+                        var prefixLengthValue = RequiredLong(
+                            request, "prefix_length");
+                        if (prefixLengthValue < int.MinValue ||
+                            prefixLengthValue > int.MaxValue)
+                            throw new ArgumentOutOfRangeException(
+                                "prefix_length",
+                                "Prefix length must fit a signed 32-bit integer.");
+                        var maximumOrders = OptionalInt(
+                            request, "maximum_orders") ?? 4096;
+                        var deck = RequireState(request).World?.Combat?
+                            .Stochastic.SemanticDeck ??
+                            throw new InvalidOperationException(
+                                "State does not contain a Nature-owned combat deck.");
+                        var distribution = SemanticDeckEngineV111
+                            .EnumeratePrefixDistribution(
+                                deck, (int)prefixLengthValue, maximumOrders);
+                        Write(new
+                        {
+                            requestId,
+                            ok = true,
+                            distribution
+                        });
                         break;
                     }
 

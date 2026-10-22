@@ -2,6 +2,16 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S1 exact deck-prefix JSONL query increment (2026-10-22):** The bounded
+Nature-only prefix distribution is now available through the opt-in
+`semantic_deck_prefix_distribution` JSONL operation. It accepts a run handle
+whose combat has an idle Nature-owned deck, a prefix length, and an optional
+full-order cap, and returns
+the versioned exact integer completion counts already provided by the core
+enumerator. The capability is advertised separately in `hello` and stays out
+of the fair player view. The distribution remains `UNVERIFIED`; no tests or
+builds were run.
+
 **S1 exact deck-prefix distribution increment (2026-10-22):**
 `SemanticDeckEngineV111.EnumeratePrefixDistribution` groups the existing
 bounded full-order completions by ordered physical-card prefix and returns

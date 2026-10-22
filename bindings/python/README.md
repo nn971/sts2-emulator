@@ -53,6 +53,19 @@ This reports the exact Native `NextInt` index masses for that support size. It
 does not validate the Fishing Rod trigger or eligible-card pool. For an
 atomic victory replay, use the saved victory-hook session described below.
 
+For a run state with an idle Nature-owned combat deck, the exact joint law for
+an ordered top-first prefix can be queried directly:
+
+```python
+distribution = state.query_deck_prefix_distribution(
+    3, maximum_orders=4096)
+```
+
+The result groups physical card-instance prefixes by exact completion count
+and carries its state fingerprint, policy, and `UNVERIFIED` provenance. This
+Nature-only analysis is separate from the fair observation and is bounded by
+the full-order cap.
+
 Construction checks wire/snapshot/batch compatibility. Handles belong to one
 session; release invalidates them. Calls are serialized with a lock.
 `EmulatorError` exposes server failures; the context manager closes the server.
