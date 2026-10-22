@@ -2654,13 +2654,25 @@ public static class SemanticPilotCombatEngineV111
                 "No semantic generated-card event is pending.");
         var expected = SemanticGenerationChoiceV111.Select(
             pending, eventId, cardId);
+        return ResumeGeneratedCardDecision(current, expected);
+    }
+
+    private static SemanticPilotCombatV111 ResumeGeneratedCardDecision(
+        SemanticPilotCombatV111 current,
+        SemanticGeneratedCardDecisionV111 decision)
+    {
+        var pending = current.GeneratedCardPending ??
+            throw new InvalidOperationException(
+                "No semantic generated-card event is pending.");
+        SemanticGenerationChoiceV111.ValidateDecision(
+            pending, decision, decision.SelectedCardId);
         var choice = new SemanticEndTurnNestedChoiceV111(
-            "semantic_generated_card", GeneratedCardDecision: expected.Fork());
+            "semantic_generated_card", GeneratedCardDecision: decision.Fork());
         return ResumeAndPublishNestedChoice(
             current, choice,
             new SemanticPilotContinuationV111(
                 "semantic_generated_card",
-                GeneratedCardDecision: expected.Fork()),
+                GeneratedCardDecision: decision.Fork()),
             normalizeNoncontrolledCosts: true,
             validate: false);
     }
@@ -2707,13 +2719,25 @@ public static class SemanticPilotCombatEngineV111
                 "No semantic card-transform event is pending.");
         var expected = SemanticCardTransformChoiceV111.Select(
             pending, eventId, cardId);
+        return ResumeCardTransformDecision(current, expected);
+    }
+
+    private static SemanticPilotCombatV111 ResumeCardTransformDecision(
+        SemanticPilotCombatV111 current,
+        SemanticCardTransformDecisionV111 decision)
+    {
+        var pending = current.CardTransformPending ??
+            throw new InvalidOperationException(
+                "No semantic card-transform event is pending.");
+        SemanticCardTransformChoiceV111.ValidateDecision(
+            pending, decision, decision.SelectedCardId);
         var choice = new SemanticEndTurnNestedChoiceV111(
-            "semantic_card_transform", CardTransformDecision: expected.Fork());
+            "semantic_card_transform", CardTransformDecision: decision.Fork());
         return ResumeAndPublishNestedChoice(
             current, choice,
             new SemanticPilotContinuationV111(
                 "semantic_card_transform",
-                CardTransformDecision: expected.Fork()),
+                CardTransformDecision: decision.Fork()),
             normalizeNoncontrolledCosts: true,
             validate: false);
     }
@@ -3439,7 +3463,9 @@ public static class SemanticPilotCombatEngineV111
             ? "card_instance:" + sourceCardId
             : "effect:" + operation;
         return SemanticGenerationChoiceV111.CreateEvent(
-            current.Fingerprint, siteId, ownerId, ordinal, candidates);
+            current.Fingerprint, siteId, ownerId, ordinal, candidates,
+            combat?.Stochastic.NativeRngMutable?.RunStreams is not null
+                ? "run.combat_card_generation" : "prototype.combat");
     }
 
     public static SemanticPotionGenerationEventV111?
@@ -3982,9 +4008,8 @@ public static class SemanticPilotCombatEngineV111
                         transition.TargetDecision.SelectedEnemyInstanceId),
                 "semantic_generated_card" when
                     transition.GeneratedCardDecision is not null =>
-                    ResolveGeneratedCard(replay, replay.Fingerprint,
-                        transition.GeneratedCardDecision.Event.EventId,
-                        transition.GeneratedCardDecision.SelectedCardId),
+                    ResumeGeneratedCardDecision(
+                        replay, transition.GeneratedCardDecision),
                 "semantic_potion_generation" when
                     transition.PotionGenerationDecision is not null =>
                     ResolvePotionGeneration(replay, replay.Fingerprint,
@@ -3992,9 +4017,8 @@ public static class SemanticPilotCombatEngineV111
                         transition.PotionGenerationDecision.SelectedPotionId),
                 "semantic_card_transform" when
                     transition.CardTransformDecision is not null =>
-                    ResolveCardTransform(replay, replay.Fingerprint,
-                        transition.CardTransformDecision.Event.EventId,
-                        transition.CardTransformDecision.SelectedCardId),
+                    ResumeCardTransformDecision(
+                        replay, transition.CardTransformDecision),
                 "semantic_card_selection" when
                     transition.CardSelectionDecision is not null =>
                     Step(replay, replay.Fingerprint,

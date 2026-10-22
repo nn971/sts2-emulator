@@ -28,7 +28,10 @@ public sealed record SemanticGeneratedCardEventV111(
             string.IsNullOrWhiteSpace(EventId) ||
             SiteId is not ("combat.generated_card.select" or
                 "combat.random_draw_attack.card_model") ||
-            StreamId != "prototype.combat" ||
+            (StreamId != "prototype.combat" &&
+                !((SiteId is "combat.generated_card.select" or
+                    "combat.random_draw_attack.card_model") &&
+                  StreamId == "run.combat_card_generation")) ||
             string.IsNullOrWhiteSpace(OwnerId) || Ordinal < 0 ||
             OperationKind != "choose_card_model" ||
             candidateCardIds is not { Length: > 0 } ||
@@ -75,7 +78,8 @@ public static class SemanticGenerationChoiceV111
     public const string SchemaId = "sts2-v111-semantic-generation-choice-v1";
 
     internal static RandomIndexRequestV111 CreateRequest(
-        string siteId, string ownerId, int ordinal, int supportCount)
+        string siteId, string ownerId, int ordinal, int supportCount,
+        string streamId = "prototype.combat")
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
         ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
@@ -88,9 +92,16 @@ public static class SemanticGenerationChoiceV111
             throw new ArgumentOutOfRangeException(nameof(ordinal));
         if (supportCount <= 0)
             throw new ArgumentOutOfRangeException(nameof(supportCount));
+        if (streamId != "prototype.combat" &&
+            !((siteId is "combat.generated_card.select" or
+                  "combat.random_draw_attack.card_model") &&
+              streamId == "run.combat_card_generation"))
+            throw new NotSupportedException(
+                "UNSUPPORTED_RANDOM_SITE site=" + siteId +
+                " operation=generated_card_model_stream.");
 
         var request = new RandomIndexRequestV111(
-            siteId, "prototype.combat", ownerId, ordinal,
+            siteId, streamId, ownerId, ordinal,
             Enumerable.Range(0, supportCount).ToArray(),
             OperationKind: "choose_index");
         request.Validate();
@@ -99,7 +110,8 @@ public static class SemanticGenerationChoiceV111
 
     internal static SemanticGeneratedCardEventV111 CreateEvent(
         string boundaryFingerprint, string siteId, string ownerId,
-        int ordinal, string[] candidateCardIds)
+        int ordinal, string[] candidateCardIds,
+        string streamId = "prototype.combat")
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(boundaryFingerprint);
         ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
@@ -109,8 +121,10 @@ public static class SemanticGenerationChoiceV111
             throw new ArgumentOutOfRangeException(nameof(ordinal));
         var candidates = (string[])candidateCardIds.Clone();
         var request = CreateRequest(
-            siteId, ownerId, ordinal, candidates.Length);
+            siteId, ownerId, ordinal, candidates.Length, streamId);
         var supportFingerprint = CanonicalJson.Sha256(candidates);
+        // Stream attribution is a projection of this source boundary. Keep
+        // it out of EventId so existing prototype-labeled decisions replay.
         var eventId = CanonicalJson.Sha256(new
         {
             SchemaId,
@@ -140,12 +154,15 @@ public static class SemanticGenerationChoiceV111
             throw new InvalidDataException(
                 "Generated-card request has no controlled generation choice.");
         ValidateBoundary(run);
+        var combat = run.World?.Combat;
+        var streamId = combat?.Stochastic.NativeRngMutable is not null
+            ? "run.combat_card_generation" : "prototype.combat";
         var ownerId = choice!.SourceCardInstanceId is { } sourceCardId
             ? "card_instance:" + sourceCardId
             : "effect:" + generation.Operation.Kind;
         return CreateEvent(
             boundaryFingerprint, "combat.generated_card.select", ownerId,
-            ordinal, generation.CandidateCardIds);
+            ordinal, generation.CandidateCardIds, streamId);
     }
 
     internal static void ValidateBoundary(RunState run)
@@ -199,9 +216,19 @@ public static class SemanticGenerationChoiceV111
         ArgumentException.ThrowIfNullOrWhiteSpace(selectedCardId);
         pending?.Validate();
         decision.Validate();
+        bool legacyPrototypeStream = pending is not null &&
+            (pending.SiteId is "combat.generated_card.select" or
+                "combat.random_draw_attack.card_model") &&
+            pending.StreamId == "run.combat_card_generation" &&
+            decision.Event.StreamId == "prototype.combat" &&
+            CanonicalJson.Sha256(pending with
+            {
+                StreamId = decision.Event.StreamId
+            }) == CanonicalJson.Sha256(decision.Event);
         if (pending is null || selectedCardId != decision.SelectedCardId ||
-            CanonicalJson.Sha256(pending) !=
-                CanonicalJson.Sha256(decision.Event))
+            (CanonicalJson.Sha256(pending) !=
+                CanonicalJson.Sha256(decision.Event) &&
+             !legacyPrototypeStream))
             throw new InvalidDataException(
                 "Generated-card decision no longer matches the pending event.");
     }
@@ -228,6 +255,30 @@ public static class SemanticGenerationChoiceV111
             choice is not null &&
             PrototypeGameEngine.IsCrossbowTurnStartGenerationContinuation(
                 combat, choice);
+        bool randomDrawAttackModelHandoff = drawInsertionModelChoice &&
+            choice is
+            {
+                ChoiceId: "controlled_draw_insertion",
+                ControlledDrawInsertion:
+                {
+                    Stage: "card_model",
+                    Operation.Kind:
+                        PrototypeCombatEffectKind.CreateRandomFreeAttacksInDrawPile
+                }
+            };
+        bool generatedCardModelHandoff = !drawInsertionModelChoice &&
+            choice is
+            {
+                ChoiceId: "controlled_generated_card",
+                ControlledGeneration: not null
+            };
+        bool nativeGenerationStreamHandoff =
+            combat.Stochastic.NativeRngMutable?.RunStreams is not null &&
+            (generatedCardModelHandoff || randomDrawAttackModelHandoff);
+        if (decision.Event.StreamId == "run.combat_card_generation" &&
+            !nativeGenerationStreamHandoff)
+            throw new InvalidDataException(
+                "Native card-generation stream attribution is outside its supported source continuation.");
         if (drawInsertionModelChoice)
         {
             if (choice is not { ChoiceId: "controlled_draw_insertion" } ||

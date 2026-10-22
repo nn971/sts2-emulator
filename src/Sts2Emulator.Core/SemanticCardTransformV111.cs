@@ -28,7 +28,8 @@ public sealed record SemanticCardTransformEventV111(
         var candidateCardIds = _candidateCardIds;
         if (SchemaId != EventSchemaId || string.IsNullOrWhiteSpace(EventId) ||
             SiteId != SemanticCardTransformChoiceV111.SiteId ||
-            StreamId != SemanticCardTransformChoiceV111.StreamId ||
+            (StreamId != SemanticCardTransformChoiceV111.StreamId &&
+             StreamId != SemanticCardTransformChoiceV111.NativeStreamId) ||
             string.IsNullOrWhiteSpace(OwnerId) || Ordinal < 0 ||
             OperationKind != "choose_card_model" ||
             SourceCardInstanceId <= 0 || string.IsNullOrWhiteSpace(OriginalCardId) ||
@@ -72,18 +73,24 @@ public static class SemanticCardTransformChoiceV111
     public const string SchemaId = "sts2-v111-semantic-card-transform-v1";
     public const string SiteId = "combat.card_transform.replacement.index_draw";
     internal const string StreamId = "prototype.combat";
+    internal const string NativeStreamId = "run.combat_card_generation";
 
     internal static RandomIndexRequestV111 CreateRequest(
-        string ownerId, int ordinal, int supportCount)
+        string ownerId, int ordinal, int supportCount,
+        string streamId = StreamId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
         if (ordinal < 0)
             throw new ArgumentOutOfRangeException(nameof(ordinal));
         if (supportCount <= 0)
             throw new ArgumentOutOfRangeException(nameof(supportCount));
+        if (streamId is not (StreamId or NativeStreamId))
+            throw new NotSupportedException(
+                "UNSUPPORTED_RANDOM_SITE site=" + SiteId +
+                " operation=card_transform_stream.");
 
         var request = new RandomIndexRequestV111(
-            SiteId, StreamId, ownerId, ordinal,
+            SiteId, streamId, ownerId, ordinal,
             Enumerable.Range(0, supportCount).ToArray(),
             OperationKind: "choose_index");
         request.Validate();
@@ -92,7 +99,8 @@ public static class SemanticCardTransformChoiceV111
 
     internal static SemanticCardTransformEventV111 CreateEvent(
         string boundaryFingerprint, int ordinal, long sourceCardInstanceId,
-        string originalCardId, string[] candidateCardIds)
+        string originalCardId, string[] candidateCardIds,
+        string streamId = StreamId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(boundaryFingerprint);
         ArgumentException.ThrowIfNullOrWhiteSpace(originalCardId);
@@ -106,7 +114,9 @@ public static class SemanticCardTransformChoiceV111
         var supportFingerprint = CanonicalJson.Sha256(candidates);
         var ownerId = "card_instance:" + sourceCardInstanceId + ":model:" +
             originalCardId + ":pool:" + supportFingerprint;
-        var request = CreateRequest(ownerId, ordinal, candidates.Length);
+        var request = CreateRequest(
+            ownerId, ordinal, candidates.Length, streamId);
+        // Keep existing decision IDs stable across the stream-label upgrade.
         var eventId = CanonicalJson.Sha256(new
         {
             SchemaId,
@@ -141,7 +151,9 @@ public static class SemanticCardTransformChoiceV111
         var originalCardId = combat.Cards.Single(card =>
             card.InstanceId == sourceId).CardId;
         return CreateEvent(boundaryFingerprint, ordinal, sourceId,
-            originalCardId, transform.CandidateCardIds);
+            originalCardId, transform.CandidateCardIds,
+            combat.Stochastic.NativeRngMutable is not null
+                ? NativeStreamId : StreamId);
     }
 
     internal static void ValidateBoundary(
@@ -190,9 +202,17 @@ public static class SemanticCardTransformChoiceV111
         ArgumentNullException.ThrowIfNull(decision);
         ArgumentException.ThrowIfNullOrWhiteSpace(cardId);
         decision.Validate();
+        bool legacyPrototypeStream = pending is not null &&
+            pending.StreamId == NativeStreamId &&
+            decision.Event.StreamId == StreamId &&
+            CanonicalJson.Sha256(pending with
+            {
+                StreamId = decision.Event.StreamId
+            }) == CanonicalJson.Sha256(decision.Event);
         if (pending is null || pending.EventId != decision.Event.EventId ||
-            CanonicalJson.Sha256(pending) !=
-                CanonicalJson.Sha256(decision.Event) ||
+            (CanonicalJson.Sha256(pending) !=
+                CanonicalJson.Sha256(decision.Event) &&
+             !legacyPrototypeStream) ||
             decision.SelectedCardId != cardId)
             throw new InvalidDataException(
                 "Card-transform decision differs from its live semantic event.");
@@ -212,6 +232,10 @@ public static class SemanticCardTransformChoiceV111
         var transform = combat.PendingChoice?.ControlledCardTransform ??
             throw new InvalidDataException(
                 "Card-transform choice lost its suspended operation.");
+        if (decision.Event.StreamId == NativeStreamId &&
+            combat.Stochastic.NativeRngMutable is null)
+            throw new InvalidDataException(
+                "Native card-transform stream attribution has no Native run RNG owner.");
         ValidateBoundary(checkpoint, transform);
         var sourceCardInstanceId = transform.SelectedCardInstanceIds[
             transform.NextTransformIndex];
