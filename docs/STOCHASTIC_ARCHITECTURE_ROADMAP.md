@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 relic-bag publication ownership increment (2026-10-22):** Relic
+acquisition pruning and bag pulls now commit through
+`RunWorldStochasticStateV111.CommitRelicBag`, which validates the resulting
+rarity partitions and remaining identities before publishing the provider
+state. Full ownership checks remain at the run boundary, allowing mechanics
+to finish an acquisition before stale bag entries are pruned. Static source
+review and `git diff --check` only; no tests or builds were run.
+
 **S3 ReferenceNature projection write guard increment (2026-10-22):** The
 flattened `RunState.ReferenceNatureState` setter now routes non-null cursor
 writes through the monotonic run-owner transition. Explicit null clearing also

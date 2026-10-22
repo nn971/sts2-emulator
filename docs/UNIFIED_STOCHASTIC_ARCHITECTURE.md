@@ -125,6 +125,8 @@ Legacy run-action snapshot restoration also imports missing map-generation audit
 
 `RunWorldMechanicsStateV111.AppendEventId` owns event-history updates. Ordinary event entry, Native Ancient setup, and source-backed event fixtures publish the append through the world mechanics owner while retaining the flattened snapshot field.
 
+`RunWorldStochasticStateV111.CommitRelicBag` validates the remaining rarity partitions and identities before publishing relic acquisition pruning or a committed bag pull. Full bag-to-player ownership checks remain at the run boundary, where mechanics have completed the acquisition and cleanup sequence.
+
 The same world mechanics owner now appends encounter IDs and completed-room records. Ordinary and controlled-playable combat entry plus map-room completion use those transitions.
 
 Native ReferenceNature sessions that project persistent relic bags now validate both their saved origin and replay state. Any present bag must use `NatureUnordered` and pass its canonical rarity, ownership, uniqueness, and sort invariants; the Native event-gold boundary may preserve an absent bag. Calling Bell event-choice, Native event-relic, Neow pickup, and Native Shovel replay apply the same validation when their projected bag is required.

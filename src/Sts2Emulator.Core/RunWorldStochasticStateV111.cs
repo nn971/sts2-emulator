@@ -295,6 +295,16 @@ public sealed record RunWorldStochasticStateV111
             RelicBag = bag
         };
 
+    internal static RunWorldStochasticStateV111 CommitRelicBag(
+        RunWorldStochasticStateV111 current,
+        PrototypeRelicBagState? bag)
+    {
+        ArgumentNullException.ThrowIfNull(current);
+        if (bag is not null)
+            PrototypeNativeRelicGrabBag.ValidateBagStructure(bag);
+        return WithRelicBag(current, bag);
+    }
+
     internal static RunWorldStochasticStateV111 WithLaterActEncounterBag(
         RunWorldStochasticStateV111? current,
         PrototypeLaterActEncounterBagV111? bag) =>

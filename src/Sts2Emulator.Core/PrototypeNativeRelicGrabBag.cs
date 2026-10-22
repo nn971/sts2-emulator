@@ -216,6 +216,17 @@ public static class PrototypeNativeRelicGrabBag
     {
         ArgumentNullException.ThrowIfNull(bag);
         ArgumentNullException.ThrowIfNull(player);
+        ValidateBagStructure(bag);
+
+        if (bag.Remaining.Any(id => player.Relics.Any(relic =>
+                StringComparer.Ordinal.Equals(relic.RelicId, id))))
+            throw new InvalidOperationException(
+                "Native relic bag contains duplicates, invalid or owned relics.");
+    }
+
+    internal static void ValidateBagStructure(PrototypeRelicBagState bag)
+    {
+        ArgumentNullException.ThrowIfNull(bag);
         if (bag.Common is null || bag.Uncommon is null || bag.Rare is null ||
             bag.Shop is null)
             throw new InvalidOperationException(
@@ -227,11 +238,9 @@ public static class PrototypeNativeRelicGrabBag
         var remaining = bag.Remaining;
         if (remaining.Length != remaining.Distinct(StringComparer.Ordinal).Count()
             || remaining.Any(id => !PrototypeContent.RelicPool.Contains(
-                    id, StringComparer.Ordinal))
-            || remaining.Any(id => player.Relics.Any(relic =>
-                    StringComparer.Ordinal.Equals(relic.RelicId, id))))
+                    id, StringComparer.Ordinal)))
             throw new InvalidOperationException(
-                "Native relic bag contains duplicates, invalid or owned relics.");
+                "Native relic bag contains duplicates or invalid relics.");
 
         foreach (var (tier, ids) in new[]
         {
@@ -703,7 +712,8 @@ public sealed record PrototypeRelicBagPullPlanV111
         };
         return world with
         {
-            Stochastic = world.Stochastic with { RelicBag = pruned }
+            Stochastic = RunWorldStochasticStateV111.CommitRelicBag(
+                world.Stochastic, pruned)
         };
     }
 
@@ -857,7 +867,8 @@ public sealed record PrototypeRelicBagPullPlanV111
         var (remaining, id) = pull;
         return (world with
         {
-            Stochastic = world.Stochastic with { RelicBag = remaining }
+            Stochastic = RunWorldStochasticStateV111.CommitRelicBag(
+                world.Stochastic, remaining)
         }, id);
     }
 
