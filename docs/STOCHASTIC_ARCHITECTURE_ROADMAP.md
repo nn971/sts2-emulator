@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 post-dispatch suspension payload validation increment (2026-10-22):**
+The mechanics owner now rejects a saved post-dispatch cursor unless its
+dispatch event still has a pending player or Knowledge Demon choice. Both
+the cursor/event match and the pending suspension payload are checked against
+the live combat state. Snapshot shape remains unchanged. Static source review
+and `git diff --check` only; no tests or builds were run.
+
 **S4 post-dispatch cursor validation increment (2026-10-22):** The automatic
 pipeline mechanics owner now requires a saved post-dispatch event marker to
 match the dispatch immediately before its resume cursor. Unknown event kinds
