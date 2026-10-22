@@ -1196,7 +1196,7 @@ public sealed partial class PrototypeGameEngine
             ?? throw new InvalidOperationException(
                 "Event phase has no event state.");
 
-        if (eventState.ControlledChoice is { } controlledChoice)
+        if (eventState.Stochastic.ControlledChoice is { } controlledChoice)
         {
             var request = controlledChoice.PendingRequest;
             return Enumerable.Range(0, request.SupportCount)
@@ -1432,7 +1432,7 @@ public sealed partial class PrototypeGameEngine
             ?? throw new InvalidOperationException(
                 "Event phase has no event state.");
 
-        if (eventState.ControlledChoice is { } continuation)
+        if (eventState.Stochastic.ControlledChoice is { } continuation)
             return ResumeControlledEventChoice(state, action, continuation);
 
         if (ControlledChanceGuardV111.Active
@@ -1504,7 +1504,7 @@ public sealed partial class PrototypeGameEngine
             throw UnsupportedControlledEventContinuation(pendingChance);
         var result = replay.Run ?? throw new InvalidDataException(
             "Controlled event replay returned neither a run nor a pending chance request.");
-        if (result.World?.Event?.ControlledChoice is not null)
+        if (result.World?.Event?.Stochastic.ControlledChoice is not null)
             return result;
 
         var trace = new ControlledEventChoiceTraceV111(
@@ -1514,7 +1514,7 @@ public sealed partial class PrototypeGameEngine
             decisionCandidateLabels);
         trace.Validate();
         var nextHistory =
-            (result.ControlledEventChoiceHistory
+            (result.Stochastic.ControlledEventChoiceHistory
                 ?? Array.Empty<ControlledEventChoiceTraceV111>())
             .Append(trace).ToArray();
         return result with
@@ -4467,7 +4467,7 @@ public sealed partial class PrototypeGameEngine
         var result = replay.Run ?? throw new InvalidDataException(
             "Controlled run-action replay returned neither a run nor a pending chance request.");
 
-        if (result.ControlledRunActionChoice is not null)
+        if (result.Stochastic.ControlledRunActionChoice is not null)
             throw new NotSupportedException(
                 "Controlled run action replay stopped without resolving its continuation.");
         var trace = new ControlledRunActionTraceV111(
@@ -4481,7 +4481,7 @@ public sealed partial class PrototypeGameEngine
                     continuation.RunAction));
         trace.Validate();
         var nextHistory =
-            (result.ControlledRunActionHistory
+            (result.Stochastic.ControlledRunActionHistory
                 ?? Array.Empty<ControlledRunActionTraceV111>())
             .Append(trace).ToArray();
         var nextStochastic =
@@ -4858,7 +4858,8 @@ public sealed partial class PrototypeGameEngine
 
     private static RunState StepReward(RunState state, GameAction action)
     {
-        if (state.ControlledEventRewardChoice is { } controlledRewardChoice)
+        if (state.Stochastic.ControlledEventRewardChoice is
+            { } controlledRewardChoice)
             return ResumeControlledEventRewardChoice(
                 state, action, controlledRewardChoice);
         if (action.Kind is "sacrifice_reward_card" or "sacrifice_reward_card_group")
@@ -5468,10 +5469,10 @@ public sealed partial class PrototypeGameEngine
             throw pendingChance;
         var result = replay.Run ?? throw new InvalidDataException(
             "Controlled event-reward replay returned neither a run nor a pending chance request.");
-        if (result.ControlledEventRewardChoice is not null)
+        if (result.Stochastic.ControlledEventRewardChoice is not null)
             return result;
 
-        var history = result.ControlledEventChoiceHistory
+        var history = result.Stochastic.ControlledEventChoiceHistory
             ?? throw new InvalidDataException(
                 "Completed controlled event reward lost its event-choice history.");
         if (history.Length == 0
@@ -6044,7 +6045,7 @@ public sealed partial class PrototypeGameEngine
         var choiceId = eventState.ChosenChoiceId
             ?? throw new InvalidDataException(
                 "Controlled event reward has no committed event option.");
-        var history = state.ControlledEventChoiceHistory;
+        var history = state.Stochastic.ControlledEventChoiceHistory;
         var trace = history is { Length: > 0 } ? history[^1] : null;
         if (trace is null
             || trace.EventId != eventState.EventId
