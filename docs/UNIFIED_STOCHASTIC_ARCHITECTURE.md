@@ -97,6 +97,8 @@ The present run and combat types have overlapping representation/lifecycle respo
 
 `RunStochasticStateV111.RebasePendingContinuationCheckpoints` now owns publication of active event-reward and run-action partial checkpoints after a step has committed mechanics and reconciled Native provider state. It builds each checkpoint with that continuation removed, updates the saved frame, and validates it against the complete run owner. `PrototypeGameEngine.FinalizeStep` delegates both rebases through this transition; the flattened snapshot members remain unchanged.
 
+`RunStochasticStateV111.SuspendControlledRunActionChoice` and `SuspendControlledEventRewardChoice` validate a suspended frame against its exact partial run, attach it through the run stochastic owner, and verify the resulting complete owner. Start-run, map-node, Shovel, event-reward, replay-resuspension, and post-step rebasing use these transitions.
+
 `RunStochasticStateV111.CommitReferenceNatureRunInitialization` publishes the run's Nature cursor, completed initialization transcript, and pending marker together. A completed transcript must replay to the committed cursor or an earlier prefix of the same seed. Configured run creation and ReferenceNature run-start completion use this transition, while the flat snapshot members remain compatibility projections.
 
 `SemanticPilotCombatEngineV111.PublishRunContinuation` publishes the run-scoped `SemanticOtherChanceStateV111` through `RunStochasticStateV111.PublishSemanticOtherChance`, preserving the mechanics result and validating the provider before committing the pilot transition. The pilot's `OtherChance` member remains a compatibility projection.

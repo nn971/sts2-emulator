@@ -1380,13 +1380,9 @@ public static class ControlledRunActionEngineV111
                         pendingChance.CandidateLabels!,
                         mapNodeId,
                         shopPurchaseAction ? CloneAction(action) : null);
-                continuation.Validate();
-                var suspended = partialState with
-                {
-                    Stochastic =
-                        RunStochasticStateV111.WithControlledRunActionChoice(
-                            partialState.Stochastic, continuation)
-                };
+                var suspended = RunStochasticStateV111
+                    .SuspendControlledRunActionChoice(
+                        partialState, continuation);
                 PrototypeStateInvariants.Validate(suspended);
                 return suspended;
             }

@@ -4119,14 +4119,9 @@ public sealed partial class PrototypeGameEngine
                             [],
                             exception.Request,
                             exception.CandidateLabels);
-                    pendingAction.Validate();
-                    return state with
-                    {
-                        Stochastic =
-                            RunStochasticStateV111
-                                .WithControlledRunActionChoice(
-                                    state.Stochastic, pendingAction)
-                    };
+                    return RunStochasticStateV111
+                        .SuspendControlledRunActionChoice(
+                            state, pendingAction);
                 }
             }
 
@@ -4444,14 +4439,15 @@ public sealed partial class PrototypeGameEngine
                 throw new NotSupportedException(
                     "Controlled run action reached an unsupported chance request.");
 
+            var partialState = state with
+            {
+                Stochastic = RunStochasticStateV111
+                    .WithControlledRunActionChoice(
+                        state.Stochastic, null)
+            };
             var nextContinuation =
                 new PrototypeControlledRunActionContinuationV111(
-                    state with
-                    {
-                        Stochastic = RunStochasticStateV111
-                            .WithControlledRunActionChoice(
-                                state.Stochastic, null)
-                    },
+                    partialState,
                     continuation.ActionId,
                     decisions,
                     decisionCandidateLabels,
@@ -4459,13 +4455,9 @@ public sealed partial class PrototypeGameEngine
                     pendingChance.CandidateLabels,
                     continuation.MapNodeId,
                     continuation.RunAction);
-            nextContinuation.Validate();
-            return state with
-            {
-                Stochastic = RunStochasticStateV111
-                    .WithControlledRunActionChoice(
-                        state.Stochastic, nextContinuation)
-            };
+            return RunStochasticStateV111
+                .SuspendControlledRunActionChoice(
+                    partialState, nextContinuation);
         }
 
         var result = replay.Run ?? throw new InvalidDataException(
@@ -5976,13 +5968,9 @@ public sealed partial class PrototypeGameEngine
                                 ?? throw new InvalidDataException(
                                     "Controlled event reward omitted its candidate labels.")
                         };
-                    continuation.Validate();
-                    return state with
-                    {
-                        Stochastic = RunStochasticStateV111
-                            .WithControlledEventRewardChoice(
-                                state.Stochastic, continuation)
-                    };
+                    return RunStochasticStateV111
+                        .SuspendControlledEventRewardChoice(
+                            state, continuation);
                 }
                 player = AppendCard(player, nextId++, curseId, state.Stochastic.PrototypeRng);
             }

@@ -1104,13 +1104,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                     [],
                     exception.Request,
                     exception.CandidateLabels);
-            continuation.Validate();
-            return state with
-            {
-                Stochastic = RunStochasticStateV111
-                    .WithControlledRunActionChoice(
-                        state.Stochastic, continuation)
-            };
+            return RunStochasticStateV111
+                .SuspendControlledRunActionChoice(state, continuation);
         }
     }
 

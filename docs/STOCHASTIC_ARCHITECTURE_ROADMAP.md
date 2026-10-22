@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 controlled run suspension publication increment (2026-10-22):**
+`RunStochasticStateV111.SuspendControlledRunActionChoice` and
+`SuspendControlledEventRewardChoice` now validate each continuation against
+its exact partial run and publish it through the run stochastic owner.
+Start-run, map-node, Shovel, event-reward, and replay-resuspension paths use
+these transitions; post-step checkpoint rebasing shares them. Static source
+review and `git diff --check` only; no tests or builds were run.
+
 **S3 semantic pilot run-provider publication increment (2026-10-22):**
 `SemanticPilotCombatEngineV111.PublishRunContinuation` now publishes the
 run-scoped `SemanticOtherChanceStateV111` through

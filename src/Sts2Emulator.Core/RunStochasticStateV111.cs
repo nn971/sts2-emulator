@@ -194,17 +194,12 @@ public sealed record RunStochasticStateV111
                     ControlledEventRewardChoice = null
                 }
             };
-            var rebased = rewardContinuation with
-            {
-                PartialState = partialState
-            };
-            rebased.Validate();
-            stochastic = stochastic with
-            {
-                ControlledEventRewardChoice = rebased
-            };
-            current = current with { Stochastic = stochastic };
-            stochastic.ValidateControlledEventRewardChoice(current);
+            current = SuspendControlledEventRewardChoice(
+                partialState, rewardContinuation with
+                {
+                    PartialState = partialState
+                });
+            stochastic = current.Stochastic;
         }
 
         if (stochastic.ControlledRunActionChoice is
@@ -217,20 +212,56 @@ public sealed record RunStochasticStateV111
                     ControlledRunActionChoice = null
                 }
             };
-            var rebased = runActionContinuation with
-            {
-                PartialState = partialState
-            };
-            rebased.Validate();
-            stochastic = stochastic with
-            {
-                ControlledRunActionChoice = rebased
-            };
-            current = current with { Stochastic = stochastic };
-            stochastic.ValidateControlledRunActionChoice(current);
+            current = SuspendControlledRunActionChoice(
+                partialState, runActionContinuation with
+                {
+                    PartialState = partialState
+                });
         }
 
         return current;
+    }
+
+    internal static RunState SuspendControlledRunActionChoice(
+        RunState partialState,
+        PrototypeControlledRunActionContinuationV111 continuation)
+    {
+        ArgumentNullException.ThrowIfNull(partialState);
+        ArgumentNullException.ThrowIfNull(continuation);
+        continuation.Validate();
+        if (partialState.Stochastic.ControlledRunActionChoice is not null ||
+            CanonicalJson.Sha256(partialState) !=
+                CanonicalJson.Sha256(continuation.PartialState))
+            throw new InvalidDataException(
+                "Controlled run-action continuation does not match its partial run owner.");
+        var suspended = partialState with
+        {
+            Stochastic = WithControlledRunActionChoice(
+                partialState.Stochastic, continuation)
+        };
+        suspended.Stochastic.ValidateControlledRunActionChoice(suspended);
+        return suspended;
+    }
+
+    internal static RunState SuspendControlledEventRewardChoice(
+        RunState partialState,
+        PrototypeControlledEventRewardChoiceContinuationV111 continuation)
+    {
+        ArgumentNullException.ThrowIfNull(partialState);
+        ArgumentNullException.ThrowIfNull(continuation);
+        continuation.Validate();
+        if (partialState.Stochastic.ControlledEventRewardChoice is not null ||
+            CanonicalJson.Sha256(partialState) !=
+                CanonicalJson.Sha256(continuation.PartialState))
+            throw new InvalidDataException(
+                "Controlled event-reward continuation does not match its partial run owner.");
+        var suspended = partialState with
+        {
+            Stochastic = WithControlledEventRewardChoice(
+                partialState.Stochastic, continuation)
+        };
+        suspended.Stochastic.ValidateControlledEventRewardChoice(suspended);
+        return suspended;
     }
 
     internal RunStochasticStateV111 AppendReferenceNatureMapGenerationAudit(
