@@ -46,18 +46,57 @@ public sealed record ControlledInitialHpStateV111(
         Pending = _pending
     };
 
+    internal ControlledInitialHpStateV111 ApplyChoice(
+        RandomIndexDecisionV111 choice)
+    {
+        ArgumentNullException.ThrowIfNull(choice);
+        choice.Validate();
+        var pending = _pending ?? throw new InvalidOperationException(
+            "No initial HP choice is pending.");
+        if (choice.ProviderMode != "controlled-v111" ||
+            choice.NativeCursorBefore is not null ||
+            choice.NativeCursorAfter is not null ||
+            choice.ProbabilityStatus != "UNVERIFIED" ||
+            choice.Request.SiteId != "combat.initial_unique_hp" ||
+            choice.Request.StreamId != "run.niche" ||
+            choice.Request.Ordinal != NextEnemyIndex ||
+            CanonicalJson.Sha256(choice.Request) !=
+                CanonicalJson.Sha256(pending))
+            throw new InvalidDataException(
+                "Initial HP decision does not resolve its saved request.");
+
+        var enemies = Combat.Enemies.Select(enemy => enemy.Fork()).ToArray();
+        enemies[NextEnemyIndex] = enemies[NextEnemyIndex] with
+        {
+            Hp = choice.SelectedValue,
+            MaxHp = choice.SelectedValue
+        };
+        var advanced = this with
+        {
+            Combat = Combat with { Enemies = enemies },
+            NextEnemyIndex = NextEnemyIndex + 1,
+            Transcript = _transcript.Append(CloneDecision(choice)).ToArray(),
+            Pending = null
+        };
+        return advanced with
+        {
+            Pending = ControlledInitialHpV111.MakePending(advanced)
+        };
+    }
+
     [JsonIgnore]
     public string Fingerprint => CanonicalJson.Sha256(this);
 
     private static RandomIndexDecisionV111[] CloneTranscript(
-        RandomIndexDecisionV111[] decisions)
+        RandomIndexDecisionV111[] decisions) => decisions?.Select(
+            decision => decision is null ? null! : CloneDecision(decision))
+            .ToArray() ?? throw new ArgumentNullException(nameof(decisions));
+
+    private static RandomIndexDecisionV111 CloneDecision(
+        RandomIndexDecisionV111 decision) => decision with
     {
-        ArgumentNullException.ThrowIfNull(decisions);
-        return decisions.Select(decision => decision with
-        {
-            Request = CloneRequest(decision.Request)!
-        }).ToArray();
-    }
+        Request = CloneRequest(decision.Request)!
+    };
 
     private static RandomIndexRequestV111? CloneRequest(
         RandomIndexRequestV111? request) =>
@@ -120,24 +159,7 @@ public static class ControlledInitialHpV111
                             OrderedCandidates = (int[])
                                 request.OrderedCandidates.Clone()
                         }, replayedIndex, "controlled-v111");
-                    choice.Validate();
-                    var enemies = checkpoint.Combat.Enemies
-                        .Select(enemy => enemy.Fork()).ToArray();
-                    enemies[checkpoint.NextEnemyIndex] =
-                        enemies[checkpoint.NextEnemyIndex] with
-                        {
-                            Hp = choice.SelectedValue,
-                            MaxHp = choice.SelectedValue
-                        };
-                    var next = checkpoint with
-                    {
-                        Combat = checkpoint.Combat with { Enemies = enemies },
-                        NextEnemyIndex = checkpoint.NextEnemyIndex + 1,
-                        Transcript = checkpoint.Transcript
-                            .Append(choice).ToArray(),
-                        Pending = null
-                    };
-                    return next with { Pending = MakePending(next) };
+                    return checkpoint.ApplyChoice(choice);
                 });
     }
 
@@ -163,7 +185,8 @@ public static class ControlledInitialHpV111
         return JsonSerializer.Serialize(state);
     }
 
-    private static RandomIndexRequestV111? MakePending(ControlledInitialHpStateV111 state)
+    internal static RandomIndexRequestV111? MakePending(
+        ControlledInitialHpStateV111 state)
     {
         if (state.NextEnemyIndex == state.Combat.Enemies.Length) return null;
         var owner = state.Formation.MonsterContexts[state.NextEnemyIndex];
