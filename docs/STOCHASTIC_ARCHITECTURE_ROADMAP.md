@@ -2,6 +2,16 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 continuation transcript owner read increment (2026-10-22):** Semantic
+end-turn validation, replay, and publication now read intent, enemy-action,
+target, boundary, and nested-choice histories through
+`SemanticEndTurnStochasticStateV111`; semantic-pilot and controlled-playable
+replay and validation read typed histories through their stochastic owners.
+The controlled-playable composite recycle transcript remains a facade
+projection. Existing flattened snapshot projections, write paths, schemas, and
+transcript order are unchanged. Static source review and `git diff --check`
+only; no tests or builds were run.
+
 **S5 Nature-choice session-kind registry increment (2026-10-22):** The advertised `SemanticNatureChoiceViewSessionKinds` and JSONL supported-kind classification now use one registry. JSONL keeps its per-session typed result dispatch; a registry kind with no matching dispatch now fails as an implementation mismatch rather than being reported as unsupported. No wire schema changed. Static source review and `git diff --check` only; no tests or builds were run.
 
 **S4 Native-policy replay action-resolution increment (2026-10-22):** Provider replay capture now passes each already-resolved legal `GameAction` through the validated Native-policy pilot step. Capture and execution therefore use the same action resolution while retaining the existing provider audit and action history. No snapshot or wire schema changed. Static source review and `git diff --check` only; no tests or builds were run.

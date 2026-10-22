@@ -437,7 +437,7 @@ public sealed record SemanticEndTurnV111(
                 .AutomaticPipelineContinuation!.ControlledEnemyAction!;
             cursor.Validate(PrototypeContent.Rules.EndTurnPipeline.Length);
             if (CanonicalJson.Sha256(cursor.Decisions) !=
-                CanonicalJson.Sha256(this.EnemyActionTranscript))
+                CanonicalJson.Sha256(this.Stochastic.EnemyActionTranscript))
                 throw new InvalidDataException(
                     "Semantic enemy-action transcript differs from its replay frame.");
         }
@@ -461,7 +461,7 @@ public sealed record SemanticEndTurnV111(
             }
             else
                 SemanticEndTurnEngineV111.ValidateOrigin(this.Origin);
-            if (target.Ordinal != this.TargetTranscript.Length)
+            if (target.Ordinal != this.Stochastic.TargetTranscript.Length)
                 throw new InvalidDataException(
                     "Automatic-pipeline target ordinal differs from its transcript.");
         }
@@ -488,10 +488,10 @@ public sealed record SemanticEndTurnV111(
         this.DrawInsertionPending?.Validate();
         this.NestedDrawHookChoicePending?.Validate();
         if (string.IsNullOrWhiteSpace(this.NativeEncounterEntry) ||
-            this.IntentTranscript is null ||
-            this.EnemyActionTranscript is null ||
-            this.TargetTranscript is null ||
-            this.BoundaryTranscript is null ||
+            this.Stochastic.IntentTranscript is null ||
+            this.Stochastic.EnemyActionTranscript is null ||
+            this.Stochastic.TargetTranscript is null ||
+            this.Stochastic.BoundaryTranscript is null ||
             (this.PlayerActionSource is null) != (this.PlayerActionId is null) ||
             (this.Complete && (this.Intents is not null ||
                 (PrototypeGameEngine
@@ -515,7 +515,7 @@ public sealed record SemanticEndTurnV111(
         {
             intents.Validate();
             if (CanonicalJson.Sha256(intents.Transcript) !=
-                CanonicalJson.Sha256(this.IntentTranscript) ||
+                CanonicalJson.Sha256(this.Stochastic.IntentTranscript) ||
                 CanonicalJson.Sha256(this.Run) !=
                 CanonicalJson.Sha256(this.Origin))
                 throw new InvalidDataException("Invalid pending intent stage.");
@@ -727,13 +727,16 @@ public static class SemanticEndTurnEngineV111
                                 .ResumeControlledEnemyAction(
                                     checkpoint.Run.Fork(), replayedIndex);
                     });
-            var transcript = state.EnemyActionTranscript.Append(decision).ToArray();
+            var transcript = state.Stochastic.EnemyActionTranscript
+                .Append(decision).ToArray();
             var boundaries = EnsureBoundaryTranscript(state).Append(
                 new SemanticEndTurnBoundaryChoiceV111(
-                    "enemy_action", state.EnemyActionTranscript.Length)).ToArray();
+                    "enemy_action",
+                    state.Stochastic.EnemyActionTranscript.Length)).ToArray();
             state = ContinueAutomaticPipelineBoundaryChoice(
                 state, resumed, transcript,
-                (SemanticTargetDecisionV111[])state.TargetTranscript.Clone(),
+                (SemanticTargetDecisionV111[])
+                    state.Stochastic.TargetTranscript.Clone(),
                 boundaries, "combat.enemy_action");
         }
         else if (state.TargetPending is { } target)
@@ -935,17 +938,20 @@ public static class SemanticEndTurnEngineV111
             throw new InvalidOperationException(
                 "Semantic intent event ID is stale or mismatched.");
         var selection = SemanticIntentChoiceV111.Select(pending, intentId);
-        var transcriptIndex = source.IntentTranscript.Length;
+        var transcriptIndex = source.Stochastic.IntentTranscript.Length;
         var advanced = Resolve(
             source, fingerprint, selection.SourceTicket);
-        if (advanced.IntentTranscript.Length != transcriptIndex + 1)
+        if (advanced.Stochastic.IntentTranscript.Length !=
+            transcriptIndex + 1)
             throw new InvalidDataException(
                 "Semantic intent resolution did not append one primitive ticket.");
         var next = advanced with
         {
-            SemanticIntentTranscript = advanced.SemanticIntentTranscript.Append(
-                new SemanticIntentTranscriptEntryV111(
-                    transcriptIndex, selection.Decision.Fork())).ToArray()
+            SemanticIntentTranscript =
+                advanced.Stochastic.SemanticIntentTranscript.Append(
+                    new SemanticIntentTranscriptEntryV111(
+                        transcriptIndex,
+                        selection.Decision.Fork())).ToArray()
         };
         Validate(next);
         return next;
@@ -1124,15 +1130,15 @@ public static class SemanticEndTurnEngineV111
         var resumed = SemanticChoiceResumeV111.ResumeTarget(
             source.Run, decision);
 
-        var targetTranscript = source.TargetTranscript
+        var targetTranscript = source.Stochastic.TargetTranscript
             .Append(decision.Fork()).ToArray();
         var boundaryTranscript = EnsureBoundaryTranscript(source).Append(
             new SemanticEndTurnBoundaryChoiceV111(
-                "random_target", source.TargetTranscript.Length)).ToArray();
+                "random_target", source.Stochastic.TargetTranscript.Length)).ToArray();
         var next = ContinueAutomaticPipelineBoundaryChoice(
             source, resumed,
             (RandomIndexDecisionV111[])
-                source.EnemyActionTranscript.Clone(),
+                source.Stochastic.EnemyActionTranscript.Clone(),
             targetTranscript, boundaryTranscript, pending.SiteId);
         Validate(next);
         return next;
@@ -1303,17 +1309,20 @@ public static class SemanticEndTurnEngineV111
         SemanticEndTurnNestedChoiceV111 choice, string siteId)
     {
         var expectedKind = choice.Kind;
-        var nestedTranscript = source.NestedChoiceTranscript.Append(
+        var nestedTranscript = source.Stochastic.NestedChoiceTranscript.Append(
             choice.Fork()).ToArray();
         var boundaries = EnsureBoundaryTranscript(source).Append(
             new SemanticEndTurnBoundaryChoiceV111(
-                expectedKind, source.NestedChoiceTranscript.Count(item =>
+                expectedKind,
+                source.Stochastic.NestedChoiceTranscript.Count(item =>
                     item.Kind == expectedKind))).ToArray();
         var next = ContinueAutomaticPipelineBoundaryChoice(
             source with { NestedChoiceTranscript = nestedTranscript },
             resumed,
-            (RandomIndexDecisionV111[])source.EnemyActionTranscript.Clone(),
-            (SemanticTargetDecisionV111[])source.TargetTranscript.Clone(),
+            (RandomIndexDecisionV111[])
+                source.Stochastic.EnemyActionTranscript.Clone(),
+            (SemanticTargetDecisionV111[])
+                source.Stochastic.TargetTranscript.Clone(),
             boundaries, siteId);
         Validate(next);
         return next;
@@ -1392,13 +1401,13 @@ public static class SemanticEndTurnEngineV111
     private static SemanticEndTurnBoundaryChoiceV111[] EnsureBoundaryTranscript(
         SemanticEndTurnV111 state)
     {
-        if (state.BoundaryTranscript.Length > 0)
+        if (state.Stochastic.BoundaryTranscript.Length > 0)
             return (SemanticEndTurnBoundaryChoiceV111[])
-                state.BoundaryTranscript.Clone();
-        return Enumerable.Range(0, state.EnemyActionTranscript.Length)
+                state.Stochastic.BoundaryTranscript.Clone();
+        return Enumerable.Range(0, state.Stochastic.EnemyActionTranscript.Length)
             .Select(index => new SemanticEndTurnBoundaryChoiceV111(
                 "enemy_action", index))
-            .Concat(Enumerable.Range(0, state.TargetTranscript.Length)
+            .Concat(Enumerable.Range(0, state.Stochastic.TargetTranscript.Length)
                 .Select(index => new SemanticEndTurnBoundaryChoiceV111(
                     "random_target", index)))
             .ToArray();
@@ -1518,7 +1527,7 @@ public static class SemanticEndTurnEngineV111
         }
         void ReplayAvailableBoundaryChoices()
         {
-            while (boundaryIndex < saved.BoundaryTranscript.Length)
+            while (boundaryIndex < saved.Stochastic.BoundaryTranscript.Length)
             {
                 var hasEnemyAction = reproduced.EnemyActionPending is not null;
                 var hasTarget = reproduced.TargetPending is not null;
@@ -1530,16 +1539,16 @@ public static class SemanticEndTurnEngineV111
                 if (!hasEnemyAction && !hasTarget && !hasNestedChoice)
                     return;
 
-                var boundary = saved.BoundaryTranscript[boundaryIndex];
+                var boundary = saved.Stochastic.BoundaryTranscript[boundaryIndex];
                 boundary.Validate();
                 if (boundary.Kind == "enemy_action")
                 {
                     if (!hasEnemyAction ||
                         boundary.TranscriptIndex >=
-                            saved.EnemyActionTranscript.Length)
+                            saved.Stochastic.EnemyActionTranscript.Length)
                         throw new InvalidDataException(
                             "Semantic end-turn enemy-action transcript order is invalid.");
-                    var choice = saved.EnemyActionTranscript[
+                    var choice = saved.Stochastic.EnemyActionTranscript[
                         boundary.TranscriptIndex];
                     choice.Validate();
                     if (choice.ProviderMode != "controlled-v111" ||
@@ -1556,10 +1565,10 @@ public static class SemanticEndTurnEngineV111
                 else if (boundary.Kind == "random_target")
                 {
                     if (!hasTarget || boundary.TranscriptIndex >=
-                        saved.TargetTranscript.Length)
+                        saved.Stochastic.TargetTranscript.Length)
                         throw new InvalidDataException(
                             "Semantic end-turn target transcript order is invalid.");
-                    var choice = saved.TargetTranscript[
+                    var choice = saved.Stochastic.TargetTranscript[
                         boundary.TranscriptIndex];
                     choice.Validate();
                     if (reproduced.TargetPending is not { } targetEvent ||
@@ -1574,24 +1583,25 @@ public static class SemanticEndTurnEngineV111
                 else
                 {
                     if (!hasNestedChoice || nestedChoiceIndex >=
-                            saved.NestedChoiceTranscript.Length ||
-                        saved.NestedChoiceTranscript[nestedChoiceIndex].Kind !=
+                            saved.Stochastic.NestedChoiceTranscript.Length ||
+                        saved.Stochastic.NestedChoiceTranscript[
+                            nestedChoiceIndex].Kind !=
                             boundary.Kind)
                         throw new InvalidDataException(
                             "Semantic end-turn nested choice boundary diverged during replay.");
                     reproduced = ResumeNestedChoice(
-                        saved.NestedChoiceTranscript[nestedChoiceIndex++]);
+                        saved.Stochastic.NestedChoiceTranscript[nestedChoiceIndex++]);
                 }
                 boundaryIndex++;
             }
         }
-        if (saved.BoundaryTranscript.Length > 0)
+        if (saved.Stochastic.BoundaryTranscript.Length > 0)
             ReplayAvailableBoundaryChoices();
         else
         {
             // Snapshots written before automatic target suspension only had
             // a typed enemy-action transcript.
-            foreach (var choice in saved.EnemyActionTranscript)
+            foreach (var choice in saved.Stochastic.EnemyActionTranscript)
             {
                 choice.Validate();
                 if (choice.ProviderMode != "controlled-v111" ||
@@ -1606,12 +1616,12 @@ public static class SemanticEndTurnEngineV111
                     choice.SelectedIndex);
             }
         }
-        var semanticIntentsByIndex = saved.SemanticIntentTranscript.ToDictionary(
-            entry => entry.TranscriptIndex);
+        var semanticIntentsByIndex = saved.Stochastic.SemanticIntentTranscript
+            .ToDictionary(entry => entry.TranscriptIndex);
         for (var intentIndex = 0;
-             intentIndex < saved.IntentTranscript.Length; intentIndex++)
+             intentIndex < saved.Stochastic.IntentTranscript.Length; intentIndex++)
         {
-            var choice = saved.IntentTranscript[intentIndex];
+            var choice = saved.Stochastic.IntentTranscript[intentIndex];
             choice.Validate();
             if (reproduced.IntentPending is not { } request ||
                 choice.ProviderMode != "controlled-v111" ||
@@ -1659,11 +1669,11 @@ public static class SemanticEndTurnEngineV111
             else
                 reproduced = ContinueHandDraw(reproduced, replayedHand);
         }
-        if (saved.BoundaryTranscript.Length > 0)
+        if (saved.Stochastic.BoundaryTranscript.Length > 0)
         {
             ReplayAvailableBoundaryChoices();
-            if (boundaryIndex != saved.BoundaryTranscript.Length ||
-                nestedChoiceIndex != saved.NestedChoiceTranscript.Length)
+            if (boundaryIndex != saved.Stochastic.BoundaryTranscript.Length ||
+                nestedChoiceIndex != saved.Stochastic.NestedChoiceTranscript.Length)
                 throw new InvalidDataException(
                     "Semantic end-turn boundary transcript omitted a decision.");
         }

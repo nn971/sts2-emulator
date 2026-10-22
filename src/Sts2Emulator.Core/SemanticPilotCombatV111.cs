@@ -2534,14 +2534,16 @@ public static class SemanticPilotCombatEngineV111
                         "semantic_draw_hook_choice",
                         DrawHookChoiceDecision: nestedDecision.Fork())));
         }
-        var priorNestedChoiceCount = endTurn.NestedChoiceTranscript.Length;
+        var priorNestedChoiceCount =
+            endTurn.Stochastic.NestedChoiceTranscript.Length;
         var priorHandDrawHookChoiceCount =
             endTurn.HandDraw?.DrawHookChoiceTranscript.Length ?? 0;
         var nextEndTurn = SemanticEndTurnEngineV111.ResolveDrawHookChoice(
             endTurn, endTurn.Fingerprint, actionId);
-        var decision = nextEndTurn.NestedChoiceTranscript.Length >
+        var decision = nextEndTurn.Stochastic.NestedChoiceTranscript.Length >
                 priorNestedChoiceCount
-            ? nextEndTurn.NestedChoiceTranscript[^1].DrawHookChoiceDecision
+            ? nextEndTurn.Stochastic.NestedChoiceTranscript[^1]
+                .DrawHookChoiceDecision
             : nextEndTurn.HandDraw is { } handDraw &&
                 handDraw.DrawHookChoiceTranscript.Length >
                     priorHandDrawHookChoiceCount
@@ -2602,11 +2604,12 @@ public static class SemanticPilotCombatEngineV111
         {
             var resolvedEndTurn = SemanticEndTurnEngineV111.ResolveTarget(
                 endTurn, endTurn.Fingerprint, eventId, enemyInstanceId);
-            if (resolvedEndTurn.TargetTranscript.Length <=
-                endTurn.TargetTranscript.Length)
+            if (resolvedEndTurn.Stochastic.TargetTranscript.Length <=
+                endTurn.Stochastic.TargetTranscript.Length)
                 throw new InvalidDataException(
                     "End-turn target resolution omitted its selected identity.");
-            var endTurnDecision = resolvedEndTurn.TargetTranscript[^1];
+            var endTurnDecision =
+                resolvedEndTurn.Stochastic.TargetTranscript[^1];
             var resolvedSession = PublishRunContinuation(
                 current, resolvedEndTurn.Run, resolvedEndTurn,
                 new SemanticPilotContinuationV111(
@@ -2934,7 +2937,8 @@ public static class SemanticPilotCombatEngineV111
         {
             var priorHandInsertionCount =
                 endTurn.HandDraw?.DrawInsertionTranscript.Length ?? 0;
-            var priorNestedChoiceCount = endTurn.NestedChoiceTranscript.Length;
+            var priorNestedChoiceCount =
+                endTurn.Stochastic.NestedChoiceTranscript.Length;
             var resolvedEndTurn = SemanticEndTurnEngineV111
                 .ResolveDrawInsertion(
                     endTurn, endTurn.Fingerprint, eventId, position);
@@ -2942,9 +2946,9 @@ public static class SemanticPilotCombatEngineV111
                     resolvedHand.DrawInsertionTranscript.Length >
                         priorHandInsertionCount
                 ? resolvedHand.DrawInsertionTranscript[^1]
-                : resolvedEndTurn.NestedChoiceTranscript.Length >
-                    priorNestedChoiceCount
-                    ? resolvedEndTurn.NestedChoiceTranscript[^1]
+                : resolvedEndTurn.Stochastic.NestedChoiceTranscript.Length >
+                  priorNestedChoiceCount
+                    ? resolvedEndTurn.Stochastic.NestedChoiceTranscript[^1]
                         .DrawInsertionDecision
                     : null;
             if (endTurnDecision is null)
