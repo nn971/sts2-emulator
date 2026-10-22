@@ -4867,7 +4867,8 @@ public static partial class ChanceLawEngineV111
         PrototypeStateInvariants.Validate(run);
         request.Validate();
         if (run.Phase != RunPhase.Shop || run.World is not { } world ||
-            run.Stochastic.NativeRunRng is null || run.ControlledRunActionChoice is not null ||
+            run.Stochastic.NativeRunRng is null ||
+            run.Stochastic.ControlledRunActionChoice is not null ||
             !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
             world.RelicBag is null || action.Kind != "buy_relic" ||
             world.Shop is not { } shop)
@@ -4976,7 +4977,8 @@ public static partial class ChanceLawEngineV111
         if (ordinal != 0)
             throw new ArgumentOutOfRangeException(nameof(ordinal));
         if (run.Phase != RunPhase.MapChoice || run.World is not { } world ||
-            run.Stochastic.NativeRunRng is null || run.ControlledRunActionChoice is not null ||
+            run.Stochastic.NativeRunRng is null ||
+            run.Stochastic.ControlledRunActionChoice is not null ||
             !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
             !PrototypeNativeWingedBoots.AvailableNodes(world, run.Player)
                 .Any(node => node.RoomType == PrototypeRoomType.Treasure) ||
@@ -5309,7 +5311,8 @@ public static partial class ChanceLawEngineV111
         RunState run)
     {
         if (run.Phase != RunPhase.MapChoice || run.World is not { } world ||
-            run.Stochastic.NativeRunRng is null || run.ControlledRunActionChoice is not null ||
+            run.Stochastic.NativeRunRng is null ||
+            run.Stochastic.ControlledRunActionChoice is not null ||
             !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
             !PrototypeNativeWingedBoots.AvailableNodes(world, run.Player)
                 .Any(node => node.RoomType == PrototypeRoomType.Treasure) ||
@@ -5397,7 +5400,8 @@ public static partial class ChanceLawEngineV111
     private static void ValidateNativeMerchantQueryBoundary(RunState run)
     {
         if (run.Phase != RunPhase.MapChoice || run.World is not { } world ||
-            run.Stochastic.NativeRunRng is null || run.ControlledRunActionChoice is not null ||
+            run.Stochastic.NativeRunRng is null ||
+            run.Stochastic.ControlledRunActionChoice is not null ||
             !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
             !PrototypeNativeWingedBoots.AvailableNodes(world, run.Player)
                 .Any(node => node.RoomType == PrototypeRoomType.Shop))
@@ -5811,7 +5815,7 @@ public static partial class ChanceLawEngineV111
     public static ChanceLawV111 QueryControlledRunAction(RunState run)
     {
         ArgumentNullException.ThrowIfNull(run);
-        var continuation = run.ControlledRunActionChoice ??
+        var continuation = run.Stochastic.ControlledRunActionChoice ??
             throw new InvalidOperationException(
                 "No controlled run-action chance is pending.");
         continuation.Validate();
@@ -5829,7 +5833,7 @@ public static partial class ChanceLawEngineV111
     public static string ControlledRunActionBoundaryFingerprint(RunState run)
     {
         ArgumentNullException.ThrowIfNull(run);
-        var continuation = run.ControlledRunActionChoice ??
+        var continuation = run.Stochastic.ControlledRunActionChoice ??
             throw new InvalidOperationException(
                 "No controlled run-action chance is pending.");
         continuation.Validate();
@@ -5857,7 +5861,8 @@ public static partial class ChanceLawEngineV111
         var description = DescribeControlledEventChoice(run);
         if (run.World?.Event?.EventId ==
                 PrototypeNativeStoneOfAllTime.EventId &&
-            run.World?.Event?.ControlledChoice?.ChoiceId is "push" or "lift")
+            run.World?.Event?.Stochastic.ControlledChoice?.ChoiceId is
+                "push" or "lift")
             return QueryControlledStoneOfAllTimeTicket(
                 run, description.Request,
                 description.BoundaryFingerprint);
@@ -5868,7 +5873,7 @@ public static partial class ChanceLawEngineV111
         RunState run, RandomIndexRequestV111 request,
         string boundaryFingerprint)
     {
-        var continuation = run.World?.Event?.ControlledChoice ??
+        var continuation = run.World?.Event?.Stochastic.ControlledChoice ??
             throw new InvalidOperationException(
                 "Stone of All Time ticket law requires a pending controlled event choice.");
         continuation.Validate();
@@ -5952,8 +5957,8 @@ public static partial class ChanceLawEngineV111
         RandomIndexRequestV111 Request, string[] CandidateLabels,
         string BoundaryFingerprint) DescribeControlledEventChoice(RunState run)
     {
-        var effect = run.World?.Event?.ControlledChoice;
-        var reward = run.ControlledEventRewardChoice;
+        var effect = run.World?.Event?.Stochastic.ControlledChoice;
+        var reward = run.Stochastic.ControlledEventRewardChoice;
         if ((effect is null) == (reward is null))
             throw new InvalidOperationException(
                 "A controlled event-choice law requires exactly one pending request.");
@@ -6927,7 +6932,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
     public string Fingerprint => CanonicalJson.Sha256(this);
 
     [JsonIgnore]
-    public bool Complete => Run.ControlledRunActionChoice is null
+    public bool Complete => Run.Stochastic.ControlledRunActionChoice is null
         && MapGeneration is null && LaterActPreparation is null
         && AncientOffer is null && NativeCombatEntryContinuation is null;
 
@@ -6945,7 +6950,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
             if (NativeCombatEntryContinuation is { } nativeCombatEntry)
                 return QueryNativeCombatEntryLaw(
                     Origin, Action, nativeCombatEntry);
-            if (Run.ControlledRunActionChoice is null)
+            if (Run.Stochastic.ControlledRunActionChoice is null)
                 return null;
             return ControlledRunActionEngineV111
                 .IsConfiguredNativeReferenceNatureOvergrowthRunStartSource(
@@ -7118,7 +7123,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
         var decision = new ReferenceNatureDecisionV111(
             law.LawId, law.EventId, selection.OutcomeId,
             selection.OutcomeIndex);
-        if (resolvedRun.ControlledRunActionChoice is null)
+        if (resolvedRun.Stochastic.ControlledRunActionChoice is null)
         {
             if (ControlledRunActionEngineV111
                 .IsConfiguredNativeReferenceNatureOvergrowthRunStartSource(
@@ -7277,7 +7282,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
             TypedDecisions = decisions
         };
         trace.Validate();
-        var nextHistory = (run.ControlledRunActionHistory ??
+        var nextHistory = (run.Stochastic.ControlledRunActionHistory ??
             Array.Empty<ControlledRunActionTraceV111>())
             .Append(trace).ToArray();
         var nextStochastic =
@@ -7757,8 +7762,8 @@ public sealed record ReferenceNatureRunActionSessionV111(
         if (SchemaId != CurrentSchemaId || Origin is null || Action is null ||
             Run is null || InitialNatureState is null || NatureState is null ||
             DecisionTranscript is null || string.IsNullOrWhiteSpace(Action.Kind) ||
-            (Run.ControlledRunActionChoice is null &&
-             Run.ControlledRunActionHistory is not { Length: > 0 } &&
+            (Run.Stochastic.ControlledRunActionChoice is null &&
+             Run.Stochastic.ControlledRunActionHistory is not { Length: > 0 } &&
              !immediateShopAction && !immediateActOneCombatAction &&
              !immediateNativeActOneCombatAction &&
              !typedNativePotionFactoryCombatEntry &&
@@ -7803,7 +7808,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
             if (configuredExperimentalActTransition)
             {
                 if (Complete || LaterActPreparation is not null ||
-                    Run.ControlledRunActionChoice is not null ||
+                    Run.Stochastic.ControlledRunActionChoice is not null ||
                     mapGeneration.Seed != Origin.RunSeed ||
                     mapGeneration.Act != checked(Origin.World!.Act + 1) ||
                     mapGeneration.Ascension != Origin.Ascension ||
@@ -7854,7 +7859,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
                 var expectedMapCursor = LaterActPreparation?.InitialNatureState
                     ?? NatureState;
                 if (!configuredOvergrowthRunStart || Complete
-                    || Run.ControlledRunActionChoice is not null
+                    || Run.Stochastic.ControlledRunActionChoice is not null
                     || Run.ReferenceNatureRunInitializationTranscript is not null
                     || mapGeneration.Seed != Origin.RunSeed
                     || mapGeneration.Act != 1
@@ -7917,7 +7922,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
             }
             if (!configuredExperimentalRunStart ||
                 Run.ReferenceNatureRunInitializationPending != true ||
-                Run.ControlledRunActionChoice is not null ||
+                Run.Stochastic.ControlledRunActionChoice is not null ||
                 Run.ReferenceNatureRunInitializationTranscript is not null ||
                 selectedBossId is null ||
                 bossSelection.OutcomeId != "encounter:" + selectedBossId ||
@@ -7953,7 +7958,8 @@ public sealed record ReferenceNatureRunActionSessionV111(
             throw new InvalidDataException(
                 "Native combat-entry typed continuation is attached to an unsupported run action.");
         }
-        else if (Run.ControlledRunActionChoice is { } continuation)
+        else if (Run.Stochastic.ControlledRunActionChoice is
+            { } continuation)
         {
             continuation.Validate();
             if (continuation.ActionId != Action.Kind ||
@@ -7981,7 +7987,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
         {
             if (!configuredExperimentalActTransition)
             {
-                var trace = Run.ControlledRunActionHistory![^1];
+                var trace = Run.Stochastic.ControlledRunActionHistory![^1];
                 trace.Validate();
                 if (!configuredNativeRunStart || trace.ActionId != Action.Kind ||
                     trace.Decisions.Length != 1 ||
@@ -8107,7 +8113,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
         }
         else
         {
-            var trace = Run.ControlledRunActionHistory![^1];
+            var trace = Run.Stochastic.ControlledRunActionHistory![^1];
             trace.Validate();
             var expectedTraceDecisionCount = configuredNativeRunStart
                 ? 1 : DecisionTranscript.Length;
@@ -8158,7 +8164,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
 
     private void ValidateNativeCombatEntryTranscript()
     {
-        if (Run.ControlledRunActionChoice is not null ||
+        if (Run.Stochastic.ControlledRunActionChoice is not null ||
             MapGeneration is not null || LaterActPreparation is not null ||
             AncientOffer is not null ||
             NativeCombatEntryProviderDecisions.Length !=
@@ -9178,8 +9184,9 @@ public sealed record ReferenceNatureControlledEventChoiceSessionV111(
     public string Fingerprint => CanonicalJson.Sha256(this);
 
     [JsonIgnore]
-    public bool NaturePending => Run.World?.Event?.ControlledChoice is not null ||
-        Run.ControlledEventRewardChoice is not null;
+    public bool NaturePending =>
+        Run.World?.Event?.Stochastic.ControlledChoice is not null ||
+        Run.Stochastic.ControlledEventRewardChoice is not null;
 
     [JsonIgnore]
     public bool CanAdvancePlayer => !NaturePending &&
@@ -9194,7 +9201,7 @@ public sealed record ReferenceNatureControlledEventChoiceSessionV111(
                 SourceRoom: var sourceRoom
             }
             && sourceRoom == "Event:" + eventState.EventId
-            && Run.ControlledEventChoiceHistory is
+            && Run.Stochastic.ControlledEventChoiceHistory is
                 { Length: > 0 } history
             && history[^1].EventId == eventState.EventId
             && history[^1].ChoiceId == ChoiceId);
@@ -9365,8 +9372,8 @@ public sealed record ReferenceNatureControlledEventChoiceSessionV111(
                 decisions.Length, Complete))
             throw new InvalidDataException(
                 "ReferenceNature event-choice cursor differs from the run envelope.");
-        var effect = Run.World?.Event?.ControlledChoice;
-        var reward = Run.ControlledEventRewardChoice;
+        var effect = Run.World?.Event?.Stochastic.ControlledChoice;
+        var reward = Run.Stochastic.ControlledEventRewardChoice;
         if (effect is not null && reward is not null)
             throw new InvalidDataException(
                 "Run state contains two simultaneous controlled event requests.");
@@ -9388,7 +9395,8 @@ public sealed record ReferenceNatureControlledEventChoiceSessionV111(
                         "Lethal Stone of All Time push has an unexpected chance transcript.");
                 return;
             }
-            if (Run.ControlledEventChoiceHistory is not { Length: > 0 } history ||
+            if (Run.Stochastic.ControlledEventChoiceHistory is
+                    not { Length: > 0 } history ||
                 history[^1].EventId != originEvent.EventId ||
                 history[^1].ChoiceId != ChoiceId ||
                 history[^1].Decisions.Length != decisions.Length)
