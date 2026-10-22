@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 setup and event Nature transcript owner read increment (2026-10-22):**
+Neow-offer, Native event-relic, and configured Native event-gold sessions now
+read decision prefixes through their stochastic owners during query,
+continuation, validation, save, and replay. Flat snapshots and serialized
+request order are unchanged. Static source review and `git diff --check` only;
+no tests or builds were run.
+
 **S3 controlled-action Nature transcript owner read increment (2026-10-22):**
 Merchant, Treasure, combat-reward, and Native Shovel sessions now read their
 law-decision histories through the typed stochastic owner during resolution

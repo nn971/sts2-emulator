@@ -112,11 +112,11 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
     public string Fingerprint => CanonicalJson.Sha256(this);
 
     [JsonIgnore]
-    public bool Complete => DecisionTranscript.Length ==
+    public bool Complete => Stochastic.DecisionTranscript.Length ==
         DecisionCount(EventId, Origin);
 
     [JsonIgnore]
-    public int NextOrdinal => DecisionTranscript.Length;
+    public int NextOrdinal => Stochastic.DecisionTranscript.Length;
 
     [JsonIgnore]
     public ChanceLawV111? PendingLaw
@@ -202,7 +202,7 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
         var providerDecision = ReferenceNatureChanceLawDecisionV111.FromSelection(
             law, pending.PendingRequest, selection, Origin);
         var continuation = pending;
-        var transcript = DecisionTranscript.Append(
+        var transcript = Stochastic.DecisionTranscript.Append(
             new ReferenceNatureDecisionV111(
                 law.LawId, law.EventId, selection.OutcomeId,
                 selection.OutcomeIndex)).ToArray();
@@ -231,7 +231,7 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
         Mechanics.Validate(
             PrototypeMechanicsContinuationKindV111.ReferenceNatureRunSession);
         Stochastic.Validate();
-        if (DecisionTranscript.Length > DecisionCount(EventId, Origin))
+        if (Stochastic.DecisionTranscript.Length > DecisionCount(EventId, Origin))
             throw new InvalidDataException(
                 "Invalid ReferenceNature Native event gold session envelope.");
         ValidateOpeningBoundary(Origin, ActionId);
@@ -246,7 +246,7 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
 
         var expectedNatureState = InitialNatureState.Fork();
         var providerPrefix = new List<ControlledStochasticDecisionV111>();
-        for (var index = 0; index < DecisionTranscript.Length; index++)
+        for (var index = 0; index < Stochastic.DecisionTranscript.Length; index++)
         {
             var replayAtBoundary = Replay(
                 Origin, ActionId, providerPrefix.ToArray());
@@ -260,7 +260,7 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
                 law.LawId, law.EventId, selection.OutcomeId,
                 selection.OutcomeIndex);
             if (CanonicalJson.Sha256(expectedDecision) !=
-                    CanonicalJson.Sha256(DecisionTranscript[index]))
+                    CanonicalJson.Sha256(Stochastic.DecisionTranscript[index]))
                 throw new InvalidDataException(
                     "Native event gold Nature transcript does not replay.");
             providerPrefix.Add(
@@ -284,10 +284,10 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
         if (CanonicalJson.Sha256(expectedRun) != CanonicalJson.Sha256(Run) ||
             !ReferenceNatureRunCursorV111.MatchesRunSession(
                 Origin, Run, InitialNatureState, NatureState,
-                DecisionTranscript.Length, Complete))
+                Stochastic.DecisionTranscript.Length, Complete))
             throw new InvalidDataException(
                 "Native event gold run differs from its atomic Nature cursor.");
-        foreach (var decision in DecisionTranscript)
+        foreach (var decision in Stochastic.DecisionTranscript)
             decision.Validate();
     }
 
@@ -300,7 +300,7 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
             CurrentSchemaId, session.EventId, session.ActionId,
             RunSnapshot.Save(session.Origin), RunSnapshot.Save(session.Run),
             session.InitialNatureState, session.NatureState,
-            (ReferenceNatureDecisionV111[])session.DecisionTranscript.Clone());
+            (ReferenceNatureDecisionV111[])session.Stochastic.DecisionTranscript.Clone());
         return JsonSerializer.Serialize(snapshot);
     }
 
@@ -335,7 +335,7 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
                 throw new InvalidDataException(
                     "Native event gold replay ended before its transcript.");
             replay = replay.ResolveNext();
-            if (CanonicalJson.Sha256(replay.DecisionTranscript[^1]) !=
+            if (CanonicalJson.Sha256(replay.Stochastic.DecisionTranscript[^1]) !=
                 CanonicalJson.Sha256(snapshot.DecisionTranscript[index]))
                 throw new InvalidDataException(
                     "Native event gold replay selected a different outcome.");
@@ -351,7 +351,7 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
                 CanonicalJson.Sha256(savedRun) ||
             CanonicalJson.Sha256(replay.NatureState) !=
                 CanonicalJson.Sha256(snapshot.NatureState) ||
-            replay.DecisionTranscript.Length !=
+            replay.Stochastic.DecisionTranscript.Length !=
                 snapshot.DecisionTranscript.Length)
             throw new InvalidDataException(
                 "Native event gold replay differs from its snapshot.");
@@ -363,7 +363,7 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
     {
         var prefix = new List<ControlledStochasticDecisionV111>();
         var expectedNatureState = InitialNatureState.Fork();
-        for (var index = 0; index < DecisionTranscript.Length; index++)
+        for (var index = 0; index < Stochastic.DecisionTranscript.Length; index++)
         {
             var replay = Replay(Origin, ActionId, prefix.ToArray());
             var request = replay.Continuation?.PendingRequest ??
@@ -376,7 +376,7 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
                 law.LawId, law.EventId, selection.OutcomeId,
                 selection.OutcomeIndex);
             if (CanonicalJson.Sha256(expectedDecision) !=
-                CanonicalJson.Sha256(DecisionTranscript[index]))
+                CanonicalJson.Sha256(Stochastic.DecisionTranscript[index]))
                 throw new InvalidDataException(
                     "Native event gold prefix changed its Nature outcome.");
             prefix.Add(ReferenceNatureChanceLawDecisionV111.FromSelection(

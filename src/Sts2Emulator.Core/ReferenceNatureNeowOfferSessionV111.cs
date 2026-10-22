@@ -263,19 +263,19 @@ public sealed record ReferenceNatureNeowOfferSessionV111(
     public string Fingerprint => CanonicalJson.Sha256(this);
 
     [JsonIgnore]
-    public int NextOrdinal => DecisionTranscript.Length;
+    public int NextOrdinal => Stochastic.DecisionTranscript.Length;
 
     [JsonIgnore]
     public ChanceLawV111? PendingLaw => Complete ? null :
         ChanceLawEngineV111.QueryNeowOffer(
             Origin.RunSeed, Origin.Ascension, NextOrdinal,
-            DecisionTranscript.Select(decision => decision.OutcomeIndex)
+            Stochastic.DecisionTranscript.Select(decision => decision.OutcomeIndex)
                 .ToArray());
 
     [JsonIgnore]
     public bool Complete => NeowOfferDecisionPlanBuilderV111.Build(
         Origin.RunSeed, Origin.Ascension,
-        DecisionTranscript.Select(decision => decision.OutcomeIndex)
+        Stochastic.DecisionTranscript.Select(decision => decision.OutcomeIndex)
             .ToArray()).Complete;
 
     [JsonIgnore]
@@ -285,10 +285,10 @@ public sealed record ReferenceNatureNeowOfferSessionV111(
         {
             var plan = NeowOfferDecisionPlanBuilderV111.Build(
                 Origin.RunSeed, Origin.Ascension,
-                DecisionTranscript.Select(decision =>
+                Stochastic.DecisionTranscript.Select(decision =>
                     decision.OutcomeIndex).ToArray());
             if (!plan.Complete || plan.Steps.Length !=
-                    DecisionTranscript.Length)
+                    Stochastic.DecisionTranscript.Length)
                 throw new InvalidOperationException(
                     "Provider decisions require a completed Neow-offer prefix.");
             return plan.Steps.Select(step =>
@@ -344,12 +344,12 @@ public sealed record ReferenceNatureNeowOfferSessionV111(
             throw new InvalidOperationException(
                 "ReferenceNature Neow-offer session is already complete.");
 
-        var priorIndices = DecisionTranscript.Select(
+        var priorIndices = Stochastic.DecisionTranscript.Select(
             decision => decision.OutcomeIndex).ToArray();
         var law = ChanceLawEngineV111.QueryNeowOffer(
             Origin.RunSeed, Origin.Ascension, NextOrdinal, priorIndices);
         var selection = ReferenceNatureV111.SampleValidated(law, NatureState);
-        var transcript = DecisionTranscript.Append(
+        var transcript = Stochastic.DecisionTranscript.Append(
             new ReferenceNatureDecisionV111(
                 law.LawId, law.EventId, selection.OutcomeId,
                 selection.OutcomeIndex)).ToArray();
@@ -387,24 +387,24 @@ public sealed record ReferenceNatureNeowOfferSessionV111(
         ValidateOpeningBoundary(Origin);
         var plan = NeowOfferDecisionPlanBuilderV111.Build(
             Origin.RunSeed, Origin.Ascension,
-            DecisionTranscript.Select(decision => decision.OutcomeIndex)
+            Stochastic.DecisionTranscript.Select(decision => decision.OutcomeIndex)
                 .ToArray());
         if (!ReferenceNatureRunCursorV111.MatchesRunSession(
                 Origin, Run, InitialNatureState, NatureState,
-                DecisionTranscript.Length, plan.Complete))
+                Stochastic.DecisionTranscript.Length, plan.Complete))
             throw new InvalidDataException(
                 "ReferenceNature Neow-offer cursor differs from its session envelope.");
 
         var expectedNatureState = InitialNatureState.Fork();
         var priorIndices = new List<int>();
-        for (int ordinal = 0; ordinal < DecisionTranscript.Length; ordinal++)
+        for (int ordinal = 0; ordinal < Stochastic.DecisionTranscript.Length; ordinal++)
         {
             var law = ChanceLawEngineV111.QueryNeowOffer(
                 Origin.RunSeed, Origin.Ascension, ordinal,
                 priorIndices.ToArray());
             var selection = ReferenceNatureV111.SampleValidated(
                 law, expectedNatureState);
-            var decision = DecisionTranscript[ordinal];
+            var decision = Stochastic.DecisionTranscript[ordinal];
             decision.Validate();
             if (CanonicalJson.Sha256(new ReferenceNatureDecisionV111(
                     law.LawId, law.EventId, selection.OutcomeId,
@@ -504,7 +504,7 @@ public sealed record ReferenceNatureNeowOfferSessionV111(
             RunSnapshot.Save(session.Run), session.InitialNatureState,
             session.NatureState,
             (ReferenceNatureDecisionV111[])
-                session.DecisionTranscript.Clone());
+                session.Stochastic.DecisionTranscript.Clone());
         return JsonSerializer.Serialize(snapshot);
     }
 
@@ -532,7 +532,7 @@ public sealed record ReferenceNatureNeowOfferSessionV111(
         if (CanonicalJson.Sha256(replay.Run) != CanonicalJson.Sha256(savedRun) ||
             CanonicalJson.Sha256(replay.NatureState) !=
                 CanonicalJson.Sha256(snapshot.NatureState) ||
-            !replay.DecisionTranscript.SequenceEqual(snapshot.DecisionTranscript))
+            !replay.Stochastic.DecisionTranscript.SequenceEqual(snapshot.DecisionTranscript))
             throw new InvalidDataException(
                 "ReferenceNature Neow-offer snapshot does not replay from its origin.");
         return replay;
