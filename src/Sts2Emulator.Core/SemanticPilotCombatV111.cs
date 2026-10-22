@@ -653,9 +653,9 @@ public sealed record SemanticPilotCombatV111(
                     CanonicalJson.Sha256(
                         PrototypeGameEngine.ClearAutomaticPipelineContinuation(
                             initialIntents.BaselineCombat)) ||
-                entryCombat.Stochastic.NativeRngMutable is not null ||
+                entryCombat.Stochastic.NativeRng is not null ||
                 entryCombat.Stochastic.SemanticDeck is not null ||
-                this.Run.Stochastic.NativeRunRngMutable is not null)
+                this.Run.Stochastic.NativeRunRng is not null)
                 throw new InvalidDataException(
                     "Initial intent continuation diverged from the source-route boundary.");
         }
@@ -1900,8 +1900,8 @@ public static class SemanticPilotCombatEngineV111
             combat.AutomaticPipelineContinuation is not null ||
             combat.Enemies.Any(enemy => enemy.PlannedMoveIndex is not null ||
                 enemy.PlannedNextAiStateId is not null) ||
-            combat.Stochastic.NativeRngMutable is not { } nativeCombat ||
-            run.Stochastic.NativeRunRngMutable is null)
+            combat.Stochastic.NativeRng is not { } nativeCombat ||
+            run.Stochastic.NativeRunRng is null)
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_ROUTE site=act1.entry " +
                 "operation=not_a_native_player_boundary");
@@ -2113,7 +2113,7 @@ public static class SemanticPilotCombatEngineV111
             "Native policy entry is missing its run world.");
         var combat = world.Combat ?? throw new InvalidDataException(
             "Native policy entry is missing its combat.");
-        if (run.Stochastic.NativeRunRngMutable is not null || combat.Stochastic.NativeRngMutable is not null ||
+        if (run.Stochastic.NativeRunRng is not null || combat.Stochastic.NativeRng is not null ||
             combat.Stochastic.SemanticDeck is null ||
             combat.Stochastic.SemanticDeck.Mode != SemanticDeckStateV111.NatureMode)
             throw new InvalidOperationException(
@@ -3513,7 +3513,7 @@ public static class SemanticPilotCombatEngineV111
             : "effect:" + operation;
         return SemanticGenerationChoiceV111.CreateEvent(
             current.Fingerprint, siteId, ownerId, ordinal, candidates,
-            combat?.Stochastic.NativeRngMutable?.RunStreams is not null
+            combat?.Stochastic.NativeRng?.RunStreams is not null
                 ? "run.combat_card_generation" : "prototype.combat");
     }
 
@@ -3608,7 +3608,7 @@ public static class SemanticPilotCombatEngineV111
                 card.InstanceId == targetCardInstanceId).CardId;
             request = new RandomIndexRequestV111(
                 "combat.random_hand_card.energy_cost",
-                combat.Stochastic.NativeRngMutable is not null
+                combat.Stochastic.NativeRng is not null
                     ? SemanticCostChoiceV111.NativeHandCostStreamId
                     : SemanticCostChoiceV111.LegacyHandCostStreamId,
                 "effect:" + randomCost.Operation.Kind +
@@ -3669,7 +3669,7 @@ public static class SemanticPilotCombatEngineV111
             transition.Kind == "semantic_hand_cost_selection");
         return SemanticHandCostSelectionChoiceV111.CreateEvent(
             current.Fingerprint, randomCost, modelIds, ordinal,
-            combat!.Stochastic.NativeRngMutable is not null
+            combat!.Stochastic.NativeRng is not null
                 ? SemanticHandCostSelectionChoiceV111.NativeStreamId
                 : SemanticHandCostSelectionChoiceV111.StreamId);
     }
@@ -4117,7 +4117,7 @@ public static class SemanticPilotCombatEngineV111
             throw new InvalidDataException(
                 "Native policy action did not reach an active combat boundary.");
         var combat = run.World!.Combat!;
-        if (combat.Stochastic.NativeRngMutable is null || run.Stochastic.NativeRunRngMutable is null)
+        if (combat.Stochastic.NativeRng is null || run.Stochastic.NativeRunRng is null)
             throw new InvalidDataException(
                 "Native policy combat lost its RNG stream owner.");
         if (combat.Stochastic.SemanticDeck is not { } deck ||
