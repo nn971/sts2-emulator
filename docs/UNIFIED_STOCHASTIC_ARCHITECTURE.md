@@ -889,6 +889,8 @@ Reward-step resolution now reads defensive prototype and optional Native run RNG
 
 Combat entry now reads defensive run RNG projections and keeps encounter selection, pre-combat potion relics, initial shuffle/HP draws, and first-intent commitment on local bundles. The entry publishes the latest prototype and Native run cursors alongside the initialized combat and intent continuation; resuming that continuation reprojects its Native run cursor through the run owner.
 
+Combat card plays, potion use, automatic death prevention, and combat-win dispatch now use local prototype bundles and publish them with their player/combat results. Combat-win dispatch publishes before persistent relic hooks, and Mad Science reopens the resulting projection so its deck improvement follows those hooks in source order.
+
 ## Reading order
 
 1. This architecture contract.

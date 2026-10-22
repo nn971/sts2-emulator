@@ -1070,6 +1070,7 @@ public sealed partial class PrototypeGameEngine
         var world = RequireWorld(state);
         var combat = world.Combat
             ?? throw new InvalidOperationException("Combat phase has no combat state.");
+        var prototypeRng = state.Stochastic.PrototypeRng;
 
         if (!combat.Hand.Contains(payload.CardInstanceId))
         {
@@ -1191,13 +1192,15 @@ public sealed partial class PrototypeGameEngine
         var resolved = ResolveCardPlaySeries(
             state.Player,
             combat,
-            state.Stochastic.PrototypeRngMutable,
+            prototypeRng,
             series);
         combat = resolved.Combat;
 
         state = state with
         {
             Player = resolved.Player,
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, prototypeRng),
             World = world with { Combat = combat }
         };
 
@@ -1231,6 +1234,7 @@ public sealed partial class PrototypeGameEngine
         var combatPotion = combat.PotionStates.SingleOrDefault(item => item.Slot == payload.Slot)
             ?? throw new InvalidOperationException(
                 $"Combat potion state for slot {payload.Slot} is missing.");
+        var prototypeRng = state.Stochastic.PrototypeRng;
 
         if (!StringComparer.Ordinal.Equals(potion.PotionId, combatPotion.PotionId))
         {
@@ -1269,7 +1273,7 @@ public sealed partial class PrototypeGameEngine
             ApplyPotionRunEffects(
                 playerAfterPotion,
                 definition,
-                state.Stochastic.PrototypeRngMutable);
+                prototypeRng);
 
         var combatAfterPotion = combat with
         {
@@ -1291,7 +1295,7 @@ public sealed partial class PrototypeGameEngine
             playerAfterPotion,
             combatAfterPotion,
             operations,
-            state.Stochastic.PrototypeRngMutable,
+            prototypeRng,
             completionEvents:
             [
                 new PrototypeCombatEvent(
@@ -1311,6 +1315,8 @@ public sealed partial class PrototypeGameEngine
         state = state with
         {
             Player = playerAfterPotion,
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, prototypeRng),
             World = world with { Combat = combatAfterPotion }
         };
 
@@ -1337,14 +1343,17 @@ public sealed partial class PrototypeGameEngine
         var combat = world.Combat
             ?? throw new InvalidOperationException(
                 "Combat death prevention has no combat state.");
+        var prototypeRng = state.Stochastic.PrototypeRng;
         var prevented = TryUseAutomaticDeathPrevention(
             state.Player,
             combat,
-            state.Stochastic.PrototypeRngMutable);
+            prototypeRng);
 
         return state with
         {
             Player = prevented.Player,
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, prototypeRng),
             World = world with
             {
                 Combat = prevented.Combat
@@ -1428,16 +1437,19 @@ public sealed partial class PrototypeGameEngine
         var combat = world.Combat
             ?? throw new InvalidOperationException(
                 "Combat victory has no combat state.");
+        var prototypeRng = state.Stochastic.PrototypeRng;
 
         var won = DispatchCombatEvent(
             state.Player,
             combat,
             new PrototypeCombatEvent(
                 PrototypeCombatEventKind.CombatWon),
-            state.Stochastic.PrototypeRngMutable);
+            prototypeRng);
         state = state with
         {
             Player = won.Player,
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, prototypeRng),
             World = world with
             {
                 Combat = won.Combat
@@ -1445,10 +1457,14 @@ public sealed partial class PrototypeGameEngine
         };
 
         state = ApplyNativePersistentCombatEnd(state, world.ActiveRoom);
+        prototypeRng = state.Stochastic.PrototypeRng;
+        var madSciencePlayer = ApplyMadScienceImprovement(
+            state.Player, combat, prototypeRng);
         state = state with
         {
-            Player = ApplyMadScienceImprovement(
-                state.Player, combat, state.Stochastic.PrototypeRngMutable)
+            Player = madSciencePlayer,
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, prototypeRng)
         };
         state = ApplyWarHammerEliteVictory(
             state, world.ActiveRoom);
