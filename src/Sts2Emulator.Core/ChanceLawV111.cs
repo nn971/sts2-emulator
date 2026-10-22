@@ -6428,7 +6428,7 @@ public sealed record ReferenceNatureStateV111(
         RunState run, ulong? seed)
     {
         ArgumentNullException.ThrowIfNull(run);
-        if (run.ReferenceNatureState is { } saved)
+        if (run.Stochastic.ReferenceNature is { } saved)
         {
             if (seed is not null)
                 throw new InvalidOperationException(
@@ -6476,7 +6476,7 @@ internal static class ReferenceNatureRunCursorV111
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(initial);
-        if (source.ReferenceNatureState is { } saved &&
+        if (source.Stochastic.ReferenceNature is { } saved &&
             !initial.SameCursor(saved))
             throw new InvalidOperationException(
                 $"{boundary} session cannot replace the run's ReferenceNature cursor.");
@@ -6495,13 +6495,15 @@ internal static class ReferenceNatureRunCursorV111
         ArgumentNullException.ThrowIfNull(initial);
         ArgumentNullException.ThrowIfNull(cursor);
 
-        var initialMatchesOrigin = origin.ReferenceNatureState is not { } saved ||
+        var initialMatchesOrigin =
+            origin.Stochastic.ReferenceNature is not { } saved ||
             initial.SameCursor(saved);
-        var pendingRunMatchesOrigin = origin.ReferenceNatureState is { } originCursor
-            ? originCursor.SameCursor(current.ReferenceNatureState)
-            : current.ReferenceNatureState is null;
+        var pendingRunMatchesOrigin =
+            origin.Stochastic.ReferenceNature is { } originCursor
+                ? originCursor.SameCursor(current.Stochastic.ReferenceNature)
+                : current.Stochastic.ReferenceNature is null;
         var runMatchesCursor = complete
-            ? cursor.SameCursor(current.ReferenceNatureState)
+            ? cursor.SameCursor(current.Stochastic.ReferenceNature)
             : pendingRunMatchesOrigin;
         return initialMatchesOrigin && runMatchesCursor &&
             cursor.SampleCount == checked(initial.SampleCount + decisionCount);
@@ -6601,7 +6603,8 @@ public sealed record ReferenceNatureSessionV111(
         var natureState = ReferenceNatureRunCursorV111.Begin(
             combat.Run, seed, "Semantic combat");
         if (combat.CombatTerminal &&
-            !natureState.SameCursor(combat.Run.ReferenceNatureState))
+            !natureState.SameCursor(
+                combat.Run.Stochastic.ReferenceNature))
         {
             var committedRun = ReferenceNatureRunCursorV111.Commit(
                 combat.Run, natureState);
@@ -6665,7 +6668,8 @@ public sealed record ReferenceNatureSessionV111(
         Combat.Validate();
         Stochastic.Validate();
         if (Combat.CombatTerminal &&
-            !NatureState.SameCursor(Combat.Run.ReferenceNatureState))
+            !NatureState.SameCursor(
+                Combat.Run.Stochastic.ReferenceNature))
             throw new InvalidDataException(
                 "ReferenceNature sampler cursor differs from the committed run state.");
     }
@@ -6692,7 +6696,8 @@ public sealed record ReferenceNatureSessionV111(
             throw new InvalidDataException("Invalid ReferenceNature snapshot.");
         var combat = SemanticPilotCombatEngineV111.Restore(
             snapshot.CombatSnapshotJson);
-        if (combat.CombatTerminal && combat.Run.ReferenceNatureState is null)
+        if (combat.CombatTerminal &&
+            combat.Run.Stochastic.ReferenceNature is null)
         {
             var committedRun = ReferenceNatureRunCursorV111.Commit(
                 combat.Run, snapshot.NatureState);
@@ -8294,7 +8299,8 @@ public sealed record ReferenceNatureRunActionSessionV111(
                 throw new InvalidDataException(
                     "ReferenceNature run-action replay selected a different outcome.");
         }
-        if (replay.Complete && savedRun.ReferenceNatureState is null)
+        if (replay.Complete &&
+            savedRun.Stochastic.ReferenceNature is null)
             savedRun = ReferenceNatureRunCursorV111.Commit(
                 savedRun, snapshot.NatureState);
         if (replay.Complete &&
@@ -9459,7 +9465,8 @@ public sealed record ReferenceNatureControlledEventChoiceSessionV111(
                 throw new InvalidDataException(
                     "ReferenceNature event-choice replay diverged from its transcript.");
         }
-        if (replay.Complete && savedRun.ReferenceNatureState is null)
+        if (replay.Complete &&
+            savedRun.Stochastic.ReferenceNature is null)
             savedRun = ReferenceNatureRunCursorV111.Commit(
                 savedRun, snapshot.NatureState);
         if (CanonicalJson.Sha256(replay.Run) != CanonicalJson.Sha256(savedRun) ||
