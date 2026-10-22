@@ -79,7 +79,8 @@ public sealed record SemanticCardShortlistEventV111(
             string.IsNullOrWhiteSpace(BoundaryFingerprint) ||
             string.IsNullOrWhiteSpace(SupportFingerprint) ||
             expectedOperationKind is null ||
-            StreamId != SemanticCardShortlistChoiceV111.StreamId ||
+            StreamId is not (SemanticCardShortlistChoiceV111.StreamId or
+                SemanticCardShortlistChoiceV111.NativeStreamId) ||
             string.IsNullOrWhiteSpace(OwnerId) || Ordinal < 0 ||
             OperationKind != expectedOperationKind ||
             eligibleCardInstanceIds is not { Length: > 1 } ||
@@ -168,6 +169,7 @@ public static class SemanticCardShortlistChoiceV111
     public const string ReplaySiteId =
         "combat.draw_pile.random_replay_card.select";
     internal const string StreamId = "prototype.combat";
+    internal const string NativeStreamId = "run.combat_card_selection";
     internal const string ChooseCardInstanceOperation =
         "choose_card_instance";
     internal const string ChooseCardInstanceWithoutReplacementOperation =
@@ -254,9 +256,13 @@ public static class SemanticCardShortlistChoiceV111
             BoundaryFingerprint = boundaryFingerprint,
             SupportFingerprint = supportFingerprint
         });
+        // Keep event identity stable across the Native stream-label correction
+        // so saved prototype-labeled decisions remain replayable.
+        var streamId = combat!.Stochastic.NativeRngMutable is not null
+            ? NativeStreamId : StreamId;
         var semanticEvent = new SemanticCardShortlistEventV111(
             SchemaId, eventId, boundaryFingerprint, supportFingerprint,
-            siteId, StreamId, ownerId, ordinal, requestOperationKind,
+            siteId, streamId, ownerId, ordinal, requestOperationKind,
             eligibleIds, eligibleModels, selectedIds, candidateIds,
             candidateModels, shortlist.RequiredCount);
         semanticEvent.Validate();
@@ -314,10 +320,19 @@ public static class SemanticCardShortlistChoiceV111
         long cardInstanceId)
     {
         ArgumentNullException.ThrowIfNull(decision);
+        pending?.Validate();
         decision.Validate();
+        bool legacyPrototypeStream = pending is not null &&
+            pending.StreamId == NativeStreamId &&
+            decision.Event.StreamId == StreamId &&
+            CanonicalJson.Sha256(pending with
+            {
+                StreamId = decision.Event.StreamId
+            }) == CanonicalJson.Sha256(decision.Event);
         if (pending is null || pending.EventId != decision.Event.EventId ||
-            CanonicalJson.Sha256(pending) !=
-                CanonicalJson.Sha256(decision.Event) ||
+            (CanonicalJson.Sha256(pending) !=
+                CanonicalJson.Sha256(decision.Event) &&
+             !legacyPrototypeStream) ||
             decision.SelectedCardInstanceId != cardInstanceId)
             throw new InvalidDataException(
                 "Card-shortlist decision differs from its live semantic event.");
@@ -334,6 +349,10 @@ public static class SemanticCardShortlistChoiceV111
         var combat = checkpoint.World?.Combat ??
             throw new InvalidDataException(
                 "Card shortlist lost its source combat.");
+        if (decision.Event.StreamId == NativeStreamId &&
+            combat.Stochastic.NativeRngMutable is null)
+            throw new InvalidDataException(
+                "Native card-shortlist stream attribution has no Native combat RNG owner.");
         var choice = combat.PendingChoice;
         var shortlist = choice?.ControlledCardShortlist;
         if (shortlist is null ||

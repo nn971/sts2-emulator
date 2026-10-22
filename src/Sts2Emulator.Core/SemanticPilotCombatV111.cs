@@ -2921,6 +2921,18 @@ public static class SemanticPilotCombatEngineV111
                 "No random card-pile shortlist is pending.");
         var decision = SemanticCardShortlistChoiceV111.Select(
             pending, eventId, cardInstanceId);
+        return ResumeCardShortlistDecision(current, decision);
+    }
+
+    private static SemanticPilotCombatV111 ResumeCardShortlistDecision(
+        SemanticPilotCombatV111 current,
+        SemanticCardShortlistDecisionV111 decision)
+    {
+        var pending = current.CardShortlistPending ??
+            throw new InvalidOperationException(
+                "No random card-pile shortlist is pending.");
+        SemanticCardShortlistChoiceV111.ValidateDecision(
+            pending, decision, decision.SelectedCardInstanceId);
         var choice = new SemanticEndTurnNestedChoiceV111(
             "semantic_card_shortlist", CardShortlistDecision: decision.Fork());
         return ResumeAndPublishNestedChoice(
@@ -4045,9 +4057,8 @@ public static class SemanticPilotCombatEngineV111
                         transition.HandCostSelectionDecision.SelectedCardInstanceId),
                 "semantic_card_shortlist" when
                     transition.CardShortlistDecision is not null =>
-                    ResolveCardShortlist(replay, replay.Fingerprint,
-                        transition.CardShortlistDecision.Event.EventId,
-                        transition.CardShortlistDecision.SelectedCardInstanceId),
+                    ResumeCardShortlistDecision(
+                        replay, transition.CardShortlistDecision),
                 "semantic_pool_shuffle" when
                     transition.PoolShuffleDecision is not null =>
                     ResolvePoolShuffle(replay, replay.Fingerprint,

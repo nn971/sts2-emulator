@@ -409,6 +409,14 @@ continuation resumes only after the saved prefix reaches its required count.
 Restore checks each pick against the live remaining support before continuing
 the autoplayed card.
 
+These semantic shortlist-choice events use `run.combat_card_selection` when
+the combat state has a Native RNG sidecar, matching the source stream used by
+random shortlist, autoplay, and replay-card selection. Prototype-only runs
+retain `prototype.combat`; previously saved prototype-labeled decisions remain
+replayable because the stream label is outside the event identity. This
+attribution does not establish source-pool completeness, probability parity,
+or cursor parity.
+
 Automatic source-pool shuffles reached by autoplay also retain each bounded
 swap in the end-turn chronology. Restore checks the current permutation and
 swap bound at every step before resuming the original operation; random
