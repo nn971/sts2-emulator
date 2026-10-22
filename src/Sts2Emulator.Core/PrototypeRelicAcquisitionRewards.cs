@@ -11,8 +11,9 @@ public sealed partial class PrototypeGameEngine
         if (count <= 0)
             return after;
         var world = RequireWorld(after);
+        var prototypeRng = after.Stochastic.PrototypeRng;
         var nativeRunRng = UsesNativeRegionalSystems(world)
-            ? after.Stochastic.NativeRunRngMutable?.Fork()
+            ? after.Stochastic.NativeRunRng
             : null;
         // Event acquisition already suspends the selected option in its
         // ordinary event continuation, before completing the event room.
@@ -24,14 +25,18 @@ public sealed partial class PrototypeGameEngine
             var returnState = new PrototypeCustomRewardReturnState(
                 after.Phase, world.Reward, world.CustomRewardReturn);
             var reward = CreateWaxRelicReward(
-                after, after.Player, ToyBoxRewardSource, ref world,
-                nativeRunRng);
+                after.Player, ToyBoxRewardSource, ref world,
+                prototypeRng, nativeRunRng);
             world = world with { Reward = reward, CustomRewardReturn = returnState };
+            var stochastic = RunStochasticStateV111.WithPrototypeRng(
+                after.Stochastic, prototypeRng);
+            if (nativeRunRng is not null)
+                stochastic = RunStochasticStateV111.WithNativeRunRng(
+                    stochastic, nativeRunRng);
             after = after with
             {
                 Phase = RunPhase.Reward,
-                Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                    after.Stochastic, nativeRunRng ?? after.Stochastic.NativeRunRngMutable),
+                Stochastic = stochastic,
                 World = world
             };
         }
@@ -39,14 +44,15 @@ public sealed partial class PrototypeGameEngine
     }
 
     private static RewardState CreateWaxRelicReward(
-        RunState state, PlayerState player, string source,
-        ref RunWorldState world, RngBundle? nativeRunRng = null)
+        PlayerState player, string source,
+        ref RunWorldState world, RngBundle prototypeRng,
+        RngBundle? nativeRunRng = null)
     {
         var ids = new string[5];
         for (var index = 0; index < ids.Length; index++)
         {
             var draw = PrototypeNativeRelicGrabBag.Draw(
-                world, player, state.Stochastic.PrototypeRngMutable, merchant: false,
+                world, player, prototypeRng, merchant: false,
                 nativeRunRng: nativeRunRng);
             world = draw.World;
             ids[index] = draw.Id ?? throw new NotSupportedException(

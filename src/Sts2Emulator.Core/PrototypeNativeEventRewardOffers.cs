@@ -76,7 +76,8 @@ public sealed partial class PrototypeGameEngine
             case PrototypeRunEffectKind.OfferWaxRelics:
             {
                 return CreateWaxRelicReward(
-                    state, player, prefix, ref world, nativeRunRng);
+                    player, prefix, ref world,
+                    state.Stochastic.PrototypeRngMutable, nativeRunRng);
             }
             case PrototypeRunEffectKind.OfferThreeRareCards:
             {
