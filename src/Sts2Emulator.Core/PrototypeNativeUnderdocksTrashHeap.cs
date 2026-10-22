@@ -192,7 +192,7 @@ public sealed partial class PrototypeGameEngine
                     Gold = GoldAfterGain(state.Player, 100)
                 };
                 player = AppendCard(
-                    player, world.NextCardInstanceId, chosen, state.Stochastic.PrototypeRng);
+                    player, world.NextCardInstanceId, chosen, state.Stochastic.PrototypeRngMutable);
                 var result = state with
                 {
                     Player = player,
@@ -238,7 +238,7 @@ public sealed partial class PrototypeGameEngine
                 };
                 player = ApplyRelicRunEvent(
                     player, PrototypeRunEventKind.RelicAcquired,
-                    acquiredRelicId: relicId, rng: state.Stochastic.PrototypeRng);
+                    acquiredRelicId: relicId, rng: state.Stochastic.PrototypeRngMutable);
                 var result = state with
                 {
                     Player = player,

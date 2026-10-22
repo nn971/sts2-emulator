@@ -6,7 +6,9 @@ namespace Sts2Emulator.Core;
 /// Atomic run-level ownership of provider-private stochastic state. The
 /// compatibility properties on <see cref="RunState"/> project this envelope
 /// under their existing serialized names until the snapshot wire schema is
-/// deliberately migrated.
+/// deliberately migrated. RNG bundles are copied on assignment and exposed
+/// as defensive public projections; Core retains internal mutable views while
+/// transition sites migrate to fork-and-publish owner writes.
 /// </summary>
 public sealed record RunStochasticStateV111
 {
@@ -64,14 +66,18 @@ public sealed record RunStochasticStateV111
 
     public RngBundle PrototypeRng
     {
-        get => _prototypeRng!;
+        get => _prototypeRng?.Fork()!;
         init => _prototypeRng = value?.Fork();
     }
     public RngBundle? NativeRunRng
     {
-        get => _nativeRunRng;
+        get => _nativeRunRng?.Fork();
         init => _nativeRunRng = value?.Fork();
     }
+    /// <summary>Internal mutable view retained for legacy engine paths.</summary>
+    internal RngBundle PrototypeRngMutable => _prototypeRng!;
+    /// <summary>Internal mutable view retained for legacy engine paths.</summary>
+    internal RngBundle? NativeRunRngMutable => _nativeRunRng;
     public ReferenceNatureStateV111? ReferenceNature { get; init; }
     public ControlledEventChoiceTraceV111[]? ControlledEventChoiceHistory
     {
@@ -119,8 +125,8 @@ public sealed record RunStochasticStateV111
 
     public RunStochasticStateV111 Fork() => this with
     {
-        PrototypeRng = PrototypeRng.Fork(),
-        NativeRunRng = NativeRunRng?.Fork(),
+        PrototypeRng = PrototypeRngMutable.Fork(),
+        NativeRunRng = NativeRunRngMutable?.Fork(),
         ReferenceNature = ReferenceNature?.Fork(),
         ControlledEventChoiceHistory = CopyTranscript(
             _controlledEventChoiceHistory, trace => trace.Fork()),
@@ -350,7 +356,7 @@ public sealed record RunStochasticStateV111
     {
         ArgumentNullException.ThrowIfNull(owner);
         global::Sts2Emulator.Core.PrototypeRng.ValidateBundle(
-            PrototypeRng,
+            PrototypeRngMutable,
             allowEmpty: owner.Phase == RunPhase.RunStart);
         ValidateControlledRunActionChoice(owner);
         if (ControlledEventChoiceHistory is { } controlledEventHistory)
@@ -369,7 +375,7 @@ public sealed record RunStochasticStateV111
             foreach (var trace in controlledRunActionHistory)
                 trace.Validate();
         }
-        NativeRunRngV111.Validate(owner, NativeRunRng);
+        NativeRunRngV111.Validate(owner, NativeRunRngMutable);
         ReferenceNature?.Validate();
         if (ReferenceNatureRunInitializationPending)
         {
@@ -557,7 +563,7 @@ public sealed record RunStochasticStateV111
              reward.ProviderId != SemanticRewardAuditV111.PrototypeProviderId ||
              reward.ProbabilityStatus != "UNVERIFIED" ||
              reward.AfterCalls < reward.BeforeCalls ||
-             PrototypeRng.GetStream("reward").CallCount != reward.AfterCalls))
+             PrototypeRngMutable.GetStream("reward").CallCount != reward.AfterCalls))
             throw new InvalidDataException(
                 "Invalid source-timed reward RNG audit.");
         if (owner.World is { } world)

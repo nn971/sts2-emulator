@@ -14,7 +14,7 @@ public static class NativeEventContextRngV111
         RunState state, string? nativeEventEntry)
     {
         ArgumentNullException.ThrowIfNull(state);
-        return state.Stochastic.NativeRunRng is null ||
+        return state.Stochastic.NativeRunRngMutable is null ||
             nativeEventEntry is null
             ? null
             : NativeRngV111Contexts.ForEvent(
@@ -38,7 +38,7 @@ public static class NativeEventContextRngV111
 
         var nativeStream = eventState.Stochastic.NativeRng;
         if (nativeStream is null &&
-            state.Stochastic.NativeRunRng is not null)
+            state.Stochastic.NativeRunRngMutable is not null)
         {
             if (eventState.NativePageIndex != 0
                 || eventState.ChosenChoiceId is not null
@@ -55,7 +55,7 @@ public static class NativeEventContextRngV111
         if (nativeStream is null)
         {
             return (state, LegacyRandomChoiceV111.ChooseIndexRange(
-                state.Stochastic.PrototypeRng, siteId, "event", ownerId,
+                state.Stochastic.PrototypeRngMutable, siteId, "event", ownerId,
                 candidateCount).SelectedIndex);
         }
 
@@ -106,7 +106,7 @@ public static class NativeEventContextRngV111
 
         var nativeStream = eventState.Stochastic.NativeRng;
         if (nativeStream is null &&
-            state.Stochastic.NativeRunRng is not null)
+            state.Stochastic.NativeRunRngMutable is not null)
         {
             if (eventState.NativePageIndex != 0
                 || eventState.ChosenChoiceId is not null
@@ -121,7 +121,7 @@ public static class NativeEventContextRngV111
         {
             return (state,
                 LegacyRandomChoiceV111.ChooseBoundedInteger(
-                    state.Stochastic.PrototypeRng, siteId, "event", ownerId,
+                    state.Stochastic.PrototypeRngMutable, siteId, "event", ownerId,
                     boundedCount).SelectedIndex);
         }
 
@@ -172,7 +172,7 @@ public static class NativeEventContextRngV111
 
         var nativeStream = eventState.Stochastic.NativeRng;
         if (nativeStream is null &&
-            state.Stochastic.NativeRunRng is not null)
+            state.Stochastic.NativeRunRngMutable is not null)
         {
             if (eventState.NativePageIndex != 0
                 || eventState.ChosenChoiceId is not null
@@ -236,7 +236,7 @@ public static class NativeEventContextRngV111
 
         var nativeStream = eventState.Stochastic.NativeRng;
         if (nativeStream is null &&
-            state.Stochastic.NativeRunRng is not null)
+            state.Stochastic.NativeRunRngMutable is not null)
         {
             if (eventState.NativePageIndex != 0
                 || eventState.ChosenChoiceId is not null
@@ -250,7 +250,7 @@ public static class NativeEventContextRngV111
         if (nativeStream is null)
         {
             _ = LegacyFisherYatesV111.ShuffleInPlace(
-                values, state.Stochastic.PrototypeRng, "event", siteId,
+                values, state.Stochastic.PrototypeRngMutable, "event", siteId,
                 ownerId,
                 ordinalOffset);
             return state;
@@ -293,7 +293,7 @@ public static class NativeEventContextRngV111
 
         var runStochastic = state.Stochastic;
         var eventStochastic = eventState.Stochastic;
-        if (runStochastic.NativeRunRng is null)
+        if (runStochastic.NativeRunRngMutable is null)
         {
             if (eventStochastic.NativeRng is not null ||
                 eventStochastic.ProviderMode is not null)

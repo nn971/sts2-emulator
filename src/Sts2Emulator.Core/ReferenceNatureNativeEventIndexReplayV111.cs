@@ -134,7 +134,7 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
         if (expectedUnscriptedStreamId is { } unscriptedStreamId)
         {
             RngStreamState? stream = null;
-            if (origin.Stochastic.NativeRunRng is { } nativeRunRng)
+            if (origin.Stochastic.NativeRunRngMutable is { } nativeRunRng)
                 nativeRunRng.TryGetStream(unscriptedStreamId, out stream);
             if (stream is null ||
                 NativeRngV111.ToSnapshot(stream) !=
@@ -234,7 +234,7 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
         if (expectedRunNicheCursor is not null)
         {
             RngStreamState? runNiche = null;
-            if (run.Stochastic.NativeRunRng is { } nativeRunRng)
+            if (run.Stochastic.NativeRunRngMutable is { } nativeRunRng)
                 nativeRunRng.TryGetStream("run.niche", out runNiche);
             if (run.Phase != RunPhase.Reward ||
                 run.World?.Combat is not null || runNiche is null ||
@@ -262,7 +262,7 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
                 ?? throw new InvalidDataException(
                     "Scripted player-stream replay is missing its stream identity.");
             RngStreamState? finalStream = null;
-            if (run.Stochastic.NativeRunRng is { } nativeRunRng)
+            if (run.Stochastic.NativeRunRngMutable is { } nativeRunRng)
                 nativeRunRng.TryGetStream(streamId, out finalStream);
             var finalCursor = finalStream is null ? null :
                 NativeRngV111.ToSnapshot(finalStream);
@@ -357,7 +357,7 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
         if (decision.Request.SiteId != scriptedSiteId ||
             expectedPreDrawDishCount < 0 ||
             string.IsNullOrWhiteSpace(origin.RunSeed) ||
-            origin.Stochastic.NativeRunRng is null)
+            origin.Stochastic.NativeRunRngMutable is null)
             throw new InvalidOperationException(
                 "Scripted event unit-float replay requires its configured native run and exact site.");
 
@@ -466,7 +466,7 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
             originEvent.EventId != expectedEventId ||
             originEvent.Stochastic.NativeRng is not { } originStream ||
             string.IsNullOrWhiteSpace(origin.RunSeed) ||
-            origin.Stochastic.NativeRunRng is null ||
+            origin.Stochastic.NativeRunRngMutable is null ||
             indexDecision.Request.SiteId != scriptedIndexSiteId ||
             unitFloatDecision.Request.SiteId != scriptedUnitFloatSiteId ||
             indexDecision.Request.StreamId != originStream.StreamId ||

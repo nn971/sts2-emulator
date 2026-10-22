@@ -138,7 +138,7 @@ public sealed partial class PrototypeGameEngine
             player, combat,
             new Queue<PrototypeQueuedOperation>([
                 StratagemChoiceOperation(combat)]),
-            state.Stochastic.PrototypeRng, moveSourceCardOnCompletion: false);
+            state.Stochastic.PrototypeRngMutable, moveSourceCardOnCompletion: false);
         if (prompt.Combat.PendingChoice is not
             { ChoiceId: "select_cards", Selection.SourceZone: PrototypeCardZone.DrawPile }
             selection)

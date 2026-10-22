@@ -40,7 +40,7 @@ public sealed partial class PrototypeGameEngine
         var player = after.Player;
         var world = RequireWorld(after);
         var nextId = world.NextCardInstanceId;
-        var nativeRunRng = after.Stochastic.NativeRunRng?.Fork();
+        var nativeRunRng = after.Stochastic.NativeRunRngMutable?.Fork();
         RewardState? nestedReward = null;
         var cardsAfterReward = new List<string>();
 
@@ -78,7 +78,7 @@ public sealed partial class PrototypeGameEngine
                 if (UsesNativeRegionalSystems(world))
                 {
                     var draw = PrototypeNativeRelicGrabBag.Draw(
-                        world, player, after.Stochastic.PrototypeRng, merchant: false,
+                        world, player, after.Stochastic.PrototypeRngMutable, merchant: false,
                         nativeRunRng: nativeRunRng);
                     world = draw.World;
                     relicId = draw.Id ?? throw new InvalidOperationException(
@@ -88,7 +88,7 @@ public sealed partial class PrototypeGameEngine
                 {
                     relicId = PickUnownedEventRelic(
                         player,
-                        after.Stochastic.PrototypeRng,
+                        after.Stochastic.PrototypeRngMutable,
                         "event:" + PrototypeNativeOvergrowthEvents.NeowEventId
                             + ":random_relic");
                 }
@@ -101,7 +101,7 @@ public sealed partial class PrototypeGameEngine
                     player,
                     PrototypeRunEventKind.RelicAcquired,
                     acquiredRelicId: relicId,
-                    rng: after.Stochastic.PrototypeRng,
+                    rng: after.Stochastic.PrototypeRngMutable,
                     allocateCardId: () => nextId++,
                     nativeRunRng: nativeRunRng);
                 continue;
@@ -128,7 +128,7 @@ public sealed partial class PrototypeGameEngine
         {
             foreach (var cardId in cardsAfterReward)
             {
-                player = AppendCard(player, nextId++, cardId, after.Stochastic.PrototypeRng);
+                player = AppendCard(player, nextId++, cardId, after.Stochastic.PrototypeRngMutable);
             }
         }
         else if (cardsAfterReward.Count > 0)
@@ -143,7 +143,7 @@ public sealed partial class PrototypeGameEngine
             {
                 Player = player,
                 Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                    after.Stochastic, nativeRunRng ?? after.Stochastic.NativeRunRng),
+                    after.Stochastic, nativeRunRng ?? after.Stochastic.NativeRunRngMutable),
                 World = world with { NextCardInstanceId = nextId }
             };
         }
@@ -154,7 +154,7 @@ public sealed partial class PrototypeGameEngine
         {
             Player = player,
             Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                after.Stochastic, nativeRunRng ?? after.Stochastic.NativeRunRng),
+                after.Stochastic, nativeRunRng ?? after.Stochastic.NativeRunRngMutable),
             Phase = RunPhase.Reward,
             World = world with
             {

@@ -116,7 +116,7 @@ public static class NativeActOneEliteBossCombatEntryV111
             || !mapProfileMatches)
             throw new NotSupportedException(
                 "Native elite/boss encounter is not in its pinned Act 1 region.");
-        if (state.Stochastic.NativeRunRng is null)
+        if (state.Stochastic.NativeRunRngMutable is null)
             throw new InvalidOperationException(
                 "Native elite/boss entry requires persistent run RNG.");
         var coord = world.Map.CurrentNodeId?.Split(':');

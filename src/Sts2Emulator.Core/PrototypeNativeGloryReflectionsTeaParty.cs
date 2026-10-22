@@ -105,11 +105,11 @@ public sealed partial class PrototypeGameEngine
             player = player with { Deck = player.Deck.Append(copy).ToArray() };
             player = ApplyRelicRunEvent(player,
                 PrototypeRunEventKind.CardAdded, addedCard: copy,
-                rng: state.Stochastic.PrototypeRng);
+                rng: state.Stochastic.PrototypeRngMutable);
         }
 
         player = AppendCard(player, nextId++,
-            PrototypeNativeGloryEvents.BadLuckId, state.Stochastic.PrototypeRng);
+            PrototypeNativeGloryEvents.BadLuckId, state.Stochastic.PrototypeRngMutable);
         return PreserveNativeEventCompletionPage(state with
         {
             Player = player,
@@ -167,7 +167,7 @@ public sealed partial class PrototypeGameEngine
             };
             player = ApplyRelicRunEvent(player,
                 PrototypeRunEventKind.RelicAcquired,
-                acquiredRelicId: relicId, rng: state.Stochastic.PrototypeRng);
+                acquiredRelicId: relicId, rng: state.Stochastic.PrototypeRngMutable);
             player = player with { Hp = player.MaxHp };
             return PreserveNativeEventCompletionPage(
                 state with { Player = player }, choice);
@@ -185,19 +185,19 @@ public sealed partial class PrototypeGameEngine
             Hp = Math.Max(0, state.Player.Hp - 11)
         };
         var nativeRunRng = UsesNativeRegionalSystems(world)
-            ? state.Stochastic.NativeRunRng?.Fork()
+            ? state.Stochastic.NativeRunRngMutable?.Fork()
             : null;
         state = state with
         {
             Player = playerAfterHit,
             Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRng)
+                state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRngMutable)
         };
         if (playerAfterHit.Hp == 0)
             return EndRun(state, "defeat");
 
         var draw = PrototypeNativeRelicGrabBag.Draw(
-            world, playerAfterHit, state.Stochastic.PrototypeRng, merchant: false,
+            world, playerAfterHit, state.Stochastic.PrototypeRngMutable, merchant: false,
             nativeRunRng: nativeRunRng);
         world = draw.World;
         if (draw.Id is not null)
@@ -210,7 +210,7 @@ public sealed partial class PrototypeGameEngine
             };
             playerAfterHit = ApplyRelicRunEvent(playerAfterHit,
                 PrototypeRunEventKind.RelicAcquired,
-                acquiredRelicId: draw.Id, rng: state.Stochastic.PrototypeRng,
+                acquiredRelicId: draw.Id, rng: state.Stochastic.PrototypeRngMutable,
                 nativeRunRng: nativeRunRng);
         }
 
@@ -218,7 +218,7 @@ public sealed partial class PrototypeGameEngine
         {
             Player = playerAfterHit,
             Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRng),
+                state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRngMutable),
             World = world
         }, choice);
     }

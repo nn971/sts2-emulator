@@ -433,7 +433,7 @@ public sealed partial class PrototypeGameEngine
         world = RequireWorld(state);
         var selected = eligible[draw.SelectedIndex];
         var player = AppendCard(
-            state.Player, world.NextCardInstanceId, selected, state.Stochastic.PrototypeRng);
+            state.Player, world.NextCardInstanceId, selected, state.Stochastic.PrototypeRngMutable);
         return PreserveNativeEventCompletionPage(state with
         {
             Player = player,

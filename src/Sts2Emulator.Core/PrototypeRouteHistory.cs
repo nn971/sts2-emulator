@@ -128,7 +128,7 @@ public sealed partial class PrototypeGameEngine
         var player = ApplyRelicRunEvent(
             state.Player,
             PrototypeRunEventKind.RoomCompleted,
-            rng: state.Stochastic.PrototypeRng,
+            rng: state.Stochastic.PrototypeRngMutable,
             world: world);
 
         return state with

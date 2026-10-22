@@ -28,18 +28,18 @@ public static class ControlledEventChoiceEngineV111
             var world = source.World;
             var nativeStreamId = NativeRngV111Contexts.EventStreamId(
                 PrototypeNativeStoneOfAllTime.NativeRngEventId);
-            var nativeRoute = source.Stochastic.NativeRunRng is not null
+            var nativeRoute = source.Stochastic.NativeRunRngMutable is not null
                 && world is not null
                 && PrototypeGameEngine.UsesNativeRegionalSystems(world)
                 && eventState.Stochastic.NativeRng?.StreamId == nativeStreamId
                 && eventState.Stochastic.ProviderMode is
                     null or "scripted-v111";
-            var legacyRoute = source.Stochastic.NativeRunRng is null
+            var legacyRoute = source.Stochastic.NativeRunRngMutable is null
                 && world is not null
                 && !PrototypeGameEngine.UsesNativeRegionalSystems(world)
                 && eventState.Stochastic.NativeRng is null
                 && eventState.Stochastic.ProviderMode is null;
-            var nativeRegionalLegacyRoute = source.Stochastic.NativeRunRng is null
+            var nativeRegionalLegacyRoute = source.Stochastic.NativeRunRngMutable is null
                 && world is { Act: 2 } nativeRegionalWorld
                 && PrototypeGameEngine.UsesNativeRegionalSystems(
                     nativeRegionalWorld)
@@ -467,20 +467,20 @@ public sealed record PrototypeControlledEventChoiceContinuationV111(
             : null;
         var expectedStoneStreamId = NativeRngV111Contexts.EventStreamId(
             PrototypeNativeStoneOfAllTime.NativeRngEventId);
-        var nativeStoneRoute = PartialState.Stochastic.NativeRunRng is not null
+        var nativeStoneRoute = PartialState.Stochastic.NativeRunRngMutable is not null
             && partialWorld is { Act: 2 } nativeWorld
             && PrototypeGameEngine.UsesNativeRegionalSystems(nativeWorld)
             && stoneEvent.Stochastic.NativeRng?.StreamId ==
                 expectedStoneStreamId
             && stoneEvent.Stochastic.ProviderMode is
                 null or "scripted-v111";
-        var legacyStoneRoute = PartialState.Stochastic.NativeRunRng is null
+        var legacyStoneRoute = PartialState.Stochastic.NativeRunRngMutable is null
             && partialWorld is { Act: 2 } legacyWorld
             && !PrototypeGameEngine.UsesNativeRegionalSystems(legacyWorld)
             && stoneEvent.Stochastic.NativeRng is null
             && stoneEvent.Stochastic.ProviderMode is null;
         var nativeRegionalLegacyStoneRoute =
-            PartialState.Stochastic.NativeRunRng is null
+            PartialState.Stochastic.NativeRunRngMutable is null
             && partialWorld is { Act: 2 } nativeRegionalWorld
             && PrototypeGameEngine.UsesNativeRegionalSystems(
                 nativeRegionalWorld)

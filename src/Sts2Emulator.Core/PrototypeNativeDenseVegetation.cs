@@ -47,7 +47,7 @@ public sealed partial class PrototypeGameEngine
                     is >= 61 and <= 99
                     ? current.Stochastic.RandomOutcomes.NativeEventGold
                     : 61 + LegacyRandomChoiceV111.ChooseBoundedInteger(
-                        state.Stochastic.PrototypeRng,
+                        state.Stochastic.PrototypeRngMutable,
                         "event.generated_gold.index_draw",
                         "event",
                         "event:dense_vegetation:trudge_gold",
@@ -81,7 +81,7 @@ public sealed partial class PrototypeGameEngine
                 player = ApplyRelicRunEvent(
                     player,
                     PrototypeRunEventKind.RestSiteHealed,
-                    rng: state.Stochastic.PrototypeRng);
+                    rng: state.Stochastic.PrototypeRngMutable);
                 return state with
                 {
                     Player = player,

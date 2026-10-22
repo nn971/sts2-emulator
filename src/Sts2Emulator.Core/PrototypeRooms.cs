@@ -49,9 +49,9 @@ public sealed partial class PrototypeGameEngine
         // Its event replacement also applies to existing Event nodes.
         var room = node.RoomType == PrototypeRoomType.Unknown
             ? PrototypeGoldenPathMapV111.IsActive(state.Player, world.Act)
-                ? ResolveUnknownMapRoom(ref world, state.Stochastic.PrototypeRng, eventOnly: true)
+                ? ResolveUnknownMapRoom(ref world, state.Stochastic.PrototypeRngMutable, eventOnly: true)
                 : forceRepy ? PrototypeRoomType.Event
-                : ResolveUnknownMapRoom(ref world, state.Stochastic.PrototypeRng)
+                : ResolveUnknownMapRoom(ref world, state.Stochastic.PrototypeRngMutable)
             : node.RoomType;
 
         world = world with
@@ -100,7 +100,7 @@ public sealed partial class PrototypeGameEngine
             throw new NotSupportedException(
                 "Regional combat entry requires the experimental three-act route.");
         var selected = ExperimentalSilentThreeActRouteV111.SelectEncounter(
-            world, room, state.Stochastic.PrototypeRng);
+            world, room, state.Stochastic.PrototypeRngMutable);
         return StartCombat(state with
         {
             World = world with
@@ -951,7 +951,7 @@ public sealed partial class PrototypeGameEngine
             Weight = laterRoute ? 1 : evt.Weight
         }).ToArray();
         var roll = ResolveLegacyBoundedInteger(
-            state.Stochastic.PrototypeRng,
+            state.Stochastic.PrototypeRngMutable,
             "event.selection.weighted_ticket",
             $"act:{world.Act}:floor:{world.Floor}:pool:"
                 + CanonicalJson.Sha256(weightedSupport),
@@ -1036,24 +1036,24 @@ public sealed partial class PrototypeGameEngine
                     selected.Id switch
                     {
                         PrototypeNativeDenseVegetation.EventId =>
-                            state.Stochastic.NativeRunRng is null
+                            state.Stochastic.NativeRunRngMutable is null
                                 ? ResolveLegacyEventGold(
-                                    state.Stochastic.PrototypeRng, selected.Id, "primary", 61, 39)
+                                    state.Stochastic.PrototypeRngMutable, selected.Id, "primary", 61, 39)
                                 : 0,
                         "proto.native.event.whispering_hollow" =>
-                            state.Stochastic.NativeRunRng is null
+                            state.Stochastic.NativeRunRngMutable is null
                                 ? ResolveLegacyEventGold(
-                                    state.Stochastic.PrototypeRng, selected.Id, "primary", 26, 19)
+                                    state.Stochastic.PrototypeRngMutable, selected.Id, "primary", 26, 19)
                                 : 0,
                         "proto.native.event.sunken_statue" =>
-                            state.Stochastic.NativeRunRng is null
+                            state.Stochastic.NativeRunRngMutable is null
                                 ? ResolveLegacyEventGold(
-                                    state.Stochastic.PrototypeRng, selected.Id, "primary", 101, 21)
+                                    state.Stochastic.PrototypeRngMutable, selected.Id, "primary", 101, 21)
                                 : 0,
                         "proto.native.event.luminous_choir" =>
-                            state.Stochastic.NativeRunRng is null
+                            state.Stochastic.NativeRunRngMutable is null
                                 ? ResolveLegacyEventGold(
-                                    state.Stochastic.PrototypeRng, selected.Id, "primary", 100, 50)
+                                    state.Stochastic.PrototypeRngMutable, selected.Id, "primary", 100, 50)
                                 : 0,
                         // Source rolls two independent -15..15 floats:
                         // 150 + solo roll, 50 + join roll, truncated to
@@ -1061,62 +1061,62 @@ public sealed partial class PrototypeGameEngine
                         // retain the earlier integer-bin approximation;
                         // native runs use the source unit-float boundary.
                         "proto.native.event.jungle_maze_adventure" =>
-                            state.Stochastic.NativeRunRng is null
+                            state.Stochastic.NativeRunRngMutable is null
                                 ? ResolveLegacyEventGold(
-                                    state.Stochastic.PrototypeRng, selected.Id, "primary", 135, 30)
+                                    state.Stochastic.PrototypeRngMutable, selected.Id, "primary", 135, 30)
                                 : 0,
                         // Native Sunken Treasury rolls small then large
                         // independently; both rolls are persisted so the
                         // eventual choice never changes the RNG outcome.
                         "proto.native.underdocks.sunken_treasury" =>
-                            state.Stochastic.NativeRunRng is null
+                            state.Stochastic.NativeRunRngMutable is null
                                 ? ResolveLegacyEventGold(
-                                    state.Stochastic.PrototypeRng, selected.Id, "primary", 52, 16)
+                                    state.Stochastic.PrototypeRngMutable, selected.Id, "primary", 52, 16)
                                 : 0,
                         PrototypeNativeHiveEvents.LostWispId =>
-                            state.Stochastic.NativeRunRng is null
+                            state.Stochastic.NativeRunRngMutable is null
                                 ? ResolveLegacyEventGold(
-                                    state.Stochastic.PrototypeRng, selected.Id, "primary", 45, 31)
+                                    state.Stochastic.PrototypeRngMutable, selected.Id, "primary", 45, 31)
                                 : 0,
                         "proto.native.underdocks.sunken_statue" =>
-                            state.Stochastic.NativeRunRng is null
+                            state.Stochastic.NativeRunRngMutable is null
                                 ? ResolveLegacyEventGold(
-                                    state.Stochastic.PrototypeRng, selected.Id, "primary", 101, 21)
+                                    state.Stochastic.PrototypeRngMutable, selected.Id, "primary", 101, 21)
                                 : 0,
                         // Punch Off computes an entry-only 91..98 gold
                         // variable even though neither option pays it.
                         // Keep this draw to preserve the event RNG stream.
                         PrototypeNativePunchOff.EventId =>
-                            state.Stochastic.NativeRunRng is null
+                            state.Stochastic.NativeRunRngMutable is null
                                 ? ResolveLegacyEventGold(
-                                    state.Stochastic.PrototypeRng, selected.Id, "primary", 91, 8)
+                                    state.Stochastic.PrototypeRngMutable, selected.Id, "primary", 91, 8)
                                 : 0,
                         PrototypeNativeSharedEvents.ThisOrThatId =>
-                            state.Stochastic.NativeRunRng is null
+                            state.Stochastic.NativeRunRngMutable is null
                                 ? ResolveLegacyEventGold(
-                                    state.Stochastic.PrototypeRng, selected.Id, "primary", 41, 28)
+                                    state.Stochastic.PrototypeRngMutable, selected.Id, "primary", 41, 28)
                                 : 0,
                         _ => 0
                     },
                 NativeEventSecondaryGold:
                     selected.Id == "proto.native.event.jungle_maze_adventure"
-                        && state.Stochastic.NativeRunRng is null
+                        && state.Stochastic.NativeRunRngMutable is null
                         ? ResolveLegacyEventGold(
-                            state.Stochastic.PrototypeRng, selected.Id, "secondary", 35, 30)
+                            state.Stochastic.PrototypeRngMutable, selected.Id, "secondary", 35, 30)
                         : selected.Id == "proto.native.underdocks.sunken_treasury"
-                            && state.Stochastic.NativeRunRng is null
+                            && state.Stochastic.NativeRunRngMutable is null
                             ? ResolveLegacyEventGold(
-                                state.Stochastic.PrototypeRng, selected.Id, "secondary", 303, 61)
+                                state.Stochastic.PrototypeRngMutable, selected.Id, "secondary", 303, 61)
                             : 0,
                 NativeEventPotionSlot:
                     selected.Id == PrototypeNativeStoneOfAllTime.EventId
-                        && state.Stochastic.NativeRunRng is null
+                        && state.Stochastic.NativeRunRngMutable is null
                         ? PrototypeNativeStoneOfAllTime.RollPotionSlot(
-                            state.Player, state.Stochastic.PrototypeRng)
+                            state.Player, state.Stochastic.PrototypeRngMutable)
                         : null)
         };
 
-        if (state.Stochastic.NativeRunRng is not null)
+        if (state.Stochastic.NativeRunRngMutable is not null)
         {
             state = state with { World = world };
             world = state.World!;
@@ -1125,7 +1125,7 @@ public sealed partial class PrototypeGameEngine
         }
 
         if (selected.Id == PrototypeNativeStoneOfAllTime.EventId
-            && state.Stochastic.NativeRunRng is not null)
+            && state.Stochastic.NativeRunRngMutable is not null)
         {
             state = state with { World = world };
             var slots = PrototypeNativeStoneOfAllTime.OccupiedPotionSlots(
@@ -1555,7 +1555,7 @@ public sealed partial class PrototypeGameEngine
         var eventState = world.Event!;
         var player = state.Player;
         var nextId = world.NextCardInstanceId;
-        var nativeRunRng = state.Stochastic.NativeRunRng?.Fork();
+        var nativeRunRng = state.Stochastic.NativeRunRngMutable?.Fork();
 
         if (resume is not null
             && eventState.EventId == PrototypeNativeStoneOfAllTime.EventId
@@ -1744,7 +1744,7 @@ public sealed partial class PrototypeGameEngine
                 {
                     Player = player,
                     Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                        state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRng),
+                        state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRngMutable),
                     World = world with
                     {
                         Event = eventState
@@ -1787,7 +1787,7 @@ public sealed partial class PrototypeGameEngine
                     player,
                     pending,
                     payload.CardInstanceId,
-                    state.Stochastic.PrototypeRng);
+                    state.Stochastic.PrototypeRngMutable);
 
                 var remainingCandidates =
                     pending.CandidateCardInstanceIds
@@ -2124,7 +2124,7 @@ public sealed partial class PrototypeGameEngine
                         {
                             var selectedId = candidates[
                                 ResolveLegacyRandomIndex(
-                                    state.Stochastic.PrototypeRng,
+                                    state.Stochastic.PrototypeRngMutable,
                                     "event.random_upgrade.card_instance",
                                     "event:" + eventState.EventId + ":choice:"
                                         + choice.Id + ":pool:"
@@ -2185,7 +2185,7 @@ public sealed partial class PrototypeGameEngine
                             player,
                             nextId++,
                             effect.CardId,
-                            state.Stochastic.PrototypeRng);
+                            state.Stochastic.PrototypeRngMutable);
                         break;
 
                     case PrototypeRunEffectKind.TransformFirstCardOfId:
@@ -2198,7 +2198,7 @@ public sealed partial class PrototypeGameEngine
                         if (first is not null)
                         {
                             player = TransformPersistentDeckCard(
-                                player, first.InstanceId, false, state.Stochastic.PrototypeRng);
+                                player, first.InstanceId, false, state.Stochastic.PrototypeRngMutable);
                         }
 
                         break;
@@ -2259,7 +2259,7 @@ public sealed partial class PrototypeGameEngine
                         }
 
                         var cardId = rares[ResolveLegacyRandomIndex(
-                            state.Stochastic.PrototypeRng,
+                            state.Stochastic.PrototypeRngMutable,
                             "event.reward.random_rare_card.model",
                             "event:" + eventState.EventId + ":choice:"
                                 + choice.Id + ":pool:" + CanonicalJson.Sha256(rares),
@@ -2267,7 +2267,7 @@ public sealed partial class PrototypeGameEngine
                             streamId: "reward",
                             controlledCandidateLabels: (string[])rares.Clone())];
                         player = AppendCard(
-                            player, nextId++, cardId, state.Stochastic.PrototypeRng);
+                            player, nextId++, cardId, state.Stochastic.PrototypeRngMutable);
                         break;
                     }
 
@@ -2279,7 +2279,7 @@ public sealed partial class PrototypeGameEngine
                             && UsesNativeRegionalSystems(world))
                         {
                             var draw = PrototypeNativeRelicGrabBag.Draw(
-                                world, player, state.Stochastic.PrototypeRng, merchant: false,
+                                world, player, state.Stochastic.PrototypeRngMutable, merchant: false,
                                 nativeRunRng: nativeRunRng);
                             world = draw.World;
                             relicId = draw.Id
@@ -2292,7 +2292,7 @@ public sealed partial class PrototypeGameEngine
                                 == PrototypeRunEffectKind.GainRandomRelic
                                 ? PickUnownedEventRelic(
                                     player,
-                                    state.Stochastic.PrototypeRng,
+                                    state.Stochastic.PrototypeRngMutable,
                                     "event:" + eventState.EventId
                                         + ":choice:" + choice.Id)
                                 : effect.RelicId
@@ -2331,7 +2331,7 @@ public sealed partial class PrototypeGameEngine
                             player,
                             PrototypeRunEventKind.RelicAcquired,
                             acquiredRelicId: relicId,
-                            rng: state.Stochastic.PrototypeRng, allocateCardId: () => nextId++,
+                            rng: state.Stochastic.PrototypeRngMutable, allocateCardId: () => nextId++,
                             nativeRunRng: nativeRunRng);
 
                         if (eventState.EventId == NativeDarvEventV111.EventId
@@ -2341,7 +2341,7 @@ public sealed partial class PrototypeGameEngine
                             player = AppendCard(
                                 player, cardInstanceId,
                                 NativeDarvEventV111.DustyTomeCardId,
-                                state.Stochastic.PrototypeRng);
+                                state.Stochastic.PrototypeRngMutable);
                             var maxUpgradeLevel = PrototypeContent.Card(
                                 NativeDarvEventV111.DustyTomeCardId).MaxUpgradeLevel;
                             player = player with
@@ -2365,7 +2365,7 @@ public sealed partial class PrototypeGameEngine
                             foreach (var cardInstanceId in transformedCardIds)
                             {
                                 player = TransformPersistentDeckCard(
-                                    player, cardInstanceId, false, state.Stochastic.PrototypeRng);
+                                    player, cardInstanceId, false, state.Stochastic.PrototypeRngMutable);
                             }
                         }
 
@@ -2383,7 +2383,7 @@ public sealed partial class PrototypeGameEngine
                         {
                             player = NativeGloryAncientsV111.MarkFurCoatCombats(
                                 player, world.Map, world.Act, state.RunSeed,
-                                state.Stochastic.PrototypeRng, nativeRunRng is not null);
+                                state.Stochastic.PrototypeRngMutable, nativeRunRng is not null);
                         }
 
                         if (relicId == NativeAncientRewardsV111.ToyBoxId)
@@ -2401,7 +2401,7 @@ public sealed partial class PrototypeGameEngine
                                     "Calling Bell acquisition already has a custom reward.");
                             deferredReward = CreateCallingBellRelicReward(
                                 player, eventState.EventId,
-                                state.Stochastic.PrototypeRng, ref world,
+                                state.Stochastic.PrototypeRngMutable, ref world,
                                 UsesNativeRegionalSystems(world)
                                     ? nativeRunRng
                                     : null);
@@ -2427,19 +2427,19 @@ public sealed partial class PrototypeGameEngine
                         var potionId = effect.Kind
                             == PrototypeRunEffectKind.GainRandomUncommonPotion
                             ? PrototypeNativePotionCourier.PickRandomUncommonPotion(
-                                state.Stochastic.PrototypeRng, "event")
+                                state.Stochastic.PrototypeRngMutable, "event")
                             : effect.Kind == PrototypeRunEffectKind.GainRandomPotion
                             ? nativeOvergrowth && eventState.EventId
                                 == "proto.native.event.wellspring"
                                 ? PrototypeNativePotionShop.PickUniform(
-                                    state.Stochastic.PrototypeRng, "reward")
+                                    state.Stochastic.PrototypeRngMutable, "reward")
                                 : nativeOvergrowth && eventState.EventId
                                     == "proto.native.event.whispering_hollow"
                                     ? PrototypeNativePotionShop.PickWeighted(
-                                        state.Stochastic.PrototypeRng, "reward")
+                                        state.Stochastic.PrototypeRngMutable, "reward")
                                     : PrototypeContent.PotionPool[
                                         ResolveLegacyRandomIndex(
-                                            state.Stochastic.PrototypeRng,
+                                            state.Stochastic.PrototypeRngMutable,
                                             "event.reward.random_potion.model",
                                             "event:" + eventState.EventId
                                                 + ":choice:" + choice.Id
@@ -2495,7 +2495,7 @@ public sealed partial class PrototypeGameEngine
                         player =
                             FillEmptyPotionSlots(
                                 player,
-                                state.Stochastic.PrototypeRng);
+                                state.Stochastic.PrototypeRngMutable);
                         break;
 
                     default:
@@ -3044,7 +3044,7 @@ public sealed partial class PrototypeGameEngine
     {
         var world = RequireWorld(state);
         var nativeMerchant = UsesNativeRegionalSystems(world);
-        var nativeRunRng = state.Stochastic.NativeRunRng?.Fork();
+        var nativeRunRng = state.Stochastic.NativeRunRngMutable?.Fork();
         using var nativeProviderScope = nativeMerchant && nativeRunRng is not null
             ? StochasticProviderScopeV111.Enter(
                 new NativeRandomIndexProviderV111(),
@@ -3064,7 +3064,7 @@ public sealed partial class PrototypeGameEngine
                     $"merchant:act:{world.Act}:floor:{world.Floor}",
                     5)
                 : ResolveLegacyRandomIndex(
-                    state.Stochastic.PrototypeRng,
+                    state.Stochastic.PrototypeRngMutable,
                     "shop.merchant.sale_slot.index_draw",
                     $"act:{world.Act}:floor:{world.Floor}",
                     Enumerable.Range(0, 5),
@@ -3080,12 +3080,12 @@ public sealed partial class PrototypeGameEngine
                 nativeMerchant
                     ? PrototypeNativeCardRarityOdds.GenerateMerchantCards(
                         group.Count, state.Ascension, group.Type,
-                        world.CardRarityOffsetBasisPoints, state.Stochastic.PrototypeRng,
+                        world.CardRarityOffsetBasisPoints, state.Stochastic.PrototypeRngMutable,
                         nativeRunRng)
                     : PickShopCards(
                         world.Act,
                         group.Count,
-                        state.Stochastic.PrototypeRng,
+                        state.Stochastic.PrototypeRngMutable,
                         group.Type))
             .ToArray();
 
@@ -3095,16 +3095,16 @@ public sealed partial class PrototypeGameEngine
                 var onSale = index == saleIndex;
                 var basePrice = nativeMerchant
                     ? NativeMerchantCardPrice(
-                        cardId, state.Stochastic.PrototypeRng, nativeRunRng,
+                        cardId, state.Stochastic.PrototypeRngMutable, nativeRunRng,
                         $"act:{world.Act}:floor:{world.Floor}:offer:{index}:card:{cardId}")
-                    : ShopCardPrice(cardId, state.Stochastic.PrototypeRng);
+                    : ShopCardPrice(cardId, state.Stochastic.PrototypeRngMutable);
                 if (onSale)
                 {
                     // MerchantCardEntry.SetOnSale calls CalcCost
                     // again, then halves the newly rolled price.
                     basePrice =
                         NativeMerchantCardPrice(
-                            cardId, state.Stochastic.PrototypeRng, nativeRunRng,
+                            cardId, state.Stochastic.PrototypeRngMutable, nativeRunRng,
                             $"act:{world.Act}:floor:{world.Floor}:offer:{index}:sale_reprice:{cardId}") / 2;
                 }
                 return new ShopOffer(
@@ -3129,12 +3129,12 @@ public sealed partial class PrototypeGameEngine
             var colorless = new[]
             {
                 PrototypeColorlessCards.PickMerchantCardForProfile(
-                    PrototypeCardRarity.Uncommon, state.Stochastic.PrototypeRng,
+                    PrototypeCardRarity.Uncommon, state.Stochastic.PrototypeRngMutable,
                     fullyUnlocked: profile.FullyUnlocked,
                     unlockedEpochs: profile.UnlockedColorlessEpochs,
                     nativeRunRng: nativeRunRng),
                 PrototypeColorlessCards.PickMerchantCardForProfile(
-                    PrototypeCardRarity.Rare, state.Stochastic.PrototypeRng,
+                    PrototypeCardRarity.Rare, state.Stochastic.PrototypeRngMutable,
                     fullyUnlocked: profile.FullyUnlocked,
                     unlockedEpochs: profile.UnlockedColorlessEpochs,
                     nativeRunRng: nativeRunRng)
@@ -3142,7 +3142,7 @@ public sealed partial class PrototypeGameEngine
             offers = offers.Concat(colorless.Select((cardId, index) =>
             {
                 var price = NativeMerchantCardPrice(
-                    cardId, state.Stochastic.PrototypeRng, nativeRunRng,
+                    cardId, state.Stochastic.PrototypeRngMutable, nativeRunRng,
                     $"act:{world.Act}:floor:{world.Floor}:colorless_offer:{index}:card:{cardId}");
                 return new ShopOffer(
                     6 + index,
@@ -3163,11 +3163,11 @@ public sealed partial class PrototypeGameEngine
                     new NativeRandomIndexProviderV111(),
                     new NativeRandomUnitFloatProviderV111()).PotionIds
                 : PrototypeNativePotionShop.PickWeightedDistinct(
-                    state.Stochastic.PrototypeRng, "shop", 3)
+                    state.Stochastic.PrototypeRngMutable, "shop", 3)
             : PickDistinct(
                 PrototypeContent.PotionPool,
                 3,
-                state.Stochastic.PrototypeRng,
+                state.Stochastic.PrototypeRngMutable,
                 "shop",
                 "shop.potion_offer.shuffle_swap_index",
                 $"act:{world.Act}:floor:{world.Floor}:potion_offers");
@@ -3190,10 +3190,10 @@ public sealed partial class PrototypeGameEngine
                     : null;
                 if (nativeRunRng is null && forcedTier is null)
                     forcedTier = PrototypeNativeRelicGrabBag.RollRarity(
-                        state.Stochastic.PrototypeRng, merchant: true,
+                        state.Stochastic.PrototypeRngMutable, merchant: true,
                         ownerId: $"act:{world.Act}:floor:{world.Floor}:merchant_relic:{index}");
                 var draw = PrototypeNativeRelicGrabBag.Draw(
-                    world, state.Player, state.Stochastic.PrototypeRng,
+                    world, state.Player, state.Stochastic.PrototypeRngMutable,
                     merchant: true,
                     forcedRarity: forcedTier,
                     nativeRunRng: nativeRunRng,
@@ -3211,7 +3211,7 @@ public sealed partial class PrototypeGameEngine
             relicIds = PickDistinct(
                 availableRelics,
                 3,
-                state.Stochastic.PrototypeRng,
+                state.Stochastic.PrototypeRngMutable,
                 "shop",
                 "shop.relic_offer.shuffle_swap_index",
                 $"act:{world.Act}:floor:{world.Floor}:relic_offers");
@@ -3226,9 +3226,9 @@ public sealed partial class PrototypeGameEngine
                             potionId, nativePotionRng,
                             $"act:{world.Act}:floor:{world.Floor}:offer:{index}:potion:{potionId}")
                         : PrototypeNativePotionShop.MerchantPrice(
-                            potionId, state.Stochastic.PrototypeRng)
+                            potionId, state.Stochastic.PrototypeRngMutable)
                     : ResolveLegacyRandomIndex(
-                        state.Stochastic.PrototypeRng,
+                        state.Stochastic.PrototypeRngMutable,
                         "shop.potion_offer.price.index_draw",
                         $"act:{world.Act}:floor:{world.Floor}:offer:{index}:potion:{potionId}",
                         PrototypeLegacyShopPriceV111.PotionOutcomes,
@@ -3250,9 +3250,9 @@ public sealed partial class PrototypeGameEngine
                             relicId, nativeRelicRng,
                             $"act:{world.Act}:floor:{world.Floor}:offer:{index}:relic:{relicId}")
                         : PrototypeNativeRelicGrabBag.MerchantPrice(
-                            relicId, state.Stochastic.PrototypeRng)
+                            relicId, state.Stochastic.PrototypeRngMutable)
                     : ResolveLegacyRandomIndex(
-                        state.Stochastic.PrototypeRng,
+                        state.Stochastic.PrototypeRngMutable,
                         "shop.relic_offer.price.index_draw",
                         $"act:{world.Act}:floor:{world.Floor}:offer:{index}:relic:{relicId}",
                         PrototypeLegacyShopPriceV111.RelicOutcomes,
@@ -3287,7 +3287,7 @@ public sealed partial class PrototypeGameEngine
         var player = ApplyRelicRunEvent(
             state.Player,
             PrototypeRunEventKind.ShopEntered,
-            rng: state.Stochastic.PrototypeRng);
+            rng: state.Stochastic.PrototypeRngMutable);
         shop = RepriceShop(
             shop,
             player);
@@ -3306,7 +3306,7 @@ public sealed partial class PrototypeGameEngine
             World = world,
             Phase = RunPhase.Shop,
             Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRng)
+                state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRngMutable)
         };
         return AdvanceLordsParasolPurchases(started);
     }
@@ -3448,7 +3448,7 @@ public sealed partial class PrototypeGameEngine
             ignoreCost |= action.ReadPayload<ReplaceShopPotionPayload>()
                 .OfferId == pendingPotionOfferId;
         }
-        var nativeRunRng = state.Stochastic.NativeRunRng?.Fork();
+        var nativeRunRng = state.Stochastic.NativeRunRngMutable?.Fork();
 
         if (shop.PendingDeckChoice is { } pending)
         {
@@ -3471,7 +3471,7 @@ public sealed partial class PrototypeGameEngine
                     state.Player,
                     pending,
                     payload.CardInstanceId,
-                    state.Stochastic.PrototypeRng);
+                    state.Stochastic.PrototypeRngMutable);
                 resolvedPlayer = resolved.Player;
                 remaining = resolved.Remaining;
             }
@@ -3482,13 +3482,13 @@ public sealed partial class PrototypeGameEngine
             {
                 resolvedPlayer = AppendCard(
                     resolvedPlayer, nextCardInstanceId++, afterChoicesCardId,
-                    state.Stochastic.PrototypeRng);
+                    state.Stochastic.PrototypeRngMutable);
             }
             return state with
             {
                 Player = resolvedPlayer,
                 Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                    state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRng),
+                    state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRngMutable),
                 World = world with
                 {
                     Shop = shop with
@@ -3589,7 +3589,7 @@ public sealed partial class PrototypeGameEngine
                 },
                 nextId++,
                 offer.ItemId,
-                state.Stochastic.PrototypeRng);
+                state.Stochastic.PrototypeRngMutable);
             shop = shop with
             {
                 CardOffers = shop.CardOffers
@@ -3691,7 +3691,7 @@ public sealed partial class PrototypeGameEngine
                 player,
                 PrototypeRunEventKind.RelicAcquired,
                 acquiredRelicId: offer.ItemId,
-                rng: state.Stochastic.PrototypeRng, allocateCardId: () => nextId++,
+                rng: state.Stochastic.PrototypeRngMutable, allocateCardId: () => nextId++,
                 nativeRunRng: nativeRunRng);
             shop = UpdateRelicOffer(
                 shop,
@@ -3726,7 +3726,7 @@ public sealed partial class PrototypeGameEngine
         {
             Player = player,
             Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRng),
+                state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRngMutable),
             World = world
         };
     }
@@ -4161,7 +4161,7 @@ public sealed partial class PrototypeGameEngine
 
             return CompleteRoomToMap(state with
             {
-                Player = HatchByrdonisEgg(state.Player, state.Stochastic.PrototypeRng)
+                Player = HatchByrdonisEgg(state.Player, state.Stochastic.PrototypeRngMutable)
             });
         }
 
@@ -4222,7 +4222,7 @@ public sealed partial class PrototypeGameEngine
             player = ApplyRelicRunEvent(
                 player,
                 PrototypeRunEventKind.RestSiteHealed,
-                rng: state.Stochastic.PrototypeRng);
+                rng: state.Stochastic.PrototypeRngMutable);
             state = state with { Player = player };
             return EnterRestHealRelicReward(state);
         }
@@ -4488,12 +4488,12 @@ public sealed partial class PrototypeGameEngine
         }
 
         var world = RequireWorld(state);
-        var nativeRunRng = state.Stochastic.NativeRunRng?.Fork();
+        var nativeRunRng = state.Stochastic.NativeRunRngMutable?.Fork();
         string? relicId;
         if (UsesNativeRegionalSystems(world))
         {
             var draw = PrototypeNativeRelicGrabBag.Draw(
-                world, state.Player, state.Stochastic.PrototypeRng, merchant: false,
+                world, state.Player, state.Stochastic.PrototypeRngMutable, merchant: false,
                 nativeRunRng: nativeRunRng);
             world = draw.World;
             relicId = draw.Id;
@@ -4501,7 +4501,7 @@ public sealed partial class PrototypeGameEngine
         else
         {
             relicId = PickUnownedEventRelic(
-                state.Player, state.Stochastic.PrototypeRng, "rest:shovel");
+                state.Player, state.Stochastic.PrototypeRngMutable, "rest:shovel");
         }
 
         if (relicId is null)
@@ -4513,7 +4513,7 @@ public sealed partial class PrototypeGameEngine
         return state with
         {
             Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRng),
+                state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRngMutable),
             World = world with
             {
                 Reward = new RewardState(
@@ -4866,7 +4866,7 @@ public sealed partial class PrototypeGameEngine
         }
         var player = state.Player;
         var nextId = world.NextCardInstanceId;
-        var nativeRunRng = state.Stochastic.NativeRunRng?.Fork();
+        var nativeRunRng = state.Stochastic.NativeRunRngMutable?.Fork();
 
         if (action.Kind == "take_reward_extra_gold" && reward.IndependentSelection
             && reward.PendingDeckChoice is null && (reward.CardResolved || reward.CardBundles is null))
@@ -4966,7 +4966,7 @@ public sealed partial class PrototypeGameEngine
             {
                 Player = player,
                 Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                    state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRng),
+                    state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRngMutable),
                 World = world with
                 {
                     Reward = reward,
@@ -4993,7 +4993,7 @@ public sealed partial class PrototypeGameEngine
                     player,
                     deckChoice,
                     payload.CardInstanceId,
-                    state.Stochastic.PrototypeRng);
+                    state.Stochastic.PrototypeRngMutable);
                 player = resolved.Player;
                 reward = reward with
                 {
@@ -5005,7 +5005,7 @@ public sealed partial class PrototypeGameEngine
                 && deckChoice.CardIdAfterChoices is { } afterChoicesCardId)
             {
                 player = AppendCard(
-                    player, nextId++, afterChoicesCardId, state.Stochastic.PrototypeRng);
+                    player, nextId++, afterChoicesCardId, state.Stochastic.PrototypeRngMutable);
             }
 
             if (reward.PendingDeckChoice is null
@@ -5028,7 +5028,7 @@ public sealed partial class PrototypeGameEngine
                     {
                         Player = player,
                         Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                            state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRng),
+                            state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRngMutable),
                         World = world
                     }, "defeat");
                 }
@@ -5046,7 +5046,7 @@ public sealed partial class PrototypeGameEngine
 
             foreach (var cardId in bundles[payload.Index])
             {
-                player = AppendCard(player, nextId++, cardId, state.Stochastic.PrototypeRng);
+                player = AppendCard(player, nextId++, cardId, state.Stochastic.PrototypeRngMutable);
             }
             reward = reward with { CardResolved = true };
         }
@@ -5076,7 +5076,7 @@ public sealed partial class PrototypeGameEngine
                 player = AppendNativeCardReward(
                     player, nextId++, options[payload.Index],
                     reward.CardUpgradeFlagsForGroup(groupIndex + 1)[payload.Index],
-                    state.Stochastic.PrototypeRng,
+                    state.Stochastic.PrototypeRngMutable,
                     reward.CardEnchantmentsForGroup(groupIndex + 1)[payload.Index]);
             }
             else if (payload.Index != -1)
@@ -5116,7 +5116,7 @@ public sealed partial class PrototypeGameEngine
             };
             player = ApplyRelicRunEvent(
                 player, PrototypeRunEventKind.RelicAcquired,
-                acquiredRelicId: relicId, rng: state.Stochastic.PrototypeRng,
+                acquiredRelicId: relicId, rng: state.Stochastic.PrototypeRngMutable,
                 allocateCardId: () => nextId++, nativeRunRng: nativeRunRng);
             reward = reward.ResolveExtraRelicGroup(payload.Index) with
             {
@@ -5154,7 +5154,7 @@ public sealed partial class PrototypeGameEngine
                     nextId++,
                     reward.CardOptions[payload.Index],
                     reward.CurrentCardOptionUpgradeFlags[payload.Index],
-                    state.Stochastic.PrototypeRng,
+                    state.Stochastic.PrototypeRngMutable,
                     reward.CurrentCardOptionEnchantments[payload.Index]);
             }
             else
@@ -5193,7 +5193,7 @@ public sealed partial class PrototypeGameEngine
                     nextId++,
                     currentOptions[payload.Index],
                     reward.CurrentCardOptionUpgradeFlags[payload.Index],
-                    state.Stochastic.PrototypeRng,
+                    state.Stochastic.PrototypeRngMutable,
                     reward.CurrentCardOptionEnchantments[payload.Index]);
             }
             else
@@ -5325,7 +5325,7 @@ public sealed partial class PrototypeGameEngine
                 player,
                 PrototypeRunEventKind.RelicAcquired,
                 acquiredRelicId: relicId,
-                rng: state.Stochastic.PrototypeRng, allocateCardId: () => nextId++,
+                rng: state.Stochastic.PrototypeRngMutable, allocateCardId: () => nextId++,
                 nativeRunRng: nativeRunRng);
             var acquisitionDeckChoice =
                 CreateRelicDeckChoice(
@@ -5374,7 +5374,7 @@ public sealed partial class PrototypeGameEngine
             };
             player = ApplyRelicRunEvent(
                 player, PrototypeRunEventKind.RelicAcquired,
-                acquiredRelicId: relicId, rng: state.Stochastic.PrototypeRng,
+                acquiredRelicId: relicId, rng: state.Stochastic.PrototypeRngMutable,
                 allocateCardId: () => nextId++, nativeRunRng: nativeRunRng);
             reward = reward.ResolveExtraRelicGroup(extraRelicGroupIndex) with
             {
@@ -5388,7 +5388,7 @@ public sealed partial class PrototypeGameEngine
             {
                 Player = player,
                 Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                    state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRng),
+                    state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRngMutable),
                 World = world with
                 {
                     Reward = reward,
@@ -5408,7 +5408,7 @@ public sealed partial class PrototypeGameEngine
         {
             Player = player,
             Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRng),
+                state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRngMutable),
             World = world
         };
     }
@@ -5514,7 +5514,7 @@ public sealed partial class PrototypeGameEngine
         }
 
         var nativeOvergrowth = UsesNativeRegionalSystems(world);
-        var nativeRunRng = state.Stochastic.NativeRunRng?.Fork();
+        var nativeRunRng = state.Stochastic.NativeRunRngMutable?.Fork();
 
         // RewardsSet.GenerateRewardsFor rolls the potion pity check
         // before rewards are populated; GoldReward.Populate runs first,
@@ -5529,7 +5529,7 @@ public sealed partial class PrototypeGameEngine
             var (offered, nextOdds) = PrototypeNativePotionRewardOdds.Roll(
                 world.PotionRewardOddsThousandths,
                 room == PrototypeRoomType.Elite,
-                state.Stochastic.PrototypeRng,
+                state.Stochastic.PrototypeRngMutable,
                 forced: forced,
                 nativeRunRng: nativeRunRng);
             nativePotionOffered = offered;
@@ -5544,7 +5544,7 @@ public sealed partial class PrototypeGameEngine
         var preventsGoldGain = PreventsGoldGain(state.Player);
         var nativeGold = nativeOvergrowth && !preventsGoldGain
             ? PrototypeNativeCombatGoldReward.Roll(
-                room, state.Ascension, state.Stochastic.PrototypeRng,
+                room, state.Ascension, state.Stochastic.PrototypeRngMutable,
                 nativeRunRng: nativeRunRng)
             : null;
         var gold = 0;
@@ -5596,7 +5596,7 @@ public sealed partial class PrototypeGameEngine
                             new NativeRandomUnitFloatProviderV111())
                         .PotionIds[0]
                     : PrototypeNativePotionShop.PickWeighted(
-                        state.Stochastic.PrototypeRng, "reward")
+                        state.Stochastic.PrototypeRngMutable, "reward")
                 : null;
 
         var cardChoiceCount =
@@ -5617,7 +5617,7 @@ public sealed partial class PrototypeGameEngine
         {
             var offset = world.CardRarityOffsetBasisPoints;
             var first = PrototypeNativeCardRarityOdds.GenerateEncounterCards(
-                cardChoiceCount, state.Ascension, room, offset, state.Stochastic.PrototypeRng,
+                cardChoiceCount, state.Ascension, room, offset, state.Stochastic.PrototypeRngMutable,
                 act: world.Act,
                 nativeRunRng: nativeRunRng);
             cardOptions = first.Cards;
@@ -5634,14 +5634,14 @@ public sealed partial class PrototypeGameEngine
             cardOptions = PickRewardCards(
                 world.Act,
                 cardChoiceCount,
-                state.Stochastic.PrototypeRng,
+                state.Stochastic.PrototypeRngMutable,
                 $"act:{world.Act}:floor:{world.Floor}:room:{room}:group:0");
             extraCardOptions = Enumerable.Range(
                     0, extraCardRewardGroups)
                 .Select((_, groupIndex) => PickRewardCards(
                     world.Act,
                     cardChoiceCount,
-                    state.Stochastic.PrototypeRng,
+                    state.Stochastic.PrototypeRngMutable,
                     $"act:{world.Act}:floor:{world.Floor}:room:{room}:extra_group:{groupIndex}"))
                 .ToArray();
         }
@@ -5650,7 +5650,7 @@ public sealed partial class PrototypeGameEngine
         {
             var potionDrop = CanAcquirePotion(state.Player)
                 && ResolveLegacyBoundedInteger(
-                    state.Stochastic.PrototypeRng,
+                    state.Stochastic.PrototypeRngMutable,
                     "reward.random_potion.drop.ticket",
                     $"act:{world.Act}:floor:{world.Floor}:room:{room}",
                     2,
@@ -5658,7 +5658,7 @@ public sealed partial class PrototypeGameEngine
             potion = potionDrop
                 ? PrototypeContent.PotionPool[
                     ResolveLegacyRandomIndex(
-                        state.Stochastic.PrototypeRng,
+                        state.Stochastic.PrototypeRngMutable,
                         "reward.random_potion.model",
                         $"act:{world.Act}:floor:{world.Floor}:room:{room}:pool:"
                             + CanonicalJson.Sha256(
@@ -5675,7 +5675,7 @@ public sealed partial class PrototypeGameEngine
             if (UsesNativeRegionalSystems(world))
             {
                 var draw = PrototypeNativeRelicGrabBag.Draw(
-                    world, state.Player, state.Stochastic.PrototypeRng, merchant: false,
+                    world, state.Player, state.Stochastic.PrototypeRngMutable, merchant: false,
                     nativeRunRng: nativeRunRng);
                 world = draw.World;
                 relic = draw.Id;
@@ -5684,7 +5684,7 @@ public sealed partial class PrototypeGameEngine
             {
                 relic = PrototypeContent.RelicPool[
                     ResolveLegacyRandomIndex(
-                        state.Stochastic.PrototypeRng,
+                        state.Stochastic.PrototypeRngMutable,
                         "reward.elite_relic.model",
                         $"act:{world.Act}:floor:{world.Floor}:pool:"
                             + CanonicalJson.Sha256(
@@ -5704,7 +5704,7 @@ public sealed partial class PrototypeGameEngine
             if (nativeRunRng is null)
             {
                 relicOptions = PickDistinct(
-                    bossRelicPool, 3, state.Stochastic.PrototypeRng, "reward",
+                    bossRelicPool, 3, state.Stochastic.PrototypeRngMutable, "reward",
                     StochasticSiteRegistryV111
                         .RewardBossRelicOfferShuffleSiteId,
                     $"act:{world.Act}:floor:{world.Floor}");
@@ -5734,7 +5734,7 @@ public sealed partial class PrototypeGameEngine
                 var next = PrototypeNativeCardRarityOdds
                     .GenerateEncounterCards(
                         cardChoiceCount, state.Ascension, room, offset,
-                        state.Stochastic.PrototypeRng, act: world.Act,
+                        state.Stochastic.PrototypeRngMutable, act: world.Act,
                         nativeRunRng: nativeRunRng);
                 extras.Add(next.Cards);
                 upgrades.Add(next.UpgradeFlags);
@@ -5753,7 +5753,7 @@ public sealed partial class PrototypeGameEngine
             for (var index = 0; index < blackStarRewards; index++)
             {
                 var draw = PrototypeNativeRelicGrabBag.Draw(
-                    world, state.Player, state.Stochastic.PrototypeRng, merchant: false,
+                    world, state.Player, state.Stochastic.PrototypeRngMutable, merchant: false,
                     nativeRunRng: nativeRunRng);
                 world = draw.World;
                 if (draw.Id is { } relicId)
@@ -5773,7 +5773,7 @@ public sealed partial class PrototypeGameEngine
             {
                 var next = PrototypeNativeCardRarityOdds.GenerateEncounterCards(
                     cardChoiceCount, state.Ascension,
-                    PrototypeRoomType.Combat, offset, state.Stochastic.PrototypeRng,
+                    PrototypeRoomType.Combat, offset, state.Stochastic.PrototypeRngMutable,
                     act: world.Act,
                     nativeRunRng: nativeRunRng);
                 extras.Add(next.Cards);
@@ -5801,7 +5801,7 @@ public sealed partial class PrototypeGameEngine
 
         var lavaRock = ApplyLavaRockBossRewards(
             silverCrucible.Player, room, world.Act,
-            relicOptions, state.Stochastic.PrototypeRng, nativeRunRng);
+            relicOptions, state.Stochastic.PrototypeRngMutable, nativeRunRng);
         var extraRelicRewardIds = lavaRock.AdditionalRelicIds
             .Concat(blackStarRelicRewardIds).ToList();
         var extraRelicRewards = extraRelicRewardIds.ToArray();
@@ -5870,7 +5870,7 @@ public sealed partial class PrototypeGameEngine
                     + (nativeOvergrowth ? 0 : gold)
             },
             Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRng),
+                state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRngMutable),
             World = world,
             Phase = RunPhase.Reward
         };
@@ -5891,7 +5891,7 @@ public sealed partial class PrototypeGameEngine
             if (reward.AddCardAfterReward is { } afterRewardCardId)
             {
                 player = AppendCard(
-                    player, nextId++, afterRewardCardId, state.Stochastic.PrototypeRng);
+                    player, nextId++, afterRewardCardId, state.Stochastic.PrototypeRngMutable);
             }
             return state with
             {
@@ -5942,7 +5942,7 @@ public sealed partial class PrototypeGameEngine
                         cursePool))
                     {
                         curseId = cursePool[ResolveLegacyRandomIndex(
-                            state.Stochastic.PrototypeRng,
+                            state.Stochastic.PrototypeRngMutable,
                             "event.reward.random_modifier_curse.index_draw",
                             "event:" + world.Event.EventId + ":pool:"
                                 + CanonicalJson.Sha256(cursePool),
@@ -5970,12 +5970,12 @@ public sealed partial class PrototypeGameEngine
                         .SuspendControlledEventRewardChoice(
                             state, continuation);
                 }
-                player = AppendCard(player, nextId++, curseId, state.Stochastic.PrototypeRng);
+                player = AppendCard(player, nextId++, curseId, state.Stochastic.PrototypeRngMutable);
             }
             else if (reward.AddCardAfterReward is { } additionalCardId)
             {
                 player = AppendCard(
-                    player, nextId++, additionalCardId, state.Stochastic.PrototypeRng);
+                    player, nextId++, additionalCardId, state.Stochastic.PrototypeRngMutable);
             }
             return AdvanceEventContinuations(state with
             {

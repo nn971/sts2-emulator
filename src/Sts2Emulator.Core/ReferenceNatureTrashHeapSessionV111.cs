@@ -28,9 +28,9 @@ internal static class TrashHeapChoicePlanBuilderV111
             throw new InvalidOperationException(
                 "Trash Heap Nature choices require an unchosen supported Native-regional event.");
 
-        var nativeRoute = origin.Stochastic.NativeRunRng is not null &&
+        var nativeRoute = origin.Stochastic.NativeRunRngMutable is not null &&
             PrototypeGameEngine.UsesNativeRegionalSystems(world);
-        var legacyFallbackRoute = origin.Stochastic.NativeRunRng is null &&
+        var legacyFallbackRoute = origin.Stochastic.NativeRunRngMutable is null &&
             PrototypeGameEngine.UsesNativeRegionalSystems(world) &&
             evt.Stochastic.NativeRng is null;
         if (!nativeRoute && !legacyFallbackRoute)
@@ -96,7 +96,7 @@ internal static class TrashHeapChoicePlanBuilderV111
 
     private static int GetLegacyEventOrdinal(RunState origin)
     {
-        if (!origin.Stochastic.PrototypeRng.TryGetStream("event", out var stream))
+        if (!origin.Stochastic.PrototypeRngMutable.TryGetStream("event", out var stream))
             throw new InvalidDataException(
                 "Trash Heap fallback requires one legacy event stream.");
         var ordinal = stream.CallCount ?? 0;
@@ -117,7 +117,7 @@ internal static class TrashHeapChoicePlanBuilderV111
             evt.EventId != PrototypeNativeUnderdocksTrashHeap.EventId)
             throw new InvalidOperationException(
                 "Trash Heap session replay requires its Native-regional event context.");
-        if (origin.Stochastic.NativeRunRng is null)
+        if (origin.Stochastic.NativeRunRngMutable is null)
         {
             if (!PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
                 evt.Stochastic.NativeRng is not null ||
@@ -456,7 +456,7 @@ public sealed record ReferenceNatureTrashHeapSessionV111(
         var selected = ReferenceNatureChanceLawDecisionV111
             .FromOrderedIndexSelection(
                 law, request, selection, orderedOutcomeIds);
-        if (origin.Stochastic.NativeRunRng is null)
+        if (origin.Stochastic.NativeRunRngMutable is null)
         {
             var replay = ControlledChanceContinuationExecutorV111
                 .CaptureStochastic(

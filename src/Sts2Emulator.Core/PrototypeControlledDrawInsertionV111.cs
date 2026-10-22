@@ -499,7 +499,7 @@ public sealed partial class PrototypeGameEngine
             }
 
             var resumedDraw = DrawCards(
-                state.Player, combat, semanticDraw.RemainingCount, state.Stochastic.PrototypeRng,
+                state.Player, combat, semanticDraw.RemainingCount, state.Stochastic.PrototypeRngMutable,
                 semanticDraw.FromHandDraw, eventDepth: semanticDraw.EventDepth,
                 suspensionPolicy:
                     PrototypeDrawCardsSuspensionPolicyV111
@@ -545,7 +545,7 @@ public sealed partial class PrototypeGameEngine
             var remainingOperations = new Queue<PrototypeQueuedOperation>(
                 continuation.Operations);
             var afterHive = ContinueDamageEnemyAfterPersonalHiveInsertion(
-                resumePlayer, resumeCombat, state.Stochastic.PrototypeRng, hiveDamage,
+                resumePlayer, resumeCombat, state.Stochastic.PrototypeRngMutable, hiveDamage,
                 continuation.SourceCardInstanceId, remainingOperations);
             resumePlayer = afterHive.Player;
             resumeCombat = afterHive.Combat;
@@ -555,7 +555,7 @@ public sealed partial class PrototypeGameEngine
             };
         }
         var resolved = ResumeChoiceResolutionContinuation(
-            resumePlayer, resumeCombat, state.Stochastic.PrototypeRng, resumeContinuation);
+            resumePlayer, resumeCombat, state.Stochastic.PrototypeRngMutable, resumeContinuation);
         var updated = state with
         {
             Player = resolved.Player,
@@ -615,7 +615,7 @@ public sealed partial class PrototypeGameEngine
                     continuation.Operations)).ToArray()
         };
         var resolved = ResumeChoiceResolutionContinuation(
-            state.Player, combat, state.Stochastic.PrototypeRng, resumedContinuation);
+            state.Player, combat, state.Stochastic.PrototypeRngMutable, resumedContinuation);
         return state with
         {
             Player = resolved.Player,
@@ -648,7 +648,7 @@ public sealed partial class PrototypeGameEngine
         var combat = world.Combat ??
             throw new InvalidOperationException("No combat.");
         var resolved = ResolveOperations(state.Player, combat,
-            new Queue<PrototypeQueuedOperation>([operation]), state.Stochastic.PrototypeRng,
+            new Queue<PrototypeQueuedOperation>([operation]), state.Stochastic.PrototypeRngMutable,
             moveSourceCardOnCompletion: false);
         return state with
         {

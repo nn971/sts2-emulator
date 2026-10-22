@@ -117,7 +117,7 @@ public sealed partial class PrototypeGameEngine
             player = ApplyRelicRunEvent(
                 player, PrototypeRunEventKind.RelicAcquired,
                 acquiredRelicId: PrototypeNativeHiveEvents.HistoryCourseId,
-                rng: state.Stochastic.PrototypeRng);
+                rng: state.Stochastic.PrototypeRngMutable);
             state = state with
             {
                 Player = player,
@@ -138,7 +138,7 @@ public sealed partial class PrototypeGameEngine
                     "War Historian chest requires two implemented relic offers and a potion pool.");
 
             var nativeRunRng = UsesNativeRegionalSystems(world)
-                ? state.Stochastic.NativeRunRng?.Fork()
+                ? state.Stochastic.NativeRunRngMutable?.Fork()
                 : null;
             string[] offers;
             if (nativeRunRng is { } nativeRelicRng)
@@ -161,7 +161,7 @@ public sealed partial class PrototypeGameEngine
             }
             else
             {
-                offers = PickDistinct(available, 2, state.Stochastic.PrototypeRng, "reward");
+                offers = PickDistinct(available, 2, state.Stochastic.PrototypeRngMutable, "reward");
             }
             int PotionIndex(int ordinal)
             {
@@ -175,7 +175,7 @@ public sealed partial class PrototypeGameEngine
                         ownerId,
                         potions.Length)
                     : LegacyRandomChoiceV111.ChooseIndexRange(
-                        state.Stochastic.PrototypeRng,
+                        state.Stochastic.PrototypeRngMutable,
                         PrototypeNativeHiveEvents
                             .WarHistorianRepyPotionOfferSiteId,
                         "reward",
@@ -201,7 +201,7 @@ public sealed partial class PrototypeGameEngine
             state = state with
             {
                 Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                    state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRng),
+                    state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRngMutable),
                 World = RequireWorld(state) with { Event = evt }
             };
         }

@@ -120,7 +120,7 @@ public sealed partial class PrototypeGameEngine
 
         combat = combat with { PendingChoice = null };
         var resolved = ResumeChoiceResolutionContinuation(
-            state.Player, combat, state.Stochastic.PrototypeRng, continuation);
+            state.Player, combat, state.Stochastic.PrototypeRngMutable, continuation);
         var updated = state with
         {
             Player = resolved.Player,
@@ -162,7 +162,7 @@ public sealed partial class PrototypeGameEngine
                     PrototypeTemporaryCardCostExpiry.WhenPlayed));
         combat = combat with { PendingChoice = null };
         var resolved = ResumeChoiceResolutionContinuation(
-            state.Player, combat, state.Stochastic.PrototypeRng, continuation);
+            state.Player, combat, state.Stochastic.PrototypeRngMutable, continuation);
         var updated = state with
         {
             Player = resolved.Player,
@@ -186,7 +186,7 @@ public sealed partial class PrototypeGameEngine
         var combat = world.Combat ??
             throw new InvalidOperationException("Missing fixture combat.");
         var resolved = ResolveOperations(state.Player, combat,
-            new Queue<PrototypeQueuedOperation>([operation]), state.Stochastic.PrototypeRng,
+            new Queue<PrototypeQueuedOperation>([operation]), state.Stochastic.PrototypeRngMutable,
             moveSourceCardOnCompletion: false);
         return state with
         {

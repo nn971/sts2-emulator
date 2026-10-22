@@ -4865,7 +4865,7 @@ public static partial class ChanceLawEngineV111
         PrototypeStateInvariants.Validate(run);
         request.Validate();
         if (run.Phase != RunPhase.Shop || run.World is not { } world ||
-            run.Stochastic.NativeRunRng is null ||
+            run.Stochastic.NativeRunRngMutable is null ||
             run.Stochastic.ControlledRunActionChoice is not null ||
             !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
             world.Stochastic.RelicBag is null || action.Kind != "buy_relic" ||
@@ -4975,7 +4975,7 @@ public static partial class ChanceLawEngineV111
         if (ordinal != 0)
             throw new ArgumentOutOfRangeException(nameof(ordinal));
         if (run.Phase != RunPhase.MapChoice || run.World is not { } world ||
-            run.Stochastic.NativeRunRng is null ||
+            run.Stochastic.NativeRunRngMutable is null ||
             run.Stochastic.ControlledRunActionChoice is not null ||
             !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
             !PrototypeNativeWingedBoots.AvailableNodes(world, run.Player)
@@ -5250,7 +5250,7 @@ public static partial class ChanceLawEngineV111
         PrototypeStateInvariants.Validate(run);
         request.Validate();
         if (run.Phase != RunPhase.Combat || run.World is not { } world ||
-            run.Stochastic.NativeRunRng is null ||
+            run.Stochastic.NativeRunRngMutable is null ||
             !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
             world.ActiveRoom is not (PrototypeRoomType.Combat or
                 PrototypeRoomType.Elite or PrototypeRoomType.Boss) ||
@@ -5309,7 +5309,7 @@ public static partial class ChanceLawEngineV111
         RunState run)
     {
         if (run.Phase != RunPhase.MapChoice || run.World is not { } world ||
-            run.Stochastic.NativeRunRng is null ||
+            run.Stochastic.NativeRunRngMutable is null ||
             run.Stochastic.ControlledRunActionChoice is not null ||
             !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
             !PrototypeNativeWingedBoots.AvailableNodes(world, run.Player)
@@ -5398,7 +5398,7 @@ public static partial class ChanceLawEngineV111
     private static void ValidateNativeMerchantQueryBoundary(RunState run)
     {
         if (run.Phase != RunPhase.MapChoice || run.World is not { } world ||
-            run.Stochastic.NativeRunRng is null ||
+            run.Stochastic.NativeRunRngMutable is null ||
             run.Stochastic.ControlledRunActionChoice is not null ||
             !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
             !PrototypeNativeWingedBoots.AvailableNodes(world, run.Player)
@@ -5888,7 +5888,7 @@ public static partial class ChanceLawEngineV111
         var partialEvent = partialWorld?.Event ??
             throw new InvalidOperationException(
                 "Pending Stone of All Time ticket has no event state.");
-        var nativeRoute = partialState.Stochastic.NativeRunRng is not null;
+        var nativeRoute = partialState.Stochastic.NativeRunRngMutable is not null;
         var expectedStreamId = nativeRoute
             ? NativeRngV111Contexts.EventStreamId(
                 PrototypeNativeStoneOfAllTime.NativeRngEventId)
@@ -7147,7 +7147,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
                 var profile = Origin.Configuration!.Profile;
                 var laterActPreparation =
                     ReferenceNatureLaterActPreparationSessionV111.Begin(
-                        resolvedRun.Stochastic.PrototypeRng, Origin.Ascension, profile,
+                        resolvedRun.Stochastic.PrototypeRngMutable, Origin.Ascension, profile,
                         selection.NextState);
                 var next = this with
                 {
@@ -7556,7 +7556,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
             return CommitOvergrowthRunStartMap(mapGeneration);
         var preparation =
             ReferenceNatureLaterActPreparationSessionV111.Begin(
-                Run.Stochastic.PrototypeRng, Origin.Ascension, Origin.Configuration.Profile,
+                Run.Stochastic.PrototypeRngMutable, Origin.Ascension, Origin.Configuration.Profile,
                 mapGeneration.NatureState);
         var next = this with
         {
@@ -7920,7 +7920,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
                 bossSelection.OutcomeId != "encounter:" + selectedBossId ||
                 laterActPreparation.Ascension != Origin.Ascension ||
                 CanonicalJson.Sha256(laterActPreparation.InitialPrototypeRng) !=
-                    CanonicalJson.Sha256(Run.Stochastic.PrototypeRng) ||
+                    CanonicalJson.Sha256(Run.Stochastic.PrototypeRngMutable) ||
                 CanonicalJson.Sha256(laterActPreparation.Profile) !=
                     CanonicalJson.Sha256(config!.Profile) ||
                 !laterActPreparation.InitialNatureState.SameCursor(
@@ -9249,7 +9249,7 @@ public sealed record ReferenceNatureControlledEventChoiceSessionV111(
     private static bool NeedsNatureCallingBellBag(
         RunState source, string choiceId)
     {
-        if (source.Stochastic.NativeRunRng is null ||
+        if (source.Stochastic.NativeRunRngMutable is null ||
             source.World is not { } world || world.Event is not
                 { EventId: NativeDarvEventV111.EventId } eventState ||
             !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||

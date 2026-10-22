@@ -9,7 +9,7 @@ public sealed partial class PrototypeGameEngine
     {
         // Keep entry draws isolated until their cursor is published with the
         // corresponding encounter and combat state.
-        var prototypeRng = state.Stochastic.PrototypeRng.Fork();
+        var prototypeRng = state.Stochastic.PrototypeRngMutable.Fork();
         var world = RequireWorld(state);
         PrototypeEncounterDefinition encounter;
 
@@ -123,7 +123,7 @@ public sealed partial class PrototypeGameEngine
                 state.Stochastic, prototypeRng.Fork())
         };
         state = ApplyBeforeCombatStartRelics(state, prototypeRng);
-        prototypeRng = state.Stochastic.PrototypeRng.Fork();
+        prototypeRng = state.Stochastic.PrototypeRngMutable.Fork();
         state = state with
         {
             Player = RemoveExpiredTeaRelics(state.Player)
@@ -382,7 +382,7 @@ public sealed partial class PrototypeGameEngine
             .ToArray();
         var nativeShuffleStreams = nativeFormation is null
             ? null
-            : state.Stochastic.NativeRunRng?.Fork() ??
+            : state.Stochastic.NativeRunRngMutable?.Fork() ??
                 throw new NotSupportedException(
                     "UNSUPPORTED_NATIVE_COMBAT site=combat.initial_shuffle " +
                     "operation=missing_run_stream_owner");
@@ -456,7 +456,7 @@ public sealed partial class PrototypeGameEngine
         // the advancing run.niche stream rather than the prototype RNG.
         if (nativeFormation is not null)
             combat = NativeCombatRngEntryV111.AttachAndRollInitialHp(
-                combat, nativeFormation, state.Stochastic.NativeRunRng!);
+                combat, nativeFormation, state.Stochastic.NativeRunRngMutable!);
 
         combat = NativeGloryAncientsV111.ApplyFurCoatCombatStart(
             combat, state.Player);
@@ -487,7 +487,7 @@ public sealed partial class PrototypeGameEngine
             Stochastic = RunStochasticStateV111.WithNativeRunRng(
                 state.Stochastic,
                 combat.Stochastic.NativeRng?.RunStreams.Fork()
-                    ?? state.Stochastic.NativeRunRng?.Fork()),
+                    ?? state.Stochastic.NativeRunRngMutable?.Fork()),
             World = entryWorld,
             Phase = RunPhase.Combat
         });
@@ -522,7 +522,7 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidOperationException(
                 "Initial intent continuation has an invalid combat-entry source.");
         var nativeStreams = combat.Stochastic.NativeRng?.RunStreams.Fork()
-            ?? source.Stochastic.NativeRunRng?.Fork();
+            ?? source.Stochastic.NativeRunRngMutable?.Fork();
         var advanced = source with
         {
             Stochastic = RunStochasticStateV111.WithNativeRunRng(
@@ -1199,7 +1199,7 @@ public sealed partial class PrototypeGameEngine
         var resolved = ResolveCardPlaySeries(
             state.Player,
             combat,
-            state.Stochastic.PrototypeRng,
+            state.Stochastic.PrototypeRngMutable,
             series);
         combat = resolved.Combat;
 
@@ -1277,7 +1277,7 @@ public sealed partial class PrototypeGameEngine
             ApplyPotionRunEffects(
                 playerAfterPotion,
                 definition,
-                state.Stochastic.PrototypeRng);
+                state.Stochastic.PrototypeRngMutable);
 
         var combatAfterPotion = combat with
         {
@@ -1299,7 +1299,7 @@ public sealed partial class PrototypeGameEngine
             playerAfterPotion,
             combatAfterPotion,
             operations,
-            state.Stochastic.PrototypeRng,
+            state.Stochastic.PrototypeRngMutable,
             completionEvents:
             [
                 new PrototypeCombatEvent(
@@ -1348,7 +1348,7 @@ public sealed partial class PrototypeGameEngine
         var prevented = TryUseAutomaticDeathPrevention(
             state.Player,
             combat,
-            state.Stochastic.PrototypeRng);
+            state.Stochastic.PrototypeRngMutable);
 
         return state with
         {
@@ -1442,7 +1442,7 @@ public sealed partial class PrototypeGameEngine
             combat,
             new PrototypeCombatEvent(
                 PrototypeCombatEventKind.CombatWon),
-            state.Stochastic.PrototypeRng);
+            state.Stochastic.PrototypeRngMutable);
         state = state with
         {
             Player = won.Player,
@@ -1456,7 +1456,7 @@ public sealed partial class PrototypeGameEngine
         state = state with
         {
             Player = ApplyMadScienceImprovement(
-                state.Player, combat, state.Stochastic.PrototypeRng)
+                state.Player, combat, state.Stochastic.PrototypeRngMutable)
         };
         state = ApplyWarHammerEliteVictory(
             state, world.ActiveRoom);
@@ -2096,7 +2096,7 @@ public sealed partial class PrototypeGameEngine
             PrototypeStateInvariants.Validate(suspended);
             return suspended;
         }
-        combat = ApplyRelicAfterShuffleCards(combat, state.Stochastic.PrototypeRng);
+        combat = ApplyRelicAfterShuffleCards(combat, state.Stochastic.PrototypeRngMutable);
         if (ExpectedStratagemSelectionCount(combat) > 0)
             return BeginControlledRecycleStratagemSelection(
                 state, state.Player, combat,
@@ -2104,7 +2104,7 @@ public sealed partial class PrototypeGameEngine
 
         var player = state.Player;
         var drawn = DrawCards(player, combat, remainingHandDraw,
-            state.Stochastic.PrototypeRng, fromHandDraw: true,
+            state.Stochastic.PrototypeRngMutable, fromHandDraw: true,
             suspensionPolicy:
                 PrototypeDrawCardsSuspensionPolicyV111
                     .ControlledLegacyAutomaticHandDraw(combat));
@@ -2254,7 +2254,7 @@ public sealed partial class PrototypeGameEngine
             return state;
 
         var result = ResolveOperations(state.Player, combat,
-            new Queue<PrototypeQueuedOperation>(operations), state.Stochastic.PrototypeRng,
+            new Queue<PrototypeQueuedOperation>(operations), state.Stochastic.PrototypeRngMutable,
             moveSourceCardOnCompletion: false);
         return state with
         {
@@ -2272,7 +2272,7 @@ public sealed partial class PrototypeGameEngine
             var openingWorld = RequireWorld(state);
             var opening = DispatchCombatEvent(state.Player, openingWorld.Combat!,
                 new PrototypeCombatEvent(eventKind),
-                state.Stochastic.PrototypeRng, allowSuspension: true);
+                state.Stochastic.PrototypeRngMutable, allowSuspension: true);
             return state with { Player = opening.Player, World = openingWorld with { Combat = opening.Combat } };
         }
         // The pinned native HistoryCourse.AfterAutoPrePlayPhaseEntered
@@ -2409,7 +2409,7 @@ public sealed partial class PrototypeGameEngine
                     var exhausted = ResolveOperations(player, combat,
                         new Queue<PrototypeQueuedOperation>([
                             new(PrototypeCombatEffectKind.ExhaustHand, 1)
-                        ]), state.Stochastic.PrototypeRng);
+                        ]), state.Stochastic.PrototypeRngMutable);
                     player = exhausted.Player;
                     combat = exhausted.Combat;
                 }
@@ -2527,7 +2527,7 @@ public sealed partial class PrototypeGameEngine
                     player,
                     combat,
                     new PrototypeCombatEvent(automaticStep.EventKind.Value),
-                    state.Stochastic.PrototypeRng,
+                    state.Stochastic.PrototypeRngMutable,
                     allowSuspension: true);
                 player = dispatched.Player;
                 combat = dispatched.Combat;
@@ -2630,7 +2630,7 @@ public sealed partial class PrototypeGameEngine
                             PrototypeCombatEventKind.CardExhausted,
                             SourceCardInstanceId: cardInstanceId,
                             CardId: exhaustedCard.CardId),
-                        state.Stochastic.PrototypeRng);
+                        state.Stochastic.PrototypeRngMutable);
                     player = exhausted.Player;
                     combat = exhausted.Combat;
                 }
@@ -2638,7 +2638,7 @@ public sealed partial class PrototypeGameEngine
                 var discardHooks = ResumeChoiceResolutionContinuation(
                     player,
                     combat,
-                    state.Stochastic.PrototypeRng,
+                    state.Stochastic.PrototypeRngMutable,
                     new PrototypeChoiceResolutionContinuationState(
                         SourceCardInstanceId: null,
                         SourceCardDestination: PrototypeCardZone.DiscardPile,
@@ -2682,7 +2682,7 @@ public sealed partial class PrototypeGameEngine
                 combat = ResolveEnemyStatusStage(
                     combat,
                     automaticStep.Stage.Value,
-                    state.Stochastic.PrototypeRng);
+                    state.Stochastic.PrototypeRngMutable);
                 if (automaticStep.Stage.Value
                     == PrototypeTurnStage.EnemyTurnEnd)
                 {
@@ -2704,7 +2704,7 @@ public sealed partial class PrototypeGameEngine
 
                 combat = ResolveEnemyDeathSummons(
                     combat,
-                    state.Stochastic.PrototypeRng,
+                    state.Stochastic.PrototypeRngMutable,
                     enemyActionSkips:
                         automaticStep.Stage.Value
                             == PrototypeTurnStage.EnemyTurnStart
@@ -2738,7 +2738,7 @@ public sealed partial class PrototypeGameEngine
                     combat,
                     world.Act,
                     state.Ascension,
-                    state.Stochastic.PrototypeRng);
+                    state.Stochastic.PrototypeRngMutable);
                 player = result.Player;
                 combat = result.Combat;
                 break;
@@ -2748,7 +2748,7 @@ public sealed partial class PrototypeGameEngine
                 // The controlled pipeline suspends *before* this stage.
                 combat = CompleteAdvanceTurnAfterCommittedIntents(
                     CommitEnemyIntents(
-                        combat, state.Stochastic.PrototypeRng,
+                        combat, state.Stochastic.PrototypeRngMutable,
                         NativeCombatRngEntryV111.NextTurnIntentSiteId));
                 break;
 
@@ -2833,7 +2833,7 @@ public sealed partial class PrototypeGameEngine
                     definition => definition.RemoveAfterEnergyReset);
                 var sideStarted = DispatchCombatEvent(player, combat,
                     new PrototypeCombatEvent(PrototypeCombatEventKind.PlayerSideTurnStarted),
-                    state.Stochastic.PrototypeRng, allowSuspension: true);
+                    state.Stochastic.PrototypeRngMutable, allowSuspension: true);
                 player = sideStarted.Player;
                 combat = TickPaelsLegionAtPlayerTurnStart(sideStarted.Combat);
                 break;
@@ -2862,7 +2862,7 @@ public sealed partial class PrototypeGameEngine
                         combat,
                         new PrototypeCombatEvent(
                             PrototypeCombatEventKind.BeforeHandDraw),
-                        state.Stochastic.PrototypeRng,
+                        state.Stochastic.PrototypeRngMutable,
                         allowSuspension: ControlledChanceGuardV111.Active &&
                             (combat.Stochastic.SemanticDeck is
                                 { Mode: SemanticDeckStateV111.NatureMode } ||
@@ -2955,7 +2955,7 @@ public sealed partial class PrototypeGameEngine
                     player,
                     combat,
                     requestedHandDraw,
-                    state.Stochastic.PrototypeRng,
+                    state.Stochastic.PrototypeRngMutable,
                     fromHandDraw: true,
                     suspensionPolicy:
                         PrototypeDrawCardsSuspensionPolicyV111
@@ -3018,7 +3018,7 @@ public sealed partial class PrototypeGameEngine
                                 drawn.RemainingCount, FromHandDraw: true)
                         });
                     var resumed = ResolveOperations(
-                        player, combat, pendingDraw, state.Stochastic.PrototypeRng,
+                        player, combat, pendingDraw, state.Stochastic.PrototypeRngMutable,
                         moveSourceCardOnCompletion: false);
                     player = resumed.Player;
                     combat = resumed.Combat;
@@ -10309,7 +10309,7 @@ public sealed partial class PrototypeGameEngine
             return state;
 
         var slots = (PotionInstance?[])state.Player.PotionSlots.Clone();
-        var nativeRunRng = state.Stochastic.NativeRunRng?.Fork();
+        var nativeRunRng = state.Stochastic.NativeRunRngMutable?.Fork();
         foreach (var _ in relicTriggers)
         {
             var openSlot = Array.IndexOf(slots, null);
@@ -10346,7 +10346,7 @@ public sealed partial class PrototypeGameEngine
             Stochastic = RunStochasticStateV111.WithPrototypeRng(
                 RunStochasticStateV111.WithNativeRunRng(
                     state.Stochastic,
-                    nativeRunRng ?? state.Stochastic.NativeRunRng),
+                    nativeRunRng ?? state.Stochastic.NativeRunRngMutable),
                 prototypeRng.Fork())
         };
     }
@@ -13302,7 +13302,7 @@ public sealed partial class PrototypeGameEngine
                 : Array.Empty<long>();
 
         combat = ApplyCardSelection(
-            combat, pending.Selection, selected, state.Stochastic.PrototypeRng,
+            combat, pending.Selection, selected, state.Stochastic.PrototypeRngMutable,
             transformReplacementCardIds);
         combat = combat with { PendingChoice = null };
 
@@ -13412,7 +13412,7 @@ public sealed partial class PrototypeGameEngine
         var resolved = ResumeChoiceResolutionContinuation(
             state.Player,
             combat,
-            state.Stochastic.PrototypeRng,
+            state.Stochastic.PrototypeRngMutable,
             resolutionContinuation);
 
         state = state with
@@ -14386,7 +14386,7 @@ public sealed partial class PrototypeGameEngine
                 TargetMode = PrototypeEffectTarget.ActionTargetEnemy
             };
             resolved = ResumeChoiceResolutionContinuation(
-                state.Player, combat, state.Stochastic.PrototypeRng, continuation with
+                state.Player, combat, state.Stochastic.PrototypeRngMutable, continuation with
                 {
                     Operations = (new[] { fixedOperation })
                         .Concat(continuation.Operations.Skip(1)).ToArray()
@@ -14397,14 +14397,14 @@ public sealed partial class PrototypeGameEngine
             if (target.SlyCardInstanceId is not { } cardId)
                 throw new InvalidDataException("Sly choice lost its source card.");
             resolved = AutoPlaySlyCard(
-                state.Player, combat, cardId, state.Stochastic.PrototypeRng,
+                state.Player, combat, cardId, state.Stochastic.PrototypeRngMutable,
                 selectedEnemyInstanceId);
             if (resolved.Combat.PendingChoice is not null)
                 resolved = (resolved.Player, AttachOuterChoiceContinuation(
                     resolved.Combat, continuation));
             else
                 resolved = ResumeChoiceResolutionContinuation(
-                    resolved.Player, resolved.Combat, state.Stochastic.PrototypeRng, continuation);
+                    resolved.Player, resolved.Combat, state.Stochastic.PrototypeRngMutable, continuation);
         }
         else if (target.Kind == "autoplay_random_enemy")
         {
@@ -14423,7 +14423,7 @@ public sealed partial class PrototypeGameEngine
                 TargetEnemyId = selectedEnemyInstanceId
             };
             resolved = ResumeChoiceResolutionContinuation(
-                state.Player, combat, state.Stochastic.PrototypeRng, continuation with
+                state.Player, combat, state.Stochastic.PrototypeRngMutable, continuation with
                 {
                     Operations = (new[] { fixedOperation })
                         .Concat(continuation.Operations.Skip(1)).ToArray()
@@ -14488,7 +14488,7 @@ public sealed partial class PrototypeGameEngine
             PrototypeCombatEffectKind.AutoPlayTopDrawCards)
         {
             var resumed = ResumeChoiceResolutionContinuation(
-                state.Player, combat, state.Stochastic.PrototypeRng, continuation);
+                state.Player, combat, state.Stochastic.PrototypeRngMutable, continuation);
             var resumedState = state with
             {
                 Player = resumed.Player,
@@ -14499,7 +14499,7 @@ public sealed partial class PrototypeGameEngine
             return resumedState;
         }
         var drawn = DrawCards(
-            state.Player, combat, draw.RemainingCount, state.Stochastic.PrototypeRng,
+            state.Player, combat, draw.RemainingCount, state.Stochastic.PrototypeRngMutable,
             draw.FromHandDraw, eventDepth: draw.EventDepth,
             suspensionPolicy:
                 PrototypeDrawCardsSuspensionPolicyV111

@@ -31,7 +31,7 @@ public sealed partial class PrototypeGameEngine
                     NativeGloryAncientsV111.WhisperingEarringMaxCards,
                     SourceKind: PrototypeEffectSourceKind.Relic)
             ]),
-            state.Stochastic.PrototypeRng,
+            state.Stochastic.PrototypeRngMutable,
             moveSourceCardOnCompletion: false);
 
         return state with

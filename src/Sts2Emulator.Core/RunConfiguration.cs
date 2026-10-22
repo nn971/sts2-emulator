@@ -566,7 +566,7 @@ public static class V111RunFactory
         var deck = config.Ascension < 5
             ? opening.Player.Deck.Where(card => card.CardId != "proto.common.restlessness").ToArray()
             : opening.Player.Deck;
-        var nativeRunRng = input.Stochastic.NativeRunRng?.Fork()
+        var nativeRunRng = input.Stochastic.NativeRunRngMutable?.Fork()
             ?? NativeRngV111.CreateBundle(input.RunSeed);
         var relicBag = opening.World!.Stochastic.RelicBag
             ?? PrototypeNativeRelicGrabBag.CreateNative(
@@ -579,7 +579,7 @@ public static class V111RunFactory
             if (!controlledReferenceNatureRunStart)
             {
                 var prepared = BuildPreparedLaterActBags(
-                    opening.Stochastic.PrototypeRng, config, natureState);
+                    opening.Stochastic.PrototypeRngMutable, config, natureState);
                 preparedLaterActBags = prepared.Bags;
                 if (prepared.Stochastic is { } preparedStochastic)
                 {
@@ -608,7 +608,7 @@ public static class V111RunFactory
                     ActOneMapGeneration = actOneMapGeneration,
                     LaterActPreparationInitialPrototypeRng =
                         config.UsesExperimentalSilentThreeActRoute
-                            ? opening.Stochastic.PrototypeRng.Fork() : null
+                            ? opening.Stochastic.PrototypeRngMutable.Fork() : null
                 };
         }
         runStartTranscript?.Validate();

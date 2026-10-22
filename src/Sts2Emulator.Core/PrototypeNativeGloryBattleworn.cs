@@ -80,7 +80,7 @@ public sealed partial class PrototypeGameEngine
             {
                 // Native random unlocked potion: optional custom reward.
                 var potionId = PrototypeNativePotionShop.PickWeighted(
-                    state.Stochastic.PrototypeRng, "reward");
+                    state.Stochastic.PrototypeRngMutable, "reward");
                 var rewardState = state with
                 {
                     World = world with
@@ -140,23 +140,23 @@ public sealed partial class PrototypeGameEngine
             {
                 // Native PullNextRelicFromFront, offered via custom rewards.
                 var nativeRunRng = UsesNativeRegionalSystems(world)
-                    ? state.Stochastic.NativeRunRng?.Fork()
+                    ? state.Stochastic.NativeRunRngMutable?.Fork()
                     : null;
                 var drawn = PrototypeNativeRelicGrabBag.Draw(
-                    world, state.Player, state.Stochastic.PrototypeRng, merchant: false,
+                    world, state.Player, state.Stochastic.PrototypeRngMutable, merchant: false,
                     nativeRunRng: nativeRunRng);
                 if (drawn.Id is null)
                     return SetBattlewornResultPage(state with
                     {
                         Phase = RunPhase.Event,
                         Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                            state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRng),
+                            state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRngMutable),
                         World = drawn.World with { Combat = null }
                     }, "victory");
                 var rewardState = state with
                 {
                     Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                        state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRng),
+                        state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRngMutable),
                     World = drawn.World with
                     {
                         Combat = null,

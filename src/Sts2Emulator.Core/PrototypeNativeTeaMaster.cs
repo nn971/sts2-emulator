@@ -79,7 +79,7 @@ public sealed partial class PrototypeGameEngine
             player,
             PrototypeRunEventKind.RelicAcquired,
             acquiredRelicId: relicId,
-            rng: state.Stochastic.PrototypeRng);
+            rng: state.Stochastic.PrototypeRngMutable);
         return PreserveNativeEventCompletionPage(
             state with { Player = player }, choice);
     }

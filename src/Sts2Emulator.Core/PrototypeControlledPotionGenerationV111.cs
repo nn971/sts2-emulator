@@ -114,7 +114,7 @@ public sealed partial class PrototypeGameEngine
         };
         var resumed = ResumeChoiceResolutionContinuation(
             state.Player with { PotionSlots = slots },
-            combat with { PendingChoice = null }, state.Stochastic.PrototypeRng,
+            combat with { PendingChoice = null }, state.Stochastic.PrototypeRngMutable,
             resumedContinuation);
         var updated = state with
         {

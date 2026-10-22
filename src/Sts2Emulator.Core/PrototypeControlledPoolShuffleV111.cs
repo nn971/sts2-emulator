@@ -361,7 +361,7 @@ public sealed partial class PrototypeGameEngine
             if (candidates.Length == 0 || maximum <= 0)
             {
                 var resumed = ResumeChoiceResolutionContinuation(
-                    state.Player, combat, state.Stochastic.PrototypeRng, continuation);
+                    state.Player, combat, state.Stochastic.PrototypeRngMutable, continuation);
                 return ResumeAutomaticPipelineContinuation(state with
                 {
                     Player = resumed.Player,
@@ -440,7 +440,7 @@ public sealed partial class PrototypeGameEngine
                 };
             }
             if (afterShuffleInsertions.Length > 0)
-                combat = ApplyRelicAfterShuffleCards(combat, state.Stochastic.PrototypeRng);
+                combat = ApplyRelicAfterShuffleCards(combat, state.Stochastic.PrototypeRngMutable);
         }
         else if (op.Kind ==
             PrototypeCombatEffectKind.MoveRandomRareDrawCardsToHand)
@@ -495,7 +495,7 @@ public sealed partial class PrototypeGameEngine
                 };
             }
             if (afterShuffleInsertions.Length > 0)
-                combat = ApplyRelicAfterShuffleCards(combat, state.Stochastic.PrototypeRng);
+                combat = ApplyRelicAfterShuffleCards(combat, state.Stochastic.PrototypeRngMutable);
         }
         else
         {
@@ -522,7 +522,7 @@ public sealed partial class PrototypeGameEngine
             }
         }
         var resolved = ResumeChoiceResolutionContinuation(
-            state.Player, combat, state.Stochastic.PrototypeRng, continuation);
+            state.Player, combat, state.Stochastic.PrototypeRngMutable, continuation);
         var updated = state with
         {
             Player = resolved.Player,
@@ -567,7 +567,7 @@ public sealed partial class PrototypeGameEngine
         var combat = world.Combat ??
             throw new InvalidOperationException("No combat for fixture.");
         var resolved = ResolveOperations(state.Player, combat,
-            new Queue<PrototypeQueuedOperation>([operation]), state.Stochastic.PrototypeRng,
+            new Queue<PrototypeQueuedOperation>([operation]), state.Stochastic.PrototypeRngMutable,
             moveSourceCardOnCompletion: false);
         return state with
         {

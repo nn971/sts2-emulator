@@ -101,7 +101,7 @@ public sealed partial class PrototypeGameEngine
         player = ApplyRelicRunEvent(
             player, PrototypeRunEventKind.RelicAcquired,
             acquiredRelicId: PrototypeNativeHiveEvents.PollinousCoreId,
-            rng: state.Stochastic.PrototypeRng);
+            rng: state.Stochastic.PrototypeRngMutable);
         return FinishColossalFlower(state with { Player = player },
             eventState, choice);
     }

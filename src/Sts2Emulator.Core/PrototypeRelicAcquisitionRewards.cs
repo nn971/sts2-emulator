@@ -12,7 +12,7 @@ public sealed partial class PrototypeGameEngine
             return after;
         var world = RequireWorld(after);
         var nativeRunRng = UsesNativeRegionalSystems(world)
-            ? after.Stochastic.NativeRunRng?.Fork()
+            ? after.Stochastic.NativeRunRngMutable?.Fork()
             : null;
         // Event acquisition already suspends the selected option in its
         // ordinary event continuation, before completing the event room.
@@ -31,7 +31,7 @@ public sealed partial class PrototypeGameEngine
             {
                 Phase = RunPhase.Reward,
                 Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                    after.Stochastic, nativeRunRng ?? after.Stochastic.NativeRunRng),
+                    after.Stochastic, nativeRunRng ?? after.Stochastic.NativeRunRngMutable),
                 World = world
             };
         }
@@ -46,7 +46,7 @@ public sealed partial class PrototypeGameEngine
         for (var index = 0; index < ids.Length; index++)
         {
             var draw = PrototypeNativeRelicGrabBag.Draw(
-                world, player, state.Stochastic.PrototypeRng, merchant: false,
+                world, player, state.Stochastic.PrototypeRngMutable, merchant: false,
                 nativeRunRng: nativeRunRng);
             world = draw.World;
             ids[index] = draw.Id ?? throw new NotSupportedException(

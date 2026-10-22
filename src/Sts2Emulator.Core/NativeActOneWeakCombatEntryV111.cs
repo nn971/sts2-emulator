@@ -61,7 +61,7 @@ public static class NativeActOneWeakCombatEntryV111
             || !expectedMapProfileMatches)
             throw new NotSupportedException(
                 "Native weak encounter must belong to the active pinned Act 1 region.");
-        if (state.Stochastic.NativeRunRng is null)
+        if (state.Stochastic.NativeRunRngMutable is null)
             throw new InvalidOperationException(
                 "Persistent native RNG must be enabled before live combat entry.");
 

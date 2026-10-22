@@ -15,7 +15,7 @@ public sealed partial class PrototypeGameEngine
         var world = RequireWorld(state);
         var player = state.Player;
         var nativeRunRng = UsesNativeRegionalSystems(world)
-            ? state.Stochastic.NativeRunRng?.Fork()
+            ? state.Stochastic.NativeRunRngMutable?.Fork()
             : null;
         var wingIndex = Array.FindIndex(player.Relics, relic =>
             relic.RelicId == NativePaelRewardsV111.WingId && !relic.IsMelted);
@@ -24,14 +24,14 @@ public sealed partial class PrototypeGameEngine
         if (count % 2 == 0)
         {
             var draw = PrototypeNativeRelicGrabBag.Draw(
-                world, player, state.Stochastic.PrototypeRng, merchant: false,
+                world, player, state.Stochastic.PrototypeRngMutable, merchant: false,
                 nativeRunRng: nativeRunRng);
             world = draw.World;
             var id = draw.Id ?? throw new NotSupportedException("Pael's Wing requires an available front-bag relic.");
             player = player with { Relics = [..player.Relics, new(id, PrototypeJson.EmptyObject())] };
             var nextId = world.NextCardInstanceId;
             player = ApplyRelicRunEvent(player, PrototypeRunEventKind.RelicAcquired,
-                acquiredRelicId: id, rng: state.Stochastic.PrototypeRng,
+                acquiredRelicId: id, rng: state.Stochastic.PrototypeRngMutable,
                 allocateCardId: () => nextId++,
                 nativeRunRng: nativeRunRng);
             world = world with { NextCardInstanceId = nextId, Reward = world.Reward! with
@@ -41,7 +41,7 @@ public sealed partial class PrototypeGameEngine
         {
             Player = player,
             Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRng),
+                state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRngMutable),
             World = world
         };
     }

@@ -55,7 +55,7 @@ public sealed partial class PrototypeGameEngine
                     state.Player,
                     combat,
                     new PrototypeCombatEvent(kind),
-                    state.Stochastic.PrototypeRng,
+                    state.Stochastic.PrototypeRngMutable,
                     allowSuspension: true);
                 state = state with { Player = dispatched.Player, World = world with { Combat = dispatched.Combat } };
             }
@@ -134,7 +134,7 @@ public sealed partial class PrototypeGameEngine
             return !card.IsTemporary && IsInnate(card);
         });
         var drawn = DrawCards(player, combat, Math.Max(0, target - innateAlreadyDealt),
-            state.Stochastic.PrototypeRng, fromHandDraw: true);
+            state.Stochastic.PrototypeRngMutable, fromHandDraw: true);
         player = drawn.Player;
         combat = drawn.Combat;
         if (drawn.BoundaryKind ==
@@ -146,7 +146,7 @@ public sealed partial class PrototypeGameEngine
                 new(PrototypeCombatEffectKind.DrawCards, drawn.RemainingCount, FromHandDraw: true)
             ]);
             var resolved = ResolveOperations(
-                player, combat, operations, state.Stochastic.PrototypeRng,
+                player, combat, operations, state.Stochastic.PrototypeRngMutable,
                 moveSourceCardOnCompletion: false);
             player = resolved.Player;
             combat = resolved.Combat;

@@ -46,7 +46,7 @@ public static class PrototypePristineRewardProposal
                 + "64-bit stream state encoded as 16 hexadecimal characters.");
         }
 
-        var existing = source.Stochastic.PrototypeRng.GetStream("reward");
+        var existing = source.Stochastic.PrototypeRngMutable.GetStream("reward");
         if (existing.Codec != PrototypeRng.Codec
             || existing.StateBytes.Length != sizeof(ulong)
             || existing.CallCount != 0)
@@ -67,7 +67,7 @@ public static class PrototypePristineRewardProposal
         var candidate = source.Fork();
         var bytes = new byte[sizeof(ulong)];
         BinaryPrimitives.WriteUInt64LittleEndian(bytes, newInitialState);
-        var candidateRng = candidate.Stochastic.PrototypeRng.Fork();
+        var candidateRng = candidate.Stochastic.PrototypeRngMutable.Fork();
         candidateRng.ReplaceStream("reward", existing with
         {
             StateBytes = bytes,

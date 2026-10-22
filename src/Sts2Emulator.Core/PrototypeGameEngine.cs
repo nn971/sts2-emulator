@@ -466,18 +466,18 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         var player = ConsumePotionSlot(
             state.Player,
             payload.Slot);
-        var nativeRunRng = state.Stochastic.NativeRunRng?.Fork();
+        var nativeRunRng = state.Stochastic.NativeRunRngMutable?.Fork();
         player = ApplyPotionRunEffects(
             player,
             definition,
-            state.Stochastic.PrototypeRng,
+            state.Stochastic.PrototypeRngMutable,
             nativeRunRng);
 
         state = state with
         {
             Player = player,
             Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRng)
+                state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRngMutable)
         };
 
         // An event's full-belt potion offer is still pending when a
@@ -1120,9 +1120,9 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         // Ordinary starts use the historical correlated run-seed streams.
         // A distinct, hypothetical factorized prior may instead supply
         // all six independent stream states *before* the first RNG event.
-        var rng = state.Stochastic.PrototypeRng.Streams.Length == 0
+        var rng = state.Stochastic.PrototypeRngMutable.Streams.Length == 0
             ? PrototypeRng.CreateBundle(state.RunSeed)
-            : state.Stochastic.PrototypeRng.Fork();
+            : state.Stochastic.PrototypeRngMutable.Fork();
         var bossPool = PrototypeContent.OvergrowthBossEncounterPool;
         var actOneBossEncounterId = bossPool[
             ResolveLegacyRandomIndex(
@@ -1231,7 +1231,7 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             Shop = null,
             Event = null
         };
-        world = world with { Map = GenerateActMap(world.Act, state.Stochastic.PrototypeRng) };
+        world = world with { Map = GenerateActMap(world.Act, state.Stochastic.PrototypeRngMutable) };
 
         return state with
         {

@@ -403,7 +403,7 @@ public sealed record ReferenceNatureCombatRewardSessionV111(
         ControlledStochasticDecisionV111[] prefix)
     {
         request.Validate();
-        if (source.Stochastic.NativeRunRng is null)
+        if (source.Stochastic.NativeRunRngMutable is null)
         {
             if (request.IndexRequest is not { } legacyRequest ||
                 !LegacyRewardSessionSites.Contains(
@@ -671,7 +671,7 @@ public sealed record ReferenceNatureCombatRewardSessionV111(
     }
 
     private static bool RequiresNatureRelicBagProjection(RunState source) =>
-        source.Stochastic.NativeRunRng is not null ||
+        source.Stochastic.NativeRunRngMutable is not null ||
         (source.World is { } world &&
             PrototypeGameEngine.UsesNativeRegionalSystems(world));
 
@@ -679,7 +679,7 @@ public sealed record ReferenceNatureCombatRewardSessionV111(
         RunState source, GameAction action)
     {
         if (source.Phase != RunPhase.Combat || source.World is not { } world ||
-            (source.Stochastic.NativeRunRng is not null &&
+            (source.Stochastic.NativeRunRngMutable is not null &&
                 !PrototypeGameEngine.UsesNativeRegionalSystems(world)) ||
             source.Stochastic.ControlledRunActionChoice is not null ||
             world.ActiveRoom is not (PrototypeRoomType.Combat or

@@ -85,7 +85,7 @@ public sealed partial class PrototypeGameEngine
                     SourceKind: PrototypeEffectSourceKind.Relic,
                     CardInstanceId: duplicate.InstanceId)
             ]),
-            state.Stochastic.PrototypeRng,
+            state.Stochastic.PrototypeRngMutable,
             moveSourceCardOnCompletion: false);
 
         return state with

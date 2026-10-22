@@ -87,7 +87,7 @@ public static class PrototypeNativeEndlessConveyor
 
         float roll;
         var ownerId = $"dish:{nextRoll}:pool:{CanonicalJson.Sha256(candidates)}";
-        if (state.Stochastic.NativeRunRng is not null
+        if (state.Stochastic.NativeRunRngMutable is not null
             && (current.Stochastic.NativeRng is not null
                 || current.Stochastic.RandomOutcomes.NativeDishCount == 0))
         {
@@ -106,7 +106,7 @@ public static class PrototypeNativeEndlessConveyor
         {
             // Preserve the legacy prototype's integer-weight approximation.
             roll = LegacyRandomChoiceV111.ChooseBoundedInteger(
-                state.Stochastic.PrototypeRng,
+                state.Stochastic.PrototypeRngMutable,
                 DishWeightedTicketSiteId,
                 "event",
                 ownerId,
@@ -213,7 +213,7 @@ public static class PrototypeNativeEndlessConveyor
             current.Stochastic.RandomOutcomes.NativeDishId != current.Stochastic.RandomOutcomes.NativeLastDishId ||
             current.Stochastic.RandomOutcomes.NativeDishId == "SEAPUNK_SALAD" ||
             string.IsNullOrWhiteSpace(state.RunSeed) ||
-            state.Stochastic.NativeRunRng is null || current.Stochastic.NativeRng is not { } stream)
+            state.Stochastic.NativeRunRngMutable is null || current.Stochastic.NativeRng is not { } stream)
             return false;
 
         var expected = NativeRngV111Contexts.ForEvent(
@@ -275,7 +275,7 @@ public static class PrototypeNativePunchOff
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(world);
         ArgumentNullException.ThrowIfNull(encounter);
-        if (state.Stochastic.NativeRunRng is null
+        if (state.Stochastic.NativeRunRngMutable is null
             || world.Act != 1
             || world.ActOneRegion != PrototypeActOneRegion.Underdocks
             || world.Event?.EventId != EventId
@@ -419,11 +419,11 @@ public sealed partial class PrototypeGameEngine
                 var ownerId = $"dish:{evt.Stochastic.RandomOutcomes.NativeDishCount}:pool:"
                     + CanonicalJson.Sha256(pool);
                 int selectedIndex;
-                if (state.Stochastic.NativeRunRng is not null
+                if (state.Stochastic.NativeRunRngMutable is not null
                     && evt.Stochastic.NativeRng is null)
                 {
                     selectedIndex = LegacyRandomChoiceV111.ChooseIndexRange(
-                        state.Stochastic.PrototypeRng,
+                        state.Stochastic.PrototypeRngMutable,
                         PrototypeNativeEndlessConveyor.ColorlessCardSiteId,
                         "event",
                         ownerId,
@@ -445,7 +445,7 @@ public sealed partial class PrototypeGameEngine
                 }
                 var id = pool[selectedIndex];
                 playerAfter = AppendCard(
-                    playerAfter, nextCardId++, id, state.Stochastic.PrototypeRng);
+                    playerAfter, nextCardId++, id, state.Stochastic.PrototypeRngMutable);
                 break;
             }
 
@@ -458,7 +458,7 @@ public sealed partial class PrototypeGameEngine
                 pendingPotions =
                 [
                     PrototypeNativePotionShop.PickUniform(
-                        state.Stochastic.PrototypeRng,
+                        state.Stochastic.PrototypeRngMutable,
                         "reward",
                         $"event:endless_conveyor:dish:{evt.Stochastic.RandomOutcomes.NativeDishCount}:potion")
                 ];
@@ -482,7 +482,7 @@ public sealed partial class PrototypeGameEngine
                 playerAfter = AppendCard(
                     playerAfter, nextCardId++,
                     PrototypeNativeEndlessConveyor.FeedingFrenzyId,
-                    state.Stochastic.PrototypeRng);
+                    state.Stochastic.PrototypeRngMutable);
                 break;
 
             default:
@@ -532,10 +532,10 @@ public sealed partial class PrototypeGameEngine
         var ownerId = "endless_conveyor:deck:"
             + CanonicalJson.Sha256(candidates);
         int selectedIndex;
-        if (state.Stochastic.NativeRunRng is not null && evt.Stochastic.NativeRng is null)
+        if (state.Stochastic.NativeRunRngMutable is not null && evt.Stochastic.NativeRng is null)
         {
             selectedIndex = LegacyRandomChoiceV111.ChooseIndexRange(
-                state.Stochastic.PrototypeRng,
+                state.Stochastic.PrototypeRngMutable,
                 PrototypeNativeEndlessConveyor.UpgradeCardSiteId,
                 "event",
                 ownerId,
@@ -593,11 +593,11 @@ public sealed partial class PrototypeGameEngine
         if (evt.NativePageIndex == 0 && choice == "nab")
         {
             var nativeRunRng = UsesNativeRegionalSystems(world)
-                ? state.Stochastic.NativeRunRng?.Fork()
+                ? state.Stochastic.NativeRunRngMutable?.Fork()
                 : null;
             var player = AppendCard(
                 state.Player, world.NextCardInstanceId,
-                "proto.native.neow.injury", state.Stochastic.PrototypeRng,
+                "proto.native.neow.injury", state.Stochastic.PrototypeRngMutable,
                 nativeRunRng);
             var reward = CreateDeferredEventReward(
                 state, PrototypeRunEffectKind.OfferRandomRelic,
@@ -606,7 +606,7 @@ public sealed partial class PrototypeGameEngine
             {
                 Player = player,
                 Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                    state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRng),
+                    state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRngMutable),
                 World = world with
                 {
                     NextCardInstanceId = world.NextCardInstanceId + 1,
@@ -663,7 +663,7 @@ public sealed partial class PrototypeGameEngine
                 {
                     selectedIndex = LegacyRandomChoiceV111
                         .ChooseBoundedInteger(
-                            state.Stochastic.PrototypeRng,
+                            state.Stochastic.PrototypeRngMutable,
                             PrototypeNativePunchOff.ConstructHpOffsetSiteId,
                             "combat",
                             $"enemy:{enemy.InstanceId}:construct:{index}",
@@ -706,7 +706,7 @@ public sealed partial class PrototypeGameEngine
         }
         var world = RequireWorld(state);
         var nativeRunRng = UsesNativeRegionalSystems(world)
-            ? state.Stochastic.NativeRunRng?.Fork()
+            ? state.Stochastic.NativeRunRngMutable?.Fork()
             : null;
         var relicOwner = "event:punch_off:relic_pool:"
             + CanonicalJson.Sha256(available);
@@ -718,7 +718,7 @@ public sealed partial class PrototypeGameEngine
                 relicOwner,
                 available.Length)
             : LegacyRandomChoiceV111.ChooseIndexRange(
-                state.Stochastic.PrototypeRng,
+                state.Stochastic.PrototypeRngMutable,
                 PrototypeNativePunchOff.RelicRewardSiteId,
                 "reward",
                 relicOwner,
@@ -735,7 +735,7 @@ public sealed partial class PrototypeGameEngine
                 potionOwner,
                 potionPool.Length)
             : LegacyRandomChoiceV111.ChooseIndexRange(
-                state.Stochastic.PrototypeRng,
+                state.Stochastic.PrototypeRngMutable,
                 PrototypeNativePunchOff.PotionRewardSiteId,
                 "reward",
                 potionOwner,
@@ -755,7 +755,7 @@ public sealed partial class PrototypeGameEngine
         return state with
         {
             Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRng),
+                state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRngMutable),
             World = world with
             {
                 Combat = null,

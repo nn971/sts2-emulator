@@ -547,7 +547,7 @@ public sealed record ReferenceNatureNativeShovelSessionV111(
     {
         var world = source.World;
         if (source.Phase != RunPhase.Rest || world is null ||
-            source.Stochastic.NativeRunRng is null ||
+            source.Stochastic.NativeRunRngMutable is null ||
             !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
             source.Stochastic.ControlledRunActionChoice is not null ||
             source.Stochastic.ControlledEventRewardChoice is not null ||

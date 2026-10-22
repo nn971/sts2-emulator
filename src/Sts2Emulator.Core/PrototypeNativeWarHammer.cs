@@ -32,14 +32,14 @@ public sealed partial class PrototypeGameEngine
             if (candidates.Count == 0)
                 continue;
 
-            if (state.Stochastic.NativeRunRng is not null)
+            if (state.Stochastic.NativeRunRngMutable is not null)
             {
                 // Native War Hammer uses the persistent run.niche stream.
                 // Resolve each swap through the typed boundary and keep the
                 // run and active-combat cursor copies synchronized.
                 var nativeStreams = (state.World?.Combat?.Stochastic.NativeRng
                     ?.RunStreams
-                    ?? state.Stochastic.NativeRunRng).Fork();
+                    ?? state.Stochastic.NativeRunRngMutable).Fork();
                 NativeEventRandomProbeV111.CaptureShuffle(
                     StochasticSiteRegistryV111
                         .WarHammerEliteUpgradeShuffleSiteId,
@@ -85,7 +85,7 @@ public sealed partial class PrototypeGameEngine
                 var shuffled = candidates.ToArray();
                 _ = LegacyFisherYatesV111.ShuffleInPlace(
                     shuffled,
-                    state.Stochastic.PrototypeRng,
+                    state.Stochastic.PrototypeRngMutable,
                     "event",
                     StochasticSiteRegistryV111
                         .WarHammerEliteUpgradeShuffleSiteId,

@@ -39,7 +39,7 @@ public sealed partial class PrototypeGameEngine
                 if (pool.Length < 3)
                     throw new NotSupportedException(
                         $"Glass Eye requires three {rarity} Silent cards.");
-                return PickDistinct(pool, 3, after.Stochastic.PrototypeRng, "reward");
+                return PickDistinct(pool, 3, after.Stochastic.PrototypeRngMutable, "reward");
             }).ToArray();
             var generators = rarities.Select(rarity =>
                 (PrototypeCardRewardGenerator?)new(

@@ -120,7 +120,7 @@ public sealed partial class PrototypeGameEngine
                 SourceCardInstanceId: cost.CardInstanceId,
                 CardId: card.CardId,
                 FromHandDraw: cost.FromHandDraw),
-            run.Stochastic.PrototypeRng, cost.EventDepth,
+            run.Stochastic.PrototypeRngMutable, cost.EventDepth,
             allowSuspension: allowHookSuspension);
         var nextRun = run with
         {

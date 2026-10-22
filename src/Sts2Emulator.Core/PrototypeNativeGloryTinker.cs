@@ -187,7 +187,7 @@ public sealed partial class PrototypeGameEngine
             Deck = state.Player.Deck.Append(added).ToArray()
         };
         player = ApplyRelicRunEvent(player,
-            PrototypeRunEventKind.CardAdded, addedCard: added, rng: state.Stochastic.PrototypeRng);
+            PrototypeRunEventKind.CardAdded, addedCard: added, rng: state.Stochastic.PrototypeRngMutable);
         return CompleteRoomToMap(state with
         {
             Player = player,

@@ -655,7 +655,7 @@ public sealed record SemanticPilotCombatV111(
                             initialIntents.BaselineCombat)) ||
                 entryCombat.Stochastic.NativeRng is not null ||
                 entryCombat.Stochastic.SemanticDeck is not null ||
-                this.Run.Stochastic.NativeRunRng is not null)
+                this.Run.Stochastic.NativeRunRngMutable is not null)
                 throw new InvalidDataException(
                     "Initial intent continuation diverged from the source-route boundary.");
         }
@@ -1901,7 +1901,7 @@ public static class SemanticPilotCombatEngineV111
             combat.Enemies.Any(enemy => enemy.PlannedMoveIndex is not null ||
                 enemy.PlannedNextAiStateId is not null) ||
             combat.Stochastic.NativeRng is not { } nativeCombat ||
-            run.Stochastic.NativeRunRng is null)
+            run.Stochastic.NativeRunRngMutable is null)
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_ROUTE site=act1.entry " +
                 "operation=not_a_native_player_boundary");
@@ -2005,7 +2005,7 @@ public static class SemanticPilotCombatEngineV111
                 using (ControlledChanceGuardV111.AllowEngineOwnedNativeProvider())
                 using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
                     committed = PrototypeGameEngine.CommitEnemyIntentsWithAudit(
-                        combat, run.Stochastic.PrototypeRng,
+                        combat, run.Stochastic.PrototypeRngMutable,
                         NativeCombatRngEntryV111.CommittedIntentSiteId);
                 using (ControlledChanceGuardV111.Enter())
                 using (ControlledChanceGuardV111.AllowEngineOwnedNativeProvider())
@@ -2113,7 +2113,7 @@ public static class SemanticPilotCombatEngineV111
             "Native policy entry is missing its run world.");
         var combat = world.Combat ?? throw new InvalidDataException(
             "Native policy entry is missing its combat.");
-        if (run.Stochastic.NativeRunRng is not null || combat.Stochastic.NativeRng is not null ||
+        if (run.Stochastic.NativeRunRngMutable is not null || combat.Stochastic.NativeRng is not null ||
             combat.Stochastic.SemanticDeck is null ||
             combat.Stochastic.SemanticDeck.Mode != SemanticDeckStateV111.NatureMode)
             throw new InvalidOperationException(
@@ -2777,7 +2777,7 @@ public static class SemanticPilotCombatEngineV111
     {
         static ulong Count(RunState run)
         {
-            if (!run.Stochastic.PrototypeRng.TryGetStream("reward", out var stream) ||
+            if (!run.Stochastic.PrototypeRngMutable.TryGetStream("reward", out var stream) ||
                 stream.Codec != PrototypeRng.Codec)
                 throw new InvalidDataException(
                     "Reward RNG stream is missing or has an unsupported codec.");
@@ -3127,7 +3127,7 @@ public static class SemanticPilotCombatEngineV111
         if (current.PendingInitialIntents is { Pending: not null } initialIntents)
         {
             var resolvedInitial = ControlledTurnIntentEngineV111.Resolve(
-                initialIntents, selectedIndex, current.Run.Stochastic.PrototypeRng);
+                initialIntents, selectedIndex, current.Run.Stochastic.PrototypeRngMutable);
             var nextRun = current.Run;
             ControlledTurnIntentsV111? pendingInitial = resolvedInitial.Complete
                 ? null : resolvedInitial;
@@ -4043,7 +4043,7 @@ public static class SemanticPilotCombatEngineV111
             throw new InvalidDataException(
                 "Native policy action did not reach an active combat boundary.");
         var combat = run.World!.Combat!;
-        if (combat.Stochastic.NativeRng is null || run.Stochastic.NativeRunRng is null)
+        if (combat.Stochastic.NativeRng is null || run.Stochastic.NativeRunRngMutable is null)
             throw new InvalidDataException(
                 "Native policy combat lost its RNG stream owner.");
         if (combat.Stochastic.SemanticDeck is not { } deck ||

@@ -294,7 +294,7 @@ public sealed partial class PrototypeGameEngine
             PendingChoice = null
         };
         var resumedEvent = ResumeChoiceResolutionContinuation(
-            run.Player, combat, run.Stochastic.PrototypeRng, continuation);
+            run.Player, combat, run.Stochastic.PrototypeRngMutable, continuation);
         if (resumedEvent.Combat.PendingChoice is not null ||
             resumedEvent.Combat.PendingKnowledgeDemonChoice is not null)
             throw new NotSupportedException(

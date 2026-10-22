@@ -439,7 +439,7 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
     }
 
     private static bool IsLegacyNativeFallback(RunState state) =>
-        state.Stochastic.NativeRunRng is null && state.World is { } world &&
+        state.Stochastic.NativeRunRngMutable is null && state.World is { } world &&
         PrototypeGameEngine.UsesNativeRegionalSystems(world);
 
     private static ChanceLawV111 QueryLegacyFallbackSite(
@@ -590,7 +590,7 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
             evt.PendingPotionReplacement is not null ||
             evt.RemainingPotionIds.Length != 0 ||
             string.IsNullOrWhiteSpace(origin.RunSeed) ||
-            origin.Stochastic.NativeRunRng is null ||
+            origin.Stochastic.NativeRunRngMutable is null ||
             evt.Stochastic.NativeRng?.StreamId != NativeRngV111Contexts
                 .ForEvent(origin.RunSeed,
                     PrototypeNativeEndlessConveyor.NativeRngEventId).StreamId ||
@@ -608,7 +608,7 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
     private static int GetLegacyStreamOrdinal(
         RunState origin, string streamId)
     {
-        if (!origin.Stochastic.PrototypeRng.TryGetStream(streamId, out var stream))
+        if (!origin.Stochastic.PrototypeRngMutable.TryGetStream(streamId, out var stream))
             throw new InvalidDataException(
                 $"Endless Conveyor potion request requires one '{streamId}' legacy stream.");
         var ordinal = stream.CallCount ?? 0;
@@ -873,7 +873,7 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
         {
             var candidates = PrototypeNativeEndlessConveyor
                 .GetUpgradeCardCandidates(origin);
-            var expectedOutcomeId = origin.Stochastic.NativeRunRng is null
+            var expectedOutcomeId = origin.Stochastic.NativeRunRngMutable is null
                 ? "choice_index:" + selection.OutcomeIndex
                 : (uint)selection.OutcomeIndex < (uint)candidates.Length
                     ? $"card-instance:{candidates[selection.OutcomeIndex]}:index:{selection.OutcomeIndex}"
@@ -898,7 +898,7 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
         {
             var candidates = PrototypeNativeEndlessConveyor
                 .GetColorlessCardCandidates(origin);
-            var expectedOutcomeId = origin.Stochastic.NativeRunRng is null
+            var expectedOutcomeId = origin.Stochastic.NativeRunRngMutable is null
                 ? "choice_index:" + selection.OutcomeIndex
                 : (uint)selection.OutcomeIndex < (uint)candidates.Length
                     ? $"card-model:{candidates[selection.OutcomeIndex]}:index:{selection.OutcomeIndex}"
@@ -924,7 +924,7 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
         {
             var candidates = PrototypeNativePotionShop.NativePotionPoolOrder;
             var eventState = run.World?.Event;
-            var expectedOutcomeId = origin.Stochastic.NativeRunRng is null
+            var expectedOutcomeId = origin.Stochastic.NativeRunRngMutable is null
                 ? "choice_index:" + selection.OutcomeIndex
                 : (uint)selection.OutcomeIndex < (uint)candidates.Count
                     ? "potion:" + candidates[selection.OutcomeIndex]
@@ -943,8 +943,8 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
                 run.Player.Gold != origin.Player.Gold - 40 ||
                 !run.Player.PotionSlots.SequenceEqual(
                     origin.Player.PotionSlots) ||
-                CanonicalJson.Sha256(run.Stochastic.PrototypeRng) !=
-                    CanonicalJson.Sha256(origin.Stochastic.PrototypeRng))
+                CanonicalJson.Sha256(run.Stochastic.PrototypeRngMutable) !=
+                    CanonicalJson.Sha256(origin.Stochastic.PrototypeRngMutable))
                 throw new InvalidDataException(
                     "Scripted Suspicious Condiment action did not queue the Nature-selected potion without advancing the legacy provider.");
             return;
