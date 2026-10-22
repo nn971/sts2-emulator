@@ -155,7 +155,8 @@ internal static class NativeEventShufflePlanBuilderV111
                 !improvementVictoryAction &&
                 !paelsToothVictoryAction ||
             activeEvent?.Stochastic.ControlledChoice is not null ||
-            activeEvent?.NativeEventPotionSlot is not null ||
+            activeEvent?.Stochastic.RandomOutcomes.NativeEventPotionSlot
+                is not null ||
             origin.Stochastic.ControlledEventRewardChoice is not null)
             throw new InvalidOperationException(
                 "Native shuffle Nature choices require an active event, an admitted combat-victory hook, or Fake Merchant entry.");
@@ -2233,7 +2234,7 @@ public static partial class ChanceLawEngineV111
             evt.NativePageIndex != 0 || evt.ChosenChoiceId is not null ||
             evt.NativeDishCount != 0 || evt.NativeDishId is not null ||
             evt.NativeLastDishId is not null ||
-            evt.NativeEventPotionSlot is not null)
+            evt.Stochastic.RandomOutcomes.NativeEventPotionSlot is not null)
             throw new InvalidOperationException(
                 "Endless Conveyor dish law was not captured at its initial pre-draw boundary.");
 
@@ -2317,7 +2318,8 @@ public static partial class ChanceLawEngineV111
             evt.NativePageIndex != 0 || evt.ChosenChoiceId is not null ||
             evt.NativeDishCount < 1 || evt.NativeDishId is null ||
             evt.NativeDishId != evt.NativeLastDishId ||
-            evt.NativeDishRollPending || evt.NativeEventPotionSlot is not null ||
+            evt.NativeDishRollPending ||
+            evt.Stochastic.RandomOutcomes.NativeEventPotionSlot is not null ||
             evt.Stochastic.ProviderMode is not (null or "scripted-v111") ||
             evt.Stochastic.ControlledChoice is not null ||
             origin.Stochastic.ControlledEventRewardChoice is not null)
@@ -2413,7 +2415,8 @@ public static partial class ChanceLawEngineV111
             evt.NativePageIndex != 0 || evt.ChosenChoiceId is not null ||
             evt.NativeDishCount < 1 || evt.NativeDishId != "FRIED_EEL" ||
             evt.NativeDishId != evt.NativeLastDishId ||
-            evt.NativeDishRollPending || evt.NativeEventPotionSlot is not null ||
+            evt.NativeDishRollPending ||
+            evt.Stochastic.RandomOutcomes.NativeEventPotionSlot is not null ||
             evt.Stochastic.ProviderMode is not (null or "scripted-v111") ||
             evt.Stochastic.ControlledChoice is not null ||
             origin.Stochastic.ControlledEventRewardChoice is not null ||
@@ -2502,7 +2505,8 @@ public static partial class ChanceLawEngineV111
             origin.World is not { Event: { } eventState, Combat: null } world ||
             eventState.EventId != PrototypeNativeEndlessConveyor.EventId ||
             eventState.Stochastic.ProviderMode is not (null or "scripted-v111") ||
-            eventState.NativeEventPotionSlot is not null ||
+            eventState.Stochastic.RandomOutcomes.NativeEventPotionSlot
+                is not null ||
             eventState.Stochastic.ControlledChoice is not null ||
             origin.Stochastic.ControlledEventRewardChoice is not null)
             throw new InvalidOperationException(
@@ -2538,7 +2542,8 @@ public static partial class ChanceLawEngineV111
             evt.NativePageIndex != 1 || evt.ChosenChoiceId != "grab" ||
             evt.NativeDishCount < 1 || evt.NativeDishId is null ||
             evt.NativeDishId != evt.NativeLastDishId ||
-            evt.NativeDishRollPending || evt.NativeEventPotionSlot is not null ||
+            evt.NativeDishRollPending ||
+            evt.Stochastic.RandomOutcomes.NativeEventPotionSlot is not null ||
             (evt.NativeDishCount + 1) % 5 == 0)
             throw new InvalidOperationException(
                 "Endless Conveyor continuation law was not captured at a weighted post-grab dish boundary.");

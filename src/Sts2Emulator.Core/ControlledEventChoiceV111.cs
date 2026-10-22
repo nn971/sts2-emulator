@@ -500,7 +500,8 @@ public sealed record PrototypeControlledEventChoiceContinuationV111(
                 && PendingRequest.StreamId == "event"
                 || nativeRegionalLegacyStoneRoute
                 && PendingRequest.StreamId == "event");
-        var hasStonePotion = stoneEvent.NativeEventPotionSlot is
+        var hasStonePotion = stoneEvent.Stochastic.RandomOutcomes
+            .NativeEventPotionSlot is
                 { } potionSlot
             && potionSlot >= 0
             && potionSlot < PartialState.Player.PotionSlots.Length

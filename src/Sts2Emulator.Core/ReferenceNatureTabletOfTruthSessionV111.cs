@@ -22,7 +22,7 @@ internal static class TabletOfTruthChoicePlanBuilderV111
             evt.NativePageIndex is < 0 or > 3 ||
             evt.ChosenChoiceId is not null ||
             evt.Stochastic.ControlledChoice is not null ||
-            evt.NativeEventPotionSlot is not null ||
+            evt.Stochastic.RandomOutcomes.NativeEventPotionSlot is not null ||
             evt.Stochastic.ProviderMode is not (null or "scripted-v111") ||
             origin.Stochastic.ControlledEventRewardChoice is not null)
             throw new InvalidOperationException(

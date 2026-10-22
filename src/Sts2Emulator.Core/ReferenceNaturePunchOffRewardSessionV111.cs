@@ -31,7 +31,7 @@ internal static class NativePunchOffRewardPlanBuilderV111
             origin.World is not { Act: 1, Event: { } evt, Combat: { } combat } world ||
             evt.EventId != PrototypeNativePunchOff.EventId ||
             evt.NativePageIndex != 2 || evt.ChosenChoiceId is not null ||
-            evt.NativeEventPotionSlot is not null ||
+            evt.Stochastic.RandomOutcomes.NativeEventPotionSlot is not null ||
             evt.Stochastic.ProviderMode is not null ||
             world.ActiveRoom != PrototypeRoomType.Combat ||
             world.Reward is not null || combat.Enemies.Any(enemy => enemy.Hp <= 0) ||

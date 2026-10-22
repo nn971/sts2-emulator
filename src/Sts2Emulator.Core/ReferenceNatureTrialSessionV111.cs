@@ -28,7 +28,7 @@ internal static class TrialCaseChoicePlanBuilderV111
             evt.NativePageIndex is not (0 or 1) ||
             evt.ChosenChoiceId is not null ||
             evt.Stochastic.ControlledChoice is not null ||
-            evt.NativeEventPotionSlot is not null ||
+            evt.Stochastic.RandomOutcomes.NativeEventPotionSlot is not null ||
             evt.Stochastic.ProviderMode is not null ||
             origin.Stochastic.ControlledEventRewardChoice is not null)
             throw new InvalidOperationException(

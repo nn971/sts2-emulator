@@ -26,7 +26,7 @@ internal static class NativeEventInfestedAutomatonCardPickPlanBuilderV111
             evt.EventId != PrototypeNativeHiveEvents.InfestedAutomatonId ||
             evt.NativePageIndex != 0 || evt.ChosenChoiceId is not null ||
             evt.Stochastic.ControlledChoice is not null ||
-            evt.NativeEventPotionSlot is not null ||
+            evt.Stochastic.RandomOutcomes.NativeEventPotionSlot is not null ||
             evt.Stochastic.ProviderMode is not null ||
             origin.Stochastic.ControlledEventRewardChoice is not null ||
             actionId is not ("study" or "touch_core"))
@@ -130,7 +130,7 @@ internal static class NativeEventReflectionsChoicePlanBuilderV111
             evt.EventId != PrototypeNativeGloryEvents.ReflectionsId ||
             evt.NativePageIndex != 0 || evt.ChosenChoiceId is not null ||
             evt.Stochastic.ControlledChoice is not null ||
-            evt.NativeEventPotionSlot is not null ||
+            evt.Stochastic.RandomOutcomes.NativeEventPotionSlot is not null ||
             evt.Stochastic.ProviderMode is not null ||
             origin.Stochastic.ControlledEventRewardChoice is not null ||
             actionId is not (null or "touch_mirror"))
@@ -661,7 +661,8 @@ public static partial class ChanceLawEngineV111
                 $"Stone of All Time ticket site '{siteId}' requires action '{expectedChoice}'.",
                 nameof(actionId));
         if (siteId == NativeStoneOfAllTimeLiftTicketSiteId &&
-            (evt.NativeEventPotionSlot is not { } potionSlot ||
+            (evt.Stochastic.RandomOutcomes.NativeEventPotionSlot is not
+                { } potionSlot ||
              potionSlot < 0 || potionSlot >= origin.Player.PotionSlots.Length ||
              origin.Player.PotionSlots[potionSlot] is null))
             throw new InvalidOperationException(

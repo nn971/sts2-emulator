@@ -416,7 +416,8 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
             capture.PreDrawState.World?.Combat is not null ||
             preDrawEvent.EventId != expectedEventId ||
             preDrawEvent.NativeDishRollPending ||
-            preDrawEvent.NativeEventPotionSlot is not null ||
+            preDrawEvent.Stochastic.RandomOutcomes.NativeEventPotionSlot
+                is not null ||
             preDrawStream is null ||
             preDrawStream.StreamId != expectedStream.StreamId ||
             !(entryDishBoundary || continuationDishBoundary))

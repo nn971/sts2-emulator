@@ -42,7 +42,8 @@ public static class NativeEventContextRngV111
         {
             if (eventState.NativePageIndex != 0
                 || eventState.ChosenChoiceId is not null
-                || eventState.NativeEventPotionSlot is not null)
+                || eventState.Stochastic.RandomOutcomes.NativeEventPotionSlot
+                    is not null)
                 throw new InvalidOperationException(
                     "Cannot reconstruct a missing native event RNG after event progress.");
 
@@ -109,7 +110,8 @@ public static class NativeEventContextRngV111
         {
             if (eventState.NativePageIndex != 0
                 || eventState.ChosenChoiceId is not null
-                || eventState.NativeEventPotionSlot is not null)
+                || eventState.Stochastic.RandomOutcomes.NativeEventPotionSlot
+                    is not null)
                 throw new InvalidOperationException(
                     "Cannot reconstruct a missing native event RNG after event progress.");
             nativeStream = NativeRngV111Contexts.ForEvent(
@@ -174,7 +176,8 @@ public static class NativeEventContextRngV111
         {
             if (eventState.NativePageIndex != 0
                 || eventState.ChosenChoiceId is not null
-                || eventState.NativeEventPotionSlot is not null)
+                || eventState.Stochastic.RandomOutcomes.NativeEventPotionSlot
+                    is not null)
                 throw new InvalidOperationException(
                     "Cannot reconstruct a missing native event RNG after event progress.");
             nativeStream = NativeRngV111Contexts.ForEvent(
@@ -237,7 +240,8 @@ public static class NativeEventContextRngV111
         {
             if (eventState.NativePageIndex != 0
                 || eventState.ChosenChoiceId is not null
-                || eventState.NativeEventPotionSlot is not null)
+                || eventState.Stochastic.RandomOutcomes.NativeEventPotionSlot
+                    is not null)
                 throw new InvalidOperationException(
                     "Cannot reconstruct a missing native event RNG after event progress.");
             nativeStream = NativeRngV111Contexts.ForEvent(
@@ -339,7 +343,8 @@ public static class NativeEventContextRngV111
             scriptedTrashHeapRewardPresent)
             return;
         var stonePotionSlotAvailable =
-            eventState.NativeEventPotionSlot is { } stonePotionSlot &&
+            eventState.Stochastic.RandomOutcomes.NativeEventPotionSlot is
+                { } stonePotionSlot &&
             stonePotionSlot >= 0 &&
             stonePotionSlot < state.Player.PotionSlots.Length &&
             state.Player.PotionSlots[stonePotionSlot] is not null;
@@ -355,7 +360,8 @@ public static class NativeEventContextRngV111
                 PrototypeNativeStoneOfAllTime.EventId,
                 eventState.ChosenChoiceId) &&
             (eventState.ChosenChoiceId == "lift"
-                ? eventState.NativeEventPotionSlot is null
+                ? eventState.Stochastic.RandomOutcomes.NativeEventPotionSlot
+                    is null
                 : stonePotionSlotAvailable);
         var scriptedStoneEntryIsExpected =
             prototypeEventId == PrototypeNativeStoneOfAllTime.EventId &&

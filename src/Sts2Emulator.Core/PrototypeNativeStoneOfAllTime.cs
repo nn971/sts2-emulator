@@ -72,7 +72,8 @@ public sealed partial class PrototypeGameEngine
         if (current.EventId != PrototypeNativeStoneOfAllTime.EventId
             || current.NativePageIndex != 0
             || current.ChosenChoiceId is not null
-            || current.NativeEventPotionSlot is not { } slot
+            || current.Stochastic.RandomOutcomes.NativeEventPotionSlot is not
+                { } slot
             || slot < 0
             || slot >= state.Player.PotionSlots.Length
             || state.Player.PotionSlots[slot] is null)
