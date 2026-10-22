@@ -378,7 +378,8 @@ public static class NativeEventContextRngV111
             .Select((potion, slot) => (Potion: potion, Slot: slot))
             .Where(item => item.Potion is not null)
             .Take(3).ToArray();
-        var futurePotionOffers = eventState.NativeFuturePotionOffers;
+        var futurePotionOffers = eventState.Stochastic.RandomOutcomes
+            .FuturePotionOffers;
         var futurePotionOpeningIsExpected =
             futurePotionEntries.Length >= 2 &&
             futurePotionOffers is not null &&

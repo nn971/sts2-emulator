@@ -160,7 +160,7 @@ public sealed partial class PrototypeGameEngine
             ?? throw new InvalidOperationException(
                 "The Future of Potions has no active event.");
         var slot = action.ReadPayload<TradeFuturePotionPayload>().Slot;
-        var offer = eventState.NativeFuturePotionOffers?
+        var offer = eventState.Stochastic.RandomOutcomes.FuturePotionOffers?
             .SingleOrDefault(item => item.Slot == slot)
             ?? throw new InvalidOperationException(
                 $"Potion slot {slot} has no offer in The Future of Potions.");

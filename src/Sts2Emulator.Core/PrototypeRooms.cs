@@ -1272,7 +1272,7 @@ public sealed partial class PrototypeGameEngine
 
         if (eventState.EventId == PrototypeNativeFutureOfPotions.EventId)
         {
-            return (eventState.NativeFuturePotionOffers
+            return (eventState.Stochastic.RandomOutcomes.FuturePotionOffers
                     ?? Array.Empty<PrototypeFuturePotionOffer>())
                 .Where(offer =>
                     (uint)offer.Slot < (uint)state.Player.PotionSlots.Length
