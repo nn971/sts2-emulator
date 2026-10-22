@@ -225,6 +225,19 @@ public sealed record ReferenceNatureRunActionStochasticStateV111
                 .Validate();
     }
 
+    internal ReferenceNatureRunActionStochasticStateV111 Advance(
+        ReferenceNatureStateV111 natureState,
+        ReferenceNatureDecisionV111 decision)
+    {
+        ArgumentNullException.ThrowIfNull(natureState);
+        ArgumentNullException.ThrowIfNull(decision);
+        decision.Validate();
+        return this with
+        {
+            Cursor = Cursor.Advance(natureState, decision)
+        };
+    }
+
     private static ControlledStochasticDecisionV111[]?
         CloneProviderDecisions(
             ControlledStochasticDecisionV111[]? decisions) => decisions?

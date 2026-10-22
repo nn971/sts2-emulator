@@ -7133,9 +7133,8 @@ public sealed record ReferenceNatureRunActionSessionV111(
                 var next = this with
                 {
                     Run = resolvedRun,
-                    NatureState = selection.NextState,
-                    DecisionTranscript = DecisionTranscript.Append(
-                        decision).ToArray(),
+                    Stochastic = Stochastic.Advance(
+                        selection.NextState, decision),
                     MapGeneration = mapGeneration
                 };
                 if (mapGeneration.Complete)
@@ -7154,9 +7153,8 @@ public sealed record ReferenceNatureRunActionSessionV111(
                 var next = this with
                 {
                     Run = resolvedRun,
-                    NatureState = selection.NextState,
-                    DecisionTranscript = DecisionTranscript.Append(
-                        decision).ToArray(),
+                    Stochastic = Stochastic.Advance(
+                        selection.NextState, decision),
                     LaterActPreparation = laterActPreparation
                 };
                 if (laterActPreparation.Complete)
@@ -7188,9 +7186,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
         var next = this with
         {
             Run = resolvedRun,
-            NatureState = selection.NextState,
-            DecisionTranscript = DecisionTranscript.Append(
-                decision).ToArray()
+            Stochastic = Stochastic.Advance(selection.NextState, decision)
         };
         next.Validate();
         return next;
@@ -7225,14 +7221,14 @@ public sealed record ReferenceNatureRunActionSessionV111(
                     completed, selection.NextState), Action,
                 providerDecisions)
             : Origin.Fork();
+        var decision = new ReferenceNatureDecisionV111(
+            law.LawId, law.EventId, selection.OutcomeId,
+            selection.OutcomeIndex);
         var next = this with
         {
             Run = run,
-            NatureState = selection.NextState,
-            DecisionTranscript = DecisionTranscript.Append(
-                new ReferenceNatureDecisionV111(
-                    law.LawId, law.EventId, selection.OutcomeId,
-                    selection.OutcomeIndex)).ToArray(),
+            Stochastic = Stochastic.Advance(
+                selection.NextState, decision),
             NativeCombatEntryContinuation = replay.Continuation?.Fork(),
             NativeCombatEntryProviderDecisions = providerDecisions
         };
@@ -7425,9 +7421,9 @@ public sealed record ReferenceNatureRunActionSessionV111(
         var nextMapGeneration = mapGeneration.ResolveNext();
         var next = this with
         {
-            NatureState = nextMapGeneration.NatureState,
-            DecisionTranscript = DecisionTranscript.Append(
-                nextMapGeneration.DecisionTranscript[^1]).ToArray(),
+            Stochastic = Stochastic.Advance(
+                nextMapGeneration.NatureState,
+                nextMapGeneration.DecisionTranscript[^1]),
             MapGeneration = nextMapGeneration
         };
         if (nextMapGeneration.Complete)
@@ -7450,9 +7446,9 @@ public sealed record ReferenceNatureRunActionSessionV111(
         var next = this with
         {
             AncientOffer = nextAncientOffer,
-            NatureState = nextAncientOffer.NatureState,
-            DecisionTranscript = DecisionTranscript.Append(
-                nextAncientOffer.DecisionTranscript[^1]).ToArray()
+            Stochastic = Stochastic.Advance(
+                nextAncientOffer.NatureState,
+                nextAncientOffer.DecisionTranscript[^1])
         };
         if (nextAncientOffer.Complete)
         {
@@ -7590,9 +7586,9 @@ public sealed record ReferenceNatureRunActionSessionV111(
         var next = this with
         {
             LaterActPreparation = nextPreparation,
-            NatureState = nextPreparation.NatureState,
-            DecisionTranscript = DecisionTranscript.Append(
-                nextPreparation.DecisionTranscript[^1]).ToArray()
+            Stochastic = Stochastic.Advance(
+                nextPreparation.NatureState,
+                nextPreparation.DecisionTranscript[^1])
         };
         if (nextPreparation.Complete)
             next = next.CommitExperimentalThreeActRunStart();

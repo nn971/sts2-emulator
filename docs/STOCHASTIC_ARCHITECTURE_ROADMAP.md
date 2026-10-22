@@ -2,6 +2,12 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 ReferenceNature run-action cursor append ownership increment (2026-10-22):**
+The run-action stochastic owner now advances its Nature cursor and appends the
+matching decision as one transition. Ordinary actions, Native combat entry,
+map generation, Ancient offers, and later-act preparation use that transition.
+Static source review and `git diff --check` only; no tests or builds were run.
+
 **S3 controlled committed-intent append ownership increment (2026-10-22):**
 `ControlledIntentStateV111.AppendResolvedDecision` checks the chosen ticket
 against the exact pending request and ordinal, then appends it while clearing
