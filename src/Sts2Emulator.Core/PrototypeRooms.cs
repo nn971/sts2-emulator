@@ -3482,7 +3482,8 @@ public sealed partial class PrototypeGameEngine
             ignoreCost |= action.ReadPayload<ReplaceShopPotionPayload>()
                 .OfferId == pendingPotionOfferId;
         }
-        var nativeRunRng = state.Stochastic.NativeRunRngMutable?.Fork();
+        var nativeRunRng = state.Stochastic.NativeRunRng;
+        var prototypeRng = state.Stochastic.PrototypeRng;
 
         if (shop.PendingDeckChoice is { } pending)
         {
@@ -3505,7 +3506,7 @@ public sealed partial class PrototypeGameEngine
                     state.Player,
                     pending,
                     payload.CardInstanceId,
-                    state.Stochastic.PrototypeRngMutable);
+                    prototypeRng);
                 resolvedPlayer = resolved.Player;
                 remaining = resolved.Remaining;
             }
@@ -3516,13 +3517,17 @@ public sealed partial class PrototypeGameEngine
             {
                 resolvedPlayer = AppendCard(
                     resolvedPlayer, nextCardInstanceId++, afterChoicesCardId,
-                    state.Stochastic.PrototypeRngMutable);
+                    prototypeRng);
             }
+            var stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, prototypeRng);
+            if (nativeRunRng is not null)
+                stochastic = RunStochasticStateV111.WithNativeRunRng(
+                    stochastic, nativeRunRng);
             return state with
             {
                 Player = resolvedPlayer,
-                Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                    state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRngMutable),
+                Stochastic = stochastic,
                 World = world with
                 {
                     Shop = shop with
@@ -3623,7 +3628,7 @@ public sealed partial class PrototypeGameEngine
                 },
                 nextId++,
                 offer.ItemId,
-                state.Stochastic.PrototypeRngMutable);
+                prototypeRng);
             shop = shop with
             {
                 CardOffers = shop.CardOffers
@@ -3725,7 +3730,7 @@ public sealed partial class PrototypeGameEngine
                 player,
                 PrototypeRunEventKind.RelicAcquired,
                 acquiredRelicId: offer.ItemId,
-                rng: state.Stochastic.PrototypeRngMutable, allocateCardId: () => nextId++,
+                rng: prototypeRng, allocateCardId: () => nextId++,
                 nativeRunRng: nativeRunRng);
             shop = UpdateRelicOffer(
                 shop,
@@ -3756,11 +3761,15 @@ public sealed partial class PrototypeGameEngine
             NextCardInstanceId = nextId
         };
 
+        var finalStochastic = RunStochasticStateV111.WithPrototypeRng(
+            state.Stochastic, prototypeRng);
+        if (nativeRunRng is not null)
+            finalStochastic = RunStochasticStateV111.WithNativeRunRng(
+                finalStochastic, nativeRunRng);
         return state with
         {
             Player = player,
-            Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRngMutable),
+            Stochastic = finalStochastic,
             World = world
         };
     }
