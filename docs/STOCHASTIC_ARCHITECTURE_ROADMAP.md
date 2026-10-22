@@ -7,8 +7,9 @@
 controlled and semantic choices, player decisions, `AdvanceTurn`,
 `DrawPlayerHand`, and other suspended cursors in one engine owner. Semantic
 end-turn publication and controlled-playable staging use the shared result;
-their transcript and provider policies remain local. Static source review and
-`git diff --check` only; no tests or builds were run.
+unrecognized unresolved choice payloads remain suspended instead of falling
+through to a stage. Their transcript and provider policies remain local.
+Static source review and `git diff --check` only; no tests or builds were run.
 
 **S4 automatic-pipeline cursor clear owner increment (2026-10-22):** Runtime
 cursor consumption and cursor-free checkpoint projection now use

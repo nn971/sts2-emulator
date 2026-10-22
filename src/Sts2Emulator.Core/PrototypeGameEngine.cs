@@ -183,6 +183,11 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         if (run.World?.Combat is not { } combat ||
             combat.AutomaticPipelineContinuation is not { } cursor)
             return PrototypeAutomaticPipelineResumeBoundaryKindV111.None;
+        if (combat.PendingChoice is not null ||
+            combat.PendingKnowledgeDemonChoice is not null ||
+            combat.Stochastic.SemanticDeck?.Pending is not null)
+            return PrototypeAutomaticPipelineResumeBoundaryKindV111
+                .SuspendedPipeline;
         if (cursor.Mechanics.IsAtStep(
                 PrototypeAutomaticStepKind.AdvanceTurn))
             return PrototypeAutomaticPipelineResumeBoundaryKindV111
