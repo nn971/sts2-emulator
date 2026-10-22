@@ -471,6 +471,9 @@ public static class ExperimentalSilentThreeActRouteV111
                 PrototypeNativeLaterActMap.ProfileId(nextAct)))
             throw new InvalidDataException(
                 "Three-act continuation received a map from a different act generator.");
+        var remainingPrepared = prepared
+            .Where(bag => bag.Act != nextAct)
+            .Select(bag => bag.Fork()).ToArray();
         var nextWorld = world with
         {
             Act = nextAct,
@@ -479,15 +482,12 @@ public static class ExperimentalSilentThreeActRouteV111
             ActiveRoom = null, Combat = null, Reward = null,
             Shop = null, Event = null, Map = map.Fork(),
             ActOneRegion = null,
-            Stochastic = world.Stochastic with
-            {
-                ActOneEncounterPool = null,
-                LaterActEncounterBag = nextBag.Fork(),
-                PreparedLaterActEncounterBags = prepared
-                    .Where(bag => bag.Act != nextAct)
-                    .Select(bag => bag.Fork()).ToArray()
-            },
             UnknownRoomOdds = null
+        };
+        nextWorld = nextWorld with
+        {
+            Stochastic = RunWorldStochasticStateV111.CommitActTransition(
+                state, nextWorld, nextBag, remainingPrepared)
         };
         var continued = state with
         {

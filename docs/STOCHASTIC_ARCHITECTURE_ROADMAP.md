@@ -2,6 +2,21 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 three-act encounter handoff ownership increment (2026-10-22):** Act
+transitions now publish the next active bag, remaining future bags, and Act 1
+pool clear through `RunWorldStochasticStateV111.CommitActTransition`. The
+owner validates the target act's queues and shared Darv assignment across
+active and prepared bags before committing. Static source review and
+`git diff --check` only; no tests or builds were run.
+
+**S3 prepared later-act encounter publication increment (2026-10-22):**
+Completed interactive and configured run-start preparation now commits
+future-act bags through
+`RunWorldStochasticStateV111.CommitPreparedLaterActEncounterBags`, validating
+the complete ordered act set, route eligibility, Ascension, and revealed
+Ancient support before publishing. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S3 later-act encounter-pool commit ownership increment (2026-10-22):**
 Experimental Hive/Glory combat entry now publishes the selected encounter bag
 through `RunWorldStochasticStateV111.CommitLaterActEncounterBag`, validating

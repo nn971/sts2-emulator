@@ -619,6 +619,16 @@ public static class V111RunFactory
                 stochastic, natureState, runStartTranscript,
                 controlledReferenceNatureRunStart &&
                 config.UsesExperimentalSilentThreeActRoute);
+        var openingWorld = opening.World!;
+        var worldStochastic = RunWorldStochasticStateV111.WithRelicBag(
+            openingWorld.Stochastic, relicBag);
+        if (preparedLaterActBags is not null)
+            worldStochastic = RunWorldStochasticStateV111
+                .CommitPreparedLaterActEncounterBags(
+                    openingWorld, worldStochastic, config.Ascension,
+                    config.Profile.RevealedEpochs.Contains(
+                        NativeDarvEventV111.EpochId, StringComparer.Ordinal),
+                    preparedLaterActBags);
         return opening with
         {
             GameBuild = input.GameBuild, EmulatorSchema = input.EmulatorSchema,
@@ -629,11 +639,7 @@ public static class V111RunFactory
             {
                 RulesetId = config.RulesetId,
                 ActIdentity = config.Acts[0],
-                Stochastic = opening.World!.Stochastic with
-                {
-                    RelicBag = relicBag,
-                    PreparedLaterActEncounterBags = preparedLaterActBags
-                }
+                Stochastic = worldStochastic
             }
         };
     }

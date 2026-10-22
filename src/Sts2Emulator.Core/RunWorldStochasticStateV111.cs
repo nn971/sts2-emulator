@@ -111,15 +111,8 @@ public sealed record RunWorldStochasticStateV111
                 ValidateLaterActEncounterBag(
                     owner, laterActEncounterBag, run.Ascension,
                     darvRevealed);
-            var darvAssignments = (laterActEncounterBag is { } activeBag
-                    ? new[] { activeBag.AssignedAncientId }
-                    : Array.Empty<string?>())
-                .Concat((preparedLaterActEncounterBags ?? [])
-                    .Select(bag => bag.AssignedAncientId))
-                .Count(id => id == NativeDarvEventV111.EventId);
-            if (darvAssignments > 1)
-                throw new InvalidOperationException(
-                    "The shared Darv Ancient cannot be assigned to multiple acts.");
+            ValidateDarvAssignmentExclusivity(
+                laterActEncounterBag, preparedLaterActEncounterBags);
         }
     }
 
@@ -286,6 +279,21 @@ public sealed record RunWorldStochasticStateV111
                 "Act 1 run has an invalid region-selected boss encounter.");
     }
 
+    private static void ValidateDarvAssignmentExclusivity(
+        PrototypeLaterActEncounterBagV111? activeBag,
+        PrototypeLaterActEncounterBagV111[]? preparedBags)
+    {
+        var assignments = (activeBag is { } active
+                ? new[] { active.AssignedAncientId }
+                : Array.Empty<string?>())
+            .Concat((preparedBags ?? [])
+                .Select(bag => bag.AssignedAncientId))
+            .Count(id => id == NativeDarvEventV111.EventId);
+        if (assignments > 1)
+            throw new InvalidOperationException(
+                "The shared Darv Ancient cannot be assigned to multiple acts.");
+    }
+
     internal static RunWorldStochasticStateV111 WithActOneEncounterPool(
         RunWorldStochasticStateV111? current,
         PrototypeActOneEncounterPoolState? pool) =>
@@ -343,6 +351,68 @@ public sealed record RunWorldStochasticStateV111
         ValidateLaterActEncounterBag(
             world, bag, run.Ascension, darvRevealed);
         return WithLaterActEncounterBag(world.Stochastic, bag);
+    }
+
+    internal static RunWorldStochasticStateV111
+        CommitPreparedLaterActEncounterBags(
+            RunState run, PrototypeLaterActEncounterBagV111[]? bags)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        var world = run.World ?? throw new InvalidDataException(
+            "Prepared encounter commit has no run world.");
+        var configuration = run.Configuration;
+        if (configuration?.UsesExperimentalSilentThreeActRoute != true)
+            throw new InvalidOperationException(
+                "Prepared encounter commits require the configured three-act route.");
+        var darvRevealed = configuration.Profile.RevealedEpochs.Contains(
+            NativeDarvEventV111.EpochId, StringComparer.Ordinal);
+        return CommitPreparedLaterActEncounterBags(
+            world, world.Stochastic, run.Ascension, darvRevealed, bags);
+    }
+
+    internal static RunWorldStochasticStateV111
+        CommitPreparedLaterActEncounterBags(
+            RunWorldState world,
+            RunWorldStochasticStateV111 current,
+            int ascension, bool darvRevealed,
+            PrototypeLaterActEncounterBagV111[]? bags)
+    {
+        ArgumentNullException.ThrowIfNull(world);
+        ArgumentNullException.ThrowIfNull(current);
+        ValidatePreparedLaterActEncounterBags(
+            world, bags, ascension, darvRevealed);
+        ValidateDarvAssignmentExclusivity(null, bags);
+        return WithPreparedLaterActEncounterBags(current, bags);
+    }
+
+    internal static RunWorldStochasticStateV111 CommitActTransition(
+        RunState source, RunWorldState nextWorld,
+        PrototypeLaterActEncounterBagV111 activeBag,
+        PrototypeLaterActEncounterBagV111[] preparedBags)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(nextWorld);
+        ArgumentNullException.ThrowIfNull(activeBag);
+        ArgumentNullException.ThrowIfNull(preparedBags);
+        var currentWorld = source.World ?? throw new InvalidDataException(
+            "Act transition has no source world.");
+        var configuration = source.Configuration;
+        if (configuration?.UsesExperimentalSilentThreeActRoute != true)
+            throw new InvalidOperationException(
+                "Act transition requires the configured three-act route.");
+        var darvRevealed = configuration.Profile.RevealedEpochs.Contains(
+            NativeDarvEventV111.EpochId, StringComparer.Ordinal);
+        ValidateLaterActEncounterBag(
+            nextWorld, activeBag, source.Ascension, darvRevealed);
+        ValidatePreparedLaterActEncounterBags(
+            nextWorld, preparedBags, source.Ascension, darvRevealed);
+        ValidateDarvAssignmentExclusivity(activeBag, preparedBags);
+        return currentWorld.Stochastic with
+        {
+            ActOneEncounterPool = null,
+            LaterActEncounterBag = activeBag,
+            PreparedLaterActEncounterBags = preparedBags
+        };
     }
 
     internal static RunWorldStochasticStateV111 WithPreparedLaterActEncounterBags(

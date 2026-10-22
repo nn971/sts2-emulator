@@ -131,6 +131,10 @@ Live Act 1 encounter selection publishes weak, normal, and elite pool changes th
 
 Experimental Hive/Glory combat entry publishes its selected encounter bag through `RunWorldStochasticStateV111.CommitLaterActEncounterBag`, which validates the configured route, active act, Ascension rules, and revealed Ancient support before publication.
 
+Interactive and configured experimental run-start completion publish the future-act encounter bags through `RunWorldStochasticStateV111.CommitPreparedLaterActEncounterBags`, validating the complete ordered set before it becomes persistent run state.
+
+Three-act continuation publishes the target act's active encounter bag, remaining future bags, and Act 1 pool clear through `RunWorldStochasticStateV111.CommitActTransition`. The owner validates the target queues and shared Darv assignment across both bag groups before publication.
+
 The same world mechanics owner now appends encounter IDs and completed-room records. Ordinary and controlled-playable combat entry plus map-room completion use those transitions.
 
 Native ReferenceNature sessions that project persistent relic bags now validate both their saved origin and replay state. Any present bag must use `NatureUnordered` and pass its canonical rarity, ownership, uniqueness, and sort invariants; the Native event-gold boundary may preserve an absent bag. Calling Bell event-choice, Native event-relic, Neow pickup, and Native Shovel replay apply the same validation when their projected bag is required.
