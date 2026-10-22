@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 one-choice ReferenceNature transcript owner read increment (2026-10-22):**
+Trial, Tablet of Truth, and Trash Heap session completion, validation, save,
+and restore now read their Nature decisions through
+`ReferenceNatureStochasticStateV111`. Snapshot fields and decision order are
+unchanged. Static source review and `git diff --check` only; no tests or builds
+were run.
+
 **S3 controlled turn-intent transcript owner read increment (2026-10-22):**
 Intent-boundary validation, support construction, and typed replay now read
 pending requests and ticket histories through
