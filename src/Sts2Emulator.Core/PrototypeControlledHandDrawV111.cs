@@ -63,11 +63,11 @@ public sealed partial class PrototypeGameEngine
     {
         bool nestedHookChoice = drawn.BoundaryKind ==
             PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice &&
-            drawn.Combat.SemanticDeck is null &&
+            drawn.Combat.Stochastic.SemanticDeck is null &&
             drawn.Combat.PendingChoice is not null;
         bool stratagemSelection = drawn.BoundaryKind ==
             PrototypeDrawCardsBoundaryKind.ShuffleSelection &&
-            drawn.Combat.SemanticDeck is null &&
+            drawn.Combat.Stochastic.SemanticDeck is null &&
             drawn.Combat.PendingChoice is null;
         if (!ControlledChanceGuardV111.Active ||
             (drawn.BoundaryKind is not (

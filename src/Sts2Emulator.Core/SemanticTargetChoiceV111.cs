@@ -178,7 +178,7 @@ public static class SemanticTargetChoiceV111
             "Semantic target continuation changed the hidden draw pile.",
             "Semantic target continuation changed the hidden draw pile.",
             allowMissing: true);
-        if (liveCombat.SemanticDeck is null &&
+        if (liveCombat.Stochastic.SemanticDeck is null &&
             liveCombat.DrawPile.Length != 0)
             throw new InvalidDataException(
                 "A semantic target without a provider deck must have an empty draw pile.");

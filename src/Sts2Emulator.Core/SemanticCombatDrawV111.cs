@@ -301,9 +301,9 @@ public sealed record SemanticCombatDrawV111(
              !completedAutomaticHandDraw) ||
             this.Origin.Phase != RunPhase.Combat ||
             this.Origin.World?.Combat is not { } originCombat ||
-            (!this.AutomaticHandDraw && originCombat.SemanticDeck is not null) ||
+            (!this.AutomaticHandDraw && originCombat.Stochastic.SemanticDeck is not null) ||
             (this.AutomaticHandDraw &&
-             originCombat.SemanticDeck is { } prior &&
+             originCombat.Stochastic.SemanticDeck is { } prior &&
              (this.Run.World?.Combat?.SemanticDeck?.Transcript?.Length ?? 0) <
                  (prior.Transcript?.Length ?? 0)) ||
             originCombat.PendingChoice is not null ||
@@ -322,7 +322,7 @@ public sealed record SemanticCombatDrawV111(
              combat.AutomaticPipelineContinuation is not null) ||
             combat.PendingKnowledgeDemonChoice is not null)
             throw new InvalidDataException("Invalid semantic combat draw stage.");
-        if (this.AutomaticHandDraw && originCombat.SemanticDeck is not null)
+        if (this.AutomaticHandDraw && originCombat.Stochastic.SemanticDeck is not null)
             SemanticDrawPileAdapterV111.ValidateNatureDeckBoundary(
                 originCombat,
                 "Invalid semantic combat draw stage.",
@@ -686,7 +686,7 @@ public static class SemanticCombatDrawEngineV111
         var origin = source.Fork();
         var world = origin.World!;
         var originCombat = world.Combat!;
-        var semanticCombat = sourceCombat.SemanticDeck is null
+        var semanticCombat = sourceCombat.Stochastic.SemanticDeck is null
             ? SemanticDrawPileAdapterV111.InitializeSemanticDrawPile(
                 originCombat,
                 SemanticDeckEngineV111.BeginNature(originCombat.DrawPile))

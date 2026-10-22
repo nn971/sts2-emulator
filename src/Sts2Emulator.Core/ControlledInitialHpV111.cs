@@ -7,7 +7,7 @@ namespace Sts2Emulator.Core;
 /// Serializable, fork-isolated initial-monster-HP Nature boundary. This D3
 /// slice deliberately does not impersonate an exact native-seeded combat:
 /// controlled HP selections leave native cursors untouched and finish with
-/// Combat.NativeRng = null. Other chance sites remain unsupported.
+/// Combat.Stochastic.NativeRng = null. Other chance sites remain unsupported.
 /// </summary>
 public sealed record ControlledInitialHpStateV111(
     CombatState Combat,
@@ -188,7 +188,7 @@ public static class ControlledInitialHpV111
     private static void ValidateOwners(ControlledInitialHpStateV111 state)
     {
         if (state.Mode != "controlled-v111-initial-hp-v1" ||
-            state.Combat.NativeRng is not null ||
+            state.Combat.Stochastic.NativeRng is not null ||
             state.NextEnemyIndex < 0 ||
             state.NextEnemyIndex > state.Combat.Enemies.Length ||
             state.Formation.Enemies.Length != state.Combat.Enemies.Length ||

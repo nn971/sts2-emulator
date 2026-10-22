@@ -153,7 +153,7 @@ public static class SemanticPlayerActionEngineV111
                 "operation=action_crossed_chance_or_turn_boundary");
         if (!combat.DrawPile.SequenceEqual(afterCombat.DrawPile) ||
             CanonicalJson.Sha256(combat.Stochastic.SemanticDeck) !=
-                CanonicalJson.Sha256(afterCombat.SemanticDeck))
+                CanonicalJson.Sha256(afterCombat.Stochastic.SemanticDeck))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
                 "operation=unmodeled_draw_pile_mutation");
@@ -193,8 +193,8 @@ public static class SemanticPlayerActionEngineV111
             string.IsNullOrWhiteSpace(state.ActionId) ||
             !state.Origin.World!.Combat!.DrawPile.SequenceEqual(
                 state.Run.World!.Combat!.DrawPile) ||
-            CanonicalJson.Sha256(state.Origin.World.Combat.SemanticDeck) !=
-                CanonicalJson.Sha256(state.Run.World.Combat.SemanticDeck))
+            CanonicalJson.Sha256(state.Origin.World.Combat.Stochastic.SemanticDeck) !=
+                CanonicalJson.Sha256(state.Run.World.Combat.Stochastic.SemanticDeck))
             throw new InvalidDataException(
                 "Semantic player action changed provider-owned hidden deck.");
     }

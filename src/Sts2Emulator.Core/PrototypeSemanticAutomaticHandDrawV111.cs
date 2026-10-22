@@ -66,7 +66,7 @@ public sealed partial class PrototypeGameEngine
                 completed.ControlledSemanticDrawRequested is null &&
                 after.PendingChoice is null &&
                 after.PendingKnowledgeDemonChoice is null &&
-                after.SemanticDeck?.Pending is null;
+                after.Stochastic.SemanticDeck?.Pending is null;
             // The ordinary stage may finish without a Nature ticket when
             // the hand has no remaining capacity or a committed order drew
             // the cards. A suspended BeforeHandDraw choice remains pending.
@@ -187,7 +187,7 @@ public sealed partial class PrototypeGameEngine
             !completed.ControlledSemanticBeforeHandDrawPending &&
             after.PendingChoice is null &&
             after.PendingKnowledgeDemonChoice is null &&
-            after.SemanticDeck is { Pending: null })
+            after.Stochastic.SemanticDeck is { Pending: null })
         {
             // A source-committed opening order or an empty-capacity draw
             // can complete this stage without a semantic card ticket.
@@ -208,7 +208,7 @@ public sealed partial class PrototypeGameEngine
                 PrototypeAutomaticStepKind.DrawPlayerHand) ||
             completed.ControlledSemanticBeforeHandDrawPending ||
             completed.ControlledSemanticDrawRemaining is not null ||
-            after.SemanticDeck is not { Pending: null })
+            after.Stochastic.SemanticDeck is not { Pending: null })
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.BeforeHandDraw " +
                 "operation=" + unsupportedOperation);

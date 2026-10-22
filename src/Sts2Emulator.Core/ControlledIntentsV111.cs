@@ -93,7 +93,7 @@ public static class ControlledIntentsV111
     {
         ArgumentNullException.ThrowIfNull(nativePrepared);
         NativeCombatRngEntryV111.Validate(nativePrepared);
-        var native = nativePrepared.NativeRng ??
+        var native = nativePrepared.Stochastic.NativeRng ??
             throw new InvalidOperationException("Intent boundary requires a native-owned combat source.");
         var combatWithoutNativeRng = nativePrepared.Fork();
         combatWithoutNativeRng = combatWithoutNativeRng with
@@ -265,8 +265,8 @@ public static class ControlledIntentsV111
     private static void Verify(ControlledIntentStateV111 state)
     {
         if (state.Mode != "controlled-v111-committed-intent-v1" ||
-            state.BaselineCombat.NativeRng is not null ||
-            state.Combat.NativeRng is not null ||
+            state.BaselineCombat.Stochastic.NativeRng is not null ||
+            state.Combat.Stochastic.NativeRng is not null ||
             state.NextEnemyIndex < 0 ||
             state.NextEnemyIndex > state.Combat.Enemies.Length ||
             state.Transcript is null || state.Formation is null ||

@@ -521,7 +521,7 @@ public static class SemanticCardSelectionEngineV111
         var selectionSpec = from!.PendingChoice!.Selection;
         var topMove = IsSupportedTopMove(selectionSpec);
         var drawRemoval = IsSupportedDrawRemoval(selectionSpec);
-        var initial = from.SemanticDeck ??
+        var initial = from.Stochastic.SemanticDeck ??
             throw new InvalidDataException("Original semantic deck is absent.");
         SemanticDeckEngineV111.Validate(initial);
         var selectedUnknown = state.SelectedCardInstanceIds.Any(id =>
@@ -570,7 +570,7 @@ public static class SemanticCardSelectionEngineV111
         {
             var resultCombat = to ?? throw new InvalidDataException(
                 "Resumed card draw lost its combat state.");
-            if (resultCombat.SemanticDeck is null)
+            if (resultCombat.Stochastic.SemanticDeck is null)
                 throw new InvalidDataException(
                     "Resumed card draw lost the provider-owned deck.");
             SemanticDrawPileAdapterV111.ValidateSynchronized(resultCombat);

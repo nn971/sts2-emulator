@@ -403,7 +403,7 @@ public static class SemanticPoolShuffleChoiceV111
             !helloWorldAutomaticBeforeHandDraw &&
             (!combat.DrawPile.SequenceEqual(resultCombat.DrawPile) ||
              CanonicalJson.Sha256(combat.Stochastic.SemanticDeck) !=
-                 CanonicalJson.Sha256(resultCombat.SemanticDeck)))
+                 CanonicalJson.Sha256(resultCombat.Stochastic.SemanticDeck)))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=" + decision.Event.SiteId + " " +
                 "operation=unmodeled_draw_pile_mutation");

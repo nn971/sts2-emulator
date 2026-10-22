@@ -63,8 +63,8 @@ public static class SemanticDrawPileAdapterV111
         ArgumentNullException.ThrowIfNull(after);
         ArgumentException.ThrowIfNullOrWhiteSpace(errorMessage);
         if (!before.DrawPile.SequenceEqual(after.DrawPile) ||
-            CanonicalJson.Sha256(before.SemanticDeck) !=
-                CanonicalJson.Sha256(after.SemanticDeck))
+            CanonicalJson.Sha256(before.Stochastic.SemanticDeck) !=
+                CanonicalJson.Sha256(after.Stochastic.SemanticDeck))
             throw new NotSupportedException(errorMessage);
     }
 

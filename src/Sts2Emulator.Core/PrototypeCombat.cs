@@ -1812,7 +1812,7 @@ public sealed partial class PrototypeGameEngine
                 { PendingChoice: null,
                   PendingKnowledgeDemonChoice: null,
                   AutomaticPipelineContinuation: null } live &&
-            live.SemanticDeck?.Pending is null &&
+            live.Stochastic.SemanticDeck?.Pending is null &&
             AllEnemiesDefeated(live)
                 ? EnterCombatReward(state)
                 : state;
@@ -7088,8 +7088,8 @@ public sealed partial class PrototypeGameEngine
                         Stochastic = CombatStochasticStateV111.WithNativeRng(
                             committedDraw.Stochastic,
                             nativeRunStreams is null
-                                ? committedDraw.NativeRng
-                                : committedDraw.NativeRng! with
+                                ? committedDraw.Stochastic.NativeRng
+                                : committedDraw.Stochastic.NativeRng! with
                                 {
                                     RunStreams = nativeRunStreams
                                 })

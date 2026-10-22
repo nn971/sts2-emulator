@@ -654,8 +654,8 @@ public sealed record SemanticPilotCombatV111(
                     {
                         AutomaticPipelineContinuation = null
                     }) ||
-                entryCombat.NativeRng is not null ||
-                entryCombat.SemanticDeck is not null ||
+                entryCombat.Stochastic.NativeRng is not null ||
+                entryCombat.Stochastic.SemanticDeck is not null ||
                 this.Run.Stochastic.NativeRunRng is not null)
                 throw new InvalidDataException(
                     "Initial intent continuation diverged from the source-route boundary.");
@@ -2208,7 +2208,7 @@ public static class SemanticPilotCombatEngineV111
         if (remaining != 0 || drawn.Phase != RunPhase.Combat ||
             result is null || result.PendingChoice is not null ||
             result.AutomaticPipelineContinuation is not null ||
-            result.SemanticDeck?.Pending is not null ||
+            result.Stochastic.SemanticDeck?.Pending is not null ||
             !result.Hand.SequenceEqual(dealt) ||
             !result.DrawPile.SequenceEqual(combat.DrawPile))
             throw new NotSupportedException(
@@ -2339,8 +2339,8 @@ public static class SemanticPilotCombatEngineV111
             }
             else if (next is null ||
                      !previous.DrawPile.SequenceEqual(next.DrawPile) ||
-                     CanonicalJson.Sha256(previous.SemanticDeck) !=
-                         CanonicalJson.Sha256(next.SemanticDeck))
+                     CanonicalJson.Sha256(previous.Stochastic.SemanticDeck) !=
+                         CanonicalJson.Sha256(next.Stochastic.SemanticDeck))
             {
                 if ((!semanticDrawCard && !semanticAutoplayCard &&
                      !semanticRandomRareToHandCard) || next is null)
@@ -2420,8 +2420,8 @@ public static class SemanticPilotCombatEngineV111
                 (!isHandReturnPotion && !isDistilledChaos &&
                 !previous.DrawPile.SequenceEqual(next.DrawPile) ||
                 !isHandReturnPotion && !isDistilledChaos &&
-                CanonicalJson.Sha256(previous.SemanticDeck) !=
-                    CanonicalJson.Sha256(next.SemanticDeck))))
+                CanonicalJson.Sha256(previous.Stochastic.SemanticDeck) !=
+                    CanonicalJson.Sha256(next.Stochastic.SemanticDeck))))
                 throw new NotSupportedException(
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
                     "operation=unmodeled_draw_pile_mutation");
