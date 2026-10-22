@@ -659,9 +659,7 @@ public static class SemanticCombatDrawEngineV111
             var nextPileChoice = PublishDrawProgress(
                 state, resumed, requested, pileCardRemaining) with
             {
-                RandomPileCardTranscript =
-                    state.Stochastic.RandomPileCardTranscript
-                    .Append(decision.Fork()).ToArray()
+                Stochastic = state.Stochastic.AppendRandomPileCard(decision)
             };
             Validate(nextPileChoice);
             return nextPileChoice;
@@ -680,9 +678,7 @@ public static class SemanticCombatDrawEngineV111
             var nextInsertion = PublishDrawProgress(
                 state, resumed, remainingCount: insertionRemaining) with
             {
-                DrawInsertionTranscript =
-                    state.Stochastic.DrawInsertionTranscript
-                    .Append(decision.Fork()).ToArray()
+                Stochastic = state.Stochastic.AppendDrawInsertion(decision)
             };
             Validate(nextInsertion);
             return nextInsertion;
@@ -719,8 +715,7 @@ public static class SemanticCombatDrawEngineV111
                 state, resumedCost.Run,
                 remainingCount: resumedCost.Remaining) with
             {
-                CostTranscript = state.Stochastic.CostTranscript
-                    .Append(decision).ToArray()
+                Stochastic = state.Stochastic.AppendCost(decision)
             };
             Validate(costNext);
             return costNext;
@@ -783,9 +778,7 @@ public static class SemanticCombatDrawEngineV111
         var next = PublishDrawProgress(
             state, resumedRun, remainingCount: remaining) with
         {
-            StratagemSelectionTranscript =
-                state.Stochastic.StratagemSelectionTranscript
-                    .Append(decision.Fork()).ToArray()
+            Stochastic = state.Stochastic.AppendStratagemSelection(decision)
         };
         Validate(next);
         return next;
@@ -810,9 +803,7 @@ public static class SemanticCombatDrawEngineV111
         var next = PublishDrawProgress(
             state, run, requested, remaining) with
         {
-            DrawHookChoiceTranscript =
-                state.Stochastic.DrawHookChoiceTranscript
-                .Append(decision.Fork()).ToArray()
+            Stochastic = state.Stochastic.AppendDrawHookChoice(decision)
         };
         Validate(next);
         return next;

@@ -47,6 +47,12 @@ record keeps its flattened properties as delegates, and end-turn projection
 queries the mechanics owner directly. Static source review and
 `git diff --check` only; no tests or builds were run.
 
+**S4 semantic draw transcript append ownership increment (2026-10-22):**
+`SemanticCombatDrawStochasticStateV111` now owns validated appends for random
+pile-card, insertion, cost, Stratagem, and draw-hook decisions. Resolution
+adapters publish these typed history transitions through the stochastic owner.
+Static source review and `git diff --check` only; no tests or builds were run.
+
 **S4 automatic-pipeline cursor clear owner increment (2026-10-22):** Runtime
 cursor consumption and cursor-free checkpoint projection now use
 `PrototypeGameEngine.ClearAutomaticPipelineContinuation`. End-turn setup,

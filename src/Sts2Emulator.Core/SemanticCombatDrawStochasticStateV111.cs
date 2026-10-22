@@ -44,9 +44,73 @@ public sealed record SemanticCombatDrawStochasticStateV111
     public RandomIndexDecisionV111[] CostTranscript
     {
         get => CopyTranscript(_costTranscript,
-            PrototypeControlledEventChoiceContinuationV111.CloneDecision)!;
+            CloneCostDecision)!;
         init => _costTranscript = CopyTranscript(value,
-            PrototypeControlledEventChoiceContinuationV111.CloneDecision);
+            CloneCostDecision);
+    }
+
+    internal SemanticCombatDrawStochasticStateV111 AppendRandomPileCard(
+        SemanticRandomPileCardDecisionV111 decision)
+    {
+        ArgumentNullException.ThrowIfNull(decision);
+        decision.Validate();
+        return this with
+        {
+            RandomPileCardTranscript = RandomPileCardTranscript
+                .Append(decision.Fork()).ToArray()
+        };
+    }
+
+    internal SemanticCombatDrawStochasticStateV111 AppendDrawInsertion(
+        SemanticDrawInsertionDecisionV111 decision)
+    {
+        ArgumentNullException.ThrowIfNull(decision);
+        decision.Validate();
+        return this with
+        {
+            DrawInsertionTranscript = DrawInsertionTranscript
+                .Append(decision.Fork()).ToArray()
+        };
+    }
+
+    internal SemanticCombatDrawStochasticStateV111 AppendStratagemSelection(
+        SemanticCardSelectionDecisionV111 decision)
+    {
+        ArgumentNullException.ThrowIfNull(decision);
+        decision.Validate();
+        return this with
+        {
+            StratagemSelectionTranscript = StratagemSelectionTranscript
+                .Append(decision.Fork()).ToArray()
+        };
+    }
+
+    internal SemanticCombatDrawStochasticStateV111 AppendDrawHookChoice(
+        SemanticDrawHookChoiceDecisionV111 decision)
+    {
+        ArgumentNullException.ThrowIfNull(decision);
+        decision.Validate();
+        return this with
+        {
+            DrawHookChoiceTranscript = DrawHookChoiceTranscript
+                .Append(decision.Fork()).ToArray()
+        };
+    }
+
+    internal SemanticCombatDrawStochasticStateV111 AppendCost(
+        RandomIndexDecisionV111 decision)
+    {
+        ArgumentNullException.ThrowIfNull(decision);
+        decision.Validate();
+        if (decision.ProviderMode != "semantic-controlled-v1" ||
+            decision.ProbabilityStatus != "UNVERIFIED")
+            throw new InvalidDataException(
+                "Unexpected semantic drawn-cost transcript provenance.");
+        return this with
+        {
+            CostTranscript = CostTranscript.Append(CloneCostDecision(decision))
+                .ToArray()
+        };
     }
 
     public SemanticCombatDrawStochasticStateV111 Fork() => this with
@@ -59,8 +123,7 @@ public sealed record SemanticCombatDrawStochasticStateV111
             decision => decision.Fork())!,
         DrawHookChoiceTranscript = CopyTranscript(_drawHookChoiceTranscript,
             decision => decision.Fork())!,
-        CostTranscript = CopyTranscript(_costTranscript,
-            PrototypeControlledEventChoiceContinuationV111.CloneDecision)!
+        CostTranscript = CopyTranscript(_costTranscript, CloneCostDecision)!
     };
 
     public void Validate()
@@ -111,6 +174,15 @@ public sealed record SemanticCombatDrawStochasticStateV111
     private static T[]? CopyTranscript<T>(T[]? transcript, Func<T, T> clone)
         where T : class => transcript?.Select(decision =>
             decision is null ? null! : clone(decision)).ToArray();
+
+    private static RandomIndexDecisionV111 CloneCostDecision(
+        RandomIndexDecisionV111 decision) => decision with
+    {
+        Request = decision.Request with
+        {
+            OrderedCandidates = (int[])decision.Request.OrderedCandidates.Clone()
+        }
+    };
 }
 
 /// <summary>Consumes the typed semantic-draw histories during deterministic
