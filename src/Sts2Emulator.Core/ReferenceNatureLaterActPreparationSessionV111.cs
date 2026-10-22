@@ -303,7 +303,7 @@ public sealed record ReferenceNatureLaterActPreparationSessionV111(
     public bool Complete => Bags is not null && PendingRequest is null;
 
     [JsonIgnore]
-    public int NextOrdinal => DecisionTranscript.Length;
+    public int NextOrdinal => Stochastic.DecisionTranscript.Length;
 
     [JsonIgnore]
     public string Fingerprint => CanonicalJson.Sha256(this);
@@ -351,7 +351,7 @@ public sealed record ReferenceNatureLaterActPreparationSessionV111(
             law.LawId, law.EventId, selection.OutcomeId,
             selection.OutcomeIndex);
         var next = Rebuild(InitialPrototypeRng, Ascension, Profile,
-            InitialNatureState, DecisionTranscript.Append(decision).ToArray());
+            InitialNatureState, Stochastic.DecisionTranscript.Append(decision).ToArray());
         next.Validate();
         return next;
     }
@@ -366,7 +366,7 @@ public sealed record ReferenceNatureLaterActPreparationSessionV111(
         var capture = Capture(InitialPrototypeRng, Ascension, Profile,
             InitialNatureState, DecisionTranscript);
         if (!NatureState.SameCursor(capture.NatureState) ||
-            ChanceLaws.Length != DecisionTranscript.Length ||
+            ChanceLaws.Length != Stochastic.DecisionTranscript.Length ||
             CanonicalJson.Sha256(ChanceLaws) !=
                 CanonicalJson.Sha256(capture.ChanceLaws) ||
             !SameRequest(PendingRequest, capture.PendingRequest) ||
@@ -381,7 +381,7 @@ public sealed record ReferenceNatureLaterActPreparationSessionV111(
             throw new InvalidDataException(
                 "ReferenceNature later-act preparation differs from its generator replay.");
         if (NatureState.SampleCount != checked(
-                InitialNatureState.SampleCount + DecisionTranscript.Length) ||
+                InitialNatureState.SampleCount + Stochastic.DecisionTranscript.Length) ||
             Complete != (PendingRequest is null) ||
             Complete != (PendingLaw is null))
             throw new InvalidDataException(
@@ -397,7 +397,7 @@ public sealed record ReferenceNatureLaterActPreparationSessionV111(
             new ReferenceNatureLaterActPreparationSessionSnapshotV111(
                 CurrentSchemaId, session.InitialPrototypeRng,
                 session.Ascension, session.Profile,
-                session.InitialNatureState, session.DecisionTranscript));
+                session.InitialNatureState, session.Stochastic.DecisionTranscript));
     }
 
     public static ReferenceNatureLaterActPreparationSessionV111 Restore(

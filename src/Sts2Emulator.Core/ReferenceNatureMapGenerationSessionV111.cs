@@ -103,7 +103,7 @@ public sealed record ReferenceNatureMapGenerationAuditV111(
     {
         Stochastic = Stochastic.Fork(),
         Decisions = Decisions,
-        DecisionTranscript = DecisionTranscript
+        DecisionTranscript = Stochastic.DecisionTranscript
     };
 
     public void Validate()
@@ -113,7 +113,7 @@ public sealed record ReferenceNatureMapGenerationAuditV111(
         ArgumentException.ThrowIfNullOrWhiteSpace(MapFingerprint);
         ReferenceNatureMapGenerationSessionV111.ValidateCompletedAudit(
             Seed, Act, Ascension, InitialNatureState, NatureState,
-            Decisions, DecisionTranscript, MapFingerprint);
+            Decisions, Stochastic.DecisionTranscript, MapFingerprint);
     }
 
     public void ValidateEnvelope()
@@ -125,7 +125,7 @@ public sealed record ReferenceNatureMapGenerationAuditV111(
         ReferenceNatureMapGenerationSessionV111.ValidateMapParameters(
             Act, Ascension);
         var decisions = Decisions;
-        var transcript = DecisionTranscript;
+        var transcript = Stochastic.DecisionTranscript;
         if (decisions.Length == 0 || decisions.Length != transcript.Length ||
             NatureState.SampleCount != checked(
                 InitialNatureState.SampleCount + decisions.Length))
@@ -355,7 +355,7 @@ public sealed record ReferenceNatureMapGenerationSessionV111(
     public bool Complete => Map is not null && PendingRequest is null;
 
     [JsonIgnore]
-    public int NextOrdinal => DecisionTranscript.Length;
+    public int NextOrdinal => Stochastic.DecisionTranscript.Length;
 
     [JsonIgnore]
     public ChanceLawV111? PendingLaw => Complete ? null :
@@ -397,7 +397,7 @@ public sealed record ReferenceNatureMapGenerationSessionV111(
                 "An incomplete map-generation session cannot become a run audit.");
         return new ReferenceNatureMapGenerationAuditV111(
             Seed, Act, Ascension, InitialNatureState, NatureState, Decisions,
-            DecisionTranscript, CanonicalJson.Sha256(Map!));
+            Stochastic.DecisionTranscript, CanonicalJson.Sha256(Map!));
     }
 
     public ReferenceNatureMapGenerationSessionV111 Fork()
@@ -435,7 +435,7 @@ public sealed record ReferenceNatureMapGenerationSessionV111(
             law, PendingRequest!, selection,
             candidateLabels: continuation.PendingCandidateLabels);
         var decisions = Decisions.Append(typedDecision).ToArray();
-        var transcript = DecisionTranscript.Append(
+        var transcript = Stochastic.DecisionTranscript.Append(
             new ReferenceNatureDecisionV111(
                 law.LawId, law.EventId, selection.OutcomeId,
                 selection.OutcomeIndex)).ToArray();
@@ -465,7 +465,7 @@ public sealed record ReferenceNatureMapGenerationSessionV111(
         Mechanics.Validate();
         StochasticState.Validate();
         var decisions = Decisions;
-        var decisionTranscript = DecisionTranscript;
+        var decisionTranscript = Stochastic.DecisionTranscript;
         if (decisions.Length != decisionTranscript.Length ||
             NatureState.SampleCount != checked(
                 InitialNatureState.SampleCount + decisions.Length) ||
@@ -524,7 +524,7 @@ public sealed record ReferenceNatureMapGenerationSessionV111(
                 session.InitialNatureState, session.NatureState,
                 session.Decisions.Select(decision => decision.Fork()).ToArray(),
                 (ReferenceNatureDecisionV111[])
-                    session.DecisionTranscript.Clone(),
+                    session.Stochastic.DecisionTranscript.Clone(),
                 session.PendingRequest?.Fork(), session.Map?.Fork()));
     }
 
