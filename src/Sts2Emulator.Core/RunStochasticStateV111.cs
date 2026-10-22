@@ -10,6 +10,8 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public sealed record RunStochasticStateV111
 {
+    private RngBundle? _prototypeRng;
+    private RngBundle? _nativeRunRng;
     private ControlledEventChoiceTraceV111[]? _controlledEventChoiceHistory;
     private ControlledRunActionTraceV111[]? _controlledRunActionHistory;
     private ReferenceNatureMapGenerationAuditV111[]?
@@ -60,8 +62,16 @@ public sealed record RunStochasticStateV111
             ReferenceNatureAncientOfferHistory, audit => audit.Fork());
     }
 
-    public RngBundle PrototypeRng { get; init; }
-    public RngBundle? NativeRunRng { get; init; }
+    public RngBundle PrototypeRng
+    {
+        get => _prototypeRng!;
+        init => _prototypeRng = value?.Fork();
+    }
+    public RngBundle? NativeRunRng
+    {
+        get => _nativeRunRng;
+        init => _nativeRunRng = value?.Fork();
+    }
     public ReferenceNatureStateV111? ReferenceNature { get; init; }
     public ControlledEventChoiceTraceV111[]? ControlledEventChoiceHistory
     {
