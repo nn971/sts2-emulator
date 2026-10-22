@@ -1092,10 +1092,8 @@ public static class ControlledPlayableCombatEngineV111
             return recycle.Complete ? FinishRecycle(recycleState) : recycleState;
         }
         if (PrototypeGameEngine
-                .ClassifyAutomaticPipelineResumeBoundary(state.Run) ==
-            PrototypeAutomaticPipelineResumeBoundaryKindV111.ControlledChoice)
-            return state;
-        if (stepKind != PrototypeAutomaticStepKind.AdvanceTurn)
+                .ClassifyAutomaticPipelineResumeBoundary(state.Run) !=
+            PrototypeAutomaticPipelineResumeBoundaryKindV111.AdvanceTurn)
             return state;
         if (state.TurnIntents is not null)
             throw new InvalidOperationException("Nested intent stage already pending.");
