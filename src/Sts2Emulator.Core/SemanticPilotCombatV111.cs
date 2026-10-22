@@ -3902,17 +3902,15 @@ public static class SemanticPilotCombatEngineV111
         SemanticOtherChanceStateV111? otherChance = null,
         bool preservePendingEndTurn = false)
     {
-        var committedRun = run with
-        {
-            Stochastic = RunStochasticStateV111.PublishSemanticOtherChance(
-                run.Stochastic, current.Run.Stochastic, otherChance)
-        };
+        var rewardAudit = run.Phase == RunPhase.Reward
+            ? RecordRewardAudit(current.Run, run)
+            : current.Run.Stochastic.SemanticRewardAudit;
+        var committedRun = RunStochasticStateV111
+            .PublishSemanticPilotContinuation(
+                run, current.Run, otherChance, rewardAudit);
         var next = current with
         {
-            Run = committedRun,
-            RewardAudit = committedRun.Phase == RunPhase.Reward
-                ? RecordRewardAudit(current.Run, committedRun)
-                : current.Run.Stochastic.SemanticRewardAudit
+            Run = committedRun
         };
         if (!preservePendingEndTurn)
             next = next with

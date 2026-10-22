@@ -12,11 +12,12 @@ review and `git diff --check` only; no tests or builds were run.
 
 **S3 semantic pilot run-provider publication increment (2026-10-22):**
 `SemanticPilotCombatEngineV111.PublishRunContinuation` now publishes the
-run-scoped `SemanticOtherChanceStateV111` through
-`RunStochasticStateV111.PublishSemanticOtherChance`, preserving the mechanics
-result and validating the provider before the pilot transition is committed.
-The pilot `OtherChance` member remains a compatibility projection. Static
-source review and `git diff --check` only; no tests or builds were run.
+run-scoped `SemanticOtherChanceStateV111` and reward cursor audit through
+`RunStochasticStateV111.PublishSemanticPilotContinuation`, preserving the
+mechanics result and validating the cost provider before the pilot transition
+is committed. The pilot `OtherChance` and `RewardAudit` members remain
+compatibility projections. Static source review and `git diff --check` only;
+no tests or builds were run.
 
 **S3 ReferenceNature run-initialization publication increment (2026-10-22):**
 `RunStochasticStateV111.CommitReferenceNatureRunInitialization` now publishes
