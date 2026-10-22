@@ -4,8 +4,8 @@ namespace Sts2Emulator.Core;
 /// Small request-construction helpers for source-pinned native run sites.
 /// They preserve the existing provider interfaces and keep mechanics
 /// responsible for candidate order and occurrence identity. Each helper
-/// accepts only registered Chance Law query sites for its request family;
-/// callers retain responsibility for support, stream, owner, and occurrence.
+/// validates against the Native provider's registered operation family;
+/// direct Chance Law query coverage is negotiated separately.
 /// </summary>
 public static class NativeRandomChoiceV111
 {
@@ -18,14 +18,15 @@ public static class NativeRandomChoiceV111
         int ordinal,
         IRandomIndexProviderV111? provider = null)
     {
-        ValidateSiteId(siteId, "index");
         if (candidateCount <= 0)
             throw new ArgumentOutOfRangeException(nameof(candidateCount));
+        var request = new RandomIndexRequestV111(
+            siteId, streamId, ownerId, ordinal,
+            Enumerable.Range(0, candidateCount).ToArray());
+        request.ValidateForNativeProvider();
         return StochasticProviderScopeV111.ResolveIndex(
             provider,
-            new RandomIndexRequestV111(
-                siteId, streamId, ownerId, ordinal,
-                Enumerable.Range(0, candidateCount).ToArray()),
+            request,
             streams);
     }
 
@@ -38,15 +39,16 @@ public static class NativeRandomChoiceV111
         int ordinal,
         IRandomIndexProviderV111? provider = null)
     {
-        ValidateSiteId(siteId, "bounded-integer");
         if (boundedCount <= 0)
             throw new ArgumentOutOfRangeException(nameof(boundedCount));
+        var request = new RandomIndexRequestV111(
+            siteId, streamId, ownerId, ordinal, [],
+            OperationKind: "bounded_integer",
+            BoundedCount: boundedCount);
+        request.ValidateForNativeProvider();
         return StochasticProviderScopeV111.ResolveIndex(
             provider,
-            new RandomIndexRequestV111(
-                siteId, streamId, ownerId, ordinal, [],
-                OperationKind: "bounded_integer",
-                BoundedCount: boundedCount),
+            request,
             streams);
     }
 
@@ -58,37 +60,12 @@ public static class NativeRandomChoiceV111
         int ordinal,
         IRandomUnitFloatProviderV111? provider = null)
     {
-        ValidateSiteId(siteId, "unit-float");
+        var request = new RandomUnitFloatRequestV111(
+            siteId, streamId, ownerId, ordinal);
+        request.Validate();
         return StochasticProviderScopeV111.ResolveUnitFloat(
             provider,
-            new RandomUnitFloatRequestV111(
-                siteId, streamId, ownerId, ordinal),
+            request,
             streams);
-    }
-
-    private static void ValidateSiteId(string siteId, string operation)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
-        ArgumentException.ThrowIfNullOrWhiteSpace(operation);
-        var indexSite = StochasticSiteRegistryV111.IsChanceLawQuerySite(siteId)
-            && StochasticSiteRegistryV111
-                .IsNativeRandomIndexSite(siteId);
-        var supported = operation == "index"
-            ? indexSite
-                && !StochasticSiteRegistryV111
-                    .IsNativeBoundedIntegerSite(siteId)
-            : operation == "bounded-integer"
-                ? indexSite
-                    && StochasticSiteRegistryV111
-                        .IsNativeBoundedIntegerSite(siteId)
-                : operation == "unit-float"
-                    && StochasticSiteRegistryV111
-                        .IsChanceLawQuerySite(siteId)
-                    && StochasticSiteRegistryV111
-                        .IsNativeUnitFloatSite(siteId);
-        if (!supported)
-            throw new NotSupportedException(
-                $"Native random choice does not support {operation} site " +
-                $"'{siteId}'.");
     }
 }

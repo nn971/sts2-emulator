@@ -20,6 +20,8 @@ This is the **canonical responsibility/ownership contract** for RNG, Nature, Cha
 
 **No runtime dependency** exists from Native RNG to Chance Law. The native mod does not call Chance Law. Chance Law is a callable analytical service primarily for Nature and tests; source-game captures can later *verify* it offline.
 
+`NativeRandomChoiceV111` constructs typed Native index, bounded-integer, and unit-float requests through the provider-specific registration path. A request's eligibility no longer requires the SiteId to appear in direct Chance Law query coverage; the query manifest remains a separate analytical capability.
+
 ## State ownership
 
 The engine owns the **complete simulation lifecycle** (fork, snapshot, restore, replay, hashing) of both mechanical state and the chosen provider's private stochastic state. This does not make the engine the authoritative owner of hidden stochastic representation. In particular:
