@@ -103,6 +103,7 @@ public static class NativeRunRngV111
         Validate(state, runStreams);
         var advanced = runStreams.Fork();
         value = NativeRngV111.NextInt(advanced, streamId, maxExclusive);
+        RunState updated;
         if (state.World?.Combat?.Stochastic.NativeRngMutable is { } active)
         {
             var sourceCombat = state.World.Combat;
@@ -112,18 +113,23 @@ public static class NativeRunRngV111
                     sourceCombat.Stochastic,
                     active with { RunStreams = advanced.Fork() })
             };
-            return state with
+            updated = state with
             {
                 Stochastic = RunStochasticStateV111.WithNativeRunRng(
                     state.Stochastic, advanced),
                 World = state.World with { Combat = combat }
             };
         }
-        return state with
+        else
         {
-            Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                state.Stochastic, advanced)
-        };
+            updated = state with
+            {
+                Stochastic = RunStochasticStateV111.WithNativeRunRng(
+                    state.Stochastic, advanced)
+            };
+        }
+        Validate(updated);
+        return updated;
     }
 
     /// <summary>
