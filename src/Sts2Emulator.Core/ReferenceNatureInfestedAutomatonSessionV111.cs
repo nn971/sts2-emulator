@@ -128,10 +128,10 @@ public sealed record ReferenceNatureInfestedAutomatonSessionV111(
     public string Fingerprint => CanonicalJson.Sha256(this);
 
     [System.Text.Json.Serialization.JsonIgnore]
-    public bool Complete => DecisionTranscript.Length == 1;
+    public bool Complete => Stochastic.DecisionTranscript.Length == 1;
 
     [System.Text.Json.Serialization.JsonIgnore]
-    public string? LastSiteId => DecisionTranscript.Length == 0 ? null :
+    public string? LastSiteId => Stochastic.DecisionTranscript.Length == 0 ? null :
         PrototypeNativeHiveEvents.InfestedAutomatonCardOfferSiteId;
 
     [System.Text.Json.Serialization.JsonIgnore]
@@ -258,7 +258,7 @@ public sealed record ReferenceNatureInfestedAutomatonSessionV111(
         Mechanics.Validate(
             PrototypeMechanicsContinuationKindV111.ReferenceNatureRunSession);
         Stochastic.Validate();
-        if (DecisionTranscript.Length > 1)
+        if (Stochastic.DecisionTranscript.Length > 1)
             throw new InvalidDataException(
                 "Invalid ReferenceNature Infested Automaton session envelope.");
         PrototypeStateInvariants.Validate(Origin);
@@ -277,11 +277,11 @@ public sealed record ReferenceNatureInfestedAutomatonSessionV111(
                 0, actionId: ChoiceId);
             var selection = ReferenceNatureV111.SampleValidated(
                 law, expectedNature);
-            DecisionTranscript[0].Validate();
+            Stochastic.DecisionTranscript[0].Validate();
             if (CanonicalJson.Sha256(new ReferenceNatureDecisionV111(
                     law.LawId, law.EventId, selection.OutcomeId,
                     selection.OutcomeIndex)) !=
-                CanonicalJson.Sha256(DecisionTranscript[0]))
+                CanonicalJson.Sha256(Stochastic.DecisionTranscript[0]))
                 throw new InvalidDataException(
                     "Infested Automaton Nature transcript does not match its offer law.");
             expectedNature = selection.NextState;
@@ -292,7 +292,7 @@ public sealed record ReferenceNatureInfestedAutomatonSessionV111(
         }
         if (!ReferenceNatureRunCursorV111.MatchesRunSession(
                 Origin, Run, InitialNatureState, NatureState,
-                DecisionTranscript.Length, Complete) ||
+                Stochastic.DecisionTranscript.Length, Complete) ||
             CanonicalJson.Sha256(expectedNature) !=
                 CanonicalJson.Sha256(NatureState) ||
             CanonicalJson.Sha256(expectedRun) != CanonicalJson.Sha256(Run))
@@ -312,7 +312,7 @@ public sealed record ReferenceNatureInfestedAutomatonSessionV111(
                 RunSnapshot.Save(session.Run), session.InitialNatureState,
                 session.NatureState,
                 (ReferenceNatureDecisionV111[])
-                    session.DecisionTranscript.Clone()));
+                    session.Stochastic.DecisionTranscript.Clone()));
     }
 
     public static ReferenceNatureInfestedAutomatonSessionV111 Restore(
@@ -343,7 +343,7 @@ public sealed record ReferenceNatureInfestedAutomatonSessionV111(
                 CanonicalJson.Sha256(savedRun) ||
             CanonicalJson.Sha256(session.NatureState) !=
                 CanonicalJson.Sha256(snapshot.NatureState) ||
-            !session.DecisionTranscript.SequenceEqual(
+            !session.Stochastic.DecisionTranscript.SequenceEqual(
                 snapshot.DecisionTranscript))
             throw new InvalidDataException(
                 "Infested Automaton snapshot does not replay from its origin.");

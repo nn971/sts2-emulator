@@ -105,7 +105,7 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
                     "A pending Endless Conveyor session has no completed provider prefix.");
             var selections = SampleTranscript(
                 Origin, ActionId, InitialNatureState,
-                DecisionTranscript, PlannedSiteIds);
+                Stochastic.DecisionTranscript, PlannedSiteIds);
             if (IsLegacyNativeFallback(Origin))
             {
                 var probed = ProbeLegacyAction(Origin, ActionId);
@@ -180,11 +180,11 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
     public string Fingerprint => CanonicalJson.Sha256(this);
 
     [JsonIgnore]
-    public int NextOrdinal => DecisionTranscript.Length;
+    public int NextOrdinal => Stochastic.DecisionTranscript.Length;
 
     [JsonIgnore]
-    public bool Complete => DecisionTranscript.Length > 0 &&
-        DecisionTranscript.Length == PlannedSiteIds.Length;
+    public bool Complete => Stochastic.DecisionTranscript.Length > 0 &&
+        Stochastic.DecisionTranscript.Length == PlannedSiteIds.Length;
 
     [JsonIgnore]
     public ChanceLawV111? PendingLaw => Complete ? null : QuerySite(
@@ -239,7 +239,7 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
             Origin, ActionId, plannedSiteIds[NextOrdinal]);
         var selection = ReferenceNatureV111.SampleValidated(
             law, NatureState);
-        var transcript = DecisionTranscript.Append(
+        var transcript = Stochastic.DecisionTranscript.Append(
             new ReferenceNatureDecisionV111(
                 law.LawId, law.EventId, selection.OutcomeId,
                 selection.OutcomeIndex)).ToArray();
@@ -277,16 +277,17 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
         PrototypeStateInvariants.Validate(Run);
         _ = RequireAction(Origin, ActionId);
         var plannedSiteIds = PlannedSiteIds;
-        if (DecisionTranscript.Length > plannedSiteIds.Length ||
+        if (Stochastic.DecisionTranscript.Length > plannedSiteIds.Length ||
             !ReferenceNatureRunCursorV111.MatchesRunSession(
                 Origin, Run, InitialNatureState, NatureState,
-                DecisionTranscript.Length, Complete))
+                Stochastic.DecisionTranscript.Length, Complete))
             throw new InvalidDataException(
                 "ReferenceNature Endless Conveyor cursor differs from its session envelope.");
 
         var expectedNatureState = InitialNatureState.Fork();
         var selections = SampleTranscript(
-            Origin, ActionId, InitialNatureState, DecisionTranscript,
+            Origin, ActionId, InitialNatureState,
+            Stochastic.DecisionTranscript,
             plannedSiteIds, out expectedNatureState);
         var expectedRun = Complete
             ? ReferenceNatureRunCursorV111.Commit(
@@ -314,7 +315,7 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
                 session.ActionId,
                 session.InitialNatureState,
                 session.NatureState,
-                session.DecisionTranscript),
+                session.Stochastic.DecisionTranscript),
             new JsonSerializerOptions(JsonSerializerDefaults.Web));
     }
 
@@ -381,8 +382,8 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
     private string[] PlannedSiteIds => GetPlannedSiteIds(Origin, ActionId);
 
     [JsonIgnore]
-    public string? LastSiteId => DecisionTranscript.Length == 0
-        ? null : PlannedSiteIds[DecisionTranscript.Length - 1];
+    public string? LastSiteId => Stochastic.DecisionTranscript.Length == 0
+        ? null : PlannedSiteIds[Stochastic.DecisionTranscript.Length - 1];
 
     private static string[] GetPlannedSiteIds(
         RunState origin, string actionId)

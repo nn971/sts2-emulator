@@ -385,7 +385,7 @@ public sealed record ReferenceNaturePunchOffRewardSessionV111(
                     law.LawId, law.EventId, selection.OutcomeId,
                     selection.OutcomeIndex);
                 if (CanonicalJson.Sha256(expected) !=
-                    CanonicalJson.Sha256(DecisionTranscript[index]))
+                    CanonicalJson.Sha256(Stochastic.DecisionTranscript[index]))
                     throw new InvalidDataException(
                         "Punch Off reward provider prefix differs from its Nature transcript.");
                 var labels = law.Outcomes.Select(outcome =>
@@ -415,7 +415,7 @@ public sealed record ReferenceNaturePunchOffRewardSessionV111(
     public string Fingerprint => CanonicalJson.Sha256(this);
 
     [System.Text.Json.Serialization.JsonIgnore]
-    public bool Complete => DecisionTranscript.Length == 2;
+    public bool Complete => Stochastic.DecisionTranscript.Length == 2;
 
     [System.Text.Json.Serialization.JsonIgnore]
     public ChanceLawV111? PendingLaw
@@ -424,14 +424,14 @@ public sealed record ReferenceNaturePunchOffRewardSessionV111(
         {
             if (Complete)
                 return null;
-            var priorIndices = DecisionTranscript.Select(
+            var priorIndices = Stochastic.DecisionTranscript.Select(
                 decision => decision.OutcomeIndex).ToArray();
             var plan = NativePunchOffRewardPlanBuilderV111.Build(
                 Origin,
-                DecisionTranscript.Length == 0
+                Stochastic.DecisionTranscript.Length == 0
                     ? PrototypeNativePunchOff.RelicRewardSiteId
                     : PrototypeNativePunchOff.PotionRewardSiteId,
-                DecisionTranscript.Length == 0
+                Stochastic.DecisionTranscript.Length == 0
                     ? CurrentRewardCursor(Origin)
                     : unchecked(CurrentRewardCursor(Origin) + 1),
                 priorIndices, ActionId);
@@ -489,7 +489,7 @@ public sealed record ReferenceNaturePunchOffRewardSessionV111(
             "Punch Off ReferenceNature session is already complete.");
         var selection = ReferenceNatureV111.SampleValidated(
             law, NatureState);
-        var transcript = DecisionTranscript.Append(
+        var transcript = Stochastic.DecisionTranscript.Append(
             new ReferenceNatureDecisionV111(
                 law.LawId, law.EventId, selection.OutcomeId,
                 selection.OutcomeIndex)).ToArray();
@@ -519,14 +519,14 @@ public sealed record ReferenceNaturePunchOffRewardSessionV111(
         Mechanics.Validate(
             PrototypeMechanicsContinuationKindV111.ReferenceNatureRunSession);
         Stochastic.Validate();
-        if (DecisionTranscript.Length > 2)
+        if (Stochastic.DecisionTranscript.Length > 2)
             throw new InvalidDataException(
                 "Invalid ReferenceNature Punch Off reward session envelope.");
         PrototypeStateInvariants.Validate(Origin);
         PrototypeStateInvariants.Validate(Run);
         var expectedNature = InitialNatureState.Fork();
         var priorIndices = new List<int>();
-        for (var index = 0; index < DecisionTranscript.Length; index++)
+        for (var index = 0; index < Stochastic.DecisionTranscript.Length; index++)
         {
             var siteId = index == 0
                 ? PrototypeNativePunchOff.RelicRewardSiteId
@@ -538,11 +538,11 @@ public sealed record ReferenceNaturePunchOffRewardSessionV111(
                 Origin, siteId, ordinal, priorIndices.ToArray(), ActionId);
             var selection = ReferenceNatureV111.SampleValidated(
                 law, expectedNature);
-            DecisionTranscript[index].Validate();
+            Stochastic.DecisionTranscript[index].Validate();
             if (CanonicalJson.Sha256(new ReferenceNatureDecisionV111(
                     law.LawId, law.EventId, selection.OutcomeId,
                     selection.OutcomeIndex)) !=
-                CanonicalJson.Sha256(DecisionTranscript[index]))
+                CanonicalJson.Sha256(Stochastic.DecisionTranscript[index]))
                 throw new InvalidDataException(
                     "Punch Off reward transcript does not replay from its conditioned prefix.");
             expectedNature = selection.NextState;
@@ -550,12 +550,12 @@ public sealed record ReferenceNaturePunchOffRewardSessionV111(
         }
         var expectedRun = Complete
             ? ReferenceNatureRunCursorV111.Commit(
-                Replay(Origin, ActionId, DecisionTranscript),
+                Replay(Origin, ActionId, Stochastic.DecisionTranscript),
                 expectedNature)
             : Origin.Fork();
         if (!ReferenceNatureRunCursorV111.MatchesRunSession(
                 Origin, Run, InitialNatureState, NatureState,
-                DecisionTranscript.Length, Complete) ||
+                Stochastic.DecisionTranscript.Length, Complete) ||
             CanonicalJson.Sha256(expectedNature) !=
                 CanonicalJson.Sha256(NatureState) ||
             CanonicalJson.Sha256(expectedRun) != CanonicalJson.Sha256(Run))
@@ -574,7 +574,7 @@ public sealed record ReferenceNaturePunchOffRewardSessionV111(
                 session.ActionId, RunSnapshot.Save(session.Run),
                 session.InitialNatureState, session.NatureState,
                 (ReferenceNatureDecisionV111[])
-                    session.DecisionTranscript.Clone()));
+                    session.Stochastic.DecisionTranscript.Clone()));
     }
 
     public static ReferenceNaturePunchOffRewardSessionV111 Restore(
@@ -606,7 +606,7 @@ public sealed record ReferenceNaturePunchOffRewardSessionV111(
                 CanonicalJson.Sha256(savedRun) ||
             CanonicalJson.Sha256(session.NatureState) !=
                 CanonicalJson.Sha256(snapshot.NatureState) ||
-            !session.DecisionTranscript.SequenceEqual(
+            !session.Stochastic.DecisionTranscript.SequenceEqual(
                 snapshot.DecisionTranscript))
             throw new InvalidDataException(
                 "Punch Off reward snapshot does not replay from its origin.");

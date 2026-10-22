@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 multi-choice ReferenceNature transcript owner read increment (2026-10-22):**
+Glory Reflections, Infested Automaton, Endless Conveyor, and Punch Off
+fight/reward sessions now read their Nature decision prefixes through
+`ReferenceNatureStochasticStateV111` during support construction, continuation,
+validation, save, and replay. Snapshot fields and ordered decisions are
+unchanged. Static source review and `git diff --check` only; no tests or builds
+were run.
+
 **S3 one-choice ReferenceNature transcript owner read increment (2026-10-22):**
 Trial, Tablet of Truth, and Trash Heap session completion, validation, save,
 and restore now read their Nature decisions through

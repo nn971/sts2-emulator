@@ -105,9 +105,9 @@ public sealed record ReferenceNatureGloryReflectionsSessionV111(
             var natureState = InitialNatureState.Fork();
             var priorIndices = new List<int>();
             var decisions = new List<ControlledStochasticDecisionV111>(
-                DecisionTranscript.Length);
+                Stochastic.DecisionTranscript.Length);
             for (var ordinal = 0;
-                 ordinal < DecisionTranscript.Length; ordinal++)
+                 ordinal < Stochastic.DecisionTranscript.Length; ordinal++)
             {
                 var prior = priorIndices.ToArray();
                 var plan = NativeEventReflectionsChoicePlanBuilderV111
@@ -124,7 +124,7 @@ public sealed record ReferenceNatureGloryReflectionsSessionV111(
                     law.LawId, law.EventId, selection.OutcomeId,
                     selection.OutcomeIndex);
                 if (CanonicalJson.Sha256(expected) !=
-                    CanonicalJson.Sha256(DecisionTranscript[ordinal]))
+                    CanonicalJson.Sha256(Stochastic.DecisionTranscript[ordinal]))
                     throw new InvalidDataException(
                         "Reflections provider prefix differs from its Nature transcript.");
                 var labels = plan.CandidateCardInstanceIds.Select(instanceId =>
@@ -154,21 +154,22 @@ public sealed record ReferenceNatureGloryReflectionsSessionV111(
     public string Fingerprint => CanonicalJson.Sha256(this);
 
     [JsonIgnore]
-    public int NextOrdinal => DecisionTranscript.Length;
+    public int NextOrdinal => Stochastic.DecisionTranscript.Length;
 
     [JsonIgnore]
-    public string? LastSiteId => DecisionTranscript.Length == 0 ? null :
+    public string? LastSiteId => Stochastic.DecisionTranscript.Length == 0 ? null :
         NativeEventReflectionsChoicePlanBuilderV111.TryBuildNext(
-            Origin, null, DecisionTranscript.Length - 1,
-            DecisionTranscript.Take(DecisionTranscript.Length - 1)
+            Origin, null, Stochastic.DecisionTranscript.Length - 1,
+            Stochastic.DecisionTranscript.Take(Stochastic.DecisionTranscript.Length - 1)
                 .Select(decision => decision.OutcomeIndex).ToArray(),
             "touch_mirror")?.Request.SiteId;
 
     [JsonIgnore]
     public bool Complete =>
         NativeEventReflectionsChoicePlanBuilderV111.TryBuildNext(
-            Origin, null, DecisionTranscript.Length,
-            DecisionTranscript.Select(decision => decision.OutcomeIndex)
+            Origin, null, Stochastic.DecisionTranscript.Length,
+            Stochastic.DecisionTranscript.Select(
+                decision => decision.OutcomeIndex)
                 .ToArray(), "touch_mirror") is null;
 
     [JsonIgnore]
@@ -178,7 +179,7 @@ public sealed record ReferenceNatureGloryReflectionsSessionV111(
         {
             if (Complete)
                 return null;
-            var priorIndices = DecisionTranscript.Select(
+            var priorIndices = Stochastic.DecisionTranscript.Select(
                 decision => decision.OutcomeIndex).ToArray();
             var plan = NativeEventReflectionsChoicePlanBuilderV111
                 .TryBuildNext(Origin, null, priorIndices.Length,
@@ -239,7 +240,7 @@ public sealed record ReferenceNatureGloryReflectionsSessionV111(
             "Reflections ReferenceNature session is already complete.");
         var selection = ReferenceNatureV111.SampleValidated(
             law, NatureState);
-        var transcript = DecisionTranscript.Append(
+        var transcript = Stochastic.DecisionTranscript.Append(
             new ReferenceNatureDecisionV111(
                 law.LawId, law.EventId, selection.OutcomeId,
                 selection.OutcomeIndex)).ToArray();
@@ -281,7 +282,7 @@ public sealed record ReferenceNatureGloryReflectionsSessionV111(
 
         var expectedNature = InitialNatureState.Fork();
         var priorIndices = new List<int>();
-        for (var ordinal = 0; ordinal < DecisionTranscript.Length; ordinal++)
+        for (var ordinal = 0; ordinal < Stochastic.DecisionTranscript.Length; ordinal++)
         {
             var plan = NativeEventReflectionsChoicePlanBuilderV111
                 .TryBuildNext(Origin, null, ordinal,
@@ -293,11 +294,11 @@ public sealed record ReferenceNatureGloryReflectionsSessionV111(
                 priorIndices.ToArray(), "touch_mirror");
             var selection = ReferenceNatureV111.SampleValidated(
                 law, expectedNature);
-            DecisionTranscript[ordinal].Validate();
+            Stochastic.DecisionTranscript[ordinal].Validate();
             if (CanonicalJson.Sha256(new ReferenceNatureDecisionV111(
                     law.LawId, law.EventId, selection.OutcomeId,
                     selection.OutcomeIndex)) !=
-                CanonicalJson.Sha256(DecisionTranscript[ordinal]))
+                CanonicalJson.Sha256(Stochastic.DecisionTranscript[ordinal]))
                 throw new InvalidDataException(
                     "Reflections Nature transcript does not replay from its prefix.");
             expectedNature = selection.NextState;
@@ -311,14 +312,15 @@ public sealed record ReferenceNatureGloryReflectionsSessionV111(
         if (complete)
         {
             expectedRun = ReplayTouchMirror(
-                Origin, BuildIndexDecisions(Origin, DecisionTranscript));
+                Origin, BuildIndexDecisions(
+                    Origin, Stochastic.DecisionTranscript));
             expectedRun = ReferenceNatureRunCursorV111.Commit(
                 expectedRun, expectedNature);
         }
 
         if (!ReferenceNatureRunCursorV111.MatchesRunSession(
                 Origin, Run, InitialNatureState, NatureState,
-                DecisionTranscript.Length, complete) ||
+                Stochastic.DecisionTranscript.Length, complete) ||
             CanonicalJson.Sha256(expectedNature) !=
                 CanonicalJson.Sha256(NatureState) ||
             CanonicalJson.Sha256(expectedRun) != CanonicalJson.Sha256(Run))
@@ -417,7 +419,7 @@ public sealed record ReferenceNatureGloryReflectionsSessionV111(
                 RunSnapshot.Save(session.Run), session.InitialNatureState,
                 session.NatureState,
                 (ReferenceNatureDecisionV111[])
-                    session.DecisionTranscript.Clone()));
+                    session.Stochastic.DecisionTranscript.Clone()));
     }
 
     public static ReferenceNatureGloryReflectionsSessionV111 Restore(
@@ -447,7 +449,7 @@ public sealed record ReferenceNatureGloryReflectionsSessionV111(
                 CanonicalJson.Sha256(savedRun) ||
             CanonicalJson.Sha256(session.NatureState) !=
                 CanonicalJson.Sha256(snapshot.NatureState) ||
-            !session.DecisionTranscript.SequenceEqual(
+            !session.Stochastic.DecisionTranscript.SequenceEqual(
                 snapshot.DecisionTranscript))
             throw new InvalidDataException(
                 "Reflections session snapshot does not replay from its origin.");

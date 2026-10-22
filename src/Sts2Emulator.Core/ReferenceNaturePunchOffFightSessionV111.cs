@@ -341,7 +341,7 @@ public sealed record ReferenceNaturePunchOffFightSessionV111(
                     law.LawId, law.EventId, selection.OutcomeId,
                     selection.OutcomeIndex);
                 if (CanonicalJson.Sha256(expected) !=
-                    CanonicalJson.Sha256(DecisionTranscript[ordinal]))
+                    CanonicalJson.Sha256(Stochastic.DecisionTranscript[ordinal]))
                     throw new InvalidDataException(
                         "Punch Off fight provider prefix differs from its Nature transcript.");
                 var labels = law.Outcomes.Select(outcome =>
@@ -370,14 +370,15 @@ public sealed record ReferenceNaturePunchOffFightSessionV111(
     public string Fingerprint => CanonicalJson.Sha256(this);
 
     [System.Text.Json.Serialization.JsonIgnore]
-    public bool Complete => DecisionTranscript.Length == 2;
+    public bool Complete => Stochastic.DecisionTranscript.Length == 2;
 
     [System.Text.Json.Serialization.JsonIgnore]
     public ChanceLawV111? PendingLaw => Complete ? null :
         ChanceLawEngineV111.QueryNativePunchOffFight(
             Origin, PrototypeNativePunchOff.ConstructHpOffsetSiteId,
-            DecisionTranscript.Length,
-            DecisionTranscript.Select(decision => decision.OutcomeIndex)
+            Stochastic.DecisionTranscript.Length,
+            Stochastic.DecisionTranscript.Select(
+                decision => decision.OutcomeIndex)
                 .ToArray(), ActionId);
 
     public static string[] SessionSiteIds =>
@@ -426,7 +427,7 @@ public sealed record ReferenceNaturePunchOffFightSessionV111(
         var law = PendingLaw ?? throw new InvalidOperationException(
             "Punch Off Nature fight session is already complete.");
         var selection = ReferenceNatureV111.SampleValidated(law, NatureState);
-        var transcript = DecisionTranscript.Append(
+        var transcript = Stochastic.DecisionTranscript.Append(
             new ReferenceNatureDecisionV111(
                 law.LawId, law.EventId, selection.OutcomeId,
                 selection.OutcomeIndex)).ToArray();
@@ -456,25 +457,25 @@ public sealed record ReferenceNaturePunchOffFightSessionV111(
         Mechanics.Validate(
             PrototypeMechanicsContinuationKindV111.ReferenceNatureRunSession);
         Stochastic.Validate();
-        if (DecisionTranscript.Length > 2)
+        if (Stochastic.DecisionTranscript.Length > 2)
             throw new InvalidDataException(
                 "Invalid ReferenceNature Punch Off fight session envelope.");
         PrototypeStateInvariants.Validate(Origin);
         PrototypeStateInvariants.Validate(Run);
         var expectedNature = InitialNatureState.Fork();
         var priorIndices = new List<int>();
-        for (var ordinal = 0; ordinal < DecisionTranscript.Length; ordinal++)
+        for (var ordinal = 0; ordinal < Stochastic.DecisionTranscript.Length; ordinal++)
         {
             var law = ChanceLawEngineV111.QueryNativePunchOffFight(
                 Origin, PrototypeNativePunchOff.ConstructHpOffsetSiteId,
                 ordinal, priorIndices.ToArray(), ActionId);
             var selection = ReferenceNatureV111.SampleValidated(
                 law, expectedNature);
-            DecisionTranscript[ordinal].Validate();
+            Stochastic.DecisionTranscript[ordinal].Validate();
             if (CanonicalJson.Sha256(new ReferenceNatureDecisionV111(
                     law.LawId, law.EventId, selection.OutcomeId,
                     selection.OutcomeIndex)) !=
-                CanonicalJson.Sha256(DecisionTranscript[ordinal]))
+                CanonicalJson.Sha256(Stochastic.DecisionTranscript[ordinal]))
                 throw new InvalidDataException(
                     "Punch Off fight transcript does not replay its conditioned prefix.");
             expectedNature = selection.NextState;
@@ -482,11 +483,12 @@ public sealed record ReferenceNaturePunchOffFightSessionV111(
         }
         var expectedRun = Complete
             ? ReferenceNatureRunCursorV111.Commit(
-                Replay(Origin, ActionId, DecisionTranscript), expectedNature)
+                Replay(Origin, ActionId, Stochastic.DecisionTranscript),
+                expectedNature)
             : Origin.Fork();
         if (!ReferenceNatureRunCursorV111.MatchesRunSession(
                 Origin, Run, InitialNatureState, NatureState,
-                DecisionTranscript.Length, Complete) ||
+                Stochastic.DecisionTranscript.Length, Complete) ||
             CanonicalJson.Sha256(expectedNature) !=
                 CanonicalJson.Sha256(NatureState) ||
             CanonicalJson.Sha256(expectedRun) != CanonicalJson.Sha256(Run))
@@ -504,7 +506,7 @@ public sealed record ReferenceNaturePunchOffFightSessionV111(
                 session.ActionId, RunSnapshot.Save(session.Run),
                 session.InitialNatureState, session.NatureState,
                 (ReferenceNatureDecisionV111[])
-                    session.DecisionTranscript.Clone()));
+                    session.Stochastic.DecisionTranscript.Clone()));
     }
 
     public static ReferenceNaturePunchOffFightSessionV111 Restore(string json)
@@ -535,7 +537,7 @@ public sealed record ReferenceNaturePunchOffFightSessionV111(
                 CanonicalJson.Sha256(savedRun) ||
             CanonicalJson.Sha256(session.NatureState) !=
                 CanonicalJson.Sha256(snapshot.NatureState) ||
-            !session.DecisionTranscript.SequenceEqual(
+            !session.Stochastic.DecisionTranscript.SequenceEqual(
                 snapshot.DecisionTranscript))
             throw new InvalidDataException(
                 "Punch Off fight snapshot does not replay from its origin.");
