@@ -12,7 +12,7 @@ public sealed partial class PrototypeGameEngine
     {
         ArgumentNullException.ThrowIfNull(combat);
         ArgumentNullException.ThrowIfNull(rng);
-        if (combat.SemanticDeck is not null ||
+        if (combat.Stochastic.SemanticDeck is not null ||
             combat.DrawPile.Length != 0 || combat.DiscardPile.Length == 0 ||
             combat.DiscardPile.Distinct().Count() != combat.DiscardPile.Length)
             throw new InvalidDataException(
@@ -39,7 +39,7 @@ public sealed partial class PrototypeGameEngine
         ArgumentException.ThrowIfNullOrWhiteSpace(unsupportedSite);
         SemanticDrawPileAdapterV111.ValidateSynchronized(
             combat, requireIdle: true);
-        if (combat.SemanticDeck is not { } semantic ||
+        if (combat.Stochastic.SemanticDeck is not { } semantic ||
             semantic.Mode != SemanticDeckStateV111.NativeMode ||
             semantic.Count != 0 ||
             combat.DrawPile.Length != 0 || combat.DiscardPile.Length == 0 ||
@@ -48,7 +48,7 @@ public sealed partial class PrototypeGameEngine
                 "Native recycle requires an exhausted synchronized draw pile.");
 
         var recycled = (long[])combat.DiscardPile.Clone();
-        var native = combat.NativeRng ??
+        var native = combat.Stochastic.NativeRng ??
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_NATIVE site=" + unsupportedSite +
                 " operation=missing_native_stream_owner");

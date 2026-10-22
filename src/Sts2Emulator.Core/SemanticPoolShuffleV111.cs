@@ -226,15 +226,15 @@ public static class SemanticPoolShuffleChoiceV111
                 "UNSUPPORTED_SEMANTIC_POOL operation=" +
                 shuffle.Operation.Kind);
         var streamId = handReturn || recycle
-            ? combat.NativeRng is not null
+            ? combat.Stochastic.NativeRng is not null
                 ? "run.shuffle" : "prototype.combat"
-            : randomShortlist && combat.NativeRng?.RunStreams is not null
+            : randomShortlist && combat.Stochastic.NativeRng?.RunStreams is not null
                 ? "run.combat_card_selection"
                 : (shuffle.Operation.GeneratedChoiceUsesNativeCardGenerationRng ||
                    shuffle.Operation.Kind ==
                        PrototypeCombatEffectKind
                            .CreateDistinctCharacterCommonCardsInHand) &&
-                  combat.NativeRng?.RunStreams is not null
+                  combat.Stochastic.NativeRng?.RunStreams is not null
                     ? "run.combat_card_generation" : "prototype.combat";
         var sourceCardId = choice!.SourceCardInstanceId;
         var shortlistCardIds = randomShortlist
@@ -402,7 +402,7 @@ public static class SemanticPoolShuffleChoiceV111
         if (!randomRareToHand && !handReturn && !recycle &&
             !helloWorldAutomaticBeforeHandDraw &&
             (!combat.DrawPile.SequenceEqual(resultCombat.DrawPile) ||
-             CanonicalJson.Sha256(combat.SemanticDeck) !=
+             CanonicalJson.Sha256(combat.Stochastic.SemanticDeck) !=
                  CanonicalJson.Sha256(resultCombat.SemanticDeck)))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=" + decision.Event.SiteId + " " +

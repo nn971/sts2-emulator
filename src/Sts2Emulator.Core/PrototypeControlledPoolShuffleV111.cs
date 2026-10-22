@@ -33,7 +33,7 @@ public sealed partial class PrototypeGameEngine
         if (op.Kind ==
             PrototypeCombatEffectKind.RecycleDrawPileForEffectDraw)
         {
-            if (combat.SemanticDeck is not null ||
+            if (combat.Stochastic.SemanticDeck is not null ||
                 combat.DrawPile.Length != 0 || combat.DiscardPile.Length <= 1)
                 return null;
             return combat.DiscardPile.Select(id =>
@@ -146,11 +146,11 @@ public sealed partial class PrototypeGameEngine
             return false;
         if (operation.Kind ==
                 PrototypeCombatEffectKind.MoveRandomRareDrawCardsToHand &&
-            combat.SemanticDeck is not
+            combat.Stochastic.SemanticDeck is not
                 { Mode: SemanticDeckStateV111.NatureMode })
             return false;
         if (operation.Kind == PrototypeCombatEffectKind.ChooseCards &&
-            combat.SemanticDeck is not
+            combat.Stochastic.SemanticDeck is not
                 { Mode: SemanticDeckStateV111.NatureMode })
             return false;
         var pool = SourcePoolForShuffle(
@@ -400,7 +400,7 @@ public sealed partial class PrototypeGameEngine
             var shuffled = values.Select(ParseShuffledCardInstanceToken)
                 .ToArray();
             var recycled = (long[])combat.DiscardPile.Clone();
-            if (combat.SemanticDeck is not null ||
+            if (combat.Stochastic.SemanticDeck is not null ||
                 combat.DrawPile.Length != 0 || recycled.Length <= 1 ||
                 shuffled.Distinct().Count() != shuffled.Length ||
                 !shuffled.Order().SequenceEqual(recycled.Order()))

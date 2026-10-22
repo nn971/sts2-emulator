@@ -267,7 +267,7 @@ public sealed record SemanticEndTurnV111(
                 combat?.PendingChoice is
                 { ChoiceId: "controlled_semantic_draw",
                   ControlledSemanticDraw: not null } &&
-                combat.SemanticDeck is
+                combat.Stochastic.SemanticDeck is
                     { Pending: { Purpose: "draw" } } deck
                 ? SemanticDeckEngineV111.Inspect(deck) : null;
         }

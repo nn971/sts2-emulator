@@ -98,7 +98,7 @@ public sealed partial class PrototypeGameEngine
             return false;
         if (!ControlledChanceGuardV111.Active ||
             ControlledChanceGuardV111.EngineOwnedNativeProviderActive ||
-            combat.SemanticDeck is not
+            combat.Stochastic.SemanticDeck is not
                 { Mode: SemanticDeckStateV111.NatureMode } ||
             requiredCount <= 0 ||
             sourceCandidates.Length <= requiredCount)
@@ -230,7 +230,7 @@ public sealed partial class PrototypeGameEngine
             combat = combat with { PendingChoice = null };
             if (sourceZone == PrototypeCardZone.DrawPile)
             {
-                if (combat.SemanticDeck is null)
+                if (combat.Stochastic.SemanticDeck is null)
                     throw new InvalidDataException(
                         "Draw-pile auto-play lost its semantic deck.");
             }

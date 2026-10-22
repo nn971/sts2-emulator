@@ -317,7 +317,7 @@ public sealed record SemanticCombatDrawV111(
               initial.ControlledSemanticBeforeHandDrawPending)) ||
             this.Run.Phase != RunPhase.Combat ||
             this.Run.World?.Combat is not { } combat ||
-            combat.SemanticDeck is not { } deck ||
+            combat.Stochastic.SemanticDeck is not { } deck ||
             (!this.AutomaticHandDraw &&
              combat.AutomaticPipelineContinuation is not null) ||
             combat.PendingKnowledgeDemonChoice is not null)
@@ -615,7 +615,7 @@ public static class SemanticCombatDrawEngineV111
         if (cardCount <= 0) throw new ArgumentOutOfRangeException(nameof(cardCount));
         if (source.Phase != RunPhase.Combat ||
             source.World?.Combat is not { } combat ||
-            combat.SemanticDeck is not null ||
+            combat.Stochastic.SemanticDeck is not null ||
             combat.PendingChoice is not null ||
             combat.AutomaticPipelineContinuation is not null)
             throw new InvalidOperationException(
@@ -831,7 +831,7 @@ public static class SemanticCombatDrawEngineV111
             return drawNext;
         }
 
-        if (combat.SemanticDeck?.Pending is null ||
+        if (combat.Stochastic.SemanticDeck?.Pending is null ||
             state.RemainingCount <= 0)
             throw new InvalidOperationException("No semantic draw card pending.");
         var cardDecision = SemanticDrawChoiceV111.Select(

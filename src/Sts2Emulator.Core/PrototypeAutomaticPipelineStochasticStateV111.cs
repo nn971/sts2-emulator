@@ -569,7 +569,7 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
              ControlledTurnIntents is not null ||
              combat.PendingChoice is not null ||
              combat.PendingKnowledgeDemonChoice is not null ||
-             combat.SemanticDeck is not
+             combat.Stochastic.SemanticDeck is not
                 { Mode: SemanticDeckStateV111.NatureMode, Pending: null }))
             throw new InvalidOperationException(
                 "Completed semantic hand-draw receipt disagrees with the pipeline cursor.");
@@ -598,7 +598,7 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
                  expectedStratagemSelections ||
              pendingChoice.Selection.MaxSelections !=
                  expectedStratagemSelections ||
-             combat.SemanticDeck is not null))
+             combat.Stochastic.SemanticDeck is not null))
             throw new InvalidOperationException(
                 "Controlled recycle Stratagem selection is malformed.");
 
@@ -614,7 +614,7 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
              ControlledEnemyAction is not null ||
              !combat.IsPlayerTurn || combat.PendingChoice is null ||
              combat.PendingKnowledgeDemonChoice is not null ||
-             combat.SemanticDeck is not null))
+             combat.Stochastic.SemanticDeck is not null))
             throw new InvalidOperationException(
                 "Controlled automatic CardDrawn hook choice is malformed.");
 
@@ -631,7 +631,7 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
              ControlledEnemyAction is not null ||
              !combat.IsPlayerTurn || combat.PendingChoice is null ||
              combat.PendingKnowledgeDemonChoice is not null ||
-             combat.SemanticDeck is not null))
+             combat.Stochastic.SemanticDeck is not null))
             throw new InvalidOperationException(
                 "Controlled BeforeHandDraw hook choice is malformed.");
 
@@ -711,7 +711,7 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
             ControlledDrawRemaining is not null ||
             ControlledDrawCostRemaining is not null ||
             ControlledEnemyAction is not null ||
-            combat.SemanticDeck is not
+            combat.Stochastic.SemanticDeck is not
                 { Mode: SemanticDeckStateV111.NatureMode } ||
             combat.PendingKnowledgeDemonChoice is not null)
             throw new InvalidOperationException(
@@ -724,7 +724,7 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
                 combat.PendingChoice?.AutomaticSemanticDrawHookChoice == true;
             if (ControlledSemanticDrawRemaining is not null ||
                 ControlledSemanticDrawRequested is not null ||
-                combat.SemanticDeck?.Pending is not null ||
+                combat.Stochastic.SemanticDeck?.Pending is not null ||
                 !pendingBeforeDrawChoice)
                 throw new InvalidOperationException(
                     "Semantic BeforeHandDraw cursor has no matching choice.");

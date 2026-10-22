@@ -290,7 +290,7 @@ public static class SemanticCardSelectionEngineV111
             (!automaticStratagem && !automaticPipelineChoice &&
              !combat.IsPlayerTurn) ||
             choice is not { ChoiceId: "select_cards" } ||
-            combat.SemanticDeck is not { } deck || deck.Pending is not null)
+            combat.Stochastic.SemanticDeck is not { } deck || deck.Pending is not null)
             throw new InvalidOperationException(
                 "Expected a source card-selection choice on a semantic player turn.");
         if (automaticStratagem)

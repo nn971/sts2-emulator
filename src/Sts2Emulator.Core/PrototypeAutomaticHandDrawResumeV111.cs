@@ -39,7 +39,7 @@ public sealed partial class PrototypeGameEngine
         PrototypeAutomaticHandDrawProgressV111 progress;
         if (semanticRequested is { } requested)
         {
-            if (requested <= 0 || combat.SemanticDeck is not
+            if (requested <= 0 || combat.Stochastic.SemanticDeck is not
                     { Mode: SemanticDeckStateV111.NatureMode, Pending: null } ||
                 choice!.SemanticStratagemDrawSelection ||
                 !choice.AutomaticSemanticStratagemDrawSelection ||
@@ -56,7 +56,7 @@ public sealed partial class PrototypeGameEngine
         }
         else
         {
-            if (combat.SemanticDeck is not null ||
+            if (combat.Stochastic.SemanticDeck is not null ||
                 choice!.AutomaticSemanticStratagemDrawSelection ||
                 choice.SemanticStratagemDrawSelection ||
                 cursor?.ControlledSemanticDrawRequested is not null ||
@@ -98,7 +98,7 @@ public sealed partial class PrototypeGameEngine
         PrototypeAutomaticHandDrawProgressV111 progress;
         if (semanticRequested is { } requested)
         {
-            if (requested <= 0 || combat.SemanticDeck is not
+            if (requested <= 0 || combat.Stochastic.SemanticDeck is not
                     { Mode: SemanticDeckStateV111.NatureMode, Pending: null } ||
                 (cursor.ControlledSemanticDrawRequested is { } savedRequested &&
                  savedRequested != requested) ||
@@ -119,7 +119,7 @@ public sealed partial class PrototypeGameEngine
         else
         {
             if (ControlledChanceGuardV111.EngineOwnedNativeProviderActive ||
-                combat.SemanticDeck is not null ||
+                combat.Stochastic.SemanticDeck is not null ||
                 cursor.ControlledSemanticDrawRequested is not null ||
                 cursor.ControlledSemanticDrawRemaining is not null)
                 throw new InvalidDataException(
@@ -196,7 +196,7 @@ public sealed partial class PrototypeGameEngine
 
         if (combat.PendingChoice is not null ||
             combat.PendingKnowledgeDemonChoice is not null ||
-            combat.SemanticDeck?.Pending is not null)
+            combat.Stochastic.SemanticDeck?.Pending is not null)
             throw new InvalidDataException(
                 "Automatic hand-draw resume boundary is inconsistent.");
 

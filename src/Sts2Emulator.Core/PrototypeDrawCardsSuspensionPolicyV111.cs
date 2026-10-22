@@ -20,15 +20,15 @@ internal readonly record struct PrototypeDrawCardsSuspensionPolicyV111(
         bool controlled = ControlledChanceGuardV111.Active;
         bool nativeOwned =
             ControlledChanceGuardV111.EngineOwnedNativeProviderActive;
-        bool natureDeck = combat.SemanticDeck is
+        bool natureDeck = combat.Stochastic.SemanticDeck is
             { Mode: SemanticDeckStateV111.NatureMode };
         return new(
             ControlledRecycle: controlled,
             ControlledDrawCost: controlled,
-            SemanticDraw: controlled && combat.SemanticDeck is not null,
+            SemanticDraw: controlled && combat.Stochastic.SemanticDeck is not null,
             AfterShuffleInsertion: controlled && natureDeck,
             CardDrawnChoice: controlled && !nativeOwned &&
-                (combat.SemanticDeck is null || natureDeck));
+                (combat.Stochastic.SemanticDeck is null || natureDeck));
     }
 
     public static PrototypeDrawCardsSuspensionPolicyV111
@@ -43,7 +43,7 @@ internal readonly record struct PrototypeDrawCardsSuspensionPolicyV111(
             SemanticDraw: false,
             AfterShuffleInsertion: false,
             CardDrawnChoice: cardDrawnChoice ??
-                (combat.SemanticDeck is null &&
+                (combat.Stochastic.SemanticDeck is null &&
                  !ControlledChanceGuardV111.EngineOwnedNativeProviderActive));
     }
 
@@ -60,12 +60,12 @@ internal readonly record struct PrototypeDrawCardsSuspensionPolicyV111(
     {
         ArgumentNullException.ThrowIfNull(combat);
         bool semanticDraw = ControlledChanceGuardV111.Active &&
-            combat.SemanticDeck is
+            combat.Stochastic.SemanticDeck is
                 { Mode: SemanticDeckStateV111.NatureMode };
         return new(
             ControlledRecycle: ControlledChanceGuardV111.Active &&
                 !ControlledChanceGuardV111.EngineOwnedNativeProviderActive &&
-                combat.SemanticDeck is null,
+                combat.Stochastic.SemanticDeck is null,
             ControlledDrawCost: semanticDraw,
             SemanticDraw: semanticDraw,
             AfterShuffleInsertion: semanticDraw,

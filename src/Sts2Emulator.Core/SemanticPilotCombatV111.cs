@@ -589,7 +589,7 @@ public sealed record SemanticPilotCombatV111(
             return combat?.PendingChoice is
                 { ChoiceId: "controlled_semantic_draw",
                     ControlledSemanticDraw: not null } &&
-                combat.SemanticDeck is
+                combat.Stochastic.SemanticDeck is
                     { Pending: { Purpose: "draw" } } deck
                     ? SemanticDeckEngineV111.Inspect(deck) : null;
         }
@@ -1130,7 +1130,7 @@ public static class SemanticPilotCombatEngineV111
             ControlledPlayableCombatEngineV111.Save(completedOpening));
         if (!source.AtPlayerBoundary || source.Run.Phase != RunPhase.Combat ||
             source.Run.World?.Combat is not { } combat ||
-            combat.SemanticDeck is not null ||
+            combat.Stochastic.SemanticDeck is not null ||
             combat.AutomaticPipelineContinuation is not null ||
             combat.PendingChoice is not null)
             throw new InvalidOperationException(
@@ -1897,7 +1897,7 @@ public static class SemanticPilotCombatEngineV111
             combat.AutomaticPipelineContinuation is not null ||
             combat.Enemies.Any(enemy => enemy.PlannedMoveIndex is not null ||
                 enemy.PlannedNextAiStateId is not null) ||
-            combat.NativeRng is not { } nativeCombat ||
+            combat.Stochastic.NativeRng is not { } nativeCombat ||
             run.Stochastic.NativeRunRng is null)
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_ROUTE site=act1.entry " +
@@ -2110,9 +2110,9 @@ public static class SemanticPilotCombatEngineV111
             "Native policy entry is missing its run world.");
         var combat = world.Combat ?? throw new InvalidDataException(
             "Native policy entry is missing its combat.");
-        if (run.Stochastic.NativeRunRng is not null || combat.NativeRng is not null ||
-            combat.SemanticDeck is null ||
-            combat.SemanticDeck.Mode != SemanticDeckStateV111.NatureMode)
+        if (run.Stochastic.NativeRunRng is not null || combat.Stochastic.NativeRng is not null ||
+            combat.Stochastic.SemanticDeck is null ||
+            combat.Stochastic.SemanticDeck.Mode != SemanticDeckStateV111.NatureMode)
             throw new InvalidOperationException(
                 "Native policy entry requires a fresh semantic seeded opening.");
 
@@ -2173,7 +2173,7 @@ public static class SemanticPilotCombatEngineV111
         var dealt = (long[])combat.Hand.Clone();
         if (dealt.Length == 0 || combat.PendingChoice is not null ||
             combat.AutomaticPipelineContinuation is not null ||
-            combat.SemanticDeck?.Pending is not null)
+            combat.Stochastic.SemanticDeck?.Pending is not null)
             throw new InvalidOperationException(
                 "Opening hook replay requires a committed ordinary dealt hand.");
         var full = combat.DrawPile.Concat(dealt.Reverse()).ToArray();
@@ -4007,10 +4007,10 @@ public static class SemanticPilotCombatEngineV111
             throw new InvalidDataException(
                 "Native policy action did not reach an active combat boundary.");
         var combat = run.World!.Combat!;
-        if (combat.NativeRng is null || run.Stochastic.NativeRunRng is null)
+        if (combat.Stochastic.NativeRng is null || run.Stochastic.NativeRunRng is null)
             throw new InvalidDataException(
                 "Native policy combat lost its RNG stream owner.");
-        if (combat.SemanticDeck is not { } deck ||
+        if (combat.Stochastic.SemanticDeck is not { } deck ||
             deck.Mode != SemanticDeckStateV111.NativeMode ||
             deck.Pending is not null)
             throw new InvalidDataException(

@@ -82,7 +82,7 @@ public static class SemanticDrawPileAdapterV111
         ArgumentNullException.ThrowIfNull(combat);
         ArgumentException.ThrowIfNullOrWhiteSpace(missingDeckMessage);
         ArgumentException.ThrowIfNullOrWhiteSpace(invalidBoundaryMessage);
-        if (combat.SemanticDeck is not { } deck)
+        if (combat.Stochastic.SemanticDeck is not { } deck)
         {
             if (allowMissing) return null;
             throw new InvalidDataException(missingDeckMessage);
@@ -109,7 +109,7 @@ public static class SemanticDrawPileAdapterV111
     {
         ArgumentNullException.ThrowIfNull(combat);
         ArgumentException.ThrowIfNullOrWhiteSpace(invalidBoundaryMessage);
-        if (combat.SemanticDeck is null)
+        if (combat.Stochastic.SemanticDeck is null)
         {
             if (combat.DrawPile.Length == 0 &&
                 combat.DiscardPile.Length > 0)
@@ -203,7 +203,7 @@ public static class SemanticDrawPileAdapterV111
         ArgumentNullException.ThrowIfNull(nextCardZones);
         ValidateSynchronized(combat, requireIdle: true);
 
-        var semantic = combat.SemanticDeck;
+        var semantic = combat.Stochastic.SemanticDeck;
         IReadOnlyList<long> physicalDrawPile = combat.DrawPile;
         for (int index = 0; index < resolutions.Count; index++)
         {
@@ -243,7 +243,7 @@ public static class SemanticDrawPileAdapterV111
         ArgumentNullException.ThrowIfNull(nextPhysicalDrawPile);
         ArgumentNullException.ThrowIfNull(perfectFitTopCardInstanceIds);
         ValidateSynchronized(combat, requireIdle: true);
-        if (combat.SemanticDeck is not { } semantic ||
+        if (combat.Stochastic.SemanticDeck is not { } semantic ||
             semantic.Mode != SemanticDeckStateV111.NatureMode ||
             semantic.Count != 0 || combat.DrawPile.Length != 0)
             throw new InvalidDataException(
@@ -285,7 +285,7 @@ public static class SemanticDrawPileAdapterV111
         ArgumentNullException.ThrowIfNull(combat);
         ArgumentNullException.ThrowIfNull(shuffledPhysicalDrawPile);
         ValidateSynchronized(combat, requireIdle: true);
-        if (combat.SemanticDeck is not null ||
+        if (combat.Stochastic.SemanticDeck is not null ||
             combat.DrawPile.Length != 0 || combat.DiscardPile.Length == 0 ||
             combat.DiscardPile.Distinct().Count() != combat.DiscardPile.Length)
             throw new InvalidDataException(
@@ -318,7 +318,7 @@ public static class SemanticDrawPileAdapterV111
         ArgumentNullException.ThrowIfNull(combat);
         ArgumentNullException.ThrowIfNull(shuffledPhysicalDrawPile);
         ValidateSynchronized(combat, requireIdle: true);
-        if (combat.SemanticDeck is not { } semantic ||
+        if (combat.Stochastic.SemanticDeck is not { } semantic ||
             semantic.Mode != SemanticDeckStateV111.NativeMode ||
             semantic.Count != 0 ||
             combat.DrawPile.Length != 0 || combat.DiscardPile.Length == 0 ||
@@ -430,7 +430,7 @@ public static class SemanticDrawPileAdapterV111
     {
         ArgumentNullException.ThrowIfNull(combat);
         ArgumentNullException.ThrowIfNull(semanticDeck);
-        if (combat.SemanticDeck is not null)
+        if (combat.Stochastic.SemanticDeck is not null)
             throw new InvalidOperationException(
                 "Semantic draw-pile initialization requires an unowned provider state.");
         return ApplyCommittedPhysicalMutation(
@@ -560,7 +560,7 @@ public static class SemanticDrawPileAdapterV111
             throw new InvalidDataException(
                 "Card-zone transition does not match its declared identity delta.");
         return CommitZoneTransition(
-            combat, nextCardZones, combat.SemanticDeck,
+            combat, nextCardZones, combat.Stochastic.SemanticDeck,
             addedCombatCards: addedCards,
             removedCombatCardInstanceIds: removedCombatCards,
             transformedPersistentCardInstanceId:
@@ -777,7 +777,7 @@ public static class SemanticDrawPileAdapterV111
                 "Draw-pile insertion transition changed undeclared card identities.");
 
         ValidateSynchronized(combat, requireIdle: true);
-        var semantic = combat.SemanticDeck;
+        var semantic = combat.Stochastic.SemanticDeck;
         if (semantic is not null)
         {
             var topOffset = combat.DrawPile.Length - physicalIndex;
@@ -973,7 +973,7 @@ public static class SemanticDrawPileAdapterV111
                 "Hand-return shuffle identities differ from the committed hand.");
 
         var semantic = CommitHandReturnSemanticShuffle(
-            combat.SemanticDeck, shuffled, returned);
+            combat.Stochastic.SemanticDeck, shuffled, returned);
         var nextZones = combat.Mechanics.CardZones.WithZoneChanges(
             new Dictionary<PrototypeCardZone, long[]>
             {
@@ -995,7 +995,7 @@ public static class SemanticDrawPileAdapterV111
     {
         ArgumentNullException.ThrowIfNull(combat);
         ArgumentNullException.ThrowIfNull(nextPhysicalDrawPile);
-        if (combat.SemanticDeck is not null &&
+        if (combat.Stochastic.SemanticDeck is not null &&
             committedSemanticDeck is null)
             throw new InvalidDataException(
                 "A physical draw-pile mutation cannot drop its provider state.");
@@ -1057,7 +1057,7 @@ public static class SemanticDrawPileAdapterV111
     {
         ArgumentNullException.ThrowIfNull(combat);
         ArgumentNullException.ThrowIfNull(nextCardZones);
-        if (combat.SemanticDeck is not null &&
+        if (combat.Stochastic.SemanticDeck is not null &&
             committedSemanticDeck is null)
             throw new InvalidDataException(
                 "A card-zone mutation cannot drop its provider state.");
@@ -1185,7 +1185,7 @@ public static class SemanticDrawPileAdapterV111
     internal static SemanticDeckStateV111? SynchronizeSemanticDrawPileAfterMutation(
         CombatState combat, long[] nextPhysicalDrawPile)
     {
-        var semantic = combat.SemanticDeck;
+        var semantic = combat.Stochastic.SemanticDeck;
         if (semantic is null) return null;
         SemanticDeckEngineV111.Validate(semantic);
         if (semantic.Pending is not null)
@@ -1272,7 +1272,7 @@ public static class SemanticDrawPileAdapterV111
     internal static SemanticDeckStateV111? SynchronizeSemanticDrawPileAfterRemoval(
         CombatState combat, IReadOnlyCollection<long> removedCardInstanceIds)
     {
-        var semantic = combat.SemanticDeck;
+        var semantic = combat.Stochastic.SemanticDeck;
         if (semantic is null) return null;
         ValidateSynchronized(combat, requireIdle: true);
         var removed = removedCardInstanceIds.ToArray();
@@ -1294,7 +1294,7 @@ public static class SemanticDrawPileAdapterV111
         CombatState combat, int physicalIndex, long insertedCardInstanceId,
         bool publiclyKnown = false)
     {
-        var semantic = combat.SemanticDeck;
+        var semantic = combat.Stochastic.SemanticDeck;
         if (semantic is null) return null;
         ValidateSynchronized(combat, requireIdle: true);
         if (physicalIndex < 0 || physicalIndex > combat.DrawPile.Length)
@@ -1312,7 +1312,7 @@ public static class SemanticDrawPileAdapterV111
         CombatState combat, long replacedCardInstanceId,
         long replacementCardInstanceId, int physicalIndex)
     {
-        var semantic = combat.SemanticDeck;
+        var semantic = combat.Stochastic.SemanticDeck;
         if (semantic is null) return null;
         ValidateSynchronized(combat, requireIdle: true);
         if (physicalIndex < 0 || physicalIndex >= combat.DrawPile.Length ||

@@ -25,7 +25,7 @@ public sealed partial class PrototypeGameEngine
         var world = RequireWorld(run);
         var combat = world.Combat ??
             throw new InvalidOperationException("No combat to draw from.");
-        if (combat.SemanticDeck is null)
+        if (combat.Stochastic.SemanticDeck is null)
             throw new InvalidOperationException("Missing semantic deck provider.");
         bool automatic = IsSemanticAutomaticHandDraw(combat);
         if (combat.PendingChoice is not null ||
@@ -78,7 +78,7 @@ public sealed partial class PrototypeGameEngine
         var world = RequireWorld(run);
         var combat = world.Combat ??
             throw new InvalidOperationException("No semantic cost combat.");
-        var deck = combat.SemanticDeck ??
+        var deck = combat.Stochastic.SemanticDeck ??
             throw new InvalidOperationException("Semantic provider is absent.");
         SemanticDeckEngineV111.Validate(deck);
         var pending = combat.PendingChoice;
@@ -471,7 +471,7 @@ public sealed partial class PrototypeGameEngine
         var boundary = drawn.BoundaryKind;
         if (drawn.RemainingCount < 0 || requested <= 0 ||
             (boundary == PrototypeDrawCardsBoundaryKind.SemanticDraw &&
-             combat.SemanticDeck?.Pending is null) ||
+             combat.Stochastic.SemanticDeck?.Pending is null) ||
             (boundary == PrototypeDrawCardsBoundaryKind.ControlledDrawCost &&
              combat.PendingChoice?.ControlledDrawCost is null))
             throw new InvalidDataException(
@@ -628,7 +628,7 @@ public sealed partial class PrototypeGameEngine
     {
         if (!ControlledChanceGuardV111.Active || remaining < 0 ||
             eventDepth < 0 || combat.PendingChoice is null ||
-            combat.SemanticDeck is not
+            combat.Stochastic.SemanticDeck is not
                 { Mode: SemanticDeckStateV111.NatureMode,
                     Pending: null })
             throw new InvalidDataException(
@@ -707,7 +707,7 @@ public sealed partial class PrototypeGameEngine
         if (IsSemanticAutomaticHandDraw(combat))
             return combat.AutomaticPipelineContinuation!
                 .ControlledSemanticDrawRemaining!.Value;
-        if (combat.SemanticDeck?.Pending is not null)
+        if (combat.Stochastic.SemanticDeck?.Pending is not null)
             return Math.Max(0, previousRemaining -
                 (combat.CounterState.CardsDrawnThisCombat - drawnBefore));
         return 0;

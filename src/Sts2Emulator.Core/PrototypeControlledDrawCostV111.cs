@@ -163,7 +163,7 @@ public sealed partial class PrototypeGameEngine
             draw.RemainingCount != cost.RemainingCount ||
             draw.FromHandDraw != cost.FromHandDraw ||
             draw.EventDepth != cost.EventDepth ||
-            combat.SemanticDeck is not
+            combat.Stochastic.SemanticDeck is not
                 { Mode: SemanticDeckStateV111.NatureMode, Pending: null } ||
             !ValidateControlledDrawCost(state.Player, combat, cost))
             throw new InvalidDataException(
@@ -209,7 +209,7 @@ public sealed partial class PrototypeGameEngine
             state, cost, value,
             PrototypeDrawCardsSuspensionPolicyV111
                 .ControlledLegacyAutomaticHandDraw(combat),
-            allowHookSuspension: combat.SemanticDeck is null &&
+            allowHookSuspension: combat.Stochastic.SemanticDeck is null &&
                 !ControlledChanceGuardV111.EngineOwnedNativeProviderActive,
             unsupportedBoundaryMessage:
                 "UNSUPPORTED_CONTROLLED_CHANCE site=combat.draw_cost." +

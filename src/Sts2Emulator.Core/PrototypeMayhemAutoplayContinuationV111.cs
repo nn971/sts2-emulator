@@ -31,7 +31,7 @@ public sealed partial class PrototypeGameEngine
             pending.ControlledSemanticDraw is not { } draw ||
             pending.ChoiceId is not (
                 "controlled_semantic_draw" or "controlled_draw_cost") ||
-            combat.SemanticDeck is not
+            combat.Stochastic.SemanticDeck is not
                 { Mode: SemanticDeckStateV111.NatureMode })
             return false;
 
@@ -81,7 +81,7 @@ public sealed partial class PrototypeGameEngine
             { ChoiceId: "controlled_draw_insertion",
               ControlledDrawInsertion: { } insertion,
               OuterChoiceContinuation: { } continuation } ||
-            combat.SemanticDeck is not
+            combat.Stochastic.SemanticDeck is not
                 { Mode: SemanticDeckStateV111.NatureMode })
             return false;
 
@@ -275,7 +275,7 @@ public sealed partial class PrototypeGameEngine
             { ChoiceId: "controlled_generated_card",
               ControlledGeneration: { } generation,
               OuterChoiceContinuation: { } continuation } ||
-            combat.SemanticDeck is not
+            combat.Stochastic.SemanticDeck is not
                 { Mode: SemanticDeckStateV111.NatureMode } ||
             !ValidateControlledGenerationSupport(generation))
             return false;
@@ -294,7 +294,7 @@ public sealed partial class PrototypeGameEngine
             { ChoiceId: "controlled_potion_generation",
               ControlledPotionGeneration: { } generation,
               OuterChoiceContinuation: { } continuation } ||
-            combat.SemanticDeck is not
+            combat.Stochastic.SemanticDeck is not
                 { Mode: SemanticDeckStateV111.NatureMode } ||
             !ValidateControlledPotionGeneration(
                 combat, generation, pending.SourceCardInstanceId))
@@ -312,7 +312,7 @@ public sealed partial class PrototypeGameEngine
         if (pending is not
             { ChoiceId: "controlled_card_transform",
               ControlledCardTransform: { } transform } ||
-            combat.SemanticDeck is not
+            combat.Stochastic.SemanticDeck is not
                 { Mode: SemanticDeckStateV111.NatureMode } ||
             !ValidateControlledCardTransform(combat, transform))
             return false;
@@ -336,7 +336,7 @@ public sealed partial class PrototypeGameEngine
             { ChoiceId: "controlled_card_shortlist",
               ControlledCardShortlist: { } shortlist,
               OuterChoiceContinuation: { } continuation } ||
-            combat.SemanticDeck is not
+            combat.Stochastic.SemanticDeck is not
                 { Mode: SemanticDeckStateV111.NatureMode } ||
             shortlist.Operation.Kind is not (
                 PrototypeCombatEffectKind.AutoPlayRandomCardsFromZone or
@@ -365,7 +365,7 @@ public sealed partial class PrototypeGameEngine
         if (shuffle.Operation.Kind ==
             PrototypeCombatEffectKind.RecycleDrawPileForEffectDraw)
             return IsMayhemLegacyRecycleContinuation(combat, pending);
-        if (combat.SemanticDeck is not
+        if (combat.Stochastic.SemanticDeck is not
             { Mode: SemanticDeckStateV111.NatureMode })
             return false;
         return IsSupportedAutomaticPipelineAutoplayContinuation(
@@ -552,7 +552,7 @@ public sealed partial class PrototypeGameEngine
             { ChoiceId: "controlled_random_hand_cost",
               ControlledRandomCost: { } randomCost,
               OuterChoiceContinuation: { } continuation } ||
-            combat.SemanticDeck is not
+            combat.Stochastic.SemanticDeck is not
                 { Mode: SemanticDeckStateV111.NatureMode } ||
             !ValidateControlledRandomCost(combat, randomCost))
             return false;
@@ -568,7 +568,7 @@ public sealed partial class PrototypeGameEngine
         ArgumentNullException.ThrowIfNull(pending);
         if (pending is not
             { ChoiceId: "select_cards", OuterChoiceContinuation: null } ||
-            combat.SemanticDeck is not
+            combat.Stochastic.SemanticDeck is not
                 { Mode: SemanticDeckStateV111.NatureMode })
             return false;
 
@@ -594,7 +594,7 @@ public sealed partial class PrototypeGameEngine
         if (combat is not { IsPlayerTurn: true,
                 AutomaticPipelineContinuation: { } continuation,
                 PendingKnowledgeDemonChoice: null } ||
-            combat.SemanticDeck is not
+            combat.Stochastic.SemanticDeck is not
                 { Mode: SemanticDeckStateV111.NatureMode, Pending: null } ||
             pending is not
                 { ChoiceId: "select_cards",
@@ -734,7 +734,7 @@ public sealed partial class PrototypeGameEngine
         if (combat is not { IsPlayerTurn: true,
                 AutomaticPipelineContinuation: { } continuation,
                 PendingKnowledgeDemonChoice: null } ||
-            combat.SemanticDeck is not
+            combat.Stochastic.SemanticDeck is not
                 { Mode: SemanticDeckStateV111.NatureMode, Pending: null } ||
             pending is not
                 { ChoiceId: "select_cards",
@@ -1294,7 +1294,7 @@ public sealed partial class PrototypeGameEngine
               SourceCardDestination: PrototypeCardZone.DiscardPile,
               ControlledDrawCost: null } &&
             draw.RemainingCount > 0 &&
-            combat.SemanticDeck!.Pending is
+            combat.Stochastic.SemanticDeck!.Pending is
                 { Purpose: "draw", TopOffset: 0 };
         bool drawCost = pending is
             { ChoiceId: "controlled_draw_cost",
@@ -1305,7 +1305,7 @@ public sealed partial class PrototypeGameEngine
             cost.RemainingCount == draw.RemainingCount &&
             cost.FromHandDraw == draw.FromHandDraw &&
             cost.EventDepth == draw.EventDepth &&
-            combat.SemanticDeck!.Pending is null;
+            combat.Stochastic.SemanticDeck!.Pending is null;
         if (!semanticDraw && !drawCost)
             return false;
 
@@ -1371,7 +1371,7 @@ public sealed partial class PrototypeGameEngine
               ControlledEnemyAction: null,
               ControlledTurnIntents: null,
               CompletedSemanticHandDrawRequested: null } &&
-        combat.SemanticDeck is
+        combat.Stochastic.SemanticDeck is
             { Mode: SemanticDeckStateV111.NatureMode };
 
     private static bool TryGetGamblingChipOpeningSubscriber(
@@ -1467,7 +1467,7 @@ public sealed partial class PrototypeGameEngine
         if (combat is not { IsPlayerTurn: true,
                 AutomaticPipelineContinuation: { } continuation,
                 PendingKnowledgeDemonChoice: null } ||
-            combat.SemanticDeck is not
+            combat.Stochastic.SemanticDeck is not
                 { Mode: SemanticDeckStateV111.NatureMode, Pending: null } ||
             pending is not
                 { SourceCardInstanceId: null,
@@ -1519,7 +1519,7 @@ public sealed partial class PrototypeGameEngine
         if (combat is not { IsPlayerTurn: true,
                 AutomaticPipelineContinuation: { } continuation,
                 PendingKnowledgeDemonChoice: null } ||
-            combat.SemanticDeck is not
+            combat.Stochastic.SemanticDeck is not
                 { Mode: SemanticDeckStateV111.NatureMode, Pending: null } ||
             pending is not
                 { ChoiceId: "select_cards",
@@ -1660,7 +1660,7 @@ public sealed partial class PrototypeGameEngine
         ArgumentNullException.ThrowIfNull(pending);
         if (!pending.StandaloneSemanticDrawHookChoice ||
             pending.AutomaticSemanticDrawHookChoice ||
-            combat.SemanticDeck is not
+            combat.Stochastic.SemanticDeck is not
                 { Mode: SemanticDeckStateV111.NatureMode, Pending: null } ||
             !SemanticDrawHookChoiceEngineV111.HasStandaloneDrawResume(pending) ||
             pending.OuterChoiceContinuation is not { } continuation)
@@ -1831,7 +1831,7 @@ public sealed partial class PrototypeGameEngine
             pending.ControlledSemanticDraw is not { } draw ||
             pending.ChoiceId is not (
                 "controlled_semantic_draw" or "controlled_draw_cost") ||
-            combat.SemanticDeck is not
+            combat.Stochastic.SemanticDeck is not
                 { Mode: SemanticDeckStateV111.NatureMode } ||
             pending.OuterChoiceContinuation is not { } continuation)
             return false;
@@ -1861,7 +1861,7 @@ public sealed partial class PrototypeGameEngine
         ArgumentNullException.ThrowIfNull(combat);
         ArgumentNullException.ThrowIfNull(pending);
         if (!IsMayhemAutoPrePlayPipelineCursor(combat) ||
-            combat.SemanticDeck is not null ||
+            combat.Stochastic.SemanticDeck is not null ||
             pending.ChoiceId != "controlled_pool_shuffle" ||
             pending.ControlledPoolShuffle?.Operation.Kind !=
                 PrototypeCombatEffectKind.RecycleDrawPileForEffectDraw ||

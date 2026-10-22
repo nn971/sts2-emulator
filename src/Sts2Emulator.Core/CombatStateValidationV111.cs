@@ -761,7 +761,7 @@ public sealed partial record CombatState
                     pending.Selection.MinSelections != expectedStratagemPicks ||
                     pending.Selection.MaxSelections != expectedStratagemPicks ||
                     expectedStratagemPicks <= 0 ||
-                    combat.SemanticDeck is not
+                    combat.Stochastic.SemanticDeck is not
                         { Mode: SemanticDeckStateV111.NatureMode,
                             Pending: null } ||
                     !PrototypeGameEngine.IsSemanticAutomaticHandDraw(combat))
@@ -791,7 +791,7 @@ public sealed partial record CombatState
                     pending.ControlledDrawCost is not null ||
                     !hasStandaloneDrawResume || !combat.IsPlayerTurn ||
                     combat.AutomaticPipelineContinuation is not null ||
-                    combat.SemanticDeck is not
+                    combat.Stochastic.SemanticDeck is not
                         { Mode: SemanticDeckStateV111.NatureMode,
                             Pending: null })
                     throw new InvalidOperationException(
@@ -821,7 +821,7 @@ public sealed partial record CombatState
                             ControlledSemanticDrawRequested: null } cursor &&
                       cursor.Mechanics.IsAtStep(
                           PrototypeAutomaticStepKind.DrawPlayerHand)) ||
-                    combat.SemanticDeck is not
+                    combat.Stochastic.SemanticDeck is not
                         { Mode: SemanticDeckStateV111.NatureMode,
                             Pending: null })
                     throw new InvalidOperationException(
@@ -871,7 +871,7 @@ public sealed partial record CombatState
                     (isSemanticDrawChoice || isEffectDrawCostChoice) &&
                     PrototypeGameEngine.IsSupportedAutomaticPipelineSemanticDrawContinuation(
                         combat, pending);
-                var deck = combat.SemanticDeck;
+                var deck = combat.Stochastic.SemanticDeck;
                 if (combat.IsPlayerTurn is false ||
                     (combat.AutomaticPipelineContinuation is not null &&
                      !supportedPipelineSemanticDraw) ||

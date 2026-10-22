@@ -79,7 +79,7 @@ public static class ControlledInitialHpV111
         ArgumentNullException.ThrowIfNull(combat);
         ArgumentNullException.ThrowIfNull(formation);
         ArgumentNullException.ThrowIfNull(referenceStreams);
-        if (combat.NativeRng is not null)
+        if (combat.Stochastic.NativeRng is not null)
             throw new InvalidOperationException("Controlled entry requires unattached combat.");
         if (combat.Enemies.Length != formation.Enemies.Length ||
             formation.MonsterContexts.Length != combat.Enemies.Length)

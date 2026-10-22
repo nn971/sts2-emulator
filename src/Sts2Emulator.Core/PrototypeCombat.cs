@@ -467,7 +467,7 @@ public sealed partial class PrototypeGameEngine
         {
             Stochastic = RunStochasticStateV111.WithNativeRunRng(
                 state.Stochastic,
-                combat.NativeRng?.RunStreams.Fork()
+                combat.Stochastic.NativeRng?.RunStreams.Fork()
                     ?? state.Stochastic.NativeRunRng?.Fork()),
             World = entryWorld,
             Phase = RunPhase.Combat
@@ -477,11 +477,11 @@ public sealed partial class PrototypeGameEngine
             NativeCombatRngEntryV111.CommittedIntentSiteId);
         // Return the latest native run/player cursors to their persistent
         // owner; later Step() calls continue from these precise positions.
-        if (combat.NativeRng is not null)
+        if (combat.Stochastic.NativeRng is not null)
             state = state with
             {
                 Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                    state.Stochastic, combat.NativeRng.RunStreams.Fork())
+                    state.Stochastic, combat.Stochastic.NativeRng.RunStreams.Fork())
             };
 
         return ResumeSemanticInitialCombatEntry(state with
@@ -501,7 +501,7 @@ public sealed partial class PrototypeGameEngine
             world.Combat is null || combat.Act != world.Act)
             throw new InvalidOperationException(
                 "Initial intent continuation has an invalid combat-entry source.");
-        var nativeStreams = combat.NativeRng?.RunStreams.Fork()
+        var nativeStreams = combat.Stochastic.NativeRng?.RunStreams.Fork()
             ?? source.Stochastic.NativeRunRng?.Fork();
         var advanced = source with
         {
@@ -509,7 +509,7 @@ public sealed partial class PrototypeGameEngine
                 source.Stochastic, nativeStreams),
             World = world with { Combat = combat.Fork() }
         };
-        if (nativeStreams is not null && combat.NativeRng is not null)
+        if (nativeStreams is not null && combat.Stochastic.NativeRng is not null)
             NativeRunRngV111.Validate(advanced);
         advanced = ApplyOpeningRoyalPoison(advanced);
         return ResumeAutomaticPipelineContinuation(
@@ -2042,7 +2042,7 @@ public sealed partial class PrototypeGameEngine
 
         var postHook = NativeShuffleStepReplayV111.CheckPostHook(
             ApplyPerfectFitShuffleOrder(combat, (long[])selectedPreHookOrder.Clone()));
-        var semanticDeck = combat.SemanticDeck;
+        var semanticDeck = combat.Stochastic.SemanticDeck;
         if (semanticDeck is not null)
         {
             if (semanticDeck.Mode != SemanticDeckStateV111.NatureMode ||
@@ -2835,11 +2835,11 @@ public sealed partial class PrototypeGameEngine
                             PrototypeCombatEventKind.BeforeHandDraw),
                         state.Stochastic.PrototypeRng,
                         allowSuspension: ControlledChanceGuardV111.Active &&
-                            (combat.SemanticDeck is
+                            (combat.Stochastic.SemanticDeck is
                                 { Mode: SemanticDeckStateV111.NatureMode } ||
                              (!ControlledChanceGuardV111
                                   .EngineOwnedNativeProviderActive &&
-                              combat.SemanticDeck is null)));
+                              combat.Stochastic.SemanticDeck is null)));
                     player = beforeHandDraw.Player;
                     combat = beforeHandDraw.Combat;
                     if (combat.PendingChoice?.ControlledRandomPileCard is not null)
@@ -2871,12 +2871,12 @@ public sealed partial class PrototypeGameEngine
                             throw new NotSupportedException(
                                 "UNSUPPORTED_SEMANTIC_DECK site=combat.BeforeHandDraw " +
                                 "operation=nested_controlled_choice");
-                        bool semanticBeforeHandDraw = combat.SemanticDeck is
+                        bool semanticBeforeHandDraw = combat.Stochastic.SemanticDeck is
                             { Mode: SemanticDeckStateV111.NatureMode };
                         if (!semanticBeforeHandDraw &&
                             (ControlledChanceGuardV111
                                  .EngineOwnedNativeProviderActive ||
-                             combat.SemanticDeck is not null))
+                             combat.Stochastic.SemanticDeck is not null))
                             throw new NotSupportedException(
                                 "UNSUPPORTED_CONTROLLED_CHANCE " +
                                 "site=combat.BeforeHandDraw " +
@@ -2936,14 +2936,14 @@ public sealed partial class PrototypeGameEngine
                 var drawBoundary = drawn.BoundaryKind;
                 bool semanticChoiceBoundary =
                     ControlledChanceGuardV111.Active &&
-                    combat.SemanticDeck is
+                    combat.Stochastic.SemanticDeck is
                         { Mode: SemanticDeckStateV111.NatureMode } &&
                     drawBoundary is
                         (PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice or
                          PrototypeDrawCardsBoundaryKind.AfterShuffleInsertions or
                          PrototypeDrawCardsBoundaryKind.ShuffleSelection);
                 bool semanticDrawBoundary =
-                    combat.SemanticDeck is not null &&
+                    combat.Stochastic.SemanticDeck is not null &&
                     drawBoundary is
                         (PrototypeDrawCardsBoundaryKind.SemanticDraw or
                          PrototypeDrawCardsBoundaryKind.ControlledDrawCost);
@@ -2965,7 +2965,7 @@ public sealed partial class PrototypeGameEngine
                         recycleOperation: "unsupported_nested_stage").Run;
                 }
                 if (ControlledChanceGuardV111.Active &&
-                    combat.SemanticDeck is null &&
+                    combat.Stochastic.SemanticDeck is null &&
                     drawBoundary is
                         (PrototypeDrawCardsBoundaryKind.ControlledDrawCost or
                          PrototypeDrawCardsBoundaryKind.ControlledRecycle or
@@ -2998,7 +2998,7 @@ public sealed partial class PrototypeGameEngine
                 if (deferAutomaticHandDrawCompletion &&
                     combat.PendingChoice is null &&
                     combat.PendingKnowledgeDemonChoice is null &&
-                    combat.SemanticDeck?.Pending is null)
+                    combat.Stochastic.SemanticDeck?.Pending is null)
                 {
                     var completedInput = state with
                     {
@@ -3409,7 +3409,7 @@ public sealed partial class PrototypeGameEngine
         CombatState combat, RngBundle rng,
         string siteId = NativeCombatRngEntryV111.CommittedIntentSiteId)
     {
-        if (combat.NativeRng is null)
+        if (combat.Stochastic.NativeRng is null)
             throw new InvalidOperationException("Native intent audit requires attached native RNG.");
         var decisions = new List<RandomIndexDecisionV111>();
         var result = CommitEnemyIntentsCore(combat, rng, decisions, siteId);
@@ -3425,7 +3425,7 @@ public sealed partial class PrototypeGameEngine
             throw new NotSupportedException(
                 $"UNSUPPORTED_RANDOM_SITE site={siteId} " +
                 "operation=enemy_intent_commit.");
-        var ownedNative = combat.NativeRng?.Fork();
+        var ownedNative = combat.Stochastic.NativeRng?.Fork();
         var formation = combat.Enemies.Select(enemy => enemy.Fork()).ToArray();
         var provider = new NativeRandomIndexProviderV111();
         int occurrence = 0;
@@ -4010,7 +4010,7 @@ public sealed partial class PrototypeGameEngine
         for (var index = 0; index < enemies.Count; index++)
         {
             var enemy = enemies[index];
-            var enemyCombatId = combat.NativeRng is { } nativeRng
+            var enemyCombatId = combat.Stochastic.NativeRng is { } nativeRng
                 ? index < nativeRng.Formation.MonsterContexts.Length
                     ? nativeRng.Formation.MonsterContexts[index].CombatId
                     : throw new InvalidDataException(
@@ -4563,9 +4563,9 @@ public sealed partial class PrototypeGameEngine
                             if (effect.EnemyId is null)
                                 throw new InvalidOperationException(
                                     "Enemy transformation requires a model ID.");
-                            if (combat.NativeRng is not null)
+                            if (combat.Stochastic.NativeRng is not null)
                             {
-                                if (combat.NativeRng.Formation.NativeEncounterEntry
+                                if (combat.Stochastic.NativeRng.Formation.NativeEncounterEntry
                                         == "OvicopterNormal"
                                     && enemy.EnemyId ==
                                         PrototypeNativeHiveSummoningNormals.ToughEggId
@@ -4799,7 +4799,7 @@ public sealed partial class PrototypeGameEngine
                         case PrototypeEnemyEffectKind.SummonEnemy:
                         {
                             var summonId = effect.EnemyId;
-                            if (combat.NativeRng is not null
+                            if (combat.Stochastic.NativeRng is not null
                                 && effect.SummonEnemyPool is { Length: > 0 })
                                 throw new NotSupportedException(
                                     "Native summon pools need audited source RNG selection.");
@@ -4847,7 +4847,7 @@ public sealed partial class PrototypeGameEngine
                             // run.niche after selecting a legal summon
                             // slot. Do not consume prototype combat RNG.
                             var summonedHp =
-                                combat.NativeRng is not null
+                                combat.Stochastic.NativeRng is not null
                                     ? hpRange.Max
                                     : hpRange.Min == hpRange.Max
                                         ? hpRange.Min
@@ -4887,7 +4887,7 @@ public sealed partial class PrototypeGameEngine
                                 // source slot (bomb1 -> bomb5). The
                                 // prototype's default last-slot preference
                                 // remains intact for all other encounters.
-                                var sourceFirst = combat.NativeRng?.Formation
+                                var sourceFirst = combat.Stochastic.NativeRng?.Formation
                                         .NativeEncounterEntry == "LivingFogNormal"
                                     && enemy.EnemyId == "proto.enemy.living_fog"
                                     && summonId == "proto.enemy.gas_bomb";
@@ -4948,7 +4948,7 @@ public sealed partial class PrototypeGameEngine
                                         definition.MaxCoordinatedSummons > 0
                                             ? enemy.SharedSummonsUsed + 1
                                             : 0);
-                            if (combat.NativeRng is not null)
+                            if (combat.Stochastic.NativeRng is not null)
                             {
                                 combat = NativeCombatRngEntryV111.AppendSummonedEnemy(
                                     combat, enemies, spawnedEnemy);
@@ -5202,14 +5202,14 @@ public sealed partial class PrototypeGameEngine
             // (new CombatId, new niche roll), then Add(precreated Fat).
             // The legacy emulator lists Sneaky first: reorder only the
             // opt-in native creation calls, not legacy behavior.
-            var nativeMerc = combat.NativeRng?.Formation.NativeEncounterEntry
+            var nativeMerc = combat.Stochastic.NativeRng?.Formation.NativeEncounterEntry
                     == "GremlinMercNormal"
                 && source.EnemyId == "proto.enemy.gremlin_merc";
             var orderedSummons = nativeMerc
                 ? summons.Reverse().ToArray()
                 : summons;
             var nativePhrog =
-                combat.NativeRng?.Formation.NativeEncounterEntry
+                combat.Stochastic.NativeRng?.Formation.NativeEncounterEntry
                     == "PhrogParasiteElite"
                 && source.EnemyId == "proto.enemy.phrog_parasite";
             if (nativePhrog
@@ -5245,7 +5245,7 @@ public sealed partial class PrototypeGameEngine
                         : enemies.Max(enemy =>
                             enemy.InstanceId) + 1;
                 var hp =
-                    combat.NativeRng is not null
+                    combat.Stochastic.NativeRng is not null
                         ? hpRange.Max
                         : hpRange.Min == hpRange.Max
                             ? hpRange.Min
@@ -5307,7 +5307,7 @@ public sealed partial class PrototypeGameEngine
                             summon.SkipEnemyActions == 1
                                 ? Math.Max(0, enemyActionSkips)
                                 : Math.Max(0, summon.SkipEnemyActions));
-                if (combat.NativeRng is not null)
+                if (combat.Stochastic.NativeRng is not null)
                 {
                     combat = NativeCombatRngEntryV111.AppendSummonedEnemy(
                         combat, enemies, spawnedEnemy,
@@ -5894,7 +5894,7 @@ public sealed partial class PrototypeGameEngine
                             // insertion and retain only the remaining source
                             // operation queue plus this damage-stage frame;
                             // all post-hit triggers resume after insertion.
-                            if (combat.SemanticDeck is
+                            if (combat.Stochastic.SemanticDeck is
                                 { Mode: SemanticDeckStateV111.NatureMode })
                             {
                                 for (var position = 0;
@@ -6374,7 +6374,7 @@ public sealed partial class PrototypeGameEngine
                                     sourceCardAlreadyMoved,
                                 EventDispatchContinuation:
                                     eventDispatchContinuation?.Fork());
-                        if (combat.SemanticDeck is not null ||
+                        if (combat.Stochastic.SemanticDeck is not null ||
                             drawn.RemainingCount <= 0 ||
                             combat.DrawPile.Length != 0 ||
                             combat.DiscardPile.Length == 0)
@@ -6568,7 +6568,7 @@ public sealed partial class PrototypeGameEngine
 
                 case PrototypeCombatEffectKind.ReturnHandToDrawAndShuffle:
                 {
-                    if (combat.SemanticDeck is
+                    if (combat.Stochastic.SemanticDeck is
                             { Mode: SemanticDeckStateV111.NatureMode } &&
                         (!ControlledChanceGuardV111.Active ||
                          ControlledChanceGuardV111.EngineOwnedNativeProviderActive))
@@ -7014,7 +7014,7 @@ public sealed partial class PrototypeGameEngine
                         !ControlledChanceGuardV111
                             .EngineOwnedNativeProviderActive)
                     {
-                        if (combat.SemanticDeck is not
+                        if (combat.Stochastic.SemanticDeck is not
                             { Mode: SemanticDeckStateV111.NatureMode })
                             throw new NotSupportedException(
                                 "UNSUPPORTED_SEMANTIC_DECK " +
@@ -7041,7 +7041,7 @@ public sealed partial class PrototypeGameEngine
                             combat, candidates, continuation));
                     }
 
-                    var nativeRunStreams = combat.NativeRng?.RunStreams.Fork();
+                    var nativeRunStreams = combat.Stochastic.NativeRng?.RunStreams.Fork();
                     var streamId = nativeRunStreams is null
                         ? "combat"
                         : "run.combat_card_selection";
@@ -7776,7 +7776,7 @@ public sealed partial class PrototypeGameEngine
                                 "UNSUPPORTED_CONTROLLED_CHANCE " +
                                 "site=combat.potion_generation.random_model " +
                                 "operation=choose_index requires a saved potion continuation.");
-                        var native = combat.NativeRng;
+                        var native = combat.Stochastic.NativeRng;
                         var streamId = native is null
                             ? "combat"
                             : "run.combat_potion_generation";
@@ -8075,7 +8075,7 @@ public sealed partial class PrototypeGameEngine
 
                 case PrototypeCombatEffectKind.AutoPlayTopDrawCards:
                 {
-                    var semanticDeck = combat.SemanticDeck;
+                    var semanticDeck = combat.Stochastic.SemanticDeck;
                     var natureAutoplay = semanticDeck is
                         { Mode: SemanticDeckStateV111.NatureMode };
                     if (natureAutoplay && !ControlledChanceGuardV111.Active)
@@ -8131,7 +8131,7 @@ public sealed partial class PrototypeGameEngine
                                 staged.Skip(committedStagedCount).ToArray(),
                                 resolvedTopCards);
                             committedStagedCount = staged.Count;
-                            semanticDeck = combat.SemanticDeck;
+                            semanticDeck = combat.Stochastic.SemanticDeck;
                             draw = combat.DrawPile.ToList();
                             discard = combat.DiscardPile.ToList();
                             resolvedTopCards.Clear();
@@ -8144,7 +8144,7 @@ public sealed partial class PrototypeGameEngine
                                     draw.Concat(recycled).ToArray();
                                 combat = CommitNatureDrawPileRecycle(
                                     combat, nextPhysicalDrawPile);
-                                semanticDeck = combat.SemanticDeck!;
+                                semanticDeck = combat.Stochastic.SemanticDeck!;
                                 draw = combat.DrawPile.ToList();
                                 discard = combat.DiscardPile.ToList();
                                 var afterShuffleInsertions =
@@ -8193,7 +8193,7 @@ public sealed partial class PrototypeGameEngine
                             {
                                 combat = CommitNativeSemanticRecycle(
                                     combat, "combat.autoplay.top_draw");
-                                semanticDeck = combat.SemanticDeck!;
+                                semanticDeck = combat.Stochastic.SemanticDeck!;
                                 draw = combat.DrawPile.ToList();
                                 discard = combat.DiscardPile.ToList();
                             }
@@ -8201,7 +8201,7 @@ public sealed partial class PrototypeGameEngine
                             {
                                 combat = CommitLegacyDrawPileRecycle(
                                     combat, rng);
-                                semanticDeck = combat.SemanticDeck;
+                                semanticDeck = combat.Stochastic.SemanticDeck;
                                 draw = combat.DrawPile.ToList();
                                 discard = combat.DiscardPile.ToList();
                             }
@@ -8210,7 +8210,7 @@ public sealed partial class PrototypeGameEngine
                                 { Mode: SemanticDeckStateV111.NatureMode })
                             {
                                 combat = ApplyRelicAfterShuffleCards(combat, rng);
-                                semanticDeck = combat.SemanticDeck;
+                                semanticDeck = combat.Stochastic.SemanticDeck;
                                 draw = combat.DrawPile.ToList();
                                 discard = combat.DiscardPile.ToList();
                             }
@@ -9059,7 +9059,7 @@ public sealed partial class PrototypeGameEngine
             combat.Hand.Length);
         if (capacity == 0 || count <= 0)
             return combat;
-        if (combat.NativeRng is not null)
+        if (combat.Stochastic.NativeRng is not null)
             throw new NotSupportedException(
                 "Native distinct-colorless generation needs the complete unlocked " +
                 "card pool before it can consume run.combat_card_generation.");
@@ -9121,7 +9121,7 @@ public sealed partial class PrototypeGameEngine
 
         var selectedCount = Math.Min(count, candidates.Length);
         var useNativeProvider = useNativeCardGenerationRng &&
-            combat.NativeRng is not null;
+            combat.Stochastic.NativeRng is not null;
         // GetDistinctForCombat delegates to TakeRandom, which shuffles the
         // full filtered pool before taking a prefix. Preserve that RNG call
         // count even when the effect asks for only a few cards.
@@ -10335,7 +10335,7 @@ public sealed partial class PrototypeGameEngine
             throw new ArgumentOutOfRangeException(nameof(bound));
         if (cardInstanceId <= 0)
             throw new ArgumentOutOfRangeException(nameof(cardInstanceId));
-        var native = combat.NativeRng;
+        var native = combat.Stochastic.NativeRng;
         if (ControlledChanceGuardV111.Active &&
             ControlledChanceGuardV111.EngineOwnedNativeProviderActive &&
             native is null)
@@ -13789,7 +13789,7 @@ public sealed partial class PrototypeGameEngine
                 "Random enemy selection requires a nonempty unique support.",
                 nameof(eligibleEnemyInstanceIds));
 
-        var native = combat.NativeRng;
+        var native = combat.Stochastic.NativeRng;
         var streamId = native is null
             ? legacyStreamId
             : "run.combat_targets";
@@ -13853,7 +13853,7 @@ public sealed partial class PrototypeGameEngine
                 "UNSUPPORTED_CONTROLLED_CHANCE site=combat.random_hand_card " +
                 "operation=provider_dispatch requires a saved hand-cost continuation.");
 
-        var native = combat.NativeRng;
+        var native = combat.Stochastic.NativeRng;
         var streamId = native is null
             ? "combat"
             : selectingCard
@@ -13922,7 +13922,7 @@ public sealed partial class PrototypeGameEngine
                 "Random combat-card selection requires ordered unique instances.",
                 nameof(orderedCardInstanceIds));
 
-        var native = combat.NativeRng;
+        var native = combat.Stochastic.NativeRng;
         var streamId = native is null
             ? legacyStreamId
             : nativeStreamId;
@@ -13936,7 +13936,7 @@ public sealed partial class PrototypeGameEngine
             throw new NotSupportedException(
                 "Random combat-card provider ordinal exceeds the request range.");
         if (siteId == "combat.enemy.theft_card.select" &&
-            combat.SemanticDeck is
+            combat.Stochastic.SemanticDeck is
                 { Mode: SemanticDeckStateV111.NatureMode } semanticDeck &&
             orderedCardInstanceIds.Any(id => combat.DrawPile.Contains(id) &&
                 !SemanticDeckEngineV111.CanRemoveCardInstance(
@@ -14009,7 +14009,7 @@ public sealed partial class PrototypeGameEngine
                 "site=" + siteId + " " +
                 "operation=shuffle requires a saved shortlist continuation.");
 
-        var native = forceLegacyProfile ? null : combat.NativeRng;
+        var native = forceLegacyProfile ? null : combat.Stochastic.NativeRng;
         var streamId = native is null
             ? legacyStreamId
             : nativeStreamId;
@@ -14068,7 +14068,7 @@ public sealed partial class PrototypeGameEngine
         if (ordinal < 0)
             throw new ArgumentOutOfRangeException(nameof(ordinal));
 
-        var native = combat.NativeRng;
+        var native = combat.Stochastic.NativeRng;
         var streamId = native is null
             ? "combat"
             : "run.combat_card_generation";
@@ -14128,7 +14128,7 @@ public sealed partial class PrototypeGameEngine
                 "Random insertion support requires unique card instances.",
                 nameof(orderedDrawPile));
 
-        var native = combat.NativeRng;
+        var native = combat.Stochastic.NativeRng;
         var streamId = native is null
             ? "combat"
             : "run.shuffle";
@@ -14209,7 +14209,7 @@ public sealed partial class PrototypeGameEngine
         CombatState combat, PrototypeControlledSemanticDrawV111 draw,
         PrototypeChoiceResolutionContinuationState continuation)
     {
-        var deck = combat.SemanticDeck;
+        var deck = combat.Stochastic.SemanticDeck;
         if (!ControlledChanceGuardV111.Active ||
             combat.PendingChoice is not null ||
             draw.RemainingCount <= 0 || draw.EventDepth < 0 ||
@@ -14245,7 +14245,7 @@ public sealed partial class PrototypeGameEngine
     {
         var pending = combat.PendingChoice;
         var cost = pending?.ControlledDrawCost;
-        var deck = combat.SemanticDeck;
+        var deck = combat.Stochastic.SemanticDeck;
         if (!ControlledChanceGuardV111.Active ||
             pending is not { ChoiceId: "controlled_draw_cost",
                 OuterChoiceContinuation: null,
@@ -14279,7 +14279,7 @@ public sealed partial class PrototypeGameEngine
         if (!ControlledChanceGuardV111.Active || eligible.Length == 0 ||
             eligible.Distinct().Count() != eligible.Length ||
             combat.PendingChoice is not null ||
-            combat.SemanticDeck is not
+            combat.Stochastic.SemanticDeck is not
                 { Mode: SemanticDeckStateV111.NatureMode } deck)
             throw new InvalidOperationException(
                 "Controlled random pile-card suspension requires a unique semantic support.");
@@ -14430,7 +14430,7 @@ public sealed partial class PrototypeGameEngine
         var pending = combat.PendingChoice;
         var draw = pending?.ControlledSemanticDraw;
         var continuation = pending?.OuterChoiceContinuation;
-        var deck = combat.SemanticDeck;
+        var deck = combat.Stochastic.SemanticDeck;
         bool supportedPipelineDraw = pending is not null &&
             IsSupportedAutomaticPipelineSemanticDrawContinuation(
                 combat, pending);
@@ -14783,7 +14783,7 @@ public sealed partial class PrototypeGameEngine
         // physical zones together. MoveToDrawTop appends to the engine's
         // bottom-first array and preserves the selected identities as known
         // semantic slots.
-        if (combat.SemanticDeck is not null &&
+        if (combat.Stochastic.SemanticDeck is not null &&
             (selection.SourceZone == PrototypeCardZone.DrawPile ||
              destinationZone == PrototypeCardZone.DrawPile))
         {
@@ -14879,9 +14879,9 @@ public sealed partial class PrototypeGameEngine
     private static void RequireSemanticNativeStreamOwner(
         CombatState combat, string siteId)
     {
-        if (combat.SemanticDeck is
+        if (combat.Stochastic.SemanticDeck is
                 { Mode: SemanticDeckStateV111.NativeMode } &&
-            combat.NativeRng is null)
+            combat.Stochastic.NativeRng is null)
             throw new NotSupportedException(
                 $"UNSUPPORTED_SEMANTIC_NATIVE site={siteId} " +
                 "operation=missing_native_stream_owner");
@@ -15246,7 +15246,7 @@ public sealed partial class PrototypeGameEngine
         // generalized HP-threshold behavior unless native combat owns
         // one of these source-audited bosses.
         var nativeDamageOnlyThreshold =
-            (combat.NativeRng?.Formation.NativeEncounterEntry,
+            (combat.Stochastic.NativeRng?.Formation.NativeEncounterEntry,
                 enemy.EnemyId) is
             ("CeremonialBeastBoss", "proto.enemy.ceremonial_beast")
             or ("TerrorEelElite", "proto.enemy.terror_eel");
@@ -16140,7 +16140,7 @@ public sealed partial class PrototypeGameEngine
                     break;
                 }
 
-                if (combat.SemanticDeck is { } deferred)
+                if (combat.Stochastic.SemanticDeck is { } deferred)
                 {
                     if (deferred.Mode == SemanticDeckStateV111.NatureMode)
                     {
@@ -16158,7 +16158,7 @@ public sealed partial class PrototypeGameEngine
                         // per-card random choice.
                         combat = CommitNativeSemanticRecycle(
                             combat, "combat.draw.recycle");
-                        deferred = combat.SemanticDeck!;
+                        deferred = combat.Stochastic.SemanticDeck!;
                         draw = combat.DrawPile.ToList();
                         discard = combat.DiscardPile.ToList();
                         combat = ApplyRelicAfterShuffleCards(combat, rng);
@@ -16179,7 +16179,7 @@ public sealed partial class PrototypeGameEngine
                         var nextPhysicalDrawPile = draw.Concat(recycled).ToArray();
                         combat = CommitNatureDrawPileRecycle(
                             combat, nextPhysicalDrawPile);
-                        deferred = combat.SemanticDeck!;
+                        deferred = combat.Stochastic.SemanticDeck!;
                         draw = combat.DrawPile.ToList();
                         discard = combat.DiscardPile.ToList();
                         var afterShuffleInsertions =
@@ -16259,7 +16259,7 @@ public sealed partial class PrototypeGameEngine
                 }
             }
 
-            var semanticDeck = combat.SemanticDeck;
+            var semanticDeck = combat.Stochastic.SemanticDeck;
             if (semanticDeck is
                     { Mode: SemanticDeckStateV111.NatureMode } &&
                 (!ControlledChanceGuardV111.Active ||
@@ -16269,7 +16269,7 @@ public sealed partial class PrototypeGameEngine
                     "operation=missing_semantic_continuation");
             if (semanticDeck is
                     { Mode: SemanticDeckStateV111.NativeMode } &&
-                combat.NativeRng is null)
+                combat.Stochastic.NativeRng is null)
                 throw new NotSupportedException(
                     "UNSUPPORTED_SEMANTIC_NATIVE site=combat.draw " +
                     "operation=missing_native_stream_owner");
@@ -16314,7 +16314,7 @@ public sealed partial class PrototypeGameEngine
                 && cardDefinition.Cost.Amount >= 0;
             var hasSlither = card.Enchantment is
                 { Kind: PrototypeCardEnchantmentKind.Slither };
-            if (combat.SemanticDeck is
+            if (combat.Stochastic.SemanticDeck is
                     { Mode: SemanticDeckStateV111.NatureMode } &&
                      (needsRelicCost || hasSlither))
             {
@@ -16387,7 +16387,7 @@ public sealed partial class PrototypeGameEngine
                     player, combat, drawnCardInstanceIds.ToArray(),
                     PrototypeDrawCardsBoundaryV111
                         .NestedCardDrawnChoice(count - drawNumber - 1));
-            if (combat.SemanticDeck is not null &&
+            if (combat.Stochastic.SemanticDeck is not null &&
                 (combat.PendingChoice is not null ||
                  combat.PendingKnowledgeDemonChoice is not null))
                 throw new NotSupportedException(

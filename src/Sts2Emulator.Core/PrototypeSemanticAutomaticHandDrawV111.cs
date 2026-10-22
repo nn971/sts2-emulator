@@ -28,7 +28,7 @@ public sealed partial class PrototypeGameEngine
         var combat = RequireWorld(run).Combat ??
             throw new InvalidOperationException("Missing automatic hand-draw combat.");
         var cursor = combat.AutomaticPipelineContinuation;
-        if (combat.SemanticDeck is null ||
+        if (combat.Stochastic.SemanticDeck is null ||
             combat.PendingChoice is not null ||
             combat.PendingKnowledgeDemonChoice is not null ||
             cursor?.Mechanics.IsAtStep(
@@ -99,7 +99,7 @@ public sealed partial class PrototypeGameEngine
             cursor.ControlledSemanticDrawRequested is not null ||
             combat.PendingChoice is not null ||
             combat.PendingKnowledgeDemonChoice is not null ||
-            combat.SemanticDeck is not
+            combat.Stochastic.SemanticDeck is not
                 { Mode: SemanticDeckStateV111.NatureMode, Pending: null })
             throw new InvalidDataException(
                 "Semantic BeforeHandDraw choice is not ready to resume.");
@@ -120,7 +120,7 @@ public sealed partial class PrototypeGameEngine
         var combat = world.Combat ??
             throw new InvalidOperationException("Missing semantic hand draw.");
         if (!IsSemanticAutomaticHandDraw(combat) ||
-            (combat.SemanticDeck?.Pending is not null &&
+            (combat.Stochastic.SemanticDeck?.Pending is not null &&
              combat.PendingChoice?.ControlledDrawCost is not null) ||
             remaining < 0)
             throw new InvalidDataException(
@@ -128,7 +128,7 @@ public sealed partial class PrototypeGameEngine
         var cursor = combat.AutomaticPipelineContinuation!;
         if (hasPending)
         {
-            if (combat.SemanticDeck?.Pending is null &&
+            if (combat.Stochastic.SemanticDeck?.Pending is null &&
                 combat.PendingChoice?.ControlledDrawCost is null)
                 throw new InvalidDataException(
                     "Missing next semantic hand-draw choice.");
@@ -139,7 +139,7 @@ public sealed partial class PrototypeGameEngine
                     remaining)), remaining);
         }
 
-        if (combat.SemanticDeck?.Pending is not null ||
+        if (combat.Stochastic.SemanticDeck?.Pending is not null ||
             combat.PendingChoice is not null ||
             combat.PendingKnowledgeDemonChoice is not null)
             throw new InvalidDataException(
@@ -278,7 +278,7 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidDataException(
                 "Jeweled Mask selected identity is outside current support.");
         var selectedId = decision.SelectedCardInstanceId;
-        if (combat.SemanticDeck is null)
+        if (combat.Stochastic.SemanticDeck is null)
             throw new InvalidDataException(
                 "Random pile-card choice lost its semantic deck.");
         var handHasSpace = PrototypeContent.Rules.HasHandCapacity(

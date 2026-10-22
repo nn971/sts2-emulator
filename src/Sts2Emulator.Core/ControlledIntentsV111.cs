@@ -127,7 +127,7 @@ public static class ControlledIntentsV111
         CombatState combat, NativeEncounterFormationV111 formation,
         RngBundle referenceStreams, RandomIndexDecisionV111[]? priorHp)
     {
-        if (combat.NativeRng is not null)
+        if (combat.Stochastic.NativeRng is not null)
             throw new InvalidOperationException(
                 "Controlled intent baseline cannot own a fake native RNG cursor.");
         var baseline = combat.Fork();

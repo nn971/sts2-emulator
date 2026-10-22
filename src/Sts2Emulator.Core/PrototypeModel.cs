@@ -712,7 +712,7 @@ public sealed record PrototypeAutomaticPipelineContinuationState(
     {
         ArgumentNullException.ThrowIfNull(combat);
         Validate(combat);
-        return combat.SemanticDeck?.Pending is null &&
+        return combat.Stochastic.SemanticDeck?.Pending is null &&
             Stochastic.HandDrawProgress is null &&
             Stochastic.ControlledEnemyAction is null &&
             Stochastic.ControlledTurnIntents is null;

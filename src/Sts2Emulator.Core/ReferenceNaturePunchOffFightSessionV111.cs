@@ -597,7 +597,7 @@ public sealed record ReferenceNaturePunchOffFightSessionV111(
                     transcript[index].OutcomeIndex).Any() ||
             !expectedCursors.SequenceEqual(actualCursors ?? []) ||
             !expectedMonsterCursors.SequenceEqual(
-                combat.NativeRng.Formation.MonsterContexts
+                combat.Stochastic.NativeRng.Formation.MonsterContexts
                     .Select(context => NativeRngV111.ToSnapshot(context.Rng))) ||
             eventCursor != plan.EventCursorBefore)
             throw new InvalidDataException(

@@ -152,7 +152,7 @@ public static class SemanticPlayerActionEngineV111
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
                 "operation=action_crossed_chance_or_turn_boundary");
         if (!combat.DrawPile.SequenceEqual(afterCombat.DrawPile) ||
-            CanonicalJson.Sha256(combat.SemanticDeck) !=
+            CanonicalJson.Sha256(combat.Stochastic.SemanticDeck) !=
                 CanonicalJson.Sha256(afterCombat.SemanticDeck))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +

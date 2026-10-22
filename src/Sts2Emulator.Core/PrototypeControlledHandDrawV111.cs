@@ -80,7 +80,7 @@ public sealed partial class PrototypeGameEngine
         var combat = world.Combat ?? throw new InvalidDataException(
             "Initial controlled hand draw has no combat.");
         if (combat.AutomaticPipelineContinuation is not null ||
-            combat.SemanticDeck is not null)
+            combat.Stochastic.SemanticDeck is not null)
             throw new InvalidDataException(
                 "Initial controlled hand draw boundary has an incompatible owner.");
         var checkpoint = CommitAutomaticHandDrawProgress(
@@ -105,7 +105,7 @@ public sealed partial class PrototypeGameEngine
         if (state.Phase != RunPhase.Combat ||
             combat.PendingChoice is not null ||
             combat.PendingKnowledgeDemonChoice is not null ||
-            combat.SemanticDeck is not null || cursor is not
+            combat.Stochastic.SemanticDeck is not null || cursor is not
                 { ControlledDrawHookChoicePending: true,
                   ControlledDrawRemaining: >= 0 } ||
             !cursor.Mechanics.IsAtStep(
@@ -125,7 +125,7 @@ public sealed partial class PrototypeGameEngine
     private static RunState BeginControlledRecycleStratagemSelection(
         RunState state, PlayerState player, CombatState combat, int remaining)
     {
-        if (combat.SemanticDeck is not null)
+        if (combat.Stochastic.SemanticDeck is not null)
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.recycle.stratagem " +
                 "operation=legacy_recycle_with_provider_deck");
@@ -168,7 +168,7 @@ public sealed partial class PrototypeGameEngine
               ControlledDrawRemaining: > 0 } ||
             cursor.Mechanics.CurrentStepKind !=
                 PrototypeAutomaticStepKind.DrawPlayerHand ||
-            combat.SemanticDeck is not null)
+            combat.Stochastic.SemanticDeck is not null)
             throw new InvalidDataException(
                 "Saved recycle Stratagem selection is not source-reachable.");
 
@@ -282,7 +282,7 @@ public sealed partial class PrototypeGameEngine
             cursor.ControlledSemanticBeforeHandDrawPending ||
             combat.PendingChoice is not null ||
             combat.PendingKnowledgeDemonChoice is not null ||
-            combat.SemanticDeck?.Pending is not null)
+            combat.Stochastic.SemanticDeck?.Pending is not null)
             throw new InvalidDataException(
                 "Automatic hand-draw completion is not at a clean boundary.");
 

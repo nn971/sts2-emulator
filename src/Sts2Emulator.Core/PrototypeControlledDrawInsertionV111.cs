@@ -158,7 +158,7 @@ public sealed partial class PrototypeGameEngine
                     var cursor = combat.AutomaticPipelineContinuation;
                     if (handRemaining <= 0 ||
                         choice.AfterShuffleRelic is null ||
-                        combat.SemanticDeck is not null || cursor is null ||
+                        combat.Stochastic.SemanticDeck is not null || cursor is null ||
                         cursor.ControlledDrawRemaining != handRemaining ||
                         !cursor.Mechanics.IsAtStep(
                             PrototypeAutomaticStepKind.DrawPlayerHand) ||
