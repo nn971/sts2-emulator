@@ -21,10 +21,10 @@ public sealed partial class PrototypeGameEngine
         PrototypeRoomType? roomType)
     {
         var player = state.Player;
-        var rng = state.Stochastic.PrototypeRngMutable.Fork();
+        var rng = state.Stochastic.PrototypeRng;
         var nativeRunStreams =
-            state.World?.Combat?.Stochastic.NativeRngMutable?.RunStreams.Fork()
-            ?? state.Stochastic.NativeRunRngMutable?.Fork();
+            state.World?.Combat?.Stochastic.NativeRng?.RunStreams.Fork()
+            ?? state.Stochastic.NativeRunRng;
 
         // Guilty counts every completed combat and leaves the deck
         // after the fifth combat, including Elite/Boss combats.
@@ -159,7 +159,7 @@ public sealed partial class PrototypeGameEngine
         var world = state.World;
         var combat = world?.Combat;
         if (nativeRunStreams is not null &&
-            combat?.Stochastic.NativeRngMutable is { } active)
+            combat?.Stochastic.NativeRng is { } active)
         {
             var sourceCombat = combat;
             combat = sourceCombat with
@@ -172,11 +172,11 @@ public sealed partial class PrototypeGameEngine
             };
         }
 
-        var stochastic = RunStochasticStateV111.WithNativeRunRng(
-            state.Stochastic,
-            nativeRunStreams ?? state.Stochastic.NativeRunRngMutable);
-        stochastic = RunStochasticStateV111.WithPrototypeRng(
-            stochastic, rng);
+        var stochastic = RunStochasticStateV111.WithPrototypeRng(
+            state.Stochastic, rng);
+        if (nativeRunStreams is not null)
+            stochastic = RunStochasticStateV111.WithNativeRunRng(
+                stochastic, nativeRunStreams);
         var updated = state with
         {
             Player = player,
@@ -186,7 +186,7 @@ public sealed partial class PrototypeGameEngine
                 : world with { Combat = combat }
         };
         if (nativeRunStreams is not null &&
-            combat?.Stochastic.NativeRngMutable is not null)
+            combat?.Stochastic.NativeRng is not null)
             NativeRunRngV111.Validate(updated);
         return updated;
     }
