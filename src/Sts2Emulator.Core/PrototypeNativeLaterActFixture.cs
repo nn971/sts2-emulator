@@ -39,13 +39,12 @@ public static class PrototypeNativeLaterActFixture
         var id = eventId;
         return state with
         {
-            World = world with
+            World = world.AppendEventId(id) with
             {
                 Floor = point.Floor,
                 ActiveRoom = PrototypeRoomType.Event,
                 Map = world.Map with { CurrentNodeId = point.NodeId },
-                Event = new EventState(id),
-                EventHistory = world.EventIds.Append(id).ToArray()
+                Event = new EventState(id)
             },
             Phase = RunPhase.Event
         };

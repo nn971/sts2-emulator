@@ -235,14 +235,13 @@ public static class NativeDarvEventV111
         var result = fork with
         {
             Phase = RunPhase.Event,
-            World = world with
+            World = world.AppendEventId(EventId) with
             {
                 Event = new EventState(EventId,
                     OfferedChoiceIds: offers,
                     NativeEventRng: bundle.GetStream(streamId),
                     NativeEventRngProviderMode: providerMode == "native-v111"
-                        ? null : providerMode),
-                EventHistory = world.EventIds.Append(EventId).ToArray()
+                        ? null : providerMode)
             }
         };
         return new NativeDarvEventAuditV111(

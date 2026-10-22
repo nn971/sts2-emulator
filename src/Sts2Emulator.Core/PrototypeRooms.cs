@@ -971,7 +971,7 @@ public sealed partial class PrototypeGameEngine
             roll -= weight;
         }
 
-        world = world with
+        world = world.AppendEventId(selected.Id) with
         {
             Event = new EventState(
                 selected.Id,
@@ -1115,8 +1115,7 @@ public sealed partial class PrototypeGameEngine
                         && state.Stochastic.NativeRunRng is null
                         ? PrototypeNativeStoneOfAllTime.RollPotionSlot(
                             state.Player, state.Stochastic.PrototypeRng)
-                        : null),
-            EventHistory = world.EventIds.Append(selected.Id).ToArray()
+                        : null)
         };
 
         if (state.Stochastic.NativeRunRng is not null)

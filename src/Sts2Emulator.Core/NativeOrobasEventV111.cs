@@ -167,13 +167,12 @@ public static class NativeOrobasEventV111
         var result = fork with
         {
             Phase = RunPhase.Event,
-            World = fork.World! with
+            World = fork.World!.AppendEventId(EventId) with
             {
                 Event = new EventState(EventId, OfferedChoiceIds: offers,
                     NativeEventRng: rng.GetStream(context.StreamId),
                     NativeEventRngProviderMode: providerMode == "native-v111"
-                        ? null : providerMode),
-                EventHistory = world.EventIds.Append(EventId).ToArray()
+                        ? null : providerMode)
             }
         };
         return new NativeOrobasEventAuditV111(

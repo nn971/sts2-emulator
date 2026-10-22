@@ -2,6 +2,12 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 run-world event history append ownership increment (2026-10-22):**
+`RunWorldMechanicsStateV111.AppendEventId` owns event-history appends, and
+ordinary event entry, Native Ancient fixtures, and source-backed event
+fixtures now use it. Flat snapshot projection remains unchanged. Static source
+review and `git diff --check` only; no tests or builds were run.
+
 **S3 ReferenceNature run audit history append ownership increment (2026-10-22):**
 `RunStochasticStateV111` now validates and appends completed map-generation
 audits and Ancient-offer session snapshots. Run-action completion and legacy

@@ -152,7 +152,7 @@ public static class NativeNonupeipeEventV111
         var result = fork with
         {
             Phase = RunPhase.Event,
-            World = fork.World! with
+            World = fork.World!.AppendEventId(EventId) with
             {
                 Event = new EventState(EventId,
                     OfferedChoiceIds: candidates.Take(3)
@@ -160,8 +160,7 @@ public static class NativeNonupeipeEventV111
                     NativeEventRng: bundle.GetStream(stream.StreamId),
                     NativeNonupeipeBraceletEligible: includeBracelet,
                     NativeEventRngProviderMode: providerMode == "native-v111"
-                        ? null : providerMode),
-                EventHistory = world.EventIds.Append(EventId).ToArray()
+                        ? null : providerMode)
             }
         };
         return new NativeNonupeipeEventAuditV111(

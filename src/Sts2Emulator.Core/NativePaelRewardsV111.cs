@@ -334,13 +334,12 @@ public static class NativePaelRewardsV111
         var result = fork with
         {
             Phase = RunPhase.Event,
-            World = fork.World! with
+            World = fork.World!.AppendEventId(PaelId) with
             {
                 Event = new EventState(PaelId, OfferedChoiceIds: offers,
                     NativeEventRng: bundle.GetStream(stream.StreamId),
                     NativeEventRngProviderMode: providerMode == "native-v111"
-                        ? null : providerMode),
-                EventHistory = world.EventIds.Append(PaelId).ToArray()
+                        ? null : providerMode)
             }
         };
         return new NativePaelOfferAuditV111(
@@ -409,10 +408,9 @@ public static class NativePaelRewardsV111
         return state with
         {
             Phase = RunPhase.Event,
-            World = state.World! with
+            World = state.World!.AppendEventId(PaelId) with
             {
-                Event = new(PaelId, OfferedChoiceIds: ["take_" + relicId]),
-                EventHistory = state.World.EventIds.Append(PaelId).ToArray()
+                Event = new(PaelId, OfferedChoiceIds: ["take_" + relicId])
             }
         };
     }

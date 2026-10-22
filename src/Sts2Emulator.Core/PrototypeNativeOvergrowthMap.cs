@@ -477,7 +477,8 @@ public static class PrototypeNativeOvergrowthRunFactory
             },
             Stochastic = RunStochasticStateV111.WithPrototypeRng(
                 state.Stochastic, rng),
-            World = world with
+            World = world.AppendEventId(
+                PrototypeNativeOvergrowthEvents.NeowEventId) with
             {
                 Map = map,
                 NativeOvergrowthOpening = true,
@@ -489,11 +490,7 @@ public static class PrototypeNativeOvergrowthRunFactory
                     NativeEventRng: neowOffers.Stochastic.NativeRng,
                     NativeEventRngProviderMode:
                         neowOffers.ProviderMode == "native-v111"
-                            ? null : neowOffers.ProviderMode),
-                EventHistory =
-                [
-                    PrototypeNativeOvergrowthEvents.NeowEventId
-                ]
+                            ? null : neowOffers.ProviderMode)
             },
             Phase = RunPhase.Event
         };

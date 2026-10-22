@@ -323,13 +323,12 @@ public static class NativeAncientRewardsV111
         var result = fork with
         {
             Phase = RunPhase.Event,
-            World = fork.World! with
+            World = fork.World!.AppendEventId(TezcataraId) with
             {
                 Event = new EventState(TezcataraId, OfferedChoiceIds: offers,
                     NativeEventRng: bundle.GetStream(stream.StreamId),
                     NativeEventRngProviderMode: providerMode == "native-v111"
-                        ? null : providerMode),
-                EventHistory = world.EventIds.Append(TezcataraId).ToArray()
+                        ? null : providerMode)
             }
         };
         return new NativeTezcataraOfferAuditV111(
@@ -457,11 +456,10 @@ public static class NativeAncientRewardsV111
         var state = PrototypeNativeLaterActFixture.Create(seed, 2, ascension);
         return state with
         {
-            World = state.World! with
+            World = state.World!.AppendEventId(TezcataraId) with
             {
                 Event = new EventState(TezcataraId,
-                    OfferedChoiceIds: ["take_" + relicId]),
-                EventHistory = state.World.EventIds.Append(TezcataraId).ToArray()
+                    OfferedChoiceIds: ["take_" + relicId])
             },
             Phase = RunPhase.Event
         };

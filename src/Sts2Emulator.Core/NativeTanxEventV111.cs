@@ -168,15 +168,14 @@ public static class NativeTanxEventV111
         var result = fork with
         {
             Phase = RunPhase.Event,
-            World = fork.World! with
+            World = fork.World!.AppendEventId(EventId) with
             {
                 Event = new EventState(EventId,
                     OfferedChoiceIds: offers,
                     NativeEventRng: bundle.GetStream(stream.StreamId),
                     NativeTanxTriEligible: includeTriBoomerang,
                     NativeEventRngProviderMode: providerMode == "native-v111"
-                        ? null : providerMode),
-                EventHistory = world.EventIds.Append(EventId).ToArray()
+                        ? null : providerMode)
             }
         };
         return new NativeTanxEventAuditV111(

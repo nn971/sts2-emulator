@@ -50,6 +50,15 @@ public sealed record RunWorldMechanicsStateV111(
         init => _eventHistory = Clone(value);
     }
 
+    internal RunWorldMechanicsStateV111 AppendEventId(string eventId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        return this with
+        {
+            EventHistory = (_eventHistory ?? []).Append(eventId).ToArray()
+        };
+    }
+
     public PrototypeCompletedRoomRecord[]? CompletedRoomHistory
     {
         get => Clone(_completedRoomHistory);

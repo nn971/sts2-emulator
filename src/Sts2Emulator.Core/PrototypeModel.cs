@@ -4267,6 +4267,11 @@ public sealed record RunWorldState(
         init => Mechanics = Mechanics with { EventHistory = value };
     }
 
+    internal RunWorldState AppendEventId(string eventId) => this with
+    {
+        Mechanics = Mechanics.AppendEventId(eventId)
+    };
+
     public PrototypeActOneRegion? ActOneRegion
     {
         get => Mechanics.ActOneRegion;

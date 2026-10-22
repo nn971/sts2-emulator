@@ -30,10 +30,9 @@ public sealed partial class PrototypeGameEngine
         var id = PrototypeNativeHiveEvents.WarHistorianRepyId;
         return state with
         {
-            World = world with
+            World = world.AppendEventId(id) with
             {
-                Event = new EventState(id),
-                EventHistory = world.EventIds.Append(id).ToArray()
+                Event = new EventState(id)
             },
             Phase = RunPhase.Event
         };
