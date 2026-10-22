@@ -3073,7 +3073,8 @@ public sealed partial class PrototypeGameEngine
     {
         var world = RequireWorld(state);
         var nativeMerchant = UsesNativeRegionalSystems(world);
-        var nativeRunRng = state.Stochastic.NativeRunRngMutable?.Fork();
+        var nativeRunRng = state.Stochastic.NativeRunRng;
+        var prototypeRng = state.Stochastic.PrototypeRng;
         using var nativeProviderScope = nativeMerchant && nativeRunRng is not null
             ? StochasticProviderScopeV111.Enter(
                 new NativeRandomIndexProviderV111(),
@@ -3093,7 +3094,7 @@ public sealed partial class PrototypeGameEngine
                     $"merchant:act:{world.Act}:floor:{world.Floor}",
                     5)
                 : ResolveLegacyRandomIndex(
-                    state.Stochastic.PrototypeRngMutable,
+                    prototypeRng,
                     "shop.merchant.sale_slot.index_draw",
                     $"act:{world.Act}:floor:{world.Floor}",
                     Enumerable.Range(0, 5),
@@ -3109,12 +3110,12 @@ public sealed partial class PrototypeGameEngine
                 nativeMerchant
                     ? PrototypeNativeCardRarityOdds.GenerateMerchantCards(
                         group.Count, state.Ascension, group.Type,
-                        world.CardRarityOffsetBasisPoints, state.Stochastic.PrototypeRngMutable,
+                        world.CardRarityOffsetBasisPoints, prototypeRng,
                         nativeRunRng)
                     : PickShopCards(
                         world.Act,
                         group.Count,
-                        state.Stochastic.PrototypeRngMutable,
+                        prototypeRng,
                         group.Type))
             .ToArray();
 
@@ -3124,16 +3125,16 @@ public sealed partial class PrototypeGameEngine
                 var onSale = index == saleIndex;
                 var basePrice = nativeMerchant
                     ? NativeMerchantCardPrice(
-                        cardId, state.Stochastic.PrototypeRngMutable, nativeRunRng,
+                        cardId, prototypeRng, nativeRunRng,
                         $"act:{world.Act}:floor:{world.Floor}:offer:{index}:card:{cardId}")
-                    : ShopCardPrice(cardId, state.Stochastic.PrototypeRngMutable);
+                    : ShopCardPrice(cardId, prototypeRng);
                 if (onSale)
                 {
                     // MerchantCardEntry.SetOnSale calls CalcCost
                     // again, then halves the newly rolled price.
                     basePrice =
                         NativeMerchantCardPrice(
-                            cardId, state.Stochastic.PrototypeRngMutable, nativeRunRng,
+                            cardId, prototypeRng, nativeRunRng,
                             $"act:{world.Act}:floor:{world.Floor}:offer:{index}:sale_reprice:{cardId}") / 2;
                 }
                 return new ShopOffer(
@@ -3158,12 +3159,12 @@ public sealed partial class PrototypeGameEngine
             var colorless = new[]
             {
                 PrototypeColorlessCards.PickMerchantCardForProfile(
-                    PrototypeCardRarity.Uncommon, state.Stochastic.PrototypeRngMutable,
+                    PrototypeCardRarity.Uncommon, prototypeRng,
                     fullyUnlocked: profile.FullyUnlocked,
                     unlockedEpochs: profile.UnlockedColorlessEpochs,
                     nativeRunRng: nativeRunRng),
                 PrototypeColorlessCards.PickMerchantCardForProfile(
-                    PrototypeCardRarity.Rare, state.Stochastic.PrototypeRngMutable,
+                    PrototypeCardRarity.Rare, prototypeRng,
                     fullyUnlocked: profile.FullyUnlocked,
                     unlockedEpochs: profile.UnlockedColorlessEpochs,
                     nativeRunRng: nativeRunRng)
@@ -3171,7 +3172,7 @@ public sealed partial class PrototypeGameEngine
             offers = offers.Concat(colorless.Select((cardId, index) =>
             {
                 var price = NativeMerchantCardPrice(
-                    cardId, state.Stochastic.PrototypeRngMutable, nativeRunRng,
+                    cardId, prototypeRng, nativeRunRng,
                     $"act:{world.Act}:floor:{world.Floor}:colorless_offer:{index}:card:{cardId}");
                 return new ShopOffer(
                     6 + index,
@@ -3192,11 +3193,11 @@ public sealed partial class PrototypeGameEngine
                     new NativeRandomIndexProviderV111(),
                     new NativeRandomUnitFloatProviderV111()).PotionIds
                 : PrototypeNativePotionShop.PickWeightedDistinct(
-                    state.Stochastic.PrototypeRngMutable, "shop", 3)
+                    prototypeRng, "shop", 3)
             : PickDistinct(
                 PrototypeContent.PotionPool,
                 3,
-                state.Stochastic.PrototypeRngMutable,
+                prototypeRng,
                 "shop",
                 "shop.potion_offer.shuffle_swap_index",
                 $"act:{world.Act}:floor:{world.Floor}:potion_offers");
@@ -3219,10 +3220,10 @@ public sealed partial class PrototypeGameEngine
                     : null;
                 if (nativeRunRng is null && forcedTier is null)
                     forcedTier = PrototypeNativeRelicGrabBag.RollRarity(
-                        state.Stochastic.PrototypeRngMutable, merchant: true,
+                        prototypeRng, merchant: true,
                         ownerId: $"act:{world.Act}:floor:{world.Floor}:merchant_relic:{index}");
                 var draw = PrototypeNativeRelicGrabBag.Draw(
-                    world, state.Player, state.Stochastic.PrototypeRngMutable,
+                    world, state.Player, prototypeRng,
                     merchant: true,
                     forcedRarity: forcedTier,
                     nativeRunRng: nativeRunRng,
@@ -3240,7 +3241,7 @@ public sealed partial class PrototypeGameEngine
             relicIds = PickDistinct(
                 availableRelics,
                 3,
-                state.Stochastic.PrototypeRngMutable,
+                prototypeRng,
                 "shop",
                 "shop.relic_offer.shuffle_swap_index",
                 $"act:{world.Act}:floor:{world.Floor}:relic_offers");
@@ -3255,9 +3256,9 @@ public sealed partial class PrototypeGameEngine
                             potionId, nativePotionRng,
                             $"act:{world.Act}:floor:{world.Floor}:offer:{index}:potion:{potionId}")
                         : PrototypeNativePotionShop.MerchantPrice(
-                            potionId, state.Stochastic.PrototypeRngMutable)
+                            potionId, prototypeRng)
                     : ResolveLegacyRandomIndex(
-                        state.Stochastic.PrototypeRngMutable,
+                        prototypeRng,
                         "shop.potion_offer.price.index_draw",
                         $"act:{world.Act}:floor:{world.Floor}:offer:{index}:potion:{potionId}",
                         PrototypeLegacyShopPriceV111.PotionOutcomes,
@@ -3279,9 +3280,9 @@ public sealed partial class PrototypeGameEngine
                             relicId, nativeRelicRng,
                             $"act:{world.Act}:floor:{world.Floor}:offer:{index}:relic:{relicId}")
                         : PrototypeNativeRelicGrabBag.MerchantPrice(
-                            relicId, state.Stochastic.PrototypeRngMutable)
+                            relicId, prototypeRng)
                     : ResolveLegacyRandomIndex(
-                        state.Stochastic.PrototypeRngMutable,
+                        prototypeRng,
                         "shop.relic_offer.price.index_draw",
                         $"act:{world.Act}:floor:{world.Floor}:offer:{index}:relic:{relicId}",
                         PrototypeLegacyShopPriceV111.RelicOutcomes,
@@ -3316,7 +3317,7 @@ public sealed partial class PrototypeGameEngine
         var player = ApplyRelicRunEvent(
             state.Player,
             PrototypeRunEventKind.ShopEntered,
-            rng: state.Stochastic.PrototypeRngMutable);
+            rng: prototypeRng);
         shop = RepriceShop(
             shop,
             player);
@@ -3329,13 +3330,17 @@ public sealed partial class PrototypeGameEngine
         }
         world = world with { Shop = shop };
 
+        var stochastic = RunStochasticStateV111.WithPrototypeRng(
+            state.Stochastic, prototypeRng);
+        if (nativeRunRng is not null)
+            stochastic = RunStochasticStateV111.WithNativeRunRng(
+                stochastic, nativeRunRng);
         var started = state with
         {
             Player = player,
             World = world,
             Phase = RunPhase.Shop,
-            Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRngMutable)
+            Stochastic = stochastic
         };
         return AdvanceLordsParasolPurchases(started);
     }
