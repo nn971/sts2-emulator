@@ -711,8 +711,10 @@ public sealed record SimulationProviderReplayCaptureV111(
             var resolvedAction = environment.ResolvePlayerAction(
                 replay.Run, transition.ActionId);
             actions.Add(resolvedAction.Action);
-            replay = SemanticPilotCombatEngineV111.Step(
-                replay, replay.Fingerprint, transition.ActionId);
+            replay = SemanticPilotCombatEngineV111
+                .StepResolvedNativePolicyBaseline(
+                    replay, replay.Fingerprint, transition.ActionId,
+                    resolvedAction);
         }
         if (CanonicalJson.Sha256(replay) !=
             CanonicalJson.Sha256(validated))

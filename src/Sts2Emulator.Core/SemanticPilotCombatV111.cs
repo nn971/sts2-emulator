@@ -2232,11 +2232,12 @@ public static class SemanticPilotCombatEngineV111
                     : StepCardSelection(current, actionId);
         if (!current.AtPlayerBoundary)
             throw new InvalidOperationException("Nature decision or combat terminal is pending.");
-        if (current.UsesNativePolicyBaseline)
-            return StepNativePolicyBaseline(current, actionId);
         var environment = new PrototypeAiEnvironment();
         var resolvedAction = environment.ResolvePlayerAction(
             current.Run, actionId);
+        if (current.UsesNativePolicyBaseline)
+            return StepNativePolicyBaseline(
+                current, actionId, resolvedAction.Action);
         var action = resolvedAction.View;
         var source = current.Run.Fork();
         SemanticEndTurnV111? endTurn = null;
@@ -2434,6 +2435,33 @@ public static class SemanticPilotCombatEngineV111
             current, result, endTurn,
             new SemanticPilotContinuationV111("player", actionId));
         return NormalizeNoncontrolledCosts(nextState);
+    }
+
+    internal static SemanticPilotCombatV111
+        StepResolvedNativePolicyBaseline(
+            SemanticPilotCombatV111 current, string fingerprint,
+            string actionId,
+            (GameAction Action, PrototypeAiAction View) resolvedAction)
+    {
+        ArgumentNullException.ThrowIfNull(current);
+        ArgumentNullException.ThrowIfNull(resolvedAction.Action);
+        ArgumentNullException.ThrowIfNull(resolvedAction.View);
+        current.Validate();
+        if (current.Fingerprint != fingerprint)
+            throw new InvalidOperationException(
+                "Stale semantic player-action fingerprint.");
+        if (!current.AtPlayerBoundary || !current.UsesNativePolicyBaseline)
+            throw new InvalidOperationException(
+                "Resolved Native-policy actions require a player boundary.");
+        if (!StringComparer.Ordinal.Equals(
+                resolvedAction.View.ActionId, actionId) ||
+            !StringComparer.Ordinal.Equals(
+                PrototypeAiEnvironment.StableActionId(
+                    resolvedAction.Action), actionId))
+            throw new InvalidDataException(
+                "Resolved Native-policy action differs from its action ID.");
+        return StepNativePolicyBaseline(
+            current, actionId, resolvedAction.Action);
     }
 
     private static SemanticPilotCombatV111 StepCardSelection(
@@ -2685,11 +2713,10 @@ public static class SemanticPilotCombatEngineV111
     }
 
     private static SemanticPilotCombatV111 StepNativePolicyBaseline(
-        SemanticPilotCombatV111 current, string actionId)
+        SemanticPilotCombatV111 current, string actionId,
+        GameAction resolvedAction)
     {
         var environment = new PrototypeAiEnvironment();
-        var resolvedAction = environment.ResolvePlayerAction(
-            current.Run, actionId);
         RunState result;
         using var boundaries = RandomBoundaryJournalV111.Begin();
         using (ControlledChanceGuardV111.Enter())
@@ -2699,7 +2726,7 @@ public static class SemanticPilotCombatEngineV111
             new NativeRandomBoundaryProviderV111(),
             overrideExplicitProviders: false))
             result = environment.StepResolved(
-                current.Run.Fork(), resolvedAction.Action).State;
+                current.Run.Fork(), resolvedAction).State;
 
         var audit = current.NativePolicyAudit ??
             throw new InvalidDataException(
