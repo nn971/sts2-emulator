@@ -1676,7 +1676,14 @@ public sealed partial class PrototypeGameEngine
             IsAtSupportedAutomaticPipelineTargetBoundary(combat);
     }
 
-    internal static bool IsWhisperingEarringOpeningAutoplayBoundary(
+    internal static bool IsSupportedOpeningAutoplayTargetBoundary(
+        CombatState combat)
+    {
+        return IsWhisperingEarringOpeningAutoplayBoundary(combat) ||
+            IsImbuedOpeningAutoplayContinuation(combat);
+    }
+
+    private static bool IsWhisperingEarringOpeningAutoplayBoundary(
         CombatState combat)
     {
         if (combat is not
@@ -1735,6 +1742,57 @@ public sealed partial class PrototypeGameEngine
 
         return hasWhisperingEarringDriver &&
             (hasAutoplaySeries || hasPreplayTarget);
+    }
+
+    private static bool IsImbuedOpeningAutoplayContinuation(
+        CombatState combat)
+    {
+        if (combat is not
+                { Turn: 1, IsPlayerTurn: true, IsPlayerSideActive: true,
+                  PendingKnowledgeDemonChoice: null,
+                  PendingChoice:
+                    { OuterChoiceContinuation: { } root } pending,
+                  SemanticDeck:
+                    { Mode: SemanticDeckStateV111.NatureMode,
+                      Pending: null },
+                  AutomaticPipelineContinuation: { } pipeline } ||
+            !IsAtOpeningAutomaticPipelineCursor(
+                combat, pipeline,
+                PrototypeOpeningCombatStage.LateRelicAutoPlay))
+            return false;
+
+        var triggeredImbuedCards = combat.Cards.Where(card =>
+            card.Enchantment is
+                { Kind: PrototypeCardEnchantmentKind.Imbued } &&
+            card.EnchantmentTriggeredThisCombat &&
+            combat.PlayCardIds.Contains(card.InstanceId)).ToArray();
+        if (triggeredImbuedCards.Length != 1)
+            return false;
+
+        var sourceCardId = triggeredImbuedCards[0].InstanceId;
+        bool suspendedBeforeTarget =
+            pending.ControlledTarget is
+                { Kind: "autoplay_random_enemy",
+                  AutoPlayCardInstanceId: { } targetCardId } &&
+            targetCardId == sourceCardId &&
+            root.Operations is { Length: 1 } targetOperations &&
+            CanonicalJson.Sha256(targetOperations[0]) ==
+            CanonicalJson.Sha256(new PrototypeQueuedOperation(
+                PrototypeCombatEffectKind.AutoPlayCombatCard, 0,
+                SourceKind: PrototypeEffectSourceKind.Card,
+                CardInstanceId: sourceCardId));
+
+        bool suspendedWithinAutoplay = false;
+        for (var frame = root; frame is not null; frame = frame.Parent)
+            if (frame.CardPlaySeries is
+                    { IsAutoPlay: true } series &&
+                series.SourceCardInstanceId == sourceCardId)
+            {
+                suspendedWithinAutoplay = true;
+                break;
+            }
+
+        return suspendedBeforeTarget || suspendedWithinAutoplay;
     }
 
     private static bool IsWhisperingEarringDriverOperation(

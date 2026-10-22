@@ -2,19 +2,25 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 opening Imbued autoplay target increment (2026-10-22):** The shared
+automatic-pipeline target boundary now admits an opening Imbued autoplay when
+the saved cursor and single triggered card instance match the pending target
+operation or autoplay frame. It reuses the existing semantic target and nested
+choice continuations; multiple simultaneous Imbued cards remain gated. Static
+source review and `git diff --check` only; no tests or builds were run.
+
 **S1 exact deck-prefix JSONL query increment (2026-10-22):** The bounded
 Nature-only prefix distribution is now available through the opt-in
 `semantic_deck_prefix_distribution` JSONL operation. It accepts a run handle
 whose combat has an idle Nature-owned deck, a prefix length, and an optional
 full-order cap, and returns
 the versioned exact integer completion counts already provided by the core
-enumerator. Its optional `audit_sequential` input checks prefixes through 64
-draw positions by composing `QueryDraw` supports and reports an exact match
-against full-order enumeration. The audited operation returns the distribution
-it already enumerated, avoiding a second full-order pass.
-The capability is advertised separately in `hello` and stays out of the fair
-player view. The distribution remains `UNVERIFIED`; no tests or builds were
-run.
+enumerator. Its optional `audit_sequential` input composes `QueryDraw` supports
+through the audit limit negotiated from `hello` (currently 64 positions) and
+reports an exact match against full-order enumeration. The audited operation
+returns the distribution it already enumerated, avoiding a second full-order
+pass. The capability stays out of the fair player view. The distribution
+remains `UNVERIFIED`; no tests or builds were run.
 
 **S1 exact deck-prefix distribution increment (2026-10-22):**
 `SemanticDeckEngineV111.EnumeratePrefixDistribution` groups the existing

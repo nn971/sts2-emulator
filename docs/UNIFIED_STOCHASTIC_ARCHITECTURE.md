@@ -726,6 +726,12 @@ the exact pre-play target operation. Existing typed choice owners resume nested
 card effects before the opening pipeline completes; other opening-stage
 choices remain separately gated.
 
+The same opening target boundary now admits an Imbued autoplay only when the
+saved cursor is `LateRelicAutoPlay`, exactly one triggered Imbued card is in the
+play pile, and the pending target operation or autoplay card-play frame names
+that instance. The existing typed target and nested-choice owners then resume
+the selected card; multiple simultaneous Imbued autoplay cards remain gated.
+
 `SemanticChoiceResumeV111` applies recorded nested draw and cost,
 insertion, generated-card and potion, transform, shortlist, pool-shuffle,
 hand-cost-selection, card-selection, draw-hook, and Knowledge Demon decisions

@@ -127,7 +127,7 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             return false;
         var continuation = combat.AutomaticPipelineContinuation;
         if (continuation?.Mechanics.OpeningStage is not null)
-            return IsWhisperingEarringOpeningAutoplayBoundary(combat);
+            return IsSupportedOpeningAutoplayTargetBoundary(combat);
         if (continuation is null ||
             continuation.Mechanics.PendingPostDispatchEventKind is not null ||
             continuation.Stochastic.ControlledDrawRemaining is not null ||
