@@ -596,9 +596,9 @@ internal sealed class ReferenceNatureLaterActAssignmentIndexProviderV111
 {
     private readonly ReferenceNatureDecisionV111[]? _expectedPrefix;
     private readonly bool _suspendAfterPrefix;
-    private ReferenceNatureStateV111 _natureState;
+    private ReferenceNatureStochasticStateV111<ReferenceNatureDecisionV111>
+        _stochastic;
     private readonly List<ChanceLawV111> _chanceLaws = [];
-    private readonly List<ReferenceNatureDecisionV111> _decisions = [];
     private readonly List<ControlledStochasticDecisionV111>
         _providerDecisions = [];
     private bool? _hiveReceivesDarv;
@@ -608,8 +608,9 @@ internal sealed class ReferenceNatureLaterActAssignmentIndexProviderV111
         ReferenceNatureDecisionV111[]? expectedPrefix = null,
         bool suspendAfterPrefix = false)
     {
-        _natureState = initialNatureState?.Fork()
+        var initial = initialNatureState?.Fork()
             ?? throw new ArgumentNullException(nameof(initialNatureState));
+        _stochastic = new(initial, initial.Fork(), []);
         _expectedPrefix = expectedPrefix is null ? null :
             (ReferenceNatureDecisionV111[])expectedPrefix.Clone();
         _suspendAfterPrefix = suspendAfterPrefix;
@@ -620,12 +621,13 @@ internal sealed class ReferenceNatureLaterActAssignmentIndexProviderV111
     }
 
     public string Mode => ReferenceNatureV111.ProviderId;
-    public ReferenceNatureStateV111 NatureState => _natureState.Fork();
+    public ReferenceNatureStateV111 NatureState =>
+        _stochastic.NatureState.Fork();
     public int InitialEventOrdinal { get; private set; } = -1;
     public ChanceLawV111[] ChanceLaws => _chanceLaws
         .Select(law => law.Fork()).ToArray();
     public ReferenceNatureDecisionV111[] DecisionTranscript =>
-        _decisions.ToArray();
+        _stochastic.DecisionTranscript;
     public ControlledStochasticDecisionV111[] ProviderDecisions =>
         _providerDecisions.Select(decision => decision.Fork()).ToArray();
     public RandomIndexRequestV111? PendingRequest { get; private set; }
@@ -642,7 +644,9 @@ internal sealed class ReferenceNatureLaterActAssignmentIndexProviderV111
             eventStream.Codec != PrototypeRng.Codec)
             throw new InvalidDataException(
                 "ReferenceNature later-act assignment request differs from its legacy event boundary.");
-        if (_decisions.Count == 0)
+        var decisions = _stochastic.DecisionTranscript;
+        var decisionCount = decisions.Length;
+        if (decisionCount == 0)
             InitialEventOrdinal = request.Ordinal;
 
         ChanceLawV111 law;
@@ -651,7 +655,7 @@ internal sealed class ReferenceNatureLaterActAssignmentIndexProviderV111
         {
             if (request.OwnerId != "run:darv_assignment:hive" ||
                 request.OperationKind != "bounded_integer" ||
-                request.SupportCount != 2 || _decisions.Count != 0)
+                request.SupportCount != 2 || decisionCount != 0)
                 throw new InvalidDataException(
                     "ReferenceNature Hive Darv request differs from its source boundary.");
             law = ChanceLawEngineV111.QueryLaterActDarvHiveAssignment(
@@ -698,7 +702,7 @@ internal sealed class ReferenceNatureLaterActAssignmentIndexProviderV111
                 "ReferenceNature later-act Chance Law differs from its source request.");
 
         if (_suspendAfterPrefix &&
-            _decisions.Count == _expectedPrefix!.Length)
+            decisionCount == _expectedPrefix!.Length)
         {
             PendingRequest = request with
             {
@@ -709,19 +713,19 @@ internal sealed class ReferenceNatureLaterActAssignmentIndexProviderV111
         }
 
         var selection = ReferenceNatureV111.SampleValidated(
-            law, _natureState);
+            law, _stochastic.NatureState);
         var natureDecision = new ReferenceNatureDecisionV111(
             law.LawId, law.EventId, selection.OutcomeId,
             selection.OutcomeIndex);
         if (_expectedPrefix is not null &&
-            (_decisions.Count >= _expectedPrefix.Length ||
+            (decisionCount >= _expectedPrefix.Length ||
              CanonicalJson.Sha256(natureDecision) != CanonicalJson.Sha256(
-                 _expectedPrefix[_decisions.Count])))
+                 _expectedPrefix[decisionCount])))
             throw new InvalidDataException(
                 "ReferenceNature later-act assignment replay differs from its saved prefix.");
-        _natureState = selection.NextState;
+        _stochastic = _stochastic.Advance(selection.NextState,
+            natureDecision);
         _chanceLaws.Add(law.Fork());
-        _decisions.Add(natureDecision);
         if (request.SiteId == ExperimentalSilentThreeActRouteV111
                 .DarvHiveAssignmentSiteId)
             _hiveReceivesDarv = selection.OutcomeId ==
@@ -909,9 +913,9 @@ internal sealed class ReferenceNatureLaterActEncounterIndexProviderV111
     private readonly int _ascension;
     private readonly ReferenceNatureDecisionV111[]? _expectedPrefix;
     private readonly bool _suspendAfterPrefix;
-    private ReferenceNatureStateV111 _natureState;
+    private ReferenceNatureStochasticStateV111<ReferenceNatureDecisionV111>
+        _stochastic;
     private readonly List<ChanceLawV111> _chanceLaws = [];
-    private readonly List<ReferenceNatureDecisionV111> _decisions = [];
     private readonly List<ControlledStochasticDecisionV111>
         _providerDecisions = [];
     private int _queueDrawCount;
@@ -933,7 +937,8 @@ internal sealed class ReferenceNatureLaterActEncounterIndexProviderV111
             throw new InvalidDataException(
                 "ReferenceNature later-act bosses require a valid legacy combat cursor.");
         var initialOrdinal = combatStream.CallCount ?? 0;
-        _natureState = initialNatureState.Fork();
+        var initial = initialNatureState.Fork();
+        _stochastic = new(initial, initial.Fork(), []);
         _ascension = ascension;
         _expectedPrefix = expectedPrefix is null ? null :
             (ReferenceNatureDecisionV111[])expectedPrefix.Clone();
@@ -948,11 +953,12 @@ internal sealed class ReferenceNatureLaterActEncounterIndexProviderV111
     public string Mode => ReferenceNatureV111.ProviderId;
     public int InitialCombatOrdinal { get; }
     public int QueueDrawCount => _queueDrawCount;
-    public ReferenceNatureStateV111 NatureState => _natureState.Fork();
+    public ReferenceNatureStateV111 NatureState =>
+        _stochastic.NatureState.Fork();
     public ChanceLawV111[] ChanceLaws => _chanceLaws
         .Select(law => law.Fork()).ToArray();
     public ReferenceNatureDecisionV111[] DecisionTranscript =>
-        _decisions.ToArray();
+        _stochastic.DecisionTranscript;
     public ControlledStochasticDecisionV111[] ProviderDecisions =>
         _providerDecisions.Select(decision => decision.Fork()).ToArray();
     public RandomIndexRequestV111? PendingRequest { get; private set; }
@@ -969,6 +975,8 @@ internal sealed class ReferenceNatureLaterActEncounterIndexProviderV111
             combatStream.Codec != PrototypeRng.Codec)
             throw new InvalidDataException(
                 "ReferenceNature later-act encounter request differs from its legacy combat boundary.");
+        var decisions = _stochastic.DecisionTranscript;
+        var decisionCount = decisions.Length;
         if (request.Ordinal != checked(InitialCombatOrdinal +
                 _chanceLaws.Count))
             throw new InvalidDataException(
@@ -1022,7 +1030,7 @@ internal sealed class ReferenceNatureLaterActEncounterIndexProviderV111
                 "ReferenceNature later-act boss Chance Law differs from its source request.");
 
         if (_suspendAfterPrefix &&
-            _decisions.Count == _expectedPrefix!.Length)
+            decisionCount == _expectedPrefix!.Length)
         {
             PendingRequest = request with
             {
@@ -1033,19 +1041,19 @@ internal sealed class ReferenceNatureLaterActEncounterIndexProviderV111
         }
 
         var selection = ReferenceNatureV111.SampleValidated(
-            law, _natureState);
+            law, _stochastic.NatureState);
         var natureDecision = new ReferenceNatureDecisionV111(
             law.LawId, law.EventId, selection.OutcomeId,
             selection.OutcomeIndex);
         if (_expectedPrefix is not null &&
-            (_decisions.Count >= _expectedPrefix.Length ||
+            (decisionCount >= _expectedPrefix.Length ||
              CanonicalJson.Sha256(natureDecision) != CanonicalJson.Sha256(
-                 _expectedPrefix[_decisions.Count])))
+                 _expectedPrefix[decisionCount])))
             throw new InvalidDataException(
                 "ReferenceNature later-act encounter replay differs from its saved prefix.");
-        _natureState = selection.NextState;
+        _stochastic = _stochastic.Advance(selection.NextState,
+            natureDecision);
         _chanceLaws.Add(law.Fork());
-        _decisions.Add(natureDecision);
         if (request.SiteId == ExperimentalSilentThreeActRouteV111
                 .BossIndexSiteId ||
             request.SiteId == ExperimentalSilentThreeActRouteV111

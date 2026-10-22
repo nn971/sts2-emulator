@@ -40,6 +40,18 @@ public sealed record ReferenceNatureStochasticStateV111<TDecision>
         DecisionTranscript = DecisionTranscript
     };
 
+    public ReferenceNatureStochasticStateV111<TDecision> Advance(
+        ReferenceNatureStateV111 natureState, TDecision decision)
+    {
+        ArgumentNullException.ThrowIfNull(natureState);
+        ArgumentNullException.ThrowIfNull(decision);
+        return this with
+        {
+            NatureState = natureState,
+            DecisionTranscript = [.. DecisionTranscript, decision]
+        };
+    }
+
     public void Validate()
     {
         ArgumentNullException.ThrowIfNull(InitialNatureState);

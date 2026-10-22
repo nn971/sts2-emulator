@@ -255,8 +255,8 @@ internal sealed class ReferenceNatureEncounterFormationIndexProviderV111
     private readonly string _encounterEntry;
     private readonly int _totalFloor;
     private readonly List<ChanceLawV111> _chanceLaws = [];
-    private readonly List<ReferenceNatureDecisionV111> _decisions = [];
-    private ReferenceNatureStateV111 _natureState;
+    private ReferenceNatureStochasticStateV111<ReferenceNatureDecisionV111>
+        _stochastic;
 
     public ReferenceNatureEncounterFormationIndexProviderV111(
         string encounterEntry, int totalFloor,
@@ -269,15 +269,17 @@ internal sealed class ReferenceNatureEncounterFormationIndexProviderV111
         initialNatureState.Validate();
         _encounterEntry = encounterEntry;
         _totalFloor = totalFloor;
-        _natureState = initialNatureState.Fork();
+        _stochastic = new(initialNatureState.Fork(),
+            initialNatureState.Fork(), []);
     }
 
     public string Mode => ReferenceNatureV111.ProviderId;
-    public ReferenceNatureStateV111 NatureState => _natureState.Fork();
+    public ReferenceNatureStateV111 NatureState =>
+        _stochastic.NatureState.Fork();
     public ChanceLawV111[] ChanceLaws => _chanceLaws
         .Select(law => law.Fork()).ToArray();
     public ReferenceNatureDecisionV111[] DecisionTranscript =>
-        _decisions.ToArray();
+        _stochastic.DecisionTranscript;
 
     public RandomIndexDecisionV111 Resolve(
         RandomIndexRequestV111 request, RngBundle streams)
@@ -294,7 +296,7 @@ internal sealed class ReferenceNatureEncounterFormationIndexProviderV111
             request.StreamId != expectedStream ||
             request.OwnerId != expectedOwner ||
             request.OperationKind != "choose_index" ||
-            request.Ordinal != _decisions.Count ||
+            request.Ordinal != _stochastic.DecisionTranscript.Length ||
             request.SupportCount < 1 ||
             !request.OrderedCandidates.SequenceEqual(
                 Enumerable.Range(0, request.SupportCount)))
@@ -313,12 +315,12 @@ internal sealed class ReferenceNatureEncounterFormationIndexProviderV111
             throw new InvalidDataException(
                 "Native encounter formation Chance Law changed its typed request.");
         var selection = ReferenceNatureV111.SampleValidated(
-            law, _natureState);
-        _natureState = selection.NextState;
+            law, _stochastic.NatureState);
         _chanceLaws.Add(law.Fork());
-        _decisions.Add(new ReferenceNatureDecisionV111(
-            law.LawId, law.EventId, selection.OutcomeId,
-            selection.OutcomeIndex));
+        _stochastic = _stochastic.Advance(selection.NextState,
+            new ReferenceNatureDecisionV111(
+                law.LawId, law.EventId, selection.OutcomeId,
+                selection.OutcomeIndex));
         var result = new RandomIndexDecisionV111(
             request with
             {

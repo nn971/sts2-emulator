@@ -542,18 +542,22 @@ public static class PrototypeNativeOvergrowthRunFactory
 internal sealed class ReferenceNatureOvergrowthBossIndexProviderV111(
     ReferenceNatureStateV111 initialNatureState) : IRandomIndexProviderV111
 {
-    private ReferenceNatureStateV111 _natureState =
-        initialNatureState?.Fork()
-        ?? throw new ArgumentNullException(nameof(initialNatureState));
+    private ReferenceNatureStochasticStateV111<ReferenceNatureDecisionV111>
+        _stochastic = new(
+            initialNatureState?.Fork()
+                ?? throw new ArgumentNullException(nameof(initialNatureState)),
+            initialNatureState?.Fork()
+                ?? throw new ArgumentNullException(nameof(initialNatureState)),
+            []);
     private readonly List<ChanceLawV111> _chanceLaws = [];
-    private readonly List<ReferenceNatureDecisionV111> _decisions = [];
 
     public string Mode => ReferenceNatureV111.ProviderId;
-    public ReferenceNatureStateV111 NatureState => _natureState.Fork();
+    public ReferenceNatureStateV111 NatureState =>
+        _stochastic.NatureState.Fork();
     public ChanceLawV111[] ChanceLaws => _chanceLaws
         .Select(law => law.Fork()).ToArray();
     public ReferenceNatureDecisionV111[] DecisionTranscript =>
-        _decisions.ToArray();
+        _stochastic.DecisionTranscript;
 
     public RandomIndexDecisionV111 Resolve(
         RandomIndexRequestV111 request, RngBundle streams)
@@ -575,7 +579,8 @@ internal sealed class ReferenceNatureOvergrowthBossIndexProviderV111(
         var bossPool = PrototypeContent.OvergrowthBossEncounterPool;
         var expectedOwner = "run:act:1:boss_pool:" +
             CanonicalJson.Sha256(bossPool);
-        if (_decisions.Count != 0 || request.OwnerId != expectedOwner ||
+        if (_stochastic.DecisionTranscript.Length != 0 ||
+            request.OwnerId != expectedOwner ||
             request.Ordinal != 0 || request.OperationKind != "choose_index" ||
             request.SupportCount != bossPool.Length ||
             !request.OrderedCandidates.SequenceEqual(
@@ -593,12 +598,12 @@ internal sealed class ReferenceNatureOvergrowthBossIndexProviderV111(
             throw new InvalidDataException(
                 "ReferenceNature Overgrowth boss law differs from its source request.");
         var selection = ReferenceNatureV111.SampleValidated(
-            law, _natureState);
-        _natureState = selection.NextState;
+            law, _stochastic.NatureState);
         _chanceLaws.Add(law.Fork());
-        _decisions.Add(new ReferenceNatureDecisionV111(
-            law.LawId, law.EventId, selection.OutcomeId,
-            selection.OutcomeIndex));
+        _stochastic = _stochastic.Advance(selection.NextState,
+            new ReferenceNatureDecisionV111(
+                law.LawId, law.EventId, selection.OutcomeId,
+                selection.OutcomeIndex));
         var decision = new RandomIndexDecisionV111(
             request with
             {
