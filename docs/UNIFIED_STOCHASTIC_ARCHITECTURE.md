@@ -895,6 +895,8 @@ Combat Imbued autoplay and the opening player-turn event dispatch also use local
 
 Automatic turn steps now pass a local prototype bundle through combat-event dispatch, hand effects, enemy status/death summons, enemy actions, intent commitment, and hand draw. They publish the cursor with each step result or before handing a suspended draw to its saved continuation; late relic autoplay refreshes its local projection after the dedicated transition returns.
 
+Controlled recycle resumption now uses a local prototype bundle for after-shuffle relic hooks and remaining hand draws, publishing it before transferring to a stratagem or hand-draw continuation.
+
 ## Reading order
 
 1. This architecture contract.

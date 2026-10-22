@@ -2045,6 +2045,7 @@ public sealed partial class PrototypeGameEngine
         var world = RequireWorld(state);
         var combat = world.Combat ??
             throw new InvalidOperationException("Missing combat for recycle.");
+        var prototypeRng = state.Stochastic.PrototypeRng;
         var continuation = combat.AutomaticPipelineContinuation ??
             throw new InvalidOperationException("Missing draw continuation.");
         if (continuation.Mechanics.CurrentStepKind !=
@@ -2104,7 +2105,12 @@ public sealed partial class PrototypeGameEngine
             PrototypeStateInvariants.Validate(suspended);
             return suspended;
         }
-        combat = ApplyRelicAfterShuffleCards(combat, state.Stochastic.PrototypeRngMutable);
+        combat = ApplyRelicAfterShuffleCards(combat, prototypeRng);
+        state = state with
+        {
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, prototypeRng)
+        };
         if (ExpectedStratagemSelectionCount(combat) > 0)
             return BeginControlledRecycleStratagemSelection(
                 state, state.Player, combat,
@@ -2112,10 +2118,15 @@ public sealed partial class PrototypeGameEngine
 
         var player = state.Player;
         var drawn = DrawCards(player, combat, remainingHandDraw,
-            state.Stochastic.PrototypeRngMutable, fromHandDraw: true,
+            prototypeRng, fromHandDraw: true,
             suspensionPolicy:
                 PrototypeDrawCardsSuspensionPolicyV111
                     .ControlledLegacyAutomaticHandDraw(combat));
+        state = state with
+        {
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, prototypeRng)
+        };
         return ContinueControlledHandDraw(state, drawn);
     }
 
