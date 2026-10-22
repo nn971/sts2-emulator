@@ -46,7 +46,7 @@ public static class PrototypePristineRewardProposal
                 + "64-bit stream state encoded as 16 hexadecimal characters.");
         }
 
-        var existing = source.Rng.GetStream("reward");
+        var existing = source.Stochastic.PrototypeRng.GetStream("reward");
         if (existing.Codec != PrototypeRng.Codec
             || existing.StateBytes.Length != sizeof(ulong)
             || existing.CallCount != 0)

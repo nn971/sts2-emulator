@@ -502,7 +502,7 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidOperationException(
                 "Initial intent continuation has an invalid combat-entry source.");
         var nativeStreams = combat.NativeRng?.RunStreams.Fork()
-            ?? source.NativeRunRng?.Fork();
+            ?? source.Stochastic.NativeRunRng?.Fork();
         var advanced = source with
         {
             Stochastic = RunStochasticStateV111.WithNativeRunRng(

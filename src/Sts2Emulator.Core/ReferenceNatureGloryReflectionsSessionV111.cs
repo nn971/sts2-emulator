@@ -400,7 +400,7 @@ public sealed record ReferenceNatureGloryReflectionsSessionV111(
 
     private static ulong GetLegacyEventCallCount(RunState run)
     {
-        if (!run.Rng.TryGetStream("event", out var stream))
+        if (!run.Stochastic.PrototypeRng.TryGetStream("event", out var stream))
             throw new InvalidDataException(
                 "Reflections fallback requires one legacy event stream.");
         return stream.CallCount ?? 0;

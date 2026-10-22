@@ -234,7 +234,7 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
         if (expectedRunNicheCursor is not null)
         {
             RngStreamState? runNiche = null;
-            if (run.NativeRunRng is { } nativeRunRng)
+            if (run.Stochastic.NativeRunRng is { } nativeRunRng)
                 nativeRunRng.TryGetStream("run.niche", out runNiche);
             if (run.Phase != RunPhase.Reward ||
                 run.World?.Combat is not null || runNiche is null ||
@@ -262,7 +262,7 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
                 ?? throw new InvalidDataException(
                     "Scripted player-stream replay is missing its stream identity.");
             RngStreamState? finalStream = null;
-            if (run.NativeRunRng is { } nativeRunRng)
+            if (run.Stochastic.NativeRunRng is { } nativeRunRng)
                 nativeRunRng.TryGetStream(streamId, out finalStream);
             var finalCursor = finalStream is null ? null :
                 NativeRngV111.ToSnapshot(finalStream);

@@ -941,7 +941,7 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
                 run.Player.Gold != origin.Player.Gold - 40 ||
                 !run.Player.PotionSlots.SequenceEqual(
                     origin.Player.PotionSlots) ||
-                CanonicalJson.Sha256(run.Rng) !=
+                CanonicalJson.Sha256(run.Stochastic.PrototypeRng) !=
                     CanonicalJson.Sha256(origin.Rng))
                 throw new InvalidDataException(
                     "Scripted Suspicious Condiment action did not queue the Nature-selected potion without advancing the legacy provider.");

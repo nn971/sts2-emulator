@@ -1057,7 +1057,7 @@ internal static class NativeEventShufflePlanBuilderV111
         var expectedNativeTail = siteRequests.Length -
             scriptedPrefix.Count;
         RngStreamState? niche = null;
-        if (run.NativeRunRng is { } runStreams)
+        if (run.Stochastic.NativeRunRng is { } runStreams)
             runStreams.TryGetStream("run.niche", out niche);
         var actualAdvance = niche is null ? ulong.MaxValue : unchecked(
             (uint)(NativeRngV111.ToSnapshot(niche).Counter -
@@ -1119,7 +1119,7 @@ internal static class NativeEventShufflePlanBuilderV111
         var expectedLegacyTail = siteRequests.Length -
             scriptedPrefix.Count;
         RngStreamState? afterStream = null;
-        run.Rng.TryGetStream("combat", out afterStream);
+        run.Stochastic.PrototypeRng.TryGetStream("combat", out afterStream);
         var actualAdvance = afterStream is null ? ulong.MaxValue :
             unchecked((afterStream.CallCount ?? 0) - beforeCallCount);
         var expectedModes = siteRequests.Select((entry, index) =>
@@ -1199,7 +1199,7 @@ internal static class NativeEventShufflePlanBuilderV111
             siteRequests.Length);
         var expectedLegacyDraws = rewardEvents.Length - scriptedCount;
         RngStreamState? afterStream = null;
-        run.Rng.TryGetStream("reward", out afterStream);
+        run.Stochastic.PrototypeRng.TryGetStream("reward", out afterStream);
         var actualAdvance = afterStream is null ? ulong.MaxValue :
             unchecked((afterStream.CallCount ?? 0) - beforeCallCount);
         var expectedModes = siteRequests.Select((entry, index) =>
@@ -1870,7 +1870,7 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
 
     private static ulong GetLegacyEventCallCount(RunState run)
     {
-        if (!run.Rng.TryGetStream("event", out var stream))
+        if (!run.Stochastic.PrototypeRng.TryGetStream("event", out var stream))
             throw new InvalidDataException(
                 "Native event shuffle replay requires one legacy event stream.");
         return stream.CallCount ?? 0;

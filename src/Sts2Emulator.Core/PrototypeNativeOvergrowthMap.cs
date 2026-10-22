@@ -734,7 +734,7 @@ public sealed record ReferenceNatureOvergrowthRunResultV111(
         PrototypeStateInvariants.Validate(run);
         var initialCombat = PrototypeRng.CreateBundle(run.RunSeed)
             .GetStream("combat");
-        var resultCombat = run.Rng.GetStream("combat");
+        var resultCombat = run.Stochastic.PrototypeRng.GetStream("combat");
         if (CanonicalJson.Sha256(initialCombat) !=
             CanonicalJson.Sha256(resultCombat))
             throw new InvalidDataException(

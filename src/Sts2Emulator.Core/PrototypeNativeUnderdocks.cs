@@ -1621,7 +1621,7 @@ public sealed record ReferenceNatureUnderdocksRunResultV111(
 
         var cleanCombat = PrototypeRng.CreateBundle(run.RunSeed)
             .GetStream("combat");
-        var resultCombat = run.Rng.GetStream("combat");
+        var resultCombat = run.Stochastic.PrototypeRng.GetStream("combat");
         if (CanonicalJson.Sha256(cleanCombat) !=
             CanonicalJson.Sha256(resultCombat))
             throw new InvalidDataException(

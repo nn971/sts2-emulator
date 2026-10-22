@@ -4867,7 +4867,7 @@ public static partial class ChanceLawEngineV111
         PrototypeStateInvariants.Validate(run);
         request.Validate();
         if (run.Phase != RunPhase.Shop || run.World is not { } world ||
-            run.NativeRunRng is null || run.ControlledRunActionChoice is not null ||
+            run.Stochastic.NativeRunRng is null || run.ControlledRunActionChoice is not null ||
             !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
             world.RelicBag is null || action.Kind != "buy_relic" ||
             world.Shop is not { } shop)
@@ -4976,7 +4976,7 @@ public static partial class ChanceLawEngineV111
         if (ordinal != 0)
             throw new ArgumentOutOfRangeException(nameof(ordinal));
         if (run.Phase != RunPhase.MapChoice || run.World is not { } world ||
-            run.NativeRunRng is null || run.ControlledRunActionChoice is not null ||
+            run.Stochastic.NativeRunRng is null || run.ControlledRunActionChoice is not null ||
             !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
             !PrototypeNativeWingedBoots.AvailableNodes(world, run.Player)
                 .Any(node => node.RoomType == PrototypeRoomType.Treasure) ||
@@ -5250,7 +5250,7 @@ public static partial class ChanceLawEngineV111
         PrototypeStateInvariants.Validate(run);
         request.Validate();
         if (run.Phase != RunPhase.Combat || run.World is not { } world ||
-            run.NativeRunRng is null ||
+            run.Stochastic.NativeRunRng is null ||
             !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
             world.ActiveRoom is not (PrototypeRoomType.Combat or
                 PrototypeRoomType.Elite or PrototypeRoomType.Boss) ||
@@ -5309,7 +5309,7 @@ public static partial class ChanceLawEngineV111
         RunState run)
     {
         if (run.Phase != RunPhase.MapChoice || run.World is not { } world ||
-            run.NativeRunRng is null || run.ControlledRunActionChoice is not null ||
+            run.Stochastic.NativeRunRng is null || run.ControlledRunActionChoice is not null ||
             !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
             !PrototypeNativeWingedBoots.AvailableNodes(world, run.Player)
                 .Any(node => node.RoomType == PrototypeRoomType.Treasure) ||
@@ -5397,7 +5397,7 @@ public static partial class ChanceLawEngineV111
     private static void ValidateNativeMerchantQueryBoundary(RunState run)
     {
         if (run.Phase != RunPhase.MapChoice || run.World is not { } world ||
-            run.NativeRunRng is null || run.ControlledRunActionChoice is not null ||
+            run.Stochastic.NativeRunRng is null || run.ControlledRunActionChoice is not null ||
             !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
             !PrototypeNativeWingedBoots.AvailableNodes(world, run.Player)
                 .Any(node => node.RoomType == PrototypeRoomType.Shop))

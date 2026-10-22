@@ -660,7 +660,7 @@ public sealed record ReferenceNaturePunchOffRewardSessionV111(
                 "Punch Off reward action did not consume its complete selected reward prefix.");
         var entries = journal.Entries;
         RngStreamState? rewardsStream = null;
-        if (run.NativeRunRng is { } nativeRunRng)
+        if (run.Stochastic.NativeRunRng is { } nativeRunRng)
             nativeRunRng.TryGetStream(
                 NativePlayerRngV111.RewardsStreamId, out rewardsStream);
         var originRewards = relicPlan.RewardsCursorBefore;

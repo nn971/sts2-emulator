@@ -12,7 +12,7 @@ public sealed partial class PrototypeGameEngine
             return after;
         var world = RequireWorld(after);
         var nativeRunRng = UsesNativeRegionalSystems(world)
-            ? after.NativeRunRng?.Fork()
+            ? after.Stochastic.NativeRunRng?.Fork()
             : null;
         // Event acquisition already suspends the selected option in its
         // ordinary event continuation, before completing the event room.
@@ -31,7 +31,7 @@ public sealed partial class PrototypeGameEngine
             {
                 Phase = RunPhase.Reward,
                 Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                    after.Stochastic, nativeRunRng ?? after.NativeRunRng),
+                    after.Stochastic, nativeRunRng ?? after.Stochastic.NativeRunRng),
                 World = world
             };
         }

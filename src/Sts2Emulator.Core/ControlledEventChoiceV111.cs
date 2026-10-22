@@ -28,18 +28,18 @@ public static class ControlledEventChoiceEngineV111
             var world = source.World;
             var nativeStreamId = NativeRngV111Contexts.EventStreamId(
                 PrototypeNativeStoneOfAllTime.NativeRngEventId);
-            var nativeRoute = source.NativeRunRng is not null
+            var nativeRoute = source.Stochastic.NativeRunRng is not null
                 && world is not null
                 && PrototypeGameEngine.UsesNativeRegionalSystems(world)
                 && eventState.NativeEventRng?.StreamId == nativeStreamId
                 && eventState.NativeEventRngProviderMode is
                     null or "scripted-v111";
-            var legacyRoute = source.NativeRunRng is null
+            var legacyRoute = source.Stochastic.NativeRunRng is null
                 && world is not null
                 && !PrototypeGameEngine.UsesNativeRegionalSystems(world)
                 && eventState.NativeEventRng is null
                 && eventState.NativeEventRngProviderMode is null;
-            var nativeRegionalLegacyRoute = source.NativeRunRng is null
+            var nativeRegionalLegacyRoute = source.Stochastic.NativeRunRng is null
                 && world is { Act: 2 } nativeRegionalWorld
                 && PrototypeGameEngine.UsesNativeRegionalSystems(
                     nativeRegionalWorld)
