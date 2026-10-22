@@ -891,6 +891,8 @@ Combat entry now reads defensive run RNG projections and keeps encounter selecti
 
 Combat card plays, potion use, automatic death prevention, and combat-win dispatch now use local prototype bundles and publish them with their player/combat results. Combat-win dispatch publishes before persistent relic hooks, and Mad Science reopens the resulting projection so its deck improvement follows those hooks in source order.
 
+Combat Imbued autoplay and the opening player-turn event dispatch also use local prototype bundles and publish their cursor with the resulting combat state, including suspended autoplay or event choices.
+
 ## Reading order
 
 1. This architecture contract.

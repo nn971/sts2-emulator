@@ -2261,12 +2261,15 @@ public sealed partial class PrototypeGameEngine
         if (operations.Count == 0)
             return state;
 
+        var prototypeRng = state.Stochastic.PrototypeRng;
         var result = ResolveOperations(state.Player, combat,
-            new Queue<PrototypeQueuedOperation>(operations), state.Stochastic.PrototypeRngMutable,
+            new Queue<PrototypeQueuedOperation>(operations), prototypeRng,
             moveSourceCardOnCompletion: false);
         return state with
         {
             Player = result.Player,
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, prototypeRng),
             World = world with { Combat = result.Combat }
         };
     }
@@ -2278,10 +2281,17 @@ public sealed partial class PrototypeGameEngine
         if (eventKind == PrototypeCombatEventKind.OpeningPlayerTurnStarted)
         {
             var openingWorld = RequireWorld(state);
+            var prototypeRng = state.Stochastic.PrototypeRng;
             var opening = DispatchCombatEvent(state.Player, openingWorld.Combat!,
                 new PrototypeCombatEvent(eventKind),
-                state.Stochastic.PrototypeRngMutable, allowSuspension: true);
-            return state with { Player = opening.Player, World = openingWorld with { Combat = opening.Combat } };
+                prototypeRng, allowSuspension: true);
+            return state with
+            {
+                Player = opening.Player,
+                Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                    state.Stochastic, prototypeRng),
+                World = openingWorld with { Combat = opening.Combat }
+            };
         }
         // The pinned native HistoryCourse.AfterAutoPrePlayPhaseEntered
         // runs after the start-of-turn hooks. Reuse the existing
