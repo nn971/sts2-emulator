@@ -254,9 +254,6 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidDataException("Saved pool shuffle is not source-reachable.");
         if (chosen < 0 || chosen > shuffle.NextSwapIndex)
             throw new ArgumentOutOfRangeException(nameof(chosen));
-        bool helloWorldAutomaticBeforeHandDraw =
-            IsHelloWorldAutomaticBeforeHandDrawPoolShuffle(
-                combat, pending, shuffle, continuation);
         var values = (string[])shuffle.CurrentCardIds.Clone();
         (values[shuffle.NextSwapIndex], values[chosen]) =
             (values[chosen], values[shuffle.NextSwapIndex]);
@@ -531,18 +528,7 @@ public sealed partial class PrototypeGameEngine
             Player = resolved.Player,
             World = world with { Combat = resolved.Combat }
         };
-        if (helloWorldAutomaticBeforeHandDraw &&
-            updated.World?.Combat is
-                { PendingChoice: null,
-                  PendingKnowledgeDemonChoice: null,
-                  AutomaticPipelineContinuation:
-                    { Stochastic:
-                        { ControlledSemanticBeforeHandDrawPending: true } } })
-            updated = ResumeAutomaticPipelineContinuation(
-                updated, resumeSemanticBeforeHandDraw: true);
-        else
-            updated = ResumeAutomaticPipelineContinuation(updated);
-        return updated;
+        return ResumeAutomaticPipelineContinuation(updated);
     }
 
     private static long ParseShuffledCardInstanceToken(string token)

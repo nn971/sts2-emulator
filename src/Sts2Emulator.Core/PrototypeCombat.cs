@@ -1719,7 +1719,6 @@ public sealed partial class PrototypeGameEngine
     /// </summary>
     internal static RunState ResumeAutomaticPipelineContinuation(
         RunState state,
-        bool resumeSemanticBeforeHandDraw = false,
         bool stopBeforeSemanticHandDraw = false,
         PrototypeControlledEnemyActionContinuationV111?
             controlledEnemyActionReplay = null)
@@ -1760,24 +1759,25 @@ public sealed partial class PrototypeGameEngine
             var resumed = ResumeAutomaticPipeline(
                 state, beforeDraw.AutomaticPipelineContinuation!.Mechanics
                     .RequireResumeStepIndex());
-            return ResumeAutomaticPipelineContinuation(resumed);
+            return ResumeAutomaticPipelineContinuation(
+                resumed,
+                stopBeforeSemanticHandDraw: stopBeforeSemanticHandDraw);
         }
 
-        if (resumeSemanticBeforeHandDraw)
+        if (state.World?.Combat is
+            { PendingChoice: null,
+              PendingKnowledgeDemonChoice: null,
+              AutomaticPipelineContinuation:
+                { Stochastic:
+                    { ControlledSemanticBeforeHandDrawPending: true } } })
         {
-            if (state.World?.Combat is not
-                { PendingChoice: null,
-                  PendingKnowledgeDemonChoice: null,
-                  AutomaticPipelineContinuation:
-                    { Stochastic:
-                        { ControlledSemanticBeforeHandDrawPending: true } } })
-                throw new InvalidDataException(
-                    "Semantic BeforeHandDraw resume has no saved boundary.");
             if (!ControlledChanceGuardV111.Active)
                 throw new InvalidOperationException(
                     "Semantic BeforeHandDraw choice requires the RNG guard.");
             var resumed = ResumeSemanticBeforeHandDrawActionChoice(state).Run;
-            return ResumeAutomaticPipelineContinuation(resumed);
+            return ResumeAutomaticPipelineContinuation(
+                resumed,
+                stopBeforeSemanticHandDraw: stopBeforeSemanticHandDraw);
         }
 
         if (state.World?.Combat is

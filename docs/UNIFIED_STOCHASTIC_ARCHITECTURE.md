@@ -200,6 +200,12 @@ request. Supported choices keep their typed classification, while unknown
 pending payloads remain suspended so controlled-playable turn-intent staging
 cannot mistake them for a completed boundary.
 
+The ordinary pipeline resumer also consumes the tagged semantic
+`BeforeHandDraw` continuation after a source action clears its pending choice.
+Pool-shuffle adapters use the same handoff as other automatic choices instead
+of selecting a provider-specific resume mode; semantic draw counts and
+transcript publication remain with their existing owners.
+
 Initial and post-cost semantic draws and nested effect draws now pass their `DrawCards` results through `ResolveControlledSemanticDrawResult`. It owns tagged-boundary dispatch, after-shuffle insertion, nested CardDrawn choice, Stratagem selection, draw/cost continuation attachment, deferred keyword application, and completion of the saved effect suffix. The ordinary automatic pipeline uses the same interpreter for semantic after-shuffle, hook-choice, Stratagem, semantic-draw, and draw-cost boundaries; `SaveAutomaticSemanticHandDrawBoundary` owns the initial requested/remaining cursor when a boundary first suspends. Initial legacy controlled draws now suspend at both `BeforeHandDraw` player choices and draw-cost, recycle, and `CardDrawn` hook-choice boundaries. The tagged `ControlledBeforeHandDrawHookChoice` progress value resumes the same pipeline stage after its event continuation settles, without replaying the hook; the tagged `ControlledDrawHookChoice` value preserves the remaining draw count while its hook choice and any nested choices resolve, then resumes DrawCards before applying hand-draw timing or advancing the pipeline. Resumed recycle, Stratagem, after-shuffle insertion, and draw-cost paths keep hook-choice suspension enabled. Nested legacy effect draws without a semantic deck also suspend on supported discard-pile shuffle and `CardDrawn` hook-choice boundaries, using the existing tagged result and outer choice continuation to resume the saved draw/effect suffix. Standalone semantic draw entry without a semantic provider remains fail-closed. Facades retain their selected outcome history and saved schema.
 
 Nested semantic effect draws resumed after an after-shuffle insertion now keep `CardDrawn` hook-choice suspension enabled, so the next tagged result is interpreted by the same saved effect continuation.

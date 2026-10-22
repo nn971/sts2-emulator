@@ -11,6 +11,13 @@ unrecognized unresolved choice payloads remain suspended instead of falling
 through to a stage. Their transcript and provider policies remain local.
 Static source review and `git diff --check` only; no tests or builds were run.
 
+**S4 tagged semantic pre-draw resume handoff increment (2026-10-22):** The
+ordinary pipeline resumer now recognizes a cleared, tagged semantic
+`BeforeHandDraw` continuation and resumes that stage itself. Pool-shuffle
+adapters no longer pass a provider-specific resume flag; transcript and draw
+progress remain with the semantic facade. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S4 automatic-pipeline cursor clear owner increment (2026-10-22):** Runtime
 cursor consumption and cursor-free checkpoint projection now use
 `PrototypeGameEngine.ClearAutomaticPipelineContinuation`. End-turn setup,
