@@ -5949,14 +5949,18 @@ public sealed partial class PrototypeGameEngine
         {
             var player = state.Player;
             var nextId = world.NextCardInstanceId;
+            var prototypeRng = state.Stochastic.PrototypeRng;
             if (reward.AddCardAfterReward is { } afterRewardCardId)
             {
                 player = AppendCard(
-                    player, nextId++, afterRewardCardId, state.Stochastic.PrototypeRngMutable);
+                    player, nextId++, afterRewardCardId, prototypeRng);
             }
+            var stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, prototypeRng);
             return state with
             {
                 Player = player,
+                Stochastic = stochastic,
                 Phase = returnState.Phase,
                 World = world with
                 {
@@ -5992,6 +5996,7 @@ public sealed partial class PrototypeGameEngine
 
             var player = state.Player;
             var nextId = world.NextCardInstanceId;
+            var prototypeRng = state.Stochastic.PrototypeRng;
             if (reward.AddRandomCurseAfterReward)
             {
                 var cursePool = NativeGloryAncientsV111
@@ -6003,7 +6008,7 @@ public sealed partial class PrototypeGameEngine
                         cursePool))
                     {
                         curseId = cursePool[ResolveLegacyRandomIndex(
-                            state.Stochastic.PrototypeRngMutable,
+                            prototypeRng,
                             "event.reward.random_modifier_curse.index_draw",
                             "event:" + world.Event.EventId + ":pool:"
                                 + CanonicalJson.Sha256(cursePool),
@@ -6031,16 +6036,19 @@ public sealed partial class PrototypeGameEngine
                         .SuspendControlledEventRewardChoice(
                             state, continuation);
                 }
-                player = AppendCard(player, nextId++, curseId, state.Stochastic.PrototypeRngMutable);
+                player = AppendCard(player, nextId++, curseId, prototypeRng);
             }
             else if (reward.AddCardAfterReward is { } additionalCardId)
             {
                 player = AppendCard(
-                    player, nextId++, additionalCardId, state.Stochastic.PrototypeRngMutable);
+                    player, nextId++, additionalCardId, prototypeRng);
             }
+            var stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, prototypeRng);
             return AdvanceEventContinuations(state with
             {
                 Player = player,
+                Stochastic = stochastic,
                 World = world with
                 {
                     NextCardInstanceId = nextId,
