@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 Act 1 encounter-pool commit ownership increment (2026-10-22):** Live
+Overgrowth and Underdocks encounter draws now publish weak, normal, and elite
+pool updates through `RunWorldStochasticStateV111.CommitActOneEncounterPool`,
+which validates each candidate against the current Act 1 region and cursor
+before publishing. Static source review and `git diff --check` only; no tests
+or builds were run.
+
 **S3 relic-bag projection write guard increment (2026-10-22):** The
 `RunWorldStochasticStateV111.RelicBag` owner property validates every non-null
 bag's rarity partitions, identity pool, and order mode on construction and

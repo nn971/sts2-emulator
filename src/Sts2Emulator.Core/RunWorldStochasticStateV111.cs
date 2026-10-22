@@ -294,6 +294,15 @@ public sealed record RunWorldStochasticStateV111
             ActOneEncounterPool = pool
         };
 
+    internal static RunWorldStochasticStateV111 CommitActOneEncounterPool(
+        RunWorldState world,
+        PrototypeActOneEncounterPoolState? pool)
+    {
+        ArgumentNullException.ThrowIfNull(world);
+        ValidateActOneEncounterPool(world, pool);
+        return WithActOneEncounterPool(world.Stochastic, pool);
+    }
+
     internal static RunWorldStochasticStateV111 WithRelicBag(
         RunWorldStochasticStateV111? current,
         PrototypeRelicBagState? bag) =>

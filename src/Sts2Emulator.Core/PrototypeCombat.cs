@@ -631,14 +631,12 @@ public sealed partial class PrototypeGameEngine
             encounter,
             world with
             {
-                Stochastic = world.Stochastic with
-                {
-                    ActOneEncounterPool = pool with
-                    {
-                        RemainingEliteEncounterIds =
-                            nextRemaining
-                    }
-                }
+                Stochastic = RunWorldStochasticStateV111
+                    .CommitActOneEncounterPool(
+                        world, pool with
+                        {
+                            RemainingEliteEncounterIds = nextRemaining
+                        })
             });
     }
 
@@ -698,10 +696,8 @@ public sealed partial class PrototypeGameEngine
             encounter,
             world with
             {
-                Stochastic = world.Stochastic with
-                {
-                    ActOneEncounterPool = nextPool
-                }
+                Stochastic = RunWorldStochasticStateV111
+                    .CommitActOneEncounterPool(world, nextPool)
             });
     }
 
@@ -775,16 +771,14 @@ public sealed partial class PrototypeGameEngine
             encounter,
             world with
             {
-                Stochastic = world.Stochastic with
-                {
-                    ActOneEncounterPool = pool with
-                    {
-                        OrdinaryCombatsStarted =
-                            pool.OrdinaryCombatsStarted + 1,
-                        RemainingNormalEncounterIds =
-                            nextRemaining
-                    }
-                }
+                Stochastic = RunWorldStochasticStateV111
+                    .CommitActOneEncounterPool(
+                        world, pool with
+                        {
+                            OrdinaryCombatsStarted =
+                                pool.OrdinaryCombatsStarted + 1,
+                            RemainingNormalEncounterIds = nextRemaining
+                        })
             });
     }
 
