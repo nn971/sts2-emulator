@@ -373,10 +373,12 @@ public sealed record ReferenceNatureNativeEncounterFormationResultV111(
         ArgumentNullException.ThrowIfNull(Audit);
         ArgumentNullException.ThrowIfNull(Audit.Formation);
         Stochastic.Validate();
+        var stochastic = Stochastic;
+        var transcript = stochastic.DecisionTranscript;
         if (Audit.ProviderMode != ReferenceNatureV111.ProviderId ||
-            ChanceLaws is null || DecisionTranscript is null ||
+            ChanceLaws is null || transcript is null ||
             Audit.Choices.Length != ChanceLaws.Length ||
-            Audit.Choices.Length != DecisionTranscript.Length)
+            Audit.Choices.Length != transcript.Length)
             throw new InvalidDataException(
                 "Invalid ReferenceNature encounter formation result.");
         var formation = Audit.Formation;
@@ -392,12 +394,12 @@ public sealed record ReferenceNatureNativeEncounterFormationResultV111(
                 formation.TotalFloor)))
             throw new InvalidDataException(
                 "ReferenceNature formation must retain the initial Native encounter cursor.");
-        var expectedState = InitialNatureState.Fork();
+        var expectedState = stochastic.InitialNatureState.Fork();
         for (var index = 0; index < ChanceLaws.Length; index++)
         {
             var law = ChanceLaws[index];
             var choice = Audit.Choices[index];
-            var decision = DecisionTranscript[index];
+            var decision = transcript[index];
             law.Validate();
             choice.Validate();
             decision.Validate();
@@ -439,7 +441,7 @@ public sealed record ReferenceNatureNativeEncounterFormationResultV111(
             expectedState = selection.NextState;
         }
         if (CanonicalJson.Sha256(expectedState) !=
-            CanonicalJson.Sha256(NatureState))
+            CanonicalJson.Sha256(stochastic.NatureState))
             throw new InvalidDataException(
                 "ReferenceNature formation cursor differs from its transcript.");
     }

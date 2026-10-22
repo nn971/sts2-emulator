@@ -1579,13 +1579,14 @@ public sealed record ReferenceNatureUnderdocksRunResultV111(
         var run = Run;
         ArgumentNullException.ThrowIfNull(run);
         Stochastic.Validate();
+        var stochastic = Stochastic;
         var laws = ChanceLaws;
-        var transcript = DecisionTranscript;
+        var transcript = stochastic.DecisionTranscript;
         var world = run.World;
         if (laws is null || transcript is null ||
             laws.Length != 1 || transcript.Length != 1 ||
             run.Stochastic.ReferenceNature is not { } savedCursor ||
-            !savedCursor.SameCursor(NatureState) ||
+            !savedCursor.SameCursor(stochastic.NatureState) ||
             world is null ||
             world.ActOneRegion != PrototypeActOneRegion.Underdocks ||
             world.Stochastic.ActOneEncounterPool is not { } encounterPool ||
@@ -1604,7 +1605,7 @@ public sealed record ReferenceNatureUnderdocksRunResultV111(
             throw new InvalidDataException(
                 "Underdocks boss Chance Law differs from its source query.");
         var selection = ReferenceNatureV111.SampleValidated(
-            law, InitialNatureState);
+            law, stochastic.InitialNatureState);
         var expectedDecision = new ReferenceNatureDecisionV111(
             law.LawId, law.EventId, selection.OutcomeId,
             selection.OutcomeIndex);
@@ -1613,9 +1614,9 @@ public sealed record ReferenceNatureUnderdocksRunResultV111(
             !StringComparer.Ordinal.Equals(
                 selection.OutcomeId,
                 "encounter:" + encounterPool.BossEncounterId) ||
-            !selection.NextState.SameCursor(NatureState) ||
-            NatureState.SampleCount !=
-                checked(InitialNatureState.SampleCount + 1))
+            !selection.NextState.SameCursor(stochastic.NatureState) ||
+            stochastic.NatureState.SampleCount !=
+                checked(stochastic.InitialNatureState.SampleCount + 1))
             throw new InvalidDataException(
                 "Underdocks boss result does not replay from its Nature cursor.");
 

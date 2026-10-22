@@ -667,15 +667,16 @@ public sealed record ReferenceNatureOvergrowthRunResultV111(
         var run = Run;
         ArgumentNullException.ThrowIfNull(run);
         Stochastic.Validate();
+        var stochastic = Stochastic;
         var world = run.World;
         var laws = ChanceLaws;
-        var transcript = DecisionTranscript;
+        var transcript = stochastic.DecisionTranscript;
         var mapAudit = MapGenerationAudit;
         var encounterPool = world?.Stochastic.ActOneEncounterPool;
         if (laws is null || transcript is null || laws.Length < 2 ||
             transcript.Length != laws.Length || mapAudit is null ||
             run.Stochastic.ReferenceNature is not { } savedCursor ||
-            !savedCursor.SameCursor(NatureState) ||
+            !savedCursor.SameCursor(stochastic.NatureState) ||
             world?.ActOneRegion != PrototypeActOneRegion.Overgrowth ||
             encounterPool is null ||
             encounterPool.Region != PrototypeActOneRegion.Overgrowth ||
@@ -696,7 +697,7 @@ public sealed record ReferenceNatureOvergrowthRunResultV111(
             throw new InvalidDataException(
                 "Overgrowth boss Chance Law differs from its source query.");
         var selection = ReferenceNatureV111.SampleValidated(
-            law, InitialNatureState);
+            law, stochastic.InitialNatureState);
         var expectedDecision = new ReferenceNatureDecisionV111(
             law.LawId, law.EventId, selection.OutcomeId,
             selection.OutcomeIndex);
@@ -704,11 +705,12 @@ public sealed record ReferenceNatureOvergrowthRunResultV111(
                 CanonicalJson.Sha256(decision) ||
             selection.OutcomeId !=
                 "encounter:" + encounterPool.BossEncounterId ||
-            !selection.NextState.SameCursor(mapAudit.InitialNatureState))
+            !selection.NextState.SameCursor(
+                mapAudit.Stochastic.InitialNatureState))
             throw new InvalidDataException(
                 "Overgrowth boss result does not replay to its map-generation cursor.");
 
-        var mapDecisions = mapAudit.DecisionTranscript;
+        var mapDecisions = mapAudit.Stochastic.DecisionTranscript;
         var mapRequests = mapAudit.Decisions;
         if (laws.Length != checked(mapDecisions.Length + 1) ||
             mapRequests.Length != mapDecisions.Length)
@@ -725,9 +727,10 @@ public sealed record ReferenceNatureOvergrowthRunResultV111(
                 throw new InvalidDataException(
                     $"Overgrowth map law or decision {index} differs from its replayable map prefix.");
         }
-        if (!mapAudit.NatureState.SameCursor(NatureState) ||
-            NatureState.SampleCount != checked(
-                InitialNatureState.SampleCount + laws.Length))
+        if (!mapAudit.Stochastic.NatureState.SameCursor(
+                stochastic.NatureState) ||
+            stochastic.NatureState.SampleCount != checked(
+                stochastic.InitialNatureState.SampleCount + laws.Length))
             throw new InvalidDataException(
                 "Overgrowth boss and map results do not replay from their Nature cursor.");
 
