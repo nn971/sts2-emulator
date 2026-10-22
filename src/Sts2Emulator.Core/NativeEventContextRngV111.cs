@@ -54,9 +54,11 @@ public static class NativeEventContextRngV111
         }
         if (nativeStream is null)
         {
-            return (state, LegacyRandomChoiceV111.ChooseIndexRange(
-                state.Stochastic.PrototypeRngMutable, siteId, "event", ownerId,
-                candidateCount).SelectedIndex);
+            var prototypeRng = state.Stochastic.PrototypeRng;
+            var selectedIndex = LegacyRandomChoiceV111.ChooseIndexRange(
+                prototypeRng, siteId, "event", ownerId,
+                candidateCount).SelectedIndex;
+            return (PublishPrototypeRng(state, prototypeRng), selectedIndex);
         }
 
         var bundle = new RngBundle([nativeStream.Fork()]);
@@ -119,10 +121,11 @@ public static class NativeEventContextRngV111
         }
         if (nativeStream is null)
         {
-            return (state,
-                LegacyRandomChoiceV111.ChooseBoundedInteger(
-                    state.Stochastic.PrototypeRngMutable, siteId, "event", ownerId,
-                    boundedCount).SelectedIndex);
+            var prototypeRng = state.Stochastic.PrototypeRng;
+            var selectedIndex = LegacyRandomChoiceV111.ChooseBoundedInteger(
+                prototypeRng, siteId, "event", ownerId,
+                boundedCount).SelectedIndex;
+            return (PublishPrototypeRng(state, prototypeRng), selectedIndex);
         }
 
         var bundle = new RngBundle([nativeStream.Fork()]);
@@ -249,11 +252,12 @@ public static class NativeEventContextRngV111
         }
         if (nativeStream is null)
         {
+            var prototypeRng = state.Stochastic.PrototypeRng;
             _ = LegacyFisherYatesV111.ShuffleInPlace(
-                values, state.Stochastic.PrototypeRngMutable, "event", siteId,
+                values, prototypeRng, "event", siteId,
                 ownerId,
                 ordinalOffset);
-            return state;
+            return PublishPrototypeRng(state, prototypeRng);
         }
 
         var bundle = new RngBundle([nativeStream.Fork()]);
@@ -613,6 +617,13 @@ public static class NativeEventContextRngV111
                 "Native event request ordinal exceeds the supported range.");
         return (int)nativeCallCount;
     }
+
+    private static RunState PublishPrototypeRng(
+        RunState state, RngBundle prototypeRng) => state with
+    {
+        Stochastic = RunStochasticStateV111.WithPrototypeRng(
+            state.Stochastic, prototypeRng)
+    };
 
     private static string? ProviderModeAfterResolution(
         EventState eventState, string decisionProviderMode) =>
