@@ -1421,6 +1421,21 @@ public static class SemanticDeckEngineV111
         SemanticDeckStateV111 state, int prefixLength,
         int maximumOrders = 4096)
     {
+        _ = EnumeratePrefixDistributionWithSequentialChanceLawAudit(
+            state, prefixLength, maximumOrders);
+    }
+
+    /// <summary>
+    /// Return the exact prefix distribution after verifying it against the
+    /// sequential Chance Law composition. This lets callers reuse the
+    /// enumerated result instead of enumerating the same full-order support
+    /// again after the audit.
+    /// </summary>
+    public static SemanticDeckPrefixDistributionV111
+        EnumeratePrefixDistributionWithSequentialChanceLawAudit(
+            SemanticDeckStateV111 state, int prefixLength,
+            int maximumOrders = 4096)
+    {
         if (prefixLength > MaximumSequentialPrefixAuditLength)
             throw new ArgumentOutOfRangeException(nameof(prefixLength),
                 $"Sequential prefix audit length cannot exceed {MaximumSequentialPrefixAuditLength}.");
@@ -1454,6 +1469,8 @@ public static class SemanticDeckEngineV111
                 throw new InvalidDataException(
                     "Sequential draw laws disagree with exact constrained-order counts.");
         }
+
+        return enumerated;
 
         void Visit(SemanticDeckStateV111 deck, int prefixIndex)
         {

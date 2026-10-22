@@ -10,7 +10,8 @@ full-order cap, and returns
 the versioned exact integer completion counts already provided by the core
 enumerator. Its optional `audit_sequential` input checks prefixes through 64
 draw positions by composing `QueryDraw` supports and reports an exact match
-against full-order enumeration.
+against full-order enumeration. The audited operation returns the distribution
+it already enumerated, avoiding a second full-order pass.
 The capability is advertised separately in `hello` and stays out of the fair
 player view. The distribution remains `UNVERIFIED`; no tests or builds were
 run.

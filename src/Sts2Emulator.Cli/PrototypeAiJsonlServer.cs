@@ -9218,14 +9218,15 @@ internal static class PrototypeAiJsonlServer
                             .Stochastic.SemanticDeck ??
                             throw new InvalidOperationException(
                                 "State does not contain a Nature-owned combat deck.");
-                        if (auditSequential)
-                            SemanticDeckEngineV111
-                                .AuditPrefixDistributionAgainstSequentialChanceLaws(
+                        var distribution = auditSequential
+                            ? SemanticDeckEngineV111
+                                .EnumeratePrefixDistributionWithSequentialChanceLawAudit(
+                                    deck, (int)prefixLengthValue,
+                                    maximumOrders)
+                            : SemanticDeckEngineV111
+                                .EnumeratePrefixDistribution(
                                     deck, (int)prefixLengthValue,
                                     maximumOrders);
-                        var distribution = SemanticDeckEngineV111
-                            .EnumeratePrefixDistribution(
-                                deck, (int)prefixLengthValue, maximumOrders);
                         Write(new
                         {
                             requestId,
