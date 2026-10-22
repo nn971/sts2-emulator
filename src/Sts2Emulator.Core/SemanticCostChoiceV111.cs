@@ -148,7 +148,7 @@ public static class SemanticCostChoiceV111
         var choice = combat?.PendingChoice;
         var draw = choice?.ControlledSemanticDraw;
         var cost = choice?.ControlledDrawCost;
-        var deck = combat?.SemanticDeck;
+        var deck = combat?.Stochastic.SemanticDeck;
         if (run.Phase != RunPhase.Combat ||
             combat is not { IsPlayerTurn: true,
                 PendingKnowledgeDemonChoice: null } ||

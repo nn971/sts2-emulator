@@ -326,10 +326,10 @@ public static class SimulationMechanicsProjectionEngineV111
             pendingDrawContinuation,
             pendingPoolShuffleContinuation,
             pendingChoiceMechanics,
-            combatState?.SemanticDeck is { } semanticDeck
+            combatState?.Stochastic.SemanticDeck is { } semanticDeck
                 ? SemanticDeckEngineV111.Observe(semanticDeck)
                 : null,
-            combatState?.SemanticDeck?.Pending is { } pendingDeck
+            combatState?.Stochastic.SemanticDeck?.Pending is { } pendingDeck
                 ? new SimulationPendingDeckOperationProjectionV111(
                     pendingDeck.Purpose, pendingDeck.TopOffset)
                 : null,

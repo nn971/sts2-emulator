@@ -598,7 +598,7 @@ public sealed record SemanticPilotCombatV111(
     {
         get
         {
-            var deck = Run.World?.Combat?.SemanticDeck;
+            var deck = Run.World?.Combat?.Stochastic.SemanticDeck;
             return deck?.Pending?.Purpose is "peek" or "scry"
                 ? SemanticDeckEngineV111.Inspect(deck)
                 : null;
@@ -859,7 +859,7 @@ public sealed record SemanticPilotCombatV111(
         }
         if (this.DeckRevealPending is { } deckRevealPending)
         {
-            var deck = this.Run.World?.Combat?.SemanticDeck ??
+            var deck = this.Run.World?.Combat?.Stochastic.SemanticDeck ??
                 throw new InvalidDataException(
                     "Semantic deck reveal lost its provider this.");
             if (CanonicalJson.Sha256(

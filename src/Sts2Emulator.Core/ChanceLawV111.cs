@@ -9735,7 +9735,7 @@ public static class ReferenceNatureV111
 
         if (combat.DrawPending is { } drawEvent)
         {
-            var deck = combat.Run.World?.Combat?.SemanticDeck ??
+            var deck = combat.Run.World?.Combat?.Stochastic.SemanticDeck ??
                 throw new InvalidDataException(
                     "Pending semantic draw lost its provider-owned deck.");
             var law = ChanceLawEngineV111.QueryDraw(deck);
@@ -9759,7 +9759,7 @@ public static class ReferenceNatureV111
 
         if (combat.DeckRevealPending is { } revealEvent)
         {
-            var deck = combat.Run.World?.Combat?.SemanticDeck ??
+            var deck = combat.Run.World?.Combat?.Stochastic.SemanticDeck ??
                 throw new InvalidDataException(
                     "Pending semantic reveal lost its provider-owned deck.");
             var law = ChanceLawEngineV111.QueryDeckReveal(deck);

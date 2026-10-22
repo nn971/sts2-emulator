@@ -281,7 +281,7 @@ public static class SemanticPoolShuffleChoiceV111
         if (shuffle.Operation.Kind ==
             PrototypeCombatEffectKind.RecycleDrawPileForEffectDraw)
         {
-            if (combat!.SemanticDeck is not null ||
+            if (combat!.Stochastic.SemanticDeck is not null ||
                 combat.DrawPile.Length != 0 || combat.DiscardPile.Length <= 1 ||
                 choice!.OuterChoiceContinuation!.Operations.FirstOrDefault() is not
                     { Kind: PrototypeCombatEffectKind.DrawCards, Amount: > 0 } ||

@@ -110,7 +110,7 @@ public static class SemanticRandomPileCardEngineV111
         ArgumentNullException.ThrowIfNull(run);
         var combat = run.World?.Combat;
         var pending = combat?.PendingChoice?.ControlledRandomPileCard;
-        if (combat?.SemanticDeck is not { } deck || pending is null)
+        if (combat?.Stochastic.SemanticDeck is not { } deck || pending is null)
             return null;
         var ids = (long[])pending.CandidateCardInstanceIds.Clone();
         var models = ids.Select(id => combat.Cards.Single(card =>

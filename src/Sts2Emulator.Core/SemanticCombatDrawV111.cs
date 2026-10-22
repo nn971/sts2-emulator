@@ -161,7 +161,7 @@ public sealed record SemanticCombatDrawV111(
 
     [JsonIgnore] public string Fingerprint => CanonicalJson.Sha256(this);
     [JsonIgnore] public SemanticDeckEventV111? Pending =>
-        Run.World?.Combat?.SemanticDeck is
+        Run.World?.Combat?.Stochastic.SemanticDeck is
             { Pending: { Purpose: "draw" } } deck
             ? SemanticDeckEngineV111.Inspect(deck) : null;
     [JsonIgnore] public SemanticRandomPileCardEventV111?
@@ -213,8 +213,8 @@ public sealed record SemanticCombatDrawV111(
     // The provider's transcript survives across turns. Only decisions
     // newly made during THIS draw segment are replayed by this envelope.
     [JsonIgnore] public SemanticDeckChoiceV111[] Transcript =>
-        (Run.World?.Combat?.SemanticDeck?.Transcript ?? [])
-            .Skip(Origin.World?.Combat?.SemanticDeck?.Transcript?.Length ?? 0)
+        (Run.World?.Combat?.Stochastic.SemanticDeck?.Transcript ?? [])
+            .Skip(Origin.World?.Combat?.Stochastic.SemanticDeck?.Transcript?.Length ?? 0)
             .ToArray();
     public SemanticRandomPileCardDecisionV111[] RandomPileCardTranscript
     {
@@ -304,7 +304,8 @@ public sealed record SemanticCombatDrawV111(
             (!this.AutomaticHandDraw && originCombat.Stochastic.SemanticDeck is not null) ||
             (this.AutomaticHandDraw &&
              originCombat.Stochastic.SemanticDeck is { } prior &&
-             (this.Run.World?.Combat?.SemanticDeck?.Transcript?.Length ?? 0) <
+             (this.Run.World?.Combat?.Stochastic.SemanticDeck?
+                 .Transcript?.Length ?? 0) <
                  (prior.Transcript?.Length ?? 0)) ||
             originCombat.PendingChoice is not null ||
             (!this.AutomaticHandDraw &&

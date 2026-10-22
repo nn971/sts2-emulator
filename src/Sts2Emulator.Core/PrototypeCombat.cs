@@ -1736,7 +1736,7 @@ public sealed partial class PrototypeGameEngine
                 enemyActionCursor.NextStepIndex != enemyActionReplay.StepIndex ||
                 enemyActionCursor.Stochastic !=
                     new PrototypeAutomaticPipelineStochasticStateV111() ||
-                state.World?.Combat?.SemanticDeck?.Pending is not null ||
+                state.World?.Combat?.Stochastic.SemanticDeck?.Pending is not null ||
                 CanonicalJson.Sha256(ClearAutomaticPipelineContinuation(state)) !=
                 CanonicalJson.Sha256(enemyActionReplay.Checkpoint))
                 throw new InvalidDataException(

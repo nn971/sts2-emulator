@@ -36,7 +36,7 @@ public static class SemanticDrawChoiceV111
         var combat = run.World?.Combat;
         var choice = combat?.PendingChoice;
         var draw = choice?.ControlledSemanticDraw;
-        var deck = combat?.SemanticDeck;
+        var deck = combat?.Stochastic.SemanticDeck;
         if (run.Phase != RunPhase.Combat ||
             combat is not { IsPlayerTurn: true,
                 PendingKnowledgeDemonChoice: null } ||
@@ -148,7 +148,7 @@ public static class SemanticDrawChoiceV111
             selectedIndex >= pending.CandidateCardInstanceIds.Length)
             throw new ArgumentOutOfRangeException(nameof(selectedIndex));
 
-        var deck = run.World?.Combat?.SemanticDeck ??
+        var deck = run.World?.Combat?.Stochastic.SemanticDeck ??
             throw new InvalidDataException(
                 "Semantic draw continuation lost its provider-owned deck.");
         var recorded = deck.Transcript?.SingleOrDefault(choice =>
@@ -202,7 +202,7 @@ public static class SemanticDrawChoiceV111
         ArgumentNullException.ThrowIfNull(checkpoint);
         ArgumentNullException.ThrowIfNull(decision);
         ValidateBoundary(checkpoint);
-        var deck = checkpoint.World!.Combat!.SemanticDeck!;
+        var deck = checkpoint.World!.Combat!.Stochastic.SemanticDeck!;
         ValidateDecision(
             SemanticDeckEngineV111.Inspect(deck), decision);
 

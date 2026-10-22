@@ -375,7 +375,7 @@ public static class SemanticCardSelectionEngineV111
         ValidateDecision(semanticEvent, decision);
         var combat = source.World?.Combat;
         var choice = combat!.PendingChoice!;
-        var deck = combat!.SemanticDeck!;
+        var deck = combat!.Stochastic.SemanticDeck!;
         SemanticDeckEngineV111.Validate(deck);
         var automaticPipelineChoice =
             PrototypeGameEngine
@@ -557,7 +557,8 @@ public static class SemanticCardSelectionEngineV111
                 : SemanticDeckEngineV111.RemoveCardInstances(
                     expected, state.SelectedCardInstanceIds);
         }
-        else if (!reward && initial.Fingerprint != to!.SemanticDeck!.Fingerprint)
+        else if (!reward && initial.Fingerprint !=
+            to!.Stochastic.SemanticDeck!.Fingerprint)
             throw new InvalidDataException(
                 "Visible-zone card selection unexpectedly changed the hidden deck.");
         var resumesGeneratedSequentialDraw =
@@ -586,7 +587,8 @@ public static class SemanticCardSelectionEngineV111
         }
         else if (!reward)
         {
-            if (expected.Fingerprint != to!.SemanticDeck!.Fingerprint)
+            if (expected.Fingerprint !=
+                to!.Stochastic.SemanticDeck!.Fingerprint)
                 throw new InvalidDataException(
                     "Source choice mutated the hidden deck inconsistently.");
             SemanticDrawPileAdapterV111.ValidateProviderCorrespondence(
