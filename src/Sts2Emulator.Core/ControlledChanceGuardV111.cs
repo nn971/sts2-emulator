@@ -19,6 +19,12 @@ public static class ControlledChanceGuardV111
         ["reward.card_model.index_draw"] = "choose_index",
         ["reward.random_potion.drop.ticket"] = "bounded_integer",
         ["reward.random_potion.model"] = "choose_index",
+        // After a boss is defeated, the source engine initializes the
+        // reward offer before publishing the terminal-combat boundary.
+        // Delegate only this postcombat reward shuffle to the engine;
+        // never leak/control its outcomes through combat Nature.
+        [StochasticSiteRegistryV111.RewardBossRelicOfferShuffleSiteId] =
+            "bounded_integer",
         [PrototypeGameEngine.PaelsToothCardReturnSiteId] = "choose_index"
     };
     private static readonly AsyncLocal<int> Depth = new();

@@ -391,7 +391,9 @@ public static class LegacyFisherYatesV111
             && ControlledEventChoiceReplayV111.IsEventChoiceSite(siteId);
         if (ControlledChanceGuardV111.Active
             && !ControlledChanceGuardV111.EngineOwnedNativeProviderActive
-            && !controlledEventChoice)
+            && !controlledEventChoice
+            && !ControlledChanceGuardV111.IsEngineOwnedPrototypeRewardRequest(
+                siteId, streamId, "bounded_integer"))
             throw new NotSupportedException(
                 $"UNSUPPORTED_CONTROLLED_CHANCE site={siteId} " +
                 "operation=shuffle requires a saved continuation.");

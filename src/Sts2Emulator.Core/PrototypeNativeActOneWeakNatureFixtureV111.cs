@@ -30,6 +30,11 @@ public static class PrototypeNativeActOneWeakNatureFixtureV111
             "proto.encounter.mawler_normal" => "MawlerNormal",
             "proto.encounter.cubex_construct_normal" => "CubexConstructNormal",
             "proto.encounter.vine_shambler_normal" => "VineShamblerNormal",
+            // Isolated fixed single-boss research context, not a native
+            // floor-16 route/fidelity assertion. The prototype Act 1 map
+            // places its final boss room at floor 6.
+            "proto.encounter.ceremonial_beast_boss" => "CeremonialBeastBoss",
+            "proto.encounter.vantom_boss" => "VantomBoss",
             _ => throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_OPENING site=act1.fixed_single_formation operation=" +
                 encounterId)
@@ -40,11 +45,19 @@ public static class PrototypeNativeActOneWeakNatureFixtureV111
                 nameof(nativeEntry));
 
         var encounter = PrototypeContent.Encounter(encounterId);
+        var boss = encounter.RoomType == PrototypeRoomType.Boss;
         if (encounter.MinAct != 1 || encounter.MaxAct != 1 ||
-            encounter.RoomType != PrototypeRoomType.Combat ||
-            encounter.FixedEnemySpecs.Length != 1)
+            encounter.RoomType is not (
+                PrototypeRoomType.Combat or PrototypeRoomType.Boss) ||
+            encounter.FixedEnemySpecs.Length != 1 ||
+            (boss && (totalFloor != 6 || mapRow != 5)) ||
+            (!boss && totalFloor == 6))
             throw new InvalidDataException(
-                "Pinned Act 1 fixed single-enemy source encounter has changed.");
+                "Pinned Act 1 conditioned encounter/floor has changed.");
+        if (boss && encounterId is not (
+            "proto.encounter.ceremonial_beast_boss" or
+            "proto.encounter.vantom_boss"))
+            throw new InvalidDataException("Unpinned boss research formation.");
 
         var formation = NativeEncounterFormationFactoryV111.Generate(
             seed, encounter, nativeEntry, totalFloor,

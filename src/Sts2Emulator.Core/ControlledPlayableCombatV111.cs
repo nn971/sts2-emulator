@@ -691,11 +691,23 @@ public static class ControlledPlayableCombatEngineV111
             player = player with
             {
                 Deck = SemanticConditionedDeckPresetV111.Apply(
-                    player.Deck, fixtureDeckPresetId)
+                    player.Deck, fixtureDeckPresetId),
+                Relics = SemanticConditionedDeckPresetV111.ApplyBossRelics(
+                    player.Relics, seed, fixtureDeckPresetId)
             };
-            // The player's persistent deck and physical combat registry must
-            // refer to exactly the same card instance IDs and model IDs.
-            run = run with { Player = player };
+            // Set persistent allocator before creating the actual engine-owned
+            // combat card registry. The boss loadout is a 20-card deck, not a
+            // cosmetic replacement of a 12-card opening hand.
+            run = run with
+            {
+                Player = player,
+                World = run.World! with
+                {
+                    NextCardInstanceId = Math.Max(
+                        run.World!.NextCardInstanceId,
+                        player.Deck.Max(c => c.InstanceId) + 1)
+                }
+            };
         }
         var cards = player.Deck.Select((c, i) => new CombatCardInstance(
             i + 1L, c.InstanceId, c.CardId, c.UpgradeLevel, false,
@@ -748,15 +760,19 @@ public static class ControlledPlayableCombatEngineV111
             Phase = RunPhase.Combat,
             World = run.World! with
             {
-                ActiveRoom = PrototypeRoomType.Combat,
+                ActiveRoom = encounterId is not null &&
+                    SemanticConditionedDeckPresetV111.IsBossDeck(fixtureDeckPresetId)
+                    ? PrototypeRoomType.Boss : PrototypeRoomType.Combat,
                 Combat = combat
             }
         };
         if (encounterId is not null)
         {
             var encounter = PrototypeContent.Encounter(encounterId);
-            if (encounter.RoomType != PrototypeRoomType.Combat ||
-                act < encounter.MinAct || act > encounter.MaxAct)
+            if (act < encounter.MinAct || act > encounter.MaxAct ||
+                (encounter.RoomType != PrototypeRoomType.Combat &&
+                 !(encounter.RoomType == PrototypeRoomType.Boss &&
+                   SemanticConditionedDeckPresetV111.IsBossDeck(fixtureDeckPresetId))))
                 throw new InvalidDataException(
                     "Fixed playable encounter is ineligible for its run entry.");
             var world = run.World ?? throw new InvalidDataException(
