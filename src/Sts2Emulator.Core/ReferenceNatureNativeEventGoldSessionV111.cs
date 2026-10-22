@@ -198,7 +198,7 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
             throw new InvalidDataException(
                 "Native event gold request disappeared before resolution.");
         var law = QueryLaw(Origin, ActionId, EventId, pending.PendingRequest);
-        var selection = ReferenceNatureV111.SampleValidated(law, NatureState);
+        var selection = ReferenceNatureV111.SampleValidated(law, Stochastic.NatureState);
         var providerDecision = ReferenceNatureChanceLawDecisionV111.FromSelection(
             law, pending.PendingRequest, selection, Origin);
         var continuation = pending;
@@ -242,9 +242,9 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
         ReferenceNatureRunProjectionV111.ValidateNatureRelicBagProjection(
             Run, "Native event-gold session replay", allowMissing: true);
         ReferenceNatureRunCursorV111.ValidateInitial(
-            Origin, InitialNatureState, "Native event gold");
+            Origin, Stochastic.InitialNatureState, "Native event gold");
 
-        var expectedNatureState = InitialNatureState.Fork();
+        var expectedNatureState = Stochastic.InitialNatureState.Fork();
         var providerPrefix = new List<ControlledStochasticDecisionV111>();
         for (var index = 0; index < Stochastic.DecisionTranscript.Length; index++)
         {
@@ -274,7 +274,7 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
             replay.Continuation is { } pending &&
                 ParseSupportedEventId(pending.PendingRequest) != EventId ||
             CanonicalJson.Sha256(expectedNatureState) !=
-                CanonicalJson.Sha256(NatureState))
+                CanonicalJson.Sha256(Stochastic.NatureState))
             throw new InvalidDataException(
                 "Native event gold continuation differs from its replay.");
         var expectedRun = replay.Run is { } completed
@@ -283,7 +283,7 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
             : Origin.Fork();
         if (CanonicalJson.Sha256(expectedRun) != CanonicalJson.Sha256(Run) ||
             !ReferenceNatureRunCursorV111.MatchesRunSession(
-                Origin, Run, InitialNatureState, NatureState,
+                Origin, Run, Stochastic.InitialNatureState, Stochastic.NatureState,
                 Stochastic.DecisionTranscript.Length, Complete))
             throw new InvalidDataException(
                 "Native event gold run differs from its atomic Nature cursor.");
@@ -299,7 +299,7 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
         var snapshot = new ReferenceNatureNativeEventGoldSessionSnapshotV111(
             CurrentSchemaId, session.EventId, session.ActionId,
             RunSnapshot.Save(session.Origin), RunSnapshot.Save(session.Run),
-            session.InitialNatureState, session.NatureState,
+            session.Stochastic.InitialNatureState, session.Stochastic.NatureState,
             (ReferenceNatureDecisionV111[])session.Stochastic.DecisionTranscript.Clone());
         return JsonSerializer.Serialize(snapshot);
     }
@@ -349,7 +349,7 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
             };
         if (CanonicalJson.Sha256(replay.Run) !=
                 CanonicalJson.Sha256(savedRun) ||
-            CanonicalJson.Sha256(replay.NatureState) !=
+            CanonicalJson.Sha256(replay.Stochastic.NatureState) !=
                 CanonicalJson.Sha256(snapshot.NatureState) ||
             replay.Stochastic.DecisionTranscript.Length !=
                 snapshot.DecisionTranscript.Length)
@@ -362,7 +362,7 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
     private ControlledStochasticDecisionV111[] CreateProviderPrefix()
     {
         var prefix = new List<ControlledStochasticDecisionV111>();
-        var expectedNatureState = InitialNatureState.Fork();
+        var expectedNatureState = Stochastic.InitialNatureState.Fork();
         for (var index = 0; index < Stochastic.DecisionTranscript.Length; index++)
         {
             var replay = Replay(Origin, ActionId, prefix.ToArray());

@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 Native event stochastic session owner read increment (2026-10-22):**
+Native event-relic logic now reads its sampler cursor, provider prefix, pending
+request, and labels through its controlled-action stochastic owner; Native
+event-gold logic reads cursor and decision state through its stochastic owner.
+Flat snapshots, boundary filters, and request order are unchanged. Static
+source review and `git diff --check` only; no tests or builds were run.
+
 **S3 controlled-action stochastic session owner read increment (2026-10-22):**
 Merchant, Treasure, combat-reward, and Native Shovel session logic now reads
 the Nature cursors, provider prefixes, pending requests, and candidate labels

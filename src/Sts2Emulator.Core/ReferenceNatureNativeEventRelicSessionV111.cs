@@ -191,15 +191,15 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
     public string Fingerprint => CanonicalJson.Sha256(this);
 
     [JsonIgnore]
-    public bool Complete => PendingRequest is null;
+    public bool Complete => Stochastic.PendingRequest is null;
 
     [JsonIgnore]
-    public int NextOrdinal => ProviderDecisions.Length;
+    public int NextOrdinal => Stochastic.ProviderDecisions.Length;
 
     [JsonIgnore]
-    public ChanceLawV111? PendingLaw => PendingRequest is null ? null :
-        QueryLaw(Origin, Action, PendingRequest, PendingCandidateLabels,
-            ProviderDecisions);
+    public ChanceLawV111? PendingLaw => Stochastic.PendingRequest is null ? null :
+        QueryLaw(Origin, Action, Stochastic.PendingRequest, Stochastic.PendingCandidateLabels,
+            Stochastic.ProviderDecisions);
 
     public static string[] SessionSiteIds =>
         [StochasticSiteRegistryV111.RelicGrabBagRaritySiteId,
@@ -270,21 +270,21 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
             throw new InvalidOperationException(
                 "ReferenceNature Native event relic session is already complete.");
 
-        var law = QueryLaw(Origin, Action, PendingRequest!,
-            PendingCandidateLabels, ProviderDecisions);
-        var selection = ReferenceNatureV111.SampleValidated(law, NatureState);
+        var law = QueryLaw(Origin, Action, Stochastic.PendingRequest!,
+            Stochastic.PendingCandidateLabels, Stochastic.ProviderDecisions);
+        var selection = ReferenceNatureV111.SampleValidated(law, Stochastic.NatureState);
         var providerDecision = ReferenceNatureChanceLawDecisionV111.FromSelection(
-            law, PendingRequest!, selection, Origin, PendingCandidateLabels);
+            law, Stochastic.PendingRequest!, selection, Origin, Stochastic.PendingCandidateLabels);
         var continuation = new ControlledStochasticContinuationStateV111(
             ControlledStochasticContinuationStateV111.CurrentSchemaId,
-            ProviderDecisions, PendingRequest!, PendingCandidateLabels);
+            Stochastic.ProviderDecisions, Stochastic.PendingRequest!, Stochastic.PendingCandidateLabels);
         var replay = ControlledChanceContinuationExecutorV111.ResolveStochastic(
             CreateNatureReplayOrigin(Origin), continuation, providerDecision,
             checkpoint => new PrototypeGameEngine().Step(
                 checkpoint, CloneAction(Action)).State,
             request => RequireSessionRequest(Origin, Action, request));
         var providerDecisions = replay.Continuation?.Decisions ??
-            ProviderDecisions.Append(providerDecision.Fork()).ToArray();
+            Stochastic.ProviderDecisions.Append(providerDecision.Fork()).ToArray();
         var transcript = Stochastic.DecisionTranscript.Append(
             new ReferenceNatureNativeEventRelicDecisionV111(
                 law.LawId, law.EventId, selection.OutcomeId,
@@ -342,21 +342,21 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
             Origin, "Native event relic session origin");
         ReferenceNatureRunProjectionV111.ValidateNatureRelicBagProjection(
             Run, "Native event relic session replay");
-        InitialNatureState.Validate();
-        NatureState.Validate();
+        Stochastic.InitialNatureState.Validate();
+        Stochastic.NatureState.Validate();
         ReferenceNatureRunCursorV111.ValidateInitial(
-            Origin, InitialNatureState, "Native event relic");
+            Origin, Stochastic.InitialNatureState, "Native event relic");
 
-        var expectedNatureState = InitialNatureState.Fork();
-        for (var index = 0; index < ProviderDecisions.Length; index++)
+        var expectedNatureState = Stochastic.InitialNatureState.Fork();
+        for (var index = 0; index < Stochastic.ProviderDecisions.Length; index++)
         {
-            var prefix = ProviderDecisions.Take(index).ToArray();
+            var prefix = Stochastic.ProviderDecisions.Take(index).ToArray();
             var replayAtBoundary = Replay(Origin, Action, prefix);
             var request = replayAtBoundary.Continuation?.PendingRequest ??
                 throw new InvalidDataException(
                     "Native event relic replay completed before its transcript.");
             var labels = replayAtBoundary.Continuation!.PendingCandidateLabels;
-            var savedDecision = ProviderDecisions[index];
+            var savedDecision = Stochastic.ProviderDecisions[index];
             savedDecision.Validate();
             if (!SameRequest(request, AsRequest(savedDecision)) ||
                 !SameLabels(labels, savedDecision.CandidateLabels))
@@ -379,7 +379,7 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
             expectedNatureState = selection.NextState;
         }
 
-        var replay = Replay(Origin, Action, ProviderDecisions);
+        var replay = Replay(Origin, Action, Stochastic.ProviderDecisions);
         var expectedRelicBagDrawCount =
             ExpectedRelicBagDrawCount(Origin, Action);
         var expectedNeowUnownedRelicRequestCount =
@@ -401,45 +401,45 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
         var expectedNeowRelicAcquisitionPotionRequestCount =
             ExpectedNeowRelicAcquisitionModelRequestCount(
                 Origin, Action, NeowRelicAcquisitionPotionSiteId);
-        var rarityRequestCount = ProviderDecisions.Count(decision =>
+        var rarityRequestCount = Stochastic.ProviderDecisions.Count(decision =>
             decision.UnitFloatDecision?.Request.SiteId == RelicRaritySiteId);
-        var identityRequestCount = ProviderDecisions.Count(decision =>
+        var identityRequestCount = Stochastic.ProviderDecisions.Count(decision =>
             decision.IndexDecision?.Request.SiteId == RelicModelSiteId);
-        var unownedRelicRequestCount = ProviderDecisions.Count(decision =>
+        var unownedRelicRequestCount = Stochastic.ProviderDecisions.Count(decision =>
             decision.IndexDecision?.Request.SiteId == UnownedRelicSiteId);
-        var neowPickupShuffleRequestCount = ProviderDecisions.Count(
+        var neowPickupShuffleRequestCount = Stochastic.ProviderDecisions.Count(
             decision => decision.IndexDecision?.Request.SiteId ==
                 NeowPickupShuffleSiteId);
-        var neowCardBundleShuffleRequestCount = ProviderDecisions.Count(
+        var neowCardBundleShuffleRequestCount = Stochastic.ProviderDecisions.Count(
             decision => decision.IndexDecision?.Request.SiteId ==
                 NeowCardBundleShuffleSiteId);
-        var neowLostCofferCardRarityRequestCount = ProviderDecisions.Count(
+        var neowLostCofferCardRarityRequestCount = Stochastic.ProviderDecisions.Count(
             decision => decision.IndexDecision?.Request.SiteId ==
                 NeowLostCofferCardRaritySiteId);
-        var neowLostCofferCardModelRequestCount = ProviderDecisions.Count(
+        var neowLostCofferCardModelRequestCount = Stochastic.ProviderDecisions.Count(
             decision => decision.IndexDecision?.Request.SiteId ==
                 NeowLostCofferCardModelSiteId);
-        var neowLostCofferPotionModelRequestCount = ProviderDecisions.Count(
+        var neowLostCofferPotionModelRequestCount = Stochastic.ProviderDecisions.Count(
             decision => decision.IndexDecision?.Request.SiteId ==
                 NeowLostCofferPotionModelSiteId);
-        var neowRelicAcquisitionRareCardRequestCount = ProviderDecisions.Count(
+        var neowRelicAcquisitionRareCardRequestCount = Stochastic.ProviderDecisions.Count(
             decision => decision.IndexDecision?.Request.SiteId ==
                 NeowRelicAcquisitionRareCardSiteId);
-        var neowRelicAcquisitionPotionRequestCount = ProviderDecisions.Count(
+        var neowRelicAcquisitionPotionRequestCount = Stochastic.ProviderDecisions.Count(
             decision => decision.IndexDecision?.Request.SiteId ==
                 NeowRelicAcquisitionPotionSiteId);
         var combatRewardRelicAcquisitionRequestCount =
             IsCombatRewardRelicAcquisitionAction(Origin, Action)
-                ? ProviderDecisions.Count(decision =>
+                ? Stochastic.ProviderDecisions.Count(decision =>
                     StochasticSiteRegistryV111.IsRunActionShopPurchaseSite(
                         decision.Request.SiteId))
                 : 0;
         if ((replay.Continuation is null) != Complete ||
-            !SameRequest(replay.Continuation?.PendingRequest, PendingRequest) ||
+            !SameRequest(replay.Continuation?.PendingRequest, Stochastic.PendingRequest) ||
             !SameLabels(replay.Continuation?.PendingCandidateLabels,
-                PendingCandidateLabels) ||
+                Stochastic.PendingCandidateLabels) ||
             CanonicalJson.Sha256(expectedNatureState) !=
-                CanonicalJson.Sha256(NatureState) ||
+                CanonicalJson.Sha256(Stochastic.NatureState) ||
             rarityRequestCount > expectedRelicBagDrawCount ||
             Complete && rarityRequestCount != expectedRelicBagDrawCount ||
             identityRequestCount > rarityRequestCount ||
@@ -483,7 +483,7 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
             Complete && combatRewardRelicAcquisitionRequestCount !=
                 ExpectedCombatRewardRelicAcquisitionRequestCount(
                     Origin, Action) ||
-            ProviderDecisions.Length != rarityRequestCount +
+            Stochastic.ProviderDecisions.Length != rarityRequestCount +
                 identityRequestCount + unownedRelicRequestCount +
                 neowPickupShuffleRequestCount +
                 neowCardBundleShuffleRequestCount +
@@ -501,7 +501,7 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
             : Origin.Fork();
         if (CanonicalJson.Sha256(expectedRun) != CanonicalJson.Sha256(Run) ||
             !ReferenceNatureRunCursorV111.MatchesRunSession(
-                Origin, Run, InitialNatureState, NatureState,
+                Origin, Run, Stochastic.InitialNatureState, Stochastic.NatureState,
                 Stochastic.DecisionTranscript.Length, Complete))
             throw new InvalidDataException(
                 "Native event relic run differs from its atomic Nature cursor.");
@@ -518,13 +518,13 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
             new ReferenceNatureNativeEventRelicSessionSnapshotV111(
                 CurrentSchemaId, RunSnapshot.Save(session.Origin),
                 CloneAction(session.Action), RunSnapshot.Save(session.Run),
-                session.InitialNatureState, session.NatureState,
-                session.ProviderDecisions.Select(
+                session.Stochastic.InitialNatureState, session.Stochastic.NatureState,
+                session.Stochastic.ProviderDecisions.Select(
                     decision => decision.Fork()).ToArray(),
                 (ReferenceNatureNativeEventRelicDecisionV111[])
                     session.Stochastic.DecisionTranscript.Clone(),
-                session.PendingRequest?.Fork(),
-                CloneLabels(session.PendingCandidateLabels)));
+                session.Stochastic.PendingRequest?.Fork(),
+                CloneLabels(session.Stochastic.PendingCandidateLabels)));
     }
 
     public static ReferenceNatureNativeEventRelicSessionV111 Restore(
