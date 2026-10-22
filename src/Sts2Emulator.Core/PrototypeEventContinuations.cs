@@ -161,14 +161,17 @@ public sealed partial class PrototypeGameEngine
             if (eventState.Stochastic.RandomOutcomes.DeferredCardId
                 is { } deferredCardId)
             {
+                var prototypeRng = state.Stochastic.PrototypeRng;
                 var player = AppendCard(
                     state.Player,
                     world.NextCardInstanceId,
                     deferredCardId,
-                    state.Stochastic.PrototypeRngMutable);
+                    prototypeRng);
                 state = state with
                 {
                     Player = player,
+                    Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                        state.Stochastic, prototypeRng),
                     World = world with
                     {
                         NextCardInstanceId = world.NextCardInstanceId + 1,
@@ -229,7 +232,7 @@ public sealed partial class PrototypeGameEngine
             {
                 try
                 {
-                    if (state.Stochastic.NativeRunRngMutable is not null)
+                    if (state.Stochastic.NativeRunRng is not null)
                     {
                         var draw = NativeEventContextRngV111
                             .ResolveBoundedInteger(
@@ -243,12 +246,19 @@ public sealed partial class PrototypeGameEngine
                     }
                     else
                     {
+                        var prototypeRng = state.Stochastic.PrototypeRng;
                         _ = LegacyRandomChoiceV111.ChooseBoundedInteger(
-                            state.Stochastic.PrototypeRngMutable,
+                            prototypeRng,
                             "event.stone_of_all_time.push_ticket",
                             "event",
                             "event:stone_of_all_time:push",
                             100);
+                        state = state with
+                        {
+                            Stochastic = RunStochasticStateV111
+                                .WithPrototypeRng(
+                                    state.Stochastic, prototypeRng)
+                        };
                     }
                 }
                 catch (ControlledEventChoiceChanceRequiredException exception)
