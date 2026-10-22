@@ -51,13 +51,20 @@ public sealed partial class PrototypeGameEngine
             };
             if (eventKind is { } kind)
             {
+                var prototypeRng = state.Stochastic.PrototypeRng;
                 var dispatched = DispatchCombatEvent(
                     state.Player,
                     combat,
                     new PrototypeCombatEvent(kind),
-                    state.Stochastic.PrototypeRngMutable,
+                    prototypeRng,
                     allowSuspension: true);
-                state = state with { Player = dispatched.Player, World = world with { Combat = dispatched.Combat } };
+                state = state with
+                {
+                    Player = dispatched.Player,
+                    Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                        state.Stochastic, prototypeRng),
+                    World = world with { Combat = dispatched.Combat }
+                };
             }
             else if (stage ==
                 PrototypeOpeningCombatStage.AfterAutoPrePlayPolicy)
@@ -133,8 +140,9 @@ public sealed partial class PrototypeGameEngine
             var card = RequireCombatCard(combat, id);
             return !card.IsTemporary && IsInnate(card);
         });
+        var prototypeRng = state.Stochastic.PrototypeRng;
         var drawn = DrawCards(player, combat, Math.Max(0, target - innateAlreadyDealt),
-            state.Stochastic.PrototypeRngMutable, fromHandDraw: true);
+            prototypeRng, fromHandDraw: true);
         player = drawn.Player;
         combat = drawn.Combat;
         if (drawn.BoundaryKind ==
@@ -146,11 +154,17 @@ public sealed partial class PrototypeGameEngine
                 new(PrototypeCombatEffectKind.DrawCards, drawn.RemainingCount, FromHandDraw: true)
             ]);
             var resolved = ResolveOperations(
-                player, combat, operations, state.Stochastic.PrototypeRngMutable,
+                player, combat, operations, prototypeRng,
                 moveSourceCardOnCompletion: false);
             player = resolved.Player;
             combat = resolved.Combat;
         }
-        return state with { Player = player, World = world with { Combat = combat } };
+        return state with
+        {
+            Player = player,
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, prototypeRng),
+            World = world with { Combat = combat }
+        };
     }
 }

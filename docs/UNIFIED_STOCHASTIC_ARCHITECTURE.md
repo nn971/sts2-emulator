@@ -901,6 +901,8 @@ Combat resolution now reads Native combat RNG through its defensive projection. 
 
 Pending combat card selections and controlled target/card-draw resumes now use local prototype bundles and publish them before resuming nested choice or automatic-pipeline continuations.
 
+Opening combat event dispatch and the opening hand draw also use local prototype bundles and publish them with the corresponding combat stage result.
+
 ## Reading order
 
 1. This architecture contract.
