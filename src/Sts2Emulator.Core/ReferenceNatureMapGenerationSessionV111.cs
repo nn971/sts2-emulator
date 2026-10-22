@@ -112,7 +112,8 @@ public sealed record ReferenceNatureMapGenerationAuditV111(
         ArgumentException.ThrowIfNullOrWhiteSpace(Seed);
         ArgumentException.ThrowIfNullOrWhiteSpace(MapFingerprint);
         ReferenceNatureMapGenerationSessionV111.ValidateCompletedAudit(
-            Seed, Act, Ascension, InitialNatureState, NatureState,
+            Seed, Act, Ascension, Stochastic.InitialNatureState,
+            Stochastic.NatureState,
             Decisions, Stochastic.DecisionTranscript, MapFingerprint);
     }
 
@@ -127,8 +128,8 @@ public sealed record ReferenceNatureMapGenerationAuditV111(
         var decisions = Decisions;
         var transcript = Stochastic.DecisionTranscript;
         if (decisions.Length == 0 || decisions.Length != transcript.Length ||
-            NatureState.SampleCount != checked(
-                InitialNatureState.SampleCount + decisions.Length))
+            Stochastic.NatureState.SampleCount != checked(
+                Stochastic.InitialNatureState.SampleCount + decisions.Length))
             throw new InvalidDataException(
                 "Invalid completed ReferenceNature map audit envelope.");
         foreach (var decision in decisions)
@@ -352,14 +353,16 @@ public sealed record ReferenceNatureMapGenerationSessionV111(
         "sts2-v111-reference-nature-map-generation-session-v1";
 
     [JsonIgnore]
-    public bool Complete => Map is not null && PendingRequest is null;
+    public bool Complete => Map is not null &&
+        StochasticState.PendingRequest is null;
 
     [JsonIgnore]
     public int NextOrdinal => Stochastic.DecisionTranscript.Length;
 
     [JsonIgnore]
     public ChanceLawV111? PendingLaw => Complete ? null :
-        ChanceLawEngineV111.QueryNativeMapRequest(PendingRequest ??
+        ChanceLawEngineV111.QueryNativeMapRequest(
+            StochasticState.PendingRequest ??
             throw new InvalidDataException(
                 "Incomplete map session has no pending request."));
 
@@ -396,7 +399,8 @@ public sealed record ReferenceNatureMapGenerationSessionV111(
             throw new InvalidOperationException(
                 "An incomplete map-generation session cannot become a run audit.");
         return new ReferenceNatureMapGenerationAuditV111(
-            Seed, Act, Ascension, InitialNatureState, NatureState, Decisions,
+            Seed, Act, Ascension, Stochastic.InitialNatureState,
+            Stochastic.NatureState, StochasticState.Decisions,
             Stochastic.DecisionTranscript, CanonicalJson.Sha256(Map!));
     }
 
@@ -421,20 +425,26 @@ public sealed record ReferenceNatureMapGenerationSessionV111(
                 "ReferenceNature map-generation session is already complete.");
         var checkpoint = new ReferenceNatureMapGenerationMechanicsStateV111(
             Seed, Act, Ascension, Map: null);
-        var capturedPrefix = Capture(Seed, Act, Ascension, Decisions);
+        var capturedPrefix = Capture(
+            Seed, Act, Ascension, StochasticState.Decisions);
         var continuation = capturedPrefix.Continuation ??
             throw new InvalidDataException(
                 "Incomplete map session lost its typed continuation.");
-        if (!SameRequest(continuation.PendingRequest, PendingRequest))
+        if (!SameRequest(
+                continuation.PendingRequest, StochasticState.PendingRequest))
             throw new InvalidDataException(
                 "Map session request differs from the typed replay checkpoint.");
-        var law = PendingLaw ?? throw new InvalidDataException(
-            "Incomplete map session has no pending Chance Law.");
-        var selection = ReferenceNatureV111.SampleValidated(law, NatureState);
+        var request = StochasticState.PendingRequest ??
+            throw new InvalidDataException(
+                "Incomplete map session has no pending Chance Law.");
+        var law = ChanceLawEngineV111.QueryNativeMapRequest(request);
+        var selection = ReferenceNatureV111.SampleValidated(
+            law, Stochastic.NatureState);
         var typedDecision = ReferenceNatureChanceLawDecisionV111.FromSelection(
-            law, PendingRequest!, selection,
+            law, request, selection,
             candidateLabels: continuation.PendingCandidateLabels);
-        var decisions = Decisions.Append(typedDecision).ToArray();
+        var decisions = StochasticState.Decisions.Append(typedDecision)
+            .ToArray();
         var transcript = Stochastic.DecisionTranscript.Append(
             new ReferenceNatureDecisionV111(
                 law.LawId, law.EventId, selection.OutcomeId,
@@ -464,16 +474,16 @@ public sealed record ReferenceNatureMapGenerationSessionV111(
                 "Invalid ReferenceNature map-generation session envelope.");
         Mechanics.Validate();
         StochasticState.Validate();
-        var decisions = Decisions;
+        var decisions = StochasticState.Decisions;
         var decisionTranscript = Stochastic.DecisionTranscript;
         if (decisions.Length != decisionTranscript.Length ||
-            NatureState.SampleCount != checked(
-                InitialNatureState.SampleCount + decisions.Length) ||
-            Complete != (PendingRequest is null))
+            Stochastic.NatureState.SampleCount != checked(
+                Stochastic.InitialNatureState.SampleCount + decisions.Length) ||
+            Complete != (StochasticState.PendingRequest is null))
             throw new InvalidDataException(
                 "ReferenceNature map cursor, transcript, and completion state differ.");
 
-        var expectedNatureState = InitialNatureState.Fork();
+        var expectedNatureState = Stochastic.InitialNatureState.Fork();
         for (var index = 0; index < decisions.Length; index++)
         {
             var decision = decisions[index];
@@ -500,12 +510,13 @@ public sealed record ReferenceNatureMapGenerationSessionV111(
                     "ReferenceNature map decision transcript does not replay.");
             expectedNatureState = selection.NextState;
         }
-        if (!expectedNatureState.SameCursor(NatureState))
+        if (!expectedNatureState.SameCursor(Stochastic.NatureState))
             throw new InvalidDataException(
                 "ReferenceNature map sampler cursor differs from its transcript.");
 
         var captured = Capture(Seed, Act, Ascension, decisions);
-        if (!SameRequest(captured.Continuation?.PendingRequest, PendingRequest) ||
+        if (!SameRequest(captured.Continuation?.PendingRequest,
+                StochasticState.PendingRequest) ||
             (captured.Value is null) != (Map is null) ||
             captured.Value is not null &&
                 CanonicalJson.Sha256(captured.Value) != CanonicalJson.Sha256(Map))
@@ -521,11 +532,14 @@ public sealed record ReferenceNatureMapGenerationSessionV111(
         return JsonSerializer.Serialize(
             new ReferenceNatureMapGenerationSessionSnapshotV111(
                 CurrentSchemaId, session.Seed, session.Act, session.Ascension,
-                session.InitialNatureState, session.NatureState,
-                session.Decisions.Select(decision => decision.Fork()).ToArray(),
+                session.Stochastic.InitialNatureState,
+                session.Stochastic.NatureState,
+                session.StochasticState.Decisions.Select(
+                    decision => decision.Fork()).ToArray(),
                 (ReferenceNatureDecisionV111[])
                     session.Stochastic.DecisionTranscript.Clone(),
-                session.PendingRequest?.Fork(), session.Map?.Fork()));
+                session.StochasticState.PendingRequest?.Fork(),
+                session.Map?.Fork()));
     }
 
     public static ReferenceNatureMapGenerationSessionV111 Restore(string json)
