@@ -493,8 +493,9 @@ public sealed record SemanticPilotCombatV111(
     public ControlledTurnIntentsV111? PendingInitialIntents
     {
         get => Run.World?.Combat?.AutomaticPipelineContinuation is
-            { OpeningStage: PrototypeOpeningCombatStage.InitialEnemyIntents }
-            continuation ? continuation.Stochastic.ControlledTurnIntents : null;
+            { } continuation && continuation.Mechanics.IsAtOpeningBoundary(
+                PrototypeOpeningCombatStage.InitialEnemyIntents)
+                    ? continuation.Stochastic.ControlledTurnIntents : null;
         init => Run = PrototypeGameEngine
             .SetControlledTurnIntentContinuation(Run, value);
     }
