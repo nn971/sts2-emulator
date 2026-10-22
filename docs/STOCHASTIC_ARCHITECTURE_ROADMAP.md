@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 controlled-action Nature transcript owner read increment (2026-10-22):**
+Merchant, Treasure, combat-reward, and Native Shovel sessions now read their
+law-decision histories through the typed stochastic owner during resolution
+and validation, including source-order checks. Flat snapshots, transcript
+ordering, and writes remain unchanged. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S3 multi-choice ReferenceNature transcript owner read increment (2026-10-22):**
 Glory Reflections, Infested Automaton, Endless Conveyor, and Punch Off
 fight/reward sessions now read their Nature decision prefixes through

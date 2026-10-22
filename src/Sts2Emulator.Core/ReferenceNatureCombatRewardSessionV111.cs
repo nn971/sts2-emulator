@@ -246,7 +246,7 @@ public sealed record ReferenceNatureCombatRewardSessionV111(
                 checkpoint, CloneAction(Action)).State);
         var providerDecisions = replay.Continuation?.Decisions ??
             ProviderDecisions.Append(providerDecision.Fork()).ToArray();
-        var transcript = DecisionTranscript.Append(
+        var transcript = Stochastic.DecisionTranscript.Append(
             new ReferenceNatureCombatRewardLawDecisionV111(
                 law.LawId, law.EventId, selection.OutcomeId,
                 selection.OutcomeIndex)).ToArray();
@@ -315,7 +315,7 @@ public sealed record ReferenceNatureCombatRewardSessionV111(
                 law.LawId, law.EventId, selection.OutcomeId,
                 selection.OutcomeIndex);
             if (CanonicalJson.Sha256(expectedTranscript) !=
-                    CanonicalJson.Sha256(DecisionTranscript[index]) ||
+                    CanonicalJson.Sha256(Stochastic.DecisionTranscript[index]) ||
                 CanonicalJson.Sha256(ReferenceNatureChanceLawDecisionV111
                     .FromSelection(law, request, selection, Origin, labels)) !=
                 CanonicalJson.Sha256(savedDecision))
@@ -340,11 +340,11 @@ public sealed record ReferenceNatureCombatRewardSessionV111(
         if (CanonicalJson.Sha256(expectedRun) != CanonicalJson.Sha256(Run) ||
             !ReferenceNatureRunCursorV111.MatchesRunSession(
                 Origin, Run, InitialNatureState, NatureState,
-                DecisionTranscript.Length, Complete))
+                Stochastic.DecisionTranscript.Length, Complete))
             throw new InvalidDataException(
                 "ReferenceNature combat reward run differs from its atomic cursor.");
 
-        foreach (var decision in DecisionTranscript)
+        foreach (var decision in Stochastic.DecisionTranscript)
             decision.Validate();
     }
 
@@ -358,7 +358,7 @@ public sealed record ReferenceNatureCombatRewardSessionV111(
             session.InitialNatureState, session.NatureState,
             session.ProviderDecisions.Select(decision => decision.Fork()).ToArray(),
             (ReferenceNatureCombatRewardLawDecisionV111[])
-                session.DecisionTranscript.Clone(),
+                session.Stochastic.DecisionTranscript.Clone(),
             session.PendingRequest?.Fork(),
             session.PendingCandidateLabels is null ? null :
                 (string[])session.PendingCandidateLabels.Clone());

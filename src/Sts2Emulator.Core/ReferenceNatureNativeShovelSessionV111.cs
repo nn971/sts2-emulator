@@ -253,7 +253,7 @@ public sealed record ReferenceNatureNativeShovelSessionV111(
             RequireSessionRequest);
         var providerDecisions = replay.Continuation?.Decisions ??
             ProviderDecisions.Append(providerDecision.Fork()).ToArray();
-        var transcript = DecisionTranscript.Append(
+        var transcript = Stochastic.DecisionTranscript.Append(
             new ReferenceNatureNativeShovelDecisionV111(
                 law.LawId, law.EventId, selection.OutcomeId,
                 selection.OutcomeIndex)).ToArray();
@@ -285,7 +285,7 @@ public sealed record ReferenceNatureNativeShovelSessionV111(
         Mechanics.Continuation.Validate(
             PrototypeMechanicsContinuationKindV111.ReferenceNatureRunAction);
         Stochastic.Validate();
-        if (DecisionTranscript.Length > DrawRequestCount)
+        if (Stochastic.DecisionTranscript.Length > DrawRequestCount)
             throw new InvalidDataException(
                 "Invalid ReferenceNature Native Shovel session envelope.");
 
@@ -322,7 +322,7 @@ public sealed record ReferenceNatureNativeShovelSessionV111(
                 law.LawId, law.EventId, selection.OutcomeId,
                 selection.OutcomeIndex);
             if (CanonicalJson.Sha256(expectedTranscript) !=
-                    CanonicalJson.Sha256(DecisionTranscript[index]) ||
+                    CanonicalJson.Sha256(Stochastic.DecisionTranscript[index]) ||
                 CanonicalJson.Sha256(ReferenceNatureChanceLawDecisionV111
                     .FromSelection(law, request, selection, Origin, labels)) !=
                 CanonicalJson.Sha256(savedDecision))
@@ -348,10 +348,10 @@ public sealed record ReferenceNatureNativeShovelSessionV111(
         if (CanonicalJson.Sha256(expectedRun) != CanonicalJson.Sha256(Run) ||
             !ReferenceNatureRunCursorV111.MatchesRunSession(
                 Origin, Run, InitialNatureState, NatureState,
-                DecisionTranscript.Length, Complete))
+                Stochastic.DecisionTranscript.Length, Complete))
             throw new InvalidDataException(
                 "Native Shovel run differs from its atomic Nature cursor.");
-        foreach (var decision in DecisionTranscript)
+        foreach (var decision in Stochastic.DecisionTranscript)
             decision.Validate();
     }
 
@@ -367,7 +367,7 @@ public sealed record ReferenceNatureNativeShovelSessionV111(
                 session.ProviderDecisions.Select(
                     decision => decision.Fork()).ToArray(),
                 (ReferenceNatureNativeShovelDecisionV111[])
-                    session.DecisionTranscript.Clone(),
+                    session.Stochastic.DecisionTranscript.Clone(),
                 session.PendingRequest?.Fork(),
                 CloneLabels(session.PendingCandidateLabels)));
     }
