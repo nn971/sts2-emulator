@@ -73,6 +73,99 @@ internal static class SemanticChoiceResumeV111
         return (advanced, remaining, ownedDecision.Event.SiteId);
     }
 
+    internal static (RunState Run, int Requested, int Remaining,
+        SemanticDrawHookChoiceDecisionV111 Decision)
+        ResumeDrawHookChoice(
+            RunState checkpoint,
+            SemanticDrawHookChoiceEventV111 pending,
+            string actionId,
+            int requested,
+            int remaining,
+            int drawnBefore)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        ArgumentNullException.ThrowIfNull(pending);
+        pending.Validate();
+        if (drawnBefore < 0 || requested < 0 || remaining < 0)
+            throw new InvalidDataException(
+                "Semantic draw-hook resume progress is invalid.");
+
+        var decision = SemanticDrawHookChoiceEngineV111.Select(
+            checkpoint, pending, actionId);
+        var (run, _) = Resume(checkpoint, decision);
+        if (!pending.AutomaticHandDraw)
+            return (run, requested,
+                PrototypeGameEngine.GetSemanticDrawRemainingCount(
+                    run, remaining, drawnBefore),
+                decision);
+
+        var combat = run.World?.Combat ?? throw new InvalidDataException(
+            "Automatic draw-hook choice removed combat.");
+        if (pending.BeforeHandDraw &&
+            combat.PendingChoice?.AutomaticSemanticDrawHookChoice == true)
+            return (run, requested, 0, decision);
+
+        if (pending.BeforeHandDraw)
+        {
+            using (ControlledChanceGuardV111.Enter())
+                (run, requested, remaining) =
+                    PrototypeGameEngine
+                        .ResumeSemanticBeforeHandDrawActionChoice(run);
+            return (run, requested, remaining, decision);
+        }
+
+        if (combat.PendingChoice?.AutomaticSemanticDrawHookChoice == true)
+        {
+            remaining = combat.AutomaticPipelineContinuation?
+                .ControlledSemanticDrawRemaining ??
+                throw new InvalidDataException(
+                    "Automatic draw-hook choice lost its cursor.");
+            return (run, requested, remaining, decision);
+        }
+
+        (run, remaining) = PrototypeGameEngine
+            .ResumeSemanticAutomaticHandDraw(run, remaining);
+        return (run, requested, remaining, decision);
+    }
+
+    internal static (RunState Run, int Remaining,
+        SemanticCardSelectionDecisionV111 Decision)
+        ResumeStratagemSelection(
+            RunState checkpoint,
+            SemanticCardSelectionEventV111 pending,
+            string actionId,
+            int remaining,
+            bool automaticHandDraw,
+            int drawnBefore)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        ArgumentNullException.ThrowIfNull(pending);
+        pending.Validate();
+        ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
+        if (remaining < 0 || drawnBefore < 0)
+            throw new InvalidDataException(
+                "Semantic Stratagem draw progress is invalid.");
+        var decision = SemanticCardSelectionEngineV111.Select(
+            pending, pending.EventId, actionId);
+        var (selectedRun, _) = Resume(checkpoint, decision);
+
+        if (!automaticHandDraw)
+            return (selectedRun,
+                PrototypeGameEngine.GetSemanticDrawRemainingCount(
+                    selectedRun, remaining, drawnBefore),
+                decision);
+
+        if (!PrototypeGameEngine.IsSemanticAutomaticHandDraw(
+                selectedRun.World?.Combat ?? throw new InvalidDataException(
+                    "Automatic Stratagem selection removed combat.")))
+            throw new InvalidDataException(
+                "Automatic Stratagem selection lost its pipeline cursor.");
+        var (resumedRun, resumedRemaining) =
+            PrototypeGameEngine.ResumeSemanticAutomaticHandDraw(
+                selectedRun, remaining);
+        return (resumedRun, resumedRemaining, decision);
+    }
+
     internal static RunState ResumeDeckReveal(
         RunState checkpoint, SemanticDeckRevealDecisionV111 decision)
     {

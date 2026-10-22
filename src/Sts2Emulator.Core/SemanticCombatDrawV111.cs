@@ -866,7 +866,7 @@ public static class SemanticCombatDrawEngineV111
         int drawnBefore = state.Run.World!.Combat!
             .CounterState.CardsDrawnThisCombat;
         var (resumedRun, remaining, decision) =
-            PrototypeGameEngine.ResumeSemanticStratagemSelection(
+            SemanticChoiceResumeV111.ResumeStratagemSelection(
                 state.Run, pending, actionId,
                 state.RemainingCount, state.AutomaticHandDraw,
                 drawnBefore);
@@ -894,7 +894,7 @@ public static class SemanticCombatDrawEngineV111
         int drawnBefore = state.Run.World!.Combat!
             .CounterState.CardsDrawnThisCombat;
         var (run, requested, remaining, decision) =
-            PrototypeGameEngine.ResumeSemanticDrawHookChoice(
+            SemanticChoiceResumeV111.ResumeDrawHookChoice(
                 state.Run, pending, actionId,
                 state.RequestedCount, state.RemainingCount, drawnBefore);
         var next = PublishDrawProgress(

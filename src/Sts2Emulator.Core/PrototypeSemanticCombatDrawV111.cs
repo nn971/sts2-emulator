@@ -245,51 +245,8 @@ public sealed partial class PrototypeGameEngine
             int requested,
             int remaining,
             int drawnBefore)
-    {
-        ArgumentNullException.ThrowIfNull(checkpoint);
-        ArgumentNullException.ThrowIfNull(pending);
-        pending.Validate();
-        if (drawnBefore < 0 || requested < 0 || remaining < 0)
-            throw new InvalidDataException(
-                "Semantic draw-hook resume progress is invalid.");
-
-        var decision = SemanticDrawHookChoiceEngineV111.Select(
-            checkpoint, pending, actionId);
-        var (run, _) = SemanticChoiceResumeV111.Resume(
-            checkpoint, decision);
-        if (!pending.AutomaticHandDraw)
-            return (run, requested,
-                GetSemanticDrawRemainingCount(run, remaining, drawnBefore),
-                decision);
-
-        var combat = RequireWorld(run).Combat ??
-            throw new InvalidDataException(
-                "Automatic draw-hook choice removed combat.");
-        if (pending.BeforeHandDraw &&
-            combat.PendingChoice?.AutomaticSemanticDrawHookChoice == true)
-            return (run, requested, 0, decision);
-
-        if (pending.BeforeHandDraw)
-        {
-            using (ControlledChanceGuardV111.Enter())
-                (run, requested, remaining) =
-                    ResumeSemanticBeforeHandDrawActionChoice(run);
-            return (run, requested, remaining, decision);
-        }
-
-        if (combat.PendingChoice?.AutomaticSemanticDrawHookChoice == true)
-        {
-            remaining = combat.AutomaticPipelineContinuation?
-                .ControlledSemanticDrawRemaining ??
-                throw new InvalidDataException(
-                    "Automatic draw-hook choice lost its cursor.");
-            return (run, requested, remaining, decision);
-        }
-
-        (run, remaining) = ResumeSemanticAutomaticHandDraw(
-            run, remaining);
-        return (run, requested, remaining, decision);
-    }
+        => SemanticChoiceResumeV111.ResumeDrawHookChoice(
+            checkpoint, pending, actionId, requested, remaining, drawnBefore);
 
     internal static (RunState Run, int Remaining,
         SemanticCardSelectionDecisionV111 Decision)
@@ -300,34 +257,9 @@ public sealed partial class PrototypeGameEngine
             int remaining,
             bool automaticHandDraw,
             int drawnBefore)
-    {
-        ArgumentNullException.ThrowIfNull(checkpoint);
-        ArgumentNullException.ThrowIfNull(pending);
-        pending.Validate();
-        ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
-        if (remaining < 0 || drawnBefore < 0)
-            throw new InvalidDataException(
-                "Semantic Stratagem draw progress is invalid.");
-        var decision = SemanticCardSelectionEngineV111.Select(
-            pending, pending.EventId, actionId);
-        var (selectedRun, _) = SemanticChoiceResumeV111.Resume(
-            checkpoint, decision);
-
-        if (!automaticHandDraw)
-            return (selectedRun, GetSemanticDrawRemainingCount(
-                selectedRun, remaining, drawnBefore), decision);
-
-        if (!IsSemanticAutomaticHandDraw(
-                selectedRun.World?.Combat ?? throw new InvalidDataException(
-                    "Automatic Stratagem selection removed combat.")))
-            throw new InvalidDataException(
-                "Automatic Stratagem selection lost its pipeline cursor.");
-        RunState resumedRun;
-        int resumedRemaining;
-        (resumedRun, resumedRemaining) =
-            ResumeSemanticAutomaticHandDraw(selectedRun, remaining);
-        return (resumedRun, resumedRemaining, decision);
-    }
+        => SemanticChoiceResumeV111.ResumeStratagemSelection(
+            checkpoint, pending, actionId, remaining, automaticHandDraw,
+            drawnBefore);
 
     private static PrototypeControlledSemanticDrawV111
         CreateSemanticDrawResultFrame(

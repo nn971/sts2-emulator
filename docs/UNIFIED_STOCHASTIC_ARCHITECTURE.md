@@ -200,9 +200,9 @@ Legacy automatic hand-draw cost, semantic hand-draw cost, and nested effect-draw
 
 `ContinueSemanticDrawCost` now owns the shared post-cost continuation for semantic hand draws and nested semantic effect draws: it resumes `CardDrawn` hook suspension, re-enters `DrawCards`, and routes the tagged result through the shared interpreter. Its callers retain validation, saved frame selection, and the automatic-pipeline handoff policy.
 
-`ResumeSemanticDrawHookChoice` now owns the post-action continuation for standalone and automatic semantic draw-hook choices. It resumes the saved `BeforeHandDraw` step, retains an active automatic draw cursor, or continues the saved draw count through the engine; `SemanticCombatDrawV111` retains the typed action transcript.
+`SemanticChoiceResumeV111.ResumeDrawHookChoice` now owns the post-action continuation for standalone and automatic semantic draw-hook choices. The `PrototypeGameEngine.ResumeSemanticDrawHookChoice` compatibility facade delegates to it. It resumes the saved `BeforeHandDraw` step, retains an active automatic draw cursor, or continues the saved draw count through the engine; `SemanticCombatDrawV111` retains the typed action transcript.
 
-`ResumeSemanticStratagemSelection` now owns selection-event replay and the post-selection continuation for automatic or standalone semantic draws. The semantic draw facade retains the typed selection history and delegates resumed draw-count handling to the engine.
+`SemanticChoiceResumeV111.ResumeStratagemSelection` now owns selection-event replay and the post-selection continuation for automatic or standalone semantic draws. The `PrototypeGameEngine.ResumeSemanticStratagemSelection` compatibility facade delegates to it. The semantic draw facade retains the typed selection history and calls the shared owner directly for resumed draw-count handling.
 
 Semantic hand draws and nested effect draws also suspend after-shuffle insertion through `SuspendDrawCardsAfterShuffleInsertion`. That owner carries forward the remaining count, deferred keyword identities, Stratagem condition, and insertion suffix; automatic hand-draw cursor ownership remains opt-in at its calling boundary.
 
