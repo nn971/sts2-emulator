@@ -2,15 +2,15 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
-**S4 configured Native Colorless pool increment (2026-10-22):** Combat
-snapshots now retain the run's `FullyUnlocked` profile bit for Colorless
-generation and validate it against run configuration. Fully unlocked Native
-combat generation and resumable Nature replay share the source-ordered
-implemented solo pool, including epoch-gated cards that pass combat
-eligibility (15 gate IDs are tracked), on `run.combat_card_generation`.
-Partial or missing Native profile data fails closed; synthetic generation
-retains its conservative pool. Static source review and `git diff --check`
-only; no tests or builds were run.
+**S4 configured Native Colorless pool increment (2026-10-22):** Run profiles
+and combat snapshots carry the fully-unlocked bit and optional exact
+Colorless epoch unlock IDs. Ordinary Native generation and resumable Nature
+replay share the source-ordered implemented solo pool filtered by unlocked
+epochs; unknown partial-profile data fails closed, while synthetic generation
+retains its conservative pool. The operation uses
+`run.combat_card_generation`; source attribution and cursor parity remain
+unverified. Static source review and `git diff --check` only; no tests or
+builds were run.
 
 **S4 opening Imbued autoplay target increment (2026-10-22):** The shared
 automatic-pipeline target boundary now validates the saved `LateRelicAutoPlay`

@@ -419,7 +419,9 @@ public sealed partial class PrototypeGameEngine
             CurrentMapNodeId: world.Map.CurrentNodeId)
         {
             ConfiguredColorlessGenerationFullyUnlocked =
-                state.Configuration?.Profile.FullyUnlocked
+                state.Configuration?.Profile.FullyUnlocked,
+            ConfiguredUnlockedColorlessEpochs =
+                state.Configuration?.Profile.UnlockedColorlessEpochs
         };
 
         var teaOfDiscourtesy = ApplyTeaOfDiscourtesyBeforeCombat(

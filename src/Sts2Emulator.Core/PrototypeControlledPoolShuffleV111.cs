@@ -115,12 +115,13 @@ public sealed partial class PrototypeGameEngine
         ArgumentNullException.ThrowIfNull(combat);
         if (combat.Stochastic.NativeRng is null)
             return PrototypeColorlessCards.ImplementedCombatGenerationPool;
-        if (combat.ConfiguredColorlessGenerationFullyUnlocked == true)
-            return PrototypeColorlessCards
-                .ImplementedUnlockedCombatGenerationPool;
-        throw new NotSupportedException(
-            "Native Colorless generation requires a fully unlocked run " +
-            "profile to resolve epoch-gated cards.");
+        if (combat.ConfiguredColorlessGenerationFullyUnlocked is not
+            { } fullyUnlocked)
+            throw new NotSupportedException(
+                "Native Colorless generation requires configured run profile " +
+                "data to resolve epoch-gated cards.");
+        return PrototypeColorlessCards.CombatGenerationPoolForProfile(
+            fullyUnlocked, combat.ConfiguredUnlockedColorlessEpochs);
     }
 
     private static int ControlledPoolSelectedCount(

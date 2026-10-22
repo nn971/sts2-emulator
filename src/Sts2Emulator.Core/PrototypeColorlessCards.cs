@@ -788,30 +788,60 @@ public static class PrototypeColorlessCards
                 or PrototypeCardRarity.Rare))
         .ToArray();
 
-    // Native Colorless1..5Epoch.Cards (pinned v0.111.0). The conservative
-    // synthetic pool excludes these IDs; a configured fully unlocked Native
-    // profile admits the implemented, solo-eligible subset below.
+    // Native Colorless1..5Epoch.Cards (pinned v0.111.0).
+    public static string[] NativeEpochIds =>
+        (string[])NativeEpochIdValues.Clone();
+
+    private static readonly string[] NativeEpochIdValues =
+    [
+        "Colorless1Epoch",
+        "Colorless2Epoch",
+        "Colorless3Epoch",
+        "Colorless4Epoch",
+        "Colorless5Epoch"
+    ];
+
+    private static readonly string[][] EpochCardIdGroups =
+    [
+        [
+            "proto.colorless.automation",
+            "proto.colorless.entropy",
+            "proto.colorless.catastrophe"
+        ],
+        [
+            "proto.colorless.eternal_armor",
+            "proto.colorless.jackpot",
+            "proto.colorless.prep_time"
+        ],
+        [
+            "proto.colorless.rend",
+            "proto.colorless.beat_down",
+            "proto.colorless.prowess"
+        ],
+        [
+            "proto.colorless.alchemize",
+            "proto.colorless.nostalgia",
+            "proto.colorless.scrawl"
+        ],
+        [
+            "proto.colorless.splash",
+            "proto.colorless.anointed",
+            "proto.colorless.calamity"
+        ]
+    ];
+
+    private static readonly Dictionary<string, string> EpochByCardId =
+        EpochCardIdGroups.SelectMany((cards, index) => cards.Select(cardId =>
+            new KeyValuePair<string, string>(cardId,
+                NativeEpochIdValues[index])))
+        .ToDictionary(pair => pair.Key, pair => pair.Value,
+            StringComparer.Ordinal);
+
     public static string[] EpochGatedIds =>
         (string[])EpochGatedIdValues.Clone();
 
     private static readonly string[] EpochGatedIdValues =
-    [
-        "proto.colorless.automation",
-        "proto.colorless.entropy",
-        "proto.colorless.catastrophe",
-        "proto.colorless.eternal_armor",
-        "proto.colorless.jackpot",
-        "proto.colorless.prep_time",
-        "proto.colorless.rend",
-        "proto.colorless.beat_down",
-        "proto.colorless.prowess",
-        "proto.colorless.alchemize",
-        "proto.colorless.nostalgia",
-        "proto.colorless.scrawl",
-        "proto.colorless.splash",
-        "proto.colorless.anointed",
-        "proto.colorless.calamity"
-    ];
+        EpochCardIdGroups.SelectMany(cards => cards).ToArray();
 
     public static string[] ImplementedCombatGenerationPool =>
         (string[])ImplementedCombatGenerationPoolValues.Clone();
@@ -836,6 +866,30 @@ public static class PrototypeColorlessCards
             .Where(id => !EpochGatedIdValues.Contains(
                 id, StringComparer.Ordinal))
             .ToArray();
+
+    internal static string[] CombatGenerationPoolForProfile(
+        bool fullyUnlocked, string[]? unlockedEpochs)
+    {
+        if (fullyUnlocked)
+            return (string[])ImplementedUnlockedCombatGenerationPoolValues
+                .Clone();
+        if (unlockedEpochs is null)
+            throw new NotSupportedException(
+                "Native Colorless generation requires the partial epoch " +
+                "unlock set or a fully unlocked profile.");
+        if (unlockedEpochs.Any(epoch => string.IsNullOrWhiteSpace(epoch) ||
+                !NativeEpochIdValues.Contains(epoch, StringComparer.Ordinal)) ||
+            unlockedEpochs.Distinct(StringComparer.Ordinal).Count() !=
+                unlockedEpochs.Length)
+            throw new InvalidDataException(
+                "Native Colorless generation has invalid epoch unlock metadata.");
+
+        var unlocked = unlockedEpochs.ToHashSet(StringComparer.Ordinal);
+        return ImplementedUnlockedCombatGenerationPoolValues
+            .Where(id => !EpochByCardId.TryGetValue(id, out var epoch) ||
+                unlocked.Contains(epoch))
+            .ToArray();
+    }
 
     public static string PickMerchantCard(
         PrototypeCardRarity rarity,

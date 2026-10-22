@@ -2759,6 +2759,19 @@ public sealed partial record CombatState(
     }
 
     /// <summary>
+    /// Optional partial Colorless epoch unlock set copied from the configured
+    /// run profile. Null in a legacy snapshot means the set is unknown.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string[]? ConfiguredUnlockedColorlessEpochs
+    {
+        get => Mechanics.ConfiguredUnlockedColorlessEpochs;
+        init => Mechanics = Mechanics with
+        { ConfiguredUnlockedColorlessEpochs = value };
+    }
+
+    /// <summary>
     /// Atomically publishes a draw-pile mechanics/provider transition. The
     /// adapter validates the candidate correspondence before using this
     /// internal path around the compatibility envelope setter guard.

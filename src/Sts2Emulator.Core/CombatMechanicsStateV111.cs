@@ -53,8 +53,15 @@ public sealed record CombatMechanicsStateV111(
     private PrototypeKnowledgeDemonChoiceState? _pendingKnowledgeDemonChoice =
         PendingKnowledgeDemonChoice?.Fork();
     private PrototypeCombatCounters? _counters = Counters?.Fork();
+    private string[]? _configuredUnlockedColorlessEpochs;
 
     public bool? ConfiguredColorlessGenerationFullyUnlocked { get; init; }
+
+    public string[]? ConfiguredUnlockedColorlessEpochs
+    {
+        get => Clone(_configuredUnlockedColorlessEpochs);
+        init => _configuredUnlockedColorlessEpochs = Clone(value);
+    }
 
     public EnemyCombatState[] Enemies
     {
@@ -151,7 +158,8 @@ public sealed record CombatMechanicsStateV111(
         TransformedPersistentCardIds = _transformedPersistentCardIds,
         PendingKnowledgeDemonChoice = _pendingKnowledgeDemonChoice,
         AutoPlayTargetRolls = _autoPlayTargetRolls,
-        Pets = _pets
+        Pets = _pets,
+        ConfiguredUnlockedColorlessEpochs = _configuredUnlockedColorlessEpochs
     };
 
     private static EnemyCombatState[] CloneEnemies(

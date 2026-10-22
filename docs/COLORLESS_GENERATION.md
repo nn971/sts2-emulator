@@ -21,7 +21,7 @@ Pinned game source: STS2 v0.111.0, `Flaaax/STS2-source` at
 - **Seeker Strike:** after its damage, randomly shortlist up to three
   draw-pile cards using `CombatCardSelection`; choose one to hand.
 - **Colorless epochs:** `Colorless1Epoch` through `Colorless5Epoch`
-  each gate three native card IDs; these 15 IDs are tracked explicitly.
+  each gate three native card IDs; the epoch-to-card mapping is tracked explicitly.
 
 ## Supported implementation and deliberate differences
 
@@ -33,11 +33,11 @@ Pinned game source: STS2 v0.111.0, `Flaaax/STS2-source` at
 - Synthetic combat generation uses the supported single-player Colorless
   subset with `CanBeGeneratedInCombat`, non-basic rarity, and no epoch gates.
   Native combat generation uses the source-ordered implemented solo pool,
-  including epoch-gated cards that pass combat-generation eligibility,
-  when the configured run profile is fully unlocked.
-  Native execution with a missing or partially unlocked profile fails closed
-  because the current profile does not identify individually unlocked
-  Colorless epochs.
+  including epoch-gated cards that pass combat-generation eligibility. A fully
+  unlocked profile admits all eligible epoch cards; a partial profile admits
+  only cards from its explicitly listed epochs. An explicit empty list means
+  no Colorless epochs are unlocked. Missing unlock data for a partial profile
+  fails closed.
 - The synthetic adapter currently provides six SplitMix64 streams. Native
   Metamorphosis card-model draws now use typed `run.combat_card_generation`
   requests, and random insertion positions use `run.shuffle`; other existing
@@ -49,13 +49,15 @@ Pinned game source: STS2 v0.111.0, `Flaaax/STS2-source` at
 
 ## Integration work remaining
 
-Partial Colorless epoch unlock state is not represented by the run profile;
-Native generation therefore only admits the complete source-filtered pool
-for a configured fully unlocked profile, and fails closed for partial or
-missing profile data. Native Colorless generation uses the existing
-`run.combat_card_generation` stream, but its source attribution and cursor
-parity remain unverified. Character card-pool membership and stream
-partitioning for other generated-card paths still need explicit modeling.
+The run profile represents Colorless epoch unlocks as optional exact epoch
+IDs. Null means unknown for a partial profile, while an empty array means no
+Colorless epochs are unlocked. Combat mechanics carries the configured
+fully-unlocked bit and optional epoch set so generated-card continuations use
+the same eligibility resolver as ordinary effect execution. Native Colorless
+generation uses the existing `run.combat_card_generation` stream, but its
+source attribution and cursor parity remain unverified. Character card-pool
+membership and stream partitioning for other generated-card paths still need
+explicit modeling.
 Compare actual Native candidate IDs and stream consumption using the passive
 oracle before asserting seed-for-seed fidelity.
 

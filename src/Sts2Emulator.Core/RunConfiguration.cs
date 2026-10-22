@@ -28,6 +28,7 @@ public sealed record SimulationProfile
 {
     private string[]? _unlockedCharacters;
     private string[]? _revealedEpochs;
+    private string[]? _unlockedColorlessEpochs;
     private string[]? _seenBossEncounters = [];
 
     [JsonConstructor]
@@ -56,6 +57,19 @@ public sealed record SimulationProfile
     }
 
     /// <summary>
+    /// Colorless1Epoch through Colorless5Epoch classes unlocked on this
+    /// account. Null means the partial unlock set is unknown; an empty array
+    /// means the set is known and no Colorless epochs are unlocked.
+    /// FullyUnlocked profiles need not populate this list.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string[]? UnlockedColorlessEpochs
+    {
+        get => Clone(_unlockedColorlessEpochs);
+        init => _unlockedColorlessEpochs = Clone(value);
+    }
+
+    /// <summary>
     /// Bosses already discovered by the player before this run. ActModel's
     /// discovery-order modification uses this history when it replaces the
     /// randomly preselected Hive/Glory boss.
@@ -72,6 +86,7 @@ public sealed record SimulationProfile
     public SimulationProfile Fork() => new(
         FullyUnlocked, _unlockedCharacters!, _revealedEpochs!)
     {
+        UnlockedColorlessEpochs = _unlockedColorlessEpochs,
         SeenBossEncounters = _seenBossEncounters!
     };
 
@@ -181,6 +196,16 @@ public sealed record RunConfiguration
                 != Profile.SeenBossEncounters.Length)
             throw new ArgumentException(
                 "Profile boss discovery history must contain distinct non-empty encounter IDs.");
+        if (Profile.UnlockedColorlessEpochs is { } colorlessEpochs &&
+            (colorlessEpochs.Any(epoch => string.IsNullOrWhiteSpace(epoch) ||
+                !PrototypeColorlessCards.NativeEpochIds.Contains(
+                    epoch, StringComparer.Ordinal)) ||
+             colorlessEpochs.Distinct(StringComparer.Ordinal).Count() !=
+                colorlessEpochs.Length ||
+             (Profile.FullyUnlocked && colorlessEpochs.Length !=
+                PrototypeColorlessCards.NativeEpochIds.Length)))
+            throw new ArgumentException(
+                "Profile Colorless epochs must contain distinct known epoch IDs, and fully unlocked profiles must include all epochs when the list is supplied.");
         _ = V111Characters.Get(CharacterId);
         if (Ascension is < 0 or > 10)
             throw new ArgumentOutOfRangeException(nameof(Ascension), "v111 supports Ascension 0 through 10.");
@@ -223,6 +248,22 @@ public sealed record RunConfiguration
                     configuration.Profile.FullyUnlocked)
                 throw new InvalidDataException(
                     "Combat Colorless-generation profile differs from run configuration.");
+            if (initialized.Combat is { } colorlessCombat)
+            {
+                var combatColorlessEpochs =
+                    colorlessCombat.ConfiguredUnlockedColorlessEpochs;
+                var configuredColorlessEpochs =
+                    configuration.Profile.UnlockedColorlessEpochs;
+                if ((combatColorlessEpochs is null) !=
+                        (configuredColorlessEpochs is null) ||
+                    (combatColorlessEpochs is not null &&
+                     (combatColorlessEpochs.Distinct(StringComparer.Ordinal)
+                        .Count() != combatColorlessEpochs.Length ||
+                      !combatColorlessEpochs.ToHashSet(StringComparer.Ordinal)
+                        .SetEquals(configuredColorlessEpochs!))))
+                    throw new InvalidDataException(
+                        "Combat Colorless epoch unlocks differ from run configuration.");
+            }
             if (configuration.CharacterId != "silent")
                 throw new NotSupportedException("Initialized v111 character mechanics are currently limited to Silent.");
             if (initialized.Act > 1)
