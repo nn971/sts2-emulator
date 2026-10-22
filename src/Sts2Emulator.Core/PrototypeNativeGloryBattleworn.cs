@@ -79,10 +79,13 @@ public sealed partial class PrototypeGameEngine
             case 1:
             {
                 // Native random unlocked potion: optional custom reward.
+                var prototypeRng = state.Stochastic.PrototypeRng;
                 var potionId = PrototypeNativePotionShop.PickWeighted(
-                    state.Stochastic.PrototypeRngMutable, "reward");
+                    prototypeRng, "reward");
                 var rewardState = state with
                 {
+                    Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                        state.Stochastic, prototypeRng),
                     World = world with
                     {
                         Combat = null,
@@ -140,23 +143,27 @@ public sealed partial class PrototypeGameEngine
             {
                 // Native PullNextRelicFromFront, offered via custom rewards.
                 var nativeRunRng = UsesNativeRegionalSystems(world)
-                    ? state.Stochastic.NativeRunRngMutable?.Fork()
+                    ? state.Stochastic.NativeRunRng
                     : null;
+                var prototypeRng = state.Stochastic.PrototypeRng;
                 var drawn = PrototypeNativeRelicGrabBag.Draw(
-                    world, state.Player, state.Stochastic.PrototypeRngMutable, merchant: false,
+                    world, state.Player, prototypeRng, merchant: false,
                     nativeRunRng: nativeRunRng);
+                var stochastic = RunStochasticStateV111.WithPrototypeRng(
+                    state.Stochastic, prototypeRng);
+                if (nativeRunRng is not null)
+                    stochastic = RunStochasticStateV111.WithNativeRunRng(
+                        stochastic, nativeRunRng);
                 if (drawn.Id is null)
                     return SetBattlewornResultPage(state with
                     {
                         Phase = RunPhase.Event,
-                        Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                            state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRngMutable),
+                        Stochastic = stochastic,
                         World = drawn.World with { Combat = null }
                     }, "victory");
                 var rewardState = state with
                 {
-                    Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                        state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRngMutable),
+                    Stochastic = stochastic,
                     World = drawn.World with
                     {
                         Combat = null,

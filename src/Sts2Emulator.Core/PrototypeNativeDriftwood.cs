@@ -41,7 +41,8 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidOperationException(
                 "Driftwood cannot reroll this card reward group.");
 
-        var nativeRunRng = state.Stochastic.NativeRunRngMutable?.Fork();
+        var nativeRunRng = state.Stochastic.NativeRunRng;
+        var prototypeRng = state.Stochastic.PrototypeRng;
         var generators = (PrototypeCardRewardGenerator?[])
             reward.CardRewardGenerators!.Clone();
         var generator = generators[groupIndex]!;
@@ -51,7 +52,7 @@ public sealed partial class PrototypeGameEngine
         {
             case PrototypeCardRewardGeneratorKind.RewardPool:
                 oldOptions = PickRewardCards(
-                    generator.Act, oldOptions.Length, state.Stochastic.PrototypeRngMutable);
+                    generator.Act, oldOptions.Length, prototypeRng);
                 break;
             case PrototypeCardRewardGeneratorKind.RarePool:
             {
@@ -63,13 +64,13 @@ public sealed partial class PrototypeGameEngine
                     throw new InvalidOperationException(
                         "Rare card reward pool is smaller than its offer.");
                 oldOptions = PickDistinct(rarePool, oldOptions.Length,
-                    state.Stochastic.PrototypeRngMutable, "reward");
+                    prototypeRng, "reward");
                 break;
             }
             case PrototypeCardRewardGeneratorKind.DistinctRewardPool:
                 oldOptions = PickDistinct(
                     PrototypeContent.NativeSilentRewardCardPool,
-                    oldOptions.Length, state.Stochastic.PrototypeRngMutable, "reward");
+                    oldOptions.Length, prototypeRng, "reward");
                 break;
             case PrototypeCardRewardGeneratorKind.RarityPool:
             {
@@ -89,7 +90,7 @@ public sealed partial class PrototypeGameEngine
                     throw new InvalidOperationException(
                         "Filtered rarity card reward pool is smaller than its offer.");
                 oldOptions = PickDistinct(pool, oldOptions.Length,
-                    state.Stochastic.PrototypeRngMutable, "reward");
+                    prototypeRng, "reward");
                 break;
             }
             case PrototypeCardRewardGeneratorKind.Encounter:
@@ -102,7 +103,7 @@ public sealed partial class PrototypeGameEngine
                     .GenerateEncounterCards(oldOptions.Length,
                         state.Ascension, generator.Room.Value,
                         world.CardRarityOffsetBasisPoints,
-                        state.Stochastic.PrototypeRngMutable, generator.Act, nativeRunRng);
+                        prototypeRng, generator.Act, nativeRunRng);
                 oldOptions = generated.Cards;
                 generatedFlags = generated.UpgradeFlags;
                 world = world with
@@ -154,10 +155,14 @@ public sealed partial class PrototypeGameEngine
             };
         }
 
+        var stochastic = RunStochasticStateV111.WithPrototypeRng(
+            state.Stochastic, prototypeRng);
+        if (nativeRunRng is not null)
+            stochastic = RunStochasticStateV111.WithNativeRunRng(
+                stochastic, nativeRunRng);
         return state with
         {
-            Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRngMutable),
+            Stochastic = stochastic,
             World = world with { Reward = reward }
         };
     }
