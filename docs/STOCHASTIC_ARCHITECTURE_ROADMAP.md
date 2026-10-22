@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 relic-bag projection write guard increment (2026-10-22):** The
+`RunWorldStochasticStateV111.RelicBag` owner property validates every non-null
+bag's rarity partitions, identity pool, and order mode on construction and
+replacement, including writes through the flattened world projection.
+Player-ownership consistency remains a complete run-boundary check. Static
+source review and `git diff --check` only; no tests or builds were run.
+
 **S3 relic-bag publication ownership increment (2026-10-22):** Relic
 acquisition pruning and bag pulls now commit through
 `RunWorldStochasticStateV111.CommitRelicBag`, which validates the resulting

@@ -125,7 +125,7 @@ Legacy run-action snapshot restoration also imports missing map-generation audit
 
 `RunWorldMechanicsStateV111.AppendEventId` owns event-history updates. Ordinary event entry, Native Ancient setup, and source-backed event fixtures publish the append through the world mechanics owner while retaining the flattened snapshot field.
 
-`RunWorldStochasticStateV111.CommitRelicBag` validates the remaining rarity partitions and identities before publishing relic acquisition pruning or a committed bag pull. Full bag-to-player ownership checks remain at the run boundary, where mechanics have completed the acquisition and cleanup sequence.
+`RunWorldStochasticStateV111.RelicBag` validates non-null bag rarity partitions, identities, and order mode on construction and replacement, including `WithRelicBag` calls from the flattened world projection. `CommitRelicBag` names runtime acquisition pruning and pull publication. Full bag-to-player ownership checks remain at the run boundary, where mechanics have completed the acquisition and cleanup sequence.
 
 The same world mechanics owner now appends encounter IDs and completed-room records. Ordinary and controlled-playable combat entry plus map-room completion use those transitions.
 

@@ -23,6 +23,8 @@ public sealed record RunWorldStochasticStateV111
         PrototypeLaterActEncounterBagV111[]? PreparedLaterActEncounterBags = null)
     {
         _actOneEncounterPool = ActOneEncounterPool?.Fork();
+        if (RelicBag is not null)
+            PrototypeNativeRelicGrabBag.ValidateBagStructure(RelicBag);
         _relicBag = RelicBag?.Fork();
         _laterActEncounterBag = LaterActEncounterBag?.Fork();
         _preparedLaterActEncounterBags = CloneBags(
@@ -37,7 +39,12 @@ public sealed record RunWorldStochasticStateV111
     public PrototypeRelicBagState? RelicBag
     {
         get => _relicBag?.Fork();
-        init => _relicBag = value?.Fork();
+        init
+        {
+            if (value is not null)
+                PrototypeNativeRelicGrabBag.ValidateBagStructure(value);
+            _relicBag = value?.Fork();
+        }
     }
     public PrototypeLaterActEncounterBagV111? LaterActEncounterBag
     {
@@ -300,8 +307,6 @@ public sealed record RunWorldStochasticStateV111
         PrototypeRelicBagState? bag)
     {
         ArgumentNullException.ThrowIfNull(current);
-        if (bag is not null)
-            PrototypeNativeRelicGrabBag.ValidateBagStructure(bag);
         return WithRelicBag(current, bag);
     }
 
