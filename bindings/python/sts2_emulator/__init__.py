@@ -1,5 +1,6 @@
 """Thin, version-negotiated JSONL binding. Canonical mechanics stay in C#."""
 from dataclasses import dataclass
+import hashlib
 import json
 import subprocess
 import threading
@@ -7,6 +8,12 @@ import threading
 
 class EmulatorError(RuntimeError):
     pass
+
+
+def _canonical_protocol_hash(value):
+    encoded = json.dumps(value, ensure_ascii=True, sort_keys=True,
+                         separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
 
 
 @dataclass(frozen=True)
@@ -3371,6 +3378,9 @@ class Session:
                       "conditioningPolicyId", "conditioningFingerprint",
                       "probabilityStatus", "probabilityProvenance"):
             required_string(law.get(field), field)
+        ordinal = law.get("ordinal")
+        if type(ordinal) is not int or ordinal < 0:
+            raise EmulatorError("Chance Law ordinal is invalid")
         if (expected_site_id is not None
                 and law.get("siteId") != expected_site_id):
             raise EmulatorError(
@@ -3402,6 +3412,26 @@ class Session:
             weight_sum += weight
         if weight_sum != total_weight:
             raise EmulatorError("Chance Law total weight is inconsistent")
+
+        support = [{"outcome_id": outcome["outcomeId"],
+                    "weight": outcome["weight"]}
+                   for outcome in outcomes]
+        if _canonical_protocol_hash(support) != law["supportFingerprint"]:
+            raise EmulatorError("Chance Law support fingerprint is invalid")
+        identity = {
+            "schema_id": law["schemaId"],
+            "site_id": law["siteId"],
+            "operation_kind": law["operationKind"],
+            "owner_id": law["ownerId"],
+            "ordinal": ordinal,
+            "support_fingerprint": law["supportFingerprint"],
+            "conditioning_policy_id": law["conditioningPolicyId"],
+            "conditioning_fingerprint": law["conditioningFingerprint"],
+            "probability_status": law["probabilityStatus"],
+            "probability_provenance": law["probabilityProvenance"],
+        }
+        if _canonical_protocol_hash(identity) != law["lawId"]:
+            raise EmulatorError("Chance Law identifier is invalid")
 
     def _validate_nature_choice_view(self, choice):
         if not isinstance(choice, dict):
