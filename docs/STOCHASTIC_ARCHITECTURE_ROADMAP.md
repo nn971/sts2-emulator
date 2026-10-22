@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 semantic hand-draw receipt publication owner increment (2026-10-22):**
+`AttachCompletedSemanticHandDrawReceipt` now publishes the completed semantic
+draw receipt through the automatic-pipeline owner. Both ordinary hand-draw
+completion and the already-advanced semantic resume path use it, so the
+receipt is validated against the candidate combat at one boundary. Snapshot
+fields remain unchanged. Static source review and `git diff --check` only; no
+tests or builds were run.
+
 **S4 automatic-pipeline continuation publication owner increment (2026-10-22):**
 `AttachValidatedAutomaticPipelineContinuation` now validates and publishes
 non-null pipeline cursors through one runtime boundary. Opening-stage,

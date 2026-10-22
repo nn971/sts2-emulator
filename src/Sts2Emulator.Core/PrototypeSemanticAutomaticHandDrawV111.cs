@@ -216,10 +216,8 @@ public sealed partial class PrototypeGameEngine
                 .ControlledSemanticDrawRequested ??
             Math.Max(0,
                 after.CounterState.CardsDrawnThisCombat - cardsDrawnBefore);
-        var completedCursor = completed.WithHandDrawProgress(null)
-            .WithCompletedSemanticHandDrawReceipt(requested);
-        after = AttachValidatedAutomaticPipelineContinuation(
-            after, completedCursor);
+        after = AttachCompletedSemanticHandDrawReceipt(
+            after, completed, requested);
         result = result with
         {
             World = RequireWorld(result) with { Combat = after }
