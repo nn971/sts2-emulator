@@ -106,10 +106,11 @@ public sealed record ControlledTurnIntentsV111(
             Pending = null
         });
         var streams = NativeRngV111.CreateBundle("validation-no-native-consumption");
-        foreach (var choice in this.Transcript)
+        foreach (var choice in this.Stochastic.Transcript)
         {
-            if (replay.Pending is null ||
-                CanonicalJson.Sha256(replay.Pending) != CanonicalJson.Sha256(choice.Request))
+            if (replay.Stochastic.Pending is null ||
+                CanonicalJson.Sha256(replay.Stochastic.Pending) !=
+                    CanonicalJson.Sha256(choice.Request))
                 throw new InvalidDataException(
                     "Turn-intent decisions diverge from saved eligibility.");
             // Do not recursively validate while reconstructing the prefix.
@@ -117,7 +118,7 @@ public sealed record ControlledTurnIntentsV111(
                 .Resolve(choice.Request, streams);
             replay = ControlledTurnIntentEngineV111.AdvanceToBoundary(replay with
             {
-                Transcript = replay.Transcript.Append(ticket).ToArray(),
+                Transcript = replay.Stochastic.Transcript.Append(ticket).ToArray(),
                 Pending = null
             });
         }
@@ -161,14 +162,14 @@ public static class ControlledTurnIntentEngineV111
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(streams);
-        if (state.Pending is null)
+        if (state.Stochastic.Pending is null)
             throw new InvalidOperationException("No pending next-turn intent ticket.");
         Validate(state);
         var working = state.Fork();
-        var request = working.Pending!;
+        var request = working.Stochastic.Pending!;
         var continuation = new ControlledStochasticContinuationStateV111(
             ControlledStochasticContinuationStateV111.CurrentSchemaId,
-            working.Transcript.Select(decision =>
+            working.Stochastic.Transcript.Select(decision =>
                 ControlledStochasticDecisionV111.FromIndex(decision)).ToArray(),
             ControlledStochasticRequestV111.FromIndex(request));
         var replay = ControlledChanceContinuationExecutorV111
@@ -179,7 +180,8 @@ public static class ControlledTurnIntentEngineV111
             selectedIndex,
             (checkpoint, chosen) => ReplayIntentPass(checkpoint with
             {
-                Transcript = checkpoint.Transcript.Append(chosen).ToArray(),
+                Transcript = checkpoint.Stochastic.Transcript
+                    .Append(chosen).ToArray(),
                 Pending = null
             }));
         return replay.Value ?? throw new InvalidDataException(
@@ -199,7 +201,7 @@ public static class ControlledTurnIntentEngineV111
     {
         ArgumentNullException.ThrowIfNull(state);
         Validate(state);
-        if (state.Pending is not { } pending)
+        if (state.Stochastic.Pending is not { } pending)
             return null;
         if (state.NextEnemyIndex >= state.Combat.Enemies.Length)
             throw new InvalidDataException("Pending intent has no enemy.");
@@ -208,7 +210,7 @@ public static class ControlledTurnIntentEngineV111
         if (pending.OwnerId != owner ||
             pending.StreamId != "run.monster_ai")
             throw new InvalidDataException("Pending semantic intent owner mismatch.");
-        var prefix = state.Transcript.Where(decision =>
+        var prefix = state.Stochastic.Transcript.Where(decision =>
             decision.Request.OwnerId == owner).ToArray();
         int position = 0;
         SemanticIntentCandidateV111[]? candidates = null;
@@ -269,7 +271,7 @@ public static class ControlledTurnIntentEngineV111
             NextEnemyIndex = 0,
             Pending = null
         };
-        var decisions = start.Transcript.Select(decision =>
+        var decisions = start.Stochastic.Transcript.Select(decision =>
             ControlledStochasticDecisionV111.FromIndex(decision)).ToArray();
         var replay = ControlledChanceContinuationExecutorV111.CaptureTyped(
             checkpoint,

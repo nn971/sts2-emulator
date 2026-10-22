@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 controlled turn-intent transcript owner read increment (2026-10-22):**
+Intent-boundary validation, support construction, and typed replay now read
+pending requests and ticket histories through
+`ControlledTurnIntentStochasticStateV111`. Existing flattened snapshot fields,
+writes, and outcome order are unchanged. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S3 semantic draw transcript owner read increment (2026-10-22):** Draw-cost
 request ordinals and random-pile-card, insertion, cost, Stratagem, and draw-hook
 replay/publication now read typed histories through
