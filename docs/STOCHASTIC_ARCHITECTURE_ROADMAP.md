@@ -20,6 +20,8 @@
 
 **S3 Future of Potions offer owner read increment (2026-10-22):** Opening-offer validation, trade resolution, and legal-action generation now read saved potion offers through `EventStochasticStateV111.RandomOutcomes`. Flattened event fields and serialized snapshots are unchanged. Static source review and `git diff --check` only; no tests or builds were run.
 
+**S3 committed event outcome owner publication increment (2026-10-22):** Stone of All Time now clears its selected potion slot by publishing a new `EventCommittedRandomStateV111` through the event stochastic owner. Snapshot fields and potion resolution are unchanged. Static source review and `git diff --check` only; no tests or builds were run.
+
 **S3 controlled event/run-action continuation read increment (2026-10-22):** Controlled event-choice admission, validation, enumeration, scripted run-action admission, run-action validation, and provider replay capture now read pending continuations and committed histories through `RunStochasticStateV111` and `EventStochasticStateV111`. Snapshot projections and replay outcomes are unchanged. Static source review and `git diff --check` only; no tests or builds were run.
 
 **S3 JSONL controlled-continuation owner read increment (2026-10-22):** JSONL session results, event/run-action observations, and pending-choice inspection now read suspended continuations and committed histories through the run and event stochastic owners. Serialized JSON fields and session handles remain unchanged. Static source review and `git diff --check` only; no tests or builds were run.

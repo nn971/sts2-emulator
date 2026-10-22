@@ -94,7 +94,15 @@ public sealed partial class PrototypeGameEngine
             },
             World = world with
             {
-                Event = current with { NativeEventPotionSlot = null }
+                Event = current with
+                {
+                    Stochastic = EventStochasticStateV111.WithCommittedRandom(
+                        current.Stochastic,
+                        current.Stochastic.RandomOutcomes with
+                        {
+                            NativeEventPotionSlot = null
+                        })
+                }
             }
         };
 
