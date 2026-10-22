@@ -87,6 +87,12 @@ SITE_ARRAY_PATTERN = re.compile(
     re.DOTALL,
 )
 
+SITE_NEW_ARRAY_CONCAT_PATTERN = re.compile(
+    r"\bstring\[\]\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*=\s*"
+    r"new\s*\[\]\s*\{(?P<body>.*?)\}(?P<chain>[^;]*);",
+    re.DOTALL,
+)
+
 SITE_ARRAY_PROPERTY_PATTERN = re.compile(
     r"\bstring\[\]\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*=>\s*"
     r"(?P<body>[^;]+);",
@@ -1221,6 +1227,16 @@ def _resolve_site_array_property(
                     class_context
                 ) if item.group("name") == array_name), None)
             if property_body is not None:
+                forwarded_property = re.fullmatch(
+                    r"[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)+",
+                    property_body.strip(),
+                )
+                if forwarded_property is not None:
+                    return _resolve_site_array_property(
+                        property_body.strip(), global_constants,
+                        active | {identity}, class_context,
+                        class_name_context,
+                    )
                 keys = re.search(
                     r"\b(?P<dictionary>[A-Za-z_][A-Za-z0-9_]*)\.Keys\b",
                     property_body,
@@ -1273,9 +1289,31 @@ def _resolve_site_array_property(
         array_name = clone.group("name")
         array = next((item for item in SITE_ARRAY_PATTERN.finditer(class_source)
                       if item.group("name") == array_name), None)
-        if array is None:
-            return [], [expression.strip()]
-        property_body = array.group("body")
+        if array is not None:
+            property_body = array.group("body")
+        else:
+            concatenated = next((item for item in
+                SITE_NEW_ARRAY_CONCAT_PATTERN.finditer(class_source)
+                if item.group("name") == array_name), None)
+            if concatenated is None:
+                return [], [expression.strip()]
+            identity = f"{class_name}.{array_name}"
+            values, unresolved = _resolve_site_array_items(
+                concatenated.group("body"), global_constants,
+                next_active | {identity}, class_source, class_name,
+            )
+            concat = re.search(
+                r"\.Concat\(\s*(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*\)",
+                concatenated.group("chain"),
+            )
+            if concat is not None:
+                nested, missing = _resolve_site_array_property(
+                    concat.group("name"), global_constants,
+                    next_active | {identity}, class_source, class_name,
+                )
+                values.extend(nested)
+                unresolved.extend(missing)
+            return list(dict.fromkeys(values)), unresolved
     else:
         dictionary_keys = re.fullmatch(
             r"(?P<name>[A-Za-z_][A-Za-z0-9_]*)\.Keys"

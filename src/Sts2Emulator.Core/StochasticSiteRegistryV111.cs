@@ -899,7 +899,7 @@ public static class StochasticSiteRegistryV111
         PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId
     ];
 
-    private static readonly string[] NativeCombatRewardSessionSites =
+    private static string[] NativeCombatRewardSessionSites =>
         ReferenceNatureCombatRewardSessionV111.SessionSiteIds;
 
     private static readonly string[] NativeMapGenerationSessionSites =
@@ -1104,7 +1104,7 @@ public static class StochasticSiteRegistryV111
         .. ControlledEventChoiceSites,
         .. NativeMerchantSessionSites,
         .. NativeTreasureSessionSites,
-        .. ReferenceNatureCombatRewardSessionV111.SessionSiteIds,
+        .. NativeCombatRewardSessionSites,
         .. NativeMapGenerationSessionSites,
         .. ChanceLawEngineV111.NeowOfferSessionSiteIds,
         .. ChanceLawEngineV111.TrashHeapSessionSiteIds,
@@ -1195,7 +1195,7 @@ public static class StochasticSiteRegistryV111
     public static string[] NativeTreasureSessionSiteIds =>
         (string[])NativeTreasureSessionSites.Clone();
     public static string[] NativeCombatRewardSessionSiteIds =>
-        (string[])NativeCombatRewardSessionSites.Clone();
+        NativeCombatRewardSessionSites;
     public static string[] NativeMapGenerationSessionSiteIds =>
         (string[])NativeMapGenerationSessionSites.Clone();
     public static string[] NeowOfferSessionSiteIds =>
