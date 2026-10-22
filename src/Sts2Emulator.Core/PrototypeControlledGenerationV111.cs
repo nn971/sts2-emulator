@@ -381,7 +381,7 @@ public sealed partial class PrototypeGameEngine
                 TemporaryEnergyCost: free), 1);
 
         var resolved = ResumeChoiceResolutionContinuation(
-            state.Player, combat, state.Rng, continuation);
+            state.Player, combat, state.Stochastic.PrototypeRng, continuation);
         var updated = state with
         {
             Player = resolved.Player,

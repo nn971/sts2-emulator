@@ -42,7 +42,7 @@ public sealed partial class PrototypeGameEngine
             ? ResumeAutomaticHandDrawCards(
                 run, count, suspensionPolicy)
             : DrawCards(
-                run.Player, combat, count, run.Rng, fromHandDraw,
+                run.Player, combat, count, run.Stochastic.PrototypeRng, fromHandDraw,
                 suspensionPolicy: suspensionPolicy);
         return ResumeSemanticCombatDrawResult(
             run, result, fromHandDraw, eventDepth: 0,
@@ -204,7 +204,7 @@ public sealed partial class PrototypeGameEngine
         }
 
         var drawn = DrawCards(
-            run.Player, combat, cost.RemainingCount, run.Rng,
+            run.Player, combat, cost.RemainingCount, run.Stochastic.PrototypeRng,
             cost.FromHandDraw, eventDepth: cost.EventDepth,
             suspensionPolicy:
                 PrototypeDrawCardsSuspensionPolicyV111.SemanticDrawCards(
@@ -442,7 +442,7 @@ public sealed partial class PrototypeGameEngine
                         combat, cardInstanceId, keyword);
             }
             var resumed = ResumeChoiceResolutionContinuation(
-                drawn.Player, combat, run.Rng, outerContinuation);
+                drawn.Player, combat, run.Stochastic.PrototypeRng, outerContinuation);
             return (run with
             {
                 Player = resumed.Player,
