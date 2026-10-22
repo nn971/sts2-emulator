@@ -1926,9 +1926,8 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidOperationException("No combat to resume.");
         var continuation = original.AutomaticPipelineContinuation ??
             throw new InvalidOperationException("Missing saved turn pipeline cursor.");
-        if (continuation.Mechanics.CurrentStepKind !=
-                PrototypeAutomaticStepKind.AdvanceTurn ||
-            continuation.Mechanics.OpeningStage is not null)
+        if (!continuation.Mechanics.IsAtStep(
+                PrototypeAutomaticStepKind.AdvanceTurn))
             throw new InvalidOperationException("Not an AdvanceTurn chance boundary.");
         var intents = continuation.Stochastic.ControlledTurnIntents ??
             throw new InvalidOperationException(

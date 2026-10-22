@@ -36,9 +36,7 @@ public sealed partial class PrototypeGameEngine
             cursor.Stochastic.ControlledSemanticDrawRemaining is not null ||
             cursor.Stochastic.ControlledSemanticBeforeHandDrawPending ||
             cursor.Stochastic.ControlledDrawRemaining is not null ||
-            cursor.Stochastic.ControlledDrawCostRemaining is not null ||
-            cursor.Mechanics.OpeningStage is not null ||
-            cursor.Mechanics.PendingPostDispatchEventKind is not null)
+            cursor.Stochastic.ControlledDrawCostRemaining is not null)
             throw new InvalidOperationException(
                 "Expected an existing DrawPlayerHand pipeline checkpoint.");
         var (result, requested, remaining) =

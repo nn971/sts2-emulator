@@ -512,9 +512,7 @@ public sealed partial class PrototypeGameEngine
         PrototypeAutomaticPipelineContinuationState continuation,
         CombatState combat, PendingCombatChoiceState pending)
     {
-        if (continuation.Mechanics.OpeningStage is not null ||
-            continuation.Mechanics.PendingPostDispatchEventKind is not null ||
-            !continuation.Mechanics.IsAtStep(
+        if (!continuation.Mechanics.IsAtStep(
                 PrototypeAutomaticStepKind.DrawPlayerHand) ||
             continuation.Stochastic.ControlledDrawRemaining is not null ||
             continuation.Stochastic.ControlledDrawCostRemaining is not null ||
@@ -1351,7 +1349,6 @@ public sealed partial class PrototypeGameEngine
         CombatState combat,
         PrototypeAutomaticPipelineContinuationState continuation,
         PrototypeOpeningCombatStage expectedStage) =>
-        continuation.Mechanics.PendingPostDispatchEventKind is null &&
         continuation.Mechanics.IsAtOpeningBoundary(expectedStage) &&
         continuation.Stochastic is
             { HandDrawProgress: null,
@@ -1630,9 +1627,8 @@ public sealed partial class PrototypeGameEngine
         PrototypeAutomaticPipelineContinuationState continuation)
     {
         return combat.IsPlayerTurn &&
-            continuation.Mechanics.OpeningStage is null &&
-            continuation.Mechanics.PendingPostDispatchEventKind ==
-                PrototypeCombatEventKind.PlayerTurnStarted &&
+            continuation.Mechanics.IsImmediatelyAfterDispatch(
+                PrototypeCombatEventKind.PlayerTurnStarted) &&
             continuation.Stochastic is
                 { ControlledDrawRemaining: null,
                   ControlledDrawCostRemaining: null,

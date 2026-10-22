@@ -196,13 +196,11 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidOperationException("Missing drawn-card cost choice.");
         var cost = pending.ControlledDrawCost ??
             throw new InvalidOperationException("No controlled drawn-card cost.");
-        if (continuation.Mechanics.CurrentStepKind !=
-                PrototypeAutomaticStepKind.DrawPlayerHand ||
+        if (!continuation.Mechanics.IsAtStep(
+                PrototypeAutomaticStepKind.DrawPlayerHand) ||
             continuation.Stochastic.ControlledDrawCostRemaining !=
                 cost.RemainingCount ||
             continuation.Stochastic.ControlledDrawRemaining is not null ||
-            continuation.Mechanics.OpeningStage is not null ||
-            continuation.Mechanics.PendingPostDispatchEventKind is not null ||
             !ValidateControlledDrawCost(state.Player, combat, cost))
             throw new InvalidDataException(
                 "Saved drawn-card cost does not match the hand-draw checkpoint.");

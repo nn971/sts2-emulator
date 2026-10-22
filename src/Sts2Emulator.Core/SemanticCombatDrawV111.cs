@@ -666,9 +666,7 @@ public static class SemanticCombatDrawEngineV111
                 PrototypeAutomaticStepKind.DrawPlayerHand) ||
             cursor.Stochastic.ControlledDrawRemaining is not null ||
             cursor.Stochastic.ControlledDrawCostRemaining is not null ||
-            cursor.Stochastic.ControlledSemanticDrawRemaining is not null ||
-            cursor.Mechanics.OpeningStage is not null ||
-            cursor.Mechanics.PendingPostDispatchEventKind is not null)
+            cursor.Stochastic.ControlledSemanticDrawRemaining is not null)
             throw new InvalidOperationException(
                 "Semantic automatic hand draw needs a clean DrawPlayerHand checkpoint.");
         try

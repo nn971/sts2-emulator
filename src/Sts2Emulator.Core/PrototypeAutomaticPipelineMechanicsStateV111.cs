@@ -33,9 +33,17 @@ public sealed record PrototypeAutomaticPipelineMechanicsStateV111(
         TryGetCurrentStepKind(out var stepKind) &&
         stepKind == expectedStep;
 
-    public bool IsAtStepIndex(int expectedIndex) =>
+    /// <summary>
+    /// True when this is a well-formed ordinary pipeline cursor, including
+    /// the completed boundary after the final step. Opening and
+    /// post-dispatch continuations are separate cursor forms.
+    /// </summary>
+    public bool IsValidOrdinaryCursor =>
         OpeningStage is null && PendingPostDispatchEventKind is null &&
-        HasValidIndex && NextStepIndex == expectedIndex;
+        HasValidIndex;
+
+    public bool IsAtStepIndex(int expectedIndex) =>
+        IsValidOrdinaryCursor && NextStepIndex == expectedIndex;
 
     public int RequireResumeStepIndex()
     {
@@ -55,8 +63,7 @@ public sealed record PrototypeAutomaticPipelineMechanicsStateV111(
     }
 
     public bool HasRemainingSteps =>
-        OpeningStage is null && PendingPostDispatchEventKind is null &&
-        HasValidIndex &&
+        IsValidOrdinaryCursor &&
         NextStepIndex < PrototypeContent.Rules.EndTurnPipeline.Length;
 
     public bool IsAtOpeningBoundary(PrototypeOpeningCombatStage stage) =>
@@ -69,9 +76,7 @@ public sealed record PrototypeAutomaticPipelineMechanicsStateV111(
     /// </summary>
     public bool HasPassedDispatch(PrototypeCombatEventKind eventKind)
     {
-        if (OpeningStage is not null ||
-            PendingPostDispatchEventKind is not null ||
-            !HasValidIndex)
+        if (!IsValidOrdinaryCursor)
             return false;
         var pipeline = PrototypeContent.Rules.EndTurnPipeline;
         for (var index = 0; index < pipeline.Length; index++)
@@ -92,8 +97,7 @@ public sealed record PrototypeAutomaticPipelineMechanicsStateV111(
     public bool IsImmediatelyAfterStep(
         PrototypeAutomaticStepKind completedStep)
     {
-        if (OpeningStage is not null ||
-            PendingPostDispatchEventKind is not null)
+        if (!IsValidOrdinaryCursor)
             return false;
         var pipeline = PrototypeContent.Rules.EndTurnPipeline;
         return NextStepIndex > 0 && NextStepIndex <= pipeline.Length &&
@@ -104,7 +108,7 @@ public sealed record PrototypeAutomaticPipelineMechanicsStateV111(
         PrototypeCombatEventKind eventKind)
     {
         if (OpeningStage is not null ||
-            PendingPostDispatchEventKind != eventKind)
+            PendingPostDispatchEventKind != eventKind || !HasValidIndex)
             return false;
         var pipeline = PrototypeContent.Rules.EndTurnPipeline;
         return NextStepIndex > 0 && NextStepIndex <= pipeline.Length &&
@@ -127,8 +131,7 @@ public sealed record PrototypeAutomaticPipelineMechanicsStateV111(
         out PrototypeAutomaticStepKind stepKind)
     {
         stepKind = default;
-        if (OpeningStage is not null ||
-            PendingPostDispatchEventKind is not null)
+        if (!IsValidOrdinaryCursor)
             return false;
         var pipeline = PrototypeContent.Rules.EndTurnPipeline;
         if (NextStepIndex < 0 || NextStepIndex >= pipeline.Length)

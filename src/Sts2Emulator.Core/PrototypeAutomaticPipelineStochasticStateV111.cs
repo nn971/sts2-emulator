@@ -235,9 +235,7 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
                 PrototypeAutomaticHandDrawProgressKindV111.ControlledRecycleStratagem or
                 PrototypeAutomaticHandDrawProgressKindV111.ControlledDrawHookChoice) ||
             !mechanics.IsAtStep(
-                PrototypeAutomaticStepKind.DrawPlayerHand) ||
-            mechanics.OpeningStage is not null ||
-            mechanics.PendingPostDispatchEventKind is not null)
+                PrototypeAutomaticStepKind.DrawPlayerHand))
             return false;
 
         remaining = progress.RemainingCount.Value;
@@ -576,8 +574,8 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
 
         ValidateHandDrawProgress();
 
-        if (continuation.Mechanics.OpeningStage ==
-                PrototypeOpeningCombatStage.InitialEnemyIntents &&
+        if (continuation.Mechanics.IsAtOpeningBoundary(
+                PrototypeOpeningCombatStage.InitialEnemyIntents) &&
             ControlledTurnIntents is null)
             throw new InvalidOperationException(
                 "Invalid suspended initial-enemy-intent stage.");
@@ -640,8 +638,8 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
         if (ControlledTurnIntents is { } turnIntents)
         {
             turnIntents.Validate();
-            bool initialIntentStage = continuation.Mechanics.OpeningStage ==
-                PrototypeOpeningCombatStage.InitialEnemyIntents;
+            bool initialIntentStage = continuation.Mechanics.IsAtOpeningBoundary(
+                PrototypeOpeningCombatStage.InitialEnemyIntents);
             // BaselineCombat is the replay origin for the intent ticket
             // prefix. Combat contains any intents already committed before
             // the next ticket suspended; ControlledTurnIntents.Validate
@@ -660,10 +658,6 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
                 (!initialIntentStage &&
                  !continuation.Mechanics.IsAtStep(
                     PrototypeAutomaticStepKind.AdvanceTurn)) ||
-                (initialIntentStage &&
-                 !continuation.Mechanics.IsAtOpeningBoundary(
-                    PrototypeOpeningCombatStage.InitialEnemyIntents)) ||
-                continuation.Mechanics.PendingPostDispatchEventKind is not null ||
                 ControlledEnemyAction is not null ||
                 ControlledDrawRemaining is not null ||
                 ControlledDrawCostRemaining is not null ||

@@ -58,6 +58,14 @@ of directly interpreting `NextStepIndex`; post-dispatch context and the
 serialized cursor shape remain unchanged. Static source review and
 `git diff --check` only; no tests or builds were run.
 
+**S4 ordinary automatic-pipeline cursor ownership increment (2026-10-22):**
+The mechanics owner now exposes `IsValidOrdinaryCursor` for well-formed
+ordinary cursors, including the completed final-step boundary. Hand-draw,
+generation, intent, target, and post-dispatch validators use its step and
+boundary predicates instead of repeating opening-stage or post-dispatch
+checks. Cursor serialization and resume behavior remain unchanged. Static
+source review and `git diff --check` only; no tests or builds were run.
+
 **S4 opening Imbued autoplay target increment (2026-10-22):** The shared
 automatic-pipeline target boundary now validates the saved `LateRelicAutoPlay`
 cursor against the exact remaining Imbued driver queue in persistent-card

@@ -1697,8 +1697,6 @@ public static class SemanticEndTurnEngineV111
             checkpoint.Stochastic.ControlledDrawCostRemaining is not null ||
             checkpoint.Stochastic.ControlledSemanticDrawRemaining is not null ||
             checkpoint.Stochastic.ControlledSemanticDrawRequested is not null ||
-            checkpoint.Mechanics.OpeningStage is not null ||
-            checkpoint.Mechanics.PendingPostDispatchEventKind is not null ||
             !SemanticDrawPileAdapterV111
                 .IsSupportedSemanticHandDrawSourceDeck(combat) ||
             combat.PendingChoice is not null ||

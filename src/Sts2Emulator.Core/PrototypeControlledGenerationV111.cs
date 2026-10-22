@@ -92,8 +92,6 @@ public sealed partial class PrototypeGameEngine
 
         var pipeline = combat.AutomaticPipelineContinuation;
         if (pipeline is null ||
-            pipeline.Mechanics.PendingPostDispatchEventKind is not null ||
-            pipeline.Mechanics.OpeningStage is not null ||
             !pipeline.Mechanics.IsAtStep(
                 PrototypeAutomaticStepKind.DrawPlayerHand) ||
             pipeline.Stochastic is not
@@ -259,8 +257,6 @@ public sealed partial class PrototypeGameEngine
                 { Mode: SemanticDeckStateV111.NatureMode, Pending: null } }
             combat &&
         combat.AutomaticPipelineContinuation is { } continuation &&
-        continuation.Mechanics.PendingPostDispatchEventKind is null &&
-        continuation.Mechanics.OpeningStage is null &&
         continuation.Mechanics.IsAtStep(
             PrototypeAutomaticStepKind.DrawPlayerHand) &&
         continuation.Stochastic is
