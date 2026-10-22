@@ -47,11 +47,12 @@ public sealed partial class PrototypeGameEngine
 
         // Native LanternKey converts Glory '?' rooms into Event rooms.
         // Its event replacement also applies to existing Event nodes.
+        var prototypeRng = state.Stochastic.PrototypeRng;
         var room = node.RoomType == PrototypeRoomType.Unknown
             ? PrototypeGoldenPathMapV111.IsActive(state.Player, world.Act)
-                ? ResolveUnknownMapRoom(ref world, state.Stochastic.PrototypeRngMutable, eventOnly: true)
+                ? ResolveUnknownMapRoom(ref world, prototypeRng, eventOnly: true)
                 : forceRepy ? PrototypeRoomType.Event
-                : ResolveUnknownMapRoom(ref world, state.Stochastic.PrototypeRngMutable)
+                : ResolveUnknownMapRoom(ref world, prototypeRng)
             : node.RoomType;
 
         world = world with
@@ -66,6 +67,8 @@ public sealed partial class PrototypeGameEngine
         };
         state = state with
         {
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, prototypeRng),
             World = world,
             Player = ApplyRelicRoomEntryGold(
                 ApplyPersistentCardRoomEntry(playerAfterTravel, node))
@@ -100,7 +103,7 @@ public sealed partial class PrototypeGameEngine
             throw new NotSupportedException(
                 "Regional combat entry requires the experimental three-act route.");
         var selected = ExperimentalSilentThreeActRouteV111.SelectEncounter(
-            world, room, state.Stochastic.PrototypeRngMutable);
+            world, room, state.Stochastic.PrototypeRng);
         return StartCombat(state with
         {
             World = world with
