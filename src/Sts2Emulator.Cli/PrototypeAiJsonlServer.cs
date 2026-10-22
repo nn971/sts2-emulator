@@ -944,7 +944,7 @@ internal static class PrototypeAiJsonlServer
                     probabilityStatus = law.ProbabilityStatus
                 },
                 offeredChoiceIds = eventState?.OfferedChoiceIds,
-                eventRandomProvider = eventState?.NativeEventRngProviderMode ??
+                eventRandomProvider = eventState?.Stochastic.ProviderMode ??
                     (eventState is null ? null : "native-v111"),
                 decisionTranscript = session.DecisionTranscript,
                 natureProvider = ReferenceNatureV111.ProviderId,
@@ -1019,7 +1019,7 @@ internal static class PrototypeAiJsonlServer
                     probabilityStatus = law.ProbabilityStatus
                 },
                 offeredChoiceIds = eventState?.OfferedChoiceIds,
-                eventRandomProvider = eventState?.NativeEventRngProviderMode ??
+                eventRandomProvider = eventState?.Stochastic.ProviderMode ??
                     (eventState is null ? null : "native-v111"),
                 decisionTranscript = session.DecisionTranscript,
                 natureProvider = ReferenceNatureV111.ProviderId,
@@ -1097,7 +1097,7 @@ internal static class PrototypeAiJsonlServer
                     probabilityStatus = law.ProbabilityStatus
                 },
                 nextPage = eventState?.NativePageIndex,
-                eventRandomProvider = eventState?.NativeEventRngProviderMode ??
+                eventRandomProvider = eventState?.Stochastic.ProviderMode ??
                     (eventState is null ? null : "native-v111"),
                 decisionTranscript = session.DecisionTranscript,
                 natureProvider = ReferenceNatureV111.ProviderId,
@@ -1138,7 +1138,7 @@ internal static class PrototypeAiJsonlServer
                     probabilityStatus = law.ProbabilityStatus
                 },
                 nextPage = eventState?.NativePageIndex,
-                eventRandomProvider = eventState?.NativeEventRngProviderMode ??
+                eventRandomProvider = eventState?.Stochastic.ProviderMode ??
                     (eventState is null ? null : "native-v111"),
                 decisionTranscript = session.DecisionTranscript,
                 natureProvider = ReferenceNatureV111.ProviderId,
@@ -1207,7 +1207,7 @@ internal static class PrototypeAiJsonlServer
                         PrototypeGameEngine.PaelsToothCardReturnSiteId or
                         "relic.war_hammer.elite_upgrade.shuffle_swap_index"
                         ? "not_applicable"
-                        : eventState?.NativeEventRngProviderMode ??
+                        : eventState?.Stochastic.ProviderMode ??
                             (eventState is null ? null : "native-v111"),
                 decisionTranscript = session.DecisionTranscript,
                 natureProvider = ReferenceNatureV111.ProviderId,
@@ -1378,7 +1378,7 @@ internal static class PrototypeAiJsonlServer
                 selectedOutcomeId = session.DecisionTranscript
                     .LastOrDefault()?.OutcomeId,
                 nextPage = eventState?.NativePageIndex,
-                eventRandomProvider = eventState?.NativeEventRngProviderMode ??
+                eventRandomProvider = eventState?.Stochastic.ProviderMode ??
                     (eventState is null ? null : "native-v111"),
                 decisionTranscript = session.DecisionTranscript,
                 natureProvider = ReferenceNatureV111.ProviderId,
@@ -1425,7 +1425,7 @@ internal static class PrototypeAiJsonlServer
                 },
                 selectedChoiceId = eventState?.ChosenChoiceId,
                 nextPage = eventState?.NativePageIndex,
-                eventRandomProvider = eventState?.NativeEventRngProviderMode ??
+                eventRandomProvider = eventState?.Stochastic.ProviderMode ??
                     (eventState is null ? null : "native-v111"),
                 decisionTranscript = session.DecisionTranscript,
                 natureProvider = ReferenceNatureV111.ProviderId,
@@ -1475,7 +1475,7 @@ internal static class PrototypeAiJsonlServer
                     ? session.Run.Player.Deck.LastOrDefault()?.CardId
                     : null,
                 nextPage = eventState?.NativePageIndex,
-                eventRandomProvider = eventState?.NativeEventRngProviderMode ??
+                eventRandomProvider = eventState?.Stochastic.ProviderMode ??
                     (eventState is null ? null : "native-v111"),
                 decisionTranscript = session.DecisionTranscript,
                 natureProvider = ReferenceNatureV111.ProviderId,
@@ -1501,10 +1501,10 @@ internal static class PrototypeAiJsonlServer
                     session.DecisionTranscript.Length == 1
                         ? "event.punch_off.relic_reward.index_draw"
                         : "event.punch_off.potion_reward.index_draw");
-            var entryRewardsStream = session.Origin.NativeRunRng?.Streams
+            var entryRewardsStream = session.Origin.Stochastic.NativeRunRng?.Streams
                 .SingleOrDefault(item => item.StreamId ==
                     "player.rewards");
-            var finalRewardsStream = session.Run.NativeRunRng?.Streams
+            var finalRewardsStream = session.Run.Stochastic.NativeRunRng?.Streams
                 .SingleOrDefault(item => item.StreamId ==
                     "player.rewards");
             return new
@@ -1560,7 +1560,7 @@ internal static class PrototypeAiJsonlServer
             var offsets = session.DecisionTranscript.Select(decision =>
                 int.Parse(decision.OutcomeId["hp_offset:".Length..],
                     System.Globalization.CultureInfo.InvariantCulture)).ToArray();
-            var contexts = session.Run.World?.Combat?.NativeRng?.Formation
+            var contexts = session.Run.World?.Combat?.Stochastic.NativeRng?.Formation
                 .MonsterContexts ?? [];
             return new
             {
@@ -1906,7 +1906,7 @@ internal static class PrototypeAiJsonlServer
                 var combat = state.Run.World?.Combat ??
                     throw new InvalidDataException("Draw event missing its combat.");
                 var chanceLaw = ChanceLawEngineV111.QueryDraw(
-                    combat.SemanticDeck ?? throw new InvalidDataException(
+                    combat.Stochastic.SemanticDeck ?? throw new InvalidDataException(
                         "Draw event missing its provider-owned deck."));
                 return new
                 {
@@ -1917,11 +1917,11 @@ internal static class PrototypeAiJsonlServer
                     streamId = drawn.StreamId,
                     ownerId = drawn.OwnerId,
                     ordinal = drawn.Ordinal,
-                    shuffleEpoch = combat.SemanticDeck!.ShuffleEpoch,
+                    shuffleEpoch = combat.Stochastic.SemanticDeck!.ShuffleEpoch,
                     topOffset = drawn.TopOffset,
                     operationKind = drawn.OperationKind,
                     supportFingerprint = drawn.SupportFingerprint,
-                    constraintFingerprint = combat.SemanticDeck.Fingerprint,
+                    constraintFingerprint = combat.Stochastic.SemanticDeck.Fingerprint,
                     chanceLaw,
                     probabilityStatus = drawn.ProbabilityStatus,
                     candidates = drawn.CandidateCardInstanceIds
@@ -1939,7 +1939,7 @@ internal static class PrototypeAiJsonlServer
                 var combat = state.Run.World?.Combat ??
                     throw new InvalidDataException(
                         "Deck-reveal event missing its combat.");
-                var deck = combat.SemanticDeck ??
+                var deck = combat.Stochastic.SemanticDeck ??
                     throw new InvalidDataException(
                         "Deck-reveal event missing its provider-owned deck.");
                 var chanceLaw = ChanceLawEngineV111.QueryDeckReveal(deck);
@@ -4447,8 +4447,8 @@ internal static class PrototypeAiJsonlServer
                                         StringComparison.Ordinal)
                                     ? ownerId[ownerPrefix.Length..]
                                     : string.Empty;
-                                var streams = fishingRun.World?.Combat?.NativeRng?
-                                    .RunStreams ?? fishingRun.NativeRunRng;
+                                var streams = fishingRun.World?.Combat?.Stochastic.NativeRng?
+                                    .RunStreams ?? fishingRun.Stochastic.NativeRunRng;
                                 if (priorIndices is not null ||
                                     priorVariantIndex is not null ||
                                     OptionalString(request, "action_id") is not null ||
@@ -4528,7 +4528,7 @@ internal static class PrototypeAiJsonlServer
                                         ChanceLawV111.UnverifiedStatus &&
                                     law.ProbabilityProvenance ==
                                         "uniform-saved-index-support-unverified" &&
-                                    shuffleOrigin.NativeRunRng is null &&
+                                    shuffleOrigin.Stochastic.NativeRunRng is null &&
                                     siteId is (
                                         PrototypeNativeUnderdocksDoors.ShuffleSiteId or
                                         PrototypeNativeGloryEvents.HungryForMushroomsShuffleSiteId or
