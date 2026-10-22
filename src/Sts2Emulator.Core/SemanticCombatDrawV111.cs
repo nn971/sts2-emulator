@@ -151,7 +151,7 @@ public sealed record SemanticCombatDrawV111(
         if (!automaticHandDraw || run.World?.Combat is not { } combat ||
             combat.AutomaticPipelineContinuation is not { } cursor)
             return null;
-        if (cursor.ControlledSemanticBeforeHandDrawPending)
+        if (cursor.Stochastic.ControlledSemanticBeforeHandDrawPending)
             return (0, 0);
         if (!cursor.Stochastic.TryGetSemanticHandDrawProgress(
                 cursor.Mechanics, out var requested, out var remaining))
@@ -353,7 +353,7 @@ public sealed record SemanticCombatDrawV111(
                 if (cursor is null ||
                     !cursor.Mechanics.IsAtStep(
                         PrototypeAutomaticStepKind.DrawPlayerHand) ||
-                    !cursor.ControlledSemanticBeforeHandDrawPending ||
+                    !cursor.Stochastic.ControlledSemanticBeforeHandDrawPending ||
                     this.RequestedCount != 0 || this.RemainingCount != 0 ||
                     combat.PendingChoice?.ControlledRandomPileCard is null ||
                     deck.Pending is not null || cost is not null)
@@ -365,9 +365,9 @@ public sealed record SemanticCombatDrawV111(
                 if (cursor is null ||
                     !cursor.Mechanics.IsAtStep(
                         PrototypeAutomaticStepKind.DrawPlayerHand) ||
-                    !cursor.ControlledSemanticBeforeHandDrawPending ||
-                    cursor.ControlledSemanticDrawRemaining is not null ||
-                    cursor.ControlledSemanticDrawRequested is not null ||
+                    !cursor.Stochastic.ControlledSemanticBeforeHandDrawPending ||
+                    cursor.Stochastic.ControlledSemanticDrawRemaining is not null ||
+                    cursor.Stochastic.ControlledSemanticDrawRequested is not null ||
                     this.RequestedCount != 0 || this.RemainingCount != 0 ||
                     combat.PendingChoice?.AutomaticSemanticDrawHookChoice != true ||
                     deck.Pending is not null || cost is not null)
@@ -381,9 +381,9 @@ public sealed record SemanticCombatDrawV111(
                 if (cursor is null ||
                     !cursor.Mechanics.IsAtStep(
                         PrototypeAutomaticStepKind.DrawPlayerHand) ||
-                    !cursor.ControlledSemanticBeforeHandDrawPending ||
-                    cursor.ControlledSemanticDrawRemaining is not null ||
-                    cursor.ControlledSemanticDrawRequested is not null ||
+                    !cursor.Stochastic.ControlledSemanticBeforeHandDrawPending ||
+                    cursor.Stochastic.ControlledSemanticDrawRemaining is not null ||
+                    cursor.Stochastic.ControlledSemanticDrawRequested is not null ||
                     this.RequestedCount != 0 || this.RemainingCount != 0 ||
                     !beforeHandDrawShuffleChoice.AutomaticSemanticDrawHookChoice ||
                     deck.Pending is not null || cost is not null)
@@ -391,16 +391,16 @@ public sealed record SemanticCombatDrawV111(
                         "Semantic BeforeHandDraw pool-shuffle cursor is inconsistent.");
             }
             else if (cursor is null ||
-                cursor.ControlledSemanticBeforeHandDrawPending ||
+                cursor.Stochastic.ControlledSemanticBeforeHandDrawPending ||
                 (awaiting &&
                  (!PrototypeGameEngine.IsSemanticAutomaticHandDraw(combat) ||
-                  cursor.ControlledSemanticDrawRemaining != this.RemainingCount ||
-                  cursor.ControlledSemanticDrawRequested != this.RequestedCount)) ||
+                  cursor.Stochastic.ControlledSemanticDrawRemaining != this.RemainingCount ||
+                  cursor.Stochastic.ControlledSemanticDrawRequested != this.RequestedCount)) ||
                 (!awaiting &&
                  (this.RemainingCount != 0 ||
                   !cursor.Mechanics.IsImmediatelyAfterStep(
                       PrototypeAutomaticStepKind.DrawPlayerHand) ||
-                  cursor.ControlledSemanticDrawRemaining is not null)))
+                  cursor.Stochastic.ControlledSemanticDrawRemaining is not null)))
                 throw new InvalidDataException(
                     "Semantic automatic hand-draw cursor is inconsistent.");
         }
@@ -664,9 +664,9 @@ public static class SemanticCombatDrawEngineV111
             sourceCombat.AutomaticPipelineContinuation is not { } cursor ||
             !cursor.Mechanics.IsAtStep(
                 PrototypeAutomaticStepKind.DrawPlayerHand) ||
-            cursor.ControlledDrawRemaining is not null ||
-            cursor.ControlledDrawCostRemaining is not null ||
-            cursor.ControlledSemanticDrawRemaining is not null ||
+            cursor.Stochastic.ControlledDrawRemaining is not null ||
+            cursor.Stochastic.ControlledDrawCostRemaining is not null ||
+            cursor.Stochastic.ControlledSemanticDrawRemaining is not null ||
             cursor.OpeningStage is not null ||
             cursor.PendingPostDispatchEventKind is not null)
             throw new InvalidOperationException(

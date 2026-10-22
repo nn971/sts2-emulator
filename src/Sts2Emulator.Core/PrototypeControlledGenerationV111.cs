@@ -91,9 +91,13 @@ public sealed partial class PrototypeGameEngine
             return false;
 
         var pipeline = combat.AutomaticPipelineContinuation;
-        if (pipeline is not
-                { PendingPostDispatchEventKind: null,
-                  OpeningStage: null,
+        if (pipeline is null ||
+            pipeline.Mechanics.PendingPostDispatchEventKind is not null ||
+            pipeline.Mechanics.OpeningStage is not null ||
+            !pipeline.Mechanics.IsAtStep(
+                PrototypeAutomaticStepKind.DrawPlayerHand) ||
+            pipeline.Stochastic is not
+                { HandDrawProgress: null,
                   ControlledDrawRemaining: null,
                   ControlledDrawCostRemaining: null,
                   ControlledSemanticDrawRemaining: null,
@@ -102,12 +106,6 @@ public sealed partial class PrototypeGameEngine
                   ControlledRecycleStratagemPending: false,
                   ControlledDrawHookChoicePending: false,
                   ControlledBeforeHandDrawHookChoicePending: false,
-                  ControlledEnemyAction: null,
-                  ControlledTurnIntents: null } ||
-            !pipeline.Mechanics.IsAtStep(
-                PrototypeAutomaticStepKind.DrawPlayerHand) ||
-            pipeline.Stochastic is not
-                { HandDrawProgress: null,
                   ControlledEnemyAction: null,
                   ControlledTurnIntents: null,
                   CompletedSemanticHandDrawRequested: null } ||
@@ -258,24 +256,23 @@ public sealed partial class PrototypeGameEngine
             { Turn: >= 2, IsPlayerTurn: true, IsPlayerSideActive: true,
               PendingChoice: null, PendingKnowledgeDemonChoice: null,
               SemanticDeck:
-                { Mode: SemanticDeckStateV111.NatureMode, Pending: null },
-              AutomaticPipelineContinuation:
-                { PendingPostDispatchEventKind: null,
-                  OpeningStage: null,
-                  ControlledDrawRemaining: null,
-                  ControlledDrawCostRemaining: null,
-                  ControlledSemanticDrawRemaining: null,
-                  ControlledSemanticDrawRequested: null,
-                  ControlledSemanticBeforeHandDrawPending: false,
-                  ControlledRecycleStratagemPending: false,
-                  ControlledDrawHookChoicePending: false,
-                  ControlledBeforeHandDrawHookChoicePending: false,
-                  ControlledEnemyAction: null,
-                  ControlledTurnIntents: null } continuation } combat &&
+                { Mode: SemanticDeckStateV111.NatureMode, Pending: null } }
+            combat &&
+        combat.AutomaticPipelineContinuation is { } continuation &&
+        continuation.Mechanics.PendingPostDispatchEventKind is null &&
+        continuation.Mechanics.OpeningStage is null &&
         continuation.Mechanics.IsAtStep(
             PrototypeAutomaticStepKind.DrawPlayerHand) &&
         continuation.Stochastic is
             { HandDrawProgress: null,
+              ControlledDrawRemaining: null,
+              ControlledDrawCostRemaining: null,
+              ControlledSemanticDrawRemaining: null,
+              ControlledSemanticDrawRequested: null,
+              ControlledSemanticBeforeHandDrawPending: false,
+              ControlledRecycleStratagemPending: false,
+              ControlledDrawHookChoicePending: false,
+              ControlledBeforeHandDrawHookChoicePending: false,
               ControlledEnemyAction: null,
               ControlledTurnIntents: null,
               CompletedSemanticHandDrawRequested: null };

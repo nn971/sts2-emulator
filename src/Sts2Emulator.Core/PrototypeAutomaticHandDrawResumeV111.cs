@@ -90,8 +90,8 @@ public sealed partial class PrototypeGameEngine
                 PrototypeAutomaticStepKind.DrawPlayerHand) ||
             cursor.OpeningStage is not null ||
             cursor.PendingPostDispatchEventKind is not null ||
-            cursor.ControlledSemanticBeforeHandDrawPending ||
-            cursor.ControlledBeforeHandDrawHookChoicePending)
+            cursor.Stochastic.ControlledSemanticBeforeHandDrawPending ||
+            cursor.Stochastic.ControlledBeforeHandDrawHookChoicePending)
             throw new InvalidDataException(
                 "Automatic CardDrawn choice lost its hand-draw cursor.");
 
@@ -100,10 +100,10 @@ public sealed partial class PrototypeGameEngine
         {
             if (requested <= 0 || combat.Stochastic.SemanticDeck is not
                     { Mode: SemanticDeckStateV111.NatureMode, Pending: null } ||
-                (cursor.ControlledSemanticDrawRequested is { } savedRequested &&
+                (cursor.Stochastic.ControlledSemanticDrawRequested is { } savedRequested &&
                  savedRequested != requested) ||
-                cursor.ControlledDrawRemaining is not null ||
-                cursor.ControlledDrawCostRemaining is not null)
+                cursor.Stochastic.ControlledDrawRemaining is not null ||
+                cursor.Stochastic.ControlledDrawCostRemaining is not null)
                 throw new InvalidDataException(
                     "Semantic automatic CardDrawn choice cursor is inconsistent.");
             combat = combat with
@@ -120,8 +120,8 @@ public sealed partial class PrototypeGameEngine
         {
             if (ControlledChanceGuardV111.EngineOwnedNativeProviderActive ||
                 combat.Stochastic.SemanticDeck is not null ||
-                cursor.ControlledSemanticDrawRequested is not null ||
-                cursor.ControlledSemanticDrawRemaining is not null)
+                cursor.Stochastic.ControlledSemanticDrawRequested is not null ||
+                cursor.Stochastic.ControlledSemanticDrawRemaining is not null)
                 throw new InvalidDataException(
                     "Controlled automatic CardDrawn choice cursor is inconsistent.");
             progress = PrototypeAutomaticHandDrawProgressV111

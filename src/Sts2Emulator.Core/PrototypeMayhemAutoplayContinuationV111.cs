@@ -516,24 +516,22 @@ public sealed partial class PrototypeGameEngine
             continuation.PendingPostDispatchEventKind is not null ||
             !continuation.Mechanics.IsAtStep(
                 PrototypeAutomaticStepKind.DrawPlayerHand) ||
-            continuation.ControlledDrawRemaining is not null ||
-            continuation.ControlledDrawCostRemaining is not null ||
-            continuation.ControlledSemanticDrawRemaining is not null ||
-            continuation.ControlledSemanticDrawRequested is not null ||
-            continuation.ControlledRecycleStratagemPending ||
-            continuation.ControlledDrawHookChoicePending ||
-            continuation.ControlledBeforeHandDrawHookChoicePending ||
-            continuation.ControlledEnemyAction is not null ||
-            continuation.ControlledTurnIntents is not null ||
+            continuation.Stochastic.ControlledDrawRemaining is not null ||
+            continuation.Stochastic.ControlledDrawCostRemaining is not null ||
+            continuation.Stochastic.ControlledSemanticDrawRemaining is not null ||
+            continuation.Stochastic.ControlledSemanticDrawRequested is not null ||
+            continuation.Stochastic.ControlledRecycleStratagemPending ||
+            continuation.Stochastic.ControlledDrawHookChoicePending ||
+            continuation.Stochastic.ControlledBeforeHandDrawHookChoicePending ||
             continuation.Stochastic.ControlledEnemyAction is not null ||
             continuation.Stochastic.ControlledTurnIntents is not null ||
             continuation.Stochastic.CompletedSemanticHandDrawRequested is not null ||
             pending.AutomaticSemanticDrawHookChoice !=
-                continuation.ControlledSemanticBeforeHandDrawPending ||
+                continuation.Stochastic.ControlledSemanticBeforeHandDrawPending ||
             combat.PendingChoice?.ChoiceId != "controlled_pool_shuffle")
             return false;
 
-        if (continuation.ControlledSemanticBeforeHandDrawPending)
+        if (continuation.Stochastic.ControlledSemanticBeforeHandDrawPending)
             return continuation.Stochastic.HandDrawProgress is
                 { Kind:
                     PrototypeAutomaticHandDrawProgressKindV111.SemanticBeforeHandDraw,
@@ -1353,8 +1351,12 @@ public sealed partial class PrototypeGameEngine
         CombatState combat,
         PrototypeAutomaticPipelineContinuationState continuation,
         PrototypeOpeningCombatStage expectedStage) =>
-        continuation is
-            { PendingPostDispatchEventKind: null,
+        continuation.Mechanics.PendingPostDispatchEventKind is null &&
+        continuation.Mechanics.IsAtOpeningBoundary(expectedStage) &&
+        continuation.Stochastic is
+            { HandDrawProgress: null,
+              ControlledEnemyAction: null,
+              ControlledTurnIntents: null,
               ControlledDrawRemaining: null,
               ControlledDrawCostRemaining: null,
               ControlledSemanticDrawRemaining: null,
@@ -1363,13 +1365,6 @@ public sealed partial class PrototypeGameEngine
               ControlledRecycleStratagemPending: false,
               ControlledDrawHookChoicePending: false,
               ControlledBeforeHandDrawHookChoicePending: false,
-              ControlledEnemyAction: null,
-              ControlledTurnIntents: null } &&
-        continuation.Mechanics.IsAtOpeningBoundary(expectedStage) &&
-        continuation.Stochastic is
-            { HandDrawProgress: null,
-              ControlledEnemyAction: null,
-              ControlledTurnIntents: null,
               CompletedSemanticHandDrawRequested: null } &&
         combat.Stochastic.SemanticDeck is
             { Mode: SemanticDeckStateV111.NatureMode };
@@ -1635,11 +1630,11 @@ public sealed partial class PrototypeGameEngine
         PrototypeAutomaticPipelineContinuationState continuation)
     {
         return combat.IsPlayerTurn &&
-            continuation is
-                { OpeningStage: null,
-                  PendingPostDispatchEventKind:
-                    PrototypeCombatEventKind.PlayerTurnStarted,
-                  ControlledDrawRemaining: null,
+            continuation.Mechanics.OpeningStage is null &&
+            continuation.Mechanics.PendingPostDispatchEventKind ==
+                PrototypeCombatEventKind.PlayerTurnStarted &&
+            continuation.Stochastic is
+                { ControlledDrawRemaining: null,
                   ControlledDrawCostRemaining: null,
                   ControlledSemanticDrawRemaining: null,
                   ControlledSemanticDrawRequested: null,

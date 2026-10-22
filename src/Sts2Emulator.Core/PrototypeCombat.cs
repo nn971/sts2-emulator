@@ -1616,11 +1616,11 @@ public sealed partial class PrototypeGameEngine
             // the same real pipeline index without replaying pre-draw hooks.
             if (ControlledChanceGuardV111.Active &&
                 (currentCombat.AutomaticPipelineContinuation?
-                    .ControlledDrawRemaining is not null ||
+                    .Stochastic.ControlledDrawRemaining is not null ||
                  currentCombat.AutomaticPipelineContinuation?
-                    .ControlledDrawCostRemaining is not null ||
+                    .Stochastic.ControlledDrawCostRemaining is not null ||
                  currentCombat.AutomaticPipelineContinuation?
-                    .ControlledSemanticDrawRemaining is not null))
+                    .Stochastic.ControlledSemanticDrawRemaining is not null))
                 return state;
 
             // A semantic random-pile choice inside BeforeHandDraw has its
@@ -1630,8 +1630,10 @@ public sealed partial class PrototypeGameEngine
                 return state;
 
             if (currentCombat.AutomaticPipelineContinuation is
-                { ControlledSemanticBeforeHandDrawPending: true } or
-                { ControlledBeforeHandDrawHookChoicePending: true })
+                { Stochastic:
+                    { ControlledSemanticBeforeHandDrawPending: true } } or
+                { Stochastic:
+                    { ControlledBeforeHandDrawHookChoicePending: true } })
                 return state;
 
             if (currentCombat.PendingChoice is not null
@@ -1747,13 +1749,16 @@ public sealed partial class PrototypeGameEngine
             { PendingChoice: null,
               PendingKnowledgeDemonChoice: null,
               AutomaticPipelineContinuation:
-                { ControlledBeforeHandDrawHookChoicePending: true } } beforeDraw)
+                { Stochastic:
+                    { ControlledBeforeHandDrawHookChoicePending: true } } }
+                beforeDraw)
         {
             if (!ControlledChanceGuardV111.Active)
                 throw new InvalidOperationException(
                     "Controlled BeforeHandDraw choice requires the RNG guard.");
             var resumed = ResumeAutomaticPipeline(
-                state, beforeDraw.AutomaticPipelineContinuation!.NextStepIndex);
+                state, beforeDraw.AutomaticPipelineContinuation!.Mechanics
+                    .NextStepIndex);
             return ResumeAutomaticPipelineContinuation(resumed);
         }
 
@@ -1763,7 +1768,8 @@ public sealed partial class PrototypeGameEngine
                 { PendingChoice: null,
                   PendingKnowledgeDemonChoice: null,
                   AutomaticPipelineContinuation:
-                    { ControlledSemanticBeforeHandDrawPending: true } })
+                    { Stochastic:
+                        { ControlledSemanticBeforeHandDrawPending: true } } })
                 throw new InvalidDataException(
                     "Semantic BeforeHandDraw resume has no saved boundary.");
             if (!ControlledChanceGuardV111.Active)
@@ -1777,7 +1783,7 @@ public sealed partial class PrototypeGameEngine
             { PendingChoice: null,
               PendingKnowledgeDemonChoice: null,
               AutomaticPipelineContinuation:
-                { ControlledDrawHookChoicePending: true } })
+                { Stochastic: { ControlledDrawHookChoicePending: true } } })
             return ResumeControlledAutomaticHandDrawHookChoice(state);
 
         if (state.World?.Combat is
@@ -1842,7 +1848,8 @@ public sealed partial class PrototypeGameEngine
                 "Controlled turn intents require an automatic pipeline checkpoint.");
         }
 
-        if (intents is null && pipeline?.ControlledTurnIntents is null)
+        if (intents is null &&
+            pipeline?.Stochastic.ControlledTurnIntents is null)
             return state;
 
         bool initialIntent = intents?.SiteId ==
@@ -1884,7 +1891,10 @@ public sealed partial class PrototypeGameEngine
                 {
                     AutomaticPipelineContinuation = pipeline with
                     {
-                        ControlledTurnIntents = intents?.Fork()
+                        Stochastic = pipeline.Stochastic with
+                        {
+                            ControlledTurnIntents = intents?.Fork()
+                        }
                     }
                 }
             }
@@ -1914,7 +1924,7 @@ public sealed partial class PrototypeGameEngine
                 PrototypeAutomaticStepKind.AdvanceTurn ||
             continuation.OpeningStage is not null)
             throw new InvalidOperationException("Not an AdvanceTurn chance boundary.");
-        var intents = continuation.ControlledTurnIntents ??
+        var intents = continuation.Stochastic.ControlledTurnIntents ??
             throw new InvalidOperationException(
                 "Missing saved controlled turn-intent frame.");
         if (intents.SiteId != ControlledTurnIntentEngineV111.SiteId ||
@@ -1933,7 +1943,10 @@ public sealed partial class PrototypeGameEngine
         var resumedCursor = continuation with
         {
             Mechanics = nextCursor,
-            ControlledTurnIntents = null
+            Stochastic = continuation.Stochastic with
+            {
+                ControlledTurnIntents = null
+            }
         };
         var advancedCombat = advanced.World?.Combat ??
             throw new InvalidDataException(
@@ -1967,7 +1980,7 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidOperationException(
                 "No combat for the controlled enemy-action choice.");
         var replay = combat.AutomaticPipelineContinuation?
-            .ControlledEnemyAction ?? throw new InvalidOperationException(
+            .Stochastic.ControlledEnemyAction ?? throw new InvalidOperationException(
                 "No controlled enemy-action continuation is pending.");
         replay.Validate(PrototypeContent.Rules.EndTurnPipeline.Length);
         if (CanonicalJson.Sha256(ClearAutomaticPipelineContinuation(state)) !=
@@ -2029,7 +2042,7 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidOperationException("Missing draw continuation.");
         if (continuation.Mechanics.CurrentStepKind !=
                 PrototypeAutomaticStepKind.DrawPlayerHand ||
-            continuation.ControlledDrawRemaining is not > 0 ||
+            continuation.Stochastic.ControlledDrawRemaining is not > 0 ||
             combat.DrawPile.Length != 0 ||
             combat.DiscardPile.Length == 0)
             throw new InvalidOperationException("Invalid suspended draw stage.");
@@ -2056,7 +2069,8 @@ public sealed partial class PrototypeGameEngine
         else
             combat = SemanticDrawPileAdapterV111.CommitLegacyRecycle(
                 combat, postHook);
-        var remainingHandDraw = continuation.ControlledDrawRemaining.Value;
+        var remainingHandDraw =
+            continuation.Stochastic.ControlledDrawRemaining!.Value;
         var afterShuffleInsertions = ControlledAfterShuffleRelicInsertions(
             combat);
         if (afterShuffleInsertions.Length > 0 &&
@@ -2814,10 +2828,10 @@ public sealed partial class PrototypeGameEngine
             {
                 bool resumedAfterSemanticHook =
                     combat.AutomaticPipelineContinuation?
-                        .ControlledSemanticBeforeHandDrawPending == true;
+                        .Stochastic.ControlledSemanticBeforeHandDrawPending == true;
                 bool resumedAfterControlledHook =
                     combat.AutomaticPipelineContinuation?
-                        .ControlledBeforeHandDrawHookChoicePending == true;
+                        .Stochastic.ControlledBeforeHandDrawHookChoicePending == true;
                 if (resumedAfterSemanticHook || resumedAfterControlledHook)
                 {
                     state = CommitAutomaticHandDrawProgress(
@@ -13395,7 +13409,7 @@ public sealed partial class PrototypeGameEngine
         };
 
         if (resolved.Combat.AutomaticPipelineContinuation is
-            { ControlledRecycleStratagemPending: true })
+            { Stochastic: { ControlledRecycleStratagemPending: true } })
             return ResumeControlledRecycleStratagemSelection(state);
 
         // These choices are nested inside the active hand-draw stage. Their

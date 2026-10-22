@@ -435,7 +435,7 @@ public sealed record ControlledPlayableCombatV111(
                 (this.Stochastic.Pending is not null || this.TurnIntents is not null)))
             throw new InvalidDataException("Malformed controlled playable stage.");
         var enemyAction = this.Run.World?.Combat?
-            .AutomaticPipelineContinuation?.ControlledEnemyAction;
+            .AutomaticPipelineContinuation?.Stochastic.ControlledEnemyAction;
         if (enemyAction is not null)
         {
             enemyAction.Validate(PrototypeContent.Rules.EndTurnPipeline.Length);
@@ -456,8 +456,9 @@ public sealed record ControlledPlayableCombatV111(
                 drawnCostCombat?.PendingChoice?.ControlledPotionGeneration is not null ||
                 !drawnCost.FromHandDraw ||
                 automatic is null ||
-                automatic.ControlledDrawCostRemaining != drawnCost.RemainingCount ||
-                automatic.ControlledDrawRemaining is not null ||
+                automatic.Stochastic.ControlledDrawCostRemaining !=
+                    drawnCost.RemainingCount ||
+                automatic.Stochastic.ControlledDrawRemaining is not null ||
                 !PrototypeGameEngine.ValidateControlledDrawCost(
                     this.Run.Player, drawnCostCombat!, drawnCost))
                 throw new InvalidDataException(
@@ -624,7 +625,8 @@ public sealed record ControlledPlayableCombatV111(
             if (combat is null ||
                 !combat.DiscardPile.SequenceEqual(recycle.Baseline) ||
                 combat.DrawPile.Length != 0 ||
-                combat.AutomaticPipelineContinuation?.ControlledDrawRemaining is not > 0)
+                combat.AutomaticPipelineContinuation?.Stochastic
+                    .ControlledDrawRemaining is not > 0)
                 throw new InvalidDataException(
                     "Recycle chance state disagrees with suspended draw.");
         }
@@ -1069,16 +1071,16 @@ public static class ControlledPlayableCombatEngineV111
             combat.AutomaticPipelineContinuation is not { } continuation)
             return state;
         var stepKind = continuation.Mechanics.CurrentStepKind;
-        if (continuation.ControlledRecycleStratagemPending)
+        if (continuation.Stochastic.ControlledRecycleStratagemPending)
             return state;
-        if (continuation.ControlledDrawCostRemaining is not null)
+        if (continuation.Stochastic.ControlledDrawCostRemaining is not null)
         {
             if (stepKind != PrototypeAutomaticStepKind.DrawPlayerHand ||
                 combat.PendingChoice?.ControlledDrawCost is null)
                 throw new InvalidDataException("Malformed saved draw-cost boundary.");
             return state;
         }
-        if (continuation.ControlledDrawRemaining is not null)
+        if (continuation.Stochastic.ControlledDrawRemaining is not null)
         {
             if (stepKind != PrototypeAutomaticStepKind.DrawPlayerHand ||
                 state.Stochastic.Recycle is not null || state.TurnIntents is not null ||

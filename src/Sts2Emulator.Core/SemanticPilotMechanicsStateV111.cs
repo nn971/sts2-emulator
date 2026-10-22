@@ -106,7 +106,7 @@ internal sealed record SemanticPilotEndTurnMechanicsProjectionV111(
             }
             : null;
         var intents = currentRun.World?.Combat?
-            .AutomaticPipelineContinuation?.ControlledTurnIntents;
+            .AutomaticPipelineContinuation?.Stochastic.ControlledTurnIntents;
         return new SemanticEndTurnV111(
             Origin, currentRun, NativeEncounterEntry, intents,
             handDraw, [], Complete)

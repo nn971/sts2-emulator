@@ -19,7 +19,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
     /// </summary>
     internal static bool HasPendingControlledAutomaticPipelineChoice(
         RunState run) => run.World?.Combat is { } combat &&
-        (combat.AutomaticPipelineContinuation?.ControlledEnemyAction is not null ||
+        (combat.AutomaticPipelineContinuation?.Stochastic.ControlledEnemyAction
+            is not null ||
          combat.PendingChoice?.ControlledTarget is not null ||
          combat.PendingKnowledgeDemonChoice is not null);
 
@@ -125,18 +126,16 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         if (combat.PendingKnowledgeDemonChoice is not null)
             return false;
         var continuation = combat.AutomaticPipelineContinuation;
-        if (continuation?.OpeningStage is not null)
+        if (continuation?.Mechanics.OpeningStage is not null)
             return IsWhisperingEarringOpeningAutoplayBoundary(combat);
-        if (continuation is not
-            {
-                OpeningStage: null,
-                PendingPostDispatchEventKind: null,
-                ControlledDrawRemaining: null,
-                ControlledDrawCostRemaining: null,
-                ControlledSemanticDrawRemaining: null,
-                ControlledSemanticDrawRequested: null,
-                ControlledEnemyAction: null
-            } || !continuation.Mechanics.HasValidIndex)
+        if (continuation is null ||
+            continuation.Mechanics.PendingPostDispatchEventKind is not null ||
+            continuation.Stochastic.ControlledDrawRemaining is not null ||
+            continuation.Stochastic.ControlledDrawCostRemaining is not null ||
+            continuation.Stochastic.ControlledSemanticDrawRemaining is not null ||
+            continuation.Stochastic.ControlledSemanticDrawRequested is not null ||
+            continuation.Stochastic.ControlledEnemyAction is not null ||
+            !continuation.Mechanics.HasValidIndex)
             return false;
 
         if (!combat.IsPlayerTurn)

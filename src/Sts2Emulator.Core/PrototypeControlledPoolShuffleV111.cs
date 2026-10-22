@@ -519,7 +519,8 @@ public sealed partial class PrototypeGameEngine
                 { PendingChoice: null,
                   PendingKnowledgeDemonChoice: null,
                   AutomaticPipelineContinuation:
-                    { ControlledSemanticBeforeHandDrawPending: true } })
+                    { Stochastic:
+                        { ControlledSemanticBeforeHandDrawPending: true } } })
             updated = ResumeAutomaticPipelineContinuation(
                 updated, resumeSemanticBeforeHandDraw: true);
         else

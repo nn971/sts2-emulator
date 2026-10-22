@@ -106,14 +106,15 @@ public sealed partial class PrototypeGameEngine
             combat.PendingChoice is not null ||
             combat.PendingKnowledgeDemonChoice is not null ||
             combat.Stochastic.SemanticDeck is not null || cursor is not
-                { ControlledDrawHookChoicePending: true,
-                  ControlledDrawRemaining: >= 0 } ||
+                { Stochastic:
+                    { ControlledDrawHookChoicePending: true,
+                      ControlledDrawRemaining: >= 0 } } ||
             !cursor.Mechanics.IsAtStep(
                 PrototypeAutomaticStepKind.DrawPlayerHand))
             throw new InvalidDataException(
                 "Controlled automatic hand-draw hook cursor is inconsistent.");
 
-        int remaining = cursor.ControlledDrawRemaining!.Value;
+        int remaining = cursor.Stochastic.ControlledDrawRemaining!.Value;
         var drawn = ResumeAutomaticHandDrawCards(
             state, remaining,
             PrototypeDrawCardsSuspensionPolicyV111
@@ -164,15 +165,16 @@ public sealed partial class PrototypeGameEngine
             "Controlled recycle selection has no combat.");
         var cursor = combat.AutomaticPipelineContinuation;
         if (combat.PendingChoice is not null || cursor is not
-            { ControlledRecycleStratagemPending: true,
-              ControlledDrawRemaining: > 0 } ||
+            { Stochastic:
+                { ControlledRecycleStratagemPending: true,
+                  ControlledDrawRemaining: > 0 } } ||
             cursor.Mechanics.CurrentStepKind !=
                 PrototypeAutomaticStepKind.DrawPlayerHand ||
             combat.Stochastic.SemanticDeck is not null)
             throw new InvalidDataException(
                 "Saved recycle Stratagem selection is not source-reachable.");
 
-        var remaining = cursor.ControlledDrawRemaining!.Value;
+        var remaining = cursor.Stochastic.ControlledDrawRemaining!.Value;
         var drawn = ResumeAutomaticHandDrawCards(
             state, remaining,
             PrototypeDrawCardsSuspensionPolicyV111
@@ -279,7 +281,7 @@ public sealed partial class PrototypeGameEngine
                 PrototypeAutomaticStepKind.DrawPlayerHand) ||
             cursor.OpeningStage is not null ||
             cursor.PendingPostDispatchEventKind is not null ||
-            cursor.ControlledSemanticBeforeHandDrawPending ||
+            cursor.Stochastic.ControlledSemanticBeforeHandDrawPending ||
             combat.PendingChoice is not null ||
             combat.PendingKnowledgeDemonChoice is not null ||
             combat.Stochastic.SemanticDeck?.Pending is not null)

@@ -159,11 +159,12 @@ public sealed partial class PrototypeGameEngine
                     if (handRemaining <= 0 ||
                         choice.AfterShuffleRelic is null ||
                         combat.Stochastic.SemanticDeck is not null || cursor is null ||
-                        cursor.ControlledDrawRemaining != handRemaining ||
+                        cursor.Stochastic.ControlledDrawRemaining !=
+                            handRemaining ||
                         !cursor.Mechanics.IsAtStep(
                             PrototypeAutomaticStepKind.DrawPlayerHand) ||
-                        cursor.ControlledDrawCostRemaining is not null ||
-                        cursor.ControlledRecycleStratagemPending)
+                        cursor.Stochastic.ControlledDrawCostRemaining is not null ||
+                        cursor.Stochastic.ControlledRecycleStratagemPending)
                         return false;
                 }
                 if (choice.AfterShuffleRelic is null)

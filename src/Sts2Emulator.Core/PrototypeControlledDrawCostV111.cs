@@ -198,8 +198,9 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidOperationException("No controlled drawn-card cost.");
         if (continuation.Mechanics.CurrentStepKind !=
                 PrototypeAutomaticStepKind.DrawPlayerHand ||
-            continuation.ControlledDrawCostRemaining != cost.RemainingCount ||
-            continuation.ControlledDrawRemaining is not null ||
+            continuation.Stochastic.ControlledDrawCostRemaining !=
+                cost.RemainingCount ||
+            continuation.Stochastic.ControlledDrawRemaining is not null ||
             continuation.OpeningStage is not null ||
             continuation.PendingPostDispatchEventKind is not null ||
             !ValidateControlledDrawCost(state.Player, combat, cost))

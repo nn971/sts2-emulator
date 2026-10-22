@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 automatic-pipeline stochastic owner read increment (2026-10-22):**
+Automatic pipeline execution, validation, semantic-pilot projection, and
+controlled-playable checks now read intent, enemy-action, and hand-draw
+progress through the continuation's stochastic owner. The intent boundary
+also stores and clears its frame through that owner. Flat members remain
+snapshot projections. Static source review and `git diff --check` only; no
+tests or builds were run.
+
 **S3 scripted run session owner read increment (2026-10-22):** Scripted action
 decision prefixes and continuations, plus whole-run completed actions and active
 action, now read through their stochastic owners for resolve, replay, validation,
