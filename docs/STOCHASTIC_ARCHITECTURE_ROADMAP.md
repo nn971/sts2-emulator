@@ -42,6 +42,14 @@ pool order; unknown partial-profile data fails closed. Source pool fidelity,
 event-stream assignment, and seeded cursor parity remain open. Static source
 review and `git diff --check` only; no tests or builds were run.
 
+**S6 merchant snapshot Colorless unlock validation increment (2026-10-22):**
+Run-state validation now checks each configured Colorless Shop offer against
+the same epoch-filtered rarity pool used by merchant generation and laws.
+Fully unlocked profiles retain the previous accepted offers; locked or
+unknown-profile offers fail closed. Unconfigured legacy states retain their
+catalog-wide compatibility validation. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S4 opening Imbued autoplay target increment (2026-10-22):** The shared
 automatic-pipeline target boundary now validates the saved `LateRelicAutoPlay`
 cursor against the exact remaining Imbued driver queue in persistent-card

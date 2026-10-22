@@ -631,6 +631,18 @@ public sealed partial record RunState
                 offer.ItemId, StringComparer.Ordinal);
             var colorlessCard = PrototypeColorlessCards.ImplementedShopPool.Contains(
                 offer.ItemId, StringComparer.Ordinal);
+            if (colorlessCard && state.Configuration?.Profile is { } profile)
+            {
+                var rarity = PrototypeContent.Card(offer.ItemId).Rarity;
+                colorlessCard = rarity is PrototypeCardRarity.Uncommon or
+                    PrototypeCardRarity.Rare;
+                if (colorlessCard)
+                    colorlessCard = PrototypeColorlessCards
+                        .MerchantPoolForProfile(
+                            rarity, profile.FullyUnlocked,
+                            profile.UnlockedColorlessEpochs)
+                        .Contains(offer.ItemId, StringComparer.Ordinal);
+            }
             if (offer.Price <= 0
                 || !(characterCard || colorlessCard)
                 || (colorlessCard && offer.OnSale)
