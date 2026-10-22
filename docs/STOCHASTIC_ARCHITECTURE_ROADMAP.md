@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 turn-start selection inventory correction (2026-10-22):** The current
+continuation already admits source-driven player-turn discard counts and
+Tools of the Trade's per-stack hand selection through semantic card selection
+and end-turn chronology replay. The unified architecture now records these
+alongside Entropy and Toasty Mittens, while keeping unhandled turn-start
+selection prompts unsupported. Static source review and `git diff --check`
+only; no tests or builds were run.
+
 **S3 later-act encounter-bag shape guard increment (2026-10-22):** The
 run-world stochastic owner now checks active and prepared later-act bag act
 IDs, cursor-dependent weak/normal queue lengths, pool membership, boss
