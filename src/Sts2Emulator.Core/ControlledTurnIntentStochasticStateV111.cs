@@ -59,6 +59,47 @@ public sealed record ControlledTurnIntentStochasticStateV111
         Pending?.Validate();
     }
 
+    internal ControlledTurnIntentStochasticStateV111 AppendResolvedDecision(
+        RandomIndexDecisionV111 decision)
+    {
+        ArgumentNullException.ThrowIfNull(decision);
+        decision.Validate();
+        var transcript = _transcript ?? throw new InvalidDataException(
+            "Turn-intent transcript is missing.");
+        var pending = Pending ?? throw new InvalidOperationException(
+            "No pending turn-intent request can be resolved.");
+        if (decision.ProviderMode != "controlled-v111" ||
+            decision.NativeCursorBefore is not null ||
+            decision.NativeCursorAfter is not null ||
+            decision.ProbabilityStatus != "UNVERIFIED" ||
+            !ControlledTurnIntentEngineV111.IsSupportedSiteId(
+                decision.Request.SiteId) ||
+            decision.Request.StreamId != "run.monster_ai" ||
+            decision.Request.Ordinal != transcript.Length ||
+            !StringComparer.Ordinal.Equals(
+                CanonicalJson.Sha256(decision.Request),
+                CanonicalJson.Sha256(pending)))
+            throw new InvalidDataException(
+                "Turn-intent decision does not resolve the saved request prefix.");
+        foreach (var previous in transcript)
+        {
+            if (previous is null)
+                throw new InvalidDataException(
+                    "Turn-intent transcript contains a null decision.");
+            previous.Validate();
+            if (previous.ProviderMode != "controlled-v111" ||
+                previous.NativeCursorBefore is not null ||
+                previous.NativeCursorAfter is not null)
+                throw new InvalidDataException(
+                    "Turn-intent transcript contains a non-controlled outcome.");
+        }
+        return this with
+        {
+            Transcript = transcript.Append(CloneDecision(decision)).ToArray(),
+            Pending = null
+        };
+    }
+
     private static RandomIndexRequestV111 CloneRequest(
         RandomIndexRequestV111 request) => request with
     {
@@ -70,4 +111,13 @@ public sealed record ControlledTurnIntentStochasticStateV111
             decision is null ? null! :
                 PrototypeControlledEventChoiceContinuationV111
                     .CloneDecision(decision)).ToArray();
+
+    private static RandomIndexDecisionV111 CloneDecision(
+        RandomIndexDecisionV111 decision) => decision with
+    {
+        Request = decision.Request with
+        {
+            OrderedCandidates = (int[])decision.Request.OrderedCandidates.Clone()
+        }
+    };
 }

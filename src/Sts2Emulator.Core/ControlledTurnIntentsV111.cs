@@ -118,8 +118,7 @@ public sealed record ControlledTurnIntentsV111(
                 .Resolve(choice.Request, streams);
             replay = ControlledTurnIntentEngineV111.AdvanceToBoundary(replay with
             {
-                Transcript = replay.Stochastic.Transcript.Append(ticket).ToArray(),
-                Pending = null
+                Stochastic = replay.Stochastic.AppendResolvedDecision(ticket)
             });
         }
         if (CanonicalJson.Sha256(replay) != CanonicalJson.Sha256(this))
@@ -180,9 +179,8 @@ public static class ControlledTurnIntentEngineV111
             selectedIndex,
             (checkpoint, chosen) => ReplayIntentPass(checkpoint with
             {
-                Transcript = checkpoint.Stochastic.Transcript
-                    .Append(chosen).ToArray(),
-                Pending = null
+                Stochastic = checkpoint.Stochastic
+                    .AppendResolvedDecision(chosen)
             }));
         return replay.Value ?? throw new InvalidDataException(
             "Intent resolution suspended outside its saved pending boundary.");

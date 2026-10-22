@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 controlled intent ticket append ownership increment (2026-10-22):**
+`ControlledTurnIntentStochasticStateV111` now validates a selected outcome
+against its pending request and transcript ordinal, then appends the decision
+and clears that request together. Live resolution and prefix validation use the
+same transition. Static source review and `git diff --check` only; no tests or
+builds were run.
+
 **S3 scripted run completed-action publication increment (2026-10-22):**
 `ScriptedRunStochasticStateV111` now validates completed action records and
 appends them while clearing the active action. `ScriptedRunSessionV111`
