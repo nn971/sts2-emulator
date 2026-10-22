@@ -23,7 +23,7 @@ public static class SemanticConditionedDeckPresetV111
 
     private static readonly string[] BossRelicPool =
     [
-        "proto.relic.lantern", "proto.relic.ink_bottle",
+        "proto.relic.lantern", "proto.relic.vajra",
         "proto.relic.ornamental_fan", "proto.relic.orichalcum"
     ];
 
