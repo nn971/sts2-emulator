@@ -947,6 +947,8 @@ public sealed partial class PrototypeGameEngine
         // Gated later-act fixture registrations deliberately have Weight=0
         // so legacy prototype runs cannot sample them. Only this explicit
         // regional route opts in, using uniform provisional weights.
+        var prototypeRng = state.Stochastic.PrototypeRng;
+        var usesNativeRunRng = state.Stochastic.NativeRunRng is not null;
         var totalWeight = eligible.Sum(evt => laterRoute ? 1 : evt.Weight);
         var weightedSupport = eligible.Select(evt => new
         {
@@ -954,7 +956,7 @@ public sealed partial class PrototypeGameEngine
             Weight = laterRoute ? 1 : evt.Weight
         }).ToArray();
         var roll = ResolveLegacyBoundedInteger(
-            state.Stochastic.PrototypeRngMutable,
+            prototypeRng,
             "event.selection.weighted_ticket",
             $"act:{world.Act}:floor:{world.Floor}:pool:"
                 + CanonicalJson.Sha256(weightedSupport),
@@ -1039,24 +1041,24 @@ public sealed partial class PrototypeGameEngine
                     selected.Id switch
                     {
                         PrototypeNativeDenseVegetation.EventId =>
-                            state.Stochastic.NativeRunRngMutable is null
+                            !usesNativeRunRng
                                 ? ResolveLegacyEventGold(
-                                    state.Stochastic.PrototypeRngMutable, selected.Id, "primary", 61, 39)
+                                    prototypeRng, selected.Id, "primary", 61, 39)
                                 : 0,
                         "proto.native.event.whispering_hollow" =>
-                            state.Stochastic.NativeRunRngMutable is null
+                            !usesNativeRunRng
                                 ? ResolveLegacyEventGold(
-                                    state.Stochastic.PrototypeRngMutable, selected.Id, "primary", 26, 19)
+                                    prototypeRng, selected.Id, "primary", 26, 19)
                                 : 0,
                         "proto.native.event.sunken_statue" =>
-                            state.Stochastic.NativeRunRngMutable is null
+                            !usesNativeRunRng
                                 ? ResolveLegacyEventGold(
-                                    state.Stochastic.PrototypeRngMutable, selected.Id, "primary", 101, 21)
+                                    prototypeRng, selected.Id, "primary", 101, 21)
                                 : 0,
                         "proto.native.event.luminous_choir" =>
-                            state.Stochastic.NativeRunRngMutable is null
+                            !usesNativeRunRng
                                 ? ResolveLegacyEventGold(
-                                    state.Stochastic.PrototypeRngMutable, selected.Id, "primary", 100, 50)
+                                    prototypeRng, selected.Id, "primary", 100, 50)
                                 : 0,
                         // Source rolls two independent -15..15 floats:
                         // 150 + solo roll, 50 + join roll, truncated to
@@ -1064,71 +1066,76 @@ public sealed partial class PrototypeGameEngine
                         // retain the earlier integer-bin approximation;
                         // native runs use the source unit-float boundary.
                         "proto.native.event.jungle_maze_adventure" =>
-                            state.Stochastic.NativeRunRngMutable is null
+                            !usesNativeRunRng
                                 ? ResolveLegacyEventGold(
-                                    state.Stochastic.PrototypeRngMutable, selected.Id, "primary", 135, 30)
+                                    prototypeRng, selected.Id, "primary", 135, 30)
                                 : 0,
                         // Native Sunken Treasury rolls small then large
                         // independently; both rolls are persisted so the
                         // eventual choice never changes the RNG outcome.
                         "proto.native.underdocks.sunken_treasury" =>
-                            state.Stochastic.NativeRunRngMutable is null
+                            !usesNativeRunRng
                                 ? ResolveLegacyEventGold(
-                                    state.Stochastic.PrototypeRngMutable, selected.Id, "primary", 52, 16)
+                                    prototypeRng, selected.Id, "primary", 52, 16)
                                 : 0,
                         PrototypeNativeHiveEvents.LostWispId =>
-                            state.Stochastic.NativeRunRngMutable is null
+                            !usesNativeRunRng
                                 ? ResolveLegacyEventGold(
-                                    state.Stochastic.PrototypeRngMutable, selected.Id, "primary", 45, 31)
+                                    prototypeRng, selected.Id, "primary", 45, 31)
                                 : 0,
                         "proto.native.underdocks.sunken_statue" =>
-                            state.Stochastic.NativeRunRngMutable is null
+                            !usesNativeRunRng
                                 ? ResolveLegacyEventGold(
-                                    state.Stochastic.PrototypeRngMutable, selected.Id, "primary", 101, 21)
+                                    prototypeRng, selected.Id, "primary", 101, 21)
                                 : 0,
                         // Punch Off computes an entry-only 91..98 gold
                         // variable even though neither option pays it.
                         // Keep this draw to preserve the event RNG stream.
                         PrototypeNativePunchOff.EventId =>
-                            state.Stochastic.NativeRunRngMutable is null
+                            !usesNativeRunRng
                                 ? ResolveLegacyEventGold(
-                                    state.Stochastic.PrototypeRngMutable, selected.Id, "primary", 91, 8)
+                                    prototypeRng, selected.Id, "primary", 91, 8)
                                 : 0,
                         PrototypeNativeSharedEvents.ThisOrThatId =>
-                            state.Stochastic.NativeRunRngMutable is null
+                            !usesNativeRunRng
                                 ? ResolveLegacyEventGold(
-                                    state.Stochastic.PrototypeRngMutable, selected.Id, "primary", 41, 28)
+                                    prototypeRng, selected.Id, "primary", 41, 28)
                                 : 0,
                         _ => 0
                     },
                 NativeEventSecondaryGold:
                     selected.Id == "proto.native.event.jungle_maze_adventure"
-                        && state.Stochastic.NativeRunRngMutable is null
+                        && !usesNativeRunRng
                         ? ResolveLegacyEventGold(
-                            state.Stochastic.PrototypeRngMutable, selected.Id, "secondary", 35, 30)
+                            prototypeRng, selected.Id, "secondary", 35, 30)
                         : selected.Id == "proto.native.underdocks.sunken_treasury"
-                            && state.Stochastic.NativeRunRngMutable is null
+                            && !usesNativeRunRng
                             ? ResolveLegacyEventGold(
-                                state.Stochastic.PrototypeRngMutable, selected.Id, "secondary", 303, 61)
+                                prototypeRng, selected.Id, "secondary", 303, 61)
                             : 0,
                 NativeEventPotionSlot:
                     selected.Id == PrototypeNativeStoneOfAllTime.EventId
-                        && state.Stochastic.NativeRunRngMutable is null
+                        && !usesNativeRunRng
                         ? PrototypeNativeStoneOfAllTime.RollPotionSlot(
-                            state.Player, state.Stochastic.PrototypeRngMutable)
+                            state.Player, prototypeRng)
                         : null)
         };
 
-        if (state.Stochastic.NativeRunRngMutable is not null)
+        state = state with
         {
-            state = state with { World = world };
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, prototypeRng),
+            World = world
+        };
+        if (usesNativeRunRng)
+        {
             world = state.World!;
             state = ResolveNativeEventGold(state);
             world = RequireWorld(state);
         }
 
         if (selected.Id == PrototypeNativeStoneOfAllTime.EventId
-            && state.Stochastic.NativeRunRngMutable is not null)
+            && usesNativeRunRng)
         {
             state = state with { World = world };
             var slots = PrototypeNativeStoneOfAllTime.OccupiedPotionSlots(
