@@ -9,7 +9,8 @@ public sealed partial class PrototypeGameEngine
     {
         // Keep entry draws isolated until their cursor is published with the
         // corresponding encounter and combat state.
-        var prototypeRng = state.Stochastic.PrototypeRngMutable.Fork();
+        var prototypeRng = state.Stochastic.PrototypeRng;
+        var nativeRunRng = state.Stochastic.NativeRunRng;
         var world = RequireWorld(state);
         PrototypeEncounterDefinition encounter;
 
@@ -117,13 +118,8 @@ public sealed partial class PrototypeGameEngine
 
         }
 
-        state = state with
-        {
-            Stochastic = RunStochasticStateV111.WithPrototypeRng(
-                state.Stochastic, prototypeRng.Fork())
-        };
-        state = ApplyBeforeCombatStartRelics(state, prototypeRng);
-        prototypeRng = state.Stochastic.PrototypeRngMutable.Fork();
+        state = ApplyBeforeCombatStartRelics(
+            state, prototypeRng, ref nativeRunRng);
         state = state with
         {
             Player = RemoveExpiredTeaRelics(state.Player)
@@ -380,26 +376,20 @@ public sealed partial class PrototypeGameEngine
             .Where(card => !IsInnate(card))
             .Select(card => card.InstanceId)
             .ToArray();
-        var nativeShuffleStreams = nativeFormation is null
+        var nativeCombatEntryRng = nativeFormation is null
             ? null
-            : state.Stochastic.NativeRunRngMutable?.Fork() ??
+            : nativeRunRng ??
                 throw new NotSupportedException(
                     "UNSUPPORTED_NATIVE_COMBAT site=combat.initial_shuffle " +
                     "operation=missing_run_stream_owner");
-        var shuffleStreams = nativeShuffleStreams ?? prototypeRng;
-        IRandomIndexProviderV111 shuffleProvider = nativeShuffleStreams is null
+        var shuffleStreams = nativeCombatEntryRng ?? prototypeRng;
+        IRandomIndexProviderV111 shuffleProvider = nativeCombatEntryRng is null
             ? new LegacyPrototypeRandomIndexProviderV111()
             : new NativeRandomIndexProviderV111();
         _ = NativeFisherYatesV111.ShuffleInPlace(
             drawPile, shuffleStreams, shuffleProvider,
-            nativeShuffleStreams is null ? "combat" : "run.shuffle",
+            nativeCombatEntryRng is null ? "combat" : "run.shuffle",
             "player:0", NativeFisherYatesV111.SiteId);
-        if (nativeShuffleStreams is not null)
-            state = state with
-            {
-                Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                    state.Stochastic, nativeShuffleStreams)
-            };
         var boomingConchAtElite = roomType == PrototypeRoomType.Elite
             && state.Player.ActiveRelics.Any(relic =>
                 relic.RelicId ==
@@ -455,8 +445,13 @@ public sealed partial class PrototypeGameEngine
         // intent commitment. HP and all initial enemy maxima now use
         // the advancing run.niche stream rather than the prototype RNG.
         if (nativeFormation is not null)
+        {
             combat = NativeCombatRngEntryV111.AttachAndRollInitialHp(
-                combat, nativeFormation, state.Stochastic.NativeRunRngMutable!);
+                combat, nativeFormation, nativeCombatEntryRng
+                    ?? throw new NotSupportedException(
+                        "UNSUPPORTED_NATIVE_COMBAT site=combat.initial_hp " +
+                        "operation=missing_run_stream_owner"));
+        }
 
         combat = NativeGloryAncientsV111.ApplyFurCoatCombatStart(
             combat, state.Player);
@@ -477,17 +472,14 @@ public sealed partial class PrototypeGameEngine
         {
             Combat = combat
         };
-        state = state with
-        {
-            Stochastic = RunStochasticStateV111.WithPrototypeRng(
-                state.Stochastic, prototypeRng.Fork())
-        };
+        var entryStochastic = RunStochasticStateV111.WithPrototypeRng(
+            state.Stochastic, prototypeRng);
+        entryStochastic = RunStochasticStateV111.WithNativeRunRng(
+            entryStochastic,
+            combat.Stochastic.NativeRng?.RunStreams ?? nativeRunRng);
         SemanticInitialIntentCaptureV111.CaptureAndSuspend(state with
         {
-            Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                state.Stochastic,
-                combat.Stochastic.NativeRngMutable?.RunStreams.Fork()
-                    ?? state.Stochastic.NativeRunRngMutable?.Fork()),
+            Stochastic = entryStochastic,
             World = entryWorld,
             Phase = RunPhase.Combat
         });
@@ -497,11 +489,10 @@ public sealed partial class PrototypeGameEngine
         // Return the latest native run/player cursors to their persistent
         // owner; later Step() calls continue from these precise positions.
         var nextStochastic = RunStochasticStateV111.WithPrototypeRng(
-            state.Stochastic, prototypeRng.Fork());
-        if (combat.Stochastic.NativeRngMutable is not null)
-            nextStochastic = RunStochasticStateV111.WithNativeRunRng(
-                nextStochastic,
-                combat.Stochastic.NativeRngMutable.RunStreams.Fork());
+            entryStochastic, prototypeRng);
+        nextStochastic = RunStochasticStateV111.WithNativeRunRng(
+            nextStochastic,
+            combat.Stochastic.NativeRng?.RunStreams ?? nativeRunRng);
         state = state with { Stochastic = nextStochastic };
 
         return ResumeSemanticInitialCombatEntry(state with
@@ -521,15 +512,16 @@ public sealed partial class PrototypeGameEngine
             world.Combat is null || combat.Act != world.Act)
             throw new InvalidOperationException(
                 "Initial intent continuation has an invalid combat-entry source.");
-        var nativeStreams = combat.Stochastic.NativeRngMutable?.RunStreams.Fork()
-            ?? source.Stochastic.NativeRunRngMutable?.Fork();
+        var combatNativeRng = combat.Stochastic.NativeRng;
+        var nativeStreams = combatNativeRng?.RunStreams
+            ?? source.Stochastic.NativeRunRng;
         var advanced = source with
         {
             Stochastic = RunStochasticStateV111.WithNativeRunRng(
                 source.Stochastic, nativeStreams),
             World = world with { Combat = combat.Fork() }
         };
-        if (nativeStreams is not null && combat.Stochastic.NativeRngMutable is not null)
+        if (nativeStreams is not null && combatNativeRng is not null)
             NativeRunRngV111.Validate(advanced);
         advanced = ApplyOpeningRoyalPoison(advanced);
         return ResumeAutomaticPipelineContinuation(
@@ -10299,7 +10291,8 @@ public sealed partial class PrototypeGameEngine
     }
 
     private static RunState ApplyBeforeCombatStartRelics(
-        RunState state, RngBundle prototypeRng)
+        RunState state, RngBundle prototypeRng,
+        ref RngBundle? nativeRunRng)
     {
         var relicTriggers = state.Player.ActiveRelics
             .Where(relic => PrototypeContent.Relic(relic.RelicId)
@@ -10309,7 +10302,6 @@ public sealed partial class PrototypeGameEngine
             return state;
 
         var slots = (PotionInstance?[])state.Player.PotionSlots.Clone();
-        var nativeRunRng = state.Stochastic.NativeRunRngMutable?.Fork();
         foreach (var _ in relicTriggers)
         {
             var openSlot = Array.IndexOf(slots, null);
@@ -10342,12 +10334,7 @@ public sealed partial class PrototypeGameEngine
 
         return state with
         {
-            Player = state.Player with { PotionSlots = slots },
-            Stochastic = RunStochasticStateV111.WithPrototypeRng(
-                RunStochasticStateV111.WithNativeRunRng(
-                    state.Stochastic,
-                    nativeRunRng ?? state.Stochastic.NativeRunRngMutable),
-                prototypeRng.Fork())
+            Player = state.Player with { PotionSlots = slots }
         };
     }
 

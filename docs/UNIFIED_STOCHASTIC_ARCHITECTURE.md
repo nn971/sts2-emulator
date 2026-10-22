@@ -887,6 +887,8 @@ Generic event-choice resolution now uses local prototype and optional Native run
 
 Reward-step resolution now reads defensive prototype and optional Native run RNG projections, passes the local bundles through card grants and relic-acquisition hooks, and publishes the advanced providers with ordinary reward progress, completed rewards, or lethal relic deck-choice outcomes. Controlled reward continuations, Pael sacrifices, and Driftwood rerolls remain owned by their dedicated transitions.
 
+Combat entry now reads defensive run RNG projections and keeps encounter selection, pre-combat potion relics, initial shuffle/HP draws, and first-intent commitment on local bundles. The entry publishes the latest prototype and Native run cursors alongside the initialized combat and intent continuation; resuming that continuation reprojects its Native run cursor through the run owner.
+
 ## Reading order
 
 1. This architecture contract.
