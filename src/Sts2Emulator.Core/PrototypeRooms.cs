@@ -4193,9 +4193,14 @@ public sealed partial class PrototypeGameEngine
                     "Hatch requires a Byrdonis Egg and an available pet slot.");
             }
 
+            var prototypeRng = state.Stochastic.PrototypeRng;
+            var player = HatchByrdonisEgg(state.Player, prototypeRng);
+            var stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, prototypeRng);
             return CompleteRoomToMap(state with
             {
-                Player = HatchByrdonisEgg(state.Player, state.Stochastic.PrototypeRngMutable)
+                Player = player,
+                Stochastic = stochastic
             });
         }
 
@@ -4253,11 +4258,14 @@ public sealed partial class PrototypeGameEngine
             {
                 Hp = Math.Min(state.Player.MaxHp, state.Player.Hp + amount)
             };
+            var prototypeRng = state.Stochastic.PrototypeRng;
             player = ApplyRelicRunEvent(
                 player,
                 PrototypeRunEventKind.RestSiteHealed,
-                rng: state.Stochastic.PrototypeRngMutable);
-            state = state with { Player = player };
+                rng: prototypeRng);
+            var stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, prototypeRng);
+            state = state with { Player = player, Stochastic = stochastic };
             return EnterRestHealRelicReward(state);
         }
 
@@ -4522,12 +4530,13 @@ public sealed partial class PrototypeGameEngine
         }
 
         var world = RequireWorld(state);
-        var nativeRunRng = state.Stochastic.NativeRunRngMutable?.Fork();
+        var nativeRunRng = state.Stochastic.NativeRunRng;
+        var prototypeRng = state.Stochastic.PrototypeRng;
         string? relicId;
         if (UsesNativeRegionalSystems(world))
         {
             var draw = PrototypeNativeRelicGrabBag.Draw(
-                world, state.Player, state.Stochastic.PrototypeRngMutable, merchant: false,
+                world, state.Player, prototypeRng, merchant: false,
                 nativeRunRng: nativeRunRng);
             world = draw.World;
             relicId = draw.Id;
@@ -4535,7 +4544,7 @@ public sealed partial class PrototypeGameEngine
         else
         {
             relicId = PickUnownedEventRelic(
-                state.Player, state.Stochastic.PrototypeRngMutable, "rest:shovel");
+                state.Player, prototypeRng, "rest:shovel");
         }
 
         if (relicId is null)
@@ -4544,10 +4553,14 @@ public sealed partial class PrototypeGameEngine
                 "No source-eligible relic remains for Shovel to dig up.");
         }
 
+        var stochastic = RunStochasticStateV111.WithPrototypeRng(
+            state.Stochastic, prototypeRng);
+        if (nativeRunRng is not null)
+            stochastic = RunStochasticStateV111.WithNativeRunRng(
+                stochastic, nativeRunRng);
         return state with
         {
-            Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRngMutable),
+            Stochastic = stochastic,
             World = world with
             {
                 Reward = new RewardState(
