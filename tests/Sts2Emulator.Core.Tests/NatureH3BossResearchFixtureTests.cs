@@ -39,6 +39,32 @@ public sealed class NatureH3BossResearchFixtureTests
     }
 
     [Fact]
+    public void BossRewardShuffleIsEngineOwnedOnlyAfterCombatWin()
+    {
+        var streams = PrototypeRng.CreateBundle("h3-boss-postcombat-reward");
+        var items = new List<int> { 1, 2, 3, 4 };
+        var site = StochasticSiteRegistryV111.RewardBossRelicOfferShuffleSiteId;
+        using (ControlledChanceGuardV111.Enter())
+        {
+            Assert.Throws<NotSupportedException>(() =>
+                LegacyFisherYatesV111.ShuffleInPlace(
+                    items, streams, "reward", site, "boss:reward"));
+            using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
+            {
+                _ = LegacyFisherYatesV111.ShuffleInPlace(
+                    items, streams, "reward", site, "boss:reward");
+                Assert.Equal(new[] { 1, 2, 3, 4 },
+                    items.Order().ToArray());
+                Assert.Throws<NotSupportedException>(() =>
+                    LegacyFisherYatesV111.ShuffleInPlace(
+                        items, streams, "reward",
+                        StochasticSiteRegistryV111.RewardLavaRockRelicOfferShuffleSiteId,
+                        "unrelated:reward"));
+            }
+        }
+    }
+
+    [Fact]
     public void BossResearchPresetIsDistinctFromStarterWithoutNativeRngClaims()
     {
         var starter = PrototypeContent.StartingDeck
