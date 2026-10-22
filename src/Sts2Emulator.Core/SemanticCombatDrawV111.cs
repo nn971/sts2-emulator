@@ -659,14 +659,9 @@ public static class SemanticCombatDrawEngineV111
         var sourceCombat = source.World?.Combat;
         if (source.Phase != RunPhase.Combat ||
             sourceCombat is null ||
-            sourceCombat.PendingChoice is not null ||
-            sourceCombat.PendingKnowledgeDemonChoice is not null ||
-            sourceCombat.AutomaticPipelineContinuation is not { } cursor ||
-            !cursor.Mechanics.IsAtStep(
-                PrototypeAutomaticStepKind.DrawPlayerHand) ||
-            cursor.Stochastic.ControlledDrawRemaining is not null ||
-            cursor.Stochastic.ControlledDrawCostRemaining is not null ||
-            cursor.Stochastic.ControlledSemanticDrawRemaining is not null)
+            PrototypeGameEngine
+                .ClassifyAutomaticPipelineResumeBoundary(source) !=
+            PrototypeAutomaticPipelineResumeBoundaryKindV111.DrawPlayerHand)
             throw new InvalidOperationException(
                 "Semantic automatic hand draw needs a clean DrawPlayerHand checkpoint.");
         try

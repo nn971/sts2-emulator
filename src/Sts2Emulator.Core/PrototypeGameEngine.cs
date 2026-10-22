@@ -188,6 +188,9 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             combat.Stochastic.SemanticDeck?.Pending is not null)
             return PrototypeAutomaticPipelineResumeBoundaryKindV111
                 .SuspendedPipeline;
+        if (!cursor.IsReadyForAutomaticPipelineResume(combat))
+            return PrototypeAutomaticPipelineResumeBoundaryKindV111
+                .SuspendedPipeline;
         if (cursor.Mechanics.IsAtStep(
                 PrototypeAutomaticStepKind.AdvanceTurn))
             return PrototypeAutomaticPipelineResumeBoundaryKindV111

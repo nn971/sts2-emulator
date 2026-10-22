@@ -27,16 +27,9 @@ public sealed partial class PrototypeGameEngine
                 "Semantic hand draw requires controlled chance guard.");
         var combat = RequireWorld(run).Combat ??
             throw new InvalidOperationException("Missing automatic hand-draw combat.");
-        var cursor = combat.AutomaticPipelineContinuation;
         if (combat.Stochastic.SemanticDeck is null ||
-            combat.PendingChoice is not null ||
-            combat.PendingKnowledgeDemonChoice is not null ||
-            cursor?.Mechanics.IsAtStep(
-                PrototypeAutomaticStepKind.DrawPlayerHand) != true ||
-            cursor.Stochastic.ControlledSemanticDrawRemaining is not null ||
-            cursor.Stochastic.ControlledSemanticBeforeHandDrawPending ||
-            cursor.Stochastic.ControlledDrawRemaining is not null ||
-            cursor.Stochastic.ControlledDrawCostRemaining is not null)
+            ClassifyAutomaticPipelineResumeBoundary(run) !=
+            PrototypeAutomaticPipelineResumeBoundaryKindV111.DrawPlayerHand)
             throw new InvalidOperationException(
                 "Expected an existing DrawPlayerHand pipeline checkpoint.");
         var (result, requested, remaining) =
