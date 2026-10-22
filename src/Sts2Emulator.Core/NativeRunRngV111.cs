@@ -264,10 +264,12 @@ public static class NativeRunRngV111
         }
         var source = live?.RunStreams ?? afterRunStreams;
         ValidateBundle(source);
-        return after with
+        var updated = after with
         {
             Stochastic = RunStochasticStateV111.WithNativeRunRng(
                 after.Stochastic, source.Fork())
         };
+        Validate(updated);
+        return updated;
     }
 }
