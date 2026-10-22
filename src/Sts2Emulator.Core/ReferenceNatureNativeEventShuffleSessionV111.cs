@@ -154,9 +154,9 @@ internal static class NativeEventShufflePlanBuilderV111
                 !fishingRodVictoryAction &&
                 !improvementVictoryAction &&
                 !paelsToothVictoryAction ||
-            activeEvent?.ControlledChoice is not null ||
+            activeEvent?.Stochastic.ControlledChoice is not null ||
             activeEvent?.NativeEventPotionSlot is not null ||
-            origin.ControlledEventRewardChoice is not null)
+            origin.Stochastic.ControlledEventRewardChoice is not null)
             throw new InvalidOperationException(
                 "Native shuffle Nature choices require an active event, an admitted combat-victory hook, or Fake Merchant entry.");
         var evt = activeEvent ?? new EventState(
@@ -276,7 +276,8 @@ internal static class NativeEventShufflePlanBuilderV111
             candidateCount = firstRequest.SupportCount;
             ownerId = firstRequest.OwnerId;
             nativeRngEventId = string.Empty;
-            var nativeStreams = origin.World?.Combat?.NativeRng?.RunStreams
+            var nativeStreams = origin.World?.Combat?.Stochastic.NativeRng
+                ?.RunStreams
                 ?? origin.Stochastic.NativeRunRng;
             if (nativeStreams is null ||
                 !nativeStreams.TryGetStream("run.niche", out var niche))
@@ -1012,7 +1013,8 @@ internal static class NativeEventShufflePlanBuilderV111
         ArgumentNullException.ThrowIfNull(origin);
         ArgumentNullException.ThrowIfNull(action);
         ArgumentNullException.ThrowIfNull(scriptedPrefix);
-        var beforeStreams = origin.World?.Combat?.NativeRng?.RunStreams
+        var beforeStreams = origin.World?.Combat?.Stochastic.NativeRng
+            ?.RunStreams
             ?? origin.Stochastic.NativeRunRng;
         if (beforeStreams is null ||
             !beforeStreams.TryGetStream("run.niche", out var beforeNiche))
@@ -2317,8 +2319,8 @@ public static partial class ChanceLawEngineV111
             evt.NativeDishId != evt.NativeLastDishId ||
             evt.NativeDishRollPending || evt.NativeEventPotionSlot is not null ||
             evt.Stochastic.ProviderMode is not (null or "scripted-v111") ||
-            evt.ControlledChoice is not null ||
-            origin.ControlledEventRewardChoice is not null)
+            evt.Stochastic.ControlledChoice is not null ||
+            origin.Stochastic.ControlledEventRewardChoice is not null)
             throw new InvalidOperationException(
                 "Endless Conveyor upgrade law requires a configured page-zero action boundary.");
         PrototypeStateInvariants.Validate(origin);
@@ -2413,8 +2415,8 @@ public static partial class ChanceLawEngineV111
             evt.NativeDishId != evt.NativeLastDishId ||
             evt.NativeDishRollPending || evt.NativeEventPotionSlot is not null ||
             evt.Stochastic.ProviderMode is not (null or "scripted-v111") ||
-            evt.ControlledChoice is not null ||
-            origin.ControlledEventRewardChoice is not null ||
+            evt.Stochastic.ControlledChoice is not null ||
+            origin.Stochastic.ControlledEventRewardChoice is not null ||
             origin.Player.Gold < 40)
             throw new InvalidOperationException(
                 "Endless Conveyor Colorless law requires the configured Fried Eel Grab boundary.");
@@ -2501,8 +2503,8 @@ public static partial class ChanceLawEngineV111
             eventState.EventId != PrototypeNativeEndlessConveyor.EventId ||
             eventState.Stochastic.ProviderMode is not (null or "scripted-v111") ||
             eventState.NativeEventPotionSlot is not null ||
-            eventState.ControlledChoice is not null ||
-            origin.ControlledEventRewardChoice is not null)
+            eventState.Stochastic.ControlledChoice is not null ||
+            origin.Stochastic.ControlledEventRewardChoice is not null)
             throw new InvalidOperationException(
                 "Endless Conveyor continuation law requires a pending configured event action.");
         PrototypeStateInvariants.Validate(origin);

@@ -21,10 +21,10 @@ internal static class TrashHeapChoicePlanBuilderV111
             world.Event is not { } evt ||
             evt.EventId != PrototypeNativeUnderdocksTrashHeap.EventId ||
             evt.NativePageIndex != 0 || evt.ChosenChoiceId is not null ||
-            evt.ControlledChoice is not null ||
+            evt.Stochastic.ControlledChoice is not null ||
             evt.NativeEventPotionSlot is not null ||
             evt.Stochastic.ProviderMode is not null ||
-            origin.ControlledEventRewardChoice is not null)
+            origin.Stochastic.ControlledEventRewardChoice is not null)
             throw new InvalidOperationException(
                 "Trash Heap Nature choices require an unchosen supported Native-regional event.");
 

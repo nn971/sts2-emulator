@@ -516,7 +516,7 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
             origin.World is not { Event: null } world ||
             string.IsNullOrWhiteSpace(origin.RunSeed) ||
             origin.Stochastic.NativeRunRng is null ||
-            origin.ControlledRunActionChoice is not null ||
+            origin.Stochastic.ControlledRunActionChoice is not null ||
             !PrototypeGameEngine.UsesNativeRegionalSystems(world))
             throw new InvalidOperationException(
                 "Native event gold session requires a configured pre-entry Event-node state.");

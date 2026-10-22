@@ -811,7 +811,7 @@ public sealed record ReferenceNatureMerchantSessionV111(
         RunState source, GameAction action)
     {
         if (source.World is not { } world ||
-            source.ControlledRunActionChoice is not null ||
+            source.Stochastic.ControlledRunActionChoice is not null ||
             !PrototypeGameEngine.UsesNativeRegionalSystems(world))
             throw new InvalidOperationException(
                 "ReferenceNature merchant session requires a Native-regional Shop state.");

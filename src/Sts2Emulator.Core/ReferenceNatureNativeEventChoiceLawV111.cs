@@ -25,10 +25,10 @@ internal static class NativeEventInfestedAutomatonCardPickPlanBuilderV111
             world is not { Act: 2, Event: { } evt } ||
             evt.EventId != PrototypeNativeHiveEvents.InfestedAutomatonId ||
             evt.NativePageIndex != 0 || evt.ChosenChoiceId is not null ||
-            evt.ControlledChoice is not null ||
+            evt.Stochastic.ControlledChoice is not null ||
             evt.NativeEventPotionSlot is not null ||
             evt.Stochastic.ProviderMode is not null ||
-            origin.ControlledEventRewardChoice is not null ||
+            origin.Stochastic.ControlledEventRewardChoice is not null ||
             actionId is not ("study" or "touch_core"))
             throw new InvalidOperationException(
                 "Infested Automaton card-pick laws require a supported pending study or touch_core choice at ordinal 0.");
@@ -129,10 +129,10 @@ internal static class NativeEventReflectionsChoicePlanBuilderV111
             world is not { Act: 3, Event: { } evt } ||
             evt.EventId != PrototypeNativeGloryEvents.ReflectionsId ||
             evt.NativePageIndex != 0 || evt.ChosenChoiceId is not null ||
-            evt.ControlledChoice is not null ||
+            evt.Stochastic.ControlledChoice is not null ||
             evt.NativeEventPotionSlot is not null ||
             evt.Stochastic.ProviderMode is not null ||
-            origin.ControlledEventRewardChoice is not null ||
+            origin.Stochastic.ControlledEventRewardChoice is not null ||
             actionId is not (null or "touch_mirror"))
             throw new InvalidOperationException(
                 "Reflections card-pick laws require a supported pending touch_mirror action.");
@@ -618,9 +618,9 @@ public static partial class ChanceLawEngineV111
             origin.World is not { Act: 2, Event: { } evt } world ||
             evt.EventId != PrototypeNativeStoneOfAllTime.EventId ||
             evt.NativePageIndex != 0 || evt.ChosenChoiceId is not null ||
-            evt.ControlledChoice is not null ||
+            evt.Stochastic.ControlledChoice is not null ||
             evt.Stochastic.ProviderMode is not (null or "scripted-v111") ||
-            origin.ControlledEventRewardChoice is not null)
+            origin.Stochastic.ControlledEventRewardChoice is not null)
             throw new InvalidOperationException(
                 "Stone of All Time ticket laws require its active event-choice boundary.");
 

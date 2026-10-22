@@ -81,7 +81,7 @@ internal static class NativePunchOffFightPlanBuilderV111
             evt.Stochastic.ProviderMode is not null ||
             world.ActiveRoom != PrototypeRoomType.Event ||
             world.Reward is not null ||
-            origin.ControlledEventRewardChoice is not null ||
+            origin.Stochastic.ControlledEventRewardChoice is not null ||
             !PrototypeGameEngine.UsesNativeRegionalSystems(world))
             throw new InvalidOperationException(
                 "Punch Off fight laws require its live configured Fight page.");

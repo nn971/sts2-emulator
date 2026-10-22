@@ -547,8 +547,8 @@ public sealed record ReferenceNatureNativeShovelSessionV111(
         if (source.Phase != RunPhase.Rest || world is null ||
             source.Stochastic.NativeRunRng is null ||
             !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
-            source.ControlledRunActionChoice is not null ||
-            source.ControlledEventRewardChoice is not null ||
+            source.Stochastic.ControlledRunActionChoice is not null ||
+            source.Stochastic.ControlledEventRewardChoice is not null ||
             !PrototypeNativeRestSiteRelics.CanDig(source.Player) ||
             action.Kind != PrototypeNativeRestSiteActionsV111.Dig ||
             !new PrototypeGameEngine().GetLegalActions(source).Any(candidate =>

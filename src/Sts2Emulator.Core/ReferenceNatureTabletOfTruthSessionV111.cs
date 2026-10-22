@@ -20,10 +20,11 @@ internal static class TabletOfTruthChoicePlanBuilderV111
             world.Event is not { } evt ||
             evt.EventId != PrototypeNativeTabletOfTruth.EventId ||
             evt.NativePageIndex is < 0 or > 3 ||
-            evt.ChosenChoiceId is not null || evt.ControlledChoice is not null ||
+            evt.ChosenChoiceId is not null ||
+            evt.Stochastic.ControlledChoice is not null ||
             evt.NativeEventPotionSlot is not null ||
             evt.Stochastic.ProviderMode is not (null or "scripted-v111") ||
-            origin.ControlledEventRewardChoice is not null)
+            origin.Stochastic.ControlledEventRewardChoice is not null)
             throw new InvalidOperationException(
                 "Tablet of Truth Nature choices require a pending supported page draw.");
 

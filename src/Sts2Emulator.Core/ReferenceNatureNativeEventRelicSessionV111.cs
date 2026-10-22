@@ -974,7 +974,7 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
             neowRelicPickup || battlewornRelicVictory ||
             paelWingRelicReward || combatRewardRelicAcquisition;
         if (world is null || source.Stochastic.NativeRunRng is null ||
-            source.ControlledRunActionChoice is not null ||
+            source.Stochastic.ControlledRunActionChoice is not null ||
             !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
             !supportedBoundary ||
             !new PrototypeGameEngine().GetLegalActions(source).Any(candidate =>

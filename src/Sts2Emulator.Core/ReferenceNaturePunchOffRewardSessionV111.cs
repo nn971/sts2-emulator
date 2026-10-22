@@ -35,7 +35,7 @@ internal static class NativePunchOffRewardPlanBuilderV111
             evt.Stochastic.ProviderMode is not null ||
             world.ActiveRoom != PrototypeRoomType.Combat ||
             world.Reward is not null || combat.Enemies.Any(enemy => enemy.Hp <= 0) ||
-            origin.ControlledEventRewardChoice is not null ||
+            origin.Stochastic.ControlledEventRewardChoice is not null ||
             !PrototypeGameEngine.UsesNativeRegionalSystems(world))
             throw new InvalidOperationException(
                 "Punch Off reward laws require its live configured fight before an immediate victory.");

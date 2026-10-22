@@ -680,7 +680,7 @@ public sealed record ReferenceNatureCombatRewardSessionV111(
         if (source.Phase != RunPhase.Combat || source.World is not { } world ||
             (source.Stochastic.NativeRunRng is not null &&
                 !PrototypeGameEngine.UsesNativeRegionalSystems(world)) ||
-            source.ControlledRunActionChoice is not null ||
+            source.Stochastic.ControlledRunActionChoice is not null ||
             world.ActiveRoom is not (PrototypeRoomType.Combat or
                 PrototypeRoomType.Elite or PrototypeRoomType.Boss))
             throw new InvalidOperationException(

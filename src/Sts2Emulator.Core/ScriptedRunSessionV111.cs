@@ -149,9 +149,9 @@ public sealed record ScriptedRunSessionV111(
     [JsonIgnore]
     public IReadOnlyList<GameAction> LegalActions =>
         ActiveAction is null && !Complete &&
-            Run.ControlledEventRewardChoice is null &&
-            Run.ControlledRunActionChoice is null &&
-            Run.World?.Event?.ControlledChoice is null
+            Run.Stochastic.ControlledEventRewardChoice is null &&
+            Run.Stochastic.ControlledRunActionChoice is null &&
+            Run.World?.Event?.Stochastic.ControlledChoice is null
             ? new PrototypeGameEngine().GetLegalActions(Run)
             : Array.Empty<GameAction>();
 
