@@ -675,17 +675,17 @@ public sealed record SimulationProviderReplayCaptureV111(
         using var validationJournal = RandomBoundaryJournalV111.Begin();
         var validated = SemanticPilotCombatEngineV111.Restore(
             SemanticPilotCombatEngineV111.Save(session));
-        var entry = validated.SeededEntry;
+        var entry = validated.Stochastic.SeededEntry;
         if (entry is not { NativePolicyBaseline: true } ||
             !validated.UsesNativePolicyBaseline)
             throw new InvalidOperationException(
                 "Provider replay capture requires a seeded Native policy baseline.");
 
-        var finalAudit = validated.NativePolicyAudit ??
+        var finalAudit = validated.Stochastic.NativePolicyAudit ??
             throw new InvalidDataException(
                 "Native policy session is missing its provider trace.");
         var replay = SemanticPilotCombatEngineV111.BeginSeeded(entry);
-        var initialAudit = replay.NativePolicyAudit ??
+        var initialAudit = replay.Stochastic.NativePolicyAudit ??
             throw new InvalidDataException(
                 "Native policy entry replay is missing its provider trace.");
         var initialTrace = initialAudit.ProviderTrace;

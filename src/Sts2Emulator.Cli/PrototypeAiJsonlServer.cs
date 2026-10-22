@@ -761,7 +761,7 @@ internal static class PrototypeAiJsonlServer
                 natureSampleCount = session.NatureState.SampleCount,
                 probabilityStatus = ChanceLawV111.UnverifiedStatus,
                 sourceOpeningFingerprint = combat.SourceOpeningFingerprint,
-                sourceRouteProvider = combat.SourceRouteAudit?.ProviderId,
+                sourceRouteProvider = combat.Stochastic.SourceRouteAudit?.ProviderId,
                 otherChanceProvider = combat.OtherChance?.ProviderId ??
                     "engine-owned-deterministic-unverified-v1",
                 otherChanceDecisionCount = combat.OtherChance?.Decisions.Length ?? 0,
@@ -2392,18 +2392,18 @@ internal static class PrototypeAiJsonlServer
                 state.Run.Player.ActiveRelics.Any(relic =>
                     relic.RelicId == "proto.relic.jeweled_mask"))
                 sites.Add("random_pile_card");
-            if (state.SeededEntry?.FixtureRandomTargetCardId is not null)
+            if (state.Stochastic.SeededEntry?.FixtureRandomTargetCardId is not null)
                 sites.Add("random_target");
-            if (state.SeededEntry?.FixtureGenerationPotionId is not null)
+            if (state.Stochastic.SeededEntry?.FixtureGenerationPotionId is not null)
                 sites.Add("generated_card");
-            if (state.SeededEntry?.FixturePotionGenerationCardId is not null ||
+            if (state.Stochastic.SeededEntry?.FixturePotionGenerationCardId is not null ||
                 state.PotionGenerationPending is not null)
                 sites.Add("random_potion_generation");
             if (state.CardTransformPending is not null)
                 sites.Add("random_card_transform");
-            if (state.SeededEntry?.FixtureNatureDrawCosts == true)
+            if (state.Stochastic.SeededEntry?.FixtureNatureDrawCosts == true)
                 sites.Add("drawn_card_cost");
-            if (state.SeededEntry?.FixturePoolGenerationPotionId is not null ||
+            if (state.Stochastic.SeededEntry?.FixturePoolGenerationPotionId is not null ||
                 state.PoolShufflePending?.SiteId ==
                     "combat.generation.full_pool_shuffle.swap_index")
                 sites.Add("generated_card_pool_shuffle");
@@ -2414,30 +2414,31 @@ internal static class PrototypeAiJsonlServer
                 sites.Add("hand_return_shuffle");
             if (state.EnemyActionPending is not null)
                 sites.Add("enemy_action_chance");
-            if (state.SeededEntry?.FixtureSelectionCardId is
+            if (state.Stochastic.SeededEntry?.FixtureSelectionCardId is
                     "proto.colorless.beat_down" or
                     "proto.colorless.catastrophe" ||
                 state.CardShortlistPending?.SiteId ==
                     "combat.autoplay.random_card.select")
                 sites.Add("random_auto_play_card");
-            if (state.SeededEntry?.FixtureSelectionCardId ==
+            if (state.Stochastic.SeededEntry?.FixtureSelectionCardId ==
                     "proto.colorless.hidden_gem" ||
                 state.CardShortlistPending?.SiteId ==
                     "combat.draw_pile.random_replay_card.select")
                 sites.Add("random_replay_card");
-            if (state.SeededEntry?.FixtureSelectionCardId ==
+            if (state.Stochastic.SeededEntry?.FixtureSelectionCardId ==
                     "proto.colorless.anointed" ||
                 state.PoolShufflePending?.SiteId ==
                     "combat.draw_pile.random_rare_to_hand.shuffle_swap_index")
                 sites.Add("random_rare_to_hand_shuffle");
-            if (state.SeededEntry?.FixtureGeneratedDrawInsertionCardId is not null)
+            if (state.Stochastic.SeededEntry?
+                    .FixtureGeneratedDrawInsertionCardId is not null)
                 sites.Add("generated_draw_pile_insertion");
             if (state.DrawInsertionPending?.SiteId ==
                     PrototypeControlledDrawInsertionV111
                         .PersonalHiveDazedSiteId &&
                 !sites.Contains("generated_draw_pile_insertion"))
                 sites.Add("generated_draw_pile_insertion");
-            if (state.SeededEntry?.FixtureRandomFreeAttackDrawInsertion == true)
+            if (state.Stochastic.SeededEntry?.FixtureRandomFreeAttackDrawInsertion == true)
             {
                 sites.Add("random_draw_attack_card_model");
                 sites.Add("generated_draw_pile_insertion");
@@ -2449,11 +2450,12 @@ internal static class PrototypeAiJsonlServer
                          .AfterShuffleGeneratedCardId is not null)) &&
                 !sites.Contains("generated_draw_pile_insertion"))
                 sites.Add("generated_draw_pile_insertion");
-            if (state.SeededEntry?.FixtureRandomizeHandCostsMaxExclusive is not null)
+            if (state.Stochastic.SeededEntry?
+                    .FixtureRandomizeHandCostsMaxExclusive is not null)
                 sites.Add("random_hand_card_energy_cost");
-            if (state.SeededEntry?.FixtureSetRandomHandCardCost is not null)
+            if (state.Stochastic.SeededEntry?.FixtureSetRandomHandCardCost is not null)
                 sites.Add("random_hand_card_select");
-            if (state.SeededEntry?.FixtureSelectionCardId ==
+            if (state.Stochastic.SeededEntry?.FixtureSelectionCardId ==
                 "proto.colorless.seeker_strike")
                 sites.Add("random_pile_selection_shortlist");
             if (state.CardShortlistPending is not null &&
@@ -2487,21 +2489,23 @@ internal static class PrototypeAiJsonlServer
         string SemanticControllerMode(SemanticPilotCombatV111 state) =>
             state.UsesNativePolicyBaseline
                 ? "engine-owned-native-v111-policy-baseline"
-                : state.SeededEntry?.FixtureRandomTargetCardId is not null ||
-                  state.SeededEntry?.FixtureGenerationPotionId is not null ||
-                  state.SeededEntry?.FixturePotionGenerationCardId is not null ||
-                  state.SeededEntry?.FixtureSelectionCardId is not null ||
-                  state.SeededEntry?.FixtureNatureDrawCosts == true ||
-                  state.SeededEntry?.FixturePoolGenerationPotionId is not null ||
-                  state.SeededEntry?.FixtureTopAutoplayPotionId is not null ||
-                  state.SeededEntry?.FixtureGeneratedDrawInsertionCardId is not null ||
-                  state.SeededEntry?.FixtureRandomFreeAttackDrawInsertion == true ||
+                : state.Stochastic.SeededEntry?.FixtureRandomTargetCardId is not null ||
+                  state.Stochastic.SeededEntry?.FixtureGenerationPotionId is not null ||
+                  state.Stochastic.SeededEntry?.FixturePotionGenerationCardId is not null ||
+                  state.Stochastic.SeededEntry?.FixtureSelectionCardId is not null ||
+                  state.Stochastic.SeededEntry?.FixtureNatureDrawCosts == true ||
+                  state.Stochastic.SeededEntry?.FixturePoolGenerationPotionId is not null ||
+                  state.Stochastic.SeededEntry?.FixtureTopAutoplayPotionId is not null ||
+                  state.Stochastic.SeededEntry?
+                    .FixtureGeneratedDrawInsertionCardId is not null ||
+                  state.Stochastic.SeededEntry?.FixtureRandomFreeAttackDrawInsertion == true ||
                   state.DeckRevealPending is not null ||
                   state.DrawInsertionPending?.SiteId ==
                     PrototypeControlledDrawInsertionV111
                         .PersonalHiveDazedSiteId ||
-                  state.SeededEntry?.FixtureRandomizeHandCostsMaxExclusive is not null ||
-                  state.SeededEntry?.FixtureSetRandomHandCardCost is not null ||
+                  state.Stochastic.SeededEntry?
+                    .FixtureRandomizeHandCostsMaxExclusive is not null ||
+                  state.Stochastic.SeededEntry?.FixtureSetRandomHandCardCost is not null ||
                   state.EnemyActionPending is not null ||
                   state.RandomPileCardPending is not null ||
                   state.Run.Player.ActiveRelics.Any(relic =>
@@ -2527,11 +2531,12 @@ internal static class PrototypeAiJsonlServer
                 semanticHandle = handle, parent,
                 fingerprint = state.Fingerprint,
                 sourceOpeningFingerprint = state.SourceOpeningFingerprint,
-                sourceRouteProvider = state.SourceRouteAudit?.ProviderId,
-                sourceRouteActionCount = state.SourceRouteAudit?.ActionIds.Length ?? 0,
-                sourceRouteEncounterId = state.SourceRouteAudit?.EncounterId,
-                sourceRouteNativeEntry = state.SourceRouteAudit?.NativeEncounterEntry,
-                sourceRouteProbabilityStatus = state.SourceRouteAudit?.ProbabilityStatus,
+                sourceRouteProvider = state.Stochastic.SourceRouteAudit?.ProviderId,
+                sourceRouteActionCount =
+                    state.Stochastic.SourceRouteAudit?.ActionIds.Length ?? 0,
+                sourceRouteEncounterId = state.Stochastic.SourceRouteAudit?.EncounterId,
+                sourceRouteNativeEntry = state.Stochastic.SourceRouteAudit?.NativeEncounterEntry,
+                sourceRouteProbabilityStatus = state.Stochastic.SourceRouteAudit?.ProbabilityStatus,
                 boundary = state.CombatTerminal ? "terminal" :
                     state.AtPlayerBoundary ? "player" :
                     state.AtPlayerChoiceBoundary ? "player_choice" : "nature",
@@ -2544,8 +2549,9 @@ internal static class PrototypeAiJsonlServer
                 nativePolicyProvider = state.UsesNativePolicyBaseline
                     ? SemanticNativePolicyAuditV111.NativeProviderId
                     : null,
-                nativePolicyDecisionCount = state.NativePolicyAudit?.Decisions.Length ?? 0,
-                nativePolicyShuffleCount = state.NativePolicyAudit?.Decisions.Count(
+                nativePolicyDecisionCount =
+                    state.Stochastic.NativePolicyAudit?.Decisions.Length ?? 0,
+                nativePolicyShuffleCount = state.Stochastic.NativePolicyAudit?.Decisions.Count(
                     decision => decision.Request.SiteId ==
                         NativeFisherYatesV111.SiteId) ?? 0,
                 otherChanceProvider = state.UsesNativePolicyBaseline
@@ -2555,9 +2561,9 @@ internal static class PrototypeAiJsonlServer
                 otherChanceDecisionCount = state.OtherChance?.Decisions.Length ?? 0,
                 rewardProvider = state.RewardAudit?.ProviderId,
                 rewardDrawCount = state.RewardAudit?.Calls,
-                sourceOpeningProvider = state.SeededEntry is null
+                sourceOpeningProvider = state.Stochastic.SeededEntry is null
                     ? "precommitted-fixture-v1"
-                    : state.SeededEntry.ReplayOpeningDrawHooks
+                    : state.Stochastic.SeededEntry.ReplayOpeningDrawHooks
                         ? "engine-owned-seeded-source-shaped-draw-hooks-unverified-v1"
                         : "engine-owned-seeded-source-shaped-unverified-v1",
                 probabilityStatus = "UNVERIFIED"

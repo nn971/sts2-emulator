@@ -553,14 +553,14 @@ public sealed record SemanticPilotCombatV111(
            KnowledgeDemonChoicePending is not null ||
            PendingEndTurn?.NestedCardSelectionPending is not null)));
     [JsonIgnore] public bool UsesNativePolicyBaseline =>
-        SeededEntry?.NativePolicyBaseline ?? false;
+        Stochastic.SeededEntry?.NativePolicyBaseline ?? false;
     [JsonIgnore] public string? SourceOpeningFingerprint =>
-        SeededEntry is { } entry
+        Stochastic.SeededEntry is { } entry
             ? CanonicalJson.Sha256(new
             {
                 Entry = entry with { NativePolicyBaseline = false },
                 OpeningSource,
-                SourceRouteAudit
+                Stochastic.SourceRouteAudit
             })
             : null;
     [JsonIgnore] public string? CombatOutcome =>
@@ -644,7 +644,7 @@ public sealed record SemanticPilotCombatV111(
         if (this.PendingInitialIntents is { } initialIntents)
         {
             if (initialIntents.Complete || this.PendingEndTurn is not null ||
-                this.SeededEntry?.SourceRouteEntry != true ||
+                this.Stochastic.SeededEntry?.SourceRouteEntry != true ||
                 this.Run.World?.Combat is not { } entryCombat ||
                 CanonicalJson.Sha256(entryCombat with
                 {
@@ -912,11 +912,11 @@ public sealed record SemanticPilotCombatV111(
             var fixtureMatches = automaticPipelinePoolShuffle ||
                 handReturnShuffle || recycleShuffle ||
                 (randomRareToHandShuffle
-                    ? this.SeededEntry?.FixtureSelectionCardId ==
+                    ? this.Stochastic.SeededEntry?.FixtureSelectionCardId ==
                         "proto.colorless.anointed"
                     : randomShortlistShuffle
-                        ? this.SeededEntry?.FixtureSelectionCardId is not null
-                        : this.SeededEntry?.FixturePoolGenerationPotionId ==
+                        ? this.Stochastic.SeededEntry?.FixtureSelectionCardId is not null
+                        : this.Stochastic.SeededEntry?.FixturePoolGenerationPotionId ==
                             "proto.potion.colorless");
             if ((!fixtureMatches && !automaticEndTurnShuffle) ||
                 (this.PendingEndTurn is not null &&
@@ -1026,7 +1026,7 @@ public sealed record SemanticPilotCombatV111(
             throw new InvalidDataException(
                 "Source random hand-cost continuation has no semantic event.");
         this.Stochastic.Validate();
-        if (this.SeededEntry is { } entry)
+        if (this.Stochastic.SeededEntry is { } entry)
         {
             var routeCostProviderExpected = entry.SourceRouteEntry &&
                 !entry.NativePolicyBaseline;
@@ -1044,9 +1044,9 @@ public sealed record SemanticPilotCombatV111(
                 throw new InvalidDataException(
                     "Seeded Nature entry provenance disagrees with its opening.");
         }
-        if (this.SeededEntry is { SourceRouteEntry: true } routeEntry)
+        if (this.Stochastic.SeededEntry is { SourceRouteEntry: true } routeEntry)
         {
-            var route = this.SourceRouteAudit ?? throw new InvalidDataException(
+            var route = this.Stochastic.SourceRouteAudit ?? throw new InvalidDataException(
                 "Source-route semantic session is missing its route audit.");
             var world = this.Run.World ?? throw new InvalidDataException(
                 "Source-route semantic session is missing its run world.");
@@ -1064,7 +1064,7 @@ public sealed record SemanticPilotCombatV111(
                 throw new InvalidDataException(
                     "Source-route audit disagrees with the seeded run entry.");
         }
-        else if (this.SourceRouteAudit is not null)
+        else if (this.Stochastic.SourceRouteAudit is not null)
             throw new InvalidDataException(
                 "Fixture semantic session cannot retain a source-route audit.");
         if (this.UsesNativePolicyBaseline)
@@ -1073,7 +1073,7 @@ public sealed record SemanticPilotCombatV111(
                 this.PendingInitialIntents is not null)
                 throw new InvalidDataException(
                     "Native policy baseline cannot retain Nature-only continuations.");
-            var nativeAudit = this.NativePolicyAudit ??
+            var nativeAudit = this.Stochastic.NativePolicyAudit ??
                 throw new InvalidDataException(
                     "Native policy baseline is missing provider provenance.");
             if (this.AtPlayerBoundary)
@@ -1083,7 +1083,7 @@ public sealed record SemanticPilotCombatV111(
         }
         else if (this.AtPlayerBoundary)
             SemanticPlayerActionEngineV111.ValidateBoundary(this.Run);
-        else if (this.NativePolicyAudit is not null)
+        else if (this.Stochastic.NativePolicyAudit is not null)
             throw new InvalidDataException(
                 "Nature-controlled sessions cannot retain native policy decisions.");
         if (this.CombatTerminal && this.PendingEndTurn is not null)
@@ -2266,12 +2266,12 @@ public static class SemanticPilotCombatEngineV111
             var semanticRandomReplayCard =
                 card?.CardId == "proto.colorless.hidden_gem";
             var semanticPotionGenerationCard = card?.CardId ==
-                current.SeededEntry?.FixturePotionGenerationCardId &&
+                current.Stochastic.SeededEntry?.FixturePotionGenerationCardId &&
                 card?.CardId == "proto.colorless.alchemize";
             var semanticRandomRareToHandCard =
                 card?.CardId == "proto.colorless.anointed";
             var fixtureSelectionCard = card?.CardId ==
-                    current.SeededEntry?.FixtureSelectionCardId &&
+                    current.Stochastic.SeededEntry?.FixtureSelectionCardId &&
                 card?.CardId == "proto.colorless.seeker_strike";
             var supportedCardAction = card is not null &&
                 (SemanticPlayerActionEngineV111.SupportsCard(card.CardId) ||
@@ -2355,8 +2355,8 @@ public static class SemanticPilotCombatEngineV111
         {
             var payload = action.Payload.Deserialize<UsePotionPayload>() ??
                 throw new InvalidDataException("Missing potion action payload.");
-            var fixturePotion = current.SeededEntry?.FixtureGenerationPotionId;
-            var poolPotion = current.SeededEntry?.FixturePoolGenerationPotionId;
+            var fixturePotion = current.Stochastic.SeededEntry?.FixtureGenerationPotionId;
+            var poolPotion = current.Stochastic.SeededEntry?.FixturePoolGenerationPotionId;
             var validSlot = payload.Slot >= 0 &&
                 payload.Slot < source.Player.PotionSlots.Length;
             var isGenerationPotion = fixturePotion ==
@@ -2728,7 +2728,7 @@ public static class SemanticPilotCombatEngineV111
             result = environment.StepResolved(
                 current.Run.Fork(), resolvedAction).State;
 
-        var audit = current.NativePolicyAudit ??
+        var audit = current.Stochastic.NativePolicyAudit ??
             throw new InvalidDataException(
                 "Native policy baseline is missing provider provenance.");
         int offset = audit.Decisions.Length;
@@ -3410,7 +3410,7 @@ public static class SemanticPilotCombatEngineV111
         if (generation is null && !isDrawInsertionModelChoice) return null;
         if (isDrawInsertionModelChoice)
         {
-            if (current.SeededEntry?.FixtureRandomFreeAttackDrawInsertion != true &&
+            if (current.Stochastic.SeededEntry?.FixtureRandomFreeAttackDrawInsertion != true &&
                 combat?.AutomaticPipelineContinuation is null)
                 throw new InvalidDataException(
                     "Random draw-Attack model choice lacks a supported source boundary.");
@@ -3505,7 +3505,7 @@ public static class SemanticPilotCombatEngineV111
         long? targetCardInstanceId = null;
         string? targetCardModelId = null;
         if (current.PendingEndTurn?.CostPending is { } drawCostRequest &&
-            current.SeededEntry?.FixtureNatureDrawCosts == true)
+            current.Stochastic.SeededEntry?.FixtureNatureDrawCosts == true)
             request = drawCostRequest;
         else if (current.Run.World?.Combat?.PendingChoice?
                     .ControlledRandomCost is { } randomCost &&
@@ -3513,7 +3513,7 @@ public static class SemanticPilotCombatEngineV111
                     .RandomizeHandCardEnergyCostsUntilTurnEndOrPlayed)
         {
             SemanticRandomHandCostChoiceV111.ValidateBoundary(current.Run);
-            if (current.SeededEntry?.FixtureRandomizeHandCostsMaxExclusive is
+            if (current.Stochastic.SeededEntry?.FixtureRandomizeHandCostsMaxExclusive is
                     { } fixtureMaxExclusive &&
                 randomCost.Operation.Amount != fixtureMaxExclusive)
                 throw new InvalidDataException(
@@ -3568,7 +3568,7 @@ public static class SemanticPilotCombatEngineV111
                 .SetRandomHandCardEnergyCostUntilTurnEndOrPlayed)
             return null;
         SemanticRandomHandCostChoiceV111.ValidateBoundary(current.Run);
-        if ((current.SeededEntry?.FixtureSetRandomHandCardCost is
+        if ((current.Stochastic.SeededEntry?.FixtureSetRandomHandCardCost is
                 { } fixtureCost &&
              randomCost.Operation.Amount != fixtureCost) ||
             current.PendingEndTurn is not null ||
@@ -3627,11 +3627,11 @@ public static class SemanticPilotCombatEngineV111
                     combat, choice);
         var fixtureMatches = automaticPipelinePoolShuffle || handReturn ||
             recycle || (randomRareToHand
-            ? current.SeededEntry?.FixtureSelectionCardId ==
+            ? current.Stochastic.SeededEntry?.FixtureSelectionCardId ==
                 "proto.colorless.anointed"
             : randomShortlist
-                ? current.SeededEntry?.FixtureSelectionCardId is not null
-                : current.SeededEntry?.FixturePoolGenerationPotionId ==
+                ? current.Stochastic.SeededEntry?.FixtureSelectionCardId is not null
+                : current.Stochastic.SeededEntry?.FixturePoolGenerationPotionId ==
                     "proto.potion.colorless");
         if (!fixtureMatches ||
             (current.PendingEndTurn is not null && !mayhemRecycle) ||
@@ -3664,20 +3664,20 @@ public static class SemanticPilotCombatEngineV111
         var fixedFixtureMatches =
             insertion.Operation.Kind == PrototypeCombatEffectKind
                 .CreateGeneratedCardsAtRandomDrawPositions &&
-            current.SeededEntry?.FixtureGeneratedDrawInsertionCardId ==
+            current.Stochastic.SeededEntry?.FixtureGeneratedDrawInsertionCardId ==
                 insertion.Operation.CardId &&
-            current.SeededEntry?.FixtureRandomFreeAttackDrawInsertion != true;
+            current.Stochastic.SeededEntry?.FixtureRandomFreeAttackDrawInsertion != true;
         var randomFixtureMatches =
             insertion.Operation.Kind == PrototypeCombatEffectKind
                 .CreateRandomFreeAttacksInDrawPile &&
-            current.SeededEntry?.FixtureGeneratedDrawInsertionCardId is null &&
-            current.SeededEntry?.FixtureRandomFreeAttackDrawInsertion == true;
+            current.Stochastic.SeededEntry?.FixtureGeneratedDrawInsertionCardId is null &&
+            current.Stochastic.SeededEntry?.FixtureRandomFreeAttackDrawInsertion == true;
         var afterShuffleRelicMatches =
             insertion.AfterShuffleRelic is not null &&
             insertion.Operation.Kind == PrototypeCombatEffectKind
                 .CreateGeneratedCardsAtRandomDrawPositions &&
-            current.SeededEntry?.FixtureGeneratedDrawInsertionCardId is null &&
-            current.SeededEntry?.FixtureRandomFreeAttackDrawInsertion != true;
+            current.Stochastic.SeededEntry?.FixtureGeneratedDrawInsertionCardId is null &&
+            current.Stochastic.SeededEntry?.FixtureRandomFreeAttackDrawInsertion != true;
         var personalHiveInsertion =
             insertion.RequestSiteId ==
                 PrototypeControlledDrawInsertionV111.PersonalHiveDazedSiteId &&
@@ -3853,7 +3853,7 @@ public static class SemanticPilotCombatEngineV111
     private static SemanticPilotCombatV111 NormalizeNoncontrolledCosts(
         SemanticPilotCombatV111 current)
     {
-        if (current.SeededEntry?.FixtureNatureDrawCosts == true)
+        if (current.Stochastic.SeededEntry?.FixtureNatureDrawCosts == true)
             return current;
         while (current.PendingEndTurn is { CostPending: { } cost } endTurn)
         {
@@ -3933,7 +3933,7 @@ public static class SemanticPilotCombatEngineV111
         var saved = JsonSerializer.Deserialize<SemanticPilotCombatV111>(json)
             ?? throw new InvalidDataException("Null semantic playable snapshot.");
         Validate(saved);
-        var replay = saved.SeededEntry is { } entry
+        var replay = saved.Stochastic.SeededEntry is { } entry
             ? BeginSeeded(entry)
             : Begin(saved.OpeningSource);
         foreach (var transition in saved.History)
