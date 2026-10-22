@@ -34,11 +34,11 @@ Pinned game source: STS2 v0.111.0, `Flaaax/STS2-source` at
 - Synthetic combat generation uses the supported single-player Colorless
   subset with `CanBeGeneratedInCombat`, non-basic rarity, and no epoch gates.
   Native combat generation uses the source-ordered implemented solo pool,
-  including epoch-gated cards that pass combat-generation eligibility. A fully
-  unlocked profile admits all eligible epoch cards; a partial profile admits
-  only cards from its explicitly listed epochs. An explicit empty list means
-  no Colorless epochs are unlocked. Missing unlock data for a partial profile
-  fails closed.
+  including epoch-gated cards that pass combat-generation eligibility. With
+  no epoch override, a fully unlocked profile admits all eligible epoch cards.
+  Any explicit epoch list is authoritative, including on a fully unlocked
+  profile; an empty list means no Colorless epochs are unlocked. Missing
+  unlock data for a partial profile fails closed.
 - The synthetic adapter currently provides six SplitMix64 streams. Native
   Metamorphosis card-model draws now use typed `run.combat_card_generation`
   requests, and random insertion positions use `run.shuffle`; other existing
@@ -52,7 +52,8 @@ Pinned game source: STS2 v0.111.0, `Flaaax/STS2-source` at
 
 The run profile represents Colorless epoch unlocks as optional exact epoch
 IDs. Null means unknown for a partial profile, while an empty array means no
-Colorless epochs are unlocked. Combat mechanics carries the configured
+Colorless epochs are unlocked; a supplied list overrides the fully-unlocked
+default for Colorless only. Combat mechanics carries the configured
 fully-unlocked bit and optional epoch set so generated-card continuations use
 the same eligibility resolver as ordinary effect execution. Native combat
 generation uses the existing `run.combat_card_generation` stream, and Native

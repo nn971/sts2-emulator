@@ -915,19 +915,24 @@ public static class PrototypeColorlessCards
                 unlockedEpochs.Length))
             throw new InvalidDataException(
                 $"{operation} has invalid epoch unlock metadata.");
+        if (unlockedEpochs is not null)
+            return unlockedEpochs.ToHashSet(StringComparer.Ordinal);
         if (fullyUnlocked)
             return null;
-        if (unlockedEpochs is null)
-            throw new NotSupportedException(
-                $"{operation} requires the partial epoch unlock set or a fully unlocked profile.");
-        return unlockedEpochs.ToHashSet(StringComparer.Ordinal);
+        throw new NotSupportedException(
+            $"{operation} requires the partial epoch unlock set or a fully unlocked profile.");
     }
 
     private static bool IsEpochUnlocked(
         string cardId, bool fullyUnlocked,
-        HashSet<string>? unlockedEpochs) =>
-        fullyUnlocked || !EpochByCardId.TryGetValue(cardId, out var epoch) ||
-        unlockedEpochs!.Contains(epoch);
+        HashSet<string>? unlockedEpochs)
+    {
+        if (!EpochByCardId.TryGetValue(cardId, out var epoch))
+            return true;
+        return unlockedEpochs is null
+            ? fullyUnlocked
+            : unlockedEpochs.Contains(epoch);
+    }
 
     public static string PickMerchantCard(
         PrototypeCardRarity rarity,

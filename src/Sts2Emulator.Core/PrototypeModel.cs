@@ -2759,8 +2759,9 @@ public sealed partial record CombatState(
     }
 
     /// <summary>
-    /// Optional partial Colorless epoch unlock set copied from the configured
-    /// run profile. Null in a legacy snapshot means the set is unknown.
+    /// Optional exact Colorless epoch unlock set copied from the configured
+    /// run profile. Null means no explicit override: all epochs when the
+    /// configured profile is fully unlocked, unknown for a partial profile.
     /// </summary>
     [System.Text.Json.Serialization.JsonIgnore(Condition =
         System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]

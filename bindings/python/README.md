@@ -24,6 +24,10 @@ to seed the run-owned ReferenceNature cursor before the `start_run` action.
 That startup samples the Underdocks boss-pool law and advances the cursor once;
 the law remains `UNVERIFIED` and the default reset path is unchanged.
 
+Pass `unlocked_colorless_epochs=["Colorless1Epoch", ...]` to `Session.reset(...)`
+to override the fully unlocked profile's Colorless epoch set. An empty list
+keeps other unlocks fully open while excluding epoch-gated Colorless cards.
+
 The initial Endless Conveyor dish law can be queried before resolving a map
 Event-node action:
 

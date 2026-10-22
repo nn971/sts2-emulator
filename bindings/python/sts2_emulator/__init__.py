@@ -3984,15 +3984,23 @@ class Session:
             return result
 
     def reset(self, seed, *, mode="v111", character="silent", first_act="Overgrowth",
-              ascension=0, fidelity_id=None, nature_seed=None):
+              ascension=0, fidelity_id=None, nature_seed=None,
+              unlocked_colorless_epochs=None):
         if mode not in {"v111", "prototype"}:
             raise ValueError("mode must be v111 or prototype")
         if nature_seed is not None and (
                 isinstance(nature_seed, bool) or not isinstance(nature_seed, int)
                 or nature_seed < 0 or nature_seed > 0xffffffffffffffff):
             raise ValueError("nature_seed must be an unsigned 64-bit integer")
+        if unlocked_colorless_epochs is not None and (
+                not isinstance(unlocked_colorless_epochs, list) or
+                any(not isinstance(epoch, str) or not epoch.strip()
+                    for epoch in unlocked_colorless_epochs)):
+            raise ValueError(
+                "unlocked_colorless_epochs must be a list of nonempty epoch IDs")
         if mode == "prototype" and (character != "silent" or first_act != "Overgrowth"
-                                    or fidelity_id is not None or nature_seed is not None):
+                                    or fidelity_id is not None or nature_seed is not None
+                                    or unlocked_colorless_epochs is not None):
             raise ValueError("Legacy prototype reset supports Silent/Overgrowth without v111 overrides")
         payload = {"seed": seed, "ascension": ascension}
         if mode == "v111":
@@ -4001,6 +4009,9 @@ class Session:
                 payload["fidelity_id"] = fidelity_id
             if nature_seed is not None:
                 payload["nature_seed"] = nature_seed
+            if unlocked_colorless_epochs is not None:
+                payload["unlocked_colorless_epochs"] = (
+                    unlocked_colorless_epochs.copy())
         result = self.call("reset_v111" if mode == "v111" else "reset", **payload)
         return State(self, result["stateHandle"])
 

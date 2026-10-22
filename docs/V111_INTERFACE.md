@@ -27,19 +27,21 @@ state payload; older snapshots without it remain readable.
 Existing `reset`, `reset_native_overgrowth` and hypothetical adapters preserve
 their legacy identities. `reset_v111` is opt-in and accepts `seed`, `character`
 (default `silent`), `ascension` (0–10), and `first_act` (`Overgrowth` or
-`Underdocks`). It also accepts optional unsigned `nature_seed` to attach a
-forkable ReferenceNature cursor before `start_run`; the Python
-`Session.reset(...)` method exposes the same parameter. For either Act 1 route,
+`Underdocks`). Optional `unlocked_colorless_epochs` supplies an exact Colorless
+epoch override while leaving the rest of the profile fully unlocked. An empty
+list means no Colorless epochs are unlocked; omitting the field admits all
+five. It also accepts optional unsigned `nature_seed` to attach a forkable
+ReferenceNature cursor before `start_run`; the Python `Session.reset(...)`
+method exposes the same parameters. For either Act 1 route,
 run initialization uses it for the ordered boss-pool choice. Overgrowth also
 uses the same cursor for each source-shaped Act 1 map-generation request before
 the Neow offer is entered; Neow offers retain their existing Native event
 context. Experimental Silent three-act runs then use it for the conditional
 Hive/Glory Darv partition and local Ancient choices when `start_run` prepares
 those acts, followed by Hive/Glory encounter-bag choices and Glory's Ascension
-10 second boss. Five
-character configurations can be created/serialized, but starting unsupported
-character mechanics fails. Native later-act and restricted-profile mechanics
-also fail explicitly.
+10 second boss. Five character configurations can be created/serialized, but
+starting unsupported character mechanics fails. Other restricted-profile
+mechanics and Native later-act mechanics also fail explicitly.
 
 Configured runs with `nature_seed` retain an optional
 `reference_nature_run_initialization_transcript` in exact run snapshots. It
@@ -69,7 +71,7 @@ snapshots encode enums as canonical numeric values; reset uses the names above.
 | Operation | Request fields | Result |
 | --- | --- | --- |
 | `v111_coverage` | none | `coverage` with native IDs, dimensions and gaps |
-| `reset_v111` | `seed`, optional configuration and `nature_seed` | `stateHandle`, `exactHash`, schema/fidelity, optional ReferenceNature state schema |
+| `reset_v111` | `seed`, `character`, `ascension`, `first_act`, optional `unlocked_colorless_epochs`, `fidelity_id`, and `nature_seed` | `stateHandle`, `exactHash`, schema/fidelity, optional ReferenceNature state schema |
 | `legal_actions` | `state_handle` | semantic `actions` and stable `actionId` |
 | `observe` | `state_handle`, `policy_id: prototype-fair-v0` | fair `payloadJson` |
 | `fair_observe` | `view_kind`, `view_handle` | versioned common fair observation, action menu, observation hash and terminal flag |

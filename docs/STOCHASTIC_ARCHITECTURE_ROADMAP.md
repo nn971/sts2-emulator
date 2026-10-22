@@ -4,7 +4,8 @@
 
 **S4 configured Native Colorless pool increment (2026-10-22):** Run profiles
 and combat snapshots carry the fully-unlocked bit and optional exact
-Colorless epoch unlock IDs. Ordinary Native generation and resumable Nature
+Colorless epoch unlock IDs, with an explicit list overriding the full-profile
+default. Ordinary Native generation and resumable Nature
 replay share the source-ordered implemented solo pool filtered by unlocked
 epochs; unknown partial-profile data fails closed, while synthetic generation
 retains its conservative pool. The operation uses

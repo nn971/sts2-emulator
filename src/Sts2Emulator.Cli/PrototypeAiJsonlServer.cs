@@ -9557,6 +9557,13 @@ internal static class PrototypeAiJsonlServer
                         var configuration = RunConfiguration.Create(character,
                             OptionalInt(request, "ascension") ?? 0,
                             Enum.Parse<ActIdentity>(region, ignoreCase: true));
+                        if (OptionalStringArray(request,
+                                "unlocked_colorless_epochs") is { } colorlessEpochs)
+                            configuration = configuration with
+                            {
+                                Profile = configuration.Profile with
+                                { UnlockedColorlessEpochs = colorlessEpochs }
+                            };
                         var requestedFidelity = OptionalString(request, "fidelity_id");
                         if (requestedFidelity is not null)
                             configuration = configuration with

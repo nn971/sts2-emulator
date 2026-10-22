@@ -58,9 +58,10 @@ public sealed record SimulationProfile
 
     /// <summary>
     /// Colorless1Epoch through Colorless5Epoch classes unlocked on this
-    /// account. Null means the partial unlock set is unknown; an empty array
-    /// means the set is known and no Colorless epochs are unlocked.
-    /// FullyUnlocked profiles need not populate this list.
+    /// account. On a partial profile, null means unknown; an empty array means
+    /// no Colorless epochs are unlocked.
+    /// A supplied list is authoritative even when FullyUnlocked is true;
+    /// omitting it on a fully unlocked profile admits all five epochs.
     /// </summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string[]? UnlockedColorlessEpochs
@@ -201,11 +202,9 @@ public sealed record RunConfiguration
                 !PrototypeColorlessCards.NativeEpochIds.Contains(
                     epoch, StringComparer.Ordinal)) ||
              colorlessEpochs.Distinct(StringComparer.Ordinal).Count() !=
-                colorlessEpochs.Length ||
-             (Profile.FullyUnlocked && colorlessEpochs.Length !=
-                PrototypeColorlessCards.NativeEpochIds.Length)))
+                colorlessEpochs.Length))
             throw new ArgumentException(
-                "Profile Colorless epochs must contain distinct known epoch IDs, and fully unlocked profiles must include all epochs when the list is supplied.");
+                "Profile Colorless epochs must contain distinct known epoch IDs.");
         _ = V111Characters.Get(CharacterId);
         if (Ascension is < 0 or > 10)
             throw new ArgumentOutOfRangeException(nameof(Ascension), "v111 supports Ascension 0 through 10.");
