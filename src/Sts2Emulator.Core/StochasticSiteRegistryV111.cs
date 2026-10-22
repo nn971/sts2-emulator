@@ -750,6 +750,19 @@ public static class StochasticSiteRegistryV111
         CombatRandomShortlistShuffleSiteId
     ];
 
+    private static readonly string[] NativeGaussianIntSites =
+    [
+        PrototypeNativeOvergrowthMap.RestCountGaussianSiteId,
+        PrototypeNativeOvergrowthMap.UnknownCountGaussianSiteId,
+        PrototypeNativeLaterActMap.HiveRestCountGaussianSiteId,
+        PrototypeNativeLaterActMap.UnknownCountGaussianSiteId
+    ];
+
+    private static readonly string[] NativePersistentCombatEndIndexSites =
+    [
+        PrototypeGameEngine.FishingRodUpgradeSiteId
+    ];
+
     private static readonly string[] ChanceLawQuerySites =
     [
         .. ChanceLawEngineV111.LegacyMerchantIndexQuerySiteIds,
@@ -1129,6 +1142,23 @@ public static class StochasticSiteRegistryV111
             .Concat(AncientOfferSessionSites)
             .Distinct(StringComparer.Ordinal).ToArray();
 
+    private static readonly string[] NativeRandomIndexSites =
+        NatureChoiceSites
+            .Concat(NativePersistentCombatEndIndexSites)
+            .Concat(ControlledPlayableSites)
+            .Concat(NativeEventContextIndexSites)
+            .Concat(NativeBoundedIndexOperationSites)
+            .Concat(CombatIntentSiteIds)
+            .Where(siteId =>
+                !NativeUnitFloatSites.Contains(
+                    siteId, StringComparer.Ordinal) &&
+                !NativeGaussianIntSites.Contains(
+                    siteId, StringComparer.Ordinal))
+            .Distinct(StringComparer.Ordinal).ToArray();
+
+    private static readonly HashSet<string> NativeRandomIndexSiteSet =
+        new(NativeRandomIndexSites, StringComparer.Ordinal);
+
     public static string[] SemanticReferenceNatureSiteIds =>
         (string[])SemanticReferenceNatureSites.Clone();
     public static string[] RunActionSiteIds => (string[])RunActionSites.Clone();
@@ -1293,11 +1323,7 @@ public static class StochasticSiteRegistryV111
         LegacyFisherYatesSites.Contains(siteId, StringComparer.Ordinal);
 
     public static bool IsNativeRandomIndexSite(string siteId) =>
-        (IsChanceLawQuerySite(siteId)
-            || NatureChoiceSites.Contains(siteId, StringComparer.Ordinal)
-            || NativeFisherYatesSites.Contains(siteId, StringComparer.Ordinal)
-            || NativeDiagnosticRandomIndexSites.Contains(
-                siteId, StringComparer.Ordinal))
+        NativeRandomIndexSiteSet.Contains(siteId)
         && !IsNativeUnitFloatSite(siteId)
         && !IsNativeGaussianIntSite(siteId);
 
@@ -1320,7 +1346,12 @@ public static class StochasticSiteRegistryV111
         NativeRangedDoubleSites.Contains(siteId, StringComparer.Ordinal);
 
     public static bool IsNativeGaussianIntSite(string siteId) =>
-        ChanceLawEngineV111.IsNativeMapGaussianIntQuerySite(siteId);
+        NativeGaussianIntSites.Contains(siteId, StringComparer.Ordinal);
+
+    public static string[] NativeGaussianIntSiteIds =>
+        (string[])NativeGaussianIntSites.Clone();
+    public static string[] NativePersistentCombatEndIndexSiteIds =>
+        (string[])NativePersistentCombatEndIndexSites.Clone();
 
     internal static bool IsRegisteredRandomGaussianIntRequestSite(
         string siteId) => IsNativeGaussianIntSite(siteId);

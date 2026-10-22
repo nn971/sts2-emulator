@@ -552,14 +552,6 @@ public static partial class ChanceLawEngineV111
         "shop.relic_offer.price.index_draw"
     ];
 
-    private static readonly string[] NativeMapGaussianIntQuerySites =
-    [
-        PrototypeNativeOvergrowthMap.RestCountGaussianSiteId,
-        PrototypeNativeOvergrowthMap.UnknownCountGaussianSiteId,
-        PrototypeNativeLaterActMap.HiveRestCountGaussianSiteId,
-        PrototypeNativeLaterActMap.UnknownCountGaussianSiteId
-    ];
-
     private static readonly string[] LegacyPotionDropTicketQuerySites =
     [
         "reward.random_potion.drop.ticket"
@@ -730,11 +722,10 @@ public static partial class ChanceLawEngineV111
         StochasticSiteRegistryV111.IsLegacyCallerBoundIndexQuerySite(siteId);
 
     public static string[] NativeMapGaussianIntQuerySiteIds =>
-        (string[])NativeMapGaussianIntQuerySites.Clone();
+        StochasticSiteRegistryV111.NativeGaussianIntSiteIds;
 
     public static bool IsNativeMapGaussianIntQuerySite(string siteId) =>
-        NativeMapGaussianIntQuerySites.Contains(siteId,
-            StringComparer.Ordinal);
+        StochasticSiteRegistryV111.IsNativeGaussianIntSite(siteId);
 
     public static bool MatchesNativeMapGaussianIntRequest(
         RandomGaussianIntRequestV111 request)
