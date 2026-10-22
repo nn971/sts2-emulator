@@ -80,7 +80,7 @@ public sealed partial class PrototypeGameEngine
             {
                 // Native random unlocked potion: optional custom reward.
                 var potionId = PrototypeNativePotionShop.PickWeighted(
-                    state.Rng, "reward");
+                    state.Stochastic.PrototypeRng, "reward");
                 var rewardState = state with
                 {
                     World = world with
@@ -140,23 +140,23 @@ public sealed partial class PrototypeGameEngine
             {
                 // Native PullNextRelicFromFront, offered via custom rewards.
                 var nativeRunRng = UsesNativeRegionalSystems(world)
-                    ? state.NativeRunRng?.Fork()
+                    ? state.Stochastic.NativeRunRng?.Fork()
                     : null;
                 var drawn = PrototypeNativeRelicGrabBag.Draw(
-                    world, state.Player, state.Rng, merchant: false,
+                    world, state.Player, state.Stochastic.PrototypeRng, merchant: false,
                     nativeRunRng: nativeRunRng);
                 if (drawn.Id is null)
                     return SetBattlewornResultPage(state with
                     {
                         Phase = RunPhase.Event,
                         Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                            state.Stochastic, nativeRunRng ?? state.NativeRunRng),
+                            state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRng),
                         World = drawn.World with { Combat = null }
                     }, "victory");
                 var rewardState = state with
                 {
                     Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                        state.Stochastic, nativeRunRng ?? state.NativeRunRng),
+                        state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRng),
                     World = drawn.World with
                     {
                         Combat = null,

@@ -79,12 +79,12 @@ public sealed partial class PrototypeGameEngine
         }
 
         var world = RequireWorld(state);
-        var nativeRunRng = state.NativeRunRng?.Fork();
+        var nativeRunRng = state.Stochastic.NativeRunRng?.Fork();
         string? relicId;
         if (UsesNativeRegionalSystems(world))
         {
             var draw = PrototypeNativeRelicGrabBag.Draw(
-                world, state.Player, state.Rng, merchant: false,
+                world, state.Player, state.Stochastic.PrototypeRng, merchant: false,
                 nativeRunRng: nativeRunRng);
             world = draw.World;
             relicId = draw.Id;
@@ -98,7 +98,7 @@ public sealed partial class PrototypeGameEngine
             relicId = available.Length == 0
                 ? null
                 : available[LegacyRandomChoiceV111.ChooseIndexRange(
-                    state.Rng,
+                    state.Stochastic.PrototypeRng,
                     "treasure.relic_model.index_draw",
                     "reward",
                     $"act:{world.Act}:floor:{world.Floor}:pool:"
@@ -112,7 +112,7 @@ public sealed partial class PrototypeGameEngine
             return CompleteRoomToMap(state with
             {
                 Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                    state.Stochastic, nativeRunRng ?? state.NativeRunRng),
+                    state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRng),
                 World = world
             });
         }
@@ -128,7 +128,7 @@ public sealed partial class PrototypeGameEngine
         return state with
         {
             Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                state.Stochastic, nativeRunRng ?? state.NativeRunRng),
+                state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRng),
             World = world with { Reward = reward },
             Phase = RunPhase.Reward
         };

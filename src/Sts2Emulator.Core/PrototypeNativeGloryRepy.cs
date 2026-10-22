@@ -118,7 +118,7 @@ public sealed partial class PrototypeGameEngine
             player = ApplyRelicRunEvent(
                 player, PrototypeRunEventKind.RelicAcquired,
                 acquiredRelicId: PrototypeNativeHiveEvents.HistoryCourseId,
-                rng: state.Rng);
+                rng: state.Stochastic.PrototypeRng);
             state = state with
             {
                 Player = player,
@@ -139,7 +139,7 @@ public sealed partial class PrototypeGameEngine
                     "War Historian chest requires two implemented relic offers and a potion pool.");
 
             var nativeRunRng = UsesNativeRegionalSystems(world)
-                ? state.NativeRunRng?.Fork()
+                ? state.Stochastic.NativeRunRng?.Fork()
                 : null;
             string[] offers;
             if (nativeRunRng is { } nativeRelicRng)
@@ -162,7 +162,7 @@ public sealed partial class PrototypeGameEngine
             }
             else
             {
-                offers = PickDistinct(available, 2, state.Rng, "reward");
+                offers = PickDistinct(available, 2, state.Stochastic.PrototypeRng, "reward");
             }
             int PotionIndex(int ordinal)
             {
@@ -176,7 +176,7 @@ public sealed partial class PrototypeGameEngine
                         ownerId,
                         potions.Length)
                     : LegacyRandomChoiceV111.ChooseIndexRange(
-                        state.Rng,
+                        state.Stochastic.PrototypeRng,
                         PrototypeNativeHiveEvents
                             .WarHistorianRepyPotionOfferSiteId,
                         "reward",
@@ -202,7 +202,7 @@ public sealed partial class PrototypeGameEngine
             state = state with
             {
                 Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                    state.Stochastic, nativeRunRng ?? state.NativeRunRng),
+                    state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRng),
                 World = RequireWorld(state) with { Event = evt }
             };
         }
