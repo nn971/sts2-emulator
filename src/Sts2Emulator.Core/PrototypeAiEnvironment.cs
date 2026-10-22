@@ -375,9 +375,9 @@ public sealed class PrototypeAiEnvironment
     private IReadOnlyList<GameAction> PlayerLegalActions(RunState state)
     {
         var actions = _engine.GetLegalActions(state);
-        return state.World?.Event?.ControlledChoice is null
-            && state.ControlledEventRewardChoice is null
-            && state.ControlledRunActionChoice is null
+        return state.World?.Event?.Stochastic.ControlledChoice is null
+            && state.Stochastic.ControlledEventRewardChoice is null
+            && state.Stochastic.ControlledRunActionChoice is null
             ? actions
             : Array.Empty<GameAction>();
     }
@@ -654,7 +654,7 @@ public sealed class PrototypeAiEnvironment
     {
         // While a selected action is suspended inside a deck/potion prompt,
         // the event's main-page options are not actionable.
-        if (evt.ControlledChoice is not null
+        if (evt.Stochastic.ControlledChoice is not null
             || evt.PendingDeckChoice is not null
             || evt.PendingPotionReplacement is not null
             || evt.RemainingDeckChoices.Length > 0

@@ -170,7 +170,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         if (state.ReferenceNatureRunInitializationPending)
             throw new InvalidOperationException(
                 "A ReferenceNature run-start session must finish before run actions are available.");
-        if (state.ControlledEventRewardChoice is { } rewardChoice)
+        if (state.Stochastic.ControlledEventRewardChoice is
+            { } rewardChoice)
         {
             var request = rewardChoice.PendingRequest;
             return Enumerable.Range(0, request.SupportCount)
@@ -179,7 +180,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                     new ChooseControlledEventOutcomePayload(index)))
                 .ToArray();
         }
-        if (state.ControlledRunActionChoice is { } runActionChoice)
+        if (state.Stochastic.ControlledRunActionChoice is
+            { } runActionChoice)
         {
             var request = runActionChoice.PendingRequest;
             if (request.SupportCount >
@@ -209,9 +211,9 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             or RunPhase.Combat
             or RunPhase.Terminal
             || state.Phase == RunPhase.Event
-                && state.World?.Event?.ControlledChoice is not null
-            || state.ControlledEventRewardChoice is not null
-            || state.ControlledRunActionChoice is not null)
+                && state.World?.Event?.Stochastic.ControlledChoice is not null
+            || state.Stochastic.ControlledEventRewardChoice is not null
+            || state.Stochastic.ControlledRunActionChoice is not null)
         {
             return phaseActions;
         }
@@ -289,11 +291,12 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             new NativeRandomUnitFloatProviderV111(),
             overrideExplicitProviders: false);
         if ((state.Phase == RunPhase.Event
-                && state.World?.Event?.ControlledChoice is not null
-            || state.ControlledEventRewardChoice is not null
-            || state.ControlledRunActionChoice is not null)
+                && state.World?.Event?.Stochastic.ControlledChoice is not null
+            || state.Stochastic.ControlledEventRewardChoice is not null
+            || state.Stochastic.ControlledRunActionChoice is not null)
             && (!ControlledChanceGuardV111.Active
-                || action.Kind != (state.ControlledRunActionChoice is not null
+                || action.Kind != (state.Stochastic.ControlledRunActionChoice
+                    is not null
                     ? "choose_controlled_run_action_outcome"
                     : "choose_controlled_event_outcome")))
         {
@@ -303,7 +306,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         var fork = state.Fork();
         fork = fork with { DecisionIndex = fork.DecisionIndex + 1 };
 
-        var next = fork.ControlledRunActionChoice is { } runActionContinuation
+        var next = fork.Stochastic.ControlledRunActionChoice is
+            { } runActionContinuation
             ? ResumeControlledRunAction(
                 fork, action, runActionContinuation)
             : StringComparer.Ordinal.Equals(
@@ -353,7 +357,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                     next.World, next.Player)
             };
         next = NativeRunRngV111.ReconcileAfterStep(state, next);
-        if (next.ControlledEventRewardChoice is { } rewardChoice)
+        if (next.Stochastic.ControlledEventRewardChoice is
+            { } rewardChoice)
         {
             var partialState = next with
             {
@@ -369,7 +374,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                         rewardChoice with { PartialState = partialState })
             };
         }
-        if (next.ControlledRunActionChoice is { } runActionChoice)
+        if (next.Stochastic.ControlledRunActionChoice is
+            { } runActionChoice)
         {
             var partialState = next with
             {
