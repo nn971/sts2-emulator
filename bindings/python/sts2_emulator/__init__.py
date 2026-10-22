@@ -3449,10 +3449,35 @@ class Session:
 
         nature_sites = set(string_list(
             manifest.get("natureChoiceSiteIds"), "natureChoiceSiteIds"))
-        for field in ("providerModes", "referenceNatureOperations",
-                      "probabilityStatuses", "scriptedRunActionOperations",
+        for field in ("providerModes", "probabilityStatuses",
+                      "scriptedRunActionOperations",
                       "scriptedRunSessionOperations"):
             string_list(manifest.get(field), field)
+        reference_nature_operations = set(string_list(
+            manifest.get("referenceNatureOperations"),
+            "referenceNatureOperations"))
+        reference_nature_schema = manifest.get(
+            "referenceNatureSessionSchemaId")
+        if (reference_nature_schema != self.capabilities.get(
+                "referenceNatureSessionSchemaId")):
+            raise EmulatorError(
+                "ReferenceNature session schema differs from the stochastic manifest")
+        if reference_nature_schema is not None:
+            required_semantic_reference_operations = {
+                "semantic_reference_begin",
+                "semantic_reference_observe",
+                "semantic_reference_step",
+                "semantic_reference_resolve_next",
+                "semantic_reference_status",
+                "semantic_reference_fork",
+                "semantic_reference_save",
+                "semantic_reference_load",
+                "semantic_reference_release_many",
+            }
+            if not required_semantic_reference_operations.issubset(
+                    reference_nature_operations):
+                raise EmulatorError(
+                    "ReferenceNature session is missing required semantic operations")
 
         view_schema = manifest.get("semanticNatureChoiceViewSchemaId")
         view_operations = string_list(

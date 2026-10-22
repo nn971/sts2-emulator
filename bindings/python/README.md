@@ -678,7 +678,9 @@ Replay semantic combat with the ReferenceNature sampler using
 `SemanticReferenceCombat` exposes the shared fair observation and action menu,
 legal player `step()`, automatic `resolve_next()` for pending Nature events,
 `status()`, `fork()`, `save_snapshot()`, and `release()`. Restore a saved session
-with `Session.load_semantic_reference_snapshot()`.
+with `Session.load_semantic_reference_snapshot()`. Session startup checks that
+the negotiated ReferenceNature manifest includes every operation required by
+this wrapper.
 
 `State.query_chance_law()` checks the advertised query site and validates the
 returned Chance Law schema, negotiated probability status, unique positive
