@@ -102,7 +102,7 @@ public sealed record ReferenceNatureGloryReflectionsSessionV111(
             if (!Complete)
                 throw new InvalidOperationException(
                     "A pending Glory Reflections session has no completed provider prefix.");
-            var natureState = InitialNatureState.Fork();
+            var natureState = Stochastic.InitialNatureState.Fork();
             var priorIndices = new List<int>();
             var decisions = new List<ControlledStochasticDecisionV111>(
                 Stochastic.DecisionTranscript.Length);
@@ -280,7 +280,7 @@ public sealed record ReferenceNatureGloryReflectionsSessionV111(
         PrototypeStateInvariants.Validate(Origin);
         PrototypeStateInvariants.Validate(Run);
 
-        var expectedNature = InitialNatureState.Fork();
+        var expectedNature = Stochastic.InitialNatureState.Fork();
         var priorIndices = new List<int>();
         for (var ordinal = 0; ordinal < Stochastic.DecisionTranscript.Length; ordinal++)
         {
@@ -319,10 +319,11 @@ public sealed record ReferenceNatureGloryReflectionsSessionV111(
         }
 
         if (!ReferenceNatureRunCursorV111.MatchesRunSession(
-                Origin, Run, InitialNatureState, NatureState,
+                Origin, Run, Stochastic.InitialNatureState,
+                Stochastic.NatureState,
                 Stochastic.DecisionTranscript.Length, complete) ||
             CanonicalJson.Sha256(expectedNature) !=
-                CanonicalJson.Sha256(NatureState) ||
+                CanonicalJson.Sha256(Stochastic.NatureState) ||
             CanonicalJson.Sha256(expectedRun) != CanonicalJson.Sha256(Run))
             throw new InvalidDataException(
                 "Reflections Nature replay differs from its session envelope.");
@@ -416,8 +417,9 @@ public sealed record ReferenceNatureGloryReflectionsSessionV111(
         return JsonSerializer.Serialize(
             new ReferenceNatureGloryReflectionsSessionSnapshotV111(
                 CurrentSchemaId, RunSnapshot.Save(session.Origin),
-                RunSnapshot.Save(session.Run), session.InitialNatureState,
-                session.NatureState,
+                RunSnapshot.Save(session.Run),
+                session.Stochastic.InitialNatureState,
+                session.Stochastic.NatureState,
                 (ReferenceNatureDecisionV111[])
                     session.Stochastic.DecisionTranscript.Clone()));
     }
@@ -447,7 +449,7 @@ public sealed record ReferenceNatureGloryReflectionsSessionV111(
         session.Validate();
         if (CanonicalJson.Sha256(session.Run) !=
                 CanonicalJson.Sha256(savedRun) ||
-            CanonicalJson.Sha256(session.NatureState) !=
+            CanonicalJson.Sha256(session.Stochastic.NatureState) !=
                 CanonicalJson.Sha256(snapshot.NatureState) ||
             !session.Stochastic.DecisionTranscript.SequenceEqual(
                 snapshot.DecisionTranscript))

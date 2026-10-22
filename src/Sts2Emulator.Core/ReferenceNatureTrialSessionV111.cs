@@ -294,7 +294,8 @@ public sealed record ReferenceNatureTrialSessionV111(
                 "ReferenceNature Trial session is already complete.");
         var plan = TrialCaseChoicePlanBuilderV111.Build(Origin);
         var law = ChanceLawEngineV111.QueryTrial(Origin);
-        var selection = ReferenceNatureV111.SampleValidated(law, NatureState);
+        var selection = ReferenceNatureV111.SampleValidated(
+            law, Stochastic.NatureState);
         var transcript = Stochastic.DecisionTranscript.Append(
             new ReferenceNatureDecisionV111(
                 law.LawId, law.EventId, selection.OutcomeId,
@@ -326,12 +327,13 @@ public sealed record ReferenceNatureTrialSessionV111(
         var plan = TrialCaseChoicePlanBuilderV111.Build(Origin);
         if (Stochastic.DecisionTranscript.Length > 1 ||
             !ReferenceNatureRunCursorV111.MatchesRunSession(
-                Origin, Run, InitialNatureState, NatureState,
+                Origin, Run, Stochastic.InitialNatureState,
+                Stochastic.NatureState,
                 Stochastic.DecisionTranscript.Length, Complete))
             throw new InvalidDataException(
                 "ReferenceNature Trial cursor differs from its session envelope.");
 
-        var expectedNatureState = InitialNatureState.Fork();
+        var expectedNatureState = Stochastic.InitialNatureState.Fork();
         RunState expectedRun;
         if (Complete)
         {
@@ -356,7 +358,7 @@ public sealed record ReferenceNatureTrialSessionV111(
         }
 
         if (CanonicalJson.Sha256(expectedNatureState) !=
-                CanonicalJson.Sha256(NatureState) ||
+                CanonicalJson.Sha256(Stochastic.NatureState) ||
             CanonicalJson.Sha256(expectedRun) != CanonicalJson.Sha256(Run))
             throw new InvalidDataException(
                 "ReferenceNature Trial replay differs from its session envelope.");
@@ -368,8 +370,9 @@ public sealed record ReferenceNatureTrialSessionV111(
         session.Validate();
         var snapshot = new ReferenceNatureTrialSessionSnapshotV111(
             CurrentSchemaId, RunSnapshot.Save(session.Origin),
-            RunSnapshot.Save(session.Run), session.InitialNatureState,
-            session.NatureState,
+            RunSnapshot.Save(session.Run),
+            session.Stochastic.InitialNatureState,
+            session.Stochastic.NatureState,
             (ReferenceNatureDecisionV111[])
                 session.Stochastic.DecisionTranscript.Clone());
         return JsonSerializer.Serialize(snapshot);
@@ -399,7 +402,7 @@ public sealed record ReferenceNatureTrialSessionV111(
         replay.Validate();
         if (CanonicalJson.Sha256(replay.Run) !=
                 CanonicalJson.Sha256(savedRun) ||
-            CanonicalJson.Sha256(replay.NatureState) !=
+            CanonicalJson.Sha256(replay.Stochastic.NatureState) !=
                 CanonicalJson.Sha256(snapshot.NatureState) ||
             !replay.Stochastic.DecisionTranscript.SequenceEqual(
                 snapshot.DecisionTranscript))

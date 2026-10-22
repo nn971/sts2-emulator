@@ -279,14 +279,15 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
         var plannedSiteIds = PlannedSiteIds;
         if (Stochastic.DecisionTranscript.Length > plannedSiteIds.Length ||
             !ReferenceNatureRunCursorV111.MatchesRunSession(
-                Origin, Run, InitialNatureState, NatureState,
+                Origin, Run, Stochastic.InitialNatureState,
+                Stochastic.NatureState,
                 Stochastic.DecisionTranscript.Length, Complete))
             throw new InvalidDataException(
                 "ReferenceNature Endless Conveyor cursor differs from its session envelope.");
 
-        var expectedNatureState = InitialNatureState.Fork();
+        var expectedNatureState = Stochastic.InitialNatureState.Fork();
         var selections = SampleTranscript(
-            Origin, ActionId, InitialNatureState,
+            Origin, ActionId, Stochastic.InitialNatureState,
             Stochastic.DecisionTranscript,
             plannedSiteIds, out expectedNatureState);
         var expectedRun = Complete
@@ -296,7 +297,7 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
             : Origin.Fork();
 
         if (CanonicalJson.Sha256(expectedNatureState) !=
-                CanonicalJson.Sha256(NatureState) ||
+                CanonicalJson.Sha256(Stochastic.NatureState) ||
             CanonicalJson.Sha256(expectedRun) != CanonicalJson.Sha256(Run))
             throw new InvalidDataException(
                 "ReferenceNature Endless Conveyor replay differs from its session envelope.");
@@ -313,8 +314,8 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
                 JsonSerializer.Serialize(session.Origin),
                 JsonSerializer.Serialize(session.Run),
                 session.ActionId,
-                session.InitialNatureState,
-                session.NatureState,
+                session.Stochastic.InitialNatureState,
+                session.Stochastic.NatureState,
                 session.Stochastic.DecisionTranscript),
             new JsonSerializerOptions(JsonSerializerDefaults.Web));
     }
