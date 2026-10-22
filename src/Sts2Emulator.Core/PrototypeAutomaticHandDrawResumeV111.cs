@@ -161,15 +161,23 @@ public sealed partial class PrototypeGameEngine
             combat.PendingKnowledgeDemonChoice is not null)
             throw new NotSupportedException(unsupportedBoundaryMessage);
 
-        return (costProgress.Run, ResumeAutomaticHandDrawCards(
+        var prototypeRng = costProgress.Run.Stochastic.PrototypeRng;
+        var drawn = ResumeAutomaticHandDrawCards(
             costProgress.Run, cost.RemainingCount, suspensionPolicy,
-            eventDepth: cost.EventDepth));
+            prototypeRng, eventDepth: cost.EventDepth);
+        var resumedRun = costProgress.Run with
+        {
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                costProgress.Run.Stochastic, prototypeRng)
+        };
+        return (resumedRun, drawn);
     }
 
     private static PrototypeDrawCardsResult ResumeAutomaticHandDrawCards(
         RunState checkpoint,
         int remaining,
         PrototypeDrawCardsSuspensionPolicyV111 suspensionPolicy,
+        RngBundle prototypeRng,
         int eventDepth = 0)
     {
         if (!ControlledChanceGuardV111.Active)
@@ -200,7 +208,7 @@ public sealed partial class PrototypeGameEngine
             checkpoint, checkpoint.Player, combat, progress: null);
         return DrawCards(
             cleared.Player, RequireWorld(cleared).Combat!, remaining,
-            cleared.Stochastic.PrototypeRngMutable,
+            prototypeRng,
             fromHandDraw: true, eventDepth: eventDepth,
             suspensionPolicy: suspensionPolicy);
     }

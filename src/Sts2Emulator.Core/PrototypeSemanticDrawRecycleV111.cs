@@ -48,7 +48,7 @@ public sealed partial class PrototypeGameEngine
                 "Native recycle requires an exhausted synchronized draw pile.");
 
         var recycled = (long[])combat.DiscardPile.Clone();
-        var native = combat.Stochastic.NativeRngMutable ??
+        var native = combat.Stochastic.NativeRng ??
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_NATIVE site=" + unsupportedSite +
                 " operation=missing_native_stream_owner");

@@ -112,6 +112,7 @@ public sealed partial class PrototypeGameEngine
         }
 
         combat = combat with { PendingChoice = null };
+        var prototypeRng = run.Stochastic.PrototypeRng;
         var card = RequireCombatCard(combat, cost.CardInstanceId);
         var dispatched = DispatchCombatEvent(
             run.Player, combat,
@@ -120,11 +121,13 @@ public sealed partial class PrototypeGameEngine
                 SourceCardInstanceId: cost.CardInstanceId,
                 CardId: card.CardId,
                 FromHandDraw: cost.FromHandDraw),
-            run.Stochastic.PrototypeRngMutable, cost.EventDepth,
+            prototypeRng, cost.EventDepth,
             allowSuspension: allowHookSuspension);
         var nextRun = run with
         {
             Player = dispatched.Player,
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                run.Stochastic, prototypeRng),
             World = world with { Combat = dispatched.Combat }
         };
         return new PrototypeDrawCostProgressV111(

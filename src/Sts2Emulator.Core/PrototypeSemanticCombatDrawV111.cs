@@ -39,12 +39,18 @@ public sealed partial class PrototypeGameEngine
                 "operation=nested_choice_or_automatic_pipeline");
         var suspensionPolicy =
             PrototypeDrawCardsSuspensionPolicyV111.SemanticDrawCards();
+        var prototypeRng = run.Stochastic.PrototypeRng;
         var result = automatic
             ? ResumeAutomaticHandDrawCards(
-                run, count, suspensionPolicy)
+                run, count, suspensionPolicy, prototypeRng)
             : DrawCards(
-                run.Player, combat, count, run.Stochastic.PrototypeRngMutable, fromHandDraw,
+                run.Player, combat, count, prototypeRng, fromHandDraw,
                 suspensionPolicy: suspensionPolicy);
+        run = run with
+        {
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                run.Stochastic, prototypeRng)
+        };
         return ResumeSemanticCombatDrawResult(
             run, result, fromHandDraw, eventDepth: 0,
             automaticHandDrawRequested: automatic
@@ -205,12 +211,18 @@ public sealed partial class PrototypeGameEngine
                 cost.FromHandDraw, cost.EventDepth), cost.RemainingCount);
         }
 
+        var prototypeRng = run.Stochastic.PrototypeRng;
         var drawn = DrawCards(
-            run.Player, combat, cost.RemainingCount, run.Stochastic.PrototypeRngMutable,
+            run.Player, combat, cost.RemainingCount, prototypeRng,
             cost.FromHandDraw, eventDepth: cost.EventDepth,
             suspensionPolicy:
                 PrototypeDrawCardsSuspensionPolicyV111.SemanticDrawCards(
                     effectDraw: effectDraw));
+        run = run with
+        {
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                run.Stochastic, prototypeRng)
+        };
         var continued = ResolveControlledSemanticDrawResult(
             run, drawn, draw, continuation, automaticHandDrawRequested,
             recycleSite, recycleOperation);
@@ -375,11 +387,14 @@ public sealed partial class PrototypeGameEngine
                     combat = ApplyCardKeywordOverride(
                         combat, cardInstanceId, keyword);
             }
+            var prototypeRng = run.Stochastic.PrototypeRng;
             var resumed = ResumeChoiceResolutionContinuation(
-                drawn.Player, combat, run.Stochastic.PrototypeRngMutable, outerContinuation);
+                drawn.Player, combat, prototypeRng, outerContinuation);
             return (run with
             {
                 Player = resumed.Player,
+                Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                    run.Stochastic, prototypeRng),
                 World = world with { Combat = resumed.Combat }
             }, 0);
         }

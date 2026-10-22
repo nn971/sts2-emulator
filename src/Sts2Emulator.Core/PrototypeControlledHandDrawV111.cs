@@ -110,11 +110,17 @@ public sealed partial class PrototypeGameEngine
                 "Controlled automatic hand-draw hook cursor is inconsistent.");
 
         int remaining = cursor.Stochastic.ControlledDrawRemaining!.Value;
+        var prototypeRng = state.Stochastic.PrototypeRng;
         var drawn = ResumeAutomaticHandDrawCards(
             state, remaining,
             PrototypeDrawCardsSuspensionPolicyV111
                 .ControlledLegacyAutomaticHandDraw(
-                    combat, cardDrawnChoice: true));
+                    combat, cardDrawnChoice: true), prototypeRng);
+        state = state with
+        {
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, prototypeRng)
+        };
         return ContinueControlledHandDraw(state, drawn);
     }
 
@@ -134,16 +140,22 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidDataException(
                 "Controlled recycle Stratagem checkpoint is inconsistent.");
         var world = RequireWorld(state);
+        var prototypeRng = state.Stochastic.PrototypeRng;
         var prompt = ResolveOperations(
             player, combat,
             new Queue<PrototypeQueuedOperation>([
                 StratagemChoiceOperation(combat)]),
-            state.Stochastic.PrototypeRngMutable, moveSourceCardOnCompletion: false);
+            prototypeRng, moveSourceCardOnCompletion: false);
         if (prompt.Combat.PendingChoice is not
             { ChoiceId: "select_cards", Selection.SourceZone: PrototypeCardZone.DrawPile }
             selection)
             throw new InvalidDataException(
                 "Stratagem did not create its expected draw-pile selection.");
+        state = state with
+        {
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, prototypeRng)
+        };
         return CommitAutomaticHandDrawStratagemSelection(
             state, prompt.Player, prompt.Combat, remaining,
             semanticRequested: null);
@@ -170,10 +182,16 @@ public sealed partial class PrototypeGameEngine
                 "Saved recycle Stratagem selection is not source-reachable.");
 
         var remaining = cursor.Stochastic.ControlledDrawRemaining!.Value;
+        var prototypeRng = state.Stochastic.PrototypeRng;
         var drawn = ResumeAutomaticHandDrawCards(
             state, remaining,
             PrototypeDrawCardsSuspensionPolicyV111
-                .ControlledLegacyAutomaticHandDraw(combat));
+                .ControlledLegacyAutomaticHandDraw(combat), prototypeRng);
+        state = state with
+        {
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, prototypeRng)
+        };
         return ContinueControlledHandDraw(state, drawn);
     }
 

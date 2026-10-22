@@ -293,8 +293,9 @@ public sealed partial class PrototypeGameEngine
         {
             PendingChoice = null
         };
+        var prototypeRng = run.Stochastic.PrototypeRng;
         var resumedEvent = ResumeChoiceResolutionContinuation(
-            run.Player, combat, run.Stochastic.PrototypeRngMutable, continuation);
+            run.Player, combat, prototypeRng, continuation);
         if (resumedEvent.Combat.PendingChoice is not null ||
             resumedEvent.Combat.PendingKnowledgeDemonChoice is not null)
             throw new NotSupportedException(
@@ -303,6 +304,8 @@ public sealed partial class PrototypeGameEngine
         var afterHook = run with
         {
             Player = resumedEvent.Player,
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                run.Stochastic, prototypeRng),
             World = world with { Combat = resumedEvent.Combat }
         };
         var beforeDrawCount = resumedEvent.Combat.CounterState
