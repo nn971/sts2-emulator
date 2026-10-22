@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 Act 1 encounter-pool projection guard increment (2026-10-22):** The
+run-world stochastic owner now validates Act 1 pool structure, region,
+remaining queues, cursor, and boss identity during construction and every
+replacement, including snapshot and flattened projection writes. The full
+world-region correspondence check remains at run validation. Static source
+review and `git diff --check` only; no tests or builds were run.
+
 **S3 three-act encounter handoff ownership increment (2026-10-22):** Act
 transitions now publish the next active bag, remaining future bags, and Act 1
 pool clear through `RunWorldStochasticStateV111.CommitActTransition`. The

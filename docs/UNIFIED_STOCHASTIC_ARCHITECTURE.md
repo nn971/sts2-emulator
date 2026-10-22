@@ -129,6 +129,8 @@ Legacy run-action snapshot restoration also imports missing map-generation audit
 
 Live Act 1 encounter selection publishes weak, normal, and elite pool changes through `RunWorldStochasticStateV111.CommitActOneEncounterPool`, which validates each candidate against the current world region and encounter cursor.
 
+The `RunWorldStochasticStateV111.ActOneEncounterPool` owner property validates the pool's region, cursor, remaining queues, and boss identity on construction and replacement; `Validate` additionally checks its correspondence with the current world region.
+
 Experimental Hive/Glory combat entry publishes its selected encounter bag through `RunWorldStochasticStateV111.CommitLaterActEncounterBag`, which validates the configured route, active act, Ascension rules, and revealed Ancient support before publication.
 
 Interactive and configured experimental run-start completion publish the future-act encounter bags through `RunWorldStochasticStateV111.CommitPreparedLaterActEncounterBags`, validating the complete ordered set before it becomes persistent run state.

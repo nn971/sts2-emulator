@@ -22,6 +22,8 @@ public sealed record RunWorldStochasticStateV111
         PrototypeLaterActEncounterBagV111? LaterActEncounterBag = null,
         PrototypeLaterActEncounterBagV111[]? PreparedLaterActEncounterBags = null)
     {
+        if (ActOneEncounterPool is not null)
+            ValidateActOneEncounterPoolStructure(ActOneEncounterPool);
         _actOneEncounterPool = ActOneEncounterPool?.Fork();
         if (RelicBag is not null)
             PrototypeNativeRelicGrabBag.ValidateBagStructure(RelicBag);
@@ -34,7 +36,12 @@ public sealed record RunWorldStochasticStateV111
     public PrototypeActOneEncounterPoolState? ActOneEncounterPool
     {
         get => _actOneEncounterPool?.Fork();
-        init => _actOneEncounterPool = value?.Fork();
+        init
+        {
+            if (value is not null)
+                ValidateActOneEncounterPoolStructure(value);
+            _actOneEncounterPool = value?.Fork();
+        }
     }
     public PrototypeRelicBagState? RelicBag
     {
@@ -218,7 +225,16 @@ public sealed record RunWorldStochasticStateV111
         if (world.ActOneRegion is { } region && region != pool.Region)
             throw new InvalidOperationException(
                 "Act 1 encounter pool region disagrees with the run region.");
+        ValidateActOneEncounterPoolStructure(pool);
+    }
 
+    internal static void ValidateActOneEncounterPoolStructure(
+        PrototypeActOneEncounterPoolState pool)
+    {
+        ArgumentNullException.ThrowIfNull(pool);
+        if (!Enum.IsDefined(pool.Region))
+            throw new InvalidOperationException(
+                "Act 1 encounter pool has an unknown region.");
         var weakPool = pool.Region == PrototypeActOneRegion.Overgrowth
             ? PrototypeContent.OvergrowthWeakEncounterPool
             : PrototypeNativeUnderdocks.SupportedWeakEncounterIds;
