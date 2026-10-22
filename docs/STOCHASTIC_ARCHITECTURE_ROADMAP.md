@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 ReferenceNature run-initialization publication increment (2026-10-22):**
+`RunStochasticStateV111.CommitReferenceNatureRunInitialization` now publishes
+the run's Nature cursor, completed initialization transcript, and pending
+marker together. It validates that a completed transcript agrees with the
+committed cursor. Configured run creation and ordinary, Overgrowth, and
+experimental ReferenceNature run-start completion use this owner transition.
+Static source review and `git diff --check` only; no tests or builds were run.
+
 **S3 controlled run-continuation checkpoint publication increment (2026-10-22):**
 `RunStochasticStateV111.RebasePendingContinuationCheckpoints` now republishes
 event-reward and run-action partial checkpoints after step mechanics and Native

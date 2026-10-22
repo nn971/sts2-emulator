@@ -687,6 +687,38 @@ public sealed record RunStochasticStateV111
         return current with { ReferenceNature = referenceNature };
     }
 
+    internal static RunStochasticStateV111 CommitReferenceNatureRunInitialization(
+        RunStochasticStateV111 current,
+        ReferenceNatureStateV111? natureState,
+        ReferenceNatureRunInitializationTranscriptV111? transcript,
+        bool pending)
+    {
+        ArgumentNullException.ThrowIfNull(current);
+        natureState?.Validate();
+        transcript?.Validate();
+        if (pending && transcript is not null)
+            throw new InvalidDataException(
+                "Pending ReferenceNature run initialization cannot have a completed transcript.");
+        if (transcript is { } completed &&
+            (natureState is not { } committed ||
+             !StringComparer.Ordinal.Equals(
+                 committed.Seed, completed.FinalNatureState.Seed) ||
+             committed.SampleCount <
+                 completed.FinalNatureState.SampleCount ||
+             (committed.SampleCount ==
+                  completed.FinalNatureState.SampleCount &&
+              !committed.SameCursor(completed.FinalNatureState))))
+            throw new InvalidDataException(
+                "ReferenceNature run initialization transcript differs from its committed cursor.");
+
+        return current with
+        {
+            ReferenceNature = natureState?.Fork(),
+            ReferenceNatureRunInitializationTranscript = transcript?.Fork(),
+            ReferenceNatureRunInitializationPending = pending
+        };
+    }
+
     internal static RunStochasticStateV111 WithControlledEventChoiceHistory(
         RunStochasticStateV111 current,
         ControlledEventChoiceTraceV111[]? history) =>

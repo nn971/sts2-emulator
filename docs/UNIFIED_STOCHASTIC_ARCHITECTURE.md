@@ -97,6 +97,8 @@ The present run and combat types have overlapping representation/lifecycle respo
 
 `RunStochasticStateV111.RebasePendingContinuationCheckpoints` now owns publication of active event-reward and run-action partial checkpoints after a step has committed mechanics and reconciled Native provider state. It builds each checkpoint with that continuation removed, updates the saved frame, and validates it against the complete run owner. `PrototypeGameEngine.FinalizeStep` delegates both rebases through this transition; the flattened snapshot members remain unchanged.
 
+`RunStochasticStateV111.CommitReferenceNatureRunInitialization` publishes the run's Nature cursor, completed initialization transcript, and pending marker together. A completed transcript must replay to the committed cursor or an earlier prefix of the same seed. Configured run creation and ReferenceNature run-start completion use this transition, while the flat snapshot members remain compatibility projections.
+
 `ScriptedRunStochasticStateV111` validates and appends completed action records while clearing the active action. The scripted run envelope publishes that stochastic update with the resulting run mechanics checkpoint.
 
 `ControlledTurnIntentStochasticStateV111` validates a selected ticket against its saved pending request and ordinal, then appends it and clears the request as one transition. Both live resolution and transcript-prefix validation use this operation.

@@ -614,18 +614,17 @@ public static class V111RunFactory
         runStartTranscript?.Validate();
         var stochastic = RunStochasticStateV111.WithNativeRunRng(
             opening.Stochastic, nativeRunRng);
-        stochastic = RunStochasticStateV111.WithReferenceNature(
-            stochastic, natureState);
+        stochastic = RunStochasticStateV111
+            .CommitReferenceNatureRunInitialization(
+                stochastic, natureState, runStartTranscript,
+                controlledReferenceNatureRunStart &&
+                config.UsesExperimentalSilentThreeActRoute);
         return opening with
         {
             GameBuild = input.GameBuild, EmulatorSchema = input.EmulatorSchema,
             RunId = input.RunId, DecisionIndex = input.DecisionIndex,
             Configuration = config.Fork(), Player = opening.Player with { Deck = deck },
             Stochastic = stochastic,
-            ReferenceNatureRunInitializationTranscript = runStartTranscript,
-            ReferenceNatureRunInitializationPending =
-                controlledReferenceNatureRunStart &&
-                config.UsesExperimentalSilentThreeActRoute,
             World = opening.World! with
             {
                 RulesetId = config.RulesetId,

@@ -7171,10 +7171,10 @@ public sealed record ReferenceNatureRunActionSessionV111(
                 initializationTranscript.Validate();
                 resolvedRun = resolvedRun with
                 {
-                    Stochastic = RunStochasticStateV111.WithReferenceNature(
-                        resolvedRun.Stochastic, selection.NextState.Fork()),
-                    ReferenceNatureRunInitializationTranscript =
-                        initializationTranscript
+                    Stochastic = RunStochasticStateV111
+                        .CommitReferenceNatureRunInitialization(
+                            resolvedRun.Stochastic, selection.NextState,
+                            initializationTranscript, pending: false)
                 };
             }
             else
@@ -7608,16 +7608,21 @@ public sealed record ReferenceNatureRunActionSessionV111(
                 ActOneMapGeneration = mapGeneration.ToAudit()
             };
         initializationTranscript.Validate(replayMapGeneration: true);
-        var committedRun = ReferenceNatureRunCursorV111.Commit(Run with
+        var runWithMap = Run with
         {
-            ReferenceNatureRunInitializationTranscript =
-                initializationTranscript,
             World = (Run.World ?? throw new InvalidDataException(
                 "Completed Overgrowth start has no world.")) with
             {
                 Map = map
             }
-        }, mapGeneration.NatureState);
+        };
+        var committedRun = runWithMap with
+        {
+            Stochastic = RunStochasticStateV111
+                .CommitReferenceNatureRunInitialization(
+                    runWithMap.Stochastic, mapGeneration.NatureState,
+                    initializationTranscript, pending: false)
+        };
         return this with
         {
             Run = committedRun,
@@ -7683,11 +7688,8 @@ public sealed record ReferenceNatureRunActionSessionV111(
             replayMapGeneration: mapAudit is not null);
         var world = Run.World ?? throw new InvalidDataException(
             "Completed experimental start has no world.");
-        var committedRun = ReferenceNatureRunCursorV111.Commit(Run with
+        var runWithPreparedBags = Run with
         {
-            ReferenceNatureRunInitializationTranscript =
-                initializationTranscript,
-            ReferenceNatureRunInitializationPending = false,
             World = world with
             {
                 Map = committedMap ?? world.Map,
@@ -7696,7 +7698,14 @@ public sealed record ReferenceNatureRunActionSessionV111(
                     PreparedLaterActEncounterBags = preparation.Bags
                 }
             }
-        }, preparation.NatureState);
+        };
+        var committedRun = runWithPreparedBags with
+        {
+            Stochastic = RunStochasticStateV111
+                .CommitReferenceNatureRunInitialization(
+                    runWithPreparedBags.Stochastic, preparation.NatureState,
+                    initializationTranscript, pending: false)
+        };
         return this with
         {
             Run = committedRun,
