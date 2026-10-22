@@ -3615,6 +3615,10 @@ class Session:
                 and site_id in coverage.get("siteIds", []))
 
     def _validate_semantic_deck_prefix_distribution_capabilities(self):
+        self._semantic_deck_sequential_audit_supported = False
+        self._semantic_deck_sequential_audit_max_prefix_length = 0
+        audit_maximum_field = (
+            "semanticDeckPrefixDistributionSequentialAuditMaximumPrefixLength")
         fields = (
             "semanticDeckPrefixDistributionSchemaId",
             "semanticDeckPrefixDistributionOperations",
@@ -3623,6 +3627,10 @@ class Session:
         )
         present = [field in self.capabilities for field in fields]
         if not any(present):
+            if audit_maximum_field in self.capabilities:
+                raise EmulatorError(
+                    "Sequential deck audit maximum was advertised without "
+                    "deck distribution capabilities")
             return False
         if not all(present):
             raise EmulatorError(
@@ -3649,9 +3657,22 @@ class Session:
             "maximum_orders (optional integer from 1 through 65536; default 4096)",
         }
         self._semantic_deck_sequential_audit_supported = (
-            "audit_sequential (optional boolean; checks prefixes through 64 "
-            "draw positions by composing QueryDraw supports)"
+            "audit_sequential (optional boolean; composes successive "
+            "QueryDraw supports)"
             in inputs)
+        self._semantic_deck_sequential_audit_max_prefix_length = 0
+        if audit_maximum_field in self.capabilities:
+            audit_maximum = self.capabilities[audit_maximum_field]
+            if type(audit_maximum) is not int or audit_maximum < 1:
+                raise EmulatorError(
+                    "Invalid sequential deck audit maximum prefix length")
+            if not self._semantic_deck_sequential_audit_supported:
+                raise EmulatorError(
+                    "Sequential deck audit maximum was advertised without its input")
+            self._semantic_deck_sequential_audit_max_prefix_length = (
+                audit_maximum)
+        else:
+            self._semantic_deck_sequential_audit_supported = False
         scope = self.capabilities[fields[3]]
         if ("semantic_deck_prefix_distribution" not in operations
                 or not required_inputs.issubset(inputs)
@@ -3685,13 +3706,16 @@ class Session:
                 "maximum_orders must be an integer from 1 through 65536")
         if type(audit_sequential) is not bool:
             raise ValueError("audit_sequential must be a boolean")
-        if audit_sequential and prefix_length > 64:
-            raise ValueError(
-                "Sequential deck-law audits support prefixes through length 64")
         if (audit_sequential and
                 not self._semantic_deck_sequential_audit_supported):
             raise EmulatorError(
                 "Emulator does not advertise the sequential deck-law audit")
+        if (audit_sequential and prefix_length >
+                self._semantic_deck_sequential_audit_max_prefix_length):
+            raise ValueError(
+                "Sequential deck-law audit prefix length exceeds the "
+                "negotiated maximum of " + str(
+                    self._semantic_deck_sequential_audit_max_prefix_length))
 
         payload = {
             "state_handle": state_handle,

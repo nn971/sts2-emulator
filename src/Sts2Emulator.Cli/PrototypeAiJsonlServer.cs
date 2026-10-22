@@ -2924,6 +2924,9 @@ internal static class PrototypeAiJsonlServer
                                 "provider-independent-mechanics-after-matched-semantic-outcomes",
                             semanticDeckPrefixDistributionSchemaId =
                                 SemanticDeckPrefixDistributionV111.CurrentSchemaId,
+                            semanticDeckPrefixDistributionSequentialAuditMaximumPrefixLength =
+                                SemanticDeckEngineV111
+                                    .MaximumSequentialPrefixAuditLength,
                             semanticDeckPrefixDistributionOperations =
                                 new[] { "semantic_deck_prefix_distribution" },
                             semanticDeckPrefixDistributionInputs = new[]
@@ -2931,7 +2934,7 @@ internal static class PrototypeAiJsonlServer
                                 "state_handle (run with an idle Nature-owned combat deck)",
                                 "prefix_length (integer from 1 through the deck size)",
                                 "maximum_orders (optional integer from 1 through 65536; default 4096)",
-                                "audit_sequential (optional boolean; checks prefixes through 64 draw positions by composing QueryDraw supports)"
+                                "audit_sequential (optional boolean; composes successive QueryDraw supports)"
                             },
                             semanticDeckPrefixDistributionScope =
                                 "Nature-only exact constrained-order counts; UNVERIFIED uniform-pool model; excluded from fair player observations",
