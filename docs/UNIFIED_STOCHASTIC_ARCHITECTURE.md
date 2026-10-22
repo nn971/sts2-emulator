@@ -129,6 +129,8 @@ Legacy run-action snapshot restoration also imports missing map-generation audit
 
 Live Act 1 encounter selection publishes weak, normal, and elite pool changes through `RunWorldStochasticStateV111.CommitActOneEncounterPool`, which validates each candidate against the current world region and encounter cursor.
 
+Experimental Hive/Glory combat entry publishes its selected encounter bag through `RunWorldStochasticStateV111.CommitLaterActEncounterBag`, which validates the configured route, active act, Ascension rules, and revealed Ancient support before publication.
+
 The same world mechanics owner now appends encounter IDs and completed-room records. Ordinary and controlled-playable combat entry plus map-room completion use those transitions.
 
 Native ReferenceNature sessions that project persistent relic bags now validate both their saved origin and replay state. Any present bag must use `NatureUnordered` and pass its canonical rarity, ownership, uniqueness, and sort invariants; the Native event-gold boundary may preserve an absent bag. Calling Bell event-choice, Native event-relic, Neow pickup, and Native Shovel replay apply the same validation when their projected bag is required.

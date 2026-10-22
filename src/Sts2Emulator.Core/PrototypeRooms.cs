@@ -105,10 +105,8 @@ public sealed partial class PrototypeGameEngine
         {
             World = world with
             {
-                Stochastic = world.Stochastic with
-                {
-                    LaterActEncounterBag = selected.Bag
-                }
+                Stochastic = RunWorldStochasticStateV111
+                    .CommitLaterActEncounterBag(state, selected.Bag)
             }
         }, room, selected.Encounter);
     }

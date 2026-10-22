@@ -327,6 +327,24 @@ public sealed record RunWorldStochasticStateV111
             LaterActEncounterBag = bag
         };
 
+    internal static RunWorldStochasticStateV111
+        CommitLaterActEncounterBag(
+            RunState run, PrototypeLaterActEncounterBagV111? bag)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        var world = run.World ?? throw new InvalidDataException(
+            "Later-act encounter commit has no run world.");
+        var configuration = run.Configuration;
+        if (configuration?.UsesExperimentalSilentThreeActRoute != true)
+            throw new InvalidOperationException(
+                "Later-act encounter commits require the configured three-act route.");
+        var darvRevealed = configuration.Profile.RevealedEpochs.Contains(
+            NativeDarvEventV111.EpochId, StringComparer.Ordinal);
+        ValidateLaterActEncounterBag(
+            world, bag, run.Ascension, darvRevealed);
+        return WithLaterActEncounterBag(world.Stochastic, bag);
+    }
+
     internal static RunWorldStochasticStateV111 WithPreparedLaterActEncounterBags(
         RunWorldStochasticStateV111? current,
         PrototypeLaterActEncounterBagV111[]? bags) =>

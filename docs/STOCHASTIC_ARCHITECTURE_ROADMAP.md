@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 later-act encounter-pool commit ownership increment (2026-10-22):**
+Experimental Hive/Glory combat entry now publishes the selected encounter bag
+through `RunWorldStochasticStateV111.CommitLaterActEncounterBag`, validating
+the bag against the configured route, act, Ascension, and revealed Ancient
+support before publication. Static source review and `git diff --check` only;
+no tests or builds were run.
+
 **S3 Act 1 encounter-pool commit ownership increment (2026-10-22):** Live
 Overgrowth and Underdocks encounter draws now publish weak, normal, and elite
 pool updates through `RunWorldStochasticStateV111.CommitActOneEncounterPool`,
