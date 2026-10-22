@@ -22,6 +22,7 @@ public sealed partial class PrototypeGameEngine
             return state;
         }
 
+        var prototypeRng = state.Stochastic.PrototypeRng;
         var result = ResolveOperations(
             state.Player,
             combat,
@@ -31,12 +32,15 @@ public sealed partial class PrototypeGameEngine
                     NativeGloryAncientsV111.WhisperingEarringMaxCards,
                     SourceKind: PrototypeEffectSourceKind.Relic)
             ]),
-            state.Stochastic.PrototypeRngMutable,
+            prototypeRng,
             moveSourceCardOnCompletion: false);
+        var stochastic = RunStochasticStateV111.WithPrototypeRng(
+            state.Stochastic, prototypeRng);
 
         return state with
         {
             Player = result.Player,
+            Stochastic = stochastic,
             World = world with { Combat = result.Combat }
         };
     }

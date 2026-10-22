@@ -76,6 +76,7 @@ public sealed partial class PrototypeGameEngine
         // zero energy spent, a random hittable target drawn from
         // combat_targets for AnyEnemy, and the complete play/event
         // pipeline (including Normality/Unplayable guards).
+        var prototypeRng = state.Stochastic.PrototypeRng;
         var result = ResolveOperations(
             state.Player,
             combat,
@@ -85,12 +86,15 @@ public sealed partial class PrototypeGameEngine
                     SourceKind: PrototypeEffectSourceKind.Relic,
                     CardInstanceId: duplicate.InstanceId)
             ]),
-            state.Stochastic.PrototypeRngMutable,
+            prototypeRng,
             moveSourceCardOnCompletion: false);
+        var stochastic = RunStochasticStateV111.WithPrototypeRng(
+            state.Stochastic, prototypeRng);
 
         return state with
         {
             Player = result.Player,
+            Stochastic = stochastic,
             World = world with { Combat = result.Combat }
         };
     }

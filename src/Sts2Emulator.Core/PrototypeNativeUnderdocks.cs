@@ -1394,7 +1394,7 @@ public static class PrototypeNativeUnderdocksRunFactory
             seed, ascension);
         var world = baseState.World
             ?? throw new InvalidOperationException("Missing Act 1 world.");
-        var rng = baseState.Stochastic.PrototypeRngMutable.Fork();
+        var rng = baseState.Stochastic.PrototypeRng;
 
         // The prototype StartRun had already rolled an Overgrowth boss.
         // Replace its combat stream with the clean initial stream before
@@ -1626,7 +1626,7 @@ public sealed record ReferenceNatureUnderdocksRunResultV111(
 
         var cleanCombat = PrototypeRng.CreateBundle(run.RunSeed)
             .GetStream("combat");
-        var resultCombat = run.Stochastic.PrototypeRngMutable.GetStream("combat");
+        var resultCombat = run.Stochastic.PrototypeRng.GetStream("combat");
         if (CanonicalJson.Sha256(cleanCombat) !=
             CanonicalJson.Sha256(resultCombat))
             throw new InvalidDataException(

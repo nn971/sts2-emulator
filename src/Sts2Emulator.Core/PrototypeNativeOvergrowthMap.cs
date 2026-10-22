@@ -434,7 +434,7 @@ public static class PrototypeNativeOvergrowthRunFactory
         // The legacy prototype boot generates its own map first. Reset only
         // the map substream; the source-shaped replacement map consumes the
         // separate act_1_map context stream and leaves prototype RNG alone.
-        var rng = state.Stochastic.PrototypeRngMutable.Fork();
+        var rng = state.Stochastic.PrototypeRng;
         var clean = PrototypeRng.CreateBundle(seed);
         rng.ReplaceStream("map", clean.GetStream("map").Fork());
 
@@ -739,7 +739,7 @@ public sealed record ReferenceNatureOvergrowthRunResultV111(
         PrototypeStateInvariants.Validate(run);
         var initialCombat = PrototypeRng.CreateBundle(run.RunSeed)
             .GetStream("combat");
-        var resultCombat = run.Stochastic.PrototypeRngMutable.GetStream("combat");
+        var resultCombat = run.Stochastic.PrototypeRng.GetStream("combat");
         if (CanonicalJson.Sha256(initialCombat) !=
             CanonicalJson.Sha256(resultCombat))
             throw new InvalidDataException(
