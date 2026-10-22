@@ -512,8 +512,8 @@ public sealed partial class PrototypeGameEngine
         PrototypeAutomaticPipelineContinuationState continuation,
         CombatState combat, PendingCombatChoiceState pending)
     {
-        if (continuation.OpeningStage is not null ||
-            continuation.PendingPostDispatchEventKind is not null ||
+        if (continuation.Mechanics.OpeningStage is not null ||
+            continuation.Mechanics.PendingPostDispatchEventKind is not null ||
             !continuation.Mechanics.IsAtStep(
                 PrototypeAutomaticStepKind.DrawPlayerHand) ||
             continuation.Stochastic.ControlledDrawRemaining is not null ||

@@ -1733,9 +1733,9 @@ public sealed partial class PrototypeGameEngine
                 { PendingChoice: null,
                   PendingKnowledgeDemonChoice: null,
                   AutomaticPipelineContinuation: { } enemyActionCursor } ||
-                enemyActionCursor.OpeningStage is not null ||
-                enemyActionCursor.PendingPostDispatchEventKind is not null ||
-                enemyActionCursor.NextStepIndex != enemyActionReplay.StepIndex ||
+                enemyActionCursor.Mechanics.OpeningStage is not null ||
+                enemyActionCursor.Mechanics.PendingPostDispatchEventKind is not null ||
+                enemyActionCursor.Mechanics.NextStepIndex != enemyActionReplay.StepIndex ||
                 enemyActionCursor.Stochastic !=
                     new PrototypeAutomaticPipelineStochasticStateV111() ||
                 state.World?.Combat?.Stochastic.SemanticDeck?.Pending is not null ||
@@ -1804,10 +1804,10 @@ public sealed partial class PrototypeGameEngine
                     }
                 }
             };
-            state = continuation.OpeningStage is { } openingStage
+            state = continuation.Mechanics.OpeningStage is { } openingStage
                 ? ResumeOpeningCombat(state, openingStage)
-                : ResumeAutomaticPipeline(state, continuation.NextStepIndex,
-                    continuation.PendingPostDispatchEventKind,
+                : ResumeAutomaticPipeline(state, continuation.Mechanics.NextStepIndex,
+                    continuation.Mechanics.PendingPostDispatchEventKind,
                     stopBeforeSemanticHandDraw:
                         stopBeforeSemanticHandDraw,
                     controlledEnemyActionReplay:
@@ -1922,7 +1922,7 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidOperationException("Missing saved turn pipeline cursor.");
         if (continuation.Mechanics.CurrentStepKind !=
                 PrototypeAutomaticStepKind.AdvanceTurn ||
-            continuation.OpeningStage is not null)
+            continuation.Mechanics.OpeningStage is not null)
             throw new InvalidOperationException("Not an AdvanceTurn chance boundary.");
         var intents = continuation.Stochastic.ControlledTurnIntents ??
             throw new InvalidOperationException(

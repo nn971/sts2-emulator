@@ -27,8 +27,8 @@ public sealed partial class PrototypeGameEngine
             (cursor is not null &&
              (!cursor.Mechanics.IsAtStep(
                   PrototypeAutomaticStepKind.DrawPlayerHand) ||
-              cursor.OpeningStage is not null ||
-              cursor.PendingPostDispatchEventKind is not null)))
+              cursor.Mechanics.OpeningStage is not null ||
+              cursor.Mechanics.PendingPostDispatchEventKind is not null)))
             throw new InvalidDataException(
                 "Automatic Stratagem selection lost its hand-draw boundary.");
         if (choice!.Selection.MinSelections != expectedSelections ||
@@ -88,8 +88,8 @@ public sealed partial class PrototypeGameEngine
             combat.PendingKnowledgeDemonChoice is not null ||
             cursor is null || !cursor.Mechanics.IsAtStep(
                 PrototypeAutomaticStepKind.DrawPlayerHand) ||
-            cursor.OpeningStage is not null ||
-            cursor.PendingPostDispatchEventKind is not null ||
+            cursor.Mechanics.OpeningStage is not null ||
+            cursor.Mechanics.PendingPostDispatchEventKind is not null ||
             cursor.Stochastic.ControlledSemanticBeforeHandDrawPending ||
             cursor.Stochastic.ControlledBeforeHandDrawHookChoicePending)
             throw new InvalidDataException(

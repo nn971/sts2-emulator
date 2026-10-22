@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 automatic-pipeline mechanics owner read increment (2026-10-22):**
+Pipeline execution, hand-draw boundaries, end-turn validation, and the
+stochastic owner's cursor checks now read step index, opening stage, and
+post-dispatch event through the mechanics owner. Flat continuation fields
+remain snapshot projections. Static source review and `git diff --check` only;
+no tests or builds were run.
+
 **S3 automatic-pipeline stochastic owner read increment (2026-10-22):**
 Automatic pipeline execution, validation, semantic-pilot projection, and
 controlled-playable checks now read intent, enemy-action, and hand-draw

@@ -201,8 +201,8 @@ public sealed partial class PrototypeGameEngine
             continuation.Stochastic.ControlledDrawCostRemaining !=
                 cost.RemainingCount ||
             continuation.Stochastic.ControlledDrawRemaining is not null ||
-            continuation.OpeningStage is not null ||
-            continuation.PendingPostDispatchEventKind is not null ||
+            continuation.Mechanics.OpeningStage is not null ||
+            continuation.Mechanics.PendingPostDispatchEventKind is not null ||
             !ValidateControlledDrawCost(state.Player, combat, cost))
             throw new InvalidDataException(
                 "Saved drawn-card cost does not match the hand-draw checkpoint.");

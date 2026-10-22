@@ -40,8 +40,8 @@ public sealed partial class PrototypeGameEngine
         }
         if (!cursor.Mechanics.IsAtStep(
                 PrototypeAutomaticStepKind.DrawPlayerHand) ||
-            cursor.OpeningStage is not null ||
-            cursor.PendingPostDispatchEventKind is not null)
+            cursor.Mechanics.OpeningStage is not null ||
+            cursor.Mechanics.PendingPostDispatchEventKind is not null)
             throw new InvalidDataException(
                 "Automatic hand-draw progress is outside its pipeline checkpoint.");
 
@@ -279,8 +279,8 @@ public sealed partial class PrototypeGameEngine
         if (completedSemanticDrawRequested is < 0 ||
             !cursor.Mechanics.IsAtStep(
                 PrototypeAutomaticStepKind.DrawPlayerHand) ||
-            cursor.OpeningStage is not null ||
-            cursor.PendingPostDispatchEventKind is not null ||
+            cursor.Mechanics.OpeningStage is not null ||
+            cursor.Mechanics.PendingPostDispatchEventKind is not null ||
             cursor.Stochastic.ControlledSemanticBeforeHandDrawPending ||
             combat.PendingChoice is not null ||
             combat.PendingKnowledgeDemonChoice is not null ||

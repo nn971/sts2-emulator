@@ -576,7 +576,7 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
 
         ValidateHandDrawProgress();
 
-        if (continuation.OpeningStage ==
+        if (continuation.Mechanics.OpeningStage ==
                 PrototypeOpeningCombatStage.InitialEnemyIntents &&
             ControlledTurnIntents is null)
             throw new InvalidOperationException(
@@ -640,7 +640,7 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
         if (ControlledTurnIntents is { } turnIntents)
         {
             turnIntents.Validate();
-            bool initialIntentStage = continuation.OpeningStage ==
+            bool initialIntentStage = continuation.Mechanics.OpeningStage ==
                 PrototypeOpeningCombatStage.InitialEnemyIntents;
             // BaselineCombat is the replay origin for the intent ticket
             // prefix. Combat contains any intents already committed before
@@ -663,7 +663,7 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
                 (initialIntentStage &&
                  !continuation.Mechanics.IsAtOpeningBoundary(
                     PrototypeOpeningCombatStage.InitialEnemyIntents)) ||
-                continuation.PendingPostDispatchEventKind is not null ||
+                continuation.Mechanics.PendingPostDispatchEventKind is not null ||
                 ControlledEnemyAction is not null ||
                 ControlledDrawRemaining is not null ||
                 ControlledDrawCostRemaining is not null ||
@@ -681,7 +681,7 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
 
         if (ControlledEnemyAction is not { } enemyAction) return;
         enemyAction.Validate(PrototypeContent.Rules.EndTurnPipeline.Length);
-        if (continuation.NextStepIndex != enemyAction.StepIndex ||
+        if (continuation.Mechanics.NextStepIndex != enemyAction.StepIndex ||
             combat.IsPlayerTurn || combat.PendingChoice is not null ||
             combat.PendingKnowledgeDemonChoice is not null ||
             CanonicalJson.Sha256(enemyAction.Checkpoint.World?.Combat) !=
