@@ -17,10 +17,10 @@ public static class NativeRunRngV111
     {
         ArgumentNullException.ThrowIfNull(state);
         var stochastic = state.Stochastic;
-        if (stochastic.NativeRunRngMutable is not null)
+        if (stochastic.NativeRunRng is not null)
             throw new InvalidOperationException(
                 "Native run RNG ownership is already enabled.");
-        if (state.World?.Combat?.Stochastic.NativeRngMutable is not null)
+        if (state.World?.Combat?.Stochastic.NativeRng is not null)
             throw new InvalidOperationException(
                 "Cannot introduce a run RNG owner after native combat has begun.");
         return state with
@@ -39,14 +39,14 @@ public static class NativeRunRngV111
     public static void Validate(RunState state)
     {
         ArgumentNullException.ThrowIfNull(state);
-        Validate(state, state.Stochastic.NativeRunRngMutable);
+        Validate(state, state.Stochastic.NativeRunRng);
     }
 
     internal static void Validate(RunState state, RngBundle? runRng)
     {
         ArgumentNullException.ThrowIfNull(state);
         var combat = state.World?.Combat;
-        var active = combat?.Stochastic.NativeRngMutable;
+        var active = combat?.Stochastic.NativeRng;
         if (runRng is null)
         {
             if (active is not null)
@@ -96,7 +96,7 @@ public static class NativeRunRngV111
         RunState state, string streamId, int maxExclusive, out int value)
     {
         ArgumentNullException.ThrowIfNull(state);
-        var runStreams = state.Stochastic.NativeRunRngMutable;
+        var runStreams = state.Stochastic.NativeRunRng;
         if (runStreams is null)
             throw new InvalidOperationException(
                 "Native run RNG ownership is not enabled.");
@@ -104,7 +104,7 @@ public static class NativeRunRngV111
         var advanced = runStreams.Fork();
         value = NativeRngV111.NextInt(advanced, streamId, maxExclusive);
         RunState updated;
-        if (state.World?.Combat?.Stochastic.NativeRngMutable is { } active)
+        if (state.World?.Combat?.Stochastic.NativeRng is { } active)
         {
             var sourceCombat = state.World.Combat;
             var combat = sourceCombat with
@@ -148,7 +148,7 @@ public static class NativeRunRngV111
         if (state.Phase != RunPhase.Combat || world.Combat is null)
             throw new InvalidOperationException(
                 "Native encounter requires an active typed combat.");
-        var runStreams = state.Stochastic.NativeRunRngMutable;
+        var runStreams = state.Stochastic.NativeRunRng;
         if (runStreams is null)
             throw new InvalidOperationException(
                 "Enable native run ownership before entering combat.");
@@ -167,8 +167,8 @@ public static class NativeRunRngV111
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(combat);
-        var runStreams = state.Stochastic.NativeRunRngMutable;
-        var nativeCombatRng = combat.Stochastic.NativeRngMutable;
+        var runStreams = state.Stochastic.NativeRunRng;
+        var nativeCombatRng = combat.Stochastic.NativeRng;
         if (state.World?.Combat is null || state.Phase != RunPhase.Combat
             || runStreams is null || nativeCombatRng is null)
             throw new InvalidOperationException(
@@ -199,8 +199,8 @@ public static class NativeRunRngV111
         var sourceCombat = world.Combat
             ?? throw new InvalidOperationException(
                 "No native combat RNG to release.");
-        var active = sourceCombat.Stochastic.NativeRngMutable;
-        if (active is null || state.Stochastic.NativeRunRngMutable is null)
+        var active = sourceCombat.Stochastic.NativeRng;
+        if (active is null || state.Stochastic.NativeRunRng is null)
             throw new InvalidOperationException(
                 "No native combat RNG to release.");
         var combat = sourceCombat with
@@ -232,13 +232,13 @@ public static class NativeRunRngV111
     internal static RunState ReconcileAfterStep(
         RunState before, RunState after)
     {
-        var afterRunStreams = after.Stochastic.NativeRunRngMutable;
+        var afterRunStreams = after.Stochastic.NativeRunRng;
         if (afterRunStreams is null)
             return after;
         var liveCombat = after.World?.Combat;
         var endedCombat = before.World?.Combat;
-        var live = liveCombat?.Stochastic.NativeRngMutable;
-        var ended = endedCombat?.Stochastic.NativeRngMutable;
+        var live = liveCombat?.Stochastic.NativeRng;
+        var ended = endedCombat?.Stochastic.NativeRng;
         if (live is null && ended is null)
             return after;
         if (live is not null)
