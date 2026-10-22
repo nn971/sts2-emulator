@@ -2865,10 +2865,22 @@ public static class SemanticPilotCombatEngineV111
                 "No Nature-controlled drawn-card cost is pending.");
         var decision = SemanticCostChoiceV111.Select(
             pending, eventId, selectedCost);
+        return ResumeCostDecision(current, decision);
+    }
+
+    private static SemanticPilotCombatV111 ResumeCostDecision(
+        SemanticPilotCombatV111 current,
+        SemanticCostDecisionV111 decision)
+    {
+        var pending = current.CostPending ??
+            throw new InvalidOperationException(
+                "No Nature-controlled drawn-card cost is pending.");
+        SemanticCostChoiceV111.ValidateDecision(
+            pending, decision, decision.SelectedIndex);
         var index = decision.SelectedIndex;
         if (current.Run.World?.Combat?.PendingChoice?
                 .ControlledSemanticDraw is not null)
-            return Resolve(current, fingerprint, index,
+            return Resolve(current, current.Fingerprint, index,
                 null, null, false, decision);
         if (pending.TargetCardInstanceId is not null)
         {
@@ -2880,7 +2892,8 @@ public static class SemanticPilotCombatEngineV111
                     "semantic_cost", CostDecision: decision.Fork()),
                 validate: true);
         }
-        return Resolve(current, fingerprint, index, null, null, false, decision);
+        return Resolve(current, current.Fingerprint, index,
+            null, null, false, decision);
     }
 
     public static SemanticPilotCombatV111 ResolveHandCostSelection(
@@ -2897,6 +2910,18 @@ public static class SemanticPilotCombatEngineV111
                 "No random hand-card cost selection is pending.");
         var decision = SemanticHandCostSelectionChoiceV111.Select(
             pending, eventId, cardInstanceId);
+        return ResumeHandCostSelectionDecision(current, decision);
+    }
+
+    private static SemanticPilotCombatV111 ResumeHandCostSelectionDecision(
+        SemanticPilotCombatV111 current,
+        SemanticHandCostSelectionDecisionV111 decision)
+    {
+        var pending = current.HandCostSelectionPending ??
+            throw new InvalidOperationException(
+                "No random hand-card cost selection is pending.");
+        SemanticHandCostSelectionChoiceV111.ValidateDecision(
+            pending, decision, decision.SelectedCardInstanceId);
         var choice = new SemanticEndTurnNestedChoiceV111(
             "semantic_hand_cost_selection",
             HandCostSelectionDecision: decision.Fork());
@@ -3582,7 +3607,10 @@ public static class SemanticPilotCombatEngineV111
             targetCardModelId = combat.Cards.Single(card =>
                 card.InstanceId == targetCardInstanceId).CardId;
             request = new RandomIndexRequestV111(
-                "combat.random_hand_card.energy_cost", "prototype.combat",
+                "combat.random_hand_card.energy_cost",
+                combat.Stochastic.NativeRngMutable is not null
+                    ? SemanticCostChoiceV111.NativeHandCostStreamId
+                    : SemanticCostChoiceV111.LegacyHandCostStreamId,
                 "effect:" + randomCost.Operation.Kind +
                     ":hand:" + CanonicalJson.Sha256(
                         randomCost.EligibleCardInstanceIds) +
@@ -3640,7 +3668,10 @@ public static class SemanticPilotCombatEngineV111
         var ordinal = current.History.Count(transition =>
             transition.Kind == "semantic_hand_cost_selection");
         return SemanticHandCostSelectionChoiceV111.CreateEvent(
-            current.Fingerprint, randomCost, modelIds, ordinal);
+            current.Fingerprint, randomCost, modelIds, ordinal,
+            combat!.Stochastic.NativeRngMutable is not null
+                ? SemanticHandCostSelectionChoiceV111.NativeStreamId
+                : SemanticHandCostSelectionChoiceV111.StreamId);
     }
 
     public static SemanticCardShortlistEventV111?
@@ -4047,14 +4078,11 @@ public static class SemanticPilotCombatEngineV111
                     Step(replay, replay.Fingerprint,
                         transition.CardSelectionDecision.ActionId),
                 "semantic_cost" when transition.CostDecision is not null =>
-                    ResolveCost(replay, replay.Fingerprint,
-                        transition.CostDecision.Event.EventId,
-                        transition.CostDecision.SelectedCost),
+                    ResumeCostDecision(replay, transition.CostDecision),
                 "semantic_hand_cost_selection" when
                     transition.HandCostSelectionDecision is not null =>
-                    ResolveHandCostSelection(replay, replay.Fingerprint,
-                        transition.HandCostSelectionDecision.Event.EventId,
-                        transition.HandCostSelectionDecision.SelectedCardInstanceId),
+                    ResumeHandCostSelectionDecision(
+                        replay, transition.HandCostSelectionDecision),
                 "semantic_card_shortlist" when
                     transition.CardShortlistDecision is not null =>
                     ResumeCardShortlistDecision(

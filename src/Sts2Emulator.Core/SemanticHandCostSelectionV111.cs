@@ -50,7 +50,8 @@ public sealed record SemanticHandCostSelectionEventV111(
             string.IsNullOrWhiteSpace(BoundaryFingerprint) ||
             string.IsNullOrWhiteSpace(SupportFingerprint) ||
             SiteId != SemanticHandCostSelectionChoiceV111.SiteId ||
-            StreamId != SemanticHandCostSelectionChoiceV111.StreamId ||
+            StreamId is not (SemanticHandCostSelectionChoiceV111.StreamId or
+                SemanticHandCostSelectionChoiceV111.NativeStreamId) ||
             string.IsNullOrWhiteSpace(OwnerId) || Ordinal < 0 ||
             OperationKind != SemanticHandCostSelectionChoiceV111.OperationKind ||
             candidateCardInstanceIds is not { Length: > 0 } ||
@@ -109,12 +110,14 @@ public static class SemanticHandCostSelectionChoiceV111
         "sts2-v111-semantic-hand-cost-selection-v1";
     public const string SiteId = "combat.random_hand_card.select";
     internal const string StreamId = "prototype.combat";
+    internal const string NativeStreamId = "run.combat_card_selection";
     internal const string OperationKind = "choose_hand_card_instance";
 
     internal static SemanticHandCostSelectionEventV111 CreateEvent(
         string boundaryFingerprint,
         PrototypeControlledRandomCostV111 randomCost,
-        string[] candidateCardModelIds, int ordinal)
+        string[] candidateCardModelIds, int ordinal,
+        string streamId = StreamId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(boundaryFingerprint);
         ArgumentNullException.ThrowIfNull(randomCost);
@@ -128,6 +131,10 @@ public static class SemanticHandCostSelectionChoiceV111
                 "Hand-cost selection source pool is invalid.");
         if (ordinal < 0)
             throw new ArgumentOutOfRangeException(nameof(ordinal));
+        if (streamId is not (StreamId or NativeStreamId))
+            throw new NotSupportedException(
+                "UNSUPPORTED_RANDOM_SITE site=" + SiteId +
+                " operation=hand_cost_selection_stream.");
 
         var cardIds = (long[])randomCost.EligibleCardInstanceIds.Clone();
         var modelIds = (string[])candidateCardModelIds.Clone();
@@ -148,7 +155,7 @@ public static class SemanticHandCostSelectionChoiceV111
         });
         var semanticEvent = new SemanticHandCostSelectionEventV111(
             SchemaId, eventId, boundaryFingerprint, supportFingerprint,
-            SiteId, StreamId, ownerId, ordinal, OperationKind, cardIds,
+            SiteId, streamId, ownerId, ordinal, OperationKind, cardIds,
             modelIds, appliedCost);
         semanticEvent.Validate();
         return semanticEvent;
@@ -182,10 +189,19 @@ public static class SemanticHandCostSelectionChoiceV111
         long cardInstanceId)
     {
         ArgumentNullException.ThrowIfNull(decision);
+        pending?.Validate();
         decision.Validate();
+        bool legacyPrototypeStream = pending is not null &&
+            pending.StreamId == NativeStreamId &&
+            decision.Event.StreamId == StreamId &&
+            CanonicalJson.Sha256(pending with
+            {
+                StreamId = decision.Event.StreamId
+            }) == CanonicalJson.Sha256(decision.Event);
         if (pending is null || pending.EventId != decision.Event.EventId ||
-            CanonicalJson.Sha256(pending) !=
-                CanonicalJson.Sha256(decision.Event) ||
+            (CanonicalJson.Sha256(pending) !=
+                CanonicalJson.Sha256(decision.Event) &&
+             !legacyPrototypeStream) ||
             decision.SelectedCardInstanceId != cardInstanceId)
             throw new InvalidDataException(
                 "Hand-cost decision differs from its live semantic event.");
@@ -203,6 +219,10 @@ public static class SemanticHandCostSelectionChoiceV111
         var combat = checkpoint.World?.Combat ??
             throw new InvalidDataException(
                 "Hand-cost selection lost its source combat.");
+        if (decision.Event.StreamId == NativeStreamId &&
+            combat.Stochastic.NativeRngMutable is null)
+            throw new InvalidDataException(
+                "Native hand-cost selection stream attribution has no Native combat RNG owner.");
         var randomCost = combat.PendingChoice?.ControlledRandomCost;
         if (randomCost is null || randomCost.Operation.Kind !=
                 PrototypeCombatEffectKind
@@ -216,7 +236,6 @@ public static class SemanticHandCostSelectionChoiceV111
         var candidateModels = candidateIds.Select(id => combat.Cards.Single(
             card => card.InstanceId == id).CardId).ToArray();
         if (eventState.SiteId != SiteId ||
-            eventState.StreamId != StreamId ||
             eventState.OperationKind != OperationKind ||
             eventState.AppliedCost != Math.Max(
                 0, randomCost.Operation.Amount) ||

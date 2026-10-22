@@ -52,18 +52,23 @@ public sealed record SemanticCostEventV111(
               string.IsNullOrWhiteSpace(TargetCardModelId) ||
               !((Request.SiteId ==
                      "combat.random_hand_card.energy_cost" &&
-                 Request.StreamId == "prototype.combat") ||
+                 (Request.StreamId ==
+                      SemanticCostChoiceV111.LegacyHandCostStreamId ||
+                  Request.StreamId ==
+                      SemanticCostChoiceV111.NativeHandCostStreamId)) ||
                 ((Request.SiteId is
                      "combat.card_draw.relic_energy_cost" or
                      "combat.card_draw.slither_energy_cost") &&
                  Request.StreamId == "semantic.combat")))))
             throw new InvalidDataException("Invalid semantic cost event.");
+        var identityRequest = SemanticCostChoiceV111
+            .RequestForEventIdentity(Request);
         var expectedSupportFingerprint = TargetCardInstanceId is null
             ? CanonicalJson.Sha256(new
-                { request = Request, costs = candidateCosts })
+                { request = identityRequest, costs = candidateCosts })
             : CanonicalJson.Sha256(new
             {
-                request = Request,
+                request = identityRequest,
                 costs = candidateCosts,
                 targetCardInstanceId = TargetCardInstanceId,
                 targetCardModelId = TargetCardModelId
@@ -99,6 +104,18 @@ public sealed record SemanticCostDecisionV111(
 public static class SemanticCostChoiceV111
 {
     public const string SchemaId = "sts2-v111-semantic-cost-choice-v1";
+    internal const string LegacyHandCostStreamId = "prototype.combat";
+    internal const string NativeHandCostStreamId =
+        "run.combat_energy_costs";
+
+    // Keep stream attribution out of this event's stable identity so old
+    // prototype-labeled decisions can be replayed against Native-backed runs.
+    internal static RandomIndexRequestV111 RequestForEventIdentity(
+        RandomIndexRequestV111 request) =>
+        request.SiteId == "combat.random_hand_card.energy_cost" &&
+        request.StreamId == NativeHandCostStreamId
+            ? request with { StreamId = LegacyHandCostStreamId }
+            : request;
 
     internal static SemanticCostEventV111 CreateEvent(
         string boundaryFingerprint, RandomIndexRequestV111 request,
@@ -116,11 +133,13 @@ public static class SemanticCostChoiceV111
                 "Semantic cost event has invalid bounded support.");
 
         var costs = Enumerable.Range(0, request.SupportCount).ToArray();
+        var identityRequest = RequestForEventIdentity(request);
         var supportFingerprint = targetCardInstanceId is null
-            ? CanonicalJson.Sha256(new { request, costs })
+            ? CanonicalJson.Sha256(new
+                { request = identityRequest, costs })
             : CanonicalJson.Sha256(new
             {
-                request,
+                request = identityRequest,
                 costs,
                 targetCardInstanceId,
                 targetCardModelId
@@ -232,10 +251,23 @@ public static class SemanticCostChoiceV111
         SemanticCostDecisionV111 decision, int sourceIndex)
     {
         ArgumentNullException.ThrowIfNull(decision);
+        pending?.Validate();
         decision.Validate();
+        bool legacyPrototypeStream = pending is not null &&
+            pending.Request.SiteId == "combat.random_hand_card.energy_cost" &&
+            pending.Request.StreamId == NativeHandCostStreamId &&
+            decision.Event.Request.StreamId == LegacyHandCostStreamId &&
+            CanonicalJson.Sha256(pending with
+            {
+                Request = pending.Request with
+                {
+                    StreamId = decision.Event.Request.StreamId
+                }
+            }) == CanonicalJson.Sha256(decision.Event);
         if (pending is null || sourceIndex != decision.SelectedIndex ||
-            CanonicalJson.Sha256(pending) !=
-                CanonicalJson.Sha256(decision.Event))
+            (CanonicalJson.Sha256(pending) !=
+                CanonicalJson.Sha256(decision.Event) &&
+             !legacyPrototypeStream))
             throw new InvalidOperationException(
                 "Semantic cost decision is stale or outside current support.");
     }
@@ -321,7 +353,10 @@ internal static class SemanticRandomHandCostChoiceV111
         var targetCardModelId = combat.Cards.Single(card =>
             card.InstanceId == targetCardInstanceId).CardId;
         var request = new RandomIndexRequestV111(
-            "combat.random_hand_card.energy_cost", "prototype.combat",
+            "combat.random_hand_card.energy_cost",
+            combat.Stochastic.NativeRngMutable is not null
+                ? SemanticCostChoiceV111.NativeHandCostStreamId
+                : SemanticCostChoiceV111.LegacyHandCostStreamId,
             "effect:" + randomCost.Operation.Kind + ":hand:" +
                 CanonicalJson.Sha256(randomCost.EligibleCardInstanceIds) +
                 ":index:" + randomCost.NextCardIndex,

@@ -264,6 +264,11 @@ internal static class SemanticChoiceResumeV111
         decision.Validate();
         var ownedDecision = decision.Fork();
         var siteId = ownedDecision.Event.SiteId;
+        if (ownedDecision.Event.Request.StreamId ==
+                SemanticCostChoiceV111.NativeHandCostStreamId &&
+            checkpoint.World?.Combat?.Stochastic.NativeRngMutable is null)
+            throw new InvalidDataException(
+                "Native random-hand-cost stream attribution has no Native combat RNG owner.");
         var run = checkpoint.World?.Combat?.PendingChoice?
                 .ControlledRandomCost is not null
             ? SemanticRandomHandCostChoiceV111.Resume(
