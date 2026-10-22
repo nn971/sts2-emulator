@@ -2,6 +2,12 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 semantic pilot mechanics history append increment (2026-10-22):**
+`SemanticPilotMechanicsStateV111` now validates, forks, and appends each
+typed continuation history entry. Pilot publication delegates the history
+transition to that mechanics owner. Static source review and `git diff --check`
+only; no tests or builds were run.
+
 **S4 turn-intent ticket append ownership increment (2026-10-22):** The
 semantic end-turn resolver now verifies that one selected intent ticket
 extends the saved prefix, then publishes it through

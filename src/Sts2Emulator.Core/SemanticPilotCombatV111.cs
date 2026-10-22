@@ -3922,7 +3922,7 @@ public static class SemanticPilotCombatEngineV111
             ? next
             : next with
             {
-                History = next.History.Append(historyEntry).ToArray()
+                Mechanics = next.Mechanics.AppendHistory(historyEntry)
             };
     }
 

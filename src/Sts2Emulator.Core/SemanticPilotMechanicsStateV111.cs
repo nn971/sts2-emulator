@@ -35,6 +35,18 @@ public sealed record SemanticPilotMechanicsStateV111
         get => CopyHistory(_history);
         init => _history = CopyHistory(value);
     }
+
+    internal SemanticPilotMechanicsStateV111 AppendHistory(
+        SemanticPilotContinuationV111 transition)
+    {
+        ArgumentNullException.ThrowIfNull(transition);
+        transition.Validate();
+        return this with
+        {
+            History = History.Append(transition.Fork()).ToArray()
+        };
+    }
+
     public string NativeEncounterEntry { get; init; }
     public string Mode { get; init; }
     internal SemanticPilotEndTurnMechanicsProjectionV111?
