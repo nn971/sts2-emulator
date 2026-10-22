@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 semantic draw transcript owner read increment (2026-10-22):** Draw-cost
+request ordinals and random-pile-card, insertion, cost, Stratagem, and draw-hook
+replay/publication now read typed histories through
+`SemanticCombatDrawStochasticStateV111`. Existing flat snapshot projections,
+write paths, and continuation order are unchanged. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S3 continuation transcript owner read increment (2026-10-22):** Semantic
 end-turn validation, replay, and publication now read intent, enemy-action,
 target, boundary, and nested-choice histories through

@@ -193,7 +193,7 @@ public sealed record SemanticCombatDrawV111(
                       : "combat.card_draw.slither_energy_cost",
                 "semantic.combat", "card_instance:" + card.InstanceId +
                     ":model:" + card.CardId + ":stage:" + cost.Stage,
-                CostTranscript.Length, [],
+                Stochastic.CostTranscript.Length, [],
                 OperationKind: "bounded_integer",
                 BoundedCount: relic ? cost.RelicMaxExclusive : 4);
         }
@@ -749,7 +749,8 @@ public static class SemanticCombatDrawEngineV111
             var nextPileChoice = PublishDrawProgress(
                 state, resumed, requested, pileCardRemaining) with
             {
-                RandomPileCardTranscript = state.RandomPileCardTranscript
+                RandomPileCardTranscript =
+                    state.Stochastic.RandomPileCardTranscript
                     .Append(decision.Fork()).ToArray()
             };
             Validate(nextPileChoice);
@@ -769,7 +770,8 @@ public static class SemanticCombatDrawEngineV111
             var nextInsertion = PublishDrawProgress(
                 state, resumed, remainingCount: insertionRemaining) with
             {
-                DrawInsertionTranscript = state.DrawInsertionTranscript
+                DrawInsertionTranscript =
+                    state.Stochastic.DrawInsertionTranscript
                     .Append(decision.Fork()).ToArray()
             };
             Validate(nextInsertion);
@@ -807,7 +809,8 @@ public static class SemanticCombatDrawEngineV111
                 state, resumedCost.Run,
                 remainingCount: resumedCost.Remaining) with
             {
-                CostTranscript = state.CostTranscript.Append(decision).ToArray()
+                CostTranscript = state.Stochastic.CostTranscript
+                    .Append(decision).ToArray()
             };
             Validate(costNext);
             return costNext;
@@ -871,7 +874,7 @@ public static class SemanticCombatDrawEngineV111
             state, resumedRun, remainingCount: remaining) with
         {
             StratagemSelectionTranscript =
-                state.StratagemSelectionTranscript
+                state.Stochastic.StratagemSelectionTranscript
                     .Append(decision.Fork()).ToArray()
         };
         Validate(next);
@@ -897,7 +900,8 @@ public static class SemanticCombatDrawEngineV111
         var next = PublishDrawProgress(
             state, run, requested, remaining) with
         {
-            DrawHookChoiceTranscript = state.DrawHookChoiceTranscript
+            DrawHookChoiceTranscript =
+                state.Stochastic.DrawHookChoiceTranscript
                 .Append(decision.Fork()).ToArray()
         };
         Validate(next);
