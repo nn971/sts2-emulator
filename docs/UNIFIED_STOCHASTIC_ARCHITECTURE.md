@@ -203,7 +203,10 @@ mistake them for a completed boundary. Semantic draw entry uses the same
 classification to admit a clean hand-draw checkpoint, and end-turn origin
 validation uses it for the clean `AdvanceTurn` checkpoint. Semantic end-turn
 also sends the post-intent checkpoint through its shared boundary publisher,
-preserving supported choices that suspend before `DrawPlayerHand`.
+preserving supported choices that suspend before `DrawPlayerHand`; it begins
+hand draw only when that stage is the classified result. The initial end-turn
+action uses the same rule for `AdvanceTurn`, and both paths reject unexpected
+resume boundaries explicitly.
 
 The ordinary pipeline resumer also consumes the tagged semantic
 `BeforeHandDraw` continuation after a source action clears its pending choice.

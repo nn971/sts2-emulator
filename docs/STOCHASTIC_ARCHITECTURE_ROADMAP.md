@@ -22,8 +22,10 @@ progress remain with the semantic facade. Static source review and
 end-turn now sends the resumed post-intent checkpoint through the same
 automatic-pipeline boundary publisher as later hand-draw resumes. Reward and
 terminal results, controlled choices, and supported semantic choices reached
-before `DrawPlayerHand` remain with their existing owners. Static source
-review and `git diff --check` only; no tests or builds were run.
+before `DrawPlayerHand` remain with their existing owners; the facade advances
+into hand draw only on the classified clean draw boundary. The initial
+end-turn action likewise advances only from a classified `AdvanceTurn` result.
+Static source review and `git diff --check` only; no tests or builds were run.
 
 **S4 clean hand-draw boundary admission increment (2026-10-22):** The shared
 resume classifier now checks the composed continuation's readiness before

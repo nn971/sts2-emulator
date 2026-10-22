@@ -691,6 +691,13 @@ public static class SemanticEndTurnEngineV111
             Validate(suspendedChoice);
             return (suspendedChoice, suspendedChoice.Run);
         }
+        if (resumeBoundary !=
+            PrototypeAutomaticPipelineResumeBoundaryKindV111.AdvanceTurn)
+            throw new NotSupportedException(
+                "UNSUPPORTED_CONTROLLED_CHANCE " +
+                "site=combat.semantic_end_turn " +
+                "operation=unexpected_player_action_boundary kind=" +
+                resumeBoundary);
         var state = BeginAtAdvanceTurn(advanced, nativeEncounterEntry);
         var continuation = state with
         {
@@ -1429,6 +1436,15 @@ public static class SemanticEndTurnEngineV111
         if (TryPublishResumedPipelineBoundary(
                 withoutIntents, handCheckpoint, out var published))
             return published;
+        var handDrawBoundary = PrototypeGameEngine
+            .ClassifyAutomaticPipelineResumeBoundary(handCheckpoint);
+        if (handDrawBoundary !=
+            PrototypeAutomaticPipelineResumeBoundaryKindV111.DrawPlayerHand)
+            throw new NotSupportedException(
+                "UNSUPPORTED_CONTROLLED_CHANCE " +
+                "site=combat.semantic_end_turn " +
+                "operation=unexpected_post_intent_boundary kind=" +
+                handDrawBoundary);
         var draw = SemanticCombatDrawEngineV111.BeginAutomaticHandDraw(
             handCheckpoint);
         return ContinueHandDraw(withoutIntents, draw);
