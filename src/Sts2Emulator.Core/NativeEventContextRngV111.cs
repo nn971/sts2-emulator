@@ -14,7 +14,7 @@ public static class NativeEventContextRngV111
         RunState state, string? nativeEventEntry)
     {
         ArgumentNullException.ThrowIfNull(state);
-        return state.Stochastic.NativeRunRngMutable is null ||
+        return state.Stochastic.NativeRunRng is null ||
             nativeEventEntry is null
             ? null
             : NativeRngV111Contexts.ForEvent(
@@ -38,7 +38,7 @@ public static class NativeEventContextRngV111
 
         var nativeStream = eventState.Stochastic.NativeRng;
         if (nativeStream is null &&
-            state.Stochastic.NativeRunRngMutable is not null)
+            state.Stochastic.NativeRunRng is not null)
         {
             if (eventState.NativePageIndex != 0
                 || eventState.ChosenChoiceId is not null
@@ -106,7 +106,7 @@ public static class NativeEventContextRngV111
 
         var nativeStream = eventState.Stochastic.NativeRng;
         if (nativeStream is null &&
-            state.Stochastic.NativeRunRngMutable is not null)
+            state.Stochastic.NativeRunRng is not null)
         {
             if (eventState.NativePageIndex != 0
                 || eventState.ChosenChoiceId is not null
@@ -172,7 +172,7 @@ public static class NativeEventContextRngV111
 
         var nativeStream = eventState.Stochastic.NativeRng;
         if (nativeStream is null &&
-            state.Stochastic.NativeRunRngMutable is not null)
+            state.Stochastic.NativeRunRng is not null)
         {
             if (eventState.NativePageIndex != 0
                 || eventState.ChosenChoiceId is not null
@@ -236,7 +236,7 @@ public static class NativeEventContextRngV111
 
         var nativeStream = eventState.Stochastic.NativeRng;
         if (nativeStream is null &&
-            state.Stochastic.NativeRunRngMutable is not null)
+            state.Stochastic.NativeRunRng is not null)
         {
             if (eventState.NativePageIndex != 0
                 || eventState.ChosenChoiceId is not null
@@ -293,7 +293,7 @@ public static class NativeEventContextRngV111
 
         var runStochastic = state.Stochastic;
         var eventStochastic = eventState.Stochastic;
-        if (runStochastic.NativeRunRngMutable is null)
+        if (runStochastic.NativeRunRng is null)
         {
             if (eventStochastic.NativeRng is not null ||
                 eventStochastic.ProviderMode is not null)

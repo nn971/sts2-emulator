@@ -354,7 +354,7 @@ internal static class SemanticRandomHandCostChoiceV111
             card.InstanceId == targetCardInstanceId).CardId;
         var request = new RandomIndexRequestV111(
             "combat.random_hand_card.energy_cost",
-            combat.Stochastic.NativeRngMutable is not null
+            combat.Stochastic.NativeRng is not null
                 ? SemanticCostChoiceV111.NativeHandCostStreamId
                 : SemanticCostChoiceV111.LegacyHandCostStreamId,
             "effect:" + randomCost.Operation.Kind + ":hand:" +

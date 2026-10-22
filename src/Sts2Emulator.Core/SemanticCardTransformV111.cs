@@ -152,7 +152,7 @@ public static class SemanticCardTransformChoiceV111
             card.InstanceId == sourceId).CardId;
         return CreateEvent(boundaryFingerprint, ordinal, sourceId,
             originalCardId, transform.CandidateCardIds,
-            combat.Stochastic.NativeRngMutable is not null
+            combat.Stochastic.NativeRng is not null
                 ? NativeStreamId : StreamId);
     }
 
@@ -233,7 +233,7 @@ public static class SemanticCardTransformChoiceV111
             throw new InvalidDataException(
                 "Card-transform choice lost its suspended operation.");
         if (decision.Event.StreamId == NativeStreamId &&
-            combat.Stochastic.NativeRngMutable is null)
+            combat.Stochastic.NativeRng is null)
             throw new InvalidDataException(
                 "Native card-transform stream attribution has no Native run RNG owner.");
         ValidateBoundary(checkpoint, transform);

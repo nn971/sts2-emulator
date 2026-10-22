@@ -535,7 +535,7 @@ public sealed record PrototypeControlledRunActionContinuationV111(
             {
                 if (state.Phase != RunPhase.ActTransition
                     || state.Configuration is not null
-                    || state.Stochastic.NativeRunRngMutable is not null
+                    || state.Stochastic.NativeRunRng is not null
                     || state.World is not { } world
                     || world.Act >= PrototypeContent.Rules.Acts
                     || !new PrototypeGameEngine().GetLegalActions(state)
@@ -553,7 +553,7 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                     || !PrototypeNativeRestSiteRelics.CanDig(state.Player))
                     throw new InvalidDataException(
                         "Controlled Shovel frame is outside the rest-site boundary.");
-                var nativeShovelFallback = state.Stochastic.NativeRunRngMutable is null
+                var nativeShovelFallback = state.Stochastic.NativeRunRng is null
                     && state.World is { } shovelWorld
                     && PrototypeGameEngine
                         .UsesNativeRegionalSystems(shovelWorld);
@@ -602,7 +602,7 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                             state, nativeMapAction);
                 if (state.Phase != RunPhase.MapChoice
                     || state.World is not { } world
-                    || state.Stochastic.NativeRunRngMutable is not null &&
+                    || state.Stochastic.NativeRunRng is not null &&
                         !(nativeActOneCombatRequest &&
                             nativeActOneCombatEntry)
                     || string.IsNullOrWhiteSpace(MapNodeId))
@@ -636,13 +636,13 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                 var legacyUnknownRoomNode = node?.RoomType ==
                         PrototypeRoomType.Unknown
                     && state.Configuration is null
-                    && state.Stochastic.NativeRunRngMutable is null
+                    && state.Stochastic.NativeRunRng is null
                     && PrototypeGameEngine.UsesNativeRegionalSystems(world);
                 var legacyShopNode = node?.RoomType == PrototypeRoomType.Shop
                     && !PrototypeGameEngine.UsesNativeRegionalSystems(world);
                 var legacyNativeTreasureNode = node?.RoomType ==
                         PrototypeRoomType.Treasure
-                    && state.Stochastic.NativeRunRngMutable is null
+                    && state.Stochastic.NativeRunRng is null
                     && PrototypeGameEngine.UsesNativeRegionalSystems(world)
                     && !PrototypeGameEngine.WillSkipNextTreasure(state.Player);
                 var availableRelics = node?.RoomType == PrototypeRoomType.Treasure
@@ -1078,7 +1078,7 @@ public static class ControlledRunActionEngineV111
         if (source.Phase != RunPhase.ActTransition
             || source.Stochastic.ControlledRunActionChoice is not null
             || source.Configuration is not null
-            || source.Stochastic.NativeRunRngMutable is not null
+            || source.Stochastic.NativeRunRng is not null
             || source.World is not { } world
             || world.Act >= PrototypeContent.Rules.Acts)
             throw new InvalidOperationException(
@@ -1116,7 +1116,7 @@ public static class ControlledRunActionEngineV111
             && source.World is null
             && source.GameBuild == V111Build.Id
             && source.EmulatorSchema == V111Build.StateSchema
-            && source.Stochastic.NativeRunRngMutable is not null
+            && source.Stochastic.NativeRunRng is not null
             && acts is { Length: 3 }
             && (acts[0] is ActIdentity.Overgrowth or ActIdentity.Underdocks)
             && configuration!.CharacterId == "silent"
@@ -1231,7 +1231,7 @@ public static class ControlledRunActionEngineV111
             ? action.ReadPayload<ChooseMapNodePayload>().NodeId
             : null;
         var supportedMapNodeAction = source.Phase == RunPhase.MapChoice
-            && source.Stochastic.NativeRunRngMutable is null
+            && source.Stochastic.NativeRunRng is null
             && source.World is { } mapNodeWorld
             && PrototypeNativeWingedBoots.AvailableNodes(
                     mapNodeWorld, source.Player)
@@ -1276,7 +1276,7 @@ public static class ControlledRunActionEngineV111
             action.Kind == "continue_act"
             && source.Phase == RunPhase.ActTransition
             && source.Configuration is null
-            && source.Stochastic.NativeRunRngMutable is null
+            && source.Stochastic.NativeRunRng is null
             && source.World is { } transitionWorld
             && transitionWorld.Act < PrototypeContent.Rules.Acts;
         if (source.Stochastic.ControlledRunActionChoice is not null
@@ -1415,7 +1415,7 @@ public static class ControlledRunActionEngineV111
         RunState state, PrototypeRoomType roomType) =>
         state.Phase == RunPhase.MapChoice
         && state.Configuration is null
-        && state.Stochastic.NativeRunRngMutable is null
+        && state.Stochastic.NativeRunRng is null
         && state.World is
         {
             Act: 1,
@@ -1428,7 +1428,7 @@ public static class ControlledRunActionEngineV111
         RunState state, PrototypeRoomType roomType) =>
         state.Phase == RunPhase.MapChoice
         && state.Configuration is null
-        && state.Stochastic.NativeRunRngMutable is null
+        && state.Stochastic.NativeRunRng is null
         && state.World is
         {
             Act: 1,
@@ -1475,7 +1475,7 @@ public static class ControlledRunActionEngineV111
         if (action.Kind != "choose_map_node"
             || source.Phase != RunPhase.MapChoice
             || source.Configuration is not null
-            || source.Stochastic.NativeRunRngMutable is not null
+            || source.Stochastic.NativeRunRng is not null
             || source.World is not { } world
             || !PrototypeGameEngine.UsesNativeRegionalSystems(world))
             return false;
@@ -1490,7 +1490,7 @@ public static class ControlledRunActionEngineV111
     {
         if (action.Kind != "choose_map_node"
             || source.Phase != RunPhase.MapChoice
-            || source.Stochastic.NativeRunRngMutable is not null
+            || source.Stochastic.NativeRunRng is not null
             || source.World is not { } world
             || !PrototypeGameEngine.UsesNativeRegionalSystems(world)
             || PrototypeGameEngine.WillSkipNextTreasure(source.Player))
@@ -1505,7 +1505,7 @@ public static class ControlledRunActionEngineV111
         RunState source, GameAction action) =>
         action.Kind == PrototypeNativeRestSiteActionsV111.Dig
         && source.Phase == RunPhase.Rest
-        && source.Stochastic.NativeRunRngMutable is null
+        && source.Stochastic.NativeRunRng is null
         && source.World is { } world
         && PrototypeGameEngine.UsesNativeRegionalSystems(world)
         && PrototypeNativeRestSiteRelics.CanDig(source.Player);
@@ -1579,7 +1579,7 @@ public static class ControlledRunActionEngineV111
         if (action.Kind != "choose_map_node" ||
             source.Phase != RunPhase.MapChoice ||
             source.Configuration?.UsesExperimentalNativeWeakCombatEntry != true ||
-            source.Stochastic.NativeRunRngMutable is null || source.World is not { Act: 1 } world ||
+            source.Stochastic.NativeRunRng is null || source.World is not { Act: 1 } world ||
             world.Stochastic.ActOneEncounterPool?.Region != world.ActOneRegion)
             return false;
         var routeMatches = world.ActOneRegion switch

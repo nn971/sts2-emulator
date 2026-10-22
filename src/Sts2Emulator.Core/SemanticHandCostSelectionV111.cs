@@ -220,7 +220,7 @@ public static class SemanticHandCostSelectionChoiceV111
             throw new InvalidDataException(
                 "Hand-cost selection lost its source combat.");
         if (decision.Event.StreamId == NativeStreamId &&
-            combat.Stochastic.NativeRngMutable is null)
+            combat.Stochastic.NativeRng is null)
             throw new InvalidDataException(
                 "Native hand-cost selection stream attribution has no Native combat RNG owner.");
         var randomCost = combat.PendingChoice?.ControlledRandomCost;

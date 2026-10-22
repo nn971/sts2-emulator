@@ -113,7 +113,7 @@ public sealed partial class PrototypeGameEngine
         CombatState combat)
     {
         ArgumentNullException.ThrowIfNull(combat);
-        if (combat.Stochastic.NativeRngMutable is null)
+        if (combat.Stochastic.NativeRng is null)
             return PrototypeColorlessCards.ImplementedCombatGenerationPool;
         if (combat.ConfiguredColorlessGenerationFullyUnlocked is not
             { } fullyUnlocked)

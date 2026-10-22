@@ -155,7 +155,7 @@ public static class SemanticGenerationChoiceV111
                 "Generated-card request has no controlled generation choice.");
         ValidateBoundary(run);
         var combat = run.World?.Combat;
-        var streamId = combat?.Stochastic.NativeRngMutable is not null
+        var streamId = combat?.Stochastic.NativeRng is not null
             ? "run.combat_card_generation" : "prototype.combat";
         var ownerId = choice!.SourceCardInstanceId is { } sourceCardId
             ? "card_instance:" + sourceCardId
@@ -273,7 +273,7 @@ public static class SemanticGenerationChoiceV111
                 ControlledGeneration: not null
             };
         bool nativeGenerationStreamHandoff =
-            combat.Stochastic.NativeRngMutable?.RunStreams is not null &&
+            combat.Stochastic.NativeRng?.RunStreams is not null &&
             (generatedCardModelHandoff || randomDrawAttackModelHandoff);
         if (decision.Event.StreamId == "run.combat_card_generation" &&
             !nativeGenerationStreamHandoff)

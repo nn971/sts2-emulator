@@ -258,7 +258,7 @@ public static class SemanticCardShortlistChoiceV111
         });
         // Keep event identity stable across the Native stream-label correction
         // so saved prototype-labeled decisions remain replayable.
-        var streamId = combat!.Stochastic.NativeRngMutable is not null
+        var streamId = combat!.Stochastic.NativeRng is not null
             ? NativeStreamId : StreamId;
         var semanticEvent = new SemanticCardShortlistEventV111(
             SchemaId, eventId, boundaryFingerprint, supportFingerprint,
@@ -350,7 +350,7 @@ public static class SemanticCardShortlistChoiceV111
             throw new InvalidDataException(
                 "Card shortlist lost its source combat.");
         if (decision.Event.StreamId == NativeStreamId &&
-            combat.Stochastic.NativeRngMutable is null)
+            combat.Stochastic.NativeRng is null)
             throw new InvalidDataException(
                 "Native card-shortlist stream attribution has no Native combat RNG owner.");
         var choice = combat.PendingChoice;

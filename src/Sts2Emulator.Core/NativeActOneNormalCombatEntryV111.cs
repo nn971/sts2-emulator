@@ -89,7 +89,7 @@ public static class NativeActOneNormalCombatEntryV111
             || !profileMatches)
             throw new NotSupportedException(
                 "Native normal encounter is not in its pinned Act 1 region.");
-        if (state.Stochastic.NativeRunRngMutable is null)
+        if (state.Stochastic.NativeRunRng is null)
             throw new InvalidOperationException(
                 "Native normal combat entry requires persistent run RNG.");
 

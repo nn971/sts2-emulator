@@ -226,15 +226,15 @@ public static class SemanticPoolShuffleChoiceV111
                 "UNSUPPORTED_SEMANTIC_POOL operation=" +
                 shuffle.Operation.Kind);
         var streamId = handReturn || recycle
-            ? combat.Stochastic.NativeRngMutable is not null
+            ? combat.Stochastic.NativeRng is not null
                 ? "run.shuffle" : "prototype.combat"
-            : randomShortlist && combat.Stochastic.NativeRngMutable?.RunStreams is not null
+            : randomShortlist && combat.Stochastic.NativeRng?.RunStreams is not null
                 ? "run.combat_card_selection"
                 : (shuffle.Operation.GeneratedChoiceUsesNativeCardGenerationRng ||
                    shuffle.Operation.Kind ==
                        PrototypeCombatEffectKind
                            .CreateDistinctCharacterCommonCardsInHand) &&
-                  combat.Stochastic.NativeRngMutable?.RunStreams is not null
+                  combat.Stochastic.NativeRng?.RunStreams is not null
                     ? "run.combat_card_generation" : "prototype.combat";
         var sourceCardId = choice!.SourceCardInstanceId;
         var shortlistCardIds = randomShortlist

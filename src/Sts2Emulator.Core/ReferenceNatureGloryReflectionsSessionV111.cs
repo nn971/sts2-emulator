@@ -361,7 +361,7 @@ public sealed record ReferenceNatureGloryReflectionsSessionV111(
                 run, GameAction.Create("event_choice",
                     new EventChoicePayload("touch_mirror"))).State;
 
-        if (origin.Stochastic.NativeRunRngMutable is not null)
+        if (origin.Stochastic.NativeRunRng is not null)
             return ReferenceNatureNativeEventIndexReplayV111
                 .ReplayControlledIndices(
                     origin, decisions, ReplayAction,
@@ -403,7 +403,7 @@ public sealed record ReferenceNatureGloryReflectionsSessionV111(
 
     private static ulong GetLegacyEventCallCount(RunState run)
     {
-        if (!run.Stochastic.PrototypeRngMutable.TryGetStream("event", out var stream))
+        if (!run.Stochastic.PrototypeRng.TryGetStream("event", out var stream))
             throw new InvalidDataException(
                 "Reflections fallback requires one legacy event stream.");
         return stream.CallCount ?? 0;

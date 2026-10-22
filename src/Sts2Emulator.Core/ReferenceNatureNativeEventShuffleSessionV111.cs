@@ -205,7 +205,7 @@ internal static class NativeEventShufflePlanBuilderV111
                 .WarHistorianRepyPotionOfferSiteId)
             siteId = PrototypeNativeHiveEvents
                 .WarHistorianRepyRelicShuffleSiteId;
-        var legacyEventShuffleFallback = origin.Stochastic.NativeRunRngMutable is null &&
+        var legacyEventShuffleFallback = origin.Stochastic.NativeRunRng is null &&
             activeEvent is not null &&
             PrototypeGameEngine.UsesNativeRegionalSystems(world) &&
             activeEvent.Stochastic.NativeRng is null &&
@@ -213,13 +213,13 @@ internal static class NativeEventShufflePlanBuilderV111
             StochasticSiteRegistryV111.NativeEventContextShuffleSiteIds
                 .Contains(siteId, StringComparer.Ordinal);
         int? legacyRewardOrdinalBase = null;
-        var legacyRepyFallback = origin.Stochastic.NativeRunRngMutable is null &&
+        var legacyRepyFallback = origin.Stochastic.NativeRunRng is null &&
             siteId == PrototypeNativeHiveEvents
                 .WarHistorianRepyRelicShuffleSiteId && activeEvent is not null &&
             PrototypeGameEngine.UsesNativeRegionalSystems(world) &&
             activeEvent.Stochastic.NativeRng is null &&
             activeEvent.Stochastic.ProviderMode is null;
-        if (origin.Stochastic.NativeRunRngMutable is null && !improvementVictoryAction &&
+        if (origin.Stochastic.NativeRunRng is null && !improvementVictoryAction &&
                 !paelsToothVictoryAction && !legacyEventShuffleFallback &&
                 !legacyRepyFallback ||
             string.IsNullOrWhiteSpace(origin.RunSeed) &&
@@ -277,9 +277,9 @@ internal static class NativeEventShufflePlanBuilderV111
             candidateCount = firstRequest.SupportCount;
             ownerId = firstRequest.OwnerId;
             nativeRngEventId = string.Empty;
-            var nativeStreams = origin.World?.Combat?.Stochastic.NativeRngMutable
+            var nativeStreams = origin.World?.Combat?.Stochastic.NativeRng
                 ?.RunStreams
-                ?? origin.Stochastic.NativeRunRngMutable;
+                ?? origin.Stochastic.NativeRunRng;
             if (nativeStreams is null ||
                 !nativeStreams.TryGetStream("run.niche", out var niche))
                 throw new InvalidOperationException(
@@ -404,7 +404,7 @@ internal static class NativeEventShufflePlanBuilderV111
             nativeCursorBefore = captures[0].NativeCursorBefore;
             var capturedCursor = nativeCursorBefore ?? throw new InvalidOperationException(
                 "War Hammer shuffle capture is missing its Native cursor.");
-            var finalNicheCursor = projected.Stochastic.NativeRunRngMutable is { } finalNativeRng &&
+            var finalNicheCursor = projected.Stochastic.NativeRunRng is { } finalNativeRng &&
                 finalNativeRng.TryGetStream("run.niche", out var finalNicheStream)
                 ? finalNicheStream
                 : null;
@@ -513,13 +513,13 @@ internal static class NativeEventShufflePlanBuilderV111
                     origin.Fork(), replayAction).State;
                 var captures = shuffleProbe.ShuffleCaptures.Where(capture =>
                     capture.SiteId == siteId).ToArray();
-                var rewardStreamBefore = origin.Stochastic.NativeRunRngMutable is { } originNativeRng &&
+                var rewardStreamBefore = origin.Stochastic.NativeRunRng is { } originNativeRng &&
                     originNativeRng.TryGetStream(
                         NativePlayerRngV111.RewardsStreamId,
                         out var rewardStreamBeforeValue)
                     ? rewardStreamBeforeValue
                     : null;
-                var rewardStreamAfter = projected.Stochastic.NativeRunRngMutable is { } projectedNativeRng &&
+                var rewardStreamAfter = projected.Stochastic.NativeRunRng is { } projectedNativeRng &&
                     projectedNativeRng.TryGetStream(
                         NativePlayerRngV111.RewardsStreamId,
                         out var rewardStreamAfterValue)
@@ -896,7 +896,7 @@ internal static class NativeEventShufflePlanBuilderV111
 
     private static int GetLegacyEventOrdinal(RunState origin)
     {
-        if (!origin.Stochastic.PrototypeRngMutable.TryGetStream("event", out var stream))
+        if (!origin.Stochastic.PrototypeRng.TryGetStream("event", out var stream))
             throw new InvalidDataException(
                 "Native event shuffle fallback requires one legacy event stream.");
         var ordinal = stream.CallCount ?? 0;
@@ -908,7 +908,7 @@ internal static class NativeEventShufflePlanBuilderV111
 
     internal static int GetLegacyRewardOrdinal(RunState origin)
     {
-        if (!origin.Stochastic.PrototypeRngMutable.TryGetStream("reward", out var stream))
+        if (!origin.Stochastic.PrototypeRng.TryGetStream("reward", out var stream))
             throw new InvalidDataException(
                 "Native-regional Repy replay requires one legacy reward stream.");
         var ordinal = stream.CallCount ?? 0;
@@ -1015,9 +1015,9 @@ internal static class NativeEventShufflePlanBuilderV111
         ArgumentNullException.ThrowIfNull(origin);
         ArgumentNullException.ThrowIfNull(action);
         ArgumentNullException.ThrowIfNull(scriptedPrefix);
-        var beforeStreams = origin.World?.Combat?.Stochastic.NativeRngMutable
+        var beforeStreams = origin.World?.Combat?.Stochastic.NativeRng
             ?.RunStreams
-            ?? origin.Stochastic.NativeRunRngMutable;
+            ?? origin.Stochastic.NativeRunRng;
         if (beforeStreams is null ||
             !beforeStreams.TryGetStream("run.niche", out var beforeNiche))
             throw new InvalidOperationException(
@@ -1061,7 +1061,7 @@ internal static class NativeEventShufflePlanBuilderV111
         var expectedNativeTail = siteRequests.Length -
             scriptedPrefix.Count;
         RngStreamState? niche = null;
-        if (run.Stochastic.NativeRunRngMutable is { } runStreams)
+        if (run.Stochastic.NativeRunRng is { } runStreams)
             runStreams.TryGetStream("run.niche", out niche);
         var actualAdvance = niche is null ? ulong.MaxValue : unchecked(
             (uint)(NativeRngV111.ToSnapshot(niche).Counter -
@@ -1091,7 +1091,7 @@ internal static class NativeEventShufflePlanBuilderV111
         ArgumentNullException.ThrowIfNull(origin);
         ArgumentNullException.ThrowIfNull(action);
         ArgumentNullException.ThrowIfNull(scriptedPrefix);
-        if (!origin.Stochastic.PrototypeRngMutable.TryGetStream("combat", out var beforeStream))
+        if (!origin.Stochastic.PrototypeRng.TryGetStream("combat", out var beforeStream))
             throw new InvalidOperationException(
                 "Improvement replay requires the legacy combat stream.");
         var beforeCallCount = beforeStream.CallCount ?? 0;
@@ -1123,7 +1123,7 @@ internal static class NativeEventShufflePlanBuilderV111
         var expectedLegacyTail = siteRequests.Length -
             scriptedPrefix.Count;
         RngStreamState? afterStream = null;
-        run.Stochastic.PrototypeRngMutable.TryGetStream("combat", out afterStream);
+        run.Stochastic.PrototypeRng.TryGetStream("combat", out afterStream);
         var actualAdvance = afterStream is null ? ulong.MaxValue :
             unchecked((afterStream.CallCount ?? 0) - beforeCallCount);
         var expectedModes = siteRequests.Select((entry, index) =>
@@ -1152,7 +1152,7 @@ internal static class NativeEventShufflePlanBuilderV111
         ArgumentNullException.ThrowIfNull(origin);
         ArgumentNullException.ThrowIfNull(action);
         ArgumentNullException.ThrowIfNull(scriptedPrefix);
-        if (!origin.Stochastic.PrototypeRngMutable.TryGetStream("reward", out var beforeStream))
+        if (!origin.Stochastic.PrototypeRng.TryGetStream("reward", out var beforeStream))
             throw new InvalidOperationException(
                 "Pael's Tooth replay requires the legacy reward stream.");
         var beforeCallCount = beforeStream.CallCount ?? 0;
@@ -1203,7 +1203,7 @@ internal static class NativeEventShufflePlanBuilderV111
             siteRequests.Length);
         var expectedLegacyDraws = rewardEvents.Length - scriptedCount;
         RngStreamState? afterStream = null;
-        run.Stochastic.PrototypeRngMutable.TryGetStream("reward", out afterStream);
+        run.Stochastic.PrototypeRng.TryGetStream("reward", out afterStream);
         var actualAdvance = afterStream is null ? ulong.MaxValue :
             unchecked((afterStream.CallCount ?? 0) - beforeCallCount);
         var expectedModes = siteRequests.Select((entry, index) =>
@@ -1815,7 +1815,7 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
                     resolved) !=
                     NativeEventShufflePlanBuilderV111.GetLegacyRewardOrdinal(
                         origin) ||
-                resolved.Stochastic.NativeRunRngMutable is not null ||
+                resolved.Stochastic.NativeRunRng is not null ||
                 !NativeEventShufflePlanBuilderV111
                     .IsCompletedRepyChest(resolved))
                 throw new InvalidDataException(
@@ -1877,7 +1877,7 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
 
     private static ulong GetLegacyEventCallCount(RunState run)
     {
-        if (!run.Stochastic.PrototypeRngMutable.TryGetStream("event", out var stream))
+        if (!run.Stochastic.PrototypeRng.TryGetStream("event", out var stream))
             throw new InvalidDataException(
                 "Native event shuffle replay requires one legacy event stream.");
         return stream.CallCount ?? 0;
@@ -2178,7 +2178,7 @@ public static partial class ChanceLawEngineV111
             throw new InvalidOperationException(
                 "Endless Conveyor entry supports only dish ordinal zero.");
         if (string.IsNullOrWhiteSpace(origin.RunSeed) ||
-            origin.Stochastic.NativeRunRngMutable is null || origin.Phase != RunPhase.MapChoice ||
+            origin.Stochastic.NativeRunRng is null || origin.Phase != RunPhase.MapChoice ||
             origin.World is not { Event: null } world)
             throw new InvalidOperationException(
                 "Endless Conveyor dish law requires a configured map-choice Event-node entry at ordinal 0.");
@@ -2305,7 +2305,7 @@ public static partial class ChanceLawEngineV111
         ArgumentNullException.ThrowIfNull(origin);
         ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
         if (string.IsNullOrWhiteSpace(origin.RunSeed) ||
-            origin.Stochastic.NativeRunRngMutable is null || origin.Phase != RunPhase.Event ||
+            origin.Stochastic.NativeRunRng is null || origin.Phase != RunPhase.Event ||
             origin.World is not { Event: { } evt, Combat: null } ||
             evt.EventId != PrototypeNativeEndlessConveyor.EventId ||
             evt.NativePageIndex != 0 || evt.ChosenChoiceId is not null ||
@@ -2402,7 +2402,7 @@ public static partial class ChanceLawEngineV111
         ArgumentNullException.ThrowIfNull(origin);
         ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
         if (string.IsNullOrWhiteSpace(origin.RunSeed) ||
-            origin.Stochastic.NativeRunRngMutable is null || origin.Phase != RunPhase.Event ||
+            origin.Stochastic.NativeRunRng is null || origin.Phase != RunPhase.Event ||
             origin.World is not { Event: { } evt, Combat: null } ||
             evt.EventId != PrototypeNativeEndlessConveyor.EventId ||
             evt.NativePageIndex != 0 || evt.ChosenChoiceId is not null ||
@@ -2494,7 +2494,7 @@ public static partial class ChanceLawEngineV111
         RunState origin, string actionId, int? ordinal)
     {
         if (string.IsNullOrWhiteSpace(origin.RunSeed) ||
-            origin.Stochastic.NativeRunRngMutable is null || origin.Phase != RunPhase.Event ||
+            origin.Stochastic.NativeRunRng is null || origin.Phase != RunPhase.Event ||
             origin.World is not { Event: { } eventState, Combat: null } world ||
             eventState.EventId != PrototypeNativeEndlessConveyor.EventId ||
             eventState.Stochastic.ProviderMode is not (null or "scripted-v111") ||

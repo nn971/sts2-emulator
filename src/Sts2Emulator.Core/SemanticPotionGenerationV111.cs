@@ -138,7 +138,7 @@ public static class SemanticPotionGenerationChoiceV111
                 "Potion-generation request has no controlled choice.");
         ValidateBoundary(run);
         var combat = run.World?.Combat;
-        var streamId = combat?.Stochastic.NativeRngMutable is not null
+        var streamId = combat?.Stochastic.NativeRng is not null
             ? NativeStreamId : StreamId;
         var ownerId = "effect:" + generation.Operation.Kind + ":source:" +
             (choice!.SourceCardInstanceId?.ToString() ?? "none") + ":pool:" +
@@ -229,7 +229,7 @@ public static class SemanticPotionGenerationChoiceV111
                 "Potion-generation choice lost its source combat.");
         var generation = combat.PendingChoice?.ControlledPotionGeneration;
         if (decision.Event.StreamId == NativeStreamId &&
-            combat.Stochastic.NativeRngMutable is null)
+            combat.Stochastic.NativeRng is null)
             throw new InvalidDataException(
                 "Native potion-generation stream attribution has no Native combat RNG owner.");
         if (generation is null ||

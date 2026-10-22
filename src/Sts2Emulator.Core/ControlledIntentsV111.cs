@@ -126,7 +126,7 @@ public static class ControlledIntentsV111
     {
         ArgumentNullException.ThrowIfNull(nativePrepared);
         NativeCombatRngEntryV111.Validate(nativePrepared);
-        var native = nativePrepared.Stochastic.NativeRngMutable ??
+        var native = nativePrepared.Stochastic.NativeRng ??
             throw new InvalidOperationException("Intent boundary requires a native-owned combat source.");
         var combatWithoutNativeRng = nativePrepared.Fork();
         combatWithoutNativeRng = combatWithoutNativeRng with
@@ -160,7 +160,7 @@ public static class ControlledIntentsV111
         CombatState combat, NativeEncounterFormationV111 formation,
         RngBundle referenceStreams, RandomIndexDecisionV111[]? priorHp)
     {
-        if (combat.Stochastic.NativeRngMutable is not null)
+        if (combat.Stochastic.NativeRng is not null)
             throw new InvalidOperationException(
                 "Controlled intent baseline cannot own a fake native RNG cursor.");
         var baseline = combat.Fork();
@@ -293,8 +293,8 @@ public static class ControlledIntentsV111
     private static void Verify(ControlledIntentStateV111 state)
     {
         if (state.Mode != "controlled-v111-committed-intent-v1" ||
-            state.BaselineCombat.Stochastic.NativeRngMutable is not null ||
-            state.Combat.Stochastic.NativeRngMutable is not null ||
+            state.BaselineCombat.Stochastic.NativeRng is not null ||
+            state.Combat.Stochastic.NativeRng is not null ||
             state.NextEnemyIndex < 0 ||
             state.NextEnemyIndex > state.Combat.Enemies.Length ||
             state.Transcript is null || state.Formation is null ||

@@ -776,7 +776,7 @@ public sealed record ReferenceNatureMerchantSessionV111(
 
     private static bool IsLegacyNativeMerchantFallbackBoundary(
         RunState source, GameAction action) =>
-        source.Stochastic.NativeRunRngMutable is null && source.Phase == RunPhase.MapChoice &&
+        source.Stochastic.NativeRunRng is null && source.Phase == RunPhase.MapChoice &&
         source.World is { } world &&
         PrototypeGameEngine.UsesNativeRegionalSystems(world) &&
         action.Kind == "choose_map_node" &&
@@ -829,7 +829,7 @@ public sealed record ReferenceNatureMerchantSessionV111(
                     action.ReadPayload<ChooseMapNodePayload>().NodeId &&
                     node.RoomType == PrototypeRoomType.Shop);
         var validConfiguredShopPurchase =
-            source.Stochastic.NativeRunRngMutable is not null &&
+            source.Stochastic.NativeRunRng is not null &&
             ControlledRunActionEngineV111.IsShopPurchaseAction(source, action)
             && source.World?.Shop is not null;
         if ((!validShopEntry && !validConfiguredShopPurchase) || !legal)

@@ -74,7 +74,7 @@ internal static class NativePunchOffFightPlanBuilderV111
             throw new InvalidOperationException(
                 "Punch Off fight queries require the complete preceding HP-offset prefix.");
         if (string.IsNullOrWhiteSpace(origin.RunSeed) ||
-            origin.Stochastic.NativeRunRngMutable is null || origin.Phase != RunPhase.Event ||
+            origin.Stochastic.NativeRunRng is null || origin.Phase != RunPhase.Event ||
             origin.World is not { Act: 1, Event: { } evt, Combat: null } world ||
             evt.EventId != PrototypeNativePunchOff.EventId ||
             evt.NativePageIndex != 1 || evt.ChosenChoiceId is not null ||
@@ -129,7 +129,7 @@ internal static class NativePunchOffFightPlanBuilderV111
             throw new InvalidOperationException(
                 "Punch Off Fight must produce exactly two ordered monster-local 2–9 HP requests and preserve its event cursor.");
 
-        var enemyContexts = projectedCombat.Stochastic.NativeRngMutable!.Formation.MonsterContexts;
+        var enemyContexts = projectedCombat.Stochastic.NativeRng!.Formation.MonsterContexts;
         if (enemyContexts.Length != 2 ||
             entries.Where((entry, index) =>
                 entry.Request.OwnerId !=
@@ -159,7 +159,7 @@ internal static class NativePunchOffFightPlanBuilderV111
                 "Punch Off probe produced an impossible pre-offset construct HP.");
         var monsterCursorsBefore = entries.Select(entry =>
             entry.NativeCursorBefore!).ToArray();
-        var runCursorsAfterProbe = projectedCombat.Stochastic.NativeRngMutable.RunStreams.Streams
+        var runCursorsAfterProbe = projectedCombat.Stochastic.NativeRng.RunStreams.Streams
             .OrderBy(stream => stream.StreamId, StringComparer.Ordinal)
             .Select(NativeRngV111.ToSnapshot).ToArray();
         var fingerprint = CanonicalJson.Sha256(new
@@ -581,7 +581,7 @@ public sealed record ReferenceNaturePunchOffFightSessionV111(
             int.Parse(decision.OutcomeId["hp_offset:".Length..],
                 System.Globalization.CultureInfo.InvariantCulture)).ToArray();
         var expectedCursors = plan.RunCursorsAfterProbe;
-        var actualCursors = combat?.Stochastic.NativeRngMutable?.RunStreams.Streams
+        var actualCursors = combat?.Stochastic.NativeRng?.RunStreams.Streams
             .OrderBy(stream => stream.StreamId, StringComparer.Ordinal)
             .Select(NativeRngV111.ToSnapshot).ToArray();
         var expectedMonsterCursors = plan.MonsterCursorsBefore;
@@ -604,7 +604,7 @@ public sealed record ReferenceNaturePunchOffFightSessionV111(
                     transcript[index].OutcomeIndex).Any() ||
             !expectedCursors.SequenceEqual(actualCursors ?? []) ||
             !expectedMonsterCursors.SequenceEqual(
-                combat.Stochastic.NativeRngMutable.Formation.MonsterContexts
+                combat.Stochastic.NativeRng.Formation.MonsterContexts
                     .Select(context => NativeRngV111.ToSnapshot(context.Rng))) ||
             eventCursor != plan.EventCursorBefore)
             throw new InvalidDataException(
