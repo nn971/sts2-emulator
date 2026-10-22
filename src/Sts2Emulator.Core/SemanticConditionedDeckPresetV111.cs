@@ -119,7 +119,7 @@ public static class SemanticConditionedDeckPresetV111
                     "proto.silent.deadly_poison", "proto.silent.deadly_poison",
                     "proto.silent.poisoned_stab", "proto.silent.poisoned_stab",
                     "proto.silent.backflip", "proto.silent.backflip",
-                    "proto.silent.bouncing_flask", "proto.silent.acrobatics"
+                    "proto.silent.catalyst", "proto.silent.acrobatics"
                 };
             long next = result.Max(x => x.InstanceId) + 1;
             return result.Concat(extras.Select(id =>
