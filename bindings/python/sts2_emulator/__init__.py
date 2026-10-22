@@ -315,7 +315,8 @@ class State:
         result = self.session.call(
             "chance_law_query", **payload)
         law = result.get("law")
-        self.session._validate_chance_law(law)
+        self.session._validate_chance_law(
+            law, expected_site_id=site_id, expected_ordinal=ordinal)
         return law
 
     def save_snapshot(self):
@@ -3350,7 +3351,8 @@ class Session:
                 and coverage.get("queryOperation") == "chance_law_query"
                 and site_id in coverage.get("siteIds", []))
 
-    def _validate_chance_law(self, law):
+    def _validate_chance_law(self, law, *, expected_site_id=None,
+                             expected_ordinal=None):
         if not isinstance(law, dict):
             raise EmulatorError("Chance Law response is not an object")
 
@@ -3369,6 +3371,15 @@ class Session:
                       "conditioningPolicyId", "conditioningFingerprint",
                       "probabilityStatus", "probabilityProvenance"):
             required_string(law.get(field), field)
+        if (expected_site_id is not None
+                and law.get("siteId") != expected_site_id):
+            raise EmulatorError(
+                "Chance Law site differs from the requested site")
+        if expected_ordinal is not None:
+            law_ordinal = law.get("ordinal")
+            if type(law_ordinal) is not int or law_ordinal != expected_ordinal:
+                raise EmulatorError(
+                    "Chance Law ordinal differs from the requested ordinal")
         if law.get("probabilityStatus") not in supported_statuses:
             raise EmulatorError("Chance Law probability status was not negotiated")
 

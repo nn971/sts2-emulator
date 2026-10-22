@@ -665,7 +665,8 @@ conditioning fingerprints, probability metadata, and outcome weights. Use
 
 `State.query_chance_law()` checks the advertised query site and validates the
 returned Chance Law schema, negotiated probability status, unique positive
-outcomes, and total weight before returning it.
+outcomes, total weight, requested site, and requested ordinal before returning
+it.
 
 All mechanics remain in C#. Search, learning and strategy belong in the parent
 AI repository. See [the versioned contract](../../docs/V111_INTERFACE.md).
