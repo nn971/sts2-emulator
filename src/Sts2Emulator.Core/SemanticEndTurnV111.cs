@@ -1425,21 +1425,13 @@ public static class SemanticEndTurnEngineV111
             handCheckpoint = PrototypeGameEngine.ResumeControlledTurnAfterIntents(
                 state.Run.Fork(),
                 stopBeforeSemanticHandDraw: true);
-        if (PrototypeGameEngine
-                .ClassifyAutomaticPipelineResumeBoundary(handCheckpoint) ==
-            PrototypeAutomaticPipelineResumeBoundaryKindV111.RewardOrTerminal)
-            return CompleteAtBoundary(
-                state with { Intents = null }, handCheckpoint,
-                discardSuspendedFrames: true);
-        if (handCheckpoint.World?.Combat is
-                { PendingChoice: { } pending } combat &&
-            PrototypeGameEngine
-                .IsCrossbowTurnStartGenerationContinuation(
-                    combat, pending))
-            return state with { Run = handCheckpoint, Intents = null };
+        var withoutIntents = state with { Intents = null };
+        if (TryPublishResumedPipelineBoundary(
+                withoutIntents, handCheckpoint, out var published))
+            return published;
         var draw = SemanticCombatDrawEngineV111.BeginAutomaticHandDraw(
             handCheckpoint);
-        return ContinueHandDraw(state with { Intents = null }, draw);
+        return ContinueHandDraw(withoutIntents, draw);
     }
 
     private static SemanticEndTurnV111 ContinueHandDraw(

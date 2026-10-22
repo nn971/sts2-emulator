@@ -18,6 +18,13 @@ adapters no longer pass a provider-specific resume flag; transcript and draw
 progress remain with the semantic facade. Static source review and
 `git diff --check` only; no tests or builds were run.
 
+**S4 post-intent boundary publication increment (2026-10-22):** Semantic
+end-turn now sends the resumed post-intent checkpoint through the same
+automatic-pipeline boundary publisher as later hand-draw resumes. Reward and
+terminal results, controlled choices, and supported semantic choices reached
+before `DrawPlayerHand` remain with their existing owners. Static source
+review and `git diff --check` only; no tests or builds were run.
+
 **S4 automatic-pipeline cursor clear owner increment (2026-10-22):** Runtime
 cursor consumption and cursor-free checkpoint projection now use
 `PrototypeGameEngine.ClearAutomaticPipelineContinuation`. End-turn setup,

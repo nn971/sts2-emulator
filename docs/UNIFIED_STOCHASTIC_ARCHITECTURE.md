@@ -198,7 +198,9 @@ The shared automatic-pipeline classifier reports `AdvanceTurn` or
 `DrawPlayerHand` only for a clean cursor with no unresolved choice or Nature
 request. Supported choices keep their typed classification, while unknown
 pending payloads remain suspended so controlled-playable turn-intent staging
-cannot mistake them for a completed boundary.
+cannot mistake them for a completed boundary. Semantic end-turn also sends the
+post-intent checkpoint through its shared boundary publisher, preserving
+supported choices that suspend before `DrawPlayerHand`.
 
 The ordinary pipeline resumer also consumes the tagged semantic
 `BeforeHandDraw` continuation after a source action clears its pending choice.
