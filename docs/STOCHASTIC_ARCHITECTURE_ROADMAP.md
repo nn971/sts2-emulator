@@ -2,6 +2,8 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S5 Nature-choice session-kind registry increment (2026-10-22):** The advertised `SemanticNatureChoiceViewSessionKinds` and JSONL supported-kind classification now use one registry. JSONL keeps its per-session typed result dispatch; a registry kind with no matching dispatch now fails as an implementation mismatch rather than being reported as unsupported. No wire schema changed. Static source review and `git diff --check` only; no tests or builds were run.
+
 **S3 controlled event/run-action continuation read increment (2026-10-22):** Controlled event-choice admission, validation, enumeration, scripted run-action admission, run-action validation, and provider replay capture now read pending continuations and committed histories through `RunStochasticStateV111` and `EventStochasticStateV111`. Snapshot projections and replay outcomes are unchanged. Static source review and `git diff --check` only; no tests or builds were run.
 
 **S3 JSONL controlled-continuation owner read increment (2026-10-22):** JSONL session results, event/run-action observations, and pending-choice inspection now read suspended continuations and committed histories through the run and event stochastic owners. Serialized JSON fields and session handles remain unchanged. Static source review and `git diff --check` only; no tests or builds were run.

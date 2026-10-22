@@ -2359,19 +2359,11 @@ internal static class PrototypeAiJsonlServer
                 "controlled_run_action" when states.TryGetValue(
                     handle, out var actionRun) =>
                     ControlledRunActionResult(actionRun, handle, null),
-                "semantic_combat" or "reference_combat" or "run_action" or
-                    "event_choice" or "ancient_offer" or "merchant" or
-                    "neow_offer" or "trash_heap" or "tablet_of_truth" or
-                    "trial" or "event_shuffle" or "glory_reflections" or
-                    "infested_automaton" or "punch_off_reward" or
-                    "punch_off_fight" or
-                    "native_shovel" or
-                    "endless_conveyor" or
-                    "treasure" or "combat_reward" or "map_generation" or
-                    "controlled_event_choice" or
-                    "controlled_run_action" => throw new InvalidOperationException(
-                        "Unknown Nature session handle for kind " + sessionKind +
-                        ": " + handle),
+                _ when StochasticCapabilitiesV111
+                    .IsSemanticNatureChoiceViewSessionKind(sessionKind) =>
+                    throw new InvalidOperationException(
+                        "Unknown Nature session handle or unmatched handler " +
+                        "for advertised kind " + sessionKind + ": " + handle),
                 _ => throw new ArgumentException(
                     "Unsupported Nature session kind: " + sessionKind)
             };

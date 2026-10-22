@@ -32,19 +32,7 @@ public sealed record StochasticCapabilityManifestV111(
     private string[]? _semanticNatureChoiceViewOperations =
         ["nature_choice_observe", "semantic_nature_observe"];
     private string[]? _semanticNatureChoiceViewSessionKinds =
-    [
-        "semantic_combat", "reference_combat", "run_action",
-        "event_choice", "ancient_offer", "neow_offer", "trash_heap",
-        "tablet_of_truth", "trial", "event_shuffle", "native_event_gold",
-        "native_event_relic",
-        "native_shovel",
-        "endless_conveyor",
-        "merchant", "treasure", "combat_reward", "glory_reflections",
-        "infested_automaton",
-        "punch_off_reward", "punch_off_fight",
-        "map_generation",
-        "controlled_event_choice", "controlled_run_action"
-    ];
+        StochasticCapabilitiesV111.SemanticNatureChoiceViewSessionKinds;
 
     public string[] NatureChoiceSiteIds
     {
@@ -145,6 +133,24 @@ public static class StochasticCapabilitiesV111
     public const string SchemaId = "sts2-v111-stochastic-capabilities-v3";
     public const string ExternalSelectionProviderId =
         "external-semantic-selection-v1";
+
+    private static readonly string[] NatureChoiceViewSessionKinds =
+    [
+        "semantic_combat", "reference_combat", "run_action",
+        "event_choice", "ancient_offer", "neow_offer", "trash_heap",
+        "tablet_of_truth", "trial", "event_shuffle", "native_event_gold",
+        "native_event_relic", "native_shovel", "endless_conveyor",
+        "merchant", "treasure", "combat_reward", "glory_reflections",
+        "infested_automaton", "punch_off_reward", "punch_off_fight",
+        "map_generation", "controlled_event_choice", "controlled_run_action"
+    ];
+
+    public static string[] SemanticNatureChoiceViewSessionKinds =>
+        (string[])NatureChoiceViewSessionKinds.Clone();
+
+    public static bool IsSemanticNatureChoiceViewSessionKind(string sessionKind) =>
+        NatureChoiceViewSessionKinds.Contains(sessionKind,
+            StringComparer.Ordinal);
 
     public static StochasticCapabilityManifestV111 Create() =>
         Create(StochasticSiteRegistryV111.CreateSessionCoverage());
