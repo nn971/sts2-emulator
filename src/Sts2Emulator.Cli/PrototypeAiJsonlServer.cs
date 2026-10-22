@@ -2930,7 +2930,8 @@ internal static class PrototypeAiJsonlServer
                             {
                                 "state_handle (run with an idle Nature-owned combat deck)",
                                 "prefix_length (integer from 1 through the deck size)",
-                                "maximum_orders (optional integer from 1 through 65536; default 4096)"
+                                "maximum_orders (optional integer from 1 through 65536; default 4096)",
+                                "audit_sequential (optional boolean; checks prefixes through 64 draw positions by composing QueryDraw supports)"
                             },
                             semanticDeckPrefixDistributionScope =
                                 "Nature-only exact constrained-order counts; UNVERIFIED uniform-pool model; excluded from fair player observations",
@@ -9191,7 +9192,8 @@ internal static class PrototypeAiJsonlServer
                         var allowedFields = new HashSet<string>(new[]
                         {
                             "op", "request_id", "state_handle",
-                            "prefix_length", "maximum_orders"
+                            "prefix_length", "maximum_orders",
+                            "audit_sequential"
                         }, StringComparer.Ordinal);
                         var unexpectedFields = request.EnumerateObject()
                             .Select(property => property.Name)
@@ -9210,10 +9212,17 @@ internal static class PrototypeAiJsonlServer
                                 "Prefix length must fit a signed 32-bit integer.");
                         var maximumOrders = OptionalInt(
                             request, "maximum_orders") ?? 4096;
+                        var auditSequential = OptionalBool(
+                            request, "audit_sequential");
                         var deck = RequireState(request).World?.Combat?
                             .Stochastic.SemanticDeck ??
                             throw new InvalidOperationException(
                                 "State does not contain a Nature-owned combat deck.");
+                        if (auditSequential)
+                            SemanticDeckEngineV111
+                                .AuditPrefixDistributionAgainstSequentialChanceLaws(
+                                    deck, (int)prefixLengthValue,
+                                    maximumOrders);
                         var distribution = SemanticDeckEngineV111
                             .EnumeratePrefixDistribution(
                                 deck, (int)prefixLengthValue, maximumOrders);
@@ -9221,7 +9230,9 @@ internal static class PrototypeAiJsonlServer
                         {
                             requestId,
                             ok = true,
-                            distribution
+                            distribution,
+                            sequentialChanceLawAudit = auditSequential
+                                ? "matched" : null
                         });
                         break;
                     }

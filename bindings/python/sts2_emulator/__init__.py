@@ -46,10 +46,16 @@ class State:
         return self.session.call("exact_hash", state_handle=self.handle)["exactHash"]
 
     def query_deck_prefix_distribution(self, prefix_length: int, *,
-                                       maximum_orders: int = 4096):
-        """Return exact Nature deck prefix counts under their UNVERIFIED model."""
+                                       maximum_orders: int = 4096,
+                                       audit_sequential: bool = False):
+        """Return exact Nature deck prefix counts under their UNVERIFIED model.
+
+        Set ``audit_sequential`` to compare the result with composed QueryDraw
+        supports. The optional audit is limited to prefixes of at most 64.
+        """
         return self.session.query_semantic_deck_prefix_distribution(
-            self.handle, prefix_length, maximum_orders=maximum_orders)
+            self.handle, prefix_length, maximum_orders=maximum_orders,
+            audit_sequential=audit_sequential)
 
     def query_chance_law(self, site_id: str, *, ordinal: int = 0,
                          prior_indices=None, card_type=None, rarity=None,
@@ -3320,6 +3326,8 @@ class Session:
             self._validate_stochastic_capabilities()
             self._semantic_deck_prefix_distribution_supported = (
                 self._validate_semantic_deck_prefix_distribution_capabilities())
+            if not self._semantic_deck_prefix_distribution_supported:
+                self._semantic_deck_sequential_audit_supported = False
             self._fair_observation_supported = (
                 self._validate_fair_observation_capabilities())
         except BaseException:
@@ -3640,6 +3648,10 @@ class Session:
             "prefix_length (integer from 1 through the deck size)",
             "maximum_orders (optional integer from 1 through 65536; default 4096)",
         }
+        self._semantic_deck_sequential_audit_supported = (
+            "audit_sequential (optional boolean; checks prefixes through 64 "
+            "draw positions by composing QueryDraw supports)"
+            in inputs)
         scope = self.capabilities[fields[3]]
         if ("semantic_deck_prefix_distribution" not in operations
                 or not required_inputs.issubset(inputs)
@@ -3653,7 +3665,8 @@ class Session:
 
     def query_semantic_deck_prefix_distribution(
             self, state_handle: str, prefix_length: int, *,
-            maximum_orders: int = 4096):
+            maximum_orders: int = 4096,
+            audit_sequential: bool = False):
         """Enumerate a hidden Nature deck's exact ordered-prefix masses.
 
         This returns exact combinatorial counts for the declared uniform-pool
@@ -3670,16 +3683,35 @@ class Session:
                 maximum_orders < 1 or maximum_orders > 65536):
             raise ValueError(
                 "maximum_orders must be an integer from 1 through 65536")
+        if type(audit_sequential) is not bool:
+            raise ValueError("audit_sequential must be a boolean")
+        if audit_sequential and prefix_length > 64:
+            raise ValueError(
+                "Sequential deck-law audits support prefixes through length 64")
+        if (audit_sequential and
+                not self._semantic_deck_sequential_audit_supported):
+            raise EmulatorError(
+                "Emulator does not advertise the sequential deck-law audit")
 
-        result = self.call(
-            "semantic_deck_prefix_distribution",
-            state_handle=state_handle,
-            prefix_length=prefix_length,
-            maximum_orders=maximum_orders,
-        )
+        payload = {
+            "state_handle": state_handle,
+            "prefix_length": prefix_length,
+            "maximum_orders": maximum_orders,
+        }
+        if audit_sequential:
+            payload["audit_sequential"] = True
+        result = self.call("semantic_deck_prefix_distribution", **payload)
         distribution = result.get("distribution")
         self._validate_semantic_deck_prefix_distribution(
             distribution, prefix_length=prefix_length)
+        if audit_sequential and result.get(
+                "sequentialChanceLawAudit") != "matched":
+            raise EmulatorError(
+                "Sequential deck-law audit did not report an exact match")
+        if (not audit_sequential and result.get(
+                "sequentialChanceLawAudit") is not None):
+            raise EmulatorError(
+                "Unexpected sequential deck-law audit result")
         return distribution
 
     @staticmethod

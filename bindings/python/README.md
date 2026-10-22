@@ -64,7 +64,17 @@ distribution = state.query_deck_prefix_distribution(
 The result groups physical card-instance prefixes by exact completion count
 and carries its state fingerprint, policy, and `UNVERIFIED` provenance. This
 Nature-only analysis is separate from the fair observation and is bounded by
-the full-order cap.
+the full-order cap. To audit the prefix counts, pass `audit_sequential=True`:
+
+```python
+distribution = state.query_deck_prefix_distribution(
+    3, maximum_orders=4096, audit_sequential=True)
+```
+
+The audit checks prefixes through 64 draw positions by composing the
+`QueryDraw` support at each unresolved draw. A successful call means the
+sequential support matched the full-order enumeration exactly. The audit uses
+the same full-order cap and does not verify the original game's draw law.
 
 Construction checks wire/snapshot/batch compatibility. Handles belong to one
 session; release invalidates them. Calls are serialized with a lock.

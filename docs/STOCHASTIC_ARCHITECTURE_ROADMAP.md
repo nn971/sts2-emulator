@@ -8,9 +8,12 @@ Nature-only prefix distribution is now available through the opt-in
 whose combat has an idle Nature-owned deck, a prefix length, and an optional
 full-order cap, and returns
 the versioned exact integer completion counts already provided by the core
-enumerator. The capability is advertised separately in `hello` and stays out
-of the fair player view. The distribution remains `UNVERIFIED`; no tests or
-builds were run.
+enumerator. Its optional `audit_sequential` input checks prefixes through 64
+draw positions by composing `QueryDraw` supports and reports an exact match
+against full-order enumeration.
+The capability is advertised separately in `hello` and stays out of the fair
+player view. The distribution remains `UNVERIFIED`; no tests or builds were
+run.
 
 **S1 exact deck-prefix distribution increment (2026-10-22):**
 `SemanticDeckEngineV111.EnumeratePrefixDistribution` groups the existing
