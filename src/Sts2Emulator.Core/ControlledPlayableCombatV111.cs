@@ -1092,7 +1092,8 @@ public static class ControlledPlayableCombatEngineV111
             return recycle.Complete ? FinishRecycle(recycleState) : recycleState;
         }
         if (PrototypeGameEngine
-                .HasPendingControlledAutomaticPipelineChoice(state.Run))
+                .ClassifyAutomaticPipelineResumeBoundary(state.Run) ==
+            PrototypeAutomaticPipelineResumeBoundaryKindV111.ControlledChoice)
             return state;
         if (stepKind != PrototypeAutomaticStepKind.AdvanceTurn)
             return state;

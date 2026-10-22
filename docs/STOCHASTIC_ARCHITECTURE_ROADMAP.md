@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 common automatic-pipeline resume boundary classifier increment (2026-10-22):**
+`ClassifyAutomaticPipelineResumeBoundary` now classifies reward/terminal,
+controlled and semantic choices, player decisions, `AdvanceTurn`,
+`DrawPlayerHand`, and other suspended cursors in one engine owner. Semantic
+end-turn publication and controlled-playable staging use the shared result;
+their transcript and provider policies remain local. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S4 automatic-pipeline cursor clear owner increment (2026-10-22):** Runtime
 cursor consumption and cursor-free checkpoint projection now use
 `PrototypeGameEngine.ClearAutomaticPipelineContinuation`. End-turn setup,

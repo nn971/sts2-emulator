@@ -1,5 +1,17 @@
 namespace Sts2Emulator.Core;
 
+internal enum PrototypeAutomaticPipelineResumeBoundaryKindV111
+{
+    None,
+    ControlledChoice,
+    SemanticChoice,
+    PlayerDecision,
+    RewardOrTerminal,
+    AdvanceTurn,
+    DrawPlayerHand,
+    SuspendedPipeline
+}
+
 public sealed partial class PrototypeGameEngine : IDeterministicEngine
 {
     /// <summary>
@@ -146,6 +158,42 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
     internal static bool IsAtCombatRewardOrTerminalBoundary(RunState run) =>
         (run.Phase is RunPhase.Reward or RunPhase.Terminal) &&
         IsAtCombatActionResultBoundary(run);
+
+    /// <summary>
+    /// Classifies the supported outcomes of an automatic-pipeline resume.
+    /// Facades retain their typed choice histories and policy, while using
+    /// the same mechanics boundary interpretation for publication.
+    /// </summary>
+    internal static PrototypeAutomaticPipelineResumeBoundaryKindV111
+        ClassifyAutomaticPipelineResumeBoundary(RunState run)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        if (IsAtCombatRewardOrTerminalBoundary(run))
+            return PrototypeAutomaticPipelineResumeBoundaryKindV111
+                .RewardOrTerminal;
+        if (HasPendingControlledAutomaticPipelineChoice(run))
+            return PrototypeAutomaticPipelineResumeBoundaryKindV111
+                .ControlledChoice;
+        if (HasPendingSupportedAutomaticPipelineSemanticChoice(run))
+            return PrototypeAutomaticPipelineResumeBoundaryKindV111
+                .SemanticChoice;
+        if (IsAtCombatPlayerDecisionBoundary(run))
+            return PrototypeAutomaticPipelineResumeBoundaryKindV111
+                .PlayerDecision;
+        if (run.World?.Combat is not { } combat ||
+            combat.AutomaticPipelineContinuation is not { } cursor)
+            return PrototypeAutomaticPipelineResumeBoundaryKindV111.None;
+        if (cursor.Mechanics.IsAtStep(
+                PrototypeAutomaticStepKind.AdvanceTurn))
+            return PrototypeAutomaticPipelineResumeBoundaryKindV111
+                .AdvanceTurn;
+        if (cursor.Mechanics.IsAtStep(
+                PrototypeAutomaticStepKind.DrawPlayerHand))
+            return PrototypeAutomaticPipelineResumeBoundaryKindV111
+                .DrawPlayerHand;
+        return PrototypeAutomaticPipelineResumeBoundaryKindV111
+            .SuspendedPipeline;
+    }
 
     /// <summary>
     /// Identifies a complete result of one ordinary combat action: the next

@@ -672,11 +672,14 @@ public static class SemanticEndTurnEngineV111
         using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
             advanced = environment.Step(
                 playerBoundary.Fork(), actions[0].ActionId).State;
-        if (PrototypeGameEngine
-                .IsAtCombatRewardOrTerminalBoundary(advanced))
+        var resumeBoundary = PrototypeGameEngine
+            .ClassifyAutomaticPipelineResumeBoundary(advanced);
+        if (resumeBoundary ==
+            PrototypeAutomaticPipelineResumeBoundaryKindV111.RewardOrTerminal)
             return (null, advanced);
-        if (PrototypeGameEngine
-                .HasPendingSupportedAutomaticPipelineChoice(advanced))
+        if (resumeBoundary is
+                PrototypeAutomaticPipelineResumeBoundaryKindV111.ControlledChoice or
+                PrototypeAutomaticPipelineResumeBoundaryKindV111.SemanticChoice)
         {
             var suspendedChoice = new SemanticEndTurnV111(
                 playerBoundary.Fork(), advanced.Fork(),
@@ -1220,9 +1223,9 @@ public static class SemanticEndTurnEngineV111
         if (next.HandDraw is { AtBoundary: true })
             return CompleteHandDrawAtPlayerBoundary(next, resumed);
 
-        var combat = resumed.World?.Combat;
-        if (combat?.AutomaticPipelineContinuation?.Mechanics.IsAtStep(
-                PrototypeAutomaticStepKind.AdvanceTurn) == true)
+        if (PrototypeGameEngine
+                .ClassifyAutomaticPipelineResumeBoundary(resumed) ==
+            PrototypeAutomaticPipelineResumeBoundaryKindV111.AdvanceTurn)
         {
             return BeginAtAdvanceTurn(
                 resumed, source.NativeEncounterEntry) with
@@ -1244,8 +1247,10 @@ public static class SemanticEndTurnEngineV111
         SemanticEndTurnV111 source, RunState resumed,
         out SemanticEndTurnV111 published)
     {
-        if (PrototypeGameEngine
-                .IsAtCombatRewardOrTerminalBoundary(resumed))
+        var boundary = PrototypeGameEngine
+            .ClassifyAutomaticPipelineResumeBoundary(resumed);
+        if (boundary ==
+            PrototypeAutomaticPipelineResumeBoundaryKindV111.RewardOrTerminal)
         {
             published = CompleteAtBoundary(
                 source, resumed,
@@ -1254,8 +1259,8 @@ public static class SemanticEndTurnEngineV111
             return true;
         }
 
-        if (PrototypeGameEngine
-                .HasPendingControlledAutomaticPipelineChoice(resumed) &&
+        if (boundary ==
+                PrototypeAutomaticPipelineResumeBoundaryKindV111.ControlledChoice &&
             (source.HandDraw is null ||
              resumed.World?.Combat?.PendingChoice?.ControlledTarget is not null))
         {
@@ -1263,8 +1268,8 @@ public static class SemanticEndTurnEngineV111
             return true;
         }
 
-        if (PrototypeGameEngine
-                .HasPendingSupportedAutomaticPipelineSemanticChoice(resumed))
+        if (boundary ==
+            PrototypeAutomaticPipelineResumeBoundaryKindV111.SemanticChoice)
         {
             published = source with { Run = resumed };
             return true;
@@ -1421,7 +1426,8 @@ public static class SemanticEndTurnEngineV111
                 state.Run.Fork(),
                 stopBeforeSemanticHandDraw: true);
         if (PrototypeGameEngine
-                .IsAtCombatRewardOrTerminalBoundary(handCheckpoint))
+                .ClassifyAutomaticPipelineResumeBoundary(handCheckpoint) ==
+            PrototypeAutomaticPipelineResumeBoundaryKindV111.RewardOrTerminal)
             return CompleteAtBoundary(
                 state with { Intents = null }, handCheckpoint,
                 discardSuspendedFrames: true);
@@ -1464,7 +1470,9 @@ public static class SemanticEndTurnEngineV111
     private static SemanticEndTurnV111 CompleteHandDrawAtPlayerBoundary(
         SemanticEndTurnV111 state, RunState result)
     {
-        if (!PrototypeGameEngine.IsAtCombatPlayerDecisionBoundary(result))
+        if (PrototypeGameEngine
+                .ClassifyAutomaticPipelineResumeBoundary(result) !=
+            PrototypeAutomaticPipelineResumeBoundaryKindV111.PlayerDecision)
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.semantic_end_turn " +
                 "operation=not_at_next_player_boundary");
