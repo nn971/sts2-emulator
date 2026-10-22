@@ -1478,7 +1478,12 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
             acquiredRelicId == PrototypeNativeOvergrowthEvents.NeowRelicId(
                 "LeadPaperweight"))
         {
-            pool = PrototypeColorlessCards.ImplementedRewardPool;
+            var profile = source.Configuration?.Profile ??
+                throw new NotSupportedException(
+                    "Lead Paperweight requires configured run profile data.");
+            pool = PrototypeColorlessCards.RewardPoolForProfile(
+                profile.FullyUnlocked,
+                profile.UnlockedColorlessEpochs);
             takeCount = 2;
             boundaryId = "native-neow-lead-paperweight-colorless-offer";
         }

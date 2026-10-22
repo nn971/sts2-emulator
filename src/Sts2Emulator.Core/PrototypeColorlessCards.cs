@@ -771,9 +771,9 @@ public static class PrototypeColorlessCards
         ImplementedDefinitions.Select(c => c.Id).ToArray();
 
     // Card-reward offers use the implemented, solo-eligible reward pool.
-    // This is broader than ImplementedCombatGenerationPool: epoch-gated
-    // cards can appear in rewards even though synthetic combat generation
-    // still excludes them until unlock state is modeled.
+    // This is broader than ImplementedCombatGenerationPool. Reward paths
+    // apply configured epoch unlocks; synthetic combat generation keeps its
+    // conservative no-epoch pool.
     public static string[] ImplementedRewardPool =>
         (string[])ImplementedRewardPoolValues.Clone();
 
@@ -787,6 +787,16 @@ public static class PrototypeColorlessCards
                 or PrototypeCardRarity.Uncommon
                 or PrototypeCardRarity.Rare))
         .ToArray();
+
+    internal static string[] RewardPoolForProfile(
+        bool fullyUnlocked, string[]? unlockedEpochs)
+    {
+        var unlocked = ResolveUnlockedEpochs(
+            fullyUnlocked, unlockedEpochs, "Native Colorless rewards");
+        return ImplementedRewardPoolValues
+            .Where(id => IsEpochUnlocked(id, fullyUnlocked, unlocked))
+            .ToArray();
+    }
 
     // Native Colorless1..5Epoch.Cards (pinned v0.111.0).
     public static string[] NativeEpochIds =>
@@ -870,24 +880,10 @@ public static class PrototypeColorlessCards
     internal static string[] CombatGenerationPoolForProfile(
         bool fullyUnlocked, string[]? unlockedEpochs)
     {
-        if (fullyUnlocked)
-            return (string[])ImplementedUnlockedCombatGenerationPoolValues
-                .Clone();
-        if (unlockedEpochs is null)
-            throw new NotSupportedException(
-                "Native Colorless generation requires the partial epoch " +
-                "unlock set or a fully unlocked profile.");
-        if (unlockedEpochs.Any(epoch => string.IsNullOrWhiteSpace(epoch) ||
-                !NativeEpochIdValues.Contains(epoch, StringComparer.Ordinal)) ||
-            unlockedEpochs.Distinct(StringComparer.Ordinal).Count() !=
-                unlockedEpochs.Length)
-            throw new InvalidDataException(
-                "Native Colorless generation has invalid epoch unlock metadata.");
-
-        var unlocked = unlockedEpochs.ToHashSet(StringComparer.Ordinal);
+        var unlocked = ResolveUnlockedEpochs(
+            fullyUnlocked, unlockedEpochs, "Native Colorless generation");
         return ImplementedUnlockedCombatGenerationPoolValues
-            .Where(id => !EpochByCardId.TryGetValue(id, out var epoch) ||
-                unlocked.Contains(epoch))
+            .Where(id => IsEpochUnlocked(id, fullyUnlocked, unlocked))
             .ToArray();
     }
 
@@ -898,27 +894,40 @@ public static class PrototypeColorlessCards
         if (rarity is not (PrototypeCardRarity.Uncommon or
             PrototypeCardRarity.Rare))
             throw new ArgumentOutOfRangeException(nameof(rarity));
-        if (!fullyUnlocked && unlockedEpochs is null)
-            throw new NotSupportedException(
-                "Native Colorless merchant offers require the partial epoch " +
-                "unlock set or a fully unlocked profile.");
+        var unlocked = ResolveUnlockedEpochs(
+            fullyUnlocked, unlockedEpochs,
+            "Native Colorless merchant offers");
+        return Implemented
+            .Where(card => card.Rarity == rarity && !card.MultiplayerOnly &&
+                card.MechanicsImplemented &&
+                IsEpochUnlocked(card.Id, fullyUnlocked, unlocked))
+            .Select(card => card.Id)
+            .ToArray();
+    }
+
+    private static HashSet<string>? ResolveUnlockedEpochs(
+        bool fullyUnlocked, string[]? unlockedEpochs, string operation)
+    {
         if (unlockedEpochs is not null &&
             (unlockedEpochs.Any(epoch => string.IsNullOrWhiteSpace(epoch) ||
                 !NativeEpochIdValues.Contains(epoch, StringComparer.Ordinal)) ||
              unlockedEpochs.Distinct(StringComparer.Ordinal).Count() !=
                 unlockedEpochs.Length))
             throw new InvalidDataException(
-                "Native Colorless merchant offers have invalid epoch unlock metadata.");
-
-        var unlocked = unlockedEpochs?.ToHashSet(StringComparer.Ordinal);
-        return Implemented
-            .Where(card => card.Rarity == rarity && !card.MultiplayerOnly &&
-                card.MechanicsImplemented &&
-                (fullyUnlocked || !EpochByCardId.TryGetValue(card.Id,
-                    out var epoch) || unlocked!.Contains(epoch)))
-            .Select(card => card.Id)
-            .ToArray();
+                $"{operation} has invalid epoch unlock metadata.");
+        if (fullyUnlocked)
+            return null;
+        if (unlockedEpochs is null)
+            throw new NotSupportedException(
+                $"{operation} requires the partial epoch unlock set or a fully unlocked profile.");
+        return unlockedEpochs.ToHashSet(StringComparer.Ordinal);
     }
+
+    private static bool IsEpochUnlocked(
+        string cardId, bool fullyUnlocked,
+        HashSet<string>? unlockedEpochs) =>
+        fullyUnlocked || !EpochByCardId.TryGetValue(cardId, out var epoch) ||
+        unlockedEpochs!.Contains(epoch);
 
     public static string PickMerchantCard(
         PrototypeCardRarity rarity,

@@ -2,8 +2,9 @@ namespace Sts2Emulator.Core;
 
 /// <summary>
 /// Native Neow acquisition options that suspend the selected event and
-/// present a normal typed reward phase. Exact native reward RNG and
-/// unlock-state restrictions are deliberately deferred.
+/// present a normal typed reward phase. Exact native reward RNG and additional
+/// account unlock restrictions remain deferred; Colorless epoch gates use the
+/// configured run profile.
 /// </summary>
 public sealed partial class PrototypeGameEngine
 {
@@ -184,7 +185,12 @@ public sealed partial class PrototypeGameEngine
 
             case PrototypeRunEffectKind.OfferTwoColorlessCards:
             {
-                var pool = PrototypeColorlessCards.ImplementedRewardPool;
+                var profile = state.Configuration?.Profile ??
+                    throw new NotSupportedException(
+                        "Lead Paperweight requires configured run profile data.");
+                var pool = PrototypeColorlessCards.RewardPoolForProfile(
+                    profile.FullyUnlocked,
+                    profile.UnlockedColorlessEpochs);
                 if (pool.Length < 2)
                 {
                     throw new InvalidOperationException(

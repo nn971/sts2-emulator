@@ -52,11 +52,13 @@ relic groups.
 The session also captures Hefty Tablet's `OfferThreeRareCards` and Lead
 Paperweight's `OfferTwoColorlessCards` after either relic is selected from a
 Neow opening offer or Neow relic reward. The ordinary resolver fully shuffles
-the configured Rare or implemented Colorless pool on legacy `reward`; the
-session reconstructs that exact ordered pool and owner, validates every
-descending bounded-integer swap, and commits the nested card reward with the
-Nature cursor. These equal-index laws remain `UNVERIFIED`; Native source pool
-fidelity and cursor parity are not established.
+the configured Rare or profile-filtered implemented Colorless reward pool on
+legacy `reward`; the session reconstructs that exact ordered pool and owner,
+validates every descending bounded-integer swap, and commits the nested card
+reward with the Nature cursor. The Lead Paperweight pool includes epoch-gated
+cards only when their account epoch is unlocked. These equal-index laws remain
+`UNVERIFIED`; Native source pool fidelity and cursor parity are not
+established.
 
 The same session captures Scroll Boxes' `OfferCardBundles` after the relic is
 selected from a Neow opening offer or Neow relic reward. It reconstructs the

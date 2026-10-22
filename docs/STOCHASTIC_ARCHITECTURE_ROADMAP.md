@@ -19,6 +19,13 @@ the configured run unlock profile. Unknown partial-profile unlock data fails
 closed. Static source review and `git diff --check` only; no tests or builds
 were run.
 
+**S6 Lead Paperweight epoch-filtered reward-pool increment (2026-10-22):**
+Lead Paperweight's ordinary Neow reward and its atomic ReferenceNature pool
+reconstruction now filter the ordered implemented Colorless reward pool by
+the configured epoch unlocks. The existing reward RNG treatment and native
+pool fidelity remain open. Static source review and `git diff --check` only;
+no tests or builds were run.
+
 **S4 opening Imbued autoplay target increment (2026-10-22):** The shared
 automatic-pipeline target boundary now validates the saved `LateRelicAutoPlay`
 cursor against the exact remaining Imbued driver queue in persistent-card
