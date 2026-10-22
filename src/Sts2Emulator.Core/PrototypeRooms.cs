@@ -4922,7 +4922,8 @@ public sealed partial class PrototypeGameEngine
         }
         var player = state.Player;
         var nextId = world.NextCardInstanceId;
-        var nativeRunRng = state.Stochastic.NativeRunRngMutable?.Fork();
+        var nativeRunRng = state.Stochastic.NativeRunRng;
+        var prototypeRng = state.Stochastic.PrototypeRng;
 
         if (action.Kind == "take_reward_extra_gold" && reward.IndependentSelection
             && reward.PendingDeckChoice is null && (reward.CardResolved || reward.CardBundles is null))
@@ -5018,11 +5019,15 @@ public sealed partial class PrototypeGameEngine
         {
             // Native proceed/skip abandons all remaining optional
             // rewards; none of the offered but unclaimed gold is gained.
+            var stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, prototypeRng);
+            if (nativeRunRng is not null)
+                stochastic = RunStochasticStateV111.WithNativeRunRng(
+                    stochastic, nativeRunRng);
             state = state with
             {
                 Player = player,
-                Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                    state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRngMutable),
+                Stochastic = stochastic,
                 World = world with
                 {
                     Reward = reward,
@@ -5049,7 +5054,7 @@ public sealed partial class PrototypeGameEngine
                     player,
                     deckChoice,
                     payload.CardInstanceId,
-                    state.Stochastic.PrototypeRngMutable);
+                    prototypeRng);
                 player = resolved.Player;
                 reward = reward with
                 {
@@ -5061,7 +5066,7 @@ public sealed partial class PrototypeGameEngine
                 && deckChoice.CardIdAfterChoices is { } afterChoicesCardId)
             {
                 player = AppendCard(
-                    player, nextId++, afterChoicesCardId, state.Stochastic.PrototypeRngMutable);
+                    player, nextId++, afterChoicesCardId, prototypeRng);
             }
 
             if (reward.PendingDeckChoice is null
@@ -5080,11 +5085,15 @@ public sealed partial class PrototypeGameEngine
                         Reward = reward,
                         NextCardInstanceId = nextId
                     };
+                    var stochastic = RunStochasticStateV111.WithPrototypeRng(
+                        state.Stochastic, prototypeRng);
+                    if (nativeRunRng is not null)
+                        stochastic = RunStochasticStateV111.WithNativeRunRng(
+                            stochastic, nativeRunRng);
                     return EndRun(state with
                     {
                         Player = player,
-                        Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                            state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRngMutable),
+                        Stochastic = stochastic,
                         World = world
                     }, "defeat");
                 }
@@ -5102,7 +5111,7 @@ public sealed partial class PrototypeGameEngine
 
             foreach (var cardId in bundles[payload.Index])
             {
-                player = AppendCard(player, nextId++, cardId, state.Stochastic.PrototypeRngMutable);
+                player = AppendCard(player, nextId++, cardId, prototypeRng);
             }
             reward = reward with { CardResolved = true };
         }
@@ -5132,7 +5141,7 @@ public sealed partial class PrototypeGameEngine
                 player = AppendNativeCardReward(
                     player, nextId++, options[payload.Index],
                     reward.CardUpgradeFlagsForGroup(groupIndex + 1)[payload.Index],
-                    state.Stochastic.PrototypeRngMutable,
+                    prototypeRng,
                     reward.CardEnchantmentsForGroup(groupIndex + 1)[payload.Index]);
             }
             else if (payload.Index != -1)
@@ -5172,7 +5181,7 @@ public sealed partial class PrototypeGameEngine
             };
             player = ApplyRelicRunEvent(
                 player, PrototypeRunEventKind.RelicAcquired,
-                acquiredRelicId: relicId, rng: state.Stochastic.PrototypeRngMutable,
+                acquiredRelicId: relicId, rng: prototypeRng,
                 allocateCardId: () => nextId++, nativeRunRng: nativeRunRng);
             reward = reward.ResolveExtraRelicGroup(payload.Index) with
             {
@@ -5210,7 +5219,7 @@ public sealed partial class PrototypeGameEngine
                     nextId++,
                     reward.CardOptions[payload.Index],
                     reward.CurrentCardOptionUpgradeFlags[payload.Index],
-                    state.Stochastic.PrototypeRngMutable,
+                    prototypeRng,
                     reward.CurrentCardOptionEnchantments[payload.Index]);
             }
             else
@@ -5249,7 +5258,7 @@ public sealed partial class PrototypeGameEngine
                     nextId++,
                     currentOptions[payload.Index],
                     reward.CurrentCardOptionUpgradeFlags[payload.Index],
-                    state.Stochastic.PrototypeRngMutable,
+                    prototypeRng,
                     reward.CurrentCardOptionEnchantments[payload.Index]);
             }
             else
@@ -5381,7 +5390,7 @@ public sealed partial class PrototypeGameEngine
                 player,
                 PrototypeRunEventKind.RelicAcquired,
                 acquiredRelicId: relicId,
-                rng: state.Stochastic.PrototypeRngMutable, allocateCardId: () => nextId++,
+                rng: prototypeRng, allocateCardId: () => nextId++,
                 nativeRunRng: nativeRunRng);
             var acquisitionDeckChoice =
                 CreateRelicDeckChoice(
@@ -5430,7 +5439,7 @@ public sealed partial class PrototypeGameEngine
             };
             player = ApplyRelicRunEvent(
                 player, PrototypeRunEventKind.RelicAcquired,
-                acquiredRelicId: relicId, rng: state.Stochastic.PrototypeRngMutable,
+                acquiredRelicId: relicId, rng: prototypeRng,
                 allocateCardId: () => nextId++, nativeRunRng: nativeRunRng);
             reward = reward.ResolveExtraRelicGroup(extraRelicGroupIndex) with
             {
@@ -5440,11 +5449,15 @@ public sealed partial class PrototypeGameEngine
         else
         {
             RequireKind(action, "leave_reward");
+            var stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, prototypeRng);
+            if (nativeRunRng is not null)
+                stochastic = RunStochasticStateV111.WithNativeRunRng(
+                    stochastic, nativeRunRng);
             state = state with
             {
                 Player = player,
-                Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                    state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRngMutable),
+                Stochastic = stochastic,
                 World = world with
                 {
                     Reward = reward,
@@ -5460,11 +5473,15 @@ public sealed partial class PrototypeGameEngine
             NextCardInstanceId = nextId
         };
 
+        var finalStochastic = RunStochasticStateV111.WithPrototypeRng(
+            state.Stochastic, prototypeRng);
+        if (nativeRunRng is not null)
+            finalStochastic = RunStochasticStateV111.WithNativeRunRng(
+                finalStochastic, nativeRunRng);
         return state with
         {
             Player = player,
-            Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRngMutable),
+            Stochastic = finalStochastic,
             World = world
         };
     }

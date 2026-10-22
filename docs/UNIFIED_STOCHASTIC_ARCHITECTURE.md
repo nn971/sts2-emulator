@@ -883,6 +883,8 @@ the pilot enters the end-turn owner's validate-then-resume path before publishin
 the resulting run and frame together. Standalone and automatic hand-draw hook
 progress remains with the draw facade.
 
+Reward-step resolution now reads defensive prototype and optional Native run RNG projections, passes the local bundles through card grants and relic-acquisition hooks, and publishes the advanced providers with ordinary reward progress, completed rewards, or lethal relic deck-choice outcomes. Controlled reward continuations, Pael sacrifices, and Driftwood rerolls remain owned by their dedicated transitions.
+
 ## Reading order
 
 1. This architecture contract.
