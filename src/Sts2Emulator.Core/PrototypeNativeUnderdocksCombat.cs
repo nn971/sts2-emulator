@@ -12,9 +12,9 @@ public sealed partial class PrototypeGameEngine
     private static (
         PrototypeEncounterDefinition Encounter,
         RunWorldState World) PickUnderdocksEncounter(
-        RunState state,
         RunWorldState world,
-        PrototypeRoomType roomType)
+        PrototypeRoomType roomType,
+        RngBundle prototypeRng)
     {
         var pool = world.Stochastic.ActOneEncounterPool
             ?? throw new InvalidOperationException(
@@ -67,7 +67,7 @@ public sealed partial class PrototypeGameEngine
             if (eligibleElites.Length == 0)
                 eligibleElites = availableElites;
             var index = LegacyRandomChoiceV111.ChooseIndexRange(
-                state.Stochastic.PrototypeRng,
+                prototypeRng,
                 "combat.encounter.underdocks.elite.index_draw",
                 "combat",
                 "act:1:elite:pool:" + CanonicalJson.Sha256(eligibleElites),
@@ -137,7 +137,7 @@ public sealed partial class PrototypeGameEngine
 
         var kind = isWeak ? "weak" : "normal";
         var selected = LegacyRandomChoiceV111.ChooseIndexRange(
-            state.Stochastic.PrototypeRng,
+            prototypeRng,
             "combat.encounter.underdocks." + kind + ".index_draw",
             "combat",
             $"act:1:{kind}:pool:{CanonicalJson.Sha256(eligible)}",

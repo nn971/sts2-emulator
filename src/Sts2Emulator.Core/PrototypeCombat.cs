@@ -7,6 +7,9 @@ public sealed partial class PrototypeGameEngine
         PrototypeRoomType roomType,
         PrototypeEncounterDefinition? forcedEncounter = null)
     {
+        // Keep entry draws isolated until their cursor is published with the
+        // corresponding encounter and combat state.
+        var prototypeRng = state.Stochastic.PrototypeRng.Fork();
         var world = RequireWorld(state);
         PrototypeEncounterDefinition encounter;
 
@@ -18,7 +21,7 @@ public sealed partial class PrototypeGameEngine
             && world.ActOneRegion == PrototypeActOneRegion.Underdocks)
         {
             var selected = PickUnderdocksEncounter(
-                state, world, roomType);
+                world, roomType, prototypeRng);
             encounter = selected.Encounter;
             world = selected.World;
         }
@@ -36,9 +39,9 @@ public sealed partial class PrototypeGameEngine
         {
             var overgrowthElite =
                 TryPickOvergrowthEliteEncounter(
-                    state,
                     world,
-                    roomType);
+                    roomType,
+                    prototypeRng);
             if (overgrowthElite is not null)
             {
                 encounter = overgrowthElite.Value.Encounter;
@@ -48,9 +51,9 @@ public sealed partial class PrototypeGameEngine
             {
                 var overgrowthWeak =
                 TryPickOvergrowthWeakEncounter(
-                    state,
                     world,
-                    roomType);
+                    roomType,
+                    prototypeRng);
             if (overgrowthWeak is not null)
             {
                 encounter =
@@ -61,9 +64,9 @@ public sealed partial class PrototypeGameEngine
             {
                 var overgrowthNormal =
                     TryPickOvergrowthNormalEncounter(
-                        state,
                         world,
-                        roomType);
+                        roomType,
+                        prototypeRng);
             if (overgrowthNormal is not null)
             {
                 encounter =
@@ -106,7 +109,7 @@ public sealed partial class PrototypeGameEngine
 
                     encounter = PickWeightedEncounter(
                         encounters,
-                        state.Stochastic.PrototypeRng);
+                        prototypeRng);
                 }
             }
         }
@@ -114,7 +117,13 @@ public sealed partial class PrototypeGameEngine
 
         }
 
-        state = ApplyBeforeCombatStartRelics(state);
+        state = state with
+        {
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, prototypeRng.Fork())
+        };
+        state = ApplyBeforeCombatStartRelics(state, prototypeRng);
+        prototypeRng = state.Stochastic.PrototypeRng.Fork();
         state = state with
         {
             Player = RemoveExpiredTeaRelics(state.Player)
@@ -189,7 +198,7 @@ public sealed partial class PrototypeGameEngine
         }
         var enemySpecs = nativeFormation?.Enemies
             ?? encounter.ResolveEnemySpecs(
-                state.Stochastic.PrototypeRng,
+                prototypeRng,
                 "encounter:" + encounter.Id + ":floor:" + world.Floor);
         var instanceIdByFormationPosition =
             enemySpecs
@@ -240,7 +249,7 @@ public sealed partial class PrototypeGameEngine
             ? 0
             : nativeFormation?.EncounterOpeningOffset
                 ?? ResolveLegacyRandomIndex(
-                    state.Stochastic.PrototypeRng,
+                    prototypeRng,
                     "combat.encounter.formation.index_draw",
                     "encounter:" + encounter.Id + ":floor:" + world.Floor
                         + ":opening_rotation",
@@ -260,7 +269,7 @@ public sealed partial class PrototypeGameEngine
                     : hpRange.Min == hpRange.Max
                         ? hpRange.Min
                         : ResolveLegacyRandomIndex(
-                            state.Stochastic.PrototypeRng,
+                            prototypeRng,
                             NativeCombatRngEntryV111.InitialUniqueHpSiteId,
                             "creature:" + (index + 1),
                             Enumerable.Range(
@@ -377,7 +386,7 @@ public sealed partial class PrototypeGameEngine
                 throw new NotSupportedException(
                     "UNSUPPORTED_NATIVE_COMBAT site=combat.initial_shuffle " +
                     "operation=missing_run_stream_owner");
-        var shuffleStreams = nativeShuffleStreams ?? state.Stochastic.PrototypeRng;
+        var shuffleStreams = nativeShuffleStreams ?? prototypeRng;
         IRandomIndexProviderV111 shuffleProvider = nativeShuffleStreams is null
             ? new LegacyPrototypeRandomIndexProviderV111()
             : new NativeRandomIndexProviderV111();
@@ -425,7 +434,7 @@ public sealed partial class PrototypeGameEngine
         };
 
         var teaOfDiscourtesy = ApplyTeaOfDiscourtesyBeforeCombat(
-            state.Player, combat, state.Stochastic.PrototypeRng);
+            state.Player, combat, prototypeRng);
         state = state with { Player = teaOfDiscourtesy.Player };
         combat = teaOfDiscourtesy.Combat;
 
@@ -468,6 +477,11 @@ public sealed partial class PrototypeGameEngine
         {
             Combat = combat
         };
+        state = state with
+        {
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, prototypeRng.Fork())
+        };
         SemanticInitialIntentCaptureV111.CaptureAndSuspend(state with
         {
             Stochastic = RunStochasticStateV111.WithNativeRunRng(
@@ -478,16 +492,17 @@ public sealed partial class PrototypeGameEngine
             Phase = RunPhase.Combat
         });
         combat = CommitEnemyIntents(
-            combat, state.Stochastic.PrototypeRng,
+            combat, prototypeRng,
             NativeCombatRngEntryV111.CommittedIntentSiteId);
         // Return the latest native run/player cursors to their persistent
         // owner; later Step() calls continue from these precise positions.
+        var nextStochastic = RunStochasticStateV111.WithPrototypeRng(
+            state.Stochastic, prototypeRng.Fork());
         if (combat.Stochastic.NativeRng is not null)
-            state = state with
-            {
-                Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                    state.Stochastic, combat.Stochastic.NativeRng.RunStreams.Fork())
-            };
+            nextStochastic = RunStochasticStateV111.WithNativeRunRng(
+                nextStochastic,
+                combat.Stochastic.NativeRng.RunStreams.Fork());
+        state = state with { Stochastic = nextStochastic };
 
         return ResumeSemanticInitialCombatEntry(state with
         {
@@ -560,9 +575,9 @@ public sealed partial class PrototypeGameEngine
         PrototypeEncounterDefinition Encounter,
         RunWorldState World)?
         TryPickOvergrowthEliteEncounter(
-            RunState state,
             RunWorldState world,
-            PrototypeRoomType roomType)
+            PrototypeRoomType roomType,
+            RngBundle prototypeRng)
     {
         if (roomType != PrototypeRoomType.Elite
             || world.Act != 1
@@ -612,7 +627,7 @@ public sealed partial class PrototypeGameEngine
         }
 
         var selectedIndex = ResolveLegacyRandomIndex(
-            state.Stochastic.PrototypeRng,
+            prototypeRng,
             "combat.encounter.overgrowth_elite.index_draw",
             "act:1:floor:" + world.Floor + ":pool:"
                 + CanonicalJson.Sha256(eligible),
@@ -644,9 +659,9 @@ public sealed partial class PrototypeGameEngine
         PrototypeEncounterDefinition Encounter,
         RunWorldState World)?
         TryPickOvergrowthWeakEncounter(
-            RunState state,
             RunWorldState world,
-            PrototypeRoomType roomType)
+            PrototypeRoomType roomType,
+            RngBundle prototypeRng)
     {
         if (roomType != PrototypeRoomType.Combat
             || world.Act != 1
@@ -672,7 +687,7 @@ public sealed partial class PrototypeGameEngine
         }
 
         var selectedIndex = ResolveLegacyRandomIndex(
-            state.Stochastic.PrototypeRng,
+            prototypeRng,
             "combat.encounter.overgrowth_weak.index_draw",
             "act:1:floor:" + world.Floor + ":pool:"
                 + CanonicalJson.Sha256(pool.RemainingWeakEncounterIds),
@@ -705,9 +720,9 @@ public sealed partial class PrototypeGameEngine
         PrototypeEncounterDefinition Encounter,
         RunWorldState World)?
         TryPickOvergrowthNormalEncounter(
-            RunState state,
             RunWorldState world,
-            PrototypeRoomType roomType)
+            PrototypeRoomType roomType,
+            RngBundle prototypeRng)
     {
         if (roomType != PrototypeRoomType.Combat
             || world.Act != 1
@@ -752,7 +767,7 @@ public sealed partial class PrototypeGameEngine
         }
 
         var selectedIndex = ResolveLegacyRandomIndex(
-            state.Stochastic.PrototypeRng,
+            prototypeRng,
             "combat.encounter.overgrowth_normal.index_draw",
             "act:1:floor:" + world.Floor + ":pool:"
                 + CanonicalJson.Sha256(eligible),
@@ -10283,7 +10298,8 @@ public sealed partial class PrototypeGameEngine
                 - curiousDiscount);
     }
 
-    private static RunState ApplyBeforeCombatStartRelics(RunState state)
+    private static RunState ApplyBeforeCombatStartRelics(
+        RunState state, RngBundle prototypeRng)
     {
         var relicTriggers = state.Player.ActiveRelics
             .Where(relic => PrototypeContent.Relic(relic.RelicId)
@@ -10304,7 +10320,7 @@ public sealed partial class PrototypeGameEngine
                     + $":node:{state.World?.Map.CurrentNodeId}:potion_slot:{openSlot}";
                 var potionId = nativeRunRng is null
                     ? PrototypeNativePotionShop.PickWeighted(
-                        state.Stochastic.PrototypeRng, "event")
+                        prototypeRng, "event")
                     : PrototypeNativePotionShop.PickWeightedDistinctNativeWithAudit(
                         nativeRunRng,
                         "run.combat_potion_generation", 1,
@@ -10327,8 +10343,11 @@ public sealed partial class PrototypeGameEngine
         return state with
         {
             Player = state.Player with { PotionSlots = slots },
-            Stochastic = RunStochasticStateV111.WithNativeRunRng(
-                state.Stochastic, nativeRunRng ?? state.Stochastic.NativeRunRng)
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                RunStochasticStateV111.WithNativeRunRng(
+                    state.Stochastic,
+                    nativeRunRng ?? state.Stochastic.NativeRunRng),
+                prototypeRng.Fork())
         };
     }
 
