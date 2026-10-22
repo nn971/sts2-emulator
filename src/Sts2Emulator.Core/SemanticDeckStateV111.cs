@@ -324,6 +324,137 @@ public sealed record SemanticDeckEnumerationV111
     }
 }
 
+/// <summary>One ordered physical-card prefix and its exact completion count
+/// under a bounded constrained-deck enumeration.</summary>
+public sealed record SemanticDeckPrefixOutcomeV111
+{
+    private long[] _cardInstanceIds;
+
+    [JsonConstructor]
+    public SemanticDeckPrefixOutcomeV111(long[] CardInstanceIds, long Weight)
+    {
+        ArgumentNullException.ThrowIfNull(CardInstanceIds);
+        _cardInstanceIds = (long[])CardInstanceIds.Clone();
+        this.Weight = Weight;
+    }
+
+    public long[] CardInstanceIds
+    {
+        get => (long[])_cardInstanceIds.Clone();
+        init
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            _cardInstanceIds = (long[])value.Clone();
+        }
+    }
+
+    public long Weight { get; init; }
+
+    public SemanticDeckPrefixOutcomeV111 Fork() => this with
+    {
+        CardInstanceIds = _cardInstanceIds
+    };
+}
+
+/// <summary>
+/// Exact joint distribution of a bounded top-first physical-card prefix under
+/// the unverified independent-uniform-pool completion model.
+/// </summary>
+public sealed record SemanticDeckPrefixDistributionV111
+{
+    private SemanticDeckPrefixOutcomeV111[] _outcomes;
+
+    public const string CurrentSchemaId =
+        "sts2-v111-semantic-deck-prefix-distribution-v1";
+
+    [JsonConstructor]
+    public SemanticDeckPrefixDistributionV111(
+        string SchemaId, string StateFingerprint,
+        string ConditioningPolicyId, string ProbabilityStatus,
+        string ProbabilityProvenance, int PrefixLength,
+        long TotalWeight, string OutcomeFingerprint,
+        SemanticDeckPrefixOutcomeV111[] Outcomes)
+    {
+        this.SchemaId = SchemaId;
+        this.StateFingerprint = StateFingerprint;
+        this.ConditioningPolicyId = ConditioningPolicyId;
+        this.ProbabilityStatus = ProbabilityStatus;
+        this.ProbabilityProvenance = ProbabilityProvenance;
+        this.PrefixLength = PrefixLength;
+        this.TotalWeight = TotalWeight;
+        this.OutcomeFingerprint = OutcomeFingerprint;
+        _outcomes = CloneRequired(Outcomes);
+    }
+
+    public string SchemaId { get; init; }
+    public string StateFingerprint { get; init; }
+    public string ConditioningPolicyId { get; init; }
+    public string ProbabilityStatus { get; init; }
+    public string ProbabilityProvenance { get; init; }
+    public int PrefixLength { get; init; }
+    public long TotalWeight { get; init; }
+    public string OutcomeFingerprint { get; init; }
+    public SemanticDeckPrefixOutcomeV111[] Outcomes
+    {
+        get => _outcomes.Select(outcome => outcome.Fork()).ToArray();
+        init => _outcomes = CloneRequired(value);
+    }
+
+    public SemanticDeckPrefixDistributionV111 Fork() => this with
+    {
+        Outcomes = _outcomes.Select(outcome => outcome.Fork()).ToArray()
+    };
+
+    public void Validate()
+    {
+        if (SchemaId != CurrentSchemaId ||
+            string.IsNullOrWhiteSpace(StateFingerprint) ||
+            string.IsNullOrWhiteSpace(ConditioningPolicyId) ||
+            ProbabilityStatus != "UNVERIFIED" ||
+            string.IsNullOrWhiteSpace(ProbabilityProvenance) ||
+            PrefixLength < 1 || TotalWeight <= 0 ||
+            string.IsNullOrWhiteSpace(OutcomeFingerprint) ||
+            _outcomes is not { Length: > 0 })
+            throw new InvalidDataException(
+                "Invalid semantic deck prefix distribution envelope.");
+
+        long totalWeight = 0;
+        var outcomeKeys = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var outcome in _outcomes)
+        {
+            if (outcome is null || outcome.Weight <= 0)
+                throw new InvalidDataException(
+                    "Invalid semantic deck prefix outcome.");
+            var cardIds = outcome.CardInstanceIds;
+            if (cardIds.Length == 0 || cardIds.Length != PrefixLength ||
+                cardIds.Distinct().Count() != cardIds.Length ||
+                !outcomeKeys.Add(CanonicalJson.Serialize(cardIds)))
+                throw new InvalidDataException(
+                    "Invalid semantic deck prefix outcome.");
+            totalWeight = checked(totalWeight + outcome.Weight);
+        }
+
+        if (totalWeight != TotalWeight ||
+            OutcomeFingerprint != CanonicalJson.Sha256(_outcomes.Select(
+                outcome => new
+                {
+                    outcome.CardInstanceIds,
+                    outcome.Weight
+                }).ToArray()))
+            throw new InvalidDataException(
+                "Semantic deck prefix weights or fingerprint are inconsistent.");
+    }
+
+    private static SemanticDeckPrefixOutcomeV111[] CloneRequired(
+        SemanticDeckPrefixOutcomeV111[] outcomes)
+    {
+        ArgumentNullException.ThrowIfNull(outcomes);
+        return outcomes.Select(outcome => outcome is null
+            ? null!
+            : outcome.Fork()).ToArray();
+    }
+}
+
 public sealed record SemanticDeckEventV111 : ISemanticChanceEventV111
 {
     private long[] _candidateCardInstanceIds;
@@ -568,6 +699,8 @@ public static class SemanticDeckEngineV111
 {
     public const string UniformPoolEnumerationPolicyId =
         "uniform-independent-shared-pool-permutation-unverified-v1";
+    public const string UniformPoolPrefixDistributionPolicyId =
+        "uniform-independent-shared-pool-prefix-counts-unverified-v1";
     public const int MaximumEnumeratedDeckOrders = 65_536;
 
     public static SemanticDeckStateV111 BeginNature(
@@ -1210,6 +1343,71 @@ public static class SemanticDeckEngineV111
                 }
             }
         }
+    }
+
+    /// <summary>
+    /// Aggregate exact small-state completion counts by their ordered
+    /// top-first prefix. The requested full-order cap bounds the result. Its
+    /// joint distribution is independent of
+    /// ReferenceNature's sequential sampler implementation, but retains the
+    /// enumerator's UNVERIFIED uniform-pool model.
+    /// </summary>
+    public static SemanticDeckPrefixDistributionV111
+        EnumeratePrefixDistribution(
+            SemanticDeckStateV111 state, int prefixLength,
+            int maximumOrders = 4096)
+    {
+        Validate(state);
+        if (state.Mode != SemanticDeckStateV111.NatureMode)
+            throw new InvalidOperationException(
+                "Exact constrained-prefix enumeration requires Nature-owned state; " +
+                "a committed Native order is not Chance Law input.");
+        if (state.Pending is not null)
+            throw new InvalidOperationException(
+                "Resolve the pending semantic reveal before enumerating a deck prefix.");
+        if (prefixLength < 1 || prefixLength > state.Count)
+            throw new ArgumentOutOfRangeException(nameof(prefixLength));
+
+        var enumeration = EnumeratePossibleOrders(state, maximumOrders);
+        var grouped = new SortedDictionary<string, (long[] Cards, long Weight)>(
+            StringComparer.Ordinal);
+        var fullOrders = enumeration.Outcomes;
+        foreach (var fullOrder in fullOrders)
+        {
+            var cardIds = fullOrder.CardInstanceIds;
+            var prefix = cardIds.Take(prefixLength).ToArray();
+            var key = CanonicalJson.Serialize(prefix);
+            if (grouped.TryGetValue(key, out var existing))
+                grouped[key] = (existing.Cards, checked(existing.Weight + 1));
+            else
+                grouped.Add(key, (prefix, 1));
+        }
+
+        var outcomes = grouped.Values.Select(entry =>
+            new SemanticDeckPrefixOutcomeV111(entry.Cards, entry.Weight))
+            .ToArray();
+        var totalWeight = outcomes.Aggregate(0L,
+            (total, outcome) => checked(total + outcome.Weight));
+        if (totalWeight != fullOrders.LongLength)
+            throw new InvalidDataException(
+                "Semantic deck prefix counts do not cover every enumerated completion.");
+        var distribution = new SemanticDeckPrefixDistributionV111(
+            SemanticDeckPrefixDistributionV111.CurrentSchemaId,
+            state.Fingerprint,
+            UniformPoolPrefixDistributionPolicyId,
+            "UNVERIFIED",
+            "exact-prefix-counts-over-" +
+                enumeration.ProbabilityProvenance,
+            prefixLength,
+            totalWeight,
+            CanonicalJson.Sha256(outcomes.Select(outcome => new
+            {
+                outcome.CardInstanceIds,
+                outcome.Weight
+            }).ToArray()),
+            outcomes);
+        distribution.Validate();
+        return distribution;
     }
 
     /// <summary>Used only by mechanics to validate physical card-zone

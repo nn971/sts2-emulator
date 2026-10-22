@@ -2,6 +2,16 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S1 exact deck-prefix distribution increment (2026-10-22):**
+`SemanticDeckEngineV111.EnumeratePrefixDistribution` groups the existing
+bounded full-order completions by ordered physical-card prefix and returns
+integer completion counts with defensive state and outcome fingerprints. This
+provides a sampler-independent joint distribution for source-independent
+ReferenceNature comparisons under the existing uniform-pool model; its law is
+still `UNVERIFIED`, and no native calibration or distribution-suite acceptance
+is claimed. Static source review and `git diff --check` only; no tests or builds
+were run.
+
 **S3 automatic-pipeline mechanics owner read increment (2026-10-22):**
 Pipeline execution, hand-draw boundaries, end-turn validation, and the
 stochastic owner's cursor checks now read step index, opening stage, and
