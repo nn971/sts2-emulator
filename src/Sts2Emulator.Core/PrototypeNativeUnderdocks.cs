@@ -1588,7 +1588,7 @@ public sealed record ReferenceNatureUnderdocksRunResultV111(
             !savedCursor.SameCursor(NatureState) ||
             world is null ||
             world.ActOneRegion != PrototypeActOneRegion.Underdocks ||
-            world.ActOneEncounterPool is not { } encounterPool ||
+            world.Stochastic.ActOneEncounterPool is not { } encounterPool ||
             encounterPool.Region != PrototypeActOneRegion.Underdocks ||
             string.IsNullOrWhiteSpace(encounterPool.BossEncounterId))
             throw new InvalidDataException(

@@ -5837,7 +5837,8 @@ public sealed partial class PrototypeGameEngine
                     || relicOptions.Length == 0),
             EndsAct: room == PrototypeRoomType.Boss
                 && !(world.Act == 3
-                    && world.LaterActEncounterBag?.SecondBossEncounterId is not null
+                    && world.Stochastic.LaterActEncounterBag?
+                        .SecondBossEncounterId is not null
                     && world.Floor == PrototypeNativeLaterActMap.RoomRows(3) + 1),
             ExtraCardOptions: extraCardOptions,
             RelicOptions: relicOptions,

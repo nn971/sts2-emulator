@@ -462,8 +462,9 @@ public sealed record ReferenceNatureNativeShovelSessionV111(
     private static PrototypeRelicBagState BagAfterPrefix(
         RunState source, ControlledStochasticDecisionV111[] prefix)
     {
-        var bag = source.World?.RelicBag ?? throw new InvalidDataException(
-            "Native Shovel replay lost its canonical relic bag.");
+        var bag = source.World?.Stochastic.RelicBag ??
+            throw new InvalidDataException(
+                "Native Shovel replay lost its canonical relic bag.");
         foreach (var decision in prefix.Where(decision =>
             decision.IndexDecision?.Request.SiteId == RelicModelSiteId))
         {

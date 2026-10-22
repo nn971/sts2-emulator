@@ -350,7 +350,7 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         // Direct event and quest relic obtains bypass a bag draw. Keep
         // the retained regional relic queues disjoint from owned relics
         // at every decision boundary without introducing an RNG call.
-        if (next.World?.RelicBag is not null)
+        if (next.World?.Stochastic.RelicBag is not null)
             next = next with
             {
                 World = PrototypeNativeRelicGrabBag.PruneOwned(

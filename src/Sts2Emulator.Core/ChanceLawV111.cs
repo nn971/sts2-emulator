@@ -4662,7 +4662,8 @@ public static partial class ChanceLawEngineV111
 
         var ownerId = PrototypeNativeRelicGrabBag.MerchantModelOwnerId(
             world, offerOrdinal, rarity, candidateIds);
-        if (request.OwnerId != ownerId || world.RelicBag is not { } bag)
+        if (request.OwnerId != ownerId ||
+            world.Stochastic.RelicBag is not { } bag)
             throw new InvalidDataException(
                 "Native merchant relic request owner or bag differs from its boundary.");
 
@@ -4876,7 +4877,7 @@ public static partial class ChanceLawEngineV111
             run.Stochastic.NativeRunRng is null ||
             run.Stochastic.ControlledRunActionChoice is not null ||
             !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
-            world.RelicBag is null || action.Kind != "buy_relic" ||
+            world.Stochastic.RelicBag is null || action.Kind != "buy_relic" ||
             world.Shop is not { } shop)
             throw new InvalidOperationException(
                 "Alchemical Coffer potion laws require a configured Native Shop purchase boundary.");
@@ -4992,7 +4993,7 @@ public static partial class ChanceLawEngineV111
             throw new InvalidOperationException(
                 "Native treasure Chance Laws require a non-skipped configured Treasure node before entry.");
 
-        var bag = world.RelicBag ??
+        var bag = world.Stochastic.RelicBag ??
             PrototypeNativeRelicGrabBag.CreateNatureUnordered(run.Player);
         var candidatesByTier = new Dictionary<PrototypeRelicRarity, string[]>
         {
@@ -5108,7 +5109,7 @@ public static partial class ChanceLawEngineV111
                 "Native treasure rarity request differs from its entry boundary.");
 
         var rarityWeights = NativeRelicRarityGridWeights();
-        var bag = world.RelicBag ??
+        var bag = world.Stochastic.RelicBag ??
             PrototypeNativeRelicGrabBag.CreateNatureUnordered(run.Player);
         var conditioning = new
         {
@@ -5208,7 +5209,7 @@ public static partial class ChanceLawEngineV111
             throw new ArgumentException(
                 "Native treasure relic selection request is malformed.");
 
-        var bag = world.RelicBag ??
+        var bag = world.Stochastic.RelicBag ??
             PrototypeNativeRelicGrabBag.CreateNatureUnordered(run.Player);
         var plan = PrototypeNativeRelicGrabBag.PlanNaturePull(
             bag, rarity, merchant: false, run.Player);
@@ -7567,7 +7568,8 @@ public sealed record ReferenceNatureRunActionSessionV111(
 
     private static string? AssignedAncientOfferSite(RunState state)
     {
-        var ancientId = state.World?.LaterActEncounterBag?.AssignedAncientId;
+        var ancientId = state.World?.Stochastic.LaterActEncounterBag?
+            .AssignedAncientId;
         return ReferenceNatureAncientOfferSessionV111
             .SiteForAssignedAncientId(ancientId);
     }
@@ -7886,7 +7888,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
                 var expectedBossDecision = new ReferenceNatureDecisionV111(
                     bossLaw.LawId, bossLaw.EventId,
                     bossSelection.OutcomeId, bossSelection.OutcomeIndex);
-                var selectedBossId = Run.World?.ActOneEncounterPool?
+                var selectedBossId = Run.World?.Stochastic.ActOneEncounterPool?
                     .BossEncounterId;
                 if (CanonicalJson.Sha256(DecisionTranscript[0]) !=
                         CanonicalJson.Sha256(expectedBossDecision)
@@ -7910,7 +7912,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
                 : ChanceLawEngineV111.QueryUnderdocksBossEncounter(0);
             var bossSelection = ReferenceNatureV111.SampleValidated(
                 bossLaw, InitialNatureState);
-            var selectedBossId = Run.World?.ActOneEncounterPool?
+            var selectedBossId = Run.World?.Stochastic.ActOneEncounterPool?
                 .BossEncounterId;
             var expectedLaterActInitialState = bossSelection.NextState;
             var mapDecisionCount = 0;
@@ -8160,7 +8162,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
                     || !initialization.DecisionTranscript.SequenceEqual(
                         DecisionTranscript)
                     || initialization.DecisionTranscript[0].OutcomeId !=
-                        "encounter:" + Run.World?.ActOneEncounterPool?
+                        "encounter:" + Run.World?.Stochastic.ActOneEncounterPool?
                             .BossEncounterId)
                     throw new InvalidDataException(
                         "Completed Overgrowth run-start audit differs from its saved session transcript.");

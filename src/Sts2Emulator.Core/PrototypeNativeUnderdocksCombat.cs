@@ -16,7 +16,7 @@ public sealed partial class PrototypeGameEngine
         RunWorldState world,
         PrototypeRoomType roomType)
     {
-        var pool = world.ActOneEncounterPool
+        var pool = world.Stochastic.ActOneEncounterPool
             ?? throw new InvalidOperationException(
                 "Underdocks run is missing encounter pool state.");
         if (pool.Region != PrototypeActOneRegion.Underdocks)

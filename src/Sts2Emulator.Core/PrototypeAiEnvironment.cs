@@ -443,7 +443,7 @@ public sealed class PrototypeAiEnvironment
             Floor: world?.Floor,
             ActOneRegion: world?.ActOneRegion,
             ActOneBossEncounterId:
-                world?.ActOneEncounterPool?.BossEncounterId,
+                world?.Stochastic.ActOneEncounterPool?.BossEncounterId,
             Hp: state.Player.Hp,
             MaxHp: state.Player.MaxHp,
             Gold: state.Player.Gold,

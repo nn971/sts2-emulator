@@ -549,7 +549,7 @@ public sealed record ReferenceNatureCombatRewardSessionV111(
                 !Enum.IsDefined(rarity))
                 throw new InvalidDataException(
                     "Combat reward relic identity request has an invalid rarity.");
-            var bag = world.RelicBag ??
+            var bag = world.Stochastic.RelicBag ??
                 PrototypeNativeRelicGrabBag.CreateNatureUnordered(source.Player);
             foreach (var decision in prefix.Where(decision =>
                 decision.IndexDecision?.Request.SiteId ==

@@ -181,7 +181,8 @@ public static class NativeAncientRewardsV111
                 || NativeVakuuEventV111.IsOpeningEvent(world)
                 || NativeNonupeipeEventV111.IsOpeningEvent(world)
                 || NativeDarvEventV111.IsOpeningEvent(world))
-            && world.LaterActEncounterBag?.AssignedAncientId is { } assigned
+            && world.Stochastic.LaterActEncounterBag?.AssignedAncientId is
+                { } assigned
             && !StringComparer.Ordinal.Equals(
                 assigned, world.Event!.EventId))
             throw new InvalidOperationException(

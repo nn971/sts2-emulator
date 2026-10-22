@@ -120,7 +120,8 @@ public sealed partial record RunState
             _ => PrototypeContent.Rules.FloorsPerAct
         };
         if (world.Map.GenerationProfileId == PrototypeNativeLaterActMap.GloryProfileId
-            && world.LaterActEncounterBag?.SecondBossEncounterId is not null)
+            && world.Stochastic.LaterActEncounterBag?.SecondBossEncounterId
+                is not null)
             currentBossFloor++;
         if (world.Floor < 0 || world.Floor > currentBossFloor)
         {
@@ -317,7 +318,8 @@ public sealed partial record RunState
                         ? PrototypeNativeOvergrowthMap.BossFloor
                         : PrototypeNativeLaterActMap.RoomRows(visit.Act) + 1
                             + (visit.Act == 3
-                                && world.LaterActEncounterBag?.SecondBossEncounterId is not null
+                                && world.Stochastic.LaterActEncounterBag?
+                                    .SecondBossEncounterId is not null
                                 ? 1 : 0))
                 || string.IsNullOrWhiteSpace(visit.NodeId))
             {
@@ -1279,7 +1281,8 @@ public sealed partial record RunState
         var roomRows = PrototypeNativeLaterActMap.RoomRows(world.Act);
         var bossFloor = roomRows + 1;
         var hasSecondBoss = world.Act == 3
-            && world.LaterActEncounterBag?.SecondBossEncounterId is not null;
+            && world.Stochastic.LaterActEncounterBag?.SecondBossEncounterId
+                is not null;
         var finalFloor = bossFloor + (hasSecondBoss ? 1 : 0);
         var treasureFloor = bossFloor - 7;
         var map = world.Map;

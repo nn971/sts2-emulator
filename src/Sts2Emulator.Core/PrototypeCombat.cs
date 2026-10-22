@@ -530,7 +530,7 @@ public sealed partial class PrototypeGameEngine
             return null;
         }
 
-        var pool = world.ActOneEncounterPool;
+        var pool = world.Stochastic.ActOneEncounterPool;
         if (pool is null
             || pool.Region
                 != PrototypeActOneRegion.Overgrowth
@@ -567,7 +567,7 @@ public sealed partial class PrototypeGameEngine
             return null;
         }
 
-        var pool = world.ActOneEncounterPool;
+        var pool = world.Stochastic.ActOneEncounterPool;
         if (pool is null
             || pool.Region
                 != PrototypeActOneRegion.Overgrowth)
@@ -653,7 +653,7 @@ public sealed partial class PrototypeGameEngine
             return null;
         }
 
-        var pool = world.ActOneEncounterPool;
+        var pool = world.Stochastic.ActOneEncounterPool;
         if (pool is null
             || pool.Region
                 != PrototypeActOneRegion.Overgrowth
@@ -716,7 +716,7 @@ public sealed partial class PrototypeGameEngine
             return null;
         }
 
-        var pool = world.ActOneEncounterPool;
+        var pool = world.Stochastic.ActOneEncounterPool;
         if (pool is null
             || pool.Region
                 != PrototypeActOneRegion.Overgrowth

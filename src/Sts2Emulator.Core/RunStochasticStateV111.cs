@@ -305,7 +305,8 @@ public sealed record RunStochasticStateV111
                 var origin = session.Origin;
                 var originWorld = origin.World;
                 var act = originWorld?.Act ?? 0;
-                var assignedAncientId = originWorld?.LaterActEncounterBag?
+                var assignedAncientId = originWorld?.Stochastic
+                    .LaterActEncounterBag?
                     .AssignedAncientId;
                 var mappedSiteId = ReferenceNatureAncientOfferSessionV111
                     .SiteForAssignedAncientId(assignedAncientId);

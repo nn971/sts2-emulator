@@ -688,7 +688,7 @@ public sealed record PrototypeRelicBagPullPlanV111
     public static RunWorldState PruneOwned(
         RunWorldState world, PlayerState player)
     {
-        if (world.RelicBag is not { } bag)
+        if (world.Stochastic.RelicBag is not { } bag)
             return world;
         var owned = player.Relics.Select(relic => relic.RelicId)
             .ToHashSet(StringComparer.Ordinal);
@@ -729,7 +729,7 @@ public sealed record PrototypeRelicBagPullPlanV111
             (nativeRunRng is not null &&
                 (ControlledStochasticChanceReplayV111.IsActive ||
                  nativeEventChoicePull));
-        var bag = world.RelicBag ?? (naturePull
+        var bag = world.Stochastic.RelicBag ?? (naturePull
             ? CreateNatureUnordered(player)
             : nativeRunRng is null
                 ? Create(player, rng)

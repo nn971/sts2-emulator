@@ -671,7 +671,7 @@ public sealed record ReferenceNatureOvergrowthRunResultV111(
         var laws = ChanceLaws;
         var transcript = DecisionTranscript;
         var mapAudit = MapGenerationAudit;
-        var encounterPool = world?.ActOneEncounterPool;
+        var encounterPool = world?.Stochastic.ActOneEncounterPool;
         if (laws is null || transcript is null || laws.Length < 2 ||
             transcript.Length != laws.Length || mapAudit is null ||
             run.Stochastic.ReferenceNature is not { } savedCursor ||

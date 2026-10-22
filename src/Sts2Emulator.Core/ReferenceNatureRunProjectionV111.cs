@@ -12,7 +12,7 @@ internal static class ReferenceNatureRunProjectionV111
         if (run.World is not { } world)
             throw new InvalidDataException(
                 $"{boundary} Nature relic projection requires an active world.");
-        if (world.RelicBag is not { } bag)
+        if (world.Stochastic.RelicBag is not { } bag)
         {
             if (allowMissing)
                 return;
@@ -41,7 +41,7 @@ internal static class ReferenceNatureRunProjectionV111
         ArgumentNullException.ThrowIfNull(source);
         var world = source.World ?? throw new InvalidOperationException(
             "ReferenceNature run projection requires an active world.");
-        var bag = world.RelicBag;
+        var bag = world.Stochastic.RelicBag;
         if (bag is null)
         {
             if (allowMissingRelicBag)

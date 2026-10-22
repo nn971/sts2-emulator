@@ -25,7 +25,7 @@ public static class RunSnapshot
     {
         ValidateSupportedState(state);
         var owned = state.Fork();
-        var hasNatureRelicBag = owned.World?.RelicBag?.OrderMode ==
+        var hasNatureRelicBag = owned.World?.Stochastic.RelicBag?.OrderMode ==
             PrototypeRelicBagOrderMode.NatureUnordered;
         var schema = hasNatureRelicBag
             ? NatureRelicBagOrderSchemaId
@@ -47,7 +47,8 @@ public static class RunSnapshot
             || envelope.GameBuild != envelope.State.GameBuild
             || envelope.StateSchema != envelope.State.EmulatorSchema)
             throw new InvalidDataException("Snapshot schema/build does not match its state.");
-        var hasNatureRelicBag = envelope.State.World?.RelicBag?.OrderMode ==
+        var hasNatureRelicBag = envelope.State.World?.Stochastic.RelicBag?
+            .OrderMode ==
             PrototypeRelicBagOrderMode.NatureUnordered;
         if ((envelope.Schema == SchemaId &&
              envelope.State.Stochastic.ReferenceNature is not null) ||
@@ -127,7 +128,7 @@ public static class RunSnapshot
         if (!preparation.Complete ||
             !preparation.NatureState.SameCursor(transcript.FinalNatureState) ||
             CanonicalJson.Sha256(preparation.Bags) != CanonicalJson.Sha256(
-                world.PreparedLaterActEncounterBags))
+                world.Stochastic.PreparedLaterActEncounterBags))
             throw new InvalidDataException(
                 "Experimental run-start bags or Nature cursor differ from generator replay.");
     }

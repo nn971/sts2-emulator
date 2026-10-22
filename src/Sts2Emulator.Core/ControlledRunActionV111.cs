@@ -1016,7 +1016,7 @@ public sealed record PrototypeControlledRunActionContinuationV111(
             decisions, decisionCandidateLabels);
         var world = state.World ?? throw new InvalidDataException(
             $"{boundary} lost its run world.");
-        var bag = world.RelicBag ??
+        var bag = world.Stochastic.RelicBag ??
             PrototypeNativeRelicGrabBag.CreateNatureUnordered(state.Player);
         var plan = PrototypeNativeRelicGrabBag.PlanNaturePull(
             bag, rarity, merchant: false, state.Player);
@@ -1584,7 +1584,7 @@ public static class ControlledRunActionEngineV111
             source.Phase != RunPhase.MapChoice ||
             source.Configuration?.UsesExperimentalNativeWeakCombatEntry != true ||
             source.Stochastic.NativeRunRng is null || source.World is not { Act: 1 } world ||
-            world.ActOneEncounterPool?.Region != world.ActOneRegion)
+            world.Stochastic.ActOneEncounterPool?.Region != world.ActOneRegion)
             return false;
         var routeMatches = world.ActOneRegion switch
         {

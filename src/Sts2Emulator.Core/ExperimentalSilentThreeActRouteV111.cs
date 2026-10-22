@@ -459,7 +459,7 @@ public static class ExperimentalSilentThreeActRouteV111
                 "Three-act continuation requires a completed configured Silent boss reward.");
 
         var nextAct = world.Act + 1;
-        var prepared = world.PreparedLaterActEncounterBags
+        var prepared = world.Stochastic.PreparedLaterActEncounterBags
             ?? throw new InvalidOperationException(
                 "Three-act continuation requires run-start encounter histories; regenerate old experimental snapshots.");
         var nextBag = prepared.SingleOrDefault(bag => bag.Act == nextAct)
@@ -536,7 +536,7 @@ public static class ExperimentalSilentThreeActRouteV111
         PrototypeLaterActEncounterBagV111 Bag) SelectEncounter(
         RunWorldState world, PrototypeRoomType room, RngBundle rng)
     {
-        var bag = world.LaterActEncounterBag
+        var bag = world.Stochastic.LaterActEncounterBag
             ?? throw new InvalidOperationException(
                 "Later-act encounter selection requires a persisted bag.");
         if (world.Act is < 2 or > 3 || bag.Act != world.Act)

@@ -224,8 +224,9 @@ public sealed record RunConfiguration
                     throw new NotSupportedException(
                         "Initialized native Hive/Glory state requires an explicit experimental route opt-in.");
                 if (initialized.ActOneRegion is not null
-                    || initialized.ActOneEncounterPool is not null
-                    || initialized.LaterActEncounterBag?.Act != initialized.Act
+                    || initialized.Stochastic.ActOneEncounterPool is not null
+                    || initialized.Stochastic.LaterActEncounterBag?.Act !=
+                        initialized.Act
                     || (initialized.Map.GenerationProfileId !=
                         PrototypeNativeLaterActMap.ProfileId(initialized.Act)
                         && !(initialized.Map.GenerationProfileId == PrototypeGoldenPathMapV111.ProfileId
@@ -516,7 +517,7 @@ public static class V111RunFactory
             : opening.Player.Deck;
         var nativeRunRng = input.Stochastic.NativeRunRng?.Fork()
             ?? NativeRngV111.CreateBundle(input.RunSeed);
-        var relicBag = opening.World!.RelicBag
+        var relicBag = opening.World!.Stochastic.RelicBag
             ?? PrototypeNativeRelicGrabBag.CreateNative(
                 opening.Player, nativeRunRng);
         var natureState = opening.Stochastic.ReferenceNature
