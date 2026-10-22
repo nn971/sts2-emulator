@@ -363,7 +363,7 @@ public sealed record ReferenceNaturePunchOffRewardSessionV111(
             if (!Complete)
                 throw new InvalidOperationException(
                     "A pending Punch Off reward session has no completed provider prefix.");
-            var natureState = InitialNatureState.Fork();
+            var natureState = Stochastic.InitialNatureState.Fork();
             var priorIndices = new List<int>();
             var decisions = new ControlledStochasticDecisionV111[2];
             for (var index = 0; index < decisions.Length; index++)
@@ -488,7 +488,7 @@ public sealed record ReferenceNaturePunchOffRewardSessionV111(
         var law = PendingLaw ?? throw new InvalidOperationException(
             "Punch Off ReferenceNature session is already complete.");
         var selection = ReferenceNatureV111.SampleValidated(
-            law, NatureState);
+            law, Stochastic.NatureState);
         var transcript = Stochastic.DecisionTranscript.Append(
             new ReferenceNatureDecisionV111(
                 law.LawId, law.EventId, selection.OutcomeId,
@@ -524,7 +524,7 @@ public sealed record ReferenceNaturePunchOffRewardSessionV111(
                 "Invalid ReferenceNature Punch Off reward session envelope.");
         PrototypeStateInvariants.Validate(Origin);
         PrototypeStateInvariants.Validate(Run);
-        var expectedNature = InitialNatureState.Fork();
+        var expectedNature = Stochastic.InitialNatureState.Fork();
         var priorIndices = new List<int>();
         for (var index = 0; index < Stochastic.DecisionTranscript.Length; index++)
         {
@@ -554,10 +554,11 @@ public sealed record ReferenceNaturePunchOffRewardSessionV111(
                 expectedNature)
             : Origin.Fork();
         if (!ReferenceNatureRunCursorV111.MatchesRunSession(
-                Origin, Run, InitialNatureState, NatureState,
+                Origin, Run, Stochastic.InitialNatureState,
+                Stochastic.NatureState,
                 Stochastic.DecisionTranscript.Length, Complete) ||
             CanonicalJson.Sha256(expectedNature) !=
-                CanonicalJson.Sha256(NatureState) ||
+                CanonicalJson.Sha256(Stochastic.NatureState) ||
             CanonicalJson.Sha256(expectedRun) != CanonicalJson.Sha256(Run))
             throw new InvalidDataException(
                 "Punch Off reward replay differs from its session envelope.");
@@ -572,7 +573,8 @@ public sealed record ReferenceNaturePunchOffRewardSessionV111(
             new ReferenceNaturePunchOffRewardSessionSnapshotV111(
                 CurrentSchemaId, RunSnapshot.Save(session.Origin),
                 session.ActionId, RunSnapshot.Save(session.Run),
-                session.InitialNatureState, session.NatureState,
+                session.Stochastic.InitialNatureState,
+                session.Stochastic.NatureState,
                 (ReferenceNatureDecisionV111[])
                     session.Stochastic.DecisionTranscript.Clone()));
     }
@@ -604,7 +606,7 @@ public sealed record ReferenceNaturePunchOffRewardSessionV111(
         session.Validate();
         if (CanonicalJson.Sha256(session.Run) !=
                 CanonicalJson.Sha256(savedRun) ||
-            CanonicalJson.Sha256(session.NatureState) !=
+            CanonicalJson.Sha256(session.Stochastic.NatureState) !=
                 CanonicalJson.Sha256(snapshot.NatureState) ||
             !session.Stochastic.DecisionTranscript.SequenceEqual(
                 snapshot.DecisionTranscript))
