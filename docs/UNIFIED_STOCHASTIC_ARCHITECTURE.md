@@ -456,7 +456,9 @@ and ordered mixed player-action/Nature steps. Its Nature-decision transcript
 is projected from those steps, so the chronology has one stored history.
 Transient Overgrowth, Underdocks, encounter-formation, and later-act Nature
 providers also use the shared cursor/transcript owner; `Advance` applies one
-sampled cursor and appends its decision as a single owner transition.
+sampled cursor and appends its decision as a single owner transition. Run
+initialization appends each validated segment through that owner, which checks
+that the next segment begins at the current cursor before joining histories.
 Flattened serialized properties remain stable; snapshot types continue to own
 their explicit flat representations.
 

@@ -470,7 +470,9 @@ public static class V111RunFactory
             ? null
             : input.Stochastic.ReferenceNature?.Fork();
         var runStartChanceLaws = new List<ChanceLawV111>();
-        var runStartDecisions = new List<ReferenceNatureDecisionV111>();
+        ReferenceNatureStochasticStateV111<ReferenceNatureDecisionV111>?
+            runStartStochastic = initialNatureState is null ? null : new(
+                initialNatureState, initialNatureState.Fork(), []);
         ReferenceNatureMapGenerationAuditV111? actOneMapGeneration = null;
         if (config.Acts[0] == ActIdentity.Overgrowth)
         {
@@ -487,7 +489,8 @@ public static class V111RunFactory
                         config.Ascension, overgrowthNatureState);
                 opening = result.Run;
                 runStartChanceLaws.AddRange(result.ChanceLaws);
-                runStartDecisions.AddRange(result.DecisionTranscript);
+                runStartStochastic = runStartStochastic!.Append(
+                    result.Stochastic);
                 actOneMapGeneration = result.MapGenerationAudit?.Fork();
             }
             else
@@ -503,7 +506,8 @@ public static class V111RunFactory
                     config.Ascension, underdocksNatureState);
             opening = result.Run;
             runStartChanceLaws.AddRange(result.ChanceLaws);
-            runStartDecisions.AddRange(result.DecisionTranscript);
+            runStartStochastic = runStartStochastic!.Append(
+                result.Stochastic);
         }
         else
         {
@@ -530,23 +534,36 @@ public static class V111RunFactory
                 var prepared = BuildPreparedLaterActBags(
                     opening.Stochastic.PrototypeRng, config, natureState);
                 preparedLaterActBags = prepared.Bags;
-                natureState = prepared.NatureState ?? natureState;
+                if (prepared.Stochastic is { } preparedStochastic)
+                {
+                    natureState = preparedStochastic.NatureState;
+                    runStartStochastic = runStartStochastic!.Append(
+                        preparedStochastic);
+                }
                 runStartChanceLaws.AddRange(prepared.ChanceLaws);
-                runStartDecisions.AddRange(prepared.DecisionTranscript);
             }
         }
-        var runStartTranscript = initialNatureState is null
-            ? null
-            : new ReferenceNatureRunInitializationTranscriptV111(
-                initialNatureState, natureState ?? throw new InvalidDataException(
-                    "ReferenceNature run initialization lost its cursor."),
-                runStartChanceLaws.ToArray(), runStartDecisions.ToArray())
-            {
-                ActOneMapGeneration = actOneMapGeneration,
-                LaterActPreparationInitialPrototypeRng =
-                    config.UsesExperimentalSilentThreeActRoute
-                        ? opening.Stochastic.PrototypeRng.Fork() : null
-            };
+        ReferenceNatureRunInitializationTranscriptV111?
+            runStartTranscript = null;
+        if (initialNatureState is not null)
+        {
+            var initialization = runStartStochastic
+                ?? throw new InvalidDataException(
+                    "ReferenceNature run initialization lost its stochastic owner.");
+            natureState = initialization.NatureState;
+            runStartTranscript =
+                new ReferenceNatureRunInitializationTranscriptV111(
+                    initialization.InitialNatureState,
+                    initialization.NatureState,
+                    runStartChanceLaws.ToArray(),
+                    initialization.DecisionTranscript)
+                {
+                    ActOneMapGeneration = actOneMapGeneration,
+                    LaterActPreparationInitialPrototypeRng =
+                        config.UsesExperimentalSilentThreeActRoute
+                            ? opening.Stochastic.PrototypeRng.Fork() : null
+                };
+        }
         runStartTranscript?.Validate();
         var stochastic = RunStochasticStateV111.WithNativeRunRng(
             opening.Stochastic, nativeRunRng);
@@ -576,14 +593,16 @@ public static class V111RunFactory
     }
 
     private static (PrototypeLaterActEncounterBagV111[] Bags,
-        ReferenceNatureStateV111? NatureState, ChanceLawV111[] ChanceLaws,
-        ReferenceNatureDecisionV111[] DecisionTranscript)
+        ReferenceNatureStochasticStateV111<ReferenceNatureDecisionV111>?
+            Stochastic, ChanceLawV111[] ChanceLaws)
         BuildPreparedLaterActBags(
         RngBundle rng, RunConfiguration configuration,
         ReferenceNatureStateV111? natureState)
     {
         var chanceLaws = new List<ChanceLawV111>();
-        var decisions = new List<ReferenceNatureDecisionV111>();
+        ReferenceNatureStochasticStateV111<ReferenceNatureDecisionV111>?
+            stochastic = natureState is null ? null : new(
+                natureState, natureState.Fork(), []);
         string[] assigned;
         if (natureState is null)
         {
@@ -600,7 +619,7 @@ public static class V111RunFactory
             assigned = result.Assignments;
             natureState = result.NatureState;
             chanceLaws.AddRange(result.ChanceLaws);
-            decisions.AddRange(result.DecisionTranscript);
+            stochastic = stochastic!.Append(result.Stochastic);
         }
         PrototypeLaterActEncounterBagV111[] bags;
         if (natureState is null)
@@ -648,8 +667,8 @@ public static class V111RunFactory
             bags = result.Bags;
             natureState = result.NatureState;
             chanceLaws.AddRange(result.ChanceLaws);
-            decisions.AddRange(result.DecisionTranscript);
+            stochastic = stochastic!.Append(result.Stochastic);
         }
-        return (bags, natureState, chanceLaws.ToArray(), decisions.ToArray());
+        return (bags, stochastic, chanceLaws.ToArray());
     }
 }

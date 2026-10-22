@@ -52,6 +52,22 @@ public sealed record ReferenceNatureStochasticStateV111<TDecision>
         };
     }
 
+    public ReferenceNatureStochasticStateV111<TDecision> Append(
+        ReferenceNatureStochasticStateV111<TDecision> continuation)
+    {
+        ArgumentNullException.ThrowIfNull(continuation);
+        continuation.Validate();
+        if (!NatureState.SameCursor(continuation.InitialNatureState))
+            throw new InvalidDataException(
+                "ReferenceNature stochastic continuation does not start at the current cursor.");
+        return this with
+        {
+            NatureState = continuation.NatureState,
+            DecisionTranscript = [.. DecisionTranscript,
+                .. continuation.DecisionTranscript]
+        };
+    }
+
     public void Validate()
     {
         ArgumentNullException.ThrowIfNull(InitialNatureState);
