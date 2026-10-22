@@ -774,7 +774,8 @@ internal static class PrototypeAiJsonlServer
             ReferenceNatureRunActionSessionV111 session, string handle,
             string? parent = null)
         {
-            var continuation = session.Run.ControlledRunActionChoice;
+            var continuation =
+                session.Run.Stochastic.ControlledRunActionChoice;
             var mapGeneration = session.MapGeneration;
             var laterActPreparation = session.LaterActPreparation;
             var ancientOffer = session.AncientOffer;
@@ -840,8 +841,10 @@ internal static class PrototypeAiJsonlServer
             ReferenceNatureControlledEventChoiceSessionV111 session,
             string handle, string? parent = null)
         {
-            var effect = session.Run.World?.Event?.ControlledChoice;
-            var reward = session.Run.ControlledEventRewardChoice;
+            var effect =
+                session.Run.World?.Event?.Stochastic.ControlledChoice;
+            var reward =
+                session.Run.Stochastic.ControlledEventRewardChoice;
             var chanceLaw = session.NaturePending
                 ? ChanceLawEngineV111.QueryControlledEventChoice(session.Run)
                 : null;
@@ -2572,22 +2575,25 @@ internal static class PrototypeAiJsonlServer
         object ControlledEventChoiceResult(
             RunState state, string handle, string? parent)
         {
-            var continuation = state.World?.Event?.ControlledChoice;
-            var rewardContinuation = state.ControlledEventRewardChoice;
+            var continuation =
+                state.World?.Event?.Stochastic.ControlledChoice;
+            var rewardContinuation =
+                state.Stochastic.ControlledEventRewardChoice;
             var stateFingerprint = CanonicalJson.Sha256(state);
             if (continuation is not null && rewardContinuation is not null)
                 throw new InvalidDataException(
                     "A state cannot suspend both an event effect and its reward.");
             var isPending = continuation is not null
                 || rewardContinuation is not null;
+            var eventState = state.World?.Event;
             var isPlayerBoundary = state.Phase == RunPhase.Event
-                && state.World?.Event is
+                && eventState is
                 {
                     EventId: PrototypeNativeStoneOfAllTime.EventId,
                     ChosenChoiceId: "push",
-                    ControlledChoice: null,
                     PendingDeckChoice: not null
-                };
+                }
+                && eventState.Stochastic.ControlledChoice is null;
             var frame = environment.Observe(state);
             var actions = !isPending
                 ? frame.LegalActions
@@ -2597,12 +2603,13 @@ internal static class PrototypeAiJsonlServer
                         action.Kind,
                         action.Payload.Clone()))
                     .ToArray();
-            var history = state.ControlledEventChoiceHistory;
+            var history = state.Stochastic.ControlledEventChoiceHistory;
             RunState? parentState = null;
             if (parent is not null
                 && states.TryGetValue(parent, out var foundParent))
                 parentState = foundParent;
-            var parentHistory = parentState?.ControlledEventChoiceHistory;
+            var parentHistory = parentState?.Stochastic
+                .ControlledEventChoiceHistory;
             var changedTraceIndex = -1;
             if (history is not null)
             {
@@ -2705,7 +2712,7 @@ internal static class PrototypeAiJsonlServer
         object ControlledRunActionResult(RunState state, string handle,
             string? parent)
         {
-            var continuation = state.ControlledRunActionChoice;
+            var continuation = state.Stochastic.ControlledRunActionChoice;
             var stateFingerprint = CanonicalJson.Sha256(state);
             var boundaryFingerprint = continuation is null ? null :
                 ChanceLawEngineV111.ControlledRunActionBoundaryFingerprint(state);
@@ -2727,7 +2734,8 @@ internal static class PrototypeAiJsonlServer
                     candidateLabels = continuation.DecisionCandidateLabels,
                     probabilityStatus = "UNVERIFIED"
                 }
-                : state.ControlledRunActionHistory is { Length: > 0 } history
+                : state.Stochastic.ControlledRunActionHistory is
+                    { Length: > 0 } history
                     ? history[^1]
                     : null;
             object? pending = continuation is null
@@ -9530,9 +9538,11 @@ internal static class PrototypeAiJsonlServer
                     {
                         var handle = RequiredString(request, "state_handle");
                         var state = RequireState(request);
-                        if (state.World?.Event?.ControlledChoice is null)
+                        if (state.World?.Event?.Stochastic.ControlledChoice
+                            is null)
                         {
-                            if (state.ControlledEventRewardChoice is null)
+                            if (state.Stochastic.ControlledEventRewardChoice
+                                is null)
                                 throw new InvalidOperationException(
                                     "State has no pending controlled event choice.");
                         }
@@ -9623,7 +9633,7 @@ internal static class PrototypeAiJsonlServer
                     {
                         var handle = RequiredString(request, "state_handle");
                         var state = RequireState(request);
-                        if (state.ControlledRunActionChoice is null)
+                        if (state.Stochastic.ControlledRunActionChoice is null)
                             throw new InvalidOperationException(
                                 "State has no pending controlled run action.");
                         Write(ControlledRunActionResult(state, handle, null));
