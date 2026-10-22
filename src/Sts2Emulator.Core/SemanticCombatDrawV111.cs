@@ -148,12 +148,11 @@ public sealed record SemanticCombatDrawV111(
         ReadAutomaticPipelineDrawProgress(
             RunState run, bool automaticHandDraw)
     {
-        if (!automaticHandDraw || run.World?.Combat is not { } combat ||
-            combat.AutomaticPipelineContinuation is not { } cursor)
+        if (!automaticHandDraw ||
+            run.World?.Combat?.AutomaticPipelineContinuation is not
+                { } cursor)
             return null;
-        if (cursor.Stochastic.ControlledSemanticBeforeHandDrawPending)
-            return (0, 0);
-        if (!cursor.Stochastic.TryGetSemanticHandDrawProgress(
+        if (!cursor.Stochastic.TryGetSemanticHandDrawProjection(
                 cursor.Mechanics, out var requested, out var remaining))
             return null;
         return (requested, remaining);

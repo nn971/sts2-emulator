@@ -220,6 +220,26 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
         return true;
     }
 
+    /// <summary>
+    /// Projects semantic automatic hand-draw progress for the semantic draw
+    /// facade. BeforeHandDraw suspension is represented by a zero-count
+    /// projection until the source hook action starts DrawCards.
+    /// </summary>
+    public bool TryGetSemanticHandDrawProjection(
+        PrototypeAutomaticPipelineMechanicsStateV111 mechanics,
+        out int requested, out int remaining)
+    {
+        ArgumentNullException.ThrowIfNull(mechanics);
+        if (ControlledSemanticBeforeHandDrawPending)
+        {
+            requested = 0;
+            remaining = 0;
+            return true;
+        }
+        return TryGetSemanticHandDrawProgress(
+            mechanics, out requested, out remaining);
+    }
+
     public bool TryGetAutomaticHandDrawRemainder(
         PrototypeAutomaticPipelineMechanicsStateV111 mechanics,
         out int remaining)

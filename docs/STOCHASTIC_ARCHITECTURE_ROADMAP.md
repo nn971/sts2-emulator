@@ -34,6 +34,12 @@ engine owner, plus semantic end-turn origin validation, use that classification
 instead of separate lists of active progress fields. Static source review and
 `git diff --check` only; no tests or builds were run.
 
+**S4 semantic hand-draw progress projection increment (2026-10-22):** The
+automatic-pipeline stochastic owner now projects both active semantic draw
+counts and the zero-count `BeforeHandDraw` suspension to the semantic draw
+facade. That facade no longer interprets the tagged pre-draw mode itself.
+Static source review and `git diff --check` only; no tests or builds were run.
+
 **S4 automatic-pipeline cursor clear owner increment (2026-10-22):** Runtime
 cursor consumption and cursor-free checkpoint projection now use
 `PrototypeGameEngine.ClearAutomaticPipelineContinuation`. End-turn setup,

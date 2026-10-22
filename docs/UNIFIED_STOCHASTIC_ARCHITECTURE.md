@@ -256,7 +256,7 @@ Curse of Knowledge uses the same handoff after its typed source action resolves.
 
 For a live automatic hand draw, `PrototypeAutomaticPipelineStochasticStateV111` is now the sole owner of requested/remaining counts. `SemanticCombatDrawV111` and the end-turn/pilot facades project those counts from the pipeline; their flattened snapshot fields remain populated, while local fallback metadata is retained only for standalone or completed draw segments.
 
-The pipeline stochastic owner also provides `TryGetSemanticHandDrawProgress`, used by the engine guard, continuation validator, and draw facade. This keeps active-stage interpretation with the owner of the saved cursor.
+The pipeline stochastic owner provides `TryGetSemanticHandDrawProgress` for the engine guard and continuation validator, plus `TryGetSemanticHandDrawProjection` for the semantic draw facade's active requested/remaining counts and zero-count `BeforeHandDraw` suspension. This keeps tagged-stage interpretation with the owner of the saved cursor.
 
 Semantic automatic-hand-draw entry, continuation, and cost handling now read tagged progress through `PrototypeAutomaticPipelineContinuationState.Stochastic`; draw-stage and opening-cursor checks read through its mechanics owner. Flattened progress members remain snapshot projections.
 
