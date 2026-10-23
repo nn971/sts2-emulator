@@ -14,11 +14,23 @@ public sealed record ControlledRunActionTraceV111(
     string? MapNodeId = null,
     string? ActionFingerprint = null)
 {
+    public const string IndexTranscriptSchemaId =
+        "sts2-v111-controlled-run-action-transcript-v1";
+    public const string MixedPrimitiveTranscriptSchemaId =
+        "sts2-v111-controlled-run-action-transcript-v2";
+
     private RandomIndexDecisionV111[]? _decisions =
         CloneDecisions(Decisions);
     private string[][]? _candidateLabels = CloneCandidateLabels(
         CandidateLabels);
     private ControlledStochasticDecisionV111[]? _typedDecisions;
+
+    /// <summary>
+    /// Explicit version for new completed run-action transcripts. Null is the
+    /// legacy snapshot form, whose index or typed payload determines the
+    /// compatible interpretation.
+    /// </summary>
+    public string? DecisionTranscriptSchemaId { get; init; }
 
     public RandomIndexDecisionV111[] Decisions
     {
@@ -76,6 +88,17 @@ public sealed record ControlledRunActionTraceV111(
             || ProbabilityStatus != "UNVERIFIED")
             throw new InvalidDataException(
                 "Malformed controlled run-action transcript.");
+        if ((DecisionTranscriptSchemaId is not null &&
+             DecisionTranscriptSchemaId is not (
+                 IndexTranscriptSchemaId or
+                 MixedPrimitiveTranscriptSchemaId)) ||
+            (DecisionTranscriptSchemaId == IndexTranscriptSchemaId &&
+             typedDecisions is not null) ||
+            (DecisionTranscriptSchemaId ==
+                MixedPrimitiveTranscriptSchemaId &&
+             typedDecisions is null))
+            throw new InvalidDataException(
+                "Controlled run-action transcript schema does not match its payload.");
         if (typedDecisions is not null)
         {
             ValidateTypedTranscript(typedDecisions);

@@ -4536,7 +4536,11 @@ public sealed partial class PrototypeGameEngine
             ActionFingerprint: continuation.RunAction is null
                 ? null
                 : PrototypeAiEnvironment.StableActionId(
-                    continuation.RunAction));
+                    continuation.RunAction))
+        {
+            DecisionTranscriptSchemaId =
+                ControlledRunActionTraceV111.IndexTranscriptSchemaId
+        };
         return result with
         {
             Stochastic = result.Stochastic

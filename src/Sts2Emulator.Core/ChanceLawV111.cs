@@ -7402,6 +7402,9 @@ public sealed record ReferenceNatureRunActionSessionV111(
                 PrototypeNativeRestSiteActionsV111.Heal or "use_potion"
                 ? PrototypeAiEnvironment.StableActionId(action) : null)
         {
+            DecisionTranscriptSchemaId =
+                ControlledRunActionTraceV111
+                    .MixedPrimitiveTranscriptSchemaId,
             TypedDecisions = decisions
         };
         return run with
