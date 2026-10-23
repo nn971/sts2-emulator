@@ -425,29 +425,30 @@ public static class SemanticOtherChanceEngineV111
     }
 
     /// <summary>
-    /// Resolve a registered draw-pile insertion position through Native's
-    /// shuffle stream while leaving insertion and pile mutation to the saved
-    /// mechanics continuation.
+    /// Resolve the registered enemy theft selection through Native's combat
+    /// card-generation stream; the saved enemy-action frame applies the
+    /// selected physical card and resumes the action.
     /// </summary>
     public static (SemanticOtherChanceStateV111 Next,
-        RandomIndexDecisionV111 Decision) ResolveDrawInsertion(
+        RandomIndexDecisionV111 Decision) ResolveEnemyTheft(
         SemanticOtherChanceStateV111 previous,
-        SemanticDrawInsertionEventV111 pending)
+        RandomIndexRequestV111 pending)
     {
         Validate(previous);
         ArgumentNullException.ThrowIfNull(pending);
         pending.Validate();
-        if (!StochasticSiteRegistryV111.ControlledDrawInsertionSiteIds
-                .Contains(pending.SiteId, StringComparer.Ordinal) ||
-            pending.StreamId is not ("prototype.combat" or "run.shuffle") ||
-            pending.OperationKind != "bounded_integer")
+        if (pending.SiteId !=
+                StochasticSiteRegistryV111.CombatEnemyTheftCardSelectSiteId ||
+            pending.StreamId is not ("combat" or
+                "run.combat_card_generation") ||
+            pending.OperationKind != "choose_index")
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_OTHER_CHANCE site=" + pending.SiteId +
                 " operation=" + pending.OperationKind);
 
-        return ResolveNativeIndex(previous, pending.Request with
+        return ResolveNativeIndex(previous, pending with
         {
-            StreamId = "run.shuffle"
+            StreamId = "run.combat_card_generation"
         });
     }
 

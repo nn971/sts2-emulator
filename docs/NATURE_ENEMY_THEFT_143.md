@@ -40,3 +40,11 @@ request retains enemy ownership, ordered card-instance support identity and
 source ordinal.
 Native combat currently identifies `run.combat_card_generation` as a stream
 hypothesis; its native assignment and cursor parity remain `UNVERIFIED`.
+
+When the two-site Nature pilot carries the full run-owned Native boundary
+provider, it resolves this saved enemy-action request through
+`run.combat_card_generation` and replays the same theft continuation. The
+Native primitive transcript stays private to the run owner; the end-turn frame
+still records the selected card identity for mechanics replay. The provider
+handoff does not establish native stream attribution, pool fidelity, or cursor
+parity.
