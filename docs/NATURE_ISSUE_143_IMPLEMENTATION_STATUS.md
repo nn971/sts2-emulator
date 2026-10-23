@@ -1033,3 +1033,11 @@ must pass its own continuation checks.
 Other relic-triggered player-action draws and Native cursor parity remain
 open. Static source review and `git diff --check` only; no tests or builds
 were run.
+
+## 2026-10-23: Mad Science Wisdom draw
+
+The semantic pilot now recognizes the generated Mad Science card's runtime
+Tinker payload and admits only the Wisdom Skill's `DrawCards` effect to the
+existing semantic effect-draw continuation. Other type/rider combinations
+are not admitted through the draw path. No event or snapshot schema changed.
+Static source review and `git diff --check` only; no tests or builds were run.

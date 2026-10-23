@@ -4315,6 +4315,8 @@ public static class SemanticPilotCombatEngineV111
                  "proto.colorless.scrawl");
             var semanticDrawCard = card is not null &&
                 IsSemanticEffectDrawCard(card.CardId);
+            var semanticDynamicDrawCard = card is not null &&
+                PrototypeGameEngine.IsMadScienceDrawCard(card);
             var semanticAutoplayCard = card?.CardId is
                 ("proto.colorless.beat_down" or
                  "proto.colorless.catastrophe");
@@ -4343,6 +4345,7 @@ public static class SemanticPilotCombatEngineV111
                 (SemanticPlayerActionEngineV111.SupportsCard(card.CardId) ||
                  card.CardId == "proto.silent.ricochet" ||
                  semanticDrawCard ||
+                 semanticDynamicDrawCard ||
                  semanticAutoplayCard ||
                  semanticRandomReplayCard ||
                  semanticPotionGenerationCard ||
@@ -4415,7 +4418,8 @@ public static class SemanticPilotCombatEngineV111
                      CanonicalJson.Sha256(previous.Stochastic.SemanticDeck) !=
                          CanonicalJson.Sha256(next.Stochastic.SemanticDeck))
             {
-                if ((!semanticDrawCard && !semanticAutoplayCard &&
+                if ((!semanticDrawCard && !semanticDynamicDrawCard &&
+                     !semanticAutoplayCard &&
                      !semanticDrawPileSelectionCard &&
                      !semanticRandomRareToHandCard &&
                      !IsSupportedActionRelicDraw(

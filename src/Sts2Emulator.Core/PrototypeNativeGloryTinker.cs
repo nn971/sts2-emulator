@@ -211,6 +211,12 @@ public sealed partial class PrototypeGameEngine
         return MadScienceDefinition(card.State);
     }
 
+    internal static bool IsMadScienceDrawCard(
+        CombatCardInstance card) =>
+        card.CardId == PrototypeNativeGloryEvents.MadScienceId &&
+        RuntimeCardDefinition(card).Effects.Any(effect =>
+            effect.Kind == PrototypeCombatEffectKind.DrawCards);
+
     private static PrototypeCardDefinition MadScienceDefinition(
         JsonElement state)
     {
