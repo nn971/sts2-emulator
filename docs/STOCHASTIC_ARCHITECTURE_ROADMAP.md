@@ -9,6 +9,13 @@ guarded Neow request constructors. The census maps 99 of 104 typed requests;
 five generic or dynamic request sites remain for manual source tracing.
 Static review and `git diff --check` only; no tests or builds were run.
 
+**S0 forwarded reward-query inventory increment (2026-10-23):** The direct
+callsite census now follows the finite Chance Law site-array guard for the
+legacy Punch Off reward request and resolves its two registered reward sites.
+The generated inventory maps 100 of 104 typed requests; four generic or
+forwarded request sites remain unresolved. Static review and
+`git diff --check` only; no tests or builds were run.
+
 **S6 Native-regional Event-entry fallback increment (2026-10-23):** The
 existing atomic Event-node entry session now consumes supported saved legacy
 `event` requests for generated gold, Stone of All Time's potion slot, and

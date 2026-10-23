@@ -872,6 +872,48 @@ def _dictionary_member_site_values(
     return resolved
 
 
+def _forwarded_site_array_values(
+    expression: str,
+    global_constants: dict[str, set[str]],
+) -> list[str]:
+    """Resolve one source-owned site-array property forwarding hop."""
+    reference = re.sub(r"\s+", "", expression)
+    match = re.fullmatch(
+        r"(?P<class>[A-Za-z_][A-Za-z0-9_]*)\."
+        r"(?P<property>[A-Za-z_][A-Za-z0-9_]*)",
+        reference,
+    )
+    if match is None:
+        return []
+
+    candidate_files = sorted(SOURCE_ROOT.rglob("*.cs"))
+    for candidate in candidate_files:
+        source = candidate.read_text(encoding="utf-8")
+        if not re.search(
+            rf"\b(?:class|record|struct)\s+"
+            rf"{re.escape(match.group('class'))}\b",
+            source,
+        ):
+            continue
+        body = next((item.group("body")
+            for item in SITE_ARRAY_PROPERTY_PATTERN.finditer(source)
+            if item.group("name") == match.group("property")), None)
+        if body is None:
+            continue
+        forwarded = re.fullmatch(
+            r"\s*(?P<target>[A-Za-z_][A-Za-z0-9_]*"
+            r"(?:\.[A-Za-z_][A-Za-z0-9_]*)+)\s*",
+            body,
+        )
+        if forwarded is None:
+            return []
+        values, unresolved = _resolve_site_array_property(
+            forwarded.group("target"), global_constants,
+        )
+        return sorted(values) if values and not unresolved else []
+    return []
+
+
 def _guarded_site_values(
     source: str,
     construction_start: int,
@@ -1046,6 +1088,25 @@ def _guarded_site_values(
             site_array, global_constants,
         )
         return sorted(set(values)) if values and not unresolved else []
+    finite_array_guard = re.search(
+        rf"if\s*\(\s*!\s*(?P<sites>"
+        r"[A-Za-z_][A-Za-z0-9_.]*)\.Contains\s*\(\s*"
+        rf"{re.escape(name)}\s*,\s*StringComparer\.Ordinal\s*"
+        r"\)\s*\)\s*throw\s+new\s+NotSupportedException",
+        member_source,
+    )
+    if finite_array_guard is not None:
+        site_array = finite_array_guard.group("sites")
+        values, unresolved = _resolve_site_array_property(
+            site_array, global_constants,
+        )
+        if not values or unresolved:
+            values = _forwarded_site_array_values(
+                site_array, global_constants,
+            )
+            unresolved = [] if values else [site_array]
+        return sorted(values) if values and not unresolved else []
+
     legacy_choice_guard = re.search(
         rf"if\s*\(\s*!\s*StochasticSiteRegistryV111\s*\.\s*"
         rf"IsLegacyRandomChoiceSite\s*\(\s*{re.escape(name)}\s*\)\s*"
