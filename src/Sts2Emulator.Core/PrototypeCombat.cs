@@ -3476,12 +3476,13 @@ public sealed partial class PrototypeGameEngine
     // enemy turn. Importantly, this consumes the combat RNG once, at a
     // transition boundary; repeated public observations never reroll moves.
     internal sealed record NativeCommittedIntentAuditV111(
-        CombatState Combat, RandomIndexDecisionV111[] Choices);
+        CombatState Combat, RandomIndexDecisionV111[] Choices,
+        SemanticIntentOutcomeV111[] WeightedOutcomes);
 
     internal static CombatState CommitEnemyIntents(
         CombatState combat, RngBundle rng,
         string siteId = NativeCombatRngEntryV111.CommittedIntentSiteId) =>
-        CommitEnemyIntentsCore(combat, rng, null, siteId);
+        CommitEnemyIntentsCore(combat, rng, null, null, siteId);
 
     internal static NativeCommittedIntentAuditV111 CommitEnemyIntentsWithAudit(
         CombatState combat, RngBundle rng,
@@ -3490,13 +3491,17 @@ public sealed partial class PrototypeGameEngine
         if (combat.Stochastic.NativeRng is null)
             throw new InvalidOperationException("Native intent audit requires attached native RNG.");
         var decisions = new List<RandomIndexDecisionV111>();
-        var result = CommitEnemyIntentsCore(combat, rng, decisions, siteId);
-        return new NativeCommittedIntentAuditV111(result, decisions.ToArray());
+        var weightedOutcomes = new List<SemanticIntentOutcomeV111>();
+        var result = CommitEnemyIntentsCore(
+            combat, rng, decisions, weightedOutcomes, siteId);
+        return new NativeCommittedIntentAuditV111(
+            result, decisions.ToArray(), weightedOutcomes.ToArray());
     }
 
     private static CombatState CommitEnemyIntentsCore(
         CombatState combat, RngBundle rng,
-        List<RandomIndexDecisionV111>? audit, string siteId)
+        List<RandomIndexDecisionV111>? audit,
+        List<SemanticIntentOutcomeV111>? weightedOutcomes, string siteId)
     {
         if (!StochasticSiteRegistryV111.CombatIntentSiteIds.Contains(
                 siteId, StringComparer.Ordinal))
@@ -3510,6 +3515,7 @@ public sealed partial class PrototypeGameEngine
         for (int index = 0; index < formation.Length; index++)
         {
             var enemy = formation[index];
+            SemanticIntentCandidateV111[]? pendingCandidates = null;
             Func<int, int> nextIndex = ownedNative is null
                 ? maxExclusive => ResolveLegacyBoundedInteger(
                     rng,
@@ -3518,20 +3524,54 @@ public sealed partial class PrototypeGameEngine
                     maxExclusive)
                 : maxExclusive =>
                 {
+                    var ordinal = occurrence;
                     var request = new RandomIndexRequestV111(
                         siteId, "run.monster_ai",
-                        "creature:" + enemy.InstanceId, occurrence,
+                        "creature:" + enemy.InstanceId, ordinal,
                         [], OperationKind: "bounded_integer",
                         BoundedCount: maxExclusive);
                     var result = StochasticProviderScopeV111.ResolveIndex(
                         provider, request, ownedNative.RunStreams);
                     audit?.Add(result);
                     occurrence++;
+                    if (weightedOutcomes is not null &&
+                        pendingCandidates is { Length: > 0 })
+                    {
+                        var totalWeight = checked(pendingCandidates.Sum(
+                            candidate => candidate.RawWeight));
+                        if (totalWeight != maxExclusive)
+                            throw new InvalidDataException(
+                                "Native intent weights disagree with the primitive ticket range.");
+                        var support = new SemanticIntentSupportV111(
+                            request.OwnerId, pendingCandidates, totalWeight);
+                        var boundaryFingerprint = CanonicalJson.Sha256(new
+                        {
+                            SiteId = siteId,
+                            EnemyIndex = index,
+                            Formation = formation,
+                            Request = request
+                        });
+                        var semanticEvent = SemanticIntentChoiceV111.CreateEvent(
+                            boundaryFingerprint, request, support);
+                        var selectedCandidate = support.Candidates.Single(
+                            candidate => result.SelectedIndex >= candidate.TicketStart &&
+                                result.SelectedIndex < checked(
+                                    candidate.TicketStart + candidate.RawWeight));
+                        var outcome = new SemanticIntentOutcomeV111(
+                            semanticEvent, selectedCandidate.IntentId,
+                            result.SelectedIndex);
+                        outcome.Validate();
+                        weightedOutcomes.Add(outcome);
+                    }
+                    pendingCandidates = null;
                     return result.SelectedIndex;
                 };
             var chosen = EvaluateEnemyIntentChoice(
                 formation, index, ownedNative?.Formation.NativeEncounterEntry,
-                nextIndex);
+                nextIndex,
+                weightedOutcomes is null
+                    ? null
+                    : candidates => pendingCandidates = candidates);
             formation[index] = ApplyEnemyIntentOutcome(
                 enemy, chosen.MoveIndex, chosen.NextAiStateId);
         }

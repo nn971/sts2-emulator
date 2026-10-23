@@ -126,6 +126,31 @@ public sealed record SemanticIntentDecisionV111(
     }
 }
 
+/// <summary>
+/// A provider-sampled weighted intent outcome. SourceTicket retains the exact
+/// primitive bounded-integer result; IntentId identifies the weighted move
+/// branch whose half-open ticket interval contains that result.
+/// </summary>
+public sealed record SemanticIntentOutcomeV111(
+    SemanticIntentEventV111 Event, string IntentId, int SourceTicket)
+{
+    public SemanticIntentOutcomeV111 Fork() => this with
+    {
+        Event = Event.Fork()
+    };
+
+    public void Validate()
+    {
+        Event.Validate();
+        var candidate = Event.Support.Candidates.SingleOrDefault(item =>
+            item.IntentId == IntentId);
+        if (candidate is null || SourceTicket < candidate.TicketStart ||
+            SourceTicket >= checked(candidate.TicketStart + candidate.RawWeight))
+            throw new InvalidDataException(
+                "Sampled intent ticket is outside its weighted outcome interval.");
+    }
+}
+
 /// <summary>A semantic intent outcome paired with its retained primitive
 /// ticket position in an automatic end-turn transcript.</summary>
 public sealed record SemanticIntentTranscriptEntryV111(

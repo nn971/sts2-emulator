@@ -59,10 +59,21 @@ public sealed record NativeInitialHpAuditV111(
 }
 
 public sealed record NativeIntentAuditV111(
-    CombatState Combat, RandomIndexDecisionV111[] Choices, string ProviderMode)
+    CombatState Combat, RandomIndexDecisionV111[] Choices, string ProviderMode,
+    SemanticIntentOutcomeV111[] WeightedOutcomes)
 {
+    public NativeIntentAuditV111(
+        CombatState Combat, RandomIndexDecisionV111[] Choices,
+        string ProviderMode)
+        : this(Combat, Choices, ProviderMode,
+            Array.Empty<SemanticIntentOutcomeV111>())
+    {
+    }
+
     private CombatState? _combat = Combat.Fork();
     private RandomIndexDecisionV111[]? _choices = CloneDecisions(Choices);
+    private SemanticIntentOutcomeV111[]? _weightedOutcomes =
+        CloneOutcomes(WeightedOutcomes);
 
     public CombatState Combat
     {
@@ -77,11 +88,18 @@ public sealed record NativeIntentAuditV111(
         init => _choices = CloneDecisions(value);
     }
 
+    public SemanticIntentOutcomeV111[] WeightedOutcomes
+    {
+        get => CloneOutcomes(_weightedOutcomes)!;
+        init => _weightedOutcomes = CloneOutcomes(value);
+    }
+
     public NativeIntentAuditV111 Fork() => this with
     {
         Combat = _combat ?? throw new InvalidDataException(
             "Native intent audit has no combat state."),
-        Choices = _choices!
+        Choices = _choices!,
+        WeightedOutcomes = _weightedOutcomes!
     };
 
     private static RandomIndexDecisionV111[]? CloneDecisions(
@@ -89,6 +107,10 @@ public sealed record NativeIntentAuditV111(
             decision is null ? null! :
                 PrototypeControlledEventChoiceContinuationV111
                     .CloneDecision(decision)).ToArray();
+
+    private static SemanticIntentOutcomeV111[]? CloneOutcomes(
+        SemanticIntentOutcomeV111[]? values) => values?.Select(outcome =>
+            outcome is null ? null! : outcome.Fork()).ToArray();
 }
 
 public static class NativeCombatRngEntryV111
@@ -590,7 +612,9 @@ public static class NativeCombatRngEntryV111
             throw new InvalidOperationException("Native intent audit requires attached native RNG.");
         var result = PrototypeGameEngine.CommitEnemyIntentsWithAudit(
             combat, RngBundle.Empty, CommittedIntentSiteId);
-        return new NativeIntentAuditV111(result.Combat, result.Choices, "native-v111");
+        return new NativeIntentAuditV111(
+            result.Combat, result.Choices, "native-v111",
+            result.WeightedOutcomes);
     }
 
     /// <summary>
