@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S2/S4 Mad Science source-action increment (2026-10-24):** The semantic
+pilot now admits modeled Mad Science Attack, Skill, and Power riders. Wisdom
+retains its semantic draw continuation; Skill/Chaos reuses the generated-card
+model event after its Block effect, with admission bound to the saved Tinker
+card and manual `CardPlayed` continuation. No event or snapshot schema changed.
+Static source review and `git diff --check` only; no tests or builds were run.
+
 **S4 Metamorphosis source-action increment (2026-10-24):** The persistent
 semantic pilot now admits the physical Metamorphosis card and validates its
 manual Exhausting card-play frame, exact 3 (5 upgraded) generated-Attack

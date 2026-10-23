@@ -217,6 +217,43 @@ public sealed partial class PrototypeGameEngine
         RuntimeCardDefinition(card).Effects.Any(effect =>
             effect.Kind == PrototypeCombatEffectKind.DrawCards);
 
+    internal static bool IsSupportedMadScienceCardAction(
+        CombatCardInstance card)
+    {
+        if (card.CardId != PrototypeNativeGloryEvents.MadScienceId)
+            return false;
+        var effects = RuntimeCardDefinition(card).Effects;
+        return effects.Length > 0 &&
+            effects.All(effect => effect.Kind is
+                PrototypeCombatEffectKind.DamageEnemy or
+                PrototypeCombatEffectKind.ApplyEnemyStatus or
+                PrototypeCombatEffectKind.ApplyEnemyPower or
+                PrototypeCombatEffectKind.GainPlayerBlock or
+                PrototypeCombatEffectKind.GainEnergy or
+                PrototypeCombatEffectKind.DrawCards or
+                PrototypeCombatEffectKind.CreateRandomFreeCharacterCardInHand or
+                PrototypeCombatEffectKind.ApplyPlayerPower);
+    }
+
+    internal static bool IsMadScienceChaosGenerationCard(
+        CombatCardInstance card)
+    {
+        if (card.CardId != PrototypeNativeGloryEvents.MadScienceId)
+            return false;
+        var definition = RuntimeCardDefinition(card);
+        var expectedEffects = new[]
+        {
+            new PrototypeCombatEffectSpec(
+                PrototypeCombatEffectKind.GainPlayerBlock, 8),
+            new PrototypeCombatEffectSpec(
+                PrototypeCombatEffectKind.CreateRandomFreeCharacterCardInHand,
+                1)
+        };
+        return definition.Type == PrototypeCardType.Skill &&
+            CanonicalJson.Sha256(definition.Effects) ==
+                CanonicalJson.Sha256(expectedEffects);
+    }
+
     private static PrototypeCardDefinition MadScienceDefinition(
         JsonElement state)
     {

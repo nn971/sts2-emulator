@@ -4324,6 +4324,8 @@ public static class SemanticPilotCombatEngineV111
                 IsSemanticEffectDrawCard(card.CardId);
             var semanticDynamicDrawCard = card is not null &&
                 PrototypeGameEngine.IsMadScienceDrawCard(card);
+            var semanticMadScienceCard = card is not null &&
+                PrototypeGameEngine.IsSupportedMadScienceCardAction(card);
             var semanticAutoplayCard = card?.CardId is
                 ("proto.colorless.beat_down" or
                  "proto.colorless.catastrophe");
@@ -4355,6 +4357,7 @@ public static class SemanticPilotCombatEngineV111
                 (SemanticPlayerActionEngineV111.SupportsCard(card.CardId) ||
                  semanticDrawCard ||
                  semanticDynamicDrawCard ||
+                 semanticMadScienceCard ||
                  semanticAutoplayCard ||
                  semanticRandomReplayCard ||
                  semanticPotionGenerationCard ||
@@ -5824,6 +5827,11 @@ public static class SemanticPilotCombatEngineV111
             !IsJackpotZeroCostGenerationChoice(combat, choice, generation))
             throw new InvalidDataException(
                 "Zero-cost generated-card choice is outside Jackpot's source action.");
+        if (generation?.Operation.Kind ==
+                PrototypeCombatEffectKind.CreateRandomFreeCharacterCardInHand &&
+            !IsMadScienceChaosGenerationChoice(combat, choice, generation))
+            throw new InvalidDataException(
+                "Free Character-card choice is outside Mad Science Chaos.");
         if (isDrawInsertionModelChoice)
         {
             if (current.Stochastic.SeededEntry?.FixtureRandomFreeAttackDrawInsertion != true &&
@@ -6141,6 +6149,57 @@ public static class SemanticPilotCombatEngineV111
             series.NextPlayIndex <= series.PlayCount &&
             continuation.Parent is null &&
             continuation.EventDispatchContinuation is null;
+    }
+
+    private static bool IsMadScienceChaosGenerationChoice(
+        CombatState? combat, PendingCombatChoiceState? choice,
+        PrototypeControlledGeneratedCardV111? generation)
+    {
+        if (combat is null || generation is null ||
+            choice is not { ChoiceId: "controlled_generated_card",
+                SourceCardInstanceId: { } sourceCardInstanceId,
+                CompletionEvents: [],
+                OuterChoiceContinuation: { } continuation })
+            return false;
+
+        var sourceCard = combat.Cards.SingleOrDefault(card =>
+            card.InstanceId == sourceCardInstanceId &&
+            PrototypeGameEngine.IsMadScienceChaosGenerationCard(card));
+        var series = continuation.CardPlaySeries;
+        if (sourceCard is null || sourceCard.Enchantment is not null ||
+            series is null ||
+            series.SourceCardInstanceId != sourceCardInstanceId ||
+            series.SourceCardDestination != PrototypeCardZone.DiscardPile ||
+            series.TargetEnemyId is not null || series.IsAutoPlay ||
+            series.PlayCount <= 0 || series.NextPlayIndex <= 0 ||
+            series.NextPlayIndex > series.PlayCount ||
+            continuation.SourceCardInstanceId != sourceCardInstanceId ||
+            continuation.SourceCardDestination !=
+                PrototypeCardZone.DiscardPile ||
+            choice.SourceCardDestination !=
+                continuation.SourceCardDestination ||
+            continuation.Operations.Length != 0 ||
+            continuation.PendingDiscardEvents.Length != 0 ||
+            continuation.PendingSlyCardInstanceIds.Length != 0 ||
+            continuation.CompletionEvents.Length != 1 ||
+            continuation.Parent is not null ||
+            continuation.EventDispatchContinuation is not null ||
+            continuation.MoveSourceCardOnCompletion !=
+                !series.HasRemainingExecutions ||
+            continuation.RemoveSourceCardOnCompletion ||
+            continuation.SourceCardAlreadyMoved)
+            return false;
+
+        var completion = continuation.CompletionEvents[0];
+        var expectedOperation = new PrototypeQueuedOperation(
+            PrototypeCombatEffectKind.CreateRandomFreeCharacterCardInHand,
+            1, SourceKind: PrototypeEffectSourceKind.Card);
+        return completion.Kind == PrototypeCombatEventKind.CardPlayed &&
+            completion.CardId == PrototypeNativeGloryEvents.MadScienceId &&
+            !completion.IsAutoPlay &&
+            completion.SourceCardInstanceId == sourceCardInstanceId &&
+            CanonicalJson.Sha256(generation.Operation) ==
+                CanonicalJson.Sha256(expectedOperation);
     }
 
     private static bool IsNeowsAbundanceGeneratedChoiceShuffle(
