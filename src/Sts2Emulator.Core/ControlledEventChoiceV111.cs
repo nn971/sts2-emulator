@@ -135,7 +135,8 @@ public static class ControlledEventChoiceEngineV111
         // Keep deterministic potion actions inside the saved event-reward
         // transcript while its reward is still pending.
         if (ControlledRunActionEngineV111
-                .IsSupportedEventRewardPotionAction(source, action))
+                .IsSupportedDeterministicEventRewardPotionAction(
+                    source, action))
         {
             var eventTrace = trace ?? throw new InvalidDataException(
                 "Event-reward potion action lost its completed event trace.");
@@ -188,7 +189,7 @@ public static class ControlledEventChoiceEngineV111
         var replay = ControlledChanceContinuationExecutorV111.Resume(
             source,
             [],
-            checkpoint => engine.Step(checkpoint, action).State,
+            checkpoint => StepEventRewardAction(checkpoint, action),
             OrdinalCounts(trace.Decisions));
         if (replay.PendingChance is { } pendingChance)
         {
@@ -196,16 +197,27 @@ public static class ControlledEventChoiceEngineV111
             var isRerollRequest = action.Kind == "reroll_reward_card"
                 && ControlledEventChoiceReplayV111
                     .IsEventRewardRerollRequest(pendingChance.Request);
+            var isEntropicBrewRequest =
+                ControlledRunActionEngineV111
+                    .IsSupportedEventRewardPotionAction(source, action)
+                && ControlledRunActionEngineV111
+                    .IsEntropicBrewFillRequest(
+                        source, action, pendingChance.Request);
             var isModifierCurseRequest = action.Kind == "leave_reward"
                 && pendingChance.Request.SiteId ==
                     "event.reward.random_modifier_curse.index_draw"
                 && pendingChance.Request.StreamId == "reward"
                 && pendingChance.Request.OperationKind == "choose_index";
-            if ((!isRerollRequest && !isModifierCurseRequest)
+            if ((!isRerollRequest && !isModifierCurseRequest
+                    && !isEntropicBrewRequest)
                 || pendingLabels is null
                 || pendingLabels.Length !=
                     pendingChance.Request.SupportCount
-                || pendingLabels.Any(string.IsNullOrWhiteSpace))
+                || pendingLabels.Any(string.IsNullOrWhiteSpace)
+                || isEntropicBrewRequest
+                    && !pendingLabels.SequenceEqual(
+                        PrototypeContent.PotionPool,
+                        StringComparer.Ordinal))
                 throw new NotSupportedException(
                     "Controlled event chance site '" + pendingChance.Request.SiteId +
                     "' (operation '" + pendingChance.Request.OperationKind +
@@ -221,7 +233,7 @@ public static class ControlledEventChoiceEngineV111
                     trace.CandidateLabels,
                     pendingChance.Request,
                     pendingLabels,
-                    isRerollRequest
+                    isRerollRequest || isEntropicBrewRequest
                         ? action with { Payload = action.Payload.Clone() }
                         : null);
             var suspended = RunStochasticStateV111
@@ -241,6 +253,22 @@ public static class ControlledEventChoiceEngineV111
             StringComparer.Ordinal)
         .ToDictionary(group => group.Key, group => group.Count(),
             StringComparer.Ordinal);
+
+    internal static RunState StepEventRewardAction(
+        RunState checkpoint, GameAction action)
+    {
+        if (ControlledRunActionEngineV111.IsEntropicBrewPotionAction(
+                checkpoint, action))
+        {
+            using var candidateLabels =
+                ControlledEventChoiceReplayV111.DescribeCandidates(
+                    PrototypeContent.PotionPool);
+            return new PrototypeGameEngine().Step(
+                checkpoint, action).State;
+        }
+
+        return new PrototypeGameEngine().Step(checkpoint, action).State;
+    }
 
     private static RunState Step(RunState source, GameAction action)
     {
@@ -308,8 +336,14 @@ public sealed record ControlledEventChoiceTraceV111(
             var isRewardReroll =
                 ControlledEventChoiceReplayV111
                     .IsEventRewardRerollRequest(decision.Request);
-            var isEventChoice = ControlledEventChoiceReplayV111
-                .IsEventChoiceSite(decision.Request.SiteId);
+            var isEntropicBrewFill =
+                ControlledRunActionEngineV111
+                    .IsEntropicBrewFillRequestShape(decision.Request);
+            var isEventChoice = decision.Request.SiteId ==
+                    "run.potion.fill_empty_slots.model"
+                ? isEntropicBrewFill
+                : ControlledEventChoiceReplayV111
+                    .IsEventChoiceSite(decision.Request.SiteId);
             var isFinalModifierCurse = decision.Request.SiteId ==
                     "event.reward.random_modifier_curse.index_draw"
                 && decision.Request.StreamId == "reward"
@@ -329,7 +363,11 @@ public sealed record ControlledEventChoiceTraceV111(
                 || !isSupportedSite
                 || CandidateLabels[index].Length !=
                     decision.Request.SupportCount
-                || CandidateLabels[index].Any(string.IsNullOrWhiteSpace))
+                || CandidateLabels[index].Any(string.IsNullOrWhiteSpace)
+                || isEntropicBrewFill
+                    && !CandidateLabels[index].SequenceEqual(
+                        PrototypeContent.PotionPool,
+                        StringComparer.Ordinal))
                 throw new InvalidDataException(
                     "Controlled event-choice transcript contains an invalid outcome.");
         }
@@ -703,8 +741,9 @@ public sealed record PrototypeControlledEventChoiceContinuationV111(
 
 /// <summary>
 /// Suspended post-reward event chance. The partial state retains all player
-/// reward decisions; the decision prefix identifies the already committed
-/// event-effect outcomes that belong to the same event-choice transcript.
+/// reward decisions; the decision prefix identifies committed event-effect
+/// outcomes, while a saved reroll or Entropic Brew action can add its own
+/// chance outcomes to the same event-choice transcript.
 /// </summary>
 public sealed record PrototypeControlledEventRewardChoiceContinuationV111(
     RunState PartialState,
@@ -863,17 +902,25 @@ public sealed record PrototypeControlledEventRewardChoiceContinuationV111(
             var expectedOperation = PendingRequest.SiteId ==
                 "reward.card_rarity.ticket"
                     ? "bounded_integer" : "choose_index";
-            if (ResumeAction.Kind != "reroll_reward_card"
+            var isRerollAction = ResumeAction.Kind ==
+                "reroll_reward_card"
+                && ControlledEventChoiceReplayV111
+                    .IsEventRewardRerollSite(PendingRequest.SiteId)
+                && PendingRequest.StreamId == "reward"
+                && PendingRequest.OperationKind == expectedOperation;
+            var isEntropicBrewAction =
+                ControlledRunActionEngineV111
+                    .IsEntropicBrewFillRequest(
+                        PartialState, ResumeAction, PendingRequest)
+                && PendingCandidateLabels.SequenceEqual(
+                    PrototypeContent.PotionPool, StringComparer.Ordinal);
+            if ((!isRerollAction && !isEntropicBrewAction)
                 || !new PrototypeGameEngine().GetLegalActions(PartialState)
                     .Any(action => StringComparer.Ordinal.Equals(
                         PrototypeAiEnvironment.StableActionId(action),
-                        actionId))
-                || !ControlledEventChoiceReplayV111
-                    .IsEventRewardRerollSite(PendingRequest.SiteId)
-                || PendingRequest.StreamId != "reward"
-                || PendingRequest.OperationKind != expectedOperation)
+                        actionId)))
                 throw new InvalidDataException(
-                    "Controlled event-reward action frame is outside its card-reroll boundary.");
+                    "Controlled event-reward action frame is outside a supported reroll or Entropic Brew boundary.");
         }
 
         var history = PartialState.Stochastic.ControlledEventChoiceHistory;
@@ -901,14 +948,31 @@ public sealed record PrototypeControlledEventRewardChoiceContinuationV111(
             var decision = Decisions[index];
             decision.Validate();
             var isCommittedPrefix = index < DecisionPrefixLength;
+            var isEventChoicePrefixSite =
+                decision.Request.SiteId ==
+                    "run.potion.fill_empty_slots.model"
+                    ? ControlledRunActionEngineV111
+                        .IsEntropicBrewFillRequestShape(
+                            decision.Request)
+                    : ControlledEventChoiceReplayV111
+                        .IsEventChoiceSite(decision.Request.SiteId);
             var isSupportedSite = isCommittedPrefix
-                ? ControlledEventChoiceReplayV111.IsEventChoiceSite(
-                    decision.Request.SiteId)
+                ? isEventChoicePrefixSite
                     || ControlledEventChoiceReplayV111
                         .IsEventRewardRerollRequest(decision.Request)
-                : ResumeAction is not null
-                    && ControlledEventChoiceReplayV111
-                        .IsEventRewardRerollRequest(decision.Request);
+                : ResumeAction is { } resumeAction
+                    && (ControlledEventChoiceReplayV111
+                            .IsEventRewardRerollRequest(decision.Request)
+                        || ControlledRunActionEngineV111
+                            .IsEntropicBrewFillRequest(
+                                PartialState, resumeAction,
+                                decision.Request));
+            var isEntropicBrewDecision = !isCommittedPrefix
+                && ResumeAction is { } savedBrewAction
+                        && ControlledRunActionEngineV111
+                            .IsEntropicBrewFillRequest(
+                                PartialState, savedBrewAction,
+                                decision.Request);
             if (decision.ProviderMode != "controlled-v111"
                 || decision.NativeCursorBefore is not null
                 || decision.NativeCursorAfter is not null
@@ -917,7 +981,11 @@ public sealed record PrototypeControlledEventRewardChoiceContinuationV111(
                 || DecisionCandidateLabels[index].Length !=
                     decision.Request.SupportCount
                 || DecisionCandidateLabels[index].Any(
-                    string.IsNullOrWhiteSpace))
+                    string.IsNullOrWhiteSpace)
+                || isEntropicBrewDecision
+                    && !DecisionCandidateLabels[index].SequenceEqual(
+                        PrototypeContent.PotionPool,
+                        StringComparer.Ordinal))
                 throw new InvalidDataException(
                     "Controlled event-reward prefix contains an invalid outcome.");
         }

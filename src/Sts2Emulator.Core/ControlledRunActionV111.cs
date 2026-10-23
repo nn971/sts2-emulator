@@ -256,13 +256,8 @@ public sealed record ControlledRunActionTraceV111(
                     request.OrderedCandidates.SequenceEqual(
                         Enumerable.Range(0, request.SupportCount));
                 var entropicBrewModel = entropicBrewAction &&
-                    request.SiteId ==
-                        "run.potion.fill_empty_slots.model" &&
-                    request.OperationKind == "choose_index" &&
-                    request.SupportCount == PrototypeContent.PotionPool.Length &&
-                    request.OrderedCandidates.SequenceEqual(
-                        Enumerable.Range(0, PrototypeContent.PotionPool.Length)) &&
-                    IsEntropicBrewTraceOwner(request.OwnerId) &&
+                    ControlledRunActionEngineV111
+                        .IsEntropicBrewFillRequestShape(request) &&
                     (request.StreamId ==
                             NativePlayerRngV111.RewardsStreamId
                         ? decision.CandidateLabels is null
@@ -313,20 +308,6 @@ public sealed record ControlledRunActionTraceV111(
                     "Typed controlled run-action transcript has an unsupported provider primitive.");
             }
         }
-
-    private static bool IsEntropicBrewTraceOwner(string ownerId)
-    {
-        var poolSuffix = ":pool:" + CanonicalJson.Sha256(
-            PrototypeContent.PotionPool);
-        const string prefix = "player:potion_slot:";
-        if (!ownerId.StartsWith(prefix, StringComparison.Ordinal) ||
-            !ownerId.EndsWith(poolSuffix, StringComparison.Ordinal) ||
-            ownerId.Length <= prefix.Length + poolSuffix.Length)
-            return false;
-        var slotText = ownerId[prefix.Length..^poolSuffix.Length];
-        return int.TryParse(slotText, NumberStyles.None,
-            CultureInfo.InvariantCulture, out var slot) && slot >= 0;
-    }
 
         var indexDecisions = typedDecisions.Where(decision =>
                 decision.IndexDecision is not null).ToArray();
@@ -1347,6 +1328,19 @@ public static class ControlledRunActionEngineV111
     internal static bool IsSupportedEventRewardPotionAction(
         RunState source, GameAction action)
     {
+        return IsEventRewardPotionContext(source, action)
+            && (IsModeledDeterministicOutsideCombatPotion(source, action)
+                || IsEntropicBrewPotionAction(source, action));
+    }
+
+    internal static bool IsSupportedDeterministicEventRewardPotionAction(
+        RunState source, GameAction action) =>
+        IsEventRewardPotionContext(source, action)
+        && IsModeledDeterministicOutsideCombatPotion(source, action);
+
+    private static bool IsEventRewardPotionContext(
+        RunState source, GameAction action)
+    {
         var eventState = source.World?.Event;
         var reward = source.World?.Reward;
         var choiceId = eventState?.ChosenChoiceId;
@@ -1367,7 +1361,7 @@ public static class ControlledRunActionEngineV111
             || history[^1].ChoiceId != choiceId)
             return false;
 
-        return IsModeledDeterministicOutsideCombatPotion(source, action);
+        return action.Kind == "use_potion";
     }
 
     private static bool IsModeledDeterministicOutsideCombatPotion(
@@ -1402,8 +1396,14 @@ public static class ControlledRunActionEngineV111
     internal static bool IsEntropicBrewRunAction(
         RunState source, GameAction action)
     {
-        if (!SupportsOutsideCombatPotionPhase(source)
-            || action.Kind != "use_potion")
+        return SupportsOutsideCombatPotionPhase(source)
+            && IsEntropicBrewPotionAction(source, action);
+    }
+
+    internal static bool IsEntropicBrewPotionAction(
+        RunState source, GameAction action)
+    {
+        if (action.Kind != "use_potion")
             return false;
 
         var payload = action.ReadPayload<UsePotionPayload>();
@@ -1419,6 +1419,62 @@ public static class ControlledRunActionEngineV111
             && (definition.RunEffects ?? []).SequenceEqual([
                 new PrototypeRunEffectSpec(
                     PrototypeRunEffectKind.FillPotionSlots)]);
+    }
+
+    internal static bool IsEntropicBrewFillRequest(
+        RunState source, GameAction action,
+        RandomIndexRequestV111 request)
+    {
+        if (!IsEntropicBrewPotionAction(source, action)
+            || request.SiteId != "run.potion.fill_empty_slots.model"
+            || request.OperationKind != "choose_index"
+            || source.Player.ActiveRelics.Any(relic =>
+                PrototypeContent.Relic(relic.RelicId)
+                    .PreventPotionAcquisition))
+            return false;
+
+        var expectedStream = source.Stochastic.NativeRunRng is null
+            ? "reward" : NativePlayerRngV111.RewardsStreamId;
+        if (request.StreamId != expectedStream)
+            return false;
+
+        var pool = PrototypeContent.PotionPool;
+        var selectedSlot = action.ReadPayload<UsePotionPayload>().Slot;
+        var poolFingerprint = CanonicalJson.Sha256(pool);
+        var validOwners = source.Player.PotionSlots
+            .Select((potion, slot) => (potion, slot))
+            .Where(item => item.potion is null || item.slot == selectedSlot)
+            .Select(item =>
+                $"player:potion_slot:{item.slot}:pool:{poolFingerprint}");
+        return request.SupportCount == pool.Length
+            && request.OrderedCandidates.SequenceEqual(
+                Enumerable.Range(0, pool.Length))
+            && validOwners.Contains(request.OwnerId, StringComparer.Ordinal);
+    }
+
+    internal static bool IsEntropicBrewFillRequestShape(
+        RandomIndexRequestV111 request)
+    {
+        if (request.SiteId != "run.potion.fill_empty_slots.model"
+            || request.OperationKind != "choose_index"
+            || request.StreamId is not ("reward" or
+                NativePlayerRngV111.RewardsStreamId))
+            return false;
+
+        var pool = PrototypeContent.PotionPool;
+        var poolFingerprint = CanonicalJson.Sha256(pool);
+        const string prefix = "player:potion_slot:";
+        var suffix = ":pool:" + poolFingerprint;
+        if (!request.OwnerId.StartsWith(prefix, StringComparison.Ordinal)
+            || !request.OwnerId.EndsWith(suffix, StringComparison.Ordinal))
+            return false;
+        var slotText = request.OwnerId[prefix.Length..^suffix.Length];
+        return int.TryParse(slotText, NumberStyles.None,
+                CultureInfo.InvariantCulture, out var slot)
+            && slot >= 0
+            && request.SupportCount == pool.Length
+            && request.OrderedCandidates.SequenceEqual(
+                Enumerable.Range(0, pool.Length));
     }
 
     private static bool SupportsOutsideCombatPotionPhase(

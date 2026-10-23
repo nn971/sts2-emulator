@@ -7354,34 +7354,11 @@ public sealed record ReferenceNatureRunActionSessionV111(
         RunState source, GameAction action,
         ControlledStochasticRequestV111 request)
     {
-        if (!IsEntropicBrewAction(source, action)
-            || request.IndexRequest is not { } indexRequest
-            || source.Player.ActiveRelics.Any(relic =>
-                PrototypeContent.Relic(relic.RelicId)
-                    .PreventPotionAcquisition))
-            return false;
-
-        var expectedStream = source.Stochastic.NativeRunRng is null
-            ? "reward" : NativePlayerRngV111.RewardsStreamId;
-        if (request.StreamId != expectedStream)
-            return false;
-
-        var poolFingerprint = CanonicalJson.Sha256(
-            PrototypeContent.PotionPool);
-        var selectedSlot = action.ReadPayload<UsePotionPayload>().Slot;
-        var validOwners = source.Player.PotionSlots
-            .Select((potion, slot) => (potion, slot))
-            .Where(item => item.potion is null || item.slot == selectedSlot)
-            .Select(item =>
-                $"player:potion_slot:{item.slot}:pool:{poolFingerprint}");
-        return indexRequest.SiteId ==
-                "run.potion.fill_empty_slots.model"
-            && indexRequest.OperationKind == "choose_index"
-            && indexRequest.SupportCount == PrototypeContent.PotionPool.Length
-            && indexRequest.OrderedCandidates.SequenceEqual(
-                Enumerable.Range(0, PrototypeContent.PotionPool.Length))
-            && validOwners.Contains(indexRequest.OwnerId,
-                StringComparer.Ordinal);
+        return request.IndexRequest is { } indexRequest
+            && ControlledRunActionEngineV111.IsEntropicBrewRunAction(
+                source, action)
+            && ControlledRunActionEngineV111.IsEntropicBrewFillRequest(
+                source, action, indexRequest);
     }
 
     private static bool UsesTypedNativePotionFactoryCombatEntry(

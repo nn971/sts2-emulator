@@ -950,14 +950,15 @@ Static source review and `git diff --check` only; no tests or builds were run.
 
 ## 2026-10-23: Entropic Brew empty-slot refills
 
-The typed ReferenceNature run-action continuation now covers non-event
-Entropic Brew uses and pre-choice Event uses when no event choice or full-belt
-potion replacement is pending. It replays one pool draw for each empty slot,
-preserving the source slot order and owner fingerprint. Legacy runs use the
-existing ordered prototype-pool Chance Law on the `reward` stream. Native runs
-use the `player.rewards` request and its Native bounded-index law, with request
-support and slot ownership checked against the current prototype pool. A
-stochastic Entropic Brew action during a post-choice Event reward still needs a
-nested continuation to preserve the event session. Native game pool-order
-fidelity still awaits the reference mod. Static source review and
-`git diff --check` only; no tests or builds were run.
+The typed ReferenceNature run-action continuation covers non-event Entropic
+Brew uses and pre-choice Event uses when no full-belt potion replacement is
+pending. The existing saved event-reward continuation now also accepts
+post-choice Entropic Brew actions and records each selected fill before
+replaying the next empty slot. All routes preserve source slot order and check
+the exact pool fingerprint, owner, support, and stream through one shared
+request predicate. Legacy runs use the ordered prototype-pool Chance Law on
+`reward`; Native runs use the `player.rewards` request and Native bounded-index
+law. Event-choice snapshots retain the player's action and all resulting Nature
+outcomes in their existing mixed sequence. Native game pool-order fidelity,
+trigger order, and source stream attribution remain open. Static source review
+and `git diff --check` only; no tests or builds were run.

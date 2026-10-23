@@ -5536,7 +5536,7 @@ public sealed partial class PrototypeGameEngine
             partialState,
             decisions.Skip(continuation.DecisionPrefixLength).ToArray(),
             checkpoint => continuation.ResumeAction is { } resumeAction
-                ? new PrototypeGameEngine().Step(
+                ? ControlledEventChoiceEngineV111.StepEventRewardAction(
                     checkpoint with
                     {
                         DecisionIndex = checked(state.DecisionIndex - 1)
@@ -5544,21 +5544,27 @@ public sealed partial class PrototypeGameEngine
                     resumeAction with
                     {
                         Payload = resumeAction.Payload.Clone()
-                    }).State
+                    })
                 : CompleteReward(checkpoint, resumeFrame),
             continuation.PrefixOrdinalCounts());
         if (replay.PendingChance is { } pendingChance)
         {
             var pendingLabels = pendingChance.CandidateLabels;
-            if (continuation.ResumeAction is null
-                || !ControlledEventChoiceReplayV111
-                    .IsEventRewardRerollSite(
-                        pendingChance.Request.SiteId)
-                || pendingChance.Request.StreamId != "reward"
+            var isRerollRequest = continuation.ResumeAction is not null
+                && ControlledEventChoiceReplayV111
+                    .IsEventRewardRerollRequest(pendingChance.Request);
+            var isEntropicBrewRequest = continuation.ResumeAction is { } brewAction
+                && ControlledRunActionEngineV111.IsEntropicBrewFillRequest(
+                    partialState, brewAction, pendingChance.Request);
+            if ((!isRerollRequest && !isEntropicBrewRequest)
                 || pendingLabels is null
                 || pendingLabels.Length !=
                     pendingChance.Request.SupportCount
-                || pendingLabels.Any(string.IsNullOrWhiteSpace))
+                || pendingLabels.Any(string.IsNullOrWhiteSpace)
+                || isEntropicBrewRequest
+                    && !pendingLabels.SequenceEqual(
+                        PrototypeContent.PotionPool,
+                        StringComparer.Ordinal))
                 throw pendingChance;
 
             var nextContinuation = resumeFrame with
