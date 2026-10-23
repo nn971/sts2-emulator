@@ -354,6 +354,13 @@ Semantic draws and nested effect draws now route Stratagem's post-shuffle select
 
 Standalone semantic draws and nested effect draws now also route a suspended `CardDrawn` choice through `SuspendDrawCardsAtCardDrawnChoice`. It builds and attaches one draw-resume operation, carrying the effect's deferred keyword identities when present; standalone choices keep their marker and empty outer continuation policy. Automatic hand draws still resume through their pipeline cursor without adding a card-effect operation.
 
+Initial nested effect draws in `ResolveOperations` now use the same
+`AttachDrawCardsAtCardDrawnChoice` mechanics owner as resumed semantic effect
+draws. It advances the remaining count and deferred physical-card identities,
+prepends the saved draw operation to the effect suffix, and applies the
+standalone hook marker at one boundary; the resolver still owns its queue and
+RNG state, and semantic transcripts remain in their provider owner.
+
 The semantic draw continuation boundaries now use `AdvanceControlledSemanticDrawFrame` for remaining-count and deferred-identity progress. After-shuffle insertion, Stratagem selection, nested `CardDrawn` choice, and nested-effect completion therefore advance the same mechanics frame before applying their boundary-specific continuation policy.
 
 When the resumed ordinary pipeline ends in Reward or Terminal after hand draw, `SemanticEndTurnV111` now completes with that engine result and keeps the completed draw projection for transcript replay. It still rejects an unfinished draw and checks the next-player boundary for combat-phase completion.

@@ -3342,3 +3342,13 @@ legacy adapter for unsupported result kinds. Provider checkpoint validation,
 RNG publication, and transcript ownership are unchanged. Broader draw-resume
 policy consolidation and cross-provider mechanical equivalence remain open.
 Static source review and `git diff --check` only; no tests or builds were run.
+
+**S4 nested CardDrawn continuation owner increment (2026-10-24):** Initial
+effect draws in `ResolveOperations` now share
+`AttachDrawCardsAtCardDrawnChoice` with resumed semantic effect draws. The
+common mechanics owner advances deferred physical-card identities, prepends
+the remaining draw operation to the saved effect suffix, and applies the
+standalone hook marker. The operation queue, RNG, and provider transcript
+owners remain in their existing boundaries. Broader draw-resume policy
+consolidation and cross-provider mechanical equivalence remain open. Static
+source review and `git diff --check` only; no tests or builds were run.

@@ -589,6 +589,21 @@ public sealed partial class PrototypeGameEngine
         bool accumulateDrawnCardIds,
         bool markStandaloneHookChoice)
     {
+        combat = AttachDrawCardsAtCardDrawnChoice(
+            combat, remaining, draw, continuation, drawnCardInstanceIds,
+            accumulateDrawnCardIds, markStandaloneHookChoice);
+        return PublishDrawMechanicsState(run, player, combat);
+    }
+
+    private static CombatState AttachDrawCardsAtCardDrawnChoice(
+        CombatState combat,
+        int remaining,
+        PrototypeControlledSemanticDrawV111 draw,
+        PrototypeChoiceResolutionContinuationState continuation,
+        long[] drawnCardInstanceIds,
+        bool accumulateDrawnCardIds,
+        bool markStandaloneHookChoice)
+    {
         var resumedDraw = AdvanceControlledSemanticDrawFrame(
             draw, remaining, drawnCardInstanceIds,
             accumulateDrawnCardIds);
@@ -608,7 +623,7 @@ public sealed partial class PrototypeGameEngine
                     StandaloneSemanticDrawHookChoice = true
                 }
             };
-        return PublishDrawMechanicsState(run, player, combat);
+        return combat;
     }
 
     /// <summary>

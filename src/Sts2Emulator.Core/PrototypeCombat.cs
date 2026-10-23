@@ -6576,29 +6576,27 @@ public sealed partial class PrototypeGameEngine
                     if (drawBoundary ==
                         PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice)
                     {
-                        var resumeDraw = CreateDrawResumeOperation(
-                            drawn.RemainingCount,
-                            operation.FromHandDraw,
-                            drawEventDepth,
-                            operation.DrawnCardKeyword,
-                            AccumulateDrawnCardInstanceIds(
+                        var suspendedDraw =
+                            new PrototypeControlledSemanticDrawV111(
+                                drawn.RemainingCount,
+                                operation.FromHandDraw,
+                                drawEventDepth,
+                                operation.DrawnCardKeyword,
                                 operation.DeferredDrawnCardInstanceIds,
-                                drawn.DrawnCardInstanceIds),
-                            operation.StandaloneSemanticDrawSegment,
-                            operation.DrawEqualSelectionCount);
-                        var continuation = CaptureEffectContinuation(
-                            new[] { resumeDraw }.Concat(operations));
-                        combat = AttachOuterChoiceContinuation(
-                            combat, continuation);
-                        if (operation.StandaloneSemanticDrawSegment &&
-                            combat.PendingChoice is { } nestedChoice)
-                            combat = combat with
+                                StandaloneSemanticDrawSegment:
+                                    operation.StandaloneSemanticDrawSegment)
                             {
-                                PendingChoice = nestedChoice with
-                                {
-                                    StandaloneSemanticDrawHookChoice = true
-                                }
+                                DrawEqualSelectionCount =
+                                    operation.DrawEqualSelectionCount
                             };
+                        var continuation = CaptureEffectContinuation(
+                            operations);
+                        combat = AttachDrawCardsAtCardDrawnChoice(
+                            combat, drawn.RemainingCount, suspendedDraw,
+                            continuation, drawn.DrawnCardInstanceIds,
+                            accumulateDrawnCardIds: true,
+                            markStandaloneHookChoice:
+                                operation.StandaloneSemanticDrawSegment);
                         return (player, combat);
                     }
                     if (drawBoundary is
