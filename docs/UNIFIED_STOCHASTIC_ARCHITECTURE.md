@@ -818,6 +818,15 @@ the exact pre-play target operation. Existing typed choice owners resume nested
 card effects before the opening pipeline completes; other opening-stage
 choices remain separately gated.
 
+History Course autoplay after `AutoPrePlay` and Whispering Earring's opening
+autoplay both pass random target selection through the shared
+`ResolveRandomEnemyTarget` owner. With a Native combat sidecar, that owner forks
+and advances `run.combat_targets`, then publishes the updated sidecar; ordinary
+step finalization reconciles the matching run-level bundle. Their local
+`prototype.combat` bundle remains a separate provider and is published with
+the mechanics result. This records the existing handoff without claiming
+cross-provider probability or cursor parity.
+
 The same opening target boundary now admits Imbued autoplay when the saved
 cursor is `LateRelicAutoPlay` and the continuation's driver queue matches the
 still-active triggered Imbued cards in persistent-card order. A target must
