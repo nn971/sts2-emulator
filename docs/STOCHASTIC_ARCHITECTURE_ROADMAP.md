@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 Metamorphosis source-action increment (2026-10-24):** The persistent
+semantic pilot now admits the physical Metamorphosis card and validates its
+manual Exhausting card-play frame, exact 3 (5 upgraded) generated-Attack
+operation, and remaining-count suffix. Its model and draw-pile position choices
+reuse the existing typed events and implemented Silent Attack pool; no event or
+snapshot schema changed. Static source review and `git diff --check` only; no
+tests or builds were run.
+
 **S4 Ricochet random-target action increment (2026-10-24):** Ricochet now
 enters the persistent semantic pilot by its physical source-card identity. Its
 four base or five upgraded random-target hits reuse the existing typed target

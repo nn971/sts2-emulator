@@ -922,6 +922,11 @@ then resumes the queued energy gain.
 Knife Trap also enters from its physical source card and reuses the saved
 autoplay-target continuation if an earlier Shiv kills the chosen enemy before
 the remaining Shiv queue finishes.
+Metamorphosis now enters from its physical source card and reuses the existing
+typed generated-Attack model and draw-insertion events. Admission checks the
+manual Exhausting card-play frame, the exact 3 (5 upgraded) operation and its
+remaining-count suffix; generated models still use the implemented Silent
+Attack pool. No event or snapshot schema changed.
 Shadow Step now uses the card-selection owner for its hand discard and queued
 power application, while Echoing Slash and Outbreak use the ordinary
 deterministic semantic player-action boundary.

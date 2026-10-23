@@ -4349,6 +4349,8 @@ public static class SemanticPilotCombatEngineV111
                     "proto.silent.ricochet");
             var semanticJackOfAllTradesCard =
                 card?.CardId == "proto.colorless.jack_of_all_trades";
+            var semanticMetamorphosisCard =
+                card?.CardId == PrototypeNativeHiveEvents.MetamorphosisId;
             var supportedCardAction = card is not null &&
                 (SemanticPlayerActionEngineV111.SupportsCard(card.CardId) ||
                  semanticDrawCard ||
@@ -4364,6 +4366,7 @@ public static class SemanticPilotCombatEngineV111
                  semanticVolleyCard ||
                  semanticRandomTargetCard ||
                  semanticJackOfAllTradesCard ||
+                 semanticMetamorphosisCard ||
                  semanticSelectionCard);
             if (!supportedCardAction)
                 throw new NotSupportedException(
@@ -4429,6 +4432,7 @@ public static class SemanticPilotCombatEngineV111
                      !semanticAutoplayCard &&
                      !semanticDrawPileSelectionCard &&
                      !semanticRandomRareToHandCard &&
+                     !semanticMetamorphosisCard &&
                      !IsSupportedActionRelicDraw(
                          source, result, resolvedAction.Action) &&
                      !SemanticPlayerActionEngineV111
@@ -5823,7 +5827,9 @@ public static class SemanticPilotCombatEngineV111
         if (isDrawInsertionModelChoice)
         {
             if (current.Stochastic.SeededEntry?.FixtureRandomFreeAttackDrawInsertion != true &&
-                combat?.AutomaticPipelineContinuation is null)
+                combat?.AutomaticPipelineContinuation is null &&
+                !IsMetamorphosisDrawInsertionChoice(
+                    combat, choice, drawInsertion))
                 throw new InvalidDataException(
                     "Random draw-Attack model choice lacks a supported source boundary.");
             SemanticDrawInsertionChoiceV111.ValidateBoundary(current.Run);
@@ -6528,9 +6534,11 @@ public static class SemanticPilotCombatEngineV111
             insertion.Operation.Kind == PrototypeCombatEffectKind
                 .CreateGeneratedCardsAtRandomDrawPositions &&
             insertion.Operation.CardId == "proto.status.dazed";
+        var metamorphosisInsertion = IsMetamorphosisDrawInsertionChoice(
+            combat, choice, insertion);
         if ((!fixedFixtureMatches && !randomFixtureMatches &&
              !afterShuffleRelicMatches && !automaticPipelineInsertion &&
-             !personalHiveInsertion) ||
+             !personalHiveInsertion && !metamorphosisInsertion) ||
             current.PendingEndTurn is not null ||
             current.PendingInitialIntents is not null ||
             current.TargetPending is not null ||
@@ -6561,6 +6569,104 @@ public static class SemanticPilotCombatEngineV111
             appendPileIdentityToLegacyOwner:
                 afterShuffleRelicMatches || personalHiveInsertion,
             appendPileIdentityToNativeOwner: true);
+    }
+
+    private static bool IsMetamorphosisDrawInsertionChoice(
+        CombatState? combat, PendingCombatChoiceState? choice,
+        PrototypeControlledDrawInsertionV111? insertion)
+    {
+        if (combat is null || insertion is null ||
+            choice is not { ChoiceId: "controlled_draw_insertion",
+                SourceCardInstanceId: { } sourceCardInstanceId,
+                CompletionEvents: [],
+                OuterChoiceContinuation: { } continuation } ||
+            insertion.Operation.Kind != PrototypeCombatEffectKind
+                .CreateRandomFreeAttacksInDrawPile ||
+            insertion.Stage is not ("card_model" or "position") ||
+            insertion.RequestSiteId !=
+                StochasticSiteRegistryV111.DrawPileRandomInsertSiteId ||
+            insertion.RequestOwnerId != "prototype.combat" ||
+            insertion.RequestOrdinal != 0 ||
+            insertion.SemanticDrawContinuation is not null ||
+            insertion.AfterShuffleRelic is not null ||
+            insertion.CompletedAfterShuffleRelics is not null ||
+            insertion.RemainingAfterShuffleRelics is not null ||
+            insertion.PersonalHiveDamageContinuation is not null ||
+            insertion.AutomaticHandDrawRemaining is not null ||
+            continuation.SourceCardInstanceId != sourceCardInstanceId ||
+            continuation.SourceCardDestination !=
+                PrototypeCardZone.ExhaustPile ||
+            choice.SourceCardDestination != continuation.SourceCardDestination ||
+            continuation.PendingDiscardEvents.Length != 0 ||
+            continuation.PendingSlyCardInstanceIds.Length != 0 ||
+            continuation.Parent is not null ||
+            continuation.EventDispatchContinuation is not null ||
+            continuation.RemoveSourceCardOnCompletion ||
+            continuation.SourceCardAlreadyMoved ||
+            continuation.CompletionEvents.Length != 1)
+            return false;
+
+        var completion = continuation.CompletionEvents[0];
+        if (completion.Kind != PrototypeCombatEventKind.CardPlayed ||
+            completion.CardId != PrototypeNativeHiveEvents.MetamorphosisId ||
+            completion.IsAutoPlay ||
+            completion.SourceCardInstanceId != sourceCardInstanceId)
+            return false;
+
+        var sourceCard = combat.Cards.SingleOrDefault(card =>
+            card.InstanceId == sourceCardInstanceId &&
+            card.CardId == PrototypeNativeHiveEvents.MetamorphosisId);
+        if (sourceCard is null || sourceCard.Enchantment is not null)
+            return false;
+
+        var series = continuation.CardPlaySeries;
+        if (series is null ||
+            series.SourceCardInstanceId != sourceCardInstanceId ||
+            series.SourceCardDestination != PrototypeCardZone.ExhaustPile ||
+            series.IsAutoPlay || series.PlayCount <= 0 ||
+            series.NextPlayIndex <= 0 ||
+            series.NextPlayIndex > series.PlayCount ||
+            continuation.MoveSourceCardOnCompletion !=
+                !series.HasRemainingExecutions)
+            return false;
+
+        var definition = PrototypeContent.Card(
+            PrototypeNativeHiveEvents.MetamorphosisId);
+        if (definition.Effects.Length != 1 ||
+            definition.Effects[0] is not
+                { Kind: PrototypeCombatEffectKind.CreateRandomFreeAttacksInDrawPile,
+                    Amount: 3, UpgradeDelta: 2,
+                    Target: PrototypeEffectTarget.ActionTargetEnemy,
+                    Repetitions: 1, RepetitionUpgradeDelta: 0,
+                    AmountPerEnergySpent: 0,
+                    RepetitionsPerEnergySpent: 0,
+                    AmountPerPowerStack: 0,
+                    RepetitionsPerPowerStack: 0,
+                    Condition: null,
+                    CountKind: null,
+                    AmountPerCount: 0,
+                    RepetitionsPerCount: 0 })
+            return false;
+
+        var operation = insertion.Operation;
+        var expectedAmount = definition.Effects[0].AmountAt(
+            sourceCard.UpgradeLevel, series.EnergySpent);
+        if (expectedAmount <= 0 || operation.Amount <= 0 ||
+            operation.Amount > expectedAmount)
+            return false;
+        var expectedOperation = new PrototypeQueuedOperation(
+            definition.Effects[0].Kind, operation.Amount,
+            TargetMode: definition.Effects[0].Target,
+            SourceKind: PrototypeEffectSourceKind.Card);
+        if (CanonicalJson.Sha256(operation) !=
+            CanonicalJson.Sha256(expectedOperation))
+            return false;
+        var expectedTail = operation.Amount > 1
+            ? new[] { expectedOperation with { Amount = operation.Amount - 1 } }
+            : Array.Empty<PrototypeQueuedOperation>();
+        return continuation.Operations.Length == expectedTail.Length &&
+            continuation.Operations.Select(CanonicalJson.Sha256)
+                .SequenceEqual(expectedTail.Select(CanonicalJson.Sha256));
     }
 
     internal static void ValidateSemanticCombatBoundary(RunState run)
