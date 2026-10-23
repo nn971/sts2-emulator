@@ -53,6 +53,13 @@ ChoicePool selection owners. Fixture setup remains optional; native
 acquisition, generated-pool completeness, and cursor parity remain open.
 Static source review and `git diff --check` only; no tests or builds were run.
 
+**S2/S4 Splash source-card increment (2026-10-23):** The persistent semantic
+pilot now admits Splash's optional three-Attack offer by its physical source
+card identity, exact generated-Attack operation, and upgrade state. It reuses
+the existing full-pool shuffle and ChoicePool selection owners. Fixture setup
+remains optional; generated-pool completeness and cursor parity remain open.
+Static source review and `git diff --check` only; no tests or builds were run.
+
 **S2/S4 Neow's Abundance choice increment (2026-10-23):** The persistent
 semantic combat pilot admits Abundance's generated-Power choice through the
 existing full-pool shuffle and ChoicePool selection owners. The shuffle guard

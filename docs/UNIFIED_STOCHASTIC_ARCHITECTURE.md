@@ -869,6 +869,10 @@ Discovery's optional three-card generated offer now enters from its physical
 source-card identity and exact `CardPlayed` continuation, reusing the existing
 full-pool shuffle and ChoicePool selection owners.
 
+Splash's optional three-Attack generated offer now enters from its physical
+source-card identity and source-upgrade state, reusing the same full-pool
+shuffle and ChoicePool selection owners.
+
 After a semantic `BeforeHandDraw` choice resolves, the common automatic-pipeline resumer now replays the saved `DrawPlayerHand` stage and re-enters the same handoff at its advanced cursor. Remaining supported stages and terminal reward publication therefore continue through the shared path, while a newly suspended choice remains pending for its owning adapter.
 
 `ResumeControlledTurnAfterIntents` now publishes its completed `AdvanceTurn` cursor back to `ResumeAutomaticPipelineContinuation`. The shared handoff resumes subsequent automatic stages and preserves the existing stop-before-semantic-hand-draw boundary used by the end-turn facade.

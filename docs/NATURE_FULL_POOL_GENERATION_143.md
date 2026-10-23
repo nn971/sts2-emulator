@@ -51,6 +51,13 @@ continuation from its physical source-card identity. The exact card effect,
 `CardPlayed` completion, and saved manual card-play frame reuse the existing
 shuffle event and ChoicePool selection; fixture setup remains optional.
 
+Splash's optional three-Attack offer also enters by its physical source-card
+identity. The admission checks its exact generated-Attack operation,
+`CardPlayed` completion, and whether the source card's upgrade matches the
+generated offer's upgrade flag, then reuses the same shuffle and ChoicePool
+selection owners. Fixture setup remains optional; source-pool completeness and
+Native cursor parity remain open.
+
 ## Validation and boundaries
 
 Focused tests exercise Attack and Colorless Potions through the **real potion-use effect kernel** on a fixture-modified playable combat state, including a resumed player card-selection action, and the distinct-common operation through an internal operation fixture. They verify full-pool RNG call shape, source card-model order, source eligibility, invalid/stale swap decisions, mid-shuffle forgery checks, replay event IDs, and 15-worker independent execution.

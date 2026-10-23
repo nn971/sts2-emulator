@@ -403,6 +403,9 @@ reuses the existing card-selection owner; its fixture is optional for source
 card and pile setup. Discovery also enters its optional three-card generated
 offer from the physical source card and exact `CardPlayed` continuation, then
 reuses the existing full-pool shuffle and ChoicePool selection owners.
+Splash also enters its optional three-Attack generated offer from its physical
+source card and upgrade state, reusing the same full-pool shuffle and ChoicePool
+selection owners.
 Gambler's Brew uses the existing sequential card-selection event for its
 one-at-a-time discard prompt, then resumes the semantic draw owner for the
 selected count. Its guard matches the potion-use completion and exact
