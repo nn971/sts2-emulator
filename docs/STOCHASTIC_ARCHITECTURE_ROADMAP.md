@@ -24,6 +24,14 @@ The generated inventory maps 101 of 104 typed requests; the three generic
 Native choice wrappers remain dynamic. Static review and `git diff --check`
 only; no tests or builds were run.
 
+**S0 Native player-choice caller inventory increment (2026-10-23):** The
+existing helper-call census now traces 23 concrete `NativePlayerRngV111` and
+direct `NativeRandomChoiceV111` callers to their stable site IDs. All 39
+known helper callsites, including shuffle helpers, map to registry and
+migration-matrix rows. The three generic request constructors remain
+parameterized in the typed-construction census. Static review and
+`git diff --check` only; no tests or builds were run.
+
 **S6 Native-regional Event-entry fallback increment (2026-10-23):** The
 existing atomic Event-node entry session now consumes supported saved legacy
 `event` requests for generated gold, Stone of All Time's potion slot, and

@@ -1705,10 +1705,10 @@ def _site_id_forwarder_calls(
 ) -> list[dict[str, Any]]:
     """Trace site arguments at known RNG-helper call boundaries.
 
-    NativeFisherYates call expressions inside these helpers receive their
-    semantic site from the owning mechanics call. Keep this supplemental to
-    the direct RNG-call census: the helper callsites are where the stable
-    site is chosen, while provider and transcript wrappers are not sites.
+    Generic RNG wrappers receive their semantic site from the owning
+    mechanics call. Keep this supplemental to the direct RNG-call census: the
+    helper callsites are where the stable site is chosen, while provider and
+    transcript wrappers are not sites.
     """
     specifications = (
         {
@@ -1734,12 +1734,68 @@ def _site_id_forwarder_calls(
                 "PrototypeNativeOvergrowthMap.cs",
             },
         },
+        {
+            "callee": "NativePlayerRngV111.ChooseIndex",
+            "pattern": re.compile(
+                r"\bNativePlayerRngV111\.ChooseIndex\s*\("
+            ),
+            "site_argument": 1,
+            "paths": None,
+            "exclude_paths": {"NativePlayerRngV111.cs"},
+        },
+        {
+            "callee": "NativePlayerRngV111.ChooseBoundedInteger",
+            "pattern": re.compile(
+                r"\bNativePlayerRngV111\.ChooseBoundedInteger\s*\("
+            ),
+            "site_argument": 1,
+            "paths": None,
+            "exclude_paths": {"NativePlayerRngV111.cs"},
+        },
+        {
+            "callee": "NativePlayerRngV111.NextUnitFloat",
+            "pattern": re.compile(
+                r"\bNativePlayerRngV111\.NextUnitFloat\s*\("
+            ),
+            "site_argument": 1,
+            "paths": None,
+            "exclude_paths": {"NativePlayerRngV111.cs"},
+        },
+        {
+            "callee": "NativeRandomChoiceV111.ChooseIndexRange",
+            "pattern": re.compile(
+                r"\bNativeRandomChoiceV111\.ChooseIndexRange\s*\("
+            ),
+            "site_argument": 1,
+            "paths": None,
+            "exclude_paths": {"NativePlayerRngV111.cs"},
+        },
+        {
+            "callee": "NativeRandomChoiceV111.ChooseBoundedInteger",
+            "pattern": re.compile(
+                r"\bNativeRandomChoiceV111\.ChooseBoundedInteger\s*\("
+            ),
+            "site_argument": 1,
+            "paths": None,
+            "exclude_paths": {"NativePlayerRngV111.cs"},
+        },
+        {
+            "callee": "NativeRandomChoiceV111.NextUnitFloat",
+            "pattern": re.compile(
+                r"\bNativeRandomChoiceV111\.NextUnitFloat\s*\("
+            ),
+            "site_argument": 1,
+            "paths": None,
+            "exclude_paths": {"NativePlayerRngV111.cs"},
+        },
     )
     calls: list[dict[str, Any]] = []
     for path, source in sources.items():
         for specification in specifications:
             allowed_paths = specification["paths"]
             if allowed_paths is not None and path.name not in allowed_paths:
+                continue
+            if path.name in specification.get("exclude_paths", set()):
                 continue
             for match in specification["pattern"].finditer(source):
                 arguments = _call_arguments(source, match.start())
@@ -2525,12 +2581,13 @@ def render_markdown(report: dict[str, Any]) -> str:
         "--check-no-ambient-entropy --format markdown > "
         "docs/RNG_DIRECT_CALLSITE_CENSUS.md`.",
         "Rows distinguish legacy prototype calls, native primitive calls, "
-        "generic shuffle-helper calls, and recognized provider/fixture support. "
+        "generic RNG-helper calls, and recognized provider/fixture support. "
         "Shuffle rows include their `siteId` argument, resolved constant where "
         "available, and exact migration-matrix match for static IDs. The "
-        "supplemental table traces site IDs passed through the known event, "
-        "combat-pool, and map shuffle helpers. Generic provider adapters and "
-        "transcript replay are infrastructure rather than stochastic sites.",
+        "supplemental table traces site IDs passed through known event, "
+        "combat-pool, and map shuffle helpers, plus Native player-choice "
+        "wrappers at their source callsites. The generic wrapper constructors "
+        "remain infrastructure; their caller rows identify the concrete sites.",
         "",
         "Known RNG helper callsites with forwarded stable site IDs:",
         "",
