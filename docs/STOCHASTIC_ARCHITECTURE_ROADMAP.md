@@ -74,6 +74,13 @@ the existing random-target event and exact remaining damage-operation suffix.
 Native target-pool and cursor parity remain open. Static source review and
 `git diff --check` only; no tests or builds were run.
 
+**S2/S4 Jack of All Trades source-card increment (2026-10-23):** The
+persistent semantic pilot admits its distinct Colorless-card generation from
+the physical source-card identity and exact amount-one-or-upgraded operation.
+It reuses the existing full-pool shuffle owner. Fixture setup remains optional;
+pool completeness and cursor parity remain open. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S2/S4 Neow's Abundance choice increment (2026-10-23):** The persistent
 semantic combat pilot admits Abundance's generated-Power choice through the
 existing full-pool shuffle and ChoicePool selection owners. The shuffle guard

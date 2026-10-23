@@ -58,6 +58,12 @@ generated offer's upgrade flag, then reuses the same shuffle and ChoicePool
 selection owners. Fixture setup remains optional; source-pool completeness and
 Native cursor parity remain open.
 
+Jack of All Trades also enters from its physical source-card identity. Its
+distinct Colorless-card shuffle checks the exact amount-one-or-upgraded
+operation, `CardPlayed` completion, and saved manual card-play frame before
+reusing the existing full-pool shuffle owner. Fixture setup remains optional;
+pool completeness and Native cursor parity remain open.
+
 ## Validation and boundaries
 
 Focused tests exercise Attack and Colorless Potions through the **real potion-use effect kernel** on a fixture-modified playable combat state, including a resumed player card-selection action, and the distinct-common operation through an internal operation fixture. They verify full-pool RNG call shape, source card-model order, source eligibility, invalid/stale swap decisions, mid-shuffle forgery checks, replay event IDs, and 15-worker independent execution.

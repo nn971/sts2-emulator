@@ -2471,6 +2471,9 @@ public sealed record SemanticPilotCombatV111(
                 combat, combat?.PendingChoice, poolShufflePending);
             bool splashShuffle = IsSplashGeneratedChoiceShuffle(
                 combat, combat?.PendingChoice, poolShufflePending);
+            bool jackOfAllTradesShuffle =
+                IsJackOfAllTradesDistinctColorlessShuffle(
+                    combat, combat?.PendingChoice, poolShufflePending);
             bool neowsAbundanceShuffle = IsNeowsAbundanceGeneratedChoiceShuffle(
                 combat, combat?.PendingChoice,
                 combat?.PendingChoice?.ControlledPoolShuffle);
@@ -2478,6 +2481,7 @@ public sealed record SemanticPilotCombatV111(
                 handReturnShuffle || recycleShuffle ||
                 colorlessPotionShuffle || anointedRareShuffle ||
                 seekerStrikeShuffle || discoveryShuffle || splashShuffle ||
+                jackOfAllTradesShuffle ||
                 neowsAbundanceShuffle ||
                 (randomRareToHandShuffle
                     ? this.Stochastic.SeededEntry?.FixtureSelectionCardId ==
@@ -3185,6 +3189,7 @@ public static class SemanticPilotCombatEngineV111
             "proto.colorless.discovery" or
             "proto.colorless.splash" or
             "proto.colorless.volley" or
+            "proto.colorless.jack_of_all_trades" or
             "proto.silent.nightmare" or
             "proto.colorless.beat_down" or
             "proto.colorless.catastrophe" or
@@ -4157,6 +4162,8 @@ public static class SemanticPilotCombatEngineV111
                 card?.CardId == "proto.colorless.jackpot";
             var semanticVolleyCard =
                 card?.CardId == "proto.colorless.volley";
+            var semanticJackOfAllTradesCard =
+                card?.CardId == "proto.colorless.jack_of_all_trades";
             var supportedCardAction = card is not null &&
                 (SemanticPlayerActionEngineV111.SupportsCard(card.CardId) ||
                  card.CardId == "proto.silent.ricochet" ||
@@ -4170,6 +4177,7 @@ public static class SemanticPilotCombatEngineV111
                  semanticSplashCard ||
                  semanticJackpotCard ||
                  semanticVolleyCard ||
+                 semanticJackOfAllTradesCard ||
                  semanticSelectionCard);
             if (!supportedCardAction)
                 throw new NotSupportedException(
@@ -6014,6 +6022,47 @@ public static class SemanticPilotCombatEngineV111
             continuation.EventDispatchContinuation is null;
     }
 
+    private static bool IsJackOfAllTradesDistinctColorlessShuffle(
+        CombatState? combat, PendingCombatChoiceState? choice,
+        PrototypeControlledPoolShuffleV111? shuffle)
+    {
+        if (combat is null ||
+            choice is not { ChoiceId: "controlled_pool_shuffle",
+                SourceCardInstanceId: { } sourceCardInstanceId,
+                CompletionEvents: [],
+                OuterChoiceContinuation: { } continuation } ||
+            shuffle is null)
+            return false;
+        var sourceCard = combat.Cards.SingleOrDefault(card =>
+            card.InstanceId == sourceCardInstanceId &&
+            card.CardId == "proto.colorless.jack_of_all_trades");
+        if (sourceCard is null)
+            return false;
+        var operation = shuffle.Operation;
+        var series = continuation.CardPlaySeries;
+        return operation.Kind ==
+                PrototypeCombatEffectKind.CreateDistinctColorlessCardsInHand &&
+            operation.Amount == 1 + sourceCard.UpgradeLevel &&
+            operation.SourceKind == PrototypeEffectSourceKind.Card &&
+            operation.Selection is null && operation.TargetEnemyId is null &&
+            operation.Condition is null &&
+            continuation.SourceCardInstanceId == sourceCardInstanceId &&
+            continuation.SourceCardDestination == PrototypeCardZone.ExhaustPile &&
+            continuation.Operations.Length == 0 &&
+            continuation.CompletionEvents.Length == 1 &&
+            continuation.CompletionEvents[0] is
+                { Kind: PrototypeCombatEventKind.CardPlayed,
+                    CardId: "proto.colorless.jack_of_all_trades" } &&
+            continuation.CompletionEvents[0].SourceCardInstanceId ==
+                sourceCardInstanceId &&
+            series is not null &&
+            series.SourceCardInstanceId == sourceCardInstanceId &&
+            !series.IsAutoPlay && series.NextPlayIndex > 0 &&
+            series.NextPlayIndex <= series.PlayCount &&
+            continuation.Parent is null &&
+            continuation.EventDispatchContinuation is null;
+    }
+
     private static bool IsColorlessPotionGeneratedChoiceShuffle(
         CombatState? combat, PendingCombatChoiceState? choice,
         PrototypeControlledPoolShuffleV111? shuffle)
@@ -6167,6 +6216,9 @@ public static class SemanticPilotCombatEngineV111
             combat, choice, shuffle);
         bool splashShuffle = IsSplashGeneratedChoiceShuffle(
             combat, choice, shuffle);
+        bool jackOfAllTradesShuffle =
+            IsJackOfAllTradesDistinctColorlessShuffle(
+                combat, choice, shuffle);
         bool mayhemRecycle = recycle && combat is not null && choice is not null &&
             PrototypeGameEngine.IsMayhemLegacyRecycleContinuation(
                 combat, choice);
@@ -6179,6 +6231,7 @@ public static class SemanticPilotCombatEngineV111
         var fixtureMatches = automaticPipelinePoolShuffle || handReturn ||
             recycle || colorlessPotionShuffle || anointedRareShuffle ||
             seekerStrikeShuffle || discoveryShuffle || splashShuffle ||
+            jackOfAllTradesShuffle ||
             neowsAbundanceShuffle ||
             (randomRareToHand
             ? current.Stochastic.SeededEntry?.FixtureSelectionCardId ==

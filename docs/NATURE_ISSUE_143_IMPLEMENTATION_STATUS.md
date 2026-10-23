@@ -412,6 +412,9 @@ continuation, source upgrade level and remaining-count suffix.
 Volley now enters the same semantic pilot through its physical source-card
 identity. Each random-target event validates the saved manual `CardPlayed`
 frame and remaining X-hit operation sequence before resuming.
+Jack of All Trades now enters its distinct Colorless-card shuffle through its
+physical source-card identity and exact upgraded amount, reusing the existing
+full-pool shuffle owner.
 Gambler's Brew uses the existing sequential card-selection event for its
 one-at-a-time discard prompt, then resumes the semantic draw owner for the
 selected count. Its guard matches the potion-use completion and exact
