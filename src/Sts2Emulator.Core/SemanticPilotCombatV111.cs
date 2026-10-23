@@ -183,6 +183,7 @@ public sealed record SemanticNativePolicyAuditV111(
     private RandomBoundaryEventV111[]? _decisions =
         CloneEvents(Decisions);
     private RandomBoundaryTranscriptEntryV111[]? _providerTrace = [];
+    private SemanticIntentOutcomeV111[]? _weightedIntentOutcomes = [];
 
     public RandomBoundaryEventV111[] Decisions
     {
@@ -194,11 +195,18 @@ public sealed record SemanticNativePolicyAuditV111(
         get => CloneTrace(_providerTrace)!;
         init => _providerTrace = CloneTrace(value);
     }
+    public SemanticIntentOutcomeV111[] WeightedIntentOutcomes
+    {
+        get => CloneIntentOutcomes(_weightedIntentOutcomes)!;
+        init => _weightedIntentOutcomes = CloneIntentOutcomes(value);
+    }
 
     public SemanticNativePolicyAuditV111 Fork() => this with
     {
         Decisions = CloneEvents(_decisions)!,
-        ProviderTrace = CloneTrace(_providerTrace)!
+        ProviderTrace = CloneTrace(_providerTrace)!,
+        WeightedIntentOutcomes = CloneIntentOutcomes(
+            _weightedIntentOutcomes)!
     };
 
     private static RandomBoundaryEventV111[]? CloneEvents(
@@ -209,13 +217,18 @@ public sealed record SemanticNativePolicyAuditV111(
         RandomBoundaryTranscriptEntryV111[]? values) => values?.Select(value =>
             value is null ? null! : value.Fork()).ToArray();
 
+    private static SemanticIntentOutcomeV111[]? CloneIntentOutcomes(
+        SemanticIntentOutcomeV111[]? values) => values?.Select(value =>
+            value is null ? null! : value.Fork()).ToArray();
+
     public void Validate()
     {
         var decisions = _decisions;
         var providerTrace = _providerTrace;
+        var weightedIntentOutcomes = _weightedIntentOutcomes;
         if (ProviderId != NativeProviderId ||
             ProbabilityStatus != "UNVERIFIED" || decisions is null ||
-            providerTrace is null)
+            providerTrace is null || weightedIntentOutcomes is null)
             throw new InvalidDataException(
                 "Native policy baseline has invalid provider provenance.");
 
@@ -231,6 +244,28 @@ public sealed record SemanticNativePolicyAuditV111(
             new RandomIndexDecisionV111(decision.Request,
                 decision.SelectedIndex, decision.ProviderMode,
                 decision.NativeCursorBefore, decision.NativeCursorAfter).Validate();
+        }
+
+        var weightedEventIds = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var outcome in weightedIntentOutcomes)
+        {
+            if (outcome is null)
+                throw new InvalidDataException(
+                    "Native policy weighted intent outcome is null.");
+            outcome.Validate();
+            var semanticEvent = outcome.Event;
+            var matchingDecisions = decisions.Where(decision =>
+                decision.Request.SiteId == semanticEvent.SiteId &&
+                decision.Request.StreamId == semanticEvent.StreamId &&
+                decision.Request.OwnerId == semanticEvent.OwnerId &&
+                decision.Request.Ordinal == semanticEvent.Ordinal).ToArray();
+            if (matchingDecisions.Length != 1 ||
+                matchingDecisions[0].SelectedIndex != outcome.SourceTicket ||
+                matchingDecisions[0].Request.SupportCount !=
+                    semanticEvent.Support.TotalRawWeight ||
+                !weightedEventIds.Add(semanticEvent.EventId))
+                throw new InvalidDataException(
+                    "Native policy weighted intent outcome does not match its primitive decision.");
         }
 
         var traceIndices = new List<RandomBoundaryEventV111>();
@@ -1994,6 +2029,7 @@ public static class SemanticPilotCombatEngineV111
         RunState semanticRun;
         ControlledTurnIntentsV111? pendingInitialIntents = null;
         RandomBoundaryEventV111[] nativePolicyDecisions = nativeDecisions;
+        SemanticIntentOutcomeV111[] nativeIntentOutcomes = [];
         if (entry.NativePolicyBaseline)
         {
             RandomBoundaryEventV111[] committedIntentDecisions;
@@ -2007,6 +2043,7 @@ public static class SemanticPilotCombatEngineV111
                     committed = PrototypeGameEngine.CommitEnemyIntentsWithAudit(
                         combat, RngBundle.Empty,
                         NativeCombatRngEntryV111.CommittedIntentSiteId);
+                nativeIntentOutcomes = committed.WeightedOutcomes;
                 using (ControlledChanceGuardV111.Enter())
                 using (ControlledChanceGuardV111.AllowEngineOwnedNativeProvider())
                 using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
@@ -2092,7 +2129,8 @@ public static class SemanticPilotCombatEngineV111
                     SemanticNativePolicyAuditV111.NativeProviderId,
                     nativePolicyDecisions)
                 {
-                    ProviderTrace = nativePolicyTrace
+                    ProviderTrace = nativePolicyTrace,
+                    WeightedIntentOutcomes = nativeIntentOutcomes
                 }
                 : null
         };

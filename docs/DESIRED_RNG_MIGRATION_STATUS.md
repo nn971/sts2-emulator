@@ -322,6 +322,9 @@ pair every sampled move ticket with its typed weighted event support,
 selected branch, and exact source ticket. This metadata is additive and does
 not replace the primitive provider transcript or establish source eligibility
 completeness.
+The native-policy source-route baseline retains these typed outcomes in its
+provider-private audit state and validates them against the matching sampled
+index request during snapshot validation.
 The intent engine's eligibility logic (source move state, weighted
 branches, anti-repeat, opening sequence and per-creature commit order)
 remains inside `PrototypeGameEngine.SelectEnemyMove`. The callback
