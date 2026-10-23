@@ -377,7 +377,9 @@ broader card-effect draws remain separate integration milestones. The
 persistent semantic pilot now also admits the five modeled direct-draw potion
 actions Glowwater, Clarity, Cure All, Snecko Oil and Swift, resolving each
 drawn card through the existing semantic draw event and effect continuation.
-Other potion effects and opening draws remain separate integration
+The same path admits Restlessness, Slimed and Calculated Gamble; the latter
+preserves its queued draw count across the preceding hand discard. Other
+potion and card effects and opening draws remain separate integration
 milestones.
 
 The semantic JSONL/Python bridge also exposes fixed-model random draw-pile

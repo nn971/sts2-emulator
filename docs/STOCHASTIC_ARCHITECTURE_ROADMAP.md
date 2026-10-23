@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S2/S4 semantic card-effect draw increment (2026-10-23):** The persistent
+semantic combat pilot now admits Restlessness, Slimed, and Calculated Gamble
+through its existing semantic draw owner. Restlessness keeps its source
+hand-empty enqueue condition; Calculated Gamble keeps its queued draw count
+while the preceding discard operation runs. No chance-event or snapshot schema
+was added. Other card-effect and opening draws remain open. Static source
+review and `git diff --check` only; no tests or builds were run.
+
 **S2/S4 semantic draw-potion action increment (2026-10-23):** The persistent
 semantic combat pilot now admits modeled direct-draw actions for Glowwater,
 Clarity, Cure All, Snecko Oil, and Swift. Each suspended card identity reuses

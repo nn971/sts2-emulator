@@ -3140,9 +3140,12 @@ public static class SemanticPilotCombatEngineV111
             "proto.potion.swift");
 
     private static bool IsSemanticEffectDrawCard(string cardId) =>
-        cardId is ("proto.silent.backflip" or
+        cardId is ("proto.common.restlessness" or
+            "proto.status.slimed" or
+            "proto.silent.backflip" or
             "proto.silent.quick_slash" or
             "proto.silent.adrenaline" or
+            "proto.silent.calculated_gamble" or
             "proto.silent.escape_plan" or
             "proto.silent.expertise" or
             "proto.silent.reflex" or
