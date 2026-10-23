@@ -882,15 +882,17 @@ mechanics regressions were not run. This continuation remains `UNVERIFIED`.
 ## 2026-10-23: deterministic no-target combat potions
 
 The persistent semantic pilot now admits the exact modeled no-target
-deterministic potion effects for Cunning, Binding, Ship in a Bottle, Heart of
-Iron, Gigantification, Shackling, Mazaleth's Gift, Radiant Tincture, Lucky
-Tonic, Block, Explosive, Explosive Ampoule, Dexterity, Fysh Oil, Energy,
-Strength, Regen, Duplicator, Flex, Blessing of the Forge, Speed, Liquid
-Bronze, Ghost in a Jar, Fortifier, and Stable Serum. The actions run under the
-controlled-chance guard and retain the existing combat boundary and hidden
-draw-pile checks. No chance owner or snapshot schema was added. Draw, choice,
-outside-combat, and other potion effects remain separate work. Static source
-review and `git diff --check` only; no tests or builds were run.
+deterministic potion effects for Neow's Ambergris, Cunning, Binding, Ship in a
+Bottle, Heart of Iron, Gigantification, Shackling, Mazaleth's Gift, Radiant
+Tincture, Lucky Tonic, Block, Explosive, Explosive Ampoule, Dexterity, Fysh
+Oil, Energy, Strength, Regen, Duplicator, Flex, Blessing of the Forge, Speed,
+Liquid Bronze, Ghost in a Jar, Fortifier, and Stable Serum. Ambergris keeps
+its modeled heal and queued extra turn through the ordinary combat action and
+turn pipeline. The actions run under the controlled-chance guard and retain
+the existing combat boundary and hidden draw-pile checks. No chance owner or
+snapshot schema was added. Draw, choice, outside-combat, and other potion
+effects remain separate work. Static source review and `git diff --check`
+only; no tests or builds were run.
 
 ## 2026-10-23: deterministic targeted combat potions
 

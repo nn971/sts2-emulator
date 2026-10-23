@@ -3166,7 +3166,8 @@ public static class SemanticPilotCombatEngineV111
 
     private static bool IsSemanticDeterministicCombatPotion(
         string? potionId) =>
-        potionId is ("proto.potion.cunning" or
+        potionId is ("proto.native.neow.ambergris" or
+            "proto.potion.cunning" or
             "proto.potion.binding" or
             "proto.potion.ship_in_a_bottle" or
             "proto.potion.heart_of_iron" or
