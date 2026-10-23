@@ -57,6 +57,13 @@ runtime callers and session registration use registry-owned SiteIds. Native
 cursor parity and source pool limits remain open. Static source review and
 `git diff --check` only; no tests or builds were run.
 
+**S0 Neow offer manual site review increment (2026-10-23):** The five initial
+offer-generation sites now trace the cursed choice, conditional relic pairs,
+single-player filtering, and ordered positive-pool shuffle through the
+existing Native generator and atomic ReferenceNature session. Native unlock
+filtering, source call order, and cursor parity remain open. Static source
+review and `git diff --check` only; no tests or builds were run.
+
 **S0 summon-pool SiteId ownership increment (2026-10-23):** The existing
 legacy summon continuation and query registry now use the shared
 `combat.enemy.summon_pool.select` constant. Its Native pool path continues to
