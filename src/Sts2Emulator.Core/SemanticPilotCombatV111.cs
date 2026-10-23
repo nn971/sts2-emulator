@@ -1073,21 +1073,6 @@ public sealed record SemanticNativePolicyAuditV111(
             PoolShuffleAuditSchemaV2 or PoolShuffleAuditSchemaV3;
         bool completeNativeDrawPileShuffles =
             PoolShuffleAuditSchema == PoolShuffleAuditSchemaV3;
-        if (PoolShuffleAuditSchema == PoolShuffleAuditSchemaV1 &&
-            poolShuffleOutcomes.Any(outcome =>
-                outcome.Event.Request.SiteId is
-                    NativeFisherYatesV111.SiteId or
-                    ControlledRecycleShuffleEngineV111.SiteId or
-                    PrototypeNativeRelicGrabBag.QueueShuffleSiteId))
-            throw new InvalidDataException(
-                "Native policy pool-shuffle schema V1 cannot contain extended Native pool annotations.");
-        if (PoolShuffleAuditSchema == PoolShuffleAuditSchemaV2 &&
-            poolShuffleOutcomes.Any(outcome =>
-                outcome.Event.Request.SiteId is
-                    NativeFisherYatesV111.SiteId or
-                    ControlledRecycleShuffleEngineV111.SiteId))
-            throw new InvalidDataException(
-                "Native policy pool-shuffle schema V2 cannot contain Native draw-pile shuffle annotations.");
         var requiredPoolShuffleDecisions =
             new List<RandomIndexDecisionV111>(tracePoolShuffleDecisions);
         if (completeNativeDrawPileShuffles)
