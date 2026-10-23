@@ -871,6 +871,8 @@ The semantic combat pilot also admits the exact deterministic potion effects alr
 
 `SemanticPlayerActionEngineV111` now admits 32 modeled deterministic Colorless card actions, including legal enemy-target actions. Rend uses its modeled target-debuff count; Bolas and Thrumming Hatchet reuse the existing last-turn rebound hook and semantic draw-pile adapter. Calamity installs its deterministic power, whose later Attack trigger reuses the existing generated-card model owner. Nostalgia's attack and skill returns are admitted only when the completed action appends that physical source card to the draw pile under the active power's stack condition; the existing adapter commits the known insertion. Every action runs under the controlled-chance guard and validates the physical draw-pile order against the provider deck after resolution. Mayhem, Entropy, and Stratagem continue through their existing autoplay, turn-start selection, and recycle owners. Other random generation, direct draws, and interactive card choices remain with their specialized continuations.
 
+The same semantic player-action gate admits the modeled deterministic event cards Byrd Swoop, Peck, and Toric Toughness. Their damage and block effects use ordinary source combat resolution under the controlled-chance guard and preserve the existing hidden draw-pile checks; no chance owner or snapshot schema is added.
+
 Discovery's optional three-card generated offer now enters from its physical
 source-card identity and exact `CardPlayed` continuation, reusing the existing
 full-pool shuffle and ChoicePool selection owners.

@@ -938,6 +938,15 @@ through their existing owners. Other random generation, direct draws, and
 interactive choices remain with their specialized continuations. Static source
 review and `git diff --check` only; no tests or builds were run.
 
+## 2026-10-23: deterministic event-card player actions
+
+Byrd Swoop, Peck, and Toric Toughness now enter through the existing semantic
+player-action allowlist. Their modeled targeted damage or player Block effect
+uses the ordinary combat engine under the controlled-chance guard, with the
+existing player-boundary and hidden draw-pile checks. No chance owner or
+snapshot schema was added. Static source review and `git diff --check` only;
+no tests or builds were run.
+
 ## 2026-10-23: deterministic outside-combat potion actions
 
 The existing ReferenceNature run-action session now admits legal non-event

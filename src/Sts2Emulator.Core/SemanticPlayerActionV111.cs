@@ -135,7 +135,10 @@ public static class SemanticPlayerActionEngineV111
             "proto.colorless.the_gambit",
             "proto.colorless.entropy",
             "proto.colorless.stratagem",
-            "proto.colorless.thrumming_hatchet"
+            "proto.colorless.thrumming_hatchet",
+            "proto.native.event.byrd_swoop",
+            "proto.native.event.peck",
+            "proto.native.event.toric_toughness"
         };
 
     internal static bool SupportsCard(string cardId) =>
