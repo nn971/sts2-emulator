@@ -116,9 +116,13 @@ public static class SemanticDrawHookChoiceEngineV111
         var combat = source.World?.Combat;
         var choice = combat?.PendingChoice;
         bool automatic = choice?.AutomaticSemanticDrawHookChoice == true;
+        var automaticPipeline = combat?.AutomaticPipelineContinuation;
+        var handDrawProgress = automaticPipeline?
+            .Stochastic.HandDrawProgress;
         bool beforeHandDraw = automatic &&
-            combat?.AutomaticPipelineContinuation?
-                .Stochastic.ControlledSemanticBeforeHandDrawPending == true;
+            handDrawProgress?.Kind ==
+                PrototypeAutomaticHandDrawProgressKindV111
+                    .SemanticBeforeHandDraw;
         bool automaticPipelineAutoplay = choice is not null &&
             combat is not null &&
             PrototypeGameEngine
@@ -145,12 +149,13 @@ public static class SemanticDrawHookChoiceEngineV111
             choice.AutomaticSemanticStratagemDrawSelection ||
             (automatic
                 ? beforeHandDraw
-                    ? combat.AutomaticPipelineContinuation?.Mechanics.IsAtStep(
+                    ? automaticPipeline?.Mechanics.IsAtStep(
                           PrototypeAutomaticStepKind.DrawPlayerHand) != true ||
-                      combat.AutomaticPipelineContinuation
-                          .Stochastic.ControlledSemanticDrawRemaining is not null ||
-                      combat.AutomaticPipelineContinuation
-                          .Stochastic.ControlledSemanticDrawRequested is not null
+                      handDrawProgress is not
+                          { Kind: PrototypeAutomaticHandDrawProgressKindV111
+                              .SemanticBeforeHandDraw,
+                            RequestedCount: null,
+                            RemainingCount: null }
                     : !PrototypeGameEngine.IsSemanticAutomaticHandDraw(combat)
                 : (!automaticPipelineAutoplay &&
                    combat.AutomaticPipelineContinuation is not null) ||

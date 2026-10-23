@@ -3185,3 +3185,14 @@ shared remainder queries instead of re-deriving modes from flattened counters.
 keep their existing shape. Remaining compatibility-projection readers and
 cross-provider mechanical equivalence remain open. Static source review and
 `git diff --check` only; no tests or builds were run.
+
+**S4 tagged hand-draw consumer migration increment (2026-10-24):** Semantic
+hook and draw-insertion validation, controlled-playable staging, automatic
+cost and Stratagem resumes, semantic draw-count recovery, and Mayhem cursor
+admission now use the tagged progress owner and shared queries. Checks for an
+empty hand-draw cursor now rely on `HandDrawProgress: null` plus the separately
+owned completed semantic receipt instead of repeating all flattened progress
+projections. Snapshot fields and transcript policies are unchanged. Remaining
+compatibility-projection consumers and cross-provider mechanical equivalence
+remain open. Static source review and `git diff --check` only; no tests or
+builds were run.

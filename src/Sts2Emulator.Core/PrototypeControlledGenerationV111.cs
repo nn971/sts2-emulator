@@ -96,14 +96,6 @@ public sealed partial class PrototypeGameEngine
                 PrototypeAutomaticStepKind.DrawPlayerHand) ||
             pipeline.Stochastic is not
                 { HandDrawProgress: null,
-                  ControlledDrawRemaining: null,
-                  ControlledDrawCostRemaining: null,
-                  ControlledSemanticDrawRemaining: null,
-                  ControlledSemanticDrawRequested: null,
-                  ControlledSemanticBeforeHandDrawPending: false,
-                  ControlledRecycleStratagemPending: false,
-                  ControlledDrawHookChoicePending: false,
-                  ControlledBeforeHandDrawHookChoicePending: false,
                   ControlledEnemyAction: null,
                   ControlledTurnIntents: null,
                   CompletedSemanticHandDrawRequested: null } ||

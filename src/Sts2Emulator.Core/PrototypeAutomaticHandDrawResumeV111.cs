@@ -139,16 +139,23 @@ public sealed partial class PrototypeGameEngine
         PrototypeAutomaticHandDrawProgressV111 progress;
         if (semanticRequested is { } requested)
         {
+            int? savedSemanticRequested = null;
+            if (cursor is not null)
+            {
+                savedSemanticRequested =
+                    cursor.Stochastic.TryGetSemanticHandDrawProgress(
+                        cursor.Mechanics, out int savedRequested, out _)
+                        ? savedRequested
+                        : cursor.Stochastic.CompletedSemanticHandDrawRequested;
+            }
+            var priorProgress = cursor?.Stochastic.HandDrawProgress;
             if (requested <= 0 || combat.Stochastic.SemanticDeck is not
                     { Mode: SemanticDeckStateV111.NatureMode, Pending: null } ||
                 choice!.SemanticStratagemDrawSelection ||
                 !choice.AutomaticSemanticStratagemDrawSelection ||
-                (cursor?.Stochastic.ControlledSemanticDrawRequested is { } savedRequested &&
-                 savedRequested != requested) ||
-                cursor?.Stochastic.ControlledDrawRemaining is not null ||
-                cursor?.Stochastic.ControlledDrawCostRemaining is not null ||
-                cursor?.Stochastic.ControlledSemanticBeforeHandDrawPending == true ||
-                cursor?.Stochastic.ControlledBeforeHandDrawHookChoicePending == true)
+                (savedSemanticRequested is { } saved && saved != requested) ||
+                (priorProgress is not null && priorProgress.Kind !=
+                    PrototypeAutomaticHandDrawProgressKindV111.SemanticDraw))
                 throw new InvalidDataException(
                     "Semantic automatic Stratagem cursor is inconsistent.");
             progress = PrototypeAutomaticHandDrawProgressV111.SemanticDraw(
@@ -156,13 +163,15 @@ public sealed partial class PrototypeGameEngine
         }
         else
         {
+            var priorProgress = cursor?.Stochastic.HandDrawProgress;
             if (combat.Stochastic.SemanticDeck is not null ||
                 choice!.AutomaticSemanticStratagemDrawSelection ||
                 choice.SemanticStratagemDrawSelection ||
-                cursor?.Stochastic.ControlledSemanticDrawRequested is not null ||
-                cursor?.Stochastic.ControlledSemanticDrawRemaining is not null ||
-                cursor?.Stochastic.ControlledSemanticBeforeHandDrawPending == true ||
-                cursor?.Stochastic.ControlledBeforeHandDrawHookChoicePending == true)
+                cursor?.Stochastic.CompletedSemanticHandDrawRequested is not null ||
+                priorProgress?.Kind is
+                    PrototypeAutomaticHandDrawProgressKindV111.SemanticDraw or
+                    PrototypeAutomaticHandDrawProgressKindV111.SemanticBeforeHandDraw or
+                    PrototypeAutomaticHandDrawProgressKindV111.ControlledBeforeHandDrawHookChoice)
                 throw new InvalidDataException(
                     "Controlled automatic Stratagem cursor is inconsistent.");
             progress = PrototypeAutomaticHandDrawProgressV111
@@ -188,20 +197,29 @@ public sealed partial class PrototypeGameEngine
             combat.PendingKnowledgeDemonChoice is not null ||
             cursor is null || !cursor.Mechanics.IsAtStep(
                 PrototypeAutomaticStepKind.DrawPlayerHand) ||
-            cursor.Stochastic.ControlledSemanticBeforeHandDrawPending ||
-            cursor.Stochastic.ControlledBeforeHandDrawHookChoicePending)
+            cursor.Stochastic.HandDrawProgress?.Kind is
+                PrototypeAutomaticHandDrawProgressKindV111.SemanticBeforeHandDraw or
+                PrototypeAutomaticHandDrawProgressKindV111.ControlledBeforeHandDrawHookChoice)
             throw new InvalidDataException(
                 "Automatic CardDrawn choice lost its hand-draw cursor.");
 
         PrototypeAutomaticHandDrawProgressV111 progress;
         if (semanticRequested is { } requested)
         {
+            int? savedSemanticRequested =
+                cursor.Stochastic.TryGetSemanticHandDrawProgress(
+                    cursor.Mechanics, out int savedRequested, out _)
+                    ? savedRequested
+                    : cursor.Stochastic.CompletedSemanticHandDrawRequested;
+            var priorProgress = cursor.Stochastic.HandDrawProgress;
             if (requested <= 0 || combat.Stochastic.SemanticDeck is not
                     { Mode: SemanticDeckStateV111.NatureMode, Pending: null } ||
-                (cursor.Stochastic.ControlledSemanticDrawRequested is { } savedRequested &&
-                 savedRequested != requested) ||
-                cursor.Stochastic.ControlledDrawRemaining is not null ||
-                cursor.Stochastic.ControlledDrawCostRemaining is not null)
+                (savedSemanticRequested is { } saved && saved != requested) ||
+                priorProgress?.Kind is
+                    PrototypeAutomaticHandDrawProgressKindV111.ControlledDraw or
+                    PrototypeAutomaticHandDrawProgressKindV111.ControlledDrawHookChoice or
+                    PrototypeAutomaticHandDrawProgressKindV111.ControlledRecycleStratagem or
+                    PrototypeAutomaticHandDrawProgressKindV111.ControlledDrawCost)
                 throw new InvalidDataException(
                     "Semantic automatic CardDrawn choice cursor is inconsistent.");
             combat = combat with
@@ -218,8 +236,9 @@ public sealed partial class PrototypeGameEngine
         {
             if (ControlledChanceGuardV111.EngineOwnedNativeProviderActive ||
                 combat.Stochastic.SemanticDeck is not null ||
-                cursor.Stochastic.ControlledSemanticDrawRequested is not null ||
-                cursor.Stochastic.ControlledSemanticDrawRemaining is not null)
+                cursor.Stochastic.CompletedSemanticHandDrawRequested is not null ||
+                cursor.Stochastic.HandDrawProgress?.Kind ==
+                    PrototypeAutomaticHandDrawProgressKindV111.SemanticDraw)
                 throw new InvalidDataException(
                     "Controlled automatic CardDrawn choice cursor is inconsistent.");
             progress = PrototypeAutomaticHandDrawProgressV111
@@ -321,9 +340,12 @@ public sealed partial class PrototypeGameEngine
         }
 
         if (combat.Stochastic.SemanticDeck is not null ||
-            cursor.Stochastic.ControlledDrawCostRemaining !=
-                cost.RemainingCount ||
-            cursor.Stochastic.ControlledDrawRemaining is not null)
+            cursor.Stochastic.HandDrawProgress is not
+                { Kind: PrototypeAutomaticHandDrawProgressKindV111
+                    .ControlledDrawCost,
+                  RemainingCount: { } savedRemaining } ||
+            savedRemaining != cost.RemainingCount ||
+            cursor.Stochastic.TryGetControlledHandDrawRemainder(out _))
             throw new InvalidDataException(
                 "Controlled automatic draw-cost cursor is inconsistent.");
         return null;

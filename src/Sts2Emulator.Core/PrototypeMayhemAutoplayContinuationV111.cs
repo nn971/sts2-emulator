@@ -512,25 +512,22 @@ public sealed partial class PrototypeGameEngine
         PrototypeAutomaticPipelineContinuationState continuation,
         CombatState combat, PendingCombatChoiceState pending)
     {
+        var progress = continuation.Stochastic.HandDrawProgress;
+        bool semanticBeforeHandDrawPending = progress?.Kind ==
+            PrototypeAutomaticHandDrawProgressKindV111.SemanticBeforeHandDraw;
         if (!continuation.Mechanics.IsAtStep(
                 PrototypeAutomaticStepKind.DrawPlayerHand) ||
-            continuation.Stochastic.ControlledDrawRemaining is not null ||
-            continuation.Stochastic.ControlledDrawCostRemaining is not null ||
-            continuation.Stochastic.ControlledSemanticDrawRemaining is not null ||
-            continuation.Stochastic.ControlledSemanticDrawRequested is not null ||
-            continuation.Stochastic.ControlledRecycleStratagemPending ||
-            continuation.Stochastic.ControlledDrawHookChoicePending ||
-            continuation.Stochastic.ControlledBeforeHandDrawHookChoicePending ||
+            (progress is not null && !semanticBeforeHandDrawPending) ||
             continuation.Stochastic.ControlledEnemyAction is not null ||
             continuation.Stochastic.ControlledTurnIntents is not null ||
             continuation.Stochastic.CompletedSemanticHandDrawRequested is not null ||
             pending.AutomaticSemanticDrawHookChoice !=
-                continuation.Stochastic.ControlledSemanticBeforeHandDrawPending ||
+                semanticBeforeHandDrawPending ||
             combat.PendingChoice?.ChoiceId != "controlled_pool_shuffle")
             return false;
 
-        if (continuation.Stochastic.ControlledSemanticBeforeHandDrawPending)
-            return continuation.Stochastic.HandDrawProgress is
+        if (semanticBeforeHandDrawPending)
+            return progress is
                 { Kind:
                     PrototypeAutomaticHandDrawProgressKindV111.SemanticBeforeHandDraw,
                   RequestedCount: null,
@@ -1354,14 +1351,6 @@ public sealed partial class PrototypeGameEngine
             { HandDrawProgress: null,
               ControlledEnemyAction: null,
               ControlledTurnIntents: null,
-              ControlledDrawRemaining: null,
-              ControlledDrawCostRemaining: null,
-              ControlledSemanticDrawRemaining: null,
-              ControlledSemanticDrawRequested: null,
-              ControlledSemanticBeforeHandDrawPending: false,
-              ControlledRecycleStratagemPending: false,
-              ControlledDrawHookChoicePending: false,
-              ControlledBeforeHandDrawHookChoicePending: false,
               CompletedSemanticHandDrawRequested: null } &&
         combat.Stochastic.SemanticDeck is
             { Mode: SemanticDeckStateV111.NatureMode };
@@ -1630,14 +1619,7 @@ public sealed partial class PrototypeGameEngine
             continuation.Mechanics.IsImmediatelyAfterDispatch(
                 PrototypeCombatEventKind.PlayerTurnStarted) &&
             continuation.Stochastic is
-                { ControlledDrawRemaining: null,
-                  ControlledDrawCostRemaining: null,
-                  ControlledSemanticDrawRemaining: null,
-                  ControlledSemanticDrawRequested: null,
-                  ControlledSemanticBeforeHandDrawPending: false,
-                  ControlledRecycleStratagemPending: false,
-                  ControlledDrawHookChoicePending: false,
-                  ControlledBeforeHandDrawHookChoicePending: false,
+                { HandDrawProgress: null,
                   ControlledEnemyAction: null,
                   ControlledTurnIntents: null } &&
             continuation.Mechanics.IsImmediatelyAfterDispatch(

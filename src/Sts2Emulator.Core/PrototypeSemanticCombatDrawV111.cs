@@ -27,13 +27,21 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidOperationException("No combat to draw from.");
         if (combat.Stochastic.SemanticDeck is null)
             throw new InvalidOperationException("Missing semantic deck provider.");
+        var automaticCursor = combat.AutomaticPipelineContinuation;
         bool automatic = IsSemanticAutomaticHandDraw(combat);
+        int? automaticRequested = null;
+        int? automaticRemaining = null;
+        if (automatic && automaticCursor is not null &&
+            automaticCursor.Stochastic.TryGetSemanticHandDrawProgress(
+                automaticCursor.Mechanics, out int requested,
+                out int remaining))
+        {
+            automaticRequested = requested;
+            automaticRemaining = remaining;
+        }
         if (combat.PendingChoice is not null ||
-            (combat.AutomaticPipelineContinuation is not null && !automatic) ||
-            (automatic && (!fromHandDraw ||
-                           combat.AutomaticPipelineContinuation!
-                               .Stochastic.ControlledSemanticDrawRemaining !=
-                               count)))
+            (automaticCursor is not null && !automatic) ||
+            (automatic && (!fromHandDraw || automaticRemaining != count)))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.draw " +
                 "operation=nested_choice_or_automatic_pipeline");
@@ -53,10 +61,7 @@ public sealed partial class PrototypeGameEngine
         };
         return ResumeSemanticCombatDrawResult(
             run, result, fromHandDraw, eventDepth: 0,
-            automaticHandDrawRequested: automatic
-                ? combat.AutomaticPipelineContinuation!
-                    .Stochastic.ControlledSemanticDrawRequested
-                : null,
+            automaticHandDrawRequested: automaticRequested,
             recycleSite: "combat.draw",
             recycleOperation: "unsupported_nested_stage");
     }
@@ -615,8 +620,14 @@ public sealed partial class PrototypeGameEngine
         if (savedCount is { } remaining)
             return remaining;
         if (IsSemanticAutomaticHandDraw(combat))
-            return combat.AutomaticPipelineContinuation!
-                .Stochastic.ControlledSemanticDrawRemaining!.Value;
+        {
+            var cursor = combat.AutomaticPipelineContinuation!;
+            if (!cursor.Stochastic.TryGetSemanticHandDrawProgress(
+                    cursor.Mechanics, out _, out int remaining))
+                throw new InvalidDataException(
+                    "Semantic automatic draw lost its tagged progress.");
+            return remaining;
+        }
         if (combat.Stochastic.SemanticDeck?.Pending is not null)
             return Math.Max(0, previousRemaining -
                 (combat.CounterState.CardsDrawnThisCombat - drawnBefore));

@@ -817,9 +817,11 @@ public sealed partial record CombatState
                     !(PrototypeGameEngine.IsSemanticAutomaticHandDraw(combat) ||
                       combat.AutomaticPipelineContinuation is
                           { Stochastic:
-                            { ControlledSemanticBeforeHandDrawPending: true,
-                              ControlledSemanticDrawRemaining: null,
-                              ControlledSemanticDrawRequested: null } } cursor &&
+                            { HandDrawProgress:
+                                { Kind: PrototypeAutomaticHandDrawProgressKindV111
+                                    .SemanticBeforeHandDraw,
+                                  RequestedCount: null,
+                                  RemainingCount: null } } } cursor &&
                       cursor.Mechanics.IsAtStep(
                           PrototypeAutomaticStepKind.DrawPlayerHand)) ||
                     combat.Stochastic.SemanticDeck is not
