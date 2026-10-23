@@ -3092,7 +3092,8 @@ internal static class PrototypeAiJsonlServer
                             semanticOtherChanceProviders = new[]
                             {
                                 "engine-owned-deterministic-unverified-v1",
-                                SemanticOtherChanceEngineV111.ProviderId
+                                SemanticOtherChanceEngineV111.ProviderId,
+                                SemanticOtherChanceEngineV111.LegacyProviderId
                             },
                             semanticRewardProvider =
                                 SemanticRewardAuditV111.PrototypeProviderId,

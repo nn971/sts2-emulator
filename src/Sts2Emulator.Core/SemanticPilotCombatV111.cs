@@ -2909,7 +2909,8 @@ public static class SemanticPilotCombatEngineV111
                 opening, opening.Fingerprint, decision.SelectedIndex);
         }
         if (entry.OtherChanceProviderId is not null &&
-            entry.OtherChanceProviderId != SemanticOtherChanceEngineV111.ProviderId)
+            !SemanticOtherChanceEngineV111.IsSupportedProviderId(
+                entry.OtherChanceProviderId))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_OTHER_CHANCE provider=" +
                 entry.OtherChanceProviderId);
@@ -2917,7 +2918,8 @@ public static class SemanticPilotCombatEngineV111
         {
             SeededEntry = entry,
             OtherChance = entry.OtherChanceProviderId is null
-                ? null : SemanticOtherChanceEngineV111.Begin(rng)
+                ? null : SemanticOtherChanceEngineV111.Begin(
+                    rng, entry.OtherChanceProviderId)
         };
         if (entry.ReplayOpeningDrawHooks)
             state = ReapplyCommittedOpeningThroughDrawCards(state);
