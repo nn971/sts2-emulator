@@ -14249,32 +14249,11 @@ public sealed partial class PrototypeGameEngine
             ownerId, siteId,
             (int)callOrdinal);
         if (originalLabels is not null)
-        {
-            var currentLabels = (string[])originalLabels.Clone();
-            var outcomes = new SemanticPoolShuffleDecisionV111[
-                decisions.Length];
-            for (var index = 0; index < decisions.Length; index++)
-            {
-                var decision = decisions[index];
-                outcomes[index] = SemanticPoolShuffleChoiceV111
-                    .CreateNativeAudit(
-                        decision, originalLabels, currentLabels,
-                        selectedCount, sourceOperationKind,
-                        sourceCardInstanceId);
-                var swapIndex = decision.Request.BoundedCount!.Value - 1;
-                (currentLabels[swapIndex],
-                    currentLabels[decision.SelectedIndex]) =
-                    (currentLabels[decision.SelectedIndex],
-                        currentLabels[swapIndex]);
-            }
-            if (!currentLabels.SequenceEqual(
-                    NativePoolShuffleLabels(combat, orderedPool),
-                    StringComparer.Ordinal))
-                throw new InvalidDataException(
-                    "Native pool-shuffle audit replay differs from the shuffled support.");
-            RandomBoundaryJournalV111.RecordPoolShuffleOutcomes(
-                outcomes, decisions);
-        }
+            SemanticPoolShuffleChoiceV111.RecordNativeAudit(
+                originalLabels,
+                NativePoolShuffleLabels(combat, orderedPool), decisions,
+                selectedCount, sourceOperationKind.ToString(),
+                sourceCardInstanceId);
         return native is null
             ? combat
             : combat with

@@ -1,8 +1,8 @@
 namespace Sts2Emulator.Core;
 
 /// <summary>
-/// One bounded source swap in a full combat-pool shuffle, including the
-/// random shortlist performed before a source card selection.
+/// One bounded source swap in an ordered pool shuffle, including the random
+/// shortlist performed before a source card selection.
 /// </summary>
 public sealed record SemanticPoolShuffleEventV111(
     string SchemaId, string EventId, string BoundaryFingerprint,
@@ -12,6 +12,8 @@ public sealed record SemanticPoolShuffleEventV111(
     long? SourceCardInstanceId, string ProbabilityStatus = "UNVERIFIED")
     : ISemanticChanceEventV111
 {
+    // This established member pair carries source identity labels. The Native
+    // relic-bag queue site stores relic model IDs in the same ordered support.
     private string[]? _originalCardIds = CloneOptional(OriginalCardIds);
     private string[]? _currentCardIds = CloneOptional(CurrentCardIds);
 
@@ -59,7 +61,8 @@ public sealed record SemanticPoolShuffleEventV111(
                 SemanticPoolShuffleChoiceV111.GenerationSiteId or
                 SemanticPoolShuffleChoiceV111.RandomRareToHandSiteId or
                 SemanticPoolShuffleChoiceV111.RecycleSiteId or
-                SemanticPoolShuffleChoiceV111.RandomShortlistSiteId) ||
+                SemanticPoolShuffleChoiceV111.RandomShortlistSiteId or
+                PrototypeNativeRelicGrabBag.QueueShuffleSiteId) ||
             Request.SiteId != expectedSite ||
             Request.OperationKind != "bounded_integer" ||
             originalCardIds is not { Length: > 1 } ||
@@ -140,27 +143,30 @@ public static class SemanticPoolShuffleChoiceV111
         StochasticSiteRegistryV111.CombatEffectDrawRecycleShuffleSiteId;
     internal const string RandomShortlistSiteId =
         StochasticSiteRegistryV111.CombatRandomShortlistShuffleSiteId;
+    internal const string NativeRelicQueueOperation =
+        "NativeRelicGrabBagQueueShuffle";
 
     /// <summary>Pair one Native Fisher–Yates ticket with the exact ordered
-    /// card support immediately before its swap. These audit annotations use
-    /// the same semantic event shape as controlled pool-shuffle choices but
+    /// source identity support immediately before its swap. These audit
+    /// annotations use the same event shape as controlled pool shuffles but
     /// do not suspend or alter the ordinary Native execution.</summary>
     internal static SemanticPoolShuffleDecisionV111 CreateNativeAudit(
         RandomIndexDecisionV111 providerDecision,
-        IReadOnlyList<string> originalCardIds,
-        IReadOnlyList<string> currentCardIds,
+        IReadOnlyList<string> originalIdentities,
+        IReadOnlyList<string> currentIdentities,
         int selectedCount,
-        PrototypeCombatEffectKind sourceOperationKind,
+        string sourceOperationKind,
         long? sourceCardInstanceId)
     {
         ArgumentNullException.ThrowIfNull(providerDecision);
-        ArgumentNullException.ThrowIfNull(originalCardIds);
-        ArgumentNullException.ThrowIfNull(currentCardIds);
+        ArgumentNullException.ThrowIfNull(originalIdentities);
+        ArgumentNullException.ThrowIfNull(currentIdentities);
         providerDecision.Validate();
         var request = providerDecision.Request;
-        var operation = sourceOperationKind.ToString();
-        var original = originalCardIds.ToArray();
-        var current = currentCardIds.ToArray();
+        ArgumentException.ThrowIfNullOrWhiteSpace(sourceOperationKind);
+        var operation = sourceOperationKind;
+        var original = originalIdentities.ToArray();
+        var current = currentIdentities.ToArray();
         var nextSwapIndex = request.BoundedCount is { } bound
             ? bound - 1 : -1;
         if (providerDecision.ProviderMode != "native-v111" ||
@@ -206,6 +212,52 @@ public static class SemanticPoolShuffleChoiceV111
             semanticEvent, providerDecision.SelectedIndex);
         outcome.Validate();
         return outcome;
+    }
+
+    internal static void RecordNativeAudit(
+        IReadOnlyList<string> originalIdentities,
+        IReadOnlyList<string> finalIdentities,
+        IReadOnlyList<RandomIndexDecisionV111> providerDecisions,
+        int selectedCount, string sourceOperationKind,
+        long? sourceCardInstanceId)
+    {
+        ArgumentNullException.ThrowIfNull(originalIdentities);
+        ArgumentNullException.ThrowIfNull(finalIdentities);
+        ArgumentNullException.ThrowIfNull(providerDecisions);
+        if (!RandomBoundaryJournalV111.HasActiveJournal)
+            return;
+
+        var original = originalIdentities.ToArray();
+        if (finalIdentities.Count != original.Length)
+            throw new InvalidDataException(
+                "Native pool-shuffle audit changed the ordered support length.");
+        if (providerDecisions.Count == 0)
+        {
+            if (!original.SequenceEqual(finalIdentities,
+                    StringComparer.Ordinal))
+                throw new InvalidDataException(
+                    "Native pool-shuffle audit has a malformed support or decision prefix.");
+            return;
+        }
+
+        var current = (string[])original.Clone();
+        var outcomes = new SemanticPoolShuffleDecisionV111[
+            providerDecisions.Count];
+        for (var index = 0; index < providerDecisions.Count; index++)
+        {
+            var decision = providerDecisions[index];
+            outcomes[index] = CreateNativeAudit(
+                decision, original, current, selectedCount,
+                sourceOperationKind, sourceCardInstanceId);
+            var swapIndex = decision.Request.BoundedCount!.Value - 1;
+            (current[swapIndex], current[decision.SelectedIndex]) =
+                (current[decision.SelectedIndex], current[swapIndex]);
+        }
+        if (!current.SequenceEqual(finalIdentities, StringComparer.Ordinal))
+            throw new InvalidDataException(
+                "Native pool-shuffle audit differs from its resulting ordered pool.");
+        RandomBoundaryJournalV111.RecordPoolShuffleOutcomes(
+            outcomes, providerDecisions);
     }
 
     internal static void ValidateNativeAudit(
@@ -255,6 +307,8 @@ public static class SemanticPoolShuffleChoiceV111
             nameof(PrototypeCombatEffectKind.ChooseGeneratedCards) or
             nameof(PrototypeCombatEffectKind.ChooseGeneratedColorlessCards) =>
                 GenerationSiteId,
+            NativeRelicQueueOperation =>
+                PrototypeNativeRelicGrabBag.QueueShuffleSiteId,
             _ => null
         };
 

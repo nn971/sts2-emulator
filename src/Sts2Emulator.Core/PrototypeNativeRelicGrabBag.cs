@@ -337,13 +337,21 @@ public static class PrototypeNativeRelicGrabBag
         string[] Make(PrototypeRelicRarity rarity)
         {
             var ids = EligibleIds(player, rarity);
-            _ = NativeFisherYatesV111.ShuffleInPlace(
+            var originalIds = RandomBoundaryJournalV111.HasActiveJournal
+                ? (string[])ids.Clone()
+                : null;
+            var decisions = NativeFisherYatesV111.ShuffleInPlace(
                 ids,
                 nativeRunRng,
                 new NativeRandomIndexProviderV111(),
                 "run.treasure_room_relics",
                 "player:0:relic_grab_bag:" + rarity,
                 QueueShuffleSiteId);
+            if (originalIds is not null)
+                SemanticPoolShuffleChoiceV111.RecordNativeAudit(
+                    originalIds, ids, decisions, originalIds.Length,
+                    SemanticPoolShuffleChoiceV111.NativeRelicQueueOperation,
+                    null);
             return ids;
         }
 
