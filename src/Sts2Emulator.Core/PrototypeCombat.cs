@@ -4901,7 +4901,8 @@ public sealed partial class PrototypeGameEngine
                                     choices = pool;
                                 var selectedSummonIndex = ResolveLegacyRandomIndex(
                                     rng,
-                                    "combat.enemy.summon_pool.select",
+                                    StochasticSiteRegistryV111
+                                        .CombatEnemySummonPoolSelectSiteId,
                                     "enemy:" + enemy.InstanceId
                                         + ":move:" + move.Id
                                         + ":pool:" + CanonicalJson.Sha256(choices),

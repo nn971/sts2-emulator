@@ -390,6 +390,8 @@ public static class StochasticSiteRegistryV111
         "combat.enemy.draw.random_insert_index";
     public const string CombatEnemyTheftCardSelectSiteId =
         "combat.enemy.theft_card.select";
+    public const string CombatEnemySummonPoolSelectSiteId =
+        "combat.enemy.summon_pool.select";
     public const string CombatHandReturnShuffleSiteId =
         "combat.hand_return.draw_pile.shuffle_swap_index";
     public const string CombatRandomRareDrawToHandShuffleSiteId =
@@ -451,7 +453,7 @@ public static class StochasticSiteRegistryV111
                 "combat", "choose_index", 1),
             ["combat.encounter.later_act.elite.index_draw"] = new(
                 "combat", "choose_index", 1),
-            ["combat.enemy.summon_pool.select"] = new(
+            [CombatEnemySummonPoolSelectSiteId] = new(
                 "combat", "choose_index", 1),
             [PrototypeGameEngine.ImprovementCardSiteId] = new(
                 "combat", "choose_index", 1),
@@ -597,7 +599,7 @@ public static class StochasticSiteRegistryV111
         CombatEnemyDiscardRandomInsertSiteId,
         CombatEnemyDrawRandomInsertSiteId,
         CombatEnemyTheftCardSelectSiteId,
-        "combat.enemy.summon_pool.select",
+        CombatEnemySummonPoolSelectSiteId,
         NativeCombatRngEntryV111.InitialUniqueHpSiteId,
         NativeCombatRngEntryV111.ToughEggHatchHpSiteId,
         "combat.draw_pile.draw_card",
@@ -783,7 +785,7 @@ public static class StochasticSiteRegistryV111
         DrawPileRandomInsertSiteId,
         PrototypeControlledDrawInsertionV111.PersonalHiveDazedSiteId,
         CombatEnemyTheftCardSelectSiteId,
-        "combat.enemy.summon_pool.select",
+        CombatEnemySummonPoolSelectSiteId,
         CombatHandReturnShuffleSiteId,
         CombatFullPoolShuffleSiteId,
         CombatRandomHandCardSelectSiteId,

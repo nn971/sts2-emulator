@@ -132,7 +132,8 @@ public sealed record PrototypeControlledEnemyActionContinuationV111(
                 operation = ControlledEnemyActionMechanicsOperationV111
                     .TheftCardSelection;
                 return true;
-            case "combat.enemy.summon_pool.select":
+            case StochasticSiteRegistryV111
+                .CombatEnemySummonPoolSelectSiteId:
                 operation = ControlledEnemyActionMechanicsOperationV111
                     .SummonPoolSelection;
                 return true;

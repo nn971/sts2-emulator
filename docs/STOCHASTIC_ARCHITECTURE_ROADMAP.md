@@ -5,9 +5,9 @@
 **S0 stochastic SiteId ownership consolidation (2026-10-23):** The registry
 now owns the identifiers for random hand-cost selection and resolution,
 draw-cost choices, potion generation, card transforms, and the semantic
-shortlist and pool-shuffle family. Semantic choice owners, registry coverage
-and control checks, and gameplay request callsites all reference those
-constants instead of maintaining duplicate literals.
+shortlist, pool-shuffle, and enemy-choice families. Semantic choice owners,
+registry coverage and control checks, and gameplay request callsites all
+reference those constants instead of maintaining duplicate literals.
 Static source review and `git diff --check` only; no tests or builds were run.
 
 **S0 enemy-theft site review increment (2026-10-23):** The scoped manual
@@ -18,6 +18,12 @@ the shared registry at request, continuation, and capability boundaries.
 Native stream attribution, source-pool fidelity, legacy law, and cursor parity
 remain open. Static source review and `git diff --check` only; no tests or
 builds were run.
+
+**S0 summon-pool SiteId ownership increment (2026-10-23):** The existing
+legacy summon continuation and query registry now use the shared
+`combat.enemy.summon_pool.select` constant. Its Native pool path continues to
+fail closed pending source RNG assignment evidence. Static source review and
+`git diff --check` only; no tests or builds were run.
 
 **S0 Native request-wrapper callsite closure increment (2026-10-23):** The
 direct-call census now resolves the three generic request constructors in
