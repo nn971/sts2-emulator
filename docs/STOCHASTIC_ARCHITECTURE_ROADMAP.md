@@ -3196,3 +3196,13 @@ projections. Snapshot fields and transcript policies are unchanged. Remaining
 compatibility-projection consumers and cross-provider mechanical equivalence
 remain open. Static source review and `git diff --check` only; no tests or
 builds were run.
+
+**S4 semantic hand-draw validation owner increment (2026-10-24):** The semantic
+draw frame, semantic mechanics projection, and insertion/Stratagem event
+descriptions now compare active automatic draw counts through
+`TryGetSemanticHandDrawProgress`; pre-draw validation reads its tagged mode.
+The Core scan now finds no runtime reads of flattened hand-draw progress
+counters outside their compatibility and serialization owners. Snapshot
+members and choice chronology are unchanged. Cross-provider mechanical
+equivalence remains open. Static source review and `git diff --check` only; no
+tests or builds were run.
