@@ -1939,9 +1939,7 @@ public sealed partial class PrototypeGameEngine
     /// frame, performs AdvanceTurn postwork once, and continues from the next
     /// real pipeline index under the same fail-closed RNG guard.
     /// </summary>
-    internal static (
-        RunState Run,
-        PrototypeAutomaticPipelineResumeBoundaryKindV111 Boundary)
+    internal static PrototypeAutomaticPipelineResumeResultV111
         ResumeControlledTurnAfterIntents(
         RunState state,
         bool stopBeforeSemanticHandDraw = false)

@@ -3245,3 +3245,13 @@ reclassifying those semantic-choice results in the end-turn facade without
 moving chronology ownership. Broader resume consolidation and cross-provider
 mechanical equivalence remain open. Static source review and
 `git diff --check` only; no tests or builds were run.
+
+**S4 common automatic-resume result increment (2026-10-24):** The engine,
+semantic-choice owner, semantic end-turn facade, and controlled-playable
+continuations now pass one `PrototypeAutomaticPipelineResumeResultV111`
+containing the resumed `RunState` and classified boundary. This removes
+parallel pair shapes and prevents end-turn and playable staging from separating
+or recomputing the boundary. Snapshot fields, provider transcripts, and
+chronology ownership are unchanged. Broader automatic draw-resume consolidation
+and cross-provider mechanical equivalence remain open. Static source review and
+`git diff --check` only; no tests or builds were run.

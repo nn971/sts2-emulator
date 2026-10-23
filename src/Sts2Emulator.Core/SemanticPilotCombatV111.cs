@@ -4753,8 +4753,9 @@ public static class SemanticPilotCombatEngineV111
                 "No semantic random-target event is pending.");
         var decision = SemanticTargetChoiceV111.Select(
             pending, eventId, enemyInstanceId);
-        var (result, _) = SemanticChoiceResumeV111.ResumeTarget(
+        var resume = SemanticChoiceResumeV111.ResumeTarget(
             current.Run, decision);
+        var result = resume.Run;
         if (result.Phase == RunPhase.Combat)
             ValidateSemanticCombatBoundary(result);
         var next = PublishRunContinuation(

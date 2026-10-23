@@ -8,9 +8,7 @@ namespace Sts2Emulator.Core;
 /// </summary>
 internal static class SemanticChoiceResumeV111
 {
-    internal static (
-        RunState Run,
-        PrototypeAutomaticPipelineResumeBoundaryKindV111 Boundary)
+    internal static PrototypeAutomaticPipelineResumeResultV111
         ResumeTarget(
             RunState checkpoint, SemanticTargetDecisionV111 decision)
     {
@@ -20,9 +18,7 @@ internal static class SemanticChoiceResumeV111
         var ownedDecision = decision.Fork();
         var run = SemanticTargetChoiceV111.Resume(
             checkpoint.Fork(), ownedDecision);
-        return (run,
-            PrototypeGameEngine
-                .ClassifyAutomaticPipelineResumeBoundary(run));
+        return PrototypeAutomaticPipelineResumeResultV111.FromRun(run);
     }
 
     internal static (RunState Run, string SiteId) ResumeEffectDraw(
@@ -437,18 +433,18 @@ internal static class SemanticChoiceResumeV111
     }
 
     internal static (
-        RunState Run,
-        string SiteId,
-        PrototypeAutomaticPipelineResumeBoundaryKindV111 Boundary)
+        PrototypeAutomaticPipelineResumeResultV111 Resume,
+        string SiteId)
         ResumeAutomaticPipelineChoice(
             RunState checkpoint, SemanticEndTurnNestedChoiceV111 choice,
             bool allowEngineOwnedPrototypeReward = true)
     {
         var resumed = Resume(
             checkpoint, choice, allowEngineOwnedPrototypeReward);
-        return (resumed.Run, resumed.SiteId,
-            PrototypeGameEngine
-                .ClassifyAutomaticPipelineResumeBoundary(resumed.Run));
+        return (
+            PrototypeAutomaticPipelineResumeResultV111.FromRun(
+                resumed.Run),
+            resumed.SiteId);
     }
 
 }

@@ -12,6 +12,21 @@ internal enum PrototypeAutomaticPipelineResumeBoundaryKindV111
     SuspendedPipeline
 }
 
+internal readonly record struct PrototypeAutomaticPipelineResumeResultV111(
+    RunState Run,
+    PrototypeAutomaticPipelineResumeBoundaryKindV111 Boundary)
+{
+    internal static PrototypeAutomaticPipelineResumeResultV111 FromRun(
+        RunState run)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        return new PrototypeAutomaticPipelineResumeResultV111(
+            run,
+            PrototypeGameEngine.ClassifyAutomaticPipelineResumeBoundary(
+                run));
+    }
+}
+
 public sealed partial class PrototypeGameEngine : IDeterministicEngine
 {
     /// <summary>
@@ -205,9 +220,7 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
     /// Resume the ordinary pipeline and return its classified boundary with
     /// the resulting run so callers do not classify the same result again.
     /// </summary>
-    internal static (
-        RunState Run,
-        PrototypeAutomaticPipelineResumeBoundaryKindV111 Boundary)
+    internal static PrototypeAutomaticPipelineResumeResultV111
         ResumeAutomaticPipelineContinuationWithBoundary(
             RunState checkpoint,
             bool stopBeforeSemanticHandDraw = false)
@@ -216,7 +229,7 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         var run = ResumeAutomaticPipelineContinuation(
             checkpoint,
             stopBeforeSemanticHandDraw: stopBeforeSemanticHandDraw);
-        return (run, ClassifyAutomaticPipelineResumeBoundary(run));
+        return PrototypeAutomaticPipelineResumeResultV111.FromRun(run);
     }
 
     /// <summary>

@@ -829,7 +829,10 @@ public static class SemanticEndTurnEngineV111
             var stochastic = state.Stochastic.AppendEnemyAction(
                 decision, candidateLabels);
             state = ContinueAutomaticPipelineBoundaryChoice(
-                state, resumed, stochastic, "combat.enemy_action");
+                state,
+                PrototypeAutomaticPipelineResumeResultV111.FromRun(
+                    resumed),
+                stochastic, "combat.enemy_action");
         }
         else if (state.TargetPending is { } target)
         {
@@ -1221,12 +1224,12 @@ public static class SemanticEndTurnEngineV111
                 "No automatic-pipeline random-target event is pending.");
         var decision = SemanticTargetChoiceV111.Select(
             pending, eventId, enemyInstanceId);
-        var (resumed, boundary) = SemanticChoiceResumeV111.ResumeTarget(
+        var resumed = SemanticChoiceResumeV111.ResumeTarget(
             source.Run, decision);
 
         var stochastic = source.Stochastic.AppendTarget(decision);
         var next = ContinueAutomaticPipelineBoundaryChoice(
-            source, resumed, stochastic, pending.SiteId, boundary);
+            source, resumed, stochastic, pending.SiteId);
         Validate(next);
         return next;
     }
@@ -1272,35 +1275,32 @@ public static class SemanticEndTurnEngineV111
 
     private static SemanticEndTurnV111 ContinueAutomaticPipelineBoundaryChoice(
         SemanticEndTurnV111 source,
-        RunState resumed,
+        PrototypeAutomaticPipelineResumeResultV111 resumed,
         SemanticEndTurnStochasticStateV111 stochastic,
-        string siteId,
-        PrototypeAutomaticPipelineResumeBoundaryKindV111? classifiedBoundary = null)
+        string siteId)
     {
         var next = source with
         {
             Stochastic = stochastic
         };
-        var boundary = classifiedBoundary ?? PrototypeGameEngine
-            .ClassifyAutomaticPipelineResumeBoundary(resumed);
         if (TryPublishResumedPipelineBoundary(
-                next, resumed, boundary, out var published))
+                next, resumed, out var published))
             return published;
 
         if (next.HandDraw is { AtBoundary: true })
             return CompleteHandDrawAtPlayerBoundary(
-                next, resumed, boundary);
+                next, resumed);
 
-        if (boundary ==
+        if (resumed.Boundary ==
             PrototypeAutomaticPipelineResumeBoundaryKindV111.DrawPlayerHand)
             return BeginHandDrawAtPipelineBoundary(
-                next, resumed, boundary, "choice_resume");
+                next, resumed, "choice_resume");
 
-        if (boundary ==
+        if (resumed.Boundary ==
             PrototypeAutomaticPipelineResumeBoundaryKindV111.AdvanceTurn)
         {
             var nextTurn = BeginAtAdvanceTurn(
-                resumed, source.NativeEncounterEntry);
+                resumed.Run, source.NativeEncounterEntry);
             return nextTurn with
             {
                 PlayerActionSource = source.PlayerActionSource?.Fork(),
@@ -1316,49 +1316,49 @@ public static class SemanticEndTurnEngineV111
     }
 
     private static SemanticEndTurnV111 BeginHandDrawAtPipelineBoundary(
-        SemanticEndTurnV111 source, RunState checkpoint,
-        PrototypeAutomaticPipelineResumeBoundaryKindV111 boundary,
+        SemanticEndTurnV111 source,
+        PrototypeAutomaticPipelineResumeResultV111 checkpoint,
         string operation)
     {
-        if (boundary !=
+        if (checkpoint.Boundary !=
             PrototypeAutomaticPipelineResumeBoundaryKindV111.DrawPlayerHand)
             throw new NotSupportedException(
                 "UNSUPPORTED_CONTROLLED_CHANCE " +
                 "site=combat.semantic_end_turn operation=" + operation +
-                " kind=" + boundary);
+                " kind=" + checkpoint.Boundary);
         var draw = SemanticCombatDrawEngineV111.BeginAutomaticHandDraw(
-            checkpoint);
+            checkpoint.Run);
         return ContinueHandDraw(source, draw);
     }
 
     private static bool TryPublishResumedPipelineBoundary(
-        SemanticEndTurnV111 source, RunState resumed,
-        PrototypeAutomaticPipelineResumeBoundaryKindV111 boundary,
+        SemanticEndTurnV111 source,
+        PrototypeAutomaticPipelineResumeResultV111 resumed,
         out SemanticEndTurnV111 published)
     {
-        if (boundary ==
+        if (resumed.Boundary ==
             PrototypeAutomaticPipelineResumeBoundaryKindV111.RewardOrTerminal)
         {
             published = CompleteAtBoundary(
-                source, resumed,
+                source, resumed.Run,
                 discardSuspendedFrames: source.HandDraw is not
                     { AtBoundary: true });
             return true;
         }
 
-        if (boundary ==
+        if (resumed.Boundary ==
                 PrototypeAutomaticPipelineResumeBoundaryKindV111.ControlledChoice &&
             (source.HandDraw is null ||
-             resumed.World?.Combat?.PendingChoice?.ControlledTarget is not null))
+             resumed.Run.World?.Combat?.PendingChoice?.ControlledTarget is not null))
         {
-            published = source with { Run = resumed };
+            published = source with { Run = resumed.Run };
             return true;
         }
 
-        if (boundary ==
+        if (resumed.Boundary ==
             PrototypeAutomaticPipelineResumeBoundaryKindV111.SemanticChoice)
         {
-            published = source with { Run = resumed };
+            published = source with { Run = resumed.Run };
             return true;
         }
 
@@ -1374,7 +1374,7 @@ public static class SemanticEndTurnEngineV111
         var resumed = SemanticChoiceResumeV111.ResumeAutomaticPipelineChoice(
             source.Run, choice);
         return PublishNestedAutomaticChoice(
-            source, resumed.Run, choice, resumed.SiteId, resumed.Boundary);
+            source, resumed.Resume, choice, resumed.SiteId);
     }
 
     private static void ValidateNestedAutomaticChoice(
@@ -1397,13 +1397,13 @@ public static class SemanticEndTurnEngineV111
     }
 
     private static SemanticEndTurnV111 PublishNestedAutomaticChoice(
-        SemanticEndTurnV111 source, RunState resumed,
-        SemanticEndTurnNestedChoiceV111 choice, string siteId,
-        PrototypeAutomaticPipelineResumeBoundaryKindV111 boundary)
+        SemanticEndTurnV111 source,
+        PrototypeAutomaticPipelineResumeResultV111 resumed,
+        SemanticEndTurnNestedChoiceV111 choice, string siteId)
     {
         var stochastic = source.Stochastic.AppendNestedChoice(choice);
         var next = ContinueAutomaticPipelineBoundaryChoice(
-            source, resumed, stochastic, siteId, boundary);
+            source, resumed, stochastic, siteId);
         Validate(next);
         return next;
     }
@@ -1480,21 +1480,17 @@ public static class SemanticEndTurnEngineV111
 
     private static SemanticEndTurnV111 CompleteIntents(SemanticEndTurnV111 state)
     {
-        (RunState Run,
-            PrototypeAutomaticPipelineResumeBoundaryKindV111 Boundary)
-            handoff;
+        PrototypeAutomaticPipelineResumeResultV111 handoff;
         using (ControlledChanceGuardV111.Enter())
             handoff = PrototypeGameEngine.ResumeControlledTurnAfterIntents(
                 state.Run.Fork(),
                 stopBeforeSemanticHandDraw: true);
         var withoutIntents = state with { Intents = null };
         if (TryPublishResumedPipelineBoundary(
-                withoutIntents, handoff.Run, handoff.Boundary,
-                out var published))
+                withoutIntents, handoff, out var published))
             return published;
         return BeginHandDrawAtPipelineBoundary(
-            withoutIntents, handoff.Run, handoff.Boundary,
-            "post_intent_handoff");
+            withoutIntents, handoff, "post_intent_handoff");
     }
 
     private static SemanticEndTurnV111 ContinueHandDraw(
@@ -1513,42 +1509,40 @@ public static class SemanticEndTurnEngineV111
         if (state.HandDraw is not { AtBoundary: true } draw)
             throw new InvalidOperationException(
                 "Cannot finish end turn with pending drawn-card choices.");
-        (RunState Run,
-            PrototypeAutomaticPipelineResumeBoundaryKindV111 Boundary)
-            result;
+        PrototypeAutomaticPipelineResumeResultV111 result;
         using (ControlledChanceGuardV111.Enter())
             result = PrototypeGameEngine
                 .ResumeAutomaticPipelineContinuationWithBoundary(
                     draw.Run.Fork());
         if (TryPublishResumedPipelineBoundary(
-                state, result.Run, result.Boundary, out var published))
+                state, result, out var published))
             return published;
         return CompleteHandDrawAtPlayerBoundary(
-            state, result.Run, result.Boundary);
+            state, result);
     }
 
     private static SemanticEndTurnV111 CompleteHandDrawAtPlayerBoundary(
-        SemanticEndTurnV111 state, RunState result,
-        PrototypeAutomaticPipelineResumeBoundaryKindV111 boundary)
+        SemanticEndTurnV111 state,
+        PrototypeAutomaticPipelineResumeResultV111 result)
     {
-        if (boundary !=
+        if (result.Boundary !=
             PrototypeAutomaticPipelineResumeBoundaryKindV111.PlayerDecision)
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.semantic_end_turn " +
                 "operation=not_at_next_player_boundary");
-        if (result.World?.Combat is not { } combat)
+        if (result.Run.World?.Combat is not { } combat)
             throw new InvalidDataException(
                 "Completed semantic end-turn lost its combat state.");
         SemanticDrawPileAdapterV111.ValidateNatureDeckBoundary(
             combat,
             "Completed semantic end-turn has no Nature deck.",
             "Completed semantic end-turn has an invalid Nature deck boundary.");
-        var actions = new PrototypeAiEnvironment().Observe(result).LegalActions;
+        var actions = new PrototypeAiEnvironment().Observe(result.Run).LegalActions;
         if (!actions.Any())
             throw new InvalidOperationException(
                 "The next player boundary has no available legal actions.");
         return CompleteAtBoundary(
-            state, result, discardSuspendedFrames: false);
+            state, result.Run, discardSuspendedFrames: false);
     }
 
     private static SemanticEndTurnV111 CompleteAtBoundary(

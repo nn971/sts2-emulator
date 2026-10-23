@@ -850,16 +850,16 @@ public static class ControlledPlayableCombatEngineV111
     {
         var request = state.DrawCostPending ??
             throw new InvalidOperationException("Missing drawn-card cost ticket.");
-        var (result, decision, boundary) = ResolveIndexAndRun(
+        var (resume, decision) = ResolveIndexAndRun(
             state, request, selectedIndex,
             PrototypeGameEngine.ResumeControlledDrawCost);
         var next = state.Fork() with
         {
-            Run = result,
+            Run = resume.Run,
             Stochastic = state.Stochastic.AppendLiveDecision(
                 ControlledPlayableLiveDecisionKindV111.DrawCost, decision)
         };
-        return StartPendingTurn(next, boundary);
+        return StartPendingTurn(next, resume);
     }
 
     private static ControlledPlayableCombatV111 ResolveRandomCost(
@@ -867,16 +867,16 @@ public static class ControlledPlayableCombatEngineV111
     {
         var request = state.RandomCostPending ??
             throw new InvalidOperationException("Missing random-cost ticket.");
-        var (result, decision, boundary) = ResolveIndexAndRun(
+        var (resume, decision) = ResolveIndexAndRun(
             state, request, selectedIndex,
             PrototypeGameEngine.ResumeControlledRandomCost);
         var next = state.Fork() with
         {
-            Run = result,
+            Run = resume.Run,
             Stochastic = state.Stochastic.AppendLiveDecision(
                 ControlledPlayableLiveDecisionKindV111.RandomCost, decision)
         };
-        return StartPendingTurn(next, boundary);
+        return StartPendingTurn(next, resume);
     }
 
     private static ControlledPlayableCombatV111 ResolvePoolShuffle(
@@ -884,16 +884,16 @@ public static class ControlledPlayableCombatEngineV111
     {
         var request = state.PoolShufflePending ??
             throw new InvalidOperationException("Missing pool-shuffle ticket.");
-        var (result, choice, boundary) = ResolveIndexAndRun(
+        var (resume, choice) = ResolveIndexAndRun(
             state, request, selectedIndex,
             PrototypeGameEngine.ResumeControlledPoolShuffle);
         var next = state.Fork() with
         {
-            Run = result,
+            Run = resume.Run,
             Stochastic = state.Stochastic.AppendLiveDecision(
                 ControlledPlayableLiveDecisionKindV111.PoolShuffle, choice)
         };
-        return StartPendingTurn(next, boundary);
+        return StartPendingTurn(next, resume);
     }
 
     private static ControlledPlayableCombatV111 ResolveDrawInsertion(
@@ -901,16 +901,16 @@ public static class ControlledPlayableCombatEngineV111
     {
         var request = state.DrawInsertionPending ??
             throw new InvalidOperationException("Missing draw insertion ticket.");
-        var (result, choice, boundary) = ResolveIndexAndRun(
+        var (resume, choice) = ResolveIndexAndRun(
             state, request, selectedIndex,
             PrototypeGameEngine.ResumeControlledDrawInsertion);
         var next = state.Fork() with
         {
-            Run = result,
+            Run = resume.Run,
             Stochastic = state.Stochastic.AppendLiveDecision(
                 ControlledPlayableLiveDecisionKindV111.DrawInsertion, choice)
         };
-        return StartPendingTurn(next, boundary);
+        return StartPendingTurn(next, resume);
     }
 
     private static ControlledPlayableCombatV111 ResolveEnemyAction(
@@ -919,16 +919,16 @@ public static class ControlledPlayableCombatEngineV111
         var request = state.EnemyActionPending ??
             throw new InvalidOperationException(
                 "Missing controlled enemy-action ticket.");
-        var (result, decision, boundary) = ResolveIndexAndRun(
+        var (resume, decision) = ResolveIndexAndRun(
             state, request, selectedIndex,
             PrototypeGameEngine.ResumeControlledEnemyAction);
         var next = state.Fork() with
         {
-            Run = result,
+            Run = resume.Run,
             Stochastic = state.Stochastic.AppendLiveDecision(
                 ControlledPlayableLiveDecisionKindV111.LiveOnly, decision)
         };
-        return StartPendingTurn(next, boundary);
+        return StartPendingTurn(next, resume);
     }
 
     private static ControlledPlayableCombatV111 ResolveGeneratedCard(
@@ -936,7 +936,7 @@ public static class ControlledPlayableCombatEngineV111
     {
         var request = state.GeneratedCardPending ??
             throw new InvalidOperationException("Missing generated-card Nature ticket.");
-        var (result, choice, boundary) = ResolveIndexAndRun(
+        var (resume, choice) = ResolveIndexAndRun(
             state, request, selectedIndex,
             (checkpoint, replayedIndex) =>
             {
@@ -951,11 +951,11 @@ public static class ControlledPlayableCombatEngineV111
             });
         var next = state.Fork() with
         {
-            Run = result,
+            Run = resume.Run,
             Stochastic = state.Stochastic.AppendLiveDecision(
                 ControlledPlayableLiveDecisionKindV111.GeneratedCard, choice)
         };
-        return StartPendingTurn(next, boundary);
+        return StartPendingTurn(next, resume);
     }
 
     private static ControlledPlayableCombatV111 ResolvePotionGeneration(
@@ -964,7 +964,7 @@ public static class ControlledPlayableCombatEngineV111
         var request = state.PotionGenerationPending ??
             throw new InvalidOperationException(
                 "Missing random-potion Nature ticket.");
-        var (result, choice, boundary) = ResolveIndexAndRun(
+        var (resume, choice) = ResolveIndexAndRun(
             state, request, selectedIndex,
             (checkpoint, replayedIndex) =>
             {
@@ -981,12 +981,12 @@ public static class ControlledPlayableCombatEngineV111
             });
         var next = state.Fork() with
         {
-            Run = result,
+            Run = resume.Run,
             Stochastic = state.Stochastic.AppendLiveDecision(
                 ControlledPlayableLiveDecisionKindV111.PotionGeneration,
                 choice)
         };
-        return StartPendingTurn(next, boundary);
+        return StartPendingTurn(next, resume);
     }
 
     private static ControlledPlayableCombatV111 ResolveCardTransform(
@@ -995,7 +995,7 @@ public static class ControlledPlayableCombatEngineV111
         var request = state.CardTransformPending ??
             throw new InvalidOperationException(
                 "Missing random card-transform Nature ticket.");
-        var (result, choice, boundary) = ResolveIndexAndRun(
+        var (resume, choice) = ResolveIndexAndRun(
             state, request, selectedIndex,
             (checkpoint, replayedIndex) =>
             {
@@ -1012,11 +1012,11 @@ public static class ControlledPlayableCombatEngineV111
             });
         var next = state.Fork() with
         {
-            Run = result,
+            Run = resume.Run,
             Stochastic = state.Stochastic.AppendLiveDecision(
                 ControlledPlayableLiveDecisionKindV111.CardTransform, choice)
         };
-        return StartPendingTurn(next, boundary);
+        return StartPendingTurn(next, resume);
     }
 
     private static ControlledPlayableCombatV111 ResolveTarget(
@@ -1024,24 +1024,23 @@ public static class ControlledPlayableCombatEngineV111
     {
         var request = state.TargetPending ??
             throw new InvalidOperationException("No controlled target ticket.");
-        var (result, choice, boundary) = ResolveIndexAndRun(
+        var (resume, choice) = ResolveIndexAndRun(
             state, request, selectedIndex,
             (checkpoint, replayedIndex) =>
                 PrototypeGameEngine.ResumeControlledRandomTarget(
                     checkpoint, request.OrderedCandidates[replayedIndex]));
         var next = state.Fork() with
         {
-            Run = result,
+            Run = resume.Run,
             Stochastic = state.Stochastic.AppendLiveDecision(
                 ControlledPlayableLiveDecisionKindV111.Target, choice)
         };
-        return StartPendingTurn(next, boundary);
+        return StartPendingTurn(next, resume);
     }
 
     private static (
-        RunState Result,
-        RandomIndexDecisionV111 Decision,
-        PrototypeAutomaticPipelineResumeBoundaryKindV111 Boundary)
+        PrototypeAutomaticPipelineResumeResultV111 Resume,
+        RandomIndexDecisionV111 Decision)
         ResolveIndexAndRun(
             ControlledPlayableCombatV111 state,
             RandomIndexRequestV111 request,
@@ -1061,14 +1060,14 @@ public static class ControlledPlayableCombatEngineV111
                     using (ControlledChanceGuardV111.Enter())
                         return resume(checkpoint.Run.Fork(), replayedIndex);
                 });
-        return (result, decision,
-            PrototypeGameEngine
-                .ClassifyAutomaticPipelineResumeBoundary(result));
+        return (
+            PrototypeAutomaticPipelineResumeResultV111.FromRun(result),
+            decision);
     }
 
     private static ControlledPlayableCombatV111 StartPendingTurn(
         ControlledPlayableCombatV111 state,
-        PrototypeAutomaticPipelineResumeBoundaryKindV111? resumeBoundary = null)
+        PrototypeAutomaticPipelineResumeResultV111? resumeResult = null)
     {
         if (state.Run.Phase != RunPhase.Combat ||
             state.Run.World?.Combat is not { } combat ||
@@ -1100,7 +1099,7 @@ public static class ControlledPlayableCombatEngineV111
             var recycleState = state with { Recycle = recycle };
             return recycle.Complete ? FinishRecycle(recycleState) : recycleState;
         }
-        var boundary = resumeBoundary ?? PrototypeGameEngine
+        var boundary = resumeResult?.Boundary ?? PrototypeGameEngine
             .ClassifyAutomaticPipelineResumeBoundary(state.Run);
         if (boundary !=
             PrototypeAutomaticPipelineResumeBoundaryKindV111.AdvanceTurn)
@@ -1178,17 +1177,15 @@ public static class ControlledPlayableCombatEngineV111
     private static ControlledPlayableCombatV111 FinishTurnIntents(
         ControlledPlayableCombatV111 state)
     {
-        (RunState Run,
-            PrototypeAutomaticPipelineResumeBoundaryKindV111 Boundary)
-            result;
+        PrototypeAutomaticPipelineResumeResultV111 resume;
         using (ControlledChanceGuardV111.Enter())
-            result = PrototypeGameEngine.ResumeControlledTurnAfterIntents(
+            resume = PrototypeGameEngine.ResumeControlledTurnAfterIntents(
                 state.Run.Fork());
         return StartPendingTurn(state with
         {
             TurnIntents = null,
-            Run = result.Run
-        }, result.Boundary);
+            Run = resume.Run
+        }, resume);
     }
 
     public static string Save(ControlledPlayableCombatV111 state)
