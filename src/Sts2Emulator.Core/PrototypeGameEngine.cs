@@ -1408,8 +1408,14 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
 
     private static RunState EndRun(RunState state, string outcome)
     {
-        var world = RequireWorld(state) with
+        var original = RequireWorld(state);
+        var world = original with
         {
+            // Preserve this scalar at the exact transition that discards
+            // Combat. H4 uses it only as a terminal scoring statistic.
+            DefeatRemainingEnemyHp = outcome == "defeat"
+                ? original.Combat?.Enemies.Sum(enemy => Math.Max(0, enemy.Hp))
+                : null,
             Combat = null,
             Reward = null,
             Shop = null,
