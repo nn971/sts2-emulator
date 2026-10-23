@@ -1062,7 +1062,8 @@ public static class ControlledPlayableCombatEngineV111
     }
 
     private static ControlledPlayableCombatV111 StartPendingTurn(
-        ControlledPlayableCombatV111 state)
+        ControlledPlayableCombatV111 state,
+        PrototypeAutomaticPipelineResumeBoundaryKindV111? resumeBoundary = null)
     {
         if (state.Run.Phase != RunPhase.Combat ||
             state.Run.World?.Combat is not { } combat ||
@@ -1094,8 +1095,9 @@ public static class ControlledPlayableCombatEngineV111
             var recycleState = state with { Recycle = recycle };
             return recycle.Complete ? FinishRecycle(recycleState) : recycleState;
         }
-        if (PrototypeGameEngine
-                .ClassifyAutomaticPipelineResumeBoundary(state.Run) !=
+        var boundary = resumeBoundary ?? PrototypeGameEngine
+            .ClassifyAutomaticPipelineResumeBoundary(state.Run);
+        if (boundary !=
             PrototypeAutomaticPipelineResumeBoundaryKindV111.AdvanceTurn)
             return state;
         if (state.TurnIntents is not null)
@@ -1171,15 +1173,17 @@ public static class ControlledPlayableCombatEngineV111
     private static ControlledPlayableCombatV111 FinishTurnIntents(
         ControlledPlayableCombatV111 state)
     {
-        RunState result;
+        (RunState Run,
+            PrototypeAutomaticPipelineResumeBoundaryKindV111 Boundary)
+            result;
         using (ControlledChanceGuardV111.Enter())
             result = PrototypeGameEngine.ResumeControlledTurnAfterIntents(
                 state.Run.Fork());
         return StartPendingTurn(state with
         {
             TurnIntents = null,
-            Run = result
-        });
+            Run = result.Run
+        }, result.Boundary);
     }
 
     public static string Save(ControlledPlayableCombatV111 state)

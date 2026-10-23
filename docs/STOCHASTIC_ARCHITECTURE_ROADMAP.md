@@ -3221,3 +3221,13 @@ use that owner while retaining their distinct site and transcript policies.
 Snapshot fields are unchanged. Broader resume consolidation and
 cross-provider mechanical equivalence remain open. Static source review and
 `git diff --check` only; no tests or builds were run.
+
+**S4 classified automatic-resume handoff increment (2026-10-24):**
+`ResumeAutomaticPipelineContinuationWithBoundary` now returns the resumed run
+with its engine-classified boundary. `ResumeControlledTurnAfterIntents` and
+end-turn hand-draw completion consume that pair; semantic end-turn and
+controlled-playable facades therefore share the classification with their
+resulting run instead of reclassifying it. Facades still select their
+provider-specific continuation and transcript policies. Full resume
+consolidation and cross-provider mechanical equivalence remain open. Static
+source review and `git diff --check` only; no tests or builds were run.

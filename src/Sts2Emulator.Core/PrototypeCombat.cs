@@ -1939,7 +1939,10 @@ public sealed partial class PrototypeGameEngine
     /// frame, performs AdvanceTurn postwork once, and continues from the next
     /// real pipeline index under the same fail-closed RNG guard.
     /// </summary>
-    internal static RunState ResumeControlledTurnAfterIntents(
+    internal static (
+        RunState Run,
+        PrototypeAutomaticPipelineResumeBoundaryKindV111 Boundary)
+        ResumeControlledTurnAfterIntents(
         RunState state,
         bool stopBeforeSemanticHandDraw = false)
     {
@@ -1992,7 +1995,7 @@ public sealed partial class PrototypeGameEngine
         {
             World = world with { Combat = advanced }
         };
-        return ResumeAutomaticPipelineContinuation(
+        return ResumeAutomaticPipelineContinuationWithBoundary(
             resumed, stopBeforeSemanticHandDraw:
                 stopBeforeSemanticHandDraw);
     }

@@ -202,6 +202,24 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
     }
 
     /// <summary>
+    /// Resume the ordinary pipeline and return its classified boundary with
+    /// the resulting run so callers do not classify the same result again.
+    /// </summary>
+    internal static (
+        RunState Run,
+        PrototypeAutomaticPipelineResumeBoundaryKindV111 Boundary)
+        ResumeAutomaticPipelineContinuationWithBoundary(
+            RunState checkpoint,
+            bool stopBeforeSemanticHandDraw = false)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        var run = ResumeAutomaticPipelineContinuation(
+            checkpoint,
+            stopBeforeSemanticHandDraw: stopBeforeSemanticHandDraw);
+        return (run, ClassifyAutomaticPipelineResumeBoundary(run));
+    }
+
+    /// <summary>
     /// Begin an intent frame at a supported automatic-pipeline boundary.
     /// Opening committed intents and next-turn intents retain their distinct
     /// site and cursor requirements.
