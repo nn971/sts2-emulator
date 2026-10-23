@@ -412,6 +412,9 @@ draw outcomes. `BeginSemanticAutomaticHandDraw` returns that validated
 progress directly, leaving the helper as the single stage-result interpreter.
 The initial semantic draw facade publishes its requested/remaining projection
 from this result without reinterpreting `BeforeHandDraw` random-pile choices.
+`ResumeAutomaticHandDrawBoundary` distinguishes initial source results, saved
+controlled resumes, and saved semantic resumes with a typed context; only the
+semantic context carries a semantic draw frame.
 The pipeline stochastic validator checks the shared `DrawPlayerHand` stage
 once for every active progress tag; mode-specific checks cover the corresponding
 provider state and pending choice.

@@ -7,6 +7,13 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public sealed partial class PrototypeGameEngine
 {
+    private enum AutomaticHandDrawResumeContextV111
+    {
+        SourceStageBoundary,
+        SavedControlledStage,
+        SavedSemanticStage
+    }
+
     /// <summary>
     /// Routes a completed DrawPlayerHand call to the matching continuation
     /// owner. Source-stage calls route only suspended boundaries; saved-stage
@@ -16,7 +23,7 @@ public sealed partial class PrototypeGameEngine
         ResumeAutomaticHandDrawBoundary(
         RunState rngCheckpoint, PrototypeDrawCardsResult drawn,
         int requestedCount,
-        bool resumeSavedStage = false,
+        AutomaticHandDrawResumeContextV111 context,
         PrototypeControlledSemanticDrawV111? semanticDraw = null,
         string recycleSite = "combat.DrawPlayerHand",
         string recycleOperation = "unsupported_nested_stage")
@@ -25,10 +32,18 @@ public sealed partial class PrototypeGameEngine
         ArgumentNullException.ThrowIfNull(drawn);
         if (requestedCount < 0)
             throw new ArgumentOutOfRangeException(nameof(requestedCount));
+        if ((context == AutomaticHandDrawResumeContextV111.SavedSemanticStage) !=
+            (semanticDraw is not null))
+            throw new InvalidDataException(
+                "Automatic hand-draw resume context and provider frame disagree.");
 
         var combat = drawn.Combat;
         var boundary = drawn.BoundaryKind;
-        bool semanticChoiceBoundary = !resumeSavedStage &&
+        bool resumeSavedStage = context is
+            AutomaticHandDrawResumeContextV111.SavedControlledStage or
+            AutomaticHandDrawResumeContextV111.SavedSemanticStage;
+        bool semanticChoiceBoundary = context ==
+                AutomaticHandDrawResumeContextV111.SourceStageBoundary &&
             ControlledChanceGuardV111.Active &&
             combat.Stochastic.SemanticDeck is
                 { Mode: SemanticDeckStateV111.NatureMode } &&
@@ -36,13 +51,14 @@ public sealed partial class PrototypeGameEngine
                 (PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice or
                  PrototypeDrawCardsBoundaryKind.AfterShuffleInsertions or
                  PrototypeDrawCardsBoundaryKind.ShuffleSelection);
-        bool semanticDrawBoundary = !resumeSavedStage &&
+        bool semanticDrawBoundary = context ==
+                AutomaticHandDrawResumeContextV111.SourceStageBoundary &&
             combat.Stochastic.SemanticDeck is not null &&
             boundary is
                 (PrototypeDrawCardsBoundaryKind.SemanticDraw or
                  PrototypeDrawCardsBoundaryKind.ControlledDrawCost);
-        bool semanticSavedStage = resumeSavedStage &&
-            semanticDraw is not null;
+        bool semanticSavedStage = context ==
+            AutomaticHandDrawResumeContextV111.SavedSemanticStage;
         if (semanticChoiceBoundary || semanticDrawBoundary ||
             semanticSavedStage)
         {
@@ -91,7 +107,8 @@ public sealed partial class PrototypeGameEngine
         RunState state, PrototypeDrawCardsResult drawn)
     {
         var resumed = ResumeAutomaticHandDrawBoundary(
-            state, drawn, requestedCount: 0, resumeSavedStage: true);
+            state, drawn, requestedCount: 0,
+            context: AutomaticHandDrawResumeContextV111.SavedControlledStage);
         return resumed?.Run ?? ContinueControlledHandDraw(state, drawn);
     }
 
@@ -436,7 +453,9 @@ public sealed partial class PrototypeGameEngine
                 "Controlled automatic draw acquired semantic progress.");
         return ResumeAutomaticHandDrawBoundary(
                 resumed.Run, drawn, requestedCount,
-                resumeSavedStage: true,
+                context: semantic
+                    ? AutomaticHandDrawResumeContextV111.SavedSemanticStage
+                    : AutomaticHandDrawResumeContextV111.SavedControlledStage,
                 semanticDraw: semanticDraw,
                 recycleSite: recycleSite ?? "combat.DrawPlayerHand",
                 recycleOperation: recycleOperation ??

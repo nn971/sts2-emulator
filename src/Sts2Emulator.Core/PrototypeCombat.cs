@@ -3081,7 +3081,9 @@ public sealed partial class PrototypeGameEngine
                 combat = drawn.Combat;
                 var drawBoundary = drawn.BoundaryKind;
                 var resumedDrawBoundary = ResumeAutomaticHandDrawBoundary(
-                    PublishPrototypeRng(state), drawn, requestedHandDraw);
+                    PublishPrototypeRng(state), drawn, requestedHandDraw,
+                    AutomaticHandDrawResumeContextV111
+                        .SourceStageBoundary);
                 if (resumedDrawBoundary is not null)
                     return resumedDrawBoundary.Value.Run;
                 if (drawBoundary ==

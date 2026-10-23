@@ -73,6 +73,12 @@ avoiding inference from `0/0` counts.
 The semantic draw facade no longer reinterprets a pending random-pile choice.
 Static source review and `git diff --check` only; no tests or builds were run.
 
+**S4 automatic hand-draw router context increment (2026-10-24):** The shared
+boundary router now takes an explicit source, saved-controlled, or
+saved-semantic context. It requires a semantic draw frame only for the saved
+semantic route, removing the ambiguous saved-stage boolean/provider inference.
+Static source review and `git diff --check` only; no tests or builds were run.
+
 **S4 controlled event-choice candidate replay increment (2026-10-24):**
 Generic event-effect continuations now pass each saved decision's ordered
 candidate labels into replay and compare them with the live support before
