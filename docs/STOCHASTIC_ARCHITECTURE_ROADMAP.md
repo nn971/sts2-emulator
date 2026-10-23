@@ -42,6 +42,13 @@ of implying none exists; its Native-regional legacy weights remain
 `UNVERIFIED`. Static source review and `git diff --check` only; no tests or
 builds were run.
 
+**S0 generated-gold manual site review increment (2026-10-23):** The two
+event-local gold sites now trace supported Native index and unit-float
+branches, the shared event-entry replay, and the legacy index fallback. Their
+runtime callsites use the existing registry-owned SiteIds. Native cursor
+parity, event-pool completeness, and legacy equal-index weights remain open.
+Static source review and `git diff --check` only; no tests or builds were run.
+
 **S0 summon-pool SiteId ownership increment (2026-10-23):** The existing
 legacy summon continuation and query registry now use the shared
 `combat.enemy.summon_pool.select` constant. Its Native pool path continues to

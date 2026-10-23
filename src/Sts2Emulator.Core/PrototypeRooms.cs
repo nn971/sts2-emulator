@@ -717,7 +717,7 @@ public sealed partial class PrototypeGameEngine
         int candidateCount) =>
         ResolveLegacyRandomIndex(
             rng,
-            "event.generated_gold.index_draw",
+            StochasticSiteRegistryV111.NativeEventGoldIndexSiteId,
             $"event:{eventId}:gold:{stage}",
             Enumerable.Range(minimum, candidateCount),
             streamId: "event");
@@ -823,7 +823,7 @@ public sealed partial class PrototypeGameEngine
             state,
             evt,
             nativeEventEntry,
-            "event.generated_gold.index_draw",
+            StochasticSiteRegistryV111.NativeEventGoldIndexSiteId,
             $"event:{evt.EventId}:gold:{stage}",
             boundedCount);
 
@@ -835,7 +835,7 @@ public sealed partial class PrototypeGameEngine
             state,
             evt,
             nativeEventEntry,
-            "event.generated_gold.unit_float",
+            StochasticSiteRegistryV111.NativeEventGoldUnitFloatSiteId,
             $"event:{evt.EventId}:gold:{stage}");
 
     private static RunState StoreNativeEventGold(

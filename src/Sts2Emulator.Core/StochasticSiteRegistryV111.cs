@@ -647,11 +647,11 @@ public static class StochasticSiteRegistryV111
     [
         "event.selection.weighted_ticket",
         "event.unknown_room.odds.ticket",
-        "event.generated_gold.index_draw",
+        NativeEventGoldIndexSiteId,
         NativeStoneOfAllTimePotionSlotSiteId,
         "event.fake_merchant.relic_offer.shuffle_swap_index",
         "event.endless_conveyor.dish_weighted_ticket",
-        "event.future_of_potions.card_type.index_draw"
+        NativeFutureOfPotionsCardTypeSiteId
     ];
 
     private static readonly string[] RunActionShopSites =

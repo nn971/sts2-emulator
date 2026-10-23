@@ -49,7 +49,7 @@ public sealed partial class PrototypeGameEngine
                     ? current.Stochastic.RandomOutcomes.NativeEventGold
                     : 61 + LegacyRandomChoiceV111.ChooseBoundedInteger(
                         prototypeRng,
-                        "event.generated_gold.index_draw",
+                        StochasticSiteRegistryV111.NativeEventGoldIndexSiteId,
                         "event",
                         "event:dense_vegetation:trudge_gold",
                         39).SelectedIndex;
