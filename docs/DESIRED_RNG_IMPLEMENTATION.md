@@ -186,9 +186,12 @@ The potion factory now routes its unit-float rarity
 sample and within-tier model index through separate typed providers in source
 order. Native effect-random-target and Sly auto-play selections use typed
 index requests on `run.combat_targets`; player-action auto-play targets now
-resume the saved auto-play operation after Nature selects a live enemy. Late
-automatic-pipeline auto-play and native cursor parity remain open. Random-card
-auto-play now has a saved card-shortlist continuation for
+resume the saved auto-play operation after Nature selects a live enemy.
+Supported automatic-pipeline autoplay now resumes through saved cursors for
+Mayhem and History Course, Whispering Earring's opening sequence, and the
+Imbued late-relic sequence. Other source-specific autoplay boundaries remain
+gated, and native cursor parity remains open. Random-card auto-play now has a
+saved card-shortlist continuation for
 `combat.autoplay.random_card.select`, shared with the serializable card
 shortlist mechanism. Beat Down selects from its discard-pile Attack pool;
 Catastrophe selects from the draw pile and commits the removed identity to the
@@ -256,12 +259,18 @@ HP choices, variable legacy Tough Egg hatchling HP, card theft and random pile
 insertions. The playable controlled turn-intent continuation now evaluates the
 live formation after that enemy-action stage, so newly summoned enemies are
 included in the next visible intent boundary; this extension currently has
-build-only verification. Native
-summon-pool selection remains fail-closed pending source audit; encounter
-selection continuations remain open.
+build-only verification. Native summon-pool selection remains fail-closed
+pending source audit. The ReferenceNature run-action session now captures
+configured experimental Native Act 1 encounter-pool and formation choices,
+supported Overgrowth/Underdocks weak, normal, and elite pool indices, and the
+paired pre-combat PotionFactory requests. Other combat-entry requests keep
+their current providers; source support/order, seed derivation, and cursor
+parity remain open.
 Beautiful Bracelet's eligible-deck shuffle and Fur Coat's current-act combat
-node shuffle now use typed native swap requests as well; controlled relic
-acquisition continuation remains pending. Distinguished Cape's two
+node shuffle now use typed native swap requests as well. The ReferenceNature
+event/reward session covers its admitted relic-acquisition paths; a general
+controlled continuation for other acquisition and combat-start contexts
+remains pending. Distinguished Cape's two
 source-ordered modifier-curse selections now pass through the typed index
 provider in native and legacy-prototype modes; the legacy adapter preserves
 the original sampler. Tough Egg's hatch request uses the native formation
@@ -286,14 +295,16 @@ shuffles, card rarity/model picks and prices, random potion/relic rewards, and
 persistent-deck transformations now use typed legacy providers. Fishing Rod's
 every-third combat deck upgrade and War Hammer's elite-victory shuffle now use
 typed native `run.niche` requests when native run ownership is enabled,
-synchronizing the persistent run and active combat stream copies; prototype-
-only fallback still uses the legacy provider. The remaining
-gameplay callsites no longer call `PrototypeRng` directly: those API references
+synchronizing the persistent run and active combat stream copies; prototype-only
+fallback still uses the legacy provider. The configured Native merchant and
+combat-reward sessions capture their registered requests; other legacy paths
+keep their typed providers, while source/native parity and unregistered
+continuation coverage remain open. The remaining gameplay callsites no longer
+call `PrototypeRng` directly: those API references
 are confined to the typed legacy adapter and replay support. Native event
 cursor validators now replay through the typed native provider without adding
 duplicate entries to an active boundary journal.
-Their source/native parity and controlled continuations remain open. A typed
-Gaussian-double adapter now wraps the native
+A typed Gaussian-double adapter now wraps the native
 rejection sampler and journals its complete cursor span, including rejected
 samples. A typed ranged-float adapter now preserves the native `NextFloat(min,
 max)` rounding, and a ranged-double adapter wraps `NextDouble(min, max)`; both
