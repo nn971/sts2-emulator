@@ -1060,3 +1060,13 @@ there are no remaining modeled direct-draw sources to add to the semantic
 pilot allowlist. Additional game-content triggers and Native stream/cursor
 parity remain open. Static source review and `git diff --check` only; no tests
 or builds were run.
+
+## 2026-10-23: semantic draw chronology
+
+`SemanticCombatDrawV111` now records a versioned boundary transcript across semantic
+draws, draw costs, random pile-card picks, draw-pile insertions, Stratagem
+selections, and draw-hook actions. Full source replay checks each next
+mechanics boundary against that cross-type order. Older snapshots without the
+new transcript remain readable and source replay adds the chronology on
+restore. No event identity or provider decision schema changed. Static source
+review and `git diff --check` only; no tests or builds were run.

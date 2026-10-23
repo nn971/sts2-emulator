@@ -1648,7 +1648,22 @@ public static class SemanticEndTurnEngineV111
                 throw new InvalidDataException(
                     "Semantic end-turn boundary transcript omitted a decision.");
         }
-        if (CanonicalJson.Sha256(reproduced) != CanonicalJson.Sha256(saved))
+        var comparisonSnapshot = saved;
+        if (saved.HandDraw is { } savedHand &&
+            savedHand.BoundaryTranscript.Length == 0 &&
+            reproduced.HandDraw is { } replayedHand &&
+            replayedHand.BoundaryTranscript.Length > 0)
+            comparisonSnapshot = saved with
+            {
+                HandDraw = savedHand with
+                {
+                    BoundaryTranscript = replayedHand.BoundaryTranscript,
+                    BoundaryTranscriptVersion =
+                        replayedHand.BoundaryTranscriptVersion
+                }
+            };
+        if (CanonicalJson.Sha256(reproduced) !=
+            CanonicalJson.Sha256(comparisonSnapshot))
             throw new InvalidDataException(
                 "Semantic end-turn full source replay disagrees with snapshot.");
         return reproduced;

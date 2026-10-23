@@ -1,5 +1,21 @@
 namespace Sts2Emulator.Core;
 
+/// <summary>Chronological reference into the typed decision transcripts
+/// owned by one semantic combat-draw continuation.</summary>
+public sealed record SemanticCombatDrawBoundaryChoiceV111(
+    string Kind, int TranscriptIndex)
+{
+    public void Validate()
+    {
+        if (Kind is not ("semantic_draw" or "semantic_cost" or
+                "random_pile_card" or "semantic_draw_insertion" or
+                "stratagem_selection" or "draw_hook_choice") ||
+            TranscriptIndex < 0)
+            throw new InvalidDataException(
+                "Invalid semantic combat-draw boundary transcript entry.");
+    }
+}
+
 /// <summary>
 /// Provider decisions accumulated by one semantic combat-draw continuation.
 /// The continuation keeps its established flattened properties as
@@ -7,11 +23,15 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public sealed record SemanticCombatDrawStochasticStateV111
 {
+    internal const int CurrentBoundaryTranscriptVersion = 1;
+
     private SemanticRandomPileCardDecisionV111[]? _randomPileCardTranscript = [];
     private SemanticDrawInsertionDecisionV111[]? _drawInsertionTranscript = [];
     private SemanticCardSelectionDecisionV111[]? _stratagemSelectionTranscript = [];
     private SemanticDrawHookChoiceDecisionV111[]? _drawHookChoiceTranscript = [];
     private RandomIndexDecisionV111[]? _costTranscript = [];
+    private SemanticCombatDrawBoundaryChoiceV111[]? _boundaryTranscript = [];
+    public int BoundaryTranscriptVersion { get; init; }
 
     public SemanticRandomPileCardDecisionV111[] RandomPileCardTranscript
     {
@@ -48,17 +68,24 @@ public sealed record SemanticCombatDrawStochasticStateV111
         init => _costTranscript = CopyTranscript(value,
             CloneCostDecision);
     }
+    public SemanticCombatDrawBoundaryChoiceV111[] BoundaryTranscript
+    {
+        get => CopyTranscript(_boundaryTranscript, decision => decision)!;
+        init => _boundaryTranscript = CopyTranscript(value,
+            decision => decision);
+    }
 
     internal SemanticCombatDrawStochasticStateV111 AppendRandomPileCard(
         SemanticRandomPileCardDecisionV111 decision)
     {
         ArgumentNullException.ThrowIfNull(decision);
         decision.Validate();
-        return this with
+        var transcript = RandomPileCardTranscript
+            .Append(decision.Fork()).ToArray();
+        return (this with
         {
-            RandomPileCardTranscript = RandomPileCardTranscript
-                .Append(decision.Fork()).ToArray()
-        };
+            RandomPileCardTranscript = transcript
+        }).AppendBoundary("random_pile_card", transcript.Length - 1);
     }
 
     internal SemanticCombatDrawStochasticStateV111 AppendDrawInsertion(
@@ -66,11 +93,12 @@ public sealed record SemanticCombatDrawStochasticStateV111
     {
         ArgumentNullException.ThrowIfNull(decision);
         decision.Validate();
-        return this with
+        var transcript = DrawInsertionTranscript
+            .Append(decision.Fork()).ToArray();
+        return (this with
         {
-            DrawInsertionTranscript = DrawInsertionTranscript
-                .Append(decision.Fork()).ToArray()
-        };
+            DrawInsertionTranscript = transcript
+        }).AppendBoundary("semantic_draw_insertion", transcript.Length - 1);
     }
 
     internal SemanticCombatDrawStochasticStateV111 AppendStratagemSelection(
@@ -78,11 +106,12 @@ public sealed record SemanticCombatDrawStochasticStateV111
     {
         ArgumentNullException.ThrowIfNull(decision);
         decision.Validate();
-        return this with
+        var transcript = StratagemSelectionTranscript
+            .Append(decision.Fork()).ToArray();
+        return (this with
         {
-            StratagemSelectionTranscript = StratagemSelectionTranscript
-                .Append(decision.Fork()).ToArray()
-        };
+            StratagemSelectionTranscript = transcript
+        }).AppendBoundary("stratagem_selection", transcript.Length - 1);
     }
 
     internal SemanticCombatDrawStochasticStateV111 AppendDrawHookChoice(
@@ -90,11 +119,12 @@ public sealed record SemanticCombatDrawStochasticStateV111
     {
         ArgumentNullException.ThrowIfNull(decision);
         decision.Validate();
-        return this with
+        var transcript = DrawHookChoiceTranscript
+            .Append(decision.Fork()).ToArray();
+        return (this with
         {
-            DrawHookChoiceTranscript = DrawHookChoiceTranscript
-                .Append(decision.Fork()).ToArray()
-        };
+            DrawHookChoiceTranscript = transcript
+        }).AppendBoundary("draw_hook_choice", transcript.Length - 1);
     }
 
     internal SemanticCombatDrawStochasticStateV111 AppendCost(
@@ -106,10 +136,28 @@ public sealed record SemanticCombatDrawStochasticStateV111
             decision.ProbabilityStatus != "UNVERIFIED")
             throw new InvalidDataException(
                 "Unexpected semantic drawn-cost transcript provenance.");
+        var transcript = CostTranscript
+            .Append(CloneCostDecision(decision)).ToArray();
+        return (this with
+        {
+            CostTranscript = transcript
+        }).AppendBoundary("semantic_cost", transcript.Length - 1);
+    }
+
+    internal SemanticCombatDrawStochasticStateV111 AppendDeckChoice(
+        int transcriptIndex) => AppendBoundary(
+            "semantic_draw", transcriptIndex);
+
+    private SemanticCombatDrawStochasticStateV111 AppendBoundary(
+        string kind, int transcriptIndex)
+    {
+        var choice = new SemanticCombatDrawBoundaryChoiceV111(
+            kind, transcriptIndex);
+        choice.Validate();
         return this with
         {
-            CostTranscript = CostTranscript.Append(CloneCostDecision(decision))
-                .ToArray()
+            BoundaryTranscript = BoundaryTranscript.Append(choice).ToArray(),
+            BoundaryTranscriptVersion = CurrentBoundaryTranscriptVersion
         };
     }
 
@@ -123,7 +171,9 @@ public sealed record SemanticCombatDrawStochasticStateV111
             decision => decision.Fork())!,
         DrawHookChoiceTranscript = CopyTranscript(_drawHookChoiceTranscript,
             decision => decision.Fork())!,
-        CostTranscript = CopyTranscript(_costTranscript, CloneCostDecision)!
+        CostTranscript = CopyTranscript(_costTranscript, CloneCostDecision)!,
+        BoundaryTranscript = CopyTranscript(_boundaryTranscript,
+            decision => decision)!
     };
 
     public void Validate()
@@ -133,9 +183,10 @@ public sealed record SemanticCombatDrawStochasticStateV111
         var stratagemSelectionTranscript = StratagemSelectionTranscript;
         var drawHookChoiceTranscript = DrawHookChoiceTranscript;
         var randomPileCardTranscript = RandomPileCardTranscript;
+        var boundaryTranscript = BoundaryTranscript;
         if (costTranscript is null || drawInsertionTranscript is null ||
             stratagemSelectionTranscript is null ||
-            drawHookChoiceTranscript is null)
+            drawHookChoiceTranscript is null || boundaryTranscript is null)
             throw new InvalidDataException(
                 "Invalid semantic combat draw stage.");
         if (randomPileCardTranscript is null)
@@ -169,6 +220,49 @@ public sealed record SemanticCombatDrawStochasticStateV111
             (decision ?? throw new InvalidDataException(
                 "Semantic draw-hook transcript contains a null decision."))
                 .Validate();
+        foreach (var decision in boundaryTranscript)
+            (decision ?? throw new InvalidDataException(
+                "Semantic combat-draw boundary transcript contains a null entry."))
+                .Validate();
+    }
+
+    internal void ValidateBoundaryTranscript(int semanticDrawCount)
+    {
+        if (semanticDrawCount < 0)
+            throw new ArgumentOutOfRangeException(nameof(semanticDrawCount));
+        var transcript = BoundaryTranscript;
+        var typedCounts = new Dictionary<string, int>(StringComparer.Ordinal)
+        {
+            ["semantic_draw"] = semanticDrawCount,
+            ["semantic_cost"] = CostTranscript.Length,
+            ["random_pile_card"] = RandomPileCardTranscript.Length,
+            ["semantic_draw_insertion"] = DrawInsertionTranscript.Length,
+            ["stratagem_selection"] = StratagemSelectionTranscript.Length,
+            ["draw_hook_choice"] = DrawHookChoiceTranscript.Length
+        };
+        if (BoundaryTranscriptVersion == 0 && transcript.Length == 0)
+            return; // Legacy snapshots predate the chronology member.
+        if (BoundaryTranscriptVersion != CurrentBoundaryTranscriptVersion)
+            throw new InvalidDataException(
+                "Unsupported semantic combat-draw chronology version.");
+        var nextIndexes = typedCounts.Keys.ToDictionary(
+            kind => kind, _ => 0, StringComparer.Ordinal);
+        if (transcript.Length != typedCounts.Values.Sum())
+            throw new InvalidDataException(
+                "Semantic combat-draw chronology omits or duplicates decisions.");
+        foreach (var entry in transcript)
+        {
+            entry.Validate();
+            if (!typedCounts.TryGetValue(entry.Kind, out var count) ||
+                entry.TranscriptIndex != nextIndexes[entry.Kind] ||
+                entry.TranscriptIndex >= count)
+                throw new InvalidDataException(
+                    "Semantic combat-draw chronology differs from its typed transcripts.");
+            nextIndexes[entry.Kind]++;
+        }
+        if (typedCounts.Any(pair => nextIndexes[pair.Key] != pair.Value))
+            throw new InvalidDataException(
+                "Semantic combat-draw chronology is incomplete.");
     }
 
     private static T[]? CopyTranscript<T>(T[]? transcript, Func<T, T> clone)
@@ -185,9 +279,9 @@ public sealed record SemanticCombatDrawStochasticStateV111
     };
 }
 
-/// <summary>Consumes the typed semantic-draw histories during deterministic
-/// source replay. Mechanics determines which boundary occurs next; this owner
-/// tracks consumption across the separate provider transcript projections.</summary>
+/// <summary>Consumes typed semantic-draw histories during deterministic
+/// source replay and verifies their recorded cross-type chronology against
+/// each live mechanics boundary.</summary>
 internal sealed class SemanticCombatDrawReplayCursorV111
 {
     private readonly SemanticDeckChoiceV111[] _deckChoices;
@@ -196,12 +290,15 @@ internal sealed class SemanticCombatDrawReplayCursorV111
     private readonly SemanticDrawInsertionDecisionV111[] _insertions;
     private readonly SemanticCardSelectionDecisionV111[] _stratagemChoices;
     private readonly SemanticDrawHookChoiceDecisionV111[] _drawHookChoices;
+    private readonly SemanticCombatDrawBoundaryChoiceV111[] _boundaryChoices;
+    private readonly bool _hasBoundaryTranscript;
     private int _deckIndex;
     private int _costIndex;
     private int _pileCardIndex;
     private int _insertionIndex;
     private int _stratagemIndex;
     private int _drawHookIndex;
+    private int _boundaryIndex;
 
     internal SemanticCombatDrawReplayCursorV111(
         SemanticCombatDrawV111 state)
@@ -213,6 +310,8 @@ internal sealed class SemanticCombatDrawReplayCursorV111
         _insertions = state.DrawInsertionTranscript;
         _stratagemChoices = state.StratagemSelectionTranscript;
         _drawHookChoices = state.DrawHookChoiceTranscript;
+        _boundaryChoices = state.Stochastic.BoundaryTranscript;
+        _hasBoundaryTranscript = _boundaryChoices.Length > 0;
     }
 
     internal bool HasRemaining =>
@@ -225,40 +324,61 @@ internal sealed class SemanticCombatDrawReplayCursorV111
 
     internal SemanticDeckChoiceV111 NextDeckChoice() => Take(
         _deckChoices, ref _deckIndex,
-        "Semantic draw/cost stage mismatch in provenance replay.");
+        "Semantic draw/cost stage mismatch in provenance replay.",
+        "semantic_draw");
 
     internal RandomIndexDecisionV111 NextCostChoice() => Take(
         _costChoices, ref _costIndex,
-        "Missing semantic drawn-cost decision in replay.");
+        "Missing semantic drawn-cost decision in replay.",
+        "semantic_cost");
 
     internal SemanticRandomPileCardDecisionV111 NextPileCardChoice() => Take(
         _pileCardChoices, ref _pileCardIndex,
-        "Missing semantic random pile-card decision in replay.");
+        "Missing semantic random pile-card decision in replay.",
+        "random_pile_card");
 
     internal SemanticDrawInsertionDecisionV111 NextInsertion() => Take(
         _insertions, ref _insertionIndex,
-        "Missing semantic draw-insertion decision in replay.");
+        "Missing semantic draw-insertion decision in replay.",
+        "semantic_draw_insertion");
 
     internal SemanticCardSelectionDecisionV111 NextStratagemChoice() => Take(
         _stratagemChoices, ref _stratagemIndex,
-        "Missing standalone Stratagem selection in replay.");
+        "Missing standalone Stratagem selection in replay.",
+        "stratagem_selection");
 
     internal SemanticDrawHookChoiceDecisionV111 NextDrawHookChoice() => Take(
         _drawHookChoices, ref _drawHookIndex,
-        "Missing nested CardDrawn hook choice in replay.");
+        "Missing nested CardDrawn hook choice in replay.",
+        "draw_hook_choice");
 
     internal void ValidateComplete()
     {
         if (HasRemaining)
             throw new InvalidDataException(
                 "Semantic combat draw replay left transcript decisions unused.");
+        if (_hasBoundaryTranscript &&
+            _boundaryIndex != _boundaryChoices.Length)
+            throw new InvalidDataException(
+                "Semantic combat-draw replay left chronology entries unused.");
     }
 
-    private static T Take<T>(T[] transcript, ref int index, string error)
+    private T Take<T>(T[] transcript, ref int index, string error, string kind)
         where T : class
     {
         if (index >= transcript.Length)
             throw new InvalidDataException(error);
+        if (_hasBoundaryTranscript)
+        {
+            if (_boundaryIndex >= _boundaryChoices.Length)
+                throw new InvalidDataException(
+                    "Semantic combat-draw chronology ended before its typed transcript.");
+            var boundary = _boundaryChoices[_boundaryIndex++];
+            if (boundary.Kind != kind ||
+                boundary.TranscriptIndex != index)
+                throw new InvalidDataException(
+                    "Semantic combat-draw chronology diverged from source replay.");
+        }
         return transcript[index++];
     }
 }

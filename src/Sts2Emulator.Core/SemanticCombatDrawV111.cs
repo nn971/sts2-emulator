@@ -174,12 +174,29 @@ public sealed record SemanticCombatDrawV111(
             CostTranscript = value
         };
     }
+    public SemanticCombatDrawBoundaryChoiceV111[] BoundaryTranscript
+    {
+        get => Stochastic.BoundaryTranscript;
+        init => Stochastic = Stochastic with
+        {
+            BoundaryTranscript = value
+        };
+    }
+    public int BoundaryTranscriptVersion
+    {
+        get => Stochastic.BoundaryTranscriptVersion;
+        init => Stochastic = Stochastic with
+        {
+            BoundaryTranscriptVersion = value
+        };
+    }
 
     public void Validate()
     {
         this.Mechanics.Continuation.Validate(
             PrototypeMechanicsContinuationKindV111.SemanticCombatDraw);
         this.Stochastic.Validate();
+        this.Stochastic.ValidateBoundaryTranscript(this.Transcript.Length);
         var randomPileCardPending = this.RandomPileCardPending;
         var drawInsertionPending = this.DrawInsertionPending;
         var completedHookCursor =
@@ -427,6 +444,20 @@ public static class SemanticCombatDrawEngineV111
         return next;
     }
 
+    private static SemanticCombatDrawV111 RecordNewSemanticDrawChoices(
+        SemanticCombatDrawV111 source, SemanticCombatDrawV111 resumed)
+    {
+        var priorCount = source.Transcript.Length;
+        var transcript = resumed.Transcript;
+        if (transcript.Length < priorCount)
+            throw new InvalidDataException(
+                "Semantic draw continuation removed committed draw decisions.");
+        var stochastic = resumed.Stochastic;
+        for (var index = priorCount; index < transcript.Length; index++)
+            stochastic = stochastic.AppendDeckChoice(index);
+        return resumed with { Stochastic = stochastic };
+    }
+
     internal static SemanticDrawInsertionEventV111?
         DescribePendingDrawInsertion(SemanticCombatDrawV111 state)
     {
@@ -661,6 +692,8 @@ public static class SemanticCombatDrawEngineV111
             {
                 Stochastic = state.Stochastic.AppendRandomPileCard(decision)
             };
+            nextPileChoice = RecordNewSemanticDrawChoices(
+                state, nextPileChoice);
             Validate(nextPileChoice);
             return nextPileChoice;
         }
@@ -680,6 +713,8 @@ public static class SemanticCombatDrawEngineV111
             {
                 Stochastic = state.Stochastic.AppendDrawInsertion(decision)
             };
+            nextInsertion = RecordNewSemanticDrawChoices(
+                state, nextInsertion);
             Validate(nextInsertion);
             return nextInsertion;
         }
@@ -717,8 +752,10 @@ public static class SemanticCombatDrawEngineV111
             {
                 Stochastic = state.Stochastic.AppendCost(decision)
             };
-            Validate(costNext);
-            return costNext;
+            var costNextWithChronology = RecordNewSemanticDrawChoices(
+                state, costNext);
+            Validate(costNextWithChronology);
+            return costNextWithChronology;
         }
 
         if (combat.PendingChoice?.ControlledSemanticDraw?
@@ -736,6 +773,7 @@ public static class SemanticCombatDrawEngineV111
                 remainingCount: PrototypeGameEngine.GetSemanticDrawRemainingCount(
                     resumedDraw, state.RemainingCount,
                     combat.CounterState.CardsDrawnThisCombat));
+            drawNext = RecordNewSemanticDrawChoices(state, drawNext);
             Validate(drawNext);
             return drawNext;
         }
@@ -753,6 +791,7 @@ public static class SemanticCombatDrawEngineV111
                 state.FromHandDraw);
         var next = PublishDrawProgress(
             state, advanced, remainingCount: remaining);
+        next = RecordNewSemanticDrawChoices(state, next);
         Validate(next);
         return next;
     }
@@ -780,8 +819,10 @@ public static class SemanticCombatDrawEngineV111
         {
             Stochastic = state.Stochastic.AppendStratagemSelection(decision)
         };
-        Validate(next);
-        return next;
+        var nextWithChronology = RecordNewSemanticDrawChoices(
+            state, next);
+        Validate(nextWithChronology);
+        return nextWithChronology;
     }
 
     public static SemanticCombatDrawV111 ResolveDrawHookChoice(
@@ -805,8 +846,10 @@ public static class SemanticCombatDrawEngineV111
         {
             Stochastic = state.Stochastic.AppendDrawHookChoice(decision)
         };
-        Validate(next);
-        return next;
+        var nextWithChronology = RecordNewSemanticDrawChoices(
+            state, next);
+        Validate(nextWithChronology);
+        return nextWithChronology;
     }
 
     public static string Save(SemanticCombatDrawV111 state)
@@ -930,7 +973,17 @@ public static class SemanticCombatDrawEngineV111
                 reconstructed, reconstructed.Fingerprint, decision.SelectedIndex);
         }
         transcriptCursor.ValidateComplete();
-        if (CanonicalJson.Sha256(reconstructed) != CanonicalJson.Sha256(stored))
+        var comparisonSnapshot = stored;
+        if (stored.BoundaryTranscript.Length == 0 &&
+            reconstructed.BoundaryTranscript.Length > 0)
+            comparisonSnapshot = stored with
+            {
+                BoundaryTranscript = reconstructed.BoundaryTranscript,
+                BoundaryTranscriptVersion =
+                    reconstructed.BoundaryTranscriptVersion
+            };
+        if (CanonicalJson.Sha256(reconstructed) !=
+            CanonicalJson.Sha256(comparisonSnapshot))
             throw new InvalidDataException(
                 "Semantic combat draw snapshot fails complete provenance replay.");
         return reconstructed;
