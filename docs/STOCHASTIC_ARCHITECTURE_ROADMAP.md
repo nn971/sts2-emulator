@@ -45,9 +45,10 @@ were run.
 pipeline stochastic owner now exposes one stage-validated query returning the
 active count-bearing progress tag and counts. Semantic and remaining-count
 queries project from that value, and automatic cost validation reads the tag
-and saved count together. Provider resume policies and transcripts remain with
-their existing adapters. Static source review and `git diff --check` only; no
-tests or builds were run.
+and saved count together. The zero-count `BeforeHandDraw` projection also
+requires the saved cursor to remain at that stage. Provider resume policies
+and transcripts remain with their existing adapters. Static source review and
+`git diff --check` only; no tests or builds were run.
 
 **S4 controlled event-choice candidate replay increment (2026-10-24):**
 Generic event-effect continuations now pass each saved decision's ordered

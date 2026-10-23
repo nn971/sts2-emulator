@@ -228,6 +228,13 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
         ArgumentNullException.ThrowIfNull(mechanics);
         if (ControlledSemanticBeforeHandDrawPending)
         {
+            if (!mechanics.IsAtStep(
+                    PrototypeAutomaticStepKind.DrawPlayerHand))
+            {
+                requested = 0;
+                remaining = 0;
+                return false;
+            }
             requested = 0;
             remaining = 0;
             return true;
