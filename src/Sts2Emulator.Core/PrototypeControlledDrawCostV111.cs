@@ -192,19 +192,13 @@ public sealed partial class PrototypeGameEngine
         var world = RequireWorld(state);
         var combat = world.Combat ??
             throw new InvalidOperationException("Draw-cost combat missing.");
-        var continuation = combat.AutomaticPipelineContinuation ??
-            throw new InvalidOperationException(
-                "Missing original automatic hand-draw cursor.");
         var pending = combat.PendingChoice ??
             throw new InvalidOperationException("Missing drawn-card cost choice.");
         var cost = pending.ControlledDrawCost ??
             throw new InvalidOperationException("No controlled drawn-card cost.");
-        if (!continuation.Mechanics.IsAtStep(
-                PrototypeAutomaticStepKind.DrawPlayerHand) ||
-            continuation.Stochastic.ControlledDrawCostRemaining !=
-                cost.RemainingCount ||
-            continuation.Stochastic.ControlledDrawRemaining is not null ||
-            !ValidateControlledDrawCost(state.Player, combat, cost))
+        ValidateAutomaticHandDrawCostCheckpoint(
+            combat, cost, semantic: false);
+        if (!ValidateControlledDrawCost(state.Player, combat, cost))
             throw new InvalidDataException(
                 "Saved drawn-card cost does not match the hand-draw checkpoint.");
         var resumed = ResumeAutomaticHandDrawAfterCost(

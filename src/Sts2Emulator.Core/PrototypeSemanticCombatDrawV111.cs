@@ -91,13 +91,14 @@ public sealed partial class PrototypeGameEngine
         var pending = combat.PendingChoice;
         var cost = pending?.ControlledDrawCost;
         bool automatic = IsSemanticAutomaticHandDraw(combat);
+        int? automaticRequested = automatic
+            ? ValidateAutomaticHandDrawCostCheckpoint(
+                combat, cost ?? throw new InvalidDataException(
+                    "Semantic cost checkpoint has no cost payload."),
+                semantic: true)
+            : null;
         if (cost is null || deck.Pending is not null ||
             (combat.AutomaticPipelineContinuation is not null && !automatic) ||
-            (automatic && (
-                !cost.FromHandDraw ||
-                combat.AutomaticPipelineContinuation!
-                    .Stochastic.ControlledSemanticDrawRemaining !=
-                    cost.RemainingCount)) ||
             combat.PendingKnowledgeDemonChoice is not null ||
             cost.RemainingCount < 0 || cost.EventDepth != 0 ||
             !ValidateControlledDrawCost(
@@ -105,12 +106,6 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidDataException(
                 "Semantic cost checkpoint/card identity/stage is inconsistent.");
 
-        int? automaticRequested = automatic
-            ? combat.AutomaticPipelineContinuation!
-                .Stochastic.ControlledSemanticDrawRequested ??
-                throw new InvalidDataException(
-                    "Automatic semantic draw lost its requested count.")
-            : null;
         var draw = CreateSemanticDrawResultFrame(
             cost.RemainingCount, cost.FromHandDraw, cost.EventDepth,
             automatic);

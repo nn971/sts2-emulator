@@ -247,6 +247,45 @@ public sealed partial class PrototypeGameEngine
         return (resumedRun, drawn);
     }
 
+    private static int? ValidateAutomaticHandDrawCostCheckpoint(
+        CombatState combat,
+        PrototypeControlledDrawCostV111 cost,
+        bool semantic)
+    {
+        var cursor = combat.AutomaticPipelineContinuation;
+        if (!ControlledChanceGuardV111.Active || cost.RemainingCount < 0 ||
+            !cost.FromHandDraw || cost.EventDepth != 0 ||
+            combat.PendingKnowledgeDemonChoice is not null ||
+            cursor is null || !cursor.Mechanics.IsAtStep(
+                PrototypeAutomaticStepKind.DrawPlayerHand) ||
+            !cursor.Stochastic.TryGetAutomaticHandDrawRemainder(
+                cursor.Mechanics, out int remaining) ||
+            remaining != cost.RemainingCount)
+            throw new InvalidDataException(
+                "Automatic draw-cost cursor does not match its saved count.");
+
+        if (semantic)
+        {
+            if (combat.Stochastic.SemanticDeck is not
+                    { Mode: SemanticDeckStateV111.NatureMode, Pending: null } ||
+                !cursor.Stochastic.TryGetSemanticHandDrawProgress(
+                    cursor.Mechanics, out int requested,
+                    out int semanticRemaining) ||
+                semanticRemaining != cost.RemainingCount)
+                throw new InvalidDataException(
+                    "Semantic automatic draw-cost cursor is inconsistent.");
+            return requested;
+        }
+
+        if (combat.Stochastic.SemanticDeck is not null ||
+            cursor.Stochastic.ControlledDrawCostRemaining !=
+                cost.RemainingCount ||
+            cursor.Stochastic.ControlledDrawRemaining is not null)
+            throw new InvalidDataException(
+                "Controlled automatic draw-cost cursor is inconsistent.");
+        return null;
+    }
+
     private static PrototypeDrawCardsResult ResumeAutomaticHandDrawCards(
         RunState checkpoint,
         int remaining,
