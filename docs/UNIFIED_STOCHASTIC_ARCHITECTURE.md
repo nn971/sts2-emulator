@@ -363,6 +363,9 @@ RNG state, and semantic transcripts remain in their provider owner.
 
 The state-only frame advancement and choice attachment helpers live in
 `PrototypeDrawCardsContinuationV111`; run publication stays in the adapter.
+Initial effect draws also use `AdvanceControlledSemanticDrawFrame` to combine
+newly drawn identities with the saved keyword prefix and Stratagem state before
+creating semantic draw, cost, or after-shuffle choices.
 
 The semantic draw continuation boundaries now use `AdvanceControlledSemanticDrawFrame` for remaining-count and deferred-identity progress. After-shuffle insertion, Stratagem selection, nested `CardDrawn` choice, and nested-effect completion therefore advance the same mechanics frame before applying their boundary-specific continuation policy.
 

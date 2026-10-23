@@ -6607,25 +6607,27 @@ public sealed partial class PrototypeGameEngine
                         var continuation = CaptureEffectContinuation(
                             operations);
                         var suspendedDraw =
-                            new PrototypeControlledSemanticDrawV111(
-                                drawn.RemainingCount,
-                                operation.FromHandDraw,
-                                drawEventDepth,
-                                operation.DrawnCardKeyword,
-                                AccumulateDrawnCardInstanceIds(
+                            AdvanceControlledSemanticDrawFrame(
+                                new PrototypeControlledSemanticDrawV111(
+                                    drawn.RemainingCount,
+                                    operation.FromHandDraw,
+                                    drawEventDepth,
+                                    operation.DrawnCardKeyword,
                                     operation.DeferredDrawnCardInstanceIds,
-                                    drawn.DrawnCardInstanceIds),
-                                StratagemSelectionPending:
+                                    StandaloneSemanticDrawSegment:
+                                        operation.StandaloneSemanticDrawSegment)
+                                {
+                                    DrawEqualSelectionCount =
+                                        operation.DrawEqualSelectionCount
+                                },
+                                drawn.RemainingCount,
+                                drawn.DrawnCardInstanceIds,
+                                accumulateDrawnCardIds: true,
+                                stratagemSelectionPending:
                                     drawBoundary ==
                                         PrototypeDrawCardsBoundaryKind
                                             .AfterShuffleInsertions &&
-                                    ExpectedStratagemSelectionCount(combat) > 0,
-                                StandaloneSemanticDrawSegment:
-                                    operation.StandaloneSemanticDrawSegment)
-                        {
-                            DrawEqualSelectionCount =
-                                operation.DrawEqualSelectionCount
-                        };
+                                    ExpectedStratagemSelectionCount(combat) > 0);
                         if (drawBoundary ==
                             PrototypeDrawCardsBoundaryKind.AfterShuffleInsertions)
                             return (player,

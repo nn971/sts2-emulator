@@ -3305,6 +3305,16 @@ transcript format changed. Broader draw-resume policy consolidation and
 cross-provider mechanical equivalence remain open. Static source review and
 `git diff --check` only; no tests or builds were run.
 
+**S4 effect-draw frame advancement increment (2026-10-24):** Initial
+`ResolveOperations` effect draws now use
+`AdvanceControlledSemanticDrawFrame` to combine deferred physical-card
+identities and Stratagem state for semantic-draw, draw-cost, and after-shuffle
+boundaries. This shares the same mechanics transition used after resumed
+semantic effect draws; operation queues and provider transcripts stay with
+their owners. No snapshot format changed. Broader draw-resume policy
+consolidation and cross-provider mechanical equivalence remain open. Static
+source review and `git diff --check` only; no tests or builds were run.
+
 **S4 automatic draw-cost resume dispatch increment (2026-10-24):** Automatic
 legacy and semantic draw-cost continuations now pass through
 `ResumeAutomaticHandDrawCost`. It owns the common post-cost hand-draw handoff
