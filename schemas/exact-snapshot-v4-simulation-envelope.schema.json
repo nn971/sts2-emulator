@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:sts2-emulator:exact-snapshot-v4-simulation-envelope",
+  "title": "Exact hidden emulator snapshot with composed run mechanics and stochastic state",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "game_build",
+    "state_schema",
+    "state_hash",
+    "state"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sts2-exact-snapshot-v4-simulation-envelope"
+    },
+    "game_build": {
+      "type": "string"
+    },
+    "state_schema": {
+      "enum": [
+        "prototype-0.1",
+        "sts2-run-v111-v1"
+      ]
+    },
+    "state_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mechanics",
+        "stochastic"
+      ],
+      "properties": {
+        "mechanics": {
+          "type": "object",
+          "required": [
+            "game_build",
+            "emulator_schema",
+            "run_id",
+            "run_seed",
+            "decision_index",
+            "phase",
+            "player",
+            "extension_state"
+          ],
+          "properties": {
+            "game_build": {
+              "type": "string"
+            },
+            "emulator_schema": {
+              "type": "string"
+            },
+            "player": {
+              "type": "object"
+            },
+            "world": {
+              "type": [
+                "object",
+                "null"
+              ]
+            }
+          }
+        },
+        "stochastic": {
+          "type": "object",
+          "required": [
+            "prototype_rng"
+          ],
+          "properties": {
+            "prototype_rng": {
+              "type": "object"
+            },
+            "native_run_rng": {
+              "type": [
+                "object",
+                "null"
+              ]
+            },
+            "reference_nature": {
+              "type": [
+                "object",
+                "null"
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  "$comment": "RunSnapshot.Load also checks exact build/state consistency, the canonical hash and engine invariants. Nested world and stochastic members remain content-dependent and are validated by their domain owners."
+}

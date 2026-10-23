@@ -25,7 +25,8 @@ snapshots always use the v4 envelope, which serializes the existing
 `RunState.Simulation` mechanics and stochastic owners together. The loader
 continues to accept the flattened v1, v2, and v3 envelopes; configured
 Nature-seeded run starts and Nature-owned relic bags are carried by their
-stochastic owner in v4.
+stochastic owner in v4. The versioned JSON schemas are in `schemas/` for v1,
+v2, v3, and v4 envelopes.
 
 Existing `reset`, `reset_native_overgrowth` and hypothetical adapters preserve
 their legacy identities. `reset_v111` is opt-in and accepts `seed`, `character`

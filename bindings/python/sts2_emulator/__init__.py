@@ -3325,8 +3325,38 @@ class Session:
                 self.capabilities.get("natureRelicBagSnapshotSchemaId"))
             if self.capabilities.get("wireSchemaId") != "prototype-ai-jsonl-v0":
                 raise EmulatorError("Unsupported emulator wire schema")
-            if self.capabilities.get("snapshotSchemaId") != "sts2-exact-snapshot-v1":
-                raise EmulatorError("Emulator does not support exact snapshot v1")
+            snapshot_schema_id = self.capabilities.get("snapshotSchemaId")
+            if not isinstance(snapshot_schema_id, str) or not snapshot_schema_id:
+                raise EmulatorError("Emulator did not advertise an exact snapshot schema")
+            supported_snapshot_schema_ids = self.capabilities.get(
+                "snapshotSchemaIds")
+            if supported_snapshot_schema_ids is None:
+                supported_snapshot_schema_ids = [snapshot_schema_id]
+                for legacy_schema_id in (
+                        self.reference_nature_state_snapshot_schema_id,
+                        self.nature_relic_bag_snapshot_schema_id):
+                    if (isinstance(legacy_schema_id, str)
+                            and legacy_schema_id
+                            and legacy_schema_id not in
+                            supported_snapshot_schema_ids):
+                        supported_snapshot_schema_ids.append(legacy_schema_id)
+            if (not isinstance(supported_snapshot_schema_ids, list)
+                    or any(not isinstance(schema_id, str) or not schema_id
+                           for schema_id in supported_snapshot_schema_ids)
+                    or len(supported_snapshot_schema_ids) !=
+                    len(set(supported_snapshot_schema_ids))
+                    or snapshot_schema_id not in
+                    supported_snapshot_schema_ids):
+                raise EmulatorError("Invalid exact snapshot schema capabilities")
+            simulation_snapshot_schema_id = self.capabilities.get(
+                "simulationSnapshotSchemaId")
+            if (simulation_snapshot_schema_id is not None
+                    and simulation_snapshot_schema_id != snapshot_schema_id):
+                raise EmulatorError(
+                    "Simulation snapshot schema differs from negotiation")
+            self.snapshot_schema_id = snapshot_schema_id
+            self.supported_snapshot_schema_ids = frozenset(
+                supported_snapshot_schema_ids)
             if self.capabilities.get("batchSchemaId") != "sts2-deterministic-batch-v1":
                 raise EmulatorError("Emulator does not support deterministic batch v1")
             self._validate_stochastic_capabilities()
@@ -4022,6 +4052,19 @@ class Session:
         return State(self, result["stateHandle"])
 
     def load_snapshot(self, snapshot):
+        if not isinstance(snapshot, str):
+            raise TypeError("snapshot must be a JSON string")
+        try:
+            envelope = json.loads(snapshot)
+        except json.JSONDecodeError as exception:
+            raise ValueError("snapshot must contain valid JSON") from exception
+        if not isinstance(envelope, dict):
+            raise ValueError("snapshot envelope must be a JSON object")
+        schema_id = envelope.get("schema")
+        if (not isinstance(schema_id, str)
+                or schema_id not in self.supported_snapshot_schema_ids):
+            raise EmulatorError(
+                "Snapshot schema was not advertised by the emulator")
         return State(self, self.call("load_snapshot", snapshot=snapshot)["stateHandle"])
 
     def load_scripted_run_snapshot(self, snapshot: str):
