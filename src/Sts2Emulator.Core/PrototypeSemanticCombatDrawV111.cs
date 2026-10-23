@@ -561,12 +561,8 @@ public sealed partial class PrototypeGameEngine
                     Pending: null })
             throw new InvalidDataException(
                 "Standalone CardDrawn choice lost its source continuation.");
-        var draw = new PrototypeControlledSemanticDrawV111(
-            remaining, fromHandDraw, eventDepth,
-            DrawnCardKeyword: null,
-            DeferredKeywordCardInstanceIds: [],
-            StratagemSelectionPending: false,
-            StandaloneSemanticDrawSegment: true);
+        var draw = CreateSemanticDrawResultFrame(
+            remaining, fromHandDraw, eventDepth, automatic: false);
         return SuspendDrawCardsAtCardDrawnChoice(
             run, player, combat, remaining, draw,
             EmptyDrawChoiceContinuation(), [],

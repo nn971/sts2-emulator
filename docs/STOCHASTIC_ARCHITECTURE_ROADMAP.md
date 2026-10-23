@@ -2,6 +2,17 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 draw-result and deferred-effect ownership increment (2026-10-24):** The
+ordinary effect resolver now captures resumable draw operation suffixes and
+their source context through one owner. Controlled and semantic `RunState`
+adapters publish each consumed draw result's player and combat together;
+legacy and semantic effect draws share deferred card-ID accumulation and
+keyword application. Standalone hook-choice frames reuse the semantic draw
+frame factory. Provider-specific boundary interpretation and transcript
+policies remain with their existing adapters, so full resume consolidation
+and cross-provider equivalence remain open. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S4 modeled Ancient card-action increment (2026-10-24):** Apparition,
 Apotheosis, Maul, Whistle, the source-playable Enthralled curse, and Pael's
 Horn's Relax now enter through the existing semantic player-action boundary.
