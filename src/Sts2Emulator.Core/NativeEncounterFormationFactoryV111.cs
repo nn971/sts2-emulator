@@ -88,6 +88,12 @@ public sealed record NativeEncounterFormationAuditV111(
         init => _choices = CloneChoices(value);
     }
 
+    public NativeEncounterFormationAuditV111 Fork() => this with
+    {
+        Formation = Formation.Fork(),
+        Choices = _choices
+    };
+
     private static RandomIndexDecisionV111[] CloneChoices(
         RandomIndexDecisionV111[] choices)
     {

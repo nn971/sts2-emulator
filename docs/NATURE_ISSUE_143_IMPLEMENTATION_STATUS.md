@@ -469,6 +469,13 @@ while the baseline commits the same pre-intent checkpoint through the
 native provider. The shared source-opening fingerprint is captured before
 that provider split.
 
+For the Native-policy baseline, the source-route audit also retains the
+existing typed encounter-formation result and its exact formation-index
+decisions. Validation pairs those choices with the mixed Native trace and
+checks the saved formation against the combat origin. This adds replay
+evidence for the generated result; encounter-source completeness and native
+parity remain unverified.
+
 This removes the fabricated encounter formation from the opt-in route mode,
 but does not make route probabilities, Neow choices, shuffle-order hooks,
 or all combat entry hooks native-parity verified. The initial draw-pile

@@ -211,6 +211,8 @@ public sealed record SemanticNativePolicyAuditV111(
         SemanticCombatGoldNativeAuditV111.CurrentSchemaId;
     public const string RelicRewardAuditSchemaV1 =
         SemanticRelicRewardNativeAuditV111.CurrentSchemaId;
+    public const string EncounterFormationAuditSchemaV1 =
+        "sts2-v111-native-encounter-formation-audit-v1";
     public const string CardTransformAuditSchemaV1 =
         "sts2-v111-native-card-transform-audit-v1";
     public const string RandomTargetAuditSchemaV1 =
@@ -255,6 +257,9 @@ public sealed record SemanticNativePolicyAuditV111(
     /// <summary>Null for older snapshots; V1 covers Native relic-reward
     /// rarity and committed queue outcomes.</summary>
     public string? RelicRewardAuditSchema { get; init; }
+    /// <summary>Null for older snapshots; V1 requires the source-route
+    /// encounter-formation result and its typed index choices.</summary>
+    public string? EncounterFormationAuditSchema { get; init; }
     /// <summary>Null for older snapshots that predate typed Native card
     /// transform replacement results.</summary>
     public string? CardTransformAuditSchema { get; init; }
@@ -300,6 +305,8 @@ public sealed record SemanticNativePolicyAuditV111(
         _potionFactoryOutcomes = [];
     private SemanticCombatGoldNativeAuditV111[]? _combatGoldOutcomes = [];
     private SemanticRelicRewardNativeAuditV111[]? _relicRewardOutcomes = [];
+    private NativeEncounterFormationAuditV111[]?
+        _encounterFormationOutcomes = [];
 
     public RandomBoundaryEventV111[] Decisions
     {
@@ -399,6 +406,13 @@ public sealed record SemanticNativePolicyAuditV111(
         get => CloneRelicRewardOutcomes(_relicRewardOutcomes)!;
         init => _relicRewardOutcomes = CloneRelicRewardOutcomes(value);
     }
+    public NativeEncounterFormationAuditV111[] EncounterFormationOutcomes
+    {
+        get => CloneEncounterFormationOutcomes(
+            _encounterFormationOutcomes)!;
+        init => _encounterFormationOutcomes =
+            CloneEncounterFormationOutcomes(value);
+    }
 
     public SemanticNativePolicyAuditV111 Fork() => this with
     {
@@ -430,7 +444,9 @@ public sealed record SemanticNativePolicyAuditV111(
         PotionFactoryOutcomes = ClonePotionFactoryOutcomes(
             _potionFactoryOutcomes)!,
         CombatGoldOutcomes = CloneCombatGoldOutcomes(_combatGoldOutcomes)!,
-        RelicRewardOutcomes = CloneRelicRewardOutcomes(_relicRewardOutcomes)!
+        RelicRewardOutcomes = CloneRelicRewardOutcomes(_relicRewardOutcomes)!,
+        EncounterFormationOutcomes = CloneEncounterFormationOutcomes(
+            _encounterFormationOutcomes)!
     };
 
     private static RandomBoundaryEventV111[]? CloneEvents(
@@ -529,6 +545,12 @@ public sealed record SemanticNativePolicyAuditV111(
         values?.Select(value => value is null ? null! : value.Fork())
             .ToArray();
 
+    private static NativeEncounterFormationAuditV111[]?
+        CloneEncounterFormationOutcomes(
+            NativeEncounterFormationAuditV111[]? values) =>
+        values?.Select(value => value is null ? null! : value.Fork())
+            .ToArray();
+
     public void Validate()
     {
         var decisions = _decisions;
@@ -548,6 +570,7 @@ public sealed record SemanticNativePolicyAuditV111(
         var potionFactoryOutcomes = _potionFactoryOutcomes;
         var combatGoldOutcomes = _combatGoldOutcomes;
         var relicRewardOutcomes = _relicRewardOutcomes;
+        var encounterFormationOutcomes = _encounterFormationOutcomes;
         if (ProviderId != NativeProviderId ||
             ProbabilityStatus != "UNVERIFIED" || decisions is null ||
             providerTrace is null || weightedIntentOutcomes is null ||
@@ -565,6 +588,7 @@ public sealed record SemanticNativePolicyAuditV111(
             potionFactoryOutcomes is null ||
             combatGoldOutcomes is null ||
             relicRewardOutcomes is null ||
+            encounterFormationOutcomes is null ||
             (WeightedIntentAuditSchema is not null &&
              WeightedIntentAuditSchema != WeightedIntentAuditSchemaV1) ||
             (CardInstanceIndexAuditSchema is not null &&
@@ -593,6 +617,9 @@ public sealed record SemanticNativePolicyAuditV111(
              CombatGoldAuditSchema != CombatGoldAuditSchemaV1) ||
             (RelicRewardAuditSchema is not null &&
              RelicRewardAuditSchema != RelicRewardAuditSchemaV1) ||
+            (EncounterFormationAuditSchema is not null &&
+             EncounterFormationAuditSchema !=
+                EncounterFormationAuditSchemaV1) ||
             (CardTransformAuditSchema is not null &&
              CardTransformAuditSchema != CardTransformAuditSchemaV1) ||
             (RandomTargetAuditSchema is not null &&
@@ -1008,6 +1035,8 @@ public sealed record SemanticNativePolicyAuditV111(
         }
 
         var traceIndices = new List<RandomBoundaryEventV111>();
+        var traceEncounterFormationDecisions =
+            new List<RandomIndexDecisionV111>();
         var traceIntentDecisions = new List<RandomIndexDecisionV111>();
         var traceCardInstanceDecisions =
             new List<RandomIndexDecisionV111>();
@@ -1062,6 +1091,13 @@ public sealed record SemanticNativePolicyAuditV111(
                 {
                     Sequence = traceIndices.Count + 1
                 });
+                if (value.Request.SiteId ==
+                    NativeEncounterFormationFactoryV111.FormationSiteId)
+                    traceEncounterFormationDecisions.Add(
+                        new RandomIndexDecisionV111(
+                            value.Request, value.SelectedIndex,
+                            value.ProviderMode, value.NativeCursorBefore,
+                            value.NativeCursorAfter));
                 if (value.Request.SiteId ==
                         StochasticSiteRegistryV111.NativeCombatGoldSiteId &&
                     value.Request.StreamId ==
@@ -1214,6 +1250,72 @@ public sealed record SemanticNativePolicyAuditV111(
                             value.Request, value.SelectedValue,
                             value.ProviderMode, value.NativeCursorBefore,
                             value.NativeCursorAfter));
+            }
+        }
+
+        if (EncounterFormationAuditSchema ==
+                EncounterFormationAuditSchemaV1 ||
+            encounterFormationOutcomes.Length > 0)
+        {
+            if (EncounterFormationAuditSchema ==
+                    EncounterFormationAuditSchemaV1 &&
+                encounterFormationOutcomes.Length != 1)
+                throw new InvalidDataException(
+                    "Native source-route audit requires exactly one encounter-formation result.");
+
+            var annotatedFormationChoices =
+                new List<RandomIndexDecisionV111>();
+            foreach (var outcome in encounterFormationOutcomes)
+            {
+                if (outcome is null || outcome.Formation is null ||
+                    outcome.ProviderMode != "native-v111")
+                    throw new InvalidDataException(
+                        "Native encounter-formation audit has invalid provider provenance.");
+                var formation = outcome.Formation;
+                var expectedStream =
+                    NativeRngV111Contexts.EncounterFormationStreamId(
+                        formation.NativeEncounterEntry,
+                        formation.TotalFloor);
+                if (string.IsNullOrWhiteSpace(
+                        formation.NativeEncounterEntry) ||
+                    formation.TotalFloor < 0 ||
+                    formation.Enemies.Length == 0 ||
+                    formation.MonsterContexts.Length !=
+                        formation.Enemies.Length ||
+                    formation.EncounterRng.StreamId != expectedStream)
+                    throw new InvalidDataException(
+                        "Native encounter-formation audit has invalid output provenance.");
+
+                var choices = outcome.Choices;
+                for (var index = 0; index < choices.Length; index++)
+                {
+                    var choice = choices[index];
+                    choice.Validate();
+                    if (choice.ProviderMode != "native-v111" ||
+                        choice.Request.SiteId !=
+                            NativeEncounterFormationFactoryV111.FormationSiteId ||
+                        choice.Request.StreamId != expectedStream ||
+                        choice.Request.OwnerId !=
+                            $"encounter:{formation.NativeEncounterEntry}:floor:{formation.TotalFloor}" ||
+                        choice.Request.Ordinal != index ||
+                        choice.Request.OperationKind != "choose_index")
+                        throw new InvalidDataException(
+                            "Native encounter-formation audit has an unsupported choice request.");
+                    annotatedFormationChoices.Add(choice);
+                }
+            }
+
+            if (annotatedFormationChoices.Count !=
+                traceEncounterFormationDecisions.Count)
+                throw new InvalidDataException(
+                    "Native encounter-formation outcomes are incomplete for their mixed trace.");
+            foreach (var decision in traceEncounterFormationDecisions)
+            {
+                var decisionFingerprint = CanonicalJson.Sha256(decision);
+                if (annotatedFormationChoices.Count(choice =>
+                        CanonicalJson.Sha256(choice) == decisionFingerprint) != 1)
+                    throw new InvalidDataException(
+                        "Native encounter-formation decision does not have exactly one typed result annotation.");
             }
         }
 
@@ -2463,6 +2565,35 @@ public sealed record SemanticPilotCombatV111(
             var nativeAudit = this.Stochastic.NativePolicyAudit ??
                 throw new InvalidDataException(
                     "Native policy baseline is missing provider provenance.");
+            if (this.Stochastic.SeededEntry is
+                    { SourceRouteEntry: true } &&
+                nativeAudit.EncounterFormationAuditSchema ==
+                    SemanticNativePolicyAuditV111
+                        .EncounterFormationAuditSchemaV1)
+            {
+                var routeAudit = this.Stochastic.SourceRouteAudit ??
+                    throw new InvalidDataException(
+                        "Native source-route formation audit has no route record.");
+                var formationAudit = nativeAudit
+                    .EncounterFormationOutcomes.Single();
+                var routeFormationChoices = routeAudit.NativeEntryDecisions
+                    .Where(decision => decision.Request.SiteId ==
+                        NativeEncounterFormationFactoryV111.FormationSiteId)
+                    .Select(decision => new RandomIndexDecisionV111(
+                        decision.Request, decision.SelectedIndex,
+                        decision.ProviderMode, decision.NativeCursorBefore,
+                        decision.NativeCursorAfter))
+                    .ToArray();
+                if (CanonicalJson.Sha256(formationAudit.Formation) !=
+                        CanonicalJson.Sha256(
+                            this.OpeningSource.Origin.Formation) ||
+                    formationAudit.Formation.NativeEncounterEntry !=
+                        routeAudit.NativeEncounterEntry ||
+                    CanonicalJson.Sha256(formationAudit.Choices) !=
+                        CanonicalJson.Sha256(routeFormationChoices))
+                    throw new InvalidDataException(
+                        "Native encounter-formation audit disagrees with the saved source route or combat origin.");
+            }
             if (this.AtPlayerBoundary)
                 SemanticPilotCombatEngineV111.ValidateNativePolicyBoundary(this.Run);
             else
@@ -3342,6 +3473,16 @@ public static class SemanticPilotCombatEngineV111
                         .OrderedCandidates.Clone()
                 }
             }).ToArray();
+        var nativeFormationAudit = new NativeEncounterFormationAuditV111(
+            nativeCombat.Formation.Fork(),
+            nativeDecisions.Where(decision => decision.Request.SiteId ==
+                    NativeEncounterFormationFactoryV111.FormationSiteId)
+                .Select(decision => new RandomIndexDecisionV111(
+                    decision.Request, decision.SelectedIndex,
+                    decision.ProviderMode, decision.NativeCursorBefore,
+                    decision.NativeCursorAfter))
+                .ToArray(),
+            "native-v111");
         var nativePolicyTrace = setupJournal.EntriesForProvider("native-v111");
         var nativeCardInstanceOutcomes =
             setupJournal.CardInstanceIndexOutcomes.ToArray();
@@ -3543,6 +3684,7 @@ public static class SemanticPilotCombatEngineV111
                     PotionFactoryOutcomes = nativePotionFactoryOutcomes,
                     CombatGoldOutcomes = nativeCombatGoldOutcomes,
                     RelicRewardOutcomes = nativeRelicRewardOutcomes,
+                    EncounterFormationOutcomes = [nativeFormationAudit],
                     WeightedIntentAuditSchema =
                         SemanticNativePolicyAuditV111
                             .WeightedIntentAuditSchemaV1,
@@ -3579,6 +3721,9 @@ public static class SemanticPilotCombatEngineV111
                     RelicRewardAuditSchema =
                         SemanticNativePolicyAuditV111
                             .RelicRewardAuditSchemaV1,
+                    EncounterFormationAuditSchema =
+                        SemanticNativePolicyAuditV111
+                            .EncounterFormationAuditSchemaV1,
                     CardTransformAuditSchema =
                         SemanticNativePolicyAuditV111
                             .CardTransformAuditSchemaV1,

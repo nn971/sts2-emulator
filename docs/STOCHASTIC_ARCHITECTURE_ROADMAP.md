@@ -2,6 +2,15 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**D2 Native encounter-formation result audit increment (2026-10-23):** The
+source-route Native-policy baseline now retains the existing
+`NativeEncounterFormationAuditV111`, pairing the selected formation with its
+typed encounter-index decisions. The schema checks every choice against the
+mixed Native trace, and source-route validation checks the formation against
+the combat origin. Older unmarked audits remain readable. Source-pool
+eligibility and native result/cursor parity remain open. Static source review
+and `git diff --check` only; no tests or builds were run.
+
 **D2 Native pool-shuffle outcome audit increment (2026-10-23):** Native combat
 card-pool Fisher–Yates swaps now annotate the ordered card support immediately
 before each ticket by reusing `SemanticPoolShuffleEventV111`. The Native-policy
