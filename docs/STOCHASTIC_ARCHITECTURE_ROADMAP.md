@@ -2,6 +2,26 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S0 Native request and combat-card helper closure increment (2026-10-23):**
+The direct-call census now resolves the Native generic bounded-index request
+through its finite operation registry after the Native provider guard, and
+traces `ResolveRandomCombatCardIndex` through all three registered Core
+callers. All 111 typed request constructions now resolve to registry sites;
+the inventory reports 185/185 registered sites mapped with no unresolved
+references and 36/36 known helper callsites mapped. Class-qualified constant
+resolution now indexes source types once per scan, reducing inventory
+generation from over a minute to under ten seconds. Census schema v46; static
+source analysis and `git diff --check` only, with no tests or builds run.
+
+**S2/S4 repeated target and source-selection action increment
+(2026-10-23):** Bouncing Flask now enters the persistent semantic pilot by
+physical source identity and reuses the saved random-target continuation for
+each Poison application. Hidden Daggers uses the existing card-selection event
+for its hand discard and resumes the queued Shiv creation. Both paths preserve
+the common action replay and add no event or snapshot schema. Native target
+pool and stream/cursor parity remain open. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S0 validated event-site domain increment (2026-10-23):** The typed-request
 inventory now follows three existing semantic boundaries: target-event site
 validation through the target-kind resolver, the shortlist's finite supported

@@ -962,3 +962,20 @@ law. Event-choice snapshots retain the player's action and all resulting Nature
 outcomes in their existing mixed sequence. Native game pool-order fidelity,
 trigger order, and source stream attribution remain open. Static source review
 and `git diff --check` only; no tests or builds were run.
+
+## 2026-10-23: Bouncing Flask random-target action
+
+The persistent semantic pilot now admits Bouncing Flask by its physical
+source-card identity. Each repeated Poison application resumes through the
+existing saved random-target operation and commits its ordered target support
+before the next repetition. Native target-pool and stream/cursor parity remain
+open. Static source review and `git diff --check` only; no tests or builds were
+run.
+
+## 2026-10-23: Hidden Daggers source selection
+
+Hidden Daggers now enters the existing source card-selection event for its
+two-card hand discard, then resumes the original queued Shiv creation. The
+existing support fingerprint and replay boundary own the selected identities;
+no event or snapshot schema changed. Static source review and
+`git diff --check` only; no tests or builds were run.

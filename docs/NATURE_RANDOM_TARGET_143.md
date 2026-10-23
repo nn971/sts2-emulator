@@ -28,8 +28,15 @@ source-card identity. Each paid X hit reuses the existing random-target event;
 the guard checks the manual `CardPlayed` frame and the exact remaining sequence
 of Volley damage operations. Native target-pool and cursor parity remain open.
 
+Bouncing Flask now enters the same pilot from its physical source-card
+identity. Its repeated Poison applications reuse the saved random-target
+operation and ordered living-enemy support; each target is committed before
+the next repetition resumes. No new Nature decision or chance-event schema is
+introduced. Native stream assignment, target-pool fidelity, and cursor parity
+remain open.
+
 ## Validation and limitations
 
-The focused C# regression tests cover a real Ricochet card action, a Sly-enabled targeted card discarded during end-turn, stale/illegal decisions, branch separation, private support validation and 15-worker deterministic target choices. They do not cover the `AutoPlayCombatCard` continuation or semantic end-turn boundary save/restore. This fixture test setup intentionally injects an available card/keyword into the playable combat state; it does not establish native deck/acquisition probabilities. The joint live transcript is replay-validated for source-reachable states.
+The focused C# regression tests cover a real Ricochet card action, a Sly-enabled targeted card discarded during end-turn, stale/illegal decisions, branch separation, private support validation and 15-worker deterministic target choices. The Bouncing Flask pilot admission has static source review only; this increment adds no test or build claim. The existing target tests do not cover the `AutoPlayCombatCard` continuation or semantic end-turn boundary save/restore. This fixture test setup intentionally injects an available card/keyword into the playable combat state; it does not establish native deck/acquisition probabilities. The joint live transcript is replay-validated for source-reachable states.
 
 Unmigrated random targeting inside other callbacks, random costs, card generation, summon/death and nested effects can still fail closed. The bounded-index transform is source-verified on the declared target support; source-pool completeness, Native stream parity and cursor parity remain open. Keep issue #143 open for full site coverage and terminal rollouts. Desired RNG and native Inspector design documents are unchanged.

@@ -4197,6 +4197,7 @@ public static class SemanticPilotCombatEngineV111
                     "proto.colorless.purity" or
                     "proto.colorless.thinking_ahead" or
                     "proto.colorless.scrawl" or
+                    "proto.silent.hidden_daggers" or
                     "proto.silent.survivor" or "proto.silent.hand_trick" or
                     "proto.silent.nightmare" or
                     NativeGloryAncientsV111.WishCardId);
@@ -4225,6 +4226,8 @@ public static class SemanticPilotCombatEngineV111
                 card?.CardId == "proto.colorless.jackpot";
             var semanticVolleyCard =
                 card?.CardId == "proto.colorless.volley";
+            var semanticRandomTargetCard =
+                card?.CardId == "proto.silent.bouncing_flask";
             var semanticJackOfAllTradesCard =
                 card?.CardId == "proto.colorless.jack_of_all_trades";
             var supportedCardAction = card is not null &&
@@ -4240,6 +4243,7 @@ public static class SemanticPilotCombatEngineV111
                  semanticSplashCard ||
                  semanticJackpotCard ||
                  semanticVolleyCard ||
+                 semanticRandomTargetCard ||
                  semanticJackOfAllTradesCard ||
                  semanticSelectionCard);
             if (!supportedCardAction)
