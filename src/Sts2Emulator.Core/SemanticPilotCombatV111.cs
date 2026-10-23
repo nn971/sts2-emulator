@@ -3172,6 +3172,7 @@ public static class SemanticPilotCombatEngineV111
         string? potionId) =>
         potionId is (PrototypeNativePotionCourier.FoulPotionId or
             "proto.native.neow.ambergris" or
+            "proto.potion.blood" or
             "proto.potion.cunning" or
             "proto.potion.binding" or
             "proto.potion.ship_in_a_bottle" or
@@ -3192,6 +3193,7 @@ public static class SemanticPilotCombatEngineV111
             "proto.potion.duplicator" or
             "proto.potion.flex" or
             "proto.potion.blessing_of_the_forge" or
+            "proto.potion.fruit_juice" or
             "proto.potion.speed" or
             "proto.potion.liquid_bronze" or
             "proto.potion.ghost_in_a_jar" or

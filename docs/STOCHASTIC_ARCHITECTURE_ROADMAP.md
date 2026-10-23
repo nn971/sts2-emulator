@@ -11,6 +11,13 @@ implemented mechanics. This records model/admission coverage only, not Native
 acquisition completeness or RNG parity. Static source review and
 `git diff --check` only; no tests or builds were run.
 
+**S4 deterministic combat-potion admission increment (2026-10-24):** Blood
+Potion and Fruit Juice now enter the semantic combat pilot through its existing
+deterministic potion gate. Their modeled heal and Max HP run effects preserve
+the ordinary combat result boundary and do not add a chance owner or snapshot
+field. Static source review and `git diff --check` only; no tests or builds
+were run.
+
 **S4 controlled event-choice candidate replay increment (2026-10-24):**
 Generic event-effect continuations now pass each saved decision's ordered
 candidate labels into replay and compare them with the live support before
