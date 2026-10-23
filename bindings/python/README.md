@@ -25,9 +25,9 @@ That startup samples the Underdocks boss-pool law and advances the cursor once;
 the law remains `UNVERIFIED` and the default reset path is unchanged.
 
 The `hello` handshake negotiates the current exact run-snapshot schema and its
-supported load schemas. `Session.load_snapshot(...)` accepts only a schema the
-emulator advertised; current v4 servers write the composed mechanics/provider
-envelope and continue to load legacy v1–v3 snapshots.
+supported load schemas. Run snapshot save/load methods check each envelope
+against that negotiation; current v4 servers write the composed
+mechanics/provider envelope and continue to load legacy v1–v3 snapshots.
 
 Pass `unlocked_colorless_epochs=["Colorless1Epoch", ...]` to `Session.reset(...)`
 to override the fully unlocked profile's Colorless epoch set. An empty list

@@ -346,7 +346,10 @@ class State:
 
     def save_snapshot(self):
         """Return hidden exact state; this is not a fair-policy observation."""
-        return self.session.call("save_snapshot", state_handle=self.handle)["snapshot"]
+        snapshot = self.session.call(
+            "save_snapshot", state_handle=self.handle)["snapshot"]
+        self.session._validate_run_snapshot_schema(snapshot)
+        return snapshot
 
     def release(self):
         return self.session.call("release_many", state_handles=[self.handle])["released"]
@@ -4051,7 +4054,7 @@ class Session:
         result = self.call("reset_v111" if mode == "v111" else "reset", **payload)
         return State(self, result["stateHandle"])
 
-    def load_snapshot(self, snapshot):
+    def _validate_run_snapshot_schema(self, snapshot):
         if not isinstance(snapshot, str):
             raise TypeError("snapshot must be a JSON string")
         try:
@@ -4065,6 +4068,10 @@ class Session:
                 or schema_id not in self.supported_snapshot_schema_ids):
             raise EmulatorError(
                 "Snapshot schema was not advertised by the emulator")
+        return envelope
+
+    def load_snapshot(self, snapshot):
+        self._validate_run_snapshot_schema(snapshot)
         return State(self, self.call("load_snapshot", snapshot=snapshot)["stateHandle"])
 
     def load_scripted_run_snapshot(self, snapshot: str):
