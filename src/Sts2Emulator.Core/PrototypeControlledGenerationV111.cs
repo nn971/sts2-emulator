@@ -351,7 +351,7 @@ public sealed partial class PrototypeGameEngine
             World = world with { Combat = resolved.Combat }
         };
         if (resumeAutomaticPipeline)
-            updated = ResumeAutomaticPipelineContinuation(updated);
+            updated = ResumeAutomaticPipelineContinuation(updated).Run;
         return updated;
     }
 }

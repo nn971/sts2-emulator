@@ -576,7 +576,7 @@ public sealed partial class PrototypeGameEngine
                 state.Stochastic, prototypeRng),
             World = world with { Combat = resolved.Combat }
         };
-        updated = ResumeAutomaticPipelineContinuation(updated);
+        updated = ResumeAutomaticPipelineContinuation(updated).Run;
         return updated;
     }
 
@@ -644,7 +644,7 @@ public sealed partial class PrototypeGameEngine
     private static RunState ResumeControlledInsertionPipeline(RunState state)
     {
         if (state.Phase == RunPhase.Combat)
-            state = ResumeAutomaticPipelineContinuation(state);
+            state = ResumeAutomaticPipelineContinuation(state).Run;
         return state;
     }
 

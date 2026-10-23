@@ -3284,3 +3284,13 @@ decision, while transcript and snapshot
 ownership remain unchanged. Broader automatic draw-resume consolidation and
 cross-provider mechanical equivalence remain open. Static source review and
 `git diff --check` only; no tests or builds were run.
+
+**S4 single automatic-pipeline resume contract increment (2026-10-24):**
+`ResumeAutomaticPipelineContinuation` now always returns the existing
+`PrototypeAutomaticPipelineResumeResultV111`, including on suspended and
+run-only paths. The separate classified wrapper was removed; mechanics-only
+adapters project `Run`, while boundary-aware adapters retain the same
+classification. Snapshot and transcript ownership are unchanged. Broader draw
+resume policy consolidation and cross-provider mechanical equivalence remain
+open. Static source review and `git diff --check` only; no tests or builds were
+run.

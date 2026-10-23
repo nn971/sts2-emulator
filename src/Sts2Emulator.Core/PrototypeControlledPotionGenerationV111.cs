@@ -124,7 +124,7 @@ public sealed partial class PrototypeGameEngine
                 state.Stochastic, prototypeRng),
             World = world with { Combat = resumed.Combat }
         };
-        updated = ResumeAutomaticPipelineContinuation(updated);
+        updated = ResumeAutomaticPipelineContinuation(updated).Run;
         return updated;
     }
 }

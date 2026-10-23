@@ -243,7 +243,7 @@ public sealed partial class PrototypeGameEngine
 
         var advanced = PublishDrawCardsResult(state, drawn);
         return ResumeAutomaticPipelineContinuation(
-            CompleteAutomaticHandDrawStage(advanced));
+            CompleteAutomaticHandDrawStage(advanced)).Run;
     }
 
     /// <summary>

@@ -226,7 +226,7 @@ public sealed partial class PrototypeGameEngine
             run, drawn, draw, continuation, automaticHandDrawRequested,
             recycleSite, recycleOperation);
         var result = effectDraw
-            ? ResumeAutomaticPipelineContinuation(continued.Run)
+            ? ResumeAutomaticPipelineContinuation(continued.Run).Run
             : continued.Run;
         return new SemanticCombatDrawResumeResultV111(
             result, continued.RemainingCount);

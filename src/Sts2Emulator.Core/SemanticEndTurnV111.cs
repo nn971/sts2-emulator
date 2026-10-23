@@ -1512,7 +1512,7 @@ public static class SemanticEndTurnEngineV111
         PrototypeAutomaticPipelineResumeResultV111 result;
         using (ControlledChanceGuardV111.Enter())
             result = PrototypeGameEngine
-                .ResumeAutomaticPipelineContinuationWithBoundary(
+                .ResumeAutomaticPipelineContinuation(
                     draw.Run.Fork());
         if (TryPublishResumedPipelineBoundary(
                 state, result, out var published))

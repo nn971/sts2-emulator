@@ -541,7 +541,7 @@ public sealed partial class PrototypeGameEngine
         advanced = ApplyOpeningRoyalPoison(advanced);
         return ResumeAutomaticPipelineContinuation(
             SetOpeningCombatContinuation(advanced,
-                PrototypeOpeningCombatStage.PlayerSideStart));
+                PrototypeOpeningCombatStage.PlayerSideStart)).Run;
     }
 
     private static PrototypeEncounterDefinition?
@@ -1558,7 +1558,7 @@ public sealed partial class PrototypeGameEngine
 
         return ResumeAutomaticPipelineContinuation(
             SetAutomaticPipelineContinuation(state, 0,
-                pendingPostDispatchEventKind: null));
+                pendingPostDispatchEventKind: null)).Run;
     }
 
     private static RunState ResumeAutomaticPipeline(
@@ -1749,14 +1749,17 @@ public sealed partial class PrototypeGameEngine
     /// Resume a saved automatic pipeline after its boundary outcome is
     /// committed, then settle its terminal combat reward boundary. Choice
     /// and semantic end-turn adapters share this handoff so cursor clearing,
-    /// remaining stages, and reward timing stay consistent.
+    /// remaining stages, and reward timing stay consistent. Every return
+    /// includes the engine-classified boundary with the resulting run.
     /// </summary>
-    internal static RunState ResumeAutomaticPipelineContinuation(
+    internal static PrototypeAutomaticPipelineResumeResultV111
+        ResumeAutomaticPipelineContinuation(
         RunState state,
         bool stopBeforeSemanticHandDraw = false,
         PrototypeControlledEnemyActionContinuationV111?
             controlledEnemyActionReplay = null)
     {
+        ArgumentNullException.ThrowIfNull(state);
         if (controlledEnemyActionReplay is { } enemyActionReplay)
         {
             if (!ControlledChanceGuardV111.Active)
@@ -1821,7 +1824,8 @@ public sealed partial class PrototypeGameEngine
             controlledDrawHook.Stochastic.HandDrawProgress?.Kind ==
                 PrototypeAutomaticHandDrawProgressKindV111
                     .ControlledDrawHookChoice)
-            return ResumeControlledAutomaticHandDrawHookChoice(state);
+            return PrototypeAutomaticPipelineResumeResultV111.FromRun(
+                ResumeControlledAutomaticHandDrawHookChoice(state));
 
         if (state.World?.Combat is
             { PendingChoice: null,
@@ -1829,7 +1833,8 @@ public sealed partial class PrototypeGameEngine
               AutomaticPipelineContinuation: { } continuation } combat)
         {
             if (!continuation.IsReadyForAutomaticPipelineResume(combat))
-                return state;
+                return PrototypeAutomaticPipelineResumeResultV111.FromRun(
+                    state);
             var world = RequireWorld(state);
             state = state with
             {
@@ -1848,7 +1853,7 @@ public sealed partial class PrototypeGameEngine
                     controlledEnemyActionReplay:
                         controlledEnemyActionReplay);
         }
-        return state.Phase == RunPhase.Combat &&
+        var completed = state.Phase == RunPhase.Combat &&
             state.World?.Combat is
                 { PendingChoice: null,
                   PendingKnowledgeDemonChoice: null,
@@ -1857,6 +1862,8 @@ public sealed partial class PrototypeGameEngine
             AllEnemiesDefeated(live)
                 ? EnterCombatReward(state)
                 : state;
+        return PrototypeAutomaticPipelineResumeResultV111.FromRun(
+            completed);
     }
 
     /// <summary>
@@ -1993,7 +2000,7 @@ public sealed partial class PrototypeGameEngine
         {
             World = world with { Combat = advanced }
         };
-        return ResumeAutomaticPipelineContinuationWithBoundary(
+        return ResumeAutomaticPipelineContinuation(
             resumed, stopBeforeSemanticHandDraw:
                 stopBeforeSemanticHandDraw);
     }
@@ -2052,7 +2059,7 @@ public sealed partial class PrototypeGameEngine
             }
         };
         return ResumeAutomaticPipelineContinuation(
-            checkpoint, controlledEnemyActionReplay: resumed);
+            checkpoint, controlledEnemyActionReplay: resumed).Run;
     }
 
     /// <summary>
@@ -2401,7 +2408,7 @@ public sealed partial class PrototypeGameEngine
             return ResumeAutomaticPipelineContinuation(
                 SetAutomaticPipelineContinuation(state with
                 { World = turnWorld with { Combat = turnCombat } },
-                    resetBlockIndex, pendingPostDispatchEventKind: null));
+                    resetBlockIndex, pendingPostDispatchEventKind: null)).Run;
         }
 
         if (eventKind != PrototypeCombatEventKind.PlayerTurnStarted)
@@ -13604,7 +13611,7 @@ public sealed partial class PrototypeGameEngine
             pending.AutomaticSemanticDrawHookChoice)
             return state;
 
-        return ResumeAutomaticPipelineContinuation(state);
+        return ResumeAutomaticPipelineContinuation(state).Run;
     }
 
     private static (PlayerState Player, CombatState Combat)
@@ -14805,7 +14812,7 @@ public sealed partial class PrototypeGameEngine
                 state.Stochastic, prototypeRng),
             World = world with { Combat = resolved.Combat }
         };
-        result = ResumeAutomaticPipelineContinuation(result);
+        result = ResumeAutomaticPipelineContinuation(result).Run;
         return result;
     }
 
@@ -14866,7 +14873,7 @@ public sealed partial class PrototypeGameEngine
                 World = world with { Combat = resumed.Combat }
             };
             resumedState = ResumeAutomaticPipelineContinuation(
-                resumedState);
+                resumedState).Run;
             return resumedState;
         }
         var drawn = DrawCards(
@@ -14881,7 +14888,7 @@ public sealed partial class PrototypeGameEngine
                 Stochastic = RunStochasticStateV111.WithPrototypeRng(
                     state.Stochastic, prototypeRng)
             }, drawn, draw, continuation);
-        return ResumeAutomaticPipelineContinuation(continued);
+        return ResumeAutomaticPipelineContinuation(continued).Run;
     }
 
     private static RunState ContinueControlledSemanticEffectDraw(

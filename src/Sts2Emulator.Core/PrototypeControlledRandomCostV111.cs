@@ -129,7 +129,7 @@ public sealed partial class PrototypeGameEngine
                 state.Stochastic, prototypeRng),
             World = world with { Combat = resolved.Combat }
         };
-        updated = ResumeAutomaticPipelineContinuation(updated);
+        updated = ResumeAutomaticPipelineContinuation(updated).Run;
         return updated;
     }
 
@@ -174,7 +174,7 @@ public sealed partial class PrototypeGameEngine
                 state.Stochastic, prototypeRng),
             World = world with { Combat = resolved.Combat }
         };
-        return ResumeAutomaticPipelineContinuation(updated);
+        return ResumeAutomaticPipelineContinuation(updated).Run;
     }
 
     /// <summary>Narrow test entry using the actual operations kernel for

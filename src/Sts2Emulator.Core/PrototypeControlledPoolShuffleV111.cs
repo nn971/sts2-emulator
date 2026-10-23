@@ -370,7 +370,7 @@ public sealed partial class PrototypeGameEngine
                         state.Stochastic, prototypeRng),
                     World = world with { Combat = resumed.Combat }
                 };
-                return ResumeAutomaticPipelineContinuation(updated);
+                return ResumeAutomaticPipelineContinuation(updated).Run;
             }
 
             var effective = selection with
@@ -534,7 +534,7 @@ public sealed partial class PrototypeGameEngine
                 state.Stochastic, prototypeRng),
             World = world with { Combat = resolved.Combat }
         };
-        return ResumeAutomaticPipelineContinuation(updated);
+        return ResumeAutomaticPipelineContinuation(updated).Run;
     }
 
     private static long ParseShuffledCardInstanceToken(string token)
