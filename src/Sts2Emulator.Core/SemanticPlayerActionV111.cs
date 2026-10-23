@@ -152,7 +152,8 @@ public static class SemanticPlayerActionEngineV111
             PrototypeNativeLaterActs.SquashId,
             PrototypeNativeOrobasRelics.LuminesceId,
             PrototypeNativeHiveBosses.FranticEscapeId,
-            PrototypeNativeHiveNormals.ToxicCardId
+            PrototypeNativeHiveNormals.ToxicCardId,
+            "proto.status.beckon"
         };
 
     internal static bool SupportsCard(string cardId) =>
