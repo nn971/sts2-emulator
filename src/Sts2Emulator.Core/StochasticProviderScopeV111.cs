@@ -172,6 +172,7 @@ internal static class StochasticProviderScopeV111
         {
             EnsureOrdinal(frame, streams, request.StreamId);
         }
+        ControlledStochasticChanceReplayV111.ClearLastResolvedDecision();
         var decision = SelectIndexProvider(
                 explicitProvider,
                 ControlledStochasticRequestV111.FromIndex(request))

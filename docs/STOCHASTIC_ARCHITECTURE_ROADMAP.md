@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 automatic enemy-theft identity commit increment (2026-10-24):** The
+controlled chance replay owner now exposes the candidate label belonging to
+the exact consumed index request. Enemy theft uses its saved physical
+card-instance identity to apply the selected card against the live eligible
+support; the ordered index remains in the provider transcript, and older
+label-free snapshots continue through their index projection. Static source
+review and `git diff --check` only; no tests or builds were run.
+
 **S4 draw-result and deferred-effect ownership increment (2026-10-24):** The
 ordinary effect resolver now captures resumable draw operation suffixes and
 their source context through one owner. `PublishDrawMechanicsState` now owns

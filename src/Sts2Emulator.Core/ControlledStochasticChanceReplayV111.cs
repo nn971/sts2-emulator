@@ -428,6 +428,7 @@ internal sealed class ControlledStochasticChanceReplayV111 :
         Active = new();
     private readonly ControlledStochasticChanceReplayV111? _previous;
     private readonly ControlledStochasticDecisionV111[] _decisions;
+    private ControlledStochasticDecisionV111? _lastDecision;
     private int _cursor;
     private string[]? _candidateLabels;
     private readonly bool _registeredAsActive;
@@ -458,6 +459,28 @@ internal sealed class ControlledStochasticChanceReplayV111 :
     internal IReadOnlyList<ControlledStochasticDecisionV111> Decisions =>
         _decisions;
     public static bool IsActive => Active.Value is not null;
+
+    internal static void ClearLastResolvedDecision()
+    {
+        if (Active.Value is { } active)
+            active._lastDecision = null;
+    }
+
+    internal static string? GetSelectedIndexCandidateLabel(
+        RandomIndexRequestV111 request, int selectedIndex)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var decision = Active.Value?._lastDecision;
+        if (decision?.IndexDecision is not { } index ||
+            !SameRequest(index.Request, request))
+            return null;
+        if (index.SelectedIndex != selectedIndex)
+            throw new InvalidDataException(
+                "Resolved index differs from its active typed replay outcome.");
+        return decision.CandidateLabels is { } labels
+            ? labels[selectedIndex]
+            : null;
+    }
 
     public static ControlledStochasticChanceReplayV111 Begin(
         ControlledStochasticDecisionV111[] decisions,
@@ -660,6 +683,7 @@ internal sealed class ControlledStochasticChanceReplayV111 :
                 "Typed stochastic replay diverged from its saved candidate labels.");
         _cursor++;
         decision = expected;
+        _lastDecision = expected;
         return true;
     }
 

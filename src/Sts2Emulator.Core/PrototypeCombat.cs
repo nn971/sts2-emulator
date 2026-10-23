@@ -4483,7 +4483,13 @@ public sealed partial class PrototypeGameEngine
                                 nativeStreamId:
                                     "run.combat_card_generation");
                             combat = choice.Combat;
-                            var chosen = candidates[choice.SelectedIndex];
+                            var chosen = choice.SelectedCardInstanceId is
+                                { } selectedCardInstanceId
+                                ? candidates.SingleOrDefault(card =>
+                                    card.InstanceId == selectedCardInstanceId)
+                                    ?? throw new InvalidDataException(
+                                        "Saved enemy theft identity is outside the live eligible support.")
+                                : candidates[choice.SelectedIndex];
                             var persistentId =
                                 chosen.PersistentCardInstanceId!.Value;
                             var persistentCard = player.Deck.Single(card =>
@@ -6919,7 +6925,8 @@ public sealed partial class PrototypeGameEngine
                             "Random replay-card effect lost its source pool.");
                     if (pool.Length > 0)
                     {
-                        (CombatState Combat, int SelectedIndex) choice;
+                        (CombatState Combat, int SelectedIndex,
+                            long? SelectedCardInstanceId) choice;
                         if (ControlledChanceGuardV111.Active &&
                             !ControlledChanceGuardV111
                                 .EngineOwnedNativeProviderActive &&
@@ -6951,7 +6958,7 @@ public sealed partial class PrototypeGameEngine
                             !ControlledChanceGuardV111
                                 .EngineOwnedNativeProviderActive &&
                             pool.Length == 1)
-                            choice = (combat, 0);
+                            choice = (combat, 0, null);
                         else
                             choice = ResolveRandomCombatCardIndex(
                                 combat, rng,
@@ -8119,7 +8126,8 @@ public sealed partial class PrototypeGameEngine
                         break;
                     }
 
-                    (CombatState Combat, int SelectedIndex) selection;
+                    (CombatState Combat, int SelectedIndex,
+                        long? SelectedCardInstanceId) selection;
                     if (ControlledChanceGuardV111.Active &&
                         !ControlledChanceGuardV111.EngineOwnedNativeProviderActive &&
                         eligible.Length > 1)
@@ -8149,7 +8157,7 @@ public sealed partial class PrototypeGameEngine
                     if (ControlledChanceGuardV111.Active &&
                         !ControlledChanceGuardV111.EngineOwnedNativeProviderActive &&
                         eligible.Length == 1)
-                        selection = (combat, 0);
+                        selection = (combat, 0, null);
                     else
                         selection = ResolveRandomCombatCardIndex(
                             combat, rng,
@@ -14074,7 +14082,8 @@ public sealed partial class PrototypeGameEngine
         return (updated, decision.SelectedIndex);
     }
 
-    private static (CombatState Combat, int SelectedIndex)
+    private static (CombatState Combat, int SelectedIndex,
+        long? SelectedCardInstanceId)
         ResolveRandomCombatCardIndex(
             CombatState combat,
             RngBundle legacyRng,
@@ -14151,9 +14160,13 @@ public sealed partial class PrototypeGameEngine
         {
             if (PrototypeControlledEnemyActionContinuationV111
                     .IsEnemyActionSite(siteId))
-                return (combat,
-                    StochasticProviderScopeV111.ResolveIndex(
-                        provider, request, streams).SelectedIndex);
+            {
+                var selectedIndex = StochasticProviderScopeV111
+                    .ResolveIndex(provider, request, streams).SelectedIndex;
+                return (combat, selectedIndex,
+                    ResolveSelectedTheftCardIdentity(
+                        request, selectedIndex, orderedCardInstanceIds));
+            }
             throw new NotSupportedException(
                 $"UNSUPPORTED_CONTROLLED_CHANCE site={siteId} " +
                 "operation=choose_index requires a saved continuation.");
@@ -14175,7 +14188,32 @@ public sealed partial class PrototypeGameEngine
                 Stochastic = CombatStochasticStateV111.WithNativeRng(
                     combat.Stochastic, native with { RunStreams = streams })
             };
-        return (updated, decision.SelectedIndex);
+        return (updated, decision.SelectedIndex,
+            ResolveSelectedTheftCardIdentity(
+                request, decision.SelectedIndex, orderedCardInstanceIds));
+    }
+
+    private static long? ResolveSelectedTheftCardIdentity(
+        RandomIndexRequestV111 request, int selectedIndex,
+        long[] orderedCardInstanceIds)
+    {
+        if (request.SiteId != StochasticSiteRegistryV111
+                .CombatEnemyTheftCardSelectSiteId)
+            return null;
+        var label = ControlledStochasticChanceReplayV111
+            .GetSelectedIndexCandidateLabel(request, selectedIndex);
+        if (label is null)
+            return null;
+        const string prefix = "card-instance:";
+        if (!label.StartsWith(prefix, StringComparison.Ordinal) ||
+            !long.TryParse(label.AsSpan(prefix.Length),
+                System.Globalization.NumberStyles.None,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var instanceId) || instanceId <= 0 ||
+            !orderedCardInstanceIds.Contains(instanceId))
+            throw new InvalidDataException(
+                "Saved enemy theft identity is malformed or outside its live support.");
+        return instanceId;
     }
 
     private static CombatState ShuffleCombatCardPool<T>(
