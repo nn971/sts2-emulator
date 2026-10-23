@@ -1147,7 +1147,7 @@ public sealed partial class PrototypeGameEngine
                 state,
                 world.Event!,
                 PrototypeNativeStoneOfAllTime.NativeRngEventId,
-                "event.stone_of_all_time.potion_slot.index_draw",
+                PrototypeNativeStoneOfAllTime.PotionSlotSiteId,
                 "event:stone_of_all_time:potion_slots:"
                     + CanonicalJson.Sha256(slots),
                 slots.Length);

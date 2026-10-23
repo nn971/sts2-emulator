@@ -239,7 +239,7 @@ public sealed partial class PrototypeGameEngine
                                 state,
                                 eventState,
                                 PrototypeNativeStoneOfAllTime.NativeRngEventId,
-                                "event.stone_of_all_time.push_ticket",
+                                PrototypeNativeStoneOfAllTime.PushTicketSiteId,
                                 "event:stone_of_all_time:push",
                                 100, ordinal: 1);
                         state = draw.State;
@@ -249,7 +249,7 @@ public sealed partial class PrototypeGameEngine
                         var prototypeRng = state.Stochastic.PrototypeRng;
                         _ = LegacyRandomChoiceV111.ChooseBoundedInteger(
                             prototypeRng,
-                            "event.stone_of_all_time.push_ticket",
+                            PrototypeNativeStoneOfAllTime.PushTicketSiteId,
                             "event",
                             "event:stone_of_all_time:push",
                             100);

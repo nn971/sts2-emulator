@@ -19,6 +19,21 @@ Native stream attribution, source-pool fidelity, legacy law, and cursor parity
 remain open. Static source review and `git diff --check` only; no tests or
 builds were run.
 
+**S0 Endless Conveyor manual site review increment (2026-10-23):** The scoped
+inventory now traces the dish ticket, Observe/Spicy Snappy upgrade, Fried Eel
+Colorless draw, and Suspicious Condiment potion boundary through their existing
+Chance Laws and atomic session. It records deferred next-dish chronology and
+the legacy fallback limits. The inventory's census references now match v41.
+Static source review and `git diff --check` only; no tests or builds were run.
+
+**S0 Stone of All Time manual site review increment (2026-10-23):** The
+occupied-slot entry law and push/lift ticket continuation are now traced
+together in the scoped inventory. It records the intervening push deck choice,
+the no-effect ticket mapping, the lethal early exit, and the configured,
+retained-legacy, and Native-regional fallback boundaries. Native cursor parity
+and legacy modulo probability remain open. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S0 summon-pool SiteId ownership increment (2026-10-23):** The existing
 legacy summon continuation and query registry now use the shared
 `combat.enemy.summon_pool.select` constant. Its Native pool path continues to

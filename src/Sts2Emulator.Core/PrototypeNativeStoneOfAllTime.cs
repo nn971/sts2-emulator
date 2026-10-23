@@ -8,6 +8,12 @@ public static class PrototypeNativeStoneOfAllTime
 {
     public const string EventId = "proto.native.hive.stone_of_all_time";
     public const string NativeRngEventId = "STONE_OF_ALL_TIME";
+    public const string PotionSlotSiteId =
+        StochasticSiteRegistryV111.NativeStoneOfAllTimePotionSlotSiteId;
+    public const string PushTicketSiteId =
+        StochasticSiteRegistryV111.NativeStoneOfAllTimePushTicketSiteId;
+    public const string LiftTicketSiteId =
+        StochasticSiteRegistryV111.NativeStoneOfAllTimeLiftTicketSiteId;
 
     public static PrototypeEventDefinition Definition =>
         PrototypeDefinitionCopiesV111.CloneEventDefinition(
@@ -53,7 +59,7 @@ public static class PrototypeNativeStoneOfAllTime
 
         return slots[LegacyRandomChoiceV111.ChooseIndexRange(
             rng,
-            "event.stone_of_all_time.potion_slot.index_draw",
+            PotionSlotSiteId,
             "event",
             "event:stone_of_all_time:potion_slots:"
                 + CanonicalJson.Sha256(slots),
@@ -115,7 +121,7 @@ public sealed partial class PrototypeGameEngine
                 result,
                 result.World!.Event!,
                 PrototypeNativeStoneOfAllTime.NativeRngEventId,
-                "event.stone_of_all_time.lift_ticket",
+                LiftTicketSiteId,
                 "event:stone_of_all_time:lift",
                 100, ordinal: 1);
             result = draw.State;
@@ -125,7 +131,7 @@ public sealed partial class PrototypeGameEngine
             var prototypeRng = result.Stochastic.PrototypeRng;
             _ = LegacyRandomChoiceV111.ChooseBoundedInteger(
                 prototypeRng,
-                "event.stone_of_all_time.lift_ticket",
+                LiftTicketSiteId,
                 "event",
                 "event:stone_of_all_time:lift",
                 100);
