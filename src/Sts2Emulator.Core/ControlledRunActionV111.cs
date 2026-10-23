@@ -1300,6 +1300,37 @@ public static class ControlledRunActionEngineV111
     internal static bool IsCombatRewardRelicActionKind(string actionKind) =>
         actionKind is "take_reward_relic" or "take_reward_extra_relic";
 
+    internal static bool IsSupportedOutsideCombatPotionAction(
+        RunState source, GameAction action)
+    {
+        if (action.Kind != "use_potion"
+            || source.Phase is not (RunPhase.MapChoice or RunPhase.Reward
+                or RunPhase.Shop or RunPhase.Rest
+                or RunPhase.ActTransition))
+            return false;
+
+        var payload = action.ReadPayload<UsePotionPayload>();
+        if (payload.TargetEnemyId is not null
+            || payload.Slot < 0
+            || payload.Slot >= source.Player.PotionSlots.Length
+            || source.Player.PotionSlots[payload.Slot] is not { } instance)
+            return false;
+
+        var definition = PrototypeContent.Potion(instance.PotionId);
+        if (!definition.UsableOutsideCombat)
+            return false;
+
+        var effects = definition.RunEffects ?? [];
+        return instance.PotionId == "proto.potion.fruit_juice"
+                && effects.SequenceEqual([
+                    new PrototypeRunEffectSpec(
+                        PrototypeRunEffectKind.GainMaxHp, 5)])
+            || instance.PotionId == "proto.potion.blood"
+                && effects.SequenceEqual([
+                    new PrototypeRunEffectSpec(
+                        PrototypeRunEffectKind.HealPercentMaxHp, 20)]);
+    }
+
     internal static bool IsLegacyRestHealRewardAction(
         RunState source, GameAction action) =>
         source.Phase == RunPhase.Rest
@@ -1507,6 +1538,8 @@ public static class ControlledRunActionEngineV111
         var acquisitionAction = shopPurchaseAction || rewardRelicAction;
         var restHealRewardAction = IsLegacyRestHealRewardAction(
             source, action);
+        var outsideCombatPotionAction =
+            IsSupportedOutsideCombatPotionAction(source, action);
         var supportedLegacyActTransitionAction =
             action.Kind == "continue_act"
             && source.Phase == RunPhase.ActTransition
@@ -1518,7 +1551,8 @@ public static class ControlledRunActionEngineV111
             || (action.Kind is not ("start_run" or "continue_act"
                 or PrototypeNativeRestSiteActionsV111.Dig
                 or "choose_map_node")
-                && !acquisitionAction && !restHealRewardAction)
+                && !acquisitionAction && !restHealRewardAction
+                && !outsideCombatPotionAction)
             || action.Kind == "continue_act"
                 && !supportedLegacyActTransitionAction
             || action.Kind == "choose_map_node" && !supportedMapNodeAction)
@@ -1641,6 +1675,7 @@ public static class ControlledRunActionEngineV111
         if (result.Stochastic.ControlledRunActionChoice is null)
         {
             if (acquisitionAction || restHealRewardAction ||
+                outsideCombatPotionAction ||
                 supportedLegacyActTransitionAction ||
                 legacyActOneCombatEntryAction ||
                 nativeActOneCombatEntryAction)

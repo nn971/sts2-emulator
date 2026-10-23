@@ -929,3 +929,14 @@ Stratagem continue through their existing owners. Random generation, direct
 draws, interactive choices, and persistent draw-pile-return effects remain
 with their specialized continuations. Static source review and
 `git diff --check` only; no tests or builds were run.
+
+## 2026-10-23: deterministic outside-combat potion actions
+
+The existing ReferenceNature run-action session now admits legal non-event
+uses of Fruit Juice and Blood Potion through their exact modeled max-HP gain
+and max-HP healing effects. The controlled replay guard rejects any chance
+request and snapshot validation replays the deterministic action. Event potion
+continuations remain separate, and Entropic Brew remains excluded because its
+empty-slot refill samples the potion pool. No chance owner or snapshot schema
+was added. Static source review and `git diff --check` only; no tests or builds
+were run.

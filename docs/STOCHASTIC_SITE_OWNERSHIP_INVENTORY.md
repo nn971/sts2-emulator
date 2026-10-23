@@ -211,6 +211,8 @@ The existing `ReferenceNatureRunActionSessionV111` owns eligible legacy Act 1 Ov
 
 The same session also admits configured experimental Native Act 1 Combat/Elite encounter-pool draws and encounter-local formation requests on Combat/Elite/Boss entry. It samples from the emulator's current ordered pools and commits combat with the Nature cursor; other Native entry requests retain their current providers. This does not establish Native source-pool fidelity or cursor parity. Later acts remain outside this map-node continuation.
 
+For legal non-event out-of-combat use, the same run-action session admits Fruit Juice and Blood Potion when their modeled effects match the exact deterministic max-HP gain or healing operation. Controlled replay rejects chance requests; Event use remains with the event continuation, and Entropic Brew remains outside because empty potion-slot refill samples a potion model.
+
 ## Site-family crosswalk
 
 Use the stable row IDs in the migration matrix as the site-level index. These families describe their current responsibility boundary; a family label does not imply every row is implemented or supported.

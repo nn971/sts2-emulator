@@ -7992,6 +7992,11 @@ public sealed record ReferenceNatureRunActionSessionV111(
             && ControlledRunActionEngineV111
                 .IsLegacyRestHealRewardAction(Origin, Action)
             && DecisionTranscript is { Length: 0 };
+        var immediateOutsideCombatPotionAction = Origin is not null
+            && Action is not null
+            && ControlledRunActionEngineV111
+                .IsSupportedOutsideCombatPotionAction(Origin, Action)
+            && DecisionTranscript is { Length: 0 };
         var immediateActOneCombatAction = Origin is not null
             && Action is not null
             && ControlledRunActionEngineV111
@@ -8013,6 +8018,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
              !immediateShopAction && !immediateActOneCombatAction &&
              !immediateRewardRelicAction &&
              !immediateRestHealRewardAction &&
+             !immediateOutsideCombatPotionAction &&
              !immediateNativeActOneCombatAction &&
              !typedNativeRunAction &&
              !configuredExperimentalActTransition) ||
@@ -8348,6 +8354,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
         }
         else if (immediateShopAction || immediateRewardRelicAction ||
             immediateRestHealRewardAction ||
+            immediateOutsideCombatPotionAction ||
             immediateActOneCombatAction ||
             immediateNativeActOneCombatAction)
         {
