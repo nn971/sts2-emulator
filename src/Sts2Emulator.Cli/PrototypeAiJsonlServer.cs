@@ -2517,8 +2517,7 @@ internal static class PrototypeAiJsonlServer
                 // encounters with additional units; never infer HP from intents.
                 terminalEnemyHp = state.CombatTerminal &&
                     state.CombatOutcome == "defeat"
-                    ? state.Run.World?.Combat?.Enemies.Sum(enemy =>
-                        Math.Max(0, enemy.Hp))
+                    ? state.Run.World?.DefeatRemainingEnemyHp
                     : null,
                 chanceSites = SemanticChanceSites(state),
                 controllerMode = SemanticControllerMode(state),
