@@ -3056,52 +3056,10 @@ public sealed partial class PrototypeGameEngine
                 player = drawn.Player;
                 combat = drawn.Combat;
                 var drawBoundary = drawn.BoundaryKind;
-                bool semanticChoiceBoundary =
-                    ControlledChanceGuardV111.Active &&
-                    combat.Stochastic.SemanticDeck is
-                        { Mode: SemanticDeckStateV111.NatureMode } &&
-                    drawBoundary is
-                        (PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice or
-                         PrototypeDrawCardsBoundaryKind.AfterShuffleInsertions or
-                         PrototypeDrawCardsBoundaryKind.ShuffleSelection);
-                bool semanticDrawBoundary =
-                    combat.Stochastic.SemanticDeck is not null &&
-                    drawBoundary is
-                        (PrototypeDrawCardsBoundaryKind.SemanticDraw or
-                         PrototypeDrawCardsBoundaryKind.ControlledDrawCost);
-                if (semanticChoiceBoundary || semanticDrawBoundary)
-                {
-                    var advanced = state with
-                    {
-                        Player = player,
-                        Stochastic = RunStochasticStateV111.WithPrototypeRng(
-                            state.Stochastic, prototypeRng),
-                        World = world with { Combat = combat }
-                    };
-                    var drawFrame = CreateSemanticDrawResultFrame(
-                        drawn.RemainingCount, fromHandDraw: true,
-                        eventDepth: 0, automatic: true);
-                    return ResolveControlledSemanticDrawResult(
-                        advanced, drawn, drawFrame,
-                        continuation: null,
-                        automaticHandDrawRequested: requestedHandDraw,
-                        recycleSite: "combat.DrawPlayerHand",
-                        recycleOperation: "unsupported_nested_stage").Run;
-                }
-                if (ControlledChanceGuardV111.Active &&
-                    combat.Stochastic.SemanticDeck is null &&
-                    drawBoundary is
-                        (PrototypeDrawCardsBoundaryKind.ControlledDrawCost or
-                         PrototypeDrawCardsBoundaryKind.ControlledRecycle or
-                         PrototypeDrawCardsBoundaryKind.ShuffleSelection or
-                         PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice))
-                {
-                    var published = PublishPrototypeRng(state);
-                    return combat.AutomaticPipelineContinuation is null
-                        ? ContinueInitialControlledHandDrawBoundary(
-                            published, drawn)
-                        : ContinueControlledHandDraw(published, drawn);
-                }
+                var resumedDrawBoundary = ResumeAutomaticHandDrawBoundary(
+                    PublishPrototypeRng(state), drawn, requestedHandDraw);
+                if (resumedDrawBoundary is not null)
+                    return resumedDrawBoundary;
                 if (drawBoundary ==
                     PrototypeDrawCardsBoundaryKind.ShuffleSelection)
                 {

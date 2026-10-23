@@ -3294,3 +3294,13 @@ classification. Snapshot and transcript ownership are unchanged. Broader draw
 resume policy consolidation and cross-provider mechanical equivalence remain
 open. Static source review and `git diff --check` only; no tests or builds were
 run.
+
+**S4 automatic hand-draw boundary dispatch increment (2026-10-24):** The
+`DrawPlayerHand` pipeline step now hands a completed `PrototypeDrawCardsResult`
+to `ResumeAutomaticHandDrawBoundary`. That existing mechanics owner routes
+semantic and legacy controlled boundaries to their existing adapters, which
+retain source-boundary policies and transcript ownership. The pipeline step no
+longer interprets those resumable boundary kinds itself. No snapshot or
+transcript format changed. Broader draw-resume policy consolidation and
+cross-provider mechanical equivalence remain open. Static source review and
+`git diff --check` only; no tests or builds were run.

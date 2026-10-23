@@ -7,6 +7,69 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public sealed partial class PrototypeGameEngine
 {
+    /// <summary>
+    /// Routes a completed DrawPlayerHand call to the matching continuation
+    /// owner. The semantic and legacy adapters keep their own supported
+    /// boundaries and transcripts; the pipeline step only resumes them.
+    /// </summary>
+    private static RunState? ResumeAutomaticHandDrawBoundary(
+        RunState rngCheckpoint, PrototypeDrawCardsResult drawn,
+        int requestedCount)
+    {
+        ArgumentNullException.ThrowIfNull(rngCheckpoint);
+        ArgumentNullException.ThrowIfNull(drawn);
+        if (requestedCount < 0)
+            throw new ArgumentOutOfRangeException(nameof(requestedCount));
+
+        var combat = drawn.Combat;
+        var boundary = drawn.BoundaryKind;
+        bool semanticChoiceBoundary =
+            ControlledChanceGuardV111.Active &&
+            combat.Stochastic.SemanticDeck is
+                { Mode: SemanticDeckStateV111.NatureMode } &&
+            boundary is
+                (PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice or
+                 PrototypeDrawCardsBoundaryKind.AfterShuffleInsertions or
+                 PrototypeDrawCardsBoundaryKind.ShuffleSelection);
+        bool semanticDrawBoundary =
+            combat.Stochastic.SemanticDeck is not null &&
+            boundary is
+                (PrototypeDrawCardsBoundaryKind.SemanticDraw or
+                 PrototypeDrawCardsBoundaryKind.ControlledDrawCost);
+        if (semanticChoiceBoundary || semanticDrawBoundary)
+        {
+            var world = RequireWorld(rngCheckpoint);
+            var advanced = rngCheckpoint with
+            {
+                Player = drawn.Player,
+                World = world with { Combat = combat }
+            };
+            var drawFrame = CreateSemanticDrawResultFrame(
+                drawn.RemainingCount, fromHandDraw: true,
+                eventDepth: 0, automatic: true);
+            return ResolveControlledSemanticDrawResult(
+                advanced, drawn, drawFrame,
+                continuation: null,
+                automaticHandDrawRequested: requestedCount,
+                recycleSite: "combat.DrawPlayerHand",
+                recycleOperation: "unsupported_nested_stage").Run;
+        }
+
+        if (ControlledChanceGuardV111.Active &&
+            combat.Stochastic.SemanticDeck is null &&
+            boundary is
+                (PrototypeDrawCardsBoundaryKind.ControlledDrawCost or
+                 PrototypeDrawCardsBoundaryKind.ControlledRecycle or
+                 PrototypeDrawCardsBoundaryKind.ShuffleSelection or
+                 PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice))
+            return combat.AutomaticPipelineContinuation is null
+                ? ContinueInitialControlledHandDrawBoundary(
+                    rngCheckpoint, drawn)
+                : ContinueControlledHandDraw(rngCheckpoint, drawn);
+
+        return null;
+    }
+
     private sealed record PrototypeAutomaticHandDrawCostResumeV111(
         RunState Run,
         PrototypeDrawCardsResult? Drawn,
