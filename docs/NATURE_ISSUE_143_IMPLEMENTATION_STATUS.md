@@ -883,14 +883,14 @@ mechanics regressions were not run. This continuation remains `UNVERIFIED`.
 
 The persistent semantic pilot now admits the exact modeled no-target
 deterministic potion effects for Cunning, Binding, Ship in a Bottle, Heart of
-Iron, Shackling, Mazaleth's Gift, Radiant Tincture, Lucky Tonic, Block,
-Dexterity, Fysh Oil, Energy, Strength, Regen, Duplicator, Flex, Blessing of the
-Forge, Speed, Liquid Bronze, Ghost in a Jar, Fortifier, and Stable Serum. The
-actions run under the controlled-chance guard and retain the existing combat
-boundary and hidden draw-pile checks. No chance owner or snapshot schema was
-added. Targeted, draw, choice, outside-combat, and other potion effects remain
-separate work. Static source review and `git diff --check` only; no tests or
-builds were run.
+Iron, Gigantification, Shackling, Mazaleth's Gift, Radiant Tincture, Lucky
+Tonic, Block, Explosive, Explosive Ampoule, Dexterity, Fysh Oil, Energy,
+Strength, Regen, Duplicator, Flex, Blessing of the Forge, Speed, Liquid
+Bronze, Ghost in a Jar, Fortifier, and Stable Serum. The actions run under the
+controlled-chance guard and retain the existing combat boundary and hidden
+draw-pile checks. No chance owner or snapshot schema was added. Draw, choice,
+outside-combat, and other potion effects remain separate work. Static source
+review and `git diff --check` only; no tests or builds were run.
 
 ## 2026-10-23: deterministic targeted combat potions
 
@@ -898,6 +898,14 @@ The semantic pilot now also admits Beetle Juice, Powdered Demise, Poison,
 Weak, and Vulnerable Potions when the action carries its legal living-enemy
 target. Their modeled power and status effects remain under the controlled-
 chance guard and ordinary combat and hidden draw-pile boundary checks.
-Targeted damage potions remain excluded because they may cross the combat
-reward boundary. Static source review and `git diff --check` only; no tests or
-builds were run.
+Fire Potion is covered by the deterministic damage-potion reward path above.
+Static source review and `git diff --check` only; no tests or builds were run.
+
+## 2026-10-23: deterministic combat damage potions
+
+Fire, Explosive, and Explosive Ampoule now use the existing complete combat
+action-result boundary when their modeled damage ends combat. Potion replay
+uses the narrow engine-owned reward allowance for this action, matching the
+existing supported card-action reward path. Distilled Chaos uses the same
+allowance because its autoplayed cards can win combat. Static source review
+and `git diff --check` only; no tests or builds were run.

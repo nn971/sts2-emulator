@@ -3170,11 +3170,14 @@ public static class SemanticPilotCombatEngineV111
             "proto.potion.binding" or
             "proto.potion.ship_in_a_bottle" or
             "proto.potion.heart_of_iron" or
+            "proto.potion.gigantification" or
             "proto.potion.shackling" or
             "proto.potion.mazaleths_gift" or
             "proto.potion.radiant_tincture" or
             "proto.potion.lucky_tonic" or
             "proto.potion.block" or
+            "proto.potion.explosive" or
+            "proto.potion.explosive_ampoule" or
             "proto.potion.dexterity" or
             "proto.potion.fysh_oil" or
             "proto.potion.energy" or
@@ -3195,7 +3198,14 @@ public static class SemanticPilotCombatEngineV111
             "proto.potion.powdered_demise" or
             "proto.potion.poison" or
             "proto.potion.weak" or
-            "proto.potion.vulnerable");
+            "proto.potion.vulnerable" or
+            "proto.potion.fire");
+
+    private static bool IsSemanticDeterministicDamagePotion(
+        string? potionId) =>
+        potionId is ("proto.potion.fire" or
+            "proto.potion.explosive" or
+            "proto.potion.explosive_ampoule");
 
     private static bool IsSemanticEffectDrawCard(string cardId) =>
         cardId is ("proto.common.restlessness" or
@@ -4323,6 +4333,9 @@ public static class SemanticPilotCombatEngineV111
             var isDeterministicTargetPotion = validSlot &&
                 IsSemanticDeterministicTargetPotion(
                     source.Player.PotionSlots[payload.Slot]?.PotionId);
+            var isDeterministicDamagePotion = validSlot &&
+                IsSemanticDeterministicDamagePotion(
+                    source.Player.PotionSlots[payload.Slot]?.PotionId);
             var isSelectionPotion = validSlot && IsSemanticSelectionPotion(
                 source.Player.PotionSlots[payload.Slot]?.PotionId);
             if ((!isGenerationPotion && !isPoolPotion &&
@@ -4337,10 +4350,12 @@ public static class SemanticPilotCombatEngineV111
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
                     "operation=potion_effect_requires_semantic_audit");
             using (ControlledChanceGuardV111.Enter())
+            using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
                 result = environment.StepResolved(
                     source, resolvedAction.Action).State;
             if (result.Phase != RunPhase.Combat &&
-                !((isDistilledChaos || isSemanticDrawPotion) &&
+                !((isDistilledChaos || isSemanticDrawPotion ||
+                   isDeterministicDamagePotion) &&
                   PrototypeGameEngine.IsAtCombatActionResultBoundary(result)))
                 throw new NotSupportedException(
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
