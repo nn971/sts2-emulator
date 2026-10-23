@@ -16,12 +16,13 @@ providers. Shop generation requires non-native regional systems and a legacy
 run RNG. Ordinary legacy Treasure generation uses that same route. Native-
 regional Treasure and Shovel fallbacks require `NativeRunRng` to be absent and
 retain the legacy reward rarity-ticket and conditional relic-index requests.
-The same saved action frame also supports a legal `take_reward_relic` from an
-ordinary Combat, Elite, or Boss reward when `NativeRunRng` is absent, if its
-acquisition hook reaches one of the registered relic-acquisition index sites
-listed below. It saves the selected relic action and replays all supported
-hook requests in order; configured Native combat-reward relic picks remain
-with their existing specialized ReferenceNature session.
+The same saved action frame also supports legal `take_reward_relic` and
+`take_reward_extra_relic` actions from ordinary Combat, Elite, or Boss rewards
+when `NativeRunRng` is absent, if their acquisition hook reaches one of the
+registered relic-acquisition index sites listed below. It saves the selected
+relic action and replays all supported hook requests in order; configured
+Native combat-reward relic picks remain with their existing specialized
+ReferenceNature session.
 `ControlledRunActionEngineV111.BeginLegacyActTransition` is the explicit
 entry point for the unconfigured prototype transition route.
 Legacy Treasure selection is not offered when Silver Crucible suppresses the
@@ -291,10 +292,10 @@ The ordered site IDs are exposed in `hello` under
 Although that capability group retains its established name, the same finite
 registry set covers legacy combat-reward relic acquisition hooks. The
 ReferenceNature run-action session can begin from a legal combat reward
-`take_reward_relic` action, sample each exact pending index support, and
-replay the saved action before committing the Nature cursor. Other reward
-actions, event rewards, and configured Native combat-reward relic hooks stay
-with their existing boundaries.
+`take_reward_relic` or `take_reward_extra_relic` action, sample each exact
+pending index support, and replay the saved action before committing the
+Nature cursor. Other reward actions, event rewards, and configured Native
+combat-reward relic hooks stay with their existing boundaries.
 
 The Python binding exposes `State.begin_controlled_run_start()`,
 `State.begin_controlled_run_action(action_id)`,

@@ -51,7 +51,9 @@ public sealed record ControlledRunActionTraceV111(
         var mapNodeAction = ActionId == "choose_map_node";
         var shopPurchaseAction =
             ControlledRunActionEngineV111.IsShopPurchaseActionKind(ActionId);
-        var rewardRelicAction = ActionId == "take_reward_relic";
+        var rewardRelicAction =
+            ControlledRunActionEngineV111
+                .IsCombatRewardRelicActionKind(ActionId);
         var actionPayloadRequired = shopPurchaseAction || rewardRelicAction;
         if (ActionId is not ("start_run" or "continue_act"
                 or PrototypeNativeRestSiteActionsV111.Dig
@@ -787,6 +789,7 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                 break;
             }
             case "take_reward_relic":
+            case "take_reward_extra_relic":
             {
                 if (RunAction is null
                     || !ControlledRunActionEngineV111
@@ -1228,7 +1231,10 @@ public static class ControlledRunActionEngineV111
         && source.Stochastic.NativeRunRng is null
         && (source.World?.Reward?.SourceRoom is
             "Combat" or "Elite" or "Boss")
-        && action.Kind == "take_reward_relic";
+        && IsCombatRewardRelicActionKind(action.Kind);
+
+    internal static bool IsCombatRewardRelicActionKind(string actionKind) =>
+        actionKind is "take_reward_relic" or "take_reward_extra_relic";
 
     internal static bool RequiresRunActionFingerprint(
         RunState source, GameAction action) =>

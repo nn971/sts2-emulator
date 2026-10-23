@@ -95,11 +95,12 @@ The present run and combat types have overlapping representation/lifecycle respo
 
 `RunStochasticStateV111` validates and owns completed controlled event-choice and run-action trace appends. Event-reward completion replaces the latest event-choice trace through the same owner, and run-action completion publishes its trace while clearing the active continuation in one transition.
 
-The existing controlled run-action frame also saves and replays a legal legacy
-`take_reward_relic` from a Combat, Elite, or Boss reward when its acquisition
-hook reaches a registered relic-acquisition site. It preserves the exact
-action and selected request prefix across continuation snapshots; configured
-Native combat-reward relic hooks remain on their specialized session path.
+The existing controlled run-action frame also saves and replays legal legacy
+`take_reward_relic` and `take_reward_extra_relic` actions from Combat, Elite,
+or Boss rewards when their acquisition hooks reach a registered
+relic-acquisition site. It preserves the exact action and selected request
+prefix across continuation snapshots; configured Native combat-reward relic
+hooks remain on their specialized session path.
 
 `RunStochasticStateV111.RebasePendingContinuationCheckpoints` now owns publication of active event-reward and run-action partial checkpoints after a step has committed mechanics and reconciled Native provider state. It builds each checkpoint with that continuation removed, updates the saved frame, and validates it against the complete run owner. `PrototypeGameEngine.FinalizeStep` delegates both rebases through this transition; the flattened snapshot members remain unchanged.
 

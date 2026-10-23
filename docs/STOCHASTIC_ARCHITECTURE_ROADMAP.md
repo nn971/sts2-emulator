@@ -7,16 +7,17 @@ existing controlled event-reward frame now saves a legal Driftwood
 `reroll_reward_card` action before its first request and replays it through
 the `reward.card_rarity.ticket` and `reward.card_model.index_draw` sites. The
 same frame retains the selected prefix across additional reroll requests,
-snapshots, and ReferenceNature session replay; other stochastic reward
+snapshots, and ReferenceNature session replay; other stochastic event-reward
 actions still fail closed. Static source review and `git diff --check` only;
 no tests or builds were run.
 
 **D3/D4 combat-reward relic action continuation increment (2026-10-23):** The
-existing controlled run-action frame now also saves a legal legacy
-`take_reward_relic` action from Combat, Elite, or Boss rewards when a registered
-relic-acquisition hook suspends. It replays the exact relic action and ordered
-request prefix through the existing acquisition-site registry; configured
-Native combat-reward relic cases remain with their specialized session.
+existing controlled run-action frame now also saves legal legacy
+`take_reward_relic` and `take_reward_extra_relic` actions from Combat, Elite,
+or Boss rewards when a registered relic-acquisition hook suspends. It replays
+the exact relic action and ordered request prefix through the existing
+acquisition-site registry; configured Native combat-reward relic cases remain
+with their specialized session.
 Static source review and `git diff --check` only; no tests or builds were run.
 
 **S0 Neow request-source inventory increment (2026-10-23):** The Neow
