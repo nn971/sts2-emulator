@@ -107,6 +107,29 @@ public sealed partial class PrototypeGameEngine
     }
 
     /// <summary>
+    /// Keep the automatic pipeline at its current stage while a hand-draw
+    /// continuation owns a pending count or pre-draw hook boundary.
+    /// </summary>
+    private static bool MustSuspendAutomaticPipelineAfterStep(
+        CombatState combat)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        if (combat.PendingChoice?.ControlledRandomPileCard is not null)
+            return true;
+
+        var continuation = combat.AutomaticPipelineContinuation;
+        if (continuation is null)
+            return false;
+        var mechanics = continuation.Mechanics;
+        var stochastic = continuation.Stochastic;
+        return (ControlledChanceGuardV111.Active &&
+                stochastic.TryGetAutomaticHandDrawRemainder(
+                    mechanics, out _)) ||
+            stochastic.IsAtSemanticBeforeHandDraw(mechanics) ||
+            stochastic.IsAtControlledBeforeHandDraw(mechanics);
+    }
+
+    /// <summary>
     /// Routes a completed DrawPlayerHand call to the matching continuation
     /// owner. Source-stage calls route only suspended boundaries; saved-stage
     /// resumes also route normal completion through the same provider adapter.

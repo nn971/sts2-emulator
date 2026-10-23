@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 automatic hand-draw suspension ownership increment (2026-10-24):** The
+existing automatic hand-draw continuation owner now decides when saved draw
+progress or a pre-draw choice keeps the pipeline at `DrawPlayerHand`. The
+generic pipeline loop no longer inspects hand-draw progress tags or the
+pre-draw random-pile boundary. Provider guards and serialized continuation
+state are unchanged. Static source review and `git diff --check` only; no tests
+or builds were run.
+
 **S0 Native player-RNG callsite census increment (2026-10-24):** The v48
 direct-call inventory now includes all 20 direct `NativePlayerRngV111` calls
 in Core, resolving each to an existing migration-matrix site row. The

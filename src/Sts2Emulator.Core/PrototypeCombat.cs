@@ -1674,29 +1674,10 @@ public sealed partial class PrototypeGameEngine
                 ?? throw new InvalidOperationException(
                     "Combat unexpectedly disappeared.");
 
-            // The draw routine returns after applying all earlier cards
-            // and effects, before recycling the discard pile. Resume at
-            // the same real pipeline index without replaying pre-draw hooks.
-            if (ControlledChanceGuardV111.Active &&
-                currentCombat.AutomaticPipelineContinuation is
-                    { } handDrawContinuation &&
-                handDrawContinuation.Stochastic
-                    .TryGetAutomaticHandDrawRemainder(
-                        handDrawContinuation.Mechanics, out _))
-                return state;
-
-            // A semantic random-pile choice inside BeforeHandDraw has its
-            // own saved subscriber/operation continuation. Keep the cursor
-            // at this DrawPlayerHand stage; advancing would skip the hand draw.
-            if (currentCombat.PendingChoice?.ControlledRandomPileCard is not null)
-                return state;
-
-            if (currentCombat.AutomaticPipelineContinuation is
-                { Stochastic: { HandDrawProgress: { Kind:
-                    PrototypeAutomaticHandDrawProgressKindV111
-                        .SemanticBeforeHandDraw or
-                    PrototypeAutomaticHandDrawProgressKindV111
-                        .ControlledBeforeHandDrawHookChoice } } })
+            // The draw continuation owns saved hand-draw progress and
+            // pre-draw choices. Keep its real pipeline stage until that
+            // owner reports that the boundary has resumed.
+            if (MustSuspendAutomaticPipelineAfterStep(currentCombat))
                 return state;
 
             if (currentCombat.PendingChoice is not null
