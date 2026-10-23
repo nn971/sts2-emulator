@@ -3334,3 +3334,11 @@ Provider policies, transcript owners, and snapshots are unchanged. Broader
 draw-resume policy consolidation and cross-provider mechanical equivalence
 remain open. Static source review and `git diff --check` only; no tests or
 builds were run.
+
+**S4 controlled automatic draw-resume caller increment (2026-10-24):** Saved
+controlled hook, recycle-Stratagem, and draw-insertion continuations now enter
+the common automatic boundary router before falling back to their existing
+legacy adapter for unsupported result kinds. Provider checkpoint validation,
+RNG publication, and transcript ownership are unchanged. Broader draw-resume
+policy consolidation and cross-provider mechanical equivalence remain open.
+Static source review and `git diff --check` only; no tests or builds were run.

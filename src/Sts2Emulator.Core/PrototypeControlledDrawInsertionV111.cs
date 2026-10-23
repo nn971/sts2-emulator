@@ -546,7 +546,8 @@ public sealed partial class PrototypeGameEngine
                 Stochastic = RunStochasticStateV111.WithPrototypeRng(
                     drawRun.Stochastic, automaticDrawPrototypeRng)
             };
-            return ContinueControlledHandDraw(drawRun, resumedDraw);
+            return ResumeSavedControlledAutomaticHandDraw(
+                drawRun, resumedDraw);
         }
 
         var resumePlayer = state.Player;

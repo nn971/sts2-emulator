@@ -118,7 +118,7 @@ public sealed partial class PrototypeGameEngine
             Stochastic = RunStochasticStateV111.WithPrototypeRng(
                 state.Stochastic, prototypeRng)
         };
-        return ContinueControlledHandDraw(state, drawn);
+        return ResumeSavedControlledAutomaticHandDraw(state, drawn);
     }
 
     private static RunState BeginControlledRecycleStratagemSelection(
@@ -191,7 +191,7 @@ public sealed partial class PrototypeGameEngine
             Stochastic = RunStochasticStateV111.WithPrototypeRng(
                 state.Stochastic, prototypeRng)
         };
-        return ContinueControlledHandDraw(state, drawn);
+        return ResumeSavedControlledAutomaticHandDraw(state, drawn);
     }
 
     private static RunState ContinueControlledHandDraw(

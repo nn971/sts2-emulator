@@ -28,7 +28,7 @@ public sealed partial class PrototypeGameEngine
 
         var combat = drawn.Combat;
         var boundary = drawn.BoundaryKind;
-        bool semanticChoiceBoundary =
+        bool semanticChoiceBoundary = !resumeSavedStage &&
             ControlledChanceGuardV111.Active &&
             combat.Stochastic.SemanticDeck is
                 { Mode: SemanticDeckStateV111.NatureMode } &&
@@ -36,7 +36,7 @@ public sealed partial class PrototypeGameEngine
                 (PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice or
                  PrototypeDrawCardsBoundaryKind.AfterShuffleInsertions or
                  PrototypeDrawCardsBoundaryKind.ShuffleSelection);
-        bool semanticDrawBoundary =
+        bool semanticDrawBoundary = !resumeSavedStage &&
             combat.Stochastic.SemanticDeck is not null &&
             boundary is
                 (PrototypeDrawCardsBoundaryKind.SemanticDraw or
@@ -80,6 +80,19 @@ public sealed partial class PrototypeGameEngine
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Resume a saved legacy automatic draw through the common boundary
+    /// router. The controlled adapter remains the fallback for result kinds
+    /// outside that router's legacy automatic contract.
+    /// </summary>
+    private static RunState ResumeSavedControlledAutomaticHandDraw(
+        RunState state, PrototypeDrawCardsResult drawn)
+    {
+        var resumed = ResumeAutomaticHandDrawBoundary(
+            state, drawn, requestedCount: 0, resumeSavedStage: true);
+        return resumed?.Run ?? ContinueControlledHandDraw(state, drawn);
     }
 
     private sealed record PrototypeAutomaticHandDrawCostResumeV111(
