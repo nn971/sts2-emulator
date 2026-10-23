@@ -1043,17 +1043,44 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
         if (source.Phase != RunPhase.Reward ||
             source.Stochastic.NativeRunRng is null || source.World is not { } world ||
             !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
-            action.Kind != "take_reward_relic" ||
-            world.Reward is not { PendingDeckChoice: null,
-                RelicResolved: false } reward)
+            world.Reward is not
+                { SourceRoom: "Combat" or "Elite" or "Boss",
+                    PendingDeckChoice: null } reward)
             return null;
 
         var payload = action.Payload.Deserialize<ChooseRelicPayload>();
-        var options = reward.CurrentRelicOptions;
-        return payload is not null &&
-            (uint)payload.Index < (uint)options.Length
-                ? options[payload.Index]
-                : null;
+        if (payload is null)
+            return null;
+
+        if (action.Kind == "take_reward_relic")
+        {
+            if (!reward.RelicResolved)
+            {
+                var options = reward.CurrentRelicOptions;
+                return (uint)payload.Index < (uint)options.Length
+                    ? options[payload.Index]
+                    : null;
+            }
+
+            var groupIndex = reward.FirstPendingExtraRelicGroupIndex;
+            return payload.Index == 0 && groupIndex >= 0 &&
+                groupIndex < (reward.ExtraRelicRewardIds?.Length ?? 0) &&
+                !reward.IsExtraRelicGroupResolved(groupIndex)
+                    ? reward.ExtraRelicRewardIds![groupIndex]
+                    : null;
+        }
+
+        if (action.Kind == "take_reward_extra_relic")
+        {
+            var groupIndex = payload.Index;
+            return groupIndex >= 0 &&
+                groupIndex < (reward.ExtraRelicRewardIds?.Length ?? 0) &&
+                !reward.IsExtraRelicGroupResolved(groupIndex)
+                    ? reward.ExtraRelicRewardIds![groupIndex]
+                    : null;
+        }
+
+        return null;
     }
 
     private static int ExpectedRelicBagDrawCount(

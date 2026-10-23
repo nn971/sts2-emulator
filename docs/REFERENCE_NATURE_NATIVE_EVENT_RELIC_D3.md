@@ -1,6 +1,6 @@
 # Native event relic ReferenceNature continuation
 
-**Snapshot:** 2026-10-21. **Status:** implemented for supported configured Native event-choice relic draws, Neow Small Capsule and Large Capsule pickups, Arcane Scroll and Phial Holster acquisition effects, Neow's Bones relic offer, Hefty Tablet and Lead Paperweight card offers, Lost Coffer card and potion offers, Scroll Boxes card bundles, Punch Off's `nab` relic offer, Round Tea Party, Trial, configured combat-reward pickups of Beautiful Bracelet, Distinguished Cape, Pael's Legion, or Sand Castle, Battleworn Dummy setting-three victory, and Pael's Wing; source-pool fidelity and Native cursor parity remain open.
+**Snapshot:** 2026-10-23. **Status:** implemented for supported configured Native event-choice relic draws, Neow Small Capsule and Large Capsule pickups, Arcane Scroll and Phial Holster acquisition effects, Neow's Bones relic offer, Hefty Tablet and Lead Paperweight card offers, Lost Coffer card and potion offers, Scroll Boxes card bundles, Punch Off's `nab` relic offer, Round Tea Party, Trial, configured primary or extra combat-reward pickups of Beautiful Bracelet, Distinguished Cape, Pael's Legion, or Sand Castle, Battleworn Dummy setting-three victory, and Pael's Wing; source-pool fidelity and Native cursor parity remain open.
 
 ## Boundary
 
@@ -36,9 +36,12 @@ uses `run.random_pool_distinct.shuffle_swap_index`; its equal-index law on
 `reward` remains `UNVERIFIED` and makes no claim of Native source or cursor
 parity.
 
-The same session accepts a legal configured Native `take_reward_relic` action
-when the selected combat reward is Beautiful Bracelet, Distinguished Cape,
-Pael's Legion, or Sand Castle. It captures the acquisition hook's existing
+The same session accepts a legal configured Native `take_reward_relic` or
+`take_reward_extra_relic` action when the selected combat reward is Beautiful
+Bracelet, Distinguished Cape, Pael's Legion, or Sand Castle. For a later
+extra-relic group selected through `take_reward_relic`, the legal index-zero
+action resolves the first pending group; `take_reward_extra_relic` identifies
+its group directly. The session captures the acquisition hook's existing
 registered index requests: Bracelet's eligible-card shuffle, Cape's two
 without-replacement curse picks, Legion's four-skin selection, or Sand
 Castle's eligible-card shuffle. Each request is tied to the selected relic,
@@ -46,8 +49,8 @@ the saved action, the source request and ordered candidate labels, and the
 preceding transcript. `run.niche` requests use exact Native bounded-index
 masses; the retained `event` and `reward` requests keep equal-index
 `UNVERIFIED` laws. The ordinary reward action, relic effect, and Nature cursor
-commit together. This boundary does not admit other reward relics or extra
-relic groups.
+commit together. Other reward relics and groups that select no supported
+acquisition hook remain outside this boundary.
 
 The session also captures Hefty Tablet's `OfferThreeRareCards` and Lead
 Paperweight's `OfferTwoColorlessCards` after either relic is selected from a

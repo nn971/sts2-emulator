@@ -20,6 +20,15 @@ acquisition-site registry; configured Native combat-reward relic cases remain
 with their specialized session.
 Static source review and `git diff --check` only; no tests or builds were run.
 
+**S6 Native extra-relic acquisition action increment (2026-10-23):** The
+existing Native event-relic session now recognizes both `take_reward_relic`
+and `take_reward_extra_relic` when they select one of its four supported
+combat-reward acquisition hooks. For a secondary group, it resolves the
+first pending group through the legal index-zero primary action or addresses
+an extra group directly, then replays the same registered request prefix.
+Other relic hooks, source-pool fidelity, and Native cursor parity remain open.
+Static source review and `git diff --check` only; no tests or builds were run.
+
 **S0 Neow request-source inventory increment (2026-10-23):** The Neow
 decision-plan builder now references its owning Chance Law session's finite
 site list explicitly, and the regenerated direct-call census resolves both
