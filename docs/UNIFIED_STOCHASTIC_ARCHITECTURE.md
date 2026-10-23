@@ -370,6 +370,9 @@ creating semantic draw, cost, or after-shuffle choices.
 resumable effect-draw boundaries, including recycle, nested hook, and
 post-shuffle Stratagem paths; normal completion uses the same identity prefix
 when applying drawn-card keyword overrides.
+`CreateDrawResumeOperation(frame)` now projects every saved draw field through
+one factory, including the draw-equal selection count, across effect recycle,
+nested hook, cost, and Stratagem continuations.
 
 The semantic draw continuation boundaries now use `AdvanceControlledSemanticDrawFrame` for remaining-count and deferred-identity progress. After-shuffle insertion, Stratagem selection, nested `CardDrawn` choice, and nested-effect completion therefore advance the same mechanics frame before applying their boundary-specific continuation policy.
 

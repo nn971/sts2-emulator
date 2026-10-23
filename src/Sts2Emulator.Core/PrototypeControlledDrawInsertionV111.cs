@@ -605,16 +605,7 @@ public sealed partial class PrototypeGameEngine
         PrototypeControlledSemanticDrawV111 draw,
         PrototypeChoiceResolutionContinuationState continuation)
     {
-        var drawOperation = new PrototypeQueuedOperation(
-            PrototypeCombatEffectKind.DrawCards, draw.RemainingCount,
-            FromHandDraw: draw.FromHandDraw,
-            DrawnCardKeyword: draw.DrawnCardKeyword is null
-                ? null : draw.DrawnCardKeyword with { },
-            DeferredDrawnCardInstanceIds:
-                (draw.DeferredKeywordCardInstanceIds ?? []).ToArray(),
-            DrawEventDepth: draw.EventDepth,
-            StandaloneSemanticDrawSegment:
-                draw.StandaloneSemanticDrawSegment);
+        var drawOperation = CreateDrawResumeOperation(draw);
         var resumedContinuation = continuation with
         {
             Operations = new[]

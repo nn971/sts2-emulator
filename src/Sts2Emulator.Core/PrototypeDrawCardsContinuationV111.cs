@@ -6,6 +6,17 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public sealed partial class PrototypeGameEngine
 {
+    private static PrototypeQueuedOperation CreateDrawResumeOperation(
+        PrototypeControlledSemanticDrawV111 draw)
+    {
+        ArgumentNullException.ThrowIfNull(draw);
+        return CreateDrawResumeOperation(
+            draw.RemainingCount, draw.FromHandDraw, draw.EventDepth,
+            draw.DrawnCardKeyword, draw.DeferredKeywordCardInstanceIds,
+            draw.StandaloneSemanticDrawSegment,
+            draw.DrawEqualSelectionCount);
+    }
+
     private static PrototypeControlledSemanticDrawV111
         CreateAdvancedEffectDrawFrame(
             PrototypeQueuedOperation operation,
@@ -61,12 +72,7 @@ public sealed partial class PrototypeGameEngine
         PrototypeChoiceResolutionContinuationState continuation,
         bool markStandaloneHookChoice)
     {
-        var resumeDraw = CreateDrawResumeOperation(
-            resumedDraw.RemainingCount, resumedDraw.FromHandDraw,
-            resumedDraw.EventDepth, resumedDraw.DrawnCardKeyword,
-            resumedDraw.DeferredKeywordCardInstanceIds,
-            resumedDraw.StandaloneSemanticDrawSegment,
-            resumedDraw.DrawEqualSelectionCount);
+        var resumeDraw = CreateDrawResumeOperation(resumedDraw);
         combat = AttachDrawResumeContinuation(
             combat, resumeDraw, continuation);
         if (markStandaloneHookChoice)

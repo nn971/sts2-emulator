@@ -6518,16 +6518,8 @@ public sealed partial class PrototypeGameEngine
                         var suspendedDraw = CreateAdvancedEffectDrawFrame(
                             operation, drawn.RemainingCount, drawEventDepth,
                             drawn.DrawnCardInstanceIds);
-                        var deferredKeywordIds =
-                            suspendedDraw.DeferredKeywordCardInstanceIds ?? [];
                         var resumeDraw = CreateDrawResumeOperation(
-                            suspendedDraw.RemainingCount,
-                            suspendedDraw.FromHandDraw,
-                            suspendedDraw.EventDepth,
-                            suspendedDraw.DrawnCardKeyword,
-                            deferredKeywordIds,
-                            suspendedDraw.StandaloneSemanticDrawSegment,
-                            suspendedDraw.DrawEqualSelectionCount);
+                            suspendedDraw);
                         var recycleContinuation = CaptureEffectContinuation(
                             new[] { resumeDraw }.Concat(operations));
                         if (combat.Stochastic.SemanticDeck is not null ||

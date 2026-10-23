@@ -3382,3 +3382,13 @@ completion also uses that identity prefix for keyword overrides. No snapshot
 or transcript format changed. Broader draw-resume policy consolidation and
 cross-provider mechanical equivalence remain open. Static source review and
 `git diff --check` only; no tests or builds were run.
+
+**S4 draw-frame to operation projection increment (2026-10-24):** Effect
+recycle, nested hook, semantic cost, and Stratagem continuations now project a
+`PrototypeControlledSemanticDrawV111` through the common
+`CreateDrawResumeOperation` factory. This preserves all frame fields,
+including `DrawEqualSelectionCount`, while cloning queued payloads at the
+existing operation boundary. The value is transient; snapshot schemas are
+unchanged. Broader draw-resume policy consolidation and cross-provider
+mechanical equivalence remain open. Static source review and `git diff --check`
+only; no tests or builds were run.

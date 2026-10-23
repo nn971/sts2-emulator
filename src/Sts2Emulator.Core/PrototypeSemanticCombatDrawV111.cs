@@ -179,14 +179,7 @@ public sealed partial class PrototypeGameEngine
             if (effectDraw)
             {
                 var outerContinuation = continuation!;
-                var resumeDraw = CreateDrawResumeOperation(
-                    cost.RemainingCount,
-                    draw.FromHandDraw,
-                    draw.EventDepth,
-                    draw.DrawnCardKeyword,
-                    draw.DeferredKeywordCardInstanceIds,
-                    drawEqualSelectionCount:
-                        draw.DrawEqualSelectionCount);
+                var resumeDraw = CreateDrawResumeOperation(draw);
                 var combatWithDraw = AttachDrawResumeContinuation(
                     combat, resumeDraw, outerContinuation);
                 return new PrototypeDrawCardsResumeResultV111(
