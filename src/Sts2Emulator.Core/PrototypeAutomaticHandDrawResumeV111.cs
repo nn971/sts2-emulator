@@ -85,6 +85,19 @@ public sealed partial class PrototypeGameEngine
         return result;
     }
 
+    private static RunState PublishDrawCardsResult(
+        RunState checkpoint, PrototypeDrawCardsResult drawn)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        ArgumentNullException.ThrowIfNull(drawn);
+        var world = RequireWorld(checkpoint);
+        return checkpoint with
+        {
+            Player = drawn.Player,
+            World = world with { Combat = drawn.Combat }
+        };
+    }
+
     private static RunState CommitAutomaticHandDrawStratagemSelection(
         RunState state,
         PlayerState player,

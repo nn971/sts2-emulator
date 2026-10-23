@@ -289,12 +289,8 @@ public sealed partial class PrototypeGameEngine
             string recycleSite,
             string recycleOperation)
     {
-        var world = RequireWorld(run);
-        var advanced = run with
-        {
-            Player = drawn.Player,
-            World = world with { Combat = drawn.Combat }
-        };
+        var advanced = PublishDrawCardsResult(run, drawn);
+        var world = RequireWorld(advanced);
         var boundary = drawn.BoundaryKind;
         bool automatic = automaticHandDrawRequested is not null;
         bool nestedEffect = continuation is not null;
@@ -447,6 +443,7 @@ public sealed partial class PrototypeGameEngine
             drawn.DrawnCardInstanceIds, accumulateDrawnCardIds,
             stratagemSelectionPending);
 
+        var advanced = PublishDrawCardsResult(run, drawn);
         var insertionCombat = drawn.Combat;
         if (automaticHandDrawRequested is { } requested)
         {
@@ -455,21 +452,20 @@ public sealed partial class PrototypeGameEngine
                 requested <= 0)
                 throw new InvalidDataException(
                     "Automatic after-shuffle draw cursor is inconsistent.");
-            run = CommitAutomaticHandDrawProgress(
-                run, drawn.Player, insertionCombat,
+            advanced = CommitAutomaticHandDrawProgress(
+                advanced, drawn.Player, insertionCombat,
                 PrototypeAutomaticHandDrawProgressV111.SemanticDraw(
                     requested, drawn.RemainingCount),
                 createCheckpoint: true);
-            insertionCombat = run.World!.Combat!;
+            insertionCombat = advanced.World!.Combat!;
         }
 
         var combat = MakeControlledAfterShuffleInsertionChoice(
             insertionCombat, insertions[0], insertions.Skip(1).ToArray(),
             [], semanticDraw, continuation, 0);
-        var world = RequireWorld(run);
-        return (run with
+        var world = RequireWorld(advanced);
+        return (advanced with
         {
-            Player = drawn.Player,
             World = world with { Combat = combat }
         }, drawn.RemainingCount);
     }
@@ -495,11 +491,7 @@ public sealed partial class PrototypeGameEngine
             stratagemSelectionPending: false);
 
         var combat = drawn.Combat;
-        var advanced = run with
-        {
-            Player = drawn.Player,
-            World = RequireWorld(run) with { Combat = combat }
-        };
+        var advanced = PublishDrawCardsResult(run, drawn);
         var selected = ResumeControlledStratagemSelection(
             advanced, combat, semanticDraw, continuation);
         if (automaticHandDrawRequested is { } requested)

@@ -198,7 +198,6 @@ public sealed partial class PrototypeGameEngine
     private static RunState ContinueControlledHandDraw(
         RunState state, PrototypeDrawCardsResult drawn)
     {
-        var world = RequireWorld(state);
         var combat = drawn.Combat;
         var drawBoundary = drawn.BoundaryKind;
 
@@ -243,11 +242,7 @@ public sealed partial class PrototypeGameEngine
                 "UNSUPPORTED_CONTROLLED_CHANCE site=combat.draw.recycle " +
                 "operation=nested_draw_continuation");
 
-        var advanced = state with
-        {
-            Player = drawn.Player,
-            World = world with { Combat = combat }
-        };
+        var advanced = PublishDrawCardsResult(state, drawn);
         return ResumeAutomaticPipelineContinuation(
             CompleteAutomaticHandDrawStage(advanced));
     }
