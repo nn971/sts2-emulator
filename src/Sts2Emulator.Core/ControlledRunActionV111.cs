@@ -1360,7 +1360,11 @@ public static class ControlledRunActionEngineV111
             || instance.PotionId == "proto.potion.blood"
                 && effects.SequenceEqual([
                     new PrototypeRunEffectSpec(
-                        PrototypeRunEffectKind.HealPercentMaxHp, 20)]);
+                        PrototypeRunEffectKind.HealPercentMaxHp, 20)])
+            || instance.PotionId == "proto.native.neow.ambergris"
+                && effects.SequenceEqual([
+                    new PrototypeRunEffectSpec(
+                        PrototypeRunEffectKind.HealPercentMaxHp, 50)]);
     }
 
     internal static bool IsEntropicBrewRunAction(
