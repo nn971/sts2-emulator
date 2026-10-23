@@ -427,6 +427,10 @@ from this result without reinterpreting `BeforeHandDraw` random-pile choices.
 `ResumeAutomaticHandDrawBoundary` distinguishes initial source results, saved
 controlled resumes, and saved semantic resumes with a typed context; only the
 semantic context carries a semantic draw frame.
+`PrepareAutomaticHandDrawStage` interprets the saved controlled or semantic
+pre-draw hook tag, validates deferred semantic entry, clears that marker, and
+selects the result context before the ordinary step switch executes hook or
+draw mechanics. The switch no longer reads the saved hook-progress tags.
 The transient `PrototypeDrawCardsResumeResultV111` now validates its run and
 nonnegative progress counts in its constructor, so every provider-neutral draw
 resume result has the same invariant; its explicit validation also catches a

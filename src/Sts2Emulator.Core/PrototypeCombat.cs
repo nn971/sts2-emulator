@@ -2969,33 +2969,15 @@ public sealed partial class PrototypeGameEngine
 
             case PrototypeAutomaticStepKind.DrawPlayerHand:
             {
-                bool resumedAfterSemanticHook =
-                    combat.AutomaticPipelineContinuation?
-                        .Stochastic.HandDrawProgress?.Kind ==
-                            PrototypeAutomaticHandDrawProgressKindV111
-                                .SemanticBeforeHandDraw;
-                bool resumedAfterControlledHook =
-                    combat.AutomaticPipelineContinuation?
-                        .Stochastic.HandDrawProgress?.Kind ==
-                            PrototypeAutomaticHandDrawProgressKindV111
-                                .ControlledBeforeHandDrawHookChoice;
-                if (resumedAfterSemanticHook &&
-                    handDrawResultContext !=
-                        AutomaticHandDrawSourceResultContextV111
-                            .DeferredSemanticStage)
-                    throw new InvalidDataException(
-                        "Semantic BeforeHandDraw resume has no deferred stage context.");
-                if (resumedAfterSemanticHook || resumedAfterControlledHook)
-                {
-                    state = CommitAutomaticHandDrawProgress(
-                        PublishPrototypeRng(state), player, combat,
-                        progress: null);
-                    prototypeRng = state.Stochastic.PrototypeRng;
-                    world = RequireWorld(state);
-                    player = state.Player;
-                    combat = world.Combat!;
-                }
-                else
+                var prepared = PrepareAutomaticHandDrawStage(
+                    state, handDrawResultContext);
+                state = prepared.Run;
+                handDrawResultContext = prepared.ResultContext;
+                prototypeRng = state.Stochastic.PrototypeRng;
+                world = RequireWorld(state);
+                player = state.Player;
+                combat = world.Combat!;
+                if (prepared.DispatchBeforeHandDraw)
                 {
                     var beforeHandDraw = DispatchCombatEvent(
                         player,
@@ -3103,10 +3085,7 @@ public sealed partial class PrototypeGameEngine
                     automaticHandDrawStage: true);
                 return ResumeAutomaticHandDrawSourceResult(
                     state, drawn, requestedHandDraw, prototypeRng,
-                    resumedAfterSemanticHook
-                        ? AutomaticHandDrawSourceResultContextV111
-                            .ResumedSemanticBeforeHandDraw
-                        : handDrawResultContext);
+                    handDrawResultContext);
             }
 
             case PrototypeAutomaticStepKind.ResolveLateRelicAutoplay:

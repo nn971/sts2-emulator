@@ -21,6 +21,48 @@ public sealed partial class PrototypeGameEngine
         SavedSemanticStage
     }
 
+    private static (RunState Run,
+        AutomaticHandDrawSourceResultContextV111 ResultContext,
+        bool DispatchBeforeHandDraw) PrepareAutomaticHandDrawStage(
+        RunState state,
+        AutomaticHandDrawSourceResultContextV111 requestedResultContext)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        if (!Enum.IsDefined(requestedResultContext))
+            throw new ArgumentOutOfRangeException(
+                nameof(requestedResultContext));
+
+        var combat = RequireWorld(state).Combat ??
+            throw new InvalidDataException(
+                "Automatic hand-draw stage has no combat.");
+        var progressKind = combat.AutomaticPipelineContinuation?
+            .Stochastic.HandDrawProgress?.Kind;
+        bool resumedAfterSemanticHook = progressKind ==
+            PrototypeAutomaticHandDrawProgressKindV111
+                .SemanticBeforeHandDraw;
+        bool resumedAfterControlledHook = progressKind ==
+            PrototypeAutomaticHandDrawProgressKindV111
+                .ControlledBeforeHandDrawHookChoice;
+        if (resumedAfterSemanticHook && requestedResultContext !=
+                AutomaticHandDrawSourceResultContextV111
+                    .DeferredSemanticStage)
+            throw new InvalidDataException(
+                "Semantic BeforeHandDraw resume has no deferred stage context.");
+
+        if (!resumedAfterSemanticHook && !resumedAfterControlledHook)
+            return (state, requestedResultContext, true);
+
+        var cleared = CommitAutomaticHandDrawProgress(
+            PublishPrototypeRng(state), state.Player, combat,
+            progress: null);
+        return (cleared,
+            resumedAfterSemanticHook
+                ? AutomaticHandDrawSourceResultContextV111
+                    .ResumedSemanticBeforeHandDraw
+                : requestedResultContext,
+            false);
+    }
+
     /// <summary>
     /// Routes a completed DrawPlayerHand call to the matching continuation
     /// owner. Source-stage calls route only suspended boundaries; saved-stage

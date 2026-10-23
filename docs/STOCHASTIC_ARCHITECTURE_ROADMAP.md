@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 automatic hand-draw stage preparation owner increment (2026-10-24):**
+The existing hand-draw continuation owner now interprets saved semantic and
+controlled `BeforeHandDraw` progress tags, validates deferred semantic entry,
+clears the resumed hook marker, and chooses the source-result context. The
+automatic-step switch now runs the hook or draw mechanics without reading
+those saved progress tags. No snapshot schema changed. Static source review
+and `git diff --check` only; no tests or builds were run.
+
 **S4 automatic draw source-result owner increment (2026-10-24):** The source
 `DrawPlayerHand` stage now sends every `DrawCards` result through
 `ResumeAutomaticHandDrawSourceResult`. The shared owner handles provider
