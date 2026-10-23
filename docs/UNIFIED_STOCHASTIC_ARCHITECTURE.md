@@ -817,6 +817,10 @@ remain separate evidence.
 3. **Native-game fidelity** — [issue #122](https://github.com/nn971/sts2-emulator/issues/122) and [Inspector plan](NATIVE_FIDELITY_INSPECTOR_PLAN.md): installed-game captures, mechanics/hook/stream ordering, exact RNG call/cursor provenance. **N5 original-game probability calibration** uses independently sourced rules/evidence and is separately gated.
 
 `SimulationMechanicsProjectionEngineV111` forks and projects the existing run, world, combat, and event mechanics owners into one provider-independent view, then fingerprints that view. It omits RNG seeds/cursors, hidden deck constraints, physical draw-pile order, and unresolved chance supports and decisions, while retaining pending deck-operation purpose/position, draw-pile membership, and completed peek/scry results through the public draw-pile view. It retains deterministic saved draw progress, including normalized automatic hand-draw remaining count and pending draw-cost identity and stage, so differences in the remaining mechanics continuation stay visible. Use it after applying the same semantic outcomes. It is a comparison aid, not evidence that two trajectories used the same choices or that either provider matches the installed game.
+Before projecting, it validates the complete `RunState`, including provider and
+mechanics correspondence. Raw-state comparisons and mechanics fingerprints
+therefore reject malformed or unsynchronized inputs before stochastic data is
+removed from the view.
 `SimulationMechanicsComparisonV111` copies the difference array on
 construction and replacement, then returns defensive copies to keep the
 diagnostic result immutable to callers.

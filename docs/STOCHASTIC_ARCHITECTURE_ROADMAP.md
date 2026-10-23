@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 mechanics comparison input validation increment (2026-10-24):** The
+provider-independent mechanics projection now validates the complete
+`RunState` before stripping provider state. Raw-state comparisons and
+mechanics fingerprints therefore reject invalid owner correspondence instead
+of potentially treating matching malformed snapshots as equivalent. Static
+source review and `git diff --check` only; no tests or builds were run.
+
 **S0/S4 combat card-action admission census (2026-10-24):** Cross-checked
 current source pool/model arrays against direct semantic player-action gates
 and specialized semantic-pilot continuations. All 53 currently implemented

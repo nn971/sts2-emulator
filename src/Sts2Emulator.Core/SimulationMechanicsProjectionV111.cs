@@ -177,6 +177,10 @@ public static class SimulationMechanicsProjectionEngineV111
     public static SimulationMechanicsProjectionV111 Project(RunState run)
     {
         ArgumentNullException.ThrowIfNull(run);
+        // A provider-neutral projection is meaningful only when the complete
+        // mechanics/provider owner is internally consistent. Validate before
+        // removing provider state from the comparison view.
+        run.Validate();
         // The owners contain arrays for compatibility with existing update
         // code, so project a fork to keep this read-only view from exposing
         // mutable aliases into the caller's snapshot.
