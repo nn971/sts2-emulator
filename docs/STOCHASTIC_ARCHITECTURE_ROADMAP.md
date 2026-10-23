@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S2/S4 generated-card potion increment (2026-10-23):** Attack, Skill, and
+Power Potions now enter the persistent semantic pilot through the existing
+selection-potion path. Their source full-pool shuffle, generated-card model
+choice, and ChoicePool selection reuse current event and replay owners; the
+hidden draw pile remains unchanged. No event or snapshot schema was added.
+Other potion effects remain open. Static source review and `git diff --check`
+only; no tests or builds were run.
+
 **S2/S4 semantic source card-selection increment (2026-10-23):** The
 persistent semantic combat pilot now admits Neow's Fury's optional
 discard-pile-to-hand card choice through the existing semantic card-selection

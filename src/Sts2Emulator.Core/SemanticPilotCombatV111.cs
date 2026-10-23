@@ -3128,7 +3128,10 @@ public static class SemanticPilotCombatEngineV111
     }
 
     private static bool IsSemanticSelectionPotion(string? potionId) =>
-        potionId is ("proto.potion.touch_of_insanity" or
+        potionId is ("proto.potion.attack" or
+            "proto.potion.skill" or
+            "proto.potion.power" or
+            "proto.potion.touch_of_insanity" or
             "proto.potion.droplet_of_precognition" or
             "proto.potion.liquid_memories");
 

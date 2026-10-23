@@ -381,6 +381,10 @@ The same path admits Restlessness, Slimed and Calculated Gamble; the latter
 preserves its queued draw count across the preceding hand discard. Other
 potion and card effects and opening draws remain separate integration
 milestones.
+The semantic pilot also admits Attack, Skill and Power Potions through their
+existing source full-pool shuffle, generated-card model choice and ChoicePool
+selection continuation. The selected card moves to hand without changing the
+hidden draw pile; Native cursor parity and other potion effects remain open.
 
 The semantic JSONL/Python bridge also exposes fixed-model random draw-pile
 insertion and the two-stage random-Attack insertion continuation through
