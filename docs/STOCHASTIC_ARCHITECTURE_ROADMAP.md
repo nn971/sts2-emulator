@@ -2,6 +2,16 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S0 aliased registry-site resolution increment (2026-10-23):** The direct
+source inventory now follows type-scoped `const string` aliases while
+expanding composed registry properties, so the existing Tablet of Truth and
+Trash Heap session sites resolve to their authoritative registry entries
+without duplicating IDs. The generated direct-call census reports 185
+registered sites for 185 migration rows, with no registry mismatches or
+unresolved references.
+The inventory schema is v42; static source analysis only, with no tests or
+builds run.
+
 **S2/S4 Gambler's Brew selection increment (2026-10-23):** Gambler's Brew
 now uses the existing sequential card-selection schema and semantic draw
 owner. The admission checks the source potion-use completion event, hand to

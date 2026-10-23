@@ -21,7 +21,7 @@ from urllib.parse import unquote, urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v41"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v42"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 
 CALL_PATTERN = re.compile(
@@ -71,6 +71,13 @@ CLASS_STRING_CONSTANT_PATTERN = re.compile(
     r"(?:(?:static|new)\s+)*const\s+string\s+"
     r"(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*=\s*"
     r'"(?P<value>[^"\\]*(?:\\.[^"\\]*)*)"\s*;'
+)
+
+CLASS_STRING_CONSTANT_EXPRESSION_PATTERN = re.compile(
+    r"(?m)^[ \t]*(?:public|private|internal|protected)\s+"
+    r"(?:(?:static|new)\s+)*const\s+string\s+"
+    r"(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*=\s*"
+    r"(?P<expression>[^;]+);"
 )
 
 STRING_LITERAL_PATTERN = re.compile(
@@ -574,6 +581,7 @@ def _resolve_site_value(
     expression: str,
     local_constants: dict[str, set[str]],
     global_constants: dict[str, set[str]],
+    active: frozenset[str] = frozenset(),
 ) -> str | None:
     expression = re.sub(r"\s+", "", expression)
     if expression.startswith('"') and expression.endswith('"'):
@@ -589,7 +597,11 @@ def _resolve_site_value(
     class_name = constant.group("class")
     candidates: set[str] = set()
     if class_name is not None:
-        class_file = SOURCE_ROOT / (class_name.rsplit(".", 1)[-1] + ".cs")
+        type_name = class_name.rsplit(".", 1)[-1]
+        identity = f"{type_name}.{name}"
+        if identity in active:
+            return None
+        class_file = SOURCE_ROOT / (type_name + ".cs")
         candidate_files = ([class_file] if class_file.is_file() else []) + [
             path for path in sorted(SOURCE_ROOT.rglob("*.cs"))
             if path != class_file
@@ -598,11 +610,23 @@ def _resolve_site_value(
             source = candidate.read_text(encoding="utf-8")
             if not re.search(
                 rf"\b(?:class|record|struct)\s+"
-                rf"{re.escape(class_name.rsplit('.', 1)[-1])}\b",
+                rf"{re.escape(type_name)}\b",
                 source,
             ):
                 continue
             candidates.update(_string_constants(source).get(name, set()))
+            for declaration in \
+                    CLASS_STRING_CONSTANT_EXPRESSION_PATTERN.finditer(source):
+                if (declaration.group("name") != name or
+                        _nearest_type_name(source, declaration.start()) !=
+                        type_name):
+                    continue
+                alias = declaration.group("expression").strip()
+                if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", alias):
+                    alias = f"{type_name}.{alias}"
+                candidates.update(_resolve_site_values(
+                    alias, {}, global_constants, active | {identity}
+                ))
     else:
         candidates = local_constants.get(name, set())
         if not candidates:
@@ -758,6 +782,7 @@ def _resolve_site_values(
     expression: str | None,
     local_constants: dict[str, set[str]],
     global_constants: dict[str, set[str]],
+    active: frozenset[str] = frozenset(),
 ) -> list[str]:
     """Resolve exact or statically visible alternatives in a site expression."""
     if expression is None:
@@ -767,7 +792,7 @@ def _resolve_site_values(
         values: set[str] = set()
         for result in switch_results:
             branch_values = _resolve_site_values(
-                result, local_constants, global_constants
+                result, local_constants, global_constants, active
             )
             if not branch_values:
                 return []
@@ -778,11 +803,11 @@ def _resolve_site_values(
         values: set[str] = set()
         for branch in branches:
             values.update(_resolve_site_values(
-                branch, local_constants, global_constants
+                branch, local_constants, global_constants, active
             ))
         return sorted(values)
     exact = _resolve_site_value(
-        expression, local_constants, global_constants
+        expression, local_constants, global_constants, active
     )
     if exact is not None:
         return [exact]
@@ -797,7 +822,7 @@ def _resolve_site_values(
     )
     for match in member_pattern.finditer(expression):
         value = _resolve_site_value(
-            match.group(0), local_constants, global_constants
+            match.group(0), local_constants, global_constants, active
         )
         if value is not None:
             values.add(value)
