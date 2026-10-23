@@ -144,8 +144,10 @@ support is the source-shaped Attack/Skill pair for a Common potion or
 Attack/Skill/Power trio for an Uncommon or Rare potion. The query binds the
 prior request prefix and counts exact Native `NextInt` preimages on the
 declared support; it neither resolves Event selection nor reads a sampled
-card-type result. Native entry still resolves and caches all offers in the
-ordinary event action, and no atomic ReferenceNature session is implied.
+card-type result. The query does not create a session. The existing atomic
+Native event-entry session scripts and replays these ordered offers on the
+configured Native and captured Native-regional legacy routes; see the
+[entry session contract](REFERENCE_NATURE_NATIVE_EVENT_GOLD_D3.md#boundary).
 
 The resolver is the event-specific page-generation or choice-effect method.
 It applies the selected primitive result synchronously, commits the resulting

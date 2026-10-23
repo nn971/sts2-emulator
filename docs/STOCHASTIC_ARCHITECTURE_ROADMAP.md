@@ -34,6 +34,14 @@ retained-legacy, and Native-regional fallback boundaries. Native cursor parity
 and legacy modulo probability remain open. Static source review and
 `git diff --check` only; no tests or builds were run.
 
+**S0 Future of Potions manual site review increment (2026-10-23):** The
+ordered potion-slot card-type prefix now has a scoped inventory trace through
+its Native law, saved event outcomes, and existing atomic Native event-entry
+session. The shared event-context contract now points to that session instead
+of implying none exists; its Native-regional legacy weights remain
+`UNVERIFIED`. Static source review and `git diff --check` only; no tests or
+builds were run.
+
 **S0 summon-pool SiteId ownership increment (2026-10-23):** The existing
 legacy summon continuation and query registry now use the shared
 `combat.enemy.summon_pool.select` constant. Its Native pool path continues to

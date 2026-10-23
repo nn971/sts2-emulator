@@ -8,6 +8,8 @@ public static class PrototypeNativeFutureOfPotions
 {
     public const string EventId = "proto.native.shared.the_future_of_potions";
     public const string NativeRngEventId = "THE_FUTURE_OF_POTIONS";
+    public const string CardTypeSiteId =
+        StochasticSiteRegistryV111.NativeFutureOfPotionsCardTypeSiteId;
     public const string TradeChoiceId = "trade_potion";
     public const string TradeAction = "trade_event_potion";
 
@@ -71,7 +73,7 @@ public static class PrototypeNativeFutureOfPotions
                 state,
                 eventState,
                 NativeRngEventId,
-                "event.future_of_potions.card_type.index_draw",
+                CardTypeSiteId,
                 $"potion_slot:{slot}:potion:{potionId}:pool:"
                     + CanonicalJson.Sha256(cardTypes),
                 cardTypes.Length);
