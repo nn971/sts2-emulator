@@ -410,6 +410,9 @@ The pipeline stochastic owner provides `TryGetActiveAutomaticHandDrawProgress` a
 stage's active draw, pending pre-draw choice, and completed zero or positive
 draw outcomes. `BeginSemanticAutomaticHandDraw` returns that validated
 progress directly, leaving the helper as the single stage-result interpreter.
+The pipeline stochastic validator checks the shared `DrawPlayerHand` stage
+once for every active progress tag; mode-specific checks cover the corresponding
+provider state and pending choice.
 
 `SemanticCombatDrawMechanicsStateV111` owns the draw facade's fallback count projections and the state transition rules when its `Run`, requested/remaining counts, or automatic-draw mode changes. `SemanticCombatDrawV111` keeps the established flattened snapshot properties as delegates, and end-turn's saved draw projection asks the mechanics owner whether the pipeline owns its counts.
 

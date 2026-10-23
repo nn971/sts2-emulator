@@ -652,9 +652,7 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
         int expectedStratagemSelections =
             PrototypeGameEngine.ExpectedStratagemSelectionCount(combat);
         if (ControlledRecycleStratagemPending &&
-            (!continuation.Mechanics.IsAtStep(
-                 PrototypeAutomaticStepKind.DrawPlayerHand) ||
-             ControlledDrawRemaining is not > 0 ||
+            (ControlledDrawRemaining is not > 0 ||
              ControlledDrawCostRemaining is not null ||
              pendingChoice is not
                 { ChoiceId: "select_cards",
@@ -669,15 +667,12 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
                 "Controlled recycle Stratagem selection is malformed.");
 
         if (ControlledDrawHookChoicePending &&
-            (!continuation.Mechanics.IsAtStep(
-                 PrototypeAutomaticStepKind.DrawPlayerHand) ||
-             ControlledDrawRemaining is not >= 0 ||
+            (ControlledDrawRemaining is not >= 0 ||
              ControlledDrawCostRemaining is not null ||
              ControlledSemanticDrawRemaining is not null ||
              ControlledSemanticDrawRequested is not null ||
              ControlledSemanticBeforeHandDrawPending ||
              ControlledRecycleStratagemPending ||
-             ControlledEnemyAction is not null ||
              !combat.IsPlayerTurn || combat.PendingChoice is null ||
              combat.PendingKnowledgeDemonChoice is not null ||
              combat.Stochastic.SemanticDeck is not null))
@@ -685,16 +680,13 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
                 "Controlled automatic CardDrawn hook choice is malformed.");
 
         if (ControlledBeforeHandDrawHookChoicePending &&
-            (!continuation.Mechanics.IsAtStep(
-                 PrototypeAutomaticStepKind.DrawPlayerHand) ||
-             ControlledDrawRemaining is not null ||
+            (ControlledDrawRemaining is not null ||
              ControlledDrawCostRemaining is not null ||
              ControlledSemanticDrawRemaining is not null ||
              ControlledSemanticDrawRequested is not null ||
              ControlledSemanticBeforeHandDrawPending ||
              ControlledRecycleStratagemPending ||
              ControlledDrawHookChoicePending ||
-             ControlledEnemyAction is not null ||
              !combat.IsPlayerTurn || combat.PendingChoice is null ||
              combat.PendingKnowledgeDemonChoice is not null ||
              combat.Stochastic.SemanticDeck is not null))
@@ -765,11 +757,8 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
             ControlledSemanticBeforeHandDrawPending;
         if (!hasCursor) return;
 
-        if (!continuation.Mechanics.IsAtStep(
-                PrototypeAutomaticStepKind.DrawPlayerHand) ||
-            ControlledDrawRemaining is not null ||
+        if (ControlledDrawRemaining is not null ||
             ControlledDrawCostRemaining is not null ||
-            ControlledEnemyAction is not null ||
             combat.Stochastic.SemanticDeck is not
                 { Mode: SemanticDeckStateV111.NatureMode } ||
             combat.PendingKnowledgeDemonChoice is not null)

@@ -57,6 +57,12 @@ draw, pending `BeforeHandDraw`, and completed zero or positive draw outcomes.
 rechecking zero-count boundaries. Static source review and `git diff --check`
 only; no tests or builds were run.
 
+**S4 automatic hand-draw stage validation ownership increment (2026-10-24):**
+The pipeline stochastic validator now checks `DrawPlayerHand` alignment once
+for every active progress tag. Repeated per-mode stage checks were removed;
+provider and pending-choice validation stays with each tagged mode. Static
+source review and `git diff --check` only; no tests or builds were run.
+
 **S4 controlled event-choice candidate replay increment (2026-10-24):**
 Generic event-effect continuations now pass each saved decision's ordered
 candidate labels into replay and compare them with the live support before
