@@ -372,6 +372,55 @@ public sealed partial class PrototypeGameEngine
             resumedRun, drawn, savedRequested);
     }
 
+    /// <summary>
+    /// Own the post-cost resume of an automatic DrawPlayerHand segment.
+    /// Provider adapters supply their draw policy and semantic frame; this
+    /// boundary publishes the resumed cards through the matching adapter.
+    /// </summary>
+    private static SemanticCombatDrawResumeResultV111
+        ResumeAutomaticHandDrawCost(
+            RunState checkpoint,
+            PrototypeControlledDrawCostV111 cost,
+            int selectedCost,
+            PrototypeControlledSemanticDrawV111? semanticDraw,
+            PrototypeDrawCardsSuspensionPolicyV111 suspensionPolicy,
+            bool allowHookSuspension,
+            string unsupportedBoundaryMessage,
+            string recycleSite,
+            string recycleOperation,
+            bool semantic)
+    {
+        if (semantic != (semanticDraw is not null))
+            throw new InvalidDataException(
+                "Automatic draw-cost provider frame is inconsistent.");
+
+        var resumed = ResumeAutomaticHandDrawAfterCost(
+            checkpoint, cost, selectedCost, suspensionPolicy,
+            allowHookSuspension, unsupportedBoundaryMessage, semantic);
+        if (resumed.Drawn is not { } drawn)
+            return new SemanticCombatDrawResumeResultV111(
+                resumed.Run, cost.RemainingCount);
+
+        if (semantic)
+        {
+            int requested = resumed.SemanticRequested ??
+                throw new InvalidDataException(
+                    "Semantic automatic draw resume lost its request.");
+            return ResolveControlledSemanticDrawResult(
+                resumed.Run, drawn, semanticDraw!, continuation: null,
+                automaticHandDrawRequested: requested,
+                recycleSite: recycleSite,
+                recycleOperation: recycleOperation);
+        }
+
+        if (resumed.SemanticRequested is not null)
+            throw new InvalidDataException(
+                "Controlled automatic draw acquired semantic progress.");
+        return new SemanticCombatDrawResumeResultV111(
+            ContinueControlledHandDraw(resumed.Run, drawn),
+            drawn.RemainingCount);
+    }
+
     private static int? ValidateAutomaticHandDrawCostCheckpoint(
         CombatState combat,
         PrototypeControlledDrawCostV111 cost,

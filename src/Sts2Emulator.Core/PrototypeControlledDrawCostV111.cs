@@ -195,18 +195,20 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidOperationException("Missing drawn-card cost choice.");
         var cost = pending.ControlledDrawCost ??
             throw new InvalidOperationException("No controlled drawn-card cost.");
-        var resumed = ResumeAutomaticHandDrawAfterCost(
+        var resumed = ResumeAutomaticHandDrawCost(
             state, cost, value,
-            PrototypeDrawCardsSuspensionPolicyV111
-                .ControlledLegacyAutomaticHandDraw(combat),
+            semanticDraw: null,
+            suspensionPolicy:
+                PrototypeDrawCardsSuspensionPolicyV111
+                    .ControlledLegacyAutomaticHandDraw(combat),
             allowHookSuspension: combat.Stochastic.SemanticDeck is null &&
                 !ControlledChanceGuardV111.EngineOwnedNativeProviderActive,
             unsupportedBoundaryMessage:
                 "UNSUPPORTED_CONTROLLED_CHANCE site=combat.draw_cost." +
                 "drawn_event operation=nested_choice",
+            recycleSite: "combat.draw_cost",
+            recycleOperation: "controlled_draw_cost_resume",
             semantic: false);
-        return resumed.Drawn is null
-            ? resumed.Run
-            : ContinueControlledHandDraw(resumed.Run, resumed.Drawn);
+        return resumed.Run;
     }
 }

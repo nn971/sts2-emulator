@@ -3304,3 +3304,13 @@ longer interprets those resumable boundary kinds itself. No snapshot or
 transcript format changed. Broader draw-resume policy consolidation and
 cross-provider mechanical equivalence remain open. Static source review and
 `git diff --check` only; no tests or builds were run.
+
+**S4 automatic draw-cost resume dispatch increment (2026-10-24):** Automatic
+legacy and semantic draw-cost continuations now pass through
+`ResumeAutomaticHandDrawCost`. It owns the common post-cost hand-draw handoff
+and routes the tagged `DrawCards` result to the existing controlled or
+semantic adapter while retaining their provider-specific suspension policy,
+progress owner, and transcript behavior. Snapshot and transcript formats are
+unchanged. Broader draw-resume policy consolidation and cross-provider
+mechanical equivalence remain open. Static source review and `git diff --check`
+only; no tests or builds were run.

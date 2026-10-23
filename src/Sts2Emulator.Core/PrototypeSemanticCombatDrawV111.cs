@@ -147,26 +147,18 @@ public sealed partial class PrototypeGameEngine
                 "Semantic draw-cost continuation frame is inconsistent.");
 
         if (automaticHandDraw)
-        {
-            var resumed = ResumeAutomaticHandDrawAfterCost(
-                run, cost, selectedCost,
-                PrototypeDrawCardsSuspensionPolicyV111.SemanticDrawCards(),
+            return ResumeAutomaticHandDrawCost(
+                run, cost, selectedCost, draw,
+                suspensionPolicy:
+                    PrototypeDrawCardsSuspensionPolicyV111
+                        .SemanticDrawCards(),
                 allowHookSuspension: false,
                 unsupportedBoundaryMessage:
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.CardDrawn " +
                     "operation=nested_choice_continuation",
+                recycleSite: recycleSite,
+                recycleOperation: recycleOperation,
                 semantic: true);
-            if (resumed.Drawn is null)
-                return new SemanticCombatDrawResumeResultV111(
-                    resumed.Run, cost.RemainingCount);
-            int automaticRequested = resumed.SemanticRequested ??
-                throw new InvalidDataException(
-                    "Semantic automatic draw resume lost its request.");
-
-            return ResolveControlledSemanticDrawResult(
-                resumed.Run, resumed.Drawn, draw, continuation,
-                automaticRequested, recycleSite, recycleOperation);
-        }
 
         var progress = ResolveDrawCostAndDispatchCardDrawn(
             run, cost, selectedCost,
