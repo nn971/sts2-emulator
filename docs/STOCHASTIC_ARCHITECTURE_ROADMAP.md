@@ -2,6 +2,15 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**D2 Native initial-HP result audit increment (2026-10-23):** The source-route
+Native-policy entry audit now pairs each setup `run.niche` HP ticket with its
+combat identity, ordered HP support, and selected HP. New encounter-formation
+schema V2 requires one ordered outcome per saved formation context and checks
+each against the mixed Native trace and source-route combat origin; V1 and
+unmarked snapshots keep their previous rules. This records emulator output,
+not installed-game parity or pool eligibility. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **D2 Native encounter-formation result audit increment (2026-10-23):** The
 source-route Native-policy baseline now retains the existing
 `NativeEncounterFormationAuditV111`, pairing the selected formation with its

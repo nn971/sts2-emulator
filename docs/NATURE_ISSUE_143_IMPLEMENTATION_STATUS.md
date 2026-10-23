@@ -476,6 +476,14 @@ checks the saved formation against the combat origin. This adds replay
 evidence for the generated result; encounter-source completeness and native
 parity remain unverified.
 
+Encounter-formation audit schema V2 also pairs each setup `run.niche`
+initial-HP ticket with its enemy combat identity, ordered HP support, and
+selected HP. Restore checks the annotations against the mixed Native trace,
+formation contexts, and source-route combat origin. V1 and unmarked audit
+snapshots retain their prior requirements. This records emulator setup
+results; installed-game HP parity and source-pool fidelity remain unverified.
+Static source review and `git diff --check` only; no tests or builds were run.
+
 This removes the fabricated encounter formation from the opt-in route mode,
 but does not make route probabilities, Neow choices, shuffle-order hooks,
 or all combat entry hooks native-parity verified. The initial draw-pile

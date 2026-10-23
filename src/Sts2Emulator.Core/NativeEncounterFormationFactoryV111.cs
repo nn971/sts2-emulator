@@ -81,6 +81,7 @@ public sealed record NativeEncounterFormationAuditV111(
     RandomIndexDecisionV111[] Choices, string ProviderMode)
 {
     private RandomIndexDecisionV111[] _choices = CloneChoices(Choices);
+    private NativeInitialHpOutcomeV111[]? _initialHpOutcomes = [];
 
     public RandomIndexDecisionV111[] Choices
     {
@@ -88,11 +89,23 @@ public sealed record NativeEncounterFormationAuditV111(
         init => _choices = CloneChoices(value);
     }
 
+    public NativeInitialHpOutcomeV111[] InitialHpOutcomes
+    {
+        get => CloneInitialHpOutcomes(_initialHpOutcomes)!;
+        init => _initialHpOutcomes = CloneInitialHpOutcomes(value);
+    }
+
     public NativeEncounterFormationAuditV111 Fork() => this with
     {
         Formation = Formation.Fork(),
-        Choices = _choices
+        Choices = _choices,
+        InitialHpOutcomes = _initialHpOutcomes!
     };
+
+    private static NativeInitialHpOutcomeV111[]?
+        CloneInitialHpOutcomes(NativeInitialHpOutcomeV111[]? values) =>
+        values?.Select(value => value is null ? null! : value.Fork())
+            .ToArray();
 
     private static RandomIndexDecisionV111[] CloneChoices(
         RandomIndexDecisionV111[] choices)

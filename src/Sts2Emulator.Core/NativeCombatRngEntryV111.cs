@@ -58,6 +58,72 @@ public sealed record NativeInitialHpAuditV111(
                     .CloneDecision(decision)).ToArray();
 }
 
+/// <summary>One Native initial-HP ticket paired with the enemy identity and
+/// HP value committed at the source-route player boundary.</summary>
+public sealed record NativeInitialHpOutcomeV111(
+    long CombatId, string EnemyId, int[] OrderedHpSupport, int SelectedHp,
+    RandomIndexDecisionV111 ProviderDecision)
+{
+    private int[]? _orderedHpSupport = Clone(OrderedHpSupport);
+    private RandomIndexDecisionV111? _providerDecision =
+        CloneDecision(ProviderDecision);
+
+    public int[] OrderedHpSupport
+    {
+        get => Clone(_orderedHpSupport)!;
+        init => _orderedHpSupport = Clone(value);
+    }
+
+    public RandomIndexDecisionV111 ProviderDecision
+    {
+        get => CloneDecision(_providerDecision)!;
+        init => _providerDecision = CloneDecision(value);
+    }
+
+    public NativeInitialHpOutcomeV111 Fork() => this with
+    {
+        OrderedHpSupport = _orderedHpSupport!,
+        ProviderDecision = _providerDecision!
+    };
+
+    public void Validate()
+    {
+        var support = _orderedHpSupport;
+        var decision = _providerDecision;
+        if (CombatId < 0 || string.IsNullOrWhiteSpace(EnemyId) ||
+            support is null || support.Length == 0 ||
+            support.Any(hp => hp <= 0) ||
+            support.Distinct().Count() != support.Length ||
+            decision is null)
+            throw new InvalidDataException(
+                "Native initial-HP outcome has invalid identity or support.");
+
+        decision.Validate();
+        var request = decision.Request;
+        if (decision.ProviderMode != "native-v111" ||
+            request.SiteId != NativeCombatRngEntryV111.InitialUniqueHpSiteId ||
+            request.StreamId != "run.niche" ||
+            request.OwnerId != "creature:" + CombatId ||
+            request.OperationKind != "choose_index" ||
+            !request.OrderedCandidates.SequenceEqual(support) ||
+            decision.SelectedValue != SelectedHp)
+            throw new InvalidDataException(
+                "Native initial-HP result disagrees with its provider ticket.");
+    }
+
+    private static int[]? Clone(int[]? values) =>
+        values is null ? null : (int[])values.Clone();
+
+    private static RandomIndexDecisionV111? CloneDecision(
+        RandomIndexDecisionV111? value) => value is null ? null : value with
+    {
+        Request = value.Request with
+        {
+            OrderedCandidates = value.Request.OrderedCandidates
+        }
+    };
+}
+
 public sealed record NativeIntentAuditV111(
     CombatState Combat, RandomIndexDecisionV111[] Choices, string ProviderMode,
     SemanticIntentAuditEntryV111[] WeightedOutcomes)
