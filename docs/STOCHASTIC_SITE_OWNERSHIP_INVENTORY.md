@@ -14,6 +14,11 @@ The Rest reward crosswalk is `PrototypeRooms.StepRest` →
 `card_rarity.upgrade_roll.ticket`. The shared run-action continuation captures
 these requests only when `NativeRunRng` is absent; this crosswalk does not
 establish source-pool completeness, hook call order, or Native cursor parity.
+For configured Native Act 1 Rest Heal, `ReferenceNatureRunActionSessionV111`
+also captures the `player.rewards` rarity float, model index, and upgrade
+float as a typed prefix. It derives each rarity law from the saved offset
+history and replays the selected action before committing the reward and
+Nature cursor; source-pool completeness and Native cursor parity remain open.
 
 ## Inventory sources and limits
 

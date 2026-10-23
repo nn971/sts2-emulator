@@ -27,7 +27,8 @@ The same frame can save a legal legacy `rest_heal` when an active relic
 creates rest-site card rewards and `NativeRunRng` is absent. It controls the
 registered reward-rarity and card-model requests, including the legacy
 fallback requests used by the Native-shaped Dream Catcher reward generator;
-configured Native reward generation remains outside this action frame.
+configured Native reward generation uses the typed ReferenceNature
+run-action continuation described below.
 `ControlledRunActionEngineV111.BeginLegacyActTransition` is the explicit
 entry point for the unconfigured prototype transition route.
 Legacy Treasure selection is not offered when Silver Crucible suppresses the
@@ -307,7 +308,15 @@ combat-reward relic hooks stay with their existing boundaries.
 Rest-heal reward-generation requests are advertised in the separate
 `controlledRunActionSiteGroups.restHealRewardGeneration` set. The saved
 `rest_heal` action replays those requests in order and commits the resulting
-Reward with the Nature cursor.
+Reward with the Nature cursor. For configured Native Act 1 runs, the
+ReferenceNature run-action session also captures `player.rewards`
+`card_rarity.roll.unit_float`, `card_rarity.encounter_model.index_draw`, and
+`card_rarity.upgrade_roll.unit_float` requests in one typed transcript. Its
+rarity law derives the current offset from the saved preceding raw-rarity
+outcomes; replay verifies the exact action and request prefix before the
+Reward and Nature cursor are committed. The existing serialized
+`NativeCombatEntryProviderDecisions` member remains the compatibility field
+for this shared typed run-action transcript.
 
 The Python binding exposes `State.begin_controlled_run_start()`,
 `State.begin_controlled_run_action(action_id)`,

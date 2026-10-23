@@ -6945,8 +6945,8 @@ public sealed record ReferenceNatureRunActionSessionV111(
             if (MapGeneration is { Complete: false } mapGeneration)
                 return mapGeneration.PendingLaw;
             if (NativeCombatEntryContinuation is { } nativeCombatEntry)
-                return QueryNativeCombatEntryLaw(
-                    Origin, Action, nativeCombatEntry);
+                return QueryNativeRunActionLaw(
+                    Origin, Action, nativeCombatEntry, DecisionTranscript);
             if (Run.Stochastic.ControlledRunActionChoice is null)
                 return null;
             return ControlledRunActionEngineV111
@@ -7021,7 +7021,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
             ? ReferenceNatureRunProjectionV111.CreateNatureReplayOrigin(
                 source, createRelicBagWhenMissing: true)
             : source.Fork();
-        if (UsesTypedNativePotionFactoryCombatEntry(origin, detachedAction))
+        if (UsesTypedNativeRunAction(origin, detachedAction))
         {
             var actionId = PrototypeAiEnvironment.StableActionId(
                 detachedAction);
@@ -7030,12 +7030,12 @@ public sealed record ReferenceNatureRunActionSessionV111(
                         PrototypeAiEnvironment.StableActionId(candidate),
                         actionId)))
                 throw new InvalidOperationException(
-                    "ReferenceNature Native combat-entry session requires a current legal map-node action.");
-            var replay = CaptureNativeCombatEntry(
+                    "ReferenceNature Native typed run-action session requires a current legal action.");
+            var replay = CaptureNativeRunAction(
                 origin, detachedAction, []);
             var providerDecisions = replay.Continuation?.Decisions ?? [];
             var run = replay.Run is { } completed
-                ? CommitNativeCombatEntryTrace(
+                ? CommitNativeRunActionTrace(
                     ReferenceNatureRunCursorV111.Commit(
                         completed, initialNatureState), detachedAction,
                     providerDecisions)
@@ -7101,7 +7101,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
         if (MapGeneration is not null)
             return ResolveNextMapGenerationOutcome();
         if (NativeCombatEntryContinuation is not null)
-            return ResolveNextNativeCombatEntryOutcome();
+            return ResolveNextNativeRunActionOutcome();
         var law = PendingLaw ?? throw new InvalidOperationException(
             "No ReferenceNature run-action choice is pending.");
         var selection = ReferenceNatureV111.SampleValidated(law, NatureState);
@@ -7192,13 +7192,13 @@ public sealed record ReferenceNatureRunActionSessionV111(
     }
 
     private ReferenceNatureRunActionSessionV111
-        ResolveNextNativeCombatEntryOutcome()
+        ResolveNextNativeRunActionOutcome()
     {
         var continuation = NativeCombatEntryContinuation ??
             throw new InvalidOperationException(
-                "No Native combat-entry stochastic request is pending.");
+                "No Native typed run-action stochastic request is pending.");
         var law = PendingLaw ?? throw new InvalidDataException(
-            "Native combat-entry continuation has no Chance Law.");
+            "Native typed run-action continuation has no Chance Law.");
         var selection = ReferenceNatureV111.SampleValidated(
             law, NatureState);
         var providerDecision = ReferenceNatureChanceLawDecisionV111
@@ -7210,12 +7210,12 @@ public sealed record ReferenceNatureRunActionSessionV111(
                 Origin, continuation, providerDecision,
                 checkpoint => new PrototypeGameEngine().Step(
                     checkpoint, CloneAction(Action)).State,
-                request => IsNativeCombatEntryRequest(
+                request => IsNativeRunActionRequest(
                     Origin, Action, request));
         var providerDecisions = replay.Continuation?.Decisions ??
             continuation.Decisions.Append(providerDecision.Fork()).ToArray();
         var run = replay.Run is { } completed
-            ? CommitNativeCombatEntryTrace(
+            ? CommitNativeRunActionTrace(
                 ReferenceNatureRunCursorV111.Commit(
                     completed, selection.NextState), Action,
                 providerDecisions)
@@ -7235,6 +7235,12 @@ public sealed record ReferenceNatureRunActionSessionV111(
         return next;
     }
 
+    private static bool UsesTypedNativeRunAction(
+        RunState source, GameAction action) =>
+        UsesTypedNativePotionFactoryCombatEntry(source, action)
+        || ControlledRunActionEngineV111.IsNativeRestHealRewardAction(
+            source, action);
+
     private static bool UsesTypedNativePotionFactoryCombatEntry(
         RunState source, GameAction action) =>
         ControlledRunActionEngineV111.IsNativeActOneCombatEntryAction(
@@ -7245,7 +7251,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
                 .ProcureRandomPotionsBeforeCombat);
 
     private static ControlledStochasticContinuationResultV111
-        CaptureNativeCombatEntry(
+        CaptureNativeRunAction(
             RunState source, GameAction action,
             ControlledStochasticDecisionV111[] decisions) =>
         ControlledChanceContinuationExecutorV111.CaptureStochastic(
@@ -7254,9 +7260,9 @@ public sealed record ReferenceNatureRunActionSessionV111(
             decisions,
             checkpoint => new PrototypeGameEngine().Step(
                 checkpoint, CloneAction(action)).State,
-            request => IsNativeCombatEntryRequest(source, action, request));
+            request => IsNativeRunActionRequest(source, action, request));
 
-    private static RunState CommitNativeCombatEntryTrace(
+    private static RunState CommitNativeRunActionTrace(
         RunState run, GameAction action,
         ControlledStochasticDecisionV111[] decisions)
     {
@@ -7270,7 +7276,11 @@ public sealed record ReferenceNatureRunActionSessionV111(
                 .ToArray(),
             indexDecisions.Select(decision => decision.CandidateLabels ?? [])
                 .ToArray(),
-            MapNodeId: action.ReadPayload<ChooseMapNodePayload>().NodeId)
+            MapNodeId: action.Kind == "choose_map_node"
+                ? action.ReadPayload<ChooseMapNodePayload>().NodeId : null,
+            ActionFingerprint: action.Kind ==
+                PrototypeNativeRestSiteActionsV111.Heal
+                    ? PrototypeAiEnvironment.StableActionId(action) : null)
         {
             TypedDecisions = decisions
         };
@@ -7281,10 +7291,13 @@ public sealed record ReferenceNatureRunActionSessionV111(
         };
     }
 
-    private static bool IsNativeCombatEntryRequest(
+    private static bool IsNativeRunActionRequest(
         RunState source, GameAction action,
         ControlledStochasticRequestV111 request)
     {
+        if (ControlledRunActionEngineV111
+                .IsNativeRestHealRewardRequest(source, action, request))
+            return true;
         if (!UsesTypedNativePotionFactoryCombatEntry(source, action))
             return false;
         if (ControlledRunActionEngineV111
@@ -7334,15 +7347,20 @@ public sealed record ReferenceNatureRunActionSessionV111(
         return owners.ToArray();
     }
 
-    private static ChanceLawV111 QueryNativeCombatEntryLaw(
+    private static ChanceLawV111 QueryNativeRunActionLaw(
         RunState source, GameAction action,
-        ControlledStochasticContinuationStateV111 continuation)
+        ControlledStochasticContinuationStateV111 continuation,
+        ReferenceNatureDecisionV111[] natureDecisions)
     {
         continuation.Validate();
         var request = continuation.PendingRequest;
-        if (!IsNativeCombatEntryRequest(source, action, request))
+        if (ControlledRunActionEngineV111
+                .IsNativeRestHealRewardAction(source, action))
+            return QueryNativeRestHealRewardLaw(
+                source, action, continuation, natureDecisions);
+        if (!IsNativeRunActionRequest(source, action, request))
             throw new NotSupportedException(
-                $"ReferenceNature Native combat entry does not support stochastic site '{request.SiteId}'.");
+                $"ReferenceNature Native run action does not support stochastic site '{request.SiteId}'.");
 
         if (request.IndexRequest is { } indexRequest &&
             ControlledRunActionEngineV111.IsNativeEncounterFormationRequest(
@@ -7409,7 +7427,160 @@ public sealed record ReferenceNatureRunActionSessionV111(
         }
 
         throw new NotSupportedException(
-            $"ReferenceNature Native combat entry cannot query '{request.SiteId}'.");
+            $"ReferenceNature Native typed run action cannot query '{request.SiteId}'.");
+    }
+
+    private static ChanceLawV111 QueryNativeRestHealRewardLaw(
+        RunState source, GameAction action,
+        ControlledStochasticContinuationStateV111 continuation,
+        ReferenceNatureDecisionV111[] natureDecisions)
+    {
+        continuation.Validate();
+        var request = continuation.PendingRequest;
+        var typedDecisions = continuation.Decisions;
+        if (!ControlledRunActionEngineV111.IsNativeRestHealRewardRequest(
+                source, action, request) ||
+            typedDecisions.Length != natureDecisions.Length ||
+            source.World is not { } world)
+            throw new InvalidDataException(
+                "Native rest-heal reward request differs from its saved action prefix.");
+
+        if (request.UnitFloatRequest is { SiteId: "card_rarity.roll.unit_float" }
+            rarityRequest)
+        {
+            var (offset, priorRarityCount) =
+                NativeRestHealRarityPrefix(source, typedDecisions,
+                    natureDecisions);
+            var pickIndex = NativeRestHealPickIndex(
+                source, priorRarityCount);
+            var expectedOwner =
+                $"act:{world.Act}:room:Combat:pick:{pickIndex}:offset:{offset}";
+            if (rarityRequest.OwnerId != expectedOwner)
+                throw new InvalidDataException(
+                    "Native rest-heal rarity owner differs from its saved offset prefix.");
+            return ChanceLawEngineV111.QueryNativeCardRarity(
+                PrototypeNativeCardOddsSource.RegularEncounter,
+                offset, source.Ascension, rarityRequest.OwnerId,
+                rarityRequest.Ordinal);
+        }
+
+        if (request.IndexRequest is { } modelRequest)
+        {
+            if (typedDecisions.Length == 0 ||
+                typedDecisions[^1].UnitFloatDecision is not { } rarityDecision ||
+                rarityDecision.Request.SiteId !=
+                    "card_rarity.roll.unit_float" ||
+                natureDecisions[^1].OutcomeId is not (
+                    "rarity:common" or "rarity:uncommon" or "rarity:rare"))
+                throw new InvalidDataException(
+                    "Native rest-heal card model request lacks its preceding rarity outcome.");
+            var rarityCount = typedDecisions.Count(decision =>
+                decision.UnitFloatDecision?.Request.SiteId ==
+                    "card_rarity.roll.unit_float");
+            var pickIndex = NativeRestHealPickIndex(
+                source, rarityCount - 1);
+            var expectedOwnerPrefix =
+                $"act:{world.Act}:room:Combat:pick:{pickIndex}:rarity:";
+            if (!modelRequest.OwnerId.StartsWith(expectedOwnerPrefix,
+                    StringComparison.Ordinal) ||
+                !modelRequest.OwnerId.Contains(":pool:",
+                    StringComparison.Ordinal))
+                throw new InvalidDataException(
+                    "Native rest-heal card model owner differs from its rarity prefix.");
+            return ChanceLawEngineV111.QueryNativeEncounterCardModelIndex(
+                modelRequest.OwnerId, modelRequest.SupportCount,
+                modelRequest.Ordinal);
+        }
+
+        if (request.UnitFloatRequest is { } upgradeRequest &&
+            upgradeRequest.SiteId ==
+                "card_rarity.upgrade_roll.unit_float")
+        {
+            if (typedDecisions.Length == 0 ||
+                typedDecisions[^1].IndexDecision?.Request.SiteId !=
+                    "card_rarity.encounter_model.index_draw")
+                throw new InvalidDataException(
+                    "Native rest-heal card upgrade request lacks its preceding model choice.");
+            var suffix =
+                $":act:{world.Act}:ascension:{source.Ascension}";
+            if (!upgradeRequest.OwnerId.StartsWith("card:",
+                    StringComparison.Ordinal) ||
+                !upgradeRequest.OwnerId.EndsWith(suffix,
+                    StringComparison.Ordinal) ||
+                upgradeRequest.OwnerId.Length <=
+                    "card:".Length + suffix.Length)
+                throw new InvalidDataException(
+                    "Native rest-heal upgrade owner is malformed.");
+            var cardId = upgradeRequest.OwnerId[
+                "card:".Length..^suffix.Length];
+            return ChanceLawEngineV111.QueryNativeEncounterCardUpgrade(
+                cardId, world.Act, source.Ascension,
+                upgradeRequest.Ordinal);
+        }
+
+        throw new NotSupportedException(
+            $"ReferenceNature Native rest-heal reward cannot query '{request.SiteId}'.");
+    }
+
+    private static (int OffsetBasisPoints, int RarityCount)
+        NativeRestHealRarityPrefix(
+            RunState source,
+            ControlledStochasticDecisionV111[] typedDecisions,
+            ReferenceNatureDecisionV111[] natureDecisions)
+    {
+        if (source.World is not { } world ||
+            typedDecisions.Length != natureDecisions.Length)
+            throw new InvalidDataException(
+                "Native rest-heal rarity prefix is missing its source world or Nature transcript.");
+        var offset = world.CardRarityOffsetBasisPoints;
+        var rarityCount = 0;
+        for (var index = 0; index < typedDecisions.Length; index++)
+        {
+            var decision = typedDecisions[index];
+            if (decision.UnitFloatDecision is not { } rarityDecision ||
+                rarityDecision.Request.SiteId !=
+                    "card_rarity.roll.unit_float")
+                continue;
+            var pickIndex = NativeRestHealPickIndex(source, rarityCount);
+            var expectedOwner =
+                $"act:{world.Act}:room:Combat:pick:{pickIndex}:offset:{offset}";
+            if (rarityDecision.Request.StreamId !=
+                    NativePlayerRngV111.RewardsStreamId ||
+                rarityDecision.Request.OwnerId != expectedOwner)
+                throw new InvalidDataException(
+                    "Native rest-heal rarity transcript changed its offset owner.");
+            offset = natureDecisions[index].OutcomeId switch
+            {
+                "rarity:rare" =>
+                    PrototypeNativeCardRarityOdds.InitialOffsetBasisPoints,
+                "rarity:common" or "rarity:uncommon" => Math.Min(
+                    PrototypeNativeCardRarityOdds.MaximumOffsetBasisPoints,
+                    offset + PrototypeNativeCardRarityOdds.GrowthBasisPoints(
+                        source.Ascension)),
+                _ => throw new InvalidDataException(
+                    "Native rest-heal rarity transcript contains an invalid raw rarity.")
+            };
+            rarityCount++;
+        }
+        return (offset, rarityCount);
+    }
+
+    private static int NativeRestHealPickIndex(
+        RunState source, int priorPickCount)
+    {
+        if (priorPickCount < 0)
+            throw new ArgumentOutOfRangeException(nameof(priorPickCount));
+        foreach (var count in source.Player.ActiveRelics
+                     .Select(relic => PrototypeContent.Relic(relic.RelicId)
+                         .RestHealCardRewardCount)
+                     .Where(count => count > 0))
+        {
+            if (priorPickCount < count)
+                return priorPickCount;
+            priorPickCount -= count;
+        }
+        throw new InvalidDataException(
+            "Native rest-heal rarity prefix exceeds the reward groups in the saved action.");
     }
 
     private ReferenceNatureRunActionSessionV111
@@ -7756,9 +7927,9 @@ public sealed record ReferenceNatureRunActionSessionV111(
             && ControlledRunActionEngineV111
                 .IsNativeActOneCombatEntryAction(Origin, Action)
             && DecisionTranscript is { Length: 0 };
-        var typedNativePotionFactoryCombatEntry = Origin is not null
+        var typedNativeRunAction = Origin is not null
             && Action is not null
-            && UsesTypedNativePotionFactoryCombatEntry(Origin, Action);
+            && UsesTypedNativeRunAction(Origin, Action);
         if (SchemaId != CurrentSchemaId || Origin is null || Action is null ||
             Run is null || InitialNatureState is null || NatureState is null ||
             DecisionTranscript is null || string.IsNullOrWhiteSpace(Action.Kind) ||
@@ -7768,7 +7939,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
              !immediateRewardRelicAction &&
              !immediateRestHealRewardAction &&
              !immediateNativeActOneCombatAction &&
-             !typedNativePotionFactoryCombatEntry &&
+             !typedNativeRunAction &&
              !configuredExperimentalActTransition) ||
             AncientOffer is not null &&
                 !configuredExperimentalActTransition ||
@@ -7952,15 +8123,15 @@ public sealed record ReferenceNatureRunActionSessionV111(
             throw new InvalidDataException(
                 "Pending run initialization marker differs from its nested Nature session.");
 
-        if (typedNativePotionFactoryCombatEntry)
+        if (typedNativeRunAction)
         {
-            ValidateNativeCombatEntryTranscript();
+            ValidateNativeRunActionTranscript();
         }
         else if (NativeCombatEntryContinuation is not null ||
             NativeCombatEntryProviderDecisions.Length != 0)
         {
             throw new InvalidDataException(
-                "Native combat-entry typed continuation is attached to an unsupported run action.");
+                "Native typed stochastic continuation is attached to an unsupported run action.");
         }
         else if (Run.Stochastic.ControlledRunActionChoice is
             { } continuation)
@@ -8166,7 +8337,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
         }
     }
 
-    private void ValidateNativeCombatEntryTranscript()
+    private void ValidateNativeRunActionTranscript()
     {
         if (Run.Stochastic.ControlledRunActionChoice is not null ||
             MapGeneration is not null || LaterActPreparation is not null ||
@@ -8178,7 +8349,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
                     CanonicalJson.Sha256(
                         NativeCombatEntryProviderDecisions))
             throw new InvalidDataException(
-                "Native combat-entry typed continuation differs from its ReferenceNature transcript.");
+                "Native typed run-action continuation differs from its ReferenceNature transcript.");
 
         var expectedNatureState = InitialNatureState.Fork();
         for (var index = 0;
@@ -8186,23 +8357,24 @@ public sealed record ReferenceNatureRunActionSessionV111(
         {
             var prefix = NativeCombatEntryProviderDecisions
                 .Take(index).ToArray();
-            var replayAtBoundary = CaptureNativeCombatEntry(
+            var replayAtBoundary = CaptureNativeRunAction(
                 Origin, Action, prefix);
             var boundary = replayAtBoundary.Continuation ??
                 throw new InvalidDataException(
-                    "Native combat-entry replay completed before its saved typed decision.");
+                    "Native run-action replay completed before its saved typed decision.");
             var savedDecision = NativeCombatEntryProviderDecisions[index];
             savedDecision.Validate();
             if (!ControlledStochasticChanceReplayV111.SameRequest(
                     boundary.PendingRequest, savedDecision.ToRequest()) ||
-                !SameNativeCombatEntryLabels(
+                !SameNativeRunActionLabels(
                     boundary.PendingCandidateLabels,
                     savedDecision.CandidateLabels))
                 throw new InvalidDataException(
-                    "Native combat-entry provider transcript changed its pending request.");
+                    "Native run-action provider transcript changed its pending request.");
 
-            var law = QueryNativeCombatEntryLaw(
-                Origin, Action, boundary);
+            var law = QueryNativeRunActionLaw(
+                Origin, Action, boundary,
+                DecisionTranscript.Take(index).ToArray());
             var selection = ReferenceNatureV111.SampleValidated(
                 law, expectedNatureState);
             var expectedDecision = ReferenceNatureChanceLawDecisionV111
@@ -8217,35 +8389,35 @@ public sealed record ReferenceNatureRunActionSessionV111(
                 CanonicalJson.Sha256(expectedTranscript) !=
                     CanonicalJson.Sha256(DecisionTranscript[index]))
                 throw new InvalidDataException(
-                    "Native combat-entry law decisions do not replay from the saved typed prefix.");
+                    "Native run-action law decisions do not replay from the saved typed prefix.");
             expectedNatureState = selection.NextState;
         }
 
-        var replay = CaptureNativeCombatEntry(
+        var replay = CaptureNativeRunAction(
             Origin, Action, NativeCombatEntryProviderDecisions);
         if ((replay.Continuation is null) != Complete ||
-            !SameNativeCombatEntryContinuation(
+            !SameNativeRunActionContinuation(
                 replay.Continuation, NativeCombatEntryContinuation) ||
             !expectedNatureState.SameCursor(NatureState))
             throw new InvalidDataException(
-                "Native combat-entry continuation differs from its replay.");
+                "Native run-action continuation differs from its replay.");
         var expectedRun = replay.Run is { } completed
-            ? CommitNativeCombatEntryTrace(
+            ? CommitNativeRunActionTrace(
                 ReferenceNatureRunCursorV111.Commit(
                     completed, expectedNatureState), Action,
                 NativeCombatEntryProviderDecisions)
             : Origin.Fork();
         if (CanonicalJson.Sha256(expectedRun) != CanonicalJson.Sha256(Run))
             throw new InvalidDataException(
-                "Native combat-entry run differs from its typed stochastic replay.");
+                "Native run-action result differs from its typed stochastic replay.");
     }
 
-    private static bool SameNativeCombatEntryLabels(
+    private static bool SameNativeRunActionLabels(
         string[]? left, string[]? right) =>
         left is null ? right is null : right is not null &&
             left.SequenceEqual(right, StringComparer.Ordinal);
 
-    private static bool SameNativeCombatEntryContinuation(
+    private static bool SameNativeRunActionContinuation(
         ControlledStochasticContinuationStateV111? left,
         ControlledStochasticContinuationStateV111? right) =>
         left is null ? right is null : right is not null &&

@@ -664,7 +664,9 @@ public static class StochasticSiteRegistryV111
         "reward.card_model.index_draw",
         "card_rarity.roll.ticket",
         "card_rarity.encounter_model.index_draw",
-        "card_rarity.upgrade_roll.ticket"
+        "card_rarity.upgrade_roll.ticket",
+        "card_rarity.roll.unit_float",
+        "card_rarity.upgrade_roll.unit_float"
     ];
 
     private static readonly string[] RunActionTreasureSites =

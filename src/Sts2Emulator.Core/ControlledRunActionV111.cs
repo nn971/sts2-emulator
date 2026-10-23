@@ -218,11 +218,17 @@ public sealed record ControlledRunActionTraceV111(
     private void ValidateTypedTranscript(
         ControlledStochasticDecisionV111[] typedDecisions)
     {
-        if (ActionId != "choose_map_node" ||
-            string.IsNullOrWhiteSpace(MapNodeId) ||
-            ActionFingerprint is not null)
+        var mapNodeAction = ActionId == "choose_map_node";
+        var restHealAction = ActionId ==
+            PrototypeNativeRestSiteActionsV111.Heal;
+        if (!(mapNodeAction || restHealAction) ||
+            (mapNodeAction
+                ? string.IsNullOrWhiteSpace(MapNodeId) ||
+                  ActionFingerprint is not null
+                : MapNodeId is not null ||
+                  string.IsNullOrWhiteSpace(ActionFingerprint)))
             throw new InvalidDataException(
-                "Typed controlled run-action transcripts are supported only for map-node entry.");
+                "Typed controlled run-action transcript has an unsupported action boundary.");
 
         foreach (var decision in typedDecisions)
         {
@@ -235,35 +241,51 @@ public sealed record ControlledRunActionTraceV111(
                 var request = ControlledStochasticRequestV111.FromIndex(
                     indexDecision.Request);
                 var nativeEncounter =
-                    ControlledRunActionEngineV111
+                    mapNodeAction && ControlledRunActionEngineV111
                         .IsNativeActOneCombatEntryRequest(request);
-                var nativePotionModel = request.SiteId ==
+                var nativePotionModel = mapNodeAction && request.SiteId ==
                     "potion_factory.model_within_rarity.index_draw" &&
                     request.StreamId == "run.combat_potion_generation";
+                var nativeRestModel = restHealAction && request.SiteId ==
+                    "card_rarity.encounter_model.index_draw" &&
+                    request.StreamId == NativePlayerRngV111.RewardsStreamId &&
+                    request.OperationKind == "choose_index" &&
+                    request.OrderedCandidates.SequenceEqual(
+                        Enumerable.Range(0, request.SupportCount));
                 if (indexDecision.ProviderMode != "controlled-v111" ||
                     indexDecision.NativeCursorBefore is not null ||
                     indexDecision.NativeCursorAfter is not null ||
-                    !(nativeEncounter || nativePotionModel) ||
-                    nativePotionModel &&
+                    !(nativeEncounter || nativePotionModel || nativeRestModel) ||
+                    (nativePotionModel || nativeRestModel) &&
                         (decision.CandidateLabels is not null ||
                          request.OperationKind != "choose_index") ||
                     decision.CandidateLabels is { } labels &&
                         labels.Length != request.SupportCount)
                     throw new InvalidDataException(
-                        "Typed controlled run-action index decision is outside Native Act 1 combat entry.");
+                        "Typed controlled run-action index decision is outside a supported Native run-action boundary.");
             }
             else if (decision.UnitFloatDecision is { } floatDecision)
             {
-                if (floatDecision.Request.SiteId !=
-                        "potion_factory.rarity_roll.unit_float" ||
-                    floatDecision.Request.StreamId !=
-                        "run.combat_potion_generation" ||
+                var request = floatDecision.Request;
+                var nativePotionRarity = mapNodeAction &&
+                    request.SiteId ==
+                        "potion_factory.rarity_roll.unit_float" &&
+                    request.StreamId == "run.combat_potion_generation";
+                var nativeRestRarity = restHealAction &&
+                    request.SiteId == "card_rarity.roll.unit_float" &&
+                    request.StreamId == NativePlayerRngV111.RewardsStreamId;
+                var nativeRestUpgrade = restHealAction &&
+                    request.SiteId ==
+                        "card_rarity.upgrade_roll.unit_float" &&
+                    request.StreamId == NativePlayerRngV111.RewardsStreamId;
+                if (!(nativePotionRarity || nativeRestRarity ||
+                        nativeRestUpgrade) ||
                     floatDecision.ProviderMode != "controlled-v111" ||
                     floatDecision.NativeCursorBefore is not null ||
                     floatDecision.NativeCursorAfter is not null ||
                     decision.CandidateLabels is not null)
                     throw new InvalidDataException(
-                        "Typed controlled run-action unit-float decision is outside Native Act 1 potion generation.");
+                        "Typed controlled run-action unit-float decision is outside a supported Native run-action boundary.");
             }
             else
             {
@@ -1287,6 +1309,36 @@ public static class ControlledRunActionEngineV111
         && source.Player.ActiveRelics.Any(relic =>
             PrototypeContent.Relic(relic.RelicId).RestHealCardRewardCount > 0);
 
+    internal static bool IsNativeRestHealRewardAction(
+        RunState source, GameAction action) =>
+        source.Phase == RunPhase.Rest
+        && source.Stochastic.NativeRunRng is not null
+        && source.World is { Act: 1 } world
+        && world.ActiveRoom == PrototypeRoomType.Rest
+        && PrototypeGameEngine.UsesNativeActOneSystems(world)
+        && action.Kind == PrototypeNativeRestSiteActionsV111.Heal
+        && source.Player.ActiveRelics.Any(relic =>
+            PrototypeContent.Relic(relic.RelicId).RestHealCardRewardCount > 0);
+
+    internal static bool IsNativeRestHealRewardRequest(
+        RunState source, GameAction action,
+        ControlledStochasticRequestV111 request)
+    {
+        if (!IsNativeRestHealRewardAction(source, action) ||
+            request.StreamId != NativePlayerRngV111.RewardsStreamId)
+            return false;
+        return request.IndexRequest is { } indexRequest
+            ? indexRequest.SiteId ==
+                    "card_rarity.encounter_model.index_draw"
+                && indexRequest.OperationKind == "choose_index"
+                && indexRequest.OrderedCandidates.SequenceEqual(
+                    Enumerable.Range(0, indexRequest.SupportCount))
+            : request.UnitFloatRequest is { } floatRequest
+                && floatRequest.SiteId is
+                    "card_rarity.roll.unit_float" or
+                    "card_rarity.upgrade_roll.unit_float";
+    }
+
     internal static bool IsSupportedRestHealRewardRequest(
         RandomIndexRequestV111 request) =>
         StochasticSiteRegistryV111.IsRunActionRestHealRewardSite(
@@ -1297,7 +1349,8 @@ public static class ControlledRunActionEngineV111
         RunState source, GameAction action) =>
         IsShopPurchaseAction(source, action)
         || IsCombatRewardRelicAction(source, action)
-        || IsLegacyRestHealRewardAction(source, action);
+        || IsLegacyRestHealRewardAction(source, action)
+        || IsNativeRestHealRewardAction(source, action);
 
     internal static void ValidatePendingShopPurchase(
         RunState source,

@@ -138,7 +138,8 @@ public sealed record ReferenceNatureRunActionMechanicsStateV111
 
 /// <summary>
 /// Nature cursor and typed controlled-provider prefix owned by the existing
-/// ReferenceNature run-action session.
+/// ReferenceNature run-action session. The serialized provider-prefix member
+/// retains its combat-entry name for snapshot compatibility.
 /// </summary>
 public sealed record ReferenceNatureRunActionStochasticStateV111
 {
@@ -215,13 +216,13 @@ public sealed record ReferenceNatureRunActionStochasticStateV111
         var providerDecisions = NativeCombatEntryProviderDecisions;
         if (providerDecisions is null)
             throw new InvalidDataException(
-                "ReferenceNature run-action stochastic transcript is missing.");
+                "ReferenceNature run-action typed provider transcript is missing.");
         foreach (var decision in transcript)
             decision.Validate();
         NativeCombatEntryContinuation?.Validate();
         foreach (var decision in providerDecisions)
             (decision ?? throw new InvalidDataException(
-                "Native combat-entry provider transcript contains a null decision."))
+                "Native typed run-action provider transcript contains a null decision."))
                 .Validate();
     }
 
