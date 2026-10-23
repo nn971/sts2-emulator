@@ -3209,7 +3209,8 @@ public static class SemanticPilotCombatEngineV111
             "proto.potion.explosive_ampoule");
 
     private static bool IsSemanticEffectDrawCard(string cardId) =>
-        cardId is ("proto.common.restlessness" or
+        cardId is (NativeAncientRewardsV111.BrightestFlameId or
+            "proto.common.restlessness" or
             "proto.status.slimed" or
             "proto.colorless.restlessness" or
             "proto.colorless.finesse" or

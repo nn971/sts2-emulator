@@ -1041,3 +1041,11 @@ Tinker payload and admits only the Wisdom Skill's `DrawCards` effect to the
 existing semantic effect-draw continuation. Other type/rider combinations
 are not admitted through the draw path. No event or snapshot schema changed.
 Static source review and `git diff --check` only; no tests or builds were run.
+
+## 2026-10-23: Brightest Flame draw
+
+The semantic pilot now admits Brightest Flame by its physical Ancient reward
+card identity through the existing effect-draw continuation. Resume keeps the
+source draw-before-Max-HP-loss order and the existing Nature draw owner; no
+event or snapshot schema changed. Static source review and `git diff --check`
+only; no tests or builds were run.
