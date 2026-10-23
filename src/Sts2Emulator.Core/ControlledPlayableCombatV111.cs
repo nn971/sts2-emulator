@@ -407,7 +407,14 @@ public sealed record ControlledPlayableCombatV111(
     }
     [System.Text.Json.Serialization.JsonIgnore]
     public bool AtPlayerBoundary => ActivePending is null &&
-        TurnIntents is null && Stochastic.Recycle is null;
+        TurnIntents is null && Stochastic.Recycle is null &&
+        (Run.Phase switch
+        {
+            RunPhase.Combat =>
+                PrototypeGameEngine.IsAtCombatPlayerDecisionBoundary(Run),
+            RunPhase.Reward or RunPhase.Terminal => true,
+            _ => false
+        });
     [System.Text.Json.Serialization.JsonIgnore]
     public string Fingerprint => CanonicalJson.Sha256(this);
     public void Validate()

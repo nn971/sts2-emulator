@@ -20,6 +20,14 @@ through the existing enemy-action replay and end-turn transcript; index
 resolution remains compatible. Static source review and `git diff --check`
 only; no tests or builds were run.
 
+**S4 controlled-playable combat boundary follow-up (2026-10-23):** The
+controlled-playable facade now delegates its combat player boundary to
+`PrototypeGameEngine.IsAtCombatPlayerDecisionBoundary`, while retaining its
+existing reward and terminal boundaries. This prevents a player action from
+being exposed when a pending combat choice or automatic-pipeline cursor is not
+represented by the facade's Nature transcript. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S0 Native request and combat-card helper closure increment (2026-10-23):**
 The direct-call census now resolves the Native generic bounded-index request
 through its finite operation registry after the Native provider guard, and
