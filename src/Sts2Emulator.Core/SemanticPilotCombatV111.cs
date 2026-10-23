@@ -268,6 +268,7 @@ public sealed record SemanticNativePolicyAuditV111(
         }
 
         var traceIndices = new List<RandomBoundaryEventV111>();
+        var traceIntentDecisions = new List<RandomIndexDecisionV111>();
         for (var index = 0; index < providerTrace.Length; index++)
         {
             var entry = providerTrace[index];
@@ -283,6 +284,11 @@ public sealed record SemanticNativePolicyAuditV111(
                 {
                     Sequence = traceIndices.Count + 1
                 });
+                if (StochasticSiteRegistryV111.CombatIntentSiteIds
+                    .Contains(value.Request.SiteId, StringComparer.Ordinal))
+                    traceIntentDecisions.Add(new RandomIndexDecisionV111(
+                        value.Request, value.SelectedIndex, value.ProviderMode,
+                        value.NativeCursorBefore, value.NativeCursorAfter));
             }
         }
 
@@ -299,6 +305,28 @@ public sealed record SemanticNativePolicyAuditV111(
                 throw new InvalidDataException(
                     "Native policy index projection differs from its mixed trace at " +
                     index + ".");
+        }
+
+        // Snapshots created before weighted outcomes were introduced remain
+        // readable. Once a snapshot contains any such annotation, however,
+        // its retained mixed trace must describe every Native intent ticket.
+        if (weightedIntentOutcomes.Length > 0)
+        {
+            if (providerTrace.Length == 0 ||
+                traceIntentDecisions.Count != weightedIntentOutcomes.Length)
+                throw new InvalidDataException(
+                    "Native policy weighted intent outcomes are incomplete for their mixed trace.");
+
+            foreach (var intentDecision in traceIntentDecisions)
+            {
+                var decisionFingerprint = CanonicalJson.Sha256(intentDecision);
+                var matchingOutcomes = weightedIntentOutcomes.Count(outcome =>
+                    CanonicalJson.Sha256(outcome.ProviderDecision) ==
+                    decisionFingerprint);
+                if (matchingOutcomes != 1)
+                    throw new InvalidDataException(
+                        "Native policy intent ticket does not have exactly one weighted outcome annotation.");
+            }
         }
     }
 

@@ -326,7 +326,10 @@ does not have a matching weighted outcome record.
 The native-policy source-route baseline and subsequent audited player
 transitions retain these typed outcomes in provider-private audit state and
 validate them against the paired Native decision, including its sampled
-ticket and cursor span, during snapshot validation.
+ticket and cursor span, during snapshot validation. When weighted annotations
+are present, restore validation also requires exactly one annotation for every
+intent-site index decision in the retained mixed trace; older snapshots without
+these additive annotations remain readable.
 The intent engine's eligibility logic (source move state, weighted
 branches, anti-repeat, opening sequence and per-creature commit order)
 remains inside `PrototypeGameEngine.SelectEnemyMove`. The callback
