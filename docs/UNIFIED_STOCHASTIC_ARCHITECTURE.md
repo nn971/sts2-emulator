@@ -909,7 +909,7 @@ Controlled combat cost, potion/card generation, card shortlist, and pool-shuffle
 
 Semantic draws, drawn-card cost hooks, controlled draw insertions, and automatic hand-draw resumes now carry a local prototype bundle through their nested draw/event continuations and publish it with the continuation state. Native semantic recycle reads the defensive combat RNG projection before forking its Native stream owner.
 
-The Core callsite audit now finds no direct mutable run or combat RNG owner views outside their stochastic owner implementations. Remaining provider-envelope work is centered on `SemanticOtherChanceStateV111` snapshot projections and lifecycle boundaries.
+The Core callsite audit now finds no direct mutable run or combat RNG owner views outside their stochastic owner implementations. `RunStochasticStateV111` owns and validates `SemanticOtherChanceStateV111`; the pilot's `OtherChance` member remains its wire-compatibility projection. Remaining provider-envelope work is the versioned snapshot wire migration for flattened compatibility fields.
 
 ## Reading order
 
