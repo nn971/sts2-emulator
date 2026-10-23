@@ -605,13 +605,19 @@ public static class NativeCombatRngEntryV111
             combat, RngBundle.Empty, CommittedIntentSiteId);
     }
 
-    public static NativeIntentAuditV111 CommitIntentsWithAudit(CombatState combat)
+    /// <summary>
+    /// Commit the supported initial or next-turn intent site and retain both
+    /// primitive provider decisions and their weighted semantic outcomes.
+    /// </summary>
+    public static NativeIntentAuditV111 CommitIntentsWithAudit(
+        CombatState combat,
+        string siteId = CommittedIntentSiteId)
     {
         ArgumentNullException.ThrowIfNull(combat);
         if (combat.Stochastic.NativeRng is null)
             throw new InvalidOperationException("Native intent audit requires attached native RNG.");
         var result = PrototypeGameEngine.CommitEnemyIntentsWithAudit(
-            combat, RngBundle.Empty, CommittedIntentSiteId);
+            combat, RngBundle.Empty, siteId);
         return new NativeIntentAuditV111(
             result.Combat, result.Choices, "native-v111",
             result.WeightedOutcomes);
