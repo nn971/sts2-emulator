@@ -1338,9 +1338,7 @@ public static class ControlledRunActionEngineV111
         RunState source, GameAction action)
     {
         if (action.Kind != "use_potion"
-            || source.Phase is not (RunPhase.MapChoice or RunPhase.Reward
-                or RunPhase.Shop or RunPhase.Rest
-                or RunPhase.ActTransition))
+            || !SupportsOutsideCombatPotionPhase(source))
             return false;
 
         var payload = action.ReadPayload<UsePotionPayload>();
@@ -1368,9 +1366,7 @@ public static class ControlledRunActionEngineV111
     internal static bool IsEntropicBrewRunAction(
         RunState source, GameAction action)
     {
-        if (source.Phase is not (RunPhase.MapChoice or RunPhase.Reward
-                or RunPhase.Shop or RunPhase.Rest
-                or RunPhase.ActTransition)
+        if (!SupportsOutsideCombatPotionPhase(source)
             || action.Kind != "use_potion")
             return false;
 
@@ -1388,6 +1384,15 @@ public static class ControlledRunActionEngineV111
                 new PrototypeRunEffectSpec(
                     PrototypeRunEffectKind.FillPotionSlots)]);
     }
+
+    private static bool SupportsOutsideCombatPotionPhase(
+        RunState source) =>
+        source.Phase is (RunPhase.MapChoice or RunPhase.Reward
+            or RunPhase.Shop or RunPhase.Rest or RunPhase.ActTransition)
+        || source.Phase == RunPhase.Event
+            && source.World?.Event is
+                { PendingPotionReplacement: null } eventState
+            && eventState.Stochastic.ControlledChoice is null;
 
     internal static bool IsLegacyRestHealRewardAction(
         RunState source, GameAction action) =>

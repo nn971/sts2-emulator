@@ -940,18 +940,21 @@ review and `git diff --check` only; no tests or builds were run.
 
 The existing ReferenceNature run-action session now admits legal non-event
 uses of Fruit Juice and Blood Potion through their exact modeled max-HP gain
-and max-HP healing effects. The controlled replay guard rejects any chance
-request and snapshot validation replays the deterministic action. Event potion
-continuations remain separate. No chance owner or snapshot schema was added.
-Static source review and `git diff --check` only; no tests or builds were run.
+and max-HP healing effects. It also admits them during an Event when no event
+choice or full-belt potion replacement is pending. The controlled replay guard
+rejects any chance request, and snapshot validation replays the action. Event
+potion-replacement continuations remain separate. No chance owner or snapshot
+schema was added. Static source review and `git diff --check` only; no tests or
+builds were run.
 
 ## 2026-10-23: Entropic Brew empty-slot refills
 
 The typed ReferenceNature run-action continuation now covers non-event
-Entropic Brew uses. It replays one pool draw for each empty slot, preserving
-the source slot order and owner fingerprint. Legacy runs use the existing
-ordered prototype-pool Chance Law on the `reward` stream. Native runs use the
-`player.rewards` request and its Native bounded-index law, with request support
-and slot ownership checked against the current prototype pool. Native game
-pool-order fidelity still awaits the reference mod. Static source review and
-`git diff --check` only; no tests or builds were run.
+Entropic Brew uses and Event uses when no event choice or full-belt potion
+replacement is pending. It replays one pool draw for each empty slot,
+preserving the source slot order and owner fingerprint. Legacy runs use the
+existing ordered prototype-pool Chance Law on the `reward` stream. Native runs
+use the `player.rewards` request and its Native bounded-index law, with request
+support and slot ownership checked against the current prototype pool. Native
+game pool-order fidelity still awaits the reference mod. Static source review
+and `git diff --check` only; no tests or builds were run.
