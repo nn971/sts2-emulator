@@ -3227,7 +3227,11 @@ cross-provider mechanical equivalence remain open. Static source review and
 with its engine-classified boundary. `ResumeControlledTurnAfterIntents` and
 end-turn hand-draw completion consume that pair; semantic end-turn and
 controlled-playable facades therefore share the classification with their
-resulting run instead of reclassifying it. Facades still select their
-provider-specific continuation and transcript policies. Full resume
-consolidation and cross-provider mechanical equivalence remain open. Static
-source review and `git diff --check` only; no tests or builds were run.
+resulting run instead of reclassifying it. Controlled-playable indexed-choice
+replay also returns the boundary with its result and passes it into turn
+staging for draw cost, random cost, pool shuffle, draw insertion, enemy action,
+generated-card, potion-generation, transform, and target outcomes. Facades
+still select their provider-specific continuation and transcript policies.
+Full resume consolidation and cross-provider mechanical equivalence remain
+open. Static source review and `git diff --check` only; no tests or builds were
+run.
