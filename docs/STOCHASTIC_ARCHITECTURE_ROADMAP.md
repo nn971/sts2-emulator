@@ -2,6 +2,12 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 Bottled Potential continuation inventory increment (2026-10-24):**
+Recorded the existing semantic path for its full-pool hand-return shuffle,
+after-shuffle relic insertions, and resumed five-card draw under their current
+owners. No new owner or schema was added. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S4 automatic enemy pile-insertion identity commit increment (2026-10-24):**
 Enemy draw/discard insertion now resolves the saved generated-card and physical
 gap label against the current pile, then commits through
