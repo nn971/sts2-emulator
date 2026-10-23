@@ -321,7 +321,8 @@ the common provider. Opt-in Native initial and next-turn intent audits also
 pair every sampled move ticket with its typed weighted event support,
 selected branch, and exact source ticket. This metadata is additive and does
 not replace the primitive provider transcript or establish source eligibility
-completeness.
+completeness. Audited Native commits fail closed if any sampled intent ticket
+does not have a matching weighted outcome record.
 The native-policy source-route baseline and subsequent audited player
 transitions retain these typed outcomes in provider-private audit state and
 validate them against the paired Native decision, including its sampled

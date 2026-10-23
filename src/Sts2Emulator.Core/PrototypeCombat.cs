@@ -3515,6 +3515,8 @@ public sealed partial class PrototypeGameEngine
             (weightedOutcomes is not null ||
              RandomBoundaryJournalV111.HasActiveJournal);
         int occurrence = 0;
+        int sampledIntentTicketCount = 0;
+        int weightedOutcomeCount = 0;
         for (int index = 0; index < formation.Length; index++)
         {
             var enemy = formation[index];
@@ -3537,6 +3539,7 @@ public sealed partial class PrototypeGameEngine
                         provider, request, ownedNative.RunStreams);
                     audit?.Add(result);
                     occurrence++;
+                    sampledIntentTicketCount++;
                     if (captureWeightedOutcomes &&
                         pendingCandidates is { Length: > 0 })
                     {
@@ -3569,6 +3572,7 @@ public sealed partial class PrototypeGameEngine
                         weightedOutcomes?.Add(auditEntry);
                         RandomBoundaryJournalV111
                             .RecordWeightedIntentOutcome(auditEntry);
+                        weightedOutcomeCount++;
                     }
                     pendingCandidates = null;
                     return result.SelectedIndex;
@@ -3582,6 +3586,10 @@ public sealed partial class PrototypeGameEngine
             formation[index] = ApplyEnemyIntentOutcome(
                 enemy, chosen.MoveIndex, chosen.NextAiStateId);
         }
+        if (captureWeightedOutcomes &&
+            sampledIntentTicketCount != weightedOutcomeCount)
+            throw new InvalidDataException(
+                "Native intent audit did not describe every sampled ticket as a weighted outcome.");
         return combat with
         {
             Enemies = formation,
