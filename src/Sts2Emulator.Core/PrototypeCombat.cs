@@ -2487,8 +2487,19 @@ public sealed partial class PrototypeGameEngine
     private static RunState ResolveAutomaticStep(
         RunState state,
         PrototypeAutomaticStep automaticStep,
-        bool deferAutomaticHandDrawCompletion = false)
+        AutomaticHandDrawSourceResultContextV111
+            handDrawResultContext =
+                AutomaticHandDrawSourceResultContextV111.OrdinaryPipeline)
     {
+        if (!Enum.IsDefined(handDrawResultContext) ||
+            handDrawResultContext ==
+                AutomaticHandDrawSourceResultContextV111
+                    .ResumedSemanticBeforeHandDraw ||
+            (handDrawResultContext !=
+                AutomaticHandDrawSourceResultContextV111.OrdinaryPipeline &&
+             automaticStep.Kind != PrototypeAutomaticStepKind.DrawPlayerHand))
+            throw new InvalidDataException(
+                "Automatic hand-draw result context does not match its pipeline step.");
         var world = RequireWorld(state);
         var combat = world.Combat
             ?? throw new InvalidOperationException("Combat phase has no combat state.");
@@ -2961,6 +2972,12 @@ public sealed partial class PrototypeGameEngine
                         .Stochastic.HandDrawProgress?.Kind ==
                             PrototypeAutomaticHandDrawProgressKindV111
                                 .ControlledBeforeHandDrawHookChoice;
+                if (resumedAfterSemanticHook &&
+                    handDrawResultContext !=
+                        AutomaticHandDrawSourceResultContextV111
+                            .DeferredSemanticStage)
+                    throw new InvalidDataException(
+                        "Semantic BeforeHandDraw resume has no deferred stage context.");
                 if (resumedAfterSemanticHook || resumedAfterControlledHook)
                 {
                     state = CommitAutomaticHandDrawProgress(
@@ -3079,8 +3096,10 @@ public sealed partial class PrototypeGameEngine
                     automaticHandDrawStage: true);
                 return ResumeAutomaticHandDrawSourceResult(
                     state, drawn, requestedHandDraw, prototypeRng,
-                    deferAutomaticHandDrawCompletion,
-                    resumedAfterSemanticHook);
+                    resumedAfterSemanticHook
+                        ? AutomaticHandDrawSourceResultContextV111
+                            .ResumedSemanticBeforeHandDraw
+                        : handDrawResultContext);
             }
 
             case PrototypeAutomaticStepKind.ResolveLateRelicAutoplay:

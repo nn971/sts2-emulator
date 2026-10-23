@@ -6,9 +6,11 @@
 `DrawPlayerHand` stage now sends every `DrawCards` result through
 `ResumeAutomaticHandDrawSourceResult`. The shared owner handles provider
 suspension routing, ordinary Stratagem completion, deferred stage completion,
-and post-draw power timing; the pipeline switch no longer interprets result
-boundaries. Static source review and `git diff --check` only; no tests or
-builds were run.
+and post-draw power timing. A typed context distinguishes ordinary work,
+deferred semantic completion, and a resumed semantic pre-draw hook; the
+pipeline step accepts only the first two and derives the third from its saved
+progress marker. The pipeline switch no longer interprets result boundaries.
+Static source review and `git diff --check` only; no tests or builds were run.
 
 **S4 suspended run/event mechanics comparison increment (2026-10-24):** The
 provider-independent mechanics projection now includes pending run-action,

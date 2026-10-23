@@ -7,6 +7,13 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public sealed partial class PrototypeGameEngine
 {
+    private enum AutomaticHandDrawSourceResultContextV111
+    {
+        OrdinaryPipeline,
+        DeferredSemanticStage,
+        ResumedSemanticBeforeHandDraw
+    }
+
     private enum AutomaticHandDrawResumeContextV111
     {
         SourceStageBoundary,
@@ -108,14 +115,15 @@ public sealed partial class PrototypeGameEngine
         PrototypeDrawCardsResult drawn,
         int requestedCount,
         RngBundle prototypeRng,
-        bool deferCompletion,
-        bool resumedAfterSemanticHook)
+        AutomaticHandDrawSourceResultContextV111 context)
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
         ArgumentNullException.ThrowIfNull(drawn);
         ArgumentNullException.ThrowIfNull(prototypeRng);
         if (requestedCount < 0)
             throw new ArgumentOutOfRangeException(nameof(requestedCount));
+        if (!Enum.IsDefined(context))
+            throw new ArgumentOutOfRangeException(nameof(context));
 
         var rngCheckpoint = checkpoint with
         {
@@ -161,7 +169,11 @@ public sealed partial class PrototypeGameEngine
         bool drawPending = resultCombat.PendingChoice is not null ||
             resultCombat.PendingKnowledgeDemonChoice is not null ||
             resultCombat.Stochastic.SemanticDeck?.Pending is not null;
-        if ((deferCompletion && !drawPending) || resumedAfterSemanticHook)
+        if ((context ==
+                AutomaticHandDrawSourceResultContextV111.DeferredSemanticStage &&
+             !drawPending) || context ==
+                AutomaticHandDrawSourceResultContextV111
+                    .ResumedSemanticBeforeHandDraw)
             return CompleteAutomaticHandDrawStage(result, requestedCount);
 
         return PublishDrawMechanicsState(

@@ -126,7 +126,9 @@ public sealed partial class PrototypeGameEngine
         var result = ResolveAutomaticStep(
             checkpoint,
             PrototypeContent.Rules.EndTurnPipeline[SemanticHandDrawStepIndex],
-            deferAutomaticHandDrawCompletion: true);
+            handDrawResultContext:
+                AutomaticHandDrawSourceResultContextV111
+                    .DeferredSemanticStage);
         var after = RequireWorld(result).Combat;
         if (after is null)
         {
