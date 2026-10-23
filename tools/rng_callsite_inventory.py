@@ -21,7 +21,7 @@ from urllib.parse import unquote, urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v44"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v45"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 
 CALL_PATTERN = re.compile(
@@ -1397,6 +1397,147 @@ def _direct_fail_closed_site_values(
     return sorted(set(conditions))
 
 
+def _validated_semantic_event_site_values(
+    path: Path,
+    source: str,
+    construction_start: int,
+    expression: str | None,
+    sources: dict[Path, str],
+    global_constants: dict[str, set[str]],
+) -> list[str]:
+    """Trace finite SiteId domains through validated semantic event helpers."""
+    if (path.name != "SemanticOtherChanceV111.cs" or
+            re.sub(r"\s+", "", expression or "") != "pending.SiteId"):
+        return []
+    member = _containing_member_source(source, construction_start)
+    signature = member.split("{", 1)[0]
+    target_source = sources.get(SOURCE_ROOT / "SemanticTargetChoiceV111.cs", "")
+
+    if (re.search(r"\bSemanticTargetEventV111\s+pending\b", signature) and
+            "pending.Validate()" in member and
+            "SiteId != expectedSiteId" in target_source and
+            "expectedSiteId is null" in target_source and
+            "SiteIdForTargetKind(TargetKind)" in target_source):
+        resolver = re.search(
+            r"internal\s+static\s+string\?\s+SiteIdForTargetKind\s*"
+            r"\([^)]*\)\s*=>\s*(?P<expression>.*?);",
+            target_source,
+            re.DOTALL,
+        )
+        if resolver is not None:
+            results = _switch_expression_results(
+                resolver.group("expression")
+            )
+            if results:
+                values: set[str] = set()
+                for result in results:
+                    if result.strip() == "null":
+                        continue
+                    resolved = _resolve_site_values(
+                        result, {}, global_constants
+                    )
+                    if not resolved:
+                        return []
+                    values.update(resolved)
+                if values:
+                    return sorted(values)
+
+    if re.search(r"\bSemanticCardShortlistEventV111\s+pending\b", signature):
+        fail_closed = re.search(
+            r"if\s*\(\s*!SupportsEngineOwnedCardShortlistBoundary\s*"
+            r"\(\s*pending\s*\)\s*\)\s*"
+            r"throw\s+new\s+NotSupportedException",
+            member,
+        )
+        helper_start = re.search(
+            r"internal\s+static\s+bool\s+"
+            r"SupportsEngineOwnedCardShortlistBoundary\s*\(",
+            source,
+        )
+        if fail_closed is not None and helper_start is not None:
+            helper = _containing_member_source(source, helper_start.start())
+            pattern = re.search(
+                r"pending\.SiteId\s+is\s*\((?P<sites>[^()]*)\)",
+                helper,
+            )
+            if pattern is not None:
+                alternatives = _split_csharp_or_alternatives(
+                    pattern.group("sites")
+                )
+                resolved = [
+                    value
+                    for alternative in alternatives
+                    for value in _resolve_site_values(
+                        alternative, {}, global_constants
+                    )
+                ]
+                if alternatives and resolved:
+                    return sorted(set(resolved))
+
+    if re.search(r"\bSemanticPoolShuffleEventV111\s+pending\b", signature):
+        fail_closed = re.search(
+            r"!TryGetNativePoolShuffleStreamId\s*\(\s*"
+            r"pending\.SiteId\s*,",
+            member,
+        )
+        helper_start = re.search(
+            r"private\s+static\s+bool\s+"
+            r"TryGetNativePoolShuffleStreamId\s*\(\s*"
+            r"string\s+(?P<site_parameter>[A-Za-z_][A-Za-z0-9_]*)\s*,\s*"
+            r"out\s+string\s+(?P<stream_parameter>"
+            r"[A-Za-z_][A-Za-z0-9_]*)\s*\)",
+            source,
+        )
+        if (fail_closed is not None and helper_start is not None and
+                "NotSupportedException" in member):
+            helper = _containing_member_source(source, helper_start.start())
+            site_parameter = helper_start.group("site_parameter")
+            stream_parameter = helper_start.group("stream_parameter")
+            switch = re.search(
+                rf"\b{re.escape(stream_parameter)}\s*=\s*"
+                rf"{re.escape(site_parameter)}\s+switch\s*"
+                r"\{(?P<arms>.*?)\}",
+                helper,
+                re.DOTALL,
+            )
+            if switch is not None and re.search(
+                rf"return\s+{re.escape(stream_parameter)}\.Length\s*!=\s*0\s*;",
+                helper,
+            ):
+                values: set[str] = set()
+                valid = True
+                for arm in _split_call_arguments(switch.group("arms")):
+                    arrow = arm.find("=>")
+                    if arrow < 0:
+                        valid = False
+                        break
+                    pattern = arm[:arrow].strip()
+                    outcome = arm[arrow + 2:].strip()
+                    if pattern == "_":
+                        valid = valid and outcome == '""'
+                        continue
+                    streams = _resolve_site_values(
+                        outcome, {}, global_constants
+                    )
+                    alternatives = _split_csharp_or_alternatives(pattern)
+                    if not streams or any(not stream for stream in streams):
+                        valid = False
+                        break
+                    for alternative in alternatives or [pattern]:
+                        sites = _resolve_site_values(
+                            alternative, {}, global_constants
+                        )
+                        if not sites:
+                            valid = False
+                            break
+                        values.update(sites)
+                    if not valid:
+                        break
+                if valid and values:
+                    return sorted(values)
+    return []
+
+
 def _resolve_site_array_property(
     expression: str,
     global_constants: dict[str, set[str]],
@@ -2241,6 +2382,15 @@ def _typed_request_constructions(
                     resolution_source = (
                         "shared_shuffle_core_finite_registry"
                     )
+            if not values:
+                values = _validated_semantic_event_site_values(
+                    path, source, match.start(), expression,
+                    sources, global_constants,
+                )
+                if values:
+                    resolution_source = (
+                        "validated_semantic_event_site_domain"
+                    )
             if not values and path.name == "NativeRandomChoiceV111.cs":
                 helper_names: tuple[str, ...] = ()
                 request_type = match.group("request_type")
@@ -2311,6 +2461,7 @@ def _typed_request_constructions(
                         "method_fail_closed_validation",
                         "registry_dictionary_guard",
                         "shared_shuffle_core_finite_registry",
+                        "validated_semantic_event_site_domain",
                     )
                     else "finite_core_helper_callsite_sites"
                     if resolution_source ==

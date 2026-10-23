@@ -2,6 +2,17 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S0 validated event-site domain increment (2026-10-23):** The typed-request
+inventory now follows three existing semantic boundaries: target-event site
+validation through the target-kind resolver, the shortlist's finite supported
+site predicate, and the pool-shuffle site's fail-closed stream resolver. This
+maps all five forwarded `SemanticOtherChanceV111` event fields to their
+registered site rows. The census reports 185 registered sites for 185
+migration rows, no registry mismatches or unresolved references, and 109 of
+111 typed requests mapped; two generic forwarded helper parameters remain
+dynamic. Inventory schema v45; static source analysis only, with no tests or
+builds run.
+
 **S0 fail-closed member-site resolution increment (2026-10-23):** Typed
 requests that forward a saved event's `SiteId` now resolve when the containing
 resolver rejects every value except a directly compared registered site. This
