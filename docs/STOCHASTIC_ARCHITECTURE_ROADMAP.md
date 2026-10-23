@@ -78,6 +78,14 @@ transforms are source verified on declared supports, while Native context and
 reward stream attribution, pool fidelity, and cursor parity remain open.
 Static source review and `git diff --check` only; no tests or builds were run.
 
+**S0 Native event shuffle manual review increment (2026-10-23):** Six sites
+now trace Fake Merchant stock, Fragrant Mushroom upgrades, Battleworn setting
+2 upgrades, both Tinker offer stages, and Doors of Light through the existing
+conditional shuffle session. The Fragrant Mushroom source note now reflects
+its Native event-context path and current legacy fallback. Source pools,
+event-call parity, and seeded Native cursor parity remain open. Static source
+review and `git diff --check` only; no tests or builds were run.
+
 **S0 summon-pool SiteId ownership increment (2026-10-23):** The existing
 legacy summon continuation and query registry now use the shared
 `combat.enemy.summon_pool.select` constant. Its Native pool path continues to
