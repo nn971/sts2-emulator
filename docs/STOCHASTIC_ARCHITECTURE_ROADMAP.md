@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 modeled Glory Ancient card-action increment (2026-10-24):** Apparition,
+Apotheosis, Maul, and Whistle now enter through the existing semantic
+player-action boundary. Their modeled power, upgrade, damage, and stun effects
+use ordinary source combat resolution under the controlled-chance guard; no
+chance owner or snapshot schema changed. Wish keeps its existing card-selection
+continuation, while unplayable Ancient curses remain excluded. Static source
+review and `git diff --check` only; no tests or builds were run.
+
 **S2/S4 Mad Science source-action increment (2026-10-24):** The semantic
 pilot now admits modeled Mad Science Attack, Skill, and Power riders. Wisdom
 retains its semantic draw continuation; Skill/Chaos reuses the generated-card

@@ -944,6 +944,14 @@ Shadow Step now uses the card-selection owner for its hand discard and queued
 power application, while Echoing Slash and Outbreak use the ordinary
 deterministic semantic player-action boundary.
 
+Apparition, Apotheosis, Maul, and Whistle from the modeled Glory Ancient
+rewards now use that same deterministic player-action boundary. Their power,
+upgrade, damage, and stun effects stay in source combat resolution under the
+controlled-chance guard; they do not introduce a provider-owned draw-pile
+change or a new chance continuation. The remaining modeled Glory Ancient
+reward cards are selection-driven or unplayable and retain their existing
+specialized owners or exclusion.
+
 After a semantic `BeforeHandDraw` choice resolves, the common automatic-pipeline resumer now replays the saved `DrawPlayerHand` stage and re-enters the same handoff at its advanced cursor. Remaining supported stages and terminal reward publication therefore continue through the shared path, while a newly suspended choice remains pending for its owning adapter.
 
 `ResumeControlledTurnAfterIntents` now publishes its completed `AdvanceTurn` cursor back to `ResumeAutomaticPipelineContinuation`. The shared handoff resumes subsequent automatic stages and preserves the existing stop-before-semantic-hand-draw boundary used by the end-turn facade.
