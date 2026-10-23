@@ -135,9 +135,12 @@ public sealed partial class PrototypeGameEngine
             combat.PendingKnowledgeDemonChoice is not null)
             throw new InvalidDataException(
                 "Cannot finish hand draw with an unresolved choice.");
+        int requested = cursor.Stochastic.ControlledSemanticDrawRequested ??
+            throw new InvalidDataException(
+                "Completed semantic hand draw lost its requested count.");
         // The ordinary engine owns the shared source cleanup and cursor
-        // advance for controlled and semantic hand-draw continuations.
-        return (CompleteAutomaticHandDrawStage(run), 0);
+        // advance and completion receipt for both provider continuations.
+        return (CompleteAutomaticHandDrawStage(run, requested), 0);
     }
 
     private static (RunState Run, int Requested, int Remaining)
@@ -205,16 +208,23 @@ public sealed partial class PrototypeGameEngine
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.BeforeHandDraw " +
                 "operation=" + unsupportedOperation);
 
-        var requested = completed.Stochastic
-                .ControlledSemanticDrawRequested ??
+        var savedRequested = completed.Stochastic
+            .ControlledSemanticDrawRequested;
+        var requested = savedRequested ??
             Math.Max(0,
                 after.CounterState.CardsDrawnThisCombat - cardsDrawnBefore);
-        after = AttachCompletedSemanticHandDrawReceipt(
-            after, completed, requested);
-        result = result with
+        // The common stage owner already recorded semantic completions that
+        // carried a saved request. Only source-committed draw-free completion
+        // needs the facade to derive and attach a receipt here.
+        if (savedRequested is null)
         {
-            World = RequireWorld(result) with { Combat = after }
-        };
+            after = AttachCompletedSemanticHandDrawReceipt(
+                after, completed, requested);
+            result = result with
+            {
+                World = RequireWorld(result) with { Combat = after }
+            };
+        }
         return (result, requested, 0);
     }
 
