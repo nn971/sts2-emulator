@@ -7,6 +7,11 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public sealed partial class PrototypeGameEngine
 {
+    private sealed record PrototypeAutomaticHandDrawCostResumeV111(
+        RunState Run,
+        PrototypeDrawCardsResult? Drawn,
+        int? SemanticRequested);
+
     private static void ValidateDrawCardsResult(
         PrototypeDrawCardsResult drawn, bool automaticHandDraw)
     {
@@ -205,7 +210,7 @@ public sealed partial class PrototypeGameEngine
 
     // The provider adapters supply their suspension policy and continue the
     // tagged result through their own saved frame.
-    private static (RunState Run, PrototypeDrawCardsResult? Drawn)
+    private static PrototypeAutomaticHandDrawCostResumeV111
         ResumeAutomaticHandDrawAfterCost(
             RunState checkpoint,
             PrototypeControlledDrawCostV111 cost,
@@ -213,16 +218,14 @@ public sealed partial class PrototypeGameEngine
             PrototypeDrawCardsSuspensionPolicyV111 suspensionPolicy,
             bool allowHookSuspension,
             string unsupportedBoundaryMessage,
-            bool semantic,
-            int? semanticRequested)
+            bool semantic)
     {
         var combat = RequireWorld(checkpoint).Combat ??
             throw new InvalidDataException(
                 "Automatic draw-cost resume has no combat.");
         int? savedRequested = ValidateAutomaticHandDrawCostCheckpoint(
             combat, cost, semantic);
-        if (savedRequested != semanticRequested ||
-            !ValidateControlledDrawCost(
+        if (!ValidateControlledDrawCost(
                 checkpoint.Player, combat, cost))
             throw new InvalidDataException(
                 "Automatic draw-cost resume does not match its saved choice.");
@@ -230,7 +233,8 @@ public sealed partial class PrototypeGameEngine
         var costProgress = ResolveDrawCostAndDispatchCardDrawn(
             checkpoint, cost, selectedCost, allowHookSuspension);
         if (costProgress.CostStagePending)
-            return (costProgress.Run, null);
+            return new PrototypeAutomaticHandDrawCostResumeV111(
+                costProgress.Run, null, savedRequested);
 
         var world = RequireWorld(costProgress.Run);
         var combat = world.Combat ?? throw new InvalidDataException(
@@ -238,11 +242,12 @@ public sealed partial class PrototypeGameEngine
         if (costProgress.DrawnHookSuspended &&
             combat.PendingChoice is not null &&
             combat.PendingKnowledgeDemonChoice is null)
-            return (costProgress.Run, CreateDrawCardsResult(
-                costProgress.Run.Player, combat, [],
-                PrototypeDrawCardsBoundaryV111.NestedCardDrawnChoice(
-                    cost.RemainingCount),
-                automaticHandDrawStage: true));
+            return new PrototypeAutomaticHandDrawCostResumeV111(
+                costProgress.Run, CreateDrawCardsResult(
+                    costProgress.Run.Player, combat, [],
+                    PrototypeDrawCardsBoundaryV111.NestedCardDrawnChoice(
+                        cost.RemainingCount),
+                    automaticHandDrawStage: true), savedRequested);
         if (costProgress.DrawnHookSuspended ||
             combat.PendingChoice is not null ||
             combat.PendingKnowledgeDemonChoice is not null)
@@ -257,7 +262,8 @@ public sealed partial class PrototypeGameEngine
             Stochastic = RunStochasticStateV111.WithPrototypeRng(
                 costProgress.Run.Stochastic, prototypeRng)
         };
-        return (resumedRun, drawn);
+        return new PrototypeAutomaticHandDrawCostResumeV111(
+            resumedRun, drawn, savedRequested);
     }
 
     private static int? ValidateAutomaticHandDrawCostCheckpoint(

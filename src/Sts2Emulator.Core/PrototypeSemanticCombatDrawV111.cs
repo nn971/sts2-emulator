@@ -100,18 +100,11 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidDataException(
                 "Semantic cost checkpoint/card identity/stage is inconsistent.");
 
-        int? automaticRequested = automatic
-            ? combat.AutomaticPipelineContinuation!
-                .Stochastic.ControlledSemanticDrawRequested ??
-                throw new InvalidDataException(
-                    "Automatic semantic draw lost its requested count.")
-            : null;
         var draw = CreateSemanticDrawResultFrame(
             cost.RemainingCount, cost.FromHandDraw, cost.EventDepth,
             automatic);
         return ContinueSemanticDrawCost(
             run, cost, draw, value, continuation: null,
-            automaticRequested,
             resumeKind: automatic
                 ? SemanticDrawCostResumeKindV111.AutomaticHandDraw
                 : SemanticDrawCostResumeKindV111.Standalone,
@@ -131,7 +124,6 @@ public sealed partial class PrototypeGameEngine
             PrototypeControlledSemanticDrawV111 draw,
             int selectedCost,
             PrototypeChoiceResolutionContinuationState? continuation,
-            int? automaticHandDrawRequested,
             SemanticDrawCostResumeKindV111 resumeKind,
             string recycleSite,
             string recycleOperation)
@@ -144,7 +136,6 @@ public sealed partial class PrototypeGameEngine
             cost.RemainingCount != draw.RemainingCount ||
             cost.FromHandDraw != draw.FromHandDraw ||
             cost.EventDepth != draw.EventDepth ||
-            automaticHandDraw != (automaticHandDrawRequested is not null) ||
             effectDraw != (continuation is not null) ||
             !Enum.IsDefined(resumeKind))
             throw new InvalidDataException(
@@ -159,14 +150,16 @@ public sealed partial class PrototypeGameEngine
                 unsupportedBoundaryMessage:
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.CardDrawn " +
                     "operation=nested_choice_continuation",
-                semantic: true,
-                semanticRequested: automaticHandDrawRequested);
+                semantic: true);
             if (resumed.Drawn is null)
                 return (resumed.Run, cost.RemainingCount);
+            int automaticRequested = resumed.SemanticRequested ??
+                throw new InvalidDataException(
+                    "Semantic automatic draw resume lost its request.");
 
             return ResolveControlledSemanticDrawResult(
                 resumed.Run, resumed.Drawn, draw, continuation,
-                automaticHandDrawRequested, recycleSite, recycleOperation);
+                automaticRequested, recycleSite, recycleOperation);
         }
 
         var progress = ResolveDrawCostAndDispatchCardDrawn(

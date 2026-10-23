@@ -174,7 +174,6 @@ public sealed partial class PrototypeGameEngine
 
         return ContinueSemanticDrawCost(
             state, cost, draw, value, continuation,
-            automaticHandDrawRequested: null,
             resumeKind: SemanticDrawCostResumeKindV111.CardEffect,
             recycleSite: "combat.card_effect.draw",
             recycleOperation: "recycle_requires_composed_continuation").Run;
@@ -205,8 +204,7 @@ public sealed partial class PrototypeGameEngine
             unsupportedBoundaryMessage:
                 "UNSUPPORTED_CONTROLLED_CHANCE site=combat.draw_cost." +
                 "drawn_event operation=nested_choice",
-            semantic: false,
-            semanticRequested: null);
+            semantic: false);
         return resumed.Drawn is null
             ? resumed.Run
             : ContinueControlledHandDraw(resumed.Run, resumed.Drawn);
