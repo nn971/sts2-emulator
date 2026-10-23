@@ -1,7 +1,8 @@
 # Nature #143 — semantic card-selection deck movements
 
 **PR:** #164; **versioned fixture envelope:**
-`sts2-v111-semantic-card-selection-v1`.
+`sts2-v111-semantic-card-selection-v1`; sequential actions use the existing
+`sts2-v111-semantic-card-selection-choice-v2` event.
 **Source mechanic:** `PrototypeGameEngine.ApplyCardSelection` and
 `ResolvePendingChoice` invoked by the real
 `PrototypeAiEnvironment.Step(select_cards)`.
@@ -51,8 +52,11 @@ potion or other source effect has created the choice. It verifies the
 supported source selection and pile transition, resolves the legal action
 through the original AI action engine, and validates the exact resulting
 provider constraints and physical card zones. A supported queued source
-continuation may complete after the selection; unsupported outer choices,
-sequential prompts and draw-on-completion choices fail closed.
+continuation may complete after the selection. Sequential selection is
+supported for the exact turn-start Gambling Chip continuation and Gambler's
+Brew's potion-use completion; other sequential or nested choices fail closed.
+Gambler's Brew's completed selection resumes its source draw for the selected
+count through the existing semantic draw owner.
 
 The resulting object contains the complete original pending choice,
 legal action ID, selected card IDs and real post-resolution RunState.
@@ -88,8 +92,16 @@ that do not move the hidden draw pile preserve its semantic state; known-top
 placements and supported known or contiguous-pool draw-pile removals use the
 existing deck projection rules above.
 
-This is deliberately a fixture loadout integration, not evidence that Survivor
-was acquired through the native run route. Outer-choice continuations,
+The persistent semantic pilot also admits Neow's Fury's optional
+discard-pile-to-hand selection and Neow's Abundance's exact three upgraded
+Power offer through the existing card-selection and pool-shuffle owners.
+Gambler's Brew uses the sequential event for one-at-a-time hand discards, then
+the semantic draw owner for the selected count. Each path retains its source
+continuation and hidden draw-pile checks; Native acquisition and cursor parity
+remain separate evidence.
+
+The Survivor entry is deliberately a fixture loadout integration, not evidence
+that Survivor was acquired through the native run route. Other outer-choice continuations,
 sequential optional prompts, draw-on-completion prompts, hidden-position
 removals and any continuation that reaches an unsupported random site still
 fail closed. Conditional probabilities remain `UNVERIFIED`.
@@ -101,7 +113,7 @@ general source-authentic loadout acquisition or every parent card/potion
 continuation that creates a `select_cards` prompt. It does not yet support
 scry discard/reordering, removals from pools split around known anchors,
 general draw effects beyond the supported direct-draw and draw-then-discard
-Silent cards documented in
+Silent cards and Gambler's Brew documented in
 [`NATURE_SEMANTIC_EFFECT_DRAWS_143.md`](NATURE_SEMANTIC_EFFECT_DRAWS_143.md),
 effects that return the hand and reshuffle, or random insertions into the draw
 pile. Those transitions require dedicated stochastic and source-timed

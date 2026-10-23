@@ -602,8 +602,9 @@ public static class SemanticCardSelectionEngineV111
         if (combat.PendingChoice is not { } choice ||
             !choice.Selection.SequentialOptional ||
             !choice.Selection.DrawEqualToSelectionsOnCompletion ||
-            !PrototypeGameEngine.IsAutomaticPipelineSemanticCardSelectionContinuation(
-                combat, choice))
+            (!PrototypeGameEngine.IsAutomaticPipelineSemanticCardSelectionContinuation(
+                 combat, choice) &&
+             !IsSupportedManualPotionSequentialChoice(combat, choice)))
             return false;
 
         var accumulated = choice.SequentialSelectedCardInstanceIds?.Length ?? 0;
@@ -620,9 +621,10 @@ public static class SemanticCardSelectionEngineV111
         var spec = choice.Selection;
         bool supportedSequential = spec.SequentialOptional &&
             spec.DrawEqualToSelectionsOnCompletion &&
-            PrototypeGameEngine
-                .IsAutomaticPipelineSemanticCardSelectionContinuation(
-                    combat, choice);
+            (PrototypeGameEngine
+                 .IsAutomaticPipelineSemanticCardSelectionContinuation(
+                     combat, choice) ||
+             IsSupportedManualPotionSequentialChoice(combat, choice));
         bool supportedAutomaticTransform =
             spec.SourceZone == PrototypeCardZone.Hand &&
             spec.Resolution ==
@@ -655,6 +657,30 @@ public static class SemanticCardSelectionEngineV111
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.card_selection " +
                 "operation=unsupported_nested_source_choice");
+    }
+
+    private static bool IsSupportedManualPotionSequentialChoice(
+        CombatState combat, PendingCombatChoiceState choice)
+    {
+        var spec = choice.Selection;
+        var accumulated = choice.SequentialSelectedCardInstanceIds?.Length ?? 0;
+        return combat.IsPlayerTurn &&
+            choice.SourceCardInstanceId is null &&
+            choice.OuterChoiceContinuation is null &&
+            choice.Continuation.Length == 0 &&
+            choice.CompletionEvents is
+                [{ Kind: PrototypeCombatEventKind.PotionUsed }] &&
+            spec.SourceZone == PrototypeCardZone.Hand &&
+            spec.Resolution == PrototypeCardSelectionResolutionKind.MoveToDiscard &&
+            spec.MinSelections == 0 &&
+            spec.RequiredCardType is null &&
+            spec.SelectionsPerPowerStack == 0 &&
+            !spec.RemoveUnselectedFromSource &&
+            !spec.RequireEnergyCostingCard &&
+            spec.SequentialOptional &&
+            spec.DrawEqualToSelectionsOnCompletion &&
+            spec.MaxSelections ==
+                accumulated + choice.CandidateCardInstanceIds.Length;
     }
 
     private static bool IsSupportedTopMove(

@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S2/S4 Gambler's Brew selection increment (2026-10-23):** Gambler's Brew
+now uses the existing sequential card-selection schema and semantic draw
+owner. The admission checks the source potion-use completion event, hand to
+discard operation, selected-prefix count, and absent outer continuation;
+the source draw count equals the number discarded. No event or snapshot
+schema was added. Static source review and `git diff --check` only; no tests
+or builds were run.
+
 **S2/S4 Neow's Abundance choice increment (2026-10-23):** The persistent
 semantic combat pilot admits Abundance's generated-Power choice through the
 existing full-pool shuffle and ChoicePool selection owners. The shuffle guard

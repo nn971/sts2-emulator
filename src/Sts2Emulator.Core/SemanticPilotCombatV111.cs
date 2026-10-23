@@ -3136,6 +3136,7 @@ public static class SemanticPilotCombatEngineV111
             "proto.potion.power" or
             "proto.potion.touch_of_insanity" or
             "proto.potion.droplet_of_precognition" or
+            "proto.potion.gamblers_brew" or
             "proto.potion.liquid_memories");
 
     private static bool IsSemanticEffectDrawPotion(string? potionId) =>

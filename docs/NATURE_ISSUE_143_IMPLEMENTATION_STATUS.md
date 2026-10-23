@@ -392,6 +392,10 @@ Orobic Acid also runs from any matching combat slot rather than requiring its
 seeded fixture. It uses the three saved Attack, Skill and Power model choices
 and leaves the hidden draw-pile boundary unchanged. Colorless Potion retains
 its existing fixture-backed source-aware shuffle and optional pick.
+Gambler's Brew uses the existing sequential card-selection event for its
+one-at-a-time discard prompt, then resumes the semantic draw owner for the
+selected count. Its guard matches the potion-use completion and exact
+hand-to-discard continuation.
 
 The semantic JSONL/Python bridge also exposes fixed-model random draw-pile
 insertion and the two-stage random-Attack insertion continuation through
