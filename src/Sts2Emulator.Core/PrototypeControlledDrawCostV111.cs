@@ -205,10 +205,7 @@ public sealed partial class PrototypeGameEngine
                 !ControlledChanceGuardV111.EngineOwnedNativeProviderActive,
             unsupportedBoundaryMessage:
                 "UNSUPPORTED_CONTROLLED_CHANCE site=combat.draw_cost." +
-                "drawn_event operation=nested_choice",
-            recycleSite: "combat.draw_cost",
-            recycleOperation: "controlled_draw_cost_resume",
-            semantic: false);
+                "drawn_event operation=nested_choice");
         return resumed.Run;
     }
 }

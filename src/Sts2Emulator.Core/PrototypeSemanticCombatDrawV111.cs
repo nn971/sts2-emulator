@@ -157,8 +157,7 @@ public sealed partial class PrototypeGameEngine
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.CardDrawn " +
                     "operation=nested_choice_continuation",
                 recycleSite: recycleSite,
-                recycleOperation: recycleOperation,
-                semantic: true);
+                recycleOperation: recycleOperation);
 
         var progress = ResolveDrawCostAndDispatchCardDrawn(
             run, cost, selectedCost,

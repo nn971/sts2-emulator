@@ -3059,7 +3059,7 @@ public sealed partial class PrototypeGameEngine
                 var resumedDrawBoundary = ResumeAutomaticHandDrawBoundary(
                     PublishPrototypeRng(state), drawn, requestedHandDraw);
                 if (resumedDrawBoundary is not null)
-                    return resumedDrawBoundary;
+                    return resumedDrawBoundary.Value.Run;
                 if (drawBoundary ==
                     PrototypeDrawCardsBoundaryKind.ShuffleSelection)
                 {

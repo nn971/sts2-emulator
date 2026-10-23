@@ -3323,3 +3323,14 @@ transcripts and provider provenance remain with their existing owners. No
 snapshot or transcript format changed. Broader draw-resume policy
 consolidation and cross-provider mechanical equivalence remain open. Static
 source review and `git diff --check` only; no tests or builds were run.
+
+**S4 saved automatic draw boundary routing increment (2026-10-24):**
+`ResumeAutomaticHandDrawBoundary` now routes both initial source-step
+suspensions and completed resumes of saved automatic draws. The source-step
+path leaves ordinary stage completion with the pipeline; the saved-resume
+path sends complete and pending results through the existing semantic or
+controlled adapter. Both paths return the provider-neutral draw-resume result.
+Provider policies, transcript owners, and snapshots are unchanged. Broader
+draw-resume policy consolidation and cross-provider mechanical equivalence
+remain open. Static source review and `git diff --check` only; no tests or
+builds were run.

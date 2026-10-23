@@ -9,12 +9,17 @@ public sealed partial class PrototypeGameEngine
 {
     /// <summary>
     /// Routes a completed DrawPlayerHand call to the matching continuation
-    /// owner. The semantic and legacy adapters keep their own supported
-    /// boundaries and transcripts; the pipeline step only resumes them.
+    /// owner. Source-stage calls route only suspended boundaries; saved-stage
+    /// resumes also route normal completion through the same provider adapter.
     /// </summary>
-    private static RunState? ResumeAutomaticHandDrawBoundary(
+    private static PrototypeDrawCardsResumeResultV111?
+        ResumeAutomaticHandDrawBoundary(
         RunState rngCheckpoint, PrototypeDrawCardsResult drawn,
-        int requestedCount)
+        int requestedCount,
+        bool resumeSavedStage = false,
+        PrototypeControlledSemanticDrawV111? semanticDraw = null,
+        string recycleSite = "combat.DrawPlayerHand",
+        string recycleOperation = "unsupported_nested_stage")
     {
         ArgumentNullException.ThrowIfNull(rngCheckpoint);
         ArgumentNullException.ThrowIfNull(drawn);
@@ -36,7 +41,10 @@ public sealed partial class PrototypeGameEngine
             boundary is
                 (PrototypeDrawCardsBoundaryKind.SemanticDraw or
                  PrototypeDrawCardsBoundaryKind.ControlledDrawCost);
-        if (semanticChoiceBoundary || semanticDrawBoundary)
+        bool semanticSavedStage = resumeSavedStage &&
+            semanticDraw is not null;
+        if (semanticChoiceBoundary || semanticDrawBoundary ||
+            semanticSavedStage)
         {
             var world = RequireWorld(rngCheckpoint);
             var advanced = rngCheckpoint with
@@ -44,28 +52,32 @@ public sealed partial class PrototypeGameEngine
                 Player = drawn.Player,
                 World = world with { Combat = combat }
             };
-            var drawFrame = CreateSemanticDrawResultFrame(
+            var drawFrame = semanticDraw ?? CreateSemanticDrawResultFrame(
                 drawn.RemainingCount, fromHandDraw: true,
                 eventDepth: 0, automatic: true);
             return ResolveControlledSemanticDrawResult(
                 advanced, drawn, drawFrame,
                 continuation: null,
                 automaticHandDrawRequested: requestedCount,
-                recycleSite: "combat.DrawPlayerHand",
-                recycleOperation: "unsupported_nested_stage").Run;
+                recycleSite: recycleSite,
+                recycleOperation: recycleOperation);
         }
 
         if (ControlledChanceGuardV111.Active &&
             combat.Stochastic.SemanticDeck is null &&
-            boundary is
+            (resumeSavedStage || boundary is
                 (PrototypeDrawCardsBoundaryKind.ControlledDrawCost or
                  PrototypeDrawCardsBoundaryKind.ControlledRecycle or
                  PrototypeDrawCardsBoundaryKind.ShuffleSelection or
-                 PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice))
-            return combat.AutomaticPipelineContinuation is null
+                 PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice)))
+        {
+            var resumed = combat.AutomaticPipelineContinuation is null
                 ? ContinueInitialControlledHandDrawBoundary(
                     rngCheckpoint, drawn)
                 : ContinueControlledHandDraw(rngCheckpoint, drawn);
+            return new PrototypeDrawCardsResumeResultV111(
+                resumed, drawn.RemainingCount);
+        }
 
         return null;
     }
@@ -373,9 +385,9 @@ public sealed partial class PrototypeGameEngine
     }
 
     /// <summary>
-    /// Own the post-cost resume of an automatic DrawPlayerHand segment.
-    /// Provider adapters supply their draw policy and semantic frame; this
-    /// boundary publishes the resumed cards through the matching adapter.
+    /// Own the post-cost entry and routing for an automatic DrawPlayerHand
+    /// segment. Provider adapters supply their suspension policy and semantic
+    /// frame; this owner routes the tagged result through shared dispatch.
     /// </summary>
     private static PrototypeDrawCardsResumeResultV111
         ResumeAutomaticHandDrawCost(
@@ -386,11 +398,12 @@ public sealed partial class PrototypeGameEngine
             PrototypeDrawCardsSuspensionPolicyV111 suspensionPolicy,
             bool allowHookSuspension,
             string unsupportedBoundaryMessage,
-            string recycleSite,
-            string recycleOperation,
-            bool semantic)
+            string? recycleSite = null,
+            string? recycleOperation = null)
     {
-        if (semantic != (semanticDraw is not null))
+        bool semantic = semanticDraw is not null;
+        if (semantic != (recycleSite is not null) ||
+            semantic != (recycleOperation is not null))
             throw new InvalidDataException(
                 "Automatic draw-cost provider frame is inconsistent.");
 
@@ -401,24 +414,22 @@ public sealed partial class PrototypeGameEngine
             return new PrototypeDrawCardsResumeResultV111(
                 resumed.Run, cost.RemainingCount);
 
-        if (semantic)
-        {
-            int requested = resumed.SemanticRequested ??
-                throw new InvalidDataException(
-                    "Semantic automatic draw resume lost its request.");
-            return ResolveControlledSemanticDrawResult(
-                resumed.Run, drawn, semanticDraw!, continuation: null,
-                automaticHandDrawRequested: requested,
-                recycleSite: recycleSite,
-                recycleOperation: recycleOperation);
-        }
-
-        if (resumed.SemanticRequested is not null)
+        int requestedCount = resumed.SemanticRequested ?? 0;
+        if (semantic && requestedCount <= 0)
+            throw new InvalidDataException(
+                "Semantic automatic draw resume lost its request.");
+        if (!semantic && resumed.SemanticRequested is not null)
             throw new InvalidDataException(
                 "Controlled automatic draw acquired semantic progress.");
-        return new PrototypeDrawCardsResumeResultV111(
-            ContinueControlledHandDraw(resumed.Run, drawn),
-            drawn.RemainingCount);
+        return ResumeAutomaticHandDrawBoundary(
+                resumed.Run, drawn, requestedCount,
+                resumeSavedStage: true,
+                semanticDraw: semanticDraw,
+                recycleSite: recycleSite ?? "combat.DrawPlayerHand",
+                recycleOperation: recycleOperation ??
+                    "unsupported_nested_stage") ??
+            throw new InvalidDataException(
+                "Automatic hand-draw result lost its continuation owner.");
     }
 
     private static int? ValidateAutomaticHandDrawCostCheckpoint(
