@@ -98,15 +98,17 @@ remain `UNVERIFIED`.
 
 The automatic enemy-action frame is exposed as `enemy_action_chance` with its
 typed request and eligible indices. It also exposes optional ordered
-`candidate_labels`: bounded positions and HP values, physical card identities
-for Hopper theft, and enemy model plus pool slot for Fabricator summon choices.
-JSONL clients may resolve with `candidate_label`; `selected_index` remains
-available for compatibility. Subsequent enemy insertions or Hopper theft
-choices are presented one at a time, then the semantic turn-intent stage
-continues. Native summon-pool selection still fails closed pending source
-audit; stream assignment and pool eligibility remain open. Canonical Native
-`run.shuffle` insertion requests receive exact bounded-index `SOURCE_VERIFIED`
-masses; legacy insertion requests remain `UNVERIFIED`.
+`candidate_labels`: enemy-pile insertions identify the generated card and its
+gap by adjacent physical card identities, HP choices identify their bounded
+values, Hopper theft identifies physical card instances, and Fabricator
+summons identify the enemy model plus pool slot. JSONL clients may resolve with
+`candidate_label`; `selected_index` remains available for compatibility.
+Subsequent enemy insertions or Hopper theft choices are presented one at a
+time, then the semantic turn-intent stage continues. Native summon-pool
+selection still fails closed pending source audit; stream assignment and pool
+eligibility remain open. Canonical Native `run.shuffle` insertion requests
+receive exact bounded-index `SOURCE_VERIFIED` masses; legacy insertion requests
+remain `UNVERIFIED`.
 
 ## Validation scope
 

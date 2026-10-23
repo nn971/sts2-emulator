@@ -14499,6 +14499,20 @@ public sealed partial class PrototypeGameEngine
             siteId, streamId, ownerId,
             ordinal, [], OperationKind: "bounded_integer",
             BoundedCount: checked(orderedDrawPile.Length + 1));
+        var controlledCandidateLabels =
+            PrototypeControlledEnemyActionContinuationV111
+                    .IsEnemyActionSite(siteId) &&
+                (ControlledStochasticChanceReplayV111.IsActive ||
+                 ControlledEventChoiceReplayV111.IsActive)
+                ? DescribeEnemyInsertionCandidateLabels(
+                    cardModelId, pileName, orderedDrawPile)
+                : null;
+        using var typedCandidateLabels =
+            ControlledStochasticChanceReplayV111.DescribeCandidates(
+                controlledCandidateLabels);
+        using var eventCandidateLabels =
+            ControlledEventChoiceReplayV111.DescribeCandidates(
+                controlledCandidateLabels);
         if (ControlledChanceGuardV111.Active &&
             !ControlledChanceGuardV111.EngineOwnedNativeProviderActive)
         {
@@ -14536,6 +14550,35 @@ public sealed partial class PrototypeGameEngine
                     combat.Stochastic, native with { RunStreams = streams })
             };
         return (updated, decision.SelectedIndex);
+    }
+
+    private static string[] DescribeEnemyInsertionCandidateLabels(
+        string cardModelId, string pileName, long[] orderedPile)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(cardModelId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(pileName);
+        ArgumentNullException.ThrowIfNull(orderedPile);
+        if (pileName is not ("draw" or "discard") ||
+            orderedPile.Any(instanceId => instanceId <= 0) ||
+            orderedPile.Distinct().Count() != orderedPile.Length)
+            throw new InvalidDataException(
+                "Enemy insertion labels require a unique physical pile.");
+        var prefix = "insert:" + cardModelId + ":" + pileName + ":";
+        if (orderedPile.Length == 0)
+            return [prefix + "empty"];
+
+        var labels = new string[orderedPile.Length + 1];
+        labels[0] = prefix + "before:" + orderedPile[0].ToString(
+            System.Globalization.CultureInfo.InvariantCulture);
+        for (var index = 1; index < orderedPile.Length; index++)
+            labels[index] = prefix + "between:" +
+                orderedPile[index - 1].ToString(
+                    System.Globalization.CultureInfo.InvariantCulture) + ":" +
+                orderedPile[index].ToString(
+                    System.Globalization.CultureInfo.InvariantCulture);
+        labels[^1] = prefix + "after:" + orderedPile[^1].ToString(
+            System.Globalization.CultureInfo.InvariantCulture);
+        return labels;
     }
 
     private static CombatState MakeControlledRandomTargetChoice(

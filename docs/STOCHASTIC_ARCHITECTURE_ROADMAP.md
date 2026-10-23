@@ -12,6 +12,14 @@ fingerprints those labels and `semantic_resolve_enemy_action` accepts either
 validates the label support; snapshots without labels retain index replay.
 Static source review and `git diff --check` only; no tests or builds were run.
 
+**S4 enemy pile-insertion identity follow-up (2026-10-23):** The shared
+`ResolveRandomPilePosition` source now labels enemy draw/discard insertion
+outcomes by the generated card model and the physical pile gap: empty pile,
+before a card, between two card instances, or after a card. These labels flow
+through the existing enemy-action replay and end-turn transcript; index
+resolution remains compatible. Static source review and `git diff --check`
+only; no tests or builds were run.
+
 **S0 Native request and combat-card helper closure increment (2026-10-23):**
 The direct-call census now resolves the Native generic bounded-index request
 through its finite operation registry after the Native provider guard, and
