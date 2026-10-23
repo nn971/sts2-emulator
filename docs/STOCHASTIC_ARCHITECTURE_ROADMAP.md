@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S0 Neow request-source inventory increment (2026-10-23):** The Neow
+decision-plan builder now references its owning Chance Law session's finite
+site list explicitly, and the regenerated direct-call census resolves both
+guarded Neow request constructors. The census maps 99 of 104 typed requests;
+five generic or dynamic request sites remain for manual source tracing.
+Static review and `git diff --check` only; no tests or builds were run.
+
 **S6 Native-regional Event-entry fallback increment (2026-10-23):** The
 existing atomic Event-node entry session now consumes supported saved legacy
 `event` requests for generated gold, Stone of All Time's potion slot, and

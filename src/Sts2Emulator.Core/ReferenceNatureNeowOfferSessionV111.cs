@@ -42,7 +42,7 @@ internal static class NeowOfferDecisionPlanBuilderV111
             int? boundedCount = null,
             int requestOrdinal = 0)
         {
-            if (!NeowOfferSessionSiteIds.Contains(
+            if (!ChanceLawEngineV111.NeowOfferSessionSiteIds.Contains(
                     siteId, StringComparer.Ordinal))
                 throw new NotSupportedException(
                     $"Neow offer decision does not support site '{siteId}'.");
