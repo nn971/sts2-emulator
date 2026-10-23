@@ -34,6 +34,13 @@ The duplicate transient result record was removed without changing saved
 frame fields or transcript owners. Static source review and `git diff --check`
 only; no tests or builds were run.
 
+**S4 automatic draw-count progress increment (2026-10-24):** Semantic
+automatic hand-draw completion and partial draw resumes now use the shared
+`GetCardsDrawnSince` mechanics query to validate and interpret combat card-count
+deltas. This keeps requested and remaining progress tied to the same saved
+checkpoint. Static source review and `git diff --check` only; no tests or builds
+were run.
+
 **S4 controlled event-choice candidate replay increment (2026-10-24):**
 Generic event-effect continuations now pass each saved decision's ordered
 candidate labels into replay and compare them with the live support before

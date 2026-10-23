@@ -600,8 +600,21 @@ public sealed partial class PrototypeGameEngine
         }
         if (combat.Stochastic.SemanticDeck?.Pending is not null)
             return Math.Max(0, previousRemaining -
-                (combat.CounterState.CardsDrawnThisCombat - drawnBefore));
+                GetCardsDrawnSince(combat, drawnBefore));
         return 0;
+    }
+
+    internal static int GetCardsDrawnSince(
+        CombatState combat, int drawnBefore)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        if (drawnBefore < 0)
+            throw new ArgumentOutOfRangeException(nameof(drawnBefore));
+        var drawn = combat.CounterState.CardsDrawnThisCombat - drawnBefore;
+        if (drawn < 0)
+            throw new InvalidDataException(
+                "Combat draw count moved behind its saved resume checkpoint.");
+        return drawn;
     }
 
     internal static int ExpectedStratagemSelectionCount(

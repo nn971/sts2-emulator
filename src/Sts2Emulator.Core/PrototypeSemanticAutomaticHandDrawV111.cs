@@ -200,11 +200,7 @@ public sealed partial class PrototypeGameEngine
             // A source-committed opening order or an empty-capacity draw
             // can complete this stage without a semantic card ticket.
             // Interpret either result through the shared stage owner.
-            int drawn = after.CounterState.CardsDrawnThisCombat -
-                cardsDrawnBefore;
-            if (drawn < 0)
-                throw new InvalidDataException(
-                    "Automatic hand draw reduced the combat draw count.");
+            int drawn = GetCardsDrawnSince(after, cardsDrawnBefore);
             result = CompleteAutomaticHandDrawStage(
                 result, drawn > 0 ? drawn : null);
             return PrototypeDrawCardsResumeResultV111.ForHandDraw(
@@ -224,8 +220,7 @@ public sealed partial class PrototypeGameEngine
         var savedRequested = completed.Stochastic
             .CompletedSemanticHandDrawRequested;
         var requested = savedRequested ??
-            Math.Max(0,
-                after.CounterState.CardsDrawnThisCombat - cardsDrawnBefore);
+            GetCardsDrawnSince(after, cardsDrawnBefore);
         // The common stage owner already recorded semantic completions that
         // carried a saved request. Only source-committed draw-free completion
         // needs the facade to derive and attach a receipt here.
