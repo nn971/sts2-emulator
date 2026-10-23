@@ -127,7 +127,8 @@ public sealed record PrototypeControlledEnemyActionContinuationV111(
                 operation = ControlledEnemyActionMechanicsOperationV111
                     .DiscardPileInsertion;
                 return true;
-            case "combat.enemy.theft_card.select":
+            case StochasticSiteRegistryV111
+                .CombatEnemyTheftCardSelectSiteId:
                 operation = ControlledEnemyActionMechanicsOperationV111
                     .TheftCardSelection;
                 return true;

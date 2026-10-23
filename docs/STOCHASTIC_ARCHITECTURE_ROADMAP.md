@@ -10,6 +10,15 @@ and control checks, and gameplay request callsites all reference those
 constants instead of maintaining duplicate literals.
 Static source review and `git diff --check` only; no tests or builds were run.
 
+**S0 enemy-theft site review increment (2026-10-23):** The scoped manual
+inventory now traces persistent-card support, theft-priority ordering, the
+Nature semantic-deck removal guard, enemy-action replay, and atomic zone/deck
+commit for `combat.enemy.theft_card.select`. Its stable SiteId now comes from
+the shared registry at request, continuation, and capability boundaries.
+Native stream attribution, source-pool fidelity, legacy law, and cursor parity
+remain open. Static source review and `git diff --check` only; no tests or
+builds were run.
+
 **S0 Native request-wrapper callsite closure increment (2026-10-23):** The
 direct-call census now resolves the three generic request constructors in
 `NativeRandomChoiceV111` through their operation-matched Native player-choice

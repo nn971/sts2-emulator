@@ -4406,7 +4406,9 @@ public sealed partial class PrototypeGameEngine
                             // This stream is explicitly an approximation.
                             var choice = ResolveRandomCombatCardIndex(
                                 combat, rng,
-                                "combat.enemy.theft_card.select", "combat",
+                                StochasticSiteRegistryV111
+                                    .CombatEnemyTheftCardSelectSiteId,
+                                "combat",
                                 candidates.Select(card => card.InstanceId)
                                     .ToArray(),
                                 "enemy:" + enemy.InstanceId +
@@ -14012,7 +14014,8 @@ public sealed partial class PrototypeGameEngine
         if (callOrdinal > int.MaxValue)
             throw new NotSupportedException(
                 "Random combat-card provider ordinal exceeds the request range.");
-        if (siteId == "combat.enemy.theft_card.select" &&
+        if (siteId == StochasticSiteRegistryV111
+                .CombatEnemyTheftCardSelectSiteId &&
             combat.Stochastic.SemanticDeck is
                 { Mode: SemanticDeckStateV111.NatureMode } semanticDeck &&
             orderedCardInstanceIds.Any(id => combat.DrawPile.Contains(id) &&
@@ -14020,7 +14023,8 @@ public sealed partial class PrototypeGameEngine
                     semanticDeck, id)))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK " +
-                "site=combat.enemy.theft_card.select " +
+                "site=" + StochasticSiteRegistryV111
+                    .CombatEnemyTheftCardSelectSiteId + " " +
                 "operation=draw_pile_candidate_removal_breaks_constraints");
         IRandomIndexProviderV111 provider = native is null
             ? new LegacyPrototypeRandomIndexProviderV111()
