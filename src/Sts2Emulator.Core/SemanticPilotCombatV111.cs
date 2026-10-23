@@ -207,6 +207,10 @@ public sealed record SemanticNativePolicyAuditV111(
         SemanticPotionRewardOddsNativeAuditV111.CurrentSchemaId;
     public const string PotionFactoryAuditSchemaV1 =
         SemanticPotionFactoryNativeAuditV111.CurrentSchemaId;
+    public const string CombatGoldAuditSchemaV1 =
+        SemanticCombatGoldNativeAuditV111.CurrentSchemaId;
+    public const string RelicRewardAuditSchemaV1 =
+        SemanticRelicRewardNativeAuditV111.CurrentSchemaId;
     public const string CardTransformAuditSchemaV1 =
         "sts2-v111-native-card-transform-audit-v1";
     public const string RandomTargetAuditSchemaV1 =
@@ -245,6 +249,12 @@ public sealed record SemanticNativePolicyAuditV111(
     /// <summary>Null for older snapshots; V1 covers Native PotionFactory
     /// reward rarity and model outcomes.</summary>
     public string? PotionFactoryAuditSchema { get; init; }
+    /// <summary>Null for older snapshots; V1 covers raw Native combat-gold
+    /// amounts before later reward modifiers.</summary>
+    public string? CombatGoldAuditSchema { get; init; }
+    /// <summary>Null for older snapshots; V1 covers Native relic-reward
+    /// rarity and committed queue outcomes.</summary>
+    public string? RelicRewardAuditSchema { get; init; }
     /// <summary>Null for older snapshots that predate typed Native card
     /// transform replacement results.</summary>
     public string? CardTransformAuditSchema { get; init; }
@@ -288,6 +298,8 @@ public sealed record SemanticNativePolicyAuditV111(
         _potionRewardOddsOutcomes = [];
     private SemanticPotionFactoryNativeAuditV111[]?
         _potionFactoryOutcomes = [];
+    private SemanticCombatGoldNativeAuditV111[]? _combatGoldOutcomes = [];
+    private SemanticRelicRewardNativeAuditV111[]? _relicRewardOutcomes = [];
 
     public RandomBoundaryEventV111[] Decisions
     {
@@ -377,6 +389,16 @@ public sealed record SemanticNativePolicyAuditV111(
         init => _potionFactoryOutcomes =
             ClonePotionFactoryOutcomes(value);
     }
+    public SemanticCombatGoldNativeAuditV111[] CombatGoldOutcomes
+    {
+        get => CloneCombatGoldOutcomes(_combatGoldOutcomes)!;
+        init => _combatGoldOutcomes = CloneCombatGoldOutcomes(value);
+    }
+    public SemanticRelicRewardNativeAuditV111[] RelicRewardOutcomes
+    {
+        get => CloneRelicRewardOutcomes(_relicRewardOutcomes)!;
+        init => _relicRewardOutcomes = CloneRelicRewardOutcomes(value);
+    }
 
     public SemanticNativePolicyAuditV111 Fork() => this with
     {
@@ -406,7 +428,9 @@ public sealed record SemanticNativePolicyAuditV111(
         PotionRewardOddsOutcomes = ClonePotionRewardOddsOutcomes(
             _potionRewardOddsOutcomes)!,
         PotionFactoryOutcomes = ClonePotionFactoryOutcomes(
-            _potionFactoryOutcomes)!
+            _potionFactoryOutcomes)!,
+        CombatGoldOutcomes = CloneCombatGoldOutcomes(_combatGoldOutcomes)!,
+        RelicRewardOutcomes = CloneRelicRewardOutcomes(_relicRewardOutcomes)!
     };
 
     private static RandomBoundaryEventV111[]? CloneEvents(
@@ -493,6 +517,18 @@ public sealed record SemanticNativePolicyAuditV111(
         values?.Select(value => value is null ? null! : value.Fork())
             .ToArray();
 
+    private static SemanticCombatGoldNativeAuditV111[]?
+        CloneCombatGoldOutcomes(
+            SemanticCombatGoldNativeAuditV111[]? values) =>
+        values?.Select(value => value is null ? null! : value.Fork())
+            .ToArray();
+
+    private static SemanticRelicRewardNativeAuditV111[]?
+        CloneRelicRewardOutcomes(
+            SemanticRelicRewardNativeAuditV111[]? values) =>
+        values?.Select(value => value is null ? null! : value.Fork())
+            .ToArray();
+
     public void Validate()
     {
         var decisions = _decisions;
@@ -510,6 +546,8 @@ public sealed record SemanticNativePolicyAuditV111(
         var cardOddsOutcomes = _cardOddsOutcomes;
         var potionRewardOddsOutcomes = _potionRewardOddsOutcomes;
         var potionFactoryOutcomes = _potionFactoryOutcomes;
+        var combatGoldOutcomes = _combatGoldOutcomes;
+        var relicRewardOutcomes = _relicRewardOutcomes;
         if (ProviderId != NativeProviderId ||
             ProbabilityStatus != "UNVERIFIED" || decisions is null ||
             providerTrace is null || weightedIntentOutcomes is null ||
@@ -525,6 +563,8 @@ public sealed record SemanticNativePolicyAuditV111(
             cardOddsOutcomes is null ||
             potionRewardOddsOutcomes is null ||
             potionFactoryOutcomes is null ||
+            combatGoldOutcomes is null ||
+            relicRewardOutcomes is null ||
             (WeightedIntentAuditSchema is not null &&
              WeightedIntentAuditSchema != WeightedIntentAuditSchemaV1) ||
             (CardInstanceIndexAuditSchema is not null &&
@@ -549,6 +589,10 @@ public sealed record SemanticNativePolicyAuditV111(
              PotionRewardOddsAuditSchema != PotionRewardOddsAuditSchemaV1) ||
             (PotionFactoryAuditSchema is not null &&
              PotionFactoryAuditSchema != PotionFactoryAuditSchemaV1) ||
+            (CombatGoldAuditSchema is not null &&
+             CombatGoldAuditSchema != CombatGoldAuditSchemaV1) ||
+            (RelicRewardAuditSchema is not null &&
+             RelicRewardAuditSchema != RelicRewardAuditSchemaV1) ||
             (CardTransformAuditSchema is not null &&
              CardTransformAuditSchema != CardTransformAuditSchemaV1) ||
             (RandomTargetAuditSchema is not null &&
@@ -934,6 +978,34 @@ public sealed record SemanticNativePolicyAuditV111(
                 throw new InvalidDataException(
                     "Native PotionFactory outcome duplicates an event or primitive decision.");
         }
+        var combatGoldEvents = new HashSet<string>(StringComparer.Ordinal);
+        var combatGoldDecisions = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var auditEntry in combatGoldOutcomes)
+        {
+            if (auditEntry is null)
+                throw new InvalidDataException(
+                    "Native combat-gold audit entry is null.");
+            auditEntry.Validate();
+            if (!combatGoldEvents.Add(auditEntry.EventId) ||
+                !combatGoldDecisions.Add(CanonicalJson.Sha256(
+                    auditEntry.ProviderDecision)))
+                throw new InvalidDataException(
+                    "Native combat-gold outcome duplicates an event or primitive decision.");
+        }
+        var relicRewardEvents = new HashSet<string>(StringComparer.Ordinal);
+        var relicRewardDecisions = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var auditEntry in relicRewardOutcomes)
+        {
+            if (auditEntry is null)
+                throw new InvalidDataException(
+                    "Native relic-reward audit entry is null.");
+            auditEntry.Validate();
+            if (!relicRewardEvents.Add(auditEntry.EventId) ||
+                !relicRewardDecisions.Add(CanonicalJson.Sha256(
+                    auditEntry.ProviderDecision)))
+                throw new InvalidDataException(
+                    "Native relic-reward outcome duplicates an event or primitive decision.");
+        }
 
         var traceIndices = new List<RandomBoundaryEventV111>();
         var traceIntentDecisions = new List<RandomIndexDecisionV111>();
@@ -971,6 +1043,10 @@ public sealed record SemanticNativePolicyAuditV111(
             new List<RandomUnitFloatDecisionV111>();
         var tracePotionFactoryModelDecisions =
             new List<RandomIndexDecisionV111>();
+        var traceCombatGoldDecisions =
+            new List<RandomIndexDecisionV111>();
+        var traceRelicRewardDecisions =
+            new List<RandomUnitFloatDecisionV111>();
         for (var index = 0; index < providerTrace.Length; index++)
         {
             var entry = providerTrace[index];
@@ -986,6 +1062,16 @@ public sealed record SemanticNativePolicyAuditV111(
                 {
                     Sequence = traceIndices.Count + 1
                 });
+                if (value.Request.SiteId ==
+                        StochasticSiteRegistryV111.NativeCombatGoldSiteId &&
+                    value.Request.StreamId ==
+                        NativePlayerRngV111.RewardsStreamId &&
+                    value.Request.OperationKind == "bounded_integer")
+                    traceCombatGoldDecisions.Add(
+                        new RandomIndexDecisionV111(
+                            value.Request, value.SelectedIndex,
+                            value.ProviderMode, value.NativeCursorBefore,
+                            value.NativeCursorAfter));
                 if (value.Request.SiteId == StochasticSiteRegistryV111
                         .NativePotionFactoryModelSiteId &&
                     value.Request.StreamId ==
@@ -1106,6 +1192,15 @@ public sealed record SemanticNativePolicyAuditV111(
                 if (value.Request.SiteId == StochasticSiteRegistryV111
                         .RewardPotionOddsUnitFloatSiteId)
                     tracePotionRewardOddsDecisions.Add(
+                        new RandomUnitFloatDecisionV111(
+                            value.Request, value.SelectedValue,
+                            value.ProviderMode, value.NativeCursorBefore,
+                            value.NativeCursorAfter));
+                if (value.Request.SiteId == StochasticSiteRegistryV111
+                        .RelicGrabBagRaritySiteId &&
+                    value.Request.StreamId ==
+                        NativePlayerRngV111.RewardsStreamId)
+                    traceRelicRewardDecisions.Add(
                         new RandomUnitFloatDecisionV111(
                             value.Request, value.SelectedValue,
                             value.ProviderMode, value.NativeCursorBefore,
@@ -1451,6 +1546,44 @@ public sealed record SemanticNativePolicyAuditV111(
                 if (matchingOutcomes != 1)
                     throw new InvalidDataException(
                         "Native PotionFactory model decision does not have exactly one typed outcome annotation.");
+            }
+        }
+
+        if (CombatGoldAuditSchema == CombatGoldAuditSchemaV1 ||
+            combatGoldOutcomes.Length > 0)
+        {
+            if (traceCombatGoldDecisions.Count !=
+                combatGoldOutcomes.Length)
+                throw new InvalidDataException(
+                    "Native combat-gold outcomes are incomplete for their mixed trace.");
+            foreach (var goldDecision in traceCombatGoldDecisions)
+            {
+                var decisionFingerprint = CanonicalJson.Sha256(goldDecision);
+                var matchingOutcomes = combatGoldOutcomes.Count(outcome =>
+                    CanonicalJson.Sha256(outcome.ProviderDecision) ==
+                    decisionFingerprint);
+                if (matchingOutcomes != 1)
+                    throw new InvalidDataException(
+                        "Native combat-gold decision does not have exactly one typed outcome annotation.");
+            }
+        }
+
+        if (RelicRewardAuditSchema == RelicRewardAuditSchemaV1 ||
+            relicRewardOutcomes.Length > 0)
+        {
+            if (traceRelicRewardDecisions.Count !=
+                relicRewardOutcomes.Length)
+                throw new InvalidDataException(
+                    "Native relic-reward outcomes are incomplete for their mixed trace.");
+            foreach (var relicDecision in traceRelicRewardDecisions)
+            {
+                var decisionFingerprint = CanonicalJson.Sha256(relicDecision);
+                var matchingOutcomes = relicRewardOutcomes.Count(outcome =>
+                    CanonicalJson.Sha256(outcome.ProviderDecision) ==
+                    decisionFingerprint);
+                if (matchingOutcomes != 1)
+                    throw new InvalidDataException(
+                        "Native relic-reward float decision does not have exactly one typed outcome annotation.");
             }
         }
 
@@ -2589,7 +2722,9 @@ public static class SemanticPilotCombatEngineV111
                 setupJournal.PotionGenerationOutcomes.ToArray(),
                 setupJournal.CardOddsOutcomes.ToArray(),
                 setupJournal.PotionRewardOddsOutcomes.ToArray(),
-                setupJournal.PotionFactoryOutcomes.ToArray());
+                setupJournal.PotionFactoryOutcomes.ToArray(),
+                setupJournal.CombatGoldOutcomes.ToArray(),
+                setupJournal.RelicRewardOutcomes.ToArray());
         if (entry.FixtureDrawCostRelicId is { } relicId)
         {
             if (relicId != "proto.relic.snecko_eye")
@@ -3232,6 +3367,10 @@ public static class SemanticPilotCombatEngineV111
             setupJournal.PotionRewardOddsOutcomes.ToArray();
         var nativePotionFactoryOutcomes =
             setupJournal.PotionFactoryOutcomes.ToArray();
+        var nativeCombatGoldOutcomes =
+            setupJournal.CombatGoldOutcomes.ToArray();
+        var nativeRelicRewardOutcomes =
+            setupJournal.RelicRewardOutcomes.ToArray();
         var routeAudit = new SemanticSourceRouteAuditV111(
             SemanticSourceRouteAuditV111.SourceRouteProviderId,
             entry.RouteActOneRegion, actions.ToArray(), actualNodeId,
@@ -3402,6 +3541,8 @@ public static class SemanticPilotCombatEngineV111
                     PotionRewardOddsOutcomes =
                         nativePotionRewardOddsOutcomes,
                     PotionFactoryOutcomes = nativePotionFactoryOutcomes,
+                    CombatGoldOutcomes = nativeCombatGoldOutcomes,
+                    RelicRewardOutcomes = nativeRelicRewardOutcomes,
                     WeightedIntentAuditSchema =
                         SemanticNativePolicyAuditV111
                             .WeightedIntentAuditSchemaV1,
@@ -3432,6 +3573,12 @@ public static class SemanticPilotCombatEngineV111
                     PotionFactoryAuditSchema =
                         SemanticNativePolicyAuditV111
                             .PotionFactoryAuditSchemaV1,
+                    CombatGoldAuditSchema =
+                        SemanticNativePolicyAuditV111
+                            .CombatGoldAuditSchemaV1,
+                    RelicRewardAuditSchema =
+                        SemanticNativePolicyAuditV111
+                            .RelicRewardAuditSchemaV1,
                     CardTransformAuditSchema =
                         SemanticNativePolicyAuditV111
                             .CardTransformAuditSchemaV1,
@@ -3474,7 +3621,9 @@ public static class SemanticPilotCombatEngineV111
         SemanticCardOddsNativeAuditV111[] setupCardOddsOutcomes,
         SemanticPotionRewardOddsNativeAuditV111[]
             setupPotionRewardOddsOutcomes,
-        SemanticPotionFactoryNativeAuditV111[] setupPotionFactoryOutcomes)
+        SemanticPotionFactoryNativeAuditV111[] setupPotionFactoryOutcomes,
+        SemanticCombatGoldNativeAuditV111[] setupCombatGoldOutcomes,
+        SemanticRelicRewardNativeAuditV111[] setupRelicRewardOutcomes)
     {
         ArgumentNullException.ThrowIfNull(nativeStreams);
         ArgumentNullException.ThrowIfNull(formation);
@@ -3539,6 +3688,8 @@ public static class SemanticPilotCombatEngineV111
                 PotionRewardOddsOutcomes =
                     setupPotionRewardOddsOutcomes,
                 PotionFactoryOutcomes = setupPotionFactoryOutcomes,
+                CombatGoldOutcomes = setupCombatGoldOutcomes,
+                RelicRewardOutcomes = setupRelicRewardOutcomes,
                 WeightedIntentAuditSchema =
                     SemanticNativePolicyAuditV111
                         .WeightedIntentAuditSchemaV1,
@@ -3569,6 +3720,12 @@ public static class SemanticPilotCombatEngineV111
                 PotionFactoryAuditSchema =
                     SemanticNativePolicyAuditV111
                         .PotionFactoryAuditSchemaV1,
+                CombatGoldAuditSchema =
+                    SemanticNativePolicyAuditV111
+                        .CombatGoldAuditSchemaV1,
+                RelicRewardAuditSchema =
+                    SemanticNativePolicyAuditV111
+                        .RelicRewardAuditSchemaV1,
                 CardTransformAuditSchema =
                     SemanticNativePolicyAuditV111
                         .CardTransformAuditSchemaV1,
@@ -4239,6 +4396,8 @@ public static class SemanticPilotCombatEngineV111
         var potionRewardOddsOutcomes = boundaries
             .PotionRewardOddsOutcomes.ToArray();
         var potionFactoryOutcomes = boundaries.PotionFactoryOutcomes.ToArray();
+        var combatGoldOutcomes = boundaries.CombatGoldOutcomes.ToArray();
+        var relicRewardOutcomes = boundaries.RelicRewardOutcomes.ToArray();
 
         if (result.Phase == RunPhase.Combat)
             ValidateNativePolicyBoundary(result);
@@ -4291,7 +4450,11 @@ public static class SemanticPilotCombatEngineV111
                     audit.PotionRewardOddsOutcomes
                         .Concat(potionRewardOddsOutcomes).ToArray(),
                 PotionFactoryOutcomes = audit.PotionFactoryOutcomes
-                    .Concat(potionFactoryOutcomes).ToArray()
+                    .Concat(potionFactoryOutcomes).ToArray(),
+                CombatGoldOutcomes = audit.CombatGoldOutcomes
+                    .Concat(combatGoldOutcomes).ToArray(),
+                RelicRewardOutcomes = audit.RelicRewardOutcomes
+                    .Concat(relicRewardOutcomes).ToArray()
             }
         };
         Validate(next);

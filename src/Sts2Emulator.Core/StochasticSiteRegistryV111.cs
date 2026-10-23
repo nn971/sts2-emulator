@@ -346,6 +346,8 @@ public static class StochasticSiteRegistryV111
 {
     public const string RelicGrabBagRaritySiteId =
         "relic_grab_bag.rarity.unit_float";
+    public const string NativeCombatGoldSiteId =
+        "reward.combat_gold.index_draw";
     public const string DrawPileRandomInsertSiteId =
         "combat.draw_pile.random_insert_index";
     public const string AfterShuffleRelicDrawPileInsertSiteId =
@@ -1002,7 +1004,7 @@ public static class StochasticSiteRegistryV111
         PrototypeNativeLaterActMap.PathDeltaShuffleSiteId,
         PrototypeNativeLaterActMap.RoomAssignmentShuffleSiteId,
         PrototypeNativeLaterActMap.GloryRestCountSiteId,
-        "reward.combat_gold.index_draw",
+        NativeCombatGoldSiteId,
         RewardPotionOddsUnitFloatSiteId,
         RewardBossRelicOfferShuffleSiteId,
         RewardLavaRockRelicOfferShuffleSiteId,
@@ -1169,7 +1171,7 @@ public static class StochasticSiteRegistryV111
     ];
     private static readonly string[] NativeBoundedIntegerSites =
     [
-        "reward.combat_gold.index_draw"
+        NativeCombatGoldSiteId
     ];
     private static readonly string[] NativeDiagnosticRandomIndexSites =
     [
@@ -1672,7 +1674,7 @@ public static class StochasticSiteRegistryV111
                 CardRarityUpgradeRollUnitFloatSiteId or
                 "relic_grab_bag.rarity.unit_float" =>
                     operationKind == "unit_float",
-                "reward.combat_gold.index_draw" or
+                NativeCombatGoldSiteId or
                 "reward.boss_relic_offer.shuffle_swap_index" or
                 "reward.lava_rock.relic_offer.shuffle_swap_index" =>
                     operationKind == "bounded_integer",

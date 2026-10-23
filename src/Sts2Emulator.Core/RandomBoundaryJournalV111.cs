@@ -559,6 +559,10 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
         _potionRewardOddsOutcomes = [];
     private readonly List<SemanticPotionFactoryNativeAuditV111>
         _potionFactoryOutcomes = [];
+    private readonly List<SemanticCombatGoldNativeAuditV111>
+        _combatGoldOutcomes = [];
+    private readonly List<SemanticRelicRewardNativeAuditV111>
+        _relicRewardOutcomes = [];
     private readonly Dictionary<string, int> _operationSequences =
         new(StringComparer.Ordinal);
     private bool _disposed;
@@ -657,6 +661,16 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
     /// <summary>Typed Native PotionFactory rarity and model outcomes.</summary>
     public IReadOnlyList<SemanticPotionFactoryNativeAuditV111>
         PotionFactoryOutcomes => _potionFactoryOutcomes
+            .Select(outcome => outcome.Fork()).ToArray();
+
+    /// <summary>Typed Native combat-gold amount outcomes.</summary>
+    public IReadOnlyList<SemanticCombatGoldNativeAuditV111>
+        CombatGoldOutcomes => _combatGoldOutcomes
+            .Select(outcome => outcome.Fork()).ToArray();
+
+    /// <summary>Typed Native relic-reward rarity and queue outcomes.</summary>
+    public IReadOnlyList<SemanticRelicRewardNativeAuditV111>
+        RelicRewardOutcomes => _relicRewardOutcomes
             .Select(outcome => outcome.Fork()).ToArray();
 
     internal static void RecordWeightedIntentOutcome(
@@ -996,6 +1010,53 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
             throw new InvalidDataException(
                 "PotionFactory annotation differs from its adjacent primitive transcript pair.");
         current._potionFactoryOutcomes.Add(auditEntry.Fork());
+    }
+
+    internal static void RecordCombatGoldOutcome(
+        SemanticCombatGoldNativeAuditV111 auditEntry)
+    {
+        ArgumentNullException.ThrowIfNull(auditEntry);
+        var current = Active.Value;
+        if (current is null)
+            return;
+        auditEntry.Validate();
+        var lastEntry = current._orderedTranscript.LastOrDefault();
+        if (lastEntry is null || lastEntry.OperationKind != "index")
+            throw new InvalidDataException(
+                "Combat-gold annotation has no preceding bounded-index transcript entry.");
+        var boundary = lastEntry.DeserializeEvent<RandomBoundaryEventV111>();
+        var journalDecision = new RandomIndexDecisionV111(
+            boundary.Request, boundary.SelectedIndex, boundary.ProviderMode,
+            boundary.NativeCursorBefore, boundary.NativeCursorAfter);
+        if (CanonicalJson.Sha256(journalDecision) !=
+            CanonicalJson.Sha256(auditEntry.ProviderDecision))
+            throw new InvalidDataException(
+                "Combat-gold annotation differs from the latest primitive index entry.");
+        current._combatGoldOutcomes.Add(auditEntry.Fork());
+    }
+
+    internal static void RecordRelicRewardOutcome(
+        SemanticRelicRewardNativeAuditV111 auditEntry)
+    {
+        ArgumentNullException.ThrowIfNull(auditEntry);
+        var current = Active.Value;
+        if (current is null)
+            return;
+        auditEntry.Validate();
+        var lastEntry = current._orderedTranscript.LastOrDefault();
+        if (lastEntry is null || lastEntry.OperationKind != "unit_float")
+            throw new InvalidDataException(
+                "Relic-reward annotation has no preceding rarity unit-float transcript entry.");
+        var boundary = lastEntry
+            .DeserializeEvent<RandomUnitFloatBoundaryEventV111>();
+        var journalDecision = new RandomUnitFloatDecisionV111(
+            boundary.Request, boundary.SelectedValue, boundary.ProviderMode,
+            boundary.NativeCursorBefore, boundary.NativeCursorAfter);
+        if (CanonicalJson.Sha256(journalDecision) !=
+            CanonicalJson.Sha256(auditEntry.ProviderDecision))
+            throw new InvalidDataException(
+                "Relic-reward annotation differs from the latest primitive unit-float entry.");
+        current._relicRewardOutcomes.Add(auditEntry.Fork());
     }
 
     /// <summary>Returns a provider-specific mixed transcript in the order

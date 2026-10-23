@@ -69,16 +69,29 @@ public static class PrototypeNativeCombatGoldReward
         // Native GoldReward.Populate calls Rewards.NextInt(min, max+1).
         var ownerId =
             $"room:{room}:ascension:{ascension}:bounds:{minimum}:{maximum}";
-        var index = nativeRunRng is null
-            ? LegacyRandomChoiceV111.ChooseBoundedInteger(
-                rng, "reward.combat_gold.index_draw", "reward",
-                ownerId, checked(maximum - minimum + 1)).SelectedIndex
-            : NativePlayerRngV111.ChooseBoundedInteger(
-                nativeRunRng,
-                "reward.combat_gold.index_draw",
-                NativePlayerRngV111.RewardsStreamId,
-                ownerId,
-                checked(maximum - minimum + 1));
+        var boundedCount = checked(maximum - minimum + 1);
+        int index;
+        if (nativeRunRng is null)
+        {
+            index = LegacyRandomChoiceV111.ChooseBoundedInteger(
+                rng, StochasticSiteRegistryV111.NativeCombatGoldSiteId,
+                "reward", ownerId, boundedCount).SelectedIndex;
+        }
+        else
+        {
+            var decision = NativePlayerRngV111
+                .ChooseBoundedIntegerDecision(
+                    nativeRunRng,
+                    StochasticSiteRegistryV111.NativeCombatGoldSiteId,
+                    NativePlayerRngV111.RewardsStreamId,
+                    ownerId, boundedCount);
+            index = decision.SelectedIndex;
+            if (decision.ProviderMode == "native-v111" &&
+                RandomBoundaryJournalV111.HasActiveJournal)
+                RandomBoundaryJournalV111.RecordCombatGoldOutcome(
+                    SemanticCombatGoldNativeAuditV111.Create(
+                        decision, room, ascension, goldProportion));
+        }
         return minimum + index;
     }
 }

@@ -44,9 +44,18 @@ internal static class NativePlayerRngV111
         string streamId,
         string ownerId,
         int boundedCount) =>
+        ChooseBoundedIntegerDecision(
+            streams, siteId, streamId, ownerId, boundedCount).SelectedIndex;
+
+    public static RandomIndexDecisionV111 ChooseBoundedIntegerDecision(
+        RngBundle streams,
+        string siteId,
+        string streamId,
+        string ownerId,
+        int boundedCount) =>
         NativeRandomChoiceV111.ChooseBoundedInteger(
             streams, siteId, streamId, ownerId, boundedCount,
-            NextOrdinal(streams, streamId)).SelectedIndex;
+            NextOrdinal(streams, streamId));
 
     public static float NextUnitFloat(
         RngBundle streams,

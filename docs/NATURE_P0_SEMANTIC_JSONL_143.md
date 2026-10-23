@@ -820,8 +820,9 @@ cards, random hand and draw-hook costs, combat card-pool, entry draw-pile, and
 semantic recycle swaps, Native relic-bag queue swaps, War Hammer upgrade pools,
 boss and Lava Rock relic offers, generated-card models including Native reward
 card offers, Native reward rarity and upgrade results, transform replacements,
-Native potion presence and pity results, random enemy targets, in-combat
-potion models and combat-reward PotionFactory offers, draw-pile insertion positions,
+Native potion presence and pity results, raw combat-gold amounts, relic-reward
+rarity and queue selections, random enemy targets, in-combat potion models and
+combat-reward PotionFactory offers, draw-pile insertion positions,
 and enemy-effect draw/discard pile insertions, each linked to its exact primitive
 decision. Fishing Rod's combat-end index draw also records its selected physical
 card identity. Additive schema markers require complete annotations for their

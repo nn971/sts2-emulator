@@ -370,6 +370,12 @@ Combat-reward PotionFactory picks also retain the raw rarity float, ordered
 same-rarity pool, selected model, and paired model-index request. PotionFactory
 schema V1 requires one outcome per float/index pair in new Native-policy traces;
 pool completeness and Native stream/cursor parity remain separate.
+Native combat-gold generation retains its raw bounded amount and exact
+`player.rewards` decision before later reward modifiers. Native relic rewards
+retain the rarity result, fallback tier, ordered eligible bag support, selected
+relic, and exact `player.rewards` float. Their additive V1 schemas require
+complete matching annotations in new Native-policy traces; pool and source
+parity claims remain separate.
 Native transform replacements now retain the original model, ordered
 replacement pool, selected model, source card instance, and exact Native ticket
 through `SemanticCardTransformEventV111`. Newly marked Native-policy audits

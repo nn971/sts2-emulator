@@ -503,13 +503,19 @@ public sealed record PrototypeRelicBagPullPlanV111
     public static PrototypeRelicRarity RollRarityNative(
         RngBundle nativeRunRng, bool merchant = false,
         string ownerId = "relic_grab_bag:reward")
+        => RollRarityNativeWithDecision(
+            nativeRunRng, merchant, ownerId).Rarity;
+
+    private static (PrototypeRelicRarity Rarity,
+        RandomUnitFloatDecisionV111 Decision) RollRarityNativeWithDecision(
+        RngBundle nativeRunRng, bool merchant, string ownerId)
     {
-        var roll = NativePlayerRngV111.NextUnitFloat(
+        var decision = NativePlayerRngV111.NextUnitFloatDecision(
             nativeRunRng,
-            "relic_grab_bag.rarity.unit_float",
+            StochasticSiteRegistryV111.RelicGrabBagRaritySiteId,
             NativePlayerRngV111.RewardsStreamId,
             ownerId + (merchant ? ":merchant" : ":reward"));
-        return ResolveRarityNative(roll);
+        return (ResolveRarityNative(decision.SelectedValue), decision);
     }
 
     internal static PrototypeRelicRarity ResolveRarityNative(float roll)
@@ -769,9 +775,23 @@ public sealed record PrototypeRelicBagPullPlanV111
         var rarityOwnerId = merchant
             ? $"act:{world.Act}:floor:{world.Floor}:merchant_relic:{merchantOfferOrdinal}"
             : "relic_grab_bag";
-        var rarity = forcedRarity ?? (nativeRunRng is null
-            ? RollRarity(rng, merchant)
-            : RollRarityNative(nativeRunRng, merchant, rarityOwnerId));
+        RandomUnitFloatDecisionV111? rarityDecision = null;
+        PrototypeRelicRarity rarity;
+        if (forcedRarity is { } forced)
+        {
+            rarity = forced;
+        }
+        else if (nativeRunRng is null)
+        {
+            rarity = RollRarity(rng, merchant);
+        }
+        else
+        {
+            var nativeRarity = RollRarityNativeWithDecision(
+                nativeRunRng, merchant, rarityOwnerId);
+            rarityDecision = nativeRarity.Decision;
+            rarity = nativeRarity.Rarity;
+        }
         (PrototypeRelicBagState Bag, string? Id) pull;
         if (!merchant && naturePull)
         {
@@ -880,6 +900,18 @@ public sealed record PrototypeRelicBagPullPlanV111
             pull = Pull(bag, rarity, merchant, player);
         }
         var (remaining, id) = pull;
+        if (rarityDecision is { } nativeRarityDecision &&
+            nativeRarityDecision.ProviderMode == "native-v111" &&
+            nativeRarityDecision.Request.StreamId ==
+                NativePlayerRngV111.RewardsStreamId &&
+            bag.OrderMode == PrototypeRelicBagOrderMode.NativeCommitted &&
+            RandomBoundaryJournalV111.HasActiveJournal)
+        {
+            var plan = PlanPull(bag, rarity, merchant, player);
+            RandomBoundaryJournalV111.RecordRelicRewardOutcome(
+                SemanticRelicRewardNativeAuditV111.Create(
+                    nativeRarityDecision, plan, id, merchant));
+        }
         return (world with
         {
             Stochastic = RunWorldStochasticStateV111.CommitRelicBag(

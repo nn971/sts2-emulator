@@ -26,6 +26,10 @@ Forced rewards remain draw-free.
 Combat-reward PotionFactory picks retain the selected rarity and model support
 beside both exact `potion_factory.*` decisions. PotionFactory schema V1 requires
 paired outcomes for the two `player.rewards` sites in new traces.
+Native combat rewards also retain raw GoldReward amounts and relic rarity with
+the ordered fallback queue support and selected identity. Their V1 schemas
+require matching annotations for each `player.rewards` request in new traces;
+gold is recorded before later reward modifiers.
 
 The Rest reward crosswalk is `PrototypeRooms.StepRest` →
 `EnterRestHealRelicReward`: relics with a positive
