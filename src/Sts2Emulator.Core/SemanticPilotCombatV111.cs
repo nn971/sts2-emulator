@@ -4210,16 +4210,14 @@ public static class SemanticPilotCombatEngineV111
         {
             var payload = action.Payload.Deserialize<UsePotionPayload>() ??
                 throw new InvalidDataException("Missing potion action payload.");
-            var fixturePotion = current.Stochastic.SeededEntry?.FixtureGenerationPotionId;
-            var poolPotion = current.Stochastic.SeededEntry?.FixturePoolGenerationPotionId;
             var validSlot = payload.Slot >= 0 &&
                 payload.Slot < source.Player.PotionSlots.Length;
-            var isGenerationPotion = fixturePotion ==
-                    "proto.potion.orobic_acid" && validSlot &&
-                source.Player.PotionSlots[payload.Slot]?.PotionId == fixturePotion;
-            var isPoolPotion = poolPotion == "proto.potion.colorless" &&
-                validSlot &&
-                source.Player.PotionSlots[payload.Slot]?.PotionId == poolPotion;
+            var isGenerationPotion = validSlot &&
+                source.Player.PotionSlots[payload.Slot]?.PotionId ==
+                    "proto.potion.orobic_acid";
+            var isPoolPotion = validSlot &&
+                source.Player.PotionSlots[payload.Slot]?.PotionId ==
+                    "proto.potion.colorless";
             var isHandReturnPotion = validSlot &&
                 source.Player.PotionSlots[payload.Slot]?.PotionId ==
                     "proto.potion.bottled_potential";

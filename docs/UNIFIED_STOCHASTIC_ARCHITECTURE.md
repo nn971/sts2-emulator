@@ -861,6 +861,8 @@ The persistent semantic combat pilot also admits direct card-draw potion actions
 
 Attack, Skill, and Power Potions now also enter the semantic pilot through the existing selection-potion admission. Their source continuation reuses the full-pool shuffle, generated-card model event, and ChoicePool card-selection event to add the selected card to hand. The hidden draw pile remains unchanged, and this adds no chance-event or snapshot schema; broader potion effects and Native cursor parity remain open.
 
+Colorless Potion and Orobic Acid now use their existing source continuations without requiring a seeded-fixture identity: Colorless Potion reuses the source-aware pool shuffle and optional ChoicePool selection, while Orobic Acid reuses three sequential generated-card model events for its Attack, Skill, and Power. Each operation retains its modeled source pool and leaves the hidden draw pile unchanged; broader potion effects and Native cursor parity remain open.
+
 After a semantic `BeforeHandDraw` choice resolves, the common automatic-pipeline resumer now replays the saved `DrawPlayerHand` stage and re-enters the same handoff at its advanced cursor. Remaining supported stages and terminal reward publication therefore continue through the shared path, while a newly suspended choice remains pending for its owning adapter.
 
 `ResumeControlledTurnAfterIntents` now publishes its completed `AdvanceTurn` cursor back to `ResumeAutomaticPipelineContinuation`. The shared handoff resumes subsequent automatic stages and preserves the existing stop-before-semantic-hand-draw boundary used by the end-turn facade.

@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S2/S4 source-generated potion increment (2026-10-23):** Colorless Potion
+and Orobic Acid now enter the persistent semantic pilot by their source potion
+identity without requiring a seeded-fixture marker. Colorless Potion reuses
+the source-aware pool shuffle and optional ChoicePool pick; Orobic Acid reuses
+three ordered Attack, Skill, and Power generated-card model events. Both keep
+the hidden draw pile unchanged and add no event or snapshot schema. Static
+source review and `git diff --check` only; no tests or builds were run.
+
 **S2/S4 generated-card potion increment (2026-10-23):** Attack, Skill, and
 Power Potions now enter the persistent semantic pilot through the existing
 selection-potion path. Their source full-pool shuffle, generated-card model

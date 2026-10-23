@@ -385,6 +385,11 @@ The semantic pilot also admits Attack, Skill and Power Potions through their
 existing source full-pool shuffle, generated-card model choice and ChoicePool
 selection continuation. The selected card moves to hand without changing the
 hidden draw pile; Native cursor parity and other potion effects remain open.
+Colorless Potion and Orobic Acid also run from any matching combat slot rather
+than requiring the corresponding seeded fixture. Colorless Potion uses the
+source-aware generated-pool shuffle and optional pick; Orobic Acid uses the
+three saved Attack, Skill and Power model choices. Their hidden draw-pile
+boundary is unchanged.
 
 The semantic JSONL/Python bridge also exposes fixed-model random draw-pile
 insertion and the two-stage random-Attack insertion continuation through
