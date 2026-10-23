@@ -3166,7 +3166,8 @@ public static class SemanticPilotCombatEngineV111
 
     private static bool IsSemanticDeterministicCombatPotion(
         string? potionId) =>
-        potionId is ("proto.native.neow.ambergris" or
+        potionId is (PrototypeNativePotionCourier.FoulPotionId or
+            "proto.native.neow.ambergris" or
             "proto.potion.cunning" or
             "proto.potion.binding" or
             "proto.potion.ship_in_a_bottle" or
@@ -3204,7 +3205,8 @@ public static class SemanticPilotCombatEngineV111
 
     private static bool IsSemanticDeterministicDamagePotion(
         string? potionId) =>
-        potionId is ("proto.potion.fire" or
+        potionId is (PrototypeNativePotionCourier.FoulPotionId or
+            "proto.potion.fire" or
             "proto.potion.explosive" or
             "proto.potion.explosive_ampoule");
 
