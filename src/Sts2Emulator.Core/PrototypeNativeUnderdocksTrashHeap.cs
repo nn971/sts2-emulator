@@ -13,6 +13,10 @@ public static class PrototypeNativeUnderdocksTrashHeap
         StochasticSiteRegistryV111.NativeTrashHeapCardRewardSiteId;
     public const string RelicRewardSiteId =
         StochasticSiteRegistryV111.NativeTrashHeapRelicRewardSiteId;
+    public const string DistractionCardId =
+        "proto.native.trash_heap.distraction";
+    public const string RipAndTearCardId =
+        "proto.native.trash_heap.rip_and_tear";
 
     private static readonly string[] RelicIdValues =
     [
@@ -27,13 +31,13 @@ public static class PrototypeNativeUnderdocksTrashHeap
     [
         "proto.native.trash_heap.caltrops",
         "proto.native.trash_heap.clash",
-        "proto.native.trash_heap.distraction",
+        DistractionCardId,
         "proto.native.trash_heap.dual_wield",
         "proto.native.trash_heap.entrench",
         "proto.native.trash_heap.hello_world",
         "proto.native.trash_heap.outmaneuver",
         "proto.native.trash_heap.rebound",
-        "proto.native.trash_heap.rip_and_tear",
+        RipAndTearCardId,
         "proto.native.trash_heap.stack"
     ];
 

@@ -4326,6 +4326,9 @@ public static class SemanticPilotCombatEngineV111
                 PrototypeGameEngine.IsMadScienceDrawCard(card);
             var semanticMadScienceCard = card is not null &&
                 PrototypeGameEngine.IsSupportedMadScienceCardAction(card);
+            var semanticDistractionCard =
+                card?.CardId ==
+                    PrototypeNativeUnderdocksTrashHeap.DistractionCardId;
             var semanticAutoplayCard = card?.CardId is
                 ("proto.colorless.beat_down" or
                  "proto.colorless.catastrophe");
@@ -4348,7 +4351,9 @@ public static class SemanticPilotCombatEngineV111
             var semanticRandomTargetCard =
                 card?.CardId is ("proto.silent.bouncing_flask" or
                     "proto.silent.knife_trap" or
-                    "proto.silent.ricochet");
+                    "proto.silent.ricochet") ||
+                card?.CardId ==
+                    PrototypeNativeUnderdocksTrashHeap.RipAndTearCardId;
             var semanticJackOfAllTradesCard =
                 card?.CardId == "proto.colorless.jack_of_all_trades";
             var semanticMetamorphosisCard =
@@ -4358,6 +4363,7 @@ public static class SemanticPilotCombatEngineV111
                  semanticDrawCard ||
                  semanticDynamicDrawCard ||
                  semanticMadScienceCard ||
+                 semanticDistractionCard ||
                  semanticAutoplayCard ||
                  semanticRandomReplayCard ||
                  semanticPotionGenerationCard ||
@@ -5721,6 +5727,15 @@ public static class SemanticPilotCombatEngineV111
                 combat, choice, choice.ControlledTarget))
             throw new InvalidDataException(
                 "Volley target is outside its supported card-play continuation.");
+        if (choice?.SourceCardInstanceId is { } ripAndTearSourceCardId &&
+            combat?.Cards.Any(card =>
+                card.InstanceId == ripAndTearSourceCardId &&
+                card.CardId ==
+                    PrototypeNativeUnderdocksTrashHeap.RipAndTearCardId) == true &&
+            !IsTrashHeapRipAndTearRandomTargetChoice(
+                combat, choice, choice.ControlledTarget))
+            throw new InvalidDataException(
+                "Rip and Tear target is outside its supported card-play continuation.");
         var otherChance = current.Run.Stochastic.SemanticOtherChance;
         var ordinal = current.History.Count(transition =>
             transition.Kind == "semantic_target");
@@ -5785,6 +5800,78 @@ public static class SemanticPilotCombatEngineV111
             continuation.EventDispatchContinuation is null;
     }
 
+    private static bool IsTrashHeapRipAndTearRandomTargetChoice(
+        CombatState? combat, PendingCombatChoiceState? choice,
+        PrototypeControlledTargetChoiceV111? target)
+    {
+        if (combat is null || target is not
+                { Kind: "effect_random_enemy",
+                  SlyCardInstanceId: null,
+                  AutoPlayCardInstanceId: null } ||
+            choice is not { ChoiceId: "controlled_random_target",
+                SourceCardInstanceId: { } sourceCardInstanceId,
+                CompletionEvents: [],
+                OuterChoiceContinuation: { } continuation } ||
+            target.EligibleEnemyInstanceIds.Length == 0)
+            return false;
+        var sourceCard = combat.Cards.SingleOrDefault(card =>
+            card.InstanceId == sourceCardInstanceId &&
+            card.CardId ==
+                PrototypeNativeUnderdocksTrashHeap.RipAndTearCardId);
+        var series = continuation.CardPlaySeries;
+        if (sourceCard is null || sourceCard.Enchantment is not null ||
+            series is null ||
+            series.SourceCardInstanceId != sourceCardInstanceId ||
+            series.SourceCardDestination != PrototypeCardZone.DiscardPile ||
+            series.TargetEnemyId is not null || series.IsAutoPlay ||
+            series.PlayCount <= 0 || series.NextPlayIndex <= 0 ||
+            series.NextPlayIndex > series.PlayCount ||
+            continuation.SourceCardInstanceId != sourceCardInstanceId ||
+            continuation.SourceCardDestination !=
+                PrototypeCardZone.DiscardPile ||
+            choice.SourceCardDestination !=
+                continuation.SourceCardDestination ||
+            continuation.Operations.Length != 1 ||
+            continuation.PendingDiscardEvents.Length != 0 ||
+            continuation.PendingSlyCardInstanceIds.Length != 0 ||
+            continuation.CompletionEvents.Length != 1 ||
+            continuation.Parent is not null ||
+            continuation.EventDispatchContinuation is not null ||
+            continuation.MoveSourceCardOnCompletion !=
+                !series.HasRemainingExecutions ||
+            continuation.RemoveSourceCardOnCompletion ||
+            continuation.SourceCardAlreadyMoved)
+            return false;
+
+        var definition = PrototypeContent.Card(
+            PrototypeNativeUnderdocksTrashHeap.RipAndTearCardId);
+        if (definition.Target != PrototypeCardTarget.None ||
+            definition.Type != PrototypeCardType.Attack ||
+            definition.Effects.Length != 1 ||
+            definition.Effects[0] is not
+                { Kind: PrototypeCombatEffectKind.DamageEnemy,
+                    Amount: 7, UpgradeDelta: 2,
+                    Target: PrototypeEffectTarget.RandomEnemy,
+                    Repetitions: 2, RepetitionUpgradeDelta: 0 })
+            return false;
+        var expectedOperation = new PrototypeQueuedOperation(
+            PrototypeCombatEffectKind.DamageEnemy,
+            definition.Effects[0].AmountAt(
+                sourceCard.UpgradeLevel, series.EnergySpent),
+            TargetMode: PrototypeEffectTarget.RandomEnemy,
+            SourceKind: PrototypeEffectSourceKind.Card,
+            IsPoweredAttack: true);
+        var completion = continuation.CompletionEvents[0];
+        return continuation.Operations[0] is { } remainingOperation &&
+            CanonicalJson.Sha256(remainingOperation) ==
+                CanonicalJson.Sha256(expectedOperation) &&
+            completion.Kind == PrototypeCombatEventKind.CardPlayed &&
+            completion.CardId ==
+                PrototypeNativeUnderdocksTrashHeap.RipAndTearCardId &&
+            !completion.IsAutoPlay &&
+            completion.SourceCardInstanceId == sourceCardInstanceId;
+    }
+
     internal static SemanticTargetEventV111? DescribePendingTargetEvent(
         RunState run, string boundaryFingerprint, int ordinal)
     {
@@ -5832,6 +5919,12 @@ public static class SemanticPilotCombatEngineV111
             !IsMadScienceChaosGenerationChoice(combat, choice, generation))
             throw new InvalidDataException(
                 "Free Character-card choice is outside Mad Science Chaos.");
+        if (generation?.Operation.Kind ==
+                PrototypeCombatEffectKind.CreateRandomCharacterSkillCardsInHand &&
+            !IsTrashHeapDistractionGenerationChoice(
+                combat, choice, generation))
+            throw new InvalidDataException(
+                "Generated Skill-card choice is outside Distraction.");
         if (isDrawInsertionModelChoice)
         {
             if (current.Stochastic.SeededEntry?.FixtureRandomFreeAttackDrawInsertion != true &&
@@ -6196,6 +6289,59 @@ public static class SemanticPilotCombatEngineV111
             1, SourceKind: PrototypeEffectSourceKind.Card);
         return completion.Kind == PrototypeCombatEventKind.CardPlayed &&
             completion.CardId == PrototypeNativeGloryEvents.MadScienceId &&
+            !completion.IsAutoPlay &&
+            completion.SourceCardInstanceId == sourceCardInstanceId &&
+            CanonicalJson.Sha256(generation.Operation) ==
+                CanonicalJson.Sha256(expectedOperation);
+    }
+
+    private static bool IsTrashHeapDistractionGenerationChoice(
+        CombatState? combat, PendingCombatChoiceState? choice,
+        PrototypeControlledGeneratedCardV111? generation)
+    {
+        if (combat is null || generation is null ||
+            choice is not { ChoiceId: "controlled_generated_card",
+                SourceCardInstanceId: { } sourceCardInstanceId,
+                CompletionEvents: [],
+                OuterChoiceContinuation: { } continuation })
+            return false;
+
+        var sourceCard = combat.Cards.SingleOrDefault(card =>
+            card.InstanceId == sourceCardInstanceId &&
+            card.CardId ==
+                PrototypeNativeUnderdocksTrashHeap.DistractionCardId);
+        var series = continuation.CardPlaySeries;
+        if (sourceCard is null || sourceCard.Enchantment is not null ||
+            series is null ||
+            series.SourceCardInstanceId != sourceCardInstanceId ||
+            series.SourceCardDestination != PrototypeCardZone.ExhaustPile ||
+            series.TargetEnemyId is not null || series.IsAutoPlay ||
+            series.PlayCount <= 0 || series.NextPlayIndex <= 0 ||
+            series.NextPlayIndex > series.PlayCount ||
+            continuation.SourceCardInstanceId != sourceCardInstanceId ||
+            continuation.SourceCardDestination !=
+                PrototypeCardZone.ExhaustPile ||
+            choice.SourceCardDestination !=
+                continuation.SourceCardDestination ||
+            continuation.Operations.Length != 0 ||
+            continuation.PendingDiscardEvents.Length != 0 ||
+            continuation.PendingSlyCardInstanceIds.Length != 0 ||
+            continuation.CompletionEvents.Length != 1 ||
+            continuation.Parent is not null ||
+            continuation.EventDispatchContinuation is not null ||
+            continuation.MoveSourceCardOnCompletion !=
+                !series.HasRemainingExecutions ||
+            continuation.RemoveSourceCardOnCompletion ||
+            continuation.SourceCardAlreadyMoved)
+            return false;
+
+        var completion = continuation.CompletionEvents[0];
+        var expectedOperation = new PrototypeQueuedOperation(
+            PrototypeCombatEffectKind.CreateRandomCharacterSkillCardsInHand,
+            1, SourceKind: PrototypeEffectSourceKind.Card);
+        return completion.Kind == PrototypeCombatEventKind.CardPlayed &&
+            completion.CardId ==
+                PrototypeNativeUnderdocksTrashHeap.DistractionCardId &&
             !completion.IsAutoPlay &&
             completion.SourceCardInstanceId == sourceCardInstanceId &&
             CanonicalJson.Sha256(generation.Operation) ==

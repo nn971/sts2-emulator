@@ -9,6 +9,14 @@ model event after its Block effect, with admission bound to the saved Tinker
 card and manual `CardPlayed` continuation. No event or snapshot schema changed.
 Static source review and `git diff --check` only; no tests or builds were run.
 
+**S2/S4 Trash Heap combat-card increment (2026-10-24):** Distraction now
+enters through its physical Exhausting card action and reuses the existing
+generated-Skill model event. Rip and Tear reuses the existing random-target
+event for both hits, with its physical card and remaining operation suffix
+checked against the manual `CardPlayed` frame. No event or snapshot schema
+changed. Static source review and `git diff --check` only; no tests or builds
+were run.
+
 **S4 Metamorphosis source-action increment (2026-10-24):** The persistent
 semantic pilot now admits the physical Metamorphosis card and validates its
 manual Exhausting card-play frame, exact 3 (5 upgraded) generated-Attack

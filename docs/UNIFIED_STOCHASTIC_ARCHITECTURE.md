@@ -927,6 +927,11 @@ typed generated-Attack model and draw-insertion events. Admission checks the
 manual Exhausting card-play frame, the exact 3 (5 upgraded) operation and its
 remaining-count suffix; generated models still use the implemented Silent
 Attack pool. No event or snapshot schema changed.
+Trash Heap's Distraction now reuses the generated-Skill model event after
+validating its Exhausting card-play frame and exact source operation. Rip and
+Tear reuses the random-target event for its two random-enemy hits after
+validating the source card and remaining hit operation. These paths add no new
+event or snapshot schema.
 Shadow Step now uses the card-selection owner for its hand discard and queued
 power application, while Echoing Slash and Outbreak use the ordinary
 deterministic semantic player-action boundary.
