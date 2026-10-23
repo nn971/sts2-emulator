@@ -116,11 +116,8 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
 {
     public int? ControlledDrawRemaining
     {
-        get => HandDrawProgress?.Kind is
-            PrototypeAutomaticHandDrawProgressKindV111.ControlledDraw or
-            PrototypeAutomaticHandDrawProgressKindV111.ControlledDrawHookChoice or
-            PrototypeAutomaticHandDrawProgressKindV111.ControlledRecycleStratagem
-                ? HandDrawProgress.RemainingCount : null;
+        get => TryGetControlledHandDrawRemainder(out int remaining)
+            ? remaining : null;
         init => HandDrawProgress = SetControlledDrawRemaining(
             HandDrawProgress, value);
     }
@@ -256,6 +253,24 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
                 PrototypeAutomaticHandDrawProgressKindV111.ControlledDrawHookChoice) ||
             !mechanics.IsAtStep(
                 PrototypeAutomaticStepKind.DrawPlayerHand))
+            return false;
+
+        remaining = progress.RemainingCount.Value;
+        return true;
+    }
+
+    /// <summary>Reads the legacy controlled-draw count from its tagged
+    /// progress mode. Runtime continuations use this query so the flattened
+    /// counter remains only a snapshot projection.</summary>
+    public bool TryGetControlledHandDrawRemainder(out int remaining)
+    {
+        remaining = 0;
+        var progress = HandDrawProgress;
+        if (progress is null || progress.Kind is not (
+                PrototypeAutomaticHandDrawProgressKindV111.ControlledDraw or
+                PrototypeAutomaticHandDrawProgressKindV111.ControlledDrawHookChoice or
+                PrototypeAutomaticHandDrawProgressKindV111.ControlledRecycleStratagem) ||
+            progress.RemainingCount is not >= 0)
             return false;
 
         remaining = progress.RemainingCount.Value;

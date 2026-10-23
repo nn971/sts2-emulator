@@ -45,16 +45,18 @@ public sealed partial class PrototypeGameEngine
                 throw new InvalidOperationException(
                     "Hand draw removed combat.");
             bool awaitingPreDrawChoice =
-                after.AutomaticPipelineContinuation?
-                    .Stochastic.ControlledSemanticBeforeHandDrawPending == true &&
+                after.AutomaticPipelineContinuation?.Stochastic
+                    .HandDrawProgress?.Kind ==
+                        PrototypeAutomaticHandDrawProgressKindV111
+                            .SemanticBeforeHandDraw &&
                 (after.PendingChoice?.ControlledRandomPileCard is not null ||
                  after.PendingChoice?.AutomaticSemanticDrawHookChoice == true);
             bool completedWithoutPendingDraw =
                 after.AutomaticPipelineContinuation is { } completed &&
                 completed.Mechanics.IsImmediatelyAfterStep(
                     PrototypeAutomaticStepKind.DrawPlayerHand) &&
-                completed.Stochastic.ControlledSemanticDrawRemaining is null &&
-                completed.Stochastic.ControlledSemanticDrawRequested is null &&
+                completed.Stochastic.HandDrawProgress is null &&
+                completed.Stochastic.CompletedSemanticHandDrawRequested is null &&
                 after.PendingChoice is null &&
                 after.PendingKnowledgeDemonChoice is null &&
                 after.Stochastic.SemanticDeck?.Pending is null;
@@ -85,9 +87,10 @@ public sealed partial class PrototypeGameEngine
         var cursor = combat.AutomaticPipelineContinuation;
         if (cursor?.Mechanics.IsAtStep(
                 PrototypeAutomaticStepKind.DrawPlayerHand) != true ||
-            !cursor.Stochastic.ControlledSemanticBeforeHandDrawPending ||
-            cursor.Stochastic.ControlledSemanticDrawRemaining is not null ||
-            cursor.Stochastic.ControlledSemanticDrawRequested is not null ||
+            cursor.Stochastic.HandDrawProgress?.Kind !=
+                PrototypeAutomaticHandDrawProgressKindV111
+                    .SemanticBeforeHandDraw ||
+            cursor.Stochastic.CompletedSemanticHandDrawRequested is not null ||
             combat.PendingChoice is not null ||
             combat.PendingKnowledgeDemonChoice is not null ||
             combat.Stochastic.SemanticDeck is not
@@ -117,6 +120,10 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidDataException(
                 "Semantic automatic draw cursor or pending stage diverged.");
         var cursor = combat.AutomaticPipelineContinuation!;
+        if (!cursor.Stochastic.TryGetSemanticHandDrawProgress(
+                cursor.Mechanics, out int semanticRequested, out _))
+            throw new InvalidDataException(
+                "Semantic automatic draw lost its tagged progress.");
         if (hasPending)
         {
             if (combat.Stochastic.SemanticDeck?.Pending is null &&
@@ -126,8 +133,7 @@ public sealed partial class PrototypeGameEngine
             return (CommitAutomaticHandDrawProgress(
                 run, run.Player, combat,
                 PrototypeAutomaticHandDrawProgressV111.SemanticDraw(
-                    cursor.Stochastic.ControlledSemanticDrawRequested!.Value,
-                    remaining)), remaining);
+                    semanticRequested, remaining)), remaining);
         }
 
         if (combat.Stochastic.SemanticDeck?.Pending is not null ||
@@ -135,12 +141,9 @@ public sealed partial class PrototypeGameEngine
             combat.PendingKnowledgeDemonChoice is not null)
             throw new InvalidDataException(
                 "Cannot finish hand draw with an unresolved choice.");
-        int requested = cursor.Stochastic.ControlledSemanticDrawRequested ??
-            throw new InvalidDataException(
-                "Completed semantic hand draw lost its requested count.");
         // The ordinary engine owns the shared source cleanup and cursor
         // advance and completion receipt for both provider continuations.
-        return (CompleteAutomaticHandDrawStage(run, requested), 0);
+        return (CompleteAutomaticHandDrawStage(run, semanticRequested), 0);
     }
 
     private static (RunState Run, int Requested, int Remaining)
@@ -165,13 +168,18 @@ public sealed partial class PrototypeGameEngine
         if (IsSemanticAutomaticHandDraw(after))
         {
             var cursor = after.AutomaticPipelineContinuation!;
+            if (!cursor.Stochastic.TryGetSemanticHandDrawProgress(
+                    cursor.Mechanics, out int requested, out int remaining))
+                throw new InvalidDataException(
+                    "Semantic automatic hand draw lost its tagged progress.");
             return (result,
-                cursor.Stochastic.ControlledSemanticDrawRequested!.Value,
-                cursor.Stochastic.ControlledSemanticDrawRemaining!.Value);
+                requested, remaining);
         }
 
         if (after.AutomaticPipelineContinuation?
-                .Stochastic.ControlledSemanticBeforeHandDrawPending == true &&
+                .Stochastic.HandDrawProgress?.Kind ==
+                    PrototypeAutomaticHandDrawProgressKindV111
+                        .SemanticBeforeHandDraw &&
             (after.PendingChoice?.ControlledRandomPileCard is not null ||
              after.PendingChoice?.AutomaticSemanticDrawHookChoice == true))
             return (result, 0, 0);
@@ -179,7 +187,7 @@ public sealed partial class PrototypeGameEngine
         var completed = after.AutomaticPipelineContinuation;
         if (completed?.Mechanics.IsAtStep(
                 PrototypeAutomaticStepKind.DrawPlayerHand) == true &&
-            !completed.Stochastic.ControlledSemanticBeforeHandDrawPending &&
+            completed.Stochastic.HandDrawProgress is null &&
             after.PendingChoice is null &&
             after.PendingKnowledgeDemonChoice is null &&
             after.Stochastic.SemanticDeck is { Pending: null })
@@ -201,15 +209,14 @@ public sealed partial class PrototypeGameEngine
             completed is null ||
             !completed.Mechanics.IsImmediatelyAfterStep(
                 PrototypeAutomaticStepKind.DrawPlayerHand) ||
-            completed.Stochastic.ControlledSemanticBeforeHandDrawPending ||
-            completed.Stochastic.ControlledSemanticDrawRemaining is not null ||
+            completed.Stochastic.HandDrawProgress is not null ||
             after.Stochastic.SemanticDeck is not { Pending: null })
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.BeforeHandDraw " +
                 "operation=" + unsupportedOperation);
 
         var savedRequested = completed.Stochastic
-            .ControlledSemanticDrawRequested;
+            .CompletedSemanticHandDrawRequested;
         var requested = savedRequested ??
             Math.Max(0,
                 after.CounterState.CardsDrawnThisCombat - cardsDrawnBefore);
@@ -248,7 +255,9 @@ public sealed partial class PrototypeGameEngine
             .DescribePending(run);
         if (cursor?.Mechanics.IsAtStep(
                 PrototypeAutomaticStepKind.DrawPlayerHand) != true ||
-            !cursor.Stochastic.ControlledSemanticBeforeHandDrawPending ||
+            cursor.Stochastic.HandDrawProgress?.Kind !=
+                PrototypeAutomaticHandDrawProgressKindV111
+                    .SemanticBeforeHandDraw ||
             pending is null || pendingChoice?.ChoiceId !=
                 "controlled_random_pile_card" ||
             pendingChoice.OuterChoiceContinuation is not { } continuation ||

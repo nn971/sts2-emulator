@@ -96,15 +96,17 @@ public sealed partial class PrototypeGameEngine
             combat.PendingChoice is not null ||
             combat.PendingKnowledgeDemonChoice is not null ||
             combat.Stochastic.SemanticDeck is not null || cursor is not
-                { Stochastic:
-                    { ControlledDrawHookChoicePending: true,
-                      ControlledDrawRemaining: >= 0 } } ||
+                { Stochastic: { HandDrawProgress:
+                    { Kind: PrototypeAutomaticHandDrawProgressKindV111
+                        .ControlledDrawHookChoice,
+                      RemainingCount: >= 0 } } } ||
             !cursor.Mechanics.IsAtStep(
                 PrototypeAutomaticStepKind.DrawPlayerHand))
             throw new InvalidDataException(
                 "Controlled automatic hand-draw hook cursor is inconsistent.");
 
-        int remaining = cursor.Stochastic.ControlledDrawRemaining!.Value;
+        int remaining = cursor.Stochastic.HandDrawProgress!
+            .RemainingCount!.Value;
         var prototypeRng = state.Stochastic.PrototypeRng;
         var drawn = ResumeAutomaticHandDrawCards(
             state, remaining,
@@ -167,16 +169,18 @@ public sealed partial class PrototypeGameEngine
             "Controlled recycle selection has no combat.");
         var cursor = combat.AutomaticPipelineContinuation;
         if (combat.PendingChoice is not null || cursor is not
-            { Stochastic:
-                { ControlledRecycleStratagemPending: true,
-                  ControlledDrawRemaining: > 0 } } ||
+            { Stochastic: { HandDrawProgress:
+                { Kind: PrototypeAutomaticHandDrawProgressKindV111
+                    .ControlledRecycleStratagem,
+                  RemainingCount: > 0 } } } ||
             cursor.Mechanics.CurrentStepKind !=
                 PrototypeAutomaticStepKind.DrawPlayerHand ||
             combat.Stochastic.SemanticDeck is not null)
             throw new InvalidDataException(
                 "Saved recycle Stratagem selection is not source-reachable.");
 
-        var remaining = cursor.Stochastic.ControlledDrawRemaining!.Value;
+        var remaining = cursor.Stochastic.HandDrawProgress!
+            .RemainingCount!.Value;
         var prototypeRng = state.Stochastic.PrototypeRng;
         var drawn = ResumeAutomaticHandDrawCards(
             state, remaining,
@@ -262,7 +266,9 @@ public sealed partial class PrototypeGameEngine
         if (completedSemanticDrawRequested is < 0 ||
             !cursor.Mechanics.IsAtStep(
                 PrototypeAutomaticStepKind.DrawPlayerHand) ||
-            cursor.Stochastic.ControlledSemanticBeforeHandDrawPending ||
+            cursor.Stochastic.HandDrawProgress?.Kind ==
+                PrototypeAutomaticHandDrawProgressKindV111
+                    .SemanticBeforeHandDraw ||
             combat.PendingChoice is not null ||
             combat.PendingKnowledgeDemonChoice is not null ||
             combat.Stochastic.SemanticDeck?.Pending is not null)

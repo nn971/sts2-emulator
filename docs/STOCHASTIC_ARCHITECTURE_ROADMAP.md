@@ -3175,3 +3175,13 @@ audit note now points to this continuation; source pool fidelity and
 **S4 Hive status-card action increment (2026-10-24):** Frantic Escape and Toxic now enter through the same semantic player-action boundary. Frantic Escape replays its source CardPlayed Sandpit and combat-cost hook; Toxic remains a no-effect-on-play exhaust action while its held damage is handled by ordinary turn mechanics. Static source review and `git diff --check` only; no tests or builds were run.
 
 **S4 modeled playable status action increment (2026-10-24):** Beckon now uses the deterministic semantic player-action boundary; its held damage and ordinary card movement remain with source mechanics. A static census separates it, Toxic, and Frantic Escape from the modeled unplayable Burn, Dazed, Wound, Infection, and Wither cards. No chance owner or snapshot schema was added. Static source review and `git diff --check` only; no tests or builds were run.
+
+**S4 tagged hand-draw resume query increment (2026-10-24):** The ordinary
+pipeline hand-draw handoff, controlled hook and recycle resumes, semantic
+automatic resume, and target-boundary guard now inspect
+`PrototypeAutomaticHandDrawProgressV111` through its stochastic owner or
+shared remainder queries instead of re-deriving modes from flattened counters.
+`ControlledDrawRemaining` remains a compatibility projection, and snapshots
+keep their existing shape. Remaining compatibility-projection readers and
+cross-provider mechanical equivalence remain open. Static source review and
+`git diff --check` only; no tests or builds were run.

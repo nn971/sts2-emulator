@@ -141,10 +141,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         if (continuation?.Mechanics.OpeningStage is not null)
             return IsSupportedOpeningAutoplayTargetBoundary(combat);
         if (continuation is null ||
-            continuation.Stochastic.ControlledDrawRemaining is not null ||
-            continuation.Stochastic.ControlledDrawCostRemaining is not null ||
-            continuation.Stochastic.ControlledSemanticDrawRemaining is not null ||
-            continuation.Stochastic.ControlledSemanticDrawRequested is not null ||
+            continuation.Stochastic.HandDrawProgress is not null ||
+            continuation.Stochastic.CompletedSemanticHandDrawRequested is not null ||
             continuation.Stochastic.ControlledEnemyAction is not null ||
             !continuation.Mechanics.IsValidOrdinaryCursor)
             return false;
