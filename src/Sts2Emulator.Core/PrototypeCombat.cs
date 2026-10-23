@@ -6515,18 +6515,19 @@ public sealed partial class PrototypeGameEngine
                     if (drawBoundary ==
                         PrototypeDrawCardsBoundaryKind.ControlledRecycle)
                     {
+                        var suspendedDraw = CreateAdvancedEffectDrawFrame(
+                            operation, drawn.RemainingCount, drawEventDepth,
+                            drawn.DrawnCardInstanceIds);
                         var deferredKeywordIds =
-                            AccumulateDrawnCardInstanceIds(
-                                operation.DeferredDrawnCardInstanceIds,
-                                drawn.DrawnCardInstanceIds);
+                            suspendedDraw.DeferredKeywordCardInstanceIds ?? [];
                         var resumeDraw = CreateDrawResumeOperation(
-                            drawn.RemainingCount,
-                            operation.FromHandDraw,
-                            drawEventDepth,
-                            operation.DrawnCardKeyword,
+                            suspendedDraw.RemainingCount,
+                            suspendedDraw.FromHandDraw,
+                            suspendedDraw.EventDepth,
+                            suspendedDraw.DrawnCardKeyword,
                             deferredKeywordIds,
-                            operation.StandaloneSemanticDrawSegment,
-                            operation.DrawEqualSelectionCount);
+                            suspendedDraw.StandaloneSemanticDrawSegment,
+                            suspendedDraw.DrawEqualSelectionCount);
                         var recycleContinuation = CaptureEffectContinuation(
                             new[] { resumeDraw }.Concat(operations));
                         if (combat.Stochastic.SemanticDeck is not null ||
@@ -6576,25 +6577,13 @@ public sealed partial class PrototypeGameEngine
                     if (drawBoundary ==
                         PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice)
                     {
-                        var suspendedDraw =
-                            new PrototypeControlledSemanticDrawV111(
-                                drawn.RemainingCount,
-                                operation.FromHandDraw,
-                                drawEventDepth,
-                                operation.DrawnCardKeyword,
-                                operation.DeferredDrawnCardInstanceIds,
-                                StandaloneSemanticDrawSegment:
-                                    operation.StandaloneSemanticDrawSegment)
-                            {
-                                DrawEqualSelectionCount =
-                                    operation.DrawEqualSelectionCount
-                            };
+                        var suspendedDraw = CreateAdvancedEffectDrawFrame(
+                            operation, drawn.RemainingCount, drawEventDepth,
+                            drawn.DrawnCardInstanceIds);
                         var continuation = CaptureEffectContinuation(
                             operations);
                         combat = AttachDrawCardsAtCardDrawnChoice(
-                            combat, drawn.RemainingCount, suspendedDraw,
-                            continuation, drawn.DrawnCardInstanceIds,
-                            accumulateDrawnCardIds: true,
+                            combat, suspendedDraw, continuation,
                             markStandaloneHookChoice:
                                 operation.StandaloneSemanticDrawSegment);
                         return (player, combat);
@@ -6606,28 +6595,14 @@ public sealed partial class PrototypeGameEngine
                     {
                         var continuation = CaptureEffectContinuation(
                             operations);
-                        var suspendedDraw =
-                            AdvanceControlledSemanticDrawFrame(
-                                new PrototypeControlledSemanticDrawV111(
-                                    drawn.RemainingCount,
-                                    operation.FromHandDraw,
-                                    drawEventDepth,
-                                    operation.DrawnCardKeyword,
-                                    operation.DeferredDrawnCardInstanceIds,
-                                    StandaloneSemanticDrawSegment:
-                                        operation.StandaloneSemanticDrawSegment)
-                                {
-                                    DrawEqualSelectionCount =
-                                        operation.DrawEqualSelectionCount
-                                },
-                                drawn.RemainingCount,
-                                drawn.DrawnCardInstanceIds,
-                                accumulateDrawnCardIds: true,
-                                stratagemSelectionPending:
-                                    drawBoundary ==
-                                        PrototypeDrawCardsBoundaryKind
-                                            .AfterShuffleInsertions &&
-                                    ExpectedStratagemSelectionCount(combat) > 0);
+                        var suspendedDraw = CreateAdvancedEffectDrawFrame(
+                            operation, drawn.RemainingCount, drawEventDepth,
+                            drawn.DrawnCardInstanceIds,
+                            stratagemSelectionPending:
+                                drawBoundary ==
+                                    PrototypeDrawCardsBoundaryKind
+                                        .AfterShuffleInsertions &&
+                                ExpectedStratagemSelectionCount(combat) > 0);
                         if (drawBoundary ==
                             PrototypeDrawCardsBoundaryKind.AfterShuffleInsertions)
                             return (player,
@@ -6654,20 +6629,22 @@ public sealed partial class PrototypeGameEngine
                         // Suspend this draw at the exact post-shuffle point.
                         // A chosen card moves to hand before any of the
                         // remaining cards are drawn.
+                        var suspendedDraw = CreateAdvancedEffectDrawFrame(
+                            operation, drawn.RemainingCount, drawEventDepth,
+                            drawn.DrawnCardInstanceIds);
                         operations = new Queue<PrototypeQueuedOperation>(
                             new[]
                             {
                                 StratagemChoiceOperation(
                                     combat,
-                                    operation.StandaloneSemanticDrawSegment),
+                                    suspendedDraw.StandaloneSemanticDrawSegment),
                                 operation with
                                 {
-                                    Amount = drawn.RemainingCount,
+                                    Amount = suspendedDraw.RemainingCount,
                                     DeferredDrawnCardInstanceIds =
-                                        AccumulateDrawnCardInstanceIds(
-                                            operation.DeferredDrawnCardInstanceIds,
-                                            drawn.DrawnCardInstanceIds),
-                                    DrawEventDepth = drawEventDepth
+                                        suspendedDraw
+                                            .DeferredKeywordCardInstanceIds,
+                                    DrawEventDepth = suspendedDraw.EventDepth
                                 }
                             }.Concat(operations));
                     }
@@ -6676,11 +6653,12 @@ public sealed partial class PrototypeGameEngine
                         drawBoundary !=
                             PrototypeDrawCardsBoundaryKind.ShuffleSelection)
                     {
+                        var completedDraw = CreateAdvancedEffectDrawFrame(
+                            operation, drawn.RemainingCount, drawEventDepth,
+                            drawn.DrawnCardInstanceIds);
                         combat = ApplyDrawnCardKeywordOverride(
                             combat, operation.DrawnCardKeyword,
-                            AccumulateDrawnCardInstanceIds(
-                                operation.DeferredDrawnCardInstanceIds,
-                                drawn.DrawnCardInstanceIds));
+                            completedDraw.DeferredKeywordCardInstanceIds ?? []);
                     }
 
                     break;

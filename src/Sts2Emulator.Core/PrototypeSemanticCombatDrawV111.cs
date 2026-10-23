@@ -567,9 +567,11 @@ public sealed partial class PrototypeGameEngine
         bool accumulateDrawnCardIds,
         bool markStandaloneHookChoice)
     {
+        var resumedDraw = AdvanceControlledSemanticDrawFrame(
+            draw, remaining, drawnCardInstanceIds,
+            accumulateDrawnCardIds);
         combat = AttachDrawCardsAtCardDrawnChoice(
-            combat, remaining, draw, continuation, drawnCardInstanceIds,
-            accumulateDrawnCardIds, markStandaloneHookChoice);
+            combat, resumedDraw, continuation, markStandaloneHookChoice);
         return PublishDrawMechanicsState(run, player, combat);
     }
 

@@ -366,6 +366,10 @@ The state-only frame advancement and choice attachment helpers live in
 Initial effect draws also use `AdvanceControlledSemanticDrawFrame` to combine
 newly drawn identities with the saved keyword prefix and Stratagem state before
 creating semantic draw, cost, or after-shuffle choices.
+`CreateAdvancedEffectDrawFrame` now supplies that transition for all
+resumable effect-draw boundaries, including recycle, nested hook, and
+post-shuffle Stratagem paths; normal completion uses the same identity prefix
+when applying drawn-card keyword overrides.
 
 The semantic draw continuation boundaries now use `AdvanceControlledSemanticDrawFrame` for remaining-count and deferred-identity progress. After-shuffle insertion, Stratagem selection, nested `CardDrawn` choice, and nested-effect completion therefore advance the same mechanics frame before applying their boundary-specific continuation policy.
 

@@ -7,6 +7,33 @@ namespace Sts2Emulator.Core;
 public sealed partial class PrototypeGameEngine
 {
     private static PrototypeControlledSemanticDrawV111
+        CreateAdvancedEffectDrawFrame(
+            PrototypeQueuedOperation operation,
+            int remainingCount,
+            int eventDepth,
+            long[] drawnCardInstanceIds,
+            bool? stratagemSelectionPending = null)
+    {
+        if (operation.Kind != PrototypeCombatEffectKind.DrawCards)
+            throw new ArgumentException(
+                "Effect draw frame needs a DrawCards operation.",
+                nameof(operation));
+        var draw = new PrototypeControlledSemanticDrawV111(
+            remainingCount, operation.FromHandDraw, eventDepth,
+            operation.DrawnCardKeyword,
+            operation.DeferredDrawnCardInstanceIds,
+            StandaloneSemanticDrawSegment:
+                operation.StandaloneSemanticDrawSegment)
+        {
+            DrawEqualSelectionCount = operation.DrawEqualSelectionCount
+        };
+        return AdvanceControlledSemanticDrawFrame(
+            draw, remainingCount, drawnCardInstanceIds,
+            accumulateDrawnCardIds: true,
+            stratagemSelectionPending: stratagemSelectionPending);
+    }
+
+    private static PrototypeControlledSemanticDrawV111
         AdvanceControlledSemanticDrawFrame(
             PrototypeControlledSemanticDrawV111 draw,
             int remainingCount,
@@ -30,16 +57,10 @@ public sealed partial class PrototypeGameEngine
 
     private static CombatState AttachDrawCardsAtCardDrawnChoice(
         CombatState combat,
-        int remaining,
-        PrototypeControlledSemanticDrawV111 draw,
+        PrototypeControlledSemanticDrawV111 resumedDraw,
         PrototypeChoiceResolutionContinuationState continuation,
-        long[] drawnCardInstanceIds,
-        bool accumulateDrawnCardIds,
         bool markStandaloneHookChoice)
     {
-        var resumedDraw = AdvanceControlledSemanticDrawFrame(
-            draw, remaining, drawnCardInstanceIds,
-            accumulateDrawnCardIds);
         var resumeDraw = CreateDrawResumeOperation(
             resumedDraw.RemainingCount, resumedDraw.FromHandDraw,
             resumedDraw.EventDepth, resumedDraw.DrawnCardKeyword,

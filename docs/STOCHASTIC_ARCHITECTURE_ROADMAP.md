@@ -3372,3 +3372,13 @@ provider transcripts remain with their existing owners. No snapshot or
 transcript format changed. Broader draw-resume policy consolidation and
 cross-provider mechanical equivalence remain open. Static source review and
 `git diff --check` only; no tests or builds were run.
+
+**S4 effect-draw progress owner increment (2026-10-24):** Initial effect-draw
+recycle, nested hook, semantic, cost, after-shuffle, and Stratagem boundaries
+now build their saved frame through `CreateAdvancedEffectDrawFrame`. This
+applies the shared remaining-count and deferred-identity transition while
+preserving the queued operation fields and continuation suffix. Normal draw
+completion also uses that identity prefix for keyword overrides. No snapshot
+or transcript format changed. Broader draw-resume policy consolidation and
+cross-provider mechanical equivalence remain open. Static source review and
+`git diff --check` only; no tests or builds were run.
