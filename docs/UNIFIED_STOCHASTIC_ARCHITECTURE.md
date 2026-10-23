@@ -430,7 +430,10 @@ semantic context carries a semantic draw frame.
 `PrepareAutomaticHandDrawStage` interprets the saved controlled or semantic
 pre-draw hook tag, validates deferred semantic entry, clears that marker, and
 selects the result context before the ordinary step switch executes hook or
-draw mechanics. The switch no longer reads the saved hook-progress tags.
+draw mechanics. `ResumeAutomaticHandDrawHookContinuation` owns the matching
+resume dispatch for controlled and semantic pre-draw hooks and controlled
+draw-hook choices. The pipeline handoff delegates these cursor decisions to
+that owner rather than reading the saved hook-progress tags.
 The transient `PrototypeDrawCardsResumeResultV111` now validates its run and
 nonnegative progress counts in its constructor, so every provider-neutral draw
 resume result has the same invariant; its explicit validation also catches a

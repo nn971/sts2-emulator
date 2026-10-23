@@ -6,10 +6,11 @@
 The automatic hand-draw stochastic owner now exposes cursor-validated queries
 for saved semantic and controlled `BeforeHandDraw` progress. The existing
 continuation owner uses them to validate deferred semantic entry, clear the
-resumed hook marker, and choose the source-result context. The automatic-step
-switch and pipeline-resume dispatch now use cursor-validated queries instead
-of reading those saved tags. No snapshot schema changed. Static source review
-and `git diff --check` only; no tests or builds were run.
+resumed hook marker, choose the source-result context, and dispatch resumed
+controlled or semantic pre-draw hooks and controlled draw-hook choices. The
+automatic-step switch and pipeline handoff no longer read those saved tags.
+No snapshot schema changed. Static source review and `git diff --check` only;
+no tests or builds were run.
 
 **S4 automatic draw source-result owner increment (2026-10-24):** The source
 `DrawPlayerHand` stage now sends every `DrawCards` result through

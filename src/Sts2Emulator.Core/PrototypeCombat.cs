@@ -1806,47 +1806,9 @@ public sealed partial class PrototypeGameEngine
                     "Enemy-action replay does not match the saved pipeline cursor.");
         }
 
-        if (state.World?.Combat is
-                { PendingChoice: null,
-                  PendingKnowledgeDemonChoice: null,
-                  AutomaticPipelineContinuation: { } beforeDraw } &&
-            beforeDraw.Stochastic.IsAtControlledBeforeHandDraw(
-                beforeDraw.Mechanics))
-        {
-            if (!ControlledChanceGuardV111.Active)
-                throw new InvalidOperationException(
-                    "Controlled BeforeHandDraw choice requires the RNG guard.");
-            var resumed = ResumeAutomaticPipeline(
-                state, beforeDraw.Mechanics.RequireResumeStepIndex());
-            return ResumeAutomaticPipelineContinuation(
-                resumed,
-                stopBeforeSemanticHandDraw: stopBeforeSemanticHandDraw);
-        }
-
-        if (state.World?.Combat is
-                { PendingChoice: null,
-                  PendingKnowledgeDemonChoice: null,
-                  AutomaticPipelineContinuation: { } semanticBeforeDraw } &&
-            semanticBeforeDraw.Stochastic.IsAtSemanticBeforeHandDraw(
-                semanticBeforeDraw.Mechanics))
-        {
-            if (!ControlledChanceGuardV111.Active)
-                throw new InvalidOperationException(
-                    "Semantic BeforeHandDraw choice requires the RNG guard.");
-            var resumed = ResumeSemanticBeforeHandDrawActionChoice(state).Run;
-            return ResumeAutomaticPipelineContinuation(
-                resumed,
-                stopBeforeSemanticHandDraw: stopBeforeSemanticHandDraw);
-        }
-
-        if (state.World?.Combat is
-                { PendingChoice: null,
-                  PendingKnowledgeDemonChoice: null,
-                  AutomaticPipelineContinuation: { } controlledDrawHook } &&
-            controlledDrawHook.Stochastic.IsAtControlledDrawHookChoice(
-                controlledDrawHook.Mechanics))
-            return PrototypeAutomaticPipelineResumeResultV111.FromRun(
-                ResumeControlledAutomaticHandDrawHookChoice(state));
+        if (ResumeAutomaticHandDrawHookContinuation(
+                state, stopBeforeSemanticHandDraw) is { } handDrawHookResume)
+            return handDrawHookResume;
 
         if (state.World?.Combat is
             { PendingChoice: null,

@@ -62,6 +62,50 @@ public sealed partial class PrototypeGameEngine
             false);
     }
 
+    private static PrototypeAutomaticPipelineResumeResultV111?
+        ResumeAutomaticHandDrawHookContinuation(
+        RunState state, bool stopBeforeSemanticHandDraw)
+    {
+        var combat = state.World?.Combat;
+        var cursor = combat?.AutomaticPipelineContinuation;
+        if (combat is not
+                { PendingChoice: null,
+                  PendingKnowledgeDemonChoice: null } || cursor is null)
+            return null;
+
+        if (cursor.Stochastic.IsAtControlledBeforeHandDraw(
+                cursor.Mechanics))
+        {
+            if (!ControlledChanceGuardV111.Active)
+                throw new InvalidOperationException(
+                    "Controlled BeforeHandDraw choice requires the RNG guard.");
+            var resumed = ResumeAutomaticPipeline(
+                state, cursor.Mechanics.RequireResumeStepIndex());
+            return ResumeAutomaticPipelineContinuation(
+                resumed,
+                stopBeforeSemanticHandDraw: stopBeforeSemanticHandDraw);
+        }
+
+        if (cursor.Stochastic.IsAtSemanticBeforeHandDraw(
+                cursor.Mechanics))
+        {
+            if (!ControlledChanceGuardV111.Active)
+                throw new InvalidOperationException(
+                    "Semantic BeforeHandDraw choice requires the RNG guard.");
+            var resumed = ResumeSemanticBeforeHandDrawActionChoice(state).Run;
+            return ResumeAutomaticPipelineContinuation(
+                resumed,
+                stopBeforeSemanticHandDraw: stopBeforeSemanticHandDraw);
+        }
+
+        if (cursor.Stochastic.IsAtControlledDrawHookChoice(
+                cursor.Mechanics))
+            return PrototypeAutomaticPipelineResumeResultV111.FromRun(
+                ResumeControlledAutomaticHandDrawHookChoice(state));
+
+        return null;
+    }
+
     /// <summary>
     /// Routes a completed DrawPlayerHand call to the matching continuation
     /// owner. Source-stage calls route only suspended boundaries; saved-stage
