@@ -1810,9 +1810,8 @@ public sealed partial class PrototypeGameEngine
                 { PendingChoice: null,
                   PendingKnowledgeDemonChoice: null,
                   AutomaticPipelineContinuation: { } beforeDraw } &&
-            beforeDraw.Stochastic.HandDrawProgress?.Kind ==
-                PrototypeAutomaticHandDrawProgressKindV111
-                    .ControlledBeforeHandDrawHookChoice)
+            beforeDraw.Stochastic.IsAtControlledBeforeHandDraw(
+                beforeDraw.Mechanics))
         {
             if (!ControlledChanceGuardV111.Active)
                 throw new InvalidOperationException(
@@ -1828,9 +1827,8 @@ public sealed partial class PrototypeGameEngine
                 { PendingChoice: null,
                   PendingKnowledgeDemonChoice: null,
                   AutomaticPipelineContinuation: { } semanticBeforeDraw } &&
-            semanticBeforeDraw.Stochastic.HandDrawProgress?.Kind ==
-                PrototypeAutomaticHandDrawProgressKindV111
-                    .SemanticBeforeHandDraw)
+            semanticBeforeDraw.Stochastic.IsAtSemanticBeforeHandDraw(
+                semanticBeforeDraw.Mechanics))
         {
             if (!ControlledChanceGuardV111.Active)
                 throw new InvalidOperationException(
@@ -1845,9 +1843,8 @@ public sealed partial class PrototypeGameEngine
                 { PendingChoice: null,
                   PendingKnowledgeDemonChoice: null,
                   AutomaticPipelineContinuation: { } controlledDrawHook } &&
-            controlledDrawHook.Stochastic.HandDrawProgress?.Kind ==
-                PrototypeAutomaticHandDrawProgressKindV111
-                    .ControlledDrawHookChoice)
+            controlledDrawHook.Stochastic.IsAtControlledDrawHookChoice(
+                controlledDrawHook.Mechanics))
             return PrototypeAutomaticPipelineResumeResultV111.FromRun(
                 ResumeControlledAutomaticHandDrawHookChoice(state));
 

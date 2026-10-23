@@ -249,6 +249,32 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
                 PrototypeAutomaticStepKind.DrawPlayerHand);
     }
 
+    public bool IsAtControlledBeforeHandDraw(
+        PrototypeAutomaticPipelineMechanicsStateV111 mechanics)
+    {
+        ArgumentNullException.ThrowIfNull(mechanics);
+        return HandDrawProgress is
+            { Kind: PrototypeAutomaticHandDrawProgressKindV111
+                .ControlledBeforeHandDrawHookChoice,
+              RequestedCount: null,
+              RemainingCount: null } &&
+            mechanics.IsAtStep(
+                PrototypeAutomaticStepKind.DrawPlayerHand);
+    }
+
+    public bool IsAtControlledDrawHookChoice(
+        PrototypeAutomaticPipelineMechanicsStateV111 mechanics)
+    {
+        ArgumentNullException.ThrowIfNull(mechanics);
+        return HandDrawProgress is
+            { Kind: PrototypeAutomaticHandDrawProgressKindV111
+                .ControlledDrawHookChoice,
+              RequestedCount: null,
+              RemainingCount: >= 0 } &&
+            mechanics.IsAtStep(
+                PrototypeAutomaticStepKind.DrawPlayerHand);
+    }
+
     public bool TryGetAutomaticHandDrawRemainder(
         PrototypeAutomaticPipelineMechanicsStateV111 mechanics,
         out int remaining)

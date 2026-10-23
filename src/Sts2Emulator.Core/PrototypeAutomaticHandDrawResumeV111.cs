@@ -35,14 +35,13 @@ public sealed partial class PrototypeGameEngine
         var combat = RequireWorld(state).Combat ??
             throw new InvalidDataException(
                 "Automatic hand-draw stage has no combat.");
-        var progressKind = combat.AutomaticPipelineContinuation?
-            .Stochastic.HandDrawProgress?.Kind;
-        bool resumedAfterSemanticHook = progressKind ==
-            PrototypeAutomaticHandDrawProgressKindV111
-                .SemanticBeforeHandDraw;
-        bool resumedAfterControlledHook = progressKind ==
-            PrototypeAutomaticHandDrawProgressKindV111
-                .ControlledBeforeHandDrawHookChoice;
+        var cursor = combat.AutomaticPipelineContinuation;
+        bool resumedAfterSemanticHook = cursor is not null &&
+            cursor.Stochastic.IsAtSemanticBeforeHandDraw(
+                cursor.Mechanics);
+        bool resumedAfterControlledHook = cursor is not null &&
+            cursor.Stochastic.IsAtControlledBeforeHandDraw(
+                cursor.Mechanics);
         if (resumedAfterSemanticHook && requestedResultContext !=
                 AutomaticHandDrawSourceResultContextV111
                     .DeferredSemanticStage)
