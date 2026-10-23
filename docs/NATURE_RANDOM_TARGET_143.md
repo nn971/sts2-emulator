@@ -23,6 +23,11 @@ and cursor span; newly marked audits validate complete coverage for the three
 registered target sites. This result audit does not establish source
 eligibility, stream attribution, or seeded cursor parity.
 
+The persistent semantic combat pilot also admits Volley from its physical
+source-card identity. Each paid X hit reuses the existing random-target event;
+the guard checks the manual `CardPlayed` frame and the exact remaining sequence
+of Volley damage operations. Native target-pool and cursor parity remain open.
+
 ## Validation and limitations
 
 The focused C# regression tests cover a real Ricochet card action, a Sly-enabled targeted card discarded during end-turn, stale/illegal decisions, branch separation, private support validation and 15-worker deterministic target choices. They do not cover the `AutoPlayCombatCard` continuation or semantic end-turn boundary save/restore. This fixture test setup intentionally injects an available card/keyword into the playable combat state; it does not establish native deck/acquisition probabilities. The joint live transcript is replay-validated for source-reachable states.

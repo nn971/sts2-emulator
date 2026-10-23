@@ -3184,6 +3184,7 @@ public static class SemanticPilotCombatEngineV111
             "proto.colorless.anointed" or
             "proto.colorless.discovery" or
             "proto.colorless.splash" or
+            "proto.colorless.volley" or
             "proto.silent.nightmare" or
             "proto.colorless.beat_down" or
             "proto.colorless.catastrophe" or
@@ -4154,6 +4155,8 @@ public static class SemanticPilotCombatEngineV111
                 card?.CardId == "proto.colorless.splash";
             var semanticJackpotCard =
                 card?.CardId == "proto.colorless.jackpot";
+            var semanticVolleyCard =
+                card?.CardId == "proto.colorless.volley";
             var supportedCardAction = card is not null &&
                 (SemanticPlayerActionEngineV111.SupportsCard(card.CardId) ||
                  card.CardId == "proto.silent.ricochet" ||
@@ -4166,6 +4169,7 @@ public static class SemanticPilotCombatEngineV111
                  semanticDiscoveryCard ||
                  semanticSplashCard ||
                  semanticJackpotCard ||
+                 semanticVolleyCard ||
                  semanticSelectionCard);
             if (!supportedCardAction)
                 throw new NotSupportedException(
@@ -5463,6 +5467,16 @@ public static class SemanticPilotCombatEngineV111
         ArgumentNullException.ThrowIfNull(current);
         if (current.PendingEndTurn is { } endTurn)
             return endTurn.TargetPending;
+        var combat = current.Run.World?.Combat;
+        var choice = combat?.PendingChoice;
+        if (choice?.SourceCardInstanceId is { } volleySourceCardId &&
+            combat?.Cards.Any(card =>
+                card.InstanceId == volleySourceCardId &&
+                card.CardId == "proto.colorless.volley") == true &&
+            !IsVolleyRandomTargetChoice(
+                combat, choice, choice.ControlledTarget))
+            throw new InvalidDataException(
+                "Volley target is outside its supported card-play continuation.");
         var otherChance = current.Run.Stochastic.SemanticOtherChance;
         var ordinal = current.History.Count(transition =>
             transition.Kind == "semantic_target");
@@ -5474,6 +5488,57 @@ public static class SemanticPilotCombatEngineV111
                         StringComparer.Ordinal));
         return DescribePendingTargetEvent(current.Run, current.Fingerprint,
             ordinal);
+    }
+
+    private static bool IsVolleyRandomTargetChoice(
+        CombatState? combat, PendingCombatChoiceState? choice,
+        PrototypeControlledTargetChoiceV111? target)
+    {
+        if (combat is null || target is not { Kind: "effect_random_enemy",
+                SlyCardInstanceId: null, AutoPlayCardInstanceId: null } ||
+            choice is not { ChoiceId: "controlled_random_target",
+                SourceCardInstanceId: { } sourceCardInstanceId,
+                CompletionEvents: [],
+                OuterChoiceContinuation: { } continuation } ||
+            target.EligibleEnemyInstanceIds.Length == 0)
+            return false;
+        var sourceCard = combat.Cards.SingleOrDefault(card =>
+            card.InstanceId == sourceCardInstanceId &&
+            card.CardId == "proto.colorless.volley");
+        if (sourceCard is null)
+            return false;
+        var series = continuation.CardPlaySeries;
+        if (series is null || series.SourceCardInstanceId != sourceCardInstanceId ||
+            series.IsAutoPlay || series.NextPlayIndex <= 0 ||
+            series.NextPlayIndex > series.PlayCount ||
+            continuation.Operations.Length == 0 ||
+            continuation.Operations.Length > series.EnergySpent)
+            return false;
+        var damage = 10 + (4 * sourceCard.UpgradeLevel) +
+            (sourceCard.Enchantment is
+                { Kind: PrototypeCardEnchantmentKind.TezcatarasEmber } ? 3 : 0);
+        var firstOperation = new PrototypeQueuedOperation(
+            PrototypeCombatEffectKind.DamageEnemy, damage,
+            TargetMode: PrototypeEffectTarget.ActionTargetEnemy,
+            SourceKind: PrototypeEffectSourceKind.Card,
+            IsPoweredAttack: true);
+        var repeatedOperation = firstOperation with
+        {
+            TargetMode = PrototypeEffectTarget.RandomEnemy
+        };
+        return continuation.Operations.Select((operation, index) =>
+                CanonicalJson.Sha256(operation) == CanonicalJson.Sha256(
+                    index == 0 ? firstOperation : repeatedOperation))
+            .All(matches => matches) &&
+            continuation.SourceCardInstanceId == sourceCardInstanceId &&
+            continuation.CompletionEvents.Length == 1 &&
+            continuation.CompletionEvents[0] is
+                { Kind: PrototypeCombatEventKind.CardPlayed,
+                    CardId: "proto.colorless.volley" } &&
+            continuation.CompletionEvents[0].SourceCardInstanceId ==
+                sourceCardInstanceId &&
+            continuation.Parent is null &&
+            continuation.EventDispatchContinuation is null;
     }
 
     internal static SemanticTargetEventV111? DescribePendingTargetEvent(

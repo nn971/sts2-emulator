@@ -68,6 +68,12 @@ generation suffix. Fixture setup remains optional; generated-pool completeness
 and cursor parity remain open. Static source review and `git diff --check`
 only; no tests or builds were run.
 
+**S2/S4 Volley target-action increment (2026-10-23):** The persistent semantic
+pilot now admits Volley by physical source-card identity. Each paid X hit uses
+the existing random-target event and exact remaining damage-operation suffix.
+Native target-pool and cursor parity remain open. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S2/S4 Neow's Abundance choice increment (2026-10-23):** The persistent
 semantic combat pilot admits Abundance's generated-Power choice through the
 existing full-pool shuffle and ChoicePool selection owners. The shuffle guard

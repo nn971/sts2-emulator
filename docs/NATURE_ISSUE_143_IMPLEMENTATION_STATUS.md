@@ -409,6 +409,9 @@ selection owners.
 Jackpot now admits its three random zero-cost card additions from its physical
 source-card identity, validating each generated-card event's `CardPlayed`
 continuation, source upgrade level and remaining-count suffix.
+Volley now enters the same semantic pilot through its physical source-card
+identity. Each random-target event validates the saved manual `CardPlayed`
+frame and remaining X-hit operation sequence before resuming.
 Gambler's Brew uses the existing sequential card-selection event for its
 one-at-a-time discard prompt, then resumes the semantic draw owner for the
 selected count. Its guard matches the potion-use completion and exact
