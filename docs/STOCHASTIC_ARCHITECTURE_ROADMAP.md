@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S2/S4 semantic source card-selection increment (2026-10-23):** The
+persistent semantic combat pilot now admits Neow's Fury's optional
+discard-pile-to-hand card choice through the existing semantic card-selection
+event and replay owner. The action preserves the provider-owned hidden draw
+pile; no choice or snapshot schema was added. Other card effects remain open.
+Static source review and `git diff --check` only; no tests or builds were run.
+
 **S2/S4 semantic card-effect draw increment (2026-10-23):** The persistent
 semantic combat pilot now admits Restlessness, Slimed, and Calculated Gamble
 through its existing semantic draw owner. Restlessness keeps its source

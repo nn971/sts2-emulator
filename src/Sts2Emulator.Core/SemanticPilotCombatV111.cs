@@ -4106,7 +4106,8 @@ public static class SemanticPilotCombatEngineV111
             var card = source.World!.Combat!.Cards.SingleOrDefault(c =>
                 c.InstanceId == play.CardInstanceId);
             var semanticSelectionCard = card?.CardId is
-                ("proto.silent.survivor" or "proto.silent.hand_trick" or
+                ("proto.native.neow.neows_fury" or
+                    "proto.silent.survivor" or "proto.silent.hand_trick" or
                     "proto.silent.nightmare" or
                     NativeGloryAncientsV111.WishCardId);
             var semanticDrawCard = card is not null &&
