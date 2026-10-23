@@ -3164,6 +3164,31 @@ public static class SemanticPilotCombatEngineV111
             "proto.potion.snecko_oil" or
             "proto.potion.swift");
 
+    private static bool IsSemanticDeterministicCombatPotion(
+        string? potionId) =>
+        potionId is ("proto.potion.cunning" or
+            "proto.potion.binding" or
+            "proto.potion.ship_in_a_bottle" or
+            "proto.potion.heart_of_iron" or
+            "proto.potion.shackling" or
+            "proto.potion.mazaleths_gift" or
+            "proto.potion.radiant_tincture" or
+            "proto.potion.lucky_tonic" or
+            "proto.potion.block" or
+            "proto.potion.dexterity" or
+            "proto.potion.fysh_oil" or
+            "proto.potion.energy" or
+            "proto.potion.strength" or
+            "proto.potion.regen" or
+            "proto.potion.duplicator" or
+            "proto.potion.flex" or
+            "proto.potion.blessing_of_the_forge" or
+            "proto.potion.speed" or
+            "proto.potion.liquid_bronze" or
+            "proto.potion.ghost_in_a_jar" or
+            "proto.potion.fortifier" or
+            "proto.potion.stable_serum");
+
     private static bool IsSemanticEffectDrawCard(string cardId) =>
         cardId is ("proto.common.restlessness" or
             "proto.status.slimed" or
@@ -4284,11 +4309,15 @@ public static class SemanticPilotCombatEngineV111
             var isSemanticDrawPotion = validSlot &&
                 IsSemanticEffectDrawPotion(
                     source.Player.PotionSlots[payload.Slot]?.PotionId);
+            var isDeterministicPotion = validSlot &&
+                IsSemanticDeterministicCombatPotion(
+                    source.Player.PotionSlots[payload.Slot]?.PotionId);
             var isSelectionPotion = validSlot && IsSemanticSelectionPotion(
                 source.Player.PotionSlots[payload.Slot]?.PotionId);
             if ((!isGenerationPotion && !isPoolPotion &&
                  !isSelectionPotion && !isHandReturnPotion &&
-                 !isDistilledChaos && !isSemanticDrawPotion) ||
+                 !isDistilledChaos && !isSemanticDrawPotion &&
+                 !isDeterministicPotion) ||
                 payload.TargetEnemyId is not null)
                 throw new NotSupportedException(
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +

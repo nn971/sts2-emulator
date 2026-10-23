@@ -878,3 +878,16 @@ not replayed, and the original card-operation queue resumes after the final
 insertion. Candidate positions are preflighted against semantic deck state.
 The Release solution build passes with zero warnings or errors; tests and
 mechanics regressions were not run. This continuation remains `UNVERIFIED`.
+
+## 2026-10-23: deterministic no-target combat potions
+
+The persistent semantic pilot now admits the exact modeled no-target
+deterministic potion effects for Cunning, Binding, Ship in a Bottle, Heart of
+Iron, Shackling, Mazaleth's Gift, Radiant Tincture, Lucky Tonic, Block,
+Dexterity, Fysh Oil, Energy, Strength, Regen, Duplicator, Flex, Blessing of the
+Forge, Speed, Liquid Bronze, Ghost in a Jar, Fortifier, and Stable Serum. The
+actions run under the controlled-chance guard and retain the existing combat
+boundary and hidden draw-pile checks. No chance owner or snapshot schema was
+added. Targeted, draw, choice, outside-combat, and other potion effects remain
+separate work. Static source review and `git diff --check` only; no tests or
+builds were run.
