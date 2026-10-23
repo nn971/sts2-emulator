@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 automatic enemy pile-insertion identity commit increment (2026-10-24):**
+Enemy draw/discard insertion now resolves the saved generated-card and physical
+gap label against the current pile, then commits through
+`SemanticDrawPileAdapterV111`. The ordered index remains in the provider
+transcript, and label-free snapshots keep their index path. Static source review
+and `git diff --check` only; no tests or builds were run.
+
 **S3 automatic enemy-theft identity commit increment (2026-10-24):** The
 controlled chance replay owner now exposes the candidate label belonging to
 the exact consumed index request. Enemy theft uses its saved physical

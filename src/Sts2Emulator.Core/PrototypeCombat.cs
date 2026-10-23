@@ -4908,10 +4908,11 @@ public sealed partial class PrototypeGameEngine
                                     pileName: "discard");
                                 combat = insertion.Combat;
                                 combat = SemanticDrawPileAdapterV111
-                                    .ApplyNewCardZoneInsertion(
+                                    .ApplyNewCardZoneInsertionAtSourceGap(
                                         combat,
                                         PrototypeCardZone.DiscardPile,
                                         insertion.SelectedIndex,
+                                        insertion.SelectedGapIdentity,
                                         instance);
                             }
                             break;
@@ -4943,8 +4944,10 @@ public sealed partial class PrototypeGameEngine
                                         ":effect:" + effect.Kind);
                                 combat = insertion.Combat;
                                 combat = SemanticDrawPileAdapterV111
-                                    .ApplyNewDrawPileInsertion(
-                                        combat, insertion.SelectedIndex,
+                                    .ApplyNewCardZoneInsertionAtSourceGap(
+                                        combat, PrototypeCardZone.DrawPile,
+                                        insertion.SelectedIndex,
+                                        insertion.SelectedGapIdentity,
                                         instance);
                             }
                             break;
@@ -14458,7 +14461,8 @@ public sealed partial class PrototypeGameEngine
         return (updated, decision.SelectedIndex);
     }
 
-    private static (CombatState Combat, int SelectedIndex)
+    private static (CombatState Combat, int SelectedIndex,
+        string? SelectedGapIdentity)
         ResolveRandomPilePosition(
             CombatState combat,
             RngBundle legacyRng,
@@ -14532,9 +14536,13 @@ public sealed partial class PrototypeGameEngine
         {
             if (PrototypeControlledEnemyActionContinuationV111
                     .IsEnemyActionSite(siteId))
-                return (combat,
-                    StochasticProviderScopeV111.ResolveIndex(
-                        provider, request, streams).SelectedIndex);
+            {
+                var selectedIndex = StochasticProviderScopeV111
+                    .ResolveIndex(provider, request, streams).SelectedIndex;
+                return (combat, selectedIndex,
+                    ResolveSelectedEnemyInsertionGapIdentity(
+                        request, selectedIndex));
+            }
             throw new NotSupportedException(
                 $"UNSUPPORTED_CONTROLLED_CHANCE site={siteId} " +
                 "operation=bounded_integer requires a saved pile-insertion continuation.");
@@ -14563,37 +14571,24 @@ public sealed partial class PrototypeGameEngine
                 Stochastic = CombatStochasticStateV111.WithNativeRng(
                     combat.Stochastic, native with { RunStreams = streams })
             };
-        return (updated, decision.SelectedIndex);
+        return (updated, decision.SelectedIndex,
+            ResolveSelectedEnemyInsertionGapIdentity(
+                request, decision.SelectedIndex));
     }
+
+    private static string? ResolveSelectedEnemyInsertionGapIdentity(
+        RandomIndexRequestV111 request, int selectedIndex) =>
+        PrototypeControlledEnemyActionContinuationV111.IsEnemyActionSite(
+                request.SiteId)
+            ? ControlledStochasticChanceReplayV111
+                .GetSelectedIndexCandidateLabel(request, selectedIndex)
+            : null;
 
     private static string[] DescribeEnemyInsertionCandidateLabels(
-        string cardModelId, string pileName, long[] orderedPile)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(cardModelId);
-        ArgumentException.ThrowIfNullOrWhiteSpace(pileName);
-        ArgumentNullException.ThrowIfNull(orderedPile);
-        if (pileName is not ("draw" or "discard") ||
-            orderedPile.Any(instanceId => instanceId <= 0) ||
-            orderedPile.Distinct().Count() != orderedPile.Length)
-            throw new InvalidDataException(
-                "Enemy insertion labels require a unique physical pile.");
-        var prefix = "insert:" + cardModelId + ":" + pileName + ":";
-        if (orderedPile.Length == 0)
-            return [prefix + "empty"];
-
-        var labels = new string[orderedPile.Length + 1];
-        labels[0] = prefix + "before:" + orderedPile[0].ToString(
-            System.Globalization.CultureInfo.InvariantCulture);
-        for (var index = 1; index < orderedPile.Length; index++)
-            labels[index] = prefix + "between:" +
-                orderedPile[index - 1].ToString(
-                    System.Globalization.CultureInfo.InvariantCulture) + ":" +
-                orderedPile[index].ToString(
-                    System.Globalization.CultureInfo.InvariantCulture);
-        labels[^1] = prefix + "after:" + orderedPile[^1].ToString(
-            System.Globalization.CultureInfo.InvariantCulture);
-        return labels;
-    }
+        string cardModelId, string pileName, long[] orderedPile) =>
+        SemanticDrawPileAdapterV111
+            .DescribePhysicalPileInsertionGapLabels(
+                cardModelId, pileName, orderedPile);
 
     private static CombatState MakeControlledRandomTargetChoice(
         CombatState combat, string kind, int[] eligible,

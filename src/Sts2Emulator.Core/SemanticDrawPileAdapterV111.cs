@@ -715,6 +715,118 @@ public static class SemanticDrawPileAdapterV111
             addedCombatCards: [newCard]);
     }
 
+    internal static CombatState ApplyNewCardZoneInsertionAtSourceGap(
+        CombatState combat,
+        PrototypeCardZone destinationZone,
+        int fallbackIndex,
+        string? selectedGapIdentity,
+        CombatCardInstance newCard)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(newCard);
+        if (selectedGapIdentity is null)
+            return ApplyNewCardZoneInsertion(
+                combat, destinationZone, fallbackIndex, newCard);
+        var pileName = destinationZone switch
+        {
+            PrototypeCardZone.DrawPile => "draw",
+            PrototypeCardZone.DiscardPile => "discard",
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(destinationZone),
+                "Source-gap identities apply to draw and discard piles.")
+        };
+        var sourcePile = combat.Mechanics.CardZones.CardsIn(
+            destinationZone);
+        var physicalIndex = ResolveSourceGapIdentityIndex(
+            selectedGapIdentity, newCard.CardId, pileName, sourcePile);
+        return ApplyNewCardZoneInsertion(
+            combat, destinationZone, physicalIndex, newCard);
+    }
+
+    internal static string[] DescribePhysicalPileInsertionGapLabels(
+        string cardModelId, string pileName, long[] orderedPile)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(cardModelId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(pileName);
+        ArgumentNullException.ThrowIfNull(orderedPile);
+        if (pileName is not ("draw" or "discard") ||
+            orderedPile.Any(instanceId => instanceId <= 0) ||
+            orderedPile.Distinct().Count() != orderedPile.Length)
+            throw new InvalidDataException(
+                "Pile-insertion labels require a unique physical draw or discard pile.");
+        var prefix = "insert:" + cardModelId + ":" + pileName + ":";
+        if (orderedPile.Length == 0)
+            return [prefix + "empty"];
+
+        var labels = new string[orderedPile.Length + 1];
+        labels[0] = prefix + "before:" + FormatInstanceId(orderedPile[0]);
+        for (var index = 1; index < orderedPile.Length; index++)
+            labels[index] = prefix + "between:" +
+                FormatInstanceId(orderedPile[index - 1]) + ":" +
+                FormatInstanceId(orderedPile[index]);
+        labels[^1] = prefix + "after:" +
+            FormatInstanceId(orderedPile[^1]);
+        return labels;
+    }
+
+    private static int ResolveSourceGapIdentityIndex(
+        string label, string cardModelId, string pileName,
+        long[] orderedPile)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(label);
+        var prefix = "insert:" + cardModelId + ":" + pileName + ":";
+        if (!label.StartsWith(prefix, StringComparison.Ordinal) ||
+            orderedPile.Any(instanceId => instanceId <= 0) ||
+            orderedPile.Distinct().Count() != orderedPile.Length)
+            throw new InvalidDataException(
+                "Saved pile-insertion identity differs from the live pile boundary.");
+        var identity = label[prefix.Length..];
+        if (identity == "empty" && orderedPile.Length == 0)
+            return 0;
+        if (identity.StartsWith("before:", StringComparison.Ordinal))
+        {
+            var right = ParseInstanceId(identity["before:".Length..]);
+            if (orderedPile.Length > 0 && orderedPile[0] == right)
+                return 0;
+        }
+        else if (identity.StartsWith("after:", StringComparison.Ordinal))
+        {
+            var left = ParseInstanceId(identity["after:".Length..]);
+            if (orderedPile.Length > 0 && orderedPile[^1] == left)
+                return orderedPile.Length;
+        }
+        else if (identity.StartsWith("between:", StringComparison.Ordinal))
+        {
+            var pair = identity["between:".Length..].Split(':');
+            if (pair.Length == 2)
+            {
+                var left = ParseInstanceId(pair[0]);
+                var right = ParseInstanceId(pair[1]);
+                for (var index = 1; index < orderedPile.Length; index++)
+                    if (orderedPile[index - 1] == left &&
+                        orderedPile[index] == right)
+                        return index;
+            }
+        }
+        throw new InvalidDataException(
+            "Saved pile-insertion identity is not a live physical gap.");
+    }
+
+    private static long ParseInstanceId(string value)
+    {
+        if (!long.TryParse(value,
+                System.Globalization.NumberStyles.None,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var instanceId) || instanceId <= 0)
+            throw new InvalidDataException(
+                "Saved pile-insertion identity contains an invalid card instance.");
+        return instanceId;
+    }
+
+    private static string FormatInstanceId(long instanceId) =>
+        instanceId.ToString(
+            System.Globalization.CultureInfo.InvariantCulture);
+
     /// <summary>
     /// Commits a source-ordered run of known card identities at one physical
     /// draw-pile index. The resulting membership, order, provider constraints,
