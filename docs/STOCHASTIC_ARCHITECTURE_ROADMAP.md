@@ -17,8 +17,26 @@ The run-owned provider now resolves saved random replay-card and autoplay
 card-instance selections through the registered
 `run.combat_card_selection` `choose_index` boundary. The existing saved
 shortlist records the selected identity and resumes without adding a Nature
-history choice. Eligibility and stream/cursor parity remain open. Static source review and
+history choice. Eligibility and stream/cursor parity remain open. Static
+source review and `git diff --check` only; no tests or builds were run.
+
+**S6 semantic draw-insertion delegation increment (2026-10-23):** Saved
+generated-card, after-shuffle relic, and Personal Hive insertion events that
+carry their Native `run.shuffle` stream owner now route through the registered
+bounded-index boundary and resume the original insertion frame without a
+Nature history choice. The event's source owner and current pile support
+remain authoritative for applying the chosen position. Native-game stream
+attribution, pile completeness, and cursor parity remain open. Static source review and
 `git diff --check` only; no tests or builds were run.
+
+**S6 hand-return shuffle delegation increment (2026-10-23):** Bottled
+Potential's saved hand-return swaps now delegate through the registered Native
+`run.shuffle` boundary when their event carries that stream owner. The event
+preserves the source operation's owner prefix and full pool fingerprint, then
+resumes the existing shuffle and draw continuation without a Nature history
+choice. Native-game stream attribution, pool completeness, and cursor parity
+remain open. Static source review and `git diff --check` only; no tests or
+builds were run.
 
 **S6 Native initial-HP per-index law increment (2026-10-23):** The
 `combat.initial_unique_hp` Chance Law query now binds a `creature:<CombatId>`

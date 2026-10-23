@@ -38,4 +38,9 @@ full-pool shuffle continuation and draw-insertion event; it does not claim a
 new native reference-mod comparison. Each per-swap law is `SOURCE_VERIFIED`
 for the pinned Native `NextInt` transform on the declared bound. The native
 `run.shuffle` assignment, source-pool completeness, seeded provider cursor
-parity, and seed frequencies remain unverified.
+parity, and seed frequencies remain unverified. When the saved event carries
+Native `run.shuffle` ownership, the run-owned `SemanticOtherChanceStateV111`
+delegates each swap through that stream and resumes the same continuation
+without adding a Nature history choice. The source owner prefix and ordered
+pool fingerprint match `ReturnHandToDrawAndShuffle`; this does not establish
+installed-game stream or cursor parity.

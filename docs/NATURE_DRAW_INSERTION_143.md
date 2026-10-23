@@ -38,9 +38,16 @@ hook records the inserted position in the native exact semantic deck.
 Card-effect draws, standalone conditioned draws, and semantic automatic
 hand-draw segments reuse the insertion event and resume their saved frames;
 other recycle contexts remain fail-closed where their pipeline continuation
-is not serialized. The semantic pilot and draw/end-turn adapters use one
-insertion-event factory and select `run.shuffle` from the same Native
-stream-owner check. Enemy-side random draw/discard
+is not serialized. When the saved event carries a Native `run.shuffle` request,
+the run-owned `SemanticOtherChanceStateV111` delegates each supported
+generated-card, after-shuffle relic, or Personal Hive position through the
+exact SiteId/operation mapping. It preserves the event's source owner and
+bounded pile count, then resumes the saved frame without a Nature history
+choice. Prototype-labeled events retain their existing provider path. The
+Native transcript stays private to the engine; Native-game cursor parity
+remains open. The semantic pilot and
+draw/end-turn adapters use one insertion-event factory and select `run.shuffle`
+from the same Native stream-owner check. Enemy-side random draw/discard
 insertion uses typed `run.shuffle` sites and now resumes through the saved
 enemy-action frame. Native-policy audits retain the existing ordered player
 pile, inserted model, selected gap, and exact ticket at both enemy insertion
@@ -123,7 +130,9 @@ indices. The ordinary player view does not reveal those supports or cursors.
 Each saved frame replays its original effect, enemy action, or automatic
 pipeline from the pre-operation checkpoint, applies each choice once, and
 resumes the remaining hooks and queue in source order. Unsupported nested
-death/summon and recycle contexts remain fail-closed where stated above. These
-sites have no privileged per-choice transcript. Their Nature insertion law is
+death/summon and recycle contexts remain fail-closed where stated above. When
+active, the run-owned Native provider retains each registered Native request
+and cursor span in its private mixed transcript; the transcript is not part of
+the Nature or ordinary player projection. Their Nature insertion law is
 conditional: Native `run.shuffle` positions have source-verified bounded-index
 masses, while legacy positions remain `UNVERIFIED`.

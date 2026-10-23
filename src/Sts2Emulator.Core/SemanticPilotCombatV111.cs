@@ -4945,7 +4945,8 @@ public static class SemanticPilotCombatEngineV111
 
     public static SemanticPilotCombatV111 ResolveDrawInsertion(
         SemanticPilotCombatV111 current, string fingerprint,
-        string eventId, int position)
+        string eventId, int position,
+        SemanticOtherChanceStateV111? otherChance = null)
     {
         current.Validate();
         if (current.Fingerprint != fingerprint)
@@ -4981,11 +4982,16 @@ public static class SemanticPilotCombatEngineV111
                     "End-turn draw insertion omitted its replay decision.");
             var resolvedSession = PublishRunContinuation(
                 current, resolvedEndTurn.Run, resolvedEndTurn,
-                new SemanticPilotContinuationV111(
-                    "semantic_draw_insertion",
-                    DrawInsertionDecision: endTurnDecision.Fork()));
+                otherChance is null
+                    ? new SemanticPilotContinuationV111(
+                        "semantic_draw_insertion",
+                        DrawInsertionDecision: endTurnDecision.Fork())
+                    : null,
+                otherChance: otherChance);
             Validate(resolvedSession);
-            return resolvedSession;
+            return otherChance is null
+                ? resolvedSession
+                : ResolveEngineOwnedSemanticChoices(resolvedSession);
         }
         var decision = SemanticDrawInsertionChoiceV111.Select(
             pending, eventId, position);
@@ -5009,10 +5015,13 @@ public static class SemanticPilotCombatEngineV111
             DrawInsertionDecision: decision.Fork());
         var next = ResumeAndPublishNestedChoice(
             current, choice,
-            new SemanticPilotContinuationV111(
-                "semantic_draw_insertion",
-                DrawInsertionDecision: decision.Fork()),
-            validate: false);
+            otherChance is null
+                ? new SemanticPilotContinuationV111(
+                    "semantic_draw_insertion",
+                    DrawInsertionDecision: decision.Fork())
+                : null,
+            validate: false,
+            otherChance: otherChance);
         var result = next.Run;
         var resultCombat = result.World?.Combat;
         var expectedPile = priorCombat.DrawPile.ToList();
@@ -5098,7 +5107,9 @@ public static class SemanticPilotCombatEngineV111
             }
         }
         Validate(next);
-        return next;
+        return otherChance is null
+            ? next
+            : ResolveEngineOwnedSemanticChoices(next);
     }
 
     private static SemanticPilotCombatV111 Resolve(
@@ -5790,6 +5801,12 @@ public static class SemanticPilotCombatEngineV111
             ? insertion.RequestOrdinal
             : current.History.Count(transition =>
                 transition.Kind == "semantic_draw_insertion");
+        if (!afterShuffleRelicMatches && !personalHiveInsertion &&
+            current.Run.Stochastic.SemanticOtherChance is
+                { } otherChance && otherChance.ProviderId !=
+                SemanticOtherChanceEngineV111.LegacyProviderId)
+            requestOrdinal += otherChance.Decisions.Count(decision =>
+                decision.Request.SiteId == insertion.RequestSiteId);
         var nativeOwnerPrefix = afterShuffleRelicMatches || personalHiveInsertion
             ? insertion.RequestOwnerId
             : choice!.SourceCardInstanceId is { } sourceCardInstanceId
@@ -5989,6 +6006,22 @@ public static class SemanticPilotCombatEngineV111
                     current, current.Fingerprint, generatedCard.EventId,
                     generatedCard.CandidateCardIds[
                         choice.Decision.SelectedIndex], choice.Next);
+                continue;
+            }
+
+            if (current.DrawInsertionPending is { } drawInsertion &&
+                current.Run.Stochastic.SemanticOtherChance is
+                    { } drawInsertionOwner &&
+                drawInsertionOwner.ProviderId !=
+                    SemanticOtherChanceEngineV111.LegacyProviderId &&
+                SemanticOtherChanceEngineV111
+                    .SupportsEngineOwnedDrawInsertionBoundary(drawInsertion))
+            {
+                var choice = SemanticOtherChanceEngineV111
+                    .ResolveDrawInsertion(drawInsertionOwner, drawInsertion);
+                current = ResolveDrawInsertion(
+                    current, current.Fingerprint, drawInsertion.EventId,
+                    choice.Decision.SelectedIndex, choice.Next);
                 continue;
             }
 

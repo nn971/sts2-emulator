@@ -468,6 +468,41 @@ public static class SemanticOtherChanceEngineV111
     }
 
     /// <summary>
+    /// Resolve a saved insertion position through Native's run shuffle stream.
+    /// The semantic event retains the exact source owner and current pile
+    /// support for the existing insertion continuation.
+    /// </summary>
+    public static (SemanticOtherChanceStateV111 Next,
+        RandomIndexDecisionV111 Decision) ResolveDrawInsertion(
+        SemanticOtherChanceStateV111 previous,
+        SemanticDrawInsertionEventV111 pending)
+    {
+        Validate(previous);
+        ArgumentNullException.ThrowIfNull(pending);
+        pending.Validate();
+        if (!SupportsEngineOwnedDrawInsertionBoundary(pending))
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_OTHER_CHANCE site=" + pending.SiteId +
+                " operation=" + pending.OperationKind);
+
+        var request = pending.Request with { StreamId = "run.shuffle" };
+        return ResolveNativeIndex(previous, request);
+    }
+
+    internal static bool SupportsEngineOwnedDrawInsertionBoundary(
+        SemanticDrawInsertionEventV111 pending)
+    {
+        ArgumentNullException.ThrowIfNull(pending);
+        pending.Validate();
+        return StochasticSiteRegistryV111.ControlledDrawInsertionSiteIds
+                .Contains(pending.SiteId, StringComparer.Ordinal) &&
+            pending.StreamId == "run.shuffle" &&
+            pending.OperationKind == "bounded_integer" &&
+            StochasticSiteRegistryV111.SupportsEngineOwnedNativeBoundary(
+                pending.SiteId, "run.shuffle", pending.OperationKind);
+    }
+
+    /// <summary>
     /// Resolve the registered enemy theft selection through Native's combat
     /// card-generation stream; the saved enemy-action frame applies the
     /// selected physical card and resumes the action.
@@ -550,6 +585,8 @@ public static class SemanticOtherChanceEngineV111
             StochasticSiteRegistryV111.CombatRandomRareDrawToHandShuffleSiteId or
                 StochasticSiteRegistryV111.CombatRandomShortlistShuffleSiteId =>
                 "run.combat_card_selection",
+            StochasticSiteRegistryV111.CombatHandReturnShuffleSiteId =>
+                "run.shuffle",
             _ => ""
         };
         return streamId.Length != 0;
