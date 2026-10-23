@@ -353,6 +353,11 @@ span by reusing `SemanticGeneratedCardEventV111`. Newly marked Native-policy
 audits require one typed result for each supported generated-card selection
 request.
 Pool completeness, stream attribution and cursor parity remain separate claims.
+Native transform replacements now retain the original model, ordered
+replacement pool, selected model, source card instance, and exact Native ticket
+through `SemanticCardTransformEventV111`. Newly marked Native-policy audits
+require one typed outcome for each transform replacement request; transform
+pool completeness, stream attribution and cursor parity remain separate.
 New Native-policy audits also carry a mixed-trace schema marker; restore
 validation checks a fingerprint of the full retained trace and rejects a
 missing or truncated trace whenever Native decisions are retained. Older
@@ -384,7 +389,8 @@ continuations.
 
 **D2 remaining:** formation resolvers outside the integrated subset,
 monster-local draws, summon/death continuation mechanics,
-other shuffle source outcomes, target and reward outcomes, full map
+other generated-card and transform outcomes, other shuffle source outcomes,
+target and reward outcomes, full map
 source-order parity, event sites beyond Orobas, Darv, Pael, Tezcatara,
 Nonupeipe, Tanx and Vakuu offer generation, and other audited call sites.
 Other provider site families still expose primitive selections unless a

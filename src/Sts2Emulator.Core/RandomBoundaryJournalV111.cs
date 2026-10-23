@@ -514,6 +514,8 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
         _poolShuffleOutcomes = [];
     private readonly List<SemanticGeneratedCardNativeAuditV111>
         _generatedCardModelOutcomes = [];
+    private readonly List<SemanticCardTransformNativeAuditV111>
+        _cardTransformOutcomes = [];
     private readonly Dictionary<string, int> _operationSequences =
         new(StringComparer.Ordinal);
     private bool _disposed;
@@ -572,6 +574,11 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
     /// <summary>Typed Native generated-card model results.</summary>
     public IReadOnlyList<SemanticGeneratedCardNativeAuditV111>
         GeneratedCardModelOutcomes => _generatedCardModelOutcomes
+            .Select(outcome => outcome.Fork()).ToArray();
+
+    /// <summary>Typed Native card-transform replacement results.</summary>
+    public IReadOnlyList<SemanticCardTransformNativeAuditV111>
+        CardTransformOutcomes => _cardTransformOutcomes
             .Select(outcome => outcome.Fork()).ToArray();
 
     internal static void RecordWeightedIntentOutcome(
@@ -710,6 +717,29 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
             throw new InvalidDataException(
                 "Generated-card model annotation differs from the latest primitive index entry.");
         current._generatedCardModelOutcomes.Add(auditEntry.Fork());
+    }
+
+    internal static void RecordCardTransformOutcome(
+        SemanticCardTransformNativeAuditV111 auditEntry)
+    {
+        ArgumentNullException.ThrowIfNull(auditEntry);
+        var current = Active.Value;
+        if (current is null)
+            return;
+        auditEntry.Validate();
+        var lastEntry = current._orderedTranscript.LastOrDefault();
+        if (lastEntry is null || lastEntry.OperationKind != "index")
+            throw new InvalidDataException(
+                "Card-transform annotation has no preceding primitive index entry.");
+        var boundary = lastEntry.DeserializeEvent<RandomBoundaryEventV111>();
+        var journalDecision = new RandomIndexDecisionV111(
+            boundary.Request, boundary.SelectedIndex, boundary.ProviderMode,
+            boundary.NativeCursorBefore, boundary.NativeCursorAfter);
+        if (CanonicalJson.Sha256(journalDecision) !=
+            CanonicalJson.Sha256(auditEntry.ProviderDecision))
+            throw new InvalidDataException(
+                "Card-transform annotation differs from the latest primitive index entry.");
+        current._cardTransformOutcomes.Add(auditEntry.Fork());
     }
 
     /// <summary>Returns a provider-specific mixed transcript in the order

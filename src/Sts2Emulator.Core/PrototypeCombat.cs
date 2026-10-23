@@ -14318,13 +14318,28 @@ public sealed partial class PrototypeGameEngine
                 Enumerable.Range(0, candidateCardIds.Length).ToArray()),
             streams);
         if (decision.ProviderMode == "native-v111" &&
-            RandomBoundaryJournalV111.HasActiveJournal &&
-            SemanticGeneratedCardNativeAuditV111.IsSupportedAuditSite(
-                decision.Request.SiteId))
-            RandomBoundaryJournalV111.RecordGeneratedCardModelOutcome(
-                SemanticGeneratedCardNativeAuditV111.Create(
-                    decision, candidateCardIds, operationKind,
-                    sourceCardInstanceId));
+            RandomBoundaryJournalV111.HasActiveJournal)
+        {
+            if (SemanticGeneratedCardNativeAuditV111.IsSupportedAuditSite(
+                    decision.Request.SiteId))
+                RandomBoundaryJournalV111.RecordGeneratedCardModelOutcome(
+                    SemanticGeneratedCardNativeAuditV111.Create(
+                        decision, candidateCardIds, operationKind,
+                        sourceCardInstanceId));
+            else if (decision.Request.SiteId ==
+                     SemanticCardTransformChoiceV111.SiteId)
+            {
+                var transformedCardInstanceId = sourceCardInstanceId ??
+                    throw new InvalidDataException(
+                        "Native transform selection has no source card identity.");
+                var originalCardId = RequireCombatCard(
+                    combat, transformedCardInstanceId).CardId;
+                RandomBoundaryJournalV111.RecordCardTransformOutcome(
+                    SemanticCardTransformNativeAuditV111.Create(
+                        decision, candidateCardIds, operationKind,
+                        transformedCardInstanceId, originalCardId));
+            }
+        }
         var updated = native is null
             ? combat
             : combat with

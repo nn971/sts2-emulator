@@ -20,6 +20,14 @@ selection request. Pool completeness, stream attribution and cursor parity
 remain open. Static source review and `git diff --check` only; no tests or
 builds were run.
 
+**D2 Native card-transform outcome audit increment (2026-10-23):** Native
+transform replacement tickets now retain the original model, ordered
+replacement pool, selected model, source instance and exact Native cursor span
+through `SemanticCardTransformEventV111`. New Native-policy audits require one
+typed outcome for each transform replacement request. Transform pool
+completeness, stream attribution and cursor parity remain open. Static source
+review and `git diff --check` only; no tests or builds were run.
+
 **S0 stochastic SiteId ownership consolidation (2026-10-23):** The registry
 now owns the identifiers for random hand-cost selection and resolution,
 draw-cost choices, potion generation, card transforms, and the semantic
