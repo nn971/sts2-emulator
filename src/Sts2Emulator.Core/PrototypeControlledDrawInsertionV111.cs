@@ -498,9 +498,10 @@ public sealed partial class PrototypeGameEngine
                     drawRun, semanticDraw.RemainingCount).Run;
             }
 
-            var prototypeRng = state.Stochastic.PrototypeRng;
+            var effectDrawPrototypeRng = state.Stochastic.PrototypeRng;
             var resumedDraw = DrawCards(
-                state.Player, combat, semanticDraw.RemainingCount, prototypeRng,
+                state.Player, combat, semanticDraw.RemainingCount,
+                effectDrawPrototypeRng,
                 semanticDraw.FromHandDraw, eventDepth: semanticDraw.EventDepth,
                 suspensionPolicy:
                     PrototypeDrawCardsSuspensionPolicyV111
@@ -508,7 +509,7 @@ public sealed partial class PrototypeGameEngine
             var drawState = state with
             {
                 Stochastic = RunStochasticStateV111.WithPrototypeRng(
-                    state.Stochastic, prototypeRng),
+                    state.Stochastic, effectDrawPrototypeRng),
                 World = world with { Combat = combat }
             };
             return ResumeControlledInsertionPipeline(
@@ -530,18 +531,19 @@ public sealed partial class PrototypeGameEngine
             {
                 World = world with { Combat = combat }
             };
-            var prototypeRng = drawRun.Stochastic.PrototypeRng;
+            var automaticDrawPrototypeRng = drawRun.Stochastic.PrototypeRng;
             var resumedDraw = ResumeAutomaticHandDrawCards(
                 drawRun, handDrawRemaining,
                 PrototypeDrawCardsSuspensionPolicyV111
                     .ControlledLegacyAutomaticHandDraw(
                         combat,
                         cardDrawnChoice: !ControlledChanceGuardV111
-                            .EngineOwnedNativeProviderActive), prototypeRng);
+                            .EngineOwnedNativeProviderActive),
+                automaticDrawPrototypeRng);
             drawRun = drawRun with
             {
                 Stochastic = RunStochasticStateV111.WithPrototypeRng(
-                    drawRun.Stochastic, prototypeRng)
+                    drawRun.Stochastic, automaticDrawPrototypeRng)
             };
             return ContinueControlledHandDraw(drawRun, resumedDraw);
         }
