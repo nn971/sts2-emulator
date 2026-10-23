@@ -2,6 +2,15 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S2/S4 semantic draw-potion action increment (2026-10-23):** The persistent
+semantic combat pilot now admits modeled direct-draw actions for Glowwater,
+Clarity, Cure All, Snecko Oil, and Swift. Each suspended card identity reuses
+the existing provider-owned semantic draw event and nested effect continuation;
+Snecko Oil's later hand-cost randomization remains with the existing cost
+owner. Unsupported potion definitions still fail closed, and the extension
+adds no chance-event or snapshot schema. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S6 combat card-pool shuffle delegation increment (2026-10-23):** The
 run-owned `SemanticOtherChanceStateV111` now resolves saved full-pool swaps
 for generated cards through `run.combat_card_generation`, and Anointed Rare

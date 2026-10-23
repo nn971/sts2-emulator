@@ -3132,6 +3132,13 @@ public static class SemanticPilotCombatEngineV111
             "proto.potion.droplet_of_precognition" or
             "proto.potion.liquid_memories");
 
+    private static bool IsSemanticEffectDrawPotion(string? potionId) =>
+        potionId is ("proto.native.underdocks.glowwater_potion" or
+            "proto.potion.clarity" or
+            "proto.potion.cure_all" or
+            "proto.potion.snecko_oil" or
+            "proto.potion.swift");
+
     private static bool IsSemanticEffectDrawCard(string cardId) =>
         cardId is ("proto.silent.backflip" or
             "proto.silent.quick_slash" or
@@ -4212,11 +4219,14 @@ public static class SemanticPilotCombatEngineV111
             var isDistilledChaos = validSlot &&
                 source.Player.PotionSlots[payload.Slot]?.PotionId ==
                     "proto.potion.distilled_chaos";
+            var isSemanticDrawPotion = validSlot &&
+                IsSemanticEffectDrawPotion(
+                    source.Player.PotionSlots[payload.Slot]?.PotionId);
             var isSelectionPotion = validSlot && IsSemanticSelectionPotion(
                 source.Player.PotionSlots[payload.Slot]?.PotionId);
             if ((!isGenerationPotion && !isPoolPotion &&
                  !isSelectionPotion && !isHandReturnPotion &&
-                 !isDistilledChaos) ||
+                 !isDistilledChaos && !isSemanticDrawPotion) ||
                 payload.TargetEnemyId is not null)
                 throw new NotSupportedException(
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
@@ -4225,7 +4235,7 @@ public static class SemanticPilotCombatEngineV111
                 result = environment.StepResolved(
                     source, resolvedAction.Action).State;
             if (result.Phase != RunPhase.Combat &&
-                !(isDistilledChaos &&
+                !((isDistilledChaos || isSemanticDrawPotion) &&
                   PrototypeGameEngine.IsAtCombatActionResultBoundary(result)))
                 throw new NotSupportedException(
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
@@ -4254,14 +4264,16 @@ public static class SemanticPilotCombatEngineV111
                      (result.World?.Reward is null ||
                       result.World.Combat is not null))
                 throw new InvalidDataException(
-                    "Distilled Chaos victory did not enter a combat reward boundary.");
+                    "Potion victory did not enter a combat reward boundary.");
             var previous = current.Run.World!.Combat!;
             var next = result.World?.Combat;
             if (result.Phase == RunPhase.Combat &&
                 (next is null ||
                 (!isHandReturnPotion && !isDistilledChaos &&
+                !isSemanticDrawPotion &&
                 !previous.DrawPile.SequenceEqual(next.DrawPile) ||
                 !isHandReturnPotion && !isDistilledChaos &&
+                !isSemanticDrawPotion &&
                 CanonicalJson.Sha256(previous.Stochastic.SemanticDeck) !=
                     CanonicalJson.Sha256(next.Stochastic.SemanticDeck))))
                 throw new NotSupportedException(

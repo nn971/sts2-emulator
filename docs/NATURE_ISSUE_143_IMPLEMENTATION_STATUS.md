@@ -373,7 +373,12 @@ explicit seeded fixture remains available to guarantee Survivor in the opening
 hand. This does
 not establish native acquisition for these cards or generic nested-choice
 coverage. Scry/random-position selection, other insertion effects and
-card-effect draws remain separate integration milestones.
+broader card-effect draws remain separate integration milestones. The
+persistent semantic pilot now also admits the five modeled direct-draw potion
+actions Glowwater, Clarity, Cure All, Snecko Oil and Swift, resolving each
+drawn card through the existing semantic draw event and effect continuation.
+Other potion effects and opening draws remain separate integration
+milestones.
 
 The semantic JSONL/Python bridge also exposes fixed-model random draw-pile
 insertion and the two-stage random-Attack insertion continuation through
