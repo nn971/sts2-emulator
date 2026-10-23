@@ -932,6 +932,13 @@ validating its Exhausting card-play frame and exact source operation. Rip and
 Tear reuses the random-target event for its two random-enemy hits after
 validating the source card and remaining hit operation. These paths add no new
 event or snapshot schema.
+The six fixed-effect Trash Heap cards now use the semantic player-action
+boundary. Dual Wield uses the existing card-selection event after checks bind
+the pending choice to its physical source card, upgraded copy count, and exact
+eligible hand candidates. Rebound's draw-pile return is admitted only when
+the played physical card is appended and the active return powers consume the
+expected stacks. The shared draw-pile adapter remains the mutation owner; no
+event or snapshot schema changed.
 Shadow Step now uses the card-selection owner for its hand discard and queued
 power application, while Echoing Slash and Outbreak use the ordinary
 deterministic semantic player-action boundary.

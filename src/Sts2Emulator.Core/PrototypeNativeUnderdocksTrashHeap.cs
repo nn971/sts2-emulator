@@ -13,10 +13,22 @@ public static class PrototypeNativeUnderdocksTrashHeap
         StochasticSiteRegistryV111.NativeTrashHeapCardRewardSiteId;
     public const string RelicRewardSiteId =
         StochasticSiteRegistryV111.NativeTrashHeapRelicRewardSiteId;
+    public const string CaltropsCardId = "proto.native.trash_heap.caltrops";
+    public const string ClashCardId = "proto.native.trash_heap.clash";
     public const string DistractionCardId =
         "proto.native.trash_heap.distraction";
+    public const string DualWieldCardId =
+        "proto.native.trash_heap.dual_wield";
+    public const string EntrenchCardId = "proto.native.trash_heap.entrench";
+    public const string HelloWorldCardId =
+        "proto.native.trash_heap.hello_world";
+    public const string OutmaneuverCardId =
+        "proto.native.trash_heap.outmaneuver";
+    public const string ReboundCardId = "proto.native.trash_heap.rebound";
+    public const string ReboundPowerId = "proto.power.rebound";
     public const string RipAndTearCardId =
         "proto.native.trash_heap.rip_and_tear";
+    public const string StackCardId = "proto.native.trash_heap.stack";
 
     private static readonly string[] RelicIdValues =
     [
@@ -29,16 +41,16 @@ public static class PrototypeNativeUnderdocksTrashHeap
 
     private static readonly string[] CardIdValues =
     [
-        "proto.native.trash_heap.caltrops",
-        "proto.native.trash_heap.clash",
+        CaltropsCardId,
+        ClashCardId,
         DistractionCardId,
-        "proto.native.trash_heap.dual_wield",
-        "proto.native.trash_heap.entrench",
-        "proto.native.trash_heap.hello_world",
-        "proto.native.trash_heap.outmaneuver",
-        "proto.native.trash_heap.rebound",
+        DualWieldCardId,
+        EntrenchCardId,
+        HelloWorldCardId,
+        OutmaneuverCardId,
+        ReboundCardId,
         RipAndTearCardId,
-        "proto.native.trash_heap.stack"
+        StackCardId
     ];
 
     public static string[] RelicIds =>
@@ -120,7 +132,8 @@ public static class PrototypeNativeUnderdocksTrashHeap
         new(
             CardIds[7], "Rebound", 1, PrototypeCardTarget.Enemy,
             [new(PrototypeCombatEffectKind.DamageEnemy, 9, 3),
-             new(PrototypeCombatEffectKind.ApplyPlayerPower, 1, PowerId: "proto.power.rebound")],
+             new(PrototypeCombatEffectKind.ApplyPlayerPower, 1,
+                 PowerId: ReboundPowerId)],
             Rarity: PrototypeCardRarity.Event, RewardEligible: false,
             Type: PrototypeCardType.Attack),
         new(
@@ -147,7 +160,7 @@ public static class PrototypeNativeUnderdocksTrashHeap
             [new(PrototypeCombatEventKind.BeforeHandDraw,
                 [new(PrototypeCombatEffectKind.CreateDistinctCharacterCommonCardsInHand, 0, AmountPerPowerStack: 1)])],
             SnapshotGenerationStacksAtTurnStart: true),
-        new("proto.power.rebound", "Rebound", 0, [],
+        new(ReboundPowerId, "Rebound", 0, [],
             RemoveAtPlayerTurnEnd: true, ReturnNextDiscardedCardToDraw: true)
     ];
 }

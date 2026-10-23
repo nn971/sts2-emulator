@@ -4315,7 +4315,8 @@ public static class SemanticPilotCombatEngineV111
                     "proto.silent.shadow_step" or
                     "proto.silent.survivor" or "proto.silent.hand_trick" or
                     "proto.silent.nightmare" or
-                    NativeGloryAncientsV111.WishCardId);
+                    NativeGloryAncientsV111.WishCardId or
+                    PrototypeNativeUnderdocksTrashHeap.DualWieldCardId);
             var semanticDrawPileSelectionCard = card?.CardId is
                 ("proto.colorless.secret_technique" or
                  "proto.colorless.secret_weapon" or
@@ -4446,6 +4447,9 @@ public static class SemanticPilotCombatEngineV111
                          source, result, resolvedAction.Action) &&
                      !SemanticPlayerActionEngineV111
                         .IsSupportedNostalgiaDrawReturn(
+                            source, result, resolvedAction.Action) &&
+                     !SemanticPlayerActionEngineV111
+                        .IsSupportedReboundDrawReturn(
                             source, result, resolvedAction.Action)) ||
                     next is null)
                     throw new NotSupportedException(

@@ -641,13 +641,16 @@ public static class SemanticCardSelectionEngineV111
                 PrototypeCardSelectionResolutionKind.MoveToDiscard or
                 PrototypeCardSelectionResolutionKind.MoveToExhaust) &&
             !spec.RemoveUnselectedFromSource;
+        var supportedDualWieldCopy =
+            IsSupportedDualWieldChoice(combat, choice);
         var supportedGeneratedChoicePool =
             spec.SourceZone == PrototypeCardZone.ChoicePool &&
             spec.Resolution == PrototypeCardSelectionResolutionKind.MoveToHand &&
             spec.RemoveUnselectedFromSource;
         if ((!supportedTop && !supportedDrawRemoval &&
              !supportedAutomaticTransform &&
-             !supportedVisibleZoneMove && !supportedGeneratedChoicePool) ||
+             !supportedVisibleZoneMove && !supportedGeneratedChoicePool &&
+             !supportedDualWieldCopy) ||
             (spec.RemoveUnselectedFromSource &&
              !supportedGeneratedChoicePool) ||
             (spec.SequentialOptional && !supportedSequential) ||
@@ -657,6 +660,73 @@ public static class SemanticCardSelectionEngineV111
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.card_selection " +
                 "operation=unsupported_nested_source_choice");
+    }
+
+    private static bool IsSupportedDualWieldChoice(
+        CombatState combat, PendingCombatChoiceState choice)
+    {
+        if (!combat.IsPlayerTurn || choice.SourceCardInstanceId is not { } sourceId ||
+            choice.OuterChoiceContinuation is not null ||
+            choice.EventDispatchContinuation is not null ||
+            choice.Continuation.Length != 0 ||
+            choice.SourceCardDestination != PrototypeCardZone.DiscardPile ||
+            !choice.MoveSourceCardOnCompletion ||
+            choice.RemoveSourceCardOnCompletion ||
+            choice.SourceCardAlreadyMoved ||
+            choice.CardPlaySeries is not
+                { SourceCardDestination: PrototypeCardZone.DiscardPile,
+                  PlayCount: 1, NextPlayIndex: 0,
+                  RemoveSourceCardOnCompletion: false, IsAutoPlay: false } series ||
+            series.SourceCardInstanceId != sourceId)
+            return false;
+
+        var sourceCard = combat.Cards.SingleOrDefault(card =>
+            card.InstanceId == sourceId);
+        if (sourceCard?.CardId !=
+                PrototypeNativeUnderdocksTrashHeap.DualWieldCardId ||
+            !combat.Hand.Contains(sourceId))
+            return false;
+
+        var effects = PrototypeContent.Card(sourceCard.CardId).Effects;
+        if (effects.Length != 1 ||
+            effects[0].Kind != PrototypeCombatEffectKind.ChooseCards ||
+            effects[0].Selection is not { } sourceSelection)
+            return false;
+
+        var expectedSelection = sourceSelection with
+        {
+            MaxSelections = sourceSelection.MaxSelections +
+                sourceSelection.MaxSelectionsUpgradeDelta *
+                    sourceCard.UpgradeLevel,
+            CopiesPerSelection = sourceSelection.CopiesPerSelection +
+                sourceSelection.CopiesPerSelectionUpgradeDelta *
+                    sourceCard.UpgradeLevel
+        };
+        var expectedCandidates = combat.Hand.Where(id =>
+        {
+            var candidate = combat.Cards.Single(card =>
+                card.InstanceId == id);
+            return PrototypeContent.Card(candidate.CardId).Type is
+                PrototypeCardType.Attack or PrototypeCardType.Power;
+        }).ToArray();
+        var selection = choice.Selection;
+        return expectedCandidates.Length > 0 &&
+            choice.CandidateCardInstanceIds.SequenceEqual(expectedCandidates) &&
+            selection.SourceZone == PrototypeCardZone.Hand &&
+            selection.Resolution ==
+                PrototypeCardSelectionResolutionKind.CopyToHand &&
+            selection.MinSelections == 1 && selection.MaxSelections == 1 &&
+            selection.RequiredCardType is null &&
+            selection.SelectionsPerPowerStack == 0 &&
+            !selection.RemoveUnselectedFromSource &&
+            !selection.RequireEnergyCostingCard &&
+            !selection.SequentialOptional &&
+            !selection.DrawEqualToSelectionsOnCompletion &&
+            selection.RandomCandidateCount == 0 &&
+            selection.RequireAttackOrPower &&
+            selection.CopiesPerSelection == expectedSelection.CopiesPerSelection &&
+            CanonicalJson.Sha256(selection) ==
+                CanonicalJson.Sha256(expectedSelection);
     }
 
     private static bool IsSupportedManualPotionSequentialChoice(

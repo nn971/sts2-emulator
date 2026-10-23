@@ -138,7 +138,14 @@ public static class SemanticPlayerActionEngineV111
             "proto.colorless.thrumming_hatchet",
             "proto.native.event.byrd_swoop",
             "proto.native.event.peck",
-            "proto.native.event.toric_toughness"
+            "proto.native.event.toric_toughness",
+            PrototypeNativeUnderdocksTrashHeap.CaltropsCardId,
+            PrototypeNativeUnderdocksTrashHeap.ClashCardId,
+            PrototypeNativeUnderdocksTrashHeap.EntrenchCardId,
+            PrototypeNativeUnderdocksTrashHeap.HelloWorldCardId,
+            PrototypeNativeUnderdocksTrashHeap.OutmaneuverCardId,
+            PrototypeNativeUnderdocksTrashHeap.ReboundCardId,
+            PrototypeNativeUnderdocksTrashHeap.StackCardId
         };
 
     internal static bool SupportsCard(string cardId) =>
@@ -185,6 +192,96 @@ public static class SemanticPlayerActionEngineV111
                 before.DrawPile.Append(card.InstanceId));
     }
 
+    internal static bool IsSupportedReboundDrawReturn(
+        RunState source, RunState result, GameAction action)
+    {
+        if (action.Kind != "play_card"
+            || source.World?.Combat is not { } before
+            || result.Phase != RunPhase.Combat
+            || result.World?.Combat is not { } after)
+            return false;
+
+        var payload = action.ReadPayload<PlayCardPayload>();
+        var card = before.Cards.SingleOrDefault(item =>
+            item.InstanceId == payload.CardInstanceId);
+        if (card is null
+            || !before.Hand.Contains(card.InstanceId)
+            || !before.PlayerPowers.Any(power => power.Stacks > 0
+                && PrototypeContent.Power(power.PowerId)
+                    .ReturnNextDiscardedCardToDraw))
+            return false;
+
+        var expectedZones = before.Mechanics.CardZones.WithZoneChanges(
+            new Dictionary<PrototypeCardZone, long[]>
+            {
+                [PrototypeCardZone.DrawPile] = before.DrawPile
+                    .Append(card.InstanceId).ToArray(),
+                [PrototypeCardZone.Hand] = before.Hand
+                    .Where(id => id != card.InstanceId).ToArray()
+            });
+        if (CanonicalJson.Sha256(expectedZones)
+                != CanonicalJson.Sha256(after.Mechanics.CardZones)
+            || !after.DrawPile.SequenceEqual(
+                before.DrawPile.Append(card.InstanceId)))
+            return false;
+
+        var reboundPowers = before.PlayerPowers.Where(power =>
+            PrototypeContent.Power(power.PowerId)
+                .ReturnNextDiscardedCardToDraw).ToArray();
+        var reboundOrders = reboundPowers.Select(power =>
+            power.ApplicationOrder).ToHashSet();
+        foreach (var power in reboundPowers)
+        {
+            var definition = PrototypeContent.Power(power.PowerId);
+            PrototypePowerInstanceState expected;
+            bool removed;
+            if (power.SkipNextPlayerTurnEnd &&
+                definition.DecrementAtPlayerTurnEnd)
+            {
+                expected = power with { SkipNextPlayerTurnEnd = false };
+                removed = false;
+            }
+            else
+            {
+                expected = power with { Stacks = power.Stacks - 1 };
+                removed = expected.Stacks == 0 ||
+                    (expected.Stacks < 0 && !definition.AllowNegative);
+                if (!removed &&
+                    card.CardId ==
+                        PrototypeNativeUnderdocksTrashHeap.ReboundCardId &&
+                    power.PowerId ==
+                        PrototypeNativeUnderdocksTrashHeap.ReboundPowerId)
+                    expected = expected with
+                    {
+                        Stacks = expected.Stacks + 1
+                    };
+            }
+
+            var actual = after.PlayerPowers.SingleOrDefault(candidate =>
+                candidate.ApplicationOrder == power.ApplicationOrder);
+            if (removed)
+            {
+                if (actual is not null)
+                    return false;
+            }
+            else if (actual is null || CanonicalJson.Sha256(expected) !=
+                     CanonicalJson.Sha256(actual))
+                return false;
+        }
+
+        var newReboundPowers = after.PlayerPowers.Where(power =>
+            PrototypeContent.Power(power.PowerId)
+                .ReturnNextDiscardedCardToDraw &&
+            !reboundOrders.Contains(power.ApplicationOrder)).ToArray();
+        if (card.CardId != PrototypeNativeUnderdocksTrashHeap.ReboundCardId)
+            return newReboundPowers.Length == 0;
+
+        return newReboundPowers.Length == 1 &&
+            newReboundPowers[0].PowerId ==
+                PrototypeNativeUnderdocksTrashHeap.ReboundPowerId &&
+            newReboundPowers[0].Stacks == 1;
+    }
+
     public static string[] SupportedCardIds =>
         SupportedCards.Where(SupportsCard)
             .Order(StringComparer.Ordinal).ToArray();
@@ -219,8 +316,8 @@ public static class SemanticPlayerActionEngineV111
         using (ControlledChanceGuardV111.Enter())
             run = environment.Step(source.Fork(), actionId).State;
         // The allowlisted action may still activate an unmodeled relic,
-        // power, draw hook or enemy mechanic. Any supported deck change must
-        // be the exact Nostalgia source return committed by the shared adapter.
+        // power, draw hook or enemy mechanic. Supported returns must match
+        // an exact physical-card transition committed by the shared adapter.
         var afterCombat = run.World?.Combat;
         if (!PrototypeGameEngine
                 .IsAtCombatPlayerDecisionBoundary(run) || afterCombat is null)
@@ -230,7 +327,8 @@ public static class SemanticPlayerActionEngineV111
         if ((!combat.DrawPile.SequenceEqual(afterCombat.DrawPile) ||
              CanonicalJson.Sha256(combat.Stochastic.SemanticDeck) !=
                 CanonicalJson.Sha256(afterCombat.Stochastic.SemanticDeck)) &&
-            !IsSupportedNostalgiaDrawReturn(source, run, action))
+            !IsSupportedNostalgiaDrawReturn(source, run, action) &&
+            !IsSupportedReboundDrawReturn(source, run, action))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
                 "operation=unmodeled_draw_pile_mutation");
@@ -275,8 +373,10 @@ public static class SemanticPlayerActionEngineV111
                   state.Run.World!.Combat!.DrawPile) ||
               CanonicalJson.Sha256(state.Origin.World.Combat.Stochastic.SemanticDeck) !=
                   CanonicalJson.Sha256(state.Run.World.Combat.Stochastic.SemanticDeck)) &&
-             !IsSupportedNostalgiaDrawReturn(
-                 state.Origin, state.Run, sourceAction)))
+             (!IsSupportedNostalgiaDrawReturn(
+                  state.Origin, state.Run, sourceAction) &&
+              !IsSupportedReboundDrawReturn(
+                  state.Origin, state.Run, sourceAction))))
             throw new InvalidDataException(
                 "Semantic player action changed provider-owned hidden deck outside a supported source return.");
     }
