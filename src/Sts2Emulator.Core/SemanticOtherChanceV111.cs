@@ -396,6 +396,62 @@ public static class SemanticOtherChanceEngineV111
     }
 
     /// <summary>
+    /// Resolve the registered random draw-pile card pick through the Native
+    /// combat card-selection stream while the draw continuation applies the
+    /// selected physical identity.
+    /// </summary>
+    public static (SemanticOtherChanceStateV111 Next,
+        RandomIndexDecisionV111 Decision) ResolveRandomPileCard(
+        SemanticOtherChanceStateV111 previous,
+        SemanticRandomPileCardEventV111 pending)
+    {
+        Validate(previous);
+        ArgumentNullException.ThrowIfNull(pending);
+        pending.Validate();
+        if (pending.SiteId != StochasticSiteRegistryV111
+                .CombatJeweledMaskRandomPowerDrawCardSiteId ||
+            pending.StreamId != "semantic.draw_pile" ||
+            pending.OperationKind != "choose_card_instance")
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_OTHER_CHANCE site=" + pending.SiteId +
+                " operation=" + pending.OperationKind);
+
+        var request = new RandomIndexRequestV111(
+            pending.SiteId, "run.combat_card_selection", pending.OwnerId,
+            pending.Ordinal,
+            Enumerable.Range(0, pending.CandidateCardInstanceIds.Length)
+                .ToArray(), OperationKind: "choose_index");
+        return ResolveNativeIndex(previous, request);
+    }
+
+    /// <summary>
+    /// Resolve a registered draw-pile insertion position through Native's
+    /// shuffle stream while leaving insertion and pile mutation to the saved
+    /// mechanics continuation.
+    /// </summary>
+    public static (SemanticOtherChanceStateV111 Next,
+        RandomIndexDecisionV111 Decision) ResolveDrawInsertion(
+        SemanticOtherChanceStateV111 previous,
+        SemanticDrawInsertionEventV111 pending)
+    {
+        Validate(previous);
+        ArgumentNullException.ThrowIfNull(pending);
+        pending.Validate();
+        if (!StochasticSiteRegistryV111.ControlledDrawInsertionSiteIds
+                .Contains(pending.SiteId, StringComparer.Ordinal) ||
+            pending.StreamId is not ("prototype.combat" or "run.shuffle") ||
+            pending.OperationKind != "bounded_integer")
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_OTHER_CHANCE site=" + pending.SiteId +
+                " operation=" + pending.OperationKind);
+
+        return ResolveNativeIndex(previous, pending.Request with
+        {
+            StreamId = "run.shuffle"
+        });
+    }
+
+    /// <summary>
     /// Commit one registered Native index boundary owned by this private
     /// engine stream bundle. Nature does not receive the request or outcome.
     /// The caller remains responsible for applying the selected index to its

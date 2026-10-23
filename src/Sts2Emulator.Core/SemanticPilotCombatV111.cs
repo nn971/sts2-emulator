@@ -4765,7 +4765,8 @@ public static class SemanticPilotCombatEngineV111
 
     public static SemanticPilotCombatV111 ResolveRandomPileCard(
         SemanticPilotCombatV111 current, string fingerprint,
-        string eventId, long cardInstanceId)
+        string eventId, long cardInstanceId,
+        SemanticOtherChanceStateV111? otherChance = null)
     {
         current.Validate();
         if (current.Fingerprint != fingerprint)
@@ -4778,7 +4779,7 @@ public static class SemanticPilotCombatEngineV111
         var decision = SemanticRandomPileCardEngineV111.Select(
             pending, eventId, cardInstanceId);
         return Resolve(current, fingerprint, decision.SelectedIndex,
-            null, null, false, null, decision);
+            null, null, false, null, decision, otherChance);
     }
 
     public static SemanticPilotCombatV111 ResolveCost(
@@ -4931,7 +4932,8 @@ public static class SemanticPilotCombatEngineV111
 
     public static SemanticPilotCombatV111 ResolveDrawInsertion(
         SemanticPilotCombatV111 current, string fingerprint,
-        string eventId, int position)
+        string eventId, int position,
+        SemanticOtherChanceStateV111? otherChance = null)
     {
         current.Validate();
         if (current.Fingerprint != fingerprint)
@@ -4967,11 +4969,14 @@ public static class SemanticPilotCombatEngineV111
                     "End-turn draw insertion omitted its replay decision.");
             var resolvedSession = PublishRunContinuation(
                 current, resolvedEndTurn.Run, resolvedEndTurn,
-                new SemanticPilotContinuationV111(
-                    "semantic_draw_insertion",
-                    DrawInsertionDecision: endTurnDecision.Fork()));
+                otherChance is null
+                    ? new SemanticPilotContinuationV111(
+                        "semantic_draw_insertion",
+                        DrawInsertionDecision: endTurnDecision.Fork())
+                    : null,
+                otherChance: otherChance);
             Validate(resolvedSession);
-            return resolvedSession;
+            return ResolveEngineOwnedSemanticChoices(resolvedSession);
         }
         var decision = SemanticDrawInsertionChoiceV111.Select(
             pending, eventId, position);
@@ -4995,10 +5000,13 @@ public static class SemanticPilotCombatEngineV111
             DrawInsertionDecision: decision.Fork());
         var next = ResumeAndPublishNestedChoice(
             current, choice,
-            new SemanticPilotContinuationV111(
-                "semantic_draw_insertion",
-                DrawInsertionDecision: decision.Fork()),
-            validate: false);
+            otherChance is null
+                ? new SemanticPilotContinuationV111(
+                    "semantic_draw_insertion",
+                    DrawInsertionDecision: decision.Fork())
+                : null,
+            validate: false,
+            otherChance: otherChance);
         var result = next.Run;
         var resultCombat = result.World?.Combat;
         var expectedPile = priorCombat.DrawPile.ToList();
@@ -5084,7 +5092,7 @@ public static class SemanticPilotCombatEngineV111
             }
         }
         Validate(next);
-        return next;
+        return ResolveEngineOwnedSemanticChoices(next);
     }
 
     private static SemanticPilotCombatV111 Resolve(
@@ -5904,10 +5912,10 @@ public static class SemanticPilotCombatEngineV111
     }
 
     /// <summary>
-    /// The two-site pilot keeps registered random targets and cost choices
-    /// outside Nature. The run-owned Native provider resolves supported
-    /// semantic continuations; older snapshots without that owner retain
-    /// their deterministic cost fallback.
+    /// The two-site pilot keeps registered random outcomes outside Nature.
+    /// The run-owned Native provider resolves supported semantic
+    /// continuations; older snapshots without that owner retain their
+    /// compatibility behavior.
     /// </summary>
     private static SemanticPilotCombatV111 ResolveEngineOwnedSemanticChoices(
         SemanticPilotCombatV111 current)
@@ -5944,6 +5952,20 @@ public static class SemanticPilotCombatEngineV111
                 continue;
             }
 
+            if (current.DrawInsertionPending is { } drawInsertion &&
+                current.Run.Stochastic.SemanticOtherChance is
+                    { } drawInsertionOwner &&
+                drawInsertionOwner.ProviderId !=
+                    SemanticOtherChanceEngineV111.LegacyProviderId)
+            {
+                var choice = SemanticOtherChanceEngineV111
+                    .ResolveDrawInsertion(drawInsertionOwner, drawInsertion);
+                current = ResolveDrawInsertion(
+                    current, current.Fingerprint, drawInsertion.EventId,
+                    choice.Decision.SelectedValue, choice.Next);
+                continue;
+            }
+
             if (current.PotionGenerationPending is { } generatedPotion &&
                 current.Run.Stochastic.SemanticOtherChance is
                     { } potionGenerationOwner &&
@@ -5971,6 +5993,22 @@ public static class SemanticPilotCombatEngineV111
                 current = ResolveCardTransform(
                     current, current.Fingerprint, cardTransform.EventId,
                     cardTransform.CandidateCardIds[
+                        choice.Decision.SelectedIndex], choice.Next);
+                continue;
+            }
+
+            if (current.RandomPileCardPending is { } randomPileCard &&
+                current.Run.Stochastic.SemanticOtherChance is
+                    { } randomPileCardOwner &&
+                randomPileCardOwner.ProviderId !=
+                    SemanticOtherChanceEngineV111.LegacyProviderId)
+            {
+                var choice = SemanticOtherChanceEngineV111
+                    .ResolveRandomPileCard(
+                        randomPileCardOwner, randomPileCard);
+                current = ResolveRandomPileCard(
+                    current, current.Fingerprint, randomPileCard.EventId,
+                    randomPileCard.CandidateCardInstanceIds[
                         choice.Decision.SelectedIndex], choice.Next);
                 continue;
             }

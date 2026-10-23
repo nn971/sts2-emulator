@@ -117,3 +117,10 @@ transcript is exposed in the player projection. The opt-in Native-policy
 audit separately retains the ordered physical-card support and selected
 identity with the exact provider decision and cursor span; its new completeness
 coverage still does not establish pool or stream parity.
+
+When the two-site Nature pilot carries the run-owned Native boundary provider,
+it resolves this registered event through `run.combat_card_selection` and
+resumes the same automatic hand-draw frame. The provider transcript retains
+the Native request and cursor privately; the semantic draw owner still records
+the physical-card outcome for continuation replay. This handoff does not close
+the mechanics, source-pool, or Native parity gaps above.
