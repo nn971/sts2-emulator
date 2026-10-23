@@ -12,6 +12,7 @@ public sealed record SemanticOtherChanceStateV111
     private RandomIndexDecisionV111[]? _decisions;
     private Dictionary<string, ulong>? _initialStreamCallCounts;
     private Dictionary<string, NativeRngSnapshot>? _initialStreamSnapshots;
+    private RandomBoundaryTranscriptEntryV111[]? _boundaryTranscript;
 
     [System.Text.Json.Serialization.JsonConstructor]
     public SemanticOtherChanceStateV111(
@@ -20,7 +21,8 @@ public sealed record SemanticOtherChanceStateV111
         string ProviderId = SemanticOtherChanceEngineV111.ProviderId,
         ulong InitialCallCount = 0,
         Dictionary<string, ulong>? InitialStreamCallCounts = null,
-        Dictionary<string, NativeRngSnapshot>? InitialStreamSnapshots = null)
+        Dictionary<string, NativeRngSnapshot>? InitialStreamSnapshots = null,
+        RandomBoundaryTranscriptEntryV111[]? BoundaryTranscript = null)
     {
         this.Streams = Streams;
         this.Decisions = Decisions;
@@ -28,6 +30,7 @@ public sealed record SemanticOtherChanceStateV111
         this.InitialCallCount = InitialCallCount;
         this.InitialStreamCallCounts = InitialStreamCallCounts;
         this.InitialStreamSnapshots = InitialStreamSnapshots;
+        this.BoundaryTranscript = BoundaryTranscript;
     }
 
     public RngBundle Streams
@@ -65,6 +68,12 @@ public sealed record SemanticOtherChanceStateV111
                 value, StringComparer.Ordinal);
     }
 
+    public RandomBoundaryTranscriptEntryV111[]? BoundaryTranscript
+    {
+        get => CloneTranscript(_boundaryTranscript);
+        init => _boundaryTranscript = CloneTranscript(value);
+    }
+
     public string ProviderId { get; init; }
     public ulong InitialCallCount { get; init; }
 
@@ -73,7 +82,8 @@ public sealed record SemanticOtherChanceStateV111
         Streams = _streams?.Fork()!,
         Decisions = CloneDecisions(_decisions)!,
         InitialStreamCallCounts = _initialStreamCallCounts,
-        InitialStreamSnapshots = _initialStreamSnapshots
+        InitialStreamSnapshots = _initialStreamSnapshots,
+        BoundaryTranscript = _boundaryTranscript
     };
 
     public void Deconstruct(
@@ -98,11 +108,17 @@ public sealed record SemanticOtherChanceStateV111
                         .OrderedCandidates.Clone()
                 }
             }).ToArray();
+
+    private static RandomBoundaryTranscriptEntryV111[]? CloneTranscript(
+        RandomBoundaryTranscriptEntryV111[]? transcript) => transcript?.Select(
+            entry => entry is null ? null! : entry.Fork()).ToArray();
 }
 
 public static class SemanticOtherChanceEngineV111
 {
     public const string ProviderId =
+        "engine-owned-native-v111-boundary-streams-unverified-v1";
+    public const string IndexOnlyProviderId =
         "engine-owned-native-v111-index-streams-unverified-v1";
     public const string LegacyProviderId =
         "engine-owned-native-v111-cost-stream-unverified-v1";
@@ -111,8 +127,8 @@ public static class SemanticOtherChanceEngineV111
     /// <summary>
     /// Caller supplies the complete source-owned run bundle after entry
     /// setup. The owner keeps all named streams so registered engine-owned
-    /// Native index requests can advance their actual source stream without
-    /// making a third Nature choice.
+    /// Native typed boundaries can advance their source stream without
+    /// making an additional Nature choice.
     /// </summary>
     public static SemanticOtherChanceStateV111 Begin(
         RngBundle afterOpening, string providerId = ProviderId)
@@ -140,7 +156,8 @@ public static class SemanticOtherChanceEngineV111
             InitialStreamSnapshots: legacy ? null : afterOpening.Streams.ToDictionary(
                 stream => stream.StreamId,
                 NativeRngV111.ToSnapshot,
-                StringComparer.Ordinal));
+                StringComparer.Ordinal),
+            BoundaryTranscript: providerId == ProviderId ? [] : null);
         Validate(state);
         return state;
     }
@@ -221,13 +238,175 @@ public static class SemanticOtherChanceEngineV111
 
         var decision = new NativeRandomIndexProviderV111()
             .Resolve(request, workingStreams);
+        var transcript = working.ProviderId != ProviderId
+            ? null
+            : AppendBoundaryTranscript(working,
+                "index",
+                new RandomBoundaryEventV111(
+                    NextBoundarySequence(working), decision.Request,
+                    decision.SelectedIndex, decision.SelectedValue,
+                    decision.ProviderMode, decision.NativeCursorBefore,
+                    decision.NativeCursorAfter));
         var next = working with
         {
             Streams = workingStreams,
-            Decisions = working.Decisions.Append(decision).ToArray()
+            Decisions = working.Decisions.Append(decision).ToArray(),
+            BoundaryTranscript = transcript ?? working.BoundaryTranscript
         };
         Validate(next);
         return (next, decision);
+    }
+
+    public static (SemanticOtherChanceStateV111 Next,
+        RandomUnitFloatDecisionV111 Decision) ResolveNativeUnitFloat(
+        SemanticOtherChanceStateV111 previous,
+        RandomUnitFloatRequestV111 request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ValidateNativeBoundaryRequest(
+            previous, request.SiteId, request.StreamId, "unit_float");
+        var working = previous.Fork();
+        var streams = working.Streams;
+        var decision = new NativeRandomUnitFloatProviderV111()
+            .Resolve(request, streams);
+        return PublishNativeBoundary(working, streams, "unit_float",
+            new RandomUnitFloatBoundaryEventV111(
+                NextBoundarySequence(working), decision.Request,
+                decision.SelectedValue, decision.ProviderMode,
+                decision.NativeCursorBefore, decision.NativeCursorAfter),
+            decision);
+    }
+
+    public static (SemanticOtherChanceStateV111 Next,
+        RandomRangedFloatDecisionV111 Decision) ResolveNativeRangedFloat(
+        SemanticOtherChanceStateV111 previous,
+        RandomRangedFloatRequestV111 request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ValidateNativeBoundaryRequest(
+            previous, request.SiteId, request.StreamId, "ranged_float");
+        var working = previous.Fork();
+        var streams = working.Streams;
+        var decision = new NativeRandomRangedFloatProviderV111()
+            .Resolve(request, streams);
+        return PublishNativeBoundary(working, streams, "ranged_float",
+            new RandomRangedFloatBoundaryEventV111(
+                NextBoundarySequence(working), decision.Request,
+                decision.SelectedValue, decision.ProviderMode,
+                decision.NativeCursorBefore, decision.NativeCursorAfter),
+            decision);
+    }
+
+    public static (SemanticOtherChanceStateV111 Next,
+        RandomRangedDoubleDecisionV111 Decision) ResolveNativeRangedDouble(
+        SemanticOtherChanceStateV111 previous,
+        RandomRangedDoubleRequestV111 request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ValidateNativeBoundaryRequest(
+            previous, request.SiteId, request.StreamId, "ranged_double");
+        var working = previous.Fork();
+        var streams = working.Streams;
+        var decision = new NativeRandomRangedDoubleProviderV111()
+            .Resolve(request, streams);
+        return PublishNativeBoundary(working, streams, "ranged_double",
+            new RandomRangedDoubleBoundaryEventV111(
+                NextBoundarySequence(working), decision.Request,
+                decision.SelectedValue, decision.ProviderMode,
+                decision.NativeCursorBefore, decision.NativeCursorAfter),
+            decision);
+    }
+
+    public static (SemanticOtherChanceStateV111 Next,
+        RandomGaussianIntDecisionV111 Decision) ResolveNativeGaussianInt(
+        SemanticOtherChanceStateV111 previous,
+        RandomGaussianIntRequestV111 request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ValidateNativeBoundaryRequest(
+            previous, request.SiteId, request.StreamId, "gaussian_int");
+        var working = previous.Fork();
+        var streams = working.Streams;
+        var decision = new NativeRandomGaussianIntProviderV111()
+            .Resolve(request, streams);
+        return PublishNativeBoundary(working, streams, "gaussian_int",
+            new RandomGaussianIntBoundaryEventV111(
+                NextBoundarySequence(working), decision.Request,
+                decision.SelectedValue, decision.ProviderMode,
+                decision.NativeCursorBefore, decision.NativeCursorAfter),
+            decision);
+    }
+
+    public static (SemanticOtherChanceStateV111 Next,
+        RandomGaussianDoubleDecisionV111 Decision) ResolveNativeGaussianDouble(
+        SemanticOtherChanceStateV111 previous,
+        RandomGaussianDoubleRequestV111 request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ValidateNativeBoundaryRequest(
+            previous, request.SiteId, request.StreamId, "gaussian_double");
+        var working = previous.Fork();
+        var streams = working.Streams;
+        var decision = new NativeRandomGaussianDoubleProviderV111()
+            .Resolve(request, streams);
+        return PublishNativeBoundary(working, streams, "gaussian_double",
+            new RandomGaussianDoubleBoundaryEventV111(
+                NextBoundarySequence(working), decision.Request,
+                decision.SelectedValue, decision.ProviderMode,
+                decision.NativeCursorBefore, decision.NativeCursorAfter),
+            decision);
+    }
+
+    private static (SemanticOtherChanceStateV111 Next, T Decision)
+        PublishNativeBoundary<T>(
+        SemanticOtherChanceStateV111 previous,
+        RngBundle streams,
+        string operationKind,
+        object boundaryEvent,
+        T decision)
+    {
+        var next = previous with
+        {
+            Streams = streams,
+            BoundaryTranscript = AppendBoundaryTranscript(
+                previous, operationKind, boundaryEvent)
+        };
+        Validate(next);
+        return (next, decision);
+    }
+
+    private static RandomBoundaryTranscriptEntryV111[]
+        AppendBoundaryTranscript(
+        SemanticOtherChanceStateV111 state,
+        string operationKind,
+        object boundaryEvent)
+    {
+        var transcript = state.BoundaryTranscript ??
+            throw new InvalidDataException(
+                "Expanded Native provider has no mixed boundary transcript.");
+        return transcript.Append(new RandomBoundaryTranscriptEntryV111(
+            transcript.Length + 1, operationKind,
+            RandomBoundaryTranscriptEntryV111.SerializeEvent(boundaryEvent)))
+            .ToArray();
+    }
+
+    private static int NextBoundarySequence(
+        SemanticOtherChanceStateV111 state) =>
+        checked((state.BoundaryTranscript?.Length ?? 0) + 1);
+
+    private static void ValidateNativeBoundaryRequest(
+        SemanticOtherChanceStateV111 previous,
+        string siteId,
+        string streamId,
+        string operationKind)
+    {
+        Validate(previous);
+        if (previous.ProviderId != ProviderId ||
+            !StochasticSiteRegistryV111.SupportsEngineOwnedNativeBoundary(
+                siteId, streamId, operationKind))
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_OTHER_CHANCE site=" + siteId +
+                " stream=" + streamId + " operation=" + operationKind);
     }
 
     private static ulong WorkingCostStreamCallCount(
@@ -247,7 +426,7 @@ public static class SemanticOtherChanceEngineV111
             throw new InvalidDataException(
                 "Engine-owned Native index provider has no stream collection.");
         var streams = ownedStreams.Streams;
-        if (state.ProviderId == ProviderId)
+        if (state.ProviderId is ProviderId or IndexOnlyProviderId)
         {
             NativeRunRngV111.ValidateBundle(ownedStreams);
         }
@@ -265,10 +444,15 @@ public static class SemanticOtherChanceEngineV111
 
         var initialCallCounts = state.InitialStreamCallCounts;
         var initialStreamSnapshots = state.InitialStreamSnapshots;
-        if (state.ProviderId == ProviderId &&
-            (initialCallCounts is null || initialStreamSnapshots is null))
+        var expandedProvider = state.ProviderId == ProviderId;
+        var indexOnlyProvider = state.ProviderId == IndexOnlyProviderId;
+        var boundaryTranscript = state.BoundaryTranscript;
+        if ((expandedProvider || indexOnlyProvider) &&
+            (initialCallCounts is null || initialStreamSnapshots is null ||
+             (expandedProvider && boundaryTranscript is null) ||
+             (indexOnlyProvider && boundaryTranscript is not null)))
             throw new InvalidDataException(
-                "Native index-stream state is missing its cursor origins.");
+                "Native boundary state is missing or has inconsistent cursor origins.");
         if (initialCallCounts is not null)
         {
             if (initialCallCounts.Count != streams.Length ||
@@ -299,9 +483,18 @@ public static class SemanticOtherChanceEngineV111
                 decision.Request.StreamId == CostStreamId &&
                 IsDrawCostSite(decision.Request.SiteId)) ||
              initialCallCounts is not null ||
-             initialStreamSnapshots is not null))
+             initialStreamSnapshots is not null ||
+             state.BoundaryTranscript is not null))
             throw new InvalidDataException(
                 "Legacy engine-owned provider state contains an expanded index-stream transcript.");
+
+        if (expandedProvider)
+        {
+            ValidateExpandedBoundaryTranscript(
+                state, streams, initialCallCounts!,
+                initialStreamSnapshots!, boundaryTranscript!);
+            return;
+        }
 
         var observedByStream = new Dictionary<string, ulong>(
             StringComparer.Ordinal);
@@ -360,10 +553,139 @@ public static class SemanticOtherChanceEngineV111
                 "Private non-Nature cost stream cursor disagrees with its transcript.");
     }
 
+    private static void ValidateExpandedBoundaryTranscript(
+        SemanticOtherChanceStateV111 state,
+        RngStreamState[] streams,
+        Dictionary<string, ulong> initialCallCounts,
+        Dictionary<string, NativeRngSnapshot> initialSnapshots,
+        RandomBoundaryTranscriptEntryV111[] transcript)
+    {
+        if (state.InitialCallCount !=
+                SnapshotCallCount(initialSnapshots[CostStreamId]) ||
+            initialCallCounts.Any(pair =>
+                pair.Value != SnapshotCallCount(initialSnapshots[pair.Key])))
+            throw new InvalidDataException(
+                "Native stream call-count and cursor origins disagree.");
+
+        var currentSnapshots = new Dictionary<string, NativeRngSnapshot>(
+            initialSnapshots, StringComparer.Ordinal);
+        var projectedIndexDecisions = new List<RandomIndexDecisionV111>();
+        for (int index = 0; index < transcript.Length; index++)
+        {
+            var entry = transcript[index];
+            entry.Validate();
+            if (entry.Sequence != index + 1 ||
+                entry.ReadProviderMode() != "native-v111")
+                throw new InvalidDataException(
+                    "Expanded Native boundary transcript order or provider mode is invalid.");
+
+            var boundary = ReadBoundary(entry);
+            if (boundary.EventSequence != entry.Sequence ||
+                !StochasticSiteRegistryV111.SupportsEngineOwnedNativeBoundary(
+                    boundary.SiteId, boundary.StreamId,
+                    boundary.OperationKind) ||
+                boundary.CursorBefore is null ||
+                boundary.CursorAfter is null ||
+                !currentSnapshots.TryGetValue(boundary.StreamId,
+                    out var expectedCursor) ||
+                boundary.CursorBefore != expectedCursor)
+                throw new InvalidDataException(
+                    "Expanded Native boundary transcript has an invalid site or cursor chain.");
+            currentSnapshots[boundary.StreamId] = boundary.CursorAfter;
+            if (boundary.IndexDecision is { } indexDecision)
+                projectedIndexDecisions.Add(indexDecision);
+        }
+
+        if (projectedIndexDecisions.Count != state.Decisions.Length)
+            throw new InvalidDataException(
+                "Expanded Native index compatibility projection is incomplete.");
+        for (int index = 0; index < projectedIndexDecisions.Count; index++)
+        {
+            if (CanonicalJson.Sha256(projectedIndexDecisions[index]) !=
+                CanonicalJson.Sha256(state.Decisions[index]))
+                throw new InvalidDataException(
+                    "Expanded Native index projection differs from its mixed transcript.");
+        }
+
+        foreach (var stream in streams)
+        {
+            var expected = currentSnapshots[stream.StreamId];
+            if (NativeRngV111.ToSnapshot(stream) != expected ||
+                stream.CallCount != SnapshotCallCount(expected))
+                throw new InvalidDataException(
+                    "Expanded Native stream cursor differs from its mixed transcript.");
+        }
+    }
+
+    private static ulong SnapshotCallCount(NativeRngSnapshot snapshot) =>
+        unchecked((uint)snapshot.Counter);
+
+    private static (int EventSequence, string SiteId, string StreamId,
+        string OperationKind,
+        NativeRngSnapshot? CursorBefore, NativeRngSnapshot? CursorAfter,
+        RandomIndexDecisionV111? IndexDecision) ReadBoundary(
+        RandomBoundaryTranscriptEntryV111 entry)
+    {
+        switch (entry.OperationKind)
+        {
+            case "index":
+            {
+                var value = entry.DeserializeEvent<RandomBoundaryEventV111>();
+                var decision = new RandomIndexDecisionV111(
+                    value.Request, value.SelectedIndex, value.ProviderMode,
+                    value.NativeCursorBefore, value.NativeCursorAfter);
+                return (value.Sequence, value.Request.SiteId, value.Request.StreamId,
+                    value.Request.OperationKind, value.NativeCursorBefore,
+                    value.NativeCursorAfter, decision);
+            }
+            case "unit_float":
+            {
+                var value = entry.DeserializeEvent<RandomUnitFloatBoundaryEventV111>();
+                return (value.Sequence, value.Request.SiteId, value.Request.StreamId,
+                    "unit_float", value.NativeCursorBefore,
+                    value.NativeCursorAfter, null);
+            }
+            case "ranged_float":
+            {
+                var value = entry.DeserializeEvent<RandomRangedFloatBoundaryEventV111>();
+                return (value.Sequence, value.Request.SiteId, value.Request.StreamId,
+                    "ranged_float", value.NativeCursorBefore,
+                    value.NativeCursorAfter, null);
+            }
+            case "ranged_double":
+            {
+                var value = entry.DeserializeEvent<RandomRangedDoubleBoundaryEventV111>();
+                return (value.Sequence, value.Request.SiteId, value.Request.StreamId,
+                    "ranged_double", value.NativeCursorBefore,
+                    value.NativeCursorAfter, null);
+            }
+            case "gaussian_int":
+            {
+                var value = entry.DeserializeEvent<RandomGaussianIntBoundaryEventV111>();
+                return (value.Sequence, value.Request.SiteId, value.Request.StreamId,
+                    "gaussian_int", value.NativeCursorBefore,
+                    value.NativeCursorAfter, null);
+            }
+            case "gaussian_double":
+            {
+                var value = entry.DeserializeEvent<RandomGaussianDoubleBoundaryEventV111>();
+                return (value.Sequence, value.Request.SiteId, value.Request.StreamId,
+                    "gaussian_double", value.NativeCursorBefore,
+                    value.NativeCursorAfter, null);
+            }
+            default:
+                throw new InvalidDataException(
+                    "Expanded Native transcript has an unknown boundary operation.");
+        }
+    }
+
     private static bool IsDrawCostSite(string siteId) => siteId is
         StochasticSiteRegistryV111.CombatDrawRelicEnergyCostSiteId or
         StochasticSiteRegistryV111.CombatDrawSlitherEnergyCostSiteId;
 
     public static bool IsSupportedProviderId(string? providerId) =>
-        providerId is ProviderId or LegacyProviderId;
+        providerId is ProviderId or IndexOnlyProviderId or LegacyProviderId;
+
+    public static int DecisionCount(SemanticOtherChanceStateV111? state) =>
+        state?.BoundaryTranscript?.Length ?? state?.Decisions.Length ?? 0;
 }

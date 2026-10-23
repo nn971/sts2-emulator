@@ -2593,8 +2593,8 @@ public sealed record SemanticPilotCombatV111(
                  entry.OtherChanceProviderId !=
                     this.Run.Stochastic.SemanticOtherChance?.ProviderId) ||
                 (routeCostProviderExpected &&
-                 this.Run.Stochastic.SemanticOtherChance?.ProviderId !=
-                 SemanticOtherChanceEngineV111.ProviderId))
+                 !SemanticOtherChanceEngineV111.IsSupportedProviderId(
+                     this.Run.Stochastic.SemanticOtherChance?.ProviderId)))
                 throw new InvalidDataException(
                     "Seeded Nature entry provenance disagrees with its opening.");
         }

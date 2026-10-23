@@ -8,7 +8,7 @@
 **Base:** the isolated fidelity/RNG integration branch (PR [#137](https://github.com/nn971/sts2-emulator/pull/137)); the Silent all-Act gameplay snapshot in `main` is unchanged.
 **Status:** PRs #144–#152, #155–#157 and #159–#165 are merged into the isolated RNG/Inspector integration branch. The P0 JSONL protocol has an opt-in real Act 1 source route, pre-intent suspension, source-filtered weighted intent IDs, deferred card identities, and a paired engine-owned policy baseline. The source-routed victory smoke, replay check and 1-vs-15 process comparison pass. Remaining #143 acceptance is complete declared engine-owned stochastic delegation and the matched two-site Nature/control A/B. Conditional laws remain `UNVERIFIED`; native fidelity and source-law calibration are separately gated by #122 and N5.
 
-The non-Nature provider now retains the complete Native run bundle with per-stream cursor origins and can commit any registered engine-owned Native index request into a private decision transcript. The current Nature mechanics path uses it for drawn-card costs; routing the remaining supported ordinary stochastic boundaries through this owner and completing the matched A/B remain open.
+The non-Nature provider now retains the complete Native run bundle with per-stream cursor origins and a mixed typed transcript for registered Native boundaries. The current Nature mechanics path uses its index route for drawn-card costs; routing the remaining supported ordinary stochastic boundaries through this owner and completing the matched A/B remain open.
 
 ## Delivered by the event-metadata slice
 

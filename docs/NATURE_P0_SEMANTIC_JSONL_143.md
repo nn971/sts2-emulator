@@ -92,8 +92,8 @@ non-Nature RNG parity remain **UNVERIFIED**.
 - `semanticOtherChanceProvider =
   engine-owned-deterministic-unverified-v1`.
 - `semanticOtherChanceProviders` lists the deterministic compatibility
-  provider, `engine-owned-native-v111-index-streams-unverified-v1`, and the
-  legacy Native cost-only provider ID.
+  provider, the current Native boundary provider, and the previous index-only
+  and legacy cost-only provider IDs.
 - `semanticOpeningProvider = precommitted-fixture-v1`.
 - `semanticSeededOpeningProvider =
   engine-owned-seeded-source-shaped-unverified-v1` and
@@ -587,15 +587,16 @@ the default for the existing `semantic_begin` and
 
 **New explicit opt-in** on `semantic_begin_seeded`:
 `other_chance_provider_id =
-engine-owned-native-v111-index-streams-unverified-v1`.
+engine-owned-native-v111-boundary-streams-unverified-v1`.
 Python `Session.begin_seeded_semantic_combat(...,
 other_chance_provider_id=...)` passes through this request.
 `hello.semanticOtherChanceProviders` lists the deterministic fallback and
-both Native provider IDs;
+the current Native provider plus its index-only and cost-only compatibility IDs;
 each semantic `status` exposes the selected
 `otherChanceProvider` and cumulative `otherChanceDecisionCount`.
-The older `engine-owned-native-v111-cost-stream-unverified-v1` ID remains
-accepted for clients that need the previous cost-only snapshot shape.
+The older `engine-owned-native-v111-index-streams-unverified-v1` and
+`engine-owned-native-v111-cost-stream-unverified-v1` IDs remain accepted for
+clients that use their previous index-stream or cost-only snapshot shapes.
 
 The opt-in `source_route_entry` uses the same private native cost stream
 automatically for its Nature branch, seeded from the real run stream bundle
@@ -604,18 +605,19 @@ through native combat ownership. Source-route users therefore do not need
 to request a third Nature choice or configure a separate cost provider.
 
 The engine saves a *private, deeply forked* fifteen-stream v111 RNG bundle
-with each stream's initial call count immediately after its source-shaped
-seeded HP / initial intent / Fisher–Yates opening setup. The owner can resolve
-registered engine-owned Native index requests by their declared source
-stream, preserving the request's declared ordinal, and recording its Native
-before/after cursor in a provider-private transcript. Per-stream cursor
-continuity is validated independently of source occurrence ordinals.
+with each stream's initial call count and cursor immediately after its
+source-shaped seeded HP / initial intent / Fisher–Yates opening setup. The
+owner can resolve registered engine-owned Native typed requests by their
+declared source stream, preserving each request's declared ordinal and
+recording mixed operations plus Native before/after cursors in a
+provider-private transcript. Per-stream cursor continuity is validated
+independently of source occurrence ordinals.
 The current real DrawCards integration pauses at a Snecko or Slither
 energy-cost call, samples the pending bounded index with the native v111
 NextInt codec from `run.combat_energy_costs`, then feeds the selected cost
 into the existing source-timed mechanical continuation. The owner does not
-yet handle non-index primitives or automatically intercept every ordinary
-mechanics boundary.
+yet intercept every ordinary mechanics boundary. Ranged-float, ranged-double
+and Gaussian-double native gameplay pairs remain unregistered and fail closed.
 Only `enemy_intent` and unresolved `draw_card` are returned to Nature.
 No shuffle-swap ticket is generated for an already committed deck epoch.
 
@@ -649,7 +651,7 @@ pilot = session.begin_seeded_semantic_combat(
     encounter_id="proto.native.hive.encounter.exoskeletons_normal",
     native_entry="ExoskeletonsNormal", total_floor=20,
     other_chance_provider_id=
-        "engine-owned-native-v111-index-streams-unverified-v1")
+        "engine-owned-native-v111-boundary-streams-unverified-v1")
 ```
 
 ## 2026-10-16 P0 opening mechanics: source-timed known-card draw hooks

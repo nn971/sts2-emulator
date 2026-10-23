@@ -766,7 +766,8 @@ internal static class PrototypeAiJsonlServer
                     combat.Run.Stochastic.SemanticOtherChance?.ProviderId ??
                     "engine-owned-deterministic-unverified-v1",
                 otherChanceDecisionCount =
-                    combat.Run.Stochastic.SemanticOtherChance?.Decisions.Length ?? 0,
+                    SemanticOtherChanceEngineV111.DecisionCount(
+                        combat.Run.Stochastic.SemanticOtherChance),
                 rewardProvider =
                     combat.Run.Stochastic.SemanticRewardAudit?.ProviderId,
                 rewardDrawCount = combat.Run.Stochastic.SemanticRewardAudit?.Calls
@@ -2569,7 +2570,8 @@ internal static class PrototypeAiJsonlServer
                     : state.Run.Stochastic.SemanticOtherChance?.ProviderId ??
                         "engine-owned-deterministic-unverified-v1",
                 otherChanceDecisionCount =
-                    state.Run.Stochastic.SemanticOtherChance?.Decisions.Length ?? 0,
+                    SemanticOtherChanceEngineV111.DecisionCount(
+                        state.Run.Stochastic.SemanticOtherChance),
                 rewardProvider =
                     state.Run.Stochastic.SemanticRewardAudit?.ProviderId,
                 rewardDrawCount = state.Run.Stochastic.SemanticRewardAudit?.Calls,
@@ -3093,6 +3095,7 @@ internal static class PrototypeAiJsonlServer
                             {
                                 "engine-owned-deterministic-unverified-v1",
                                 SemanticOtherChanceEngineV111.ProviderId,
+                                SemanticOtherChanceEngineV111.IndexOnlyProviderId,
                                 SemanticOtherChanceEngineV111.LegacyProviderId
                             },
                             semanticRewardProvider =
