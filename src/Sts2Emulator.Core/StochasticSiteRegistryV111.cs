@@ -1400,6 +1400,8 @@ public static class StochasticSiteRegistryV111
         (string[])NativeGaussianDoubleSites.Clone();
     public static string[] NativeBoundedIntegerSiteIds =>
         (string[])NativeBoundedIntegerSites.Clone();
+    public static string[] NativeBoundedIndexOperationSiteIds =>
+        (string[])NativeBoundedIndexOperationSites.Clone();
     public static string[] NativeDiagnosticRandomIndexSiteIds =>
         (string[])NativeDiagnosticRandomIndexSites.Clone();
     public static string[] NativeMerchantPriceSiteIds =>

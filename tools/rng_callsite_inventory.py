@@ -21,8 +21,12 @@ from urllib.parse import unquote, urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v45"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v46"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
+TYPE_SOURCE_DECLARATION_PATTERN = re.compile(
+    r"\b(?:class|record|struct)\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\b"
+)
+_SOURCE_CLASS_CONTENTS: dict[str, tuple[str, ...]] | None = None
 
 CALL_PATTERN = re.compile(
     r"\b(?P<api>PrototypeRng|NativeRngV111|NativeFisherYatesV111)"
@@ -602,19 +606,24 @@ def _resolve_site_value(
         identity = f"{type_name}.{name}"
         if identity in active:
             return None
-        class_file = SOURCE_ROOT / (type_name + ".cs")
-        candidate_files = ([class_file] if class_file.is_file() else []) + [
-            path for path in sorted(SOURCE_ROOT.rglob("*.cs"))
-            if path != class_file
-        ]
-        for candidate in candidate_files:
-            source = candidate.read_text(encoding="utf-8")
-            if not re.search(
-                rf"\b(?:class|record|struct)\s+"
-                rf"{re.escape(type_name)}\b",
-                source,
-            ):
-                continue
+        if _SOURCE_CLASS_CONTENTS is None:
+            class_file = SOURCE_ROOT / (type_name + ".cs")
+            candidate_files = ([class_file] if class_file.is_file() else []) + [
+                path for path in sorted(SOURCE_ROOT.rglob("*.cs"))
+                if path != class_file
+            ]
+            class_sources = []
+            for candidate in candidate_files:
+                source = candidate.read_text(encoding="utf-8")
+                if re.search(
+                    rf"\b(?:class|record|struct)\s+"
+                    rf"{re.escape(type_name)}\b",
+                    source,
+                ):
+                    class_sources.append(source)
+        else:
+            class_sources = _SOURCE_CLASS_CONTENTS.get(type_name, ())
+        for source in class_sources:
             candidates.update(_string_constants(source).get(name, set()))
             for declaration in \
                     CLASS_STRING_CONSTANT_EXPRESSION_PATTERN.finditer(source):
@@ -2019,6 +2028,14 @@ def _site_id_forwarder_calls(
             "paths": {"PrototypeCombat.cs"},
         },
         {
+            "callee": "PrototypeGameEngine.ResolveRandomCombatCardIndex",
+            "pattern": re.compile(
+                r"\bResolveRandomCombatCardIndex\s*\("
+            ),
+            "site_argument": 2,
+            "paths": {"PrototypeCombat.cs"},
+        },
+        {
             "callee": "NativeMapRandom.Shuffle",
             "pattern": re.compile(r"\brandom\.Shuffle\s*\("),
             "site_argument": 1,
@@ -2098,6 +2115,8 @@ def _site_id_forwarder_calls(
                     value = None
                 else:
                     expression = arguments[position]
+                    if expression.strip() == "string siteId":
+                        continue
                     values = _resolve_member_site_values(
                         source, match.start(), expression,
                         _method_string_constants(
@@ -2391,6 +2410,33 @@ def _typed_request_constructions(
                     resolution_source = (
                         "validated_semantic_event_site_domain"
                     )
+            if not values and path.name == "PrototypeCombat.cs":
+                member_source = _containing_member_source(
+                    source, match.start()
+                )
+                normalized_member_source = re.sub(
+                    r"\s+", "", member_source
+                )
+                if (re.sub(r"\s+", "", expression or "") ==
+                        "siteId" and
+                        "ResolveRandomCombatCardIndex(" in
+                        normalized_member_source):
+                    core_callers = [
+                        call for call in site_id_forwarder_calls
+                        if call["helper"] ==
+                            "PrototypeGameEngine.ResolveRandomCombatCardIndex"
+                    ]
+                    if (core_callers and
+                            all(call["registry_status"] == "mapped" and
+                                call["matrix_status"] == "mapped" and
+                                call["site_id_value"] is not None
+                                for call in core_callers)):
+                        values = sorted({
+                            call["site_id_value"] for call in core_callers
+                        })
+                        resolution_source = (
+                            "finite_core_helper_callsite_closure"
+                        )
             if not values and path.name == "NativeRandomChoiceV111.cs":
                 helper_names: tuple[str, ...] = ()
                 request_type = match.group("request_type")
@@ -2428,6 +2474,24 @@ def _typed_request_constructions(
                     resolution_source = (
                         "finite_core_helper_callsite_closure"
                     )
+                if (not values and request_type ==
+                        "RandomIndexRequestV111" and
+                        operation_kind == "bounded_integer"):
+                    member_source = _containing_member_source(
+                        source, match.start()
+                    )
+                    if "request.ValidateForNativeProvider()" in member_source:
+                        values, unresolved = _resolve_site_array_property(
+                            "StochasticSiteRegistryV111.NativeBoundedIndexOperationSiteIds",
+                            global_constants,
+                        )
+                        if (values and not unresolved and
+                                all(item in registry_site_ids and
+                                    item in matrix_site_ids
+                                    for item in values)):
+                            resolution_source = (
+                                "native_operation_registry_validation"
+                            )
             value = values[0] if len(values) == 1 else None
             registry_misses = [
                 item for item in values if item not in registry_site_ids
@@ -2462,6 +2526,7 @@ def _typed_request_constructions(
                         "registry_dictionary_guard",
                         "shared_shuffle_core_finite_registry",
                         "validated_semantic_event_site_domain",
+                        "native_operation_registry_validation",
                     )
                     else "finite_core_helper_callsite_sites"
                     if resolution_source ==
@@ -2550,6 +2615,18 @@ def collect() -> dict[str, Any]:
     sources = {
         path: path.read_text(encoding="utf-8")
         for path in sorted(SOURCE_ROOT.rglob("*.cs"))
+    }
+    global _SOURCE_CLASS_CONTENTS
+    source_class_contents: dict[str, list[str]] = {}
+    for source in sources.values():
+        for type_name in {
+            declaration.group("name")
+            for declaration in TYPE_SOURCE_DECLARATION_PATTERN.finditer(source)
+        }:
+            source_class_contents.setdefault(type_name, []).append(source)
+    _SOURCE_CLASS_CONTENTS = {
+        type_name: tuple(class_sources)
+        for type_name, class_sources in source_class_contents.items()
     }
     ambient_entropy_calls = _ambient_entropy_calls(sources)
     string_constants: dict[str, set[str]] = {}
@@ -2717,10 +2794,12 @@ def collect() -> dict[str, Any]:
             "constructions are listed with their site ID, index operation-kind "
             "expression, and registry/matrix resolution status. The static "
             "operation locator does not resolve forwarded caller values on its "
-            "own. The three generic constructors in `NativeRandomChoiceV111` "
-            "resolve to the finite set of Native player-choice/helper callsites "
-            "in Core when every caller maps to a registered matrix row; callers "
-            "outside Core are outside this census. Runtime request validation "
+            "own. Generic Native bounded-index requests resolve to the finite "
+            "runtime-validated Native operation registry, while the other "
+            "generic Native request constructors resolve through mapped "
+            "player-choice/helper callsites in Core; callers outside Core "
+            "remain outside this "
+            "census. Runtime request validation "
             "checks operation kinds against the "
             "32 legacy caller-bound declarations, the registry's finite legacy "
             "Fisher-Yates site set, and its Native "
@@ -2937,10 +3016,11 @@ def render_markdown(report: dict[str, Any]) -> str:
         "Shuffle rows include their `siteId` argument, resolved constant where "
         "available, and exact migration-matrix match for static IDs. The "
         "supplemental table traces site IDs passed through known event, "
-        "combat-pool, and map shuffle helpers, plus Native player-choice "
-        "wrappers at their source callsites. The three generic request "
-        "constructors resolve through those mapped Core callers; this does "
-        "not claim coverage of callers outside Core.",
+        "combat-pool and map shuffle helpers, plus Native player-choice "
+        "wrappers and combat card-selection helpers at their source "
+        "callsites. Generic constructors resolve through their mapped Core "
+        "caller closures or the validated Native operation registry; this "
+        "does not claim coverage of callers outside Core.",
         "",
         "Known RNG helper callsites with forwarded stable site IDs:",
         "",
