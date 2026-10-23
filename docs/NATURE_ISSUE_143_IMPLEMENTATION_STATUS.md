@@ -891,3 +891,13 @@ boundary and hidden draw-pile checks. No chance owner or snapshot schema was
 added. Targeted, draw, choice, outside-combat, and other potion effects remain
 separate work. Static source review and `git diff --check` only; no tests or
 builds were run.
+
+## 2026-10-23: deterministic targeted combat potions
+
+The semantic pilot now also admits Beetle Juice, Powdered Demise, Poison,
+Weak, and Vulnerable Potions when the action carries its legal living-enemy
+target. Their modeled power and status effects remain under the controlled-
+chance guard and ordinary combat and hidden draw-pile boundary checks.
+Targeted damage potions remain excluded because they may cross the combat
+reward boundary. Static source review and `git diff --check` only; no tests or
+builds were run.

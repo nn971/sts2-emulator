@@ -3189,6 +3189,14 @@ public static class SemanticPilotCombatEngineV111
             "proto.potion.fortifier" or
             "proto.potion.stable_serum");
 
+    private static bool IsSemanticDeterministicTargetPotion(
+        string? potionId) =>
+        potionId is ("proto.potion.beetle_juice" or
+            "proto.potion.powdered_demise" or
+            "proto.potion.poison" or
+            "proto.potion.weak" or
+            "proto.potion.vulnerable");
+
     private static bool IsSemanticEffectDrawCard(string cardId) =>
         cardId is ("proto.common.restlessness" or
             "proto.status.slimed" or
@@ -4312,13 +4320,19 @@ public static class SemanticPilotCombatEngineV111
             var isDeterministicPotion = validSlot &&
                 IsSemanticDeterministicCombatPotion(
                     source.Player.PotionSlots[payload.Slot]?.PotionId);
+            var isDeterministicTargetPotion = validSlot &&
+                IsSemanticDeterministicTargetPotion(
+                    source.Player.PotionSlots[payload.Slot]?.PotionId);
             var isSelectionPotion = validSlot && IsSemanticSelectionPotion(
                 source.Player.PotionSlots[payload.Slot]?.PotionId);
             if ((!isGenerationPotion && !isPoolPotion &&
                  !isSelectionPotion && !isHandReturnPotion &&
                  !isDistilledChaos && !isSemanticDrawPotion &&
-                 !isDeterministicPotion) ||
-                payload.TargetEnemyId is not null)
+                 !isDeterministicPotion &&
+                 !isDeterministicTargetPotion) ||
+                (isDeterministicTargetPotion
+                    ? payload.TargetEnemyId is null
+                    : payload.TargetEnemyId is not null))
                 throw new NotSupportedException(
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
                     "operation=potion_effect_requires_semantic_audit");
