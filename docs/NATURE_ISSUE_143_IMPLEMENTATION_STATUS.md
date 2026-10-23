@@ -949,15 +949,18 @@ no tests or builds were run.
 
 ## 2026-10-23: deterministic outside-combat potion actions
 
-The existing ReferenceNature run-action session now admits legal non-event
-uses of Fruit Juice, Blood Potion, and Neow's Ambergris through their exact
-modeled max-HP gain or healing effects. It also admits these uses during an
-Event when no event choice or full-belt potion replacement is pending, and
-after an event choice through the saved event-reward continuation while the
-event reward remains pending. The controlled replay guard rejects any chance
-request, and snapshot validation replays the action. Event potion-replacement
-continuations remain separate. No chance owner or snapshot schema was added.
-Static source review and `git diff --check` only; no tests or builds were run.
+The existing ReferenceNature run-action session admits legal non-event uses
+of Fruit Juice, Blood Potion, and Neow's Ambergris through their exact modeled
+max-HP gain or healing effects. It also admits these uses during an Event
+before an event choice when no replacement is pending, after an event choice
+through the saved event-reward continuation, and while a full-belt potion
+replacement is pending with no active controlled event choice. In the latter
+case, consuming the potion and installing the pending event potion are
+resolved by one source mechanics step. The controlled replay guard rejects
+any chance request, and snapshot validation replays the action. Entropic
+Brew's stochastic refill and other replacement paths retain their dedicated
+continuations. No chance owner or snapshot schema was added. Static source
+review and `git diff --check` only; no tests or builds were run.
 
 ## 2026-10-23: Entropic Brew empty-slot refills
 

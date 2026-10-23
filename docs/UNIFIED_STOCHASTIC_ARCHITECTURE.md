@@ -873,6 +873,8 @@ The semantic combat pilot also admits the exact deterministic potion effects alr
 
 The same semantic player-action gate admits the modeled deterministic event cards Byrd Swoop, Peck, and Toric Toughness. Their damage and block effects use ordinary source combat resolution under the controlled-chance guard and preserve the existing hidden draw-pile checks; no chance owner or snapshot schema is added.
 
+The saved ReferenceNature run-action path also admits modeled deterministic outside-combat potions while an Event has a pending full-belt replacement and no active controlled event choice. Consuming the potion and installing the pending event potion remain one source mechanics step; Entropic Brew and stochastic replacement paths retain their dedicated continuations.
+
 Discovery's optional three-card generated offer now enters from its physical
 source-card identity and exact `CardPlayed` continuation, reusing the existing
 full-pool shuffle and ChoicePool selection owners.

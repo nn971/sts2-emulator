@@ -1318,8 +1318,15 @@ public static class ControlledRunActionEngineV111
     internal static bool IsSupportedOutsideCombatPotionAction(
         RunState source, GameAction action)
     {
+        var pendingEventReplacement =
+            source.Phase == RunPhase.Event
+            && source.Stochastic.ControlledEventRewardChoice is null
+            && source.World?.Event is
+                { PendingPotionReplacement: not null } eventState
+            && eventState.Stochastic.ControlledChoice is null;
         if (action.Kind != "use_potion"
-            || !SupportsOutsideCombatPotionPhase(source))
+            || (!SupportsOutsideCombatPotionPhase(source)
+                && !pendingEventReplacement))
             return false;
 
         return IsModeledDeterministicOutsideCombatPotion(source, action);
