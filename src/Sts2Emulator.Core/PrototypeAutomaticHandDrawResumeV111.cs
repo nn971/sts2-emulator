@@ -34,22 +34,30 @@ public sealed partial class PrototypeGameEngine
             PrototypeDrawCardsBoundaryKind.ControlledRecycle =>
                 drawn.RemainingCount > 0 &&
                 combat.Stochastic.SemanticDeck is null &&
+                combat.PendingChoice is null &&
+                combat.PendingKnowledgeDemonChoice is null &&
                 combat.DrawPile.Length == 0 &&
                 combat.DiscardPile.Length > 0,
             PrototypeDrawCardsBoundaryKind.ControlledDrawCost =>
-                combat.PendingChoice?.ControlledDrawCost is not null,
+                combat.PendingChoice?.ControlledDrawCost is not null &&
+                combat.PendingKnowledgeDemonChoice is null,
             PrototypeDrawCardsBoundaryKind.SemanticDraw =>
                 drawn.RemainingCount > 0 &&
                 combat.Stochastic.SemanticDeck is
                     { Mode: SemanticDeckStateV111.NatureMode,
-                      Pending: not null },
+                      Pending: not null } &&
+                combat.PendingChoice is null &&
+                combat.PendingKnowledgeDemonChoice is null,
             PrototypeDrawCardsBoundaryKind.AfterShuffleInsertions =>
                 drawn.RemainingCount > 0 &&
+                combat.PendingChoice is null &&
+                combat.PendingKnowledgeDemonChoice is null &&
                 drawn.ControlledAfterShuffleInsertions is
                     { Length: > 0 },
             PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice =>
                 combat.PendingChoice is not null &&
-                combat.PendingKnowledgeDemonChoice is null,
+                combat.PendingKnowledgeDemonChoice is null &&
+                combat.Stochastic.SemanticDeck?.Pending is null,
             _ => false
         };
         if (!validBoundary)
