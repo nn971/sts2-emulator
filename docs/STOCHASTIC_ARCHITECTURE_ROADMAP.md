@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S6 Native initial-HP per-index law increment (2026-10-23):** The
+`combat.initial_unique_hp` Chance Law query now binds a `creature:<CombatId>`
+owner, ordered HP support, and source ordinal to `run.niche`, returning exact
+Native `NextInt` grid masses over support indices. The caller declares the
+eligible HP support and order; pool construction, seed frequencies, and
+end-to-end stream/cursor parity remain open. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **D2 Native initial-HP result audit increment (2026-10-23):** The source-route
 Native-policy entry audit now pairs each setup `run.niche` HP ticket with its
 combat identity, ordered HP support, and selected HP. New encounter-formation

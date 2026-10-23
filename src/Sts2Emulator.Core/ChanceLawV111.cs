@@ -2646,6 +2646,50 @@ public static partial class ChanceLawEngineV111
         return QueryRandomIndex(eventId, request);
     }
 
+    /// <summary>
+    /// Query one Native unique-monster-HP index over a caller-declared
+    /// ordered HP support. The caller owns the live eligibility pool and
+    /// creature creation history; this law covers only the run.niche index.
+    /// </summary>
+    public static ChanceLawV111 QueryNativeInitialHpIndex(
+        string ownerId, int[] orderedHpSupport, int ordinal)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
+        ArgumentNullException.ThrowIfNull(orderedHpSupport);
+        const string ownerPrefix = "creature:";
+        if (!ownerId.StartsWith(ownerPrefix, StringComparison.Ordinal))
+            throw new ArgumentException(
+                "Native initial-HP owner must identify one creature CombatId.",
+                nameof(ownerId));
+        if (!long.TryParse(ownerId.AsSpan(ownerPrefix.Length),
+                NumberStyles.None, CultureInfo.InvariantCulture,
+                out var combatId) || combatId < 0 ||
+            ownerId != ownerPrefix + combatId.ToString(
+                CultureInfo.InvariantCulture))
+            throw new ArgumentException(
+                "Native initial-HP owner must identify one creature CombatId.",
+                nameof(ownerId));
+        if (orderedHpSupport.Length == 0 ||
+            orderedHpSupport.Any(hp => hp <= 0) ||
+            orderedHpSupport.Distinct().Count() != orderedHpSupport.Length)
+            throw new ArgumentException(
+                "Native initial-HP support must contain distinct positive HP values.",
+                nameof(orderedHpSupport));
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+
+        var request = new RandomIndexRequestV111(
+            NativeCombatRngEntryV111.InitialUniqueHpSiteId,
+            "run.niche", ownerId, ordinal,
+            orderedHpSupport);
+        var eventId = CanonicalJson.Sha256(new
+        {
+            boundary = "native-initial-unique-hp-index",
+            request
+        });
+        return QueryRandomIndex(eventId, request);
+    }
+
     public const string NativeBoundedIndexSourceVerifiedProvenance =
         "v0.111.0 Rng.NextInt(maxExclusive) multiplies the uniform 53-bit " +
         "NextDouble grid and truncates. Exact source bin masses include " +

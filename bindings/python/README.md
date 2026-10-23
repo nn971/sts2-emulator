@@ -243,6 +243,22 @@ The law gives exact Native index masses over that declared support. It does
 not verify the source-derived card pool or reward prefix, stream assignment,
 or cursor parity.
 
+Native unique-monster HP queries bind the current ordered HP support to the
+`run.niche` index law and require the creature CombatId owner:
+
+```python
+hp_law = state.query_chance_law(
+    "combat.initial_unique_hp",
+    owner_id="creature:7",
+    ordinal=0,
+    ordered_hp_support=[34, 35, 36],
+)
+```
+
+The outcomes are support indices; map each index through the supplied HP
+order. The query verifies the Native `NextInt` grid masses for that support.
+It does not reconstruct prior-monster exclusions or verify the source pool.
+
 Native relic-bag construction also exposes each Fisher–Yates swap law. Pass
 the current exclusive bound, rarity-queue owner, and swap ordinal:
 

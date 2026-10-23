@@ -484,6 +484,12 @@ snapshots retain their prior requirements. This records emulator setup
 results; installed-game HP parity and source-pool fidelity remain unverified.
 Static source review and `git diff --check` only; no tests or builds were run.
 
+The read-only `combat.initial_unique_hp` query now binds a
+`creature:<CombatId>` owner, ordered HP support, and source ordinal to the
+`run.niche` `NextInt` grid law. It reports exact mass over support indices and
+fingerprints the caller's declared support values and order; source pool
+construction, seed frequencies, and end-to-end cursor parity remain open.
+
 This removes the fabricated encounter formation from the opt-in route mode,
 but does not make route probabilities, Neow choices, shuffle-order hooks,
 or all combat entry hooks native-parity verified. The initial draw-pile

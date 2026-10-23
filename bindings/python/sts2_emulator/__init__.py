@@ -73,7 +73,7 @@ class State:
                          forced=None, card_rarity_source=None,
                          current_offset_basis_points=None,
                          stream_id=None, native_encounter_entry=None,
-                         total_floor=None):
+                         total_floor=None, ordered_hp_support=None):
         """Read a pre-outcome law; native event queries may need action_id.
 
         Reflections card-pick laws use action_id="touch_mirror" and the
@@ -106,6 +106,10 @@ class State:
         bounded transform for one declared index, not the formation pool or
         preceding GenerateMonsters call prefix. The owner and context stream
         are derived from the declared entry and floor.
+        Native initial unique-HP laws take owner_id="creature:<CombatId>",
+        ordered_hp_support, and ordinal. They bind the declared HP values and
+        order to the exact run.niche index law; pool construction remains with
+        the caller.
         PotionFactory and relic rarity laws accept a caller-declared owner_id
         + stream_id pair for cursor-blind source-threshold queries.
         Repy potion laws use ordinal 0 or 1 and prior_indices containing the
@@ -155,6 +159,40 @@ class State:
             if type(support_count) is not int or support_count <= 0:
                 raise ValueError("support_count must be a positive integer")
             payload["support_count"] = support_count
+        if ordered_hp_support is not None:
+            if (not isinstance(ordered_hp_support, (list, tuple)) or
+                    not ordered_hp_support or
+                    any(type(hp) is not int or hp <= 0
+                        or hp > 2_147_483_647
+                        for hp in ordered_hp_support) or
+                    len(set(ordered_hp_support)) !=
+                        len(ordered_hp_support)):
+                raise ValueError(
+                    "ordered_hp_support must contain distinct positive 32-bit HP integers")
+            payload["ordered_hp_support"] = list(ordered_hp_support)
+        if site_id == "combat.initial_unique_hp":
+            if owner_id is None or not owner_id.startswith("creature:"):
+                raise ValueError(
+                    "Native initial-HP laws require owner_id=creature:<CombatId>")
+            creature_id_text = owner_id[len("creature:"):]
+            try:
+                creature_id = int(creature_id_text)
+            except ValueError as error:
+                raise ValueError(
+                    "Native initial-HP owner must contain a CombatId") from error
+            if (creature_id < 0 or creature_id > 9_223_372_036_854_775_807 or
+                    owner_id != f"creature:{creature_id}"):
+                raise ValueError(
+                    "Native initial-HP owner must contain a canonical CombatId")
+            if ordered_hp_support is None:
+                raise ValueError(
+                    "Native initial-HP laws require ordered_hp_support")
+            if support_count is not None:
+                raise ValueError(
+                    "Native initial-HP laws use ordered_hp_support, not support_count")
+        elif ordered_hp_support is not None:
+            raise ValueError(
+                "ordered_hp_support applies only to combat.initial_unique_hp")
         if native_encounter_entry is not None:
             if not isinstance(native_encounter_entry, str) or \
                     not native_encounter_entry.strip():

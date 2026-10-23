@@ -3339,6 +3339,44 @@ internal static class PrototypeAiJsonlServer
                             });
                             break;
                         }
+                        if (siteId == NativeCombatRngEntryV111
+                                .InitialUniqueHpSiteId)
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "owner_id", "ordered_hp_support");
+                            var ownerId = OptionalString(
+                                request, "owner_id") ??
+                                throw new ArgumentException(
+                                    "Native initial-HP law requires owner_id.");
+                            if (!request.TryGetProperty(
+                                    "ordered_hp_support", out var supportElement) ||
+                                supportElement.ValueKind !=
+                                    JsonValueKind.Array)
+                                throw new ArgumentException(
+                                    "Native initial-HP law requires ordered_hp_support.");
+                            var orderedHpSupport = new List<int>();
+                            foreach (var element in
+                                supportElement.EnumerateArray())
+                            {
+                                if (element.ValueKind != JsonValueKind.Number ||
+                                    !element.TryGetInt32(out var hp))
+                                    throw new ArgumentException(
+                                        "ordered_hp_support must contain integers.");
+                                orderedHpSupport.Add(hp);
+                            }
+                            law = ChanceLawEngineV111
+                                .QueryNativeInitialHpIndex(
+                                    ownerId, orderedHpSupport.ToArray(), ordinal);
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
                         if (ChanceLawEngineV111
                                 .IsNativeBoundedIntegerLawSite(siteId))
                         {
@@ -11238,7 +11276,7 @@ internal static class PrototypeAiJsonlServer
         string[] optionalFields =
         [
             "prior_indices", "prior_variant_index", "prior_card_ids",
-            "support_count",
+            "support_count", "ordered_hp_support",
             "action_id", "event_id", "card_type", "rarity", "card_id",
             "potion_id", "relic_id", "colorless_offer", "sale_reprice",
             "owner_id", "excluded_potion_ids", "offer_ordinal",

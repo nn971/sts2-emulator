@@ -653,6 +653,13 @@ bounds may be slightly uneven. Laws that use these exact source masses are
 `SOURCE_VERIFIED` under the declared uniform-grid input model. Equal-weight
 approximations at other bounds remain `UNVERIFIED`.
 
+The `combat.initial_unique_hp` direct query accepts `owner_id` in the form
+`creature:<CombatId>`, the ordered HP support, and the source ordinal. It
+returns the exact `run.niche` `NextInt` grid law over support indices and
+binds the declared values and order into the request fingerprint. The caller
+still owns the live HP support; pool construction and order, seed frequencies,
+and end-to-end cursor parity remain separate evidence.
+
 - Its result must be independent of the outcome eventually selected by Native, ReferenceNature or learned Nature.
 - Native provider's already-committed hidden realization is **not** a Chance Law input for Nature's pre-revelation distribution. Conditioning on a complete private realization would instead produce a degenerate distribution; it answers a different question.
 - For uniform unknown permutations, sequential sampling over remaining eligible physical instances can produce the correct joint law, subject to known positions, shared pools, forced insertions, observations and other constraints. Compute the conditional law of the remaining random object, not merely an arbitrary uniform distribution over listed candidates.
