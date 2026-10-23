@@ -3077,64 +3077,10 @@ public sealed partial class PrototypeGameEngine
                         PrototypeDrawCardsSuspensionPolicyV111
                             .AutomaticHandDraw(combat),
                     automaticHandDrawStage: true);
-                player = drawn.Player;
-                combat = drawn.Combat;
-                var drawBoundary = drawn.BoundaryKind;
-                var resumedDrawBoundary = ResumeAutomaticHandDrawBoundary(
-                    PublishPrototypeRng(state), drawn, requestedHandDraw,
-                    AutomaticHandDrawResumeContextV111
-                        .SourceStageBoundary);
-                if (resumedDrawBoundary is not null)
-                    return resumedDrawBoundary.Value.Run;
-                if (drawBoundary ==
-                    PrototypeDrawCardsBoundaryKind.ShuffleSelection)
-                {
-                    var pendingDraw = new Queue<PrototypeQueuedOperation>(
-                        new[]
-                        {
-                            StratagemChoiceOperation(combat),
-                            new PrototypeQueuedOperation(
-                                PrototypeCombatEffectKind.DrawCards,
-                                drawn.RemainingCount, FromHandDraw: true)
-                        });
-                    var resumed = ResolveOperations(
-                        player, combat, pendingDraw, prototypeRng,
-                        moveSourceCardOnCompletion: false);
-                    player = resumed.Player;
-                    combat = resumed.Combat;
-                }
-
-                if (deferAutomaticHandDrawCompletion &&
-                    combat.PendingChoice is null &&
-                    combat.PendingKnowledgeDemonChoice is null &&
-                    combat.Stochastic.SemanticDeck?.Pending is null)
-                {
-                    var completedInput = state with
-                    {
-                        Player = player,
-                        Stochastic = RunStochasticStateV111.WithPrototypeRng(
-                            state.Stochastic, prototypeRng),
-                        World = world with { Combat = combat }
-                    };
-                    return CompleteAutomaticHandDrawStage(
-                        completedInput, requestedHandDraw);
-                }
-
-                if (resumedAfterSemanticHook)
-                {
-                    var completed = state with
-                    {
-                        Player = player,
-                        Stochastic = RunStochasticStateV111.WithPrototypeRng(
-                            state.Stochastic, prototypeRng),
-                        World = world with { Combat = combat }
-                    };
-                    return CompleteAutomaticHandDrawStage(
-                        completed, requestedHandDraw);
-                }
-                combat = ApplyAutomaticHandDrawPostStagePowerTiming(
-                    combat);
-                break;
+                return ResumeAutomaticHandDrawSourceResult(
+                    state, drawn, requestedHandDraw, prototypeRng,
+                    deferAutomaticHandDrawCompletion,
+                    resumedAfterSemanticHook);
             }
 
             case PrototypeAutomaticStepKind.ResolveLateRelicAutoplay:

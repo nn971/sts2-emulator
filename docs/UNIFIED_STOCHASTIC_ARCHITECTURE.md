@@ -345,6 +345,10 @@ result to this router.
 Saved controlled hook, recycle-Stratagem, and insertion resumes also use the
 same route before their legacy adapter handles any boundary outside its
 shared automatic contract.
+The source `DrawPlayerHand` stage now passes every result to
+`ResumeAutomaticHandDrawSourceResult`, which owns that provider handoff,
+ordinary Stratagem completion, deferred stage completion, and post-draw power
+timing. The pipeline switch no longer interprets the draw result boundary.
 
 `DrawCards` now returns one tagged boundary value for completion, recycle, Stratagem selection, draw cost, semantic draw, after-shuffle insertion, or nested `CardDrawn` choice. Pending counts and after-shuffle insertion payload belong to that value, so conflicting continuation kinds cannot be represented by the result. Callers declare suspension support through named `PrototypeDrawCardsSuspensionPolicyV111` profiles for automatic hand draws, legacy continuations, semantic draws, and nested effects. Automatic hand draw, opening draw, semantic draw, and nested effect-draw adapters all dispatch through its shared discriminator; each adapter still applies its own saved mechanics frame and source hook policy.
 

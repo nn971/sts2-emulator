@@ -99,6 +99,77 @@ public sealed partial class PrototypeGameEngine
     }
 
     /// <summary>
+    /// Own every result from the source DrawPlayerHand operation: provider
+    /// suspension routing, ordinary Stratagem resolution, deferred stage
+    /// completion, and post-draw power timing.
+    /// </summary>
+    private static RunState ResumeAutomaticHandDrawSourceResult(
+        RunState checkpoint,
+        PrototypeDrawCardsResult drawn,
+        int requestedCount,
+        RngBundle prototypeRng,
+        bool deferCompletion,
+        bool resumedAfterSemanticHook)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        ArgumentNullException.ThrowIfNull(drawn);
+        ArgumentNullException.ThrowIfNull(prototypeRng);
+        if (requestedCount < 0)
+            throw new ArgumentOutOfRangeException(nameof(requestedCount));
+
+        var rngCheckpoint = checkpoint with
+        {
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                checkpoint.Stochastic, prototypeRng)
+        };
+        var providerResume = ResumeAutomaticHandDrawBoundary(
+            rngCheckpoint, drawn, requestedCount,
+            AutomaticHandDrawResumeContextV111.SourceStageBoundary);
+        if (providerResume is { } resumed)
+            return resumed.Run;
+
+        var result = PublishDrawCardsResult(rngCheckpoint, drawn);
+        if (drawn.BoundaryKind ==
+            PrototypeDrawCardsBoundaryKind.ShuffleSelection)
+        {
+            var world = RequireWorld(result);
+            var combat = world.Combat ?? throw new InvalidDataException(
+                "Automatic Stratagem resume removed combat.");
+            var pendingDraw = new Queue<PrototypeQueuedOperation>(
+                new[]
+                {
+                    StratagemChoiceOperation(combat),
+                    new PrototypeQueuedOperation(
+                        PrototypeCombatEffectKind.DrawCards,
+                        drawn.RemainingCount, FromHandDraw: true)
+                });
+            var continued = ResolveOperations(
+                result.Player, combat, pendingDraw, prototypeRng,
+                moveSourceCardOnCompletion: false);
+            result = PublishDrawMechanicsState(
+                result, continued.Player, continued.Combat);
+            result = result with
+            {
+                Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                    result.Stochastic, prototypeRng)
+            };
+        }
+
+        var resultWorld = RequireWorld(result);
+        var resultCombat = resultWorld.Combat ?? throw new InvalidDataException(
+            "Automatic hand draw removed combat.");
+        bool drawPending = resultCombat.PendingChoice is not null ||
+            resultCombat.PendingKnowledgeDemonChoice is not null ||
+            resultCombat.Stochastic.SemanticDeck?.Pending is not null;
+        if ((deferCompletion && !drawPending) || resumedAfterSemanticHook)
+            return CompleteAutomaticHandDrawStage(result, requestedCount);
+
+        return PublishDrawMechanicsState(
+            result, result.Player,
+            ApplyAutomaticHandDrawPostStagePowerTiming(resultCombat));
+    }
+
+    /// <summary>
     /// Resume a saved legacy automatic draw through the common boundary
     /// router. The controlled adapter remains the fallback for result kinds
     /// outside that router's legacy automatic contract.

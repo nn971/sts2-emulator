@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 automatic draw source-result owner increment (2026-10-24):** The source
+`DrawPlayerHand` stage now sends every `DrawCards` result through
+`ResumeAutomaticHandDrawSourceResult`. The shared owner handles provider
+suspension routing, ordinary Stratagem completion, deferred stage completion,
+and post-draw power timing; the pipeline switch no longer interprets result
+boundaries. Static source review and `git diff --check` only; no tests or
+builds were run.
+
 **S4 suspended run/event mechanics comparison increment (2026-10-24):** The
 provider-independent mechanics projection now includes pending run-action,
 post-reward event-action, and event-effect continuation progress from their
