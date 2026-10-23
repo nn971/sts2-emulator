@@ -21,7 +21,7 @@ from urllib.parse import unquote, urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v42"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v43"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 
 CALL_PATTERN = re.compile(
@@ -566,8 +566,9 @@ def _static_site_mapping_values(
         if result.strip() == "null":
             saw_null = True
             continue
-        resolved = _resolve_site_values(
-            result, mapping_constants, global_constants
+        resolved = _resolve_member_site_values(
+            source, declaration.start(), result,
+            mapping_constants, global_constants,
         )
         if not resolved:
             return []
@@ -827,6 +828,33 @@ def _resolve_site_values(
         if value is not None:
             values.add(value)
     return sorted(values)
+
+
+def _resolve_member_site_values(
+    source: str,
+    offset: int,
+    expression: str | None,
+    local_constants: dict[str, set[str]],
+    global_constants: dict[str, set[str]],
+) -> list[str]:
+    """Resolve a bare PascalCase constant in its containing type."""
+    if expression is None:
+        return []
+    identifier = re.fullmatch(
+        r"[A-Za-z_][A-Za-z0-9_]*", re.sub(r"\s+", "", expression)
+    )
+    if identifier is not None:
+        name = identifier.group(0)
+        type_name = _nearest_type_name(source, offset)
+        if type_name is not None and name[0].isupper():
+            value = _resolve_site_value(
+                f"{type_name}.{name}", {}, global_constants
+            )
+            if value is not None:
+                return [value]
+    return _resolve_site_values(
+        expression, local_constants, global_constants
+    )
 
 
 def _dictionary_site_values(
@@ -1830,12 +1858,13 @@ def _site_id_forwarder_calls(
                     value = None
                 else:
                     expression = arguments[position]
-                    value = _resolve_site_value(
-                        expression, _method_string_constants(
+                    values = _resolve_member_site_values(
+                        source, match.start(), expression,
+                        _method_string_constants(
                             source, match.start(), global_constants
-                        ),
-                        global_constants,
+                        ), global_constants,
                     )
+                    value = values[0] if len(values) == 1 else None
                 line = source.count("\n", 0, match.start()) + 1
                 calls.append({
                     "path": path.relative_to(ROOT).as_posix(),
@@ -2053,8 +2082,9 @@ def _typed_request_constructions(
                     break
             else:
                 expression = arguments[0] if arguments else None
-            values = _resolve_site_values(
-                expression, local_constants, global_constants
+            values = _resolve_member_site_values(
+                source, match.start(), expression,
+                local_constants, global_constants,
             )
             resolution_source = "expression" if values else None
             if not values:
@@ -2350,7 +2380,8 @@ def collect() -> dict[str, Any]:
                 site_values: list[str] = []
                 guarded_shuffle_site_set = False
                 if site_expression is not None:
-                    site_values = _resolve_site_values(
+                    site_values = _resolve_member_site_values(
+                        source, source_offset + match.start(),
                         site_expression,
                         _method_string_constants(
                             source, source_offset + match.start(),
