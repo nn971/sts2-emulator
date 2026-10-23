@@ -390,8 +390,11 @@ selection continuation. The selected card moves to hand without changing the
 hidden draw pile; Native cursor parity and other potion effects remain open.
 Orobic Acid also runs from any matching combat slot rather than requiring its
 seeded fixture. It uses the three saved Attack, Skill and Power model choices
-and leaves the hidden draw-pile boundary unchanged. Colorless Potion retains
-its existing fixture-backed source-aware shuffle and optional pick.
+and leaves the hidden draw-pile boundary unchanged. Colorless Potion now also
+runs from any matching combat slot. Its exact generated-Colorless operation,
+`PotionUsed` completion and empty nested continuation reuse the existing
+source-aware shuffle and optional ChoicePool pick; the seeded fixture remains
+available for potion setup.
 Gambler's Brew uses the existing sequential card-selection event for its
 one-at-a-time discard prompt, then resumes the semantic draw owner for the
 selected count. Its guard matches the potion-use completion and exact

@@ -10,6 +10,15 @@ the source draw count equals the number discarded. No event or snapshot
 schema was added. Static source review and `git diff --check` only; no tests
 or builds were run.
 
+**S2/S4 Colorless Potion source-action increment (2026-10-23):** The
+persistent semantic pilot now accepts Colorless Potion from any matching
+combat slot. Its source guard checks the three-card generated-Colorless
+operation, `PotionUsed` completion, and empty nested continuation, then reuses
+the existing full-pool shuffle and optional ChoicePool selection owners.
+Fixture setup remains available. Native acquisition, pool fidelity, and
+cursor parity remain open. Static source review and `git diff --check` only;
+no tests or builds were run.
+
 **S2/S4 Neow's Abundance choice increment (2026-10-23):** The persistent
 semantic combat pilot admits Abundance's generated-Power choice through the
 existing full-pool shuffle and ChoicePool selection owners. The shuffle guard

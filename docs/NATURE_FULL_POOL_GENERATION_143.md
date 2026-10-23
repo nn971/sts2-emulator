@@ -38,6 +38,14 @@ models stay out of the fair player observation. The fixture currently covers
 this potion path and does not establish native potion-acquisition
 provenance, generated-pool completeness, stream assignment, or cursor parity.
 
+The persistent semantic combat pilot also accepts Colorless Potion from any
+matching combat slot. A narrow source guard checks the `ChooseGeneratedColorlessCards`
+operation, three-card offer, `PotionUsed` completion, and empty nested
+continuation before reusing the same shuffle and ChoicePool selection events.
+The seeded fixture remains an optional way to provide the potion; this action
+admission does not establish native acquisition, pool completeness, stream
+assignment, or cursor parity.
+
 ## Validation and boundaries
 
 Focused tests exercise Attack and Colorless Potions through the **real potion-use effect kernel** on a fixture-modified playable combat state, including a resumed player card-selection action, and the distinct-common operation through an internal operation fixture. They verify full-pool RNG call shape, source card-model order, source eligibility, invalid/stale swap decisions, mid-shuffle forgery checks, replay event IDs, and 15-worker independent execution.
