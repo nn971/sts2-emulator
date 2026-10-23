@@ -362,6 +362,8 @@ public static class StochasticSiteRegistryV111
         "combat.sly_autoplay.random_enemy";
     public const string CombatAutoplayRandomTargetSiteId =
         "combat.autoplay.random_enemy";
+    public const string CombatJeweledMaskRandomPowerDrawCardSiteId =
+        "combat.relic.jeweled_mask.random_power_draw_card";
     public const string CombatGeneratedCardSelectSiteId =
         "combat.generated_card.select";
     public const string CombatRandomDrawAttackCardModelSiteId =
@@ -595,6 +597,7 @@ public static class StochasticSiteRegistryV111
     private static readonly string[] CombatCardInstanceIndexAuditSites =
     [
         CombatRandomHandCardSelectSiteId,
+        CombatJeweledMaskRandomPowerDrawCardSiteId,
         CombatAutoplayRandomCardSelectSiteId,
         CombatRandomReplayCardSelectSiteId,
         CombatEnemyTheftCardSelectSiteId
@@ -652,7 +655,7 @@ public static class StochasticSiteRegistryV111
         CombatRandomHandCardEnergyCostSiteId,
         CombatDrawRelicEnergyCostSiteId,
         CombatDrawSlitherEnergyCostSiteId,
-        "combat.relic.jeweled_mask.random_power_draw_card",
+        CombatJeweledMaskRandomPowerDrawCardSiteId,
         CombatCardTransformReplacementSiteId,
         CombatPotionGenerationRandomModelSiteId,
         CombatRandomHandCardSelectSiteId,
@@ -1576,7 +1579,7 @@ public static class StochasticSiteRegistryV111
             "run.combat_card_selection" => siteId switch
             {
                 CombatRandomHandCardSelectSiteId or
-                "combat.relic.jeweled_mask.random_power_draw_card" or
+                CombatJeweledMaskRandomPowerDrawCardSiteId or
                 CombatRandomReplayCardSelectSiteId or
                 CombatAutoplayRandomCardSelectSiteId =>
                     operationKind == "choose_index",

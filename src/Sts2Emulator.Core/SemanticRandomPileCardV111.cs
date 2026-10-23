@@ -35,7 +35,8 @@ public sealed record SemanticRandomPileCardEventV111(
         if (SchemaId != EventSchemaId ||
             string.IsNullOrWhiteSpace(EventId) ||
             string.IsNullOrWhiteSpace(BoundaryFingerprint) ||
-            SiteId != "combat.relic.jeweled_mask.random_power_draw_card" ||
+            SiteId != StochasticSiteRegistryV111
+                .CombatJeweledMaskRandomPowerDrawCardSiteId ||
             StreamId != "semantic.draw_pile" ||
             OwnerId != "player:draw_pile" || Ordinal < 0 ||
             OperationKind != "choose_card_instance" ||
@@ -121,7 +122,8 @@ public static class SemanticRandomPileCardEngineV111
             candidateCardModelIds = models
         });
         if (pending.SiteId !=
-                "combat.relic.jeweled_mask.random_power_draw_card" ||
+                StochasticSiteRegistryV111
+                    .CombatJeweledMaskRandomPowerDrawCardSiteId ||
             pending.SupportFingerprint != support)
             throw new InvalidDataException(
                 "Saved random pile-card support no longer matches combat.");

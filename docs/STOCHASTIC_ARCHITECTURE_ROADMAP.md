@@ -47,6 +47,15 @@ requests use separate sites. Potion-pool eligibility, stream attribution,
 and result/cursor parity remain open. Static source review and
 `git diff --check` only; no tests or builds were run.
 
+**D2 Jeweled Mask Native card-identity audit increment (2026-10-23):** The
+existing card-instance outcome audit now also covers Jeweled Mask's Native
+random Power draw. Its ordered eligible card identities and selected instance
+are paired with the exact provider decision, and the Native-policy card
+identity schema requires complete coverage for the added site. Mechanics
+regression, pool completeness, stream attribution, and cursor parity remain
+open. Static source review and `git diff --check` only; no tests or builds
+were run.
+
 **S0 stochastic SiteId ownership consolidation (2026-10-23):** The registry
 now owns the identifiers for random hand-cost selection and resolution,
 draw-cost choices, potion generation, card transforms, and the semantic

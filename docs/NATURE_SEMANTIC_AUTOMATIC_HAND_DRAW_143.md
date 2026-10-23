@@ -113,4 +113,7 @@ masses and `SOURCE_VERIFIED` for the bounded-index transform on the declared
 physical-card support. This Jeweled Mask continuation still lacks
 mechanics-tested evidence; pool completeness, Native stream attribution,
 seed frequencies, and cursor parity remain open. No privileged per-choice
-transcript is exposed here.
+transcript is exposed in the player projection. The opt-in Native-policy
+audit separately retains the ordered physical-card support and selected
+identity with the exact provider decision and cursor span; its new completeness
+coverage still does not establish pool or stream parity.

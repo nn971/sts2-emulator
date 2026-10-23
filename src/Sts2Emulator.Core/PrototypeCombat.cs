@@ -7161,7 +7161,9 @@ public sealed partial class PrototypeGameEngine
                             { Mode: SemanticDeckStateV111.NatureMode })
                             throw new NotSupportedException(
                                 "UNSUPPORTED_SEMANTIC_DECK " +
-                                "site=combat.relic.jeweled_mask.random_power_draw_card " +
+                                "site=" + StochasticSiteRegistryV111
+                                    .CombatJeweledMaskRandomPowerDrawCardSiteId +
+                                " " +
                                 "operation=requires_nature_draw_pile");
                         var continuation =
                             new PrototypeChoiceResolutionContinuationState(
@@ -7193,12 +7195,21 @@ public sealed partial class PrototypeGameEngine
                         nativeRunStreams is null
                             ? new LegacyPrototypeRandomIndexProviderV111()
                             : new NativeRandomIndexProviderV111();
+                    var request = new RandomIndexRequestV111(
+                        StochasticSiteRegistryV111
+                            .CombatJeweledMaskRandomPowerDrawCardSiteId,
+                        streamId, "player:0", combat.Turn - 1,
+                        Enumerable.Range(0, candidates.Length).ToArray());
                     var decision = StochasticProviderScopeV111.ResolveIndex(
-                        provider, new RandomIndexRequestV111(
-                            "combat.relic.jeweled_mask.random_power_draw_card",
-                            streamId, "player:0", combat.Turn - 1,
-                            Enumerable.Range(0, candidates.Length).ToArray()),
-                        streams);
+                        provider, request, streams);
+                    if (decision.ProviderMode == "native-v111" &&
+                        RandomBoundaryJournalV111.HasActiveJournal &&
+                        StochasticSiteRegistryV111
+                            .IsCombatCardInstanceIndexAuditSite(
+                                request.SiteId))
+                        RandomBoundaryJournalV111.RecordCardInstanceIndexOutcome(
+                            SemanticCardInstanceIndexAuditV111.Create(
+                                decision, candidates));
                     var selectedIndex = decision.SelectedIndex;
                     var selectedId = candidates[selectedIndex];
                     combat = SetCardTemporaryEnergyCost(
@@ -14571,7 +14582,8 @@ public sealed partial class PrototypeGameEngine
                 OuterChoiceContinuation: continuation.Fork(),
                 ControlledRandomPileCard:
                     new PrototypeControlledRandomPileCardV111(
-                        "combat.relic.jeweled_mask.random_power_draw_card",
+                        StochasticSiteRegistryV111
+                            .CombatJeweledMaskRandomPowerDrawCardSiteId,
                         combat.Turn - 1,
                         (long[])eligible.Clone(), supportFingerprint))
         };
