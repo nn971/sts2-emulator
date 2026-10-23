@@ -60,6 +60,14 @@ the existing full-pool shuffle and ChoicePool selection owners. Fixture setup
 remains optional; generated-pool completeness and cursor parity remain open.
 Static source review and `git diff --check` only; no tests or builds were run.
 
+**S2/S4 Jackpot source-card increment (2026-10-23):** The persistent semantic
+pilot now admits Jackpot's three random zero-cost card additions from its
+physical source-card identity. It reuses the existing generated-card event and
+validates each `CardPlayed` continuation, source upgrade level, and remaining
+generation suffix. Fixture setup remains optional; generated-pool completeness
+and cursor parity remain open. Static source review and `git diff --check`
+only; no tests or builds were run.
+
 **S2/S4 Neow's Abundance choice increment (2026-10-23):** The persistent
 semantic combat pilot admits Abundance's generated-Power choice through the
 existing full-pool shuffle and ChoicePool selection owners. The shuffle guard

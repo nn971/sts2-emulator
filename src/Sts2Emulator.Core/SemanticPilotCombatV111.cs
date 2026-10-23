@@ -4152,6 +4152,8 @@ public static class SemanticPilotCombatEngineV111
                 card?.CardId == "proto.colorless.discovery";
             var semanticSplashCard =
                 card?.CardId == "proto.colorless.splash";
+            var semanticJackpotCard =
+                card?.CardId == "proto.colorless.jackpot";
             var supportedCardAction = card is not null &&
                 (SemanticPlayerActionEngineV111.SupportsCard(card.CardId) ||
                  card.CardId == "proto.silent.ricochet" ||
@@ -4163,6 +4165,7 @@ public static class SemanticPilotCombatEngineV111
                  semanticSeekerStrikeCard ||
                  semanticDiscoveryCard ||
                  semanticSplashCard ||
+                 semanticJackpotCard ||
                  semanticSelectionCard);
             if (!supportedCardAction)
                 throw new NotSupportedException(
@@ -5510,6 +5513,11 @@ public static class SemanticPilotCombatEngineV111
         var isDrawInsertionModelChoice = generation is null &&
             drawInsertion is { Stage: "card_model" };
         if (generation is null && !isDrawInsertionModelChoice) return null;
+        if (generation?.Operation.Kind ==
+                PrototypeCombatEffectKind.AddRandomZeroCostCardsToHand &&
+            !IsJackpotZeroCostGenerationChoice(combat, choice, generation))
+            throw new InvalidDataException(
+                "Zero-cost generated-card choice is outside Jackpot's source action.");
         if (isDrawInsertionModelChoice)
         {
             if (current.Stochastic.SeededEntry?.FixtureRandomFreeAttackDrawInsertion != true &&
@@ -5776,6 +5784,55 @@ public static class SemanticPilotCombatEngineV111
                         .CombatAutoplayRandomCardSelectSiteId);
         return SemanticCardShortlistChoiceV111.DescribePending(
             current.Run, current.Fingerprint, ordinal);
+    }
+
+    private static bool IsJackpotZeroCostGenerationChoice(
+        CombatState? combat, PendingCombatChoiceState? choice,
+        PrototypeControlledGeneratedCardV111? generation)
+    {
+        if (combat is null || generation is null ||
+            choice is not { ChoiceId: "controlled_generated_card",
+                SourceCardInstanceId: { } sourceCardInstanceId,
+                CompletionEvents: [],
+                OuterChoiceContinuation: { } continuation })
+            return false;
+        var sourceCard = combat.Cards.SingleOrDefault(card =>
+            card.InstanceId == sourceCardInstanceId &&
+            card.CardId == "proto.colorless.jackpot");
+        if (sourceCard is null)
+            return false;
+        var operation = generation.Operation;
+        var series = continuation.CardPlaySeries;
+        var remainingOperationsMatch = operation.Amount switch
+        {
+            1 => continuation.Operations.Length == 0,
+            2 or 3 => continuation.Operations.Length == 1 &&
+                CanonicalJson.Sha256(continuation.Operations[0]) ==
+                    CanonicalJson.Sha256(operation with
+                    {
+                        Amount = operation.Amount - 1
+                    }),
+            _ => false
+        };
+        return operation.Kind ==
+                PrototypeCombatEffectKind.AddRandomZeroCostCardsToHand &&
+            operation.SourceKind == PrototypeEffectSourceKind.Card &&
+            operation.Amount is >= 1 and <= 3 &&
+            operation.GeneratedCardUpgradeLevel == sourceCard.UpgradeLevel &&
+            remainingOperationsMatch &&
+            continuation.SourceCardInstanceId == sourceCardInstanceId &&
+            continuation.CompletionEvents.Length == 1 &&
+            continuation.CompletionEvents[0] is
+                { Kind: PrototypeCombatEventKind.CardPlayed,
+                    CardId: "proto.colorless.jackpot" } &&
+            continuation.CompletionEvents[0].SourceCardInstanceId ==
+                sourceCardInstanceId &&
+            series is not null &&
+            series.SourceCardInstanceId == sourceCardInstanceId &&
+            !series.IsAutoPlay && series.NextPlayIndex > 0 &&
+            series.NextPlayIndex <= series.PlayCount &&
+            continuation.Parent is null &&
+            continuation.EventDispatchContinuation is null;
     }
 
     private static bool IsNeowsAbundanceGeneratedChoiceShuffle(

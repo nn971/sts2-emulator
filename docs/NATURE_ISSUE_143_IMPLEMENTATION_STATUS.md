@@ -406,6 +406,9 @@ reuses the existing full-pool shuffle and ChoicePool selection owners.
 Splash also enters its optional three-Attack generated offer from its physical
 source card and upgrade state, reusing the same full-pool shuffle and ChoicePool
 selection owners.
+Jackpot now admits its three random zero-cost card additions from its physical
+source-card identity, validating each generated-card event's `CardPlayed`
+continuation, source upgrade level and remaining-count suffix.
 Gambler's Brew uses the existing sequential card-selection event for its
 one-at-a-time discard prompt, then resumes the semantic draw owner for the
 selected count. Its guard matches the potion-use completion and exact
