@@ -244,8 +244,10 @@ public sealed record ScriptedRunActionSessionV111(
         init => Stochastic = Stochastic with { Continuation = value };
     }
 
-    public const string CurrentSchemaId =
+    public const string LegacySchemaId =
         "sts2-v111-scripted-run-action-session-v1";
+    public const string CurrentSchemaId =
+        "sts2-v111-scripted-run-action-session-v2";
 
     public static string[] Operations =>
     [
@@ -376,7 +378,7 @@ public sealed record ScriptedRunActionSessionV111(
                 ScriptedRunActionSessionSnapshotV111>(json)
             ?? throw new InvalidDataException(
                 "Null scripted run-action snapshot.");
-        if (snapshot.SchemaId != CurrentSchemaId ||
+        if (snapshot.SchemaId is not (LegacySchemaId or CurrentSchemaId) ||
             string.IsNullOrWhiteSpace(snapshot.OriginSnapshotJson) ||
             snapshot.Action is null || snapshot.Decisions is null)
             throw new InvalidDataException(
@@ -387,9 +389,33 @@ public sealed record ScriptedRunActionSessionV111(
             snapshot.RunSnapshotJson is null ? null :
                 RunSnapshot.Load(snapshot.RunSnapshotJson),
             snapshot.Decisions.Select(decision => decision.Fork()).ToArray(),
-            snapshot.Continuation?.Fork());
+            UpgradeContinuation(snapshot.Continuation));
         session.Validate();
         return session;
+    }
+
+    private static ControlledStochasticContinuationStateV111?
+        UpgradeContinuation(
+            ControlledStochasticContinuationStateV111? continuation)
+    {
+        if (continuation is null)
+            return null;
+        continuation.Validate();
+        if (continuation.SchemaId ==
+            ControlledStochasticContinuationStateV111.MixedPrimitiveSchemaId)
+            return continuation.Fork();
+        if (continuation.SchemaId !=
+            ControlledStochasticContinuationStateV111.CurrentSchemaId)
+            throw new InvalidDataException(
+                "Scripted run-action continuation schema is unsupported.");
+
+        var upgraded = continuation.Fork() with
+        {
+            SchemaId =
+                ControlledStochasticContinuationStateV111.MixedPrimitiveSchemaId
+        };
+        upgraded.Validate();
+        return upgraded;
     }
 
     internal static ScriptedRunActionSessionV111 ReplayCompleted(

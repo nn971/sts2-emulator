@@ -138,8 +138,10 @@ public sealed record ScriptedRunSessionV111(
         init => Stochastic = Stochastic with { ActiveAction = value };
     }
 
-    public const string CurrentSchemaId =
+    public const string LegacySchemaId =
         "sts2-v111-scripted-run-session-v1";
+    public const string CurrentSchemaId =
+        "sts2-v111-scripted-run-session-v2";
 
     public static string[] Operations =>
     [
@@ -304,7 +306,7 @@ public sealed record ScriptedRunSessionV111(
             ?? throw new InvalidDataException(
                 "Null scripted run-session snapshot.");
         var completedActions = snapshot.CompletedActions;
-        if (snapshot.SchemaId != CurrentSchemaId ||
+        if (snapshot.SchemaId is not (LegacySchemaId or CurrentSchemaId) ||
             string.IsNullOrWhiteSpace(snapshot.OriginSnapshotJson) ||
             string.IsNullOrWhiteSpace(snapshot.RunSnapshotJson) ||
             completedActions is null ||
