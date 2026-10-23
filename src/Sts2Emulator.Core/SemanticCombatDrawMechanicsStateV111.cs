@@ -1,8 +1,5 @@
 namespace Sts2Emulator.Core;
 
-internal readonly record struct SemanticDrawProgressResumeResultV111(
-    RunState Run, int RequestedCount, int RemainingCount);
-
 /// <summary>
 /// Mechanical checkpoint and draw-stage cursor for one semantic draw
 /// segment. Typed draw outcomes are paired through the simulation envelope.

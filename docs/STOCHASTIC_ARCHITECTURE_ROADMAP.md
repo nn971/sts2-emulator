@@ -26,6 +26,14 @@ draws reuse the ordered `reward`-stream pool; Native run ownership uses the
 run streams before remaining potion operations. Static source review and
 `git diff --check` only; no tests or builds were run.
 
+**S4 shared draw-resume progress increment (2026-10-24):** Ordinary semantic
+draw segments and automatic hand-draw stages now use the existing provider-
+neutral `PrototypeDrawCardsResumeResultV111` progress owner, carrying run and
+remaining count with optional requested count for hand-draw stage publication.
+The duplicate transient result record was removed without changing saved
+frame fields or transcript owners. Static source review and `git diff --check`
+only; no tests or builds were run.
+
 **S4 controlled event-choice candidate replay increment (2026-10-24):**
 Generic event-effect continuations now pass each saved decision's ordered
 candidate labels into replay and compare them with the live support before

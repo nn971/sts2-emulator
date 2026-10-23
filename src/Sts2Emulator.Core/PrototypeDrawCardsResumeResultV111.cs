@@ -1,9 +1,18 @@
 namespace Sts2Emulator.Core;
 
 /// <summary>
-/// Provider-neutral result for resuming a DrawCards mechanics boundary.
-/// Provider-specific decisions and transcript progress stay with their
-/// existing stochastic owners.
+/// Provider-neutral transient progress returned by a draw resume. Automatic
+/// hand-draw stages can also carry their requested count; choice transcripts
+/// remain with their existing stochastic owners.
 /// </summary>
 internal readonly record struct PrototypeDrawCardsResumeResultV111(
-    RunState Run, int RemainingCount);
+    RunState Run, int RemainingCount, int? RequestedCount = null)
+{
+    internal static PrototypeDrawCardsResumeResultV111 ForHandDraw(
+        RunState run, int requestedCount, int remainingCount) =>
+        new(run, remainingCount, requestedCount);
+
+    internal int RequireRequestedCount() => RequestedCount ??
+        throw new InvalidDataException(
+            "Draw resume result has no requested hand-draw count.");
+}
