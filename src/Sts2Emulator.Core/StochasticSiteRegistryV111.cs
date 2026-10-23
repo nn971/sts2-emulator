@@ -376,6 +376,10 @@ public static class StochasticSiteRegistryV111
         "card_rarity.upgrade_roll.unit_float";
     public const string RewardPotionOddsUnitFloatSiteId =
         "reward.potion_odds.unit_float";
+    public const string NativePotionFactoryRarityRollSiteId =
+        "potion_factory.rarity_roll.unit_float";
+    public const string NativePotionFactoryModelSiteId =
+        "potion_factory.model_within_rarity.index_draw";
     public const string CombatCardTransformReplacementSiteId =
         "combat.card_transform.replacement.index_draw";
     public const string CombatPotionGenerationRandomModelSiteId =
@@ -811,8 +815,8 @@ public static class StochasticSiteRegistryV111
     [
         "potion.rarity_roll.ticket",
         "potion.model_within_rarity.index_draw",
-        "potion_factory.rarity_roll.unit_float",
-        "potion_factory.model_within_rarity.index_draw"
+        NativePotionFactoryRarityRollSiteId,
+        NativePotionFactoryModelSiteId
     ];
 
     private static readonly string[] ControlledEventChoiceSites =
@@ -1019,8 +1023,8 @@ public static class StochasticSiteRegistryV111
         "shop.merchant.card_model.index_draw",
         "shop.colorless_card_model.index_draw",
         PrototypeNativeRelicGrabBag.QueueShuffleSiteId,
-        "potion_factory.rarity_roll.unit_float",
-        "potion_factory.model_within_rarity.index_draw",
+        NativePotionFactoryRarityRollSiteId,
+        NativePotionFactoryModelSiteId,
         RelicGrabBagRaritySiteId,
         PrototypeNativeRelicGrabBag.NativeMerchantModelSiteId,
         "relic.paels_legion.skin.index_draw",
@@ -1066,8 +1070,8 @@ public static class StochasticSiteRegistryV111
         "relic.acquisition.random_rare_card.model",
         "relic.acquisition.random_potion.model",
         "run.potion.fill_empty_slots.model",
-        "potion_factory.rarity_roll.unit_float",
-        "potion_factory.model_within_rarity.index_draw",
+        NativePotionFactoryRarityRollSiteId,
+        NativePotionFactoryModelSiteId,
         RelicGrabBagRaritySiteId,
         PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId,
         "shop.merchant.card_price_modifier.unit_float",
@@ -1157,7 +1161,7 @@ public static class StochasticSiteRegistryV111
         RewardPotionOddsUnitFloatSiteId,
         CardRarityUpgradeRollUnitFloatSiteId,
         CardRarityRollUnitFloatSiteId,
-        "potion_factory.rarity_roll.unit_float",
+        NativePotionFactoryRarityRollSiteId,
         RelicGrabBagRaritySiteId,
         "shop.merchant.card_upgrade_roll.unit_float",
         .. NativeMerchantPriceSites,
@@ -1640,9 +1644,9 @@ public static class StochasticSiteRegistryV111
             "run.combat_potion_generation" => siteId switch
             {
                 CombatPotionGenerationRandomModelSiteId or
-                "potion_factory.model_within_rarity.index_draw" =>
+                NativePotionFactoryModelSiteId =>
                     operationKind == "choose_index",
-                "potion_factory.rarity_roll.unit_float" =>
+                NativePotionFactoryRarityRollSiteId =>
                     operationKind == "unit_float",
                 _ => false
             },
@@ -1663,7 +1667,7 @@ public static class StochasticSiteRegistryV111
             NativePlayerRngV111.RewardsStreamId => siteId switch
             {
                 RewardPotionOddsUnitFloatSiteId or
-                "potion_factory.rarity_roll.unit_float" or
+                NativePotionFactoryRarityRollSiteId or
                 CardRarityRollUnitFloatSiteId or
                 CardRarityUpgradeRollUnitFloatSiteId or
                 "relic_grab_bag.rarity.unit_float" =>
@@ -1672,7 +1676,7 @@ public static class StochasticSiteRegistryV111
                 "reward.boss_relic_offer.shuffle_swap_index" or
                 "reward.lava_rock.relic_offer.shuffle_swap_index" =>
                     operationKind == "bounded_integer",
-                "potion_factory.model_within_rarity.index_draw" or
+                NativePotionFactoryModelSiteId or
                 NativeRewardCardModelSiteId =>
                     operationKind == "choose_index",
                 _ => false

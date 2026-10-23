@@ -322,7 +322,9 @@ public static class PrototypeNativePotionShop
             var rarityDecision = StochasticProviderScopeV111.ResolveUnitFloat(
                 effectiveFloatProvider,
                 new RandomUnitFloatRequestV111(
-                    "potion_factory.rarity_roll.unit_float", streamId,
+                    StochasticSiteRegistryV111
+                        .NativePotionFactoryRarityRollSiteId,
+                    streamId,
                     ownerId, index), workingRng);
             rarityDecision.Validate();
             rarityRolls.Add(rarityDecision);
@@ -336,12 +338,21 @@ public static class PrototypeNativePotionShop
             var decision = StochasticProviderScopeV111.ResolveIndex(
                 effectiveIndexProvider,
                 new RandomIndexRequestV111(
-                "potion_factory.model_within_rarity.index_draw", streamId,
+                StochasticSiteRegistryV111.NativePotionFactoryModelSiteId,
+                streamId,
                 ownerId, index,
                 Enumerable.Range(0, candidates.Length).ToArray()), workingRng);
             decision.Validate();
             choices.Add(decision);
             var potionId = candidates[decision.SelectedIndex];
+            if (streamId == NativePlayerRngV111.RewardsStreamId &&
+                rarityDecision.ProviderMode == "native-v111" &&
+                decision.ProviderMode == "native-v111" &&
+                RandomBoundaryJournalV111.HasActiveJournal)
+                RandomBoundaryJournalV111.RecordPotionFactoryOutcome(
+                    SemanticPotionFactoryNativeAuditV111.Create(
+                        rarityDecision, decision, candidates, rarity,
+                        potionId));
             selected.Add(potionId);
             remaining.Remove(potionId);
         }

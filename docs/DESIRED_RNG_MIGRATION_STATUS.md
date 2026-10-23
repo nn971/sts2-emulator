@@ -366,6 +366,10 @@ Native source-pool completeness and cursor parity.
 Native combat-potion presence retains its offered flag, strict float threshold,
 pity update and exact decision under its own additive schema. Forced rewards
 still bypass the Native odds draw.
+Combat-reward PotionFactory picks also retain the raw rarity float, ordered
+same-rarity pool, selected model, and paired model-index request. PotionFactory
+schema V1 requires one outcome per float/index pair in new Native-policy traces;
+pool completeness and Native stream/cursor parity remain separate.
 Native transform replacements now retain the original model, ordered
 replacement pool, selected model, source card instance, and exact Native ticket
 through `SemanticCardTransformEventV111`. Newly marked Native-policy audits

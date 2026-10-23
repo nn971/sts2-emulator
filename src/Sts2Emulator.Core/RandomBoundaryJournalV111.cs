@@ -557,6 +557,8 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
         _cardOddsOutcomes = [];
     private readonly List<SemanticPotionRewardOddsNativeAuditV111>
         _potionRewardOddsOutcomes = [];
+    private readonly List<SemanticPotionFactoryNativeAuditV111>
+        _potionFactoryOutcomes = [];
     private readonly Dictionary<string, int> _operationSequences =
         new(StringComparer.Ordinal);
     private bool _disposed;
@@ -650,6 +652,11 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
     /// <summary>Typed Native combat-potion presence and pity results.</summary>
     public IReadOnlyList<SemanticPotionRewardOddsNativeAuditV111>
         PotionRewardOddsOutcomes => _potionRewardOddsOutcomes
+            .Select(outcome => outcome.Fork()).ToArray();
+
+    /// <summary>Typed Native PotionFactory rarity and model outcomes.</summary>
+    public IReadOnlyList<SemanticPotionFactoryNativeAuditV111>
+        PotionFactoryOutcomes => _potionFactoryOutcomes
             .Select(outcome => outcome.Fork()).ToArray();
 
     internal static void RecordWeightedIntentOutcome(
@@ -951,6 +958,44 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
             throw new InvalidDataException(
                 "Potion-reward odds annotation differs from the latest primitive unit-float entry.");
         current._potionRewardOddsOutcomes.Add(auditEntry.Fork());
+    }
+
+    internal static void RecordPotionFactoryOutcome(
+        SemanticPotionFactoryNativeAuditV111 auditEntry)
+    {
+        ArgumentNullException.ThrowIfNull(auditEntry);
+        var current = Active.Value;
+        if (current is null)
+            return;
+        auditEntry.Validate();
+        if (current._orderedTranscript.Count < 2)
+            throw new InvalidDataException(
+                "PotionFactory annotation has no rarity and model transcript pair.");
+        var rarityEntry = current._orderedTranscript[^2];
+        var modelEntry = current._orderedTranscript[^1];
+        if (rarityEntry.OperationKind != "unit_float" ||
+            modelEntry.OperationKind != "index")
+            throw new InvalidDataException(
+                "PotionFactory annotation is not adjacent to its rarity and model requests.");
+        var rarityBoundary = rarityEntry
+            .DeserializeEvent<RandomUnitFloatBoundaryEventV111>();
+        var modelBoundary = modelEntry
+            .DeserializeEvent<RandomBoundaryEventV111>();
+        var journalRarityDecision = new RandomUnitFloatDecisionV111(
+            rarityBoundary.Request, rarityBoundary.SelectedValue,
+            rarityBoundary.ProviderMode, rarityBoundary.NativeCursorBefore,
+            rarityBoundary.NativeCursorAfter);
+        var journalModelDecision = new RandomIndexDecisionV111(
+            modelBoundary.Request, modelBoundary.SelectedIndex,
+            modelBoundary.ProviderMode, modelBoundary.NativeCursorBefore,
+            modelBoundary.NativeCursorAfter);
+        if (CanonicalJson.Sha256(journalRarityDecision) !=
+                CanonicalJson.Sha256(auditEntry.RarityDecision) ||
+            CanonicalJson.Sha256(journalModelDecision) !=
+                CanonicalJson.Sha256(auditEntry.ModelDecision))
+            throw new InvalidDataException(
+                "PotionFactory annotation differs from its adjacent primitive transcript pair.");
+        current._potionFactoryOutcomes.Add(auditEntry.Fork());
     }
 
     /// <summary>Returns a provider-specific mixed transcript in the order

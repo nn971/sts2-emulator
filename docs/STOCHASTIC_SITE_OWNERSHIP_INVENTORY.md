@@ -23,6 +23,9 @@ requires both registered reward float sites in newly marked traces.
 Native `reward.potion_odds.unit_float` results also retain the offered flag and
 pity update; potion-reward odds schema V1 requires each such draw in new traces.
 Forced rewards remain draw-free.
+Combat-reward PotionFactory picks retain the selected rarity and model support
+beside both exact `potion_factory.*` decisions. PotionFactory schema V1 requires
+paired outcomes for the two `player.rewards` sites in new traces.
 
 The Rest reward crosswalk is `PrototypeRooms.StepRest` →
 `EnterRestHealRelicReward`: relics with a positive
