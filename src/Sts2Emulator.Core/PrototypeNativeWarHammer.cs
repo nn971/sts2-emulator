@@ -42,12 +42,19 @@ public sealed partial class PrototypeGameEngine
                     throw new InvalidOperationException(
                         "Native War Hammer requires run RNG ownership.");
                 var nativeStreams = sourceRunStreams.Fork();
+                var originalIdentities =
+                    RandomBoundaryJournalV111.HasActiveJournal
+                        ? candidates.Select(card => "card-instance:" +
+                            card.InstanceId.ToString(
+                                System.Globalization.CultureInfo.InvariantCulture))
+                            .ToArray()
+                        : null;
                 NativeEventRandomProbeV111.CaptureShuffle(
                     StochasticSiteRegistryV111
                         .WarHammerEliteUpgradeShuffleSiteId,
                     $"player:0:war_hammer:{hammer}:eligible_cards",
                     candidates, nativeStreams, "run.niche");
-                _ = NativeFisherYatesV111.ShuffleInPlace(
+                var decisions = NativeFisherYatesV111.ShuffleInPlace(
                     candidates,
                     nativeStreams,
                     new NativeRandomIndexProviderV111(),
@@ -55,6 +62,17 @@ public sealed partial class PrototypeGameEngine
                     $"player:0:war_hammer:{hammer}:eligible_cards",
                     StochasticSiteRegistryV111
                         .WarHammerEliteUpgradeShuffleSiteId);
+                if (originalIdentities is not null)
+                    SemanticPoolShuffleChoiceV111.RecordNativeAudit(
+                        originalIdentities,
+                        candidates.Select(card => "card-instance:" +
+                            card.InstanceId.ToString(
+                                System.Globalization.CultureInfo.InvariantCulture))
+                            .ToArray(),
+                        decisions, Math.Min(4, candidates.Count),
+                        SemanticPoolShuffleChoiceV111
+                            .NativeWarHammerOperation,
+                        null);
                 var activeNativeRng =
                     state.World?.Combat?.Stochastic.NativeRng;
                 var combat = state.World?.Combat;

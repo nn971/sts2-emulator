@@ -256,7 +256,7 @@ public sealed record SemanticCardInstanceIndexAuditV111(
         var identities = orderedCardInstanceIds.ToArray();
         if (providerDecision.ProviderMode != "native-v111" ||
             request.OperationKind != "choose_index" ||
-            !StochasticSiteRegistryV111.IsCombatCardInstanceIndexAuditSite(
+            !StochasticSiteRegistryV111.IsNativePolicyCardInstanceIndexAuditSite(
                 request.SiteId) ||
             request.SupportCount != identities.Length ||
             !request.OrderedCandidates.SequenceEqual(
@@ -300,7 +300,7 @@ public sealed record SemanticCardInstanceIndexAuditV111(
             ProviderDecision.SelectedIndex != SelectedIndex ||
             CanonicalJson.Sha256(ProviderDecision.Request) !=
                 CanonicalJson.Sha256(Request) ||
-            !StochasticSiteRegistryV111.IsCombatCardInstanceIndexAuditSite(
+            !StochasticSiteRegistryV111.IsNativePolicyCardInstanceIndexAuditSite(
                 Request.SiteId) ||
             Request.OperationKind != "choose_index" || identities is null ||
             identities.Length == 0 ||

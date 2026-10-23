@@ -130,6 +130,11 @@ public sealed partial class PrototypeGameEngine
                     var decision = StochasticProviderScopeV111.ResolveIndex(
                         new NativeRandomIndexProviderV111(), request,
                         nativeRunStreams);
+                    if (RandomBoundaryJournalV111.HasActiveJournal)
+                        RandomBoundaryJournalV111
+                            .RecordCardInstanceIndexOutcome(
+                                SemanticCardInstanceIndexAuditV111.Create(
+                                    decision, candidates));
                     selectedIndex = decision.SelectedIndex;
                 }
                 else

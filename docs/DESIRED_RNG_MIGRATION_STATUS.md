@@ -332,11 +332,12 @@ exactly one annotation for every intent-site index decision even if the
 annotation array is empty. Unmarked snapshots from before this schema remain
 readable.
 The same audit also retains the ordered physical card identities selected by
-Native index draws at registered random-hand-card, autoplay, replay, and
-enemy-theft sites. Each identity annotation is paired with the exact primitive
-index decision and its cursor span; the schema marker requires one annotation
-for every such registered decision. This records semantic outcomes without
-asserting that the candidate support or Native source route is complete.
+Native index draws at registered random-hand-card, autoplay, replay,
+enemy-theft, and Fishing Rod combat-end sites. Each identity annotation is
+paired with the exact primitive index decision and its cursor span. Schema V2
+adds Fishing Rod while V1 keeps the original combat-site completeness rule.
+This records semantic outcomes without asserting that the candidate support or
+Native source route is complete.
 Native randomization of hand-card energy costs also records each selected
 physical card, its sampled cost, and the exact bounded request. The audit schema
 requires one typed cost outcome for every registered per-card cost draw.
@@ -345,8 +346,11 @@ before every bounded Fisher–Yates swap, paired with its exact request and
 selected index. The audit reuses the existing semantic pool-shuffle event,
 validates the complete descending swap chain, and requires one support record
 for every registered pool-shuffle ticket in newly marked Native-policy traces.
-This records the modeled pool and selected permutation; Native source-pool
-eligibility and stream attribution remain unverified.
+Schema V4 also covers Native entry/recycle draw-pile shuffles, relic-bag
+queues, War Hammer's eligible upgrade pool, and boss/Lava Rock relic offers;
+V3, V2, and V1 retain their prior completeness subsets. This records the
+modeled pool and selected permutation; Native source-pool eligibility and
+stream attribution remain unverified.
 Native generated-card model selections now also retain the selected model,
 ordered source pool, source operation, exact selection ticket and Native cursor
 span by reusing `SemanticGeneratedCardEventV111`. Newly marked Native-policy

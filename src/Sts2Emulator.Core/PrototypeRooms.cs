@@ -5830,7 +5830,11 @@ public sealed partial class PrototypeGameEngine
             }
             else
             {
-                _ = NativeFisherYatesV111.ShuffleInPlace(
+                var originalRelicPool =
+                    RandomBoundaryJournalV111.HasActiveJournal
+                        ? (string[])bossRelicPool.Clone()
+                        : null;
+                var decisions = NativeFisherYatesV111.ShuffleInPlace(
                     bossRelicPool,
                     nativeRunRng,
                     new NativeRandomIndexProviderV111(),
@@ -5838,6 +5842,13 @@ public sealed partial class PrototypeGameEngine
                     $"act:{world.Act}:floor:{world.Floor}:boss_relics",
                     StochasticSiteRegistryV111
                         .RewardBossRelicOfferShuffleSiteId);
+                if (originalRelicPool is not null)
+                    SemanticPoolShuffleChoiceV111.RecordNativeAudit(
+                        originalRelicPool, bossRelicPool, decisions,
+                        Math.Min(3, bossRelicPool.Length),
+                        SemanticPoolShuffleChoiceV111
+                            .NativeBossRelicOfferOperation,
+                        null);
                 relicOptions = bossRelicPool.Take(3).ToArray();
             }
         }

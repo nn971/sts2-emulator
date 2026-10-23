@@ -599,6 +599,9 @@ public static class StochasticSiteRegistryV111
             .Append(NativeFisherYatesV111.SiteId)
             .Append(ControlledRecycleShuffleEngineV111.SiteId)
             .Append(PrototypeNativeRelicGrabBag.QueueShuffleSiteId)
+            .Append(WarHammerEliteUpgradeShuffleSiteId)
+            .Append(RewardBossRelicOfferShuffleSiteId)
+            .Append(RewardLavaRockRelicOfferShuffleSiteId)
             .ToArray();
 
     public static string[] CombatIntentSiteIds =>
@@ -615,6 +618,11 @@ public static class StochasticSiteRegistryV111
         CombatRandomReplayCardSelectSiteId,
         CombatEnemyTheftCardSelectSiteId
     ];
+
+    private static readonly string[] NativePolicyCardInstanceIndexAuditSites =
+        CombatCardInstanceIndexAuditSites
+            .Append(PrototypeGameEngine.FishingRodUpgradeSiteId)
+            .ToArray();
 
     private static readonly string[] CombatCardEnergyCostAuditSites =
     [
@@ -633,8 +641,15 @@ public static class StochasticSiteRegistryV111
     public static string[] CombatCardInstanceIndexAuditSiteIds =>
         (string[])CombatCardInstanceIndexAuditSites.Clone();
 
+    public static string[] NativePolicyCardInstanceIndexAuditSiteIds =>
+        (string[])NativePolicyCardInstanceIndexAuditSites.Clone();
+
     public static bool IsCombatCardInstanceIndexAuditSite(string siteId) =>
         CombatCardInstanceIndexAuditSiteSet.Contains(siteId);
+
+    public static bool IsNativePolicyCardInstanceIndexAuditSite(string siteId) =>
+        NativePolicyCardInstanceIndexAuditSites.Contains(
+            siteId, StringComparer.Ordinal);
 
     public static string[] CombatCardEnergyCostAuditSiteIds =>
         (string[])CombatCardEnergyCostAuditSites.Clone();

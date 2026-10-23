@@ -64,7 +64,10 @@ public sealed record SemanticPoolShuffleEventV111(
                 SemanticPoolShuffleChoiceV111.RandomShortlistSiteId or
                 NativeFisherYatesV111.SiteId or
                 ControlledRecycleShuffleEngineV111.SiteId or
-                PrototypeNativeRelicGrabBag.QueueShuffleSiteId) ||
+                PrototypeNativeRelicGrabBag.QueueShuffleSiteId or
+                StochasticSiteRegistryV111.WarHammerEliteUpgradeShuffleSiteId or
+                StochasticSiteRegistryV111.RewardBossRelicOfferShuffleSiteId or
+                StochasticSiteRegistryV111.RewardLavaRockRelicOfferShuffleSiteId) ||
             Request.SiteId != expectedSite ||
             Request.OperationKind != "bounded_integer" ||
             originalCardIds is not { Length: > 1 } ||
@@ -147,6 +150,12 @@ public static class SemanticPoolShuffleChoiceV111
         StochasticSiteRegistryV111.CombatRandomShortlistShuffleSiteId;
     internal const string NativeRelicQueueOperation =
         "NativeRelicGrabBagQueueShuffle";
+    internal const string NativeWarHammerOperation =
+        "NativeWarHammerEliteUpgradeShuffle";
+    internal const string NativeBossRelicOfferOperation =
+        "NativeBossRelicOfferShuffle";
+    internal const string NativeLavaRockRelicOfferOperation =
+        "NativeLavaRockRelicOfferShuffle";
     internal const string NativeRecycleOperation =
         "NativeCombatDrawPileRecycleShuffle";
     internal const string NativeCombatEntryShuffleOperation =
@@ -319,6 +328,12 @@ public static class SemanticPoolShuffleChoiceV111
                 NativeFisherYatesV111.SiteId,
             NativeRelicQueueOperation =>
                 PrototypeNativeRelicGrabBag.QueueShuffleSiteId,
+            NativeWarHammerOperation =>
+                StochasticSiteRegistryV111.WarHammerEliteUpgradeShuffleSiteId,
+            NativeBossRelicOfferOperation =>
+                StochasticSiteRegistryV111.RewardBossRelicOfferShuffleSiteId,
+            NativeLavaRockRelicOfferOperation =>
+                StochasticSiteRegistryV111.RewardLavaRockRelicOfferShuffleSiteId,
             _ => null
         };
 

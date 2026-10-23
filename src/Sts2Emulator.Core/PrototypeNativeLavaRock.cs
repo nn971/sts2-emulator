@@ -60,7 +60,10 @@ public sealed partial class PrototypeGameEngine
         }
         else
         {
-            _ = NativeFisherYatesV111.ShuffleInPlace(
+            var originalIdentities = RandomBoundaryJournalV111.HasActiveJournal
+                ? (string[])available.Clone()
+                : null;
+            var decisions = NativeFisherYatesV111.ShuffleInPlace(
                 available,
                 nativeRunRng,
                 new NativeRandomIndexProviderV111(),
@@ -68,6 +71,12 @@ public sealed partial class PrototypeGameEngine
                 "run:act:1:boss:lava_rock_extra_relics",
                 StochasticSiteRegistryV111
                     .RewardLavaRockRelicOfferShuffleSiteId);
+            if (originalIdentities is not null)
+                SemanticPoolShuffleChoiceV111.RecordNativeAudit(
+                    originalIdentities, available, decisions, count,
+                    SemanticPoolShuffleChoiceV111
+                        .NativeLavaRockRelicOfferOperation,
+                    null);
             selected = available.Take(count).ToArray();
         }
 
