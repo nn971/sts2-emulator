@@ -799,6 +799,11 @@ public sealed partial record CombatState
             }
             if (pending.AutomaticSemanticDrawHookChoice)
             {
+                var pipelineCursor = combat.AutomaticPipelineContinuation;
+                bool semanticBeforeHandDraw = pipelineCursor is not null &&
+                    pipelineCursor.Stochastic.TryGetSemanticHandDrawProjection(
+                        pipelineCursor.Mechanics, out int requested,
+                        out int remaining) && requested == 0 && remaining == 0;
                 if (pending.StandaloneSemanticDrawHookChoice ||
                     pending.SemanticStratagemDrawSelection ||
                     pending.AutomaticSemanticStratagemDrawSelection ||
@@ -815,15 +820,7 @@ public sealed partial record CombatState
                     pending.SemanticStratagemDrawSelection ||
                     pending.AutomaticSemanticStratagemDrawSelection ||
                     !(PrototypeGameEngine.IsSemanticAutomaticHandDraw(combat) ||
-                      combat.AutomaticPipelineContinuation is
-                          { Stochastic:
-                            { HandDrawProgress:
-                                { Kind: PrototypeAutomaticHandDrawProgressKindV111
-                                    .SemanticBeforeHandDraw,
-                                  RequestedCount: null,
-                                  RemainingCount: null } } } cursor &&
-                      cursor.Mechanics.IsAtStep(
-                          PrototypeAutomaticStepKind.DrawPlayerHand)) ||
+                      semanticBeforeHandDraw) ||
                     combat.Stochastic.SemanticDeck is not
                         { Mode: SemanticDeckStateV111.NatureMode,
                             Pending: null })

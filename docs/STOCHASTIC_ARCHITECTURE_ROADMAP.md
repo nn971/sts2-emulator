@@ -66,9 +66,11 @@ source review and `git diff --check` only; no tests or builds were run.
 **S4 semantic hand-draw projection increment (2026-10-24):** The initial
 semantic draw facade publishes requested and remaining counts directly from
 the shared stage result, and frame validation identifies zero-count
-`BeforeHandDraw` progress through the pipeline owner projection. It no longer
-reinterprets a pending random-pile choice. Static source review and
-`git diff --check` only; no tests or builds were run.
+`BeforeHandDraw` progress through the pipeline owner projection. Combat and
+draw-hook validation plus the Mayhem cursor guard now use the same stage- and
+payload-validated projection. The semantic draw facade no longer reinterprets
+a pending random-pile choice. Static source review and `git diff --check`
+only; no tests or builds were run.
 
 **S4 controlled event-choice candidate replay increment (2026-10-24):**
 Generic event-effect continuations now pass each saved decision's ordered

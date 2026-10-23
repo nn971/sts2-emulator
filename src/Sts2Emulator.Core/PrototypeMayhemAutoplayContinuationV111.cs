@@ -513,8 +513,10 @@ public sealed partial class PrototypeGameEngine
         CombatState combat, PendingCombatChoiceState pending)
     {
         var progress = continuation.Stochastic.HandDrawProgress;
-        bool semanticBeforeHandDrawPending = progress?.Kind ==
-            PrototypeAutomaticHandDrawProgressKindV111.SemanticBeforeHandDraw;
+        bool semanticBeforeHandDrawPending =
+            continuation.Stochastic.TryGetSemanticHandDrawProjection(
+                continuation.Mechanics, out int requested, out int remaining) &&
+            requested == 0 && remaining == 0;
         if (!continuation.Mechanics.IsAtStep(
                 PrototypeAutomaticStepKind.DrawPlayerHand) ||
             (progress is not null && !semanticBeforeHandDrawPending) ||
@@ -526,14 +528,7 @@ public sealed partial class PrototypeGameEngine
             combat.PendingChoice?.ChoiceId != "controlled_pool_shuffle")
             return false;
 
-        if (semanticBeforeHandDrawPending)
-            return progress is
-                { Kind:
-                    PrototypeAutomaticHandDrawProgressKindV111.SemanticBeforeHandDraw,
-                  RequestedCount: null,
-                  RemainingCount: null };
-
-        return continuation.Stochastic.HandDrawProgress is null;
+        return true;
     }
 
     internal static bool IsAutomaticPipelineSemanticRandomHandCostContinuation(

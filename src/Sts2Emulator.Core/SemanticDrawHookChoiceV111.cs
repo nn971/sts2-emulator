@@ -117,12 +117,10 @@ public static class SemanticDrawHookChoiceEngineV111
         var choice = combat?.PendingChoice;
         bool automatic = choice?.AutomaticSemanticDrawHookChoice == true;
         var automaticPipeline = combat?.AutomaticPipelineContinuation;
-        var handDrawProgress = automaticPipeline?
-            .Stochastic.HandDrawProgress;
-        bool beforeHandDraw = automatic &&
-            handDrawProgress?.Kind ==
-                PrototypeAutomaticHandDrawProgressKindV111
-                    .SemanticBeforeHandDraw;
+        bool beforeHandDraw = automatic && automaticPipeline is not null &&
+            automaticPipeline.Stochastic.TryGetSemanticHandDrawProjection(
+                automaticPipeline.Mechanics, out int requested,
+                out int remaining) && requested == 0 && remaining == 0;
         bool automaticPipelineAutoplay = choice is not null &&
             combat is not null &&
             PrototypeGameEngine
@@ -148,15 +146,8 @@ public static class SemanticDrawHookChoiceEngineV111
             choice.SemanticStratagemDrawSelection ||
             choice.AutomaticSemanticStratagemDrawSelection ||
             (automatic
-                ? beforeHandDraw
-                    ? automaticPipeline?.Mechanics.IsAtStep(
-                          PrototypeAutomaticStepKind.DrawPlayerHand) != true ||
-                      handDrawProgress is not
-                          { Kind: PrototypeAutomaticHandDrawProgressKindV111
-                              .SemanticBeforeHandDraw,
-                            RequestedCount: null,
-                            RemainingCount: null }
-                    : !PrototypeGameEngine.IsSemanticAutomaticHandDraw(combat)
+                ? !beforeHandDraw &&
+                  !PrototypeGameEngine.IsSemanticAutomaticHandDraw(combat)
                 : (!automaticPipelineAutoplay &&
                    combat.AutomaticPipelineContinuation is not null) ||
                   !HasStandaloneDrawResume(choice)))
