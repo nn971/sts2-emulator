@@ -605,7 +605,9 @@ public static class StochasticSiteRegistryV111
 
     private static readonly string[] CombatCardEnergyCostAuditSites =
     [
-        CombatRandomHandCardEnergyCostSiteId
+        CombatRandomHandCardEnergyCostSiteId,
+        CombatDrawRelicEnergyCostSiteId,
+        CombatDrawSlitherEnergyCostSiteId
     ];
 
     private static readonly HashSet<string>

@@ -69,6 +69,11 @@ when native combat streams are attached and legacy `combat` otherwise. Native
 stream ownership and call-order parity remain unverified. Native semantic-deck
 draws use this shared path once before `CardDrawn` dispatch.
 
+When an opt-in Native-policy audit is active, the random-boundary journal also
+annotates each of these exact Native cost tickets with the drawn card instance,
+relic or Slither stage, and sampled cost. The existing semantic bounded-cost
+decision is reused; source stream ownership and cursor parity remain open.
+
 ## Saved state and replay
 
 A pending drawn-card cost is represented inside the forkable

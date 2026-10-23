@@ -325,7 +325,7 @@ public sealed record SemanticCardInstanceIndexAuditV111(
 }
 
 /// <summary>Native provider provenance paired with the existing semantic cost
-/// decision and its ordered eligible hand support.</summary>
+/// decision and its ordered physical card support.</summary>
 public sealed record SemanticCardEnergyCostAuditV111(
     string SchemaId, string EventId, string EligibleCardSupportFingerprint,
     long[] OrderedEligibleCardInstanceIds,
@@ -376,19 +376,33 @@ public sealed record SemanticCardEnergyCostAuditV111(
         var request = providerDecision.Request;
         var identities = orderedEligibleCardInstanceIds.ToArray();
         var supportFingerprint = CanonicalJson.Sha256(identities);
+        bool handCost = request.SiteId ==
+            StochasticSiteRegistryV111.CombatRandomHandCardEnergyCostSiteId;
+        bool drawHookCost = request.SiteId is
+            StochasticSiteRegistryV111.CombatDrawRelicEnergyCostSiteId or
+            StochasticSiteRegistryV111.CombatDrawSlitherEnergyCostSiteId;
+        var expectedOwner = "card_instance:" + cardInstanceId.ToString(
+            System.Globalization.CultureInfo.InvariantCulture) + ":model:" +
+            cardModelId + ":stage:" +
+            (request.SiteId ==
+                StochasticSiteRegistryV111.CombatDrawRelicEnergyCostSiteId
+                    ? "relic"
+                    : "slither");
         if (providerDecision.ProviderMode != "native-v111" ||
-            !StochasticSiteRegistryV111.IsCombatCardEnergyCostAuditSite(
-                request.SiteId) ||
+            (!handCost && !drawHookCost) ||
             request.OperationKind != "bounded_integer" ||
             request.BoundedCount is not > 0 ||
             identities.Length == 0 || identities.Any(id => id <= 0) ||
             identities.Distinct().Count() != identities.Length ||
             cardInstanceId <= 0 || !identities.Contains(cardInstanceId) ||
-            !request.OwnerId.EndsWith(
-                ":hand:" + supportFingerprint +
-                ":card_instance:" + cardInstanceId.ToString(
-                    System.Globalization.CultureInfo.InvariantCulture),
-                StringComparison.Ordinal))
+            (handCost && !request.OwnerId.EndsWith(
+                ":hand:" + supportFingerprint + ":card_instance:" +
+                    cardInstanceId.ToString(
+                        System.Globalization.CultureInfo.InvariantCulture),
+                StringComparison.Ordinal)) ||
+            (drawHookCost &&
+                (identities.Length != 1 || identities[0] != cardInstanceId ||
+                 request.OwnerId != expectedOwner)))
             throw new InvalidDataException(
                 "Native card energy-cost audit has an unsupported request or card support.");
 
@@ -432,14 +446,25 @@ public sealed record SemanticCardEnergyCostAuditV111(
             request = semanticEvent.Request,
             supportFingerprint = EligibleCardSupportFingerprint
         });
+        bool handCost = semanticEvent.Request.SiteId ==
+            StochasticSiteRegistryV111.CombatRandomHandCardEnergyCostSiteId;
+        bool drawHookCost = semanticEvent.Request.SiteId is
+            StochasticSiteRegistryV111.CombatDrawRelicEnergyCostSiteId or
+            StochasticSiteRegistryV111.CombatDrawSlitherEnergyCostSiteId;
+        var expectedDrawOwner = "card_instance:" + selectedCardInstanceId
+            .ToString(System.Globalization.CultureInfo.InvariantCulture) +
+            ":model:" + semanticEvent.TargetCardModelId + ":stage:" +
+            (semanticEvent.Request.SiteId ==
+                StochasticSiteRegistryV111.CombatDrawRelicEnergyCostSiteId
+                    ? "relic"
+                    : "slither");
         if (SchemaId != CurrentSchemaId ||
             ProviderDecision.ProviderMode != "native-v111" ||
             CanonicalJson.Sha256(semanticEvent.Request) !=
                 CanonicalJson.Sha256(ProviderDecision.Request) ||
             Outcome.SelectedIndex != ProviderDecision.SelectedIndex ||
             Outcome.SelectedCost != ProviderDecision.SelectedIndex ||
-            !StochasticSiteRegistryV111.IsCombatCardEnergyCostAuditSite(
-                semanticEvent.Request.SiteId) ||
+            (!handCost && !drawHookCost) ||
             semanticEvent.Request.OperationKind != "bounded_integer" ||
             semanticEvent.BoundaryFingerprint !=
                 expectedBoundaryFingerprint ||
@@ -449,11 +474,15 @@ public sealed record SemanticCardEnergyCostAuditV111(
             selectedCardInstanceId <= 0 ||
             !identities.Contains(selectedCardInstanceId) ||
             EligibleCardSupportFingerprint != CanonicalJson.Sha256(identities) ||
-            !semanticEvent.Request.OwnerId.EndsWith(
+            (handCost && !semanticEvent.Request.OwnerId.EndsWith(
                 ":hand:" + EligibleCardSupportFingerprint +
-                ":card_instance:" + selectedCardInstanceId.ToString(
-                    System.Globalization.CultureInfo.InvariantCulture),
-                StringComparison.Ordinal) ||
+                    ":card_instance:" + selectedCardInstanceId.ToString(
+                        System.Globalization.CultureInfo.InvariantCulture),
+                StringComparison.Ordinal)) ||
+            (drawHookCost &&
+                (identities.Length != 1 ||
+                 identities[0] != selectedCardInstanceId ||
+                 semanticEvent.Request.OwnerId != expectedDrawOwner)) ||
             EventId != CanonicalJson.Sha256(new
             {
                 schemaId = SchemaId,
@@ -564,8 +593,8 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
         CardInstanceIndexOutcomes => _cardInstanceIndexOutcomes
             .Select(outcome => outcome.Fork()).ToArray();
 
-    /// <summary>Typed per-card costs selected at the registered Native
-    /// random-hand-cost site.</summary>
+    /// <summary>Typed Native outcomes for registered hand and drawn-card
+    /// energy-cost sites.</summary>
     public IReadOnlyList<SemanticCardEnergyCostAuditV111>
         CardEnergyCostOutcomes => _cardEnergyCostOutcomes
             .Select(outcome => outcome.Fork()).ToArray();

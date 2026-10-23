@@ -10536,6 +10536,13 @@ public sealed partial class PrototypeGameEngine
             : new NativeRandomIndexProviderV111();
         var decision = StochasticProviderScopeV111.ResolveIndex(
             provider, request, streams);
+        if (decision.ProviderMode == "native-v111" &&
+            RandomBoundaryJournalV111.HasActiveJournal &&
+            StochasticSiteRegistryV111
+                .IsCombatCardEnergyCostAuditSite(request.SiteId))
+            RandomBoundaryJournalV111.RecordCardEnergyCostOutcome(
+                SemanticCardEnergyCostAuditV111.Create(
+                    decision, [cardInstanceId], cardInstanceId, cardModelId));
         var updated = native is null
             ? combat
             : combat with

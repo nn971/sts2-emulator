@@ -59,7 +59,8 @@ public sealed record SemanticCostEventV111(
                 ((Request.SiteId is
                      StochasticSiteRegistryV111.CombatDrawRelicEnergyCostSiteId or
                      StochasticSiteRegistryV111.CombatDrawSlitherEnergyCostSiteId) &&
-                 Request.StreamId == "semantic.combat")))))
+                 Request.StreamId is "semantic.combat" or
+                     SemanticCostChoiceV111.NativeHandCostStreamId)))))
             throw new InvalidDataException("Invalid semantic cost event.");
         var identityRequest = SemanticCostChoiceV111
             .RequestForEventIdentity(Request);

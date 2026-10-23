@@ -185,6 +185,8 @@ public sealed record SemanticNativePolicyAuditV111(
         "sts2-v111-native-card-instance-index-audit-v1";
     public const string CardEnergyCostAuditSchemaV1 =
         "sts2-v111-native-card-energy-cost-audit-v1";
+    public const string CardEnergyCostAuditSchemaV2 =
+        "sts2-v111-native-card-energy-cost-audit-v2";
     public const string PoolShuffleAuditSchemaV1 =
         "sts2-v111-native-pool-shuffle-audit-v1";
     public const string GeneratedCardModelAuditSchemaV1 =
@@ -205,7 +207,7 @@ public sealed record SemanticNativePolicyAuditV111(
     /// identity annotations.</summary>
     public string? CardInstanceIndexAuditSchema { get; init; }
     /// <summary>Null for older snapshots that predate typed per-card energy
-    /// cost annotations.</summary>
+    /// cost annotations; V1 covers hand costs and V2 also covers draw hooks.</summary>
     public string? CardEnergyCostAuditSchema { get; init; }
     /// <summary>Null for older snapshots that predate semantic ordered
     /// support annotations for Native combat pool shuffles.</summary>
@@ -403,7 +405,9 @@ public sealed record SemanticNativePolicyAuditV111(
             (CardInstanceIndexAuditSchema is not null &&
              CardInstanceIndexAuditSchema != CardInstanceIndexAuditSchemaV1) ||
             (CardEnergyCostAuditSchema is not null &&
-             CardEnergyCostAuditSchema != CardEnergyCostAuditSchemaV1) ||
+             CardEnergyCostAuditSchema is not (
+                 CardEnergyCostAuditSchemaV1 or
+                 CardEnergyCostAuditSchemaV2)) ||
             (PoolShuffleAuditSchema is not null &&
              PoolShuffleAuditSchema != PoolShuffleAuditSchemaV1) ||
             (GeneratedCardModelAuditSchema is not null &&
@@ -841,18 +845,33 @@ public sealed record SemanticNativePolicyAuditV111(
             }
         }
 
-        if (CardEnergyCostAuditSchema == CardEnergyCostAuditSchemaV1 ||
+        bool completeAllCardCostSites =
+            CardEnergyCostAuditSchema == CardEnergyCostAuditSchemaV2;
+        var requiredCardCostDecisions = completeAllCardCostSites
+            ? traceCardEnergyCostDecisions
+            : traceCardEnergyCostDecisions.Where(decision =>
+                decision.Request.SiteId == StochasticSiteRegistryV111
+                    .CombatRandomHandCardEnergyCostSiteId).ToList();
+        var requiredCardCostOutcomes = completeAllCardCostSites
+            ? cardEnergyCostOutcomes
+            : cardEnergyCostOutcomes.Where(outcome =>
+                outcome.Outcome.Event.Request.SiteId ==
+                    StochasticSiteRegistryV111
+                        .CombatRandomHandCardEnergyCostSiteId).ToArray();
+        if (CardEnergyCostAuditSchema is
+                CardEnergyCostAuditSchemaV1 or
+                CardEnergyCostAuditSchemaV2 ||
             cardEnergyCostOutcomes.Length > 0)
         {
-            if (traceCardEnergyCostDecisions.Count !=
-                cardEnergyCostOutcomes.Length)
+            if (requiredCardCostDecisions.Count !=
+                requiredCardCostOutcomes.Length)
                 throw new InvalidDataException(
                     "Native policy card energy-cost outcomes are incomplete for their mixed trace.");
 
-            foreach (var costDecision in traceCardEnergyCostDecisions)
+            foreach (var costDecision in requiredCardCostDecisions)
             {
                 var decisionFingerprint = CanonicalJson.Sha256(costDecision);
-                var matchingOutcomes = cardEnergyCostOutcomes.Count(outcome =>
+                var matchingOutcomes = requiredCardCostOutcomes.Count(outcome =>
                     CanonicalJson.Sha256(outcome.ProviderDecision) ==
                     decisionFingerprint);
                 if (matchingOutcomes != 1)
@@ -2837,7 +2856,7 @@ public static class SemanticPilotCombatEngineV111
                             .CardInstanceIndexAuditSchemaV1,
                     CardEnergyCostAuditSchema =
                         SemanticNativePolicyAuditV111
-                            .CardEnergyCostAuditSchemaV1,
+                            .CardEnergyCostAuditSchemaV2,
                     PoolShuffleAuditSchema =
                         SemanticNativePolicyAuditV111
                             .PoolShuffleAuditSchemaV1,
@@ -2945,7 +2964,7 @@ public static class SemanticPilotCombatEngineV111
                         .CardInstanceIndexAuditSchemaV1,
                 CardEnergyCostAuditSchema =
                     SemanticNativePolicyAuditV111
-                        .CardEnergyCostAuditSchemaV1,
+                        .CardEnergyCostAuditSchemaV2,
                 PoolShuffleAuditSchema =
                     SemanticNativePolicyAuditV111
                         .PoolShuffleAuditSchemaV1,
