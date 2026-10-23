@@ -2,6 +2,15 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S0 Native request-wrapper callsite closure increment (2026-10-23):** The
+direct-call census now resolves the three generic request constructors in
+`NativeRandomChoiceV111` through their operation-matched Native player-choice
+and direct helper callsites. The generated inventory maps 104 of 104 typed
+request constructors to registered sites, 39 of 39 helper callsites to
+migration rows, and keeps the external-caller boundary explicit. Registry,
+contract-link, ambient-entropy census checks and `git diff --check` passed;
+no tests or builds were run.
+
 **D3/D4 event-reward action continuation increment (2026-10-23):** The
 existing controlled event-reward frame now saves a legal Driftwood
 `reroll_reward_card` action before its first request and replays it through

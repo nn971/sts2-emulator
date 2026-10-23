@@ -21,7 +21,7 @@ from urllib.parse import unquote, urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v40"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v41"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 
 CALL_PATTERN = re.compile(
@@ -1968,6 +1968,7 @@ def _typed_request_constructions(
     global_constants: dict[str, set[str]],
     registry_site_ids: set[str],
     matrix_site_ids: set[str],
+    site_id_forwarder_calls: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     """Inventory explicit typed random-request construction boundaries."""
     calls: list[dict[str, Any]] = []
@@ -2086,6 +2087,43 @@ def _typed_request_constructions(
                     resolution_source = (
                         "shared_shuffle_core_finite_registry"
                     )
+            if not values and path.name == "NativeRandomChoiceV111.cs":
+                helper_names: tuple[str, ...] = ()
+                request_type = match.group("request_type")
+                operation_kind = operation_values[0] if len(
+                    operation_values) == 1 else None
+                if (request_type == "RandomIndexRequestV111" and
+                        operation_kind == "choose_index"):
+                    helper_names = (
+                        "NativePlayerRngV111.ChooseIndex",
+                        "NativeRandomChoiceV111.ChooseIndexRange",
+                    )
+                elif (request_type == "RandomIndexRequestV111" and
+                        operation_kind == "bounded_integer"):
+                    helper_names = (
+                        "NativePlayerRngV111.ChooseBoundedInteger",
+                        "NativeRandomChoiceV111.ChooseBoundedInteger",
+                    )
+                elif request_type == "RandomUnitFloatRequestV111":
+                    helper_names = (
+                        "NativePlayerRngV111.NextUnitFloat",
+                        "NativeRandomChoiceV111.NextUnitFloat",
+                    )
+                core_callers = [
+                    call for call in site_id_forwarder_calls
+                    if call["helper"] in helper_names
+                ]
+                if (helper_names and core_callers and
+                        all(call["registry_status"] == "mapped" and
+                            call["matrix_status"] == "mapped" and
+                            call["site_id_value"] is not None
+                            for call in core_callers)):
+                    values = sorted({
+                        call["site_id_value"] for call in core_callers
+                    })
+                    resolution_source = (
+                        "finite_core_helper_callsite_closure"
+                    )
             value = values[0] if len(values) == 1 else None
             registry_misses = [
                 item for item in values if item not in registry_site_ids
@@ -2120,6 +2158,9 @@ def _typed_request_constructions(
                         "registry_dictionary_guard",
                         "shared_shuffle_core_finite_registry",
                     )
+                    else "finite_core_helper_callsite_sites"
+                    if resolution_source ==
+                        "finite_core_helper_callsite_closure"
                     else "static_site_id" if len(values) == 1
                     else "finite_site_id_alternatives"
                 )
@@ -2234,7 +2275,8 @@ def collect() -> dict[str, Any]:
         sources, string_constants, registry_site_ids, matrix_site_ids
     )
     typed_request_constructions = _typed_request_constructions(
-        sources, string_constants, registry_site_ids, matrix_site_ids
+        sources, string_constants, registry_site_ids, matrix_site_ids,
+        site_id_forwarder_calls,
     )
     site_id_forwarder_failures = [
         call for call in site_id_forwarder_calls
@@ -2369,7 +2411,11 @@ def collect() -> dict[str, Any]:
             "constructions are listed with their site ID, index operation-kind "
             "expression, and registry/matrix resolution status. The static "
             "operation locator does not resolve forwarded caller values on its "
-            "own. Runtime request validation checks operation kinds against the "
+            "own. The three generic constructors in `NativeRandomChoiceV111` "
+            "resolve to the finite set of Native player-choice/helper callsites "
+            "in Core when every caller maps to a registered matrix row; callers "
+            "outside Core are outside this census. Runtime request validation "
+            "checks operation kinds against the "
             "32 legacy caller-bound declarations, the registry's finite legacy "
             "Fisher-Yates site set, and its Native "
             "bounded-index and Fisher-Yates site sets; the low-level Native "
@@ -2499,7 +2545,7 @@ def render_markdown(report: dict[str, Any]) -> str:
                 call["site_id_origin_kind"]
                 for call in report["typed_request_constructions"]
             ).items())
-        ) + ". Forwarded identifiers and members remain manual trace items; these labels do not claim their caller chain is resolved.",
+        ) + ". Bare forwarded identifiers and members remain manual trace items unless the row names a finite Core helper-callsite closure.",
         "",
         "| File:line | Request type | Operation kind | Site ID expression | Origin | Resolution | Resolved site ID | Registry | Matrix |",
         "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
@@ -2586,8 +2632,9 @@ def render_markdown(report: dict[str, Any]) -> str:
         "available, and exact migration-matrix match for static IDs. The "
         "supplemental table traces site IDs passed through known event, "
         "combat-pool, and map shuffle helpers, plus Native player-choice "
-        "wrappers at their source callsites. The generic wrapper constructors "
-        "remain infrastructure; their caller rows identify the concrete sites.",
+        "wrappers at their source callsites. The three generic request "
+        "constructors resolve through those mapped Core callers; this does "
+        "not claim coverage of callers outside Core.",
         "",
         "Known RNG helper callsites with forwarded stable site IDs:",
         "",

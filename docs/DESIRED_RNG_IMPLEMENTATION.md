@@ -590,8 +590,10 @@ The reproducible direct-call census at
 currently visible `PrototypeRng`, `NativeRngV111`, and
 `NativeFisherYatesV111` call expressions by source location. It resolves
 static shuffle `siteId` arguments and checks them against exact migration
-matrix rows; dynamic helper arguments remain visible for caller-level tracing.
-Indirect calls and native game source operations still need separate tracing.
+matrix rows. The census also resolves the three generic Native request
+constructors through the finite set of mapped Native player-choice/helper
+callsites inside Core; callers outside Core are outside its scope. Indirect
+calls and native game source operations still need separate tracing.
 
 ## 8. First concrete PRs
 
