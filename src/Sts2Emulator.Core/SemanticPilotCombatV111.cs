@@ -183,6 +183,8 @@ public sealed record SemanticNativePolicyAuditV111(
         "sts2-v111-native-weighted-intent-audit-v1";
     public const string CardInstanceIndexAuditSchemaV1 =
         "sts2-v111-native-card-instance-index-audit-v1";
+    public const string CardEnergyCostAuditSchemaV1 =
+        "sts2-v111-native-card-energy-cost-audit-v1";
     public const string ProviderTraceSchemaV1 =
         "sts2-v111-native-policy-mixed-trace-v1";
 
@@ -192,6 +194,9 @@ public sealed record SemanticNativePolicyAuditV111(
     /// <summary>Null for older snapshots that predate semantic card-instance
     /// identity annotations.</summary>
     public string? CardInstanceIndexAuditSchema { get; init; }
+    /// <summary>Null for older snapshots that predate typed per-card energy
+    /// cost annotations.</summary>
+    public string? CardEnergyCostAuditSchema { get; init; }
     /// <summary>Null for older snapshots that did not require a complete
     /// mixed provider trace.</summary>
     public string? ProviderTraceSchema { get; init; }
@@ -204,6 +209,7 @@ public sealed record SemanticNativePolicyAuditV111(
     private RandomBoundaryTranscriptEntryV111[]? _providerTrace = [];
     private SemanticIntentAuditEntryV111[]? _weightedIntentOutcomes = [];
     private SemanticCardInstanceIndexAuditV111[]? _cardInstanceIndexOutcomes = [];
+    private SemanticCardEnergyCostAuditV111[]? _cardEnergyCostOutcomes = [];
 
     public RandomBoundaryEventV111[] Decisions
     {
@@ -227,6 +233,11 @@ public sealed record SemanticNativePolicyAuditV111(
         init => _cardInstanceIndexOutcomes = CloneCardInstanceIndexOutcomes(
             value);
     }
+    public SemanticCardEnergyCostAuditV111[] CardEnergyCostOutcomes
+    {
+        get => CloneCardEnergyCostOutcomes(_cardEnergyCostOutcomes)!;
+        init => _cardEnergyCostOutcomes = CloneCardEnergyCostOutcomes(value);
+    }
 
     public SemanticNativePolicyAuditV111 Fork() => this with
     {
@@ -235,7 +246,9 @@ public sealed record SemanticNativePolicyAuditV111(
         WeightedIntentOutcomes = CloneIntentOutcomes(
             _weightedIntentOutcomes)!,
         CardInstanceIndexOutcomes = CloneCardInstanceIndexOutcomes(
-            _cardInstanceIndexOutcomes)!
+            _cardInstanceIndexOutcomes)!,
+        CardEnergyCostOutcomes = CloneCardEnergyCostOutcomes(
+            _cardEnergyCostOutcomes)!
     };
 
     private static RandomBoundaryEventV111[]? CloneEvents(
@@ -256,20 +269,30 @@ public sealed record SemanticNativePolicyAuditV111(
         values?.Select(value => value is null ? null! : value.Fork())
             .ToArray();
 
+    private static SemanticCardEnergyCostAuditV111[]?
+        CloneCardEnergyCostOutcomes(
+            SemanticCardEnergyCostAuditV111[]? values) =>
+        values?.Select(value => value is null ? null! : value.Fork())
+            .ToArray();
+
     public void Validate()
     {
         var decisions = _decisions;
         var providerTrace = _providerTrace;
         var weightedIntentOutcomes = _weightedIntentOutcomes;
         var cardInstanceIndexOutcomes = _cardInstanceIndexOutcomes;
+        var cardEnergyCostOutcomes = _cardEnergyCostOutcomes;
         if (ProviderId != NativeProviderId ||
             ProbabilityStatus != "UNVERIFIED" || decisions is null ||
             providerTrace is null || weightedIntentOutcomes is null ||
             cardInstanceIndexOutcomes is null ||
+            cardEnergyCostOutcomes is null ||
             (WeightedIntentAuditSchema is not null &&
              WeightedIntentAuditSchema != WeightedIntentAuditSchemaV1) ||
             (CardInstanceIndexAuditSchema is not null &&
              CardInstanceIndexAuditSchema != CardInstanceIndexAuditSchemaV1) ||
+            (CardEnergyCostAuditSchema is not null &&
+             CardEnergyCostAuditSchema != CardEnergyCostAuditSchemaV1) ||
             (ProviderTraceSchema is not null &&
              ProviderTraceSchema != ProviderTraceSchemaV1) ||
             (ProviderTraceSchema is null &&
@@ -340,9 +363,33 @@ public sealed record SemanticNativePolicyAuditV111(
                     "Native policy card-instance outcome does not uniquely match its primitive decision.");
         }
 
+        var cardCostOutcomeEventIds = new HashSet<string>(StringComparer.Ordinal);
+        var cardCostOutcomeDecisions = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var auditEntry in cardEnergyCostOutcomes)
+        {
+            if (auditEntry is null)
+                throw new InvalidDataException(
+                    "Native policy card energy-cost audit entry is null.");
+            auditEntry.Validate();
+            var decisionFingerprint = CanonicalJson.Sha256(
+                auditEntry.ProviderDecision);
+            var matchingDecisions = decisions.Count(decision =>
+                CanonicalJson.Sha256(new RandomIndexDecisionV111(
+                    decision.Request, decision.SelectedIndex,
+                    decision.ProviderMode, decision.NativeCursorBefore,
+                    decision.NativeCursorAfter)) == decisionFingerprint);
+            if (matchingDecisions != 1 ||
+                !cardCostOutcomeEventIds.Add(auditEntry.EventId) ||
+                !cardCostOutcomeDecisions.Add(decisionFingerprint))
+                throw new InvalidDataException(
+                    "Native policy card energy-cost outcome does not uniquely match its primitive decision.");
+        }
+
         var traceIndices = new List<RandomBoundaryEventV111>();
         var traceIntentDecisions = new List<RandomIndexDecisionV111>();
         var traceCardInstanceDecisions =
+            new List<RandomIndexDecisionV111>();
+        var traceCardEnergyCostDecisions =
             new List<RandomIndexDecisionV111>();
         for (var index = 0; index < providerTrace.Length; index++)
         {
@@ -368,6 +415,13 @@ public sealed record SemanticNativePolicyAuditV111(
                     .IsCombatCardInstanceIndexAuditSite(
                         value.Request.SiteId))
                     traceCardInstanceDecisions.Add(
+                        new RandomIndexDecisionV111(
+                            value.Request, value.SelectedIndex,
+                            value.ProviderMode, value.NativeCursorBefore,
+                            value.NativeCursorAfter));
+                if (StochasticSiteRegistryV111
+                    .IsCombatCardEnergyCostAuditSite(value.Request.SiteId))
+                    traceCardEnergyCostDecisions.Add(
                         new RandomIndexDecisionV111(
                             value.Request, value.SelectedIndex,
                             value.ProviderMode, value.NativeCursorBefore,
@@ -433,6 +487,26 @@ public sealed record SemanticNativePolicyAuditV111(
                 if (matchingOutcomes != 1)
                     throw new InvalidDataException(
                         "Native card-instance index decision does not have exactly one semantic identity annotation.");
+            }
+        }
+
+        if (CardEnergyCostAuditSchema == CardEnergyCostAuditSchemaV1 ||
+            cardEnergyCostOutcomes.Length > 0)
+        {
+            if (traceCardEnergyCostDecisions.Count !=
+                cardEnergyCostOutcomes.Length)
+                throw new InvalidDataException(
+                    "Native policy card energy-cost outcomes are incomplete for their mixed trace.");
+
+            foreach (var costDecision in traceCardEnergyCostDecisions)
+            {
+                var decisionFingerprint = CanonicalJson.Sha256(costDecision);
+                var matchingOutcomes = cardEnergyCostOutcomes.Count(outcome =>
+                    CanonicalJson.Sha256(outcome.ProviderDecision) ==
+                    decisionFingerprint);
+                if (matchingOutcomes != 1)
+                    throw new InvalidDataException(
+                        "Native card energy-cost decision does not have exactly one typed outcome annotation.");
             }
         }
     }
@@ -1496,7 +1570,8 @@ public static class SemanticPilotCombatEngineV111
                 setupJournal.Entries.Where(decision =>
                     decision.ProviderMode == "native-v111").ToArray(),
                 setupJournal.EntriesForProvider("native-v111"),
-                setupJournal.CardInstanceIndexOutcomes.ToArray());
+                setupJournal.CardInstanceIndexOutcomes.ToArray(),
+                setupJournal.CardEnergyCostOutcomes.ToArray());
         if (entry.FixtureDrawCostRelicId is { } relicId)
         {
             if (relicId != "proto.relic.snecko_eye")
@@ -2117,6 +2192,8 @@ public static class SemanticPilotCombatEngineV111
         var nativePolicyTrace = setupJournal.EntriesForProvider("native-v111");
         var nativeCardInstanceOutcomes =
             setupJournal.CardInstanceIndexOutcomes.ToArray();
+        var nativeCardEnergyCostOutcomes =
+            setupJournal.CardEnergyCostOutcomes.ToArray();
         var routeAudit = new SemanticSourceRouteAuditV111(
             SemanticSourceRouteAuditV111.SourceRouteProviderId,
             entry.RouteActOneRegion, actions.ToArray(), actualNodeId,
@@ -2270,12 +2347,17 @@ public static class SemanticPilotCombatEngineV111
                     WeightedIntentOutcomes = nativeIntentOutcomes,
                     CardInstanceIndexOutcomes =
                         nativeCardInstanceOutcomes,
+                    CardEnergyCostOutcomes =
+                        nativeCardEnergyCostOutcomes,
                     WeightedIntentAuditSchema =
                         SemanticNativePolicyAuditV111
                             .WeightedIntentAuditSchemaV1,
                     CardInstanceIndexAuditSchema =
                         SemanticNativePolicyAuditV111
                             .CardInstanceIndexAuditSchemaV1,
+                    CardEnergyCostAuditSchema =
+                        SemanticNativePolicyAuditV111
+                            .CardEnergyCostAuditSchemaV1,
                     ProviderTraceSchema =
                         SemanticNativePolicyAuditV111
                             .ProviderTraceSchemaV1,
@@ -2293,7 +2375,8 @@ public static class SemanticPilotCombatEngineV111
         NativeEncounterFormationV111 formation,
         RandomBoundaryEventV111[] setupDecisions,
         RandomBoundaryTranscriptEntryV111[] setupTrace,
-        SemanticCardInstanceIndexAuditV111[] setupCardInstanceOutcomes)
+        SemanticCardInstanceIndexAuditV111[] setupCardInstanceOutcomes,
+        SemanticCardEnergyCostAuditV111[] setupCardEnergyCostOutcomes)
     {
         ArgumentNullException.ThrowIfNull(nativeStreams);
         ArgumentNullException.ThrowIfNull(formation);
@@ -2344,12 +2427,16 @@ public static class SemanticPilotCombatEngineV111
             {
                 ProviderTrace = setupTrace,
                 CardInstanceIndexOutcomes = setupCardInstanceOutcomes,
+                CardEnergyCostOutcomes = setupCardEnergyCostOutcomes,
                 WeightedIntentAuditSchema =
                     SemanticNativePolicyAuditV111
                         .WeightedIntentAuditSchemaV1,
                 CardInstanceIndexAuditSchema =
                     SemanticNativePolicyAuditV111
                         .CardInstanceIndexAuditSchemaV1,
+                CardEnergyCostAuditSchema =
+                    SemanticNativePolicyAuditV111
+                        .CardEnergyCostAuditSchemaV1,
                 ProviderTraceSchema =
                     SemanticNativePolicyAuditV111
                         .ProviderTraceSchemaV1,
@@ -2991,6 +3078,8 @@ public static class SemanticPilotCombatEngineV111
             .ToArray();
         var cardInstanceIndexOutcomes = boundaries
             .CardInstanceIndexOutcomes.ToArray();
+        var cardEnergyCostOutcomes = boundaries
+            .CardEnergyCostOutcomes.ToArray();
 
         if (result.Phase == RunPhase.Combat)
             ValidateNativePolicyBoundary(result);
@@ -3016,7 +3105,10 @@ public static class SemanticPilotCombatEngineV111
                     .Concat(weightedIntentOutcomes).ToArray(),
                 CardInstanceIndexOutcomes =
                     audit.CardInstanceIndexOutcomes
-                        .Concat(cardInstanceIndexOutcomes).ToArray()
+                        .Concat(cardInstanceIndexOutcomes).ToArray(),
+                CardEnergyCostOutcomes =
+                    audit.CardEnergyCostOutcomes
+                        .Concat(cardEnergyCostOutcomes).ToArray()
             }
         };
         Validate(next);

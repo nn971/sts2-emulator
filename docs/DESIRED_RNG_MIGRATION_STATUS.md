@@ -337,6 +337,9 @@ enemy-theft sites. Each identity annotation is paired with the exact primitive
 index decision and its cursor span; the schema marker requires one annotation
 for every such registered decision. This records semantic outcomes without
 asserting that the candidate support or Native source route is complete.
+Native randomization of hand-card energy costs also records each selected
+physical card, its sampled cost, and the exact bounded request. The audit schema
+requires one typed cost outcome for every registered per-card cost draw.
 New Native-policy audits also carry a mixed-trace schema marker; restore
 validation checks a fingerprint of the full retained trace and rejects a
 missing or truncated trace whenever Native decisions are retained. Older

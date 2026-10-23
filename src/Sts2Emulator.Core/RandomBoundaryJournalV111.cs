@@ -324,6 +324,147 @@ public sealed record SemanticCardInstanceIndexAuditV111(
     }
 }
 
+/// <summary>Native provider provenance paired with the existing semantic cost
+/// decision and its ordered eligible hand support.</summary>
+public sealed record SemanticCardEnergyCostAuditV111(
+    string SchemaId, string EventId, string EligibleCardSupportFingerprint,
+    long[] OrderedEligibleCardInstanceIds,
+    SemanticCostDecisionV111 Outcome,
+    RandomIndexDecisionV111 ProviderDecision)
+{
+    public const string CurrentSchemaId =
+        "sts2-v111-semantic-card-energy-cost-audit-v1";
+
+    private long[]? _orderedEligibleCardInstanceIds =
+        CloneIds(OrderedEligibleCardInstanceIds);
+
+    public long[] OrderedEligibleCardInstanceIds
+    {
+        get => CloneIds(_orderedEligibleCardInstanceIds)!;
+        init => _orderedEligibleCardInstanceIds = CloneIds(value);
+    }
+
+    public SemanticCardEnergyCostAuditV111 Fork() => this with
+    {
+        OrderedEligibleCardInstanceIds =
+            CloneIds(_orderedEligibleCardInstanceIds)!,
+        Outcome = Outcome.Fork(),
+        ProviderDecision = CloneDecision(ProviderDecision)
+    };
+
+    private static long[]? CloneIds(long[]? values) => values is null
+        ? null : (long[])values.Clone();
+
+    private static RandomIndexDecisionV111 CloneDecision(
+        RandomIndexDecisionV111 value) => value with
+    {
+        Request = value.Request with
+        {
+            OrderedCandidates = (int[])value.Request.OrderedCandidates.Clone()
+        }
+    };
+
+    public static SemanticCardEnergyCostAuditV111 Create(
+        RandomIndexDecisionV111 providerDecision,
+        IReadOnlyList<long> orderedEligibleCardInstanceIds,
+        long cardInstanceId, string cardModelId)
+    {
+        ArgumentNullException.ThrowIfNull(providerDecision);
+        ArgumentNullException.ThrowIfNull(orderedEligibleCardInstanceIds);
+        ArgumentException.ThrowIfNullOrWhiteSpace(cardModelId);
+        providerDecision.Validate();
+        var request = providerDecision.Request;
+        var identities = orderedEligibleCardInstanceIds.ToArray();
+        var supportFingerprint = CanonicalJson.Sha256(identities);
+        if (providerDecision.ProviderMode != "native-v111" ||
+            !StochasticSiteRegistryV111.IsCombatCardEnergyCostAuditSite(
+                request.SiteId) ||
+            request.OperationKind != "bounded_integer" ||
+            request.BoundedCount is not > 0 ||
+            identities.Length == 0 || identities.Any(id => id <= 0) ||
+            identities.Distinct().Count() != identities.Length ||
+            cardInstanceId <= 0 || !identities.Contains(cardInstanceId) ||
+            !request.OwnerId.EndsWith(
+                ":hand:" + supportFingerprint +
+                ":card_instance:" + cardInstanceId.ToString(
+                    System.Globalization.CultureInfo.InvariantCulture),
+                StringComparison.Ordinal))
+            throw new InvalidDataException(
+                "Native card energy-cost audit has an unsupported request or card support.");
+
+        var boundaryFingerprint = CanonicalJson.Sha256(new
+        {
+            schemaId = CurrentSchemaId,
+            request,
+            supportFingerprint
+        });
+        var semanticEvent = SemanticCostChoiceV111.CreateEvent(
+            boundaryFingerprint, request, cardInstanceId, cardModelId);
+        var semanticOutcome = SemanticCostChoiceV111.Select(
+            semanticEvent, semanticEvent.EventId,
+            providerDecision.SelectedIndex);
+        var eventId = CanonicalJson.Sha256(new
+        {
+            schemaId = CurrentSchemaId,
+            semanticOutcome,
+            providerDecision
+        });
+        var audit = new SemanticCardEnergyCostAuditV111(
+            CurrentSchemaId, eventId, supportFingerprint, identities,
+            semanticOutcome, CloneDecision(providerDecision));
+        audit.Validate();
+        return audit;
+    }
+
+    public void Validate()
+    {
+        var identities = _orderedEligibleCardInstanceIds;
+        ArgumentNullException.ThrowIfNull(Outcome);
+        ArgumentNullException.ThrowIfNull(ProviderDecision);
+        Outcome.Validate();
+        ProviderDecision.Validate();
+        var semanticEvent = Outcome.Event;
+        var cardInstanceId = semanticEvent.TargetCardInstanceId;
+        var selectedCardInstanceId = cardInstanceId ?? 0;
+        var expectedBoundaryFingerprint = CanonicalJson.Sha256(new
+        {
+            schemaId = CurrentSchemaId,
+            request = semanticEvent.Request,
+            supportFingerprint = EligibleCardSupportFingerprint
+        });
+        if (SchemaId != CurrentSchemaId ||
+            ProviderDecision.ProviderMode != "native-v111" ||
+            CanonicalJson.Sha256(semanticEvent.Request) !=
+                CanonicalJson.Sha256(ProviderDecision.Request) ||
+            Outcome.SelectedIndex != ProviderDecision.SelectedIndex ||
+            Outcome.SelectedCost != ProviderDecision.SelectedIndex ||
+            !StochasticSiteRegistryV111.IsCombatCardEnergyCostAuditSite(
+                semanticEvent.Request.SiteId) ||
+            semanticEvent.Request.OperationKind != "bounded_integer" ||
+            semanticEvent.BoundaryFingerprint !=
+                expectedBoundaryFingerprint ||
+            identities is not { Length: > 0 } ||
+            identities.Any(id => id <= 0) ||
+            identities.Distinct().Count() != identities.Length ||
+            selectedCardInstanceId <= 0 ||
+            !identities.Contains(selectedCardInstanceId) ||
+            EligibleCardSupportFingerprint != CanonicalJson.Sha256(identities) ||
+            !semanticEvent.Request.OwnerId.EndsWith(
+                ":hand:" + EligibleCardSupportFingerprint +
+                ":card_instance:" + selectedCardInstanceId.ToString(
+                    System.Globalization.CultureInfo.InvariantCulture),
+                StringComparison.Ordinal) ||
+            EventId != CanonicalJson.Sha256(new
+            {
+                schemaId = SchemaId,
+                semanticOutcome = Outcome,
+                providerDecision = ProviderDecision
+            }))
+            throw new InvalidDataException(
+                "Invalid Native card energy-cost audit outcome.");
+    }
+}
+
 internal static class RandomBoundaryCursorSpanV111
 {
     internal static void Validate(
@@ -367,6 +508,8 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
     private readonly List<SemanticIntentAuditEntryV111> _weightedIntentOutcomes = [];
     private readonly List<SemanticCardInstanceIndexAuditV111>
         _cardInstanceIndexOutcomes = [];
+    private readonly List<SemanticCardEnergyCostAuditV111>
+        _cardEnergyCostOutcomes = [];
     private readonly Dictionary<string, int> _operationSequences =
         new(StringComparer.Ordinal);
     private bool _disposed;
@@ -409,6 +552,12 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
     /// chronology and are paired with their exact index records.</summary>
     public IReadOnlyList<SemanticCardInstanceIndexAuditV111>
         CardInstanceIndexOutcomes => _cardInstanceIndexOutcomes
+            .Select(outcome => outcome.Fork()).ToArray();
+
+    /// <summary>Typed per-card costs selected at the registered Native
+    /// random-hand-cost site.</summary>
+    public IReadOnlyList<SemanticCardEnergyCostAuditV111>
+        CardEnergyCostOutcomes => _cardEnergyCostOutcomes
             .Select(outcome => outcome.Fork()).ToArray();
 
     internal static void RecordWeightedIntentOutcome(
@@ -455,6 +604,29 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
             throw new InvalidDataException(
                 "Card-instance index annotation differs from the latest primitive index entry.");
         current._cardInstanceIndexOutcomes.Add(auditEntry.Fork());
+    }
+
+    internal static void RecordCardEnergyCostOutcome(
+        SemanticCardEnergyCostAuditV111 auditEntry)
+    {
+        ArgumentNullException.ThrowIfNull(auditEntry);
+        var current = Active.Value;
+        if (current is null)
+            return;
+        auditEntry.Validate();
+        var lastEntry = current._orderedTranscript.LastOrDefault();
+        if (lastEntry is null || lastEntry.OperationKind != "index")
+            throw new InvalidDataException(
+                "Card energy-cost annotation has no preceding primitive index entry.");
+        var boundary = lastEntry.DeserializeEvent<RandomBoundaryEventV111>();
+        var journalDecision = new RandomIndexDecisionV111(
+            boundary.Request, boundary.SelectedIndex, boundary.ProviderMode,
+            boundary.NativeCursorBefore, boundary.NativeCursorAfter);
+        if (CanonicalJson.Sha256(journalDecision) !=
+            CanonicalJson.Sha256(auditEntry.ProviderDecision))
+            throw new InvalidDataException(
+                "Card energy-cost annotation differs from the latest primitive index entry.");
+        current._cardEnergyCostOutcomes.Add(auditEntry.Fork());
     }
 
     /// <summary>Returns a provider-specific mixed transcript in the order

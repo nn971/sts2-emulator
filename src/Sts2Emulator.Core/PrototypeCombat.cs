@@ -14010,7 +14010,8 @@ public sealed partial class PrototypeGameEngine
             (sourceCardInstanceId?.ToString() ?? "none") + ":hand:" +
             CanonicalJson.Sha256(orderedHandCardIds);
         if (selectedCardInstanceId is { } cardId)
-            ownerId += ":card_instance:" + cardId;
+            ownerId += ":card_instance:" + cardId.ToString(
+                System.Globalization.CultureInfo.InvariantCulture);
         var request = new RandomIndexRequestV111(
             selectingCard ? StochasticSiteRegistryV111.CombatRandomHandCardSelectSiteId
                           : StochasticSiteRegistryV111.CombatRandomHandCardEnergyCostSiteId,
@@ -14029,6 +14030,15 @@ public sealed partial class PrototypeGameEngine
             RandomBoundaryJournalV111.RecordCardInstanceIndexOutcome(
                 SemanticCardInstanceIndexAuditV111.Create(
                     decision, orderedHandCardIds));
+        else if (!selectingCard && selectedCardInstanceId is { } costCardId &&
+            decision.ProviderMode == "native-v111" &&
+            RandomBoundaryJournalV111.HasActiveJournal &&
+            StochasticSiteRegistryV111
+                .IsCombatCardEnergyCostAuditSite(request.SiteId))
+            RandomBoundaryJournalV111.RecordCardEnergyCostOutcome(
+                SemanticCardEnergyCostAuditV111.Create(
+                    decision, orderedHandCardIds, costCardId,
+                    RequireCombatCard(combat, costCardId).CardId));
         var updated = native is null
             ? combat
             : combat with

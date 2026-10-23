@@ -600,15 +600,29 @@ public static class StochasticSiteRegistryV111
         CombatEnemyTheftCardSelectSiteId
     ];
 
+    private static readonly string[] CombatCardEnergyCostAuditSites =
+    [
+        CombatRandomHandCardEnergyCostSiteId
+    ];
+
     private static readonly HashSet<string>
         CombatCardInstanceIndexAuditSiteSet = new(
             CombatCardInstanceIndexAuditSites, StringComparer.Ordinal);
+    private static readonly HashSet<string>
+        CombatCardEnergyCostAuditSiteSet = new(
+            CombatCardEnergyCostAuditSites, StringComparer.Ordinal);
 
     public static string[] CombatCardInstanceIndexAuditSiteIds =>
         (string[])CombatCardInstanceIndexAuditSites.Clone();
 
     public static bool IsCombatCardInstanceIndexAuditSite(string siteId) =>
         CombatCardInstanceIndexAuditSiteSet.Contains(siteId);
+
+    public static string[] CombatCardEnergyCostAuditSiteIds =>
+        (string[])CombatCardEnergyCostAuditSites.Clone();
+
+    public static bool IsCombatCardEnergyCostAuditSite(string siteId) =>
+        CombatCardEnergyCostAuditSiteSet.Contains(siteId);
 
     public static string[] NeowOfferIndexSiteIds =>
     [
