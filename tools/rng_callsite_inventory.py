@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""List direct emulator RNG API call expressions for the D0 source census.
+"""List direct emulator RNG and mapped source-adapter calls for D0.
 
 This is a source inventory aid, not a source-to-game completeness proof. It
-deliberately reports each direct expression with its file and line so manual
-site audits can be linked to a stable matrix row. Indirect delegates and
+reports each direct provider expression and the high-level MapRandom calls
+from the two modeled map generators with their file and line so manual site
+audits can be linked to a stable matrix row. Other indirect delegates and
 mechanics hidden behind called helpers still require manual tracing.
 """
 
@@ -21,7 +22,7 @@ from urllib.parse import unquote, urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v46"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v47"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 TYPE_SOURCE_DECLARATION_PATTERN = re.compile(
     r"\b(?:class|record|struct)\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\b"
@@ -34,6 +35,14 @@ CALL_PATTERN = re.compile(
     r"NextGaussianInt|NextGaussianDouble|Shuffle|ShuffleInPlace|Execute|NextItem)"
     r"\s*\("
 )
+
+MAP_RANDOM_CALL_PATTERN = re.compile(
+    r"\brandom\.(?P<operation>NextInt|NextGaussianInt|Shuffle)\s*\("
+)
+MAP_RANDOM_ADAPTER_FILES = {
+    "PrototypeNativeLaterActMap.cs",
+    "PrototypeNativeOvergrowthMap.cs",
+}
 
 AMBIENT_ENTROPY_PATTERNS = (
     ("system_random_constructor", re.compile(
@@ -182,6 +191,20 @@ def _site_id_argument(api: str, operation: str,
         if named:
             return named.group(1).strip()
     position = {"ShuffleInPlace": 5, "Execute": 4}.get(operation)
+    if position is None or len(arguments) <= position:
+        return None
+    return arguments[position]
+
+
+def _map_random_site_id_argument(
+    operation: str, arguments: list[str]
+) -> str | None:
+    """Read the stable site argument at one source-shaped map callsite."""
+    position = {
+        "NextInt": 1,
+        "NextGaussianInt": 4,
+        "Shuffle": 1,
+    }.get(operation)
     if position is None or len(arguments) <= position:
         return None
     return arguments[position]
@@ -2775,18 +2798,99 @@ def collect() -> dict[str, Any]:
                 )
             source_offset += len(line) + 1
 
+    for path, source in sources.items():
+        if path.name not in MAP_RANDOM_ADAPTER_FILES or re.search(
+            r"\bprivate\s+sealed\s+class\s+MapRandom\b", source
+        ) is None:
+            continue
+        relative = path.relative_to(ROOT).as_posix()
+        for match in MAP_RANDOM_CALL_PATTERN.finditer(source):
+            operation = match.group("operation")
+            arguments = _call_arguments(source, match.start())
+            site_expression = _map_random_site_id_argument(
+                operation, arguments
+            )
+            line_number = source.count("\n", 0, match.start()) + 1
+            site_values = (
+                _resolve_member_site_values(
+                    source, match.start(), site_expression,
+                    _method_string_constants(
+                        source, match.start(), string_constants
+                    ),
+                    string_constants,
+                )
+                if site_expression is not None else []
+            )
+            matrix_status = (
+                "mapped"
+                if site_values and all(
+                    value in matrix_site_ids for value in site_values
+                )
+                else "unmapped"
+                if site_values
+                else "missing"
+                if site_expression is None
+                else "dynamic_expression"
+            )
+            entries.append(
+                {
+                    "path": relative,
+                    "line": line_number,
+                    "api": "MapRandom",
+                    "operation": operation,
+                    "category": "source_map_random_adapter",
+                    "review_status": (
+                        "source_map_random_adapter_site_" + matrix_status
+                    ),
+                    "site_id_argument": site_expression,
+                    "site_id_value": (
+                        site_values[0] if len(site_values) == 1 else None
+                    ),
+                    "site_id_values": site_values,
+                    "matrix_row_status": matrix_status,
+                    "source_excerpt": source.splitlines()[
+                        line_number - 1
+                    ].strip(),
+                }
+            )
+
     counts: dict[str, int] = {}
     for entry in entries:
         key = entry["category"]
         counts[key] = counts.get(key, 0) + 1
 
+    map_adapter_calls = [
+        entry for entry in entries
+        if entry["category"] == "source_map_random_adapter"
+    ]
+    map_adapter_callsite_coverage = {
+        "call_count": len(map_adapter_calls),
+        "mapped_call_count": sum(
+            entry["matrix_row_status"] == "mapped"
+            for entry in map_adapter_calls
+        ),
+        "unmapped_calls": [
+            {
+                "path": entry["path"],
+                "line": entry["line"],
+                "operation": entry["operation"],
+                "site_id_argument": entry["site_id_argument"],
+                "matrix_row_status": entry["matrix_row_status"],
+            }
+            for entry in map_adapter_calls
+            if entry["matrix_row_status"] != "mapped"
+        ],
+    }
+
     return {
         "schema_id": SCHEMA_ID,
         "scope": (
             "Direct qualified calls to PrototypeRng, NativeRngV111, and "
-            "NativeFisherYatesV111 in Sts2Emulator.Core. This does not include "
-            "indirect delegates, random provider interfaces, third-party/native "
-            "source callsites, or prove that every source operation is mapped. "
+            "NativeFisherYatesV111 in Sts2Emulator.Core, plus source callsites "
+            "to the private MapRandom adapters in the two modeled Native map "
+            "generators. This does not include other indirect delegates, "
+            "random provider interfaces, third-party/native source callsites, "
+            "or prove that every source operation is mapped. "
             "A separate direct-API scan reports typed and target-typed "
             "System.Random construction, shared-instance use, and "
             "RandomNumberGenerator use; it cannot prove the absence of indirect "
@@ -2822,6 +2926,9 @@ def collect() -> dict[str, Any]:
         "total_direct_calls": len(entries),
         "ambient_entropy_calls": ambient_entropy_calls,
         "typed_request_constructions": typed_request_constructions,
+        "source_map_random_adapter_calls": map_adapter_calls,
+        "source_map_random_adapter_callsite_coverage":
+            map_adapter_callsite_coverage,
         "counts_by_category": counts,
         "shuffle_matrix_mapping_counts": {
             status: sum(
@@ -2891,6 +2998,13 @@ def render_markdown(report: dict[str, Any]) -> str:
                 report["counts_by_category"].items()
             )
         ],
+        "",
+        "Source-shaped map `MapRandom` callsites mapped to matrix rows: "
+        f"**{report['source_map_random_adapter_callsite_coverage']['mapped_call_count']}/"
+        f"{report['source_map_random_adapter_callsite_coverage']['call_count']}**. "
+        "This inventories the high-level NextInt, NextGaussianInt, and Shuffle "
+        "calls in the two modeled Native map generators; their adapters issue "
+        "typed requests or typed Fisher–Yates swaps internally.",
         "",
         "Direct ad hoc entropy API expressions in Core: "
         f"**{len(report['ambient_entropy_calls'])}**. The scan covers direct "
@@ -3092,14 +3206,23 @@ def main() -> int:
     report = collect()
     if args.check_site_matrix:
         coverage = report["registry_matrix_coverage"]
+        map_callsite_coverage = report[
+            "source_map_random_adapter_callsite_coverage"
+        ]
         if (coverage["registered_site_count"] == 0 or
                 coverage["site_ids_without_matrix_rows"] or
                 coverage["duplicate_matrix_site_ids"] or
                 coverage["unresolved_registry_references"] or
                 coverage["reference_law_status"]["rows_without_explicit_status"] or
                 report["site_id_forwarder_coverage"][
-                    "calls_without_matrix_rows"]):
-            print(json.dumps(coverage, indent=2, sort_keys=True),
+                    "calls_without_matrix_rows"] or
+                map_callsite_coverage["call_count"] == 0 or
+                map_callsite_coverage["unmapped_calls"]):
+            print(json.dumps({
+                "registry_matrix_coverage": coverage,
+                "source_map_random_adapter_callsite_coverage":
+                    map_callsite_coverage,
+            }, indent=2, sort_keys=True),
                   file=sys.stderr)
             return 1
     if args.check_s0_contract_links:
