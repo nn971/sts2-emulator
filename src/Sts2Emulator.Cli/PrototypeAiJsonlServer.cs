@@ -2512,6 +2512,14 @@ internal static class PrototypeAiJsonlServer
                 terminal = state.CombatTerminal,
                 outcome = state.CombatOutcome,
                 exitHp = state.CombatTerminal ? state.Run.Player.Hp : (int?)null,
+                // Research-only terminal progress signal for H4 curriculum scoring.
+                // Read the full enemy set so progress remains well-defined for
+                // encounters with additional units; never infer HP from intents.
+                terminalEnemyHp = state.CombatTerminal &&
+                    state.CombatOutcome == "defeat"
+                    ? state.Run.World?.Combat?.Enemies.Sum(enemy =>
+                        Math.Max(0, enemy.Hp))
+                    : null,
                 chanceSites = SemanticChanceSites(state),
                 controllerMode = SemanticControllerMode(state),
                 nativePolicyProvider = state.UsesNativePolicyBaseline
