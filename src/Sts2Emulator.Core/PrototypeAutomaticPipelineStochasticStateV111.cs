@@ -204,16 +204,15 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
         ArgumentNullException.ThrowIfNull(mechanics);
         requested = 0;
         remaining = 0;
-        var progress = HandDrawProgress;
-        if (progress?.Kind !=
+        if (!TryGetActiveAutomaticHandDrawProgress(
+                mechanics, out var progress) ||
+            progress.Kind !=
                 PrototypeAutomaticHandDrawProgressKindV111.SemanticDraw ||
-            progress.RequestedCount is not > 0 ||
-            !TryGetAutomaticHandDrawRemainder(
-                mechanics, out int savedRemaining))
+            progress.RequestedCount is not > 0)
             return false;
 
         requested = progress.RequestedCount.Value;
-        remaining = savedRemaining;
+        remaining = progress.RemainingCount!.Value;
         return true;
     }
 
@@ -243,9 +242,28 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
     {
         ArgumentNullException.ThrowIfNull(mechanics);
         remaining = 0;
-        var progress = HandDrawProgress;
-        if (progress is null || progress.RemainingCount is not >= 0 ||
-            progress.Kind is not (
+        if (!TryGetActiveAutomaticHandDrawProgress(
+                mechanics, out var progress))
+            return false;
+
+        remaining = progress.RemainingCount!.Value;
+        return true;
+    }
+
+    /// <summary>
+    /// Reads the active count-bearing hand-draw mode at its saved pipeline
+    /// stage. Narrower provider queries project the requested and remaining
+    /// counts from this validated tagged value.
+    /// </summary>
+    public bool TryGetActiveAutomaticHandDrawProgress(
+        PrototypeAutomaticPipelineMechanicsStateV111 mechanics,
+        out PrototypeAutomaticHandDrawProgressV111 progress)
+    {
+        ArgumentNullException.ThrowIfNull(mechanics);
+        progress = null!;
+        var saved = HandDrawProgress;
+        if (saved is null || saved.RemainingCount is not >= 0 ||
+            saved.Kind is not (
                 PrototypeAutomaticHandDrawProgressKindV111.ControlledDraw or
                 PrototypeAutomaticHandDrawProgressKindV111.ControlledDrawCost or
                 PrototypeAutomaticHandDrawProgressKindV111.SemanticDraw or
@@ -255,7 +273,7 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
                 PrototypeAutomaticStepKind.DrawPlayerHand))
             return false;
 
-        remaining = progress.RemainingCount.Value;
+        progress = saved;
         return true;
     }
 

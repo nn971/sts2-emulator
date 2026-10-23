@@ -454,11 +454,10 @@ public sealed partial class PrototypeGameEngine
         if (!ControlledChanceGuardV111.Active || cost.RemainingCount < 0 ||
             !cost.FromHandDraw || cost.EventDepth != 0 ||
             combat.PendingKnowledgeDemonChoice is not null ||
-            cursor is null || !cursor.Mechanics.IsAtStep(
-                PrototypeAutomaticStepKind.DrawPlayerHand) ||
-            !cursor.Stochastic.TryGetAutomaticHandDrawRemainder(
-                cursor.Mechanics, out int remaining) ||
-            remaining != cost.RemainingCount)
+            cursor is null ||
+            !cursor.Stochastic.TryGetActiveAutomaticHandDrawProgress(
+                cursor.Mechanics, out var progress) ||
+            progress.RemainingCount != cost.RemainingCount)
             throw new InvalidDataException(
                 "Automatic draw-cost cursor does not match its saved count.");
 
@@ -466,21 +465,17 @@ public sealed partial class PrototypeGameEngine
         {
             if (combat.Stochastic.SemanticDeck is not
                     { Mode: SemanticDeckStateV111.NatureMode, Pending: null } ||
-                !cursor.Stochastic.TryGetSemanticHandDrawProgress(
-                    cursor.Mechanics, out int requested,
-                    out int semanticRemaining) ||
-                semanticRemaining != cost.RemainingCount)
+                progress.Kind != PrototypeAutomaticHandDrawProgressKindV111
+                    .SemanticDraw ||
+                progress.RequestedCount is not > 0)
                 throw new InvalidDataException(
                     "Semantic automatic draw-cost cursor is inconsistent.");
-            return requested;
+            return progress.RequestedCount.Value;
         }
 
         if (combat.Stochastic.SemanticDeck is not null ||
-            cursor.Stochastic.HandDrawProgress is not
-                { Kind: PrototypeAutomaticHandDrawProgressKindV111
-                    .ControlledDrawCost,
-                  RemainingCount: { } savedRemaining } ||
-            savedRemaining != cost.RemainingCount ||
+            progress.Kind != PrototypeAutomaticHandDrawProgressKindV111
+                .ControlledDrawCost ||
             cursor.Stochastic.TryGetControlledHandDrawRemainder(out _))
             throw new InvalidDataException(
                 "Controlled automatic draw-cost cursor is inconsistent.");
@@ -506,9 +501,9 @@ public sealed partial class PrototypeGameEngine
             "Automatic hand-draw resumption has no combat.");
         var cursor = combat.AutomaticPipelineContinuation;
         if (cursor is null ||
-            !cursor.Stochastic.TryGetAutomaticHandDrawRemainder(
-                cursor.Mechanics, out int savedRemaining) ||
-            savedRemaining != remaining)
+            !cursor.Stochastic.TryGetActiveAutomaticHandDrawProgress(
+                cursor.Mechanics, out var progress) ||
+            progress.RemainingCount != remaining)
             throw new InvalidDataException(
                 "Automatic hand-draw resume cursor is inconsistent.");
 
