@@ -10,7 +10,8 @@ and post-draw power timing. A typed context distinguishes ordinary work,
 deferred semantic completion, and a resumed semantic pre-draw hook; the
 pipeline step accepts only the first two and derives the third from its saved
 progress marker. Deferred semantic work checks for its active provider before
-drawing and again when publishing the result. The pipeline switch no longer
+drawing and again when publishing the result. A pending deferred result that
+escapes provider routing now fails closed. The pipeline switch no longer
 interprets result boundaries.
 Static source review and `git diff --check` only; no tests or builds were run.
 

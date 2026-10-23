@@ -175,11 +175,18 @@ public sealed partial class PrototypeGameEngine
         bool drawPending = resultCombat.PendingChoice is not null ||
             resultCombat.PendingKnowledgeDemonChoice is not null ||
             resultCombat.Stochastic.SemanticDeck?.Pending is not null;
-        if ((context ==
-                AutomaticHandDrawSourceResultContextV111.DeferredSemanticStage &&
-             !drawPending) || context ==
-                AutomaticHandDrawSourceResultContextV111
-                    .ResumedSemanticBeforeHandDraw)
+        if (context ==
+            AutomaticHandDrawSourceResultContextV111.DeferredSemanticStage)
+        {
+            if (drawPending)
+                throw new InvalidDataException(
+                    "Deferred semantic draw escaped its boundary router.");
+            return CompleteAutomaticHandDrawStage(result, requestedCount);
+        }
+
+        if (context ==
+            AutomaticHandDrawSourceResultContextV111
+                .ResumedSemanticBeforeHandDraw)
             return CompleteAutomaticHandDrawStage(result, requestedCount);
 
         return PublishDrawMechanicsState(
