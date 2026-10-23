@@ -243,6 +243,7 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
     private static readonly AsyncLocal<RandomBoundaryJournalV111?> Active = new();
     private readonly RandomBoundaryJournalV111? _previous;
     private readonly List<RandomBoundaryTranscriptEntryV111> _orderedTranscript = [];
+    private readonly List<SemanticIntentAuditEntryV111> _weightedIntentOutcomes = [];
     private readonly Dictionary<string, int> _operationSequences =
         new(StringComparer.Ordinal);
     private bool _disposed;
@@ -254,6 +255,8 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
     }
 
     public static RandomBoundaryJournalV111 Begin() => new();
+
+    internal static bool HasActiveJournal => Active.Value is not null;
 
     public IReadOnlyList<RandomBoundaryEventV111> Entries =>
         Project<RandomBoundaryEventV111>("index");
@@ -269,6 +272,37 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
         Project<RandomGaussianDoubleBoundaryEventV111>("gaussian_double");
     public IReadOnlyList<RandomBoundaryTranscriptEntryV111> OrderedTranscript =>
         _orderedTranscript.ToArray();
+
+    /// <summary>
+    /// Semantic annotations for sampled weighted intent tickets in this
+    /// transition. Each annotation references its primitive request and does
+    /// not add an RNG operation to the mixed provider chronology.
+    /// </summary>
+    public IReadOnlyList<SemanticIntentAuditEntryV111> WeightedIntentOutcomes =>
+        _weightedIntentOutcomes.Select(outcome => outcome.Fork()).ToArray();
+
+    internal static void RecordWeightedIntentOutcome(
+        SemanticIntentAuditEntryV111 auditEntry)
+    {
+        ArgumentNullException.ThrowIfNull(auditEntry);
+        var current = Active.Value;
+        if (current is null)
+            return;
+        auditEntry.Validate();
+        var lastEntry = current._orderedTranscript.LastOrDefault();
+        if (lastEntry is null || lastEntry.OperationKind != "index")
+            throw new InvalidDataException(
+                "Weighted intent annotation has no preceding primitive index entry.");
+        var boundary = lastEntry.DeserializeEvent<RandomBoundaryEventV111>();
+        var journalDecision = new RandomIndexDecisionV111(
+            boundary.Request, boundary.SelectedIndex, boundary.ProviderMode,
+            boundary.NativeCursorBefore, boundary.NativeCursorAfter);
+        if (CanonicalJson.Sha256(journalDecision) !=
+            CanonicalJson.Sha256(auditEntry.ProviderDecision))
+            throw new InvalidDataException(
+                "Weighted intent annotation differs from the latest primitive index entry.");
+        current._weightedIntentOutcomes.Add(auditEntry.Fork());
+    }
 
     /// <summary>Returns a provider-specific mixed transcript in the order
     /// recorded by the active journal. Its sequence numbers are local to the

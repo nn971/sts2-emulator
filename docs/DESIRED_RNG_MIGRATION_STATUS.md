@@ -322,9 +322,10 @@ pair every sampled move ticket with its typed weighted event support,
 selected branch, and exact source ticket. This metadata is additive and does
 not replace the primitive provider transcript or establish source eligibility
 completeness.
-The native-policy source-route baseline retains these typed outcomes in its
-provider-private audit state and validates them against the matching sampled
-index request during snapshot validation.
+The native-policy source-route baseline and subsequent audited player
+transitions retain these typed outcomes in provider-private audit state and
+validate them against the paired Native decision, including its sampled
+ticket and cursor span, during snapshot validation.
 The intent engine's eligibility logic (source move state, weighted
 branches, anti-repeat, opening sequence and per-creature commit order)
 remains inside `PrototypeGameEngine.SelectEnemyMove`. The callback
@@ -354,9 +355,9 @@ continuations.
 monster-local draws, summon/death continuation mechanics,
 shuffle/targets/rewards, full map source-order parity, event sites beyond
 Orobas, Darv, Pael, Tezcatara, Nonupeipe, Tanx and
-Vakuu offer generation and other audited call sites. Outside the committed
-intent audit, provider transcripts still expose primitive selections unless
-a site-specific semantic outcome owner is implemented.
+Vakuu offer generation and other audited call sites. Other provider site
+families still expose primitive selections unless a site-specific semantic
+outcome owner is implemented.
 The separate semantic playable API now exposes typed weighted intent events,
 deferred physical-card draws, random-enemy targets, generated-card model
 pools, opt-in drawn-card costs and source card-selection choices. Those

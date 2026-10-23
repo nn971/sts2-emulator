@@ -151,6 +151,47 @@ public sealed record SemanticIntentOutcomeV111(
     }
 }
 
+/// <summary>
+/// Provider-private audit link between a weighted semantic outcome and the
+/// exact primitive sample that selected its ticket.
+/// </summary>
+public sealed record SemanticIntentAuditEntryV111(
+    SemanticIntentOutcomeV111 Outcome,
+    RandomIndexDecisionV111 ProviderDecision)
+{
+    public SemanticIntentAuditEntryV111 Fork() => this with
+    {
+        Outcome = Outcome.Fork(),
+        ProviderDecision = ProviderDecision with
+        {
+            Request = ProviderDecision.Request with
+            {
+                OrderedCandidates = (int[])ProviderDecision.Request
+                    .OrderedCandidates.Clone()
+            }
+        }
+    };
+
+    public void Validate()
+    {
+        ArgumentNullException.ThrowIfNull(Outcome);
+        ArgumentNullException.ThrowIfNull(ProviderDecision);
+        Outcome.Validate();
+        ProviderDecision.Validate();
+        var semanticEvent = Outcome.Event;
+        var request = ProviderDecision.Request;
+        if (ProviderDecision.ProviderMode != "native-v111" ||
+            request.SiteId != semanticEvent.SiteId ||
+            request.StreamId != semanticEvent.StreamId ||
+            request.OwnerId != semanticEvent.OwnerId ||
+            request.Ordinal != semanticEvent.Ordinal ||
+            request.SupportCount != semanticEvent.Support.TotalRawWeight ||
+            ProviderDecision.SelectedIndex != Outcome.SourceTicket)
+            throw new InvalidDataException(
+                "Weighted intent outcome is not paired with its sampled provider decision.");
+    }
+}
+
 /// <summary>A semantic intent outcome paired with its retained primitive
 /// ticket position in an automatic end-turn transcript.</summary>
 public sealed record SemanticIntentTranscriptEntryV111(

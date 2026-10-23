@@ -60,19 +60,19 @@ public sealed record NativeInitialHpAuditV111(
 
 public sealed record NativeIntentAuditV111(
     CombatState Combat, RandomIndexDecisionV111[] Choices, string ProviderMode,
-    SemanticIntentOutcomeV111[] WeightedOutcomes)
+    SemanticIntentAuditEntryV111[] WeightedOutcomes)
 {
     public NativeIntentAuditV111(
         CombatState Combat, RandomIndexDecisionV111[] Choices,
         string ProviderMode)
         : this(Combat, Choices, ProviderMode,
-            Array.Empty<SemanticIntentOutcomeV111>())
+            Array.Empty<SemanticIntentAuditEntryV111>())
     {
     }
 
     private CombatState? _combat = Combat.Fork();
     private RandomIndexDecisionV111[]? _choices = CloneDecisions(Choices);
-    private SemanticIntentOutcomeV111[]? _weightedOutcomes =
+    private SemanticIntentAuditEntryV111[]? _weightedOutcomes =
         CloneOutcomes(WeightedOutcomes);
 
     public CombatState Combat
@@ -88,7 +88,7 @@ public sealed record NativeIntentAuditV111(
         init => _choices = CloneDecisions(value);
     }
 
-    public SemanticIntentOutcomeV111[] WeightedOutcomes
+    public SemanticIntentAuditEntryV111[] WeightedOutcomes
     {
         get => CloneOutcomes(_weightedOutcomes)!;
         init => _weightedOutcomes = CloneOutcomes(value);
@@ -108,8 +108,8 @@ public sealed record NativeIntentAuditV111(
                 PrototypeControlledEventChoiceContinuationV111
                     .CloneDecision(decision)).ToArray();
 
-    private static SemanticIntentOutcomeV111[]? CloneOutcomes(
-        SemanticIntentOutcomeV111[]? values) => values?.Select(outcome =>
+    private static SemanticIntentAuditEntryV111[]? CloneOutcomes(
+        SemanticIntentAuditEntryV111[]? values) => values?.Select(outcome =>
             outcome is null ? null! : outcome.Fork()).ToArray();
 }
 

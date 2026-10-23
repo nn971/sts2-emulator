@@ -3477,7 +3477,7 @@ public sealed partial class PrototypeGameEngine
     // transition boundary; repeated public observations never reroll moves.
     internal sealed record NativeCommittedIntentAuditV111(
         CombatState Combat, RandomIndexDecisionV111[] Choices,
-        SemanticIntentOutcomeV111[] WeightedOutcomes);
+        SemanticIntentAuditEntryV111[] WeightedOutcomes);
 
     internal static CombatState CommitEnemyIntents(
         CombatState combat, RngBundle rng,
@@ -3491,7 +3491,7 @@ public sealed partial class PrototypeGameEngine
         if (combat.Stochastic.NativeRng is null)
             throw new InvalidOperationException("Native intent audit requires attached native RNG.");
         var decisions = new List<RandomIndexDecisionV111>();
-        var weightedOutcomes = new List<SemanticIntentOutcomeV111>();
+        var weightedOutcomes = new List<SemanticIntentAuditEntryV111>();
         var result = CommitEnemyIntentsCore(
             combat, rng, decisions, weightedOutcomes, siteId);
         return new NativeCommittedIntentAuditV111(
@@ -3501,7 +3501,7 @@ public sealed partial class PrototypeGameEngine
     private static CombatState CommitEnemyIntentsCore(
         CombatState combat, RngBundle rng,
         List<RandomIndexDecisionV111>? audit,
-        List<SemanticIntentOutcomeV111>? weightedOutcomes, string siteId)
+        List<SemanticIntentAuditEntryV111>? weightedOutcomes, string siteId)
     {
         if (!StochasticSiteRegistryV111.CombatIntentSiteIds.Contains(
                 siteId, StringComparer.Ordinal))
@@ -3511,6 +3511,9 @@ public sealed partial class PrototypeGameEngine
         var ownedNative = combat.Stochastic.NativeRng?.Fork();
         var formation = combat.Enemies.Select(enemy => enemy.Fork()).ToArray();
         var provider = new NativeRandomIndexProviderV111();
+        bool captureWeightedOutcomes = ownedNative is not null &&
+            (weightedOutcomes is not null ||
+             RandomBoundaryJournalV111.HasActiveJournal);
         int occurrence = 0;
         for (int index = 0; index < formation.Length; index++)
         {
@@ -3534,7 +3537,7 @@ public sealed partial class PrototypeGameEngine
                         provider, request, ownedNative.RunStreams);
                     audit?.Add(result);
                     occurrence++;
-                    if (weightedOutcomes is not null &&
+                    if (captureWeightedOutcomes &&
                         pendingCandidates is { Length: > 0 })
                     {
                         var totalWeight = checked(pendingCandidates.Sum(
@@ -3560,8 +3563,12 @@ public sealed partial class PrototypeGameEngine
                         var outcome = new SemanticIntentOutcomeV111(
                             semanticEvent, selectedCandidate.IntentId,
                             result.SelectedIndex);
-                        outcome.Validate();
-                        weightedOutcomes.Add(outcome);
+                        var auditEntry = new SemanticIntentAuditEntryV111(
+                            outcome, result);
+                        auditEntry.Validate();
+                        weightedOutcomes?.Add(auditEntry);
+                        RandomBoundaryJournalV111
+                            .RecordWeightedIntentOutcome(auditEntry);
                     }
                     pendingCandidates = null;
                     return result.SelectedIndex;
@@ -3569,7 +3576,7 @@ public sealed partial class PrototypeGameEngine
             var chosen = EvaluateEnemyIntentChoice(
                 formation, index, ownedNative?.Formation.NativeEncounterEntry,
                 nextIndex,
-                weightedOutcomes is null
+                !captureWeightedOutcomes
                     ? null
                     : candidates => pendingCandidates = candidates);
             formation[index] = ApplyEnemyIntentOutcome(
