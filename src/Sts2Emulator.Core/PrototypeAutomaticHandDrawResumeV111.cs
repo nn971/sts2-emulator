@@ -88,13 +88,24 @@ public sealed partial class PrototypeGameEngine
     private static RunState PublishDrawCardsResult(
         RunState checkpoint, PrototypeDrawCardsResult drawn)
     {
-        ArgumentNullException.ThrowIfNull(checkpoint);
         ArgumentNullException.ThrowIfNull(drawn);
+        return PublishDrawMechanicsState(
+            checkpoint, drawn.Player, drawn.Combat);
+    }
+
+    /// <summary>Publish the coupled player/combat mechanics produced by draw
+    /// resolution, draw-progress commits, or hand-draw completion.</summary>
+    private static RunState PublishDrawMechanicsState(
+        RunState checkpoint, PlayerState player, CombatState combat)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        ArgumentNullException.ThrowIfNull(player);
+        ArgumentNullException.ThrowIfNull(combat);
         var world = RequireWorld(checkpoint);
         return checkpoint with
         {
-            Player = drawn.Player,
-            World = world with { Combat = drawn.Combat }
+            Player = player,
+            World = world with { Combat = combat }
         };
     }
 

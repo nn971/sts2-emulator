@@ -4,9 +4,10 @@
 
 **S4 draw-result and deferred-effect ownership increment (2026-10-24):** The
 ordinary effect resolver now captures resumable draw operation suffixes and
-their source context through one owner. Controlled and semantic `RunState`
-adapters publish each consumed draw result's player and combat together;
-legacy and semantic effect draws share deferred card-ID accumulation and
+their source context through one owner. `PublishDrawMechanicsState` now owns
+coupled player/combat publication across draw results, active pipeline
+progress, and hand-draw completion; `PublishDrawCardsResult` delegates to it.
+Legacy and semantic effect draws share deferred card-ID accumulation and
 keyword application. Standalone hook-choice frames reuse the semantic draw
 frame factory. Provider-specific boundary interpretation and transcript
 policies remain with their existing adapters, so full resume consolidation

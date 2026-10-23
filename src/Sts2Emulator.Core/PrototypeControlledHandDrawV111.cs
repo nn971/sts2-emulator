@@ -43,14 +43,9 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidDataException(
                 "Automatic hand-draw progress is outside its pipeline checkpoint.");
 
-        var world = RequireWorld(state);
         var updatedCombat = AttachValidatedAutomaticPipelineContinuation(
             combat, cursor.WithHandDrawProgress(progress));
-        return state with
-        {
-            Player = player,
-            World = world with { Combat = updatedCombat }
-        };
+        return PublishDrawMechanicsState(state, player, updatedCombat);
     }
 
     private static RunState ContinueInitialControlledHandDrawBoundary(
@@ -287,7 +282,7 @@ public sealed partial class PrototypeGameEngine
                 combat, completedCursor, requested)
             : AttachValidatedAutomaticPipelineContinuation(
                 combat, completedCursor);
-        return state with { World = world with { Combat = combat } };
+        return PublishDrawMechanicsState(state, state.Player, combat);
     }
 
     /// <summary>

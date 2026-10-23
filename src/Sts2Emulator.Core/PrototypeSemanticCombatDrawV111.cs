@@ -191,10 +191,8 @@ public sealed partial class PrototypeGameEngine
                         draw.DrawEqualSelectionCount);
                 var combatWithDraw = AttachDrawResumeContinuation(
                     combat, resumeDraw, outerContinuation);
-                return (run with
-                {
-                    World = world with { Combat = combatWithDraw }
-                }, cost.RemainingCount);
+                return (PublishDrawMechanicsState(
+                    run, run.Player, combatWithDraw), cost.RemainingCount);
             }
             return (SuspendStandaloneSemanticDrawAtHookChoice(
                 run, run.Player, combat, cost.RemainingCount,
@@ -290,7 +288,6 @@ public sealed partial class PrototypeGameEngine
             string recycleOperation)
     {
         var advanced = PublishDrawCardsResult(run, drawn);
-        var world = RequireWorld(advanced);
         var boundary = drawn.BoundaryKind;
         bool automatic = automaticHandDrawRequested is not null;
         bool nestedEffect = continuation is not null;
@@ -349,19 +346,15 @@ public sealed partial class PrototypeGameEngine
             {
                 combat = AttachControlledSemanticDrawCost(
                     combat, nextDraw, outerContinuation);
-                return (advanced with
-                {
-                    World = world with { Combat = combat }
-                }, drawn.RemainingCount);
+                return (PublishDrawMechanicsState(
+                    advanced, advanced.Player, combat), drawn.RemainingCount);
             }
             if (boundary == PrototypeDrawCardsBoundaryKind.SemanticDraw)
             {
                 combat = MakeControlledSemanticDrawChoice(
                     combat, nextDraw, outerContinuation);
-                return (advanced with
-                {
-                    World = world with { Combat = combat }
-                }, drawn.RemainingCount);
+                return (PublishDrawMechanicsState(
+                    advanced, advanced.Player, combat), drawn.RemainingCount);
             }
             if (drawn.RemainingCount != 0)
                 throw new InvalidDataException(
@@ -372,13 +365,13 @@ public sealed partial class PrototypeGameEngine
             var prototypeRng = run.Stochastic.PrototypeRng;
             var resumed = ResumeChoiceResolutionContinuation(
                 drawn.Player, combat, prototypeRng, outerContinuation);
-            return (run with
+            var resumedRun = run with
             {
-                Player = resumed.Player,
                 Stochastic = RunStochasticStateV111.WithPrototypeRng(
-                    run.Stochastic, prototypeRng),
-                World = world with { Combat = resumed.Combat }
-            }, 0);
+                    run.Stochastic, prototypeRng)
+            };
+            return (PublishDrawMechanicsState(
+                resumedRun, resumed.Player, resumed.Combat), 0);
         }
 
         bool pending = boundary is
@@ -459,11 +452,8 @@ public sealed partial class PrototypeGameEngine
         var combat = MakeControlledAfterShuffleInsertionChoice(
             insertionCombat, insertions[0], insertions.Skip(1).ToArray(),
             [], semanticDraw, continuation, 0);
-        var world = RequireWorld(advanced);
-        return (advanced with
-        {
-            World = world with { Combat = combat }
-        }, drawn.RemainingCount);
+        return (PublishDrawMechanicsState(
+            advanced, advanced.Player, combat), drawn.RemainingCount);
     }
 
     private static RunState SuspendDrawCardsForStratagemSelection(
@@ -600,11 +590,7 @@ public sealed partial class PrototypeGameEngine
                     StandaloneSemanticDrawHookChoice = true
                 }
             };
-        return run with
-        {
-            Player = player,
-            World = run.World! with { Combat = combat }
-        };
+        return PublishDrawMechanicsState(run, player, combat);
     }
 
     /// <summary>
