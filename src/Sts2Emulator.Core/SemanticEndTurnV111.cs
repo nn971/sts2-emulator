@@ -675,7 +675,7 @@ public static class SemanticEndTurnEngineV111
         ArgumentException.ThrowIfNullOrWhiteSpace(nativeEncounterEntry);
         ValidateOrigin(source);
         var intents = PrototypeGameEngine
-            .BeginAutomaticPipelineTurnIntents(
+            .BeginAutomaticPipelineIntents(
                 source, nativeEncounterEntry);
         var state = new SemanticEndTurnV111(
             source.Fork(), source.Fork(), nativeEncounterEntry,

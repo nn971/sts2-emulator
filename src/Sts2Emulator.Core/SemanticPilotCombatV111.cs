@@ -3839,9 +3839,11 @@ public static class SemanticPilotCombatEngineV111
                     run.Stochastic, null),
                 World = routeWorld with { Combat = semanticCombat }
             };
-            pendingInitialIntents = ControlledTurnIntentEngineV111.Begin(
-                semanticCombat, actualNativeEntry,
-                siteId: NativeCombatRngEntryV111.CommittedIntentSiteId);
+            pendingInitialIntents = PrototypeGameEngine
+                .BeginAutomaticPipelineIntents(
+                    semanticRun, actualNativeEntry,
+                    siteId:
+                        NativeCombatRngEntryV111.CommittedIntentSiteId);
             if (pendingInitialIntents.Complete)
                 semanticRun = CompleteNatureInitialCombatEntry(
                     semanticRun, pendingInitialIntents);

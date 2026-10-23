@@ -201,22 +201,51 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             .SuspendedPipeline;
     }
 
-    /// <summary>Begin the shared next-turn intent continuation at the clean
-    /// ordinary AdvanceTurn cursor. End-turn and controlled-playable facades
-    /// keep their provider transcripts while using this mechanics entry.</summary>
+    /// <summary>
+    /// Begin an intent frame at a supported automatic-pipeline boundary.
+    /// Opening committed intents and next-turn intents retain their distinct
+    /// site and cursor requirements.
+    /// </summary>
     internal static ControlledTurnIntentsV111
-        BeginAutomaticPipelineTurnIntents(
-        RunState checkpoint, string nativeEncounterEntry)
+        BeginAutomaticPipelineIntents(
+            RunState checkpoint, string nativeEncounterEntry,
+            string siteId = ControlledTurnIntentEngineV111.SiteId)
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
         ArgumentException.ThrowIfNullOrWhiteSpace(nativeEncounterEntry);
-        if (ClassifyAutomaticPipelineResumeBoundary(checkpoint) !=
-                PrototypeAutomaticPipelineResumeBoundaryKindV111.AdvanceTurn ||
-            checkpoint.World?.Combat is not { } combat)
+        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        if (checkpoint.Phase != RunPhase.Combat ||
+            checkpoint.World?.Combat is not { } combat ||
+            combat.PendingChoice is not null ||
+            combat.PendingKnowledgeDemonChoice is not null ||
+            combat.Stochastic.SemanticDeck?.Pending is not null)
             throw new InvalidOperationException(
-                "Next-turn intents require a clean AdvanceTurn checkpoint.");
+                "Intent setup requires an unsuspended combat checkpoint.");
+
+        if (siteId == NativeCombatRngEntryV111.CommittedIntentSiteId)
+        {
+            if (combat.AutomaticPipelineContinuation is not null ||
+                combat.Stochastic.NativeRng is not null ||
+                combat.Stochastic.SemanticDeck is not null ||
+                checkpoint.Stochastic.NativeRunRng is not null)
+                throw new InvalidOperationException(
+                    "Opening intents require the provider-free source-route boundary.");
+        }
+        else if (siteId == ControlledTurnIntentEngineV111.SiteId)
+        {
+            if (ClassifyAutomaticPipelineResumeBoundary(checkpoint) !=
+                    PrototypeAutomaticPipelineResumeBoundaryKindV111.AdvanceTurn ||
+                combat.IsPlayerTurn)
+                throw new InvalidOperationException(
+                    "Next-turn intents require a clean AdvanceTurn checkpoint.");
+        }
+        else
+        {
+            throw new ArgumentOutOfRangeException(nameof(siteId));
+        }
+
         return ControlledTurnIntentEngineV111.Begin(
-            combat, nativeEncounterEntry);
+            combat, nativeEncounterEntry, siteId);
     }
 
     /// <summary>

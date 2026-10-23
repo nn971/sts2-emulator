@@ -1106,7 +1106,7 @@ public static class ControlledPlayableCombatEngineV111
         // identity, so the initial formation is not the eligibility authority
         // for this later commitment.
         var intents = PrototypeGameEngine
-            .BeginAutomaticPipelineTurnIntents(
+            .BeginAutomaticPipelineIntents(
                 state.Run, state.Origin.Formation.NativeEncounterEntry);
         var next = state with { TurnIntents = intents };
         return intents.Complete ? FinishTurnIntents(next) : next;

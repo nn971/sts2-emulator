@@ -3207,10 +3207,17 @@ members and choice chronology are unchanged. Cross-provider mechanical
 equivalence remains open. Static source review and `git diff --check` only; no
 tests or builds were run.
 
-**S4 next-turn intent entry increment (2026-10-24):**
-`BeginAutomaticPipelineTurnIntents` owns the clean ordinary `AdvanceTurn`
-boundary and is shared by semantic end-turn and controlled-playable
-continuations. Opening committed intent setup retains its distinct site
-boundary. Snapshot and transcript policies are unchanged; broader resume
-consolidation and cross-provider mechanical equivalence remain open. Static
-source review and `git diff --check` only; no tests or builds were run.
+**S4 next-turn intent entry increment (2026-10-24):** Semantic end-turn and
+controlled-playable continuations first shared an engine-owned entry for the
+clean ordinary `AdvanceTurn` boundary. The follow-up below extends that owner
+to opening committed intents while keeping both site policies distinct.
+
+**S4 shared intent-entry boundary increment (2026-10-24):**
+`BeginAutomaticPipelineIntents` now validates both intent entry sites in the
+ordinary engine. Semantic source-route opening intents require the
+provider-free pre-cursor checkpoint; next-turn intents require the ready
+`AdvanceTurn` cursor. Semantic pilot, end-turn, and controlled-playable paths
+use that owner while retaining their distinct site and transcript policies.
+Snapshot fields are unchanged. Broader resume consolidation and
+cross-provider mechanical equivalence remain open. Static source review and
+`git diff --check` only; no tests or builds were run.
