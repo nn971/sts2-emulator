@@ -9,6 +9,14 @@ consuming the saved index. A support with the same size but changed identity or
 order now fails closed; run-action and other replay owners are unchanged. Static
 source review and `git diff --check` only; no tests or builds were run.
 
+**S4 controlled run-action candidate replay increment (2026-10-24):** Run-action
+restoration and pending-frame source validation now supply the saved
+candidate-label prefix to the same replay owner, which verifies each live
+ordered support before consuming the saved index. This covers existing map,
+encounter-entry, Shop, reward, rest, and act-transition frames without a second
+replay mechanism or snapshot change. Static source review and `git diff --check`
+only; no tests or builds were run.
+
 **S4 post-choice Event Entropic Brew continuation audit (2026-10-24):**
 The controlled event-reward continuation already saves the Entropic Brew action
 with its pending empty-slot draw, resumes the ordinary potion action after each

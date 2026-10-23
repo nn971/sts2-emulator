@@ -4442,7 +4442,8 @@ public sealed partial class PrototypeGameEngine
                 _ => throw new NotSupportedException(
                     "Controlled run action has no resume implementation.")
             },
-            requestFilter: requestFilter);
+            requestFilter: requestFilter,
+            decisionCandidateLabels: decisionCandidateLabels);
         if (replay.PendingChance is { } pendingChance)
         {
             var supportedSite = continuation.ActionId switch

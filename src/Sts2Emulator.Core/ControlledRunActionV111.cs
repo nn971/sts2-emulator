@@ -932,16 +932,19 @@ public sealed record PrototypeControlledRunActionContinuationV111(
 
         if (shopPurchaseRequest)
             ControlledRunActionEngineV111.ValidatePendingShopPurchase(
-                state, RunAction!, Decisions, PendingRequest,
+                state, RunAction!, Decisions, DecisionCandidateLabels,
+                PendingRequest,
                 PendingCandidateLabels);
         if (rewardRelicRequest)
             ControlledRunActionEngineV111
                 .ValidatePendingRewardRelicAcquisition(
-                    state, RunAction!, Decisions, PendingRequest,
+                    state, RunAction!, Decisions, DecisionCandidateLabels,
+                    PendingRequest,
                     PendingCandidateLabels);
         if (restHealRewardRequest)
             ControlledRunActionEngineV111.ValidatePendingRestHealReward(
-                state, RunAction!, Decisions, PendingRequest,
+                state, RunAction!, Decisions, DecisionCandidateLabels,
+                PendingRequest,
                 PendingCandidateLabels);
 
         for (var index = 0; index < Decisions.Length; index++)
@@ -1580,10 +1583,12 @@ public static class ControlledRunActionEngineV111
         RunState source,
         GameAction action,
         RandomIndexDecisionV111[] decisions,
+        string[][] decisionCandidateLabels,
         RandomIndexRequestV111 expectedRequest,
         string[] expectedCandidateLabels)
         => ValidatePendingRunActionChoice(
-            source, action, decisions, expectedRequest,
+            source, action, decisions, decisionCandidateLabels,
+            expectedRequest,
             expectedCandidateLabels,
             PendingRunActionRequestKind.ShopPurchase);
 
@@ -1591,10 +1596,12 @@ public static class ControlledRunActionEngineV111
         RunState source,
         GameAction action,
         RandomIndexDecisionV111[] decisions,
+        string[][] decisionCandidateLabels,
         RandomIndexRequestV111 expectedRequest,
         string[] expectedCandidateLabels)
         => ValidatePendingRunActionChoice(
-            source, action, decisions, expectedRequest,
+            source, action, decisions, decisionCandidateLabels,
+            expectedRequest,
             expectedCandidateLabels,
             PendingRunActionRequestKind.RewardRelic);
 
@@ -1602,10 +1609,12 @@ public static class ControlledRunActionEngineV111
         RunState source,
         GameAction action,
         RandomIndexDecisionV111[] decisions,
+        string[][] decisionCandidateLabels,
         RandomIndexRequestV111 expectedRequest,
         string[] expectedCandidateLabels) =>
         ValidatePendingRunActionChoice(
-            source, action, decisions, expectedRequest,
+            source, action, decisions, decisionCandidateLabels,
+            expectedRequest,
             expectedCandidateLabels,
             PendingRunActionRequestKind.RestHealReward);
 
@@ -1620,6 +1629,7 @@ public static class ControlledRunActionEngineV111
         RunState source,
         GameAction action,
         RandomIndexDecisionV111[] decisions,
+        string[][] decisionCandidateLabels,
         RandomIndexRequestV111 expectedRequest,
         string[] expectedCandidateLabels,
         PendingRunActionRequestKind requestKind)
@@ -1663,7 +1673,8 @@ public static class ControlledRunActionEngineV111
                     .Step(checkpoint with
                     {
                         DecisionIndex = checked(checkpoint.DecisionIndex - 1)
-                    }, CloneAction(action)).State);
+                    }, CloneAction(action)).State,
+                decisionCandidateLabels: decisionCandidateLabels);
         }
 
         if (replay.PendingChance is not { } pending
