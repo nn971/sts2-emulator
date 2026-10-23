@@ -4155,6 +4155,81 @@ public static class SemanticPilotCombatEngineV111
             state, drawn, null, preservePendingEndTurn: true);
     }
 
+    private static bool IsSupportedGremlinHornActionDraw(
+        RunState source, RunState result, GameAction action)
+    {
+        if (action.Kind != "play_card" ||
+            source.World?.Combat is not { } before ||
+            result.Phase != RunPhase.Combat ||
+            result.World?.Combat is not { } after ||
+            before.DrawPile.Length == 0)
+            return false;
+
+        var payload = action.ReadPayload<PlayCardPayload>();
+        if (!before.Hand.Contains(payload.CardInstanceId) ||
+            after.PendingChoice is not
+                { ChoiceId: "controlled_semantic_draw",
+                  SourceCardInstanceId: { } pendingSource,
+                  ControlledSemanticDraw: { RemainingCount: 1,
+                      FromHandDraw: false,
+                      StandaloneSemanticDrawSegment: false,
+                      AutomaticSemanticHandDrawSegment: false } draw,
+                  OuterChoiceContinuation: { } continuation } ||
+            pendingSource != payload.CardInstanceId)
+            return false;
+
+        for (var frame = continuation; frame is not null;
+             frame = frame.Parent)
+        {
+            if (frame.EventDispatchContinuation is not { } eventDispatch ||
+                eventDispatch.CombatEvent is not
+                    { Kind: PrototypeCombatEventKind.EnemyDefeated,
+                      TargetEnemyId: not null } ||
+                eventDispatch.EventDepth != draw.EventDepth ||
+                eventDispatch.CurrentSubscriber is not
+                    { SourceKind: PrototypeEffectSourceKind.Relic,
+                      SourcePowerApplicationOrder: null,
+                      SourcePowerEnemyId: null,
+                      RelicStateIndex: { } relicIndex,
+                      RelicTriggerIndex: 0 } subscriber ||
+                (uint)relicIndex >= (uint)before.RelicStates.Length)
+                continue;
+
+            var relic = before.RelicStates[relicIndex];
+            if (relic is not
+                    { RelicId: "proto.relic.gremlin_horn",
+                      IsMelted: false } ||
+                relic.PersistentIndex != relicIndex ||
+                relic.ApplicationOrder != subscriber.ApplicationOrder)
+                continue;
+
+            var triggers = PrototypeContent.Relic(relic.RelicId).Triggers ?? [];
+            if (triggers.Length != 1 ||
+                CanonicalJson.Sha256(triggers[0]) != CanonicalJson.Sha256(
+                    new PrototypeRelicTriggerSpec(
+                        PrototypeCombatEventKind.EnemyDefeated,
+                        [
+                            new(PrototypeCombatEffectKind.GainEnergy, 1),
+                            new(PrototypeCombatEffectKind.DrawCards, 1)
+                        ])) ||
+                subscriber.RelicTriggerIndex != 0)
+                continue;
+
+            var expectedSubscriber = new PrototypeEventSubscriberState(
+                relic.ApplicationOrder, triggers[0].Effects, PowerStacks: 0,
+                PrototypeEffectSourceKind.Relic,
+                RelicStateIndex: relicIndex, RelicTriggerIndex: 0,
+                EveryNth: triggers[0].EveryNth,
+                MaxTriggersPerCounterWindow:
+                    triggers[0].MaxTriggersPerCounterWindow);
+            if (CanonicalJson.Sha256(expectedSubscriber) ==
+                CanonicalJson.Sha256(subscriber))
+                return true;
+        }
+
+        return false;
+    }
+
     public static SemanticPilotCombatV111 Step(
         SemanticPilotCombatV111 current, string fingerprint, string actionId)
     {
@@ -4314,6 +4389,8 @@ public static class SemanticPilotCombatEngineV111
                 if ((!semanticDrawCard && !semanticAutoplayCard &&
                      !semanticDrawPileSelectionCard &&
                      !semanticRandomRareToHandCard &&
+                     !IsSupportedGremlinHornActionDraw(
+                         source, result, resolvedAction.Action) &&
                      !SemanticPlayerActionEngineV111
                         .IsSupportedNostalgiaDrawReturn(
                             source, result, resolvedAction.Action)) ||

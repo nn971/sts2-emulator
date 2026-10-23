@@ -1019,3 +1019,13 @@ three-card hand discard, then resumes the original queued energy gain. The
 choice keeps the existing support fingerprint and source replay boundary;
 no event or snapshot schema changed. Static source review and
 `git diff --check` only; no tests or builds were run.
+
+## 2026-10-23: Gremlin Horn action draw
+
+A player card action that defeats an enemy can now suspend at Gremlin Horn's
+modeled one-card `EnemyDefeated` draw. Admission checks the saved event
+subscriber and exact relic effect, then reuses the existing semantic draw
+event and replay owner. The draw pile must already contain a card, so this
+does not cross into an unsupported recycle shuffle. Other relic-triggered
+player-action draws and Native cursor parity remain open. Static source review
+and `git diff --check` only; no tests or builds were run.
