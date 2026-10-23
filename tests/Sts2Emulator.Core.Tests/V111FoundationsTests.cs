@@ -168,7 +168,7 @@ public sealed class V111FoundationsTests
         restored.Rng.Streams[0].StateBytes[0] ^= 0xff;
         Assert.NotEqual(CanonicalJson.Sha256(state), CanonicalJson.Sha256(restored));
         var changed = JsonNode.Parse(encoded)!.AsObject();
-        changed["state"]!["player"]!["gold"] = 1234;
+        changed["state"]!["mechanics"]!["player"]!["gold"] = 1234;
         Assert.Throws<InvalidDataException>(() => RunSnapshot.Load(changed.ToJsonString()));
         changed = JsonNode.Parse(encoded)!.AsObject();
         changed["schema"] = "unsupported";

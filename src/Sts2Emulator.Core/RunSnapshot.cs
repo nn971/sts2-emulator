@@ -7,6 +7,12 @@ public sealed record RunSnapshotEnvelope(
     string Schema, string GameBuild, string StateSchema,
     string StateHash, RunState State);
 
+public sealed record RunSnapshotSimulationEnvelope(
+    string Schema, string GameBuild, string StateSchema,
+    string StateHash,
+    SimulationStateV111<RunMechanicsStateV111,
+        RunStochasticStateV111> State);
+
 /// <summary>Exact snapshots contain hidden state and must not be used as fair observations.</summary>
 public static class RunSnapshot
 {
@@ -15,6 +21,16 @@ public static class RunSnapshot
         "sts2-exact-snapshot-v2-reference-nature-state";
     public const string NatureRelicBagOrderSchemaId =
         "sts2-exact-snapshot-v3-nature-relic-bag-order";
+    public const string SimulationEnvelopeSchemaId =
+        "sts2-exact-snapshot-v4-simulation-envelope";
+    public const string CurrentSchemaId = SimulationEnvelopeSchemaId;
+    public static string[] SupportedSchemaIds =>
+    [
+        SchemaId,
+        ReferenceNatureSchemaId,
+        NatureRelicBagOrderSchemaId,
+        SimulationEnvelopeSchemaId
+    ];
     private static readonly JsonSerializerOptions Options = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
@@ -25,20 +41,36 @@ public static class RunSnapshot
     {
         ValidateSupportedState(state);
         var owned = state.Fork();
-        var hasNatureRelicBag = owned.World?.Stochastic.RelicBag?.OrderMode ==
-            PrototypeRelicBagOrderMode.NatureUnordered;
-        var schema = hasNatureRelicBag
-            ? NatureRelicBagOrderSchemaId
-            : owned.Stochastic.ReferenceNature is null
-                ? SchemaId : ReferenceNatureSchemaId;
-        return CanonicalJson.Serialize(new RunSnapshotEnvelope(
-            schema,
+        var simulation = owned.Simulation;
+        return CanonicalJson.Serialize(new RunSnapshotSimulationEnvelope(
+            SimulationEnvelopeSchemaId,
             owned.GameBuild, owned.EmulatorSchema,
-            CanonicalJson.Sha256(owned), owned));
+            CanonicalJson.Sha256(simulation), simulation));
     }
 
     public static RunState Load(string json)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(json);
+        using (var document = JsonDocument.Parse(json))
+        {
+            if (document.RootElement.ValueKind != JsonValueKind.Object)
+                throw new InvalidDataException(
+                    "Snapshot envelope must be a JSON object.");
+            if (document.RootElement.TryGetProperty("schema", out var schema))
+            {
+                if (schema.ValueKind != JsonValueKind.String)
+                    throw new InvalidDataException(
+                        "Snapshot schema identifier must be a string.");
+                var schemaId = schema.GetString();
+                if (schemaId == SimulationEnvelopeSchemaId)
+                    return LoadSimulationEnvelope(json);
+                if (schemaId is not (SchemaId or ReferenceNatureSchemaId or
+                        NatureRelicBagOrderSchemaId))
+                    throw new InvalidDataException(
+                        "Snapshot schema/build does not match its state.");
+            }
+        }
+
         var envelope = JsonSerializer.Deserialize<RunSnapshotEnvelope>(json, Options)
             ?? throw new InvalidDataException("Snapshot is empty.");
         if (envelope.Schema is not (SchemaId or ReferenceNatureSchemaId or
@@ -62,6 +94,51 @@ public static class RunSnapshot
         if (!StringComparer.Ordinal.Equals(envelope.StateHash, CanonicalJson.Sha256(envelope.State)))
             throw new InvalidDataException("Snapshot canonical hash does not match its state.");
         return envelope.State.Fork();
+    }
+
+    private static RunState LoadSimulationEnvelope(string json)
+    {
+        var envelope = JsonSerializer.Deserialize<RunSnapshotSimulationEnvelope>(
+            json, Options) ?? throw new InvalidDataException(
+                "Snapshot is empty.");
+        var simulation = envelope.State ?? throw new InvalidDataException(
+            "Snapshot is missing its simulation state.");
+        var mechanics = simulation.Mechanics;
+        if (envelope.Schema != CurrentSchemaId ||
+            envelope.GameBuild != mechanics.GameBuild ||
+            envelope.StateSchema != mechanics.EmulatorSchema)
+            throw new InvalidDataException(
+                "Snapshot schema/build does not match its simulation state.");
+        if (!StringComparer.Ordinal.Equals(
+                envelope.StateHash, CanonicalJson.Sha256(simulation)))
+            throw new InvalidDataException(
+                "Snapshot canonical hash does not match its simulation state.");
+
+        var stochastic = simulation.Stochastic;
+        var state = new RunState(
+            mechanics.GameBuild,
+            mechanics.EmulatorSchema,
+            mechanics.RunId,
+            mechanics.RunSeed,
+            mechanics.DecisionIndex,
+            mechanics.Phase,
+            mechanics.Player,
+            stochastic.PrototypeRng,
+            mechanics.ExtensionState,
+            mechanics.World,
+            mechanics.Ascension,
+            mechanics.Configuration,
+            stochastic.NativeRunRng,
+            stochastic.ControlledEventChoiceHistory,
+            stochastic.ControlledEventRewardChoice,
+            stochastic.ControlledRunActionHistory,
+            stochastic.ControlledRunActionChoice,
+            stochastic.ReferenceNatureState)
+        {
+            Simulation = simulation
+        };
+        ValidateSupportedState(state);
+        return state.Fork();
     }
 
     private static void ValidateSupportedState(RunState state)

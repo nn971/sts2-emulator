@@ -162,8 +162,8 @@ public sealed partial record RunState(
     ReferenceNatureStateV111? ReferenceNatureState = null)
 {
     /// <summary>
-    /// Atomic mechanics/provider envelope for the complete run. Existing
-    /// snapshot fields remain flattened projections.
+    /// Atomic mechanics/provider envelope for the complete run. Legacy-named
+    /// members remain API projections; v4 snapshots serialize this envelope.
     /// </summary>
     [System.Text.Json.Serialization.JsonIgnore]
     public SimulationStateV111<RunMechanicsStateV111,

@@ -2983,6 +2983,10 @@ internal static class PrototypeAiJsonlServer
                             stochasticChanceLawQueryCoverage =
                                 StochasticSiteRegistryV111
                                     .CreateChanceLawQueryCoverage(),
+                            snapshotSchemaIds =
+                                RunSnapshot.SupportedSchemaIds,
+                            simulationSnapshotSchemaId =
+                                RunSnapshot.CurrentSchemaId,
                             referenceNatureStateSnapshotSchemaId =
                                 RunSnapshot.ReferenceNatureSchemaId,
                             natureRelicBagSnapshotSchemaId =
@@ -3172,7 +3176,8 @@ internal static class PrototypeAiJsonlServer
                                 "other chance sites fail closed; native entry and laws unverified.",
                             natureBoundaryKinds = new[] { "initial_hp", "intents" },
                             coverageSchemaId = V111Coverage.SchemaId,
-                            snapshotSchemaId = RunSnapshot.SchemaId,
+                            snapshotSchemaId =
+                                RunSnapshot.CurrentSchemaId,
                             batchSchemaId = DeterministicBatch.SchemaId,
                             v111StateSchemaId = V111Build.StateSchema,
                             v111FidelityId = "v111-mechanics-prototype-rng-v1"
@@ -9748,7 +9753,8 @@ internal static class PrototypeAiJsonlServer
                     }
 
                     case "save_snapshot":
-                        Write(new { requestId, ok = true, schemaId = RunSnapshot.SchemaId,
+                        Write(new { requestId, ok = true,
+                            schemaId = RunSnapshot.CurrentSchemaId,
                             snapshot = RunSnapshot.Save(RequireState(request)) });
                         break;
 

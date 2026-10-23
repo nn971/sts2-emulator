@@ -34,11 +34,11 @@ atomically. The session supports fork, save/restore, status, resolve and
 release through JSONL and Python. Its Nature origin sorts stored queues, or
 constructs sorted eligible rarity sets when the source run has no bag, so
 Native's committed hidden order is never included in the session snapshot.
-Residual identity sets carry an optional `NatureUnordered` snapshot tag;
-Native bag snapshots retain their current shape. A snapshot carrying this tag
-uses `sts2-exact-snapshot-v3-nature-relic-bag-order`. Ordinary queue-order pulls
-reject Nature-owned sets until a matching controlled Chance Law continuation
-selects an identity.
+Residual identity sets carry the `NatureUnordered` order-mode discriminator in
+the stochastic owner. New exact snapshots serialize that owner in the v4
+simulation envelope; the loader still accepts the earlier v3 Nature-bag
+snapshot schema. Ordinary queue-order pulls reject Nature-owned sets until a
+matching controlled Chance Law continuation selects an identity.
 
 When a Native-regional run has no `NativeRunRng`, the generic
 `ReferenceNatureRunActionSessionV111` instead controls the retained Prototype

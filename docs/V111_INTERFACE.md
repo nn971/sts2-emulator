@@ -9,20 +9,23 @@ snake_case JSON.
 ## Compatibility and fidelity
 
 `hello` preserves `wireSchemaId: prototype-ai-jsonl-v0` and the public intent
-capability. Additive fields negotiate `snapshotSchemaId: sts2-exact-snapshot-v1`,
+capability. Additive fields negotiate
+`snapshotSchemaId: sts2-exact-snapshot-v4-simulation-envelope` and the
+backward-compatible `snapshotSchemaIds` list, which also accepts v1, v2, and
+v3 snapshots,
 `batchSchemaId: sts2-deterministic-batch-v1`, `coverageSchemaId:
 sts2-v111-coverage-v1`, `v111StateSchemaId: sts2-run-v111-v1` and
 `v111FidelityId: v111-mechanics-prototype-rng-v1`. Check the capabilities your
 consumer requires. The build pin identifies the mechanics target; fidelity
 explicitly identifies prototype RNG.
 
-`hello` also advertises `referenceNatureStateSnapshotSchemaId` for snapshots
-with a committed sampler cursor and `natureRelicBagSnapshotSchemaId` for the
-opt-in v3 snapshot carrying an unordered Nature relic identity set. The v3
-schema takes precedence when both capabilities apply; ordinary v1 and cursor
-only v2 snapshots retain their established envelopes. Configured Nature-seeded
-run starts add an optional initialization transcript within the existing v2
-state payload; older snapshots without it remain readable.
+`hello` retains `referenceNatureStateSnapshotSchemaId` and
+`natureRelicBagSnapshotSchemaId` as legacy load-schema identifiers. New exact
+snapshots always use the v4 envelope, which serializes the existing
+`RunState.Simulation` mechanics and stochastic owners together. The loader
+continues to accept the flattened v1, v2, and v3 envelopes; configured
+Nature-seeded run starts and Nature-owned relic bags are carried by their
+stochastic owner in v4.
 
 Existing `reset`, `reset_native_overgrowth` and hypothetical adapters preserve
 their legacy identities. `reset_v111` is opt-in and accepts `seed`, `character`

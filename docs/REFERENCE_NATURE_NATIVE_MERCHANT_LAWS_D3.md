@@ -190,11 +190,10 @@ committed Native queue order private, it stores a canonicalized Nature-owned
 projection of the existing persistent relic bag in its origin and resulting
 run; the original queue order never enters the session snapshot. If the source
 has no bag, the projection creates canonical eligible rarity sets without
-sampling Native queue order. This projection carries an optional
-`NatureUnordered` snapshot tag; Native bags omit it and retain their existing
-shape. A snapshot carrying the tag uses
-`sts2-exact-snapshot-v3-nature-relic-bag-order`, advertised separately in
-`hello`. Ordinary queue-order pulls reject a
+sampling Native queue order. The projection carries a `NatureUnordered`
+order-mode discriminator in the stochastic owner. New exact snapshots
+serialize that owner in the v4 simulation envelope; the loader still accepts
+the earlier v3 Nature-bag snapshot schema. Ordinary queue-order pulls reject a
 Nature-owned set unless a controlled Chance Law replay selects an identity.
 Native bag construction and queue shuffling remain outside this session, and
 the completeness of the modeled eligible sets remains unverified. Unregistered

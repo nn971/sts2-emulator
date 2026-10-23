@@ -5,10 +5,9 @@ namespace Sts2Emulator.Core;
 /// <summary>
 /// Atomic run-level ownership of provider-private stochastic state. The
 /// compatibility properties on <see cref="RunState"/> project this envelope
-/// under their existing serialized names until the snapshot wire schema is
-/// deliberately migrated. RNG bundles are copied on assignment and exposed
-/// as defensive public projections; Core retains internal mutable views while
-/// transition sites migrate to fork-and-publish owner writes.
+/// through their existing names; v4 snapshots serialize this owner directly.
+/// RNG bundles are copied on assignment and exposed as defensive public
+/// projections, while mutable views remain inside owner implementation code.
 /// </summary>
 public sealed record RunStochasticStateV111
 {
