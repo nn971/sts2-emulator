@@ -445,9 +445,6 @@ public sealed record SemanticCombatDrawV111(
 
 public static class SemanticCombatDrawEngineV111
 {
-    private sealed record SemanticDrawCostResumeV111(
-        RunState Run, int Remaining);
-
     private static SemanticCombatDrawV111 PublishDrawProgress(
         SemanticCombatDrawV111 state, RunState run,
         int? requestedCount = null, int? remainingCount = null)
@@ -749,24 +746,24 @@ public static class SemanticCombatDrawEngineV111
             decision.Validate();
             var resumedCost = ControlledChanceContinuationExecutorV111
                 .ResolveSelectedIndex<
-                SemanticCombatDrawV111, SemanticDrawCostResumeV111>(
+                SemanticCombatDrawV111,
+                SemanticCombatDrawResumeResultV111>(
                 state, costRequest, selectedIndex, (checkpoint, replayedIndex) =>
                 {
                     var checkpointCombat = checkpoint.Run.World?.Combat ??
                         throw new InvalidDataException(
                             "Semantic draw-cost checkpoint lost combat.");
-                    var (advanced, remaining) = SemanticChoiceResumeV111
+                    var progress = SemanticChoiceResumeV111
                         .ResumeCombatDrawCost(
                             checkpoint.Run, replayedIndex,
                             checkpoint.RemainingCount,
                             checkpointCombat.CounterState
                                 .CardsDrawnThisCombat);
-                    return new SemanticDrawCostResumeV111(
-                        advanced, remaining);
+                    return progress;
                 });
             var costNext = PublishDrawProgress(
                 state, resumedCost.Run,
-                remainingCount: resumedCost.Remaining) with
+                remainingCount: resumedCost.RemainingCount) with
             {
                 Stochastic = state.Stochastic.AppendCost(decision)
             };
@@ -827,13 +824,14 @@ public static class SemanticCombatDrawEngineV111
                 "No semantic Stratagem selection is pending.");
         int drawnBefore = state.Run.World!.Combat!
             .CounterState.CardsDrawnThisCombat;
-        var (resumedRun, remaining, decision) =
+        var (progress, decision) =
             SemanticChoiceResumeV111.ResumeStratagemSelection(
                 state.Run, pending, actionId,
                 state.RemainingCount, state.AutomaticHandDraw,
                 drawnBefore);
         var next = PublishDrawProgress(
-            state, resumedRun, remainingCount: remaining) with
+            state, progress.Run,
+            remainingCount: progress.RemainingCount) with
         {
             Stochastic = state.Stochastic.AppendStratagemSelection(decision)
         };

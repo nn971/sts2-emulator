@@ -3264,3 +3264,13 @@ results. The value is internal and ephemeral; transcript, chronology, and
 snapshot ownership are unchanged. Broader automatic draw-resume consolidation
 and cross-provider mechanical equivalence remain open. Static source review and
 `git diff --check` only; no tests or builds were run.
+
+**S4 semantic draw-resume progress increment (2026-10-24):** The shared
+`SemanticCombatDrawResumeResultV111` now carries the resulting run and
+remaining count across semantic draw execution, automatic hand-draw progress,
+post-cost continuation, Stratagem selection, and controlled draw-cost replay.
+Requested-count ownership and typed transcript chronology remain with their
+existing mechanics and stochastic owners; snapshot fields are unchanged.
+Broader automatic draw-resume consolidation and cross-provider mechanical
+equivalence remain open. Static source review and `git diff --check` only; no
+tests or builds were run.
