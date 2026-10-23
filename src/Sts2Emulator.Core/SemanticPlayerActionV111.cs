@@ -104,6 +104,7 @@ public static class SemanticPlayerActionEngineV111
             "proto.silent.storm_of_steel",
             "proto.colorless.dramatic_entrance",
             "proto.colorless.bolas",
+            "proto.colorless.calamity",
             "proto.colorless.ultimate_strike",
             "proto.colorless.ultimate_defend",
             "proto.colorless.shockwave",
