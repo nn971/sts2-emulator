@@ -7944,12 +7944,18 @@ public sealed partial class PrototypeGameEngine
                         var ownerId = "effect:" + operation.Kind + ":source:" +
                             (sourceCardInstanceId?.ToString() ?? "none") +
                             ":pool:" + CanonicalJson.Sha256(pool);
+                        var request = new RandomIndexRequestV111(
+                            StochasticSiteRegistryV111
+                                .CombatPotionGenerationRandomModelSiteId,
+                            streamId, ownerId, (int)callOrdinal,
+                            Enumerable.Range(0, pool.Length).ToArray());
                         var decision = StochasticProviderScopeV111.ResolveIndex(
-                            provider, new RandomIndexRequestV111(
-                                StochasticSiteRegistryV111.CombatPotionGenerationRandomModelSiteId,
-                                streamId, ownerId, (int)callOrdinal,
-                                Enumerable.Range(0, pool.Length).ToArray()),
-                            streams);
+                            provider, request, streams);
+                        if (decision.ProviderMode == "native-v111" &&
+                            RandomBoundaryJournalV111.HasActiveJournal)
+                            RandomBoundaryJournalV111.RecordPotionGenerationOutcome(
+                                SemanticPotionGenerationNativeAuditV111.Create(
+                                    decision, pool));
                         if (native is not null)
                             combat = combat with
                             {

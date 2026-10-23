@@ -65,6 +65,98 @@ public sealed record SemanticPotionGenerationDecisionV111(
     };
 }
 
+/// <summary>Native combat potion model result paired with its exact ticket.</summary>
+public sealed record SemanticPotionGenerationNativeAuditV111(
+    string SchemaId, SemanticPotionGenerationDecisionV111 Outcome,
+    RandomIndexDecisionV111 ProviderDecision)
+{
+    public const string CurrentSchemaId =
+        "sts2-v111-native-potion-generation-audit-v1";
+
+    private static string BoundaryFingerprintFor(
+        RandomIndexDecisionV111 providerDecision) => CanonicalJson.Sha256(new
+    {
+        schemaId = CurrentSchemaId,
+        request = providerDecision.Request,
+        nativeCursorBefore = providerDecision.NativeCursorBefore
+    });
+
+    public SemanticPotionGenerationNativeAuditV111 Fork() => this with
+    {
+        Outcome = Outcome.Fork(),
+        ProviderDecision = ProviderDecision with
+        {
+            Request = ProviderDecision.Request with
+            {
+                OrderedCandidates = ProviderDecision.Request.OrderedCandidates
+            }
+        }
+    };
+
+    public static SemanticPotionGenerationNativeAuditV111 Create(
+        RandomIndexDecisionV111 providerDecision,
+        IReadOnlyList<string> orderedCandidatePotionIds)
+    {
+        ArgumentNullException.ThrowIfNull(providerDecision);
+        ArgumentNullException.ThrowIfNull(orderedCandidatePotionIds);
+        providerDecision.Validate();
+        var request = providerDecision.Request;
+        var candidates = orderedCandidatePotionIds.ToArray();
+        if (providerDecision.ProviderMode != "native-v111" ||
+            request.SiteId != SemanticPotionGenerationChoiceV111.SiteId ||
+            request.StreamId != SemanticPotionGenerationChoiceV111.NativeStreamId ||
+            request.OperationKind != "choose_index" ||
+            !request.OrderedCandidates.SequenceEqual(
+                Enumerable.Range(0, candidates.Length)))
+            throw new InvalidDataException(
+                "Native potion-generation audit has an unsupported provider request.");
+
+        var semanticEvent = SemanticPotionGenerationChoiceV111.CreateEvent(
+            BoundaryFingerprintFor(providerDecision), request.OwnerId,
+            request.Ordinal, candidates, request.StreamId);
+        var outcome = SemanticPotionGenerationChoiceV111.Select(
+            semanticEvent, semanticEvent.EventId,
+            candidates[providerDecision.SelectedIndex]);
+        var audit = new SemanticPotionGenerationNativeAuditV111(
+            CurrentSchemaId, outcome, providerDecision with
+            {
+                Request = request with
+                {
+                    OrderedCandidates = request.OrderedCandidates
+                }
+            });
+        audit.Validate();
+        return audit;
+    }
+
+    public void Validate()
+    {
+        ArgumentNullException.ThrowIfNull(Outcome);
+        ArgumentNullException.ThrowIfNull(ProviderDecision);
+        Outcome.Validate();
+        ProviderDecision.Validate();
+        var request = ProviderDecision.Request;
+        var candidateIds = Outcome.Event.CandidatePotionIds;
+        var expectedEvent = SemanticPotionGenerationChoiceV111.CreateEvent(
+            BoundaryFingerprintFor(ProviderDecision), request.OwnerId,
+            request.Ordinal, candidateIds, request.StreamId);
+        if (SchemaId != CurrentSchemaId ||
+            ProviderDecision.ProviderMode != "native-v111" ||
+            request.SiteId != SemanticPotionGenerationChoiceV111.SiteId ||
+            request.StreamId != SemanticPotionGenerationChoiceV111.NativeStreamId ||
+            request.OperationKind != "choose_index" ||
+            !request.OrderedCandidates.SequenceEqual(
+                Enumerable.Range(0, candidateIds.Length)) ||
+            CanonicalJson.Sha256(Outcome.Event) !=
+                CanonicalJson.Sha256(expectedEvent) ||
+            Outcome.SelectedIndex != ProviderDecision.SelectedIndex ||
+            Outcome.SelectedPotionId !=
+                candidateIds[ProviderDecision.SelectedIndex])
+            throw new InvalidDataException(
+                "Native potion-generation audit differs from its provider request or result.");
+    }
+}
+
 public static class SemanticPotionGenerationChoiceV111
 {
     public const string SchemaId = "sts2-v111-semantic-potion-generation-v1";
