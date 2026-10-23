@@ -2,6 +2,15 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S6 combat full-pool shuffle delegation increment (2026-10-23):** The
+run-owned `SemanticOtherChanceStateV111` now resolves each saved
+`combat.generation.full_pool_shuffle.swap_index` through the registered
+`run.combat_card_generation` bounded-integer boundary, then resumes the same
+permutation continuation without a Nature history choice. The existing
+per-swap Chance Law remains exact only over its declared bound; source pool,
+stream attribution, and cursor parity remain open. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S6 Native initial-HP per-index law increment (2026-10-23):** The
 `combat.initial_unique_hp` Chance Law query now binds a `creature:<CombatId>`
 owner, ordered HP support, and source ordinal to `run.niche`, returning exact

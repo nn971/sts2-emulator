@@ -4909,7 +4909,8 @@ public static class SemanticPilotCombatEngineV111
 
     public static SemanticPilotCombatV111 ResolvePoolShuffle(
         SemanticPilotCombatV111 current, string fingerprint,
-        string eventId, int swapIndex)
+        string eventId, int swapIndex,
+        SemanticOtherChanceStateV111? otherChance = null)
     {
         current.Validate();
         if (current.Fingerprint != fingerprint)
@@ -4925,9 +4926,14 @@ public static class SemanticPilotCombatEngineV111
             "semantic_pool_shuffle", PoolShuffleDecision: decision.Fork());
         return ResumeAndPublishNestedChoice(
             current, choice,
-            new SemanticPilotContinuationV111(
-                "semantic_pool_shuffle",
-                PoolShuffleDecision: decision.Fork()));
+            otherChance is null
+                ? new SemanticPilotContinuationV111(
+                    "semantic_pool_shuffle",
+                    PoolShuffleDecision: decision.Fork())
+                : null,
+            normalizeEngineOwnedChoices: true,
+            validate: false,
+            otherChance: otherChance);
     }
 
     public static SemanticPilotCombatV111 ResolveDrawInsertion(
@@ -5990,6 +5996,22 @@ public static class SemanticPilotCombatEngineV111
                     current, current.Fingerprint, cardTransform.EventId,
                     cardTransform.CandidateCardIds[
                         choice.Decision.SelectedIndex], choice.Next);
+                continue;
+            }
+
+            if (current.PoolShufflePending is { } poolShuffle &&
+                current.Run.Stochastic.SemanticOtherChance is
+                    { } poolShuffleOwner &&
+                poolShuffleOwner.ProviderId !=
+                    SemanticOtherChanceEngineV111.LegacyProviderId &&
+                poolShuffle.SiteId == StochasticSiteRegistryV111
+                    .CombatFullPoolShuffleSiteId)
+            {
+                var choice = SemanticOtherChanceEngineV111
+                    .ResolvePoolShuffle(poolShuffleOwner, poolShuffle);
+                current = ResolvePoolShuffle(
+                    current, current.Fingerprint, poolShuffle.EventId,
+                    choice.Decision.SelectedIndex, choice.Next);
                 continue;
             }
 

@@ -453,6 +453,35 @@ public static class SemanticOtherChanceEngineV111
     }
 
     /// <summary>
+    /// Resolve one saved full-pool generation shuffle swap through Native's
+    /// combat card-generation stream. The semantic event retains the
+    /// permutation and source operation for the existing continuation.
+    /// </summary>
+    public static (SemanticOtherChanceStateV111 Next,
+        RandomIndexDecisionV111 Decision) ResolvePoolShuffle(
+        SemanticOtherChanceStateV111 previous,
+        SemanticPoolShuffleEventV111 pending)
+    {
+        Validate(previous);
+        ArgumentNullException.ThrowIfNull(pending);
+        pending.Validate();
+        if (pending.SiteId != StochasticSiteRegistryV111
+                .CombatFullPoolShuffleSiteId ||
+            pending.StreamId is not ("prototype.combat" or
+                "run.combat_card_generation") ||
+            pending.OperationKind != "bounded_integer")
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_OTHER_CHANCE site=" + pending.SiteId +
+                " operation=" + pending.OperationKind);
+
+        var request = new RandomIndexRequestV111(
+            pending.SiteId, "run.combat_card_generation", pending.OwnerId,
+            pending.Ordinal, [], OperationKind: "bounded_integer",
+            BoundedCount: pending.NextSwapIndex + 1);
+        return ResolveNativeIndex(previous, request);
+    }
+
+    /// <summary>
     /// Commit one registered Native index boundary owned by this private
     /// engine stream bundle. Nature does not receive the request or outcome.
     /// The caller remains responsible for applying the selected index to its

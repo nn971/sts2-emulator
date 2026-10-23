@@ -13,6 +13,14 @@ The actual `ResolveOperations` effect queue now pauses before `PrototypeRng.Shuf
 
 Source `TakeRandom/GetDistinctForCombat` shuffles the **entire eligible pool** via descending Fisher–Yates, even if one to three cards are selected. Every swap has a compact `bounded_integer` ticket at `combat.generation.full_pool_shuffle.swap_index`. The candidate card models in their *current order* are exposed only to Nature as `pending.candidateCardIds`; the player's standard fair observation remains separate. Prototype RNG uses the `combat` stream; native-card-generation configured effects use `run.combat_card_generation` when a native run stream exists. These are source labels, not claims of seeded native cursor parity. Each swap Chance Law now uses exact `SOURCE_VERIFIED` masses for the pinned Native `NextInt` mapping on its declared bound. Pool completeness, stream attribution, seed frequencies, and cursor parity remain separate claims.
 
+When the run-owned `SemanticOtherChanceStateV111` Native provider is active,
+the saved full-pool continuation routes each swap through its registered
+`run.combat_card_generation` bounded-integer boundary and resumes the same
+permutation without adding a Nature history choice. The mixed primitive
+transcript remains provider-private; the typed shuffle outcome remains in the
+existing semantic continuation. This delegation does not establish source
+stream assignment, native cursor alignment, or pool completeness.
+
 Ordinary effect execution and the controlled full-pool continuation use the same `SourcePoolForShuffle` resolver for generated offers, distinct Common cards, and Colorless generation. Native combat generation uses the source-ordered implemented solo pool, including epoch-gated cards that pass combat-generation eligibility, when allowed by the combat snapshot's configured run profile. An explicit epoch list filters that pool; without one, a fully unlocked profile admits all eligible epoch cards, while unknown partial-profile data fails closed. Synthetic generation keeps the conservative no-epoch pool. The same resolved order is used for Native sampling, Nature suspension, and replay checks; source-pool completeness and seeded parity remain separate audits.
 
 The private in-flight checkpoint retains the exact original filtered pool, current permutation, next index, source effect, source-card ID, selected prefix count and parent card/choice/event continuation. Every swap is checked against its stable owner/source/ordinal/support and the partial permutation is reconstructed from the **entire current swap transcript**, ruling out forged reorderings. On the last swap the engine creates the exact prefix without re-running earlier operations. Choice effects then yield a normal `select_cards` player action with cost/upgrade/retain and affliction handling; direct generation effects create the prefix in the player's hand and resume the earlier queued operations.
