@@ -363,6 +363,9 @@ Combat reward rarity and upgrade floats also retain their sampled values,
 thresholds, offset change or upgrade result and exact request under the new
 card-odds audit schema. Threshold and outcome fidelity remain distinct from
 Native source-pool completeness and cursor parity.
+Native combat-potion presence retains its offered flag, strict float threshold,
+pity update and exact decision under its own additive schema. Forced rewards
+still bypass the Native odds draw.
 Native transform replacements now retain the original model, ordered
 replacement pool, selected model, source card instance, and exact Native ticket
 through `SemanticCardTransformEventV111`. Newly marked Native-policy audits

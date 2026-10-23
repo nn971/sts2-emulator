@@ -374,6 +374,8 @@ public static class StochasticSiteRegistryV111
         "card_rarity.roll.unit_float";
     public const string CardRarityUpgradeRollUnitFloatSiteId =
         "card_rarity.upgrade_roll.unit_float";
+    public const string RewardPotionOddsUnitFloatSiteId =
+        "reward.potion_odds.unit_float";
     public const string CombatCardTransformReplacementSiteId =
         "combat.card_transform.replacement.index_draw";
     public const string CombatPotionGenerationRandomModelSiteId =
@@ -997,7 +999,7 @@ public static class StochasticSiteRegistryV111
         PrototypeNativeLaterActMap.RoomAssignmentShuffleSiteId,
         PrototypeNativeLaterActMap.GloryRestCountSiteId,
         "reward.combat_gold.index_draw",
-        "reward.potion_odds.unit_float",
+        RewardPotionOddsUnitFloatSiteId,
         RewardBossRelicOfferShuffleSiteId,
         RewardLavaRockRelicOfferShuffleSiteId,
         NativeFisherYatesV111.SiteId,
@@ -1152,7 +1154,7 @@ public static class StochasticSiteRegistryV111
     ];
     private static readonly string[] NativeUnitFloatSites =
     [
-        "reward.potion_odds.unit_float",
+        RewardPotionOddsUnitFloatSiteId,
         CardRarityUpgradeRollUnitFloatSiteId,
         CardRarityRollUnitFloatSiteId,
         "potion_factory.rarity_roll.unit_float",
@@ -1660,7 +1662,7 @@ public static class StochasticSiteRegistryV111
                 operationKind == "bounded_integer",
             NativePlayerRngV111.RewardsStreamId => siteId switch
             {
-                "reward.potion_odds.unit_float" or
+                RewardPotionOddsUnitFloatSiteId or
                 "potion_factory.rarity_roll.unit_float" or
                 CardRarityRollUnitFloatSiteId or
                 CardRarityUpgradeRollUnitFloatSiteId or

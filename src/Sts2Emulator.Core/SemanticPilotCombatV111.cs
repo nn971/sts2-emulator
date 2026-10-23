@@ -203,6 +203,8 @@ public sealed record SemanticNativePolicyAuditV111(
         "sts2-v111-native-generated-card-model-audit-v2";
     public const string CardOddsAuditSchemaV1 =
         SemanticCardOddsNativeAuditV111.CurrentSchemaId;
+    public const string PotionRewardOddsAuditSchemaV1 =
+        SemanticPotionRewardOddsNativeAuditV111.CurrentSchemaId;
     public const string CardTransformAuditSchemaV1 =
         "sts2-v111-native-card-transform-audit-v1";
     public const string RandomTargetAuditSchemaV1 =
@@ -235,6 +237,9 @@ public sealed record SemanticNativePolicyAuditV111(
     /// <summary>Null for older snapshots; V1 covers Native encounter-card
     /// rarity and upgrade float outcomes.</summary>
     public string? CardOddsAuditSchema { get; init; }
+    /// <summary>Null for older snapshots; V1 covers Native combat-potion
+    /// presence and pity-update outcomes.</summary>
+    public string? PotionRewardOddsAuditSchema { get; init; }
     /// <summary>Null for older snapshots that predate typed Native card
     /// transform replacement results.</summary>
     public string? CardTransformAuditSchema { get; init; }
@@ -274,6 +279,8 @@ public sealed record SemanticNativePolicyAuditV111(
     private SemanticPotionGenerationNativeAuditV111[]?
         _potionGenerationOutcomes = [];
     private SemanticCardOddsNativeAuditV111[]? _cardOddsOutcomes = [];
+    private SemanticPotionRewardOddsNativeAuditV111[]?
+        _potionRewardOddsOutcomes = [];
 
     public RandomBoundaryEventV111[] Decisions
     {
@@ -349,6 +356,14 @@ public sealed record SemanticNativePolicyAuditV111(
         get => CloneCardOddsOutcomes(_cardOddsOutcomes)!;
         init => _cardOddsOutcomes = CloneCardOddsOutcomes(value);
     }
+    public SemanticPotionRewardOddsNativeAuditV111[]
+        PotionRewardOddsOutcomes
+    {
+        get => ClonePotionRewardOddsOutcomes(
+            _potionRewardOddsOutcomes)!;
+        init => _potionRewardOddsOutcomes =
+            ClonePotionRewardOddsOutcomes(value);
+    }
 
     public SemanticNativePolicyAuditV111 Fork() => this with
     {
@@ -374,7 +389,9 @@ public sealed record SemanticNativePolicyAuditV111(
             _randomTargetOutcomes)!,
         PotionGenerationOutcomes = ClonePotionGenerationOutcomes(
             _potionGenerationOutcomes)!,
-        CardOddsOutcomes = CloneCardOddsOutcomes(_cardOddsOutcomes)!
+        CardOddsOutcomes = CloneCardOddsOutcomes(_cardOddsOutcomes)!,
+        PotionRewardOddsOutcomes = ClonePotionRewardOddsOutcomes(
+            _potionRewardOddsOutcomes)!
     };
 
     private static RandomBoundaryEventV111[]? CloneEvents(
@@ -449,6 +466,12 @@ public sealed record SemanticNativePolicyAuditV111(
         values?.Select(value => value is null ? null! : value.Fork())
             .ToArray();
 
+    private static SemanticPotionRewardOddsNativeAuditV111[]?
+        ClonePotionRewardOddsOutcomes(
+            SemanticPotionRewardOddsNativeAuditV111[]? values) =>
+        values?.Select(value => value is null ? null! : value.Fork())
+            .ToArray();
+
     public void Validate()
     {
         var decisions = _decisions;
@@ -464,6 +487,7 @@ public sealed record SemanticNativePolicyAuditV111(
         var randomTargetOutcomes = _randomTargetOutcomes;
         var potionGenerationOutcomes = _potionGenerationOutcomes;
         var cardOddsOutcomes = _cardOddsOutcomes;
+        var potionRewardOddsOutcomes = _potionRewardOddsOutcomes;
         if (ProviderId != NativeProviderId ||
             ProbabilityStatus != "UNVERIFIED" || decisions is null ||
             providerTrace is null || weightedIntentOutcomes is null ||
@@ -477,6 +501,7 @@ public sealed record SemanticNativePolicyAuditV111(
             randomTargetOutcomes is null ||
             potionGenerationOutcomes is null ||
             cardOddsOutcomes is null ||
+            potionRewardOddsOutcomes is null ||
             (WeightedIntentAuditSchema is not null &&
              WeightedIntentAuditSchema != WeightedIntentAuditSchemaV1) ||
             (CardInstanceIndexAuditSchema is not null &&
@@ -497,6 +522,8 @@ public sealed record SemanticNativePolicyAuditV111(
                  GeneratedCardModelAuditSchemaV2)) ||
             (CardOddsAuditSchema is not null &&
              CardOddsAuditSchema != CardOddsAuditSchemaV1) ||
+            (PotionRewardOddsAuditSchema is not null &&
+             PotionRewardOddsAuditSchema != PotionRewardOddsAuditSchemaV1) ||
             (CardTransformAuditSchema is not null &&
              CardTransformAuditSchema != CardTransformAuditSchemaV1) ||
             (RandomTargetAuditSchema is not null &&
@@ -846,6 +873,23 @@ public sealed record SemanticNativePolicyAuditV111(
                 throw new InvalidDataException(
                     "Native card-odds outcome duplicates a provider decision or fingerprint.");
         }
+        var potionRewardOddsDecisions = new HashSet<string>(
+            StringComparer.Ordinal);
+        var potionRewardOddsFingerprints = new HashSet<string>(
+            StringComparer.Ordinal);
+        foreach (var auditEntry in potionRewardOddsOutcomes)
+        {
+            if (auditEntry is null)
+                throw new InvalidDataException(
+                    "Native potion-reward odds audit entry is null.");
+            auditEntry.Validate();
+            if (!potionRewardOddsDecisions.Add(CanonicalJson.Sha256(
+                    auditEntry.ProviderDecision)) ||
+                !potionRewardOddsFingerprints.Add(
+                    auditEntry.OutcomeFingerprint))
+                throw new InvalidDataException(
+                    "Native potion-reward odds outcome duplicates a provider decision or fingerprint.");
+        }
 
         var traceIndices = new List<RandomBoundaryEventV111>();
         var traceIntentDecisions = new List<RandomIndexDecisionV111>();
@@ -876,6 +920,8 @@ public sealed record SemanticNativePolicyAuditV111(
         var tracePotionGenerationDecisions =
             new List<RandomIndexDecisionV111>();
         var traceCardOddsDecisions =
+            new List<RandomUnitFloatDecisionV111>();
+        var tracePotionRewardOddsDecisions =
             new List<RandomUnitFloatDecisionV111>();
         for (var index = 0; index < providerTrace.Length; index++)
         {
@@ -996,6 +1042,13 @@ public sealed record SemanticNativePolicyAuditV111(
                     SemanticCardOddsNativeAuditV111.RaritySiteId or
                     SemanticCardOddsNativeAuditV111.UpgradeSiteId)
                     traceCardOddsDecisions.Add(
+                        new RandomUnitFloatDecisionV111(
+                            value.Request, value.SelectedValue,
+                            value.ProviderMode, value.NativeCursorBefore,
+                            value.NativeCursorAfter));
+                if (value.Request.SiteId == StochasticSiteRegistryV111
+                        .RewardPotionOddsUnitFloatSiteId)
+                    tracePotionRewardOddsDecisions.Add(
                         new RandomUnitFloatDecisionV111(
                             value.Request, value.SelectedValue,
                             value.ProviderMode, value.NativeCursorBefore,
@@ -1272,6 +1325,29 @@ public sealed record SemanticNativePolicyAuditV111(
                 if (matchingOutcomes != 1)
                     throw new InvalidDataException(
                         "Native card-odds float decision does not have exactly one typed outcome annotation.");
+            }
+        }
+
+        if (PotionRewardOddsAuditSchema ==
+                PotionRewardOddsAuditSchemaV1 ||
+            potionRewardOddsOutcomes.Length > 0)
+        {
+            if (tracePotionRewardOddsDecisions.Count !=
+                potionRewardOddsOutcomes.Length)
+                throw new InvalidDataException(
+                    "Native potion-reward odds outcomes are incomplete for their mixed trace.");
+
+            foreach (var potionOddsDecision in
+                tracePotionRewardOddsDecisions)
+            {
+                var decisionFingerprint = CanonicalJson.Sha256(
+                    potionOddsDecision);
+                var matchingOutcomes = potionRewardOddsOutcomes.Count(
+                    outcome => CanonicalJson.Sha256(
+                        outcome.ProviderDecision) == decisionFingerprint);
+                if (matchingOutcomes != 1)
+                    throw new InvalidDataException(
+                        "Native potion-reward odds float decision does not have exactly one typed outcome annotation.");
             }
         }
 
@@ -2408,7 +2484,8 @@ public static class SemanticPilotCombatEngineV111
                 setupJournal.CardTransformOutcomes.ToArray(),
                 setupJournal.RandomTargetOutcomes.ToArray(),
                 setupJournal.PotionGenerationOutcomes.ToArray(),
-                setupJournal.CardOddsOutcomes.ToArray());
+                setupJournal.CardOddsOutcomes.ToArray(),
+                setupJournal.PotionRewardOddsOutcomes.ToArray());
         if (entry.FixtureDrawCostRelicId is { } relicId)
         {
             if (relicId != "proto.relic.snecko_eye")
@@ -3047,6 +3124,8 @@ public static class SemanticPilotCombatEngineV111
             setupJournal.PotionGenerationOutcomes.ToArray();
         var nativeCardOddsOutcomes =
             setupJournal.CardOddsOutcomes.ToArray();
+        var nativePotionRewardOddsOutcomes =
+            setupJournal.PotionRewardOddsOutcomes.ToArray();
         var routeAudit = new SemanticSourceRouteAuditV111(
             SemanticSourceRouteAuditV111.SourceRouteProviderId,
             entry.RouteActOneRegion, actions.ToArray(), actualNodeId,
@@ -3214,6 +3293,8 @@ public static class SemanticPilotCombatEngineV111
                     PotionGenerationOutcomes =
                         nativePotionGenerationOutcomes,
                     CardOddsOutcomes = nativeCardOddsOutcomes,
+                    PotionRewardOddsOutcomes =
+                        nativePotionRewardOddsOutcomes,
                     WeightedIntentAuditSchema =
                         SemanticNativePolicyAuditV111
                             .WeightedIntentAuditSchemaV1,
@@ -3238,6 +3319,9 @@ public static class SemanticPilotCombatEngineV111
                     CardOddsAuditSchema =
                         SemanticNativePolicyAuditV111
                             .CardOddsAuditSchemaV1,
+                    PotionRewardOddsAuditSchema =
+                        SemanticNativePolicyAuditV111
+                            .PotionRewardOddsAuditSchemaV1,
                     CardTransformAuditSchema =
                         SemanticNativePolicyAuditV111
                             .CardTransformAuditSchemaV1,
@@ -3277,7 +3361,9 @@ public static class SemanticPilotCombatEngineV111
         SemanticTargetNativeAuditV111[] setupRandomTargetOutcomes,
         SemanticPotionGenerationNativeAuditV111[]
             setupPotionGenerationOutcomes,
-        SemanticCardOddsNativeAuditV111[] setupCardOddsOutcomes)
+        SemanticCardOddsNativeAuditV111[] setupCardOddsOutcomes,
+        SemanticPotionRewardOddsNativeAuditV111[]
+            setupPotionRewardOddsOutcomes)
     {
         ArgumentNullException.ThrowIfNull(nativeStreams);
         ArgumentNullException.ThrowIfNull(formation);
@@ -3339,6 +3425,8 @@ public static class SemanticPilotCombatEngineV111
                 RandomTargetOutcomes = setupRandomTargetOutcomes,
                 PotionGenerationOutcomes = setupPotionGenerationOutcomes,
                 CardOddsOutcomes = setupCardOddsOutcomes,
+                PotionRewardOddsOutcomes =
+                    setupPotionRewardOddsOutcomes,
                 WeightedIntentAuditSchema =
                     SemanticNativePolicyAuditV111
                         .WeightedIntentAuditSchemaV1,
@@ -3363,6 +3451,9 @@ public static class SemanticPilotCombatEngineV111
                 CardOddsAuditSchema =
                     SemanticNativePolicyAuditV111
                         .CardOddsAuditSchemaV1,
+                PotionRewardOddsAuditSchema =
+                    SemanticNativePolicyAuditV111
+                        .PotionRewardOddsAuditSchemaV1,
                 CardTransformAuditSchema =
                     SemanticNativePolicyAuditV111
                         .CardTransformAuditSchemaV1,
@@ -4030,6 +4121,8 @@ public static class SemanticPilotCombatEngineV111
         var potionGenerationOutcomes = boundaries
             .PotionGenerationOutcomes.ToArray();
         var cardOddsOutcomes = boundaries.CardOddsOutcomes.ToArray();
+        var potionRewardOddsOutcomes = boundaries
+            .PotionRewardOddsOutcomes.ToArray();
 
         if (result.Phase == RunPhase.Combat)
             ValidateNativePolicyBoundary(result);
@@ -4077,7 +4170,10 @@ public static class SemanticPilotCombatEngineV111
                     audit.PotionGenerationOutcomes
                         .Concat(potionGenerationOutcomes).ToArray(),
                 CardOddsOutcomes = audit.CardOddsOutcomes
-                    .Concat(cardOddsOutcomes).ToArray()
+                    .Concat(cardOddsOutcomes).ToArray(),
+                PotionRewardOddsOutcomes =
+                    audit.PotionRewardOddsOutcomes
+                        .Concat(potionRewardOddsOutcomes).ToArray()
             }
         };
         Validate(next);

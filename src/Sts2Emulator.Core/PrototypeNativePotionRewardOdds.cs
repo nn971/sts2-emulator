@@ -31,18 +31,30 @@ public static class PrototypeNativePotionRewardOdds
         // Do not clamp the odds here: native AbstractOdds.CurrentValue
         // is updated directly, without explicit clipping.
         var threshold = currentThousandths + (elite ? EliteBonus : 0);
-        var offered = nativeRunRng is null
-            ? LegacyRandomChoiceV111.ChooseBoundedInteger(
+        bool offered;
+        if (nativeRunRng is null)
+        {
+            offered = LegacyRandomChoiceV111.ChooseBoundedInteger(
                 rng,
                 "reward.potion_odds.ticket",
                 "reward",
                 "run:potion_reward_odds",
-                1000).SelectedIndex < threshold
-            : NativePlayerRngV111.NextUnitFloat(
+                1000).SelectedIndex < threshold;
+        }
+        else
+        {
+            var decision = NativePlayerRngV111.NextUnitFloatDecision(
                 nativeRunRng,
-                "reward.potion_odds.unit_float",
+                StochasticSiteRegistryV111.RewardPotionOddsUnitFloatSiteId,
                 NativePlayerRngV111.RewardsStreamId,
-                "run:potion_reward_odds") < threshold / 1000f;
+                "run:potion_reward_odds");
+            offered = decision.SelectedValue < threshold / 1000f;
+            if (decision.ProviderMode == "native-v111" &&
+                RandomBoundaryJournalV111.HasActiveJournal)
+                RandomBoundaryJournalV111.RecordPotionRewardOddsOutcome(
+                    SemanticPotionRewardOddsNativeAuditV111.Create(
+                        decision, currentThousandths, elite));
+        }
         return (
             offered,
             checked(currentThousandths + (offered

@@ -20,6 +20,9 @@ Native combat-reward `card_rarity.roll.unit_float` and
 `card_rarity.upgrade_roll.unit_float` use a separate typed outcome annotation
 for their threshold, offset update or upgrade result. Card-odds schema V1
 requires both registered reward float sites in newly marked traces.
+Native `reward.potion_odds.unit_float` results also retain the offered flag and
+pity update; potion-reward odds schema V1 requires each such draw in new traces.
+Forced rewards remain draw-free.
 
 The Rest reward crosswalk is `PrototypeRooms.StepRest` →
 `EnterRestHealRelicReward`: relics with a positive
