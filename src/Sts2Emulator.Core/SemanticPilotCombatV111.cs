@@ -3210,6 +3210,7 @@ public static class SemanticPilotCombatEngineV111
     private static bool IsSemanticEffectDrawCard(string cardId) =>
         cardId is ("proto.common.restlessness" or
             "proto.status.slimed" or
+            "proto.colorless.restlessness" or
             "proto.colorless.finesse" or
             "proto.colorless.flash_of_steel" or
             "proto.colorless.impatience" or
