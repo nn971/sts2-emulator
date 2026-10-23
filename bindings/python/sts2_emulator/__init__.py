@@ -209,6 +209,9 @@ class State:
             if type(ascension) is not int or ascension < 0:
                 raise ValueError(
                     "Tough Egg hatch HP laws require nonnegative ascension")
+            if ordinal != 0:
+                raise ValueError(
+                    "Tough Egg hatch HP is the creature's ordinal-zero draw")
             if support_count is not None:
                 raise ValueError(
                     "Tough Egg hatch HP support is derived from ascension")

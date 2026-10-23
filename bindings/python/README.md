@@ -272,7 +272,8 @@ egg_law = state.query_chance_law(
 
 That query derives the ordered 20–23 HP support at Ascension 8+ (19–22 below
 Ascension 8). It verifies the one `run.niche` index transform, while event
-eligibility and the saved creature boundary remain with the caller.
+eligibility and the saved creature boundary remain with the caller. One egg
+draws once, so its source ordinal is fixed at zero.
 
 Native relic-bag construction also exposes each Fisher–Yates swap law. Pass
 the current exclusive bound, rarity-queue owner, and swap ordinal:

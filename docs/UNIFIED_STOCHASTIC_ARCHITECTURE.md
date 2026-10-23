@@ -661,7 +661,7 @@ still owns the live HP support; pool construction and order, seed frequencies,
 and end-to-end cursor parity remain separate evidence.
 
 The `combat.tough_egg.hatchling_hp` direct query accepts the same canonical
-creature owner, Ascension, and source ordinal. It derives the pinned
+creature owner, Ascension, and source ordinal zero. It derives the pinned
 19–22 or 20–23 HP interval and returns exact `run.niche` `NextInt` grid
 masses over support indices. This covers the in-place hatch draw only; event
 eligibility, the saved creature boundary, seed frequencies, and cursor parity

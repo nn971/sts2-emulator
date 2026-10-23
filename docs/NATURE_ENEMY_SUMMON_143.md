@@ -10,6 +10,17 @@ fallback if every entry is excluded. HP support is constrained by each
 encounter's declared range and the already-selected unique HP values. Native
 initial HP and Tough Egg ownership are documented in the [native HP audit](reference-builds/v0.111.0-native-combat-hp-ai-rng.md) and [Tough Egg audit](reference-builds/v0.111.0-native-tough-egg-hatch.md).
 
+The read-only Native per-index laws are available through `chance_law_query`.
+`combat.initial_unique_hp` takes `owner_id="creature:<CombatId>"`, an
+ordered `ordered_hp_support`, and the source ordinal. Its outcomes are
+support indices, with the request fingerprint binding the HP values and their
+order. `combat.tough_egg.hatchling_hp` takes the same creature owner, source
+ordinal zero, and Ascension; it derives 19–22 HP below Ascension 8 and 20–23
+HP at Ascension 8 or higher. Both queries return exact `run.niche` `NextInt`
+masses without reading a saved run seed or cursor. They cover only the
+declared or derived index support: unique-HP pool reconstruction, event
+eligibility, and end-to-end cursor parity remain with separate evidence.
+
 The player observation reveals the committed summon and current enemy HP, not
 the eligible summon list or unselected HP values. The saved enemy-action
 continuation replays prior decisions and resumes the mechanics owner once the

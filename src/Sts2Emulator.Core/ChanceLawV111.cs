@@ -2687,8 +2687,10 @@ public static partial class ChanceLawEngineV111
         ValidateNativeCreatureOwnerId(ownerId);
         if (ascension < 0)
             throw new ArgumentOutOfRangeException(nameof(ascension));
-        if (ordinal < 0)
-            throw new ArgumentOutOfRangeException(nameof(ordinal));
+        if (ordinal != 0)
+            throw new ArgumentOutOfRangeException(
+                nameof(ordinal),
+                "Tough Egg hatch HP is the creature's ordinal-zero draw.");
 
         var minHp = ascension >= 8 ? 20 : 19;
         var orderedHpSupport = Enumerable.Range(minHp, 4).ToArray();

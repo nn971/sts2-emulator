@@ -491,7 +491,7 @@ fingerprints the caller's declared support values and order; source pool
 construction, seed frequencies, and end-to-end cursor parity remain open.
 
 The read-only `combat.tough_egg.hatchling_hp` query accepts a canonical
-`creature:<CombatId>` owner, Ascension, and source ordinal, then derives the
+`creature:<CombatId>` owner, Ascension, and source ordinal zero, then derives the
 source's 19–22 or 20–23 HP support and returns exact `run.niche` `NextInt`
 grid masses. Event eligibility and the in-place hatch boundary remain caller
 responsibilities; no source-pool or cursor-parity claim is added.

@@ -12,7 +12,7 @@ end-to-end stream/cursor parity remain open. Static source review and
 
 **S6 Native Tough Egg per-index law increment (2026-10-23):** The direct
 `combat.tough_egg.hatchling_hp` query now binds a canonical creature owner,
-Ascension, and source ordinal, deriving the pinned 19–22 or 20–23 HP support
+Ascension, and source ordinal zero, deriving the pinned 19–22 or 20–23 HP support
 before applying the exact `run.niche` `NextInt` grid law. Event eligibility
 and the saved in-place hatch boundary remain with the caller. Static source
 review and `git diff --check` only; no tests or builds were run.
