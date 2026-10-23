@@ -16,6 +16,14 @@ The generated inventory maps 100 of 104 typed requests; four generic or
 forwarded request sites remain unresolved. Static review and
 `git diff --check` only; no tests or builds were run.
 
+**S0 boss-law comparison source trace increment (2026-10-23):** The direct
+callsite census now follows the run-start comparison's Overgrowth and
+Underdocks boss-law branches through their shared fail-closed builder. It
+resolves both registered site IDs and their shared `choose_index` operation.
+The generated inventory maps 101 of 104 typed requests; the three generic
+Native choice wrappers remain dynamic. Static review and `git diff --check`
+only; no tests or builds were run.
+
 **S6 Native-regional Event-entry fallback increment (2026-10-23):** The
 existing atomic Event-node entry session now consumes supported saved legacy
 `event` requests for generated gold, Stone of All Time's potion slot, and

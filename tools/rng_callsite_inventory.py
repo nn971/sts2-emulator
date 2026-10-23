@@ -1774,6 +1774,107 @@ def _site_id_forwarder_calls(
     return sorted(calls, key=lambda call: (call["path"], call["line"]))
 
 
+def _simulation_boss_law_forward_values(
+    path: Path,
+    source: str,
+    construction_start: int,
+    global_constants: dict[str, set[str]],
+) -> tuple[list[str], list[str]]:
+    """Trace the comparison request through its two source boss-law branches."""
+    if path.name != "SimulationProviderReplayComparisonV111.cs":
+        return [], []
+
+    member = _containing_member_source(source, construction_start)
+    boss_declaration = re.search(
+        r"\bvar\s+bossLaw\s*=\s*(?P<expression>.*?);", member,
+        re.DOTALL,
+    )
+    if (boss_declaration is None or
+            "bossLaw is null" not in member):
+        return [], []
+    branch_calls = re.findall(
+        r"\bChanceLawEngineV111\.(Query\w+BossEncounter)\s*\(",
+        boss_declaration.group("expression"),
+    )
+    query_names = [
+        "QueryOvergrowthBossEncounter",
+        "QueryUnderdocksBossEncounter",
+    ]
+    if branch_calls != query_names:
+        return [], []
+
+    law_source = (SOURCE_ROOT / "ChanceLawV111.cs").read_text(
+        encoding="utf-8"
+    )
+    wrapper_sites: set[str] = set()
+    for query_name in query_names:
+        wrapper = re.search(
+            rf"public\s+static\s+ChanceLawV111\s+"
+            rf"{re.escape(query_name)}\s*\([^)]*\)\s*=>\s*"
+            r"QueryActOneBossEncounter\s*\((?P<arguments>.*?)\)\s*;",
+            law_source,
+            re.DOTALL,
+        )
+        if wrapper is None:
+            return [], []
+        arguments = _split_call_arguments(wrapper.group("arguments"))
+        values = _resolve_site_values(
+            arguments[0] if arguments else None, {}, global_constants
+        )
+        if len(values) != 1:
+            return [], []
+        wrapper_sites.add(values[0])
+
+    helper_start = re.search(
+        r"private\s+static\s+ChanceLawV111\s+"
+        r"QueryActOneBossEncounter\s*\(", law_source,
+    )
+    if helper_start is None:
+        return [], []
+    helper = _containing_member_source(law_source, helper_start.end())
+    site_switch = re.search(
+        r"\bvar\s+\(bossPool\s*,\s*ownerPrefix\)\s*=\s*"
+        r"siteId\s+switch\s*\{(?P<arms>.*?)\n\s*\};",
+        helper,
+        re.DOTALL,
+    )
+    if site_switch is None:
+        return [], []
+    supported_sites: set[str] = set()
+    saw_fail_closed_default = False
+    for arm in _split_call_arguments(site_switch.group("arms")):
+        arrow = arm.find("=>")
+        if arrow < 0:
+            return [], []
+        pattern = arm[:arrow].strip()
+        result = arm[arrow + 2:]
+        if pattern == "_":
+            if "throw new NotSupportedException" not in result:
+                return [], []
+            saw_fail_closed_default = True
+            continue
+        values = _resolve_site_values(pattern, {}, global_constants)
+        if len(values) != 1:
+            return [], []
+        supported_sites.add(values[0])
+    if not saw_fail_closed_default or supported_sites != wrapper_sites:
+        return [], []
+
+    create_call = re.search(r"\breturn\s+Create\s*\(", helper)
+    if create_call is None:
+        return [], []
+    create_arguments = _call_arguments(helper, create_call.start())
+    operation_values = (
+        _resolve_site_values(
+            create_arguments[2], {}, global_constants
+        )
+        if len(create_arguments) > 2 else []
+    )
+    if len(operation_values) != 1:
+        return [], []
+    return sorted(wrapper_sites), operation_values
+
+
 def _ambient_entropy_calls(
     sources: dict[Path, str],
 ) -> list[dict[str, Any]]:
@@ -1825,6 +1926,11 @@ def _typed_request_constructions(
                 source, match.start(), global_constants
             )
             arguments = _call_arguments(source, match.start())
+            boss_law_site_values, boss_law_operation_values = (
+                _simulation_boss_law_forward_values(
+                    path, source, match.start(), global_constants,
+                )
+            )
             operation_expression = None
             for argument in arguments:
                 named_operation = re.match(
@@ -1849,6 +1955,12 @@ def _typed_request_constructions(
                     "expression" if len(operation_values) == 1 else
                     "finite_alternatives"
                 )
+            if (not operation_values and
+                    re.sub(r"\s+", "", operation_expression or "") ==
+                    "bossLaw.OperationKind" and
+                    boss_law_operation_values):
+                operation_values = boss_law_operation_values
+                operation_resolution = "method_local_assignment"
             expression = None
             for argument in arguments:
                 named_site = re.match(
@@ -1871,6 +1983,11 @@ def _typed_request_constructions(
                 )
                 if values:
                     resolution_source = "method_local_assignment"
+            if (not values and
+                    re.sub(r"\s+", "", expression or "") ==
+                    "bossLaw.SiteId" and boss_law_site_values):
+                values = boss_law_site_values
+                resolution_source = "method_local_assignment"
             if not values:
                 member_source = _containing_member_source(
                     source, match.start()

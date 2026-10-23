@@ -12,11 +12,11 @@ Counts by direct API family:
 
 Direct ad hoc entropy API expressions in Core: **0**. The scan covers direct System.Random typed or target-typed construction/shared-instance use and RandomNumberGenerator APIs; it does not prove the absence of indirect or aliased entropy sources.
 
-Explicit typed random-request constructions: **104**; site IDs resolved to registry: **100**; dynamic or missing IDs: **4**; static IDs absent from registry: **0**.
+Explicit typed random-request constructions: **104**; site IDs resolved to registry: **101**; dynamic or missing IDs: **3**; static IDs absent from registry: **0**.
 
-Index request operation-kind locators: `bounded_integer` **33**, `choose_index` **60**, `finite_alternatives` **2**, `site_keyed_dictionary` **2**, `unresolved` **1**. The table reports constructor expressions, defaults, and site-keyed dictionary mappings where traceable; generic forwarded operation values remain manual trace items.
+Index request operation-kind locators: `bounded_integer` **33**, `choose_index` **61**, `finite_alternatives` **2**, `site_keyed_dictionary` **2**. The table reports constructor expressions, defaults, and site-keyed dictionary mappings where traceable; generic forwarded operation values remain manual trace items.
 
-Expression-origin classes: `finite_site_id_alternatives` **9**, `guarded_finite_site_id_alternatives` **37**, `guarded_legacy_random_choice_site_set` **2**, `identifier_forwarded_or_local` **3**, `member_forwarded` **1**, `static_site_id` **52**. Forwarded identifiers and members remain manual trace items; these labels do not claim their caller chain is resolved.
+Expression-origin classes: `finite_site_id_alternatives` **10**, `guarded_finite_site_id_alternatives` **37**, `guarded_legacy_random_choice_site_set` **2**, `identifier_forwarded_or_local` **3**, `static_site_id` **52**. Forwarded identifiers and members remain manual trace items; these labels do not claim their caller chain is resolved.
 
 | File:line | Request type | Operation kind | Site ID expression | Origin | Resolution | Resolved site ID | Registry | Matrix |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -131,7 +131,7 @@ Expression-origin classes: `finite_site_id_alternatives` **9**, `guarded_finite_
 | [src/Sts2Emulator.Core/SemanticPilotCombatV111.cs:3609](../src/Sts2Emulator.Core/SemanticPilotCombatV111.cs#L3609) | RandomIndexRequestV111 | "bounded_integer" → bounded_integer | "combat.random_hand_card.energy_cost" | static_site_id | expression | combat.random_hand_card.energy_cost | mapped | mapped |
 | [src/Sts2Emulator.Core/SemanticPoolShuffleV111.cs:257](../src/Sts2Emulator.Core/SemanticPoolShuffleV111.cs#L257) | RandomIndexRequestV111 | "bounded_integer" → bounded_integer | siteId | finite_site_id_alternatives | method_local_assignment | combat.card_selection.random_shortlist, combat.draw.recycle.shuffle_swap_index, combat.draw_pile.random_rare_to_hand.shuffle_swap_index, combat.generation.full_pool_shuffle.swap_index, combat.hand_return.draw_pile.shuffle_swap_index | conditional | conditional |
 | [src/Sts2Emulator.Core/SemanticPotionGenerationV111.cs:89](../src/Sts2Emulator.Core/SemanticPotionGenerationV111.cs#L89) | RandomIndexRequestV111 | "choose_index" → choose_index | SiteId | static_site_id | expression | combat.potion_generation.random_model | mapped | mapped |
-| [src/Sts2Emulator.Core/SimulationProviderReplayComparisonV111.cs:374](../src/Sts2Emulator.Core/SimulationProviderReplayComparisonV111.cs#L374) | RandomIndexRequestV111 | bossLaw.OperationKind → unresolved | bossLaw.SiteId | member_forwarded | — | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/SimulationProviderReplayComparisonV111.cs:374](../src/Sts2Emulator.Core/SimulationProviderReplayComparisonV111.cs#L374) | RandomIndexRequestV111 | bossLaw.OperationKind → choose_index | bossLaw.SiteId | finite_site_id_alternatives | method_local_assignment | combat.encounter.underdocks.boss.index_draw, run.encounter.overgrowth_boss.index_draw | conditional | conditional |
 
 Site-keyed index operation kinds resolved from constructor dictionaries:
 
