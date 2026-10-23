@@ -150,7 +150,9 @@ public static class SemanticPlayerActionEngineV111
             PrototypeNativeHiveEvents.EnlightenmentId,
             PrototypeNativeLaterActs.ExterminateId,
             PrototypeNativeLaterActs.SquashId,
-            PrototypeNativeOrobasRelics.LuminesceId
+            PrototypeNativeOrobasRelics.LuminesceId,
+            PrototypeNativeHiveBosses.FranticEscapeId,
+            PrototypeNativeHiveNormals.ToxicCardId
         };
 
     internal static bool SupportsCard(string cardId) =>
