@@ -406,6 +406,11 @@ For a live automatic hand draw, `PrototypeAutomaticPipelineStochasticStateV111` 
 
 The pipeline stochastic owner provides `TryGetActiveAutomaticHandDrawProgress` as the common count-bearing cursor query. It validates the saved `DrawPlayerHand` stage and returns the tagged progress mode with its counts; `TryGetAutomaticHandDrawRemainder` and `TryGetSemanticHandDrawProgress` project from that value. Automatic draw-cost validation reads the tag and count together once, while `TryGetSemanticHandDrawProjection` also exposes the zero-count `BeforeHandDraw` suspension to the semantic draw facade only at that same saved stage. This keeps tagged-stage interpretation with the owner of the saved cursor.
 
+`ResumeSemanticAutomaticHandDrawStep` owns classification of the semantic
+stage's active draw, pending pre-draw choice, and completed zero or positive
+draw outcomes. `BeginSemanticAutomaticHandDraw` returns that validated
+progress directly, leaving the helper as the single stage-result interpreter.
+
 `SemanticCombatDrawMechanicsStateV111` owns the draw facade's fallback count projections and the state transition rules when its `Run`, requested/remaining counts, or automatic-draw mode changes. `SemanticCombatDrawV111` keeps the established flattened snapshot properties as delegates, and end-turn's saved draw projection asks the mechanics owner whether the pipeline owns its counts.
 
 Semantic automatic-hand-draw entry, continuation, and cost handling now read tagged progress through `PrototypeAutomaticPipelineContinuationState.Stochastic`; draw-stage and opening-cursor checks read through its mechanics owner. Flattened progress members remain snapshot projections.

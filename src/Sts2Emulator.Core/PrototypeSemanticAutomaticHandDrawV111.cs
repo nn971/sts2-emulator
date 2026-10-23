@@ -39,39 +39,6 @@ public sealed partial class PrototypeGameEngine
                 "unsupported_nested_stage",
                 "Hand draw removed combat.",
                 missingCombatIsInvalidData: false);
-        if (requested == 0 && remaining == 0)
-        {
-            var after = RequireWorld(result).Combat ??
-                throw new InvalidOperationException(
-                    "Hand draw removed combat.");
-            bool awaitingPreDrawChoice =
-                after.AutomaticPipelineContinuation?.Stochastic
-                    .HandDrawProgress?.Kind ==
-                        PrototypeAutomaticHandDrawProgressKindV111
-                            .SemanticBeforeHandDraw &&
-                (after.PendingChoice?.ControlledRandomPileCard is not null ||
-                 after.PendingChoice?.AutomaticSemanticDrawHookChoice == true);
-            bool completedWithoutPendingDraw =
-                after.AutomaticPipelineContinuation is { } completed &&
-                completed.Mechanics.IsImmediatelyAfterStep(
-                    PrototypeAutomaticStepKind.DrawPlayerHand) &&
-                completed.Stochastic.HandDrawProgress is null &&
-                completed.Stochastic.CompletedSemanticHandDrawRequested is null &&
-                after.PendingChoice is null &&
-                after.PendingKnowledgeDemonChoice is null &&
-                after.Stochastic.SemanticDeck?.Pending is null;
-            // The ordinary stage may finish without a Nature ticket when
-            // the hand has no remaining capacity or a committed order drew
-            // the cards. A suspended BeforeHandDraw choice remains pending.
-            if (!awaitingPreDrawChoice && !completedWithoutPendingDraw)
-                throw new NotSupportedException(
-                    "UNSUPPORTED_SEMANTIC_DECK site=combat.DrawPlayerHand " +
-                    "operation=zero_card_uninterrupted_stage");
-        }
-        if (requested == 0 && remaining > 0)
-            throw new NotSupportedException(
-                "UNSUPPORTED_SEMANTIC_DECK site=combat.DrawPlayerHand " +
-                "operation=unsupported_nested_stage");
         return PrototypeDrawCardsResumeResultV111.ForHandDraw(
             result, requested, remaining);
     }

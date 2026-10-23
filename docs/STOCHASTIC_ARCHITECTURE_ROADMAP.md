@@ -50,6 +50,13 @@ requires the saved cursor to remain at that stage. Provider resume policies
 and transcripts remain with their existing adapters. Static source review and
 `git diff --check` only; no tests or builds were run.
 
+**S4 semantic automatic hand-draw result ownership increment (2026-10-24):**
+`ResumeSemanticAutomaticHandDrawStep` is now the single interpreter for active
+draw, pending `BeforeHandDraw`, and completed zero or positive draw outcomes.
+`BeginSemanticAutomaticHandDraw` returns its validated result without
+rechecking zero-count boundaries. Static source review and `git diff --check`
+only; no tests or builds were run.
+
 **S4 controlled event-choice candidate replay increment (2026-10-24):**
 Generic event-effect continuations now pass each saved decision's ordered
 candidate labels into replay and compare them with the live support before
