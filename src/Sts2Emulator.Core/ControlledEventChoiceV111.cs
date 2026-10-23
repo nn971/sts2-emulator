@@ -1025,7 +1025,7 @@ internal sealed class ControlledEventChoiceReplayV111 :
     private static readonly AsyncLocal<ControlledEventChoiceReplayV111?> Active =
         new();
     private readonly ControlledEventChoiceReplayV111? _previous;
-    private readonly ControlledRandomIndexReplayPrefixV111 _prefix;
+    private readonly ControlledStochasticChanceReplayV111 _prefix;
     private readonly Dictionary<string, int> _priorOrdinalCounts;
     private string[]? _candidateLabels;
     private bool _disposed;
@@ -1037,7 +1037,10 @@ internal sealed class ControlledEventChoiceReplayV111 :
         IReadOnlyDictionary<string, int>? priorOrdinalCounts)
     {
         _previous = Active.Value;
-        _prefix = new ControlledRandomIndexReplayPrefixV111(decisions);
+        _prefix = ControlledStochasticChanceReplayV111.Begin(
+            decisions.Select(decision =>
+                ControlledStochasticDecisionV111.FromIndex(decision))
+                .ToArray());
         _priorOrdinalCounts = priorOrdinalCounts is null
             ? new Dictionary<string, int>(StringComparer.Ordinal)
             : new Dictionary<string, int>(priorOrdinalCounts,
@@ -1070,10 +1073,11 @@ internal sealed class ControlledEventChoiceReplayV111 :
             active._priorOrdinalCounts.GetValueOrDefault(request.StreamId) +
             active._prefix.Decisions
             .Take(active._prefix.ConsumedCount)
-            .Count(decision => decision.Request.StreamId == request.StreamId
-                && (!requestOrdinalIncludesCurrentOperationPrefix
-                    || decision.Request.SiteId != request.SiteId
-                    || decision.Request.OwnerId != request.OwnerId)));
+            .Count(decision => decision.IndexDecision is { } indexDecision &&
+                indexDecision.Request.StreamId == request.StreamId &&
+                (!requestOrdinalIncludesCurrentOperationPrefix ||
+                 indexDecision.Request.SiteId != request.SiteId ||
+                 indexDecision.Request.OwnerId != request.OwnerId)));
         var normalizedRequest = request with { Ordinal = ordinal };
         var candidateLabels = active._candidateLabels;
         if (candidateLabels is null)
@@ -1086,13 +1090,15 @@ internal sealed class ControlledEventChoiceReplayV111 :
             && candidateLabels.Length != normalizedRequest.SupportCount)
             throw new InvalidDataException(
                 "Event-choice candidate labels do not match the random support.");
-        if (!active._prefix.TryConsume(
-                normalizedRequest,
-                "Event-choice replay diverged from its saved chance request.",
-                out var selectedIndex))
+        if (!active._prefix.TryTake(
+                ControlledStochasticRequestV111.FromIndex(
+                    normalizedRequest), out var savedDecision,
+                "Event-choice replay diverged from its saved chance request."))
             throw new ControlledEventChoiceChanceRequiredException(
                 normalizedRequest, candidateLabels);
-        return selectedIndex;
+        return savedDecision.IndexDecision?.SelectedIndex ??
+            throw new InvalidDataException(
+                "Event-choice replay consumed a non-index outcome.");
     }
 
     public void EnsureConsumed()
@@ -1118,6 +1124,7 @@ internal sealed class ControlledEventChoiceReplayV111 :
         if (Active.Value != this)
             throw new InvalidOperationException(
                 "Controlled event-choice replay scopes must be disposed in reverse order.");
+        _prefix.Dispose();
         Active.Value = _previous;
         _disposed = true;
     }

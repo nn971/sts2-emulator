@@ -447,6 +447,9 @@ internal sealed class ControlledStochasticChanceReplayV111 :
 
     public string Mode => "controlled-v111";
     public int Remaining => _decisions.Length - _cursor;
+    internal int ConsumedCount => _cursor;
+    internal IReadOnlyList<ControlledStochasticDecisionV111> Decisions =>
+        _decisions;
     public static bool IsActive => Active.Value is not null;
 
     public static ControlledStochasticChanceReplayV111 Begin(
@@ -590,23 +593,49 @@ internal sealed class ControlledStochasticChanceReplayV111 :
         ControlledStochasticRequestV111 request,
         string[]? candidateLabels)
     {
-        if (_cursor >= _decisions.Length)
+        if (!TryTake(request, candidateLabels, true, out var expected, null))
             throw new ControlledStochasticChanceRequiredExceptionV111(
                 request, candidateLabels);
+        return expected;
+    }
+
+    internal bool TryTake(
+        ControlledStochasticRequestV111 request,
+        out ControlledStochasticDecisionV111 decision,
+        string? divergenceMessage = null) =>
+        TryTake(request, null, false, out decision, divergenceMessage);
+
+    private bool TryTake(
+        ControlledStochasticRequestV111 request,
+        string[]? candidateLabels,
+        bool compareCandidateLabels,
+        out ControlledStochasticDecisionV111 decision,
+        string? divergenceMessage)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        request.Validate();
+        if (_cursor >= _decisions.Length)
+        {
+            decision = null!;
+            return false;
+        }
+
         var expected = _decisions[_cursor];
-        var expectedRequest = expected.ToRequest();
-        if (!SameRequest(expectedRequest, request))
+        if (!SameRequest(expected.ToRequest(), request))
             throw new InvalidDataException(
-                "Typed stochastic replay diverged from its ordered saved prefix.");
-        if ((expected.CandidateLabels is null) !=
-                (candidateLabels is null) ||
-            expected.CandidateLabels is { } savedLabels &&
-                !savedLabels.SequenceEqual(candidateLabels!,
-                    StringComparer.Ordinal))
+                divergenceMessage ??
+                    "Typed stochastic replay diverged from its ordered saved prefix.");
+        if (compareCandidateLabels &&
+            ((expected.CandidateLabels is null) !=
+                 (candidateLabels is null) ||
+             expected.CandidateLabels is { } savedLabels &&
+                 !savedLabels.SequenceEqual(candidateLabels!,
+                     StringComparer.Ordinal)))
             throw new InvalidDataException(
                 "Typed stochastic replay diverged from its saved candidate labels.");
         _cursor++;
-        return expected;
+        decision = expected;
+        return true;
     }
 
     public static IDisposable DescribeCandidates(string[]? candidateLabels)
@@ -624,11 +653,14 @@ internal sealed class ControlledStochasticChanceReplayV111 :
         return new CandidateScope(active, previous);
     }
 
-    public void EnsureConsumed()
+    public void EnsureConsumed() => EnsureConsumed(errorMessage: null);
+
+    public void EnsureConsumed(string? errorMessage)
     {
         if (_cursor != _decisions.Length)
             throw new InvalidDataException(
-                "Typed stochastic replay left saved outcomes unused.");
+                errorMessage ??
+                    "Typed stochastic replay left saved outcomes unused.");
     }
 
     public void Dispose()
