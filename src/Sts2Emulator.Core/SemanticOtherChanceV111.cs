@@ -311,6 +311,91 @@ public static class SemanticOtherChanceEngineV111
     }
 
     /// <summary>
+    /// Resolve a registered combat generated-card model through the private
+    /// Native card-generation stream. The semantic event retains the ordered
+    /// model pool and resumes the suspended mechanics operation.
+    /// </summary>
+    public static (SemanticOtherChanceStateV111 Next,
+        RandomIndexDecisionV111 Decision) ResolveGeneratedCard(
+        SemanticOtherChanceStateV111 previous,
+        SemanticGeneratedCardEventV111 pending)
+    {
+        Validate(previous);
+        ArgumentNullException.ThrowIfNull(pending);
+        pending.Validate();
+        if (pending.SiteId is not (
+                StochasticSiteRegistryV111.CombatGeneratedCardSelectSiteId or
+                StochasticSiteRegistryV111.CombatRandomDrawAttackCardModelSiteId) ||
+            pending.StreamId is not ("prototype.combat" or
+                "run.combat_card_generation") ||
+            pending.OperationKind != "choose_card_model")
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_OTHER_CHANCE site=" + pending.SiteId +
+                " operation=" + pending.OperationKind);
+
+        var request = SemanticGenerationChoiceV111.CreateRequest(
+            pending.SiteId, pending.OwnerId, pending.Ordinal,
+            pending.CandidateCardIds.Length,
+            "run.combat_card_generation");
+        return ResolveNativeIndex(previous, request);
+    }
+
+    /// <summary>
+    /// Resolve a registered combat potion model through the private Native
+    /// potion-generation stream while retaining the semantic source pool.
+    /// </summary>
+    public static (SemanticOtherChanceStateV111 Next,
+        RandomIndexDecisionV111 Decision) ResolvePotionGeneration(
+        SemanticOtherChanceStateV111 previous,
+        SemanticPotionGenerationEventV111 pending)
+    {
+        Validate(previous);
+        ArgumentNullException.ThrowIfNull(pending);
+        pending.Validate();
+        if (pending.SiteId != SemanticPotionGenerationChoiceV111.SiteId ||
+            pending.StreamId is not (SemanticPotionGenerationChoiceV111.StreamId or
+                SemanticPotionGenerationChoiceV111.NativeStreamId) ||
+            pending.OperationKind != "choose_potion_model")
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_OTHER_CHANCE site=" + pending.SiteId +
+                " operation=" + pending.OperationKind);
+
+        var request = SemanticPotionGenerationChoiceV111.CreateRequest(
+            pending.OwnerId, pending.Ordinal,
+            pending.CandidatePotionIds.Length,
+            SemanticPotionGenerationChoiceV111.NativeStreamId);
+        return ResolveNativeIndex(previous, request);
+    }
+
+    /// <summary>
+    /// Resolve a registered combat card-transform replacement through the
+    /// Native card-generation stream while preserving its semantic source
+    /// identity and ordered replacement pool.
+    /// </summary>
+    public static (SemanticOtherChanceStateV111 Next,
+        RandomIndexDecisionV111 Decision) ResolveCardTransform(
+        SemanticOtherChanceStateV111 previous,
+        SemanticCardTransformEventV111 pending)
+    {
+        Validate(previous);
+        ArgumentNullException.ThrowIfNull(pending);
+        pending.Validate();
+        if (pending.SiteId != SemanticCardTransformChoiceV111.SiteId ||
+            pending.StreamId is not (SemanticCardTransformChoiceV111.StreamId or
+                SemanticCardTransformChoiceV111.NativeStreamId) ||
+            pending.OperationKind != "choose_card_model")
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_OTHER_CHANCE site=" + pending.SiteId +
+                " operation=" + pending.OperationKind);
+
+        var request = SemanticCardTransformChoiceV111.CreateRequest(
+            pending.OwnerId, pending.Ordinal,
+            pending.CandidateCardIds.Length,
+            SemanticCardTransformChoiceV111.NativeStreamId);
+        return ResolveNativeIndex(previous, request);
+    }
+
+    /// <summary>
     /// Commit one registered Native index boundary owned by this private
     /// engine stream bundle. Nature does not receive the request or outcome.
     /// The caller remains responsible for applying the selected index to its

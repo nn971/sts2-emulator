@@ -4327,7 +4327,7 @@ public static class SemanticPilotCombatEngineV111
         SemanticPilotCombatV111 current,
         SemanticEndTurnNestedChoiceV111 choice,
         SemanticPilotContinuationV111? historyEntry,
-        bool normalizeNoncontrolledCosts = false,
+        bool normalizeEngineOwnedChoices = false,
         bool validate = true,
         SemanticOtherChanceStateV111? otherChance = null)
     {
@@ -4345,7 +4345,7 @@ public static class SemanticPilotCombatEngineV111
             preservePendingEndTurn: sourceEndTurn is null);
         if (validate)
             Validate(next);
-        return normalizeNoncontrolledCosts
+        return normalizeEngineOwnedChoices
             ? ResolveEngineOwnedSemanticChoices(next)
             : next;
     }
@@ -4488,7 +4488,8 @@ public static class SemanticPilotCombatEngineV111
     /// </summary>
     public static SemanticPilotCombatV111 ResolveGeneratedCard(
         SemanticPilotCombatV111 current, string fingerprint,
-        string eventId, string cardId)
+        string eventId, string cardId,
+        SemanticOtherChanceStateV111? otherChance = null)
     {
         current.Validate();
         if (current.Fingerprint != fingerprint)
@@ -4501,12 +4502,13 @@ public static class SemanticPilotCombatEngineV111
                 "No semantic generated-card event is pending.");
         var expected = SemanticGenerationChoiceV111.Select(
             pending, eventId, cardId);
-        return ResumeGeneratedCardDecision(current, expected);
+        return ResumeGeneratedCardDecision(current, expected, otherChance);
     }
 
     private static SemanticPilotCombatV111 ResumeGeneratedCardDecision(
         SemanticPilotCombatV111 current,
-        SemanticGeneratedCardDecisionV111 decision)
+        SemanticGeneratedCardDecisionV111 decision,
+        SemanticOtherChanceStateV111? otherChance = null)
     {
         var pending = current.GeneratedCardPending ??
             throw new InvalidOperationException(
@@ -4517,16 +4519,20 @@ public static class SemanticPilotCombatEngineV111
             "semantic_generated_card", GeneratedCardDecision: decision.Fork());
         return ResumeAndPublishNestedChoice(
             current, choice,
-            new SemanticPilotContinuationV111(
-                "semantic_generated_card",
-                GeneratedCardDecision: decision.Fork()),
-            normalizeNoncontrolledCosts: true,
-            validate: false);
+            otherChance is null
+                ? new SemanticPilotContinuationV111(
+                    "semantic_generated_card",
+                    GeneratedCardDecision: decision.Fork())
+                : null,
+            normalizeEngineOwnedChoices: true,
+            validate: false,
+            otherChance: otherChance);
     }
 
     public static SemanticPilotCombatV111 ResolvePotionGeneration(
         SemanticPilotCombatV111 current, string fingerprint,
-        string eventId, string potionId)
+        string eventId, string potionId,
+        SemanticOtherChanceStateV111? otherChance = null)
     {
         current.Validate();
         if (current.Fingerprint != fingerprint)
@@ -4539,12 +4545,13 @@ public static class SemanticPilotCombatEngineV111
                 "No semantic potion-generation event is pending.");
         var expected = SemanticPotionGenerationChoiceV111.Select(
             pending, eventId, potionId);
-        return ResumePotionGenerationDecision(current, expected);
+        return ResumePotionGenerationDecision(current, expected, otherChance);
     }
 
     private static SemanticPilotCombatV111 ResumePotionGenerationDecision(
         SemanticPilotCombatV111 current,
-        SemanticPotionGenerationDecisionV111 decision)
+        SemanticPotionGenerationDecisionV111 decision,
+        SemanticOtherChanceStateV111? otherChance = null)
     {
         var pending = current.PotionGenerationPending ??
             throw new InvalidOperationException(
@@ -4556,16 +4563,20 @@ public static class SemanticPilotCombatEngineV111
             PotionGenerationDecision: decision.Fork());
         return ResumeAndPublishNestedChoice(
             current, choice,
-            new SemanticPilotContinuationV111(
-                "semantic_potion_generation",
-                PotionGenerationDecision: decision.Fork()),
-            normalizeNoncontrolledCosts: true,
-            validate: false);
+            otherChance is null
+                ? new SemanticPilotContinuationV111(
+                    "semantic_potion_generation",
+                    PotionGenerationDecision: decision.Fork())
+                : null,
+            normalizeEngineOwnedChoices: true,
+            validate: false,
+            otherChance: otherChance);
     }
 
     public static SemanticPilotCombatV111 ResolveCardTransform(
         SemanticPilotCombatV111 current, string fingerprint,
-        string eventId, string cardId)
+        string eventId, string cardId,
+        SemanticOtherChanceStateV111? otherChance = null)
     {
         current.Validate();
         if (current.Fingerprint != fingerprint)
@@ -4578,12 +4589,13 @@ public static class SemanticPilotCombatEngineV111
                 "No semantic card-transform event is pending.");
         var expected = SemanticCardTransformChoiceV111.Select(
             pending, eventId, cardId);
-        return ResumeCardTransformDecision(current, expected);
+        return ResumeCardTransformDecision(current, expected, otherChance);
     }
 
     private static SemanticPilotCombatV111 ResumeCardTransformDecision(
         SemanticPilotCombatV111 current,
-        SemanticCardTransformDecisionV111 decision)
+        SemanticCardTransformDecisionV111 decision,
+        SemanticOtherChanceStateV111? otherChance = null)
     {
         var pending = current.CardTransformPending ??
             throw new InvalidOperationException(
@@ -4594,11 +4606,14 @@ public static class SemanticPilotCombatEngineV111
             "semantic_card_transform", CardTransformDecision: decision.Fork());
         return ResumeAndPublishNestedChoice(
             current, choice,
-            new SemanticPilotContinuationV111(
-                "semantic_card_transform",
-                CardTransformDecision: decision.Fork()),
-            normalizeNoncontrolledCosts: true,
-            validate: false);
+            otherChance is null
+                ? new SemanticPilotContinuationV111(
+                    "semantic_card_transform",
+                    CardTransformDecision: decision.Fork())
+                : null,
+            normalizeEngineOwnedChoices: true,
+            validate: false,
+            otherChance: otherChance);
     }
 
     private static SemanticPilotCombatV111 StepNativePolicyBaseline(
@@ -5378,14 +5393,14 @@ public static class SemanticPilotCombatEngineV111
         if (current.PendingEndTurn is { } endTurn)
             return endTurn.TargetPending;
         var otherChance = current.Run.Stochastic.SemanticOtherChance;
-        var ordinal = otherChance is not null &&
-            otherChance.ProviderId != SemanticOtherChanceEngineV111.LegacyProviderId
-                ? otherChance.Decisions.Count(decision =>
-                    StochasticSiteRegistryV111.CombatRandomTargetSiteIds
-                        .Contains(decision.Request.SiteId,
-                            StringComparer.Ordinal))
-                : current.History.Count(transition =>
-                    transition.Kind == "semantic_target");
+        var ordinal = current.History.Count(transition =>
+            transition.Kind == "semantic_target");
+        if (otherChance is not null && otherChance.ProviderId !=
+            SemanticOtherChanceEngineV111.LegacyProviderId)
+            ordinal += otherChance.Decisions.Count(decision =>
+                StochasticSiteRegistryV111.CombatRandomTargetSiteIds
+                    .Contains(decision.Request.SiteId,
+                        StringComparer.Ordinal));
         return DescribePendingTargetEvent(current.Run, current.Fingerprint,
             ordinal);
     }
@@ -5435,17 +5450,22 @@ public static class SemanticPilotCombatEngineV111
                     "Random draw-Attack model choice lacks a supported source boundary.");
             SemanticDrawInsertionChoiceV111.ValidateBoundary(current.Run);
         }
+        var siteId = generation is not null
+            ? StochasticSiteRegistryV111.CombatGeneratedCardSelectSiteId
+            : StochasticSiteRegistryV111
+                .CombatRandomDrawAttackCardModelSiteId;
+        var otherChance = current.Run.Stochastic.SemanticOtherChance;
         var ordinal = current.History.Count(transition =>
             transition.Kind == "semantic_generated_card");
+        if (otherChance is not null && otherChance.ProviderId !=
+            SemanticOtherChanceEngineV111.LegacyProviderId)
+            ordinal += otherChance.Decisions.Count(decision =>
+                decision.Request.SiteId == siteId);
         if (generation is not null)
             return SemanticGenerationChoiceV111.DescribePending(
                 current.Run, current.Fingerprint, ordinal);
         var candidates = (string[])(generation?.CandidateCardIds ??
             drawInsertion!.CandidateCardIds).Clone();
-        var siteId = isDrawInsertionModelChoice
-            ? "combat.random_draw_attack.card_model"
-            : throw new InvalidDataException(
-                "Missing semantic generated-card source operation.");
         var operation = drawInsertion!.Operation.Kind;
         var ownerId = choice!.SourceCardInstanceId is { } sourceCardId
             ? "card_instance:" + sourceCardId
@@ -5468,6 +5488,12 @@ public static class SemanticPilotCombatEngineV111
         if (generation is null) return null;
         var ordinal = current.History.Count(transition =>
             transition.Kind == "semantic_potion_generation");
+        if (current.Run.Stochastic.SemanticOtherChance is
+                { } otherChance && otherChance.ProviderId !=
+                SemanticOtherChanceEngineV111.LegacyProviderId)
+            ordinal += otherChance.Decisions.Count(decision =>
+                decision.Request.SiteId ==
+                    SemanticPotionGenerationChoiceV111.SiteId);
         return SemanticPotionGenerationChoiceV111.DescribePending(
             current.Run, current.Fingerprint, ordinal);
     }
@@ -5491,6 +5517,12 @@ public static class SemanticPilotCombatEngineV111
                 "Card-transform choice conflicts with another semantic boundary.");
         var ordinal = current.History.Count(transition =>
             transition.Kind == "semantic_card_transform");
+        if (current.Run.Stochastic.SemanticOtherChance is
+                { } otherChance && otherChance.ProviderId !=
+                SemanticOtherChanceEngineV111.LegacyProviderId)
+            ordinal += otherChance.Decisions.Count(decision =>
+                decision.Request.SiteId ==
+                    SemanticCardTransformChoiceV111.SiteId);
         return SemanticCardTransformChoiceV111.DescribePending(
             current.Run, current.Fingerprint, ordinal);
     }
@@ -5893,6 +5925,52 @@ public static class SemanticPilotCombatEngineV111
                 current = ResolveRandomTarget(
                     current, current.Fingerprint, target.EventId,
                     target.CandidateEnemyInstanceIds[
+                        choice.Decision.SelectedIndex], choice.Next);
+                continue;
+            }
+
+            if (current.GeneratedCardPending is { } generatedCard &&
+                current.Run.Stochastic.SemanticOtherChance is
+                    { } generatedCardOwner &&
+                generatedCardOwner.ProviderId !=
+                    SemanticOtherChanceEngineV111.LegacyProviderId)
+            {
+                var choice = SemanticOtherChanceEngineV111
+                    .ResolveGeneratedCard(generatedCardOwner, generatedCard);
+                current = ResolveGeneratedCard(
+                    current, current.Fingerprint, generatedCard.EventId,
+                    generatedCard.CandidateCardIds[
+                        choice.Decision.SelectedIndex], choice.Next);
+                continue;
+            }
+
+            if (current.PotionGenerationPending is { } generatedPotion &&
+                current.Run.Stochastic.SemanticOtherChance is
+                    { } potionGenerationOwner &&
+                potionGenerationOwner.ProviderId !=
+                    SemanticOtherChanceEngineV111.LegacyProviderId)
+            {
+                var choice = SemanticOtherChanceEngineV111
+                    .ResolvePotionGeneration(
+                        potionGenerationOwner, generatedPotion);
+                current = ResolvePotionGeneration(
+                    current, current.Fingerprint, generatedPotion.EventId,
+                    generatedPotion.CandidatePotionIds[
+                        choice.Decision.SelectedIndex], choice.Next);
+                continue;
+            }
+
+            if (current.CardTransformPending is { } cardTransform &&
+                current.Run.Stochastic.SemanticOtherChance is
+                    { } cardTransformOwner &&
+                cardTransformOwner.ProviderId !=
+                    SemanticOtherChanceEngineV111.LegacyProviderId)
+            {
+                var choice = SemanticOtherChanceEngineV111
+                    .ResolveCardTransform(cardTransformOwner, cardTransform);
+                current = ResolveCardTransform(
+                    current, current.Fingerprint, cardTransform.EventId,
+                    cardTransform.CandidateCardIds[
                         choice.Decision.SelectedIndex], choice.Next);
                 continue;
             }
