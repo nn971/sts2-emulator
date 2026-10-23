@@ -64,6 +64,12 @@ existing Native generator and atomic ReferenceNature session. Native unlock
 filtering, source call order, and cursor parity remain open. Static source
 review and `git diff --check` only; no tests or builds were run.
 
+**S0 Reflections manual site review increment (2026-10-23):** The two
+Touch a Mirror card-pick sites now trace the ordered downgrade and recomputed
+upgrade supports through the existing atomic ReferenceNature continuation.
+Source filtering, fallback weighting, and Native cursor parity remain open.
+Static source review and `git diff --check` only; no tests or builds were run.
+
 **S0 summon-pool SiteId ownership increment (2026-10-23):** The existing
 legacy summon continuation and query registry now use the shared
 `combat.enemy.summon_pool.select` constant. Its Native pool path continues to
