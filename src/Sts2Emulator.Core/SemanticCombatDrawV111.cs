@@ -653,7 +653,7 @@ public static class SemanticCombatDrawEngineV111
                 Combat = semanticCombat
             }
         };
-        SemanticAutomaticHandDrawResumeResultV111 handDraw;
+        SemanticDrawProgressResumeResultV111 handDraw;
         using (ControlledChanceGuardV111.Enter())
             handDraw = PrototypeGameEngine
                 .BeginSemanticAutomaticHandDraw(attached);

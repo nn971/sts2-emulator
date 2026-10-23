@@ -82,7 +82,7 @@ internal static class SemanticChoiceResumeV111
             ownedDecision.Event.SiteId);
     }
 
-    internal static (SemanticAutomaticHandDrawResumeResultV111 Progress,
+    internal static (SemanticDrawProgressResumeResultV111 Progress,
         SemanticDrawHookChoiceDecisionV111 Decision)
         ResumeDrawHookChoice(
             RunState checkpoint,
@@ -103,7 +103,7 @@ internal static class SemanticChoiceResumeV111
             checkpoint, pending, actionId);
         var (run, _) = Resume(checkpoint, decision);
         if (!pending.AutomaticHandDraw)
-            return (new SemanticAutomaticHandDrawResumeResultV111(
+            return (new SemanticDrawProgressResumeResultV111(
                     run, requested,
                     PrototypeGameEngine.GetSemanticDrawRemainingCount(
                         run, remaining, drawnBefore)),
@@ -113,12 +113,12 @@ internal static class SemanticChoiceResumeV111
             "Automatic draw-hook choice removed combat.");
         if (pending.BeforeHandDraw &&
             combat.PendingChoice?.AutomaticSemanticDrawHookChoice == true)
-            return (new SemanticAutomaticHandDrawResumeResultV111(
+            return (new SemanticDrawProgressResumeResultV111(
                 run, requested, 0), decision);
 
         if (pending.BeforeHandDraw)
         {
-            SemanticAutomaticHandDrawResumeResultV111 progress;
+            SemanticDrawProgressResumeResultV111 progress;
             using (ControlledChanceGuardV111.Enter())
                 progress = PrototypeGameEngine
                     .ResumeSemanticBeforeHandDrawActionChoice(run);
@@ -134,13 +134,13 @@ internal static class SemanticChoiceResumeV111
                 throw new InvalidDataException(
                     "Automatic draw-hook choice lost its tagged cursor.");
             remaining = savedRemaining;
-            return (new SemanticAutomaticHandDrawResumeResultV111(
+            return (new SemanticDrawProgressResumeResultV111(
                 run, requested, remaining), decision);
         }
 
         var resumed = PrototypeGameEngine
             .ResumeSemanticAutomaticHandDraw(run, remaining);
-        return (new SemanticAutomaticHandDrawResumeResultV111(
+        return (new SemanticDrawProgressResumeResultV111(
             resumed.Run, requested, resumed.RemainingCount), decision);
     }
 
@@ -223,7 +223,7 @@ internal static class SemanticChoiceResumeV111
                 run, selectedCost);
     }
 
-    internal static (SemanticAutomaticHandDrawResumeResultV111 Progress,
+    internal static (SemanticDrawProgressResumeResultV111 Progress,
         string SiteId) Resume(
         RunState checkpoint,
         SemanticRandomPileCardDecisionV111 decision)
@@ -232,7 +232,7 @@ internal static class SemanticChoiceResumeV111
         ArgumentNullException.ThrowIfNull(decision);
         decision.Validate();
         var ownedDecision = decision.Fork();
-        SemanticAutomaticHandDrawResumeResultV111 progress;
+        SemanticDrawProgressResumeResultV111 progress;
         using (ControlledChanceGuardV111.Enter())
             progress = PrototypeGameEngine
                 .ResumeSemanticRandomPileCardChoice(

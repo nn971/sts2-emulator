@@ -3,7 +3,7 @@ namespace Sts2Emulator.Core;
 internal readonly record struct SemanticCombatDrawResumeResultV111(
     RunState Run, int RemainingCount);
 
-internal readonly record struct SemanticAutomaticHandDrawResumeResultV111(
+internal readonly record struct SemanticDrawProgressResumeResultV111(
     RunState Run, int RequestedCount, int RemainingCount);
 
 /// <summary>

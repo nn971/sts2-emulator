@@ -250,7 +250,7 @@ public sealed partial class PrototypeGameEngine
             automaticHandDrawRequested, recycleSite, recycleOperation);
     }
 
-    internal static (SemanticAutomaticHandDrawResumeResultV111 Progress,
+    internal static (SemanticDrawProgressResumeResultV111 Progress,
         SemanticDrawHookChoiceDecisionV111 Decision)
         ResumeSemanticDrawHookChoice(
             RunState checkpoint,
