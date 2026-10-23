@@ -2187,6 +2187,34 @@ public static partial class ChanceLawEngineV111
     }
 
     /// <summary>
+    /// Query one Native player-reward draw made by Entropic Brew while
+    /// filling an empty potion slot. The caller validates the slot owner
+    /// against the action and the ordered source potion pool.
+    /// </summary>
+    public static ChanceLawV111 QueryNativeRunPotionFillSlotModel(
+        RandomIndexRequestV111 request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        request.ValidateForNativeProvider();
+        var pool = PrototypeContent.PotionPool;
+        if (request.SiteId != "run.potion.fill_empty_slots.model"
+            || request.StreamId != NativePlayerRngV111.RewardsStreamId
+            || request.OperationKind != "choose_index"
+            || request.SupportCount != pool.Length
+            || !request.OrderedCandidates.SequenceEqual(
+                Enumerable.Range(0, pool.Length)))
+            throw new InvalidDataException(
+                "Native Entropic Brew request differs from its ordered potion pool.");
+
+        var eventId = CanonicalJson.Sha256(new
+        {
+            boundary = "native-run-potion-fill-slot-model-index",
+            request
+        });
+        return QueryRandomIndex(eventId, request);
+    }
+
+    /// <summary>
     /// Query the caller-declared unowned-relic index support on one of its
     /// legacy event streams or the hypothesized Native player reward stream.
     /// Pool filtering and the owner prefix are supplied by the caller.
@@ -7096,7 +7124,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
             ? ReferenceNatureRunProjectionV111.CreateNatureReplayOrigin(
                 source, createRelicBagWhenMissing: true)
             : source.Fork();
-        if (UsesTypedNativeRunAction(origin, detachedAction))
+        if (UsesTypedRunAction(origin, detachedAction))
         {
             var actionId = PrototypeAiEnvironment.StableActionId(
                 detachedAction);
@@ -7285,7 +7313,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
                 Origin, continuation, providerDecision,
                 checkpoint => new PrototypeGameEngine().Step(
                     checkpoint, CloneAction(Action)).State,
-                request => IsNativeRunActionRequest(
+                request => IsTypedRunActionRequest(
                     Origin, Action, request));
         var providerDecisions = replay.Continuation?.Decisions ??
             continuation.Decisions.Append(providerDecision.Fork()).ToArray();
@@ -7310,11 +7338,51 @@ public sealed record ReferenceNatureRunActionSessionV111(
         return next;
     }
 
-    private static bool UsesTypedNativeRunAction(
+    private static bool UsesTypedRunAction(
         RunState source, GameAction action) =>
         UsesTypedNativePotionFactoryCombatEntry(source, action)
         || ControlledRunActionEngineV111.IsNativeRestHealRewardAction(
+            source, action)
+        || IsEntropicBrewAction(source, action);
+
+    private static bool IsEntropicBrewAction(
+        RunState source, GameAction action) =>
+        ControlledRunActionEngineV111.IsEntropicBrewRunAction(
             source, action);
+
+    private static bool IsEntropicBrewFillRequest(
+        RunState source, GameAction action,
+        ControlledStochasticRequestV111 request)
+    {
+        if (!IsEntropicBrewAction(source, action)
+            || request.IndexRequest is not { } indexRequest
+            || source.Player.ActiveRelics.Any(relic =>
+                PrototypeContent.Relic(relic.RelicId)
+                    .PreventPotionAcquisition))
+            return false;
+
+        var expectedStream = source.Stochastic.NativeRunRng is null
+            ? "reward" : NativePlayerRngV111.RewardsStreamId;
+        if (request.StreamId != expectedStream)
+            return false;
+
+        var poolFingerprint = CanonicalJson.Sha256(
+            PrototypeContent.PotionPool);
+        var selectedSlot = action.ReadPayload<UsePotionPayload>().Slot;
+        var validOwners = source.Player.PotionSlots
+            .Select((potion, slot) => (potion, slot))
+            .Where(item => item.potion is null || item.slot == selectedSlot)
+            .Select(item =>
+                $"player:potion_slot:{item.slot}:pool:{poolFingerprint}");
+        return indexRequest.SiteId ==
+                "run.potion.fill_empty_slots.model"
+            && indexRequest.OperationKind == "choose_index"
+            && indexRequest.SupportCount == PrototypeContent.PotionPool.Length
+            && indexRequest.OrderedCandidates.SequenceEqual(
+                Enumerable.Range(0, PrototypeContent.PotionPool.Length))
+            && validOwners.Contains(indexRequest.OwnerId,
+                StringComparer.Ordinal);
+    }
 
     private static bool UsesTypedNativePotionFactoryCombatEntry(
         RunState source, GameAction action) =>
@@ -7335,7 +7403,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
             decisions,
             checkpoint => new PrototypeGameEngine().Step(
                 checkpoint, CloneAction(action)).State,
-            request => IsNativeRunActionRequest(source, action, request));
+            request => IsTypedRunActionRequest(source, action, request));
 
     private static RunState CommitNativeRunActionTrace(
         RunState run, GameAction action,
@@ -7353,9 +7421,9 @@ public sealed record ReferenceNatureRunActionSessionV111(
                 .ToArray(),
             MapNodeId: action.Kind == "choose_map_node"
                 ? action.ReadPayload<ChooseMapNodePayload>().NodeId : null,
-            ActionFingerprint: action.Kind ==
-                PrototypeNativeRestSiteActionsV111.Heal
-                    ? PrototypeAiEnvironment.StableActionId(action) : null)
+            ActionFingerprint: action.Kind is
+                PrototypeNativeRestSiteActionsV111.Heal or "use_potion"
+                ? PrototypeAiEnvironment.StableActionId(action) : null)
         {
             TypedDecisions = decisions
         };
@@ -7366,12 +7434,14 @@ public sealed record ReferenceNatureRunActionSessionV111(
         };
     }
 
-    private static bool IsNativeRunActionRequest(
+    private static bool IsTypedRunActionRequest(
         RunState source, GameAction action,
         ControlledStochasticRequestV111 request)
     {
         if (ControlledRunActionEngineV111
                 .IsNativeRestHealRewardRequest(source, action, request))
+            return true;
+        if (IsEntropicBrewFillRequest(source, action, request))
             return true;
         if (!UsesTypedNativePotionFactoryCombatEntry(source, action))
             return false;
@@ -7433,7 +7503,28 @@ public sealed record ReferenceNatureRunActionSessionV111(
                 .IsNativeRestHealRewardAction(source, action))
             return QueryNativeRestHealRewardLaw(
                 source, action, continuation, natureDecisions);
-        if (!IsNativeRunActionRequest(source, action, request))
+        if (request.IndexRequest is { } potionFillRequest &&
+            IsEntropicBrewFillRequest(
+                source, action, request))
+        {
+            if (potionFillRequest.StreamId ==
+                NativePlayerRngV111.RewardsStreamId)
+                return ChanceLawEngineV111
+                    .QueryNativeRunPotionFillSlotModel(potionFillRequest);
+            var slotPrefix = "player:potion_slot:";
+            var poolSuffix = ":pool:" + CanonicalJson.Sha256(
+                PrototypeContent.PotionPool);
+            var slotText = potionFillRequest.OwnerId[
+                slotPrefix.Length..^poolSuffix.Length];
+            if (!int.TryParse(slotText, NumberStyles.None,
+                    CultureInfo.InvariantCulture, out var slotIndex))
+                throw new InvalidDataException(
+                    "Legacy Entropic Brew slot owner is malformed.");
+            return ChanceLawEngineV111.QueryLegacyRunPotionFillSlotModel(
+                slotIndex, canAcquirePotion: true, slotIsEmpty: true,
+                ordinal: potionFillRequest.Ordinal);
+        }
+        if (!IsTypedRunActionRequest(source, action, request))
             throw new NotSupportedException(
                 $"ReferenceNature Native run action does not support stochastic site '{request.SiteId}'.");
 
@@ -8009,7 +8100,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
             && DecisionTranscript is { Length: 0 };
         var typedNativeRunAction = Origin is not null
             && Action is not null
-            && UsesTypedNativeRunAction(Origin, Action);
+            && UsesTypedRunAction(Origin, Action);
         if (SchemaId != CurrentSchemaId || Origin is null || Action is null ||
             Run is null || InitialNatureState is null || NatureState is null ||
             DecisionTranscript is null || string.IsNullOrWhiteSpace(Action.Kind) ||

@@ -646,6 +646,11 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                         var potionPool = PrototypeContent.PotionPool;
                         var ownerId = "player:potion_slot:" + index + ":pool:"
                             + CanonicalJson.Sha256(potionPool);
+                        using var typedCandidateLabels = nativeRunRng is null
+                            ? ControlledStochasticChanceReplayV111
+                                .DescribeCandidates(
+                                    (string[])potionPool.Clone())
+                            : null;
                         var potionIndex = nativeRunRng is { } nativeRewardRng
                             ? NativePlayerRngV111.ChooseIndex(
                                 nativeRewardRng,

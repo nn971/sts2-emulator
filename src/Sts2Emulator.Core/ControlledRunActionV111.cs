@@ -56,8 +56,9 @@ public sealed record ControlledRunActionTraceV111(
                 .IsCombatRewardRelicActionKind(ActionId);
         var restHealRewardAction = ActionId ==
             PrototypeNativeRestSiteActionsV111.Heal;
+        var entropicBrewAction = ActionId == "use_potion";
         var actionPayloadRequired = shopPurchaseAction || rewardRelicAction
-            || restHealRewardAction;
+            || restHealRewardAction || entropicBrewAction;
         if (ActionId is not ("start_run" or "continue_act"
                 or PrototypeNativeRestSiteActionsV111.Dig
                 or "choose_map_node")
@@ -68,6 +69,7 @@ public sealed record ControlledRunActionTraceV111(
             || actionPayloadRequired != (ActionFingerprint is not null)
             || actionPayloadRequired && string.IsNullOrWhiteSpace(ActionFingerprint)
             || Decisions is null || CandidateLabels is null
+            || entropicBrewAction && typedDecisions is null
             || (typedDecisions is null && Decisions.Length == 0)
             || typedDecisions is { Length: 0 }
             || Decisions.Length != CandidateLabels.Length
@@ -221,7 +223,8 @@ public sealed record ControlledRunActionTraceV111(
         var mapNodeAction = ActionId == "choose_map_node";
         var restHealAction = ActionId ==
             PrototypeNativeRestSiteActionsV111.Heal;
-        if (!(mapNodeAction || restHealAction) ||
+        var entropicBrewAction = ActionId == "use_potion";
+        if (!(mapNodeAction || restHealAction || entropicBrewAction) ||
             (mapNodeAction
                 ? string.IsNullOrWhiteSpace(MapNodeId) ||
                   ActionFingerprint is not null
@@ -252,17 +255,34 @@ public sealed record ControlledRunActionTraceV111(
                     request.OperationKind == "choose_index" &&
                     request.OrderedCandidates.SequenceEqual(
                         Enumerable.Range(0, request.SupportCount));
+                var entropicBrewModel = entropicBrewAction &&
+                    request.SiteId ==
+                        "run.potion.fill_empty_slots.model" &&
+                    request.OperationKind == "choose_index" &&
+                    request.SupportCount == PrototypeContent.PotionPool.Length &&
+                    request.OrderedCandidates.SequenceEqual(
+                        Enumerable.Range(0, PrototypeContent.PotionPool.Length)) &&
+                    IsEntropicBrewTraceOwner(request.OwnerId) &&
+                    (request.StreamId ==
+                            NativePlayerRngV111.RewardsStreamId
+                        ? decision.CandidateLabels is null
+                        : request.StreamId == "reward" &&
+                          decision.CandidateLabels is { } potionLabels &&
+                          potionLabels.SequenceEqual(
+                              PrototypeContent.PotionPool,
+                              StringComparer.Ordinal));
                 if (indexDecision.ProviderMode != "controlled-v111" ||
                     indexDecision.NativeCursorBefore is not null ||
                     indexDecision.NativeCursorAfter is not null ||
-                    !(nativeEncounter || nativePotionModel || nativeRestModel) ||
+                    !(nativeEncounter || nativePotionModel || nativeRestModel ||
+                        entropicBrewModel) ||
                     (nativePotionModel || nativeRestModel) &&
                         (decision.CandidateLabels is not null ||
                          request.OperationKind != "choose_index") ||
                     decision.CandidateLabels is { } labels &&
                         labels.Length != request.SupportCount)
                     throw new InvalidDataException(
-                        "Typed controlled run-action index decision is outside a supported Native run-action boundary.");
+                        "Typed controlled run-action index decision is outside a supported run-action boundary.");
             }
             else if (decision.UnitFloatDecision is { } floatDecision)
             {
@@ -293,6 +313,20 @@ public sealed record ControlledRunActionTraceV111(
                     "Typed controlled run-action transcript has an unsupported provider primitive.");
             }
         }
+
+    private static bool IsEntropicBrewTraceOwner(string ownerId)
+    {
+        var poolSuffix = ":pool:" + CanonicalJson.Sha256(
+            PrototypeContent.PotionPool);
+        const string prefix = "player:potion_slot:";
+        if (!ownerId.StartsWith(prefix, StringComparison.Ordinal) ||
+            !ownerId.EndsWith(poolSuffix, StringComparison.Ordinal) ||
+            ownerId.Length <= prefix.Length + poolSuffix.Length)
+            return false;
+        var slotText = ownerId[prefix.Length..^poolSuffix.Length];
+        return int.TryParse(slotText, NumberStyles.None,
+            CultureInfo.InvariantCulture, out var slot) && slot >= 0;
+    }
 
         var indexDecisions = typedDecisions.Where(decision =>
                 decision.IndexDecision is not null).ToArray();
@@ -1331,6 +1365,30 @@ public static class ControlledRunActionEngineV111
                         PrototypeRunEffectKind.HealPercentMaxHp, 20)]);
     }
 
+    internal static bool IsEntropicBrewRunAction(
+        RunState source, GameAction action)
+    {
+        if (source.Phase is not (RunPhase.MapChoice or RunPhase.Reward
+                or RunPhase.Shop or RunPhase.Rest
+                or RunPhase.ActTransition)
+            || action.Kind != "use_potion")
+            return false;
+
+        var payload = action.ReadPayload<UsePotionPayload>();
+        if (payload.TargetEnemyId is not null
+            || payload.Slot < 0
+            || payload.Slot >= source.Player.PotionSlots.Length
+            || source.Player.PotionSlots[payload.Slot] is not { } potion
+            || potion.PotionId != "proto.potion.entropic_brew")
+            return false;
+
+        var definition = PrototypeContent.Potion(potion.PotionId);
+        return definition.UsableOutsideCombat
+            && (definition.RunEffects ?? []).SequenceEqual([
+                new PrototypeRunEffectSpec(
+                    PrototypeRunEffectKind.FillPotionSlots)]);
+    }
+
     internal static bool IsLegacyRestHealRewardAction(
         RunState source, GameAction action) =>
         source.Phase == RunPhase.Rest
@@ -1381,7 +1439,8 @@ public static class ControlledRunActionEngineV111
         IsShopPurchaseAction(source, action)
         || IsCombatRewardRelicAction(source, action)
         || IsLegacyRestHealRewardAction(source, action)
-        || IsNativeRestHealRewardAction(source, action);
+        || IsNativeRestHealRewardAction(source, action)
+        || IsEntropicBrewRunAction(source, action);
 
     internal static void ValidatePendingShopPurchase(
         RunState source,

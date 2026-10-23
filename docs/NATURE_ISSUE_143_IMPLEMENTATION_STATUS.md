@@ -942,7 +942,16 @@ The existing ReferenceNature run-action session now admits legal non-event
 uses of Fruit Juice and Blood Potion through their exact modeled max-HP gain
 and max-HP healing effects. The controlled replay guard rejects any chance
 request and snapshot validation replays the deterministic action. Event potion
-continuations remain separate, and Entropic Brew remains excluded because its
-empty-slot refill samples the potion pool. No chance owner or snapshot schema
-was added. Static source review and `git diff --check` only; no tests or builds
-were run.
+continuations remain separate. No chance owner or snapshot schema was added.
+Static source review and `git diff --check` only; no tests or builds were run.
+
+## 2026-10-23: Entropic Brew empty-slot refills
+
+The typed ReferenceNature run-action continuation now covers non-event
+Entropic Brew uses. It replays one pool draw for each empty slot, preserving
+the source slot order and owner fingerprint. Legacy runs use the existing
+ordered prototype-pool Chance Law on the `reward` stream. Native runs use the
+`player.rewards` request and its Native bounded-index law, with request support
+and slot ownership checked against the current prototype pool. Native game
+pool-order fidelity still awaits the reference mod. Static source review and
+`git diff --check` only; no tests or builds were run.
