@@ -422,10 +422,11 @@ remains separate from seeded emulator RNG equality. See
 
 - The `RandomIndex` provider handles finite ordered **index** decisions. A
   separate typed unit-float provider wraps native and controlled samples.
-  Native bounded-index decisions now replay one source-codec `NextInt` from
-  their saved before-cursor and validate the exact selected ticket and
-  after-cursor; this checks transcript self-consistency, not source stream or
-  seed parity. The Gaussian-integer provider wraps the native inclusive
+  Native typed decisions replay their declared operation from the saved
+  before-cursor and validate the sampled value and after-cursor, including
+  rejection draws for Gaussian operations; this checks transcript
+  self-consistency, not source stream or seed parity. The Gaussian-integer
+  provider wraps the native inclusive
   rejection sampler; the Gaussian-double provider wraps the native bounded
   rejection sampler and records its full cursor span; ranged-float/double
   providers wrap native

@@ -57,6 +57,16 @@ public sealed record RandomRangedDoubleDecisionV111(
         RandomBoundaryCursorSpanV111.Validate(
             Request.StreamId, ProviderMode,
             NativeCursorBefore, NativeCursorAfter);
+        if (ProviderMode == "native-v111")
+        {
+            var replayedValue = NativeRngV111.ReplayNextRangedDouble(
+                NativeCursorBefore!, Request.MinInclusive,
+                Request.MaxInclusive, out var replayedCursorAfter);
+            if (SelectedValue != replayedValue ||
+                NativeCursorAfter != replayedCursorAfter)
+                throw new InvalidDataException(
+                    "Native ranged-double decision does not match its saved cursor transition.");
+        }
     }
 }
 

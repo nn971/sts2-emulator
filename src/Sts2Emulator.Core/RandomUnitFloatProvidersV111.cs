@@ -54,6 +54,15 @@ public sealed record RandomUnitFloatDecisionV111(
         RandomBoundaryCursorSpanV111.Validate(
             Request.StreamId, ProviderMode,
             NativeCursorBefore, NativeCursorAfter);
+        if (ProviderMode == "native-v111")
+        {
+            var replayedValue = NativeRngV111.ReplayNextUnitFloat(
+                NativeCursorBefore!, out var replayedCursorAfter);
+            if (SelectedValue != replayedValue ||
+                NativeCursorAfter != replayedCursorAfter)
+                throw new InvalidDataException(
+                    "Native unit-float decision does not match its saved cursor transition.");
+        }
     }
 }
 

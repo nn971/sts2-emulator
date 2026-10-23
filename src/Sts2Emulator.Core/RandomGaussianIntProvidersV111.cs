@@ -57,6 +57,21 @@ public sealed record RandomGaussianIntDecisionV111(
         RandomBoundaryCursorSpanV111.Validate(
             Request.StreamId, ProviderMode,
             NativeCursorBefore, NativeCursorAfter);
+        if (ProviderMode == "native-v111")
+        {
+            if (!ChanceLawEngineV111.MatchesNativeMapGaussianIntRequest(
+                    Request))
+                throw new InvalidDataException(
+                    "Native Gaussian-integer decision has an unsupported request shape.");
+            var replayedValue = NativeRngV111.ReplayNextGaussianInt(
+                NativeCursorBefore!, Request.Mean,
+                Request.StandardDeviation, Request.MinInclusive,
+                Request.MaxInclusive, out var replayedCursorAfter);
+            if (SelectedValue != replayedValue ||
+                NativeCursorAfter != replayedCursorAfter)
+                throw new InvalidDataException(
+                    "Native Gaussian-integer decision does not match its saved cursor transition.");
+        }
     }
 }
 
@@ -83,6 +98,10 @@ public sealed class NativeRandomGaussianIntProviderV111
                 request.SiteId))
             throw new NotSupportedException(
                 $"Native Gaussian-integer sampling does not support site '{request.SiteId}'.");
+        if (!ChanceLawEngineV111.MatchesNativeMapGaussianIntRequest(request))
+            throw new ArgumentException(
+                "Native Gaussian-integer sampling requires a registered source request shape.",
+                nameof(request));
         using var nativeBoundary =
             ControlledChanceGuardV111.AuthorizeEngineOwnedNativeBoundary(
                 request.SiteId, request.StreamId, "gaussian_int");

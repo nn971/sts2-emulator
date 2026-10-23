@@ -118,9 +118,81 @@ public static class NativeRngV111
         ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
         if (maxExclusive <= 0)
             throw new ArgumentOutOfRangeException(nameof(maxExclusive));
-        var result = NextUInt64(before, out after);
-        var sample = (result >> 11) * (1.0 / 9007199254740992.0);
+        var cursor = before;
+        var sample = NextDouble(ref cursor);
+        after = cursor;
         return (int)((long)(sample * maxExclusive));
+    }
+
+    internal static float ReplayNextUnitFloat(
+        NativeRngSnapshot before, out NativeRngSnapshot after)
+    {
+        var cursor = before;
+        var sample = NextDouble(ref cursor);
+        after = cursor;
+        return (float)(sample * (double)(1f - 0f) + 0f);
+    }
+
+    internal static float ReplayNextRangedFloat(
+        NativeRngSnapshot before, float minInclusive, float maxInclusive,
+        out NativeRngSnapshot after)
+    {
+        var cursor = before;
+        var sample = NextDouble(ref cursor);
+        after = cursor;
+        return (float)(sample * (double)(maxInclusive - minInclusive) +
+            minInclusive);
+    }
+
+    internal static double ReplayNextRangedDouble(
+        NativeRngSnapshot before, double minInclusive, double maxInclusive,
+        out NativeRngSnapshot after)
+    {
+        var cursor = before;
+        var sample = NextDouble(ref cursor);
+        after = cursor;
+        return sample * (maxInclusive - minInclusive) + minInclusive;
+    }
+
+    internal static int ReplayNextGaussianInt(
+        NativeRngSnapshot before, int mean, int stdDev, int min, int max,
+        out NativeRngSnapshot after)
+    {
+        var cursor = before;
+        while (true)
+        {
+            var radius = Math.Sqrt(-2 * Math.Log(1 - NextDouble(ref cursor)));
+            var angle = 2 * Math.PI * (1 - NextDouble(ref cursor));
+            var value = (int)Math.Round(mean + stdDev * radius * Math.Sin(angle));
+            if (value < min || value > max)
+                continue;
+            after = cursor;
+            return value;
+        }
+    }
+
+    internal static double ReplayNextGaussianDouble(
+        NativeRngSnapshot before, double mean, double stdDev,
+        double min, double max, out NativeRngSnapshot after)
+    {
+        var cursor = before;
+        while (true)
+        {
+            var radius = Math.Sqrt(-2 * Math.Log(1 - NextDouble(ref cursor)));
+            var angle = 2 * Math.PI * (1 - NextDouble(ref cursor));
+            var unit = mean + stdDev * radius * Math.Cos(angle);
+            if (unit < 0 || unit > 1)
+                continue;
+            after = cursor;
+            return unit * (max - min) + min;
+        }
+    }
+
+    private static double NextDouble(ref NativeRngSnapshot cursor)
+    {
+        var value = NextUInt64(cursor, out var next);
+        cursor = next;
+        return (value >> 11) * (1.0 / 9007199254740992.0);
     }
 
     private static ulong NextUInt64(
