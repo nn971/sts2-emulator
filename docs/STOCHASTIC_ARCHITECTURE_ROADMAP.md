@@ -2568,3 +2568,30 @@ Run matched source-state/seed sets; frozen player policy; fair observations/lega
 **S0 Ancient-offer manual review increment (2026-10-23):** The scoped inventory now traces Darv's variant-plus-relic shuffle and the Nonupeipe, Tanx, and Vakuu Act 3 offer shuffles through their existing conditional Ancient-offer session. Reconciliation against the 185-ID matrix found three IDs already represented in the scoped rows but omitted from the previous declared total; coverage is now 110/185, with 75 remaining. The Ancient source audit now distinguishes source-verified bounded-index transforms from the still-unverified complete conditional laws, pool fidelity, stream attribution, and cursor parity. Static source review and `git diff --check` only; no tests or builds were run.
 
 **S0 Native merchant manual review increment (2026-10-23):** Eleven Shop site IDs now trace the sale slot, character-card models and inert upgrade roll, card/potion/relic price modifiers, and the Nature-only hidden relic identity through the existing atomic merchant session. The review distinguishes configured `player.shops` Native requests, the retained Native-regional `shop` fallback, and the unverified Nature relic-queue identity law. Scoped manual review coverage is 121/185, with 64 remaining; source pool completeness, Native attribution and cursor parity remain open. Static source review and `git diff --check` only; no tests or builds were run.
+
+**S0 legacy-map manual site review increment (2026-10-23):** The scoped
+inventory traces the ten `map.legacy.*` requests through prototype floor
+width, adjacent-layer edge construction, room assignment, and the existing
+legacy `start_run` / unconfigured `continue_act` continuation. The Native map
+generator remains source-owned; legacy equal-index weights, source geometry,
+and call-order parity remain open. Static source review and
+`git diff --check` only; no tests or builds were run.
+
+**S0 event-reward manual site review increment (2026-10-23):** The five
+`event.reward.*` rows now trace legacy event-effect pools, optional potion
+offers, both Scroll Boxes shuffles, and the post-reward modifier-curse frame.
+The existing controlled event-choice and Native Neow event-relic sessions own
+the documented replay boundaries; Wellspring and Whispering Hollow retain
+separate potion sites, and Native curse ownership, source pools, stream
+attribution, and legacy weights remain open. Scoped manual review coverage is
+136/185 stable IDs, with 49 remaining. Static source review and
+`git diff --check` only; no tests or builds were run.
+
+**S0 later-act Ancient assignment manual review increment (2026-10-23):**
+The three `event.later_act.*` rows now trace the conditional shared-Darv
+assignment, the bound-one Glory request, and each act's ordered Ancient pool
+through configured experimental run preparation. The pinned source audit now
+records the existing saved preparation continuation and its replayed decision
+prefix; Native `UpFront` ordering and full source-prefix parity remain open.
+Scoped manual review coverage is 139/185 stable IDs, with 46 remaining. Static
+source review and `git diff --check` only; no tests or builds were run.
