@@ -337,6 +337,10 @@ enemy-theft sites. Each identity annotation is paired with the exact primitive
 index decision and its cursor span; the schema marker requires one annotation
 for every such registered decision. This records semantic outcomes without
 asserting that the candidate support or Native source route is complete.
+New Native-policy audits also carry a mixed-trace schema marker; restore
+validation checks a fingerprint of the full retained trace and rejects a
+missing or truncated trace whenever Native decisions are retained. Older
+unmarked snapshots retain the former compatibility path.
 The intent engine's eligibility logic (source move state, weighted
 branches, anti-repeat, opening sequence and per-creature commit order)
 remains inside `PrototypeGameEngine.SelectEnemyMove`. The callback

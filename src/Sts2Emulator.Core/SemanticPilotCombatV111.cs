@@ -183,6 +183,8 @@ public sealed record SemanticNativePolicyAuditV111(
         "sts2-v111-native-weighted-intent-audit-v1";
     public const string CardInstanceIndexAuditSchemaV1 =
         "sts2-v111-native-card-instance-index-audit-v1";
+    public const string ProviderTraceSchemaV1 =
+        "sts2-v111-native-policy-mixed-trace-v1";
 
     /// <summary>Null for older snapshots that predate weighted intent audit
     /// coverage validation.</summary>
@@ -190,6 +192,12 @@ public sealed record SemanticNativePolicyAuditV111(
     /// <summary>Null for older snapshots that predate semantic card-instance
     /// identity annotations.</summary>
     public string? CardInstanceIndexAuditSchema { get; init; }
+    /// <summary>Null for older snapshots that did not require a complete
+    /// mixed provider trace.</summary>
+    public string? ProviderTraceSchema { get; init; }
+    /// <summary>Canonical fingerprint for the complete mixed trace in marked
+    /// snapshots; null on older snapshots.</summary>
+    public string? ProviderTraceFingerprint { get; init; }
 
     private RandomBoundaryEventV111[]? _decisions =
         CloneEvents(Decisions);
@@ -261,7 +269,15 @@ public sealed record SemanticNativePolicyAuditV111(
             (WeightedIntentAuditSchema is not null &&
              WeightedIntentAuditSchema != WeightedIntentAuditSchemaV1) ||
             (CardInstanceIndexAuditSchema is not null &&
-             CardInstanceIndexAuditSchema != CardInstanceIndexAuditSchemaV1))
+             CardInstanceIndexAuditSchema != CardInstanceIndexAuditSchemaV1) ||
+            (ProviderTraceSchema is not null &&
+             ProviderTraceSchema != ProviderTraceSchemaV1) ||
+            (ProviderTraceSchema is null &&
+             ProviderTraceFingerprint is not null) ||
+            (ProviderTraceSchema == ProviderTraceSchemaV1 &&
+             (string.IsNullOrWhiteSpace(ProviderTraceFingerprint) ||
+              ProviderTraceFingerprint !=
+                CanonicalJson.Sha256(providerTrace))))
             throw new InvalidDataException(
                 "Native policy baseline has invalid provider provenance.");
 
@@ -361,7 +377,9 @@ public sealed record SemanticNativePolicyAuditV111(
 
         // Older snapshots have only the compatibility index list. Newer
         // snapshots retain the full mixed trace and project its index entries.
-        if (providerTrace.Length > 0 && traceIndices.Count != decisions.Length)
+        if ((ProviderTraceSchema == ProviderTraceSchemaV1 ||
+             providerTrace.Length > 0) &&
+            traceIndices.Count != decisions.Length)
             throw new InvalidDataException(
                 "Native policy index projection differs from its mixed trace.");
         for (var index = 0; providerTrace.Length > 0 &&
@@ -2257,7 +2275,12 @@ public static class SemanticPilotCombatEngineV111
                             .WeightedIntentAuditSchemaV1,
                     CardInstanceIndexAuditSchema =
                         SemanticNativePolicyAuditV111
-                            .CardInstanceIndexAuditSchemaV1
+                            .CardInstanceIndexAuditSchemaV1,
+                    ProviderTraceSchema =
+                        SemanticNativePolicyAuditV111
+                            .ProviderTraceSchemaV1,
+                    ProviderTraceFingerprint =
+                        CanonicalJson.Sha256(nativePolicyTrace)
                 }
                 : null
         };
@@ -2326,7 +2349,11 @@ public static class SemanticPilotCombatEngineV111
                         .WeightedIntentAuditSchemaV1,
                 CardInstanceIndexAuditSchema =
                     SemanticNativePolicyAuditV111
-                        .CardInstanceIndexAuditSchemaV1
+                        .CardInstanceIndexAuditSchemaV1,
+                ProviderTraceSchema =
+                    SemanticNativePolicyAuditV111
+                        .ProviderTraceSchemaV1,
+                ProviderTraceFingerprint = CanonicalJson.Sha256(setupTrace)
             }
         };
     }
@@ -2958,6 +2985,8 @@ public static class SemanticPilotCombatEngineV111
             }
             }).ToArray();
         var recordedTrace = boundaries.EntriesForProvider("native-v111");
+        var combinedTrace = RandomBoundaryJournalV111.ConcatOrdered(
+            audit.ProviderTrace, recordedTrace);
         var weightedIntentOutcomes = boundaries.WeightedIntentOutcomes
             .ToArray();
         var cardInstanceIndexOutcomes = boundaries
@@ -2977,8 +3006,12 @@ public static class SemanticPilotCombatEngineV111
             NativePolicyAudit = audit with
             {
                 Decisions = audit.Decisions.Concat(recorded).ToArray(),
-                ProviderTrace = RandomBoundaryJournalV111.ConcatOrdered(
-                    audit.ProviderTrace, recordedTrace),
+                ProviderTrace = combinedTrace,
+                ProviderTraceFingerprint =
+                    audit.ProviderTraceSchema ==
+                        SemanticNativePolicyAuditV111.ProviderTraceSchemaV1
+                        ? CanonicalJson.Sha256(combinedTrace)
+                        : audit.ProviderTraceFingerprint,
                 WeightedIntentOutcomes = audit.WeightedIntentOutcomes
                     .Concat(weightedIntentOutcomes).ToArray(),
                 CardInstanceIndexOutcomes =
