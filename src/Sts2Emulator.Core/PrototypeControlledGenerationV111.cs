@@ -248,31 +248,6 @@ public sealed partial class PrototypeGameEngine
             CanonicalJson.Sha256(expected) == CanonicalJson.Sha256(effect);
     }
 
-    internal static bool IsCrossbowTurnStartDrawBoundary(RunState run) =>
-        run.Phase == RunPhase.Combat &&
-        run.World?.Combat is
-            { Turn: >= 2, IsPlayerTurn: true, IsPlayerSideActive: true,
-              PendingChoice: null, PendingKnowledgeDemonChoice: null,
-              SemanticDeck:
-                { Mode: SemanticDeckStateV111.NatureMode, Pending: null } }
-            combat &&
-        combat.AutomaticPipelineContinuation is { } continuation &&
-        continuation.Mechanics.IsAtStep(
-            PrototypeAutomaticStepKind.DrawPlayerHand) &&
-        continuation.Stochastic is
-            { HandDrawProgress: null,
-              ControlledDrawRemaining: null,
-              ControlledDrawCostRemaining: null,
-              ControlledSemanticDrawRemaining: null,
-              ControlledSemanticDrawRequested: null,
-              ControlledSemanticBeforeHandDrawPending: false,
-              ControlledRecycleStratagemPending: false,
-              ControlledDrawHookChoicePending: false,
-              ControlledBeforeHandDrawHookChoicePending: false,
-              ControlledEnemyAction: null,
-              ControlledTurnIntents: null,
-              CompletedSemanticHandDrawRequested: null };
-
     private static CombatState MakeControlledGeneratedCardChoice(
         CombatState combat, PrototypeQueuedOperation operation,
         string[] candidates,
