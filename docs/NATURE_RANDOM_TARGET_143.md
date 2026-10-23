@@ -35,6 +35,13 @@ the next repetition resumes. No new Nature decision or chance-event schema is
 introduced. Native stream assignment, target-pool fidelity, and cursor parity
 remain open.
 
+Knife Trap also enters from its physical source-card identity and queues its
+source-ordered Exhaust-pile Shivs through the existing mechanics engine. If a
+Shiv kills the selected enemy and a later Shiv needs a target, the saved
+`combat.autoplay.random_enemy` continuation chooses from the current living
+formation and resumes the remaining autoplay queue. Native target-pool,
+stream, and cursor parity remain open.
+
 ## Validation and limitations
 
 The focused C# regression tests cover a real Ricochet card action, a Sly-enabled targeted card discarded during end-turn, stale/illegal decisions, branch separation, private support validation and 15-worker deterministic target choices. The Bouncing Flask pilot admission has static source review only; this increment adds no test or build claim. The existing target tests do not cover the `AutoPlayCombatCard` continuation or semantic end-turn boundary save/restore. This fixture test setup intentionally injects an available card/keyword into the playable combat state; it does not establish native deck/acquisition probabilities. The joint live transcript is replay-validated for source-reachable states.

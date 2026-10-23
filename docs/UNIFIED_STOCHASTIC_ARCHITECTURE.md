@@ -903,6 +903,9 @@ hand discard, then resumes its queued Shiv creation. Bouncing Flask enters the
 semantic pilot from its physical source card and resolves each repeated Poison
 target through the existing saved random-target owner. Neither path adds a new
 provider or event schema; Native target-pool and stream parity remain open.
+Knife Trap also enters from its physical source card and reuses the saved
+autoplay-target continuation if an earlier Shiv kills the chosen enemy before
+the remaining Shiv queue finishes.
 Shadow Step now uses the card-selection owner for its hand discard and queued
 power application, while Echoing Slash and Outbreak use the ordinary
 deterministic semantic player-action boundary.

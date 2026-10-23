@@ -28,6 +28,13 @@ uses the existing source card-selection event for its hand discard and queued
 power application. No new event or snapshot schema was introduced. Static
 source review and `git diff --check` only; no tests or builds were run.
 
+**S2/S4 source-card autoplay continuation increment (2026-10-23):** Knife
+Trap now enters the persistent semantic pilot from its physical source-card
+identity. Its ordered Exhaust-pile Shiv queue reuses the existing autoplay
+target continuation when a prior Shiv defeats the chosen enemy. Native target
+pool, stream, and cursor parity remain open. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S0 validated event-site domain increment (2026-10-23):** The typed-request
 inventory now follows three existing semantic boundaries: target-event site
 validation through the target-kind resolver, the shortlist's finite supported

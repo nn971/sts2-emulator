@@ -4228,7 +4228,8 @@ public static class SemanticPilotCombatEngineV111
             var semanticVolleyCard =
                 card?.CardId == "proto.colorless.volley";
             var semanticRandomTargetCard =
-                card?.CardId == "proto.silent.bouncing_flask";
+                card?.CardId is ("proto.silent.bouncing_flask" or
+                    "proto.silent.knife_trap");
             var semanticJackOfAllTradesCard =
                 card?.CardId == "proto.colorless.jack_of_all_trades";
             var supportedCardAction = card is not null &&

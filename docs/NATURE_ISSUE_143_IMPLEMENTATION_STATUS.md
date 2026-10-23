@@ -988,3 +988,12 @@ event to discard its hand, then resumes its queued power application. The
 mechanics engine remains the sole resolver for these effects; no event or
 snapshot schema changed. Static source review and `git diff --check` only; no
 tests or builds were run.
+
+## 2026-10-23: Knife Trap autoplay target continuation
+
+The persistent semantic pilot now admits Knife Trap from its physical source
+card. Its ordered Exhaust-pile Shiv autoplay uses the existing mechanics
+queue; if an earlier Shiv kills the chosen enemy, a later target request
+resumes through the existing `combat.autoplay.random_enemy` continuation.
+Native target-pool and stream/cursor parity remain open. Static source review
+and `git diff --check` only; no tests or builds were run.
