@@ -560,71 +560,10 @@ public sealed record SimulationProviderReplayCaptureV111(
 
         var provider = new NativeRandomIndexProviderV111(
             recordToJournal: false);
-        RunState nativeResult;
-        RandomIndexDecisionV111[] decisions;
-        switch ((transition.World!.Act, assignedAncientId))
-        {
-            case (2, NativePaelRewardsV111.PaelId):
-            {
-                var audit = NativePaelRewardsV111
-                    .BeginPaelOpeningWithAudit(transition, provider);
-                nativeResult = audit.State;
-                decisions = audit.Choices;
-                break;
-            }
-            case (2, NativeAncientRewardsV111.TezcataraId):
-            {
-                var audit = NativeAncientRewardsV111
-                    .BeginTezcataraOpeningWithAudit(transition, provider);
-                nativeResult = audit.State;
-                decisions = audit.Choices;
-                break;
-            }
-            case (2, NativeOrobasEventV111.EventId):
-            {
-                var audit = NativeOrobasEventV111
-                    .BeginOpeningWithAudit(transition, provider);
-                nativeResult = audit.State;
-                decisions = audit.Choices;
-                break;
-            }
-            case (2 or 3, NativeDarvEventV111.EventId):
-            {
-                var audit = NativeDarvEventV111
-                    .BeginOpeningWithAudit(transition, provider);
-                nativeResult = audit.State;
-                decisions = audit.Choices;
-                break;
-            }
-            case (3, NativeTanxEventV111.EventId):
-            {
-                var audit = NativeTanxEventV111
-                    .BeginOpeningWithAudit(transition, provider);
-                nativeResult = audit.State;
-                decisions = audit.Choices;
-                break;
-            }
-            case (3, NativeVakuuEventV111.EventId):
-            {
-                var audit = NativeVakuuEventV111
-                    .BeginOpeningWithAudit(transition, provider);
-                nativeResult = audit.State;
-                decisions = audit.Choices;
-                break;
-            }
-            case (3, NativeNonupeipeEventV111.EventId):
-            {
-                var audit = NativeNonupeipeEventV111
-                    .BeginOpeningWithAudit(transition, provider);
-                nativeResult = audit.State;
-                decisions = audit.Choices;
-                break;
-            }
-            default:
-                throw new NotSupportedException(
-                    "Legacy Native Ancient capture does not support assigned Ancient '" +
-                    assignedAncientId + "' in act " + transition.World.Act + ".");
-        }
+        var nativeOpening = ExperimentalSilentThreeActRouteV111
+            .BeginAssignedAncientOpeningWithAudit(transition, provider);
+        var nativeResult = nativeOpening.State;
+        var decisions = nativeOpening.Decisions;
 
         foreach (var decision in decisions)
         {

@@ -500,30 +500,72 @@ public static class ExperimentalSilentThreeActRouteV111
 
         // An assigned Ancient executes at the act boundary before map choice.
         // Run-start assignment and its RNG policy remain separate.
-        if (nextBag.AssignedAncientId is { } ancientId)
-        {
-            return (nextAct, ancientId) switch
-            {
-                (2, NativePaelRewardsV111.PaelId) =>
-                    NativePaelRewardsV111.BeginPaelOpening(continued),
-                (2, NativeAncientRewardsV111.TezcataraId) =>
-                    NativeAncientRewardsV111.BeginTezcataraOpening(continued),
-                (2, NativeOrobasEventV111.EventId) =>
-                    NativeOrobasEventV111.BeginOpening(continued),
-                (2 or 3, NativeDarvEventV111.EventId) =>
-                    NativeDarvEventV111.BeginOpening(continued),
-                (3, NativeTanxEventV111.EventId) =>
-                    NativeTanxEventV111.BeginOpening(continued),
-                (3, NativeVakuuEventV111.EventId) =>
-                    NativeVakuuEventV111.BeginOpening(continued),
-                (3, NativeNonupeipeEventV111.EventId) =>
-                    NativeNonupeipeEventV111.BeginOpening(continued),
-                _ => throw new NotSupportedException(
-                    $"Assigned Act {nextAct} Ancient '{ancientId}' is not implemented.")
-            };
-        }
+        if (nextBag.AssignedAncientId is not null)
+            return BeginAssignedAncientOpeningWithAudit(
+                continued, new NativeRandomIndexProviderV111()).State;
 
         return continued;
+    }
+
+    internal static (RunState State, RandomIndexDecisionV111[] Decisions)
+        BeginAssignedAncientOpeningWithAudit(
+            RunState state, IRandomIndexProviderV111 provider)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(provider);
+        var world = state.World ?? throw new InvalidDataException(
+            "Assigned Ancient opening has no run world.");
+        var ancientId = world.Stochastic.LaterActEncounterBag?
+            .AssignedAncientId ?? throw new InvalidDataException(
+                "Assigned Ancient opening has no assigned Ancient.");
+        switch ((world.Act, ancientId))
+        {
+            case (2, NativePaelRewardsV111.PaelId):
+            {
+                var audit = NativePaelRewardsV111
+                    .BeginPaelOpeningWithAudit(state, provider);
+                return (audit.State, audit.Choices);
+            }
+            case (2, NativeAncientRewardsV111.TezcataraId):
+            {
+                var audit = NativeAncientRewardsV111
+                    .BeginTezcataraOpeningWithAudit(state, provider);
+                return (audit.State, audit.Choices);
+            }
+            case (2, NativeOrobasEventV111.EventId):
+            {
+                var audit = NativeOrobasEventV111
+                    .BeginOpeningWithAudit(state, provider);
+                return (audit.State, audit.Choices);
+            }
+            case (2 or 3, NativeDarvEventV111.EventId):
+            {
+                var audit = NativeDarvEventV111
+                    .BeginOpeningWithAudit(state, provider);
+                return (audit.State, audit.Choices);
+            }
+            case (3, NativeTanxEventV111.EventId):
+            {
+                var audit = NativeTanxEventV111
+                    .BeginOpeningWithAudit(state, provider);
+                return (audit.State, audit.Choices);
+            }
+            case (3, NativeVakuuEventV111.EventId):
+            {
+                var audit = NativeVakuuEventV111
+                    .BeginOpeningWithAudit(state, provider);
+                return (audit.State, audit.Choices);
+            }
+            case (3, NativeNonupeipeEventV111.EventId):
+            {
+                var audit = NativeNonupeipeEventV111
+                    .BeginOpeningWithAudit(state, provider);
+                return (audit.State, audit.Choices);
+            }
+            default:
+                throw new NotSupportedException(
+                    $"Assigned Act {world.Act} Ancient '{ancientId}' is not implemented.");
+        }
     }
 
     /// <summary>
