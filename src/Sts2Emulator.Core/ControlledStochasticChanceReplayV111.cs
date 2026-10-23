@@ -652,6 +652,14 @@ internal sealed class ControlledStochasticChanceReplayV111 :
         string? divergenceMessage = null) =>
         TryTake(request, null, false, out decision, divergenceMessage);
 
+    internal bool TryTake(
+        ControlledStochasticRequestV111 request,
+        string[]? candidateLabels,
+        out ControlledStochasticDecisionV111 decision,
+        string? divergenceMessage = null) =>
+        TryTake(request, candidateLabels, true, out decision,
+            divergenceMessage);
+
     private bool TryTake(
         ControlledStochasticRequestV111 request,
         string[]? candidateLabels,

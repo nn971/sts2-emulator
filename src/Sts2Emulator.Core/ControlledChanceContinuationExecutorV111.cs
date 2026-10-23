@@ -286,13 +286,14 @@ internal static class ControlledChanceContinuationExecutorV111
         RandomIndexDecisionV111[] decisions,
         Func<RunState, RunState> mechanics,
         IReadOnlyDictionary<string, int>? priorOrdinalCounts = null,
-        Func<ControlledStochasticRequestV111, bool>? requestFilter = null)
+        Func<ControlledStochasticRequestV111, bool>? requestFilter = null,
+        string[][]? decisionCandidateLabels = null)
         => ResumeCore(
             checkpoint,
             decisions,
             mechanics,
             () => ControlledEventChoiceReplayV111.Begin(
-                decisions, priorOrdinalCounts),
+                decisions, priorOrdinalCounts, decisionCandidateLabels),
             new ControlledEventChoiceRandomIndexProviderV111(
                 requestOrdinalIncludesCurrentOperationPrefix: false),
             requestFilter);

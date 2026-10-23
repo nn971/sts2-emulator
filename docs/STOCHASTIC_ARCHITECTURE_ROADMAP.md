@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 controlled event-choice candidate replay increment (2026-10-24):**
+Generic event-effect continuations now pass each saved decision's ordered
+candidate labels into replay and compare them with the live support before
+consuming the saved index. A support with the same size but changed identity or
+order now fails closed; run-action and other replay owners are unchanged. Static
+source review and `git diff --check` only; no tests or builds were run.
+
 **S4 post-choice Event Entropic Brew continuation audit (2026-10-24):**
 The controlled event-reward continuation already saves the Entropic Brew action
 with its pending empty-slot draw, resumes the ordinary potion action after each

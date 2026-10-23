@@ -1027,6 +1027,7 @@ internal sealed class ControlledEventChoiceReplayV111 :
     private readonly ControlledEventChoiceReplayV111? _previous;
     private readonly ControlledStochasticChanceReplayV111 _prefix;
     private readonly Dictionary<string, int> _priorOrdinalCounts;
+    private readonly bool _compareCandidateLabels;
     private string[]? _candidateLabels;
     private bool _disposed;
 
@@ -1034,27 +1035,38 @@ internal sealed class ControlledEventChoiceReplayV111 :
 
     private ControlledEventChoiceReplayV111(
         RandomIndexDecisionV111[] decisions,
-        IReadOnlyDictionary<string, int>? priorOrdinalCounts)
+        IReadOnlyDictionary<string, int>? priorOrdinalCounts,
+        string[][]? decisionCandidateLabels)
     {
+        if (decisionCandidateLabels is not null &&
+            decisionCandidateLabels.Length != decisions.Length)
+            throw new InvalidDataException(
+                "Event-choice candidate-label prefix has the wrong length.");
         _previous = Active.Value;
         _prefix = ControlledStochasticChanceReplayV111.BeginDetachedPrefix(
-            decisions.Select(decision =>
-                ControlledStochasticDecisionV111.FromIndex(decision))
+            decisions.Select((decision, index) =>
+                ControlledStochasticDecisionV111.FromIndex(
+                    decision,
+                    decisionCandidateLabels is { } labels &&
+                        labels[index] is { } candidateLabels
+                        ? candidateLabels : null))
                 .ToArray());
         _priorOrdinalCounts = priorOrdinalCounts is null
             ? new Dictionary<string, int>(StringComparer.Ordinal)
             : new Dictionary<string, int>(priorOrdinalCounts,
                 StringComparer.Ordinal);
+        _compareCandidateLabels = decisionCandidateLabels is not null;
         Active.Value = this;
     }
 
     public static ControlledEventChoiceReplayV111 Begin(
         RandomIndexDecisionV111[] decisions,
-        IReadOnlyDictionary<string, int>? priorOrdinalCounts = null)
+        IReadOnlyDictionary<string, int>? priorOrdinalCounts = null,
+        string[][]? decisionCandidateLabels = null)
     {
         ArgumentNullException.ThrowIfNull(decisions);
         return new ControlledEventChoiceReplayV111(
-            decisions, priorOrdinalCounts);
+            decisions, priorOrdinalCounts, decisionCandidateLabels);
     }
 
     public static int Resolve(
@@ -1090,10 +1102,19 @@ internal sealed class ControlledEventChoiceReplayV111 :
             && candidateLabels.Length != normalizedRequest.SupportCount)
             throw new InvalidDataException(
                 "Event-choice candidate labels do not match the random support.");
-        if (!active._prefix.TryTake(
-                ControlledStochasticRequestV111.FromIndex(
-                    normalizedRequest), out var savedDecision,
-                "Event-choice replay diverged from its saved chance request."))
+        var typedRequest = ControlledStochasticRequestV111.FromIndex(
+            normalizedRequest);
+        ControlledStochasticDecisionV111 savedDecision;
+        bool matched;
+        if (active._compareCandidateLabels)
+            matched = active._prefix.TryTake(
+                typedRequest, candidateLabels, out savedDecision,
+                "Event-choice replay diverged from its saved chance request.");
+        else
+            matched = active._prefix.TryTake(
+                typedRequest, out savedDecision,
+                "Event-choice replay diverged from its saved chance request.");
+        if (!matched)
             throw new ControlledEventChoiceChanceRequiredException(
                 normalizedRequest, candidateLabels);
         return savedDecision.IndexDecision?.SelectedIndex ??

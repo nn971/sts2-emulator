@@ -1507,7 +1507,9 @@ public sealed partial class PrototypeGameEngine
                     "event_choice",
                     new EventChoicePayload(continuation.ChoiceId)),
                 resumeFrame),
-            priorOrdinals);
+            priorOrdinals,
+            decisionCandidateLabels: decisionCandidateLabels
+                .Skip(continuation.EffectDecisionStartIndex).ToArray());
         if (replay.PendingChance is { } pendingChance)
             throw UnsupportedControlledEventContinuation(pendingChance);
         var result = replay.Run ?? throw new InvalidDataException(
@@ -5550,7 +5552,9 @@ public sealed partial class PrototypeGameEngine
                         Payload = resumeAction.Payload.Clone()
                     })
                 : CompleteReward(checkpoint, resumeFrame),
-            continuation.PrefixOrdinalCounts());
+            continuation.PrefixOrdinalCounts(),
+            decisionCandidateLabels: decisionCandidateLabels
+                .Skip(continuation.DecisionPrefixLength).ToArray());
         if (replay.PendingChance is { } pendingChance)
         {
             var pendingLabels = pendingChance.CandidateLabels;
