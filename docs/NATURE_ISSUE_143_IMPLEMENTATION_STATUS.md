@@ -918,3 +918,14 @@ Impatience keeps its no-Attack hand condition, Scrawl remains bounded by
 ordinary hand capacity, and Flash of Steel retains its damage-before-draw
 order. No chance owner or snapshot schema was added. Static source review and
 `git diff --check` only; no tests or builds were run.
+
+## 2026-10-23: deterministic Colorless player actions
+
+The existing draw-pile-neutral semantic player-action gate now admits 27
+modeled deterministic Colorless cards, including legal enemy-target actions.
+They use the ordinary AI action engine under the controlled-chance guard and
+retain physical and provider draw-pile equality checks. Mayhem, Entropy, and
+Stratagem continue through their existing owners. Random generation, direct
+draws, interactive choices, and persistent draw-pile-return effects remain
+with their specialized continuations. Static source review and
+`git diff --check` only; no tests or builds were run.
