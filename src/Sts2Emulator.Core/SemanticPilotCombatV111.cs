@@ -179,6 +179,12 @@ public sealed record SemanticNativePolicyAuditV111(
 {
     public const string NativeProviderId =
         "engine-owned-native-v111-comparator-unverified-v1";
+    public const string WeightedIntentAuditSchemaV1 =
+        "sts2-v111-native-weighted-intent-audit-v1";
+
+    /// <summary>Null for older snapshots that predate weighted intent audit
+    /// coverage validation.</summary>
+    public string? WeightedIntentAuditSchema { get; init; }
 
     private RandomBoundaryEventV111[]? _decisions =
         CloneEvents(Decisions);
@@ -228,7 +234,9 @@ public sealed record SemanticNativePolicyAuditV111(
         var weightedIntentOutcomes = _weightedIntentOutcomes;
         if (ProviderId != NativeProviderId ||
             ProbabilityStatus != "UNVERIFIED" || decisions is null ||
-            providerTrace is null || weightedIntentOutcomes is null)
+            providerTrace is null || weightedIntentOutcomes is null ||
+            (WeightedIntentAuditSchema is not null &&
+             WeightedIntentAuditSchema != WeightedIntentAuditSchemaV1))
             throw new InvalidDataException(
                 "Native policy baseline has invalid provider provenance.");
 
@@ -307,13 +315,13 @@ public sealed record SemanticNativePolicyAuditV111(
                     index + ".");
         }
 
-        // Snapshots created before weighted outcomes were introduced remain
-        // readable. Once a snapshot contains any such annotation, however,
-        // its retained mixed trace must describe every Native intent ticket.
-        if (weightedIntentOutcomes.Length > 0)
+        // The schema marker enforces completeness even for an empty array.
+        // A nonempty unmarked array still receives the same consistency check,
+        // while older empty arrays retain snapshot compatibility.
+        if (WeightedIntentAuditSchema == WeightedIntentAuditSchemaV1 ||
+            weightedIntentOutcomes.Length > 0)
         {
-            if (providerTrace.Length == 0 ||
-                traceIntentDecisions.Count != weightedIntentOutcomes.Length)
+            if (traceIntentDecisions.Count != weightedIntentOutcomes.Length)
                 throw new InvalidDataException(
                     "Native policy weighted intent outcomes are incomplete for their mixed trace.");
 
@@ -2157,7 +2165,10 @@ public static class SemanticPilotCombatEngineV111
                     nativePolicyDecisions)
                 {
                     ProviderTrace = nativePolicyTrace,
-                    WeightedIntentOutcomes = nativeIntentOutcomes
+                    WeightedIntentOutcomes = nativeIntentOutcomes,
+                    WeightedIntentAuditSchema =
+                        SemanticNativePolicyAuditV111
+                            .WeightedIntentAuditSchemaV1
                 }
                 : null
         };
@@ -2218,7 +2229,10 @@ public static class SemanticPilotCombatEngineV111
                     }
                 }).ToArray())
             {
-                ProviderTrace = setupTrace
+                ProviderTrace = setupTrace,
+                WeightedIntentAuditSchema =
+                    SemanticNativePolicyAuditV111
+                        .WeightedIntentAuditSchemaV1
             }
         };
     }
