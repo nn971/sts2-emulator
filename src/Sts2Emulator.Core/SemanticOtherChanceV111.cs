@@ -531,6 +531,30 @@ public static class SemanticOtherChanceEngineV111
     }
 
     /// <summary>
+    /// Resolve a Native-labeled request captured by the saved enemy-action
+    /// frame when its exact site/stream/operation pair is registered. The
+    /// frame remains responsible for replaying and applying the mechanics.
+    /// </summary>
+    public static (SemanticOtherChanceStateV111 Next,
+        RandomIndexDecisionV111 Decision) ResolveEnemyActionRequest(
+        SemanticOtherChanceStateV111 previous,
+        RandomIndexRequestV111 pending)
+    {
+        Validate(previous);
+        ArgumentNullException.ThrowIfNull(pending);
+        pending.Validate();
+        if (!PrototypeControlledEnemyActionContinuationV111
+                .IsEnemyActionSite(pending.SiteId) ||
+            !StochasticSiteRegistryV111.SupportsEngineOwnedNativeBoundary(
+                pending.SiteId, pending.StreamId, pending.OperationKind))
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_OTHER_CHANCE site=" + pending.SiteId +
+                " operation=" + pending.OperationKind);
+
+        return ResolveNativeIndex(previous, pending);
+    }
+
+    /// <summary>
     /// Resolve one saved combat card-pool shuffle swap through its registered
     /// Native combat stream. The semantic event retains the permutation and
     /// source operation for the existing continuation.

@@ -45,16 +45,19 @@ exact SiteId/operation mapping. It preserves the event's source owner and
 bounded pile count, then resumes the saved frame without a Nature history
 choice. Prototype-labeled events retain their existing provider path. The
 Native transcript stays private to the engine; Native-game cursor parity
-remains open. The semantic pilot and
-draw/end-turn adapters use one insertion-event factory and select `run.shuffle`
-from the same Native stream-owner check. Enemy-side random draw/discard
-insertion uses typed `run.shuffle` sites and now resumes through the saved
-enemy-action frame. Native-policy audits retain the existing ordered player
-pile, inserted model, selected gap, and exact ticket at both enemy insertion
-sites. The same frame also supports legacy Fabricator summon-pool
-choices and any resulting summoned-enemy HP choice. Native summon-pool
-selection remains fail-closed pending source RNG audit; nested death/summon
-random effects remain separate continuation gaps. Personal Hive Dazed cards
+remains open. The semantic pilot and draw/end-turn adapters use one
+insertion-event factory and select `run.shuffle` from the same Native
+stream-owner check. Enemy-side random draw/discard insertion uses typed
+`run.shuffle` sites and now resumes through the saved enemy-action frame; the
+run-owned Native provider consumes those registered requests before replay,
+without adding a Nature history choice. Native-policy audits retain the
+existing ordered player pile, inserted model, selected gap, and exact ticket
+at both enemy insertion sites. The same frame delegates registered Native
+`run.niche` summon-HP and isolated Tough Egg hatch-HP requests through the
+run-owned provider, then resumes the source action. Legacy Fabricator
+summon-pool choices remain Nature-owned, Native summon-pool selection remains
+fail-closed pending source RNG audit, and nested death/summon random effects
+remain separate continuation gaps. Personal Hive Dazed cards
 created by powered hits use the saved card-operation continuation; the hit is
 committed once, each insertion is resolved in order, the rest of that hit's
 hooks resume, and then the remaining effect queue continues.

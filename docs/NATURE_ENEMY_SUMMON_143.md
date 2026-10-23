@@ -48,8 +48,15 @@ The frame also resumes a legacy Tough Egg hatch that rolls variable Hatchling
 HP through `combat.tough_egg.hatchling_hp`. Native hatching remains routed
 through its separately audited run-level HP provider.
 
-This continuation covers the existing legacy combat model. Native summon-pool
-selection remains fail-closed until its source RNG assignment is audited.
+When the semantic end-turn frame suspends on an exact registered Native
+enemy-action request, the run-owned `SemanticOtherChanceStateV111` consumes
+that request and replays the same frame with its selected index. This covers
+supported summoned-creature HP and the isolated Native Ovicopter Tough Egg
+HP site on `run.niche`; it does not extend Native summon-pool support or the
+source/cursor parity claim.
+
+The summon-pool continuation covers the existing legacy combat model. Native
+summon-pool selection remains fail-closed until its source RNG assignment is audited.
 The Native HP transform is source-verified on its declared support; legacy
 modulo probabilities remain `UNVERIFIED`. The new nested controlled mechanics
 path has build evidence only.

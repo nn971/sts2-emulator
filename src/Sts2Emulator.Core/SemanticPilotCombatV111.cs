@@ -5979,6 +5979,25 @@ public static class SemanticPilotCombatEngineV111
                 continue;
             }
 
+            if (current.EnemyActionPending is { } nativeEnemyAction &&
+                current.Run.Stochastic.SemanticOtherChance is
+                    { } nativeEnemyActionOwner &&
+                nativeEnemyActionOwner.ProviderId !=
+                    SemanticOtherChanceEngineV111.LegacyProviderId &&
+                StochasticSiteRegistryV111.SupportsEngineOwnedNativeBoundary(
+                    nativeEnemyAction.SiteId, nativeEnemyAction.StreamId,
+                    nativeEnemyAction.OperationKind))
+            {
+                var choice = SemanticOtherChanceEngineV111
+                    .ResolveEnemyActionRequest(
+                        nativeEnemyActionOwner, nativeEnemyAction);
+                current = Resolve(
+                    current, current.Fingerprint,
+                    choice.Decision.SelectedIndex, null, null, false, null,
+                    otherChance: choice.Next);
+                continue;
+            }
+
             if (current.TargetPending is { } target &&
                 current.Run.Stochastic.SemanticOtherChance is
                     { } targetOwner &&

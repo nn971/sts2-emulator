@@ -38,6 +38,16 @@ choice. Native-game stream attribution, pool completeness, and cursor parity
 remain open. Static source review and `git diff --check` only; no tests or
 builds were run.
 
+**S6 saved enemy-action Native delegation increment (2026-10-23):** The
+semantic end-turn frame now delegates any suspended enemy-action request whose
+exact site/stream/operation pair is registered, covering enemy draw/discard
+insertions on `run.shuffle` and supported summoned-creature or isolated Tough
+Egg HP requests on `run.niche`. The existing saved action replay applies the
+selected outcome without a Nature history choice. Native route, pool and
+cursor parity remain open; unsupported summon pools and nested effects remain
+fail-closed. Static source review and `git diff --check` only; no tests or
+builds were run.
+
 **S6 Native initial-HP per-index law increment (2026-10-23):** The
 `combat.initial_unique_hp` Chance Law query now binds a `creature:<CombatId>`
 owner, ordered HP support, and source ordinal to `run.niche`, returning exact
