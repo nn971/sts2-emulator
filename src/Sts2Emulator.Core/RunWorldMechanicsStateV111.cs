@@ -31,4 +31,5 @@ public sealed record RunWorldMechanicsStateV111(
     ActIdentity? ActIdentity = null,
     bool FreedRepy = false,
     long? LastCombatEndDecisionIndex = null,
-    PrototypeCustomRewardReturnState? CustomRewardReturn = null);
+    PrototypeCustomRewardReturnState? CustomRewardReturn = null,
+    int? DefeatRemainingEnemyHp = null);
