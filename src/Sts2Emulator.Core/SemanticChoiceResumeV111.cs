@@ -8,15 +8,21 @@ namespace Sts2Emulator.Core;
 /// </summary>
 internal static class SemanticChoiceResumeV111
 {
-    internal static RunState ResumeTarget(
-        RunState checkpoint, SemanticTargetDecisionV111 decision)
+    internal static (
+        RunState Run,
+        PrototypeAutomaticPipelineResumeBoundaryKindV111 Boundary)
+        ResumeTarget(
+            RunState checkpoint, SemanticTargetDecisionV111 decision)
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
         ArgumentNullException.ThrowIfNull(decision);
         decision.Validate();
         var ownedDecision = decision.Fork();
-        return SemanticTargetChoiceV111.Resume(
+        var run = SemanticTargetChoiceV111.Resume(
             checkpoint.Fork(), ownedDecision);
+        return (run,
+            PrototypeGameEngine
+                .ClassifyAutomaticPipelineResumeBoundary(run));
     }
 
     internal static (RunState Run, string SiteId) ResumeEffectDraw(
@@ -428,6 +434,21 @@ internal static class SemanticChoiceResumeV111
                 throw new InvalidDataException(
                     "Unsupported automatic semantic choice kind.");
         }
+    }
+
+    internal static (
+        RunState Run,
+        string SiteId,
+        PrototypeAutomaticPipelineResumeBoundaryKindV111 Boundary)
+        ResumeAutomaticPipelineChoice(
+            RunState checkpoint, SemanticEndTurnNestedChoiceV111 choice,
+            bool allowEngineOwnedPrototypeReward = true)
+    {
+        var resumed = Resume(
+            checkpoint, choice, allowEngineOwnedPrototypeReward);
+        return (resumed.Run, resumed.SiteId,
+            PrototypeGameEngine
+                .ClassifyAutomaticPipelineResumeBoundary(resumed.Run));
     }
 
 }

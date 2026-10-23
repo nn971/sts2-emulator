@@ -1221,12 +1221,12 @@ public static class SemanticEndTurnEngineV111
                 "No automatic-pipeline random-target event is pending.");
         var decision = SemanticTargetChoiceV111.Select(
             pending, eventId, enemyInstanceId);
-        var resumed = SemanticChoiceResumeV111.ResumeTarget(
+        var (resumed, boundary) = SemanticChoiceResumeV111.ResumeTarget(
             source.Run, decision);
 
         var stochastic = source.Stochastic.AppendTarget(decision);
         var next = ContinueAutomaticPipelineBoundaryChoice(
-            source, resumed, stochastic, pending.SiteId);
+            source, resumed, stochastic, pending.SiteId, boundary);
         Validate(next);
         return next;
     }
@@ -1274,13 +1274,14 @@ public static class SemanticEndTurnEngineV111
         SemanticEndTurnV111 source,
         RunState resumed,
         SemanticEndTurnStochasticStateV111 stochastic,
-        string siteId)
+        string siteId,
+        PrototypeAutomaticPipelineResumeBoundaryKindV111? classifiedBoundary = null)
     {
         var next = source with
         {
             Stochastic = stochastic
         };
-        var boundary = PrototypeGameEngine
+        var boundary = classifiedBoundary ?? PrototypeGameEngine
             .ClassifyAutomaticPipelineResumeBoundary(resumed);
         if (TryPublishResumedPipelineBoundary(
                 next, resumed, boundary, out var published))
@@ -1370,10 +1371,10 @@ public static class SemanticEndTurnEngineV111
         SemanticEndTurnNestedChoiceV111 choice)
     {
         ValidateNestedAutomaticChoice(source, choice);
-        var resumed = SemanticChoiceResumeV111.Resume(
+        var resumed = SemanticChoiceResumeV111.ResumeAutomaticPipelineChoice(
             source.Run, choice);
         return PublishNestedAutomaticChoice(
-            source, resumed.Run, choice, resumed.SiteId);
+            source, resumed.Run, choice, resumed.SiteId, resumed.Boundary);
     }
 
     private static void ValidateNestedAutomaticChoice(
@@ -1397,11 +1398,12 @@ public static class SemanticEndTurnEngineV111
 
     private static SemanticEndTurnV111 PublishNestedAutomaticChoice(
         SemanticEndTurnV111 source, RunState resumed,
-        SemanticEndTurnNestedChoiceV111 choice, string siteId)
+        SemanticEndTurnNestedChoiceV111 choice, string siteId,
+        PrototypeAutomaticPipelineResumeBoundaryKindV111 boundary)
     {
         var stochastic = source.Stochastic.AppendNestedChoice(choice);
         var next = ContinueAutomaticPipelineBoundaryChoice(
-            source, resumed, stochastic, siteId);
+            source, resumed, stochastic, siteId, boundary);
         Validate(next);
         return next;
     }

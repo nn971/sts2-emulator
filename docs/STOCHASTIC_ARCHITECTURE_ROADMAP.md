@@ -3235,3 +3235,13 @@ still select their provider-specific continuation and transcript policies.
 Full resume consolidation and cross-provider mechanical equivalence remain
 open. Static source review and `git diff --check` only; no tests or builds were
 run.
+
+**S4 semantic-choice boundary handoff increment (2026-10-24):** The shared
+`SemanticChoiceResumeV111` now returns the classified boundary with semantic
+target and automatic-pipeline nested-choice results. End-turn passes that
+classification into its boundary publisher alongside the run and typed
+decision, while semantic pilot uses the same target resume owner. This avoids
+reclassifying those semantic-choice results in the end-turn facade without
+moving chronology ownership. Broader resume consolidation and cross-provider
+mechanical equivalence remain open. Static source review and
+`git diff --check` only; no tests or builds were run.
