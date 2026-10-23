@@ -2,6 +2,15 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S0/S4 combat card-action admission census (2026-10-24):** Cross-checked
+current source pool/model arrays against direct semantic player-action gates
+and specialized semantic-pilot continuations. All 53 currently implemented
+Colorless cards and all 88 implemented solo Silent pool cards have an action
+route; five Silent pool entries remain explicitly multiplayer-only and without
+implemented mechanics. This records model/admission coverage only, not Native
+acquisition completeness or RNG parity. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S4 controlled event-choice candidate replay increment (2026-10-24):**
 Generic event-effect continuations now pass each saved decision's ordered
 candidate labels into replay and compare them with the live support before
