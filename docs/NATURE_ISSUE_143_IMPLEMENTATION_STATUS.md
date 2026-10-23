@@ -1030,9 +1030,9 @@ event subscriber, exact relic trigger, and active source card identity for
 `CardPlayed`. The existing semantic draw owner resolves the card. The
 suspended first draw requires a nonempty source pile; any later nested draw
 must pass its own continuation checks.
-Other relic-triggered player-action draws and Native cursor parity remain
-open. Static source review and `git diff --check` only; no tests or builds
-were run.
+The modeled trigger census found no additional relic `DrawCards` source;
+Native trigger and cursor parity remain open. Static source review and
+`git diff --check` only; no tests or builds were run.
 
 ## 2026-10-23: Mad Science Wisdom draw
 
@@ -1049,3 +1049,14 @@ card identity through the existing effect-draw continuation. Resume keeps the
 source draw-before-Max-HP-loss order and the existing Nature draw owner; no
 event or snapshot schema changed. Static source review and `git diff --check`
 only; no tests or builds were run.
+
+## 2026-10-23: modeled direct-draw source census
+
+A source scan of the modeled `DrawCards` definitions found coverage for the
+standard and Colorless cards, Brightest Flame, Mad Science's Wisdom rider,
+direct-draw combat potions, and all currently modeled action-relic draw
+triggers. Each source uses an existing semantic or automatic continuation;
+there are no remaining modeled direct-draw sources to add to the semantic
+pilot allowlist. Additional game-content triggers and Native stream/cursor
+parity remain open. Static source review and `git diff --check` only; no tests
+or builds were run.
