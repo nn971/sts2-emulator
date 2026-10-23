@@ -10,9 +10,9 @@ public static class PrototypeNativeUnderdocksTrashHeap
     public const string EventId = "proto.native.underdocks.trash_heap";
     public const string NativeRngEventId = "TRASH_HEAP";
     public const string CardRewardSiteId =
-        "event.trash_heap.card_reward.index_draw";
+        StochasticSiteRegistryV111.NativeTrashHeapCardRewardSiteId;
     public const string RelicRewardSiteId =
-        "event.trash_heap.relic_reward.index_draw";
+        StochasticSiteRegistryV111.NativeTrashHeapRelicRewardSiteId;
 
     private static readonly string[] RelicIdValues =
     [

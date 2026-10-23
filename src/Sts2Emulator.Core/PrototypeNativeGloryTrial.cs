@@ -77,7 +77,7 @@ public sealed partial class PrototypeGameEngine
                 state,
                 evt,
                 PrototypeNativeGloryEvents.TrialNativeRngEventId,
-                "event.glory_trial.damage_amount.index_draw",
+                StochasticSiteRegistryV111.NativeGloryTrialDamageSiteId,
                 "event:glory_trial:trial_damage",
                 3);
             state = draw.State;

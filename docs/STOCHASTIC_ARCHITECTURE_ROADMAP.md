@@ -49,6 +49,14 @@ runtime callsites use the existing registry-owned SiteIds. Native cursor
 parity, event-pool completeness, and legacy equal-index weights remain open.
 Static source review and `git diff --check` only; no tests or builds were run.
 
+**S0 Trial, Tablet of Truth, and Trash Heap manual review increment
+(2026-10-23):** Four event-choice site IDs now have scoped source traces for
+their ordered case, eligible-card, and fixed reward supports, draw-free
+branches, Nature/player projections, and existing atomic sessions. Their
+runtime callers and session registration use registry-owned SiteIds. Native
+cursor parity and source pool limits remain open. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S0 summon-pool SiteId ownership increment (2026-10-23):** The existing
 legacy summon continuation and query registry now use the shared
 `combat.enemy.summon_pool.select` constant. Its Native pool path continues to

@@ -55,7 +55,7 @@ internal static class TrialCaseChoicePlanBuilderV111
 
         const string ownerId = "event:glory_trial:trial_case";
         var request = new RandomIndexRequestV111(
-            "event.glory_trial.damage_amount.index_draw",
+            StochasticSiteRegistryV111.NativeGloryTrialDamageSiteId,
             nativeRoute
                 ? NativeRngV111Contexts.EventStreamId(
                     PrototypeNativeGloryEvents.TrialNativeRngEventId)
@@ -467,7 +467,7 @@ public static partial class ChanceLawEngineV111
         "glory-trial-case-choice-v1";
 
     public static string[] TrialSessionSiteIds =>
-        ["event.glory_trial.damage_amount.index_draw"];
+        [StochasticSiteRegistryV111.NativeGloryTrialDamageSiteId];
 
     public static ChanceLawV111 QueryTrial(RunState origin)
     {

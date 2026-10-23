@@ -11,7 +11,7 @@ public static class PrototypeNativeTabletOfTruth
     public const string EventId = "proto.native.event.tablet_of_truth";
     public const string NativeRngEventId = "TABLET_OF_TRUTH";
     public const string CardDrawSiteId =
-        "event.tablet_of_truth.card.index_draw";
+        StochasticSiteRegistryV111.NativeTabletOfTruthCardSiteId;
 
     internal static int DecipherCost(int page, int maxHp) => page switch
     {

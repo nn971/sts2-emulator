@@ -414,6 +414,14 @@ public static class StochasticSiteRegistryV111
         "event.stone_of_all_time.potion_slot.index_draw";
     public const string NativeFutureOfPotionsCardTypeSiteId =
         "event.future_of_potions.card_type.index_draw";
+    public const string NativeTabletOfTruthCardSiteId =
+        "event.tablet_of_truth.card.index_draw";
+    public const string NativeTrashHeapCardRewardSiteId =
+        "event.trash_heap.card_reward.index_draw";
+    public const string NativeTrashHeapRelicRewardSiteId =
+        "event.trash_heap.relic_reward.index_draw";
+    public const string NativeGloryTrialDamageSiteId =
+        "event.glory_trial.damage_amount.index_draw";
     public const string NativeStoneOfAllTimePushTicketSiteId =
         "event.stone_of_all_time.push_ticket";
     public const string NativeStoneOfAllTimeLiftTicketSiteId =
