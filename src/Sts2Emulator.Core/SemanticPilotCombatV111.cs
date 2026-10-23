@@ -4345,12 +4345,12 @@ public static class SemanticPilotCombatEngineV111
                 card?.CardId == "proto.colorless.volley";
             var semanticRandomTargetCard =
                 card?.CardId is ("proto.silent.bouncing_flask" or
-                    "proto.silent.knife_trap");
+                    "proto.silent.knife_trap" or
+                    "proto.silent.ricochet");
             var semanticJackOfAllTradesCard =
                 card?.CardId == "proto.colorless.jack_of_all_trades";
             var supportedCardAction = card is not null &&
                 (SemanticPlayerActionEngineV111.SupportsCard(card.CardId) ||
-                 card.CardId == "proto.silent.ricochet" ||
                  semanticDrawCard ||
                  semanticDynamicDrawCard ||
                  semanticAutoplayCard ||

@@ -913,7 +913,9 @@ selection owners.
 Hidden Daggers now uses that same source card-selection owner for its two-card
 hand discard, then resumes its queued Shiv creation. Bouncing Flask enters the
 semantic pilot from its physical source card and resolves each repeated Poison
-target through the existing saved random-target owner. Neither path adds a new
+target through the existing saved random-target owner. Ricochet now enters from
+its physical source card as well, resolving its four or five repeated hits
+through that same owner according to its upgrade level. These paths add no new
 provider or event schema; Native target-pool and stream parity remain open.
 Concentrate uses the same selection owner for its three-card hand discard and
 then resumes the queued energy gain.

@@ -2,6 +2,12 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 Ricochet random-target action increment (2026-10-24):** Ricochet now
+enters the persistent semantic pilot by its physical source-card identity. Its
+four base or five upgraded random-target hits reuse the existing typed target
+event and replay continuation; no event or snapshot schema changed. Static
+source review and `git diff --check` only; no tests or builds were run.
+
 **S0 v46 census refresh (2026-10-24):** Regenerated the direct-call census
 against current Core sources and synchronized the ownership inventory. Static
 checks report 111/111 typed request constructions resolved to registered sites,
