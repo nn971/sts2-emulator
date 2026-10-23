@@ -2,9 +2,9 @@
 
 The semantic playable pilot now suspends a Nature draw that occurs inside a
 card's queued effects. Direct-draw actions currently include **Backflip, Quick
-Slash, Adrenaline, Escape Plan, Expertise, Reflex, Restlessness and Thinking
-Ahead**. It also
-supports **Acrobatics, Dagger Throw and Prepared**, which open an ordinary
+Slash, Adrenaline, Escape Plan, Expertise, Reflex, Restlessness, Thinking
+Ahead, Finesse, Flash of Steel, Impatience, Master of Strategy and Scrawl**.
+It also supports **Acrobatics, Dagger Throw and Prepared**, which open an ordinary
 `select_cards` prompt after their draw. Their existing card effects run through
 `PrototypeGameEngine`; the physical card is selected from the current draw
 support before it enters the hand, and the source draw hook runs once after

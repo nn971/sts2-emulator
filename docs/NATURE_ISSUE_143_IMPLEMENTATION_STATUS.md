@@ -909,3 +909,12 @@ uses the narrow engine-owned reward allowance for this action, matching the
 existing supported card-action reward path. Distilled Chaos uses the same
 allowance because its autoplayed cards can win combat. Static source review
 and `git diff --check` only; no tests or builds were run.
+
+## 2026-10-23: additional semantic card-effect draws
+
+Finesse, Flash of Steel, Impatience, Master of Strategy, and Scrawl now enter
+the existing semantic draw continuation from their physical source cards.
+Impatience keeps its no-Attack hand condition, Scrawl remains bounded by
+ordinary hand capacity, and Flash of Steel retains its damage-before-draw
+order. No chance owner or snapshot schema was added. Static source review and
+`git diff --check` only; no tests or builds were run.
