@@ -1,6 +1,6 @@
 # Stochastic site and state ownership inventory
 
-**Snapshot:** 2026-10-22, `feature/nature-143-native-policy-comparator`. **Status:** assembled index and ownership crosswalk; row-level acceptance audit remains in progress. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md) and [implementation roadmap](STOCHASTIC_ARCHITECTURE_ROADMAP.md).
+**Snapshot:** 2026-10-23, `feature/nature-143-native-policy-comparator`. **Status:** assembled index and ownership crosswalk; row-level acceptance audit remains in progress. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md) and [implementation roadmap](STOCHASTIC_ARCHITECTURE_ROADMAP.md).
 
 This document joins existing inventories instead of copying their site rows. The detailed stable-site ledger stays in [Desired RNG migration status](DESIRED_RNG_MIGRATION_STATUS.md); the static direct-call report stays in [RNG direct-call census](RNG_DIRECT_CALLSITE_CENSUS.md). Semantic protocol and reference-build documents linked from those rows retain the mechanism-specific evidence.
 
