@@ -214,6 +214,14 @@ public sealed record SemanticEndTurnV111(
         get => Stochastic.BoundaryTranscript;
         init => Stochastic = Stochastic with { BoundaryTranscript = value };
     }
+    public int BoundaryTranscriptVersion
+    {
+        get => Stochastic.BoundaryTranscriptVersion;
+        init => Stochastic = Stochastic with
+        {
+            BoundaryTranscriptVersion = value
+        };
+    }
     public SemanticEndTurnNestedChoiceV111[] NestedChoiceTranscript
     {
         get => Stochastic.NestedChoiceTranscript;
@@ -619,7 +627,12 @@ public static class SemanticEndTurnEngineV111
             combat, nativeEncounterEntry);
         var state = new SemanticEndTurnV111(
             source.Fork(), source.Fork(), nativeEncounterEntry,
-            intents, null, []);
+            intents, null, [])
+        {
+            BoundaryTranscriptVersion =
+                SemanticEndTurnStochasticStateV111
+                    .CurrentBoundaryTranscriptVersion
+        };
         if (intents.Complete)
             state = CompleteIntents(state);
         Validate(state);
@@ -686,7 +699,10 @@ public static class SemanticEndTurnEngineV111
                 nativeEncounterEntry, null, null, [])
             {
                 PlayerActionSource = playerBoundary.Fork(),
-                PlayerActionId = actions[0].ActionId
+                PlayerActionId = actions[0].ActionId,
+                BoundaryTranscriptVersion =
+                    SemanticEndTurnStochasticStateV111
+                        .CurrentBoundaryTranscriptVersion
             };
             Validate(suspendedChoice);
             return (suspendedChoice, suspendedChoice.Run);
@@ -1656,6 +1672,20 @@ public static class SemanticEndTurnEngineV111
                     BoundaryTranscriptVersion =
                         replayedHand.BoundaryTranscriptVersion
                 }
+            };
+        if (saved.Stochastic.BoundaryTranscriptVersion == 0 &&
+            reproduced.Stochastic.BoundaryTranscriptVersion ==
+                SemanticEndTurnStochasticStateV111
+                    .CurrentBoundaryTranscriptVersion)
+            comparisonSnapshot = comparisonSnapshot with
+            {
+                BoundaryTranscript =
+                    saved.Stochastic.BoundaryTranscript.Length == 0
+                        ? reproduced.Stochastic.BoundaryTranscript
+                        : saved.Stochastic.BoundaryTranscript,
+                BoundaryTranscriptVersion =
+                    SemanticEndTurnStochasticStateV111
+                        .CurrentBoundaryTranscriptVersion
             };
         if (CanonicalJson.Sha256(reproduced) !=
             CanonicalJson.Sha256(comparisonSnapshot))

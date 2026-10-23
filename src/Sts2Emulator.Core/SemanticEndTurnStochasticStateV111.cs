@@ -9,6 +9,8 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public sealed record SemanticEndTurnStochasticStateV111
 {
+    internal const int CurrentBoundaryTranscriptVersion = 1;
+
     private RandomIndexDecisionV111[]? _intentTranscript;
     private SemanticIntentTranscriptEntryV111[]?
         _semanticIntentTranscript = [];
@@ -16,6 +18,7 @@ public sealed record SemanticEndTurnStochasticStateV111
     private SemanticTargetDecisionV111[]? _targetTranscript;
     private SemanticEndTurnBoundaryChoiceV111[]? _boundaryTranscript;
     private SemanticEndTurnNestedChoiceV111[]? _nestedChoiceTranscript = [];
+    public int BoundaryTranscriptVersion { get; init; }
 
     [JsonConstructor]
     public SemanticEndTurnStochasticStateV111(
@@ -182,7 +185,8 @@ public sealed record SemanticEndTurnStochasticStateV111
             EnemyActionTranscript = EnemyActionTranscript,
             TargetTranscript = TargetTranscript,
             BoundaryTranscript = BoundaryTranscript,
-            NestedChoiceTranscript = NestedChoiceTranscript
+            NestedChoiceTranscript = NestedChoiceTranscript,
+            BoundaryTranscriptVersion = BoundaryTranscriptVersion
         };
     }
 
@@ -226,7 +230,9 @@ public sealed record SemanticEndTurnStochasticStateV111
         var nestedChoiceTranscript = this.NestedChoiceTranscript;
         if (intentTranscript is null || enemyActionTranscript is null ||
             targetTranscript is null || boundaryTranscript is null ||
-            nestedChoiceTranscript is null)
+            nestedChoiceTranscript is null ||
+            BoundaryTranscriptVersion is not (0 or
+                CurrentBoundaryTranscriptVersion))
             throw new InvalidDataException(
                 "Invalid semantic end-turn stages.");
         HandDraw?.Validate();
@@ -476,6 +482,12 @@ public sealed record SemanticEndTurnStochasticStateV111
                         "Semantic end-turn Knowledge Demon boundary order is invalid.");
             }
         }
+        if (BoundaryTranscriptVersion ==
+                CurrentBoundaryTranscriptVersion &&
+            boundaryTranscript.Length != enemyActionTranscript.Length +
+                targetTranscript.Length + nestedChoiceTranscript.Length)
+            throw new InvalidDataException(
+                "Semantic end-turn boundary transcript omits or duplicates decisions.");
         if ((boundaryTranscript.Length > 0 &&
              (transcriptEnemyActions != enemyActionTranscript.Length ||
               transcriptTargets != targetTranscript.Length ||
