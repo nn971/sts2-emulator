@@ -233,11 +233,16 @@ without a semantic deck now also saves its
 `RecycleDrawPileForEffectDraw` continuation: discard swaps resolve
 through the existing pool-shuffle choice, a singleton discard recycles without
 a chance ticket, after-shuffle insertions remain in the saved effect suffix,
-and the original draw resumes after the shuffle. Controlled Nature's nested
-standalone and automatic chance boundaries, plus other recycle contexts, remain
-unsupported pending their matching serializable frames. Personal Hive's Dazed
-insertions after a powered hit now suspend in the saved card-operation queue,
-then resume the remaining hit hooks before the original queue continues.
+and the original draw resumes after the shuffle. Controlled Nature's standalone,
+nested effect-draw, and automatic hand-draw chance boundaries now save typed
+continuations for deferred draws, draw costs, after-shuffle insertions,
+Stratagem selection, and supported `CardDrawn` hook choices. Recycle commits
+the Nature deck epoch and physical zone transfer through the shared draw-pile
+adapter before resuming those frames. Each caller retains its own draw suffix
+and hook policy; contexts without a matching serializable frame still fail
+closed, and broader draw-resume consolidation remains open. Personal Hive's
+Dazed insertions after a powered hit now suspend in the saved card-operation
+queue, then resume the remaining hit hooks before the original queue continues.
 Ordinary source action
 choices from automatic `BeforeHandDraw` hooks now resume the saved dispatcher
 before the hand-draw prelude.
