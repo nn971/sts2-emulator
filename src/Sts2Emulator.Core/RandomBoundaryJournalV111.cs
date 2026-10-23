@@ -510,6 +510,8 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
         _cardInstanceIndexOutcomes = [];
     private readonly List<SemanticCardEnergyCostAuditV111>
         _cardEnergyCostOutcomes = [];
+    private readonly List<SemanticPoolShuffleDecisionV111>
+        _poolShuffleOutcomes = [];
     private readonly Dictionary<string, int> _operationSequences =
         new(StringComparer.Ordinal);
     private bool _disposed;
@@ -558,6 +560,11 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
     /// random-hand-cost site.</summary>
     public IReadOnlyList<SemanticCardEnergyCostAuditV111>
         CardEnergyCostOutcomes => _cardEnergyCostOutcomes
+            .Select(outcome => outcome.Fork()).ToArray();
+
+    /// <summary>Semantic ordered supports for Native combat pool swaps.</summary>
+    public IReadOnlyList<SemanticPoolShuffleDecisionV111>
+        PoolShuffleOutcomes => _poolShuffleOutcomes
             .Select(outcome => outcome.Fork()).ToArray();
 
     internal static void RecordWeightedIntentOutcome(
@@ -627,6 +634,52 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
             throw new InvalidDataException(
                 "Card energy-cost annotation differs from the latest primitive index entry.");
         current._cardEnergyCostOutcomes.Add(auditEntry.Fork());
+    }
+
+    internal static void RecordPoolShuffleOutcomes(
+        IReadOnlyList<SemanticPoolShuffleDecisionV111> outcomes,
+        IReadOnlyList<RandomIndexDecisionV111> providerDecisions)
+    {
+        ArgumentNullException.ThrowIfNull(outcomes);
+        ArgumentNullException.ThrowIfNull(providerDecisions);
+        var current = Active.Value;
+        if (current is null)
+            return;
+        if (outcomes.Count == 0 ||
+            outcomes.Count != providerDecisions.Count ||
+            outcomes.Count > current._orderedTranscript.Count)
+            throw new InvalidDataException(
+                "Native pool-shuffle annotations do not match their provider decisions.");
+
+        var firstTranscriptIndex =
+            current._orderedTranscript.Count - outcomes.Count;
+        for (var index = 0; index < outcomes.Count; index++)
+        {
+            var outcome = outcomes[index];
+            var providerDecision = providerDecisions[index];
+            providerDecision.Validate();
+            SemanticPoolShuffleChoiceV111.ValidateNativeAudit(
+                outcome, providerDecision);
+            var entry = current._orderedTranscript[
+                firstTranscriptIndex + index];
+            if (entry.OperationKind != "index")
+                throw new InvalidDataException(
+                    "Native pool-shuffle annotation has no matching index transcript entry.");
+            var boundary = entry.DeserializeEvent<RandomBoundaryEventV111>();
+            var journalDecision = new RandomIndexDecisionV111(
+                boundary.Request, boundary.SelectedIndex,
+                boundary.ProviderMode, boundary.NativeCursorBefore,
+                boundary.NativeCursorAfter);
+            if (providerDecision.ProviderMode != "native-v111" ||
+                CanonicalJson.Sha256(providerDecision) !=
+                    CanonicalJson.Sha256(journalDecision) ||
+                CanonicalJson.Sha256(outcome.Event.Request) !=
+                    CanonicalJson.Sha256(providerDecision.Request) ||
+                outcome.SelectedSwapIndex != providerDecision.SelectedIndex)
+                throw new InvalidDataException(
+                    "Native pool-shuffle annotation differs from its ordered primitive transcript.");
+            current._poolShuffleOutcomes.Add(outcome.Fork());
+        }
     }
 
     /// <summary>Returns a provider-specific mixed transcript in the order

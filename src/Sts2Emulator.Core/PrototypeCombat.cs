@@ -6721,7 +6721,9 @@ public sealed partial class PrototypeGameEngine
                         StochasticSiteRegistryV111.CombatHandReturnShuffleSiteId,
                         "combat", "run.shuffle",
                         "effect:" + operation.Kind + ":source:" +
-                            (sourceCardInstanceId?.ToString() ?? "none"));
+                            (sourceCardInstanceId?.ToString() ?? "none"),
+                        operation.Kind, shuffled.Length,
+                        sourceCardInstanceId);
                     var shuffledDrawPile = ApplyPerfectFitShuffleOrder(
                         combat, shuffled);
                     combat = SemanticDrawPileAdapterV111.CommitHandReturnShuffle(
@@ -6911,7 +6913,8 @@ public sealed partial class PrototypeGameEngine
                         sourceCardInstanceId is null
                             ? null
                             : RequireCombatCard(
-                                combat, sourceCardInstanceId.Value).CardId);
+                                combat, sourceCardInstanceId.Value).CardId,
+                        sourceCardInstanceId);
                     break;
 
                 case PrototypeCombatEffectKind.ChooseGeneratedCards:
@@ -6927,6 +6930,8 @@ public sealed partial class PrototypeGameEngine
                         operation.Amount,
                         operation.GeneratedChoiceCardsFreeThisTurn,
                         operation.GeneratedChoiceCardsUpgraded,
+                        operation.Kind,
+                        sourceCardInstanceId,
                         rng,
                         operation.GeneratedChoiceCardsRetain,
                         operation.GeneratedChoiceUsesNativeCardGenerationRng);
@@ -7113,7 +7118,9 @@ public sealed partial class PrototypeGameEngine
                         "combat", "run.combat_card_selection",
                         "effect:" + operation.Kind + ":source:" +
                             (sourceCardInstanceId?.ToString() ?? "none") +
-                            ":zone:draw");
+                            ":zone:draw",
+                        operation.Kind, Math.Min(take, rareCards.Length),
+                        sourceCardInstanceId);
                     var selected = rareCards.Take(take).ToArray();
                     var selectedIds = selected.ToHashSet();
                     var nextZones = combat.Mechanics.CardZones.WithZoneChanges(
@@ -7294,7 +7301,11 @@ public sealed partial class PrototypeGameEngine
                             "combat", "run.combat_card_selection",
                             "card_selection:" + selection.SourceZone +
                                 ":source:" +
-                                (sourceCardInstanceId?.ToString() ?? "none"));
+                                (sourceCardInstanceId?.ToString() ?? "none"),
+                            operation.Kind,
+                            Math.Min(selection.RandomCandidateCount,
+                                shuffledCandidates.Length),
+                            sourceCardInstanceId);
                         candidates = shuffledCandidates
                             .Take(selection.RandomCandidateCount).ToArray();
                     }
@@ -7893,7 +7904,9 @@ public sealed partial class PrototypeGameEngine
                         StochasticSiteRegistryV111.CombatFullPoolShuffleSiteId,
                         "combat", "run.combat_card_generation",
                         "effect:" + operation.Kind + ":source:" +
-                            (sourceCardInstanceId?.ToString() ?? "none"));
+                            (sourceCardInstanceId?.ToString() ?? "none"),
+                        operation.Kind, Math.Min(count, pool.Length),
+                        sourceCardInstanceId);
                     foreach (var id in pool.Take(count))
                         combat = AddGeneratedCardCopies(combat,
                             new PrototypeCombatCardSnapshot(id, 0, PrototypeJson.EmptyObject()), 1);
@@ -9191,7 +9204,8 @@ public sealed partial class PrototypeGameEngine
         long[] CardInstanceIds);
 
     private static CombatState AddDistinctGeneratedColorlessCardsToHand(
-        CombatState combat, int count, RngBundle rng, string? sourceCardId)
+        CombatState combat, int count, RngBundle rng, string? sourceCardId,
+        long? sourceCardInstanceId)
     {
         var capacity = PrototypeContent.Rules.RemainingHandCapacity(
             combat.Hand.Length);
@@ -9211,7 +9225,10 @@ public sealed partial class PrototypeGameEngine
             StochasticSiteRegistryV111.CombatFullPoolShuffleSiteId,
             "combat", "run.combat_card_generation",
             "effect:CreateDistinctColorlessCardsInHand:source:" +
-                (sourceCardId ?? "none"));
+                (sourceCardId ?? "none"),
+            PrototypeCombatEffectKind.CreateDistinctColorlessCardsInHand,
+            Math.Min(Math.Min(count, capacity), candidates.Length),
+            sourceCardInstanceId);
         foreach (var cardId in candidates.Take(
                      Math.Min(Math.Min(count, capacity), candidates.Length)))
         {
@@ -9239,6 +9256,8 @@ public sealed partial class PrototypeGameEngine
         int count,
         bool freeThisTurn,
         bool upgraded,
+        PrototypeCombatEffectKind sourceOperationKind,
+        long? sourceCardInstanceId,
         RngBundle rng,
         bool retain = false,
         bool useNativeCardGenerationRng = false)
@@ -9263,6 +9282,7 @@ public sealed partial class PrototypeGameEngine
             "combat", "run.combat_card_generation",
             "combat:generated_cards:first_instance:" +
                 combat.NextCardInstanceId,
+            sourceOperationKind, selectedCount, sourceCardInstanceId,
             forceLegacyProfile: !useNativeProvider);
         var selectedIds = candidates.Take(selectedCount).ToArray();
         var generatedIds = new List<long>(
@@ -14148,6 +14168,9 @@ public sealed partial class PrototypeGameEngine
         string legacyStreamId,
         string nativeStreamId,
         string ownerPrefix,
+        PrototypeCombatEffectKind sourceOperationKind,
+        int selectedCount,
+        long? sourceCardInstanceId = null,
         bool forceLegacyProfile = false)
     {
         ArgumentNullException.ThrowIfNull(combat);
@@ -14188,10 +14211,41 @@ public sealed partial class PrototypeGameEngine
             : new NativeRandomIndexProviderV111();
         var ownerId = ownerPrefix + ":pool:" +
             CanonicalJson.Sha256(orderedPool);
-        _ = NativeFisherYatesV111.ShuffleInPlace(
+        var originalLabels = native is not null &&
+            RandomBoundaryJournalV111.HasActiveJournal
+                ? NativePoolShuffleLabels(combat, orderedPool)
+                : null;
+        var decisions = NativeFisherYatesV111.ShuffleInPlace(
             orderedPool, streams, provider, streamId,
             ownerId, siteId,
             (int)callOrdinal);
+        if (originalLabels is not null)
+        {
+            var currentLabels = (string[])originalLabels.Clone();
+            var outcomes = new SemanticPoolShuffleDecisionV111[
+                decisions.Length];
+            for (var index = 0; index < decisions.Length; index++)
+            {
+                var decision = decisions[index];
+                outcomes[index] = SemanticPoolShuffleChoiceV111
+                    .CreateNativeAudit(
+                        decision, originalLabels, currentLabels,
+                        selectedCount, sourceOperationKind,
+                        sourceCardInstanceId);
+                var swapIndex = decision.Request.BoundedCount!.Value - 1;
+                (currentLabels[swapIndex],
+                    currentLabels[decision.SelectedIndex]) =
+                    (currentLabels[decision.SelectedIndex],
+                        currentLabels[swapIndex]);
+            }
+            if (!currentLabels.SequenceEqual(
+                    NativePoolShuffleLabels(combat, orderedPool),
+                    StringComparer.Ordinal))
+                throw new InvalidDataException(
+                    "Native pool-shuffle audit replay differs from the shuffled support.");
+            RandomBoundaryJournalV111.RecordPoolShuffleOutcomes(
+                outcomes, decisions);
+        }
         return native is null
             ? combat
             : combat with
@@ -14199,6 +14253,23 @@ public sealed partial class PrototypeGameEngine
                 Stochastic = CombatStochasticStateV111.WithNativeRng(
                     combat.Stochastic, native with { RunStreams = streams })
             };
+    }
+
+    private static string[] NativePoolShuffleLabels<T>(
+        CombatState combat, IReadOnlyList<T> pool)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(pool);
+        return pool.Select(value => value switch
+        {
+            long instanceId => "card-instance:" + instanceId.ToString(
+                System.Globalization.CultureInfo.InvariantCulture) + ":" +
+                RequireCombatCard(combat, instanceId).CardId,
+            string cardId => cardId,
+            _ => throw new NotSupportedException(
+                "UNSUPPORTED_NATIVE_POOL_SHUFFLE_IDENTITY type=" +
+                typeof(T).FullName)
+        }).ToArray();
     }
 
     private static (CombatState Combat, int SelectedIndex)

@@ -340,6 +340,13 @@ asserting that the candidate support or Native source route is complete.
 Native randomization of hand-card energy costs also records each selected
 physical card, its sampled cost, and the exact bounded request. The audit schema
 requires one typed cost outcome for every registered per-card cost draw.
+Native combat card-pool shuffles now retain the ordered support immediately
+before every bounded Fisher–Yates swap, paired with its exact request and
+selected index. The audit reuses the existing semantic pool-shuffle event,
+validates the complete descending swap chain, and requires one support record
+for every registered pool-shuffle ticket in newly marked Native-policy traces.
+This records the modeled pool and selected permutation; Native source-pool
+eligibility and stream attribution remain unverified.
 New Native-policy audits also carry a mixed-trace schema marker; restore
 validation checks a fingerprint of the full retained trace and rejects a
 missing or truncated trace whenever Native decisions are retained. Older
@@ -371,11 +378,11 @@ continuations.
 
 **D2 remaining:** formation resolvers outside the integrated subset,
 monster-local draws, summon/death continuation mechanics,
-shuffle/targets/rewards, full map source-order parity, event sites beyond
-Orobas, Darv, Pael, Tezcatara, Nonupeipe, Tanx and
-Vakuu offer generation and other audited call sites. Other provider site
-families still expose primitive selections unless a site-specific semantic
-outcome owner is implemented.
+other shuffle source outcomes, target and reward outcomes, full map
+source-order parity, event sites beyond Orobas, Darv, Pael, Tezcatara,
+Nonupeipe, Tanx and Vakuu offer generation, and other audited call sites.
+Other provider site families still expose primitive selections unless a
+site-specific semantic outcome owner is implemented.
 The separate semantic playable API now exposes typed weighted intent events,
 deferred physical-card draws, random-enemy targets, generated-card model
 pools, opt-in drawn-card costs and source card-selection choices. Those

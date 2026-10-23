@@ -141,6 +141,104 @@ public static class SemanticPoolShuffleChoiceV111
     internal const string RandomShortlistSiteId =
         StochasticSiteRegistryV111.CombatRandomShortlistShuffleSiteId;
 
+    /// <summary>Pair one Native Fisher–Yates ticket with the exact ordered
+    /// card support immediately before its swap. These audit annotations use
+    /// the same semantic event shape as controlled pool-shuffle choices but
+    /// do not suspend or alter the ordinary Native execution.</summary>
+    internal static SemanticPoolShuffleDecisionV111 CreateNativeAudit(
+        RandomIndexDecisionV111 providerDecision,
+        IReadOnlyList<string> originalCardIds,
+        IReadOnlyList<string> currentCardIds,
+        int selectedCount,
+        PrototypeCombatEffectKind sourceOperationKind,
+        long? sourceCardInstanceId)
+    {
+        ArgumentNullException.ThrowIfNull(providerDecision);
+        ArgumentNullException.ThrowIfNull(originalCardIds);
+        ArgumentNullException.ThrowIfNull(currentCardIds);
+        providerDecision.Validate();
+        var request = providerDecision.Request;
+        var operation = sourceOperationKind.ToString();
+        var original = originalCardIds.ToArray();
+        var current = currentCardIds.ToArray();
+        var nextSwapIndex = request.BoundedCount is { } bound
+            ? bound - 1 : -1;
+        if (providerDecision.ProviderMode != "native-v111" ||
+            request.OperationKind != "bounded_integer" ||
+            request.SiteId != SiteIdForOperation(operation) ||
+            nextSwapIndex < 1 || original.Length <= nextSwapIndex ||
+            selectedCount <= 0 || selectedCount > original.Length ||
+            original.Any(string.IsNullOrWhiteSpace) ||
+            original.Distinct(StringComparer.Ordinal).Count() !=
+                original.Length ||
+            current.Length != original.Length ||
+            !current.Order(StringComparer.Ordinal).SequenceEqual(
+                original.Order(StringComparer.Ordinal)))
+            throw new InvalidDataException(
+                "Native pool-shuffle audit has an unsupported request or ordered support.");
+
+        var boundaryFingerprint = NativeAuditBoundaryFingerprint(
+            providerDecision, operation, sourceCardInstanceId);
+        var supportFingerprint = CanonicalJson.Sha256(new
+        {
+            Request = request,
+            Original = original,
+            Current = current,
+            NextSwapIndex = nextSwapIndex,
+            SelectedCount = selectedCount,
+            Operation = operation,
+            SourceCardInstanceId = sourceCardInstanceId
+        });
+        var eventId = CanonicalJson.Sha256(new
+        {
+            SchemaId,
+            BoundaryFingerprint = boundaryFingerprint,
+            SupportFingerprint = supportFingerprint
+        });
+        var semanticEvent = new SemanticPoolShuffleEventV111(
+            SchemaId, eventId, boundaryFingerprint, supportFingerprint,
+            request with
+            {
+                OrderedCandidates = (int[])request.OrderedCandidates.Clone()
+            }, original, current, nextSwapIndex, selectedCount, operation,
+            sourceCardInstanceId);
+        var outcome = new SemanticPoolShuffleDecisionV111(
+            semanticEvent, providerDecision.SelectedIndex);
+        outcome.Validate();
+        return outcome;
+    }
+
+    internal static void ValidateNativeAudit(
+        SemanticPoolShuffleDecisionV111 outcome,
+        RandomIndexDecisionV111 providerDecision)
+    {
+        ArgumentNullException.ThrowIfNull(outcome);
+        ArgumentNullException.ThrowIfNull(providerDecision);
+        outcome.Validate();
+        providerDecision.Validate();
+        var semanticEvent = outcome.Event;
+        if (providerDecision.ProviderMode != "native-v111" ||
+            CanonicalJson.Sha256(semanticEvent.Request) !=
+                CanonicalJson.Sha256(providerDecision.Request) ||
+            outcome.SelectedSwapIndex != providerDecision.SelectedIndex ||
+            semanticEvent.BoundaryFingerprint !=
+                NativeAuditBoundaryFingerprint(
+                    providerDecision, semanticEvent.SourceOperationKind,
+                    semanticEvent.SourceCardInstanceId))
+            throw new InvalidDataException(
+                "Native pool-shuffle semantic support differs from its exact provider decision.");
+    }
+
+    private static string NativeAuditBoundaryFingerprint(
+        RandomIndexDecisionV111 providerDecision, string operation,
+        long? sourceCardInstanceId) => CanonicalJson.Sha256(new
+        {
+            SchemaId = "sts2-v111-native-pool-shuffle-audit-v1",
+            ProviderDecision = providerDecision,
+            Operation = operation,
+            SourceCardInstanceId = sourceCardInstanceId
+        });
+
     internal static string? SiteIdForOperation(string sourceOperationKind) =>
         sourceOperationKind switch
         {

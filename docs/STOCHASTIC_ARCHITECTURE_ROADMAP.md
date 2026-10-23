@@ -2,6 +2,15 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**D2 Native pool-shuffle outcome audit increment (2026-10-23):** Native combat
+card-pool Fisher–Yates swaps now annotate the ordered card support immediately
+before each ticket by reusing `SemanticPoolShuffleEventV111`. The Native-policy
+audit links every annotation to its exact provider request and selected index,
+checks the descending permutation chain, and marks new snapshots as requiring
+complete coverage for registered pool-shuffle sites. Source-pool eligibility,
+Native stream attribution, and cursor parity remain open. Static source review
+and `git diff --check` only; no tests or builds were run.
+
 **S0 stochastic SiteId ownership consolidation (2026-10-23):** The registry
 now owns the identifiers for random hand-cost selection and resolution,
 draw-cost choices, potion generation, card transforms, and the semantic
