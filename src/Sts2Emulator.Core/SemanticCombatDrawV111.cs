@@ -279,8 +279,11 @@ public sealed record SemanticCombatDrawV111(
             TryGetAutomaticSemanticHandDrawProgress(
                 combat, out int pipelineRequested,
                 out int pipelineRemaining);
-        bool semanticBeforeHandDrawProgress =
-            IsSemanticBeforeHandDrawProgress(pipelineCursor);
+        bool semanticBeforeHandDrawProgress = pipelineCursor is not null &&
+            pipelineCursor.Stochastic.TryGetSemanticHandDrawProjection(
+                pipelineCursor.Mechanics, out int beforeRequested,
+                out int beforeRemaining) &&
+            beforeRequested == 0 && beforeRemaining == 0;
         if (this.AutomaticHandDraw)
         {
             bool awaiting = deck.Pending is not null || cost is not null ||
@@ -433,14 +436,6 @@ public sealed record SemanticCombatDrawV111(
             cursor.Stochastic.TryGetSemanticHandDrawProgress(
                 cursor.Mechanics, out requested, out remaining);
     }
-
-    private static bool IsSemanticBeforeHandDrawProgress(
-        PrototypeAutomaticPipelineContinuationState? cursor) =>
-        cursor?.Stochastic.HandDrawProgress is
-            { Kind: PrototypeAutomaticHandDrawProgressKindV111
-                .SemanticBeforeHandDraw,
-              RequestedCount: null,
-              RemainingCount: null };
 }
 
 public static class SemanticCombatDrawEngineV111
@@ -662,16 +657,6 @@ public static class SemanticCombatDrawEngineV111
         var run = handDraw.Run;
         int requested = handDraw.RequireRequestedCount();
         int remaining = handDraw.RemainingCount;
-        if (run.World?.Combat?.PendingChoice?.ControlledRandomPileCard
-                is not null &&
-            run.World.Combat.AutomaticPipelineContinuation?
-                .Stochastic.HandDrawProgress?.Kind ==
-                    PrototypeAutomaticHandDrawProgressKindV111
-                        .SemanticBeforeHandDraw)
-        {
-            requested = 0;
-            remaining = 0;
-        }
         var result = new SemanticCombatDrawV111(
             origin, run, requested, remaining, true, AutomaticHandDraw: true);
         Validate(result);

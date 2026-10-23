@@ -404,12 +404,14 @@ Curse of Knowledge uses the same handoff after its typed source action resolves.
 
 For a live automatic hand draw, `PrototypeAutomaticPipelineStochasticStateV111` is now the sole owner of requested/remaining counts. `SemanticCombatDrawV111` and the end-turn/pilot facades project those counts from the pipeline; their flattened snapshot fields remain populated, while local fallback metadata is retained only for standalone or completed draw segments.
 
-The pipeline stochastic owner provides `TryGetActiveAutomaticHandDrawProgress` as the common count-bearing cursor query. It validates the saved `DrawPlayerHand` stage and returns the tagged progress mode with its counts; `TryGetAutomaticHandDrawRemainder` and `TryGetSemanticHandDrawProgress` project from that value. Automatic draw-cost validation reads the tag and count together once, while `TryGetSemanticHandDrawProjection` also exposes the zero-count `BeforeHandDraw` suspension to the semantic draw facade only at that same saved stage. This keeps tagged-stage interpretation with the owner of the saved cursor.
+The pipeline stochastic owner provides `TryGetActiveAutomaticHandDrawProgress` as the common count-bearing cursor query. It validates the saved `DrawPlayerHand` stage and returns the tagged progress mode with its counts; `TryGetAutomaticHandDrawRemainder` and `TryGetSemanticHandDrawProgress` project from that value. Automatic draw-cost validation reads the tag and count together once, while `TryGetSemanticHandDrawProjection` also exposes the zero-count `BeforeHandDraw` suspension to the semantic draw facade and its validator only at that same saved stage. This keeps tagged-stage interpretation with the owner of the saved cursor.
 
 `ResumeSemanticAutomaticHandDrawStep` owns classification of the semantic
 stage's active draw, pending pre-draw choice, and completed zero or positive
 draw outcomes. `BeginSemanticAutomaticHandDraw` returns that validated
 progress directly, leaving the helper as the single stage-result interpreter.
+The initial semantic draw facade publishes its requested/remaining projection
+from this result without reinterpreting `BeforeHandDraw` random-pile choices.
 The pipeline stochastic validator checks the shared `DrawPlayerHand` stage
 once for every active progress tag; mode-specific checks cover the corresponding
 provider state and pending choice.

@@ -63,6 +63,13 @@ for every active progress tag. Repeated per-mode stage checks were removed;
 provider and pending-choice validation stays with each tagged mode. Static
 source review and `git diff --check` only; no tests or builds were run.
 
+**S4 semantic hand-draw projection increment (2026-10-24):** The initial
+semantic draw facade publishes requested and remaining counts directly from
+the shared stage result, and frame validation identifies zero-count
+`BeforeHandDraw` progress through the pipeline owner projection. It no longer
+reinterprets a pending random-pile choice. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S4 controlled event-choice candidate replay increment (2026-10-24):**
 Generic event-effect continuations now pass each saved decision's ordered
 candidate labels into replay and compare them with the live support before
