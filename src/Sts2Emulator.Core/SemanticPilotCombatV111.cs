@@ -2467,13 +2467,16 @@ public sealed record SemanticPilotCombatV111(
                 combat, combat?.PendingChoice, poolShufflePending);
             bool seekerStrikeShuffle = IsSeekerStrikeDrawPileShortlistShuffle(
                 combat, combat?.PendingChoice, poolShufflePending);
+            bool discoveryShuffle = IsDiscoveryGeneratedChoiceShuffle(
+                combat, combat?.PendingChoice, poolShufflePending);
             bool neowsAbundanceShuffle = IsNeowsAbundanceGeneratedChoiceShuffle(
                 combat, combat?.PendingChoice,
                 combat?.PendingChoice?.ControlledPoolShuffle);
             var fixtureMatches = automaticPipelinePoolShuffle ||
                 handReturnShuffle || recycleShuffle ||
                 colorlessPotionShuffle || anointedRareShuffle ||
-                seekerStrikeShuffle || neowsAbundanceShuffle ||
+                seekerStrikeShuffle || discoveryShuffle ||
+                neowsAbundanceShuffle ||
                 (randomRareToHandShuffle
                     ? this.Stochastic.SeededEntry?.FixtureSelectionCardId ==
                         "proto.colorless.anointed"
@@ -3177,6 +3180,7 @@ public static class SemanticPilotCombatEngineV111
             "proto.silent.survivor" or
             "proto.colorless.seeker_strike" or
             "proto.colorless.anointed" or
+            "proto.colorless.discovery" or
             "proto.silent.nightmare" or
             "proto.colorless.beat_down" or
             "proto.colorless.catastrophe" or
@@ -4141,6 +4145,8 @@ public static class SemanticPilotCombatEngineV111
                 card?.CardId == "proto.colorless.anointed";
             var semanticSeekerStrikeCard =
                 card?.CardId == "proto.colorless.seeker_strike";
+            var semanticDiscoveryCard =
+                card?.CardId == "proto.colorless.discovery";
             var supportedCardAction = card is not null &&
                 (SemanticPlayerActionEngineV111.SupportsCard(card.CardId) ||
                  card.CardId == "proto.silent.ricochet" ||
@@ -4150,6 +4156,7 @@ public static class SemanticPilotCombatEngineV111
                  semanticPotionGenerationCard ||
                  semanticRandomRareToHandCard ||
                  semanticSeekerStrikeCard ||
+                 semanticDiscoveryCard ||
                  semanticSelectionCard);
             if (!supportedCardAction)
                 throw new NotSupportedException(
@@ -5790,6 +5797,49 @@ public static class SemanticPilotCombatEngineV111
                 card.CardId == "proto.native.neow.abundance");
     }
 
+    private static bool IsDiscoveryGeneratedChoiceShuffle(
+        CombatState? combat, PendingCombatChoiceState? choice,
+        PrototypeControlledPoolShuffleV111? shuffle)
+    {
+        if (combat is null ||
+            choice is not { ChoiceId: "controlled_pool_shuffle",
+                SourceCardInstanceId: { } sourceCardInstanceId,
+                CompletionEvents: [],
+                OuterChoiceContinuation: { } continuation } ||
+            shuffle is null)
+            return false;
+        var operation = shuffle.Operation;
+        var series = continuation.CardPlaySeries;
+        return operation.Kind == PrototypeCombatEffectKind.ChooseGeneratedCards &&
+            operation.Amount == 3 &&
+            operation.SourceKind == PrototypeEffectSourceKind.Card &&
+            operation.Selection is null && operation.TargetEnemyId is null &&
+            operation.GeneratedChoiceCardType is null &&
+            operation.GeneratedChoiceCardsFreeThisTurn &&
+            !operation.GeneratedChoiceCardsUpgraded &&
+            !operation.GeneratedChoiceMustPick &&
+            !operation.GeneratedChoiceCharacterCards &&
+            !operation.GeneratedChoiceCardsRetain &&
+            !operation.GeneratedChoiceUsesNativeCardGenerationRng &&
+            continuation.SourceCardInstanceId == sourceCardInstanceId &&
+            continuation.Operations.Length == 0 &&
+            continuation.CompletionEvents.Length == 1 &&
+            continuation.CompletionEvents[0] is
+                { Kind: PrototypeCombatEventKind.CardPlayed,
+                    CardId: "proto.colorless.discovery" } &&
+            continuation.CompletionEvents[0].SourceCardInstanceId ==
+                sourceCardInstanceId &&
+            series is not null &&
+            series.SourceCardInstanceId == sourceCardInstanceId &&
+            !series.IsAutoPlay && series.NextPlayIndex > 0 &&
+            series.NextPlayIndex <= series.PlayCount &&
+            continuation.Parent is null &&
+            continuation.EventDispatchContinuation is null &&
+            combat.Cards.Any(card =>
+                card.InstanceId == sourceCardInstanceId &&
+                card.CardId == "proto.colorless.discovery");
+    }
+
     private static bool IsColorlessPotionGeneratedChoiceShuffle(
         CombatState? combat, PendingCombatChoiceState? choice,
         PrototypeControlledPoolShuffleV111? shuffle)
@@ -5939,6 +5989,8 @@ public static class SemanticPilotCombatEngineV111
             combat, choice, shuffle);
         bool seekerStrikeShuffle = IsSeekerStrikeDrawPileShortlistShuffle(
             combat, choice, shuffle);
+        bool discoveryShuffle = IsDiscoveryGeneratedChoiceShuffle(
+            combat, choice, shuffle);
         bool mayhemRecycle = recycle && combat is not null && choice is not null &&
             PrototypeGameEngine.IsMayhemLegacyRecycleContinuation(
                 combat, choice);
@@ -5950,7 +6002,7 @@ public static class SemanticPilotCombatEngineV111
             combat, choice, shuffle);
         var fixtureMatches = automaticPipelinePoolShuffle || handReturn ||
             recycle || colorlessPotionShuffle || anointedRareShuffle ||
-            seekerStrikeShuffle || neowsAbundanceShuffle ||
+            seekerStrikeShuffle || discoveryShuffle || neowsAbundanceShuffle ||
             (randomRareToHand
             ? current.Stochastic.SeededEntry?.FixtureSelectionCardId ==
                 "proto.colorless.anointed"

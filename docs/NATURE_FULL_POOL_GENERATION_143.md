@@ -46,6 +46,11 @@ The seeded fixture remains an optional way to provide the potion; this action
 admission does not establish native acquisition, pool completeness, stream
 assignment, or cursor parity.
 
+Discovery's optional three-card generated-card offer now also enters this
+continuation from its physical source-card identity. The exact card effect,
+`CardPlayed` completion, and saved manual card-play frame reuse the existing
+shuffle event and ChoicePool selection; fixture setup remains optional.
+
 ## Validation and boundaries
 
 Focused tests exercise Attack and Colorless Potions through the **real potion-use effect kernel** on a fixture-modified playable combat state, including a resumed player card-selection action, and the distinct-common operation through an internal operation fixture. They verify full-pool RNG call shape, source card-model order, source eligibility, invalid/stale swap decisions, mid-shuffle forgery checks, replay event IDs, and 15-worker independent execution.

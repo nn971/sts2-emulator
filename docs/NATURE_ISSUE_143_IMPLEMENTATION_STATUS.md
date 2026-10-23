@@ -400,7 +400,9 @@ the fixture remains optional for supplying Anointed and a supported Rare
 draw pile. Seeker Strike now enters its three-card draw-pile shortlist from
 the physical source instance and exact `ChooseCards` specification, then
 reuses the existing card-selection owner; its fixture is optional for source
-card and pile setup.
+card and pile setup. Discovery also enters its optional three-card generated
+offer from the physical source card and exact `CardPlayed` continuation, then
+reuses the existing full-pool shuffle and ChoicePool selection owners.
 Gambler's Brew uses the existing sequential card-selection event for its
 one-at-a-time discard prompt, then resumes the semantic draw owner for the
 selected count. Its guard matches the potion-use completion and exact
