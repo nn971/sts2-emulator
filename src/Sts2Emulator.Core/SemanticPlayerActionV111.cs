@@ -145,7 +145,12 @@ public static class SemanticPlayerActionEngineV111
             PrototypeNativeUnderdocksTrashHeap.HelloWorldCardId,
             PrototypeNativeUnderdocksTrashHeap.OutmaneuverCardId,
             PrototypeNativeUnderdocksTrashHeap.ReboundCardId,
-            PrototypeNativeUnderdocksTrashHeap.StackCardId
+            PrototypeNativeUnderdocksTrashHeap.StackCardId,
+            PrototypeNativeEndlessConveyor.FeedingFrenzyId,
+            PrototypeNativeHiveEvents.EnlightenmentId,
+            PrototypeNativeLaterActs.ExterminateId,
+            PrototypeNativeLaterActs.SquashId,
+            PrototypeNativeOrobasRelics.LuminesceId
         };
 
     internal static bool SupportsCard(string cardId) =>
