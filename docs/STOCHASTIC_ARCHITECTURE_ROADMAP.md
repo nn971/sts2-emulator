@@ -2,6 +2,15 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 suspended run/event mechanics comparison increment (2026-10-24):** The
+provider-independent mechanics projection now includes pending run-action,
+post-reward event-action, and event-effect continuation progress from their
+existing mechanics owners, retaining action identity, effect cursor, and
+queued consequences while excluding random requests and decision payloads.
+Mechanics-comparison and provider-replay-comparison schema IDs advanced to v17
+and v3. Static source review and `git diff --check` only; no tests or builds
+were run.
+
 **S4 mechanics comparison input validation increment (2026-10-24):** The
 provider-independent mechanics projection now validates the complete
 `RunState` before stripping provider state. Raw-state comparisons and

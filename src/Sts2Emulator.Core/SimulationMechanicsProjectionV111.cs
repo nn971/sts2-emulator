@@ -13,7 +13,7 @@ public sealed record SimulationMechanicsComparisonV111(
         CloneDifferences(Differences);
 
     public const string SchemaId =
-        "sts2-v111-simulation-mechanics-comparison-v16";
+        "sts2-v111-simulation-mechanics-comparison-v17";
 
     public SimulationMechanicsDifferenceV111[] Differences
     {
@@ -56,7 +56,35 @@ public sealed record SimulationMechanicsProjectionV111(
     SimulationControlledTurnIntentProgressProjectionV111?
         ControlledTurnIntentProgress = null,
     SimulationControlledEnemyActionProgressProjectionV111?
-        ControlledEnemyActionProgress = null);
+        ControlledEnemyActionProgress = null,
+    SimulationPendingRunActionMechanicsProjectionV111?
+        PendingRunAction = null,
+    SimulationPendingEventRewardMechanicsProjectionV111?
+        PendingEventRewardChoice = null,
+    SimulationPendingEventEffectMechanicsProjectionV111?
+        PendingEventEffectChoice = null);
+
+/// <summary>Provider-independent progress for a suspended run action. The
+/// action identity and map boundary remain visible while its request support
+/// and selected stochastic prefix are omitted.</summary>
+public sealed record SimulationPendingRunActionMechanicsProjectionV111(
+    string ActionId, string? MapNodeId, GameAction? RunAction);
+
+/// <summary>Provider-independent progress for a suspended post-reward event
+/// action. The committed logical prefix length remains visible; random
+/// requests and selected values remain provider state.</summary>
+public sealed record SimulationPendingEventRewardMechanicsProjectionV111(
+    string EventId, string ChoiceId, int DecisionPrefixLength,
+    GameAction? ResumeAction);
+
+/// <summary>Provider-independent progress and queued consequences for a
+/// suspended event-effect sequence.</summary>
+public sealed record SimulationPendingEventEffectMechanicsProjectionV111(
+    string EventId, string ChoiceId, int NextEffectIndex,
+    int EffectDecisionStartIndex, string[] QueuedPotionIds,
+    PrototypePendingEventDeckChoiceState[] QueuedDeckChoices,
+    RewardState? DeferredReward, int DeferredHpLoss,
+    int DeferredGoldLoss, string? DeferredCardId);
 
 /// <summary>
 /// Provider-independent cursor for a pending semantic deck request. The
@@ -199,6 +227,41 @@ public static class SimulationMechanicsProjectionEngineV111
             controlledTurnIntentProgress = null;
         SimulationControlledEnemyActionProgressProjectionV111?
             controlledEnemyActionProgress = null;
+        var controlledRunAction =
+            snapshot.Stochastic.ControlledRunActionChoice;
+        var pendingRunAction = controlledRunAction is null
+            ? null
+            : new SimulationPendingRunActionMechanicsProjectionV111(
+                controlledRunAction.ActionId,
+                controlledRunAction.MapNodeId,
+                MechanicsAction(controlledRunAction.RunAction));
+        var controlledEventReward =
+            snapshot.Stochastic.ControlledEventRewardChoice;
+        var pendingEventReward = controlledEventReward is null
+            ? null
+            : new SimulationPendingEventRewardMechanicsProjectionV111(
+                controlledEventReward.EventId,
+                controlledEventReward.ChoiceId,
+                controlledEventReward.DecisionPrefixLength,
+                MechanicsAction(controlledEventReward.ResumeAction));
+        SimulationPendingEventEffectMechanicsProjectionV111?
+            pendingEventEffect = null;
+        if (world?.Event?.Stochastic.ControlledChoice is
+            { } controlledEventEffect)
+        {
+            var mechanics = controlledEventEffect.Mechanics;
+            pendingEventEffect =
+                new SimulationPendingEventEffectMechanicsProjectionV111(
+                    mechanics.EventId, mechanics.ChoiceId,
+                    mechanics.NextEffectIndex,
+                    mechanics.EffectDecisionStartIndex,
+                    mechanics.QueuedPotionIds,
+                    mechanics.QueuedDeckChoices,
+                    mechanics.DeferredReward?.Fork(),
+                    mechanics.DeferredHpLoss,
+                    mechanics.DeferredGoldLoss,
+                    mechanics.DeferredCardId);
+        }
         if (combat is not null)
         {
             var pendingChoice = combat.PendingChoice;
@@ -339,7 +402,10 @@ public static class SimulationMechanicsProjectionEngineV111
                 : null,
             automaticHandDrawProgress,
             controlledTurnIntentProgress,
-            controlledEnemyActionProgress);
+            controlledEnemyActionProgress,
+            pendingRunAction,
+            pendingEventReward,
+            pendingEventEffect);
     }
 
     public static string Fingerprint(RunState run) =>
@@ -650,5 +716,11 @@ public static class SimulationMechanicsProjectionEngineV111
         {
             Operation = MechanicsOperation(continuation.Operation),
             SplashTarget = continuation.SplashTarget.Fork()
+        };
+
+    private static GameAction? MechanicsAction(GameAction? action) =>
+        action is null ? null : action with
+        {
+            Payload = action.Payload.Clone()
         };
 }

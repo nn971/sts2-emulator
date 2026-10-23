@@ -891,7 +891,7 @@ public sealed record SimulationProviderReplayComparisonV111(
     bool RequireNativeCursorEquality)
 {
     public const string CurrentSchemaId =
-        "sts2-v111-simulation-provider-replay-comparison-v2";
+        "sts2-v111-simulation-provider-replay-comparison-v3";
 
     public string LeftCaptureProvenance { get; init; } =
         SimulationProviderReplayCaptureProvenanceV111.CallerSupplied;

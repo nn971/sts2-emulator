@@ -821,6 +821,12 @@ Before projecting, it validates the complete `RunState`, including provider and
 mechanics correspondence. Raw-state comparisons and mechanics fingerprints
 therefore reject malformed or unsynchronized inputs before stochastic data is
 removed from the view.
+The projection also retains pending run-action, post-reward event-action, and
+event-effect continuation mechanics from their existing mechanics owners,
+including action identity, effect cursor, and queued consequences, while
+omitting their random requests and decision payloads. The comparison schemas
+advance to mechanics-comparison v17 and provider-replay-comparison v3 for this
+expanded projection.
 `SimulationMechanicsComparisonV111` copies the difference array on
 construction and replacement, then returns defensive copies to keep the
 diagnostic result immutable to callers.
