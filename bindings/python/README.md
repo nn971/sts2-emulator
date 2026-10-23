@@ -259,6 +259,21 @@ The outcomes are support indices; map each index through the supplied HP
 order. The query verifies the Native `NextInt` grid masses for that support.
 It does not reconstruct prior-monster exclusions or verify the source pool.
 
+Tough Egg hatching uses a fixed source interval selected by Ascension:
+
+```python
+egg_law = state.query_chance_law(
+    "combat.tough_egg.hatchling_hp",
+    owner_id="creature:7",
+    ordinal=0,
+    ascension=8,
+)
+```
+
+That query derives the ordered 20–23 HP support at Ascension 8+ (19–22 below
+Ascension 8). It verifies the one `run.niche` index transform, while event
+eligibility and the saved creature boundary remain with the caller.
+
 Native relic-bag construction also exposes each Fisher–Yates swap law. Pass
 the current exclusive bound, rarity-queue owner, and swap ordinal:
 

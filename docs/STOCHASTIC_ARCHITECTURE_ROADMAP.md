@@ -10,6 +10,13 @@ eligible HP support and order; pool construction, seed frequencies, and
 end-to-end stream/cursor parity remain open. Static source review and
 `git diff --check` only; no tests or builds were run.
 
+**S6 Native Tough Egg per-index law increment (2026-10-23):** The direct
+`combat.tough_egg.hatchling_hp` query now binds a canonical creature owner,
+Ascension, and source ordinal, deriving the pinned 19–22 or 20–23 HP support
+before applying the exact `run.niche` `NextInt` grid law. Event eligibility
+and the saved in-place hatch boundary remain with the caller. Static source
+review and `git diff --check` only; no tests or builds were run.
+
 **D2 Native initial-HP result audit increment (2026-10-23):** The source-route
 Native-policy entry audit now pairs each setup `run.niche` HP ticket with its
 combat identity, ordered HP support, and selected HP. New encounter-formation

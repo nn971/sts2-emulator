@@ -1006,6 +1006,7 @@ public static class StochasticSiteRegistryV111
         PrototypeNativeLaterActMap.GloryRestCountSiteId,
         NativeCombatGoldSiteId,
         NativeCombatRngEntryV111.InitialUniqueHpSiteId,
+        NativeCombatRngEntryV111.ToughEggHatchHpSiteId,
         RewardPotionOddsUnitFloatSiteId,
         RewardBossRelicOfferShuffleSiteId,
         RewardLavaRockRelicOfferShuffleSiteId,

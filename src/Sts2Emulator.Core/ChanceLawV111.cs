@@ -2654,21 +2654,8 @@ public static partial class ChanceLawEngineV111
     public static ChanceLawV111 QueryNativeInitialHpIndex(
         string ownerId, int[] orderedHpSupport, int ordinal)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
+        ValidateNativeCreatureOwnerId(ownerId);
         ArgumentNullException.ThrowIfNull(orderedHpSupport);
-        const string ownerPrefix = "creature:";
-        if (!ownerId.StartsWith(ownerPrefix, StringComparison.Ordinal))
-            throw new ArgumentException(
-                "Native initial-HP owner must identify one creature CombatId.",
-                nameof(ownerId));
-        if (!long.TryParse(ownerId.AsSpan(ownerPrefix.Length),
-                NumberStyles.None, CultureInfo.InvariantCulture,
-                out var combatId) || combatId < 0 ||
-            ownerId != ownerPrefix + combatId.ToString(
-                CultureInfo.InvariantCulture))
-            throw new ArgumentException(
-                "Native initial-HP owner must identify one creature CombatId.",
-                nameof(ownerId));
         if (orderedHpSupport.Length == 0 ||
             orderedHpSupport.Any(hp => hp <= 0) ||
             orderedHpSupport.Distinct().Count() != orderedHpSupport.Length)
@@ -2688,6 +2675,48 @@ public static partial class ChanceLawEngineV111
             request
         });
         return QueryRandomIndex(eventId, request);
+    }
+
+    /// <summary>
+    /// Query the Native in-place Tough Egg hatch HP index. Ascension selects
+    /// the source interval; the caller owns the event/creature eligibility.
+    /// </summary>
+    public static ChanceLawV111 QueryNativeToughEggHatchHpIndex(
+        string ownerId, int ascension, int ordinal)
+    {
+        ValidateNativeCreatureOwnerId(ownerId);
+        if (ascension < 0)
+            throw new ArgumentOutOfRangeException(nameof(ascension));
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+
+        var minHp = ascension >= 8 ? 20 : 19;
+        var orderedHpSupport = Enumerable.Range(minHp, 4).ToArray();
+        var request = new RandomIndexRequestV111(
+            NativeCombatRngEntryV111.ToughEggHatchHpSiteId,
+            "run.niche", ownerId, ordinal, orderedHpSupport);
+        var eventId = CanonicalJson.Sha256(new
+        {
+            boundary = "native-tough-egg-hatch-hp-index",
+            ascension,
+            request
+        });
+        return QueryRandomIndex(eventId, request);
+    }
+
+    private static void ValidateNativeCreatureOwnerId(string ownerId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
+        const string ownerPrefix = "creature:";
+        if (!ownerId.StartsWith(ownerPrefix, StringComparison.Ordinal) ||
+            !long.TryParse(ownerId.AsSpan(ownerPrefix.Length),
+                NumberStyles.None, CultureInfo.InvariantCulture,
+                out var combatId) || combatId < 0 ||
+            ownerId != ownerPrefix + combatId.ToString(
+                CultureInfo.InvariantCulture))
+            throw new ArgumentException(
+                "Native HP owner must identify one canonical creature CombatId.",
+                nameof(ownerId));
     }
 
     public const string NativeBoundedIndexSourceVerifiedProvenance =

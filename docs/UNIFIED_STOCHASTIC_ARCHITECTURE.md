@@ -660,6 +660,13 @@ binds the declared values and order into the request fingerprint. The caller
 still owns the live HP support; pool construction and order, seed frequencies,
 and end-to-end cursor parity remain separate evidence.
 
+The `combat.tough_egg.hatchling_hp` direct query accepts the same canonical
+creature owner, Ascension, and source ordinal. It derives the pinned
+19–22 or 20–23 HP interval and returns exact `run.niche` `NextInt` grid
+masses over support indices. This covers the in-place hatch draw only; event
+eligibility, the saved creature boundary, seed frequencies, and cursor parity
+remain separate evidence.
+
 - Its result must be independent of the outcome eventually selected by Native, ReferenceNature or learned Nature.
 - Native provider's already-committed hidden realization is **not** a Chance Law input for Nature's pre-revelation distribution. Conditioning on a complete private realization would instead produce a degenerate distribution; it answers a different question.
 - For uniform unknown permutations, sequential sampling over remaining eligible physical instances can produce the correct joint law, subject to known positions, shared pools, forced insertions, observations and other constraints. Compute the conditional law of the remaining random object, not merely an arbitrary uniform distribution over listed candidates.

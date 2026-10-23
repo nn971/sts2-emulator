@@ -109,7 +109,9 @@ class State:
         Native initial unique-HP laws take owner_id="creature:<CombatId>",
         ordered_hp_support, and ordinal. They bind the declared HP values and
         order to the exact run.niche index law; pool construction remains with
-        the caller.
+        the caller. Tough Egg hatch HP laws take the same creature owner,
+        Ascension, and ordinal; their ordered HP support is derived from the
+        source interval.
         PotionFactory and relic rarity laws accept a caller-declared owner_id
         + stream_id pair for cursor-blind source-threshold queries.
         Repy potion laws use ordinal 0 or 1 and prior_indices containing the
@@ -190,6 +192,26 @@ class State:
             if support_count is not None:
                 raise ValueError(
                     "Native initial-HP laws use ordered_hp_support, not support_count")
+        elif site_id == "combat.tough_egg.hatchling_hp":
+            if owner_id is None or not owner_id.startswith("creature:"):
+                raise ValueError(
+                    "Tough Egg hatch HP laws require owner_id=creature:<CombatId>")
+            creature_id_text = owner_id[len("creature:"):]
+            try:
+                creature_id = int(creature_id_text)
+            except ValueError as error:
+                raise ValueError(
+                    "Tough Egg hatch HP owner must contain a CombatId") from error
+            if (creature_id < 0 or creature_id > 9_223_372_036_854_775_807 or
+                    owner_id != f"creature:{creature_id}"):
+                raise ValueError(
+                    "Tough Egg hatch HP owner must contain a canonical CombatId")
+            if type(ascension) is not int or ascension < 0:
+                raise ValueError(
+                    "Tough Egg hatch HP laws require nonnegative ascension")
+            if support_count is not None:
+                raise ValueError(
+                    "Tough Egg hatch HP support is derived from ascension")
         elif ordered_hp_support is not None:
             raise ValueError(
                 "ordered_hp_support applies only to combat.initial_unique_hp")

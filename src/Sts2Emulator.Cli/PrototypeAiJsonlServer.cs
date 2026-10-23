@@ -3377,6 +3377,32 @@ internal static class PrototypeAiJsonlServer
                             });
                             break;
                         }
+                        if (siteId == NativeCombatRngEntryV111
+                                .ToughEggHatchHpSiteId)
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "owner_id", "ascension");
+                            var ownerId = OptionalString(
+                                request, "owner_id") ??
+                                throw new ArgumentException(
+                                    "Tough Egg hatch HP law requires owner_id.");
+                            var ascension = OptionalInt(
+                                request, "ascension") ??
+                                throw new ArgumentException(
+                                    "Tough Egg hatch HP law requires ascension.");
+                            law = ChanceLawEngineV111
+                                .QueryNativeToughEggHatchHpIndex(
+                                    ownerId, ascension, ordinal);
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
                         if (ChanceLawEngineV111
                                 .IsNativeBoundedIntegerLawSite(siteId))
                         {

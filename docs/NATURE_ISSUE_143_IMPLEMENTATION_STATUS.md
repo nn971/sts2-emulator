@@ -490,6 +490,12 @@ The read-only `combat.initial_unique_hp` query now binds a
 fingerprints the caller's declared support values and order; source pool
 construction, seed frequencies, and end-to-end cursor parity remain open.
 
+The read-only `combat.tough_egg.hatchling_hp` query accepts a canonical
+`creature:<CombatId>` owner, Ascension, and source ordinal, then derives the
+source's 19–22 or 20–23 HP support and returns exact `run.niche` `NextInt`
+grid masses. Event eligibility and the in-place hatch boundary remain caller
+responsibilities; no source-pool or cursor-parity claim is added.
+
 This removes the fabricated encounter formation from the opt-in route mode,
 but does not make route probabilities, Neow choices, shuffle-order hooks,
 or all combat entry hooks native-parity verified. The initial draw-pile
