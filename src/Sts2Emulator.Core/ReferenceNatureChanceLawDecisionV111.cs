@@ -159,6 +159,42 @@ public static class ReferenceNatureChanceLawDecisionV111
                 mappedControlled.Validate();
                 return mappedControlled;
             }
+            if (law.OperationKind == "legacy_index_mapped_gold")
+            {
+                var candidates = indexRequest.OrderedCandidates;
+                var expectedOutcomes = candidates.Select(gold =>
+                    new ChanceLawOutcomeV111(
+                        "gold:" + gold.ToString(
+                            CultureInfo.InvariantCulture), 1L)).ToArray();
+                if (candidateLabels is not null ||
+                    indexRequest.SiteId != ChanceLawEngineV111
+                        .NativeEventGoldIndexSiteId ||
+                    indexRequest.StreamId != "event" ||
+                    indexRequest.OperationKind != "choose_index" ||
+                    law.SiteId != indexRequest.SiteId ||
+                    law.OperationKind != "legacy_index_mapped_gold" ||
+                    law.OwnerId != indexRequest.OwnerId ||
+                    law.Ordinal != indexRequest.Ordinal ||
+                    law.ConditioningPolicyId !=
+                        "native-regional-legacy-event-gold-index-v1" ||
+                    law.ProbabilityStatus != ChanceLawV111.UnverifiedStatus ||
+                    law.ProbabilityProvenance !=
+                        "uniform-saved-legacy-event-gold-index-support-unverified" ||
+                    !law.Outcomes.SequenceEqual(expectedOutcomes))
+                    throw new InvalidDataException(
+                        "Legacy mapped-gold Chance Law does not match its saved event-stream index request.");
+                var legacyMappedDecision = new RandomIndexDecisionV111(
+                    indexRequest with
+                    {
+                        OrderedCandidates = (int[])
+                            indexRequest.OrderedCandidates.Clone()
+                    }, selection.OutcomeIndex, "controlled-v111");
+                legacyMappedDecision.Validate();
+                var legacyMappedControlled = ControlledStochasticDecisionV111
+                    .FromIndex(legacyMappedDecision);
+                legacyMappedControlled.Validate();
+                return legacyMappedControlled;
+            }
             if (indexRequest.SiteId == "reward.combat_gold.index_draw")
             {
                 if (candidateLabels is not null ||

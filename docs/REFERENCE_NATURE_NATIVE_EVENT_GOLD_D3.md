@@ -1,19 +1,21 @@
 # Native event-entry ReferenceNature continuation
 
-**Snapshot:** 2026-10-18. **Status:** implemented configured Native event-entry continuation for supported generated-gold, Stone of All Time, and Future of Potions draws; Native seed parity and event-pool fidelity remain open.
+**Snapshot:** 2026-10-23. **Status:** implemented configured Native event-entry continuation for supported generated-gold, Stone of All Time, and Future of Potions draws, plus Native-regional legacy generated-gold index requests; Native seed parity and event-pool fidelity remain open.
 
 ## Boundary
 
 `ReferenceNatureNativeEventGoldSessionV111` is the versioned session/API name
-for supported Native Event-node entry draws. It starts from a legal configured
-Native Event-node action in `RunPhase.MapChoice` and replays that ordinary
-action with its existing providers until it reaches a typed
+for supported Event-node entry draws. It starts from a legal configured
+Native-regional Event-node action in `RunPhase.MapChoice` and replays that
+ordinary action with its existing providers until it reaches a typed
 `event.generated_gold.unit_float` or
 `event.generated_gold.index_draw` request. The accepted branches are Dense Vegetation, Whispering Hollow, both
 source-region Sunken Statue events, Luminous Choir, Sunken Treasury, Punch
 Off, This or That, Jungle Maze Adventure, and Lost Wisp. All use one gold
 request except Sunken Treasury and Jungle Maze, which use primary and
-secondary requests.
+secondary requests. Configured Native runs retain their source-pinned Native
+requests; Native-regional runs without `NativeRunRng` are admitted only for
+legacy `event.generated_gold.index_draw` requests.
 
 The same atomic session also consumes `event.stone_of_all_time.potion_slot.index_draw`
 for Stone of All Time and each ordered
@@ -31,14 +33,17 @@ session is published.
 
 ## Law and replay
 
-Each pending request uses its existing conditional Chance Law. Gold requests
-use
+Each pending request uses its route-specific conditional Chance Law. Native
+gold requests use
 `ChanceLawEngineV111.QueryNativeEventGoldUnitFloat` or
 `QueryNativeEventGoldIndex`. Float laws preserve 53-bit `NextDouble`
 preimages after `NextFloat` rounding, source arithmetic, and integer
 truncation. Index laws count exact `NextInt` preimages and aggregate indices
 that map to the same gold value. Their declared transforms are
-`SOURCE_VERIFIED` for the pinned formulas. Stone and Future of Potions reuse
+`SOURCE_VERIFIED` for the pinned formulas. Legacy generated-gold index laws
+validate the saved `event` request ordinal and exact ordered event-stage
+support, then assign equal weights to the saved integer candidates; these laws
+remain `UNVERIFIED`. Stone and Future of Potions reuse
 `QueryNativeStoneOfAllTimePotionSlot` and
 `QueryNativeFutureOfPotionsCardType`; their exact Native `NextInt` masses are
 conditional on the declared event branch and ordered support. The laws do not establish source
@@ -74,9 +79,11 @@ interface.
 
 ## Scope limits
 
-The session controls only the listed gold, Stone of All Time, and Future of
-Potions entry requests on configured Native routes. Legacy integer fallbacks,
-other event-entry choices, and subsequent event actions remain outside it.
-Native event selection and any other draws remain on their existing
-providers. The public class, CLI command, and Python method retain the earlier
-gold-oriented names for compatibility with the first session schema.
+The session controls the listed gold, Stone of All Time, and Future of Potions
+entry requests on configured Native routes. Its Native-regional legacy route
+controls only the listed generated-gold index requests; legacy Stone and
+Future of Potions entry requests, other event-entry choices, and subsequent
+event actions remain outside it. Native event selection and any other draws
+remain on their existing providers. The public class, CLI command, and Python
+method retain the earlier gold-oriented names for compatibility with the
+first session schema.

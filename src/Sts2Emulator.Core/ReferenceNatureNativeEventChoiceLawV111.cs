@@ -903,6 +903,115 @@ public static partial class ChanceLawEngineV111
             outcomes, ChanceLawV111.SourceVerifiedStatus);
     }
 
+    /// <summary>
+    /// Query a captured legacy generated-gold index on the configured
+    /// Native-regional route. The saved typed request supplies its actual
+    /// event-stream ordinal; the declared event and stage determine the
+    /// ordered support without inspecting the selected event or RNG cursor.
+    /// </summary>
+    public static ChanceLawV111 QueryLegacyNativeRegionalEventGoldIndex(
+        RunState origin, RandomIndexRequestV111 request, string actionId,
+        string eventId)
+    {
+        ArgumentNullException.ThrowIfNull(origin);
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        request.Validate();
+        if (request.SiteId != NativeEventGoldIndexSiteId ||
+            request.StreamId != "event" ||
+            request.OperationKind != "choose_index" ||
+            origin.Stochastic.NativeRunRng is not null ||
+            origin.Phase != RunPhase.MapChoice ||
+            origin.World is not { Event: null } world ||
+            !PrototypeGameEngine.UsesNativeRegionalSystems(world))
+            throw new InvalidOperationException(
+                "Legacy event-gold laws require a captured index request at a configured Native-regional pre-entry boundary.");
+        PrototypeStateInvariants.Validate(origin);
+
+        var action = new PrototypeGameEngine().GetLegalActions(origin)
+            .SingleOrDefault(candidate =>
+                PrototypeAiEnvironment.StableActionId(candidate) == actionId)
+            ?? throw new InvalidOperationException(
+                "Legacy event-gold law requires a current legal Event-node action.");
+        var nodeId = action.Kind == "choose_map_node"
+            ? action.ReadPayload<ChooseMapNodePayload>().NodeId : null;
+        if (nodeId is null ||
+            !PrototypeNativeWingedBoots.AvailableNodes(world, origin.Player)
+                .Any(node => node.NodeId == nodeId &&
+                    node.RoomType == PrototypeRoomType.Event))
+            throw new InvalidOperationException(
+                "Legacy event-gold law requires a current legal Event-node action.");
+
+        ValidateNativeEventBranch(origin, world, eventId);
+        var ownerPrefix = $"event:{eventId}:gold:";
+        if (!request.OwnerId.StartsWith(ownerPrefix, StringComparison.Ordinal))
+            throw new InvalidDataException(
+                "Legacy event-gold owner does not match the declared event branch.");
+        var stage = request.OwnerId[ownerPrefix.Length..];
+        var (minimum, count) = (eventId, stage) switch
+        {
+            (PrototypeNativeDenseVegetation.EventId, "primary") =>
+                (61, 39),
+            ("proto.native.event.whispering_hollow", "primary") =>
+                (26, 19),
+            ("proto.native.event.sunken_statue", "primary") =>
+                (101, 21),
+            ("proto.native.event.luminous_choir", "primary") =>
+                (100, 50),
+            ("proto.native.event.jungle_maze_adventure", "primary") =>
+                (135, 30),
+            ("proto.native.event.jungle_maze_adventure", "secondary") =>
+                (35, 30),
+            ("proto.native.underdocks.sunken_treasury", "primary") =>
+                (52, 16),
+            ("proto.native.underdocks.sunken_treasury", "secondary") =>
+                (303, 61),
+            (PrototypeNativeHiveEvents.LostWispId, "primary") =>
+                (45, 31),
+            ("proto.native.underdocks.sunken_statue", "primary") =>
+                (101, 21),
+            (PrototypeNativePunchOff.EventId, "primary") =>
+                (91, 8),
+            (PrototypeNativeSharedEvents.ThisOrThatId, "primary") =>
+                (41, 28),
+            _ => throw new InvalidOperationException(
+                "The declared legacy event branch has no supported gold-index stage.")
+        };
+        var candidates = Enumerable.Range(minimum, count).ToArray();
+        if (!request.OrderedCandidates.SequenceEqual(candidates))
+            throw new InvalidDataException(
+                "Legacy event-gold request differs from its declared ordered source support.");
+
+        var conditioning = new
+        {
+            boundary = "native_regional_legacy_event.generated_gold.index_draw",
+            actionId,
+            eventId,
+            stage,
+            sourceMapping = "saved-legacy-event-gold-ordered-support-v1",
+            request
+        };
+        var conditioningFingerprint = CanonicalJson.Sha256(conditioning);
+        var eventLawId = CanonicalJson.Sha256(new
+        {
+            siteId = request.SiteId,
+            ownerId = request.OwnerId,
+            ordinal = request.Ordinal,
+            conditioningFingerprint
+        });
+        var outcomes = candidates.Select(gold =>
+            new ChanceLawOutcomeV111(
+                "gold:" + gold.ToString(CultureInfo.InvariantCulture), 1L))
+            .ToArray();
+        return Create(eventLawId, request.SiteId,
+            "legacy_index_mapped_gold", request.OwnerId, request.Ordinal,
+            "native-regional-legacy-event-gold-index-v1",
+            conditioningFingerprint,
+            "uniform-saved-legacy-event-gold-index-support-unverified",
+            outcomes, ChanceLawV111.UnverifiedStatus);
+    }
+
     private static void ValidateNativeEventBranch(
         RunState origin, RunWorldState world, string eventId)
     {

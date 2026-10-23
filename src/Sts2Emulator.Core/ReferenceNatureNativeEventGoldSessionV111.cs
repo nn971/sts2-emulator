@@ -23,7 +23,8 @@ public sealed record ReferenceNatureNativeEventGoldSessionSnapshotV111(
 }
 
 /// <summary>
-/// Atomic ReferenceNature replay for supported Native Event-node entry draws.
+/// Atomic ReferenceNature replay for supported Native and Native-regional
+/// legacy Event-node entry gold draws.
 /// </summary>
 public sealed record ReferenceNatureNativeEventGoldSessionV111(
     string SchemaId, string EventId, string ActionId,
@@ -165,7 +166,7 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
         var replay = Replay(origin, actionId, []);
         var request = replay.Continuation?.PendingRequest ??
             throw new NotSupportedException(
-                "Configured Event entry did not reach a supported Native event-entry draw.");
+                "Configured Event entry did not reach a supported event-entry draw.");
         var eventId = ParseSupportedEventId(request);
         _ = QueryLaw(origin, actionId, eventId, request);
         var session = new ReferenceNatureNativeEventGoldSessionV111(
@@ -407,6 +408,16 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
             ChanceLawEngineV111.NativeFutureOfPotionsCardTypeSiteId))
             throw new NotSupportedException(
                 $"Native event-entry replay reached unsupported site '{siteId}'.");
+        if (origin.Stochastic.NativeRunRng is null)
+        {
+            if (siteId != GoldIndexSiteId ||
+                request.IndexRequest is not { } legacyIndexRequest)
+                throw new NotSupportedException(
+                    "Native-regional legacy event-gold replay supports only generated-gold index requests.");
+            return ChanceLawEngineV111
+                .QueryLegacyNativeRegionalEventGoldIndex(
+                    origin, legacyIndexRequest, actionId, eventId);
+        }
         var law = siteId switch
         {
             GoldUnitFloatSiteId =>
@@ -515,11 +526,10 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
         if (origin.Phase != RunPhase.MapChoice ||
             origin.World is not { Event: null } world ||
             string.IsNullOrWhiteSpace(origin.RunSeed) ||
-            origin.Stochastic.NativeRunRng is null ||
             origin.Stochastic.ControlledRunActionChoice is not null ||
             !PrototypeGameEngine.UsesNativeRegionalSystems(world))
             throw new InvalidOperationException(
-                "Native event gold session requires a configured pre-entry Event-node state.");
+                "Native event gold session requires a configured Native-regional pre-entry Event-node state.");
         PrototypeStateInvariants.Validate(origin);
         var action = new PrototypeGameEngine().GetLegalActions(origin)
             .SingleOrDefault(candidate =>
@@ -554,9 +564,10 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
                 GoldUnitFloatSiteId or GoldIndexSiteId or
                 ChanceLawEngineV111.NativeStoneOfAllTimePotionSlotSiteId or
                 ChanceLawEngineV111.NativeFutureOfPotionsCardTypeSiteId);
-        return replay.Run is { } completed
-            ? replay with { Run = MarkCompletedReplay(completed) }
-            : replay;
+        return replay.Run is { } completed &&
+            source.Stochastic.NativeRunRng is not null
+                ? replay with { Run = MarkCompletedReplay(completed) }
+                : replay;
     }
 
     private static ControlledStochasticContinuationResultV111 Resolve(
@@ -579,9 +590,10 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
                 GoldUnitFloatSiteId or GoldIndexSiteId or
                 ChanceLawEngineV111.NativeStoneOfAllTimePotionSlotSiteId or
                 ChanceLawEngineV111.NativeFutureOfPotionsCardTypeSiteId);
-        return replay.Run is { } completed
-            ? replay with { Run = MarkCompletedReplay(completed) }
-            : replay;
+        return replay.Run is { } completed &&
+            source.Stochastic.NativeRunRng is not null
+                ? replay with { Run = MarkCompletedReplay(completed) }
+                : replay;
     }
 
     private static RunState MarkCompletedReplay(RunState completed)
