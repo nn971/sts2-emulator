@@ -394,7 +394,10 @@ and leaves the hidden draw-pile boundary unchanged. Colorless Potion now also
 runs from any matching combat slot. Its exact generated-Colorless operation,
 `PotionUsed` completion and empty nested continuation reuse the existing
 source-aware shuffle and optional ChoicePool pick; the seeded fixture remains
-available for potion setup.
+available for potion setup. Anointed's Rare-pile shuffle now also uses its
+physical source-card identity and exact amount-ten `CardPlayed` continuation;
+the fixture remains optional for supplying Anointed and a supported Rare
+draw pile.
 Gambler's Brew uses the existing sequential card-selection event for its
 one-at-a-time discard prompt, then resumes the semantic draw owner for the
 selected count. Its guard matches the potion-use completion and exact

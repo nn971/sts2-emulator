@@ -2463,12 +2463,15 @@ public sealed record SemanticPilotCombatV111(
             bool colorlessPotionShuffle =
                 IsColorlessPotionGeneratedChoiceShuffle(
                     combat, combat?.PendingChoice, poolShufflePending);
+            bool anointedRareShuffle = IsAnointedRareToHandShuffle(
+                combat, combat?.PendingChoice, poolShufflePending);
             bool neowsAbundanceShuffle = IsNeowsAbundanceGeneratedChoiceShuffle(
                 combat, combat?.PendingChoice,
                 combat?.PendingChoice?.ControlledPoolShuffle);
             var fixtureMatches = automaticPipelinePoolShuffle ||
                 handReturnShuffle || recycleShuffle ||
-                colorlessPotionShuffle || neowsAbundanceShuffle ||
+                colorlessPotionShuffle || anointedRareShuffle ||
+                neowsAbundanceShuffle ||
                 (randomRareToHandShuffle
                     ? this.Stochastic.SeededEntry?.FixtureSelectionCardId ==
                         "proto.colorless.anointed"
@@ -5778,6 +5781,47 @@ public static class SemanticPilotCombatEngineV111
             continuation.EventDispatchContinuation is null;
     }
 
+    private static bool IsAnointedRareToHandShuffle(
+        CombatState? combat, PendingCombatChoiceState? choice,
+        PrototypeControlledPoolShuffleV111? shuffle)
+    {
+        if (combat is null ||
+            choice is not { ChoiceId: "controlled_pool_shuffle",
+                SourceCardInstanceId: { } sourceCardInstanceId,
+                CompletionEvents: [],
+                OuterChoiceContinuation: { } continuation } ||
+            shuffle is null)
+            return false;
+        var operation = shuffle.Operation;
+        var series = continuation.CardPlaySeries;
+        return operation.Kind ==
+                PrototypeCombatEffectKind.MoveRandomRareDrawCardsToHand &&
+            operation.Amount == 10 &&
+            operation.SourceKind == PrototypeEffectSourceKind.Card &&
+            operation.Selection is null && operation.Condition is null &&
+            operation.TargetEnemyId is null &&
+            continuation.SourceCardInstanceId == sourceCardInstanceId &&
+            continuation.SourceCardDestination ==
+                PrototypeCardZone.ExhaustPile &&
+            continuation.Operations.Length == 0 &&
+            continuation.CompletionEvents.Length == 1 &&
+            continuation.CompletionEvents[0] is
+                { Kind: PrototypeCombatEventKind.CardPlayed,
+                    CardId: "proto.colorless.anointed" } &&
+            continuation.CompletionEvents[0].SourceCardInstanceId ==
+                sourceCardInstanceId &&
+            series is not null &&
+            series.SourceCardInstanceId == sourceCardInstanceId &&
+            series.SourceCardDestination == PrototypeCardZone.ExhaustPile &&
+            !series.IsAutoPlay && series.NextPlayIndex > 0 &&
+            series.NextPlayIndex <= series.PlayCount &&
+            continuation.Parent is null &&
+            continuation.EventDispatchContinuation is null &&
+            combat.Cards.Any(card =>
+                card.InstanceId == sourceCardInstanceId &&
+                card.CardId == "proto.colorless.anointed");
+    }
+
     public static SemanticPoolShuffleEventV111?
         DescribePendingPoolShuffleEvent(SemanticPilotCombatV111 current)
     {
@@ -5800,6 +5844,8 @@ public static class SemanticPilotCombatEngineV111
         bool colorlessPotionShuffle =
             IsColorlessPotionGeneratedChoiceShuffle(
                 combat, choice, shuffle);
+        bool anointedRareShuffle = IsAnointedRareToHandShuffle(
+            combat, choice, shuffle);
         bool mayhemRecycle = recycle && combat is not null && choice is not null &&
             PrototypeGameEngine.IsMayhemLegacyRecycleContinuation(
                 combat, choice);
@@ -5810,7 +5856,8 @@ public static class SemanticPilotCombatEngineV111
         bool neowsAbundanceShuffle = IsNeowsAbundanceGeneratedChoiceShuffle(
             combat, choice, shuffle);
         var fixtureMatches = automaticPipelinePoolShuffle || handReturn ||
-            recycle || colorlessPotionShuffle || neowsAbundanceShuffle ||
+            recycle || colorlessPotionShuffle || anointedRareShuffle ||
+            neowsAbundanceShuffle ||
             (randomRareToHand
             ? current.Stochastic.SeededEntry?.FixtureSelectionCardId ==
                 "proto.colorless.anointed"

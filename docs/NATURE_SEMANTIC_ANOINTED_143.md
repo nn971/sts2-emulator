@@ -23,12 +23,12 @@ When the run-owned Native provider is active, each saved swap is delegated to
 a Nature history choice. The provider transcript records the bounded Native
 request privately; Native stream attribution and cursor parity remain open.
 
-The seeded semantic-pilot fixture can replace its first opening-hand card
-with Anointed by setting
-`fixture_selection_card_id="proto.colorless.anointed"`. It also replaces
-the remaining opening draw-pile models with supported Rare cards so the
-multi-card shuffle path is reachable. This fixture does not claim native
-card-acquisition history. JSONL clients resolve each event with
+The source action now enters this continuation from the physical Anointed
+card and its exact amount-ten Rare-to-hand operation; it does not require a
+seeded-fixture marker. The seeded semantic-pilot fixture remains available to
+replace its first opening-hand card with Anointed and populate the remaining
+opening draw pile with supported Rare cards so the multi-card shuffle is
+reachable. The fixture does not claim native card-acquisition history. JSONL clients resolve each event with
 `semantic_resolve_pool_shuffle(swap_index)` under the pending kind
 `random_rare_to_hand_shuffle`.
 

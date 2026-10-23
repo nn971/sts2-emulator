@@ -19,6 +19,15 @@ Fixture setup remains available. Native acquisition, pool fidelity, and
 cursor parity remain open. Static source review and `git diff --check` only;
 no tests or builds were run.
 
+**S2/S4 Anointed source-card increment (2026-10-23):** The persistent
+semantic pilot now admits Anointed's Rare draw-pile shuffle by its physical
+source-card identity and exact amount-ten operation, `CardPlayed` completion,
+and saved card-play frame. The existing full-pool shuffle owner and stable
+card-instance support remain unchanged. Fixture setup is optional for
+supplying Anointed and a Rare pile; native acquisition, pool completeness, and
+cursor parity remain open. Static source review and `git diff --check` only;
+no tests or builds were run.
+
 **S2/S4 Neow's Abundance choice increment (2026-10-23):** The persistent
 semantic combat pilot admits Abundance's generated-Power choice through the
 existing full-pool shuffle and ChoicePool selection owners. The shuffle guard
