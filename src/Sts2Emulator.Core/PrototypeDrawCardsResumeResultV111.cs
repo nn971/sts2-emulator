@@ -10,9 +10,21 @@ internal readonly record struct PrototypeDrawCardsResumeResultV111(
 {
     internal static PrototypeDrawCardsResumeResultV111 ForHandDraw(
         RunState run, int requestedCount, int remainingCount) =>
-        new(run, remainingCount, requestedCount);
+        new PrototypeDrawCardsResumeResultV111(
+            run, remainingCount, requestedCount).Validate();
 
-    internal int RequireRequestedCount() => RequestedCount ??
-        throw new InvalidDataException(
+    internal PrototypeDrawCardsResumeResultV111 Validate()
+    {
+        if (Run is null || RemainingCount < 0 || RequestedCount is < 0)
+            throw new InvalidDataException(
+                "Draw resume progress contains a null run or negative count.");
+        return this;
+    }
+
+    internal int RequireRequestedCount()
+    {
+        Validate();
+        return RequestedCount ?? throw new InvalidDataException(
             "Draw resume result has no requested hand-draw count.");
+    }
 }

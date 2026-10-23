@@ -442,6 +442,7 @@ public static class SemanticCombatDrawEngineV111
         SemanticCombatDrawV111 state,
         PrototypeDrawCardsResumeResultV111 progress)
     {
+        progress.Validate();
         var next = state with
         {
             Run = progress.Run,

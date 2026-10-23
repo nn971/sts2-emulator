@@ -79,6 +79,12 @@ saved-semantic context. It requires a semantic draw frame only for the saved
 semantic route, removing the ambiguous saved-stage boolean/provider inference.
 Static source review and `git diff --check` only; no tests or builds were run.
 
+**S4 draw-resume progress validation increment (2026-10-24):** The shared
+transient result now rejects null runs and negative requested/remaining counts
+when a hand-draw result is formed, its requested count is required, or semantic
+draw progress is published. No saved schema changed. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S4 controlled event-choice candidate replay increment (2026-10-24):**
 Generic event-effect continuations now pass each saved decision's ordered
 candidate labels into replay and compare them with the live support before
