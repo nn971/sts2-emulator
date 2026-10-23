@@ -811,6 +811,9 @@ supports bounded semantic enumeration. The Release solution build passes with
 zero warnings or errors; tests and mechanics regressions were not run.
 Conditional probabilities, native stream assignment and cursor parity remain
 `UNVERIFIED`. See the [semantic P0 contract](NATURE_P0_SEMANTIC_JSONL_143.md).
+The persistent semantic pilot also admits the exact Alchemize source
+operation without that fixture marker; the fixture remains an optional way
+to arrange the source card.
 
 ## 2026-10-17: Bottled Potential hand-return shuffle
 

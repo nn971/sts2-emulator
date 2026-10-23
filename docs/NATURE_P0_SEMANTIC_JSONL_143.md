@@ -871,6 +871,11 @@ Alchemize entered a native deck. Its Chance Law reports exact Native
 `NextInt` grid masses and `SOURCE_VERIFIED` for the bounded-index transform
 on the declared ordered pool. Native pool completeness, stream assignment,
 seed frequencies, cursor parity, and fixture provenance remain `UNVERIFIED`.
+The persistent semantic pilot also admits the same operation from an actual
+Alchemize source card without the fixture marker. Its guard checks the
+amount-one potion-generation operation, matching `CardPlayed` completion and
+saved manual card-play frame. The fixture remains useful for arranging the
+source card, but does not establish native acquisition history.
 
 ## Random combat-card transform continuation
 

@@ -4135,8 +4135,7 @@ public static class SemanticPilotCombatEngineV111
                  "proto.colorless.catastrophe");
             var semanticRandomReplayCard =
                 card?.CardId == "proto.colorless.hidden_gem";
-            var semanticPotionGenerationCard = card?.CardId ==
-                current.Stochastic.SeededEntry?.FixturePotionGenerationCardId &&
+            var semanticPotionGenerationCard =
                 card?.CardId == "proto.colorless.alchemize";
             var semanticRandomRareToHandCard =
                 card?.CardId == "proto.colorless.anointed";
@@ -5540,8 +5539,12 @@ public static class SemanticPilotCombatEngineV111
             { } endTurnEvent)
             return endTurnEvent;
         var combat = current.Run.World?.Combat;
-        var generation = combat?.PendingChoice?.ControlledPotionGeneration;
+        var choice = combat?.PendingChoice;
+        var generation = choice?.ControlledPotionGeneration;
         if (generation is null) return null;
+        if (!IsAlchemizePotionGenerationChoice(combat, choice, generation))
+            throw new InvalidDataException(
+                "Potion generation is outside the supported Alchemize source action.");
         var ordinal = current.History.Count(transition =>
             transition.Kind == "semantic_potion_generation");
         if (current.Run.Stochastic.SemanticOtherChance is
@@ -5552,6 +5555,45 @@ public static class SemanticPilotCombatEngineV111
                     SemanticPotionGenerationChoiceV111.SiteId);
         return SemanticPotionGenerationChoiceV111.DescribePending(
             current.Run, current.Fingerprint, ordinal);
+    }
+
+    private static bool IsAlchemizePotionGenerationChoice(
+        CombatState? combat, PendingCombatChoiceState? choice,
+        PrototypeControlledPotionGenerationV111 generation)
+    {
+        if (combat is null ||
+            choice is not { ChoiceId: "controlled_potion_generation",
+                SourceCardInstanceId: { } sourceCardInstanceId,
+                CompletionEvents: [],
+                OuterChoiceContinuation: { } continuation })
+            return false;
+        var operation = generation.Operation;
+        var series = continuation.CardPlaySeries;
+        return operation.Kind ==
+                PrototypeCombatEffectKind.AcquireRandomCombatPotion &&
+            operation.Amount == 1 &&
+            operation.SourceKind == PrototypeEffectSourceKind.Card &&
+            operation.TargetEnemyId is null && operation.Condition is null &&
+            continuation.SourceCardInstanceId == sourceCardInstanceId &&
+            continuation.SourceCardDestination ==
+                PrototypeCardZone.ExhaustPile &&
+            continuation.Operations.Length == 0 &&
+            continuation.CompletionEvents.Length == 1 &&
+            continuation.CompletionEvents[0] is
+                { Kind: PrototypeCombatEventKind.CardPlayed,
+                    CardId: "proto.colorless.alchemize" } &&
+            continuation.CompletionEvents[0].SourceCardInstanceId ==
+                sourceCardInstanceId &&
+            series is not null &&
+            series.SourceCardInstanceId == sourceCardInstanceId &&
+            series.SourceCardDestination == PrototypeCardZone.ExhaustPile &&
+            !series.IsAutoPlay && series.NextPlayIndex > 0 &&
+            series.NextPlayIndex <= series.PlayCount &&
+            continuation.Parent is null &&
+            continuation.EventDispatchContinuation is null &&
+            combat.Cards.Any(card =>
+                card.InstanceId == sourceCardInstanceId &&
+                card.CardId == "proto.colorless.alchemize");
     }
 
     public static SemanticCardTransformEventV111?
