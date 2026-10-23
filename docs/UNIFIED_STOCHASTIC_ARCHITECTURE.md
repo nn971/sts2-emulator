@@ -101,7 +101,9 @@ or Boss rewards when their acquisition hooks reach a registered
 relic-acquisition site. It preserves the exact action and selected request
 prefix across continuation snapshots. The specialized configured Native
 session also covers primary and extra combat-reward groups for its four
-registered relic-acquisition hooks.
+registered relic-acquisition hooks. The same shared run-action owner also
+captures legacy `rest_heal` reward generation when a relic creates card
+offers, including its registered rarity and card-model requests.
 
 `RunStochasticStateV111.RebasePendingContinuationCheckpoints` now owns publication of active event-reward and run-action partial checkpoints after a step has committed mechanics and reconciled Native provider state. It builds each checkpoint with that continuation removed, updates the saved frame, and validates it against the complete run owner. `PrototypeGameEngine.FinalizeStep` delegates both rebases through this transition; the flattened snapshot members remain unchanged.
 

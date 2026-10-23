@@ -29,6 +29,16 @@ an extra group directly, then replays the same registered request prefix.
 Other relic hooks, source-pool fidelity, and Native cursor parity remain open.
 Static source review and `git diff --check` only; no tests or builds were run.
 
+**D3/D4 rest-heal reward continuation increment (2026-10-23):** The shared
+controlled run-action frame now saves a legal legacy `rest_heal` that reaches
+relic-generated card offers. It captures the registered `reward`-stream
+rarity/model requests, including the legacy requests used by Native-shaped
+Dream Catcher generation when `NativeRunRng` is absent, then replays the saved
+action and commits the Reward with the ReferenceNature cursor. Configured
+Native reward generation and unrelated Rest actions remain outside this
+boundary. Static source review and `git diff --check` only; no tests or builds
+were run.
+
 **S0 Neow request-source inventory increment (2026-10-23):** The Neow
 decision-plan builder now references its owning Chance Law session's finite
 site list explicitly, and the regenerated direct-call census resolves both

@@ -54,7 +54,10 @@ public sealed record ControlledRunActionTraceV111(
         var rewardRelicAction =
             ControlledRunActionEngineV111
                 .IsCombatRewardRelicActionKind(ActionId);
-        var actionPayloadRequired = shopPurchaseAction || rewardRelicAction;
+        var restHealRewardAction = ActionId ==
+            PrototypeNativeRestSiteActionsV111.Heal;
+        var actionPayloadRequired = shopPurchaseAction || rewardRelicAction
+            || restHealRewardAction;
         if (ActionId is not ("start_run" or "continue_act"
                 or PrototypeNativeRestSiteActionsV111.Dig
                 or "choose_map_node")
@@ -115,6 +118,9 @@ public sealed record ControlledRunActionTraceV111(
             var isShopPurchaseDraw = (shopPurchaseAction || rewardRelicAction)
                 && StochasticSiteRegistryV111
                     .IsRunActionShopPurchaseSite(request.SiteId);
+            var isRestHealRewardDraw = restHealRewardAction
+                && StochasticSiteRegistryV111
+                    .IsRunActionRestHealRewardSite(request.SiteId);
             var isNativeShovelFallbackDraw = ActionId ==
                     PrototypeNativeRestSiteActionsV111.Dig
                 && (request.SiteId is "relic_grab_bag.rarity.ticket"
@@ -132,6 +138,8 @@ public sealed record ControlledRunActionTraceV111(
                 : isBossDraw ? "combat" : "map";
             var validStream = isShopPurchaseDraw
                 ? IsSupportedShopPurchaseStream(request)
+                : isRestHealRewardDraw
+                    ? request.StreamId == "reward"
                 : isNativeFormationDraw
                     ? ControlledRunActionEngineV111
                         .IsNativeEncounterFormationRequest(
@@ -148,7 +156,7 @@ public sealed record ControlledRunActionTraceV111(
                     ? isEventEntryDraw || isShopDraw || isTreasureDraw
                         || isCombatDraw || isCombatPotionDraw
                     : actionPayloadRequired
-                        ? isShopPurchaseDraw
+                        ? isShopPurchaseDraw || isRestHealRewardDraw
                     : ControlledEventChoiceReplayV111
                         .IsRunActionShovelSite(request.SiteId);
             var prefixOwner = isOvergrowthBossDraw
@@ -171,12 +179,16 @@ public sealed record ControlledRunActionTraceV111(
                 && request.SupportCount >
                     ControlledRunActionEngineV111.MaximumInlineOutcomeActions
                 && labels.Length == 0;
+            omittedLabels |= isRestHealRewardDraw
+                && request.SupportCount >
+                    ControlledRunActionEngineV111.MaximumInlineOutcomeActions
+                && labels.Length == 0;
             var nativeRelicBagLabels = IsLegacyNativeRelicBagLabelSupport(
                 request, labels);
             var numericLabels = !(isMapDraw || isEventEntryDraw || isShopDraw
                 || isTreasureDraw || isNativeShovelFallbackDraw
                 || isCombatDraw || isCombatPotionDraw
-                || isShopPurchaseDraw)
+                || isShopPurchaseDraw || isRestHealRewardDraw)
                 || nativeRelicBagLabels
                 || omittedLabels || labels.SequenceEqual(
                 Enumerable.Range(0, labels.Length).Select(index =>
@@ -471,6 +483,7 @@ public sealed record PrototypeControlledRunActionContinuationV111(
         var mapNodeRequest = false;
         var shopPurchaseRequest = false;
         var rewardRelicRequest = false;
+        var restHealRewardRequest = false;
         switch (ActionId)
         {
             case "start_run":
@@ -815,12 +828,37 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                 rewardRelicRequest = true;
                 break;
             }
+            case PrototypeNativeRestSiteActionsV111.Heal:
+            {
+                if (RunAction is null
+                    || !ControlledRunActionEngineV111
+                        .IsLegacyRestHealRewardAction(state, RunAction)
+                    || RunAction.Kind != ActionId
+                    || MapNodeId is not null
+                    || !ControlledRunActionEngineV111
+                        .IsSupportedRestHealRewardRequest(PendingRequest)
+                    || !new PrototypeGameEngine().GetLegalActions(state)
+                        .Any(action => PrototypeAiEnvironment.StableActionId(
+                                action) ==
+                            PrototypeAiEnvironment.StableActionId(RunAction)))
+                    throw new InvalidDataException(
+                        "Controlled rest-reward frame is outside its legal rest-heal boundary.");
+                expectedSite = PendingRequest.SiteId;
+                expectedStream = PendingRequest.StreamId;
+                expectedOwner = PendingRequest.OwnerId;
+                expectedCandidates = (int[])PendingRequest.OrderedCandidates
+                    .Clone();
+                expectedLabels = (string[])PendingCandidateLabels.Clone();
+                restHealRewardRequest = true;
+                break;
+            }
             default:
                 throw new InvalidDataException(
                     "Controlled run-action frame uses an unsupported action.");
         }
         if ((!mapNodeRequest && MapNodeId is not null)
-            || (!(shopPurchaseRequest || rewardRelicRequest)
+            || (!(shopPurchaseRequest || rewardRelicRequest ||
+                    restHealRewardRequest)
                 && RunAction is not null)
             || PendingRequest.SiteId != expectedSite
             || PendingRequest.StreamId != expectedStream
@@ -841,6 +879,10 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                 .ValidatePendingRewardRelicAcquisition(
                     state, RunAction!, Decisions, PendingRequest,
                     PendingCandidateLabels);
+        if (restHealRewardRequest)
+            ControlledRunActionEngineV111.ValidatePendingRestHealReward(
+                state, RunAction!, Decisions, PendingRequest,
+                PendingCandidateLabels);
 
         for (var index = 0; index < Decisions.Length; index++)
         {
@@ -1236,10 +1278,26 @@ public static class ControlledRunActionEngineV111
     internal static bool IsCombatRewardRelicActionKind(string actionKind) =>
         actionKind is "take_reward_relic" or "take_reward_extra_relic";
 
+    internal static bool IsLegacyRestHealRewardAction(
+        RunState source, GameAction action) =>
+        source.Phase == RunPhase.Rest
+        && source.Stochastic.NativeRunRng is null
+        && source.World?.ActiveRoom == PrototypeRoomType.Rest
+        && action.Kind == PrototypeNativeRestSiteActionsV111.Heal
+        && source.Player.ActiveRelics.Any(relic =>
+            PrototypeContent.Relic(relic.RelicId).RestHealCardRewardCount > 0);
+
+    internal static bool IsSupportedRestHealRewardRequest(
+        RandomIndexRequestV111 request) =>
+        StochasticSiteRegistryV111.IsRunActionRestHealRewardSite(
+            request.SiteId)
+        && request.StreamId == "reward";
+
     internal static bool RequiresRunActionFingerprint(
         RunState source, GameAction action) =>
         IsShopPurchaseAction(source, action)
-        || IsCombatRewardRelicAction(source, action);
+        || IsCombatRewardRelicAction(source, action)
+        || IsLegacyRestHealRewardAction(source, action);
 
     internal static void ValidatePendingShopPurchase(
         RunState source,
@@ -1247,9 +1305,10 @@ public static class ControlledRunActionEngineV111
         RandomIndexDecisionV111[] decisions,
         RandomIndexRequestV111 expectedRequest,
         string[] expectedCandidateLabels)
-        => ValidatePendingRelicAcquisitionAction(
+        => ValidatePendingRunActionChoice(
             source, action, decisions, expectedRequest,
-            expectedCandidateLabels, rewardRelicAction: false);
+            expectedCandidateLabels,
+            PendingRunActionRequestKind.ShopPurchase);
 
     internal static void ValidatePendingRewardRelicAcquisition(
         RunState source,
@@ -1257,29 +1316,67 @@ public static class ControlledRunActionEngineV111
         RandomIndexDecisionV111[] decisions,
         RandomIndexRequestV111 expectedRequest,
         string[] expectedCandidateLabels)
-        => ValidatePendingRelicAcquisitionAction(
+        => ValidatePendingRunActionChoice(
             source, action, decisions, expectedRequest,
-            expectedCandidateLabels, rewardRelicAction: true);
+            expectedCandidateLabels,
+            PendingRunActionRequestKind.RewardRelic);
 
-    private static void ValidatePendingRelicAcquisitionAction(
+    internal static void ValidatePendingRestHealReward(
+        RunState source,
+        GameAction action,
+        RandomIndexDecisionV111[] decisions,
+        RandomIndexRequestV111 expectedRequest,
+        string[] expectedCandidateLabels) =>
+        ValidatePendingRunActionChoice(
+            source, action, decisions, expectedRequest,
+            expectedCandidateLabels,
+            PendingRunActionRequestKind.RestHealReward);
+
+    private enum PendingRunActionRequestKind
+    {
+        ShopPurchase,
+        RewardRelic,
+        RestHealReward
+    }
+
+    private static void ValidatePendingRunActionChoice(
         RunState source,
         GameAction action,
         RandomIndexDecisionV111[] decisions,
         RandomIndexRequestV111 expectedRequest,
         string[] expectedCandidateLabels,
-        bool rewardRelicAction)
+        PendingRunActionRequestKind requestKind)
     {
-        if (!(rewardRelicAction
-                ? IsCombatRewardRelicAction(source, action)
-                : IsShopPurchaseAction(source, action))
-            || !StochasticSiteRegistryV111.IsRunActionShopPurchaseSite(
-                expectedRequest.SiteId)
-            || !IsSupportedShopPurchaseStream(expectedRequest)
+        var actionBoundaryValid = requestKind switch
+        {
+            PendingRunActionRequestKind.ShopPurchase =>
+                IsShopPurchaseAction(source, action),
+            PendingRunActionRequestKind.RewardRelic =>
+                IsCombatRewardRelicAction(source, action),
+            PendingRunActionRequestKind.RestHealReward =>
+                IsLegacyRestHealRewardAction(source, action),
+            _ => false
+        };
+        var requestBoundaryValid = requestKind switch
+        {
+            PendingRunActionRequestKind.ShopPurchase =>
+                StochasticSiteRegistryV111.IsRunActionShopPurchaseSite(
+                    expectedRequest.SiteId)
+                && IsSupportedShopPurchaseStream(expectedRequest),
+            PendingRunActionRequestKind.RewardRelic =>
+                StochasticSiteRegistryV111.IsRunActionShopPurchaseSite(
+                    expectedRequest.SiteId)
+                && IsSupportedShopPurchaseStream(expectedRequest),
+            PendingRunActionRequestKind.RestHealReward =>
+                IsSupportedRestHealRewardRequest(expectedRequest),
+            _ => false
+        };
+        if (!actionBoundaryValid || !requestBoundaryValid
             || !new PrototypeGameEngine().GetLegalActions(source).Any(
                 candidate => PrototypeAiEnvironment.StableActionId(candidate)
                     == PrototypeAiEnvironment.StableActionId(action)))
             throw new InvalidDataException(
-                "Controlled relic-acquisition replay has an invalid action boundary.");
+                "Controlled run-action replay has an invalid action boundary.");
 
         ControlledChanceReplayResultV111 replay;
         using (ControlledChanceGuardV111.Enter())
@@ -1299,7 +1396,7 @@ public static class ControlledRunActionEngineV111
             || !pending.CandidateLabels.SequenceEqual(
                 expectedCandidateLabels, StringComparer.Ordinal))
             throw new InvalidDataException(
-                "Controlled relic-acquisition request differs from its source replay.");
+                "Controlled run-action request differs from its source replay.");
     }
 
     public static RunState Begin(RunState source, GameAction action)
@@ -1355,6 +1452,8 @@ public static class ControlledRunActionEngineV111
         var rewardRelicAction = IsCombatRewardRelicAction(
             source, action);
         var acquisitionAction = shopPurchaseAction || rewardRelicAction;
+        var restHealRewardAction = IsLegacyRestHealRewardAction(
+            source, action);
         var supportedLegacyActTransitionAction =
             action.Kind == "continue_act"
             && source.Phase == RunPhase.ActTransition
@@ -1366,7 +1465,7 @@ public static class ControlledRunActionEngineV111
             || (action.Kind is not ("start_run" or "continue_act"
                 or PrototypeNativeRestSiteActionsV111.Dig
                 or "choose_map_node")
-                && !acquisitionAction)
+                && !acquisitionAction && !restHealRewardAction)
             || action.Kind == "continue_act"
                 && !supportedLegacyActTransitionAction
             || action.Kind == "choose_map_node" && !supportedMapNodeAction)
@@ -1423,6 +1522,9 @@ public static class ControlledRunActionEngineV111
                             pendingChance.Request.SiteId)
                     && IsSupportedShopPurchaseStream(
                         pendingChance.Request);
+                var supportedRestHealRewardSite = restHealRewardAction
+                    && IsSupportedRestHealRewardRequest(
+                        pendingChance.Request);
                 var supportedShovelSite = action.Kind ==
                         PrototypeNativeRestSiteActionsV111.Dig
                     && StochasticSiteRegistryV111
@@ -1451,6 +1553,7 @@ public static class ControlledRunActionEngineV111
                         && !supportedMapNodeSite
                         && !supportedShopPurchaseSite
                         && !supportedRewardRelicSite
+                        && !supportedRestHealRewardSite
                         && !supportedShovelSite)
                     || !labelsValid)
                     throw new NotSupportedException(
@@ -1470,7 +1573,8 @@ public static class ControlledRunActionEngineV111
                         pendingChance.Request,
                         pendingChance.CandidateLabels!,
                         mapNodeId,
-                        acquisitionAction ? CloneAction(action) : null);
+                        acquisitionAction || restHealRewardAction
+                            ? CloneAction(action) : null);
                 var suspended = RunStochasticStateV111
                     .SuspendControlledRunActionChoice(
                         partialState, continuation);
@@ -1483,7 +1587,8 @@ public static class ControlledRunActionEngineV111
         }
         if (result.Stochastic.ControlledRunActionChoice is null)
         {
-            if (acquisitionAction || supportedLegacyActTransitionAction ||
+            if (acquisitionAction || restHealRewardAction ||
+                supportedLegacyActTransitionAction ||
                 legacyActOneCombatEntryAction ||
                 nativeActOneCombatEntryAction)
             {

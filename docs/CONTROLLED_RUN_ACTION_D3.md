@@ -23,6 +23,11 @@ registered relic-acquisition index sites listed below. It saves the selected
 relic action and replays all supported hook requests in order; configured
 Native combat-reward relic picks remain with their existing specialized
 ReferenceNature session.
+The same frame can save a legal legacy `rest_heal` when an active relic
+creates rest-site card rewards and `NativeRunRng` is absent. It controls the
+registered reward-rarity and card-model requests, including the legacy
+fallback requests used by the Native-shaped Dream Catcher reward generator;
+configured Native reward generation remains outside this action frame.
 `ControlledRunActionEngineV111.BeginLegacyActTransition` is the explicit
 entry point for the unconfigured prototype transition route.
 Legacy Treasure selection is not offered when Silver Crucible suppresses the
@@ -123,15 +128,16 @@ stale-request guard.
 The JSONL server advertises `controlledRunActionSchemaId`. Its `hello`
 response exposes `controlledRunActionSiteGroups`, with registry-owned arrays
 for run-start/map generation, Event-node entry, legacy Shop-node generation,
-legacy and Native-regional fallback Treasure-node selection, Shovel dig, and
-Native-regional fallback Shovel Dig, and region-specific Overgrowth and
+legacy and Native-regional fallback Treasure-node selection, Shovel dig,
+rest-heal reward generation, Native-regional fallback Shovel Dig, and
+region-specific Overgrowth and
 Underdocks combat entry. Shared formation, HP, intent, shuffle and potion sites
 appear in both region groups. The controller supports:
 
 | Operation | Inputs | Result |
 | --- | --- | --- |
 | `controlled_run_action_begin` | current `state_handle`, legal `action_id` | Pending request, labels and controlled outcome actions |
-| `controlled_run_action_resolve` | pending `state_handle`, `selected_index` | Child run handle with the selected run-start, configured boss, event-entry, Shop, legacy or fallback Treasure, Act 1 combat-entry or Shovel result |
+| `controlled_run_action_resolve` | pending `state_handle`, `selected_index` | Child run handle with the selected run-start, configured boss, event-entry, Shop, legacy or fallback Treasure, rest-heal reward, Act 1 combat-entry or Shovel result |
 | `controlled_run_action_inspect` | pending `state_handle` | Restore the pending request and legal outcomes after snapshot load |
 
 The JSONL server also exposes an atomic ReferenceNature envelope for these
@@ -187,7 +193,8 @@ or cursor parity. Controlled choices do not advance game RNG. Unit-float
 acquisition effects and all other unregistered purchase hooks remain
 fail-closed. The session keeps supported Chance Law samples and run-state
 resolution atomic across fork/save/restore; it does not enable native regional
-merchant or treasure entry providers or other run/reward/map operations.
+merchant or treasure entry providers or other unlisted run/reward/map
+operations.
 The configured experimental Native Act 1 path adds the supported encounter
 pool and formation index requests to this same continuation. When a
 pre-combat potion relic has an open slot, its PotionFactory rarity and model
@@ -296,6 +303,11 @@ ReferenceNature run-action session can begin from a legal combat reward
 pending index support, and replay the saved action before committing the
 Nature cursor. Other reward actions, event rewards, and configured Native
 combat-reward relic hooks stay with their existing boundaries.
+
+Rest-heal reward-generation requests are advertised in the separate
+`controlledRunActionSiteGroups.restHealRewardGeneration` set. The saved
+`rest_heal` action replays those requests in order and commits the resulting
+Reward with the Nature cursor.
 
 The Python binding exposes `State.begin_controlled_run_start()`,
 `State.begin_controlled_run_action(action_id)`,

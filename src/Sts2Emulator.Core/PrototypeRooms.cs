@@ -4407,6 +4407,16 @@ public sealed partial class PrototypeGameEngine
                     .State,
                 PrototypeNativeRestSiteActionsV111.Dig =>
                     BeginRestDigReward(checkpoint),
+                PrototypeNativeRestSiteActionsV111.Heal =>
+                    new PrototypeGameEngine().Step(
+                        checkpoint with
+                        {
+                            DecisionIndex = checked(
+                                state.DecisionIndex - 1)
+                        },
+                        continuation.RunAction ?? throw new InvalidDataException(
+                            "Controlled rest-reward frame is missing its action."))
+                        .State,
                 "choose_map_node" => new PrototypeGameEngine().Step(
                     checkpoint with
                     {
@@ -4468,6 +4478,10 @@ public sealed partial class PrototypeGameEngine
                 PrototypeNativeRestSiteActionsV111.Dig =>
                     ControlledEventChoiceReplayV111
                         .IsRunActionShovelSite(pendingChance.Request.SiteId),
+                PrototypeNativeRestSiteActionsV111.Heal =>
+                    StochasticSiteRegistryV111
+                        .IsRunActionRestHealRewardSite(
+                            pendingChance.Request.SiteId),
                 "buy_card" or "buy_potion" or "replace_shop_potion"
                     or "remove_card" or "buy_relic"
                     or "take_reward_relic" or "take_reward_extra_relic" =>

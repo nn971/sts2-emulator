@@ -658,6 +658,15 @@ public static class StochasticSiteRegistryV111
         "reward.card_transform.replacement.index_draw"
     ];
 
+    private static readonly string[] RunActionRestHealRewardSites =
+    [
+        "reward.card_rarity.ticket",
+        "reward.card_model.index_draw",
+        "card_rarity.roll.ticket",
+        "card_rarity.encounter_model.index_draw",
+        "card_rarity.upgrade_roll.ticket"
+    ];
+
     private static readonly string[] RunActionTreasureSites =
     [
         "treasure.relic_model.index_draw",
@@ -1139,6 +1148,8 @@ public static class StochasticSiteRegistryV111
         new(RunActionShopSites, StringComparer.Ordinal);
     private static readonly HashSet<string> RunActionShopPurchaseSiteSet =
         new(RunActionShopPurchaseSites, StringComparer.Ordinal);
+    private static readonly HashSet<string> RunActionRestHealRewardSiteSet =
+        new(RunActionRestHealRewardSites, StringComparer.Ordinal);
     private static readonly HashSet<string> RunActionTreasureSiteSet =
         new(RunActionTreasureSites, StringComparer.Ordinal);
     private static readonly HashSet<string> RunActionShovelSiteSet =
@@ -1156,6 +1167,7 @@ public static class StochasticSiteRegistryV111
         .Concat(RunActionEventEntrySites)
         .Concat(RunActionShopSites)
         .Concat(RunActionShopPurchaseSites)
+        .Concat(RunActionRestHealRewardSites)
         .Concat(RunActionTreasureSites)
         .Concat(RunActionShovelSites)
         .Concat(RunActionOvergrowthCombatEncounterSites)
@@ -1173,6 +1185,7 @@ public static class StochasticSiteRegistryV111
         .. RunActionEventEntrySites,
         .. RunActionShopSites,
         .. RunActionShopPurchaseSites,
+        .. RunActionRestHealRewardSites,
         .. RunActionTreasureSites,
         .. RunActionOvergrowthCombatEncounterSites,
         .. RunActionCombatSites,
@@ -1230,6 +1243,8 @@ public static class StochasticSiteRegistryV111
         (string[])RunActionShopSites.Clone();
     public static string[] RunActionShopPurchaseSiteIds =>
         (string[])RunActionShopPurchaseSites.Clone();
+    public static string[] RunActionRestHealRewardSiteIds =>
+        (string[])RunActionRestHealRewardSites.Clone();
     public static string[] RunActionTreasureSiteIds =>
         (string[])RunActionTreasureSites.Clone();
     public static string[] RunActionShovelSiteIds =>
@@ -1347,6 +1362,9 @@ public static class StochasticSiteRegistryV111
 
     public static bool IsRunActionShopPurchaseSite(string siteId) =>
         RunActionShopPurchaseSiteSet.Contains(siteId);
+
+    public static bool IsRunActionRestHealRewardSite(string siteId) =>
+        RunActionRestHealRewardSiteSet.Contains(siteId);
 
     public static bool IsRunActionTreasureSite(string siteId) =>
         RunActionTreasureSiteSet.Contains(siteId);

@@ -7741,6 +7741,11 @@ public sealed record ReferenceNatureRunActionSessionV111(
             && ControlledRunActionEngineV111.IsCombatRewardRelicAction(
                 Origin, Action)
             && DecisionTranscript is { Length: 0 };
+        var immediateRestHealRewardAction = Origin is not null
+            && Action is not null
+            && ControlledRunActionEngineV111
+                .IsLegacyRestHealRewardAction(Origin, Action)
+            && DecisionTranscript is { Length: 0 };
         var immediateActOneCombatAction = Origin is not null
             && Action is not null
             && ControlledRunActionEngineV111
@@ -7761,6 +7766,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
              Run.Stochastic.ControlledRunActionHistory is not { Length: > 0 } &&
              !immediateShopAction && !immediateActOneCombatAction &&
              !immediateRewardRelicAction &&
+             !immediateRestHealRewardAction &&
              !immediateNativeActOneCombatAction &&
              !typedNativePotionFactoryCombatEntry &&
              !configuredExperimentalActTransition) ||
@@ -8095,6 +8101,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
                     "Completed experimental act transition differs from its map replay.");
         }
         else if (immediateShopAction || immediateRewardRelicAction ||
+            immediateRestHealRewardAction ||
             immediateActOneCombatAction ||
             immediateNativeActOneCombatAction)
         {

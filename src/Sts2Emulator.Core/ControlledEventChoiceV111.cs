@@ -1095,6 +1095,8 @@ internal sealed class ControlledEventChoiceReplayV111 :
         || IsRunActionEventEntrySite(siteId)
         || IsRunActionShopSite(siteId)
         || IsRunActionShopPurchaseSite(siteId)
+        || StochasticSiteRegistryV111
+            .IsRunActionRestHealRewardSite(siteId)
         || IsRunActionTreasureSite(siteId)
         || IsRunActionCombatEntrySite(siteId)
         || IsRunActionCombatSite(siteId)

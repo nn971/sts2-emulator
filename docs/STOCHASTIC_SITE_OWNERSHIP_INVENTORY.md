@@ -6,6 +6,15 @@ This document joins existing inventories instead of copying their site rows. The
 
 The guarded Native-policy fallback authorizes exact SiteId/stream/operation triples in addition to the concrete adapters' finite site sets. Combat mappings follow their typed request constructors; immediate win rewards admit their source-listed `player.rewards` sites, War Hammer's elite shuffle and Fishing Rod's third-combat choice on their exact `run.niche` sites, Native summoned-creature HP and in-place Tough Egg hatchling HP choices on `run.niche`, and elite relic queue shuffles admit only `relic_grab_bag.queue_shuffle.swap_index` on `run.treasure_room_relics`. PotionFactory rarity and model requests are explicitly mapped to both `run.combat_potion_generation` and `player.rewards` where those source contexts use them; membership under one stream does not authorize an unlisted triple. The explicit engine-owned prototype reward scope retains only its declared legacy reward requests, including Pael's Tooth's saved-card return; the concrete legacy provider now rejects other requests under native control. This is an emulator control-boundary allowlist, not evidence of Native source parity.
 
+The Rest reward crosswalk is `PrototypeRooms.StepRest` →
+`EnterRestHealRelicReward`: relics with a positive
+`RestHealCardRewardCount` can request `reward.card_rarity.ticket` and
+`reward.card_model.index_draw`, or Native-shaped fallback
+`card_rarity.roll.ticket`, `card_rarity.encounter_model.index_draw`, and
+`card_rarity.upgrade_roll.ticket`. The shared run-action continuation captures
+these requests only when `NativeRunRng` is absent; this crosswalk does not
+establish source-pool completeness, hook call order, or Native cursor parity.
+
 ## Inventory sources and limits
 
 | Source | What it covers | Current limit |

@@ -3026,7 +3026,7 @@ internal static class PrototypeAiJsonlServer
                             controlledRunActionSchemaId =
                                 ControlledRunActionEngineV111.SchemaId,
                             controlledRunActionScope =
-                                "legacy-run-start-map-event-shop-treasure-entry-shovel-act-one-combat-entry-potion-and-supported-shop-purchase-effects",
+                                "legacy-run-start-map-event-shop-treasure-entry-shovel-rest-heal-reward-act-one-combat-entry-potion-and-supported-relic-acquisition-effects",
                             controlledRunActionSiteGroups = new
                             {
                                 runStartAndMapGeneration =
@@ -3040,6 +3040,9 @@ internal static class PrototypeAiJsonlServer
                                 shopPurchaseAcquisitionEffects =
                                     StochasticSiteRegistryV111
                                         .RunActionShopPurchaseSiteIds,
+                                restHealRewardGeneration =
+                                    StochasticSiteRegistryV111
+                                        .RunActionRestHealRewardSiteIds,
                                 legacyTreasureNodeSelection =
                                     StochasticSiteRegistryV111
                                         .RunActionTreasureSiteIds,
