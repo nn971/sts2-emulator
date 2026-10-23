@@ -351,8 +351,9 @@ ordinary Stratagem completion, deferred stage completion, and post-draw power
 timing. A typed source-result context distinguishes ordinary pipeline work,
 deferred semantic completion, and a resumed semantic `BeforeHandDraw` hook;
 the pipeline step accepts only the first two and derives the third from its
-saved progress marker. The pipeline switch no longer interprets the draw
-result boundary.
+saved progress marker. Deferred semantic work requires the controlled RNG
+guard and an active semantic deck both before drawing and when its result is
+published. The pipeline switch no longer interprets the draw result boundary.
 
 `DrawCards` now returns one tagged boundary value for completion, recycle, Stratagem selection, draw cost, semantic draw, after-shuffle insertion, or nested `CardDrawn` choice. Pending counts and after-shuffle insertion payload belong to that value, so conflicting continuation kinds cannot be represented by the result. Callers declare suspension support through named `PrototypeDrawCardsSuspensionPolicyV111` profiles for automatic hand draws, legacy continuations, semantic draws, and nested effects. Automatic hand draw, opening draw, semantic draw, and nested effect-draw adapters all dispatch through its shared discriminator; each adapter still applies its own saved mechanics frame and source hook policy.
 

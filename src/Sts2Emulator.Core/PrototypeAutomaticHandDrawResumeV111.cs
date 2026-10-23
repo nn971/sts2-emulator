@@ -124,6 +124,12 @@ public sealed partial class PrototypeGameEngine
             throw new ArgumentOutOfRangeException(nameof(requestedCount));
         if (!Enum.IsDefined(context))
             throw new ArgumentOutOfRangeException(nameof(context));
+        if (context !=
+                AutomaticHandDrawSourceResultContextV111.OrdinaryPipeline &&
+            (!ControlledChanceGuardV111.Active ||
+             drawn.Combat.Stochastic.SemanticDeck is null))
+            throw new InvalidDataException(
+                "Semantic hand-draw result context has no active provider.");
 
         var rngCheckpoint = checkpoint with
         {

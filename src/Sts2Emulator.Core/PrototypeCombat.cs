@@ -2503,6 +2503,13 @@ public sealed partial class PrototypeGameEngine
         var world = RequireWorld(state);
         var combat = world.Combat
             ?? throw new InvalidOperationException("Combat phase has no combat state.");
+        if (handDrawResultContext ==
+                AutomaticHandDrawSourceResultContextV111
+                    .DeferredSemanticStage &&
+            (!ControlledChanceGuardV111.Active ||
+             combat.Stochastic.SemanticDeck is null))
+            throw new InvalidDataException(
+                "Deferred semantic hand draw has no active provider.");
         var player = state.Player;
         var prototypeRng = state.Stochastic.PrototypeRng;
         RunState PublishPrototypeRng(RunState current) => current with
