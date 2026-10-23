@@ -307,8 +307,6 @@ public sealed partial class PrototypeGameEngine
         };
         var boundary = drawn.BoundaryKind;
         bool automatic = automaticHandDrawRequested is not null;
-        if (automatic)
-            ValidateAutomaticHandDrawResult(drawn);
         bool nestedEffect = continuation is not null;
         var outerContinuation = continuation ??
             EmptyDrawChoiceContinuation();

@@ -287,11 +287,12 @@ Initial and post-cost semantic draws and nested effect draws now pass their `Dra
 
 Nested semantic effect draws resumed after an after-shuffle insertion now keep `CardDrawn` hook-choice suspension enabled, so the next tagged result is interpreted by the same saved effect continuation.
 
-Before the controlled or semantic automatic-draw adapter routes a `DrawCards`
-result, `ValidateAutomaticHandDrawResult` checks the shared DrawPlayerHand
-cursor and the mechanical shape of the complete, recycle, cost, semantic
-choice, insertion, Stratagem, or nested CardDrawn boundary. Provider adapters
-retain their distinct continuation and transcript policies.
+`DrawCards` constructs every tagged result through `CreateDrawCardsResult`,
+which validates the mechanical shape of the complete, recycle, cost,
+semantic-choice, insertion, Stratagem, or nested CardDrawn boundary before
+the result reaches an adapter. Automatic pipeline calls also require the
+shared DrawPlayerHand cursor. Provider adapters retain their distinct
+continuation and transcript policies.
 
 `DrawCards` now returns one tagged boundary value for completion, recycle, Stratagem selection, draw cost, semantic draw, after-shuffle insertion, or nested `CardDrawn` choice. Pending counts and after-shuffle insertion payload belong to that value, so conflicting continuation kinds cannot be represented by the result. Callers declare suspension support through named `PrototypeDrawCardsSuspensionPolicyV111` profiles for automatic hand draws, legacy continuations, semantic draws, and nested effects. Automatic hand draw, opening draw, semantic draw, and nested effect-draw adapters all dispatch through its shared discriminator; each adapter still applies its own saved mechanics frame and source hook policy.
 

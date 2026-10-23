@@ -198,7 +198,6 @@ public sealed partial class PrototypeGameEngine
     private static RunState ContinueControlledHandDraw(
         RunState state, PrototypeDrawCardsResult drawn)
     {
-        ValidateAutomaticHandDrawResult(drawn);
         var world = RequireWorld(state);
         var combat = drawn.Combat;
         var drawBoundary = drawn.BoundaryKind;

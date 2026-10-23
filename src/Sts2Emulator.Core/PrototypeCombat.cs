@@ -2121,7 +2121,8 @@ public sealed partial class PrototypeGameEngine
             prototypeRng, fromHandDraw: true,
             suspensionPolicy:
                 PrototypeDrawCardsSuspensionPolicyV111
-                    .ControlledLegacyAutomaticHandDraw(combat));
+                    .ControlledLegacyAutomaticHandDraw(combat),
+            automaticHandDrawStage: true);
         state = state with
         {
             Stochastic = RunStochasticStateV111.WithPrototypeRng(
@@ -2996,7 +2997,8 @@ public sealed partial class PrototypeGameEngine
                     fromHandDraw: true,
                     suspensionPolicy:
                         PrototypeDrawCardsSuspensionPolicyV111
-                            .AutomaticHandDraw(combat));
+                            .AutomaticHandDraw(combat),
+                    automaticHandDrawStage: true);
                 player = drawn.Player;
                 combat = drawn.Combat;
                 var drawBoundary = drawn.BoundaryKind;
@@ -16187,7 +16189,8 @@ public sealed partial class PrototypeGameEngine
         RngBundle rng,
         bool fromHandDraw,
         int eventDepth = 0,
-        PrototypeDrawCardsSuspensionPolicyV111? suspensionPolicy = null)
+        PrototypeDrawCardsSuspensionPolicyV111? suspensionPolicy = null,
+        bool automaticHandDrawStage = false)
     {
         var suspension = suspensionPolicy ??
             PrototypeDrawCardsSuspensionPolicyV111.None;
@@ -16277,13 +16280,14 @@ public sealed partial class PrototypeGameEngine
                                     "UNSUPPORTED_SEMANTIC_DECK " +
                                     "site=combat.draw.recycle " +
                                     "operation=missing_after_shuffle_continuation");
-                            return new PrototypeDrawCardsResult(
+                            return CreateDrawCardsResult(
                                 player, combat,
                                 drawnCardInstanceIds.ToArray(),
                                 PrototypeDrawCardsBoundaryV111
                                     .AfterShuffleInsertionPending(
                                         count - drawNumber,
-                                        afterShuffleInsertions));
+                                        afterShuffleInsertions),
+                                automaticHandDrawStage);
                         }
                     }
                     if (ExpectedStratagemSelectionCount(combat) > 0)
@@ -16296,11 +16300,12 @@ public sealed partial class PrototypeGameEngine
                                     [PrototypeCardZone.DrawPile] = draw.ToArray(),
                                     [PrototypeCardZone.DiscardPile] = discard.ToArray()
                                 }));
-                        return new PrototypeDrawCardsResult(
+                        return CreateDrawCardsResult(
                             player, combat,
                             drawnCardInstanceIds.ToArray(),
                             PrototypeDrawCardsBoundaryV111
-                                .ShuffleSelection(count - drawNumber));
+                                .ShuffleSelection(count - drawNumber),
+                            automaticHandDrawStage);
                     }
                 }
                 else
@@ -16311,10 +16316,11 @@ public sealed partial class PrototypeGameEngine
                             "UNSUPPORTED_CONTROLLED_CHANCE site=combat.draw.recycle " +
                             "operation=shuffle_recycle outside resumable hand-draw stage");
                     if (ControlledChanceGuardV111.Active)
-                        return new PrototypeDrawCardsResult(
+                        return CreateDrawCardsResult(
                             player, combat, drawnCardInstanceIds.ToArray(),
                             PrototypeDrawCardsBoundaryV111
-                                .ControlledRecycle(count - drawNumber));
+                                .ControlledRecycle(count - drawNumber),
+                            automaticHandDrawStage);
 
                     combat = CommitLegacyDrawPileRecycle(
                         combat, rng);
@@ -16335,10 +16341,11 @@ public sealed partial class PrototypeGameEngine
                                     [PrototypeCardZone.DrawPile] = draw.ToArray(),
                                     [PrototypeCardZone.DiscardPile] = discard.ToArray()
                                 }));
-                        return new PrototypeDrawCardsResult(
+                        return CreateDrawCardsResult(
                             player, combat, drawnCardInstanceIds.ToArray(),
                             PrototypeDrawCardsBoundaryV111
-                                .ShuffleSelection(count - drawNumber));
+                                .ShuffleSelection(count - drawNumber),
+                            automaticHandDrawStage);
                     }
                 }
             }
@@ -16361,13 +16368,14 @@ public sealed partial class PrototypeGameEngine
             var resolvedTop = SemanticDrawPileAdapterV111
                 .ResolveTopCard(semanticDeck, draw);
             if (resolvedTop.IsPending)
-                return new PrototypeDrawCardsResult(
+                return CreateDrawCardsResult(
                     player,
                     SemanticDrawPileAdapterV111.CommitTopCardResolutions(
                         combat, [resolvedTop], combat.Mechanics.CardZones),
                     drawnCardInstanceIds.ToArray(),
                     PrototypeDrawCardsBoundaryV111
-                        .SemanticDraw(count - drawNumber));
+                        .SemanticDraw(count - drawNumber),
+                    automaticHandDrawStage);
 
             var cardInstanceId = resolvedTop.CardInstanceId!.Value;
             draw = resolvedTop.RemainingPhysicalDrawPile.ToList();
@@ -16410,10 +16418,11 @@ public sealed partial class PrototypeGameEngine
                     combat, cardInstanceId, count - drawNumber - 1,
                     fromHandDraw, eventDepth, needsRelicCost
                         ? randomizedCostUpperBound : 0, hasSlither);
-                return new PrototypeDrawCardsResult(
+                return CreateDrawCardsResult(
                     player, combat, drawnCardInstanceIds.ToArray(),
                     PrototypeDrawCardsBoundaryV111
-                        .ControlledDrawCost(count - drawNumber - 1));
+                        .ControlledDrawCost(count - drawNumber - 1),
+                    automaticHandDrawStage);
             }
             if (ControlledChanceGuardV111.Active &&
                 !ControlledChanceGuardV111.EngineOwnedNativeProviderActive &&
@@ -16427,10 +16436,11 @@ public sealed partial class PrototypeGameEngine
                     combat, cardInstanceId, count - drawNumber - 1,
                     fromHandDraw, eventDepth, needsRelicCost
                         ? randomizedCostUpperBound : 0, hasSlither);
-                return new PrototypeDrawCardsResult(
+                return CreateDrawCardsResult(
                     player, combat, drawnCardInstanceIds.ToArray(),
                     PrototypeDrawCardsBoundaryV111
-                        .ControlledDrawCost(count - drawNumber - 1));
+                        .ControlledDrawCost(count - drawNumber - 1),
+                    automaticHandDrawStage);
             }
             if (needsRelicCost)
             {
@@ -16467,10 +16477,11 @@ public sealed partial class PrototypeGameEngine
             combat = dispatched.Combat;
             if (suspension.CardDrawnChoice &&
                 combat.PendingChoice is not null)
-                return new PrototypeDrawCardsResult(
+                return CreateDrawCardsResult(
                     player, combat, drawnCardInstanceIds.ToArray(),
                     PrototypeDrawCardsBoundaryV111
-                        .NestedCardDrawnChoice(count - drawNumber - 1));
+                        .NestedCardDrawnChoice(count - drawNumber - 1),
+                    automaticHandDrawStage);
             if (combat.Stochastic.SemanticDeck is not null &&
                 (combat.PendingChoice is not null ||
                  combat.PendingKnowledgeDemonChoice is not null))
@@ -16487,11 +16498,12 @@ public sealed partial class PrototypeGameEngine
             discard = combat.DiscardPile.ToList();
         }
 
-        return new PrototypeDrawCardsResult(
+        return CreateDrawCardsResult(
             player,
             combat,
             drawnCardInstanceIds.ToArray(),
-            PrototypeDrawCardsBoundaryV111.Complete());
+            PrototypeDrawCardsBoundaryV111.Complete(),
+            automaticHandDrawStage);
     }
 
     private static void ValidateTarget(

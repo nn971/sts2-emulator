@@ -7,15 +7,18 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public sealed partial class PrototypeGameEngine
 {
-    private static void ValidateAutomaticHandDrawResult(
-        PrototypeDrawCardsResult drawn)
+    private static void ValidateDrawCardsResult(
+        PrototypeDrawCardsResult drawn, bool automaticHandDraw)
     {
         ArgumentNullException.ThrowIfNull(drawn);
         var combat = drawn.Combat;
-        if (drawn.RemainingCount < 0 ||
-            combat.AutomaticPipelineContinuation is not { } cursor ||
-            !cursor.Mechanics.IsAtStep(
-                PrototypeAutomaticStepKind.DrawPlayerHand))
+        if (drawn.RemainingCount < 0)
+            throw new InvalidDataException(
+                "DrawCards result has a negative remaining count.");
+        if (automaticHandDraw &&
+            (combat.AutomaticPipelineContinuation is not { } cursor ||
+             !cursor.Mechanics.IsAtStep(
+                 PrototypeAutomaticStepKind.DrawPlayerHand)))
             throw new InvalidDataException(
                 "Automatic hand-draw result lost its DrawPlayerHand checkpoint.");
 
@@ -62,7 +65,19 @@ public sealed partial class PrototypeGameEngine
         };
         if (!validBoundary)
             throw new InvalidDataException(
-                "Automatic hand-draw result does not match its saved mechanical boundary.");
+                "DrawCards result does not match its saved mechanical boundary.");
+    }
+
+    private static PrototypeDrawCardsResult CreateDrawCardsResult(
+        PlayerState player, CombatState combat,
+        long[] drawnCardInstanceIds,
+        PrototypeDrawCardsBoundaryV111 boundary,
+        bool automaticHandDrawStage)
+    {
+        var result = new PrototypeDrawCardsResult(
+            player, combat, drawnCardInstanceIds, boundary);
+        ValidateDrawCardsResult(result, automaticHandDrawStage);
+        return result;
     }
 
     private static RunState CommitAutomaticHandDrawStratagemSelection(
@@ -210,10 +225,11 @@ public sealed partial class PrototypeGameEngine
         if (costProgress.DrawnHookSuspended &&
             combat.PendingChoice is not null &&
             combat.PendingKnowledgeDemonChoice is null)
-            return (costProgress.Run, new PrototypeDrawCardsResult(
+            return (costProgress.Run, CreateDrawCardsResult(
                 costProgress.Run.Player, combat, [],
                 PrototypeDrawCardsBoundaryV111.NestedCardDrawnChoice(
-                    cost.RemainingCount)));
+                    cost.RemainingCount),
+                automaticHandDrawStage: true));
         if (costProgress.DrawnHookSuspended ||
             combat.PendingChoice is not null ||
             combat.PendingKnowledgeDemonChoice is not null)
@@ -268,6 +284,7 @@ public sealed partial class PrototypeGameEngine
             cleared.Player, RequireWorld(cleared).Combat!, remaining,
             prototypeRng,
             fromHandDraw: true, eventDepth: eventDepth,
-            suspensionPolicy: suspensionPolicy);
+            suspensionPolicy: suspensionPolicy,
+            automaticHandDrawStage: true);
     }
 }
