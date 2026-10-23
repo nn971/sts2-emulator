@@ -70,6 +70,14 @@ upgrade supports through the existing atomic ReferenceNature continuation.
 Source filtering, fallback weighting, and Native cursor parity remain open.
 Static source review and `git diff --check` only; no tests or builds were run.
 
+**S0 Punch Off manual site review increment (2026-10-23):** The fight-entry
+and post-victory reward sites now trace their CombatId-owned offsets, ordered
+relic/potion prefix, session boundaries, and audience projections. The pinned
+source audit now matches the current Chance Law provenance: bounded-index
+transforms are source verified on declared supports, while Native context and
+reward stream attribution, pool fidelity, and cursor parity remain open.
+Static source review and `git diff --check` only; no tests or builds were run.
+
 **S0 summon-pool SiteId ownership increment (2026-10-23):** The existing
 legacy summon continuation and query registry now use the shared
 `combat.enemy.summon_pool.select` constant. Its Native pool path continues to
