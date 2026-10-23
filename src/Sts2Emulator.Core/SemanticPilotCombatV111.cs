@@ -3167,6 +3167,7 @@ public static class SemanticPilotCombatEngineV111
     private static bool IsSemanticEffectDrawCard(string cardId) =>
         cardId is ("proto.common.restlessness" or
             "proto.status.slimed" or
+            "proto.colorless.thinking_ahead" or
             "proto.silent.backflip" or
             "proto.silent.quick_slash" or
             "proto.silent.adrenaline" or
@@ -3190,6 +3191,11 @@ public static class SemanticPilotCombatEngineV111
             "proto.colorless.splash" or
             "proto.colorless.volley" or
             "proto.colorless.jack_of_all_trades" or
+            "proto.colorless.secret_technique" or
+            "proto.colorless.secret_weapon" or
+            "proto.colorless.purity" or
+            "proto.colorless.thinking_ahead" or
+            "proto.colorless.scrawl" or
             "proto.silent.nightmare" or
             "proto.colorless.beat_down" or
             "proto.colorless.catastrophe" or
@@ -4138,9 +4144,18 @@ public static class SemanticPilotCombatEngineV111
             var semanticSelectionCard = card?.CardId is
                 ("proto.native.neow.abundance" or
                     "proto.native.neow.neows_fury" or
+                    "proto.colorless.secret_technique" or
+                    "proto.colorless.secret_weapon" or
+                    "proto.colorless.purity" or
+                    "proto.colorless.thinking_ahead" or
+                    "proto.colorless.scrawl" or
                     "proto.silent.survivor" or "proto.silent.hand_trick" or
                     "proto.silent.nightmare" or
                     NativeGloryAncientsV111.WishCardId);
+            var semanticDrawPileSelectionCard = card?.CardId is
+                ("proto.colorless.secret_technique" or
+                 "proto.colorless.secret_weapon" or
+                 "proto.colorless.scrawl");
             var semanticDrawCard = card is not null &&
                 IsSemanticEffectDrawCard(card.CardId);
             var semanticAutoplayCard = card?.CardId is
@@ -4240,6 +4255,7 @@ public static class SemanticPilotCombatEngineV111
                          CanonicalJson.Sha256(next.Stochastic.SemanticDeck))
             {
                 if ((!semanticDrawCard && !semanticAutoplayCard &&
+                     !semanticDrawPileSelectionCard &&
                      !semanticRandomRareToHandCard) || next is null)
                     throw new NotSupportedException(
                         "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +

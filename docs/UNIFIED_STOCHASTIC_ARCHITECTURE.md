@@ -886,6 +886,12 @@ Jack of All Trades now enters its distinct Colorless-card shuffle from its
 physical source-card identity and exact upgraded amount, reusing the existing
 full-pool shuffle owner.
 
+Secret Technique, Secret Weapon, Purity, and Scrawl now enter their source
+card-selection prompts through the existing event and replay owner. Draw-pile
+removals retain the known or contiguous-pool checks. Thinking Ahead resumes its
+two-card draw and `MoveToDrawTop` choice through the existing draw and
+selection owners.
+
 After a semantic `BeforeHandDraw` choice resolves, the common automatic-pipeline resumer now replays the saved `DrawPlayerHand` stage and re-enters the same handoff at its advanced cursor. Remaining supported stages and terminal reward publication therefore continue through the shared path, while a newly suspended choice remains pending for its owning adapter.
 
 `ResumeControlledTurnAfterIntents` now publishes its completed `AdvanceTurn` cursor back to `ResumeAutomaticPipelineContinuation`. The shared handoff resumes subsequent automatic stages and preserves the existing stop-before-semantic-hand-draw boundary used by the end-turn facade.

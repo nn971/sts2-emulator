@@ -106,6 +106,12 @@ physical source-card identity without a fixture marker. Each path retains its
 source continuation and hidden draw-pile checks; Native acquisition and
 cursor parity remain separate evidence.
 
+Secret Technique, Secret Weapon, Purity, and Scrawl now enter their ordinary
+source card-selection prompt through the same event and replay owner. The
+draw-pile choices retain the existing known or contiguous-pool removal checks.
+Thinking Ahead resumes its two-card draw and `MoveToDrawTop` choice through the
+existing draw and selection owners.
+
 The Survivor entry is deliberately a fixture loadout integration, not evidence
 that Survivor was acquired through the native run route. Other outer-choice continuations,
 sequential optional prompts, draw-on-completion prompts, hidden-position

@@ -81,6 +81,14 @@ It reuses the existing full-pool shuffle owner. Fixture setup remains optional;
 pool completeness and cursor parity remain open. Static source review and
 `git diff --check` only; no tests or builds were run.
 
+**S2/S4 Colorless selection-card increment (2026-10-23):** Secret Technique,
+Secret Weapon, Purity, and Scrawl now enter the existing semantic selection
+owner from their physical source cards. Supported draw-pile moves retain the
+known or contiguous-pool checks. Thinking Ahead resumes its draw and top-place
+selection through the existing draw and selection owners. No event or snapshot
+schema changed. Static source review and `git diff --check` only; no tests or
+builds were run.
+
 **S2/S4 Neow's Abundance choice increment (2026-10-23):** The persistent
 semantic combat pilot admits Abundance's generated-Power choice through the
 existing full-pool shuffle and ChoicePool selection owners. The shuffle guard

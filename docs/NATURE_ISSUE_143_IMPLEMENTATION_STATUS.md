@@ -415,6 +415,10 @@ frame and remaining X-hit operation sequence before resuming.
 Jack of All Trades now enters its distinct Colorless-card shuffle through its
 physical source-card identity and exact upgraded amount, reusing the existing
 full-pool shuffle owner.
+Secret Technique, Secret Weapon, Purity, and Scrawl now enter their existing
+semantic card-selection event from their source cards; supported draw-pile
+removals retain the known or contiguous-pool checks. Thinking Ahead resumes its
+draw and `MoveToDrawTop` choice through the existing draw and selection owners.
 Gambler's Brew uses the existing sequential card-selection event for its
 one-at-a-time discard prompt, then resumes the semantic draw owner for the
 selected count. Its guard matches the potion-use completion and exact
