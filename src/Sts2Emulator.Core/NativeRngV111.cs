@@ -103,7 +103,31 @@ public static class NativeRngV111
         ControlledChanceGuardV111.RequireMigrated(
             "native_rng." + streamId, "next_uint64");
         var current = ToSnapshot(bundle.GetStream(streamId));
-        var result = unchecked(BitOperations.RotateLeft(unchecked(current.State1 * 5), 7) * 9);
+        var result = NextUInt64(current, out var next);
+        bundle.ReplaceStream(streamId, FromSnapshot(streamId, next));
+        return result;
+    }
+
+    /// <summary>Replays one Native bounded-index primitive from its saved
+    /// cursor without mutating a provider bundle or consulting ambient state.
+    /// Used to validate retained audit decisions, not to make game choices.</summary>
+    internal static int ReplayNextInt(
+        string streamId, NativeRngSnapshot before, int maxExclusive,
+        out NativeRngSnapshot after)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
+        if (maxExclusive <= 0)
+            throw new ArgumentOutOfRangeException(nameof(maxExclusive));
+        var result = NextUInt64(before, out after);
+        var sample = (result >> 11) * (1.0 / 9007199254740992.0);
+        return (int)((long)(sample * maxExclusive));
+    }
+
+    private static ulong NextUInt64(
+        NativeRngSnapshot current, out NativeRngSnapshot next)
+    {
+        var result = unchecked(BitOperations.RotateLeft(
+            unchecked(current.State1 * 5), 7) * 9);
         var temporary = current.State1 << 17;
         var c = current.State2 ^ current.State0;
         var d = current.State3 ^ current.State1;
@@ -111,8 +135,7 @@ public static class NativeRngV111
         var a = current.State0 ^ d;
         c ^= temporary;
         d = BitOperations.RotateLeft(d, 45);
-        bundle.ReplaceStream(streamId, FromSnapshot(streamId,
-            new(unchecked(current.Counter + 1), a, b, c, d)));
+        next = new(unchecked(current.Counter + 1), a, b, c, d);
         return result;
     }
 

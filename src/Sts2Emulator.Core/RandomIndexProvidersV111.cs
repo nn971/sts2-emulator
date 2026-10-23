@@ -139,6 +139,16 @@ public sealed record RandomIndexDecisionV111(
         RandomBoundaryCursorSpanV111.Validate(
             Request.StreamId, ProviderMode,
             NativeCursorBefore, NativeCursorAfter);
+        if (ProviderMode == "native-v111")
+        {
+            var replayedIndex = NativeRngV111.ReplayNextInt(
+                Request.StreamId, NativeCursorBefore!, Request.SupportCount,
+                out var replayedCursorAfter);
+            if (SelectedIndex != replayedIndex ||
+                NativeCursorAfter != replayedCursorAfter)
+                throw new InvalidDataException(
+                    "Native index decision does not match its saved cursor transition.");
+        }
     }
 }
 
