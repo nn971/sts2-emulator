@@ -4197,6 +4197,7 @@ public static class SemanticPilotCombatEngineV111
                     "proto.colorless.purity" or
                     "proto.colorless.thinking_ahead" or
                     "proto.colorless.scrawl" or
+                    "proto.silent.concentrate" or
                     "proto.silent.hidden_daggers" or
                     "proto.silent.shadow_step" or
                     "proto.silent.survivor" or "proto.silent.hand_trick" or

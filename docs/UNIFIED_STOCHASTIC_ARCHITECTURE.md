@@ -903,6 +903,8 @@ hand discard, then resumes its queued Shiv creation. Bouncing Flask enters the
 semantic pilot from its physical source card and resolves each repeated Poison
 target through the existing saved random-target owner. Neither path adds a new
 provider or event schema; Native target-pool and stream parity remain open.
+Concentrate uses the same selection owner for its three-card hand discard and
+then resumes the queued energy gain.
 Knife Trap also enters from its physical source card and reuses the saved
 autoplay-target continuation if an earlier Shiv kills the chosen enemy before
 the remaining Shiv queue finishes.

@@ -35,6 +35,12 @@ target continuation when a prior Shiv defeats the chosen enemy. Native target
 pool, stream, and cursor parity remain open. Static source review and
 `git diff --check` only; no tests or builds were run.
 
+**S4 source card-selection increment (2026-10-23):** Concentrate now uses the
+existing card-selection event for its three-card hand discard and resumes the
+queued energy gain through the same replay boundary. No event or snapshot
+schema changed. Static source review and `git diff --check` only; no tests or
+builds were run.
+
 **S0 validated event-site domain increment (2026-10-23):** The typed-request
 inventory now follows three existing semantic boundaries: target-event site
 validation through the target-kind resolver, the shortlist's finite supported

@@ -997,3 +997,11 @@ queue; if an earlier Shiv kills the chosen enemy, a later target request
 resumes through the existing `combat.autoplay.random_enemy` continuation.
 Native target-pool and stream/cursor parity remain open. Static source review
 and `git diff --check` only; no tests or builds were run.
+
+## 2026-10-23: Concentrate source selection
+
+Concentrate now enters the existing source card-selection event for its
+three-card hand discard, then resumes the original queued energy gain. The
+choice keeps the existing support fingerprint and source replay boundary;
+no event or snapshot schema changed. Static source review and
+`git diff --check` only; no tests or builds were run.
