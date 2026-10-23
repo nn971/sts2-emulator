@@ -415,9 +415,11 @@ from this result without reinterpreting `BeforeHandDraw` random-pile choices.
 `ResumeAutomaticHandDrawBoundary` distinguishes initial source results, saved
 controlled resumes, and saved semantic resumes with a typed context; only the
 semantic context carries a semantic draw frame.
-The transient `PrototypeDrawCardsResumeResultV111` validates its run and
-nonnegative progress counts when created for a hand-draw result, when its
-requested count is required, and before the semantic draw facade publishes it.
+The transient `PrototypeDrawCardsResumeResultV111` now validates its run and
+nonnegative progress counts in its constructor, so every provider-neutral draw
+resume result has the same invariant; its explicit validation also catches a
+default value before publication. It retains the existing positional values
+and deconstruction shape and adds no saved schema.
 The pipeline stochastic validator checks the shared `DrawPlayerHand` stage
 once for every active progress tag; mode-specific checks cover the corresponding
 provider state and pending choice.

@@ -81,9 +81,11 @@ Static source review and `git diff --check` only; no tests or builds were run.
 
 **S4 draw-resume progress validation increment (2026-10-24):** The shared
 transient result now rejects null runs and negative requested/remaining counts
-when a hand-draw result is formed, its requested count is required, or semantic
-draw progress is published. No saved schema changed. Static source review and
-`git diff --check` only; no tests or builds were run.
+in its constructor, covering every direct provider-neutral draw-resume result.
+Its explicit validation still catches a default struct value before
+publication; the established values and deconstruction shape are preserved.
+No saved schema changed. Static source review and `git diff --check` only; no
+tests or builds were run.
 
 **S4 controlled event-choice candidate replay increment (2026-10-24):**
 Generic event-effect continuations now pass each saved decision's ordered
