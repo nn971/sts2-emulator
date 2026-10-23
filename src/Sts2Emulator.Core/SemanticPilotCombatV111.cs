@@ -3607,7 +3607,7 @@ public static class SemanticPilotCombatEngineV111
             targetCardModelId = combat.Cards.Single(card =>
                 card.InstanceId == targetCardInstanceId).CardId;
             request = new RandomIndexRequestV111(
-                "combat.random_hand_card.energy_cost",
+                StochasticSiteRegistryV111.CombatRandomHandCardEnergyCostSiteId,
                 combat.Stochastic.NativeRng is not null
                     ? SemanticCostChoiceV111.NativeHandCostStreamId
                     : SemanticCostChoiceV111.LegacyHandCostStreamId,

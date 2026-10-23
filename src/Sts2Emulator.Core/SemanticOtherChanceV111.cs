@@ -110,8 +110,8 @@ public static class SemanticOtherChanceEngineV111
         ArgumentNullException.ThrowIfNull(pending);
         pending.Validate();
         if (pending.SiteId is not (
-                "combat.card_draw.relic_energy_cost" or
-                "combat.card_draw.slither_energy_cost") ||
+                StochasticSiteRegistryV111.CombatDrawRelicEnergyCostSiteId or
+                StochasticSiteRegistryV111.CombatDrawSlitherEnergyCostSiteId) ||
             pending.OperationKind != "bounded_integer" ||
             pending.StreamId != "semantic.combat" ||
             pending.SupportCount is < 1 or > 32 ||
@@ -195,8 +195,8 @@ public static class SemanticOtherChanceEngineV111
                 expectedOrdinal > int.MaxValue ||
                 decision.Request.Ordinal != (int)expectedOrdinal ||
                 decision.Request.SiteId is not (
-                    "combat.card_draw.relic_energy_cost" or
-                    "combat.card_draw.slither_energy_cost") ||
+                    StochasticSiteRegistryV111.CombatDrawRelicEnergyCostSiteId or
+                    StochasticSiteRegistryV111.CombatDrawSlitherEnergyCostSiteId) ||
                 decision.NativeCursorBefore is null ||
                 decision.NativeCursorAfter is null)
                 throw new InvalidDataException(

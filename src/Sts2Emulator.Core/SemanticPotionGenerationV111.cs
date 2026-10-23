@@ -68,7 +68,8 @@ public sealed record SemanticPotionGenerationDecisionV111(
 public static class SemanticPotionGenerationChoiceV111
 {
     public const string SchemaId = "sts2-v111-semantic-potion-generation-v1";
-    public const string SiteId = "combat.potion_generation.random_model";
+    public const string SiteId =
+        StochasticSiteRegistryV111.CombatPotionGenerationRandomModelSiteId;
     internal const string StreamId = "prototype.combat";
     internal const string NativeStreamId = "run.combat_potion_generation";
 

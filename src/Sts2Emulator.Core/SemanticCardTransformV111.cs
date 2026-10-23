@@ -71,7 +71,8 @@ public sealed record SemanticCardTransformDecisionV111(
 public static class SemanticCardTransformChoiceV111
 {
     public const string SchemaId = "sts2-v111-semantic-card-transform-v1";
-    public const string SiteId = "combat.card_transform.replacement.index_draw";
+    public const string SiteId =
+        StochasticSiteRegistryV111.CombatCardTransformReplacementSiteId;
     internal const string StreamId = "prototype.combat";
     internal const string NativeStreamId = "run.combat_card_generation";
 

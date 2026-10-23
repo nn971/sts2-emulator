@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S0 stochastic SiteId ownership consolidation (2026-10-23):** The registry
+now owns the identifiers for random hand-cost selection and resolution,
+draw-cost choices, potion generation, and card transforms. Semantic choice
+owners, registry coverage and control checks, and gameplay request callsites
+all reference those constants instead of maintaining duplicate literals.
+Static source review and `git diff --check` only; no tests or builds were run.
+
 **S0 Native request-wrapper callsite closure increment (2026-10-23):** The
 direct-call census now resolves the three generic request constructors in
 `NativeRandomChoiceV111` through their operation-matched Native player-choice

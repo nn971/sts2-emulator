@@ -246,8 +246,8 @@ public sealed record ControlledPlayableCombatV111(
             var card = Run.World!.Combat!.Cards.Single(c =>
                 c.InstanceId == cost.CardInstanceId);
             return new RandomIndexRequestV111(
-                relic ? "combat.card_draw.relic_energy_cost"
-                      : "combat.card_draw.slither_energy_cost",
+                relic ? StochasticSiteRegistryV111.CombatDrawRelicEnergyCostSiteId
+                      : StochasticSiteRegistryV111.CombatDrawSlitherEnergyCostSiteId,
                 "prototype.combat",
                 "card_instance:" + cost.CardInstanceId + ":model:" +
                     card.CardId + ":stage:" + cost.Stage,
@@ -267,8 +267,8 @@ public sealed record ControlledPlayableCombatV111(
             var single = cost.Operation.Kind ==
                 PrototypeCombatEffectKind.SetRandomHandCardEnergyCostUntilTurnEndOrPlayed;
             return new RandomIndexRequestV111(
-                single ? "combat.random_hand_card.select"
-                       : "combat.random_hand_card.energy_cost",
+                single ? StochasticSiteRegistryV111.CombatRandomHandCardSelectSiteId
+                       : StochasticSiteRegistryV111.CombatRandomHandCardEnergyCostSiteId,
                 "prototype.combat",
                 "effect:" + cost.Operation.Kind +
                     ":hand:" + CanonicalJson.Sha256(cost.EligibleCardInstanceIds) +

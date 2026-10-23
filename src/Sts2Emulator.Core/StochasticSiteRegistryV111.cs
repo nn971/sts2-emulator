@@ -368,6 +368,16 @@ public static class StochasticSiteRegistryV111
         "combat.random_draw_attack.card_model";
     public const string CombatCardTransformReplacementSiteId =
         "combat.card_transform.replacement.index_draw";
+    public const string CombatPotionGenerationRandomModelSiteId =
+        "combat.potion_generation.random_model";
+    public const string CombatRandomHandCardSelectSiteId =
+        "combat.random_hand_card.select";
+    public const string CombatRandomHandCardEnergyCostSiteId =
+        "combat.random_hand_card.energy_cost";
+    public const string CombatDrawRelicEnergyCostSiteId =
+        "combat.card_draw.relic_energy_cost";
+    public const string CombatDrawSlitherEnergyCostSiteId =
+        "combat.card_draw.slither_energy_cost";
     public const string CombatEnemyDiscardRandomInsertSiteId =
         "combat.enemy.discard.random_insert_index";
     public const string CombatEnemyDrawRandomInsertSiteId =
@@ -589,13 +599,13 @@ public static class StochasticSiteRegistryV111
         CombatAutoplayRandomTargetSiteId,
         CombatGeneratedCardSelectSiteId,
         CombatRandomDrawAttackCardModelSiteId,
-        "combat.random_hand_card.energy_cost",
-        "combat.card_draw.relic_energy_cost",
-        "combat.card_draw.slither_energy_cost",
+        CombatRandomHandCardEnergyCostSiteId,
+        CombatDrawRelicEnergyCostSiteId,
+        CombatDrawSlitherEnergyCostSiteId,
         "combat.relic.jeweled_mask.random_power_draw_card",
         CombatCardTransformReplacementSiteId,
-        "combat.potion_generation.random_model",
-        "combat.random_hand_card.select",
+        CombatPotionGenerationRandomModelSiteId,
+        CombatRandomHandCardSelectSiteId,
         CombatHandReturnShuffleSiteId,
         CombatFullPoolShuffleSiteId,
         CombatRandomRareDrawToHandShuffleSiteId,
@@ -759,7 +769,7 @@ public static class StochasticSiteRegistryV111
         CombatSlyAutoplayRandomTargetSiteId,
         CombatAutoplayRandomTargetSiteId,
         CombatGeneratedCardSelectSiteId,
-        "combat.potion_generation.random_model",
+        CombatPotionGenerationRandomModelSiteId,
         CombatCardTransformReplacementSiteId,
         CombatRandomDrawAttackCardModelSiteId,
         DrawPileRandomInsertSiteId,
@@ -768,8 +778,8 @@ public static class StochasticSiteRegistryV111
         "combat.enemy.summon_pool.select",
         CombatHandReturnShuffleSiteId,
         CombatFullPoolShuffleSiteId,
-        "combat.random_hand_card.select",
-        "combat.random_hand_card.energy_cost",
+        CombatRandomHandCardSelectSiteId,
+        CombatRandomHandCardEnergyCostSiteId,
         CombatRandomShortlistShuffleSiteId
     ];
 
@@ -1507,15 +1517,15 @@ public static class StochasticSiteRegistryV111
                      siteId, StringComparer.Ordinal)),
             "run.combat_energy_costs" =>
                 operationKind == "bounded_integer" &&
-                (siteId is "combat.random_hand_card.energy_cost" or
-                    "combat.card_draw.relic_energy_cost" or
-                    "combat.card_draw.slither_energy_cost"),
+                (siteId is CombatRandomHandCardEnergyCostSiteId or
+                    CombatDrawRelicEnergyCostSiteId or
+                    CombatDrawSlitherEnergyCostSiteId),
             "run.combat_targets" => operationKind == "choose_index" &&
                 CombatRandomTargetSiteIds.Contains(
                     siteId, StringComparer.Ordinal),
             "run.combat_card_selection" => siteId switch
             {
-                "combat.random_hand_card.select" or
+                CombatRandomHandCardSelectSiteId or
                 "combat.relic.jeweled_mask.random_power_draw_card" or
                 "combat.draw_pile.random_replay_card.select" or
                 "combat.autoplay.random_card.select" =>
@@ -1529,7 +1539,7 @@ public static class StochasticSiteRegistryV111
             {
                 "combat.generated_card.select" or
                 "combat.random_draw_attack.card_model" or
-                "combat.card_transform.replacement.index_draw" or
+                CombatCardTransformReplacementSiteId or
                 "combat.enemy.theft_card.select" =>
                     operationKind == "choose_index",
                 "combat.generation.full_pool_shuffle.swap_index" =>
@@ -1538,7 +1548,7 @@ public static class StochasticSiteRegistryV111
             },
             "run.combat_potion_generation" => siteId switch
             {
-                "combat.potion_generation.random_model" or
+                CombatPotionGenerationRandomModelSiteId or
                 "potion_factory.model_within_rarity.index_draw" =>
                     operationKind == "choose_index",
                 "potion_factory.rarity_roll.unit_float" =>

@@ -107,8 +107,8 @@ public sealed record SemanticCombatDrawV111(
                 x.InstanceId == cost.CardInstanceId);
             var relic = cost.Stage == "relic";
             return new RandomIndexRequestV111(
-                relic ? "combat.card_draw.relic_energy_cost"
-                      : "combat.card_draw.slither_energy_cost",
+                relic ? StochasticSiteRegistryV111.CombatDrawRelicEnergyCostSiteId
+                      : StochasticSiteRegistryV111.CombatDrawSlitherEnergyCostSiteId,
                 "semantic.combat", "card_instance:" + card.InstanceId +
                     ":model:" + card.CardId + ":stage:" + cost.Stage,
                 Stochastic.CostTranscript.Length, [],

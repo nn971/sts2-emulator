@@ -51,14 +51,14 @@ public sealed record SemanticCostEventV111(
              (TargetCardInstanceId <= 0 ||
               string.IsNullOrWhiteSpace(TargetCardModelId) ||
               !((Request.SiteId ==
-                     "combat.random_hand_card.energy_cost" &&
+                     StochasticSiteRegistryV111.CombatRandomHandCardEnergyCostSiteId &&
                  (Request.StreamId ==
                       SemanticCostChoiceV111.LegacyHandCostStreamId ||
                   Request.StreamId ==
                       SemanticCostChoiceV111.NativeHandCostStreamId)) ||
                 ((Request.SiteId is
-                     "combat.card_draw.relic_energy_cost" or
-                     "combat.card_draw.slither_energy_cost") &&
+                     StochasticSiteRegistryV111.CombatDrawRelicEnergyCostSiteId or
+                     StochasticSiteRegistryV111.CombatDrawSlitherEnergyCostSiteId) &&
                  Request.StreamId == "semantic.combat")))))
             throw new InvalidDataException("Invalid semantic cost event.");
         var identityRequest = SemanticCostChoiceV111
@@ -112,7 +112,7 @@ public static class SemanticCostChoiceV111
     // prototype-labeled decisions can be replayed against Native-backed runs.
     internal static RandomIndexRequestV111 RequestForEventIdentity(
         RandomIndexRequestV111 request) =>
-        request.SiteId == "combat.random_hand_card.energy_cost" &&
+        request.SiteId == StochasticSiteRegistryV111.CombatRandomHandCardEnergyCostSiteId &&
         request.StreamId == NativeHandCostStreamId
             ? request with { StreamId = LegacyHandCostStreamId }
             : request;
@@ -217,8 +217,8 @@ public static class SemanticCostChoiceV111
             item.InstanceId == drawCost.CardInstanceId);
         bool relic = drawCost.Stage == "relic";
         var request = new RandomIndexRequestV111(
-            relic ? "combat.card_draw.relic_energy_cost"
-                  : "combat.card_draw.slither_energy_cost",
+            relic ? StochasticSiteRegistryV111.CombatDrawRelicEnergyCostSiteId
+                  : StochasticSiteRegistryV111.CombatDrawSlitherEnergyCostSiteId,
             "semantic.combat", "card_instance:" + card.InstanceId +
                 ":model:" + card.CardId + ":stage:" + drawCost.Stage,
             ordinal, [], OperationKind: "bounded_integer",
@@ -254,7 +254,9 @@ public static class SemanticCostChoiceV111
         pending?.Validate();
         decision.Validate();
         bool legacyPrototypeStream = pending is not null &&
-            pending.Request.SiteId == "combat.random_hand_card.energy_cost" &&
+            pending.Request.SiteId ==
+                StochasticSiteRegistryV111
+                    .CombatRandomHandCardEnergyCostSiteId &&
             pending.Request.StreamId == NativeHandCostStreamId &&
             decision.Event.Request.StreamId == LegacyHandCostStreamId &&
             CanonicalJson.Sha256(pending with
@@ -353,7 +355,7 @@ internal static class SemanticRandomHandCostChoiceV111
         var targetCardModelId = combat.Cards.Single(card =>
             card.InstanceId == targetCardInstanceId).CardId;
         var request = new RandomIndexRequestV111(
-            "combat.random_hand_card.energy_cost",
+            StochasticSiteRegistryV111.CombatRandomHandCardEnergyCostSiteId,
             combat.Stochastic.NativeRng is not null
                 ? SemanticCostChoiceV111.NativeHandCostStreamId
                 : SemanticCostChoiceV111.LegacyHandCostStreamId,
@@ -403,7 +405,7 @@ internal static class SemanticRandomHandCostChoiceV111
 
     internal static RunState ResumeSelectedHandCard(
         RunState checkpoint, long selectedCardInstanceId) =>
-        ResumeCore(checkpoint, "combat.random_hand_card.select",
+        ResumeCore(checkpoint, StochasticSiteRegistryV111.CombatRandomHandCardSelectSiteId,
             savedRun => PrototypeGameEngine
                 .ResumeControlledRandomCostByCard(
                     savedRun, selectedCardInstanceId));
@@ -417,10 +419,10 @@ internal static class SemanticRandomHandCostChoiceV111
         ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
         var expectedOperation = siteId switch
         {
-            "combat.random_hand_card.select" =>
+            StochasticSiteRegistryV111.CombatRandomHandCardSelectSiteId =>
                 PrototypeCombatEffectKind
                     .SetRandomHandCardEnergyCostUntilTurnEndOrPlayed,
-            "combat.random_hand_card.energy_cost" =>
+            StochasticSiteRegistryV111.CombatRandomHandCardEnergyCostSiteId =>
                 PrototypeCombatEffectKind
                     .RandomizeHandCardEnergyCostsUntilTurnEndOrPlayed,
             _ => throw new ArgumentOutOfRangeException(nameof(siteId))

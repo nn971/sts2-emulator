@@ -108,7 +108,8 @@ public static class SemanticHandCostSelectionChoiceV111
 {
     public const string SchemaId =
         "sts2-v111-semantic-hand-cost-selection-v1";
-    public const string SiteId = "combat.random_hand_card.select";
+    public const string SiteId =
+        StochasticSiteRegistryV111.CombatRandomHandCardSelectSiteId;
     internal const string StreamId = "prototype.combat";
     internal const string NativeStreamId = "run.combat_card_selection";
     internal const string OperationKind = "choose_hand_card_instance";

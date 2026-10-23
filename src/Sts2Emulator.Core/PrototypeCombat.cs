@@ -7875,7 +7875,7 @@ public sealed partial class PrototypeGameEngine
                             ":pool:" + CanonicalJson.Sha256(pool);
                         var decision = StochasticProviderScopeV111.ResolveIndex(
                             provider, new RandomIndexRequestV111(
-                                "combat.potion_generation.random_model",
+                                StochasticSiteRegistryV111.CombatPotionGenerationRandomModelSiteId,
                                 streamId, ownerId, (int)callOrdinal,
                                 Enumerable.Range(0, pool.Length).ToArray()),
                             streams);
@@ -10427,8 +10427,8 @@ public sealed partial class PrototypeGameEngine
                 "Random draw-cost provider ordinal exceeds the request range.");
         var request = new RandomIndexRequestV111(
             stage == "relic"
-                ? "combat.card_draw.relic_energy_cost"
-                : "combat.card_draw.slither_energy_cost",
+                ? StochasticSiteRegistryV111.CombatDrawRelicEnergyCostSiteId
+                : StochasticSiteRegistryV111.CombatDrawSlitherEnergyCostSiteId,
             streamId,
             "card_instance:" + cardInstanceId + ":model:" + cardModelId +
                 ":stage:" + stage,
@@ -13952,8 +13952,8 @@ public sealed partial class PrototypeGameEngine
         if (selectedCardInstanceId is { } cardId)
             ownerId += ":card_instance:" + cardId;
         var request = new RandomIndexRequestV111(
-            selectingCard ? "combat.random_hand_card.select"
-                          : "combat.random_hand_card.energy_cost",
+            selectingCard ? StochasticSiteRegistryV111.CombatRandomHandCardSelectSiteId
+                          : StochasticSiteRegistryV111.CombatRandomHandCardEnergyCostSiteId,
             streamId, ownerId, (int)callOrdinal,
             selectingCard
                 ? Enumerable.Range(0, orderedHandCardIds.Length).ToArray()
