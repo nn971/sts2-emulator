@@ -1431,19 +1431,19 @@ public static class ControlledRunActionEngineV111
     {
         return IsEntropicBrewPotionAction(source, action)
             && (SupportsOutsideCombatPotionPhase(source)
-                || SupportsLegacyCombatEntropicBrewAction(source, action));
+                || SupportsCombatEntropicBrewAction(source, action));
     }
 
-    private static bool SupportsLegacyCombatEntropicBrewAction(
+    private static bool SupportsCombatEntropicBrewAction(
         RunState source, GameAction action)
     {
         var combat = source.World?.Combat;
         if (source.Phase != RunPhase.Combat
-            || source.Stochastic.NativeRunRng is not null
             || combat is null
             || combat.PendingChoice is not null
             || combat.PendingKnowledgeDemonChoice is not null
-            || combat.Stochastic.NativeRng is not null)
+            || (source.Stochastic.NativeRunRng is null
+                && combat.Stochastic.NativeRng is not null))
             return false;
 
         var slot = action.ReadPayload<UsePotionPayload>().Slot;

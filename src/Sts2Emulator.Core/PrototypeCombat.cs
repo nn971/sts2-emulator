@@ -1250,6 +1250,8 @@ public sealed partial class PrototypeGameEngine
             ?? throw new InvalidOperationException(
                 $"Combat potion state for slot {payload.Slot} is missing.");
         var prototypeRng = state.Stochastic.PrototypeRng;
+        var nativeRunRng = combat.Stochastic.NativeRng?.RunStreams.Fork()
+            ?? state.Stochastic.NativeRunRng?.Fork();
 
         if (!StringComparer.Ordinal.Equals(potion.PotionId, combatPotion.PotionId))
         {
@@ -1288,7 +1290,8 @@ public sealed partial class PrototypeGameEngine
             ApplyPotionRunEffects(
                 playerAfterPotion,
                 definition,
-                prototypeRng);
+                prototypeRng,
+                nativeRunRng);
 
         var combatAfterPotion = combat with
         {
@@ -1305,6 +1308,19 @@ public sealed partial class PrototypeGameEngine
                 .Select(item => item!)
                 .ToArray()
         };
+        if (nativeRunRng is not null &&
+            combatAfterPotion.Stochastic.NativeRng is { } nativeCombat)
+        {
+            combatAfterPotion = combatAfterPotion with
+            {
+                Stochastic = CombatStochasticStateV111.WithNativeRng(
+                    combatAfterPotion.Stochastic,
+                    nativeCombat with
+                    {
+                        RunStreams = nativeRunRng.Fork()
+                    })
+            };
+        }
 
         var resolved = ResolveOperations(
             playerAfterPotion,
@@ -1327,11 +1343,19 @@ public sealed partial class PrototypeGameEngine
             };
         }
 
+        var stochastic = RunStochasticStateV111.WithPrototypeRng(
+            state.Stochastic, prototypeRng);
+        var completedNativeRunRng =
+            combatAfterPotion.Stochastic.NativeRng?.RunStreams
+                ?? nativeRunRng;
+        if (completedNativeRunRng is not null)
+            stochastic = RunStochasticStateV111.WithNativeRunRng(
+                stochastic, completedNativeRunRng);
+
         state = state with
         {
             Player = playerAfterPotion,
-            Stochastic = RunStochasticStateV111.WithPrototypeRng(
-                state.Stochastic, prototypeRng),
+            Stochastic = stochastic,
             World = world with { Combat = combatAfterPotion }
         };
 
