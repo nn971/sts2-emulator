@@ -22,6 +22,12 @@ the common action replay and add no event or snapshot schema. Native target
 pool and stream/cursor parity remain open. Static source review and
 `git diff --check` only; no tests or builds were run.
 
+**S4 deterministic Silent action increment (2026-10-23):** Echoing Slash and
+Outbreak now use the ordinary semantic player-action boundary. Shadow Step
+uses the existing source card-selection event for its hand discard and queued
+power application. No new event or snapshot schema was introduced. Static
+source review and `git diff --check` only; no tests or builds were run.
+
 **S0 validated event-site domain increment (2026-10-23):** The typed-request
 inventory now follows three existing semantic boundaries: target-event site
 validation through the target-kind resolver, the shortlist's finite supported

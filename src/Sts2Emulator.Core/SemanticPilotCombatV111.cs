@@ -4198,6 +4198,7 @@ public static class SemanticPilotCombatEngineV111
                     "proto.colorless.thinking_ahead" or
                     "proto.colorless.scrawl" or
                     "proto.silent.hidden_daggers" or
+                    "proto.silent.shadow_step" or
                     "proto.silent.survivor" or "proto.silent.hand_trick" or
                     "proto.silent.nightmare" or
                     NativeGloryAncientsV111.WishCardId);

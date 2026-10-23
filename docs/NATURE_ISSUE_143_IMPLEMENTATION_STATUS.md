@@ -979,3 +979,12 @@ two-card hand discard, then resumes the original queued Shiv creation. The
 existing support fingerprint and replay boundary own the selected identities;
 no event or snapshot schema changed. Static source review and
 `git diff --check` only; no tests or builds were run.
+
+## 2026-10-23: additional deterministic Silent actions
+
+Echoing Slash and Outbreak now enter the existing ordinary semantic
+player-action boundary. Shadow Step uses the existing source card-selection
+event to discard its hand, then resumes its queued power application. The
+mechanics engine remains the sole resolver for these effects; no event or
+snapshot schema changed. Static source review and `git diff --check` only; no
+tests or builds were run.

@@ -903,6 +903,9 @@ hand discard, then resumes its queued Shiv creation. Bouncing Flask enters the
 semantic pilot from its physical source card and resolves each repeated Poison
 target through the existing saved random-target owner. Neither path adds a new
 provider or event schema; Native target-pool and stream parity remain open.
+Shadow Step now uses the card-selection owner for its hand discard and queued
+power application, while Echoing Slash and Outbreak use the ordinary
+deterministic semantic player-action boundary.
 
 After a semantic `BeforeHandDraw` choice resolves, the common automatic-pipeline resumer now replays the saved `DrawPlayerHand` stage and re-enters the same handoff at its advanced cursor. Remaining supported stages and terminal reward publication therefore continue through the shared path, while a newly suspended choice remains pending for its owning adapter.
 
