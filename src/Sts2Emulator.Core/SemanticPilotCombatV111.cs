@@ -4168,6 +4168,10 @@ public static class SemanticPilotCombatEngineV111
             PrototypeCombatEventKind.CardPlayed,
             [new(PrototypeCombatEffectKind.DrawCards, 1)],
             EveryNth: 3),
+        NativeGloryAncientsV111.IronClubId => new(
+            PrototypeCombatEventKind.CardPlayed,
+            [new(PrototypeCombatEffectKind.DrawCards, 1)],
+            EveryNth: 4),
         "proto.relic.unceasing_top" => new(
             PrototypeCombatEventKind.CardPlayed,
             [new(PrototypeCombatEffectKind.DrawCards, 1)],

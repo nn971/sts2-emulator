@@ -1023,8 +1023,9 @@ no event or snapshot schema changed. Static source review and
 ## 2026-10-23: relic action draws
 
 Player card actions can now suspend at Gremlin Horn's `EnemyDefeated` draw,
-Ink Bottle's third `CardPlayed` draw, Unceasing Top's empty-hand `CardPlayed`
-draw, and Joss Paper's fifth `CardExhausted` draw. Admission checks the saved
+Ink Bottle's third `CardPlayed` draw, Iron Club's fourth `CardPlayed` draw,
+Unceasing Top's empty-hand `CardPlayed` draw, and Joss Paper's fifth
+`CardExhausted` draw. Admission checks the saved
 event subscriber, exact relic trigger, and active source card identity for
 `CardPlayed`. The existing semantic draw owner resolves the card. The
 suspended first draw requires a nonempty source pile; any later nested draw
