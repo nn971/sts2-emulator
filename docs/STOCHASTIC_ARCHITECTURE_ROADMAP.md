@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 post-choice Event Entropic Brew continuation audit (2026-10-24):**
+The controlled event-reward continuation already saves the Entropic Brew action
+with its pending empty-slot draw, resumes the ordinary potion action after each
+selected model, and retains the event-reward decision prefix. The architecture
+support note now records this existing path and its boundary. Static source
+review and `git diff --check` only; no tests or builds were run.
+
 **S4 Bottled Potential continuation inventory increment (2026-10-24):**
 Recorded the existing semantic path for its full-pool hand-return shuffle,
 after-shuffle relic insertions, and resumed five-card draw under their current
@@ -3155,7 +3162,7 @@ audit note now points to this continuation; source pool fidelity and
 
 **S4 deterministic outside-combat potion action increment (2026-10-23):** The existing `ReferenceNatureRunActionSessionV111` admits legal Fruit Juice, Blood Potion, and Neow's Ambergris uses through their exact modeled run effects. Its controlled replay rejects any chance request, and completed actions use the existing snapshot replay validation. In addition to safe pre-choice Event use, the saved event-reward continuation now advances deterministic potion actions while the event reward remains pending and no full-belt replacement is active. Replacement continuations remain event-specific. No chance owner or snapshot schema was added. Static source review and `git diff --check` only; no tests or builds were run.
 
-**S4 Entropic Brew fill continuation increment (2026-10-23):** The same run-action session captures each empty-slot potion draw for legal non-event uses and pre-choice Event uses when no full-belt replacement is pending. Legacy runs use the existing ordered-pool law on `reward`; Native runs use the `player.rewards` bounded-index law, with each slot owner and support checked against the prototype pool. Stochastic Entropic Brew during a post-choice Event reward still needs a nested continuation to preserve the event session. Native game pool ordering, trigger order, and source stream attribution remain open pending the reference mod. Static source review and `git diff --check` only; no tests or builds were run.
+**S4 Entropic Brew fill continuation increment (2026-10-23):** The same run-action session captures each empty-slot potion draw for legal non-event uses and pre-choice Event uses when no full-belt replacement is pending. Legacy runs use the existing ordered-pool law on `reward`; Native runs use the `player.rewards` bounded-index law, with each slot owner and support checked against the prototype pool. The post-choice Event reward case is handled by the existing controlled event-reward continuation with a saved Entropic Brew action and event-decision prefix; see the 2026-10-24 continuation audit above. Native game pool ordering, trigger order, and source stream attribution remain open pending the reference mod. Static source review and `git diff --check` only; no tests or builds were run.
 
 **S4 deterministic combat-potion victory increment (2026-10-23):** Fire, Explosive, and Explosive Ampoule now use the existing complete combat action-result boundary when their modeled damage ends combat. Potion replay gets the existing narrow engine-owned reward allowance; Distilled Chaos gets it as well because autoplay may win combat. Reward generation remains limited to the registered engine-owned sites. Static source review and `git diff --check` only; no tests or builds were run.
 
