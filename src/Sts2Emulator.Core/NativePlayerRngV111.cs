@@ -25,9 +25,18 @@ internal static class NativePlayerRngV111
         string streamId,
         string ownerId,
         int count) =>
+        ChooseIndexDecision(
+            streams, siteId, streamId, ownerId, count).SelectedIndex;
+
+    public static RandomIndexDecisionV111 ChooseIndexDecision(
+        RngBundle streams,
+        string siteId,
+        string streamId,
+        string ownerId,
+        int count) =>
         NativeRandomChoiceV111.ChooseIndexRange(
             streams, siteId, streamId, ownerId, count,
-            NextOrdinal(streams, streamId)).SelectedIndex;
+            NextOrdinal(streams, streamId));
 
     public static int ChooseBoundedInteger(
         RngBundle streams,

@@ -1,6 +1,6 @@
 namespace Sts2Emulator.Core;
 
-/// <summary>An ordered generated-card model pool at its source effect boundary.</summary>
+/// <summary>An ordered generated-card model pool at its source selection boundary.</summary>
 public sealed record SemanticGeneratedCardEventV111(
     string SchemaId, string EventId, string SiteId, string StreamId,
     string OwnerId, int Ordinal, string OperationKind,
@@ -24,14 +24,19 @@ public sealed record SemanticGeneratedCardEventV111(
     public void Validate()
     {
         var candidateCardIds = _candidateCardIds;
+        bool supportedCombatSite = SiteId is
+            StochasticSiteRegistryV111.CombatGeneratedCardSelectSiteId or
+            StochasticSiteRegistryV111.CombatRandomDrawAttackCardModelSiteId;
+        bool validStream = supportedCombatSite
+            ? StreamId is "prototype.combat" or
+                "run.combat_card_generation"
+            : SiteId == StochasticSiteRegistryV111.NativeRewardCardModelSiteId &&
+                StreamId == NativePlayerRngV111.RewardsStreamId;
         if (SchemaId != SemanticGenerationChoiceV111.SchemaId ||
             string.IsNullOrWhiteSpace(EventId) ||
-            SiteId is not ("combat.generated_card.select" or
-                "combat.random_draw_attack.card_model") ||
-            (StreamId != "prototype.combat" &&
-                !((SiteId is "combat.generated_card.select" or
-                    "combat.random_draw_attack.card_model") &&
-                  StreamId == "run.combat_card_generation")) ||
+            (!supportedCombatSite && SiteId !=
+                StochasticSiteRegistryV111.NativeRewardCardModelSiteId) ||
+            !validStream ||
             string.IsNullOrWhiteSpace(OwnerId) || Ordinal < 0 ||
             OperationKind != "choose_card_model" ||
             candidateCardIds is not { Length: > 0 } ||
@@ -83,10 +88,13 @@ public sealed record SemanticGeneratedCardNativeAuditV111(
 {
     public const string CurrentSchemaId =
         "sts2-v111-semantic-generated-card-native-audit-v1";
+    internal const string NativeCombatRewardOperation =
+        "NativeCombatRewardCardOffer";
 
     internal static bool IsSupportedAuditSite(string siteId) =>
         siteId is StochasticSiteRegistryV111.CombatGeneratedCardSelectSiteId or
-            StochasticSiteRegistryV111.CombatRandomDrawAttackCardModelSiteId;
+            StochasticSiteRegistryV111.CombatRandomDrawAttackCardModelSiteId or
+            StochasticSiteRegistryV111.NativeRewardCardModelSiteId;
 
     public SemanticGeneratedCardNativeAuditV111 Fork() => this with
     {
@@ -105,19 +113,30 @@ public sealed record SemanticGeneratedCardNativeAuditV111(
         RandomIndexDecisionV111 providerDecision,
         IReadOnlyList<string> candidateCardIds,
         PrototypeCombatEffectKind sourceOperationKind,
-        long? sourceCardInstanceId)
+        long? sourceCardInstanceId) => CreateCore(
+            providerDecision, candidateCardIds,
+            sourceOperationKind.ToString(), sourceCardInstanceId);
+
+    internal static SemanticGeneratedCardNativeAuditV111 CreateNativeReward(
+        RandomIndexDecisionV111 providerDecision,
+        IReadOnlyList<string> candidateCardIds) => CreateCore(
+            providerDecision, candidateCardIds,
+            NativeCombatRewardOperation, null);
+
+    private static SemanticGeneratedCardNativeAuditV111 CreateCore(
+        RandomIndexDecisionV111 providerDecision,
+        IReadOnlyList<string> candidateCardIds,
+        string operation, long? sourceCardInstanceId)
     {
         ArgumentNullException.ThrowIfNull(providerDecision);
         ArgumentNullException.ThrowIfNull(candidateCardIds);
         providerDecision.Validate();
         var request = providerDecision.Request;
         var candidates = candidateCardIds.ToArray();
-        var operation = sourceOperationKind.ToString();
-        var expectedOwnerId = OwnerIdFor(
-            operation, sourceCardInstanceId, candidates);
         if (providerDecision.ProviderMode != "native-v111" ||
             !IsSupportedAuditSite(request.SiteId) ||
-            request.OwnerId != expectedOwnerId ||
+            !OwnerIdMatches(operation, sourceCardInstanceId,
+                request, candidates) ||
             request.OperationKind != "choose_index" ||
             request.SupportCount != candidates.Length ||
             !request.OrderedCandidates.SequenceEqual(
@@ -133,9 +152,12 @@ public sealed record SemanticGeneratedCardNativeAuditV111(
 
         var boundaryFingerprint = BoundaryFingerprintFor(
             request, operation, sourceCardInstanceId);
-        var semanticEvent = SemanticGenerationChoiceV111.CreateEvent(
-            boundaryFingerprint, request.SiteId, request.OwnerId,
-            request.Ordinal, candidates, request.StreamId);
+        var semanticEvent = operation == NativeCombatRewardOperation
+            ? SemanticGenerationChoiceV111.CreateNativeRewardEvent(
+                boundaryFingerprint, request, candidates)
+            : SemanticGenerationChoiceV111.CreateEvent(
+                boundaryFingerprint, request.SiteId, request.OwnerId,
+                request.Ordinal, candidates, request.StreamId);
         var semanticOutcome = SemanticGenerationChoiceV111.Select(
             semanticEvent, semanticEvent.EventId,
             candidates[providerDecision.SelectedIndex]);
@@ -169,13 +191,18 @@ public sealed record SemanticGeneratedCardNativeAuditV111(
         var request = ProviderDecision.Request;
         var expectedBoundaryFingerprint = BoundaryFingerprintFor(
             request, SourceOperationKind, SourceCardInstanceId);
-        var expectedOwnerId = OwnerIdFor(
-            SourceOperationKind, SourceCardInstanceId,
+        var ownerMatches = OwnerIdMatches(
+            SourceOperationKind, SourceCardInstanceId, request,
             semanticEvent.CandidateCardIds);
-        var expectedEvent = SemanticGenerationChoiceV111.CreateEvent(
-            expectedBoundaryFingerprint, request.SiteId, request.OwnerId,
-            request.Ordinal, semanticEvent.CandidateCardIds,
-            request.StreamId);
+        var expectedEvent = SourceOperationKind ==
+            NativeCombatRewardOperation
+                ? SemanticGenerationChoiceV111.CreateNativeRewardEvent(
+                    expectedBoundaryFingerprint, request,
+                    semanticEvent.CandidateCardIds)
+                : SemanticGenerationChoiceV111.CreateEvent(
+                    expectedBoundaryFingerprint, request.SiteId,
+                    request.OwnerId, request.Ordinal,
+                    semanticEvent.CandidateCardIds, request.StreamId);
         if (SchemaId != CurrentSchemaId ||
             ProviderDecision.ProviderMode != "native-v111" ||
             !IsSupportedAuditSite(request.SiteId) ||
@@ -184,7 +211,7 @@ public sealed record SemanticGeneratedCardNativeAuditV111(
                 Enumerable.Range(0,
                     semanticEvent.CandidateCardIds.Length)) ||
             request.SupportCount != semanticEvent.CandidateCardIds.Length ||
-            request.OwnerId != expectedOwnerId ||
+            !ownerMatches ||
             semanticEvent.SiteId != request.SiteId ||
             semanticEvent.StreamId != request.StreamId ||
             semanticEvent.OwnerId != request.OwnerId ||
@@ -225,6 +252,39 @@ public sealed record SemanticGeneratedCardNativeAuditV111(
             ? "card_instance:" + sourceCardId
             : "effect:" + sourceOperationKind) + ":pool:" +
         CanonicalJson.Sha256(candidates);
+
+    private static bool OwnerIdMatches(string sourceOperationKind,
+        long? sourceCardInstanceId, RandomIndexRequestV111 request,
+        IReadOnlyList<string> candidates)
+    {
+        if (sourceOperationKind != NativeCombatRewardOperation)
+            return request.SiteId !=
+                    StochasticSiteRegistryV111.NativeRewardCardModelSiteId &&
+                request.OwnerId == OwnerIdFor(
+                    sourceOperationKind, sourceCardInstanceId, candidates);
+
+        if (sourceCardInstanceId is not null || request.SiteId !=
+                StochasticSiteRegistryV111.NativeRewardCardModelSiteId ||
+            request.StreamId != NativePlayerRngV111.RewardsStreamId)
+            return false;
+
+        var suffix = ":pool:" + CanonicalJson.Sha256(candidates);
+        if (!request.OwnerId.EndsWith(suffix, StringComparison.Ordinal))
+            return false;
+        var prefix = request.OwnerId[..^suffix.Length].Split(':');
+        return prefix.Length == 8 && prefix[0] == "act" &&
+            int.TryParse(prefix[1],
+                System.Globalization.NumberStyles.None,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var act) && act >= 1 && prefix[2] == "room" &&
+            (prefix[3] is "Combat" or "Elite" or "Boss") &&
+            prefix[4] == "pick" &&
+            int.TryParse(prefix[5],
+                System.Globalization.NumberStyles.None,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var pick) && pick >= 0 && prefix[6] == "rarity" &&
+            (prefix[7] is "Common" or "Uncommon" or "Rare");
+    }
 }
 
 public static class SemanticGenerationChoiceV111
@@ -276,6 +336,38 @@ public static class SemanticGenerationChoiceV111
         var candidates = (string[])candidateCardIds.Clone();
         var request = CreateRequest(
             siteId, ownerId, ordinal, candidates.Length, streamId);
+        return CreateEventCore(boundaryFingerprint, request, candidates);
+    }
+
+    internal static SemanticGeneratedCardEventV111 CreateNativeRewardEvent(
+        string boundaryFingerprint, RandomIndexRequestV111 request,
+        string[] candidateCardIds)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(boundaryFingerprint);
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(candidateCardIds);
+        request.ValidateForNativeProvider();
+        var candidates = (string[])candidateCardIds.Clone();
+        if (request.SiteId !=
+                StochasticSiteRegistryV111.NativeRewardCardModelSiteId ||
+            request.StreamId != NativePlayerRngV111.RewardsStreamId ||
+            request.OperationKind != "choose_index" ||
+            request.SupportCount != candidates.Length ||
+            !request.OrderedCandidates.SequenceEqual(
+                Enumerable.Range(0, candidates.Length)) ||
+            candidates.Length == 0 ||
+            candidates.Any(string.IsNullOrWhiteSpace) ||
+            candidates.Distinct(StringComparer.Ordinal).Count() !=
+                candidates.Length)
+            throw new InvalidDataException(
+                "Native reward-card model event has an unsupported request or pool.");
+        return CreateEventCore(boundaryFingerprint, request, candidates);
+    }
+
+    private static SemanticGeneratedCardEventV111 CreateEventCore(
+        string boundaryFingerprint, RandomIndexRequestV111 request,
+        string[] candidates)
+    {
         var supportFingerprint = CanonicalJson.Sha256(candidates);
         // Stream attribution is a projection of this source boundary. Keep
         // it out of EventId so existing prototype-labeled decisions replay.

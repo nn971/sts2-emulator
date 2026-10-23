@@ -199,6 +199,8 @@ public sealed record SemanticNativePolicyAuditV111(
         "sts2-v111-native-pool-shuffle-audit-v4";
     public const string GeneratedCardModelAuditSchemaV1 =
         "sts2-v111-native-generated-card-model-audit-v1";
+    public const string GeneratedCardModelAuditSchemaV2 =
+        "sts2-v111-native-generated-card-model-audit-v2";
     public const string CardTransformAuditSchemaV1 =
         "sts2-v111-native-card-transform-audit-v1";
     public const string RandomTargetAuditSchemaV1 =
@@ -225,8 +227,8 @@ public sealed record SemanticNativePolicyAuditV111(
     /// V3 adds Native entry/recycle draw-pile shuffles; V4 adds War Hammer
     /// and boss-reward relic offer shuffles.</summary>
     public string? PoolShuffleAuditSchema { get; init; }
-    /// <summary>Null for older snapshots that predate typed Native generated
-    /// card model results.</summary>
+    /// <summary>V1 covers combat generated-card choices; V2 also covers
+    /// Native combat-reward card-model offers.</summary>
     public string? GeneratedCardModelAuditSchema { get; init; }
     /// <summary>Null for older snapshots that predate typed Native card
     /// transform replacement results.</summary>
@@ -470,8 +472,9 @@ public sealed record SemanticNativePolicyAuditV111(
                  PoolShuffleAuditSchemaV1 or PoolShuffleAuditSchemaV2 or
                  PoolShuffleAuditSchemaV3 or PoolShuffleAuditSchemaV4)) ||
             (GeneratedCardModelAuditSchema is not null &&
-             GeneratedCardModelAuditSchema !=
-                GeneratedCardModelAuditSchemaV1) ||
+             GeneratedCardModelAuditSchema is not (
+                 GeneratedCardModelAuditSchemaV1 or
+                 GeneratedCardModelAuditSchemaV2)) ||
             (CardTransformAuditSchema is not null &&
              CardTransformAuditSchema != CardTransformAuditSchemaV1) ||
             (RandomTargetAuditSchema is not null &&
@@ -1157,21 +1160,39 @@ public sealed record SemanticNativePolicyAuditV111(
             }
         }
 
-        if (GeneratedCardModelAuditSchema ==
-                GeneratedCardModelAuditSchemaV1 ||
+        bool completeNativeRewardCardModels =
+            GeneratedCardModelAuditSchema ==
+                GeneratedCardModelAuditSchemaV2;
+        var requiredGeneratedCardModelDecisions =
+            completeNativeRewardCardModels
+                ? traceGeneratedCardModelDecisions
+                : traceGeneratedCardModelDecisions.Where(decision =>
+                    decision.Request.SiteId !=
+                        StochasticSiteRegistryV111
+                            .NativeRewardCardModelSiteId).ToList();
+        var requiredGeneratedCardModelOutcomes =
+            generatedCardModelOutcomes.Where(outcome =>
+                completeNativeRewardCardModels ||
+                outcome.Outcome.Event.SiteId !=
+                    StochasticSiteRegistryV111
+                        .NativeRewardCardModelSiteId).ToArray();
+        if (GeneratedCardModelAuditSchema is
+                GeneratedCardModelAuditSchemaV1 or
+                GeneratedCardModelAuditSchemaV2 ||
             generatedCardModelOutcomes.Length > 0)
         {
-            if (traceGeneratedCardModelDecisions.Count !=
-                generatedCardModelOutcomes.Length)
+            if (requiredGeneratedCardModelDecisions.Count !=
+                requiredGeneratedCardModelOutcomes.Length)
                 throw new InvalidDataException(
                     "Native generated-card model outcomes are incomplete for their mixed trace.");
 
             foreach (var generatedDecision in
-                traceGeneratedCardModelDecisions)
+                requiredGeneratedCardModelDecisions)
             {
                 var decisionFingerprint = CanonicalJson.Sha256(
                     generatedDecision);
-                var matchingOutcomes = generatedCardModelOutcomes.Count(
+                var matchingOutcomes =
+                    requiredGeneratedCardModelOutcomes.Count(
                     outcome => CanonicalJson.Sha256(
                         outcome.ProviderDecision) == decisionFingerprint);
                 if (matchingOutcomes != 1)
@@ -3135,7 +3156,7 @@ public static class SemanticPilotCombatEngineV111
                             .PoolShuffleAuditSchemaV4,
                     GeneratedCardModelAuditSchema =
                         SemanticNativePolicyAuditV111
-                            .GeneratedCardModelAuditSchemaV1,
+                            .GeneratedCardModelAuditSchemaV2,
                     CardTransformAuditSchema =
                         SemanticNativePolicyAuditV111
                             .CardTransformAuditSchemaV1,
@@ -3255,7 +3276,7 @@ public static class SemanticPilotCombatEngineV111
                         .PoolShuffleAuditSchemaV4,
                 GeneratedCardModelAuditSchema =
                     SemanticNativePolicyAuditV111
-                        .GeneratedCardModelAuditSchemaV1,
+                        .GeneratedCardModelAuditSchemaV2,
                 CardTransformAuditSchema =
                     SemanticNativePolicyAuditV111
                         .CardTransformAuditSchemaV1,

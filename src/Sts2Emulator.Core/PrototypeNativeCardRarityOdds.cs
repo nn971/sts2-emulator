@@ -317,16 +317,29 @@ public static class PrototypeNativeCardRarityOdds
             var selectionOwner =
                 $"act:{act}:room:{room}:pick:{i}:rarity:{rarity}:pool:"
                     + CanonicalJson.Sha256(candidates);
-            var selectedIndex = nativeRunRng is null
-                ? LegacyRandomChoiceV111.ChooseIndexRange(
-                    rng, "card_rarity.encounter_model.index_draw",
-                    "reward", selectionOwner, candidates.Length).SelectedIndex
-                : NativePlayerRngV111.ChooseIndex(
+            int selectedIndex;
+            if (nativeRunRng is null)
+            {
+                selectedIndex = LegacyRandomChoiceV111.ChooseIndexRange(
+                    rng, StochasticSiteRegistryV111.NativeRewardCardModelSiteId,
+                    "reward", selectionOwner, candidates.Length).SelectedIndex;
+            }
+            else
+            {
+                var decision = NativePlayerRngV111.ChooseIndexDecision(
                     nativeRunRng,
-                    "card_rarity.encounter_model.index_draw",
+                    StochasticSiteRegistryV111.NativeRewardCardModelSiteId,
                     NativePlayerRngV111.RewardsStreamId,
                     selectionOwner,
                     candidates.Length);
+                selectedIndex = decision.SelectedIndex;
+                if (decision.ProviderMode == "native-v111" &&
+                    RandomBoundaryJournalV111.HasActiveJournal)
+                    RandomBoundaryJournalV111
+                        .RecordGeneratedCardModelOutcome(
+                            SemanticGeneratedCardNativeAuditV111
+                                .CreateNativeReward(decision, candidates));
+            }
             var selected = candidates[selectedIndex];
             cards.Add(selected);
             pool.Remove(selected);

@@ -818,8 +818,9 @@ the privileged session snapshot and does not enter `semantic_observe`.
 The audit also retains typed outcomes for weighted intents, selected physical
 cards, random hand and draw-hook costs, combat card-pool, entry draw-pile, and
 semantic recycle swaps, Native relic-bag queue swaps, War Hammer upgrade pools,
-boss and Lava Rock relic offers, generated-card models, transform replacements,
-random enemy targets, in-combat potion models, draw-pile insertion positions,
+boss and Lava Rock relic offers, generated-card models including Native reward
+card offers, transform replacements, random enemy targets, in-combat potion
+models, draw-pile insertion positions,
 and enemy-effect draw/discard pile insertions, each linked to its exact primitive
 decision. Fishing Rod's combat-end index draw also records its selected physical
 card identity. Additive schema markers require complete annotations for their

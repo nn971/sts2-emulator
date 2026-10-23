@@ -368,6 +368,8 @@ public static class StochasticSiteRegistryV111
         "combat.generated_card.select";
     public const string CombatRandomDrawAttackCardModelSiteId =
         "combat.random_draw_attack.card_model";
+    public const string NativeRewardCardModelSiteId =
+        "card_rarity.encounter_model.index_draw";
     public const string CombatCardTransformReplacementSiteId =
         "combat.card_transform.replacement.index_draw";
     public const string CombatPotionGenerationRandomModelSiteId =
@@ -756,7 +758,7 @@ public static class StochasticSiteRegistryV111
         "reward.card_rarity.ticket",
         "reward.card_model.index_draw",
         "card_rarity.roll.ticket",
-        "card_rarity.encounter_model.index_draw",
+        NativeRewardCardModelSiteId,
         "card_rarity.upgrade_roll.ticket",
         "card_rarity.roll.unit_float",
         "card_rarity.upgrade_roll.unit_float"
@@ -1001,7 +1003,7 @@ public static class StochasticSiteRegistryV111
         AfterShuffleRelicDrawPileInsertSiteId,
         CombatEnemyDrawRandomInsertSiteId,
         CombatEnemyDiscardRandomInsertSiteId,
-        "card_rarity.encounter_model.index_draw",
+        NativeRewardCardModelSiteId,
         "card_rarity.upgrade_roll.unit_float",
         "event.endless_conveyor.dish_weighted_ticket",
         "event.endless_conveyor.random_upgrade.card_instance",
@@ -1665,7 +1667,7 @@ public static class StochasticSiteRegistryV111
                 "reward.lava_rock.relic_offer.shuffle_swap_index" =>
                     operationKind == "bounded_integer",
                 "potion_factory.model_within_rarity.index_draw" or
-                "card_rarity.encounter_model.index_draw" =>
+                NativeRewardCardModelSiteId =>
                     operationKind == "choose_index",
                 _ => false
             },

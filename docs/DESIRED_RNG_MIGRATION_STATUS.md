@@ -354,8 +354,10 @@ stream attribution remain unverified.
 Native generated-card model selections now also retain the selected model,
 ordered source pool, source operation, exact selection ticket and Native cursor
 span by reusing `SemanticGeneratedCardEventV111`. Newly marked Native-policy
-audits require one typed result for each supported generated-card selection
-request.
+audits use generated-card schema V2 to add the Native `player.rewards`
+`card_rarity.encounter_model.index_draw` support; schema V1 snapshots retain
+their combat-only completeness rule. Each reward annotation binds the ordered
+source pool and selected model to its exact request.
 Pool completeness, stream attribution and cursor parity remain separate claims.
 Native transform replacements now retain the original model, ordered
 replacement pool, selected model, source card instance, and exact Native ticket

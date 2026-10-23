@@ -13,6 +13,10 @@ schema V4. Fishing Rod's selected card instance uses card-index schema V2.
 These additions annotate the existing Native provider decisions; they do not
 establish source-pool completeness, stream parity, or cursor parity.
 
+The generated-card outcome family also retains the ordered card-model pool and
+selected offer for Native combat-reward `player.rewards` draws. Generated-card
+schema V2 adds that reward site while V1 keeps combat-only completeness.
+
 The Rest reward crosswalk is `PrototypeRooms.StepRest` →
 `EnterRestHealRelicReward`: relics with a positive
 `RestHealCardRewardCount` can request `reward.card_rarity.ticket` and
