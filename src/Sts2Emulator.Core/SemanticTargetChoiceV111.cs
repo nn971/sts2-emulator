@@ -71,9 +71,111 @@ public sealed record SemanticTargetDecisionV111(
     };
 }
 
+/// <summary>Native provider result paired with its ordered enemy support.</summary>
+public sealed record SemanticTargetNativeAuditV111(
+    string SchemaId, SemanticTargetDecisionV111 Outcome,
+    RandomIndexDecisionV111 ProviderDecision)
+{
+    public const string CurrentSchemaId =
+        "sts2-v111-native-random-target-audit-v1";
+
+    private static string BoundaryFingerprintFor(
+        RandomIndexDecisionV111 providerDecision) => CanonicalJson.Sha256(new
+    {
+        schemaId = CurrentSchemaId,
+        request = providerDecision.Request,
+        nativeCursorBefore = providerDecision.NativeCursorBefore
+    });
+
+    public SemanticTargetNativeAuditV111 Fork() => this with
+    {
+        Outcome = Outcome.Fork(),
+        ProviderDecision = ProviderDecision with
+        {
+            Request = ProviderDecision.Request with
+            {
+                OrderedCandidates = ProviderDecision.Request.OrderedCandidates
+            }
+        }
+    };
+
+    public static SemanticTargetNativeAuditV111 Create(
+        RandomIndexDecisionV111 providerDecision)
+    {
+        ArgumentNullException.ThrowIfNull(providerDecision);
+        providerDecision.Validate();
+        var request = providerDecision.Request;
+        var targetKind = SemanticTargetChoiceV111.TargetKindForSiteId(
+            request.SiteId);
+        if (providerDecision.ProviderMode != "native-v111" ||
+            targetKind is null || request.OperationKind != "choose_index" ||
+            request.StreamId != "run.combat_targets")
+            throw new InvalidDataException(
+                "Native random-target audit has an unsupported provider request.");
+
+        var semanticEvent = SemanticTargetChoiceV111.CreateEvent(
+            BoundaryFingerprintFor(providerDecision), targetKind, request.OwnerId,
+            request.Ordinal, request.OrderedCandidates);
+        var outcome = SemanticTargetChoiceV111.Select(
+            semanticEvent, semanticEvent.EventId,
+            request.OrderedCandidates[providerDecision.SelectedIndex]);
+        var audit = new SemanticTargetNativeAuditV111(
+            CurrentSchemaId, outcome, providerDecision with
+            {
+                Request = request with
+                {
+                    OrderedCandidates = request.OrderedCandidates
+                }
+            });
+        audit.Validate();
+        return audit;
+    }
+
+    public void Validate()
+    {
+        ArgumentNullException.ThrowIfNull(Outcome);
+        ArgumentNullException.ThrowIfNull(ProviderDecision);
+        Outcome.Validate();
+        ProviderDecision.Validate();
+        var request = ProviderDecision.Request;
+        var targetKind = SemanticTargetChoiceV111.TargetKindForSiteId(
+            request.SiteId);
+        var expectedEvent = targetKind is null
+            ? null
+            : SemanticTargetChoiceV111.CreateEvent(
+                BoundaryFingerprintFor(ProviderDecision), targetKind,
+                request.OwnerId, request.Ordinal,
+                request.OrderedCandidates);
+        if (SchemaId != CurrentSchemaId ||
+            ProviderDecision.ProviderMode != "native-v111" ||
+            targetKind is null || request.StreamId != "run.combat_targets" ||
+            request.OperationKind != "choose_index" ||
+            expectedEvent is null ||
+            CanonicalJson.Sha256(Outcome.Event) !=
+                CanonicalJson.Sha256(expectedEvent) ||
+            Outcome.SelectedIndex != ProviderDecision.SelectedIndex ||
+            Outcome.SelectedEnemyInstanceId !=
+                request.OrderedCandidates[ProviderDecision.SelectedIndex])
+            throw new InvalidDataException(
+                "Native random-target audit differs from its provider request or result.");
+    }
+}
+
 public static class SemanticTargetChoiceV111
 {
     public const string SchemaId = "sts2-v111-semantic-target-choice-v1";
+
+    internal static string? TargetKindForSiteId(string? siteId) =>
+        siteId switch
+        {
+            StochasticSiteRegistryV111.CombatEffectRandomTargetSiteId =>
+                "effect_random_enemy",
+            StochasticSiteRegistryV111.CombatSlyAutoplayRandomTargetSiteId =>
+                "sly_auto_play",
+            StochasticSiteRegistryV111.CombatAutoplayRandomTargetSiteId =>
+                "autoplay_random_enemy",
+            _ => null
+        };
 
     internal static string? SiteIdForTargetKind(string? targetKind) =>
         targetKind switch

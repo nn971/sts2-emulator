@@ -28,6 +28,15 @@ typed outcome for each transform replacement request. Transform pool
 completeness, stream attribution and cursor parity remain open. Static source
 review and `git diff --check` only; no tests or builds were run.
 
+**D2 Native random-target outcome audit increment (2026-10-23):** The shared
+Native random-target resolver now reuses `SemanticTargetEventV111` and
+`SemanticTargetDecisionV111` to retain the ordered enemy-instance support and
+selected identity beside the exact provider decision. Newly marked Native-
+policy audits require one result for every registered random-target request;
+older unmarked snapshots remain readable. Source eligibility, stream
+attribution, and result/cursor parity remain open. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S0 stochastic SiteId ownership consolidation (2026-10-23):** The registry
 now owns the identifiers for random hand-cost selection and resolution,
 draw-cost choices, potion generation, card transforms, and the semantic

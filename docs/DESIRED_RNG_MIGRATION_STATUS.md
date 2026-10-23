@@ -390,11 +390,16 @@ continuations.
 **D2 remaining:** formation resolvers outside the integrated subset,
 monster-local draws, summon/death continuation mechanics,
 other generated-card and transform outcomes, other shuffle source outcomes,
-target and reward outcomes, full map
+reward outcomes, full map
 source-order parity, event sites beyond Orobas, Darv, Pael, Tezcatara,
 Nonupeipe, Tanx and Vakuu offer generation, and other audited call sites.
 Other provider site families still expose primitive selections unless a
 site-specific semantic outcome owner is implemented.
+The shared Native random-target resolver now records the ordered enemy
+instance support and selected identity for all three registered target sites,
+paired with the exact provider decision and cursor span. Its result schema is
+complete for newly marked Native-policy traces; source eligibility, stream
+attribution, and Native result/cursor parity remain open.
 The separate semantic playable API now exposes typed weighted intent events,
 deferred physical-card draws, random-enemy targets, generated-card model
 pools, opt-in drawn-card costs and source card-selection choices. Those

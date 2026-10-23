@@ -16,7 +16,12 @@ The retained prototype profile preserves its prior streams (`combat_targets`
 for effect operations and `combat` for Sly auto-play) through the explicit
 legacy adapter. Both the controlled playable fixture and the semantic end-turn
 API persist automatic-pipeline targets with their saved cursor. These provider
-migrations do not establish native source cursor parity.
+migrations do not establish native source cursor parity. The opt-in Native
+policy audit also reuses the semantic target event and decision to retain each
+ordered support and selected enemy identity beside its exact provider ticket
+and cursor span; newly marked audits validate complete coverage for the three
+registered target sites. This result audit does not establish source
+eligibility, stream attribution, or seeded cursor parity.
 
 ## Validation and limitations
 

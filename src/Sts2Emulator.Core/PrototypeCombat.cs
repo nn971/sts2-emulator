@@ -13953,10 +13953,15 @@ public sealed partial class PrototypeGameEngine
         IRandomIndexProviderV111 provider = native is null
             ? new LegacyPrototypeRandomIndexProviderV111()
             : new NativeRandomIndexProviderV111();
+        var request = new RandomIndexRequestV111(
+            siteId, streamId, ownerId, ordinal,
+            (int[])eligibleEnemyInstanceIds.Clone());
         var decision = StochasticProviderScopeV111.ResolveIndex(
-            provider, new RandomIndexRequestV111(
-                siteId, streamId, ownerId, ordinal,
-                (int[])eligibleEnemyInstanceIds.Clone()), streams);
+            provider, request, streams);
+        if (decision.ProviderMode == "native-v111" &&
+            RandomBoundaryJournalV111.HasActiveJournal)
+            RandomBoundaryJournalV111.RecordRandomTargetOutcome(
+                SemanticTargetNativeAuditV111.Create(decision));
         var updated = native is null
             ? combat
             : combat with
