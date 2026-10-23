@@ -950,7 +950,8 @@ the source-playable no-effect curse added by Blood-Soaked Rose, is admitted as
 well. These actions stay in source combat resolution under the
 controlled-chance guard; they do not introduce a provider-owned draw-pile
 change or a new chance continuation. Wish remains with its card-selection
-owner, while unplayable Ancient curses remain excluded.
+owner, while unplayable Ancient curses remain excluded. Pael's Horn's Relax
+card also uses this boundary for its fixed Block and next-turn powers.
 
 After a semantic `BeforeHandDraw` choice resolves, the common automatic-pipeline resumer now replays the saved `DrawPlayerHand` stage and re-enters the same handoff at its advanced cursor. Remaining supported stages and terminal reward publication therefore continue through the shared path, while a newly suspended choice remains pending for its owning adapter.
 

@@ -144,6 +144,7 @@ public static class SemanticPlayerActionEngineV111
             NativeGloryAncientsV111.EnthralledCardId,
             NativeGloryAncientsV111.MaulCardId,
             NativeGloryAncientsV111.WhistleCardId,
+            NativePaelRewardsV111.RelaxId,
             PrototypeNativeUnderdocksTrashHeap.CaltropsCardId,
             PrototypeNativeUnderdocksTrashHeap.ClashCardId,
             PrototypeNativeUnderdocksTrashHeap.EntrenchCardId,
