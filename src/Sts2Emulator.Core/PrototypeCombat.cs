@@ -4980,13 +4980,17 @@ public sealed partial class PrototypeGameEngine
                                         + ":move:" + move.Id
                                         + ":pool:" + CanonicalJson.Sha256(choices),
                                     Enumerable.Range(0, choices.Length),
+                                    out var selectedSummonLabel,
                                     controlledCandidateLabels: choices.Select(
                                         (enemyId, poolSlot) =>
                                             "enemy:" + enemyId + ":slot:" +
                                             poolSlot.ToString(
                                                 System.Globalization.CultureInfo.InvariantCulture))
                                         .ToArray());
-                                summonId = choices[selectedSummonIndex];
+                                summonId = selectedSummonLabel is { } label
+                                    ? ResolveSelectedSummonIdentity(
+                                        label, choices)
+                                    : choices[selectedSummonIndex];
                             }
                             if (summonId is null)
                                 throw new InvalidOperationException(
@@ -13870,6 +13874,18 @@ public sealed partial class PrototypeGameEngine
         IEnumerable<int> orderedCandidates,
         string streamId = "combat",
         string[]? controlledCandidateLabels = null)
+        => ResolveLegacyRandomIndex(
+            legacyRng, siteId, ownerId, orderedCandidates, out _,
+            streamId, controlledCandidateLabels);
+
+    private static int ResolveLegacyRandomIndex(
+        RngBundle legacyRng,
+        string siteId,
+        string ownerId,
+        IEnumerable<int> orderedCandidates,
+        out string? selectedCandidateLabel,
+        string streamId = "combat",
+        string[]? controlledCandidateLabels = null)
     {
         ArgumentNullException.ThrowIfNull(orderedCandidates);
         var candidates = orderedCandidates.ToArray();
@@ -13890,8 +13906,36 @@ public sealed partial class PrototypeGameEngine
         using var candidateLabels =
             ControlledEventChoiceReplayV111.DescribeCandidates(
                 controlledCandidateLabels);
-        return ResolveLegacyRandomOutcome(
-            legacyRng, siteId, ownerId, candidates, null, streamId);
+        var selectedIndex = ResolveLegacyRandomOutcome(
+            legacyRng, siteId, ownerId, candidates, null, streamId,
+            out var request);
+        selectedCandidateLabel = request is null ? null :
+            ControlledStochasticChanceReplayV111
+                .GetSelectedIndexCandidateLabel(request, selectedIndex);
+        return selectedIndex;
+    }
+
+    private static string ResolveSelectedSummonIdentity(
+        string label, string[] choices)
+    {
+        const string prefix = "enemy:";
+        const string slotMarker = ":slot:";
+        var slotSeparator = label.LastIndexOf(
+            slotMarker, StringComparison.Ordinal);
+        if (!label.StartsWith(prefix, StringComparison.Ordinal) ||
+            slotSeparator <= prefix.Length ||
+            slotSeparator + slotMarker.Length >= label.Length ||
+            !int.TryParse(label.AsSpan(slotSeparator + slotMarker.Length),
+                System.Globalization.NumberStyles.None,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var poolSlot) || poolSlot < 0 || poolSlot >= choices.Length)
+            throw new InvalidDataException(
+                "Saved summon-pool identity is malformed or outside its live support.");
+        var enemyId = label[prefix.Length..slotSeparator];
+        if (!StringComparer.Ordinal.Equals(choices[poolSlot], enemyId))
+            throw new InvalidDataException(
+                "Saved summon-pool identity differs from its live slot.");
+        return enemyId;
     }
 
     private static int ResolveLegacyBoundedInteger(
@@ -13913,13 +13957,25 @@ public sealed partial class PrototypeGameEngine
         string ownerId,
         int[] orderedCandidates,
         int? boundedCount,
-        string streamId)
+        string streamId) => ResolveLegacyRandomOutcome(
+            legacyRng, siteId, ownerId, orderedCandidates, boundedCount,
+            streamId, out _);
+
+    private static int ResolveLegacyRandomOutcome(
+        RngBundle legacyRng,
+        string siteId,
+        string ownerId,
+        int[] orderedCandidates,
+        int? boundedCount,
+        string streamId,
+        out RandomIndexRequestV111? request)
     {
         var decision = boundedCount is { } bound
             ? LegacyRandomChoiceV111.ChooseBoundedInteger(
                 legacyRng, siteId, streamId, ownerId, bound)
             : LegacyRandomChoiceV111.ChooseIndex(
                 legacyRng, siteId, streamId, ownerId, orderedCandidates);
+        request = decision.Request;
         return decision.SelectedValue;
     }
 

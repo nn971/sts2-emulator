@@ -10,6 +10,14 @@ support; the ordered index remains in the provider transcript, and older
 label-free snapshots continue through their index projection. Static source
 review and `git diff --check` only; no tests or builds were run.
 
+**S3 automatic summon-pool identity commit increment (2026-10-24):** The
+legacy enemy summon resolver now applies the selected enemy model from its
+saved `enemy:<id>:slot:<index>` candidate label after checking that the label's
+slot still contains that model in the live filtered pool. The index remains in
+the provider transcript; label-free snapshots keep their index path. Native
+summon-pool selection remains outside this controlled continuation. Static
+source review and `git diff --check` only; no tests or builds were run.
+
 **S4 draw-result and deferred-effect ownership increment (2026-10-24):** The
 ordinary effect resolver now captures resumable draw operation suffixes and
 their source context through one owner. `PublishDrawMechanicsState` now owns
