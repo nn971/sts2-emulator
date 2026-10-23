@@ -4275,7 +4275,7 @@ public static class SemanticPilotCombatEngineV111
         var nextState = PublishRunContinuation(
             current, result, endTurn,
             new SemanticPilotContinuationV111("player", actionId));
-        return NormalizeNoncontrolledCosts(nextState);
+        return ResolveEngineOwnedSemanticChoices(nextState);
     }
 
     internal static SemanticPilotCombatV111
@@ -4326,9 +4326,10 @@ public static class SemanticPilotCombatEngineV111
     private static SemanticPilotCombatV111 ResumeAndPublishNestedChoice(
         SemanticPilotCombatV111 current,
         SemanticEndTurnNestedChoiceV111 choice,
-        SemanticPilotContinuationV111 historyEntry,
+        SemanticPilotContinuationV111? historyEntry,
         bool normalizeNoncontrolledCosts = false,
-        bool validate = true)
+        bool validate = true,
+        SemanticOtherChanceStateV111? otherChance = null)
     {
         var sourceEndTurn = current.PendingEndTurn;
         var nextEndTurn = sourceEndTurn is { } endTurn
@@ -4340,11 +4341,12 @@ public static class SemanticPilotCombatEngineV111
                 current.Run, choice).Run;
         var next = PublishRunContinuation(
             current, publishedRun, nextEndTurn, historyEntry,
+            otherChance,
             preservePendingEndTurn: sourceEndTurn is null);
         if (validate)
             Validate(next);
         return normalizeNoncontrolledCosts
-            ? NormalizeNoncontrolledCosts(next)
+            ? ResolveEngineOwnedSemanticChoices(next)
             : next;
     }
 
@@ -4364,7 +4366,7 @@ public static class SemanticPilotCombatEngineV111
             var nestedChoice = new SemanticEndTurnNestedChoiceV111(
                 "semantic_draw_hook_choice",
                 DrawHookChoiceDecision: nestedDecision.Fork());
-            return NormalizeNoncontrolledCosts(
+            return ResolveEngineOwnedSemanticChoices(
                 ResumeAndPublishNestedChoice(
                     current, nestedChoice,
                     new SemanticPilotContinuationV111(
@@ -4399,7 +4401,7 @@ public static class SemanticPilotCombatEngineV111
             new SemanticPilotContinuationV111(
                 "semantic_draw_hook_choice",
                 DrawHookChoiceDecision: decision.Fork()));
-        return NormalizeNoncontrolledCosts(next);
+        return ResolveEngineOwnedSemanticChoices(next);
     }
 
     private static SemanticPilotCombatV111 StepKnowledgeDemonChoice(
@@ -4421,7 +4423,7 @@ public static class SemanticPilotCombatEngineV111
             new SemanticPilotContinuationV111(
                 "semantic_knowledge_demon_choice", actionId,
                 KnowledgeDemonChoiceDecision: decision.Fork()));
-        return NormalizeNoncontrolledCosts(next);
+        return ResolveEngineOwnedSemanticChoices(next);
     }
 
     /// <summary>
@@ -4430,7 +4432,8 @@ public static class SemanticPilotCombatEngineV111
     /// </summary>
     public static SemanticPilotCombatV111 ResolveRandomTarget(
         SemanticPilotCombatV111 current, string fingerprint,
-        string eventId, int enemyInstanceId)
+        string eventId, int enemyInstanceId,
+        SemanticOtherChanceStateV111? otherChance = null)
     {
         current.Validate();
         if (current.Fingerprint != fingerprint)
@@ -4449,11 +4452,14 @@ public static class SemanticPilotCombatEngineV111
                 resolvedEndTurn.Stochastic.TargetTranscript[^1];
             var resolvedSession = PublishRunContinuation(
                 current, resolvedEndTurn.Run, resolvedEndTurn,
-                new SemanticPilotContinuationV111(
-                    "semantic_target",
-                    TargetDecision: endTurnDecision.Fork()));
+                otherChance is null
+                    ? new SemanticPilotContinuationV111(
+                        "semantic_target",
+                        TargetDecision: endTurnDecision.Fork())
+                    : null,
+                otherChance: otherChance);
             Validate(resolvedSession);
-            return NormalizeNoncontrolledCosts(resolvedSession);
+            return ResolveEngineOwnedSemanticChoices(resolvedSession);
         }
 
         var pending = current.TargetPending ??
@@ -4467,10 +4473,13 @@ public static class SemanticPilotCombatEngineV111
             ValidateSemanticCombatBoundary(result);
         var next = PublishRunContinuation(
             current, result, null,
-            new SemanticPilotContinuationV111(
-                "semantic_target", TargetDecision: decision.Fork()),
+            otherChance is null
+                ? new SemanticPilotContinuationV111(
+                    "semantic_target", TargetDecision: decision.Fork())
+                : null,
+            otherChance: otherChance,
             preservePendingEndTurn: true);
-        return NormalizeNoncontrolledCosts(next);
+        return ResolveEngineOwnedSemanticChoices(next);
     }
 
     /// <summary>
@@ -4776,7 +4785,8 @@ public static class SemanticPilotCombatEngineV111
 
     private static SemanticPilotCombatV111 ResumeCostDecision(
         SemanticPilotCombatV111 current,
-        SemanticCostDecisionV111 decision)
+        SemanticCostDecisionV111 decision,
+        SemanticOtherChanceStateV111? otherChance = null)
     {
         var pending = current.CostPending ??
             throw new InvalidOperationException(
@@ -4787,19 +4797,23 @@ public static class SemanticPilotCombatEngineV111
         if (current.Run.World?.Combat?.PendingChoice?
                 .ControlledSemanticDraw is not null)
             return Resolve(current, current.Fingerprint, index,
-                null, null, false, decision);
+                null, null, false, decision,
+                otherChance: otherChance);
         if (pending.TargetCardInstanceId is not null)
         {
             var choice = new SemanticEndTurnNestedChoiceV111(
                 "semantic_cost", CostDecision: decision.Fork());
             return ResumeAndPublishNestedChoice(
                 current, choice,
-                new SemanticPilotContinuationV111(
-                    "semantic_cost", CostDecision: decision.Fork()),
-                validate: true);
+                otherChance is null
+                    ? new SemanticPilotContinuationV111(
+                        "semantic_cost", CostDecision: decision.Fork())
+                    : null,
+                validate: true, otherChance: otherChance);
         }
         return Resolve(current, current.Fingerprint, index,
-            null, null, false, decision);
+            null, null, false, decision,
+            otherChance: otherChance);
     }
 
     public static SemanticPilotCombatV111 ResolveHandCostSelection(
@@ -4821,7 +4835,8 @@ public static class SemanticPilotCombatEngineV111
 
     private static SemanticPilotCombatV111 ResumeHandCostSelectionDecision(
         SemanticPilotCombatV111 current,
-        SemanticHandCostSelectionDecisionV111 decision)
+        SemanticHandCostSelectionDecisionV111 decision,
+        SemanticOtherChanceStateV111? otherChance = null)
     {
         var pending = current.HandCostSelectionPending ??
             throw new InvalidOperationException(
@@ -4833,9 +4848,12 @@ public static class SemanticPilotCombatEngineV111
             HandCostSelectionDecision: decision.Fork());
         return ResumeAndPublishNestedChoice(
             current, choice,
-            new SemanticPilotContinuationV111(
-                "semantic_hand_cost_selection",
-                HandCostSelectionDecision: decision.Fork()));
+            otherChance is null
+                ? new SemanticPilotContinuationV111(
+                    "semantic_hand_cost_selection",
+                    HandCostSelectionDecision: decision.Fork())
+                : null,
+            otherChance: otherChance);
     }
 
     public static SemanticPilotCombatV111 ResolveCardShortlist(
@@ -5060,7 +5078,8 @@ public static class SemanticPilotCombatEngineV111
         SemanticDrawDecisionV111? expectedDeckDecision,
         bool recordSemanticDraw,
         SemanticCostDecisionV111? expectedCostDecision,
-        SemanticRandomPileCardDecisionV111? expectedRandomPileCardDecision = null)
+        SemanticRandomPileCardDecisionV111? expectedRandomPileCardDecision = null,
+        SemanticOtherChanceStateV111? otherChance = null)
     {
         current.Validate();
         if (current.Fingerprint != fingerprint)
@@ -5143,9 +5162,12 @@ public static class SemanticPilotCombatEngineV111
                 "semantic_cost", CostDecision: effectCostDecision.Fork());
             var effectCostState = ResumeAndPublishNestedChoice(
                 current, choice,
-                new SemanticPilotContinuationV111(
-                    "semantic_cost",
-                    CostDecision: effectCostDecision.Fork()));
+                otherChance is null
+                    ? new SemanticPilotContinuationV111(
+                        "semantic_cost",
+                        CostDecision: effectCostDecision.Fork())
+                    : null,
+                otherChance: otherChance);
             return effectCostState;
         }
         if (current.Run.World?.Combat?.PendingChoice is
@@ -5235,12 +5257,15 @@ public static class SemanticPilotCombatEngineV111
                 CanonicalJson.Sha256(randomPileCardDecision))
             throw new InvalidOperationException(
                 "Semantic random pile-card decision differs from replay.");
-        return NormalizeNoncontrolledCosts(PublishRunContinuation(
+        return ResolveEngineOwnedSemanticChoices(PublishRunContinuation(
             current, resolved.Run, resolved,
-            NatureContinuation(
-                selectedIndex, semanticIntent,
-                recordSemanticDraw ? deckDecision : null,
-                costDecision, randomPileCardDecision)));
+            otherChance is null
+                ? NatureContinuation(
+                    selectedIndex, semanticIntent,
+                    recordSemanticDraw ? deckDecision : null,
+                    costDecision, randomPileCardDecision)
+                : null,
+            otherChance: otherChance));
     }
 
     /// <summary>
@@ -5352,9 +5377,17 @@ public static class SemanticPilotCombatEngineV111
         ArgumentNullException.ThrowIfNull(current);
         if (current.PendingEndTurn is { } endTurn)
             return endTurn.TargetPending;
+        var otherChance = current.Run.Stochastic.SemanticOtherChance;
+        var ordinal = otherChance is not null &&
+            otherChance.ProviderId != SemanticOtherChanceEngineV111.LegacyProviderId
+                ? otherChance.Decisions.Count(decision =>
+                    StochasticSiteRegistryV111.CombatRandomTargetSiteIds
+                        .Contains(decision.Request.SiteId,
+                            StringComparer.Ordinal))
+                : current.History.Count(transition =>
+                    transition.Kind == "semantic_target");
         return DescribePendingTargetEvent(current.Run, current.Fingerprint,
-            current.History.Count(transition =>
-                transition.Kind == "semantic_target"));
+            ordinal);
     }
 
     internal static SemanticTargetEventV111? DescribePendingTargetEvent(
@@ -5839,43 +5872,116 @@ public static class SemanticPilotCombatEngineV111
     }
 
     /// <summary>
-    /// The initial two-site pilot does not optimize drawn-card costs.
-    /// Bound and source hook are taken from the actual semantic cost
-    /// continuation, but sampling is an explicitly declared engine-owned
-    /// deterministic fallback, NOT an audited native RNG distribution.
+    /// The two-site pilot keeps registered random targets and cost choices
+    /// outside Nature. The run-owned Native provider resolves supported
+    /// semantic continuations; older snapshots without that owner retain
+    /// their deterministic cost fallback.
     /// </summary>
-    private static SemanticPilotCombatV111 NormalizeNoncontrolledCosts(
+    private static SemanticPilotCombatV111 ResolveEngineOwnedSemanticChoices(
         SemanticPilotCombatV111 current)
     {
-        if (current.Stochastic.SeededEntry?.FixtureNatureDrawCosts == true)
-            return current;
-        while (current.PendingEndTurn is { CostPending: { } cost } endTurn)
+        while (true)
         {
-            var bound = cost.SupportCount;
-            if (bound < 1)
-                throw new InvalidDataException("Invalid engine-owned cost bound.");
-            SemanticOtherChanceStateV111? nextOther = null;
-            int index;
-            if (current.Run.Stochastic.SemanticOtherChance is { } other)
+            if (current.TargetPending is { } target &&
+                current.Run.Stochastic.SemanticOtherChance is
+                    { } targetOwner &&
+                targetOwner.ProviderId !=
+                    SemanticOtherChanceEngineV111.LegacyProviderId)
             {
-                var choice = SemanticOtherChanceEngineV111.ResolveDrawCost(
-                    other, cost);
-                nextOther = choice.Next;
-                index = choice.Decision.SelectedIndex;
+                var choice = SemanticOtherChanceEngineV111
+                    .ResolveRandomTarget(targetOwner, target);
+                current = ResolveRandomTarget(
+                    current, current.Fingerprint, target.EventId,
+                    target.CandidateEnemyInstanceIds[
+                        choice.Decision.SelectedIndex], choice.Next);
+                continue;
             }
-            else
+
+            if (current.HandCostSelectionPending is { } handCost &&
+                current.Stochastic.SeededEntry?.FixtureSetRandomHandCardCost
+                    is null &&
+                current.Run.Stochastic.SemanticOtherChance is
+                    { } handOwner &&
+                handOwner.ProviderId !=
+                    SemanticOtherChanceEngineV111.LegacyProviderId)
             {
-                // Preserve pre-existing p0-v1 sessions unless the caller
-                // explicitly negotiates the named native-codec provider.
-                var hash = SHA256.HashData(Encoding.UTF8.GetBytes(
-                    current.OpeningSource.Seed + ":" +
-                    endTurn.Fingerprint + ":" + cost.SiteId));
-                index = (int)(BitConverter.ToUInt32(hash, 0) % (uint)bound);
+                var choice = SemanticOtherChanceEngineV111
+                    .ResolveHandCostTarget(handOwner, handCost);
+                var decision = SemanticHandCostSelectionChoiceV111.Select(
+                    handCost, handCost.EventId,
+                    handCost.CandidateCardInstanceIds[
+                        choice.Decision.SelectedIndex]);
+                current = ResumeHandCostSelectionDecision(
+                    current, decision, choice.Next);
+                continue;
             }
-            var resolved = SemanticEndTurnEngineV111.Resolve(
-                endTurn, endTurn.Fingerprint, index);
-            current = PublishRunContinuation(
-                current, resolved.Run, resolved, otherChance: nextOther);
+
+            if (current.CostPending is { } semanticCost &&
+                !(current.Stochastic.SeededEntry?.FixtureNatureDrawCosts == true &&
+                  (semanticCost.Request.SiteId is
+                    StochasticSiteRegistryV111.CombatDrawRelicEnergyCostSiteId or
+                    StochasticSiteRegistryV111.CombatDrawSlitherEnergyCostSiteId)) &&
+                !(current.Stochastic.SeededEntry?
+                    .FixtureRandomizeHandCostsMaxExclusive is not null &&
+                  semanticCost.Request.SiteId ==
+                    StochasticSiteRegistryV111
+                        .CombatRandomHandCardEnergyCostSiteId) &&
+                current.Run.Stochastic.SemanticOtherChance is { } costOwner &&
+                (costOwner.ProviderId !=
+                    SemanticOtherChanceEngineV111.LegacyProviderId ||
+                 (semanticCost.Request.SiteId is
+                    StochasticSiteRegistryV111.CombatDrawRelicEnergyCostSiteId or
+                    StochasticSiteRegistryV111.CombatDrawSlitherEnergyCostSiteId)))
+            {
+                var choice = SemanticOtherChanceEngineV111
+                    .ResolveNonNatureCost(costOwner, semanticCost);
+                var decision = SemanticCostChoiceV111.Select(
+                    semanticCost, semanticCost.EventId,
+                    semanticCost.CandidateCosts[
+                        choice.Decision.SelectedIndex]);
+                current = ResumeCostDecision(
+                    current, decision, choice.Next);
+                continue;
+            }
+
+            if (current.PendingEndTurn is
+                { CostPending: { } cost } endTurn)
+            {
+                if (current.Stochastic.SeededEntry?.FixtureNatureDrawCosts ==
+                    true)
+                    break;
+                var bound = cost.SupportCount;
+                if (bound < 1)
+                    throw new InvalidDataException(
+                        "Invalid engine-owned cost bound.");
+                SemanticOtherChanceStateV111? nextOther = null;
+                int index;
+                if (current.Run.Stochastic.SemanticOtherChance is
+                    { } other)
+                {
+                    var choice = SemanticOtherChanceEngineV111.ResolveDrawCost(
+                        other, cost);
+                    nextOther = choice.Next;
+                    index = choice.Decision.SelectedIndex;
+                }
+                else
+                {
+                    // Preserve pre-existing p0-v1 sessions unless the caller
+                    // explicitly negotiates the named native-codec provider.
+                    var hash = SHA256.HashData(Encoding.UTF8.GetBytes(
+                        current.OpeningSource.Seed + ":" +
+                        endTurn.Fingerprint + ":" + cost.SiteId));
+                    index = (int)(BitConverter.ToUInt32(hash, 0) %
+                        (uint)bound);
+                }
+                var resolved = SemanticEndTurnEngineV111.Resolve(
+                    endTurn, endTurn.Fingerprint, index);
+                current = PublishRunContinuation(
+                    current, resolved.Run, resolved,
+                    otherChance: nextOther);
+                continue;
+            }
+            break;
         }
         current.Validate();
         return current;

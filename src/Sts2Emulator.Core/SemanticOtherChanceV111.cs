@@ -202,6 +202,115 @@ public static class SemanticOtherChanceEngineV111
     }
 
     /// <summary>
+    /// Sample a supported semantic cost request outside the two Nature-owned
+    /// sites. The semantic event remains the mechanics continuation; this
+    /// method records the corresponding engine-owned Native boundary.
+    /// </summary>
+    public static (SemanticOtherChanceStateV111 Next,
+        RandomIndexDecisionV111 Decision) ResolveNonNatureCost(
+        SemanticOtherChanceStateV111 previous,
+        SemanticCostEventV111 pending)
+    {
+        Validate(previous);
+        ArgumentNullException.ThrowIfNull(pending);
+        pending.Validate();
+        var request = pending.Request;
+        if (request.SiteId is
+                StochasticSiteRegistryV111.CombatDrawRelicEnergyCostSiteId or
+                StochasticSiteRegistryV111.CombatDrawSlitherEnergyCostSiteId)
+            return ResolveDrawCost(previous, request);
+
+        if (request.SiteId !=
+                StochasticSiteRegistryV111.CombatRandomHandCardEnergyCostSiteId ||
+            request.OperationKind != "bounded_integer" ||
+            request.SupportCount is < 1 or > 32 ||
+            pending.TargetCardInstanceId is null ||
+            request.StreamId is not (
+                SemanticCostChoiceV111.LegacyHandCostStreamId or
+                SemanticCostChoiceV111.NativeHandCostStreamId))
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_OTHER_CHANCE site=" + request.SiteId +
+                " operation=" + request.OperationKind);
+
+        var callCount = WorkingCostStreamCallCount(previous);
+        if (callCount > int.MaxValue)
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_OTHER_CHANCE site=" + request.SiteId +
+                " operation=native_ordinal_overflow");
+        return ResolveNativeIndex(previous, request with
+        {
+            StreamId = CostStreamId,
+            Ordinal = (int)callCount,
+            OrderedCandidates = []
+        });
+    }
+
+    /// <summary>
+    /// Resolve the saved random hand-card target through its registered
+    /// Native index boundary while retaining the semantic event for mechanics
+    /// application and replay.
+    /// </summary>
+    public static (SemanticOtherChanceStateV111 Next,
+        RandomIndexDecisionV111 Decision) ResolveHandCostTarget(
+        SemanticOtherChanceStateV111 previous,
+        SemanticHandCostSelectionEventV111 pending)
+    {
+        Validate(previous);
+        ArgumentNullException.ThrowIfNull(pending);
+        pending.Validate();
+        if (pending.SiteId !=
+                StochasticSiteRegistryV111.CombatRandomHandCardSelectSiteId ||
+            pending.OperationKind !=
+                SemanticHandCostSelectionChoiceV111.OperationKind ||
+            pending.StreamId is not (
+                SemanticHandCostSelectionChoiceV111.StreamId or
+                SemanticHandCostSelectionChoiceV111.NativeStreamId))
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_OTHER_CHANCE site=" + pending.SiteId +
+                " operation=" + pending.OperationKind);
+
+        var streamId = SemanticHandCostSelectionChoiceV111.NativeStreamId;
+        var callCount = previous.Streams.GetStream(streamId).CallCount ??
+            throw new InvalidDataException(
+                "Native hand-cost selection stream has no call counter.");
+        if (callCount > int.MaxValue)
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_OTHER_CHANCE site=" + pending.SiteId +
+                " operation=native_ordinal_overflow");
+        var request = new RandomIndexRequestV111(
+            pending.SiteId, streamId, pending.OwnerId, (int)callCount,
+            Enumerable.Range(0, pending.CandidateCardInstanceIds.Length)
+                .ToArray(), OperationKind: "choose_index");
+        return ResolveNativeIndex(previous, request);
+    }
+
+    /// <summary>
+    /// Resolve a registered random-enemy target through the private Native
+    /// stream owner. The semantic target event remains the mechanics support
+    /// and selected enemy identity contract.
+    /// </summary>
+    public static (SemanticOtherChanceStateV111 Next,
+        RandomIndexDecisionV111 Decision) ResolveRandomTarget(
+        SemanticOtherChanceStateV111 previous,
+        SemanticTargetEventV111 pending)
+    {
+        Validate(previous);
+        ArgumentNullException.ThrowIfNull(pending);
+        pending.Validate();
+        if (pending.StreamId != "run.combat_targets" ||
+            pending.OperationKind != "choose_enemy_instance")
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_OTHER_CHANCE site=" + pending.SiteId +
+                " operation=" + pending.OperationKind);
+
+        var request = new RandomIndexRequestV111(
+            pending.SiteId, pending.StreamId, pending.OwnerId,
+            pending.Ordinal, pending.CandidateEnemyInstanceIds,
+            OperationKind: "choose_index");
+        return ResolveNativeIndex(previous, request);
+    }
+
+    /// <summary>
     /// Commit one registered Native index boundary owned by this private
     /// engine stream bundle. Nature does not receive the request or outcome.
     /// The caller remains responsible for applying the selected index to its
