@@ -3606,7 +3606,8 @@ public sealed record RunWorldState(
     PrototypeLaterActEncounterBagV111? LaterActEncounterBag = null,
     PrototypeLaterActEncounterBagV111[]? PreparedLaterActEncounterBags = null,
     long? LastCombatEndDecisionIndex = null,
-    PrototypeCustomRewardReturnState? CustomRewardReturn = null)
+    PrototypeCustomRewardReturnState? CustomRewardReturn = null,
+    int? DefeatRemainingEnemyHp = null)
 {
     /// <summary>
     /// Atomic mechanics/provider envelope for persistent run-world state.
@@ -3622,7 +3623,8 @@ public sealed record RunWorldState(
                 CompletedRoomHistory, UnknownRoomOdds, ShopRemovalsUsed,
                 PotionRewardOddsThousandths, CardRarityOffsetBasisPoints,
                 NativeOvergrowthOpening, ActIdentity, FreedRepy,
-                LastCombatEndDecisionIndex, CustomRewardReturn),
+                LastCombatEndDecisionIndex, CustomRewardReturn,
+                DefeatRemainingEnemyHp),
             new RunWorldStochasticStateV111(
                 ActOneEncounterPool, RelicBag, LaterActEncounterBag,
                 PreparedLaterActEncounterBags));
@@ -3711,6 +3713,15 @@ public sealed record RunWorldState(
     {
         get => Mechanics.TerminalOutcome;
         init => Mechanics = Mechanics with { TerminalOutcome = value };
+    }
+
+    /// <summary>Research-only final enemy health before a lethal run exit.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public int? DefeatRemainingEnemyHp
+    {
+        get => Mechanics.DefeatRemainingEnemyHp;
+        init => Mechanics = Mechanics with { DefeatRemainingEnemyHp = value };
     }
 
     public string[]? EncounterHistory
