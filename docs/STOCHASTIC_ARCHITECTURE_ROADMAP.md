@@ -2,6 +2,15 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**D3/D4 event-reward action continuation increment (2026-10-23):** The
+existing controlled event-reward frame now saves a legal Driftwood
+`reroll_reward_card` action before its first request and replays it through
+the `reward.card_rarity.ticket` and `reward.card_model.index_draw` sites. The
+same frame retains the selected prefix across additional reroll requests,
+snapshots, and ReferenceNature session replay; other stochastic reward
+actions still fail closed. Static source review and `git diff --check` only;
+no tests or builds were run.
+
 **S0 Neow request-source inventory increment (2026-10-23):** The Neow
 decision-plan builder now references its owning Chance Law session's finite
 site list explicitly, and the regenerated direct-call census resolves both

@@ -27,6 +27,14 @@ ordinal 1 because the entry potion-slot draw owns ordinal 0. Legacy fallback
 requests retain their `event` stream call ordinal. Controlled outcomes do not
 advance either provider cursor.
 
+The saved event-reward frame also suspends a legal Driftwood
+`reroll_reward_card` action on an event-generated card reward. It saves the
+pre-action reward boundary and action, then replays the reroll with its exact
+selected prefix until the reward options commit. Only
+`reward.card_rarity.ticket` and `reward.card_model.index_draw` are admitted for
+this action; another stochastic site reached by a reward action remains
+fail-closed. The reroll decisions extend the originating event-choice trace.
+
 The serialized request includes site, stream, owner, ordinal, operation kind
 and ordered integer support. Generic D3 event requests use the legacy stream;
 Stone push and lift use their Native event stream on configured Native runs
@@ -87,7 +95,8 @@ The supported event-choice sites are:
 - `event.reward.offer_potion.model.index_draw`
 - `event.reward.card_bundle.shuffle_swap_index`
 - `reward.card_rarity.ticket` and `reward.card_model.index_draw` while
-  constructing selected event card offers
+  constructing selected event card offers and while a legal Driftwood reroll
+  regenerates an event reward card group
 - `run.random_pool_distinct.shuffle_swap_index` while constructing selected
   event relic and card offers
 - `event.reward.random_modifier_curse.index_draw` after a supported event's
@@ -130,9 +139,10 @@ The supported event-choice sites are:
   on acquisition
 - `relic.unowned_random_selection.index_draw` for eligible event options
 
-Any other random site reached by the event option continues to fail closed.
-Other Native regional potion routes, post-reward random generation outside the
-modifier-curse site, other custom event reward effects,
+Any other random site reached by the event option or reward action continues
+to fail closed. Other Native regional potion routes, post-reward random
+generation outside the modifier-curse and Driftwood card-reroll sites, other
+custom event reward effects,
 source-pool differences, native stream ownership and reference probabilities
 remain outside this boundary. The Calling Bell identity uses an exact Native
 bounded-index transform, while hidden-queue identity, source-pool completeness,

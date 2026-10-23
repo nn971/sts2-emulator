@@ -5519,10 +5519,42 @@ public sealed partial class PrototypeGameEngine
         var replay = ControlledChanceContinuationExecutorV111.Resume(
             partialState,
             decisions.Skip(continuation.DecisionPrefixLength).ToArray(),
-            checkpoint => CompleteReward(checkpoint, resumeFrame),
+            checkpoint => continuation.ResumeAction is { } resumeAction
+                ? new PrototypeGameEngine().Step(
+                    checkpoint with
+                    {
+                        DecisionIndex = checked(state.DecisionIndex - 1)
+                    },
+                    resumeAction with
+                    {
+                        Payload = resumeAction.Payload.Clone()
+                    }).State
+                : CompleteReward(checkpoint, resumeFrame),
             continuation.PrefixOrdinalCounts());
         if (replay.PendingChance is { } pendingChance)
-            throw pendingChance;
+        {
+            var pendingLabels = pendingChance.CandidateLabels;
+            if (continuation.ResumeAction is null
+                || !ControlledEventChoiceReplayV111
+                    .IsEventRewardRerollSite(
+                        pendingChance.Request.SiteId)
+                || pendingChance.Request.StreamId != "reward"
+                || pendingLabels is null
+                || pendingLabels.Length !=
+                    pendingChance.Request.SupportCount
+                || pendingLabels.Any(string.IsNullOrWhiteSpace))
+                throw pendingChance;
+
+            var nextContinuation = resumeFrame with
+            {
+                PartialState = partialState,
+                PendingRequest = pendingChance.Request,
+                PendingCandidateLabels = pendingLabels
+            };
+            return RunStochasticStateV111
+                .SuspendControlledEventRewardChoice(
+                    partialState, nextContinuation);
+        }
         var result = replay.Run ?? throw new InvalidDataException(
             "Controlled event-reward replay returned neither a run nor a pending chance request.");
         if (result.Stochastic.ControlledEventRewardChoice is not null)

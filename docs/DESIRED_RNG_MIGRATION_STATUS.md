@@ -371,11 +371,13 @@ remains outstanding. Separately, an opt-in event-effect frame now stores
 partially applied ordinary event choices and resumes at the unresolved effect
 for selected legacy event draws, including the legacy event Toy Box wax offer.
 A separate event-reward frame resumes the post-reward modifier-curse draw
-after player choices without repeating them. Support remains limited to the
-event sites in
+after player choices without repeating them. That frame also saves and replays
+legal Driftwood rerolls of event-generated card rewards through the existing
+`reward.card_rarity.ticket` and `reward.card_model.index_draw` sites.
+Support remains limited to the event sites in
 [`CONTROLLED_EVENT_CHOICE_D3.md`](CONTROLLED_EVENT_CHOICE_D3.md); native
-regional chance routes, other custom event handlers and other reward
-generation remain outside these continuations.
+regional chance routes, other custom event handlers and other stochastic
+reward generation remain outside these continuations.
 
 **D4 partial:** opt-in `nature_begin`, `nature_resolve`,
 `nature_advance`, `nature_fork`, `nature_save`, `nature_load`, and

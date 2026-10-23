@@ -17,12 +17,14 @@ public sealed record PrototypeControlledEventRewardChoiceMechanicsStateV111
     public string EventId { get; init; }
     public string ChoiceId { get; init; }
     public int DecisionPrefixLength { get; init; }
+    public GameAction? ResumeAction { get; init; }
 
     public PrototypeControlledEventRewardChoiceMechanicsStateV111(
         RunState PartialState,
         string EventId,
         string ChoiceId,
-        int DecisionPrefixLength)
+        int DecisionPrefixLength,
+        GameAction? ResumeAction = null)
     {
         Continuation = new PrototypeMechanicsContinuationStateV111(
             PrototypeMechanicsContinuationKindV111.ControlledEventRewardChoice,
@@ -30,5 +32,12 @@ public sealed record PrototypeControlledEventRewardChoiceMechanicsStateV111
         this.EventId = EventId;
         this.ChoiceId = ChoiceId;
         this.DecisionPrefixLength = DecisionPrefixLength;
+        this.ResumeAction = ResumeAction is null
+            ? null : CloneAction(ResumeAction);
     }
+
+    private static GameAction CloneAction(GameAction action) => action with
+    {
+        Payload = action.Payload.Clone()
+    };
 }

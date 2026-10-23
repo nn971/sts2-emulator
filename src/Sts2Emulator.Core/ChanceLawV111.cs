@@ -9190,7 +9190,6 @@ public sealed record ReferenceNatureControlledEventChoiceSessionV111(
             && eventState.ChosenChoiceId == ChoiceId
             && Run.World.Reward is
             {
-                AddRandomCurseAfterReward: true,
                 SourceRoom: var sourceRoom
             }
             && sourceRoom == "Event:" + eventState.EventId

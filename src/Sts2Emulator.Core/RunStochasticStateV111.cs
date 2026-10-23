@@ -615,7 +615,8 @@ public sealed record RunStochasticStateV111
                 controlledEventRewardChoice.ChoiceId
             || reward?.SourceRoom !=
                 "Event:" + controlledEventRewardChoice.EventId
-            || reward?.AddRandomCurseAfterReward != true
+            || (reward?.AddRandomCurseAfterReward != true
+                && controlledEventRewardChoice.ResumeAction is null)
             || CanonicalJson.Sha256(resumedOwner) !=
             CanonicalJson.Sha256(
                 controlledEventRewardChoice.PartialState))

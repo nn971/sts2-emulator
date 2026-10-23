@@ -139,7 +139,6 @@ public static class ControlledEventChoiceEngineV111
             || eventState.ChosenChoiceId is not { } choiceId
             || reward is null
             || reward.SourceRoom != "Event:" + eventState.EventId
-            || !reward.AddRandomCurseAfterReward
             || !PrototypeGameEngine.IsControlledEventChoice(
                 eventState.EventId, choiceId)
             || trace is null
@@ -163,10 +162,42 @@ public static class ControlledEventChoiceEngineV111
             OrdinalCounts(trace.Decisions));
         if (replay.PendingChance is { } pendingChance)
         {
-            throw new NotSupportedException(
-                "Controlled event chance site '" + pendingChance.Request.SiteId +
-                "' (operation '" + pendingChance.Request.OperationKind +
-                "') is outside the saved event-reward continuation.");
+            var pendingLabels = pendingChance.CandidateLabels;
+            var isRerollRequest = action.Kind == "reroll_reward_card"
+                && ControlledEventChoiceReplayV111
+                    .IsEventRewardRerollRequest(pendingChance.Request);
+            var isModifierCurseRequest = action.Kind == "leave_reward"
+                && pendingChance.Request.SiteId ==
+                    "event.reward.random_modifier_curse.index_draw"
+                && pendingChance.Request.StreamId == "reward"
+                && pendingChance.Request.OperationKind == "choose_index";
+            if ((!isRerollRequest && !isModifierCurseRequest)
+                || pendingLabels is null
+                || pendingLabels.Length !=
+                    pendingChance.Request.SupportCount
+                || pendingLabels.Any(string.IsNullOrWhiteSpace))
+                throw new NotSupportedException(
+                    "Controlled event chance site '" + pendingChance.Request.SiteId +
+                    "' (operation '" + pendingChance.Request.OperationKind +
+                    "') is outside the saved event-reward continuation.");
+
+            var continuation =
+                new PrototypeControlledEventRewardChoiceContinuationV111(
+                    source.Fork(),
+                    eventState.EventId,
+                    choiceId,
+                    trace.Decisions.Length,
+                    trace.Decisions,
+                    trace.CandidateLabels,
+                    pendingChance.Request,
+                    pendingLabels,
+                    isRerollRequest
+                        ? action with { Payload = action.Payload.Clone() }
+                        : null);
+            var suspended = RunStochasticStateV111
+                .SuspendControlledEventRewardChoice(source, continuation);
+            PrototypeStateInvariants.Validate(suspended);
+            return suspended;
         }
         var result = replay.Run ?? throw new InvalidDataException(
             "Controlled event-reward advance returned neither a run nor a pending chance request.");
@@ -238,21 +269,43 @@ public sealed record ControlledEventChoiceTraceV111(
             || ProbabilityStatus != "UNVERIFIED")
             throw new InvalidDataException(
                 "Malformed controlled event-choice transcript.");
+        var sawEventChoice = false;
+        var sawRewardReroll = false;
         for (var index = 0; index < Decisions.Length; index++)
         {
             var decision = Decisions[index];
             decision.Validate();
+            var isRewardReroll =
+                ControlledEventChoiceReplayV111
+                    .IsEventRewardRerollRequest(decision.Request);
+            var isEventChoice = ControlledEventChoiceReplayV111
+                .IsEventChoiceSite(decision.Request.SiteId);
+            var isFinalModifierCurse = decision.Request.SiteId ==
+                    "event.reward.random_modifier_curse.index_draw"
+                && decision.Request.StreamId == "reward"
+                && decision.Request.OperationKind == "choose_index"
+                && index == Decisions.Length - 1;
+            var isSupportedSite = isRewardReroll
+                ? sawEventChoice
+                : (!sawRewardReroll && isEventChoice)
+                    || (sawEventChoice && sawRewardReroll
+                        && isFinalModifierCurse);
+            if (!isRewardReroll && !sawRewardReroll && isEventChoice)
+                sawEventChoice = true;
+            sawRewardReroll |= isRewardReroll;
             if (decision.ProviderMode != "controlled-v111"
                 || decision.NativeCursorBefore is not null
                 || decision.NativeCursorAfter is not null
-                || !ControlledEventChoiceReplayV111.IsEventChoiceSite(
-                    decision.Request.SiteId)
+                || !isSupportedSite
                 || CandidateLabels[index].Length !=
                     decision.Request.SupportCount
                 || CandidateLabels[index].Any(string.IsNullOrWhiteSpace))
                 throw new InvalidDataException(
                     "Controlled event-choice transcript contains an invalid outcome.");
         }
+        if (!sawEventChoice)
+            throw new InvalidDataException(
+                "Controlled event-choice transcript has no event-effect outcome.");
     }
 
     private static RandomIndexDecisionV111[]? CloneDecisions(
@@ -631,7 +684,8 @@ public sealed record PrototypeControlledEventRewardChoiceContinuationV111(
     RandomIndexDecisionV111[] Decisions,
     string[][] DecisionCandidateLabels,
     RandomIndexRequestV111 PendingRequest,
-    string[] PendingCandidateLabels)
+    string[] PendingCandidateLabels,
+    GameAction? ResumeAction = null)
 {
     /// <summary>
     /// Atomic mechanics/provider envelope for a suspended post-reward event
@@ -642,7 +696,8 @@ public sealed record PrototypeControlledEventRewardChoiceContinuationV111(
         PrototypeControlledEventRewardChoiceMechanicsStateV111,
         ControlledChanceContinuationStateV111> Simulation { get; init; } = new(
             new PrototypeControlledEventRewardChoiceMechanicsStateV111(
-                PartialState, EventId, ChoiceId, DecisionPrefixLength),
+                PartialState, EventId, ChoiceId, DecisionPrefixLength,
+                ResumeAction),
             new ControlledChanceContinuationStateV111(
                 Decisions, PendingRequest, PendingCandidateLabels,
                 DecisionCandidateLabels));
@@ -685,6 +740,15 @@ public sealed record PrototypeControlledEventRewardChoiceContinuationV111(
         init => Mechanics = Mechanics with { DecisionPrefixLength = value };
     }
 
+    public GameAction? ResumeAction
+    {
+        get => Mechanics.ResumeAction;
+        init => Mechanics = Mechanics with
+        {
+            ResumeAction = value is null ? null : CloneAction(value)
+        };
+    }
+
     public RandomIndexDecisionV111[] Decisions
     {
         get => Chance.Decisions;
@@ -712,7 +776,13 @@ public sealed record PrototypeControlledEventRewardChoiceContinuationV111(
     public PrototypeControlledEventRewardChoiceContinuationV111 Fork() => this with
     {
         PartialState = PartialState.Fork(),
+        ResumeAction = ResumeAction is null ? null : CloneAction(ResumeAction),
         Chance = Chance.Fork()
+    };
+
+    private static GameAction CloneAction(GameAction action) => action with
+    {
+        Payload = action.Payload.Clone()
     };
 
     public void Validate()
@@ -741,10 +811,40 @@ public sealed record PrototypeControlledEventRewardChoiceContinuationV111(
             || eventState.EventId != EventId
             || eventState.ChosenChoiceId != ChoiceId
             || reward?.SourceRoom != "Event:" + EventId
-            || !reward.AddRandomCurseAfterReward
             || !PrototypeGameEngine.IsControlledEventChoice(EventId, ChoiceId))
             throw new InvalidDataException(
                 "Controlled event-reward frame is outside its post-reward boundary.");
+
+        if (ResumeAction is null)
+        {
+            if (!reward.AddRandomCurseAfterReward
+                || PendingRequest.SiteId !=
+                    "event.reward.random_modifier_curse.index_draw"
+                || PendingRequest.StreamId != "reward"
+                || PendingRequest.OperationKind != "choose_index"
+                || Decisions.Length != DecisionPrefixLength)
+                throw new InvalidDataException(
+                    "Controlled event-reward completion frame is outside its modifier-curse boundary.");
+        }
+        else
+        {
+            var actionId = PrototypeAiEnvironment.StableActionId(
+                ResumeAction);
+            var expectedOperation = PendingRequest.SiteId ==
+                "reward.card_rarity.ticket"
+                    ? "bounded_integer" : "choose_index";
+            if (ResumeAction.Kind != "reroll_reward_card"
+                || !new PrototypeGameEngine().GetLegalActions(PartialState)
+                    .Any(action => StringComparer.Ordinal.Equals(
+                        PrototypeAiEnvironment.StableActionId(action),
+                        actionId))
+                || !ControlledEventChoiceReplayV111
+                    .IsEventRewardRerollSite(PendingRequest.SiteId)
+                || PendingRequest.StreamId != "reward"
+                || PendingRequest.OperationKind != expectedOperation)
+                throw new InvalidDataException(
+                    "Controlled event-reward action frame is outside its card-reroll boundary.");
+        }
 
         var history = PartialState.Stochastic.ControlledEventChoiceHistory;
         var trace = history is { Length: > 0 } ? history[^1] : null;
@@ -761,9 +861,7 @@ public sealed record PrototypeControlledEventRewardChoiceContinuationV111(
                 "Controlled event-reward frame has no matching committed event-choice prefix.");
 
         PendingRequest.Validate();
-        if (PendingRequest.SiteId !=
-                "event.reward.random_modifier_curse.index_draw"
-            || PendingCandidateLabels.Length != PendingRequest.SupportCount
+        if (PendingCandidateLabels.Length != PendingRequest.SupportCount
             || PendingCandidateLabels.Any(string.IsNullOrWhiteSpace))
             throw new InvalidDataException(
                 "Controlled event-reward candidate labels do not match their ordered support.");
@@ -772,11 +870,19 @@ public sealed record PrototypeControlledEventRewardChoiceContinuationV111(
         {
             var decision = Decisions[index];
             decision.Validate();
+            var isCommittedPrefix = index < DecisionPrefixLength;
+            var isSupportedSite = isCommittedPrefix
+                ? ControlledEventChoiceReplayV111.IsEventChoiceSite(
+                    decision.Request.SiteId)
+                    || ControlledEventChoiceReplayV111
+                        .IsEventRewardRerollRequest(decision.Request)
+                : ResumeAction is not null
+                    && ControlledEventChoiceReplayV111
+                        .IsEventRewardRerollRequest(decision.Request);
             if (decision.ProviderMode != "controlled-v111"
                 || decision.NativeCursorBefore is not null
                 || decision.NativeCursorAfter is not null
-                || !ControlledEventChoiceReplayV111.IsEventChoiceSite(
-                    decision.Request.SiteId)
+                || !isSupportedSite
                 || DecisionCandidateLabels[index] is null
                 || DecisionCandidateLabels[index].Length !=
                     decision.Request.SupportCount
@@ -935,6 +1041,18 @@ internal sealed class ControlledEventChoiceReplayV111 :
 
     public static bool IsEventChoiceSite(string siteId) =>
         StochasticSiteRegistryV111.IsControlledEventChoiceSite(siteId);
+
+    public static bool IsEventRewardRerollSite(string siteId) =>
+        siteId is "reward.card_rarity.ticket"
+            or "reward.card_model.index_draw";
+
+    public static bool IsEventRewardRerollRequest(
+        RandomIndexRequestV111 request) =>
+        IsEventRewardRerollSite(request.SiteId)
+        && request.StreamId == "reward"
+        && request.OperationKind == (request.SiteId ==
+            "reward.card_rarity.ticket"
+                ? "bounded_integer" : "choose_index");
 
     public static bool IsRunActionSite(string siteId) =>
         StochasticSiteRegistryV111.IsRunActionSite(siteId);
