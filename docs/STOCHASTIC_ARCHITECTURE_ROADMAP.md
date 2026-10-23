@@ -2595,3 +2595,21 @@ records the existing saved preparation continuation and its replayed decision
 prefix; Native `UpFront` ordering and full source-prefix parity remain open.
 Scoped manual review coverage is 139/185 stable IDs, with 46 remaining. Static
 source review and `git diff --check` only; no tests or builds were run.
+
+**S0 Act 2 Ancient-offer manual site review increment (2026-10-23):**
+The Orobas, Pael, and Tezcatara offer rows now trace their ordered conditional
+pools and three-choice replay through the existing atomic Ancient-offer
+session. The source ledger now reflects the configured experimental Ancient
+assignment and saved preparation work, while Native `UpFront` parity and full
+pool fidelity remain open. Scoped manual review coverage is 142/185 stable
+IDs, with 43 remaining. Static source review and `git diff --check` only; no
+tests or builds were run.
+
+**S0 Repy chest-offer manual site review increment (2026-10-23):** The two
+Repy offer rows now trace its source-ordered relic shuffle, independent
+with-replacement potion picks, and the existing atomic event-shuffle session
+for configured Native and Native-regional fallback routes. The stale pinned
+audit note now points to this continuation; source pool fidelity and
+`player.rewards` ownership remain open. Scoped manual review coverage is
+144/185 stable IDs, with 41 remaining. Static source review and
+`git diff --check` only; no tests or builds were run.
