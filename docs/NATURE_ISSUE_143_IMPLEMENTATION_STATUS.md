@@ -89,7 +89,7 @@ Tests exercise all three consecutive Orobic Acid generation effects in actual co
 
 The real combat `ResolveOperations` kernel now suspends at two additional source-defined effects. A generated fixed card has one bounded insertion-position ticket; a generated random Attack has a source-ordered model-selection ticket followed by a position ticket. The original operation and continuation queue are preserved, so card materialization and each insertion occur exactly once. Multi-insertion operations issue successive choices, and the player remains outside the fair decision boundary until the operation completes. See [draw-insertion implementation notes](NATURE_DRAW_INSERTION_143.md).
 
-Tests exercise both mechanics through a narrow guarded internal diagnostic entry on a real combat `RunState`. Neither operation is currently reached by a standard Silent starter card action, so this does not establish full JSONL `controlled_step` or native-entry replay provenance. Remaining enemy-side insertion and other random-effect continuations remain explicitly unsupported. Law status is `UNVERIFIED`.
+Tests exercise both mechanics through a narrow guarded internal diagnostic entry on a real combat `RunState`. Neither operation is currently reached by a standard Silent starter card action, so this does not establish full JSONL `controlled_step` or native-entry replay provenance. A later continuation also handles enemy draw/discard insertion through the saved enemy-action frame; other random-effect continuations remain unsupported. Law status is `UNVERIFIED`. See [draw-insertion implementation notes](NATURE_DRAW_INSERTION_143.md).
 
 
 ## PR #151: complete source-shaped generation-pool shuffle
@@ -138,9 +138,11 @@ identifies its current hand card. Both resume the source operation and replay
 independently. The Seeker Strike source shortlist is also exposed as ordered
 without-replacement instance choices before its ordinary player selection;
 contiguous unresolved-pool removal is preserved without exposing a hidden
-position; pools split by known anchors still fail closed. Draw-triggered
-relic/Slither costs beyond their existing event path, enemy-side insertion, death/summon
-continuations, native laws and full terminal rollout remain.
+position; pools split by known anchors still fail closed. Enemy draw/discard
+insertion now uses the saved enemy-action frame and replays the source resolver;
+see [draw-insertion implementation notes](NATURE_DRAW_INSERTION_143.md).
+Draw-triggered relic/Slither costs beyond their existing event path,
+death/summon continuations, native laws and full terminal rollout remain.
 
 
 ## New slice: draw-triggered relic/Slither costs
