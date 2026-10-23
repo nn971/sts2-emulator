@@ -430,19 +430,23 @@ internal sealed class ControlledStochasticChanceReplayV111 :
     private readonly ControlledStochasticDecisionV111[] _decisions;
     private int _cursor;
     private string[]? _candidateLabels;
+    private readonly bool _registeredAsActive;
     private bool _disposed;
 
     private ControlledStochasticChanceReplayV111(
-        ControlledStochasticDecisionV111[] decisions)
+        ControlledStochasticDecisionV111[] decisions,
+        bool registerAsActive)
     {
-        _previous = Active.Value;
+        _previous = registerAsActive ? Active.Value : null;
         _decisions = decisions.Select(decision =>
         {
             ArgumentNullException.ThrowIfNull(decision);
             decision.Validate();
             return decision.Fork();
         }).ToArray();
-        Active.Value = this;
+        _registeredAsActive = registerAsActive;
+        if (registerAsActive)
+            Active.Value = this;
     }
 
     public string Mode => "controlled-v111";
@@ -456,7 +460,22 @@ internal sealed class ControlledStochasticChanceReplayV111 :
         ControlledStochasticDecisionV111[] decisions)
     {
         ArgumentNullException.ThrowIfNull(decisions);
-        return new ControlledStochasticChanceReplayV111(decisions);
+        return new ControlledStochasticChanceReplayV111(
+            decisions, registerAsActive: true);
+    }
+
+    /// <summary>
+    /// Creates a prefix cursor for a boundary adapter that performs its own
+    /// request normalization and provider dispatch. It shares decision
+    /// validation and cursor ownership without changing the active-provider
+    /// signal observed by unrelated engine paths.
+    /// </summary>
+    internal static ControlledStochasticChanceReplayV111 BeginDetachedPrefix(
+        ControlledStochasticDecisionV111[] decisions)
+    {
+        ArgumentNullException.ThrowIfNull(decisions);
+        return new ControlledStochasticChanceReplayV111(
+            decisions, registerAsActive: false);
     }
 
     public RandomIndexDecisionV111 Resolve(
@@ -667,10 +686,13 @@ internal sealed class ControlledStochasticChanceReplayV111 :
     {
         if (_disposed)
             return;
-        if (!ReferenceEquals(Active.Value, this))
-            throw new InvalidOperationException(
-                "Typed stochastic replay scopes must be disposed in stack order.");
-        Active.Value = _previous;
+        if (_registeredAsActive)
+        {
+            if (!ReferenceEquals(Active.Value, this))
+                throw new InvalidOperationException(
+                    "Typed stochastic replay scopes must be disposed in stack order.");
+            Active.Value = _previous;
+        }
         _disposed = true;
     }
 

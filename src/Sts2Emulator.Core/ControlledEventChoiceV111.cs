@@ -1037,7 +1037,7 @@ internal sealed class ControlledEventChoiceReplayV111 :
         IReadOnlyDictionary<string, int>? priorOrdinalCounts)
     {
         _previous = Active.Value;
-        _prefix = ControlledStochasticChanceReplayV111.Begin(
+        _prefix = ControlledStochasticChanceReplayV111.BeginDetachedPrefix(
             decisions.Select(decision =>
                 ControlledStochasticDecisionV111.FromIndex(decision))
                 .ToArray());
