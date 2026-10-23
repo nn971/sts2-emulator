@@ -553,6 +553,8 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
         _randomTargetOutcomes = [];
     private readonly List<SemanticPotionGenerationNativeAuditV111>
         _potionGenerationOutcomes = [];
+    private readonly List<SemanticCardOddsNativeAuditV111>
+        _cardOddsOutcomes = [];
     private readonly Dictionary<string, int> _operationSequences =
         new(StringComparer.Ordinal);
     private bool _disposed;
@@ -636,6 +638,11 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
     /// <summary>Typed Native combat potion model results.</summary>
     public IReadOnlyList<SemanticPotionGenerationNativeAuditV111>
         PotionGenerationOutcomes => _potionGenerationOutcomes
+            .Select(outcome => outcome.Fork()).ToArray();
+
+    /// <summary>Typed Native card-reward rarity and upgrade results.</summary>
+    public IReadOnlyList<SemanticCardOddsNativeAuditV111>
+        CardOddsOutcomes => _cardOddsOutcomes
             .Select(outcome => outcome.Fork()).ToArray();
 
     internal static void RecordWeightedIntentOutcome(
@@ -889,6 +896,30 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
             throw new InvalidDataException(
                 "Potion-generation annotation differs from the latest primitive index entry.");
         current._potionGenerationOutcomes.Add(auditEntry.Fork());
+    }
+
+    internal static void RecordCardOddsOutcome(
+        SemanticCardOddsNativeAuditV111 auditEntry)
+    {
+        ArgumentNullException.ThrowIfNull(auditEntry);
+        var current = Active.Value;
+        if (current is null)
+            return;
+        auditEntry.Validate();
+        var lastEntry = current._orderedTranscript.LastOrDefault();
+        if (lastEntry is null || lastEntry.OperationKind != "unit_float")
+            throw new InvalidDataException(
+                "Card-odds annotation has no preceding unit-float transcript entry.");
+        var boundary = lastEntry
+            .DeserializeEvent<RandomUnitFloatBoundaryEventV111>();
+        var journalDecision = new RandomUnitFloatDecisionV111(
+            boundary.Request, boundary.SelectedValue, boundary.ProviderMode,
+            boundary.NativeCursorBefore, boundary.NativeCursorAfter);
+        if (CanonicalJson.Sha256(journalDecision) !=
+            CanonicalJson.Sha256(auditEntry.ProviderDecision))
+            throw new InvalidDataException(
+                "Card-odds annotation differs from the latest primitive unit-float entry.");
+        current._cardOddsOutcomes.Add(auditEntry.Fork());
     }
 
     /// <summary>Returns a provider-specific mixed transcript in the order

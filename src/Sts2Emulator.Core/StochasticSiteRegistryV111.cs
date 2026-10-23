@@ -370,6 +370,10 @@ public static class StochasticSiteRegistryV111
         "combat.random_draw_attack.card_model";
     public const string NativeRewardCardModelSiteId =
         "card_rarity.encounter_model.index_draw";
+    public const string CardRarityRollUnitFloatSiteId =
+        "card_rarity.roll.unit_float";
+    public const string CardRarityUpgradeRollUnitFloatSiteId =
+        "card_rarity.upgrade_roll.unit_float";
     public const string CombatCardTransformReplacementSiteId =
         "combat.card_transform.replacement.index_draw";
     public const string CombatPotionGenerationRandomModelSiteId =
@@ -760,8 +764,8 @@ public static class StochasticSiteRegistryV111
         "card_rarity.roll.ticket",
         NativeRewardCardModelSiteId,
         "card_rarity.upgrade_roll.ticket",
-        "card_rarity.roll.unit_float",
-        "card_rarity.upgrade_roll.unit_float"
+        CardRarityRollUnitFloatSiteId,
+        CardRarityUpgradeRollUnitFloatSiteId
     ];
 
     private static readonly string[] RunActionTreasureSites =
@@ -1004,12 +1008,12 @@ public static class StochasticSiteRegistryV111
         CombatEnemyDrawRandomInsertSiteId,
         CombatEnemyDiscardRandomInsertSiteId,
         NativeRewardCardModelSiteId,
-        "card_rarity.upgrade_roll.unit_float",
+        CardRarityUpgradeRollUnitFloatSiteId,
         "event.endless_conveyor.dish_weighted_ticket",
         "event.endless_conveyor.random_upgrade.card_instance",
         "event.endless_conveyor.colorless_card.index_draw",
         "shop.merchant.sale_slot.index_draw",
-        "card_rarity.roll.unit_float",
+        CardRarityRollUnitFloatSiteId,
         "shop.merchant.card_model.index_draw",
         "shop.colorless_card_model.index_draw",
         PrototypeNativeRelicGrabBag.QueueShuffleSiteId,
@@ -1055,7 +1059,7 @@ public static class StochasticSiteRegistryV111
 
     private static readonly string[] NativeMerchantSessionSites =
     [
-        "card_rarity.roll.unit_float",
+        CardRarityRollUnitFloatSiteId,
         "shop.merchant.card_upgrade_roll.unit_float",
         "relic.acquisition.random_rare_card.model",
         "relic.acquisition.random_potion.model",
@@ -1149,8 +1153,8 @@ public static class StochasticSiteRegistryV111
     private static readonly string[] NativeUnitFloatSites =
     [
         "reward.potion_odds.unit_float",
-        "card_rarity.upgrade_roll.unit_float",
-        "card_rarity.roll.unit_float",
+        CardRarityUpgradeRollUnitFloatSiteId,
+        CardRarityRollUnitFloatSiteId,
         "potion_factory.rarity_roll.unit_float",
         RelicGrabBagRaritySiteId,
         "shop.merchant.card_upgrade_roll.unit_float",
@@ -1658,8 +1662,8 @@ public static class StochasticSiteRegistryV111
             {
                 "reward.potion_odds.unit_float" or
                 "potion_factory.rarity_roll.unit_float" or
-                "card_rarity.roll.unit_float" or
-                "card_rarity.upgrade_roll.unit_float" or
+                CardRarityRollUnitFloatSiteId or
+                CardRarityUpgradeRollUnitFloatSiteId or
                 "relic_grab_bag.rarity.unit_float" =>
                     operationKind == "unit_float",
                 "reward.combat_gold.index_draw" or

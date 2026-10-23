@@ -359,6 +359,10 @@ audits use generated-card schema V2 to add the Native `player.rewards`
 their combat-only completeness rule. Each reward annotation binds the ordered
 source pool and selected model to its exact request.
 Pool completeness, stream attribution and cursor parity remain separate claims.
+Combat reward rarity and upgrade floats also retain their sampled values,
+thresholds, offset change or upgrade result and exact request under the new
+card-odds audit schema. Threshold and outcome fidelity remain distinct from
+Native source-pool completeness and cursor parity.
 Native transform replacements now retain the original model, ordered
 replacement pool, selected model, source card instance, and exact Native ticket
 through `SemanticCardTransformEventV111`. Newly marked Native-policy audits

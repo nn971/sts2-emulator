@@ -16,6 +16,10 @@ establish source-pool completeness, stream parity, or cursor parity.
 The generated-card outcome family also retains the ordered card-model pool and
 selected offer for Native combat-reward `player.rewards` draws. Generated-card
 schema V2 adds that reward site while V1 keeps combat-only completeness.
+Native combat-reward `card_rarity.roll.unit_float` and
+`card_rarity.upgrade_roll.unit_float` use a separate typed outcome annotation
+for their threshold, offset update or upgrade result. Card-odds schema V1
+requires both registered reward float sites in newly marked traces.
 
 The Rest reward crosswalk is `PrototypeRooms.StepRest` →
 `EnterRestHealRelicReward`: relics with a positive

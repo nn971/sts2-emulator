@@ -53,7 +53,15 @@ internal static class NativePlayerRngV111
         string siteId,
         string streamId,
         string ownerId) =>
+        NextUnitFloatDecision(streams, siteId, streamId, ownerId)
+            .SelectedValue;
+
+    public static RandomUnitFloatDecisionV111 NextUnitFloatDecision(
+        RngBundle streams,
+        string siteId,
+        string streamId,
+        string ownerId) =>
         NativeRandomChoiceV111.NextUnitFloat(
             streams, siteId, streamId, ownerId,
-            NextOrdinal(streams, streamId)).SelectedValue;
+            NextOrdinal(streams, streamId));
 }

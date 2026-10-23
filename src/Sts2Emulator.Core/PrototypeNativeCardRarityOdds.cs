@@ -99,7 +99,7 @@ public static class PrototypeNativeCardRarityOdds
         + (source == PrototypeNativeCardOddsSource.BossEncounter
             ? 0 : offsetBasisPoints);
 
-    private static PrototypeCardRarity ResolveRarity(
+    internal static PrototypeCardRarity ResolveRarity(
         float roll, int offsetBasisPoints,
         PrototypeNativeCardOddsSource source, int ascension)
     {
@@ -114,6 +114,16 @@ public static class PrototypeNativeCardRarityOdds
             ? PrototypeCardRarity.Uncommon
             : PrototypeCardRarity.Common;
     }
+
+    internal static int NextOffsetBasisPoints(
+        PrototypeCardRarity rarity, int currentOffsetBasisPoints,
+        int ascension, PrototypeNativeCardOddsSource source) =>
+        source == PrototypeNativeCardOddsSource.Shop
+            ? currentOffsetBasisPoints
+            : rarity == PrototypeCardRarity.Rare
+                ? InitialOffsetBasisPoints
+                : Math.Min(MaximumOffsetBasisPoints,
+                    currentOffsetBasisPoints + GrowthBasisPoints(ascension));
 
     internal static float MerchantRarityRepresentative(
         string outcomeId, int offsetBasisPoints, int ascension)
@@ -184,19 +194,21 @@ public static class PrototypeNativeCardRarityOdds
             PrototypeNativeCardOddsSource source, RngBundle nativeRunRng,
             string ownerId)
     {
-        var roll = NativePlayerRngV111.NextUnitFloat(
+        var decision = NativePlayerRngV111.NextUnitFloatDecision(
             nativeRunRng,
-            "card_rarity.roll.unit_float",
+            SemanticCardOddsNativeAuditV111.RaritySiteId,
             NativePlayerRngV111.RewardsStreamId,
             ownerId);
+        var roll = decision.SelectedValue;
         var rarity = ResolveRarity(
             roll, currentOffsetBasisPoints, source, ascension);
-        var nextOffset = source == PrototypeNativeCardOddsSource.Shop
-            ? currentOffsetBasisPoints
-            : rarity == PrototypeCardRarity.Rare
-                ? InitialOffsetBasisPoints
-                : Math.Min(MaximumOffsetBasisPoints,
-                    currentOffsetBasisPoints + GrowthBasisPoints(ascension));
+        var nextOffset = NextOffsetBasisPoints(
+            rarity, currentOffsetBasisPoints, ascension, source);
+        if (decision.ProviderMode == "native-v111" &&
+            RandomBoundaryJournalV111.HasActiveJournal)
+            RandomBoundaryJournalV111.RecordCardOddsOutcome(
+                SemanticCardOddsNativeAuditV111.CreateRarity(
+                    decision, source, currentOffsetBasisPoints, ascension));
         return (rarity, nextOffset);
     }
 
@@ -260,11 +272,17 @@ public static class PrototypeNativeCardRarityOdds
         var ownerId = $"card:{cardId}:act:{act}:ascension:{ascension}";
         if (nativeRunRng is not null)
         {
-            var roll = NativePlayerRngV111.NextUnitFloat(
+            var decision = NativePlayerRngV111.NextUnitFloatDecision(
                 nativeRunRng,
-                "card_rarity.upgrade_roll.unit_float",
+                SemanticCardOddsNativeAuditV111.UpgradeSiteId,
                 NativePlayerRngV111.RewardsStreamId,
                 ownerId);
+            var roll = decision.SelectedValue;
+            if (decision.ProviderMode == "native-v111" &&
+                RandomBoundaryJournalV111.HasActiveJournal)
+                RandomBoundaryJournalV111.RecordCardOddsOutcome(
+                    SemanticCardOddsNativeAuditV111.CreateUpgrade(
+                        decision, cardId, act, ascension));
             return roll <= threshold / 10000f;
         }
 
