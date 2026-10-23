@@ -365,10 +365,13 @@ removals, forged hidden pool rejection, complete source replay
 and independent 15-worker outcomes. Focused CI covers this
 versioned choice-resolution slice; see
 [Nature semantic card selection](NATURE_SEMANTIC_CARD_SELECTION_143.md).
-The semantic playable pilot admits Survivor, Hand Trick, Nightmare, Wish and
-Neow's Fury whenever one is present in hand, then exercises this engine after
-their real effects. It publishes a typed `player_card_selection` event and source legal
-actions, then replays the action/choice pair from the saved source state. The
+The semantic playable pilot admits Survivor, Hand Trick, Nightmare, Wish,
+Neow's Fury and Neow's Abundance whenever one is present in hand, then
+exercises the existing choice owners after their real effects. Fury publishes
+a typed `player_card_selection` event and source legal actions, then replays
+the action/choice pair from the saved source state. Abundance reuses the full-
+pool shuffle and required ChoicePool pick for its three upgraded Powers, with
+the shuffle guard bound to its exact source card instance and effect. The
 explicit seeded fixture remains available to guarantee Survivor in the opening
 hand. This does
 not establish native acquisition for these cards or generic nested-choice
@@ -385,11 +388,10 @@ The semantic pilot also admits Attack, Skill and Power Potions through their
 existing source full-pool shuffle, generated-card model choice and ChoicePool
 selection continuation. The selected card moves to hand without changing the
 hidden draw pile; Native cursor parity and other potion effects remain open.
-Colorless Potion and Orobic Acid also run from any matching combat slot rather
-than requiring the corresponding seeded fixture. Colorless Potion uses the
-source-aware generated-pool shuffle and optional pick; Orobic Acid uses the
-three saved Attack, Skill and Power model choices. Their hidden draw-pile
-boundary is unchanged.
+Orobic Acid also runs from any matching combat slot rather than requiring its
+seeded fixture. It uses the three saved Attack, Skill and Power model choices
+and leaves the hidden draw-pile boundary unchanged. Colorless Potion retains
+its existing fixture-backed source-aware shuffle and optional pick.
 
 The semantic JSONL/Python bridge also exposes fixed-model random draw-pile
 insertion and the two-stage random-Attack insertion continuation through

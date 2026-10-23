@@ -2460,8 +2460,11 @@ public sealed record SemanticPilotCombatV111(
                     nameof(PrototypeCombatEffectKind.MoveRandomRareDrawCardsToHand);
             bool randomShortlistShuffle = poolShufflePending.SourceOperationKind ==
                 nameof(PrototypeCombatEffectKind.ChooseCards);
+            bool neowsAbundanceShuffle = IsNeowsAbundanceGeneratedChoiceShuffle(
+                combat, combat?.PendingChoice,
+                combat?.PendingChoice?.ControlledPoolShuffle);
             var fixtureMatches = automaticPipelinePoolShuffle ||
-                handReturnShuffle || recycleShuffle ||
+                handReturnShuffle || recycleShuffle || neowsAbundanceShuffle ||
                 (randomRareToHandShuffle
                     ? this.Stochastic.SeededEntry?.FixtureSelectionCardId ==
                         "proto.colorless.anointed"
@@ -3160,7 +3163,8 @@ public static class SemanticPilotCombatEngineV111
     private static SemanticPilotCombatV111 ApplyFixtureSelectionCard(
         SemanticPilotCombatV111 state, string cardId)
     {
-        if (cardId is not ("proto.silent.survivor" or
+        if (cardId is not ("proto.native.neow.abundance" or
+            "proto.silent.survivor" or
             "proto.colorless.seeker_strike" or
             "proto.colorless.anointed" or
             "proto.silent.nightmare" or
@@ -4109,7 +4113,8 @@ public static class SemanticPilotCombatEngineV111
             var card = source.World!.Combat!.Cards.SingleOrDefault(c =>
                 c.InstanceId == play.CardInstanceId);
             var semanticSelectionCard = card?.CardId is
-                ("proto.native.neow.neows_fury" or
+                ("proto.native.neow.abundance" or
+                    "proto.native.neow.neows_fury" or
                     "proto.silent.survivor" or "proto.silent.hand_trick" or
                     "proto.silent.nightmare" or
                     NativeGloryAncientsV111.WishCardId);
@@ -4215,9 +4220,10 @@ public static class SemanticPilotCombatEngineV111
             var isGenerationPotion = validSlot &&
                 source.Player.PotionSlots[payload.Slot]?.PotionId ==
                     "proto.potion.orobic_acid";
-            var isPoolPotion = validSlot &&
-                source.Player.PotionSlots[payload.Slot]?.PotionId ==
-                    "proto.potion.colorless";
+            var poolPotion = current.Stochastic.SeededEntry?.FixturePoolGenerationPotionId;
+            var isPoolPotion = poolPotion == "proto.potion.colorless" &&
+                validSlot &&
+                source.Player.PotionSlots[payload.Slot]?.PotionId == poolPotion;
             var isHandReturnPotion = validSlot &&
                 source.Player.PotionSlots[payload.Slot]?.PotionId ==
                     "proto.potion.bottled_potential";
@@ -5709,6 +5715,31 @@ public static class SemanticPilotCombatEngineV111
             current.Run, current.Fingerprint, ordinal);
     }
 
+    private static bool IsNeowsAbundanceGeneratedChoiceShuffle(
+        CombatState? combat, PendingCombatChoiceState? choice,
+        PrototypeControlledPoolShuffleV111? shuffle)
+    {
+        if (combat is null ||
+            choice is not { ChoiceId: "controlled_pool_shuffle",
+                SourceCardInstanceId: { } sourceCardInstanceId } ||
+            shuffle is null)
+            return false;
+        var operation = shuffle.Operation;
+        return operation.Kind == PrototypeCombatEffectKind.ChooseGeneratedCards &&
+            operation.Amount == 3 &&
+            operation.SourceKind == PrototypeEffectSourceKind.Card &&
+            operation.GeneratedChoiceCardType == PrototypeCardType.Power &&
+            operation.GeneratedChoiceCardsFreeThisTurn &&
+            operation.GeneratedChoiceCardsUpgraded &&
+            operation.GeneratedChoiceMustPick &&
+            !operation.GeneratedChoiceCharacterCards &&
+            !operation.GeneratedChoiceCardsRetain &&
+            !operation.GeneratedChoiceUsesNativeCardGenerationRng &&
+            combat.Cards.Any(card =>
+                card.InstanceId == sourceCardInstanceId &&
+                card.CardId == "proto.native.neow.abundance");
+    }
+
     public static SemanticPoolShuffleEventV111?
         DescribePendingPoolShuffleEvent(SemanticPilotCombatV111 current)
     {
@@ -5735,8 +5766,10 @@ public static class SemanticPilotCombatEngineV111
             choice is not null && PrototypeGameEngine
                 .IsAutomaticPipelineSemanticPoolShuffleContinuation(
                     combat, choice);
+        bool neowsAbundanceShuffle = IsNeowsAbundanceGeneratedChoiceShuffle(
+            combat, choice, shuffle);
         var fixtureMatches = automaticPipelinePoolShuffle || handReturn ||
-            recycle || (randomRareToHand
+            recycle || neowsAbundanceShuffle || (randomRareToHand
             ? current.Stochastic.SeededEntry?.FixtureSelectionCardId ==
                 "proto.colorless.anointed"
             : randomShortlist
