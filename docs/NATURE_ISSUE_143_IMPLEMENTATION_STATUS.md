@@ -941,20 +941,23 @@ review and `git diff --check` only; no tests or builds were run.
 The existing ReferenceNature run-action session now admits legal non-event
 uses of Fruit Juice, Blood Potion, and Neow's Ambergris through their exact
 modeled max-HP gain or healing effects. It also admits these uses during an
-Event when no event choice or full-belt potion replacement is pending. The
-controlled replay guard rejects any chance request, and snapshot validation
-replays the action. Event potion-replacement continuations remain separate. No
-chance owner or snapshot schema was added. Static source review and
-`git diff --check` only; no tests or builds were run.
+Event when no event choice or full-belt potion replacement is pending, and
+after an event choice through the saved event-reward continuation while the
+event reward remains pending. The controlled replay guard rejects any chance
+request, and snapshot validation replays the action. Event potion-replacement
+continuations remain separate. No chance owner or snapshot schema was added.
+Static source review and `git diff --check` only; no tests or builds were run.
 
 ## 2026-10-23: Entropic Brew empty-slot refills
 
 The typed ReferenceNature run-action continuation now covers non-event
-Entropic Brew uses and Event uses when no event choice or full-belt potion
-replacement is pending. It replays one pool draw for each empty slot,
+Entropic Brew uses and pre-choice Event uses when no event choice or full-belt
+potion replacement is pending. It replays one pool draw for each empty slot,
 preserving the source slot order and owner fingerprint. Legacy runs use the
 existing ordered prototype-pool Chance Law on the `reward` stream. Native runs
 use the `player.rewards` request and its Native bounded-index law, with request
-support and slot ownership checked against the current prototype pool. Native
-game pool-order fidelity still awaits the reference mod. Static source review
-and `git diff --check` only; no tests or builds were run.
+support and slot ownership checked against the current prototype pool. A
+stochastic Entropic Brew action during a post-choice Event reward still needs a
+nested continuation to preserve the event session. Native game pool-order
+fidelity still awaits the reference mod. Static source review and
+`git diff --check` only; no tests or builds were run.

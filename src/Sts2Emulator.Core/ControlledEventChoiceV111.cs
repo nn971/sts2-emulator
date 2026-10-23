@@ -132,6 +132,36 @@ public static class ControlledEventChoiceEngineV111
             { Length: > 0 } history
             ? history[^1]
             : null;
+        // Keep deterministic potion actions inside the saved event-reward
+        // transcript while its reward is still pending.
+        if (ControlledRunActionEngineV111
+                .IsSupportedEventRewardPotionAction(source, action))
+        {
+            var eventTrace = trace ?? throw new InvalidDataException(
+                "Event-reward potion action lost its completed event trace.");
+            var potionActionId = PrototypeAiEnvironment.StableActionId(action);
+            if (!engine.GetLegalActions(source).Any(candidate =>
+                    StringComparer.Ordinal.Equals(
+                        PrototypeAiEnvironment.StableActionId(candidate),
+                        potionActionId)))
+                throw new InvalidOperationException(
+                    "Controlled event-reward potion use requires a current legal action.");
+
+            using var potionGuard = ControlledChanceGuardV111.Enter();
+            var potionReplay = ControlledChanceContinuationExecutorV111.Resume(
+                source,
+                [],
+                checkpoint => engine.Step(checkpoint, action).State,
+                OrdinalCounts(eventTrace.Decisions));
+            if (potionReplay.PendingChance is { } potionChance)
+                throw new NotSupportedException(
+                    "Deterministic event-reward potion use reached unsupported chance site '"
+                    + potionChance.Request.SiteId + "'.");
+            var potionResult = potionReplay.Run ?? throw new InvalidDataException(
+                "Controlled event-reward potion use returned neither a run nor a pending chance request.");
+            PrototypeStateInvariants.Validate(potionResult);
+            return potionResult;
+        }
         if (source.Phase != RunPhase.Reward
             || source.Stochastic.ControlledEventRewardChoice is not null
             || eventState is null

@@ -1341,6 +1341,38 @@ public static class ControlledRunActionEngineV111
             || !SupportsOutsideCombatPotionPhase(source))
             return false;
 
+        return IsModeledDeterministicOutsideCombatPotion(source, action);
+    }
+
+    internal static bool IsSupportedEventRewardPotionAction(
+        RunState source, GameAction action)
+    {
+        var eventState = source.World?.Event;
+        var reward = source.World?.Reward;
+        var choiceId = eventState?.ChosenChoiceId;
+        if (action.Kind != "use_potion"
+            || source.Phase != RunPhase.Reward
+            || source.Stochastic.ControlledEventRewardChoice is not null
+            || eventState is null
+            || eventState.PendingPotionReplacement is not null
+            || eventState.Stochastic.ControlledChoice is not null
+            || choiceId is null
+            || reward is null
+            || reward.SourceRoom != "Event:" + eventState.EventId
+            || !PrototypeGameEngine.IsControlledEventChoice(
+                eventState.EventId, choiceId)
+            || source.Stochastic.ControlledEventChoiceHistory is
+                not { Length: > 0 } history
+            || history[^1].EventId != eventState.EventId
+            || history[^1].ChoiceId != choiceId)
+            return false;
+
+        return IsModeledDeterministicOutsideCombatPotion(source, action);
+    }
+
+    private static bool IsModeledDeterministicOutsideCombatPotion(
+        RunState source, GameAction action)
+    {
         var payload = action.ReadPayload<UsePotionPayload>();
         if (payload.TargetEnemyId is not null
             || payload.Slot < 0
@@ -1391,12 +1423,19 @@ public static class ControlledRunActionEngineV111
 
     private static bool SupportsOutsideCombatPotionPhase(
         RunState source) =>
-        source.Phase is (RunPhase.MapChoice or RunPhase.Reward
-            or RunPhase.Shop or RunPhase.Rest or RunPhase.ActTransition)
+        source.Phase is (RunPhase.MapChoice or RunPhase.Shop or RunPhase.Rest
+            or RunPhase.ActTransition)
+        || source.Phase == RunPhase.Reward
+            && !IsEventRewardContext(source)
         || source.Phase == RunPhase.Event
             && source.World?.Event is
                 { PendingPotionReplacement: null } eventState
             && eventState.Stochastic.ControlledChoice is null;
+
+    private static bool IsEventRewardContext(RunState source) =>
+        source.World?.Event is { ChosenChoiceId: not null } eventState
+        && source.World?.Reward is { } reward
+        && reward.SourceRoom == "Event:" + eventState.EventId;
 
     internal static bool IsLegacyRestHealRewardAction(
         RunState source, GameAction action) =>
