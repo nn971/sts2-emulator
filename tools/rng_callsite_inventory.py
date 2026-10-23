@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""List direct emulator RNG and mapped source-adapter calls for D0.
+"""List direct emulator RNG and mapped source-adapter calls for S0.
 
 This is a source inventory aid, not a source-to-game completeness proof. It
-reports each direct provider expression and the high-level MapRandom calls
-from the two modeled map generators with their file and line so manual site
-audits can be linked to a stable matrix row. Other indirect delegates and
-mechanics hidden behind called helpers still require manual tracing.
+reports each direct provider expression, high-level MapRandom calls from the
+modeled map generators, and direct NativePlayerRngV111 adapter calls with their
+file and line so manual site audits can be linked to a stable matrix row.
+Other indirect delegates and mechanics hidden behind called helpers still
+require manual tracing.
 """
 
 from __future__ import annotations
@@ -22,7 +23,7 @@ from urllib.parse import unquote, urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v47"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v48"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 TYPE_SOURCE_DECLARATION_PATTERN = re.compile(
     r"\b(?:class|record|struct)\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\b"
@@ -30,9 +31,13 @@ TYPE_SOURCE_DECLARATION_PATTERN = re.compile(
 _SOURCE_CLASS_CONTENTS: dict[str, tuple[str, ...]] | None = None
 
 CALL_PATTERN = re.compile(
-    r"\b(?P<api>PrototypeRng|NativeRngV111|NativeFisherYatesV111)"
+    r"\b(?P<api>PrototypeRng|NativeRngV111|NativeFisherYatesV111|"
+    r"NativePlayerRngV111)"
     r"\.(?P<operation>NextInt|NextBool|NextFloat|NextDouble|"
-    r"NextGaussianInt|NextGaussianDouble|Shuffle|ShuffleInPlace|Execute|NextItem)"
+    r"NextGaussianInt|NextGaussianDouble|Shuffle|ShuffleInPlace|Execute|"
+    r"NextItem|NextUnitFloat|NextUnitFloatDecision|ChooseIndex|"
+    r"ChooseIndexDecision|ChooseBoundedInteger|"
+    r"ChooseBoundedIntegerDecision)"
     r"\s*\("
 )
 
@@ -184,6 +189,12 @@ def _call_arguments(source: str, call_start: int) -> list[str]:
 
 def _site_id_argument(api: str, operation: str,
                       arguments: list[str]) -> str | None:
+    if api == "NativePlayerRngV111":
+        for argument in arguments:
+            named = re.match(r"siteId\s*:\s*(.+)$", argument, re.DOTALL)
+            if named:
+                return named.group(1).strip()
+        return arguments[1] if len(arguments) > 1 else None
     if api != "NativeFisherYatesV111":
         return None
     for argument in arguments:
@@ -2703,6 +2714,7 @@ def collect() -> dict[str, Any]:
                     "PrototypeRng": "legacy_prototype_api",
                     "NativeRngV111": "native_primitive_api",
                     "NativeFisherYatesV111": "native_shuffle_mechanics",
+                    "NativePlayerRngV111": "native_player_rng_adapter",
                 }[api]
                 filename = path.name
                 if filename in {
@@ -2718,6 +2730,8 @@ def collect() -> dict[str, Any]:
                     review_status = "prototype_callsite_needs_semantic_site_mapping"
                 elif api == "NativeFisherYatesV111":
                     review_status = "typed_provider_shuffle_mechanics_boundary"
+                elif api == "NativePlayerRngV111":
+                    review_status = "native_player_rng_adapter_callsite"
                 else:
                     review_status = "native_primitive_callsite_needs_site_review"
                 arguments = _call_arguments(
@@ -2757,17 +2771,20 @@ def collect() -> dict[str, Any]:
                     site_value = (
                         site_values[0] if len(site_values) == 1 else None
                     )
-                if api == "NativeFisherYatesV111":
+                if api in ("NativeFisherYatesV111", "NativePlayerRngV111"):
                     if site_expression is None:
-                        review_status = "shuffle_site_id_argument_missing"
+                        review_status = "site_id_argument_missing"
                     elif site_values:
                         review_status = (
                             "shuffle_site_id_guarded_by_finite_registry_set"
-                            if guarded_shuffle_site_set else
+                            if guarded_shuffle_site_set and
+                                api == "NativeFisherYatesV111" else
                             "shuffle_site_id_resolved"
+                            if api == "NativeFisherYatesV111" else
+                            "native_player_rng_site_id_resolved"
                         )
                     else:
-                        review_status = "shuffle_site_id_is_dynamic_or_unresolved"
+                        review_status = "site_id_is_dynamic_or_unresolved"
                     matrix_status = (
                         "mapped"
                         if site_values and all(
@@ -2881,14 +2898,37 @@ def collect() -> dict[str, Any]:
             if entry["matrix_row_status"] != "mapped"
         ],
     }
+    native_player_rng_calls = [
+        entry for entry in entries
+        if entry["category"] == "native_player_rng_adapter"
+    ]
+    native_player_rng_callsite_coverage = {
+        "call_count": len(native_player_rng_calls),
+        "mapped_call_count": sum(
+            entry["matrix_row_status"] == "mapped"
+            for entry in native_player_rng_calls
+        ),
+        "unmapped_calls": [
+            {
+                "path": entry["path"],
+                "line": entry["line"],
+                "operation": entry["operation"],
+                "site_id_argument": entry["site_id_argument"],
+                "matrix_row_status": entry["matrix_row_status"],
+            }
+            for entry in native_player_rng_calls
+            if entry["matrix_row_status"] != "mapped"
+        ],
+    }
 
     return {
         "schema_id": SCHEMA_ID,
         "scope": (
             "Direct qualified calls to PrototypeRng, NativeRngV111, and "
-            "NativeFisherYatesV111 in Sts2Emulator.Core, plus source callsites "
-            "to the private MapRandom adapters in the two modeled Native map "
-            "generators. This does not include other indirect delegates, "
+            "NativeFisherYatesV111 in Sts2Emulator.Core, direct calls through "
+            "NativePlayerRngV111, and source callsites to the private MapRandom "
+            "adapters in the two modeled Native map generators. This does not "
+            "include other indirect delegates, "
             "random provider interfaces, third-party/native source callsites, "
             "or prove that every source operation is mapped. "
             "A separate direct-API scan reports typed and target-typed "
@@ -2929,6 +2969,9 @@ def collect() -> dict[str, Any]:
         "source_map_random_adapter_calls": map_adapter_calls,
         "source_map_random_adapter_callsite_coverage":
             map_adapter_callsite_coverage,
+        "native_player_rng_adapter_calls": native_player_rng_calls,
+        "native_player_rng_adapter_callsite_coverage":
+            native_player_rng_callsite_coverage,
         "counts_by_category": counts,
         "shuffle_matrix_mapping_counts": {
             status: sum(
@@ -3005,6 +3048,12 @@ def render_markdown(report: dict[str, Any]) -> str:
         "This inventories the high-level NextInt, NextGaussianInt, and Shuffle "
         "calls in the two modeled Native map generators; their adapters issue "
         "typed requests or typed Fisher–Yates swaps internally.",
+        "",
+        "Direct `NativePlayerRngV111` callsites mapped to matrix rows: "
+        f"**{report['native_player_rng_adapter_callsite_coverage']['mapped_call_count']}/"
+        f"{report['native_player_rng_adapter_callsite_coverage']['call_count']}**. "
+        "These are the high-level Native index and unit-float request sites; "
+        "stream and occurrence ownership remain with their callers.",
         "",
         "Direct ad hoc entropy API expressions in Core: "
         f"**{len(report['ambient_entropy_calls'])}**. The scan covers direct "
@@ -3209,6 +3258,9 @@ def main() -> int:
         map_callsite_coverage = report[
             "source_map_random_adapter_callsite_coverage"
         ]
+        native_player_callsite_coverage = report[
+            "native_player_rng_adapter_callsite_coverage"
+        ]
         if (coverage["registered_site_count"] == 0 or
                 coverage["site_ids_without_matrix_rows"] or
                 coverage["duplicate_matrix_site_ids"] or
@@ -3217,11 +3269,15 @@ def main() -> int:
                 report["site_id_forwarder_coverage"][
                     "calls_without_matrix_rows"] or
                 map_callsite_coverage["call_count"] == 0 or
-                map_callsite_coverage["unmapped_calls"]):
+                map_callsite_coverage["unmapped_calls"] or
+                native_player_callsite_coverage["call_count"] == 0 or
+                native_player_callsite_coverage["unmapped_calls"]):
             print(json.dumps({
                 "registry_matrix_coverage": coverage,
                 "source_map_random_adapter_callsite_coverage":
                     map_callsite_coverage,
+                "native_player_rng_adapter_callsite_coverage":
+                    native_player_callsite_coverage,
             }, indent=2, sort_keys=True),
                   file=sys.stderr)
             return 1
