@@ -19,7 +19,7 @@ public sealed partial class PrototypeGameEngine
                 cursor.Mechanics, out _, out _);
     }
 
-    internal static (RunState Run, int Requested, int Remaining)
+    internal static SemanticAutomaticHandDrawResumeResultV111
         BeginSemanticAutomaticHandDraw(RunState run)
     {
         if (!ControlledChanceGuardV111.Active)
@@ -72,10 +72,11 @@ public sealed partial class PrototypeGameEngine
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.DrawPlayerHand " +
                 "operation=unsupported_nested_stage");
-        return (result, requested, remaining);
+        return new SemanticAutomaticHandDrawResumeResultV111(
+            result, requested, remaining);
     }
 
-    internal static (RunState Run, int Requested, int Remaining)
+    internal static SemanticAutomaticHandDrawResumeResultV111
         ResumeSemanticBeforeHandDrawActionChoice(RunState run)
     {
         if (!ControlledChanceGuardV111.Active)
@@ -149,7 +150,7 @@ public sealed partial class PrototypeGameEngine
             CompleteAutomaticHandDrawStage(run, semanticRequested), 0);
     }
 
-    private static (RunState Run, int Requested, int Remaining)
+    private static SemanticAutomaticHandDrawResumeResultV111
         ResumeSemanticAutomaticHandDrawStep(
             RunState checkpoint,
             int cardsDrawnBefore,
@@ -175,8 +176,8 @@ public sealed partial class PrototypeGameEngine
                     cursor.Mechanics, out int requested, out int remaining))
                 throw new InvalidDataException(
                     "Semantic automatic hand draw lost its tagged progress.");
-            return (result,
-                requested, remaining);
+            return new SemanticAutomaticHandDrawResumeResultV111(
+                result, requested, remaining);
         }
 
         if (after.AutomaticPipelineContinuation?
@@ -185,7 +186,8 @@ public sealed partial class PrototypeGameEngine
                         .SemanticBeforeHandDraw &&
             (after.PendingChoice?.ControlledRandomPileCard is not null ||
              after.PendingChoice?.AutomaticSemanticDrawHookChoice == true))
-            return (result, 0, 0);
+            return new SemanticAutomaticHandDrawResumeResultV111(
+                result, 0, 0);
 
         var completed = after.AutomaticPipelineContinuation;
         if (completed?.Mechanics.IsAtStep(
@@ -205,7 +207,8 @@ public sealed partial class PrototypeGameEngine
                     "Automatic hand draw reduced the combat draw count.");
             result = CompleteAutomaticHandDrawStage(
                 result, drawn > 0 ? drawn : null);
-            return (result, drawn, 0);
+            return new SemanticAutomaticHandDrawResumeResultV111(
+                result, drawn, 0);
         }
         if (after.PendingChoice is not null ||
             after.PendingKnowledgeDemonChoice is not null ||
@@ -235,10 +238,11 @@ public sealed partial class PrototypeGameEngine
                 World = RequireWorld(result) with { Combat = after }
             };
         }
-        return (result, requested, 0);
+        return new SemanticAutomaticHandDrawResumeResultV111(
+            result, requested, 0);
     }
 
-    internal static (RunState Run, int Requested, int Remaining)
+    internal static SemanticAutomaticHandDrawResumeResultV111
         ResumeSemanticRandomPileCardChoice(
             RunState run, SemanticRandomPileCardDecisionV111 decision)
     {

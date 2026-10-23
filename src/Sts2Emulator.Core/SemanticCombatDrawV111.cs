@@ -653,12 +653,13 @@ public static class SemanticCombatDrawEngineV111
                 Combat = semanticCombat
             }
         };
-        RunState run;
-        int requested;
-        int remaining;
+        SemanticAutomaticHandDrawResumeResultV111 handDraw;
         using (ControlledChanceGuardV111.Enter())
-            (run, requested, remaining) =
-                PrototypeGameEngine.BeginSemanticAutomaticHandDraw(attached);
+            handDraw = PrototypeGameEngine
+                .BeginSemanticAutomaticHandDraw(attached);
+        var run = handDraw.Run;
+        int requested = handDraw.RequestedCount;
+        int remaining = handDraw.RemainingCount;
         if (run.World?.Combat?.PendingChoice?.ControlledRandomPileCard
                 is not null &&
             run.World.Combat.AutomaticPipelineContinuation?
@@ -697,13 +698,10 @@ public static class SemanticCombatDrawEngineV111
         {
             var decision = SemanticRandomPileCardEngineV111.Resolve(
                 pileCardEvent, selectedIndex);
-            RunState resumed;
-            int requested;
-            int pileCardRemaining;
-            (resumed, requested, pileCardRemaining, _) =
-                SemanticChoiceResumeV111.Resume(run, decision);
+            var (progress, _) = SemanticChoiceResumeV111.Resume(run, decision);
             var nextPileChoice = PublishDrawProgress(
-                state, resumed, requested, pileCardRemaining) with
+                state, progress.Run, progress.RequestedCount,
+                progress.RemainingCount) with
             {
                 Stochastic = state.Stochastic.AppendRandomPileCard(decision)
             };
@@ -800,12 +798,13 @@ public static class SemanticCombatDrawEngineV111
             state.Pending ?? throw new InvalidDataException(
                 "Semantic draw frame lost its pending request."),
             selectedIndex);
-        var (advanced, remaining, _) =
+        var (progress, _) =
             SemanticChoiceResumeV111.ResumeDrawSegment(
                 run, cardDecision, state.RemainingCount,
                 state.FromHandDraw);
         var next = PublishDrawProgress(
-            state, advanced, remainingCount: remaining);
+            state, progress.Run,
+            remainingCount: progress.RemainingCount);
         next = RecordNewSemanticDrawChoices(state, next);
         Validate(next);
         return next;
@@ -853,12 +852,13 @@ public static class SemanticCombatDrawEngineV111
                 "No nested CardDrawn hook choice is pending.");
         int drawnBefore = state.Run.World!.Combat!
             .CounterState.CardsDrawnThisCombat;
-        var (run, requested, remaining, decision) =
+        var (progress, decision) =
             SemanticChoiceResumeV111.ResumeDrawHookChoice(
                 state.Run, pending, actionId,
                 state.RequestedCount, state.RemainingCount, drawnBefore);
         var next = PublishDrawProgress(
-            state, run, requested, remaining) with
+            state, progress.Run, progress.RequestedCount,
+            progress.RemainingCount) with
         {
             Stochastic = state.Stochastic.AppendDrawHookChoice(decision)
         };

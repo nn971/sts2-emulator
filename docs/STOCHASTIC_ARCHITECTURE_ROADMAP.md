@@ -3274,3 +3274,12 @@ existing mechanics and stochastic owners; snapshot fields are unchanged.
 Broader automatic draw-resume consolidation and cross-provider mechanical
 equivalence remain open. Static source review and `git diff --check` only; no
 tests or builds were run.
+
+**S4 automatic hand-draw progress increment (2026-10-24):** The shared
+`SemanticAutomaticHandDrawResumeResultV111` now carries run, requested count,
+and remaining count through hand-draw entry and pre-draw, draw-hook, and
+random-pile choice resumes. Draw and choice results compose this progress with
+their existing SiteId or typed decision, while transcript and snapshot
+ownership remain unchanged. Broader automatic draw-resume consolidation and
+cross-provider mechanical equivalence remain open. Static source review and
+`git diff --check` only; no tests or builds were run.

@@ -250,7 +250,7 @@ public sealed partial class PrototypeGameEngine
             automaticHandDrawRequested, recycleSite, recycleOperation);
     }
 
-    internal static (RunState Run, int Requested, int Remaining,
+    internal static (SemanticAutomaticHandDrawResumeResultV111 Progress,
         SemanticDrawHookChoiceDecisionV111 Decision)
         ResumeSemanticDrawHookChoice(
             RunState checkpoint,
@@ -262,7 +262,7 @@ public sealed partial class PrototypeGameEngine
         => SemanticChoiceResumeV111.ResumeDrawHookChoice(
             checkpoint, pending, actionId, requested, remaining, drawnBefore);
 
-    internal static (RunState Run, int Remaining,
+    internal static (SemanticCombatDrawResumeResultV111 Progress,
         SemanticCardSelectionDecisionV111 Decision)
         ResumeSemanticStratagemSelection(
             RunState checkpoint,
