@@ -3266,7 +3266,7 @@ and cross-provider mechanical equivalence remain open. Static source review and
 `git diff --check` only; no tests or builds were run.
 
 **S4 semantic draw-resume progress increment (2026-10-24):** The shared
-`SemanticCombatDrawResumeResultV111` now carries the resulting run and
+`PrototypeDrawCardsResumeResultV111` now carries the resulting run and
 remaining count across semantic draw execution, automatic hand-draw progress,
 post-cost continuation, Stratagem selection, and controlled draw-cost replay.
 Requested-count ownership and typed transcript chronology remain with their
@@ -3314,3 +3314,12 @@ progress owner, and transcript behavior. Snapshot and transcript formats are
 unchanged. Broader draw-resume policy consolidation and cross-provider
 mechanical equivalence remain open. Static source review and `git diff --check`
 only; no tests or builds were run.
+
+**S4 provider-neutral draw resume result increment (2026-10-24):** The shared
+draw-resume handoff is now named `PrototypeDrawCardsResumeResultV111` and
+defined with the other provider-neutral mechanics values. Semantic and legacy
+controlled adapters use it for the resumed run and remaining count; choice
+transcripts and provider provenance remain with their existing owners. No
+snapshot or transcript format changed. Broader draw-resume policy
+consolidation and cross-provider mechanical equivalence remain open. Static
+source review and `git diff --check` only; no tests or builds were run.

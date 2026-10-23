@@ -14,7 +14,7 @@ public sealed partial class PrototypeGameEngine
         CardEffect
     }
 
-    internal static SemanticCombatDrawResumeResultV111
+    internal static PrototypeDrawCardsResumeResultV111
         BeginSemanticCombatDraw(RunState run, int count, bool fromHandDraw)
     {
         if (!ControlledChanceGuardV111.Active)
@@ -66,7 +66,7 @@ public sealed partial class PrototypeGameEngine
             recycleOperation: "unsupported_nested_stage");
     }
 
-    internal static SemanticCombatDrawResumeResultV111
+    internal static PrototypeDrawCardsResumeResultV111
         ResumeSemanticAutomaticHandDraw(
             RunState checkpoint, int remainingCount)
     {
@@ -81,7 +81,7 @@ public sealed partial class PrototypeGameEngine
     /// after all cost choices does CardDrawn dispatch, exactly once. The
     /// subsequent draw reuses the same real DrawCards and semantic provider.
     /// </summary>
-    internal static SemanticCombatDrawResumeResultV111
+    internal static PrototypeDrawCardsResumeResultV111
         ResumeSemanticCombatDrawCost(RunState run, int value)
     {
         if (!ControlledChanceGuardV111.Active)
@@ -122,7 +122,7 @@ public sealed partial class PrototypeGameEngine
     /// and nested card-effect draws. The frame and caller policy determine
     /// which saved continuation owns any later hook or pipeline boundary.
     /// </summary>
-    private static SemanticCombatDrawResumeResultV111
+    private static PrototypeDrawCardsResumeResultV111
         ContinueSemanticDrawCost(
             RunState run,
             PrototypeControlledDrawCostV111 cost,
@@ -164,7 +164,7 @@ public sealed partial class PrototypeGameEngine
             run, cost, selectedCost,
             allowHookSuspension: true);
         if (progress.CostStagePending)
-            return new SemanticCombatDrawResumeResultV111(
+            return new PrototypeDrawCardsResumeResultV111(
                 progress.Run, cost.RemainingCount);
 
         run = progress.Run;
@@ -190,12 +190,12 @@ public sealed partial class PrototypeGameEngine
                         draw.DrawEqualSelectionCount);
                 var combatWithDraw = AttachDrawResumeContinuation(
                     combat, resumeDraw, outerContinuation);
-                return new SemanticCombatDrawResumeResultV111(
+                return new PrototypeDrawCardsResumeResultV111(
                     PublishDrawMechanicsState(
                         run, run.Player, combatWithDraw),
                     cost.RemainingCount);
             }
-            return new SemanticCombatDrawResumeResultV111(
+            return new PrototypeDrawCardsResumeResultV111(
                 SuspendStandaloneSemanticDrawAtHookChoice(
                     run, run.Player, combat, cost.RemainingCount,
                     cost.FromHandDraw, cost.EventDepth),
@@ -220,11 +220,11 @@ public sealed partial class PrototypeGameEngine
         var result = effectDraw
             ? ResumeAutomaticPipelineContinuation(continued.Run).Run
             : continued.Run;
-        return new SemanticCombatDrawResumeResultV111(
+        return new PrototypeDrawCardsResumeResultV111(
             result, continued.RemainingCount);
     }
 
-    private static SemanticCombatDrawResumeResultV111
+    private static PrototypeDrawCardsResumeResultV111
         ResumeSemanticCombatDrawResult(
             RunState run,
             PrototypeDrawCardsResult drawn,
@@ -254,7 +254,7 @@ public sealed partial class PrototypeGameEngine
         => SemanticChoiceResumeV111.ResumeDrawHookChoice(
             checkpoint, pending, actionId, requested, remaining, drawnBefore);
 
-    internal static (SemanticCombatDrawResumeResultV111 Progress,
+    internal static (PrototypeDrawCardsResumeResultV111 Progress,
         SemanticCardSelectionDecisionV111 Decision)
         ResumeSemanticStratagemSelection(
             RunState checkpoint,
@@ -281,7 +281,7 @@ public sealed partial class PrototypeGameEngine
             AutomaticSemanticHandDrawSegment: automatic);
     }
 
-    private static SemanticCombatDrawResumeResultV111
+    private static PrototypeDrawCardsResumeResultV111
         ResolveControlledSemanticDrawResult(
             RunState run,
             PrototypeDrawCardsResult drawn,
@@ -307,13 +307,13 @@ public sealed partial class PrototypeGameEngine
             PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice)
         {
             if (automatic)
-                return new SemanticCombatDrawResumeResultV111(
+                return new PrototypeDrawCardsResumeResultV111(
                     SuspendAutomaticHandDrawAtCardDrawnChoice(
                         advanced, drawn.Player, drawn.Combat,
                         drawn.RemainingCount, automaticHandDrawRequested),
                     drawn.RemainingCount);
             if (nestedEffect)
-                return new SemanticCombatDrawResumeResultV111(
+                return new PrototypeDrawCardsResumeResultV111(
                     SuspendDrawCardsAtCardDrawnChoice(
                         advanced, drawn.Player, drawn.Combat,
                         drawn.RemainingCount, draw, outerContinuation,
@@ -321,7 +321,7 @@ public sealed partial class PrototypeGameEngine
                         accumulateDrawnCardIds: true,
                         markStandaloneHookChoice: false),
                     drawn.RemainingCount);
-            return new SemanticCombatDrawResumeResultV111(
+            return new PrototypeDrawCardsResumeResultV111(
                 SuspendStandaloneSemanticDrawForHookChoice(
                     advanced, drawn, draw.FromHandDraw),
                 drawn.RemainingCount);
@@ -334,7 +334,7 @@ public sealed partial class PrototypeGameEngine
 
         if (boundary == PrototypeDrawCardsBoundaryKind.ShuffleSelection)
         {
-            return new SemanticCombatDrawResumeResultV111(
+            return new PrototypeDrawCardsResumeResultV111(
                 SuspendDrawCardsForStratagemSelection(
                     advanced, drawn, draw, outerContinuation,
                     automaticHandDrawRequested,
@@ -355,7 +355,7 @@ public sealed partial class PrototypeGameEngine
             {
                 combat = AttachControlledSemanticDrawCost(
                     combat, nextDraw, outerContinuation);
-                return new SemanticCombatDrawResumeResultV111(
+                return new PrototypeDrawCardsResumeResultV111(
                     PublishDrawMechanicsState(
                         advanced, advanced.Player, combat),
                     drawn.RemainingCount);
@@ -364,7 +364,7 @@ public sealed partial class PrototypeGameEngine
             {
                 combat = MakeControlledSemanticDrawChoice(
                     combat, nextDraw, outerContinuation);
-                return new SemanticCombatDrawResumeResultV111(
+                return new PrototypeDrawCardsResumeResultV111(
                     PublishDrawMechanicsState(
                         advanced, advanced.Player, combat),
                     drawn.RemainingCount);
@@ -383,7 +383,7 @@ public sealed partial class PrototypeGameEngine
                 Stochastic = RunStochasticStateV111.WithPrototypeRng(
                     run.Stochastic, prototypeRng)
             };
-            return new SemanticCombatDrawResumeResultV111(
+            return new PrototypeDrawCardsResumeResultV111(
                 PublishDrawMechanicsState(
                     resumedRun, resumed.Player, resumed.Combat),
                 0);
@@ -394,14 +394,14 @@ public sealed partial class PrototypeGameEngine
                 PrototypeDrawCardsBoundaryKind.ControlledDrawCost;
         if (automatic && pending &&
             !IsSemanticAutomaticHandDraw(drawn.Combat))
-            return new SemanticCombatDrawResumeResultV111(
+            return new PrototypeDrawCardsResumeResultV111(
                 SaveAutomaticSemanticHandDrawBoundary(
                     advanced, drawn, automaticHandDrawRequested!.Value),
                 drawn.RemainingCount);
         return automatic
             ? CommitSemanticAutomaticHandDrawProgress(
                 advanced, drawn.RemainingCount, pending)
-            : new SemanticCombatDrawResumeResultV111(
+            : new PrototypeDrawCardsResumeResultV111(
                 advanced, pending ? drawn.RemainingCount : 0);
     }
 
@@ -424,7 +424,7 @@ public sealed partial class PrototypeGameEngine
             createCheckpoint: true);
     }
 
-    private static SemanticCombatDrawResumeResultV111
+    private static PrototypeDrawCardsResumeResultV111
         SuspendDrawCardsAfterShuffleInsertion(
             RunState run,
             PrototypeDrawCardsResult drawn,
@@ -469,7 +469,7 @@ public sealed partial class PrototypeGameEngine
         var combat = MakeControlledAfterShuffleInsertionChoice(
             insertionCombat, insertions[0], insertions.Skip(1).ToArray(),
             [], semanticDraw, continuation, 0);
-        return new SemanticCombatDrawResumeResultV111(
+        return new PrototypeDrawCardsResumeResultV111(
             PublishDrawMechanicsState(
                 advanced, advanced.Player, combat),
             drawn.RemainingCount);

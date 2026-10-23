@@ -107,7 +107,7 @@ public sealed partial class PrototypeGameEngine
             missingCombatIsInvalidData: true);
     }
 
-    internal static SemanticCombatDrawResumeResultV111
+    internal static PrototypeDrawCardsResumeResultV111
         CommitSemanticAutomaticHandDrawProgress(
             RunState run, int remaining, bool hasPending)
     {
@@ -131,7 +131,7 @@ public sealed partial class PrototypeGameEngine
                 combat.PendingChoice?.ControlledDrawCost is null)
                 throw new InvalidDataException(
                     "Missing next semantic hand-draw choice.");
-            return new SemanticCombatDrawResumeResultV111(
+            return new PrototypeDrawCardsResumeResultV111(
                 CommitAutomaticHandDrawProgress(
                     run, run.Player, combat,
                     PrototypeAutomaticHandDrawProgressV111.SemanticDraw(
@@ -146,7 +146,7 @@ public sealed partial class PrototypeGameEngine
                 "Cannot finish hand draw with an unresolved choice.");
         // The ordinary engine owns the shared source cleanup and cursor
         // advance and completion receipt for both provider continuations.
-        return new SemanticCombatDrawResumeResultV111(
+        return new PrototypeDrawCardsResumeResultV111(
             CompleteAutomaticHandDrawStage(run, semanticRequested), 0);
     }
 

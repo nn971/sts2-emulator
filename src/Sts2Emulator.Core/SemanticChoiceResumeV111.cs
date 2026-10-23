@@ -39,7 +39,7 @@ internal static class SemanticChoiceResumeV111
             ownedDecision.Event.SiteId);
     }
 
-    internal static (SemanticCombatDrawResumeResultV111 Progress,
+    internal static (PrototypeDrawCardsResumeResultV111 Progress,
         string SiteId)
         ResumeDrawSegment(
             RunState checkpoint, SemanticDrawDecisionV111 decision,
@@ -78,7 +78,7 @@ internal static class SemanticChoiceResumeV111
         SemanticDrawChoiceV111.ValidateRecordedChoice(
             advanced, ownedDecision.Event, ownedDecision.SelectedIndex);
         return (
-            new SemanticCombatDrawResumeResultV111(advanced, remaining),
+            new PrototypeDrawCardsResumeResultV111(advanced, remaining),
             ownedDecision.Event.SiteId);
     }
 
@@ -145,7 +145,7 @@ internal static class SemanticChoiceResumeV111
     }
 
     internal static (
-        SemanticCombatDrawResumeResultV111 Progress,
+        PrototypeDrawCardsResumeResultV111 Progress,
         SemanticCardSelectionDecisionV111 Decision)
         ResumeStratagemSelection(
             RunState checkpoint,
@@ -167,7 +167,7 @@ internal static class SemanticChoiceResumeV111
         var (selectedRun, _) = Resume(checkpoint, decision);
 
         if (!automaticHandDraw)
-            return (new SemanticCombatDrawResumeResultV111(
+            return (new PrototypeDrawCardsResumeResultV111(
                 selectedRun,
                 PrototypeGameEngine.GetSemanticDrawRemainingCount(
                     selectedRun, remaining, drawnBefore)),
@@ -195,7 +195,7 @@ internal static class SemanticChoiceResumeV111
             checkpoint.Fork(), ownedDecision);
     }
 
-    internal static SemanticCombatDrawResumeResultV111
+    internal static PrototypeDrawCardsResumeResultV111
         ResumeCombatDrawCost(
             RunState checkpoint, int selectedCost, int remainingCount,
             int cardsDrawnBefore)
@@ -212,7 +212,7 @@ internal static class SemanticChoiceResumeV111
             var advanced = SemanticCostChoiceV111.ResumeEffectDrawCost(
                 run, selectedCost,
                 allowEngineOwnedPrototypeReward: false);
-            return new SemanticCombatDrawResumeResultV111(
+            return new PrototypeDrawCardsResumeResultV111(
                 advanced,
                 PrototypeGameEngine.GetSemanticDrawRemainingCount(
                     advanced, remainingCount, cardsDrawnBefore));

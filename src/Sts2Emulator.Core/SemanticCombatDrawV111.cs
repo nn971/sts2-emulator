@@ -745,7 +745,7 @@ public static class SemanticCombatDrawEngineV111
             var resumedCost = ControlledChanceContinuationExecutorV111
                 .ResolveSelectedIndex<
                 SemanticCombatDrawV111,
-                SemanticCombatDrawResumeResultV111>(
+                PrototypeDrawCardsResumeResultV111>(
                 state, costRequest, selectedIndex, (checkpoint, replayedIndex) =>
                 {
                     var checkpointCombat = checkpoint.Run.World?.Combat ??

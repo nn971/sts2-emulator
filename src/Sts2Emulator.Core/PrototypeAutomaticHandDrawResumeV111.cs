@@ -377,7 +377,7 @@ public sealed partial class PrototypeGameEngine
     /// Provider adapters supply their draw policy and semantic frame; this
     /// boundary publishes the resumed cards through the matching adapter.
     /// </summary>
-    private static SemanticCombatDrawResumeResultV111
+    private static PrototypeDrawCardsResumeResultV111
         ResumeAutomaticHandDrawCost(
             RunState checkpoint,
             PrototypeControlledDrawCostV111 cost,
@@ -398,7 +398,7 @@ public sealed partial class PrototypeGameEngine
             checkpoint, cost, selectedCost, suspensionPolicy,
             allowHookSuspension, unsupportedBoundaryMessage, semantic);
         if (resumed.Drawn is not { } drawn)
-            return new SemanticCombatDrawResumeResultV111(
+            return new PrototypeDrawCardsResumeResultV111(
                 resumed.Run, cost.RemainingCount);
 
         if (semantic)
@@ -416,7 +416,7 @@ public sealed partial class PrototypeGameEngine
         if (resumed.SemanticRequested is not null)
             throw new InvalidDataException(
                 "Controlled automatic draw acquired semantic progress.");
-        return new SemanticCombatDrawResumeResultV111(
+        return new PrototypeDrawCardsResumeResultV111(
             ContinueControlledHandDraw(resumed.Run, drawn),
             drawn.RemainingCount);
     }
