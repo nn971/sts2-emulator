@@ -212,8 +212,21 @@ public sealed partial class PrototypeGameEngine
             int selectedCost,
             PrototypeDrawCardsSuspensionPolicyV111 suspensionPolicy,
             bool allowHookSuspension,
-            string unsupportedBoundaryMessage)
+            string unsupportedBoundaryMessage,
+            bool semantic,
+            int? semanticRequested)
     {
+        var combat = RequireWorld(checkpoint).Combat ??
+            throw new InvalidDataException(
+                "Automatic draw-cost resume has no combat.");
+        int? savedRequested = ValidateAutomaticHandDrawCostCheckpoint(
+            combat, cost, semantic);
+        if (savedRequested != semanticRequested ||
+            !ValidateControlledDrawCost(
+                checkpoint.Player, combat, cost))
+            throw new InvalidDataException(
+                "Automatic draw-cost resume does not match its saved choice.");
+
         var costProgress = ResolveDrawCostAndDispatchCardDrawn(
             checkpoint, cost, selectedCost, allowHookSuspension);
         if (costProgress.CostStagePending)

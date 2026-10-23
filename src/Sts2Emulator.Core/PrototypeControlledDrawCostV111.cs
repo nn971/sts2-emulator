@@ -196,11 +196,6 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidOperationException("Missing drawn-card cost choice.");
         var cost = pending.ControlledDrawCost ??
             throw new InvalidOperationException("No controlled drawn-card cost.");
-        ValidateAutomaticHandDrawCostCheckpoint(
-            combat, cost, semantic: false);
-        if (!ValidateControlledDrawCost(state.Player, combat, cost))
-            throw new InvalidDataException(
-                "Saved drawn-card cost does not match the hand-draw checkpoint.");
         var resumed = ResumeAutomaticHandDrawAfterCost(
             state, cost, value,
             PrototypeDrawCardsSuspensionPolicyV111
@@ -209,7 +204,9 @@ public sealed partial class PrototypeGameEngine
                 !ControlledChanceGuardV111.EngineOwnedNativeProviderActive,
             unsupportedBoundaryMessage:
                 "UNSUPPORTED_CONTROLLED_CHANCE site=combat.draw_cost." +
-                "drawn_event operation=nested_choice");
+                "drawn_event operation=nested_choice",
+            semantic: false,
+            semanticRequested: null);
         return resumed.Drawn is null
             ? resumed.Run
             : ContinueControlledHandDraw(resumed.Run, resumed.Drawn);
