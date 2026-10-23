@@ -3352,3 +3352,13 @@ standalone hook marker. The operation queue, RNG, and provider transcript
 owners remain in their existing boundaries. Broader draw-resume policy
 consolidation and cross-provider mechanical equivalence remain open. Static
 source review and `git diff --check` only; no tests or builds were run.
+
+**S4 provider-neutral draw continuation owner increment (2026-10-24):**
+`AdvanceControlledSemanticDrawFrame` and
+`AttachDrawCardsAtCardDrawnChoice` now live in
+`PrototypeDrawCardsContinuationV111`, where initial effect resolution and
+resumed semantic draws use the same state-only mechanics. Run publication and
+provider transcripts remain with their existing owners. No snapshot or
+transcript format changed. Broader draw-resume policy consolidation and
+cross-provider mechanical equivalence remain open. Static source review and
+`git diff --check` only; no tests or builds were run.

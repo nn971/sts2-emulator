@@ -361,6 +361,9 @@ prepends the saved draw operation to the effect suffix, and applies the
 standalone hook marker at one boundary; the resolver still owns its queue and
 RNG state, and semantic transcripts remain in their provider owner.
 
+The state-only frame advancement and choice attachment helpers live in
+`PrototypeDrawCardsContinuationV111`; run publication stays in the adapter.
+
 The semantic draw continuation boundaries now use `AdvanceControlledSemanticDrawFrame` for remaining-count and deferred-identity progress. After-shuffle insertion, Stratagem selection, nested `CardDrawn` choice, and nested-effect completion therefore advance the same mechanics frame before applying their boundary-specific continuation policy.
 
 When the resumed ordinary pipeline ends in Reward or Terminal after hand draw, `SemanticEndTurnV111` now completes with that engine result and keeps the completed draw projection for transcript replay. It still rejects an unfinished draw and checks the next-player boundary for combat-phase completion.

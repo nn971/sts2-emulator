@@ -524,28 +524,6 @@ public sealed partial class PrototypeGameEngine
                 Operations: [], PendingDiscardEvents: [],
                 PendingSlyCardInstanceIds: [], CompletionEvents: []);
 
-    private static PrototypeControlledSemanticDrawV111
-        AdvanceControlledSemanticDrawFrame(
-            PrototypeControlledSemanticDrawV111 draw,
-            int remainingCount,
-            long[] drawnCardInstanceIds,
-            bool accumulateDrawnCardIds,
-            bool? stratagemSelectionPending = null)
-    {
-        var deferredKeywordIds = accumulateDrawnCardIds
-            ? AccumulateDrawnCardInstanceIds(
-                draw.DeferredKeywordCardInstanceIds,
-                drawnCardInstanceIds)
-            : draw.DeferredKeywordCardInstanceIds;
-        return draw with
-        {
-            RemainingCount = remainingCount,
-            DeferredKeywordCardInstanceIds = deferredKeywordIds,
-            StratagemSelectionPending =
-                stratagemSelectionPending ?? draw.StratagemSelectionPending
-        };
-    }
-
     private static RunState SuspendStandaloneSemanticDrawForHookChoice(
         RunState run, PrototypeDrawCardsResult drawn, bool fromHandDraw)
     {
@@ -593,37 +571,6 @@ public sealed partial class PrototypeGameEngine
             combat, remaining, draw, continuation, drawnCardInstanceIds,
             accumulateDrawnCardIds, markStandaloneHookChoice);
         return PublishDrawMechanicsState(run, player, combat);
-    }
-
-    private static CombatState AttachDrawCardsAtCardDrawnChoice(
-        CombatState combat,
-        int remaining,
-        PrototypeControlledSemanticDrawV111 draw,
-        PrototypeChoiceResolutionContinuationState continuation,
-        long[] drawnCardInstanceIds,
-        bool accumulateDrawnCardIds,
-        bool markStandaloneHookChoice)
-    {
-        var resumedDraw = AdvanceControlledSemanticDrawFrame(
-            draw, remaining, drawnCardInstanceIds,
-            accumulateDrawnCardIds);
-        var resumeDraw = CreateDrawResumeOperation(
-            resumedDraw.RemainingCount, resumedDraw.FromHandDraw,
-            resumedDraw.EventDepth, resumedDraw.DrawnCardKeyword,
-            resumedDraw.DeferredKeywordCardInstanceIds,
-            resumedDraw.StandaloneSemanticDrawSegment,
-            resumedDraw.DrawEqualSelectionCount);
-        combat = AttachDrawResumeContinuation(
-            combat, resumeDraw, continuation);
-        if (markStandaloneHookChoice)
-            combat = combat with
-            {
-                PendingChoice = combat.PendingChoice! with
-                {
-                    StandaloneSemanticDrawHookChoice = true
-                }
-            };
-        return combat;
     }
 
     /// <summary>
