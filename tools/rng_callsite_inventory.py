@@ -21,7 +21,7 @@ from urllib.parse import unquote, urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v43"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v44"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 
 CALL_PATTERN = re.compile(
@@ -1003,6 +1003,11 @@ def _guarded_site_values(
                   else next_declaration.start())
     member_source = source[member_start:member_end]
     name = identifier.group("name")
+    direct_guard_values = _direct_fail_closed_site_values(
+        member_source, name, local_constants, global_constants
+    )
+    if direct_guard_values:
+        return direct_guard_values
     if ("NotSupportedException" not in member_source or
             not re.search(rf"\{{[^{{}}]*\b{re.escape(name)}\b[^{{}}]*\}}|"
                           rf"nameof\(\s*{re.escape(name)}\s*\)",
@@ -1177,6 +1182,8 @@ def _guarded_site_values(
         )
         if registry_method is None:
             return []
+
+
         parameter = registry_method.group("parameter")
         method_body = re.sub(r"\s+", "", registry_method.group("body"))
         method_prefix = (
@@ -1296,6 +1303,98 @@ def _guarded_site_values(
             match.group("value"), local_constants, global_constants
         ))
     return sorted(values)
+
+
+def _direct_fail_closed_site_values(
+    member_source: str,
+    name: str,
+    local_constants: dict[str, set[str]],
+    global_constants: dict[str, set[str]],
+) -> list[str]:
+    """Resolve one SiteId equality enforced by a throwing condition."""
+    site_expression = (
+        r"(?:[A-Za-z_][A-Za-z0-9_]*"
+        r"(?:\s*\.\s*[A-Za-z_][A-Za-z0-9_]*)*|"
+        r'"(?:[^"\\]|\\.)*")'
+    )
+    comparison = re.compile(
+        rf"{re.escape(name)}\s*!=\s*(?P<site>{site_expression})"
+    )
+    conditions: list[str] = []
+    for match in re.finditer(r"\bif\s*\(", member_source):
+        opening = member_source.find("(", match.start())
+        depth = 0
+        in_string = False
+        escaped = False
+        closing = None
+        for index in range(opening, len(member_source)):
+            character = member_source[index]
+            if in_string:
+                if escaped:
+                    escaped = False
+                elif character == "\\":
+                    escaped = True
+                elif character == '"':
+                    in_string = False
+                continue
+            if character == '"':
+                in_string = True
+            elif character == "(":
+                depth += 1
+            elif character == ")":
+                depth -= 1
+                if depth == 0:
+                    closing = index
+                    break
+        if closing is None or not re.match(
+            r"\s*throw\s+new\s+NotSupportedException\b",
+            member_source[closing + 1:],
+        ):
+            continue
+        condition = member_source[opening + 1:closing]
+        parts: list[str] = []
+        start = 0
+        depth = 0
+        in_string = False
+        escaped = False
+        index = 0
+        while index < len(condition):
+            character = condition[index]
+            if in_string:
+                if escaped:
+                    escaped = False
+                elif character == "\\":
+                    escaped = True
+                elif character == '"':
+                    in_string = False
+                index += 1
+                continue
+            if character == '"':
+                in_string = True
+            elif character == "(":
+                depth += 1
+            elif character == ")":
+                depth -= 1
+            elif depth == 0 and condition.startswith("||", index):
+                parts.append(condition[start:index].strip())
+                start = index + 2
+                index += 2
+                continue
+            index += 1
+        parts.append(condition[start:].strip())
+        if not all(part and "&&" not in part for part in parts):
+            continue
+        matches = [comparison.fullmatch(part) for part in parts]
+        site_matches = [item for item in matches if item is not None]
+        if len(site_matches) != 1:
+            continue
+        resolved = _resolve_site_values(
+            site_matches[0].group("site"),
+            local_constants, global_constants,
+        )
+        if resolved:
+            conditions.extend(resolved)
+    return sorted(set(conditions))
 
 
 def _resolve_site_array_property(
