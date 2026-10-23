@@ -4304,7 +4304,11 @@ public static class SemanticPilotCombatEngineV111
             {
                 if ((!semanticDrawCard && !semanticAutoplayCard &&
                      !semanticDrawPileSelectionCard &&
-                     !semanticRandomRareToHandCard) || next is null)
+                     !semanticRandomRareToHandCard &&
+                     !SemanticPlayerActionEngineV111
+                        .IsSupportedNostalgiaDrawReturn(
+                            source, result, resolvedAction.Action)) ||
+                    next is null)
                     throw new NotSupportedException(
                         "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
                         "operation=unmodeled_draw_pile_mutation");

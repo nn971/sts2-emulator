@@ -5,9 +5,9 @@ namespace Sts2Emulator.Core;
 
 /// <summary>
 /// A restricted real player-action segment between controlled Nature
-/// boundaries. The semantic provider is NOT reinitialized. Only actions
-/// with audited, draw-pile-neutral semantics are allowed in this version;
-/// all unsupported card/relic effects fail before a child is published.
+/// boundaries. The semantic provider is NOT reinitialized. Supported actions
+/// must finish at a player boundary with a valid provider-owned deck; all
+/// unsupported chance and card effects fail before a child is published.
 /// </summary>
 public sealed record SemanticPlayerActionV111(
     RunState Origin, RunState Run, string ActionId, string ActionKind)
@@ -25,9 +25,9 @@ public sealed record SemanticPlayerActionV111(
 
 public static class SemanticPlayerActionEngineV111
 {
-    // This first gate has verified source card effects with no primitive
-    // draw-pile mutation. The full action/effect state machine will replace
-    // this allowlist as semantic continuations become available.
+    // Source-action admission remains explicit. Any known draw-pile changes
+    // must pass through SemanticDrawPileAdapterV111 and preserve the Nature
+    // boundary; stochastic and interactive effects use their own continuations.
     private static readonly HashSet<string> SupportedCards =
         new(StringComparer.Ordinal)
         {
@@ -105,6 +105,7 @@ public static class SemanticPlayerActionEngineV111
             "proto.colorless.dramatic_entrance",
             "proto.colorless.bolas",
             "proto.colorless.calamity",
+            "proto.colorless.nostalgia",
             "proto.colorless.ultimate_strike",
             "proto.colorless.ultimate_defend",
             "proto.colorless.shockwave",
@@ -140,6 +141,45 @@ public static class SemanticPlayerActionEngineV111
         && PrototypeContent.Card(cardId) is
             { MechanicsImplemented: true, MultiplayerOnly: false };
 
+    internal static bool IsSupportedNostalgiaDrawReturn(
+        RunState source, RunState result, GameAction action)
+    {
+        if (action.Kind != "play_card"
+            || source.World?.Combat is not { } before
+            || result.Phase != RunPhase.Combat
+            || result.World?.Combat is not { } after)
+            return false;
+
+        var payload = action.ReadPayload<PlayCardPayload>();
+        var card = before.Cards.SingleOrDefault(item =>
+            item.InstanceId == payload.CardInstanceId);
+        if (card is null
+            || !before.Hand.Contains(card.InstanceId)
+            || PrototypeContent.Card(card.CardId).Type is not
+                (PrototypeCardType.Attack or PrototypeCardType.Skill))
+            return false;
+
+        var playedCardCount = after.CounterState.AttacksPlayedThisTurn
+            + after.CounterState.SkillsPlayedThisTurn;
+        if (!after.PlayerPowers.Any(power => power.Stacks > playedCardCount
+                && PrototypeContent.Power(power.PowerId)
+                    .PlayedAttacksAndSkillsReturnToDraw))
+            return false;
+
+        var expectedZones = before.Mechanics.CardZones.WithZoneChanges(
+            new Dictionary<PrototypeCardZone, long[]>
+            {
+                [PrototypeCardZone.DrawPile] = before.DrawPile
+                    .Append(card.InstanceId).ToArray(),
+                [PrototypeCardZone.Hand] = before.Hand
+                    .Where(id => id != card.InstanceId).ToArray()
+            });
+        return CanonicalJson.Sha256(expectedZones)
+                == CanonicalJson.Sha256(after.Mechanics.CardZones)
+            && after.DrawPile.SequenceEqual(
+                before.DrawPile.Append(card.InstanceId));
+    }
+
     public static string[] SupportedCardIds =>
         SupportedCards.Where(SupportsCard)
             .Order(StringComparer.Ordinal).ToArray();
@@ -174,17 +214,18 @@ public static class SemanticPlayerActionEngineV111
         using (ControlledChanceGuardV111.Enter())
             run = environment.Step(source.Fork(), actionId).State;
         // The allowlisted action may still activate an unmodeled relic,
-        // power, draw hook or enemy mechanic. Assert the hidden deck is
-        // untouched before accepting the advanced player boundary.
+        // power, draw hook or enemy mechanic. Any supported deck change must
+        // be the exact Nostalgia source return committed by the shared adapter.
         var afterCombat = run.World?.Combat;
         if (!PrototypeGameEngine
                 .IsAtCombatPlayerDecisionBoundary(run) || afterCombat is null)
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
                 "operation=action_crossed_chance_or_turn_boundary");
-        if (!combat.DrawPile.SequenceEqual(afterCombat.DrawPile) ||
-            CanonicalJson.Sha256(combat.Stochastic.SemanticDeck) !=
-                CanonicalJson.Sha256(afterCombat.Stochastic.SemanticDeck))
+        if ((!combat.DrawPile.SequenceEqual(afterCombat.DrawPile) ||
+             CanonicalJson.Sha256(combat.Stochastic.SemanticDeck) !=
+                CanonicalJson.Sha256(afterCombat.Stochastic.SemanticDeck)) &&
+            !IsSupportedNostalgiaDrawReturn(source, run, action))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
                 "operation=unmodeled_draw_pile_mutation");
@@ -220,14 +261,19 @@ public static class SemanticPlayerActionEngineV111
         ArgumentNullException.ThrowIfNull(state);
         ValidateBoundary(state.Origin);
         ValidateBoundary(state.Run);
-        if (state.ActionKind != "play_card" ||
-            string.IsNullOrWhiteSpace(state.ActionId) ||
-            !state.Origin.World!.Combat!.DrawPile.SequenceEqual(
-                state.Run.World!.Combat!.DrawPile) ||
-            CanonicalJson.Sha256(state.Origin.World.Combat.Stochastic.SemanticDeck) !=
-                CanonicalJson.Sha256(state.Run.World.Combat.Stochastic.SemanticDeck))
+        var sourceAction = string.IsNullOrWhiteSpace(state.ActionId)
+            ? null
+            : new PrototypeAiEnvironment().ResolvePlayerAction(
+                state.Origin, state.ActionId).Action;
+        if (state.ActionKind != "play_card" || sourceAction is null ||
+            ((!state.Origin.World!.Combat!.DrawPile.SequenceEqual(
+                  state.Run.World!.Combat!.DrawPile) ||
+              CanonicalJson.Sha256(state.Origin.World.Combat.Stochastic.SemanticDeck) !=
+                  CanonicalJson.Sha256(state.Run.World.Combat.Stochastic.SemanticDeck)) &&
+             !IsSupportedNostalgiaDrawReturn(
+                 state.Origin, state.Run, sourceAction)))
             throw new InvalidDataException(
-                "Semantic player action changed provider-owned hidden deck.");
+                "Semantic player action changed provider-owned hidden deck outside a supported source return.");
     }
 
     public static void ValidateBoundary(RunState run)

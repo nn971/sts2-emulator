@@ -921,17 +921,20 @@ order. No chance owner or snapshot schema was added. Static source review and
 
 ## 2026-10-23: deterministic Colorless player actions
 
-The existing draw-pile-neutral semantic player-action gate now admits 31
+The existing semantic player-action gate now admits 32
 modeled deterministic Colorless cards, including legal enemy-target actions.
 Rend uses its target-debuff damage count; Bolas and Thrumming Hatchet reuse the
 existing last-turn rebound hook and semantic draw-pile adapter. Calamity
 installs its modeled power, and later Attack-triggered model picks use the
-existing generated-card continuation. These actions use the ordinary AI action
-engine under the controlled-chance guard and retain physical and provider
-draw-pile equality checks. Mayhem, Entropy, and Stratagem continue through
-their existing owners. Random generation, direct draws, and interactive
-choices remain with their specialized continuations. Static source review and
-`git diff --check` only; no tests or builds were run.
+existing generated-card continuation. Nostalgia's attack and skill returns are
+admitted only when the completed action appends that physical source card to
+the draw pile under the active power's stack condition; the existing adapter
+commits the known insertion. All actions use the ordinary AI action engine
+under the controlled-chance guard and validate physical and provider draw-pile
+state at the resulting player boundary. Mayhem, Entropy, and Stratagem continue
+through their existing owners. Other random generation, direct draws, and
+interactive choices remain with their specialized continuations. Static source
+review and `git diff --check` only; no tests or builds were run.
 
 ## 2026-10-23: deterministic outside-combat potion actions
 
