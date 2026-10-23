@@ -73,6 +73,160 @@ public sealed record SemanticGeneratedCardDecisionV111(
     };
 }
 
+/// <summary>Pairs a Native generated-card model result with the exact
+/// primitive selection ticket and its source operation.</summary>
+public sealed record SemanticGeneratedCardNativeAuditV111(
+    string SchemaId, string EventId, string BoundaryFingerprint,
+    string SourceOperationKind, long? SourceCardInstanceId,
+    SemanticGeneratedCardDecisionV111 Outcome,
+    RandomIndexDecisionV111 ProviderDecision)
+{
+    public const string CurrentSchemaId =
+        "sts2-v111-semantic-generated-card-native-audit-v1";
+
+    internal static bool IsSupportedAuditSite(string siteId) =>
+        siteId is StochasticSiteRegistryV111.CombatGeneratedCardSelectSiteId or
+            StochasticSiteRegistryV111.CombatRandomDrawAttackCardModelSiteId;
+
+    public SemanticGeneratedCardNativeAuditV111 Fork() => this with
+    {
+        Outcome = Outcome.Fork(),
+        ProviderDecision = ProviderDecision with
+        {
+            Request = ProviderDecision.Request with
+            {
+                OrderedCandidates = (int[])ProviderDecision.Request
+                    .OrderedCandidates.Clone()
+            }
+        }
+    };
+
+    public static SemanticGeneratedCardNativeAuditV111 Create(
+        RandomIndexDecisionV111 providerDecision,
+        IReadOnlyList<string> candidateCardIds,
+        PrototypeCombatEffectKind sourceOperationKind,
+        long? sourceCardInstanceId)
+    {
+        ArgumentNullException.ThrowIfNull(providerDecision);
+        ArgumentNullException.ThrowIfNull(candidateCardIds);
+        providerDecision.Validate();
+        var request = providerDecision.Request;
+        var candidates = candidateCardIds.ToArray();
+        var operation = sourceOperationKind.ToString();
+        var expectedOwnerId = OwnerIdFor(
+            operation, sourceCardInstanceId, candidates);
+        if (providerDecision.ProviderMode != "native-v111" ||
+            !IsSupportedAuditSite(request.SiteId) ||
+            request.OwnerId != expectedOwnerId ||
+            request.OperationKind != "choose_index" ||
+            request.SupportCount != candidates.Length ||
+            !request.OrderedCandidates.SequenceEqual(
+                Enumerable.Range(0, candidates.Length)) ||
+            candidates.Length == 0 ||
+            candidates.Any(string.IsNullOrWhiteSpace) ||
+            candidates.Distinct(StringComparer.Ordinal).Count() !=
+                candidates.Length ||
+            providerDecision.SelectedIndex < 0 ||
+            providerDecision.SelectedIndex >= candidates.Length)
+            throw new InvalidDataException(
+                "Native generated-card audit has an unsupported request or model support.");
+
+        var boundaryFingerprint = BoundaryFingerprintFor(
+            request, operation, sourceCardInstanceId);
+        var semanticEvent = SemanticGenerationChoiceV111.CreateEvent(
+            boundaryFingerprint, request.SiteId, request.OwnerId,
+            request.Ordinal, candidates, request.StreamId);
+        var semanticOutcome = SemanticGenerationChoiceV111.Select(
+            semanticEvent, semanticEvent.EventId,
+            candidates[providerDecision.SelectedIndex]);
+        var eventId = CanonicalJson.Sha256(new
+        {
+            schemaId = CurrentSchemaId,
+            semanticOutcome,
+            providerDecision
+        });
+        var audit = new SemanticGeneratedCardNativeAuditV111(
+            CurrentSchemaId, eventId, boundaryFingerprint, operation,
+            sourceCardInstanceId, semanticOutcome, providerDecision with
+            {
+                Request = request with
+                {
+                    OrderedCandidates = (int[])request.OrderedCandidates
+                        .Clone()
+                }
+            });
+        audit.Validate();
+        return audit;
+    }
+
+    public void Validate()
+    {
+        ArgumentNullException.ThrowIfNull(Outcome);
+        ArgumentNullException.ThrowIfNull(ProviderDecision);
+        Outcome.Validate();
+        ProviderDecision.Validate();
+        var semanticEvent = Outcome.Event;
+        var request = ProviderDecision.Request;
+        var expectedBoundaryFingerprint = BoundaryFingerprintFor(
+            request, SourceOperationKind, SourceCardInstanceId);
+        var expectedOwnerId = OwnerIdFor(
+            SourceOperationKind, SourceCardInstanceId,
+            semanticEvent.CandidateCardIds);
+        var expectedEvent = SemanticGenerationChoiceV111.CreateEvent(
+            expectedBoundaryFingerprint, request.SiteId, request.OwnerId,
+            request.Ordinal, semanticEvent.CandidateCardIds,
+            request.StreamId);
+        if (SchemaId != CurrentSchemaId ||
+            ProviderDecision.ProviderMode != "native-v111" ||
+            !IsSupportedAuditSite(request.SiteId) ||
+            request.OperationKind != "choose_index" ||
+            !request.OrderedCandidates.SequenceEqual(
+                Enumerable.Range(0,
+                    semanticEvent.CandidateCardIds.Length)) ||
+            request.SupportCount != semanticEvent.CandidateCardIds.Length ||
+            request.OwnerId != expectedOwnerId ||
+            semanticEvent.SiteId != request.SiteId ||
+            semanticEvent.StreamId != request.StreamId ||
+            semanticEvent.OwnerId != request.OwnerId ||
+            semanticEvent.Ordinal != request.Ordinal ||
+            string.IsNullOrWhiteSpace(SourceOperationKind) ||
+            ProviderDecision.SelectedIndex < 0 ||
+            ProviderDecision.SelectedIndex >=
+                semanticEvent.CandidateCardIds.Length ||
+            Outcome.SelectedIndex != ProviderDecision.SelectedIndex ||
+            Outcome.SelectedCardId != semanticEvent.CandidateCardIds[
+                ProviderDecision.SelectedIndex] ||
+            CanonicalJson.Sha256(Outcome.Event) !=
+                CanonicalJson.Sha256(expectedEvent) ||
+            BoundaryFingerprint != expectedBoundaryFingerprint ||
+            EventId != CanonicalJson.Sha256(new
+            {
+                schemaId = SchemaId,
+                semanticOutcome = Outcome,
+                providerDecision = ProviderDecision
+            }))
+            throw new InvalidDataException(
+                "Invalid Native generated-card model audit outcome.");
+    }
+
+    private static string BoundaryFingerprintFor(
+        RandomIndexRequestV111 request, string sourceOperationKind,
+        long? sourceCardInstanceId) => CanonicalJson.Sha256(new
+        {
+            schemaId = CurrentSchemaId,
+            request,
+            sourceOperationKind,
+            sourceCardInstanceId
+        });
+
+    private static string OwnerIdFor(string sourceOperationKind,
+        long? sourceCardInstanceId, IReadOnlyList<string> candidates) =>
+        (sourceCardInstanceId is { } sourceCardId
+            ? "card_instance:" + sourceCardId
+            : "effect:" + sourceOperationKind) + ":pool:" +
+        CanonicalJson.Sha256(candidates);
+}
+
 public static class SemanticGenerationChoiceV111
 {
     public const string SchemaId = "sts2-v111-semantic-generation-choice-v1";

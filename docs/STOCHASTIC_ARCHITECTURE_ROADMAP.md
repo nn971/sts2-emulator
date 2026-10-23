@@ -11,6 +11,15 @@ complete coverage for registered pool-shuffle sites. Source-pool eligibility,
 Native stream attribution, and cursor parity remain open. Static source review
 and `git diff --check` only; no tests or builds were run.
 
+**D2 Native generated-card model outcome audit increment (2026-10-23):**
+Native generated-card model requests now retain the selected model and ordered
+source pool through `SemanticGeneratedCardEventV111`, paired with the exact
+Native request, cursor span, source operation and source card identity. New
+Native-policy audits require one typed result for each supported generated-card
+selection request. Pool completeness, stream attribution and cursor parity
+remain open. Static source review and `git diff --check` only; no tests or
+builds were run.
+
 **S0 stochastic SiteId ownership consolidation (2026-10-23):** The registry
 now owns the identifiers for random hand-cost selection and resolution,
 draw-cost choices, potion generation, card transforms, and the semantic

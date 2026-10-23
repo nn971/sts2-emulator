@@ -187,6 +187,8 @@ public sealed record SemanticNativePolicyAuditV111(
         "sts2-v111-native-card-energy-cost-audit-v1";
     public const string PoolShuffleAuditSchemaV1 =
         "sts2-v111-native-pool-shuffle-audit-v1";
+    public const string GeneratedCardModelAuditSchemaV1 =
+        "sts2-v111-native-generated-card-model-audit-v1";
     public const string ProviderTraceSchemaV1 =
         "sts2-v111-native-policy-mixed-trace-v1";
 
@@ -202,6 +204,9 @@ public sealed record SemanticNativePolicyAuditV111(
     /// <summary>Null for older snapshots that predate semantic ordered
     /// support annotations for Native combat pool shuffles.</summary>
     public string? PoolShuffleAuditSchema { get; init; }
+    /// <summary>Null for older snapshots that predate typed Native generated
+    /// card model results.</summary>
+    public string? GeneratedCardModelAuditSchema { get; init; }
     /// <summary>Null for older snapshots that did not require a complete
     /// mixed provider trace.</summary>
     public string? ProviderTraceSchema { get; init; }
@@ -216,6 +221,8 @@ public sealed record SemanticNativePolicyAuditV111(
     private SemanticCardInstanceIndexAuditV111[]? _cardInstanceIndexOutcomes = [];
     private SemanticCardEnergyCostAuditV111[]? _cardEnergyCostOutcomes = [];
     private SemanticPoolShuffleDecisionV111[]? _poolShuffleOutcomes = [];
+    private SemanticGeneratedCardNativeAuditV111[]?
+        _generatedCardModelOutcomes = [];
 
     public RandomBoundaryEventV111[] Decisions
     {
@@ -249,6 +256,14 @@ public sealed record SemanticNativePolicyAuditV111(
         get => ClonePoolShuffleOutcomes(_poolShuffleOutcomes)!;
         init => _poolShuffleOutcomes = ClonePoolShuffleOutcomes(value);
     }
+    public SemanticGeneratedCardNativeAuditV111[]
+        GeneratedCardModelOutcomes
+    {
+        get => CloneGeneratedCardModelOutcomes(
+            _generatedCardModelOutcomes)!;
+        init => _generatedCardModelOutcomes =
+            CloneGeneratedCardModelOutcomes(value);
+    }
 
     public SemanticNativePolicyAuditV111 Fork() => this with
     {
@@ -261,7 +276,9 @@ public sealed record SemanticNativePolicyAuditV111(
         CardEnergyCostOutcomes = CloneCardEnergyCostOutcomes(
             _cardEnergyCostOutcomes)!,
         PoolShuffleOutcomes = ClonePoolShuffleOutcomes(
-            _poolShuffleOutcomes)!
+            _poolShuffleOutcomes)!,
+        GeneratedCardModelOutcomes = CloneGeneratedCardModelOutcomes(
+            _generatedCardModelOutcomes)!
     };
 
     private static RandomBoundaryEventV111[]? CloneEvents(
@@ -294,6 +311,12 @@ public sealed record SemanticNativePolicyAuditV111(
         values?.Select(value => value is null ? null! : value.Fork())
             .ToArray();
 
+    private static SemanticGeneratedCardNativeAuditV111[]?
+        CloneGeneratedCardModelOutcomes(
+            SemanticGeneratedCardNativeAuditV111[]? values) =>
+        values?.Select(value => value is null ? null! : value.Fork())
+            .ToArray();
+
     public void Validate()
     {
         var decisions = _decisions;
@@ -302,12 +325,14 @@ public sealed record SemanticNativePolicyAuditV111(
         var cardInstanceIndexOutcomes = _cardInstanceIndexOutcomes;
         var cardEnergyCostOutcomes = _cardEnergyCostOutcomes;
         var poolShuffleOutcomes = _poolShuffleOutcomes;
+        var generatedCardModelOutcomes = _generatedCardModelOutcomes;
         if (ProviderId != NativeProviderId ||
             ProbabilityStatus != "UNVERIFIED" || decisions is null ||
             providerTrace is null || weightedIntentOutcomes is null ||
             cardInstanceIndexOutcomes is null ||
             cardEnergyCostOutcomes is null ||
             poolShuffleOutcomes is null ||
+            generatedCardModelOutcomes is null ||
             (WeightedIntentAuditSchema is not null &&
              WeightedIntentAuditSchema != WeightedIntentAuditSchemaV1) ||
             (CardInstanceIndexAuditSchema is not null &&
@@ -316,6 +341,9 @@ public sealed record SemanticNativePolicyAuditV111(
              CardEnergyCostAuditSchema != CardEnergyCostAuditSchemaV1) ||
             (PoolShuffleAuditSchema is not null &&
              PoolShuffleAuditSchema != PoolShuffleAuditSchemaV1) ||
+            (GeneratedCardModelAuditSchema is not null &&
+             GeneratedCardModelAuditSchema !=
+                GeneratedCardModelAuditSchemaV1) ||
             (ProviderTraceSchema is not null &&
              ProviderTraceSchema != ProviderTraceSchemaV1) ||
             (ProviderTraceSchema is null &&
@@ -499,6 +527,29 @@ public sealed record SemanticNativePolicyAuditV111(
             throw new InvalidDataException(
                 "Native policy pool-shuffle annotations end before a full permutation is recorded.");
 
+        var generatedCardEventIds = new HashSet<string>(StringComparer.Ordinal);
+        var generatedCardDecisionFingerprints = new HashSet<string>(
+            StringComparer.Ordinal);
+        foreach (var auditEntry in generatedCardModelOutcomes)
+        {
+            if (auditEntry is null)
+                throw new InvalidDataException(
+                    "Native generated-card model audit entry is null.");
+            auditEntry.Validate();
+            var decisionFingerprint = CanonicalJson.Sha256(
+                auditEntry.ProviderDecision);
+            var matchingDecisions = decisions.Count(decision =>
+                CanonicalJson.Sha256(new RandomIndexDecisionV111(
+                    decision.Request, decision.SelectedIndex,
+                    decision.ProviderMode, decision.NativeCursorBefore,
+                    decision.NativeCursorAfter)) == decisionFingerprint);
+            if (matchingDecisions != 1 ||
+                !generatedCardEventIds.Add(auditEntry.EventId) ||
+                !generatedCardDecisionFingerprints.Add(decisionFingerprint))
+                throw new InvalidDataException(
+                    "Native generated-card model outcome does not uniquely match its primitive decision.");
+        }
+
         var traceIndices = new List<RandomBoundaryEventV111>();
         var traceIntentDecisions = new List<RandomIndexDecisionV111>();
         var traceCardInstanceDecisions =
@@ -506,6 +557,8 @@ public sealed record SemanticNativePolicyAuditV111(
         var traceCardEnergyCostDecisions =
             new List<RandomIndexDecisionV111>();
         var tracePoolShuffleDecisions =
+            new List<RandomIndexDecisionV111>();
+        var traceGeneratedCardModelDecisions =
             new List<RandomIndexDecisionV111>();
         for (var index = 0; index < providerTrace.Length; index++)
         {
@@ -545,6 +598,13 @@ public sealed record SemanticNativePolicyAuditV111(
                 if (StochasticSiteRegistryV111.CombatCardPoolShuffleSiteIds
                     .Contains(value.Request.SiteId, StringComparer.Ordinal))
                     tracePoolShuffleDecisions.Add(
+                        new RandomIndexDecisionV111(
+                            value.Request, value.SelectedIndex,
+                            value.ProviderMode, value.NativeCursorBefore,
+                            value.NativeCursorAfter));
+                if (SemanticGeneratedCardNativeAuditV111
+                    .IsSupportedAuditSite(value.Request.SiteId))
+                    traceGeneratedCardModelDecisions.Add(
                         new RandomIndexDecisionV111(
                             value.Request, value.SelectedIndex,
                             value.ProviderMode, value.NativeCursorBefore,
@@ -650,6 +710,29 @@ public sealed record SemanticNativePolicyAuditV111(
                 if (matchingOutcomes != 1)
                     throw new InvalidDataException(
                         "Native pool-shuffle decision does not have exactly one ordered-support annotation.");
+            }
+        }
+
+        if (GeneratedCardModelAuditSchema ==
+                GeneratedCardModelAuditSchemaV1 ||
+            generatedCardModelOutcomes.Length > 0)
+        {
+            if (traceGeneratedCardModelDecisions.Count !=
+                generatedCardModelOutcomes.Length)
+                throw new InvalidDataException(
+                    "Native generated-card model outcomes are incomplete for their mixed trace.");
+
+            foreach (var generatedDecision in
+                traceGeneratedCardModelDecisions)
+            {
+                var decisionFingerprint = CanonicalJson.Sha256(
+                    generatedDecision);
+                var matchingOutcomes = generatedCardModelOutcomes.Count(
+                    outcome => CanonicalJson.Sha256(
+                        outcome.ProviderDecision) == decisionFingerprint);
+                if (matchingOutcomes != 1)
+                    throw new InvalidDataException(
+                        "Native generated-card model decision does not have exactly one typed outcome annotation.");
             }
         }
     }
@@ -1715,7 +1798,8 @@ public static class SemanticPilotCombatEngineV111
                 setupJournal.EntriesForProvider("native-v111"),
                 setupJournal.CardInstanceIndexOutcomes.ToArray(),
                 setupJournal.CardEnergyCostOutcomes.ToArray(),
-                setupJournal.PoolShuffleOutcomes.ToArray());
+                setupJournal.PoolShuffleOutcomes.ToArray(),
+                setupJournal.GeneratedCardModelOutcomes.ToArray());
         if (entry.FixtureDrawCostRelicId is { } relicId)
         {
             if (relicId != "proto.relic.snecko_eye")
@@ -2340,6 +2424,8 @@ public static class SemanticPilotCombatEngineV111
             setupJournal.CardEnergyCostOutcomes.ToArray();
         var nativePoolShuffleOutcomes =
             setupJournal.PoolShuffleOutcomes.ToArray();
+        var nativeGeneratedCardModelOutcomes =
+            setupJournal.GeneratedCardModelOutcomes.ToArray();
         var routeAudit = new SemanticSourceRouteAuditV111(
             SemanticSourceRouteAuditV111.SourceRouteProviderId,
             entry.RouteActOneRegion, actions.ToArray(), actualNodeId,
@@ -2496,6 +2582,8 @@ public static class SemanticPilotCombatEngineV111
                     CardEnergyCostOutcomes =
                         nativeCardEnergyCostOutcomes,
                     PoolShuffleOutcomes = nativePoolShuffleOutcomes,
+                    GeneratedCardModelOutcomes =
+                        nativeGeneratedCardModelOutcomes,
                     WeightedIntentAuditSchema =
                         SemanticNativePolicyAuditV111
                             .WeightedIntentAuditSchemaV1,
@@ -2508,6 +2596,9 @@ public static class SemanticPilotCombatEngineV111
                     PoolShuffleAuditSchema =
                         SemanticNativePolicyAuditV111
                             .PoolShuffleAuditSchemaV1,
+                    GeneratedCardModelAuditSchema =
+                        SemanticNativePolicyAuditV111
+                            .GeneratedCardModelAuditSchemaV1,
                     ProviderTraceSchema =
                         SemanticNativePolicyAuditV111
                             .ProviderTraceSchemaV1,
@@ -2527,7 +2618,9 @@ public static class SemanticPilotCombatEngineV111
         RandomBoundaryTranscriptEntryV111[] setupTrace,
         SemanticCardInstanceIndexAuditV111[] setupCardInstanceOutcomes,
         SemanticCardEnergyCostAuditV111[] setupCardEnergyCostOutcomes,
-        SemanticPoolShuffleDecisionV111[] setupPoolShuffleOutcomes)
+        SemanticPoolShuffleDecisionV111[] setupPoolShuffleOutcomes,
+        SemanticGeneratedCardNativeAuditV111[]
+            setupGeneratedCardModelOutcomes)
     {
         ArgumentNullException.ThrowIfNull(nativeStreams);
         ArgumentNullException.ThrowIfNull(formation);
@@ -2580,6 +2673,8 @@ public static class SemanticPilotCombatEngineV111
                 CardInstanceIndexOutcomes = setupCardInstanceOutcomes,
                 CardEnergyCostOutcomes = setupCardEnergyCostOutcomes,
                 PoolShuffleOutcomes = setupPoolShuffleOutcomes,
+                GeneratedCardModelOutcomes =
+                    setupGeneratedCardModelOutcomes,
                 WeightedIntentAuditSchema =
                     SemanticNativePolicyAuditV111
                         .WeightedIntentAuditSchemaV1,
@@ -2592,6 +2687,9 @@ public static class SemanticPilotCombatEngineV111
                 PoolShuffleAuditSchema =
                     SemanticNativePolicyAuditV111
                         .PoolShuffleAuditSchemaV1,
+                GeneratedCardModelAuditSchema =
+                    SemanticNativePolicyAuditV111
+                        .GeneratedCardModelAuditSchemaV1,
                 ProviderTraceSchema =
                     SemanticNativePolicyAuditV111
                         .ProviderTraceSchemaV1,
@@ -3237,6 +3335,8 @@ public static class SemanticPilotCombatEngineV111
             .CardEnergyCostOutcomes.ToArray();
         var poolShuffleOutcomes = boundaries
             .PoolShuffleOutcomes.ToArray();
+        var generatedCardModelOutcomes = boundaries
+            .GeneratedCardModelOutcomes.ToArray();
 
         if (result.Phase == RunPhase.Combat)
             ValidateNativePolicyBoundary(result);
@@ -3267,7 +3367,10 @@ public static class SemanticPilotCombatEngineV111
                     audit.CardEnergyCostOutcomes
                         .Concat(cardEnergyCostOutcomes).ToArray(),
                 PoolShuffleOutcomes = audit.PoolShuffleOutcomes
-                    .Concat(poolShuffleOutcomes).ToArray()
+                    .Concat(poolShuffleOutcomes).ToArray(),
+                GeneratedCardModelOutcomes =
+                    audit.GeneratedCardModelOutcomes
+                        .Concat(generatedCardModelOutcomes).ToArray()
             }
         };
         Validate(next);

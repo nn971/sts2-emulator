@@ -347,6 +347,12 @@ validates the complete descending swap chain, and requires one support record
 for every registered pool-shuffle ticket in newly marked Native-policy traces.
 This records the modeled pool and selected permutation; Native source-pool
 eligibility and stream attribution remain unverified.
+Native generated-card model selections now also retain the selected model,
+ordered source pool, source operation, exact selection ticket and Native cursor
+span by reusing `SemanticGeneratedCardEventV111`. Newly marked Native-policy
+audits require one typed result for each supported generated-card selection
+request.
+Pool completeness, stream attribution and cursor parity remain separate claims.
 New Native-policy audits also carry a mixed-trace schema marker; restore
 validation checks a fingerprint of the full retained trace and rejects a
 missing or truncated trace whenever Native decisions are retained. Older

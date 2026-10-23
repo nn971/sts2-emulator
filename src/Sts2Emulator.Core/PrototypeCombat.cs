@@ -14317,6 +14317,14 @@ public sealed partial class PrototypeGameEngine
                 siteId, streamId, ownerId, ordinal,
                 Enumerable.Range(0, candidateCardIds.Length).ToArray()),
             streams);
+        if (decision.ProviderMode == "native-v111" &&
+            RandomBoundaryJournalV111.HasActiveJournal &&
+            SemanticGeneratedCardNativeAuditV111.IsSupportedAuditSite(
+                decision.Request.SiteId))
+            RandomBoundaryJournalV111.RecordGeneratedCardModelOutcome(
+                SemanticGeneratedCardNativeAuditV111.Create(
+                    decision, candidateCardIds, operationKind,
+                    sourceCardInstanceId));
         var updated = native is null
             ? combat
             : combat with
