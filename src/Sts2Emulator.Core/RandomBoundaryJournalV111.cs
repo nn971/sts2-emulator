@@ -539,6 +539,10 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
         _cardInstanceIndexOutcomes = [];
     private readonly List<SemanticCardEnergyCostAuditV111>
         _cardEnergyCostOutcomes = [];
+    private readonly List<SemanticDrawInsertionNativeAuditV111>
+        _drawInsertionOutcomes = [];
+    private readonly List<SemanticEnemyPileInsertionNativeAuditV111>
+        _enemyPileInsertionOutcomes = [];
     private readonly List<SemanticPoolShuffleDecisionV111>
         _poolShuffleOutcomes = [];
     private readonly List<SemanticGeneratedCardNativeAuditV111>
@@ -597,6 +601,16 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
     /// energy-cost sites.</summary>
     public IReadOnlyList<SemanticCardEnergyCostAuditV111>
         CardEnergyCostOutcomes => _cardEnergyCostOutcomes
+            .Select(outcome => outcome.Fork()).ToArray();
+
+    /// <summary>Typed Native draw-pile insertion positions and supports.</summary>
+    public IReadOnlyList<SemanticDrawInsertionNativeAuditV111>
+        DrawInsertionOutcomes => _drawInsertionOutcomes
+            .Select(outcome => outcome.Fork()).ToArray();
+
+    /// <summary>Typed Native enemy-triggered player-pile insertion outcomes.</summary>
+    public IReadOnlyList<SemanticEnemyPileInsertionNativeAuditV111>
+        EnemyPileInsertionOutcomes => _enemyPileInsertionOutcomes
             .Select(outcome => outcome.Fork()).ToArray();
 
     /// <summary>Semantic ordered supports for Native combat pool swaps.</summary>
@@ -691,6 +705,52 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
             throw new InvalidDataException(
                 "Card energy-cost annotation differs from the latest primitive index entry.");
         current._cardEnergyCostOutcomes.Add(auditEntry.Fork());
+    }
+
+    internal static void RecordDrawInsertionOutcome(
+        SemanticDrawInsertionNativeAuditV111 auditEntry)
+    {
+        ArgumentNullException.ThrowIfNull(auditEntry);
+        var current = Active.Value;
+        if (current is null)
+            return;
+        auditEntry.Validate();
+        var lastEntry = current._orderedTranscript.LastOrDefault();
+        if (lastEntry is null || lastEntry.OperationKind != "index")
+            throw new InvalidDataException(
+                "Draw-insertion annotation has no preceding primitive index entry.");
+        var boundary = lastEntry.DeserializeEvent<RandomBoundaryEventV111>();
+        var journalDecision = new RandomIndexDecisionV111(
+            boundary.Request, boundary.SelectedIndex, boundary.ProviderMode,
+            boundary.NativeCursorBefore, boundary.NativeCursorAfter);
+        if (CanonicalJson.Sha256(journalDecision) !=
+            CanonicalJson.Sha256(auditEntry.ProviderDecision))
+            throw new InvalidDataException(
+                "Draw-insertion annotation differs from the latest primitive index entry.");
+        current._drawInsertionOutcomes.Add(auditEntry.Fork());
+    }
+
+    internal static void RecordEnemyPileInsertionOutcome(
+        SemanticEnemyPileInsertionNativeAuditV111 auditEntry)
+    {
+        ArgumentNullException.ThrowIfNull(auditEntry);
+        var current = Active.Value;
+        if (current is null)
+            return;
+        auditEntry.Validate();
+        var lastEntry = current._orderedTranscript.LastOrDefault();
+        if (lastEntry is null || lastEntry.OperationKind != "index")
+            throw new InvalidDataException(
+                "Enemy pile-insertion annotation has no preceding primitive index entry.");
+        var boundary = lastEntry.DeserializeEvent<RandomBoundaryEventV111>();
+        var journalDecision = new RandomIndexDecisionV111(
+            boundary.Request, boundary.SelectedIndex, boundary.ProviderMode,
+            boundary.NativeCursorBefore, boundary.NativeCursorAfter);
+        if (CanonicalJson.Sha256(journalDecision) !=
+            CanonicalJson.Sha256(auditEntry.ProviderDecision))
+            throw new InvalidDataException(
+                "Enemy pile-insertion annotation differs from the latest primitive index entry.");
+        current._enemyPileInsertionOutcomes.Add(auditEntry.Fork());
     }
 
     internal static void RecordPoolShuffleOutcomes(

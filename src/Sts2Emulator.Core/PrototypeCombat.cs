@@ -14449,6 +14449,20 @@ public sealed partial class PrototypeGameEngine
 
         var decision = StochasticProviderScopeV111.ResolveIndex(
             provider, request, streams);
+        if (decision.ProviderMode == "native-v111" &&
+            RandomBoundaryJournalV111.HasActiveJournal &&
+            StochasticSiteRegistryV111.ControlledDrawInsertionSiteIds
+                .Contains(siteId, StringComparer.Ordinal))
+            RandomBoundaryJournalV111.RecordDrawInsertionOutcome(
+                SemanticDrawInsertionNativeAuditV111.Create(
+                    decision, orderedDrawPile, cardModelId));
+        if (decision.ProviderMode == "native-v111" &&
+            RandomBoundaryJournalV111.HasActiveJournal &&
+            StochasticSiteRegistryV111.CombatEnemyPileInsertionSiteIds
+                .Contains(siteId, StringComparer.Ordinal))
+            RandomBoundaryJournalV111.RecordEnemyPileInsertionOutcome(
+                SemanticEnemyPileInsertionNativeAuditV111.Create(
+                    decision, orderedDrawPile, cardModelId, pileName));
         var updated = native is null
             ? combat
             : combat with

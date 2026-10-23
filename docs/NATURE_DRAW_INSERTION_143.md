@@ -17,6 +17,11 @@ request route, the insertion-position Chance Law uses exact `NextInt` grid
 masses. Native cursor parity and the full unlocked candidate pool remain
 open.
 
+Opt-in Native-policy audits also annotate the supported draw-pile position
+requests with the ordered physical pile, inserted card model, selected gap,
+and exact Native ticket. This replay evidence does not resolve Native stream
+ownership or cursor parity.
+
 When either supported insertion operation is reached inside an automatic
 pipeline stage, its saved cursor now stays attached through model selection,
 each insertion position, and the resumed source operation. Enemy random draw
@@ -37,7 +42,9 @@ is not serialized. The semantic pilot and draw/end-turn adapters use one
 insertion-event factory and select `run.shuffle` from the same Native
 stream-owner check. Enemy-side random draw/discard
 insertion uses typed `run.shuffle` sites and now resumes through the saved
-enemy-action frame. The same frame also supports legacy Fabricator summon-pool
+enemy-action frame. Native-policy audits retain the existing ordered player
+pile, inserted model, selected gap, and exact ticket at both enemy insertion
+sites. The same frame also supports legacy Fabricator summon-pool
 choices and any resulting summoned-enemy HP choice. Native summon-pool
 selection remains fail-closed pending source RNG audit; nested death/summon
 random effects remain separate continuation gaps. Personal Hive Dazed cards

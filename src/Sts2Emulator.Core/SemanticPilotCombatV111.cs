@@ -197,6 +197,10 @@ public sealed record SemanticNativePolicyAuditV111(
         "sts2-v111-native-random-target-audit-v1";
     public const string PotionGenerationAuditSchemaV1 =
         "sts2-v111-native-potion-generation-audit-v1";
+    public const string DrawInsertionAuditSchemaV1 =
+        "sts2-v111-native-draw-insertion-audit-v1";
+    public const string EnemyPileInsertionAuditSchemaV1 =
+        "sts2-v111-native-enemy-pile-insertion-audit-v1";
     public const string ProviderTraceSchemaV1 =
         "sts2-v111-native-policy-mixed-trace-v1";
 
@@ -224,6 +228,12 @@ public sealed record SemanticNativePolicyAuditV111(
     /// <summary>Null for older snapshots that predate typed Native combat
     /// potion model results.</summary>
     public string? PotionGenerationAuditSchema { get; init; }
+    /// <summary>Null for older snapshots that predate typed Native draw-pile
+    /// insertion outcomes.</summary>
+    public string? DrawInsertionAuditSchema { get; init; }
+    /// <summary>Null for older snapshots that predate typed Native enemy
+    /// pile-insertion outcomes.</summary>
+    public string? EnemyPileInsertionAuditSchema { get; init; }
     /// <summary>Null for older snapshots that did not require a complete
     /// mixed provider trace.</summary>
     public string? ProviderTraceSchema { get; init; }
@@ -237,6 +247,9 @@ public sealed record SemanticNativePolicyAuditV111(
     private SemanticIntentAuditEntryV111[]? _weightedIntentOutcomes = [];
     private SemanticCardInstanceIndexAuditV111[]? _cardInstanceIndexOutcomes = [];
     private SemanticCardEnergyCostAuditV111[]? _cardEnergyCostOutcomes = [];
+    private SemanticDrawInsertionNativeAuditV111[]? _drawInsertionOutcomes = [];
+    private SemanticEnemyPileInsertionNativeAuditV111[]?
+        _enemyPileInsertionOutcomes = [];
     private SemanticPoolShuffleDecisionV111[]? _poolShuffleOutcomes = [];
     private SemanticGeneratedCardNativeAuditV111[]?
         _generatedCardModelOutcomes = [];
@@ -271,6 +284,19 @@ public sealed record SemanticNativePolicyAuditV111(
     {
         get => CloneCardEnergyCostOutcomes(_cardEnergyCostOutcomes)!;
         init => _cardEnergyCostOutcomes = CloneCardEnergyCostOutcomes(value);
+    }
+    public SemanticDrawInsertionNativeAuditV111[] DrawInsertionOutcomes
+    {
+        get => CloneDrawInsertionOutcomes(_drawInsertionOutcomes)!;
+        init => _drawInsertionOutcomes = CloneDrawInsertionOutcomes(value);
+    }
+    public SemanticEnemyPileInsertionNativeAuditV111[]
+        EnemyPileInsertionOutcomes
+    {
+        get => CloneEnemyPileInsertionOutcomes(
+            _enemyPileInsertionOutcomes)!;
+        init => _enemyPileInsertionOutcomes =
+            CloneEnemyPileInsertionOutcomes(value);
     }
     public SemanticPoolShuffleDecisionV111[] PoolShuffleOutcomes
     {
@@ -312,6 +338,10 @@ public sealed record SemanticNativePolicyAuditV111(
             _cardInstanceIndexOutcomes)!,
         CardEnergyCostOutcomes = CloneCardEnergyCostOutcomes(
             _cardEnergyCostOutcomes)!,
+        DrawInsertionOutcomes = CloneDrawInsertionOutcomes(
+            _drawInsertionOutcomes)!,
+        EnemyPileInsertionOutcomes = CloneEnemyPileInsertionOutcomes(
+            _enemyPileInsertionOutcomes)!,
         PoolShuffleOutcomes = ClonePoolShuffleOutcomes(
             _poolShuffleOutcomes)!,
         GeneratedCardModelOutcomes = CloneGeneratedCardModelOutcomes(
@@ -345,6 +375,18 @@ public sealed record SemanticNativePolicyAuditV111(
     private static SemanticCardEnergyCostAuditV111[]?
         CloneCardEnergyCostOutcomes(
             SemanticCardEnergyCostAuditV111[]? values) =>
+        values?.Select(value => value is null ? null! : value.Fork())
+            .ToArray();
+
+    private static SemanticDrawInsertionNativeAuditV111[]?
+        CloneDrawInsertionOutcomes(
+            SemanticDrawInsertionNativeAuditV111[]? values) =>
+        values?.Select(value => value is null ? null! : value.Fork())
+            .ToArray();
+
+    private static SemanticEnemyPileInsertionNativeAuditV111[]?
+        CloneEnemyPileInsertionOutcomes(
+            SemanticEnemyPileInsertionNativeAuditV111[]? values) =>
         values?.Select(value => value is null ? null! : value.Fork())
             .ToArray();
 
@@ -385,6 +427,8 @@ public sealed record SemanticNativePolicyAuditV111(
         var weightedIntentOutcomes = _weightedIntentOutcomes;
         var cardInstanceIndexOutcomes = _cardInstanceIndexOutcomes;
         var cardEnergyCostOutcomes = _cardEnergyCostOutcomes;
+        var drawInsertionOutcomes = _drawInsertionOutcomes;
+        var enemyPileInsertionOutcomes = _enemyPileInsertionOutcomes;
         var poolShuffleOutcomes = _poolShuffleOutcomes;
         var generatedCardModelOutcomes = _generatedCardModelOutcomes;
         var cardTransformOutcomes = _cardTransformOutcomes;
@@ -395,6 +439,8 @@ public sealed record SemanticNativePolicyAuditV111(
             providerTrace is null || weightedIntentOutcomes is null ||
             cardInstanceIndexOutcomes is null ||
             cardEnergyCostOutcomes is null ||
+            drawInsertionOutcomes is null ||
+            enemyPileInsertionOutcomes is null ||
             poolShuffleOutcomes is null ||
             generatedCardModelOutcomes is null ||
             cardTransformOutcomes is null ||
@@ -419,6 +465,11 @@ public sealed record SemanticNativePolicyAuditV111(
              RandomTargetAuditSchema != RandomTargetAuditSchemaV1) ||
             (PotionGenerationAuditSchema is not null &&
              PotionGenerationAuditSchema != PotionGenerationAuditSchemaV1) ||
+            (DrawInsertionAuditSchema is not null &&
+             DrawInsertionAuditSchema != DrawInsertionAuditSchemaV1) ||
+            (EnemyPileInsertionAuditSchema is not null &&
+             EnemyPileInsertionAuditSchema !=
+                EnemyPileInsertionAuditSchemaV1) ||
             (ProviderTraceSchema is not null &&
              ProviderTraceSchema != ProviderTraceSchemaV1) ||
             (ProviderTraceSchema is null &&
@@ -509,6 +560,52 @@ public sealed record SemanticNativePolicyAuditV111(
                 !cardCostOutcomeDecisions.Add(decisionFingerprint))
                 throw new InvalidDataException(
                     "Native policy card energy-cost outcome does not uniquely match its primitive decision.");
+        }
+
+        var drawInsertionEventIds = new HashSet<string>(StringComparer.Ordinal);
+        var drawInsertionDecisions = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var auditEntry in drawInsertionOutcomes)
+        {
+            if (auditEntry is null)
+                throw new InvalidDataException(
+                    "Native policy draw-insertion audit entry is null.");
+            auditEntry.Validate();
+            var decisionFingerprint = CanonicalJson.Sha256(
+                auditEntry.ProviderDecision);
+            var matchingDecisions = decisions.Count(decision =>
+                CanonicalJson.Sha256(new RandomIndexDecisionV111(
+                    decision.Request, decision.SelectedIndex,
+                    decision.ProviderMode, decision.NativeCursorBefore,
+                    decision.NativeCursorAfter)) == decisionFingerprint);
+            if (matchingDecisions != 1 ||
+                !drawInsertionEventIds.Add(auditEntry.EventId) ||
+                !drawInsertionDecisions.Add(decisionFingerprint))
+                throw new InvalidDataException(
+                    "Native policy draw-insertion outcome does not uniquely match its primitive decision.");
+        }
+
+        var enemyPileInsertionEventIds =
+            new HashSet<string>(StringComparer.Ordinal);
+        var enemyPileInsertionDecisions =
+            new HashSet<string>(StringComparer.Ordinal);
+        foreach (var auditEntry in enemyPileInsertionOutcomes)
+        {
+            if (auditEntry is null)
+                throw new InvalidDataException(
+                    "Native policy enemy pile-insertion audit entry is null.");
+            auditEntry.Validate();
+            var decisionFingerprint = CanonicalJson.Sha256(
+                auditEntry.ProviderDecision);
+            var matchingDecisions = decisions.Count(decision =>
+                CanonicalJson.Sha256(new RandomIndexDecisionV111(
+                    decision.Request, decision.SelectedIndex,
+                    decision.ProviderMode, decision.NativeCursorBefore,
+                    decision.NativeCursorAfter)) == decisionFingerprint);
+            if (matchingDecisions != 1 ||
+                !enemyPileInsertionEventIds.Add(auditEntry.EventId) ||
+                !enemyPileInsertionDecisions.Add(decisionFingerprint))
+                throw new InvalidDataException(
+                    "Native policy enemy pile-insertion outcome does not uniquely match its primitive decision.");
         }
 
         var poolShuffleEventIds = new HashSet<string>(StringComparer.Ordinal);
@@ -701,6 +798,10 @@ public sealed record SemanticNativePolicyAuditV111(
             new List<RandomIndexDecisionV111>();
         var traceCardEnergyCostDecisions =
             new List<RandomIndexDecisionV111>();
+        var traceDrawInsertionDecisions =
+            new List<RandomIndexDecisionV111>();
+        var traceEnemyPileInsertionDecisions =
+            new List<RandomIndexDecisionV111>();
         var tracePoolShuffleDecisions =
             new List<RandomIndexDecisionV111>();
         var traceGeneratedCardModelDecisions =
@@ -742,6 +843,20 @@ public sealed record SemanticNativePolicyAuditV111(
                 if (StochasticSiteRegistryV111
                     .IsCombatCardEnergyCostAuditSite(value.Request.SiteId))
                     traceCardEnergyCostDecisions.Add(
+                        new RandomIndexDecisionV111(
+                            value.Request, value.SelectedIndex,
+                            value.ProviderMode, value.NativeCursorBefore,
+                            value.NativeCursorAfter));
+                if (StochasticSiteRegistryV111.ControlledDrawInsertionSiteIds
+                    .Contains(value.Request.SiteId, StringComparer.Ordinal))
+                    traceDrawInsertionDecisions.Add(
+                        new RandomIndexDecisionV111(
+                            value.Request, value.SelectedIndex,
+                            value.ProviderMode, value.NativeCursorBefore,
+                            value.NativeCursorAfter));
+                if (StochasticSiteRegistryV111.CombatEnemyPileInsertionSiteIds
+                    .Contains(value.Request.SiteId, StringComparer.Ordinal))
+                    traceEnemyPileInsertionDecisions.Add(
                         new RandomIndexDecisionV111(
                             value.Request, value.SelectedIndex,
                             value.ProviderMode, value.NativeCursorBefore,
@@ -877,6 +992,48 @@ public sealed record SemanticNativePolicyAuditV111(
                 if (matchingOutcomes != 1)
                     throw new InvalidDataException(
                         "Native card energy-cost decision does not have exactly one typed outcome annotation.");
+            }
+        }
+
+        if (DrawInsertionAuditSchema == DrawInsertionAuditSchemaV1)
+        {
+            if (traceDrawInsertionDecisions.Count !=
+                drawInsertionOutcomes.Length)
+                throw new InvalidDataException(
+                    "Native policy draw-insertion outcomes are incomplete for their mixed trace.");
+
+            foreach (var insertionDecision in traceDrawInsertionDecisions)
+            {
+                var decisionFingerprint = CanonicalJson.Sha256(
+                    insertionDecision);
+                var matchingOutcomes = drawInsertionOutcomes.Count(outcome =>
+                    CanonicalJson.Sha256(outcome.ProviderDecision) ==
+                    decisionFingerprint);
+                if (matchingOutcomes != 1)
+                    throw new InvalidDataException(
+                        "Native draw-insertion decision does not have exactly one typed support annotation.");
+            }
+        }
+
+        if (EnemyPileInsertionAuditSchema ==
+            EnemyPileInsertionAuditSchemaV1)
+        {
+            if (traceEnemyPileInsertionDecisions.Count !=
+                enemyPileInsertionOutcomes.Length)
+                throw new InvalidDataException(
+                    "Native policy enemy pile-insertion outcomes are incomplete for their mixed trace.");
+
+            foreach (var insertionDecision in
+                traceEnemyPileInsertionDecisions)
+            {
+                var decisionFingerprint = CanonicalJson.Sha256(
+                    insertionDecision);
+                var matchingOutcomes = enemyPileInsertionOutcomes.Count(
+                    outcome => CanonicalJson.Sha256(
+                        outcome.ProviderDecision) == decisionFingerprint);
+                if (matchingOutcomes != 1)
+                    throw new InvalidDataException(
+                        "Native enemy pile-insertion decision does not have exactly one typed support annotation.");
             }
         }
 
@@ -2049,6 +2206,8 @@ public static class SemanticPilotCombatEngineV111
                 setupJournal.EntriesForProvider("native-v111"),
                 setupJournal.CardInstanceIndexOutcomes.ToArray(),
                 setupJournal.CardEnergyCostOutcomes.ToArray(),
+                setupJournal.DrawInsertionOutcomes.ToArray(),
+                setupJournal.EnemyPileInsertionOutcomes.ToArray(),
                 setupJournal.PoolShuffleOutcomes.ToArray(),
                 setupJournal.GeneratedCardModelOutcomes.ToArray(),
                 setupJournal.CardTransformOutcomes.ToArray(),
@@ -2676,6 +2835,10 @@ public static class SemanticPilotCombatEngineV111
             setupJournal.CardInstanceIndexOutcomes.ToArray();
         var nativeCardEnergyCostOutcomes =
             setupJournal.CardEnergyCostOutcomes.ToArray();
+        var nativeDrawInsertionOutcomes =
+            setupJournal.DrawInsertionOutcomes.ToArray();
+        var nativeEnemyPileInsertionOutcomes =
+            setupJournal.EnemyPileInsertionOutcomes.ToArray();
         var nativePoolShuffleOutcomes =
             setupJournal.PoolShuffleOutcomes.ToArray();
         var nativeGeneratedCardModelOutcomes =
@@ -2841,6 +3004,10 @@ public static class SemanticPilotCombatEngineV111
                         nativeCardInstanceOutcomes,
                     CardEnergyCostOutcomes =
                         nativeCardEnergyCostOutcomes,
+                    DrawInsertionOutcomes =
+                        nativeDrawInsertionOutcomes,
+                    EnemyPileInsertionOutcomes =
+                        nativeEnemyPileInsertionOutcomes,
                     PoolShuffleOutcomes = nativePoolShuffleOutcomes,
                     GeneratedCardModelOutcomes =
                         nativeGeneratedCardModelOutcomes,
@@ -2857,6 +3024,12 @@ public static class SemanticPilotCombatEngineV111
                     CardEnergyCostAuditSchema =
                         SemanticNativePolicyAuditV111
                             .CardEnergyCostAuditSchemaV2,
+                    DrawInsertionAuditSchema =
+                        SemanticNativePolicyAuditV111
+                            .DrawInsertionAuditSchemaV1,
+                    EnemyPileInsertionAuditSchema =
+                        SemanticNativePolicyAuditV111
+                            .EnemyPileInsertionAuditSchemaV1,
                     PoolShuffleAuditSchema =
                         SemanticNativePolicyAuditV111
                             .PoolShuffleAuditSchemaV1,
@@ -2891,6 +3064,9 @@ public static class SemanticPilotCombatEngineV111
         RandomBoundaryTranscriptEntryV111[] setupTrace,
         SemanticCardInstanceIndexAuditV111[] setupCardInstanceOutcomes,
         SemanticCardEnergyCostAuditV111[] setupCardEnergyCostOutcomes,
+        SemanticDrawInsertionNativeAuditV111[] setupDrawInsertionOutcomes,
+        SemanticEnemyPileInsertionNativeAuditV111[]
+            setupEnemyPileInsertionOutcomes,
         SemanticPoolShuffleDecisionV111[] setupPoolShuffleOutcomes,
         SemanticGeneratedCardNativeAuditV111[]
             setupGeneratedCardModelOutcomes,
@@ -2950,6 +3126,9 @@ public static class SemanticPilotCombatEngineV111
                 ProviderTrace = setupTrace,
                 CardInstanceIndexOutcomes = setupCardInstanceOutcomes,
                 CardEnergyCostOutcomes = setupCardEnergyCostOutcomes,
+                DrawInsertionOutcomes = setupDrawInsertionOutcomes,
+                EnemyPileInsertionOutcomes =
+                    setupEnemyPileInsertionOutcomes,
                 PoolShuffleOutcomes = setupPoolShuffleOutcomes,
                 GeneratedCardModelOutcomes =
                     setupGeneratedCardModelOutcomes,
@@ -2965,6 +3144,12 @@ public static class SemanticPilotCombatEngineV111
                 CardEnergyCostAuditSchema =
                     SemanticNativePolicyAuditV111
                         .CardEnergyCostAuditSchemaV2,
+                DrawInsertionAuditSchema =
+                    SemanticNativePolicyAuditV111
+                        .DrawInsertionAuditSchemaV1,
+                EnemyPileInsertionAuditSchema =
+                    SemanticNativePolicyAuditV111
+                        .EnemyPileInsertionAuditSchemaV1,
                 PoolShuffleAuditSchema =
                     SemanticNativePolicyAuditV111
                         .PoolShuffleAuditSchemaV1,
@@ -3623,6 +3808,10 @@ public static class SemanticPilotCombatEngineV111
             .CardInstanceIndexOutcomes.ToArray();
         var cardEnergyCostOutcomes = boundaries
             .CardEnergyCostOutcomes.ToArray();
+        var drawInsertionOutcomes = boundaries
+            .DrawInsertionOutcomes.ToArray();
+        var enemyPileInsertionOutcomes = boundaries
+            .EnemyPileInsertionOutcomes.ToArray();
         var poolShuffleOutcomes = boundaries
             .PoolShuffleOutcomes.ToArray();
         var generatedCardModelOutcomes = boundaries
@@ -3662,6 +3851,11 @@ public static class SemanticPilotCombatEngineV111
                 CardEnergyCostOutcomes =
                     audit.CardEnergyCostOutcomes
                         .Concat(cardEnergyCostOutcomes).ToArray(),
+                DrawInsertionOutcomes = audit.DrawInsertionOutcomes
+                    .Concat(drawInsertionOutcomes).ToArray(),
+                EnemyPileInsertionOutcomes =
+                    audit.EnemyPileInsertionOutcomes
+                        .Concat(enemyPileInsertionOutcomes).ToArray(),
                 PoolShuffleOutcomes = audit.PoolShuffleOutcomes
                     .Concat(poolShuffleOutcomes).ToArray(),
                 GeneratedCardModelOutcomes =

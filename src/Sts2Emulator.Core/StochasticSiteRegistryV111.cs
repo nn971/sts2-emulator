@@ -580,6 +580,12 @@ public static class StochasticSiteRegistryV111
         CombatEnemyDrawRandomInsertSiteId
     ];
 
+    public static string[] CombatEnemyPileInsertionSiteIds =>
+    [
+        CombatEnemyDiscardRandomInsertSiteId,
+        CombatEnemyDrawRandomInsertSiteId
+    ];
+
     public static string[] CombatCardPoolShuffleSiteIds =>
     [
         CombatHandReturnShuffleSiteId,
