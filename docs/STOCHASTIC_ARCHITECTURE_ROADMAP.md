@@ -11,6 +11,14 @@ snapshots, and ReferenceNature session replay; other stochastic reward
 actions still fail closed. Static source review and `git diff --check` only;
 no tests or builds were run.
 
+**D3/D4 combat-reward relic action continuation increment (2026-10-23):** The
+existing controlled run-action frame now also saves a legal legacy
+`take_reward_relic` action from Combat, Elite, or Boss rewards when a registered
+relic-acquisition hook suspends. It replays the exact relic action and ordered
+request prefix through the existing acquisition-site registry; configured
+Native combat-reward relic cases remain with their specialized session.
+Static source review and `git diff --check` only; no tests or builds were run.
+
 **S0 Neow request-source inventory increment (2026-10-23):** The Neow
 decision-plan builder now references its owning Chance Law session's finite
 site list explicitly, and the regenerated direct-call census resolves both

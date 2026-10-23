@@ -4416,7 +4416,8 @@ public sealed partial class PrototypeGameEngine
                         "Controlled map-node frame is missing its action."))
                     .State,
                 "buy_card" or "buy_potion" or "replace_shop_potion"
-                    or "remove_card" or "buy_relic" =>
+                    or "remove_card" or "buy_relic"
+                    or "take_reward_relic" =>
                     new PrototypeGameEngine().Step(
                         checkpoint with
                         {
@@ -4468,7 +4469,8 @@ public sealed partial class PrototypeGameEngine
                     ControlledEventChoiceReplayV111
                         .IsRunActionShovelSite(pendingChance.Request.SiteId),
                 "buy_card" or "buy_potion" or "replace_shop_potion"
-                    or "remove_card" or "buy_relic" =>
+                    or "remove_card" or "buy_relic"
+                    or "take_reward_relic" =>
                     StochasticSiteRegistryV111
                         .IsRunActionShopPurchaseSite(
                             pendingChance.Request.SiteId),

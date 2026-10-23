@@ -7736,6 +7736,11 @@ public sealed record ReferenceNatureRunActionSessionV111(
             && ControlledRunActionEngineV111.IsShopPurchaseAction(
                 Origin, Action)
             && DecisionTranscript is { Length: 0 };
+        var immediateRewardRelicAction = Origin is not null
+            && Action is not null
+            && ControlledRunActionEngineV111.IsCombatRewardRelicAction(
+                Origin, Action)
+            && DecisionTranscript is { Length: 0 };
         var immediateActOneCombatAction = Origin is not null
             && Action is not null
             && ControlledRunActionEngineV111
@@ -7755,6 +7760,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
             (Run.Stochastic.ControlledRunActionChoice is null &&
              Run.Stochastic.ControlledRunActionHistory is not { Length: > 0 } &&
              !immediateShopAction && !immediateActOneCombatAction &&
+             !immediateRewardRelicAction &&
              !immediateNativeActOneCombatAction &&
              !typedNativePotionFactoryCombatEntry &&
              !configuredExperimentalActTransition) ||
@@ -7956,7 +7962,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
             continuation.Validate();
             if (continuation.ActionId != Action.Kind ||
                 continuation.MapNodeId != actionMapNodeId ||
-                (ControlledRunActionEngineV111.IsShopPurchaseAction(
+                (ControlledRunActionEngineV111.RequiresRunActionFingerprint(
                      Origin, Action)
                     ? continuation.RunAction is null ||
                       PrototypeAiEnvironment.StableActionId(
@@ -8088,7 +8094,8 @@ public sealed record ReferenceNatureRunActionSessionV111(
                 throw new InvalidDataException(
                     "Completed experimental act transition differs from its map replay.");
         }
-        else if (immediateShopAction || immediateActOneCombatAction ||
+        else if (immediateShopAction || immediateRewardRelicAction ||
+            immediateActOneCombatAction ||
             immediateNativeActOneCombatAction)
         {
             var replayedRun = ControlledRunActionEngineV111.Begin(
@@ -8109,7 +8116,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
                 ? 1 : DecisionTranscript.Length;
             if (trace.ActionId != Action.Kind ||
                 trace.MapNodeId != actionMapNodeId ||
-                (ControlledRunActionEngineV111.IsShopPurchaseAction(
+                (ControlledRunActionEngineV111.RequiresRunActionFingerprint(
                      Origin, Action)
                     ? trace.ActionFingerprint !=
                       PrototypeAiEnvironment.StableActionId(Action)

@@ -316,7 +316,8 @@ public sealed record SimulationProviderReplayCaptureV111(
             ? session.Action.ReadPayload<ChooseMapNodePayload>().NodeId
             : null;
         var actionFingerprint = ControlledRunActionEngineV111
-                .IsShopPurchaseAction(session.Origin, session.Action)
+                .RequiresRunActionFingerprint(
+                    session.Origin, session.Action)
             ? PrototypeAiEnvironment.StableActionId(session.Action)
             : null;
         if (trace.ActionId != session.Action.Kind ||
