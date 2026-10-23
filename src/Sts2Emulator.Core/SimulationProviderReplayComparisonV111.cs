@@ -440,7 +440,6 @@ public sealed record SimulationProviderReplayCaptureV111(
         var configuration = session.Origin.Configuration;
         if (session.Action.Kind != "continue_act" ||
             configuration?.UsesExperimentalSilentThreeActRoute != true ||
-            session.LegacyNativeAncientOfferCompletion ||
             session.Origin.World is not { } originWorld)
             return null;
 
@@ -478,6 +477,22 @@ public sealed record SimulationProviderReplayCaptureV111(
                 throw new InvalidDataException(
                     "Experimental transition changed its prior Ancient-offer audit history.");
 
+        if (session.LegacyNativeAncientOfferCompletion)
+        {
+            if (resultAncientHistory.Length != originAncientHistory.Length ||
+                !mapAudit.DecisionTranscript.SequenceEqual(
+                    session.DecisionTranscript))
+                return null;
+
+            var nativeAncientDecisions =
+                RebuildLegacyNativeAncientProviderDecisions(
+                    session, mapAudit);
+            return mapAudit.Decisions.Select(decision => decision.Fork())
+                .Concat(nativeAncientDecisions.Select(decision =>
+                    ControlledStochasticDecisionV111.FromIndex(decision)))
+                .ToArray();
+        }
+
         ReferenceNatureDecisionV111[] ancientTranscript = [];
         ControlledStochasticDecisionV111[] ancientProviderDecisions = [];
         if (resultAncientHistory.Length == originAncientHistory.Length + 1)
@@ -506,6 +521,130 @@ public sealed record SimulationProviderReplayCaptureV111(
         return decisions.Length == session.DecisionTranscript.Length
             ? decisions
             : null;
+    }
+
+    private static RandomIndexDecisionV111[]
+        RebuildLegacyNativeAncientProviderDecisions(
+            ReferenceNatureRunActionSessionV111 session,
+            ReferenceNatureMapGenerationAuditV111 mapAudit)
+    {
+        var mapGeneration = ReferenceNatureMapGenerationSessionV111.Begin(
+            session.Origin.RunSeed, mapAudit.Act, mapAudit.Ascension,
+            mapAudit.InitialNatureState);
+        foreach (var expected in mapAudit.DecisionTranscript)
+        {
+            if (mapGeneration.Complete)
+                throw new InvalidDataException(
+                    "Legacy Native Ancient map transcript exceeds its generated map.");
+            mapGeneration = mapGeneration.ResolveNext();
+            if (!mapGeneration.DecisionTranscript[^1].Equals(expected))
+                throw new InvalidDataException(
+                    "Legacy Native Ancient map transcript does not replay.");
+        }
+        if (!mapGeneration.Complete ||
+            CanonicalJson.Sha256(mapGeneration.ToAudit()) !=
+                CanonicalJson.Sha256(mapAudit))
+            throw new InvalidDataException(
+                "Legacy Native Ancient map audit does not replay exactly.");
+
+        var map = mapGeneration.Map ?? throw new InvalidDataException(
+            "Legacy Native Ancient map replay has no generated map.");
+        var engine = new PrototypeGameEngine();
+        var transition = engine.BeginActTransitionWithMap(
+            session.Origin, session.Action, map);
+        var assignedAncientId = transition.World?.Stochastic
+            .LaterActEncounterBag?.AssignedAncientId;
+        if (assignedAncientId is null)
+            throw new InvalidDataException(
+                "Legacy Native Ancient transition has no assigned Ancient.");
+
+        var provider = new NativeRandomIndexProviderV111(
+            recordToJournal: false);
+        RunState nativeResult;
+        RandomIndexDecisionV111[] decisions;
+        switch ((transition.World!.Act, assignedAncientId))
+        {
+            case (2, NativePaelRewardsV111.PaelId):
+            {
+                var audit = NativePaelRewardsV111
+                    .BeginPaelOpeningWithAudit(transition, provider);
+                nativeResult = audit.State;
+                decisions = audit.Choices;
+                break;
+            }
+            case (2, NativeAncientRewardsV111.TezcataraId):
+            {
+                var audit = NativeAncientRewardsV111
+                    .BeginTezcataraOpeningWithAudit(transition, provider);
+                nativeResult = audit.State;
+                decisions = audit.Choices;
+                break;
+            }
+            case (2, NativeOrobasEventV111.EventId):
+            {
+                var audit = NativeOrobasEventV111
+                    .BeginOpeningWithAudit(transition, provider);
+                nativeResult = audit.State;
+                decisions = audit.Choices;
+                break;
+            }
+            case (2 or 3, NativeDarvEventV111.EventId):
+            {
+                var audit = NativeDarvEventV111
+                    .BeginOpeningWithAudit(transition, provider);
+                nativeResult = audit.State;
+                decisions = audit.Choices;
+                break;
+            }
+            case (3, NativeTanxEventV111.EventId):
+            {
+                var audit = NativeTanxEventV111
+                    .BeginOpeningWithAudit(transition, provider);
+                nativeResult = audit.State;
+                decisions = audit.Choices;
+                break;
+            }
+            case (3, NativeVakuuEventV111.EventId):
+            {
+                var audit = NativeVakuuEventV111
+                    .BeginOpeningWithAudit(transition, provider);
+                nativeResult = audit.State;
+                decisions = audit.Choices;
+                break;
+            }
+            case (3, NativeNonupeipeEventV111.EventId):
+            {
+                var audit = NativeNonupeipeEventV111
+                    .BeginOpeningWithAudit(transition, provider);
+                nativeResult = audit.State;
+                decisions = audit.Choices;
+                break;
+            }
+            default:
+                throw new NotSupportedException(
+                    "Legacy Native Ancient capture does not support assigned Ancient '" +
+                    assignedAncientId + "' in act " + transition.World.Act + ".");
+        }
+
+        foreach (var decision in decisions)
+        {
+            decision.Validate();
+            if (decision.ProviderMode != "native-v111")
+                throw new InvalidDataException(
+                    "Legacy Native Ancient audit returned a non-Native decision.");
+        }
+        var withMapAudit = nativeResult with
+        {
+            Stochastic = nativeResult.Stochastic
+                .AppendReferenceNatureMapGenerationAudit(mapAudit)
+        };
+        var replayedRun = ReferenceNatureRunCursorV111.Commit(
+            withMapAudit, session.NatureState);
+        if (CanonicalJson.Sha256(replayedRun) !=
+            CanonicalJson.Sha256(session.Run))
+            throw new InvalidDataException(
+                "Audited Native Ancient replay differs from its saved run.");
+        return decisions;
     }
 
     /// <summary>

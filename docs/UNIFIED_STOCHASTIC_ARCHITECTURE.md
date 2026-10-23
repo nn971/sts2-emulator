@@ -769,9 +769,11 @@ That prefix is rebuilt from the saved initial prototype RNG, configuration,
 and Nature transcript through the existing later-act generator; no new
 snapshot field is required. Completed experimental `continue_act` sessions
 without an appended action trace reconstruct their boundary prefix from the
-new map audit and optional replay-validated assigned Ancient-offer audit;
-legacy Native Ancient completions remain unsupported because their provider
-boundaries are not captured by this path.
+new map audit and optional replay-validated assigned Ancient-offer audit.
+Legacy Native Ancient completions replay the saved map transcript, rerun the
+assigned Native Ancient through its audited opening generator, and require the
+committed result to match the saved run before adding the Native provider
+decisions and cursor spans after the map decisions in the capture.
 JSONL accepts
 `<side>_reference_nature_run_action_handle` for this path.
 `FromReferenceNatureRunSetupSession` shares one capture path for completed
