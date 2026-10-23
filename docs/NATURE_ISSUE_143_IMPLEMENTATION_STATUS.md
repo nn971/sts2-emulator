@@ -1020,12 +1020,15 @@ choice keeps the existing support fingerprint and source replay boundary;
 no event or snapshot schema changed. Static source review and
 `git diff --check` only; no tests or builds were run.
 
-## 2026-10-23: Gremlin Horn action draw
+## 2026-10-23: relic action draws
 
-A player card action that defeats an enemy can now suspend at Gremlin Horn's
-modeled one-card `EnemyDefeated` draw. Admission checks the saved event
-subscriber and exact relic effect, then reuses the existing semantic draw
-event and replay owner. The draw pile must already contain a card, so this
-does not cross into an unsupported recycle shuffle. Other relic-triggered
-player-action draws and Native cursor parity remain open. Static source review
-and `git diff --check` only; no tests or builds were run.
+Player card actions can now suspend at Gremlin Horn's `EnemyDefeated` draw,
+Ink Bottle's third `CardPlayed` draw, Unceasing Top's empty-hand `CardPlayed`
+draw, and Joss Paper's fifth `CardExhausted` draw. Admission checks the saved
+event subscriber, exact relic trigger, and active source card identity for
+`CardPlayed`. The existing semantic draw owner resolves the card. The
+suspended first draw requires a nonempty source pile; any later nested draw
+must pass its own continuation checks.
+Other relic-triggered player-action draws and Native cursor parity remain
+open. Static source review and `git diff --check` only; no tests or builds
+were run.

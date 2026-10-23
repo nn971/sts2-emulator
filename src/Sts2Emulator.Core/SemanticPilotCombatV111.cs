@@ -4155,7 +4155,31 @@ public static class SemanticPilotCombatEngineV111
             state, drawn, null, preservePendingEndTurn: true);
     }
 
-    private static bool IsSupportedGremlinHornActionDraw(
+    private static PrototypeRelicTriggerSpec?
+        SupportedActionRelicDrawTrigger(string relicId) => relicId switch
+    {
+        "proto.relic.gremlin_horn" => new(
+            PrototypeCombatEventKind.EnemyDefeated,
+            [
+                new(PrototypeCombatEffectKind.GainEnergy, 1),
+                new(PrototypeCombatEffectKind.DrawCards, 1)
+            ]),
+        "proto.relic.ink_bottle" => new(
+            PrototypeCombatEventKind.CardPlayed,
+            [new(PrototypeCombatEffectKind.DrawCards, 1)],
+            EveryNth: 3),
+        "proto.relic.unceasing_top" => new(
+            PrototypeCombatEventKind.CardPlayed,
+            [new(PrototypeCombatEffectKind.DrawCards, 1)],
+            RequiresEmptyHand: true),
+        "proto.relic.joss_paper" => new(
+            PrototypeCombatEventKind.CardExhausted,
+            [new(PrototypeCombatEffectKind.DrawCards, 1)],
+            EveryNth: 5),
+        _ => null
+    };
+
+    private static bool IsSupportedActionRelicDraw(
         RunState source, RunState result, GameAction action)
     {
         if (action.Kind != "play_card" ||
@@ -4182,10 +4206,6 @@ public static class SemanticPilotCombatEngineV111
              frame = frame.Parent)
         {
             if (frame.EventDispatchContinuation is not { } eventDispatch ||
-                eventDispatch.CombatEvent is not
-                    { Kind: PrototypeCombatEventKind.EnemyDefeated,
-                      TargetEnemyId: not null } ||
-                eventDispatch.EventDepth != draw.EventDepth ||
                 eventDispatch.CurrentSubscriber is not
                     { SourceKind: PrototypeEffectSourceKind.Relic,
                       SourcePowerApplicationOrder: null,
@@ -4196,9 +4216,19 @@ public static class SemanticPilotCombatEngineV111
                 continue;
 
             var relic = before.RelicStates[relicIndex];
-            if (relic is not
-                    { RelicId: "proto.relic.gremlin_horn",
-                      IsMelted: false } ||
+            var expectedTrigger = SupportedActionRelicDrawTrigger(
+                relic.RelicId);
+            if (relic is not { IsMelted: false } ||
+                expectedTrigger is null ||
+                eventDispatch.CombatEvent.Kind != expectedTrigger.EventKind ||
+                expectedTrigger.EventKind ==
+                    PrototypeCombatEventKind.EnemyDefeated &&
+                    eventDispatch.CombatEvent.TargetEnemyId is null ||
+                expectedTrigger.EventKind ==
+                    PrototypeCombatEventKind.CardPlayed &&
+                    eventDispatch.CombatEvent.SourceCardInstanceId !=
+                        payload.CardInstanceId ||
+                eventDispatch.EventDepth != draw.EventDepth ||
                 relic.PersistentIndex != relicIndex ||
                 relic.ApplicationOrder != subscriber.ApplicationOrder)
                 continue;
@@ -4206,12 +4236,7 @@ public static class SemanticPilotCombatEngineV111
             var triggers = PrototypeContent.Relic(relic.RelicId).Triggers ?? [];
             if (triggers.Length != 1 ||
                 CanonicalJson.Sha256(triggers[0]) != CanonicalJson.Sha256(
-                    new PrototypeRelicTriggerSpec(
-                        PrototypeCombatEventKind.EnemyDefeated,
-                        [
-                            new(PrototypeCombatEffectKind.GainEnergy, 1),
-                            new(PrototypeCombatEffectKind.DrawCards, 1)
-                        ])) ||
+                    expectedTrigger) ||
                 subscriber.RelicTriggerIndex != 0)
                 continue;
 
@@ -4389,7 +4414,7 @@ public static class SemanticPilotCombatEngineV111
                 if ((!semanticDrawCard && !semanticAutoplayCard &&
                      !semanticDrawPileSelectionCard &&
                      !semanticRandomRareToHandCard &&
-                     !IsSupportedGremlinHornActionDraw(
+                     !IsSupportedActionRelicDraw(
                          source, result, resolvedAction.Action) &&
                      !SemanticPlayerActionEngineV111
                         .IsSupportedNostalgiaDrawReturn(
