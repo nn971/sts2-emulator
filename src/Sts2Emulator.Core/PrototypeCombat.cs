@@ -5739,6 +5739,23 @@ public sealed partial class PrototypeGameEngine
         var autoPlayTargetOrdinal = 0;
         var generatedCardOrdinal = 0;
         var drawInsertionOrdinal = 0;
+        PrototypeChoiceResolutionContinuationState CaptureEffectContinuation(
+            IEnumerable<PrototypeQueuedOperation> remainingOperations)
+        {
+            return new PrototypeChoiceResolutionContinuationState(
+                SourceCardInstanceId: sourceCardInstanceId,
+                SourceCardDestination: sourceCardDestination,
+                Operations: remainingOperations.ToArray(),
+                PendingDiscardEvents: [],
+                PendingSlyCardInstanceIds: [],
+                CompletionEvents: completionEvents?.ToArray() ?? [],
+                CardPlaySeries: cardPlaySeries,
+                MoveSourceCardOnCompletion: moveSourceCardOnCompletion,
+                RemoveSourceCardOnCompletion: removeSourceCardOnCompletion,
+                SourceCardAlreadyMoved: sourceCardAlreadyMoved,
+                EventDispatchContinuation: eventDispatchContinuation?.Fork());
+        }
+
         while (operations.Count > 0)
         {
             var operation = operations.Dequeue();
@@ -6538,24 +6555,8 @@ public sealed partial class PrototypeGameEngine
                             deferredKeywordIds,
                             operation.StandaloneSemanticDrawSegment,
                             operation.DrawEqualSelectionCount);
-                        var recycleContinuation =
-                            new PrototypeChoiceResolutionContinuationState(
-                                SourceCardInstanceId: sourceCardInstanceId,
-                                SourceCardDestination: sourceCardDestination,
-                                Operations: new[] { resumeDraw }
-                                    .Concat(operations).ToArray(),
-                                PendingDiscardEvents: [],
-                                PendingSlyCardInstanceIds: [],
-                                CompletionEvents: completionEvents ?? [],
-                                CardPlaySeries: cardPlaySeries,
-                                MoveSourceCardOnCompletion:
-                                    moveSourceCardOnCompletion,
-                                RemoveSourceCardOnCompletion:
-                                    removeSourceCardOnCompletion,
-                                SourceCardAlreadyMoved:
-                                    sourceCardAlreadyMoved,
-                                EventDispatchContinuation:
-                                    eventDispatchContinuation?.Fork());
+                        var recycleContinuation = CaptureEffectContinuation(
+                            new[] { resumeDraw }.Concat(operations));
                         if (combat.Stochastic.SemanticDeck is not null ||
                             drawn.RemainingCount <= 0 ||
                             combat.DrawPile.Length != 0 ||
@@ -6613,24 +6614,8 @@ public sealed partial class PrototypeGameEngine
                                 .Distinct().ToArray(),
                             operation.StandaloneSemanticDrawSegment,
                             operation.DrawEqualSelectionCount);
-                        var continuation =
-                            new PrototypeChoiceResolutionContinuationState(
-                                SourceCardInstanceId: sourceCardInstanceId,
-                                SourceCardDestination: sourceCardDestination,
-                                Operations: new[] { resumeDraw }
-                                    .Concat(operations).ToArray(),
-                                PendingDiscardEvents: [],
-                                PendingSlyCardInstanceIds: [],
-                                CompletionEvents: completionEvents ?? [],
-                                CardPlaySeries: cardPlaySeries,
-                                MoveSourceCardOnCompletion:
-                                    moveSourceCardOnCompletion,
-                                RemoveSourceCardOnCompletion:
-                                    removeSourceCardOnCompletion,
-                                SourceCardAlreadyMoved:
-                                    sourceCardAlreadyMoved,
-                                EventDispatchContinuation:
-                                    eventDispatchContinuation?.Fork());
+                        var continuation = CaptureEffectContinuation(
+                            new[] { resumeDraw }.Concat(operations));
                         combat = AttachOuterChoiceContinuation(
                             combat, continuation);
                         if (operation.StandaloneSemanticDrawSegment &&
@@ -6649,23 +6634,8 @@ public sealed partial class PrototypeGameEngine
                         PrototypeDrawCardsBoundaryKind.ControlledDrawCost or
                         PrototypeDrawCardsBoundaryKind.AfterShuffleInsertions)
                     {
-                        var continuation =
-                            new PrototypeChoiceResolutionContinuationState(
-                                SourceCardInstanceId: sourceCardInstanceId,
-                                SourceCardDestination: sourceCardDestination,
-                                Operations: operations.ToArray(),
-                                PendingDiscardEvents: [],
-                                PendingSlyCardInstanceIds: [],
-                                CompletionEvents: completionEvents ?? [],
-                                CardPlaySeries: cardPlaySeries,
-                                MoveSourceCardOnCompletion:
-                                    moveSourceCardOnCompletion,
-                                RemoveSourceCardOnCompletion:
-                                    removeSourceCardOnCompletion,
-                                SourceCardAlreadyMoved:
-                                    sourceCardAlreadyMoved,
-                                EventDispatchContinuation:
-                                    eventDispatchContinuation?.Fork());
+                        var continuation = CaptureEffectContinuation(
+                            operations);
                         var suspendedDraw =
                             new PrototypeControlledSemanticDrawV111(
                                 drawn.RemainingCount,
@@ -6780,23 +6750,8 @@ public sealed partial class PrototypeGameEngine
                         !ControlledChanceGuardV111.EngineOwnedNativeProviderActive &&
                         afterShuffleInsertions.Length > 0)
                     {
-                        var continuation =
-                            new PrototypeChoiceResolutionContinuationState(
-                                SourceCardInstanceId: sourceCardInstanceId,
-                                SourceCardDestination: sourceCardDestination,
-                                Operations: operations.ToArray(),
-                                PendingDiscardEvents: [],
-                                PendingSlyCardInstanceIds: [],
-                                CompletionEvents: completionEvents ?? [],
-                                CardPlaySeries: cardPlaySeries,
-                                MoveSourceCardOnCompletion:
-                                    moveSourceCardOnCompletion,
-                                RemoveSourceCardOnCompletion:
-                                    removeSourceCardOnCompletion,
-                                SourceCardAlreadyMoved:
-                                    sourceCardAlreadyMoved,
-                                EventDispatchContinuation:
-                                    eventDispatchContinuation?.Fork());
+                        var continuation = CaptureEffectContinuation(
+                            operations);
                         combat = MakeControlledAfterShuffleInsertionChoice(
                             combat, afterShuffleInsertions[0],
                             afterShuffleInsertions.Skip(1).ToArray(), [], null,
