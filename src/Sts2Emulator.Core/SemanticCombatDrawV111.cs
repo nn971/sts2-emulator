@@ -280,10 +280,8 @@ public sealed record SemanticCombatDrawV111(
                 combat, out int pipelineRequested,
                 out int pipelineRemaining);
         bool semanticBeforeHandDrawProgress = pipelineCursor is not null &&
-            pipelineCursor.Stochastic.TryGetSemanticHandDrawProjection(
-                pipelineCursor.Mechanics, out int beforeRequested,
-                out int beforeRemaining) &&
-            beforeRequested == 0 && beforeRemaining == 0;
+            pipelineCursor.Stochastic.IsAtSemanticBeforeHandDraw(
+                pipelineCursor.Mechanics);
         if (this.AutomaticHandDraw)
         {
             bool awaiting = deck.Pending is not null || cost is not null ||

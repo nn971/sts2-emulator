@@ -226,19 +226,27 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
         out int requested, out int remaining)
     {
         ArgumentNullException.ThrowIfNull(mechanics);
-        var progress = HandDrawProgress;
-        if (progress?.Kind ==
-            PrototypeAutomaticHandDrawProgressKindV111.SemanticBeforeHandDraw)
+        if (IsAtSemanticBeforeHandDraw(mechanics))
         {
             requested = 0;
             remaining = 0;
-            return progress.RequestedCount is null &&
-                progress.RemainingCount is null &&
-                mechanics.IsAtStep(
-                    PrototypeAutomaticStepKind.DrawPlayerHand);
+            return true;
         }
         return TryGetSemanticHandDrawProgress(
             mechanics, out requested, out remaining);
+    }
+
+    public bool IsAtSemanticBeforeHandDraw(
+        PrototypeAutomaticPipelineMechanicsStateV111 mechanics)
+    {
+        ArgumentNullException.ThrowIfNull(mechanics);
+        return HandDrawProgress is
+            { Kind: PrototypeAutomaticHandDrawProgressKindV111
+                .SemanticBeforeHandDraw,
+              RequestedCount: null,
+              RemainingCount: null } &&
+            mechanics.IsAtStep(
+                PrototypeAutomaticStepKind.DrawPlayerHand);
     }
 
     public bool TryGetAutomaticHandDrawRemainder(

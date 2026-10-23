@@ -53,11 +53,9 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidOperationException(
                 "Missing combat for semantic pre-draw resumption.");
         var cursor = combat.AutomaticPipelineContinuation;
-        if (cursor?.Mechanics.IsAtStep(
-                PrototypeAutomaticStepKind.DrawPlayerHand) != true ||
-            cursor.Stochastic.HandDrawProgress?.Kind !=
-                PrototypeAutomaticHandDrawProgressKindV111
-                    .SemanticBeforeHandDraw ||
+        if (cursor is null ||
+            !cursor.Stochastic.IsAtSemanticBeforeHandDraw(
+                cursor.Mechanics) ||
             cursor.Stochastic.CompletedSemanticHandDrawRequested is not null ||
             combat.PendingChoice is not null ||
             combat.PendingKnowledgeDemonChoice is not null ||
@@ -147,10 +145,9 @@ public sealed partial class PrototypeGameEngine
                 result, requested, remaining);
         }
 
-        if (after.AutomaticPipelineContinuation?
-                .Stochastic.HandDrawProgress?.Kind ==
-                    PrototypeAutomaticHandDrawProgressKindV111
-                        .SemanticBeforeHandDraw &&
+        if (after.AutomaticPipelineContinuation is { } beforeHandDraw &&
+            beforeHandDraw.Stochastic.IsAtSemanticBeforeHandDraw(
+                beforeHandDraw.Mechanics) &&
             (after.PendingChoice?.ControlledRandomPileCard is not null ||
              after.PendingChoice?.AutomaticSemanticDrawHookChoice == true))
             return PrototypeDrawCardsResumeResultV111.ForHandDraw(
@@ -222,11 +219,9 @@ public sealed partial class PrototypeGameEngine
         var pending = pendingChoice?.ControlledRandomPileCard;
         var currentEvent = SemanticRandomPileCardEngineV111
             .DescribePending(run);
-        if (cursor?.Mechanics.IsAtStep(
-                PrototypeAutomaticStepKind.DrawPlayerHand) != true ||
-            cursor.Stochastic.HandDrawProgress?.Kind !=
-                PrototypeAutomaticHandDrawProgressKindV111
-                    .SemanticBeforeHandDraw ||
+        if (cursor is null ||
+            !cursor.Stochastic.IsAtSemanticBeforeHandDraw(
+                cursor.Mechanics) ||
             pending is null || pendingChoice?.ChoiceId !=
                 "controlled_random_pile_card" ||
             pendingChoice.OuterChoiceContinuation is not { } continuation ||

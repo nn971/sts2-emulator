@@ -118,9 +118,8 @@ public static class SemanticDrawHookChoiceEngineV111
         bool automatic = choice?.AutomaticSemanticDrawHookChoice == true;
         var automaticPipeline = combat?.AutomaticPipelineContinuation;
         bool beforeHandDraw = automatic && automaticPipeline is not null &&
-            automaticPipeline.Stochastic.TryGetSemanticHandDrawProjection(
-                automaticPipeline.Mechanics, out int requested,
-                out int remaining) && requested == 0 && remaining == 0;
+            automaticPipeline.Stochastic.IsAtSemanticBeforeHandDraw(
+                automaticPipeline.Mechanics);
         bool automaticPipelineAutoplay = choice is not null &&
             combat is not null &&
             PrototypeGameEngine

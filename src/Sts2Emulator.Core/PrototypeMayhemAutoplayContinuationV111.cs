@@ -514,9 +514,8 @@ public sealed partial class PrototypeGameEngine
     {
         var progress = continuation.Stochastic.HandDrawProgress;
         bool semanticBeforeHandDrawPending =
-            continuation.Stochastic.TryGetSemanticHandDrawProjection(
-                continuation.Mechanics, out int requested, out int remaining) &&
-            requested == 0 && remaining == 0;
+            continuation.Stochastic.IsAtSemanticBeforeHandDraw(
+                continuation.Mechanics);
         if (!continuation.Mechanics.IsAtStep(
                 PrototypeAutomaticStepKind.DrawPlayerHand) ||
             (progress is not null && !semanticBeforeHandDrawPending) ||
