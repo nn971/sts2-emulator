@@ -3255,3 +3255,12 @@ or recomputing the boundary. Snapshot fields, provider transcripts, and
 chronology ownership are unchanged. Broader automatic draw-resume consolidation
 and cross-provider mechanical equivalence remain open. Static source review and
 `git diff --check` only; no tests or builds were run.
+
+**S4 semantic-choice result owner increment (2026-10-24):** Semantic choice
+resume overloads that return only a run and source SiteId now use the shared
+`SemanticChoiceResumeResultV111` value. Draw resumes that also carry requested
+or remaining counts and typed decisions preserve those boundary-specific
+results. The value is internal and ephemeral; transcript, chronology, and
+snapshot ownership are unchanged. Broader automatic draw-resume consolidation
+and cross-provider mechanical equivalence remain open. Static source review and
+`git diff --check` only; no tests or builds were run.

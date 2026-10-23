@@ -1,5 +1,8 @@
 namespace Sts2Emulator.Core;
 
+internal readonly record struct SemanticChoiceResumeResultV111(
+    RunState Run, string SiteId);
+
 /// <summary>
 /// Applies a recorded supported semantic choice to its run checkpoint,
 /// including targets whose journals remain in their existing facades.
@@ -21,7 +24,7 @@ internal static class SemanticChoiceResumeV111
         return PrototypeAutomaticPipelineResumeResultV111.FromRun(run);
     }
 
-    internal static (RunState Run, string SiteId) ResumeEffectDraw(
+    internal static SemanticChoiceResumeResultV111 ResumeEffectDraw(
         RunState checkpoint, SemanticDrawDecisionV111 decision,
         bool allowEngineOwnedPrototypeReward = true)
     {
@@ -29,9 +32,10 @@ internal static class SemanticChoiceResumeV111
         ArgumentNullException.ThrowIfNull(decision);
         decision.Validate();
         var ownedDecision = decision.Fork();
-        return (SemanticDrawChoiceV111.ResumeControlledEffectDraw(
-            checkpoint.Fork(), ownedDecision,
-            allowEngineOwnedPrototypeReward),
+        return new SemanticChoiceResumeResultV111(
+            SemanticDrawChoiceV111.ResumeControlledEffectDraw(
+                checkpoint.Fork(), ownedDecision,
+                allowEngineOwnedPrototypeReward),
             ownedDecision.Event.SiteId);
     }
 
@@ -228,18 +232,20 @@ internal static class SemanticChoiceResumeV111
         return (run, requested, remaining, ownedDecision.Event.SiteId);
     }
 
-    internal static (RunState Run, string SiteId) Resume(
+    internal static SemanticChoiceResumeResultV111 Resume(
         RunState checkpoint, SemanticDrawInsertionDecisionV111 decision)
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
         ArgumentNullException.ThrowIfNull(decision);
         decision.Validate();
         var ownedDecision = decision.Fork();
-        return (SemanticDrawInsertionChoiceV111.Resume(
-            checkpoint.Fork(), ownedDecision), ownedDecision.Event.SiteId);
+        return new SemanticChoiceResumeResultV111(
+            SemanticDrawInsertionChoiceV111.Resume(
+                checkpoint.Fork(), ownedDecision),
+            ownedDecision.Event.SiteId);
     }
 
-    internal static (RunState Run, string SiteId) Resume(
+    internal static SemanticChoiceResumeResultV111 Resume(
         RunState checkpoint, SemanticCardSelectionDecisionV111 decision)
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
@@ -257,10 +263,11 @@ internal static class SemanticChoiceResumeV111
             CanonicalJson.Sha256(replayed))
             throw new InvalidDataException(
                 "Semantic card-selection replay chose a different action.");
-        return (selection.Run, "combat.card_selection");
+        return new SemanticChoiceResumeResultV111(
+            selection.Run, "combat.card_selection");
     }
 
-    internal static (RunState Run, string SiteId) Resume(
+    internal static SemanticChoiceResumeResultV111 Resume(
         RunState checkpoint, SemanticCostDecisionV111 decision,
         bool allowEngineOwnedPrototypeReward = true)
     {
@@ -281,70 +288,75 @@ internal static class SemanticChoiceResumeV111
             : SemanticCostChoiceV111.ResumeEffectDrawCost(
                 checkpoint.Fork(), ownedDecision.SelectedCost,
                 allowEngineOwnedPrototypeReward);
-        return (run, siteId);
+        return new SemanticChoiceResumeResultV111(run, siteId);
     }
 
-    internal static (RunState Run, string SiteId) Resume(
+    internal static SemanticChoiceResumeResultV111 Resume(
         RunState checkpoint, SemanticGeneratedCardDecisionV111 decision)
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
         ArgumentNullException.ThrowIfNull(decision);
         decision.Validate();
         var ownedDecision = decision.Fork();
-        return (SemanticGenerationChoiceV111.Resume(
-            checkpoint.Fork(), ownedDecision),
+        return new SemanticChoiceResumeResultV111(
+            SemanticGenerationChoiceV111.Resume(
+                checkpoint.Fork(), ownedDecision),
             ownedDecision.Event.SiteId);
     }
 
-    internal static (RunState Run, string SiteId) Resume(
+    internal static SemanticChoiceResumeResultV111 Resume(
         RunState checkpoint, SemanticPotionGenerationDecisionV111 decision)
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
         ArgumentNullException.ThrowIfNull(decision);
         decision.Validate();
         var ownedDecision = decision.Fork();
-        return (SemanticPotionGenerationChoiceV111.Resume(
-            checkpoint.Fork(), ownedDecision),
+        return new SemanticChoiceResumeResultV111(
+            SemanticPotionGenerationChoiceV111.Resume(
+                checkpoint.Fork(), ownedDecision),
             ownedDecision.Event.SiteId);
     }
 
-    internal static (RunState Run, string SiteId) Resume(
+    internal static SemanticChoiceResumeResultV111 Resume(
         RunState checkpoint, SemanticCardTransformDecisionV111 decision)
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
         ArgumentNullException.ThrowIfNull(decision);
         decision.Validate();
         var ownedDecision = decision.Fork();
-        return (SemanticCardTransformChoiceV111.Resume(
-            checkpoint.Fork(), ownedDecision),
+        return new SemanticChoiceResumeResultV111(
+            SemanticCardTransformChoiceV111.Resume(
+                checkpoint.Fork(), ownedDecision),
             ownedDecision.Event.SiteId);
     }
 
-    internal static (RunState Run, string SiteId) Resume(
+    internal static SemanticChoiceResumeResultV111 Resume(
         RunState checkpoint, SemanticCardShortlistDecisionV111 decision)
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
         ArgumentNullException.ThrowIfNull(decision);
         decision.Validate();
         var ownedDecision = decision.Fork();
-        return (SemanticCardShortlistChoiceV111.Resume(
-            checkpoint.Fork(), ownedDecision),
+        return new SemanticChoiceResumeResultV111(
+            SemanticCardShortlistChoiceV111.Resume(
+                checkpoint.Fork(), ownedDecision),
             ownedDecision.Event.SiteId);
     }
 
-    internal static (RunState Run, string SiteId) Resume(
+    internal static SemanticChoiceResumeResultV111 Resume(
         RunState checkpoint, SemanticPoolShuffleDecisionV111 decision)
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
         ArgumentNullException.ThrowIfNull(decision);
         decision.Validate();
         var ownedDecision = decision.Fork();
-        return (SemanticPoolShuffleChoiceV111.Resume(
-            checkpoint.Fork(), ownedDecision),
+        return new SemanticChoiceResumeResultV111(
+            SemanticPoolShuffleChoiceV111.Resume(
+                checkpoint.Fork(), ownedDecision),
             ownedDecision.Event.SiteId);
     }
 
-    internal static (RunState Run, string SiteId) Resume(
+    internal static SemanticChoiceResumeResultV111 Resume(
         RunState checkpoint,
         SemanticHandCostSelectionDecisionV111 decision)
     {
@@ -352,12 +364,13 @@ internal static class SemanticChoiceResumeV111
         ArgumentNullException.ThrowIfNull(decision);
         decision.Validate();
         var ownedDecision = decision.Fork();
-        return (SemanticHandCostSelectionChoiceV111.Resume(
-            checkpoint.Fork(), ownedDecision),
+        return new SemanticChoiceResumeResultV111(
+            SemanticHandCostSelectionChoiceV111.Resume(
+                checkpoint.Fork(), ownedDecision),
             ownedDecision.Event.SiteId);
     }
 
-    internal static (RunState Run, string SiteId) Resume(
+    internal static SemanticChoiceResumeResultV111 Resume(
         RunState checkpoint, SemanticDrawHookChoiceDecisionV111 decision)
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
@@ -370,10 +383,11 @@ internal static class SemanticChoiceResumeV111
             CanonicalJson.Sha256(replayed))
             throw new InvalidDataException(
                 "Semantic draw-hook replay diverged.");
-        return (run, "combat.draw.CardDrawn");
+        return new SemanticChoiceResumeResultV111(
+            run, "combat.draw.CardDrawn");
     }
 
-    internal static (RunState Run, string SiteId) Resume(
+    internal static SemanticChoiceResumeResultV111 Resume(
         RunState checkpoint,
         SemanticKnowledgeDemonChoiceDecisionV111 decision)
     {
@@ -383,10 +397,11 @@ internal static class SemanticChoiceResumeV111
         var ownedDecision = decision.Fork();
         var run = SemanticKnowledgeDemonChoiceEngineV111.Resume(
             checkpoint.Fork(), ownedDecision);
-        return (run, "combat.ResolveEnemyActions.KnowledgeDemon");
+        return new SemanticChoiceResumeResultV111(
+            run, "combat.ResolveEnemyActions.KnowledgeDemon");
     }
 
-    internal static (RunState Run, string SiteId) Resume(
+    internal static SemanticChoiceResumeResultV111 Resume(
         RunState checkpoint, SemanticEndTurnNestedChoiceV111 choice,
         bool allowEngineOwnedPrototypeReward = true)
     {
