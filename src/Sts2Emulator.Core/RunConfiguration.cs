@@ -568,11 +568,19 @@ public static class V111RunFactory
             : opening.Player.Deck;
         var nativeRunRng = input.Stochastic.NativeRunRng
             ?? NativeRngV111.CreateBundle(input.RunSeed);
-        var relicBag = opening.World!.Stochastic.RelicBag
-            ?? PrototypeNativeRelicGrabBag.CreateNative(
-                opening.Player, nativeRunRng);
         var natureState = opening.Stochastic.ReferenceNature
             ?? input.Stochastic.ReferenceNature;
+        // Nature owns the persistent pool as an unordered identity set. Its
+        // later pull continuations choose identities without committing the
+        // Native queue permutation or advancing that Native-only stream.
+        var natureOwnsRelicBag = natureState is not null
+            || controlledReferenceNatureRunStart;
+        var existingRelicBag = opening.World!.Stochastic.RelicBag;
+        var relicBag = natureOwnsRelicBag
+            ? PrototypeNativeRelicGrabBag.CreateNatureUnordered(
+                opening.Player, existingRelicBag)
+            : existingRelicBag ?? PrototypeNativeRelicGrabBag.CreateNative(
+                opening.Player, nativeRunRng);
         PrototypeLaterActEncounterBagV111[]? preparedLaterActBags = null;
         if (config.UsesExperimentalSilentThreeActRoute)
         {

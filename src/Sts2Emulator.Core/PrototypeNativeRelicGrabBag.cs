@@ -292,16 +292,23 @@ public static class PrototypeNativeRelicGrabBag
     /// so Native's shuffled queue order is not an input to the first pull.
     /// </summary>
     internal static PrototypeRelicBagState CreateNatureUnordered(
-        PlayerState player)
+        PlayerState player, PrototypeRelicBagState? sourceBag = null)
     {
         ArgumentNullException.ThrowIfNull(player);
         static string[] Canonical(string[] ids) => ids
             .OrderBy(id => id, StringComparer.Ordinal).ToArray();
+        if (sourceBag is not null)
+            Validate(sourceBag, player);
+
         var bag = new PrototypeRelicBagState(
-            Canonical(EligibleIds(player, PrototypeRelicRarity.Common)),
-            Canonical(EligibleIds(player, PrototypeRelicRarity.Uncommon)),
-            Canonical(EligibleIds(player, PrototypeRelicRarity.Rare)),
-            Canonical(EligibleIds(player, PrototypeRelicRarity.Shop)))
+            Canonical(sourceBag?.Common ??
+                EligibleIds(player, PrototypeRelicRarity.Common)),
+            Canonical(sourceBag?.Uncommon ??
+                EligibleIds(player, PrototypeRelicRarity.Uncommon)),
+            Canonical(sourceBag?.Rare ??
+                EligibleIds(player, PrototypeRelicRarity.Rare)),
+            Canonical(sourceBag?.Shop ??
+                EligibleIds(player, PrototypeRelicRarity.Shop)))
         {
             OrderMode = PrototypeRelicBagOrderMode.NatureUnordered
         };

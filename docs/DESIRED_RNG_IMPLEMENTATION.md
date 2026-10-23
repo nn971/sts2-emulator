@@ -151,13 +151,20 @@ precedes relic population; combat-earned extra offers and Black Star relic
 draws precede Prayer Wheel's appended group. Driftwood rerolls and Dream
 Catcher rest rewards also preserve the advanced native stream. Source-shaped
 pools remain restricted, and native result/cursor parity is unverified.
+Configured Overgrowth and Underdocks run starts now initialize the persistent
+relic pools as canonical `NatureUnordered` rarity sets. They do not construct
+the Native `run.treasure_room_relics` queue order; subsequent supported Nature
+pulls select identities through their existing Treasure, merchant, reward,
+event and Shovel continuations. Ordinary Native starts still build and shuffle
+the source-owned queues. This is a provider-state choice, not evidence for the
+source pool contents, identity probabilities, or Native cursor parity.
 `ReferenceNatureCombatRewardSessionV111` wraps a legal combat action that
 immediately wins and generates its reward. It samples configured Native pity,
 gold, PotionFactory, card, relic, boss-offer, and Lava Rock requests in replay
 order, and also captures a registered subset of retained Prototype
 `reward`-stream index requests with equal-index `UNVERIFIED` laws. It commits
 the reward and Nature cursor together. Other legacy reward hooks and the
-earlier Native relic-bag queue shuffle remain outside this session;
+ordinary Native relic-bag queue shuffle remain outside this session;
 source-pool completeness, stream attribution, and Native cursor parity remain
 open. See the [combat reward session contract](REFERENCE_NATURE_COMBAT_REWARD_D3.md).
 Punch Off's relic and potion custom reward picks now use that player stream in

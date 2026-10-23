@@ -49,19 +49,9 @@ internal static class ReferenceNatureRunProjectionV111
             if (!createRelicBagWhenMissing)
                 throw new NotSupportedException(
                     "ReferenceNature replay requires a committed relic bag.");
-            bag = PrototypeNativeRelicGrabBag.CreateNatureUnordered(
-                source.Player);
         }
-
-        static string[] Canonical(string[] ids) => ids
-            .OrderBy(id => id, StringComparer.Ordinal).ToArray();
-
-        var projectedBag = new PrototypeRelicBagState(
-            Canonical(bag.Common), Canonical(bag.Uncommon),
-            Canonical(bag.Rare), Canonical(bag.Shop))
-        {
-            OrderMode = PrototypeRelicBagOrderMode.NatureUnordered
-        };
+        var projectedBag = PrototypeNativeRelicGrabBag
+            .CreateNatureUnordered(source.Player, bag);
         return source with
         {
             World = world with
