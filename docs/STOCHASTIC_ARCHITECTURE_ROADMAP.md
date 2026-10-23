@@ -2,6 +2,15 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S6 Native-regional Event-entry fallback increment (2026-10-23):** The
+existing atomic Event-node entry session now consumes supported saved legacy
+`event` requests for generated gold, Stone of All Time's potion slot, and
+Future of Potions card types. It preserves each typed request ordinal and
+uses equal-weight `UNVERIFIED` laws; configured Native laws and providers are
+unchanged. Event selection, event-pool completeness, seed frequencies, and
+Native cursor parity remain open. Static source review and `git diff --check`
+only; no tests or builds were run.
+
 **S4 Native combat-generation stream attribution increment (2026-10-22):**
 Supported generated-model, random draw-Attack, and transform choices now label
 their typed semantic events with `run.combat_card_generation`, while random

@@ -24,7 +24,7 @@ public sealed record ReferenceNatureNativeEventGoldSessionSnapshotV111(
 
 /// <summary>
 /// Atomic ReferenceNature replay for supported Native and Native-regional
-/// legacy Event-node entry gold draws.
+/// legacy Event-node entry stochastic draws.
 /// </summary>
 public sealed record ReferenceNatureNativeEventGoldSessionV111(
     string SchemaId, string EventId, string ActionId,
@@ -410,13 +410,37 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
                 $"Native event-entry replay reached unsupported site '{siteId}'.");
         if (origin.Stochastic.NativeRunRng is null)
         {
-            if (siteId != GoldIndexSiteId ||
-                request.IndexRequest is not { } legacyIndexRequest)
+            if (request.IndexRequest is not { } legacyIndexRequest)
                 throw new NotSupportedException(
-                    "Native-regional legacy event-gold replay supports only generated-gold index requests.");
-            return ChanceLawEngineV111
-                .QueryLegacyNativeRegionalEventGoldIndex(
-                    origin, legacyIndexRequest, actionId, eventId);
+                    "Native-regional legacy Event-node replay requires an index request.");
+            if (siteId == GoldIndexSiteId)
+                return ChanceLawEngineV111
+                    .QueryLegacyNativeRegionalEventGoldIndex(
+                        origin, legacyIndexRequest, actionId, eventId);
+            if (siteId == ChanceLawEngineV111
+                    .NativeStoneOfAllTimePotionSlotSiteId)
+            {
+                var law = ChanceLawEngineV111
+                    .QueryNativeStoneOfAllTimePotionSlot(
+                        origin, siteId, ordinal, actionId, eventId);
+                if (streamId != "event" ||
+                    legacyIndexRequest.OperationKind != "choose_index" ||
+                    law.SiteId != siteId ||
+                    law.OperationKind != legacyIndexRequest.OperationKind ||
+                    law.OwnerId != ownerId || law.Ordinal != ordinal ||
+                    !legacyIndexRequest.OrderedCandidates.SequenceEqual(
+                        Enumerable.Range(0, law.Outcomes.Length)))
+                    throw new InvalidDataException(
+                        "Legacy Stone of All Time entry request differs from its conditional Chance Law.");
+                return law;
+            }
+            if (siteId == ChanceLawEngineV111
+                    .NativeFutureOfPotionsCardTypeSiteId)
+                return ChanceLawEngineV111
+                    .QueryLegacyNativeRegionalFutureOfPotionsCardType(
+                        origin, legacyIndexRequest, actionId, eventId);
+            throw new NotSupportedException(
+                $"Native-regional legacy Event-node replay does not support site '{siteId}'.");
         }
         var law = siteId switch
         {

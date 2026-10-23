@@ -376,9 +376,12 @@ public static partial class ChanceLawEngineV111
             PrototypeGameEngine.UsesNativeRegionalSystems(world);
         var legacyRoute = origin.Stochastic.NativeRunRng is null &&
             !PrototypeGameEngine.UsesNativeRegionalSystems(world);
-        if (!nativeRoute && !legacyRoute)
+        var nativeRegionalLegacyRoute =
+            origin.Stochastic.NativeRunRng is null &&
+            PrototypeGameEngine.UsesNativeRegionalSystems(world);
+        if (!nativeRoute && !legacyRoute && !nativeRegionalLegacyRoute)
             throw new InvalidOperationException(
-                "Stone of All Time potion-slot law requires a complete Native or legacy event RNG route.");
+                "Stone of All Time potion-slot law requires a supported Native-regional or legacy event RNG route.");
         var streamId = nativeRoute
             ? NativeRngV111Contexts.EventStreamId(
                 PrototypeNativeStoneOfAllTime.NativeRngEventId)
@@ -461,7 +464,8 @@ public static partial class ChanceLawEngineV111
                 actionId,
                 eventId,
                 nodeId,
-                providerRoute = "legacy",
+                providerRoute = nativeRegionalLegacyRoute
+                    ? "native_regional_legacy" : "legacy",
                 orderedOccupiedPotionSlots = slots,
                 request
             });
@@ -487,7 +491,53 @@ public static partial class ChanceLawEngineV111
     /// </summary>
     public static ChanceLawV111 QueryNativeFutureOfPotionsCardType(
         RunState origin, string siteId, int ordinal, string actionId,
-        string eventId)
+        string eventId) => QueryFutureOfPotionsCardType(
+            origin, siteId, ordinal, actionId, eventId, null);
+
+    public static ChanceLawV111
+        QueryLegacyNativeRegionalFutureOfPotionsCardType(
+            RunState origin, RandomIndexRequestV111 request,
+            string actionId, string eventId)
+    {
+        ArgumentNullException.ThrowIfNull(origin);
+        ArgumentNullException.ThrowIfNull(request);
+        request.Validate();
+        if (request.SiteId != NativeFutureOfPotionsCardTypeSiteId ||
+            request.StreamId != "event" ||
+            request.OperationKind != "choose_index")
+            throw new InvalidOperationException(
+                "Legacy Future of Potions laws require a saved event-stream index request.");
+        var potionSlotPrefix = "potion_slot:";
+        if (!request.OwnerId.StartsWith(
+                potionSlotPrefix, StringComparison.Ordinal))
+            throw new InvalidDataException(
+                "Legacy Future of Potions owner does not identify its potion slot.");
+        var potionSlotText = request.OwnerId[potionSlotPrefix.Length..]
+            .Split(':', 2)[0];
+        if (!int.TryParse(potionSlotText, NumberStyles.Integer,
+                CultureInfo.InvariantCulture, out var potionSlot))
+            throw new InvalidDataException(
+                "Legacy Future of Potions owner has an invalid potion slot.");
+        if (origin.World is null)
+            throw new InvalidOperationException(
+                "Legacy Future of Potions law requires its source run world.");
+        var occupiedPotionSlots = origin.Player.PotionSlots
+            .Select((potion, slot) => (Potion: potion, Slot: slot))
+            .Where(item => item.Potion is not null)
+            .ToArray();
+        var logicalOrdinal = Array.FindIndex(
+            occupiedPotionSlots, item => item.Slot == potionSlot);
+        if (logicalOrdinal < 0)
+            throw new InvalidDataException(
+                "Legacy Future of Potions request names an unowned potion slot.");
+        return QueryFutureOfPotionsCardType(
+            origin, request.SiteId, logicalOrdinal, actionId, eventId,
+            request);
+    }
+
+    private static ChanceLawV111 QueryFutureOfPotionsCardType(
+        RunState origin, string siteId, int ordinal, string actionId,
+        string eventId, RandomIndexRequestV111? savedLegacyRequest)
     {
         ArgumentNullException.ThrowIfNull(origin);
         ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
@@ -500,10 +550,15 @@ public static partial class ChanceLawEngineV111
             eventId != PrototypeNativeFutureOfPotions.EventId ||
             origin.Phase != RunPhase.MapChoice ||
             origin.World is not { Event: null } world ||
-            origin.Stochastic.NativeRunRng is null ||
             !PrototypeGameEngine.UsesNativeRegionalSystems(world))
             throw new InvalidOperationException(
-                "Future of Potions card-type laws require a configured pre-entry Native Event-node boundary and explicit event branch.");
+                "Future of Potions card-type laws require a pre-entry Native-regional Event-node boundary and explicit event branch.");
+        var nativeRoute = origin.Stochastic.NativeRunRng is not null;
+        var legacyRoute = savedLegacyRequest is not null &&
+            origin.Stochastic.NativeRunRng is null;
+        if (!nativeRoute && !legacyRoute)
+            throw new InvalidOperationException(
+                "Future of Potions card-type laws require a Native or captured Native-regional legacy event stream.");
         PrototypeStateInvariants.Validate(origin);
 
         var engine = new PrototypeGameEngine();
@@ -542,12 +597,26 @@ public static partial class ChanceLawEngineV111
             CanonicalJson.Sha256(cardTypes);
         var request = new RandomIndexRequestV111(
             siteId,
-            NativeRngV111Contexts.EventStreamId(
-                PrototypeNativeFutureOfPotions.NativeRngEventId),
-            ownerId, ordinal,
+            nativeRoute
+                ? NativeRngV111Contexts.EventStreamId(
+                    PrototypeNativeFutureOfPotions.NativeRngEventId)
+                : "event",
+            ownerId, nativeRoute ? ordinal : savedLegacyRequest!.Ordinal,
             Enumerable.Range(0, cardTypes.Length).ToArray());
         request.Validate();
-        var weights = NativeNextIntGridWeights(cardTypes.Length);
+        if (savedLegacyRequest is not null &&
+            (savedLegacyRequest.SiteId != request.SiteId ||
+             savedLegacyRequest.StreamId != request.StreamId ||
+             savedLegacyRequest.OwnerId != request.OwnerId ||
+             savedLegacyRequest.Ordinal != request.Ordinal ||
+             savedLegacyRequest.OperationKind != request.OperationKind ||
+             !savedLegacyRequest.OrderedCandidates.SequenceEqual(
+                 request.OrderedCandidates)))
+            throw new InvalidDataException(
+                "Legacy Future of Potions request differs from its current potion support.");
+        var weights = nativeRoute
+            ? NativeNextIntGridWeights(cardTypes.Length)
+            : Enumerable.Repeat(1L, cardTypes.Length).ToArray();
         var outcomes = cardTypes.Select((cardType, index) =>
             new ChanceLawOutcomeV111(
                 $"card_type:{cardType}:index:{index}", weights[index]))
@@ -566,24 +635,46 @@ public static partial class ChanceLawEngineV111
                     .CardTypesForRarity(priorRarity)
             };
         }).ToArray();
-        var conditioningFingerprint = CanonicalJson.Sha256(new
-        {
-            boundary = "native_event.future_of_potions.card_type",
-            actionId,
-            eventId,
-            nodeId,
-            priorCalls,
-            currentSlot = entry.Slot,
-            entry.PotionId,
-            rarity,
-            cardTypes,
-            request
-        });
+        var conditioningFingerprint = nativeRoute
+            ? CanonicalJson.Sha256(new
+            {
+                boundary = "native_event.future_of_potions.card_type",
+                actionId,
+                eventId,
+                nodeId,
+                priorCalls,
+                currentSlot = entry.Slot,
+                entry.PotionId,
+                rarity,
+                cardTypes,
+                request
+            })
+            : CanonicalJson.Sha256(new
+            {
+                boundary = "native_regional_legacy.future_of_potions.card_type",
+                actionId,
+                eventId,
+                nodeId,
+                priorCalls,
+                currentSlot = entry.Slot,
+                entry.PotionId,
+                rarity,
+                cardTypes,
+                request
+            });
+        var lawOrdinal = nativeRoute ? ordinal : savedLegacyRequest!.Ordinal;
         return CreateNativeBoundaryLaw(
-            siteId, request.OperationKind, ownerId, ordinal,
-            "native-event-index-prefix-v1", conditioningFingerprint,
-            NativeBoundedIndexSourceVerifiedProvenance,
-            outcomes, ChanceLawV111.SourceVerifiedStatus);
+            siteId, request.OperationKind, ownerId, lawOrdinal,
+            nativeRoute
+                ? "native-event-index-prefix-v1"
+                : "native-regional-legacy-event-index-prefix-v1",
+            conditioningFingerprint,
+            nativeRoute
+                ? NativeBoundedIndexSourceVerifiedProvenance
+                : "uniform-saved-legacy-event-index-support-unverified",
+            outcomes, nativeRoute
+                ? ChanceLawV111.SourceVerifiedStatus
+                : ChanceLawV111.UnverifiedStatus);
     }
 
     /// <summary>
