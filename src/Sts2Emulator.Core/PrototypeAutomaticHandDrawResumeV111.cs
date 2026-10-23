@@ -7,6 +7,56 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public sealed partial class PrototypeGameEngine
 {
+    private static void ValidateAutomaticHandDrawResult(
+        PrototypeDrawCardsResult drawn)
+    {
+        ArgumentNullException.ThrowIfNull(drawn);
+        var combat = drawn.Combat;
+        if (drawn.RemainingCount < 0 ||
+            combat.AutomaticPipelineContinuation is not { } cursor ||
+            !cursor.Mechanics.IsAtStep(
+                PrototypeAutomaticStepKind.DrawPlayerHand))
+            throw new InvalidDataException(
+                "Automatic hand-draw result lost its DrawPlayerHand checkpoint.");
+
+        bool validBoundary = drawn.BoundaryKind switch
+        {
+            PrototypeDrawCardsBoundaryKind.Complete =>
+                drawn.RemainingCount == 0 &&
+                combat.PendingChoice is null &&
+                combat.PendingKnowledgeDemonChoice is null &&
+                combat.Stochastic.SemanticDeck?.Pending is null,
+            PrototypeDrawCardsBoundaryKind.ShuffleSelection =>
+                drawn.RemainingCount > 0 &&
+                combat.PendingChoice is null &&
+                combat.PendingKnowledgeDemonChoice is null &&
+                ExpectedStratagemSelectionCount(combat) > 0,
+            PrototypeDrawCardsBoundaryKind.ControlledRecycle =>
+                drawn.RemainingCount > 0 &&
+                combat.Stochastic.SemanticDeck is null &&
+                combat.DrawPile.Length == 0 &&
+                combat.DiscardPile.Length > 0,
+            PrototypeDrawCardsBoundaryKind.ControlledDrawCost =>
+                combat.PendingChoice?.ControlledDrawCost is not null,
+            PrototypeDrawCardsBoundaryKind.SemanticDraw =>
+                drawn.RemainingCount > 0 &&
+                combat.Stochastic.SemanticDeck is
+                    { Mode: SemanticDeckStateV111.NatureMode,
+                      Pending: not null },
+            PrototypeDrawCardsBoundaryKind.AfterShuffleInsertions =>
+                drawn.RemainingCount > 0 &&
+                drawn.ControlledAfterShuffleInsertions is
+                    { Length: > 0 },
+            PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice =>
+                combat.PendingChoice is not null &&
+                combat.PendingKnowledgeDemonChoice is null,
+            _ => false
+        };
+        if (!validBoundary)
+            throw new InvalidDataException(
+                "Automatic hand-draw result does not match its saved mechanical boundary.");
+    }
+
     private static RunState CommitAutomaticHandDrawStratagemSelection(
         RunState state,
         PlayerState player,

@@ -198,26 +198,14 @@ public sealed partial class PrototypeGameEngine
     private static RunState ContinueControlledHandDraw(
         RunState state, PrototypeDrawCardsResult drawn)
     {
+        ValidateAutomaticHandDrawResult(drawn);
         var world = RequireWorld(state);
         var combat = drawn.Combat;
-        var cursor = combat.AutomaticPipelineContinuation ??
-            throw new InvalidDataException(
-                "Controlled hand draw lost its automatic pipeline cursor.");
-        if (cursor.Mechanics.CurrentStepKind !=
-                PrototypeAutomaticStepKind.DrawPlayerHand ||
-            drawn.RemainingCount < 0)
-            throw new InvalidDataException(
-                "Controlled hand draw has an invalid stage or remaining count.");
         var drawBoundary = drawn.BoundaryKind;
 
         if (drawBoundary ==
             PrototypeDrawCardsBoundaryKind.ShuffleSelection)
         {
-            if (drawn.RemainingCount <= 0 ||
-                combat.PendingChoice is not null ||
-                ExpectedStratagemSelectionCount(combat) <= 0)
-                throw new InvalidDataException(
-                    "Controlled hand draw has a malformed Stratagem boundary.");
             return BeginControlledRecycleStratagemSelection(
                 state, drawn.Player, combat, drawn.RemainingCount);
         }
@@ -225,9 +213,6 @@ public sealed partial class PrototypeGameEngine
         if (drawBoundary ==
             PrototypeDrawCardsBoundaryKind.ControlledDrawCost)
         {
-            if (combat.PendingChoice?.ControlledDrawCost is null)
-                throw new InvalidDataException(
-                    "Controlled hand draw lost its pending cost ticket.");
             return CommitAutomaticHandDrawProgress(
                 state, drawn.Player, combat,
                 PrototypeAutomaticHandDrawProgressV111
@@ -237,10 +222,6 @@ public sealed partial class PrototypeGameEngine
         if (drawBoundary ==
             PrototypeDrawCardsBoundaryKind.ControlledRecycle)
         {
-            if (drawn.RemainingCount <= 0 ||
-                combat.DrawPile.Length != 0 || combat.DiscardPile.Length == 0)
-                throw new InvalidDataException(
-                    "Controlled hand draw lost its recycle support.");
             return CommitAutomaticHandDrawProgress(
                 state, drawn.Player, combat,
                 PrototypeAutomaticHandDrawProgressV111
