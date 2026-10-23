@@ -141,6 +141,7 @@ public static class SemanticPlayerActionEngineV111
             "proto.native.event.toric_toughness",
             NativeGloryAncientsV111.ApparitionCardId,
             NativeGloryAncientsV111.ApotheosisCardId,
+            NativeGloryAncientsV111.EnthralledCardId,
             NativeGloryAncientsV111.MaulCardId,
             NativeGloryAncientsV111.WhistleCardId,
             PrototypeNativeUnderdocksTrashHeap.CaltropsCardId,
