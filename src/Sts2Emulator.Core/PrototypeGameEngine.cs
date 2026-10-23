@@ -201,6 +201,24 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             .SuspendedPipeline;
     }
 
+    /// <summary>Begin the shared next-turn intent continuation at the clean
+    /// ordinary AdvanceTurn cursor. End-turn and controlled-playable facades
+    /// keep their provider transcripts while using this mechanics entry.</summary>
+    internal static ControlledTurnIntentsV111
+        BeginAutomaticPipelineTurnIntents(
+        RunState checkpoint, string nativeEncounterEntry)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        ArgumentException.ThrowIfNullOrWhiteSpace(nativeEncounterEntry);
+        if (ClassifyAutomaticPipelineResumeBoundary(checkpoint) !=
+                PrototypeAutomaticPipelineResumeBoundaryKindV111.AdvanceTurn ||
+            checkpoint.World?.Combat is not { } combat)
+            throw new InvalidOperationException(
+                "Next-turn intents require a clean AdvanceTurn checkpoint.");
+        return ControlledTurnIntentEngineV111.Begin(
+            combat, nativeEncounterEntry);
+    }
+
     /// <summary>
     /// Identifies a complete result of one ordinary combat action: the next
     /// combat phase, an initialized combat reward, or a closed player defeat.

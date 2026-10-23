@@ -3206,3 +3206,11 @@ counters outside their compatibility and serialization owners. Snapshot
 members and choice chronology are unchanged. Cross-provider mechanical
 equivalence remains open. Static source review and `git diff --check` only; no
 tests or builds were run.
+
+**S4 next-turn intent entry increment (2026-10-24):**
+`BeginAutomaticPipelineTurnIntents` owns the clean ordinary `AdvanceTurn`
+boundary and is shared by semantic end-turn and controlled-playable
+continuations. Opening committed intent setup retains its distinct site
+boundary. Snapshot and transcript policies are unchanged; broader resume
+consolidation and cross-provider mechanical equivalence remain open. Static
+source review and `git diff --check` only; no tests or builds were run.

@@ -1105,8 +1105,9 @@ public static class ControlledPlayableCombatEngineV111
         // enemy already carries its source AI state and stable instance
         // identity, so the initial formation is not the eligibility authority
         // for this later commitment.
-        var intents = ControlledTurnIntentEngineV111.Begin(
-            combat, state.Origin.Formation.NativeEncounterEntry);
+        var intents = PrototypeGameEngine
+            .BeginAutomaticPipelineTurnIntents(
+                state.Run, state.Origin.Formation.NativeEncounterEntry);
         var next = state with { TurnIntents = intents };
         return intents.Complete ? FinishTurnIntents(next) : next;
     }

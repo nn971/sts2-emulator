@@ -674,9 +674,9 @@ public static class SemanticEndTurnEngineV111
         ArgumentNullException.ThrowIfNull(source);
         ArgumentException.ThrowIfNullOrWhiteSpace(nativeEncounterEntry);
         ValidateOrigin(source);
-        var combat = source.World!.Combat!;
-        var intents = ControlledTurnIntentEngineV111.Begin(
-            combat, nativeEncounterEntry);
+        var intents = PrototypeGameEngine
+            .BeginAutomaticPipelineTurnIntents(
+                source, nativeEncounterEntry);
         var state = new SemanticEndTurnV111(
             source.Fork(), source.Fork(), nativeEncounterEntry,
             intents, null, [])
