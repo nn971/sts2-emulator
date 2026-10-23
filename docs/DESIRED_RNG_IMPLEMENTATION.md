@@ -250,10 +250,11 @@ Stratagem selection, and supported `CardDrawn` hook choices. Recycle commits
 the Nature deck epoch and physical zone transfer through the shared draw-pile
 adapter before resuming those frames. `ResolveOperations` captures the source
 context and operation suffix for resumable `DrawCards` and hand-return shuffle
-effects through one owner, including saved draw-resume operations. Each caller
-still interprets its own draw boundaries and hook policy; contexts without a
-matching serializable frame still fail closed, and broader draw-resume
-consolidation remains open. Personal Hive's Dazed insertions after a powered
+effects through one owner, including saved draw-resume operations. The legacy
+and semantic effect-draw paths share deferred card-ID accumulation and keyword
+application. Each caller still interprets its own draw boundaries and hook
+policy; contexts without a matching serializable frame still fail closed, and
+broader draw-resume consolidation remains open. Personal Hive's Dazed insertions after a powered
 hit now suspend in the saved card-operation queue, then resume the remaining
 hit hooks before the original queue continues.
 Ordinary source action

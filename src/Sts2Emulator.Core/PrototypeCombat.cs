@@ -6544,9 +6544,9 @@ public sealed partial class PrototypeGameEngine
                         PrototypeDrawCardsBoundaryKind.ControlledRecycle)
                     {
                         var deferredKeywordIds =
-                            (operation.DeferredDrawnCardInstanceIds ?? [])
-                            .Concat(drawn.DrawnCardInstanceIds)
-                            .Distinct().ToArray();
+                            AccumulateDrawnCardInstanceIds(
+                                operation.DeferredDrawnCardInstanceIds,
+                                drawn.DrawnCardInstanceIds);
                         var resumeDraw = CreateDrawResumeOperation(
                             drawn.RemainingCount,
                             operation.FromHandDraw,
@@ -6609,9 +6609,9 @@ public sealed partial class PrototypeGameEngine
                             operation.FromHandDraw,
                             drawEventDepth,
                             operation.DrawnCardKeyword,
-                            (operation.DeferredDrawnCardInstanceIds ?? [])
-                                .Concat(drawn.DrawnCardInstanceIds)
-                                .Distinct().ToArray(),
+                            AccumulateDrawnCardInstanceIds(
+                                operation.DeferredDrawnCardInstanceIds,
+                                drawn.DrawnCardInstanceIds),
                             operation.StandaloneSemanticDrawSegment,
                             operation.DrawEqualSelectionCount);
                         var continuation = CaptureEffectContinuation(
@@ -6642,9 +6642,9 @@ public sealed partial class PrototypeGameEngine
                                 operation.FromHandDraw,
                                 drawEventDepth,
                                 operation.DrawnCardKeyword,
-                                (operation.DeferredDrawnCardInstanceIds ?? [])
-                                    .Concat(drawn.DrawnCardInstanceIds)
-                                    .Distinct().ToArray(),
+                                AccumulateDrawnCardInstanceIds(
+                                    operation.DeferredDrawnCardInstanceIds,
+                                    drawn.DrawnCardInstanceIds),
                                 StratagemSelectionPending:
                                     drawBoundary ==
                                         PrototypeDrawCardsBoundaryKind
@@ -6692,9 +6692,9 @@ public sealed partial class PrototypeGameEngine
                                 {
                                     Amount = drawn.RemainingCount,
                                     DeferredDrawnCardInstanceIds =
-                                        (operation.DeferredDrawnCardInstanceIds ?? [])
-                                            .Concat(drawn.DrawnCardInstanceIds)
-                                            .Distinct().ToArray(),
+                                        AccumulateDrawnCardInstanceIds(
+                                            operation.DeferredDrawnCardInstanceIds,
+                                            drawn.DrawnCardInstanceIds),
                                     DrawEventDepth = drawEventDepth
                                 }
                             }.Concat(operations));
@@ -6704,15 +6704,11 @@ public sealed partial class PrototypeGameEngine
                         drawBoundary !=
                             PrototypeDrawCardsBoundaryKind.ShuffleSelection)
                     {
-                        foreach (var cardInstanceId in
-                            (operation.DeferredDrawnCardInstanceIds ?? [])
-                                .Concat(drawn.DrawnCardInstanceIds).Distinct())
-                        {
-                            combat = ApplyCardKeywordOverride(
-                                combat,
-                                cardInstanceId,
-                                operation.DrawnCardKeyword);
-                        }
+                        combat = ApplyDrawnCardKeywordOverride(
+                            combat, operation.DrawnCardKeyword,
+                            AccumulateDrawnCardInstanceIds(
+                                operation.DeferredDrawnCardInstanceIds,
+                                drawn.DrawnCardInstanceIds));
                     }
 
                     break;
@@ -10795,6 +10791,20 @@ public sealed partial class PrototypeGameEngine
         return combat with { Cards = cards };
     }
 
+    private static CombatState ApplyDrawnCardKeywordOverride(
+        CombatState combat,
+        PrototypeCardKeywordOverrideSpec? action,
+        IEnumerable<long> drawnCardInstanceIds)
+    {
+        ArgumentNullException.ThrowIfNull(drawnCardInstanceIds);
+        if (action is null)
+            return combat;
+        foreach (var cardInstanceId in drawnCardInstanceIds.Distinct())
+            combat = ApplyCardKeywordOverride(
+                combat, cardInstanceId, action);
+        return combat;
+    }
+
     private static CombatState ModifyCombatCardEnergyCost(
         CombatState combat,
         long cardInstanceId,
@@ -13868,6 +13878,17 @@ public sealed partial class PrototypeGameEngine
             StandaloneSemanticDrawSegment:
                 standaloneSemanticDrawSegment,
             DrawEqualSelectionCount: drawEqualSelectionCount);
+    }
+
+    private static long[] AccumulateDrawnCardInstanceIds(
+        IEnumerable<long>? previousCardInstanceIds,
+        IEnumerable<long> drawnCardInstanceIds)
+    {
+        ArgumentNullException.ThrowIfNull(drawnCardInstanceIds);
+        return (previousCardInstanceIds ?? [])
+            .Concat(drawnCardInstanceIds)
+            .Distinct()
+            .ToArray();
     }
 
     private static CombatState AttachParentChoiceContinuation(

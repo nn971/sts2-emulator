@@ -367,12 +367,8 @@ public sealed partial class PrototypeGameEngine
                 throw new InvalidDataException(
                     "Semantic card-effect draw stopped without a pending boundary.");
 
-            if (draw.DrawnCardKeyword is { } keyword)
-            {
-                foreach (var cardInstanceId in deferredKeywordIds)
-                    combat = ApplyCardKeywordOverride(
-                        combat, cardInstanceId, keyword);
-            }
+            combat = ApplyDrawnCardKeywordOverride(
+                combat, draw.DrawnCardKeyword, deferredKeywordIds);
             var prototypeRng = run.Stochastic.PrototypeRng;
             var resumed = ResumeChoiceResolutionContinuation(
                 drawn.Player, combat, prototypeRng, outerContinuation);
@@ -529,8 +525,9 @@ public sealed partial class PrototypeGameEngine
             bool? stratagemSelectionPending = null)
     {
         var deferredKeywordIds = accumulateDrawnCardIds
-            ? (draw.DeferredKeywordCardInstanceIds ?? [])
-                .Concat(drawnCardInstanceIds).Distinct().ToArray()
+            ? AccumulateDrawnCardInstanceIds(
+                draw.DeferredKeywordCardInstanceIds,
+                drawnCardInstanceIds)
             : draw.DeferredKeywordCardInstanceIds;
         return draw with
         {
