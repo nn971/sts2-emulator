@@ -2,6 +2,15 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S0 v46 census refresh (2026-10-24):** Regenerated the direct-call census
+against current Core sources and synchronized the ownership inventory. Static
+checks report 111/111 typed request constructions resolved to registered sites,
+185/185 registered sites mapped, 36/36 known helper callsites mapped, and
+review-pointer matches for all five facets on all 185 rows. Site-matrix,
+contract-link, and ambient-entropy checks pass; these results do not establish
+source callsite completeness. Static inventory and `git diff --check` only; no
+tests or builds were run.
+
 **S4 automatic enemy-action semantic outcomes increment (2026-10-23):** The
 existing controlled enemy-action frame now persists optional ordered
 candidate labels with its index prefix. Card theft labels physical card
