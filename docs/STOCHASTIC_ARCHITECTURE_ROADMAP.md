@@ -28,6 +28,14 @@ supplying Anointed and a Rare pile; native acquisition, pool completeness, and
 cursor parity remain open. Static source review and `git diff --check` only;
 no tests or builds were run.
 
+**S2/S4 Seeker Strike source-card increment (2026-10-23):** The persistent
+semantic pilot now admits Seeker Strike's draw-pile shortlist through the
+physical source-card identity and exact one-of-three `ChooseCards` operation.
+It reuses the existing full-pool shuffle and player-selection events. Fixture
+setup remains optional. Draw-pile removal support split by known anchors
+remains fail-closed; native acquisition and cursor parity remain open. Static
+source review and `git diff --check` only; no tests or builds were run.
+
 **S2/S4 Neow's Abundance choice increment (2026-10-23):** The persistent
 semantic combat pilot admits Abundance's generated-Power choice through the
 existing full-pool shuffle and ChoicePool selection owners. The shuffle guard

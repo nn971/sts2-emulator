@@ -96,9 +96,12 @@ The persistent semantic pilot also admits Neow's Fury's optional
 discard-pile-to-hand selection and Neow's Abundance's exact three upgraded
 Power offer through the existing card-selection and pool-shuffle owners.
 Gambler's Brew uses the sequential event for one-at-a-time hand discards, then
-the semantic draw owner for the selected count. Each path retains its source
-continuation and hidden draw-pile checks; Native acquisition and cursor parity
-remain separate evidence.
+the semantic draw owner for the selected count. Seeker Strike now admits its
+exact physical source card and three-card draw-pile shortlist through the
+existing full-pool shuffle and card-selection events. Anointed's exact Rare
+shuffle likewise uses its physical source-card identity without a fixture
+marker. Each path retains its source continuation and hidden draw-pile checks;
+Native acquisition and cursor parity remain separate evidence.
 
 The Survivor entry is deliberately a fixture loadout integration, not evidence
 that Survivor was acquired through the native run route. Other outer-choice continuations,
