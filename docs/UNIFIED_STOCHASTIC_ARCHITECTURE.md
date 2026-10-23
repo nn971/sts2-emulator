@@ -172,6 +172,11 @@ When a configured experimental transition resolves an assigned Ancient through R
 
 The opt-in native-policy comparator retains a provider-private, chronological mixed transcript of native-v111 index, unit-float, ranged-float, ranged-double, Gaussian-integer, and Gaussian-double boundaries. Each typed entry preserves its request, selected result, and before/after native cursor; the existing index-decision array remains a validated compatibility projection. The transcript is captured from setup, source-route intent entry, and native-policy actions, is deep-forked with the pilot state, and is never included in the fair player observation. `SemanticPilotStochasticStateV111` validates this audit alongside its other provider state. The native-policy baseline installs `NativeRandomBoundaryProviderV111` across all six typed primitives; its control guard admits exact SiteId/stream/operation triples, including the combat streams, combat-end War Hammer and Fishing Rod requests, Native summoned-creature HP and in-place Tough Egg hatchling HP requests on `run.niche`, the `player.rewards` draws made while a winning action creates its reward, and the `run.treasure_room_relics` queue shuffle used for an elite reward. PotionFactory rarity and model requests are explicitly paired with either `run.combat_potion_generation` or `player.rewards` according to their source context; all unlisted pairs fail closed even when both identifiers are individually registered. The legacy Pael's Tooth return remains a separately allowlisted engine-owned `reward` request; other prototype RNG requests fail closed during native control. Older snapshots with only the index projection remain readable. Its probability status stays `UNVERIFIED`; this audit data does not establish source call-site coverage or native parity.
 
+Initial HP and Tough Egg hatch HP requests carry their numeric candidate lists
+in the typed index support; initial attachment also returns
+`NativeInitialHpAuditV111`. Their selected HP is therefore preserved in the
+exact provider decision without a separate semantic outcome schema.
+
 `RunSnapshot.Save` now writes the v4 simulation envelope using the existing
 `RunState.Simulation` owner, so mechanics and stochastic state are serialized
 together without flattening or duplicating the run provider. `RunSnapshot.Load`
