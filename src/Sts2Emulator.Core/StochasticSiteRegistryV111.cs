@@ -592,6 +592,24 @@ public static class StochasticSiteRegistryV111
         NativeCombatRngEntryV111.NextTurnIntentSiteId
     ];
 
+    private static readonly string[] CombatCardInstanceIndexAuditSites =
+    [
+        CombatRandomHandCardSelectSiteId,
+        CombatAutoplayRandomCardSelectSiteId,
+        CombatRandomReplayCardSelectSiteId,
+        CombatEnemyTheftCardSelectSiteId
+    ];
+
+    private static readonly HashSet<string>
+        CombatCardInstanceIndexAuditSiteSet = new(
+            CombatCardInstanceIndexAuditSites, StringComparer.Ordinal);
+
+    public static string[] CombatCardInstanceIndexAuditSiteIds =>
+        (string[])CombatCardInstanceIndexAuditSites.Clone();
+
+    public static bool IsCombatCardInstanceIndexAuditSite(string siteId) =>
+        CombatCardInstanceIndexAuditSiteSet.Contains(siteId);
+
     public static string[] NeowOfferIndexSiteIds =>
     [
         PrototypeNativeOvergrowthEvents.NeowCursedRelicSiteId,

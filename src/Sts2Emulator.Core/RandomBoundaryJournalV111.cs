@@ -203,6 +203,127 @@ public sealed record RandomBoundaryTranscriptEntryV111(
     }
 }
 
+/// <summary>Semantic identity paired with a Native index decision whose
+/// primitive request uses positional indices instead of physical card IDs.</summary>
+public sealed record SemanticCardInstanceIndexAuditV111(
+    string SchemaId, string EventId, string SupportFingerprint,
+    RandomIndexRequestV111 Request, long[] OrderedCardInstanceIds,
+    int SelectedIndex, long SelectedCardInstanceId,
+    RandomIndexDecisionV111 ProviderDecision)
+{
+    public const string CurrentSchemaId =
+        "sts2-v111-semantic-card-instance-index-audit-v1";
+
+    private long[]? _orderedCardInstanceIds =
+        CloneIds(OrderedCardInstanceIds);
+
+    public long[] OrderedCardInstanceIds
+    {
+        get => CloneIds(_orderedCardInstanceIds)!;
+        init => _orderedCardInstanceIds = CloneIds(value);
+    }
+
+    public SemanticCardInstanceIndexAuditV111 Fork() => this with
+    {
+        Request = Request with
+        {
+            OrderedCandidates = (int[])Request.OrderedCandidates.Clone()
+        },
+        OrderedCardInstanceIds = CloneIds(_orderedCardInstanceIds)!,
+        ProviderDecision = CloneDecision(ProviderDecision)
+    };
+
+    private static long[]? CloneIds(long[]? values) => values is null
+        ? null : (long[])values.Clone();
+
+    private static RandomIndexDecisionV111 CloneDecision(
+        RandomIndexDecisionV111 value) => value with
+    {
+        Request = value.Request with
+        {
+            OrderedCandidates = (int[])value.Request.OrderedCandidates.Clone()
+        }
+    };
+
+    public static SemanticCardInstanceIndexAuditV111 Create(
+        RandomIndexDecisionV111 providerDecision,
+        IReadOnlyList<long> orderedCardInstanceIds)
+    {
+        ArgumentNullException.ThrowIfNull(providerDecision);
+        ArgumentNullException.ThrowIfNull(orderedCardInstanceIds);
+        providerDecision.Validate();
+        var request = providerDecision.Request;
+        var identities = orderedCardInstanceIds.ToArray();
+        if (providerDecision.ProviderMode != "native-v111" ||
+            request.OperationKind != "choose_index" ||
+            !StochasticSiteRegistryV111.IsCombatCardInstanceIndexAuditSite(
+                request.SiteId) ||
+            request.SupportCount != identities.Length ||
+            !request.OrderedCandidates.SequenceEqual(
+                Enumerable.Range(0, identities.Length)) ||
+            identities.Length == 0 || identities.Any(id => id <= 0) ||
+            identities.Distinct().Count() != identities.Length ||
+            providerDecision.SelectedIndex < 0 ||
+            providerDecision.SelectedIndex >= identities.Length)
+            throw new InvalidDataException(
+                "Native card-instance index audit has an unsupported request or identity support.");
+
+        var supportFingerprint = CanonicalJson.Sha256(identities);
+        var eventId = CanonicalJson.Sha256(new
+        {
+            schemaId = CurrentSchemaId,
+            request,
+            supportFingerprint,
+            providerDecision
+        });
+        var outcome = new SemanticCardInstanceIndexAuditV111(
+            CurrentSchemaId, eventId, supportFingerprint,
+            request with
+            {
+                OrderedCandidates = (int[])request.OrderedCandidates.Clone()
+            }, identities, providerDecision.SelectedIndex,
+            identities[providerDecision.SelectedIndex],
+            CloneDecision(providerDecision));
+        outcome.Validate();
+        return outcome;
+    }
+
+    public void Validate()
+    {
+        var identities = _orderedCardInstanceIds;
+        ArgumentNullException.ThrowIfNull(Request);
+        ArgumentNullException.ThrowIfNull(ProviderDecision);
+        Request.ValidateForNativeProvider();
+        ProviderDecision.Validate();
+        if (SchemaId != CurrentSchemaId ||
+            ProviderDecision.ProviderMode != "native-v111" ||
+            ProviderDecision.SelectedIndex != SelectedIndex ||
+            CanonicalJson.Sha256(ProviderDecision.Request) !=
+                CanonicalJson.Sha256(Request) ||
+            !StochasticSiteRegistryV111.IsCombatCardInstanceIndexAuditSite(
+                Request.SiteId) ||
+            Request.OperationKind != "choose_index" || identities is null ||
+            identities.Length == 0 ||
+            !Request.OrderedCandidates.SequenceEqual(
+                Enumerable.Range(0, identities.Length)) ||
+            identities.Any(identity => identity <= 0) ||
+            identities.Distinct().Count() != identities.Length ||
+            Request.SupportCount != identities.Length ||
+            SelectedIndex < 0 || SelectedIndex >= identities.Length ||
+            SelectedCardInstanceId != identities[SelectedIndex] ||
+            SupportFingerprint != CanonicalJson.Sha256(identities) ||
+            EventId != CanonicalJson.Sha256(new
+            {
+                schemaId = SchemaId,
+                request = Request,
+                supportFingerprint = SupportFingerprint,
+                providerDecision = ProviderDecision
+            }))
+            throw new InvalidDataException(
+                "Invalid Native card-instance index audit outcome.");
+    }
+}
+
 internal static class RandomBoundaryCursorSpanV111
 {
     internal static void Validate(
@@ -244,6 +365,8 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
     private readonly RandomBoundaryJournalV111? _previous;
     private readonly List<RandomBoundaryTranscriptEntryV111> _orderedTranscript = [];
     private readonly List<SemanticIntentAuditEntryV111> _weightedIntentOutcomes = [];
+    private readonly List<SemanticCardInstanceIndexAuditV111>
+        _cardInstanceIndexOutcomes = [];
     private readonly Dictionary<string, int> _operationSequences =
         new(StringComparer.Ordinal);
     private bool _disposed;
@@ -281,6 +404,13 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
     public IReadOnlyList<SemanticIntentAuditEntryV111> WeightedIntentOutcomes =>
         _weightedIntentOutcomes.Select(outcome => outcome.Fork()).ToArray();
 
+    /// <summary>Semantic physical-card identities selected at registered
+    /// Native combat index sites. These annotations remain outside primitive
+    /// chronology and are paired with their exact index records.</summary>
+    public IReadOnlyList<SemanticCardInstanceIndexAuditV111>
+        CardInstanceIndexOutcomes => _cardInstanceIndexOutcomes
+            .Select(outcome => outcome.Fork()).ToArray();
+
     internal static void RecordWeightedIntentOutcome(
         SemanticIntentAuditEntryV111 auditEntry)
     {
@@ -302,6 +432,29 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
             throw new InvalidDataException(
                 "Weighted intent annotation differs from the latest primitive index entry.");
         current._weightedIntentOutcomes.Add(auditEntry.Fork());
+    }
+
+    internal static void RecordCardInstanceIndexOutcome(
+        SemanticCardInstanceIndexAuditV111 auditEntry)
+    {
+        ArgumentNullException.ThrowIfNull(auditEntry);
+        var current = Active.Value;
+        if (current is null)
+            return;
+        auditEntry.Validate();
+        var lastEntry = current._orderedTranscript.LastOrDefault();
+        if (lastEntry is null || lastEntry.OperationKind != "index")
+            throw new InvalidDataException(
+                "Card-instance index annotation has no preceding primitive index entry.");
+        var boundary = lastEntry.DeserializeEvent<RandomBoundaryEventV111>();
+        var journalDecision = new RandomIndexDecisionV111(
+            boundary.Request, boundary.SelectedIndex, boundary.ProviderMode,
+            boundary.NativeCursorBefore, boundary.NativeCursorAfter);
+        if (CanonicalJson.Sha256(journalDecision) !=
+            CanonicalJson.Sha256(auditEntry.ProviderDecision))
+            throw new InvalidDataException(
+                "Card-instance index annotation differs from the latest primitive index entry.");
+        current._cardInstanceIndexOutcomes.Add(auditEntry.Fork());
     }
 
     /// <summary>Returns a provider-specific mixed transcript in the order

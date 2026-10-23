@@ -181,15 +181,21 @@ public sealed record SemanticNativePolicyAuditV111(
         "engine-owned-native-v111-comparator-unverified-v1";
     public const string WeightedIntentAuditSchemaV1 =
         "sts2-v111-native-weighted-intent-audit-v1";
+    public const string CardInstanceIndexAuditSchemaV1 =
+        "sts2-v111-native-card-instance-index-audit-v1";
 
     /// <summary>Null for older snapshots that predate weighted intent audit
     /// coverage validation.</summary>
     public string? WeightedIntentAuditSchema { get; init; }
+    /// <summary>Null for older snapshots that predate semantic card-instance
+    /// identity annotations.</summary>
+    public string? CardInstanceIndexAuditSchema { get; init; }
 
     private RandomBoundaryEventV111[]? _decisions =
         CloneEvents(Decisions);
     private RandomBoundaryTranscriptEntryV111[]? _providerTrace = [];
     private SemanticIntentAuditEntryV111[]? _weightedIntentOutcomes = [];
+    private SemanticCardInstanceIndexAuditV111[]? _cardInstanceIndexOutcomes = [];
 
     public RandomBoundaryEventV111[] Decisions
     {
@@ -206,13 +212,22 @@ public sealed record SemanticNativePolicyAuditV111(
         get => CloneIntentOutcomes(_weightedIntentOutcomes)!;
         init => _weightedIntentOutcomes = CloneIntentOutcomes(value);
     }
+    public SemanticCardInstanceIndexAuditV111[] CardInstanceIndexOutcomes
+    {
+        get => CloneCardInstanceIndexOutcomes(
+            _cardInstanceIndexOutcomes)!;
+        init => _cardInstanceIndexOutcomes = CloneCardInstanceIndexOutcomes(
+            value);
+    }
 
     public SemanticNativePolicyAuditV111 Fork() => this with
     {
         Decisions = CloneEvents(_decisions)!,
         ProviderTrace = CloneTrace(_providerTrace)!,
         WeightedIntentOutcomes = CloneIntentOutcomes(
-            _weightedIntentOutcomes)!
+            _weightedIntentOutcomes)!,
+        CardInstanceIndexOutcomes = CloneCardInstanceIndexOutcomes(
+            _cardInstanceIndexOutcomes)!
     };
 
     private static RandomBoundaryEventV111[]? CloneEvents(
@@ -227,16 +242,26 @@ public sealed record SemanticNativePolicyAuditV111(
         SemanticIntentAuditEntryV111[]? values) => values?.Select(value =>
             value is null ? null! : value.Fork()).ToArray();
 
+    private static SemanticCardInstanceIndexAuditV111[]?
+        CloneCardInstanceIndexOutcomes(
+            SemanticCardInstanceIndexAuditV111[]? values) =>
+        values?.Select(value => value is null ? null! : value.Fork())
+            .ToArray();
+
     public void Validate()
     {
         var decisions = _decisions;
         var providerTrace = _providerTrace;
         var weightedIntentOutcomes = _weightedIntentOutcomes;
+        var cardInstanceIndexOutcomes = _cardInstanceIndexOutcomes;
         if (ProviderId != NativeProviderId ||
             ProbabilityStatus != "UNVERIFIED" || decisions is null ||
             providerTrace is null || weightedIntentOutcomes is null ||
+            cardInstanceIndexOutcomes is null ||
             (WeightedIntentAuditSchema is not null &&
-             WeightedIntentAuditSchema != WeightedIntentAuditSchemaV1))
+             WeightedIntentAuditSchema != WeightedIntentAuditSchemaV1) ||
+            (CardInstanceIndexAuditSchema is not null &&
+             CardInstanceIndexAuditSchema != CardInstanceIndexAuditSchemaV1))
             throw new InvalidDataException(
                 "Native policy baseline has invalid provider provenance.");
 
@@ -275,8 +300,34 @@ public sealed record SemanticNativePolicyAuditV111(
                     "Native policy weighted intent outcome does not match its primitive decision.");
         }
 
+        var cardIndexOutcomeEventIds = new HashSet<string>(
+            StringComparer.Ordinal);
+        var cardIndexOutcomeDecisions = new HashSet<string>(
+            StringComparer.Ordinal);
+        foreach (var auditEntry in cardInstanceIndexOutcomes)
+        {
+            if (auditEntry is null)
+                throw new InvalidDataException(
+                    "Native policy card-instance index audit entry is null.");
+            auditEntry.Validate();
+            var decisionFingerprint = CanonicalJson.Sha256(
+                auditEntry.ProviderDecision);
+            var matchingDecisions = decisions.Count(decision =>
+                CanonicalJson.Sha256(new RandomIndexDecisionV111(
+                    decision.Request, decision.SelectedIndex,
+                    decision.ProviderMode, decision.NativeCursorBefore,
+                    decision.NativeCursorAfter)) == decisionFingerprint);
+            if (matchingDecisions != 1 ||
+                !cardIndexOutcomeEventIds.Add(auditEntry.EventId) ||
+                !cardIndexOutcomeDecisions.Add(decisionFingerprint))
+                throw new InvalidDataException(
+                    "Native policy card-instance outcome does not uniquely match its primitive decision.");
+        }
+
         var traceIndices = new List<RandomBoundaryEventV111>();
         var traceIntentDecisions = new List<RandomIndexDecisionV111>();
+        var traceCardInstanceDecisions =
+            new List<RandomIndexDecisionV111>();
         for (var index = 0; index < providerTrace.Length; index++)
         {
             var entry = providerTrace[index];
@@ -297,6 +348,14 @@ public sealed record SemanticNativePolicyAuditV111(
                     traceIntentDecisions.Add(new RandomIndexDecisionV111(
                         value.Request, value.SelectedIndex, value.ProviderMode,
                         value.NativeCursorBefore, value.NativeCursorAfter));
+                if (StochasticSiteRegistryV111
+                    .IsCombatCardInstanceIndexAuditSite(
+                        value.Request.SiteId))
+                    traceCardInstanceDecisions.Add(
+                        new RandomIndexDecisionV111(
+                            value.Request, value.SelectedIndex,
+                            value.ProviderMode, value.NativeCursorBefore,
+                            value.NativeCursorAfter));
             }
         }
 
@@ -334,6 +393,28 @@ public sealed record SemanticNativePolicyAuditV111(
                 if (matchingOutcomes != 1)
                     throw new InvalidDataException(
                         "Native policy intent ticket does not have exactly one weighted outcome annotation.");
+            }
+        }
+
+        // The card-instance schema covers every registered source selection
+        // in its support; old snapshots retain their unmarked shape.
+        if (CardInstanceIndexAuditSchema == CardInstanceIndexAuditSchemaV1 ||
+            cardInstanceIndexOutcomes.Length > 0)
+        {
+            if (traceCardInstanceDecisions.Count !=
+                cardInstanceIndexOutcomes.Length)
+                throw new InvalidDataException(
+                    "Native policy card-instance outcomes are incomplete for their mixed trace.");
+
+            foreach (var cardDecision in traceCardInstanceDecisions)
+            {
+                var decisionFingerprint = CanonicalJson.Sha256(cardDecision);
+                var matchingOutcomes = cardInstanceIndexOutcomes.Count(outcome =>
+                    CanonicalJson.Sha256(outcome.ProviderDecision) ==
+                    decisionFingerprint);
+                if (matchingOutcomes != 1)
+                    throw new InvalidDataException(
+                        "Native card-instance index decision does not have exactly one semantic identity annotation.");
             }
         }
     }
@@ -1396,7 +1477,8 @@ public static class SemanticPilotCombatEngineV111
                 opening.Origin.Formation,
                 setupJournal.Entries.Where(decision =>
                     decision.ProviderMode == "native-v111").ToArray(),
-                setupJournal.EntriesForProvider("native-v111"));
+                setupJournal.EntriesForProvider("native-v111"),
+                setupJournal.CardInstanceIndexOutcomes.ToArray());
         if (entry.FixtureDrawCostRelicId is { } relicId)
         {
             if (relicId != "proto.relic.snecko_eye")
@@ -2015,6 +2097,8 @@ public static class SemanticPilotCombatEngineV111
                 }
             }).ToArray();
         var nativePolicyTrace = setupJournal.EntriesForProvider("native-v111");
+        var nativeCardInstanceOutcomes =
+            setupJournal.CardInstanceIndexOutcomes.ToArray();
         var routeAudit = new SemanticSourceRouteAuditV111(
             SemanticSourceRouteAuditV111.SourceRouteProviderId,
             entry.RouteActOneRegion, actions.ToArray(), actualNodeId,
@@ -2166,9 +2250,14 @@ public static class SemanticPilotCombatEngineV111
                 {
                     ProviderTrace = nativePolicyTrace,
                     WeightedIntentOutcomes = nativeIntentOutcomes,
+                    CardInstanceIndexOutcomes =
+                        nativeCardInstanceOutcomes,
                     WeightedIntentAuditSchema =
                         SemanticNativePolicyAuditV111
-                            .WeightedIntentAuditSchemaV1
+                            .WeightedIntentAuditSchemaV1,
+                    CardInstanceIndexAuditSchema =
+                        SemanticNativePolicyAuditV111
+                            .CardInstanceIndexAuditSchemaV1
                 }
                 : null
         };
@@ -2180,7 +2269,8 @@ public static class SemanticPilotCombatEngineV111
         SemanticPilotCombatV111 state, RngBundle nativeStreams,
         NativeEncounterFormationV111 formation,
         RandomBoundaryEventV111[] setupDecisions,
-        RandomBoundaryTranscriptEntryV111[] setupTrace)
+        RandomBoundaryTranscriptEntryV111[] setupTrace,
+        SemanticCardInstanceIndexAuditV111[] setupCardInstanceOutcomes)
     {
         ArgumentNullException.ThrowIfNull(nativeStreams);
         ArgumentNullException.ThrowIfNull(formation);
@@ -2230,9 +2320,13 @@ public static class SemanticPilotCombatEngineV111
                 }).ToArray())
             {
                 ProviderTrace = setupTrace,
+                CardInstanceIndexOutcomes = setupCardInstanceOutcomes,
                 WeightedIntentAuditSchema =
                     SemanticNativePolicyAuditV111
-                        .WeightedIntentAuditSchemaV1
+                        .WeightedIntentAuditSchemaV1,
+                CardInstanceIndexAuditSchema =
+                    SemanticNativePolicyAuditV111
+                        .CardInstanceIndexAuditSchemaV1
             }
         };
     }
@@ -2866,6 +2960,8 @@ public static class SemanticPilotCombatEngineV111
         var recordedTrace = boundaries.EntriesForProvider("native-v111");
         var weightedIntentOutcomes = boundaries.WeightedIntentOutcomes
             .ToArray();
+        var cardInstanceIndexOutcomes = boundaries
+            .CardInstanceIndexOutcomes.ToArray();
 
         if (result.Phase == RunPhase.Combat)
             ValidateNativePolicyBoundary(result);
@@ -2884,7 +2980,10 @@ public static class SemanticPilotCombatEngineV111
                 ProviderTrace = RandomBoundaryJournalV111.ConcatOrdered(
                     audit.ProviderTrace, recordedTrace),
                 WeightedIntentOutcomes = audit.WeightedIntentOutcomes
-                    .Concat(weightedIntentOutcomes).ToArray()
+                    .Concat(weightedIntentOutcomes).ToArray(),
+                CardInstanceIndexOutcomes =
+                    audit.CardInstanceIndexOutcomes
+                        .Concat(cardInstanceIndexOutcomes).ToArray()
             }
         };
         Validate(next);

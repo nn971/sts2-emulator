@@ -14022,6 +14022,13 @@ public sealed partial class PrototypeGameEngine
             BoundedCount: selectingCard ? null : boundedCount);
         var decision = StochasticProviderScopeV111.ResolveIndex(
             provider, request, streams);
+        if (selectingCard && decision.ProviderMode == "native-v111" &&
+            RandomBoundaryJournalV111.HasActiveJournal &&
+            StochasticSiteRegistryV111
+                .IsCombatCardInstanceIndexAuditSite(request.SiteId))
+            RandomBoundaryJournalV111.RecordCardInstanceIndexOutcome(
+                SemanticCardInstanceIndexAuditV111.Create(
+                    decision, orderedHandCardIds));
         var updated = native is null
             ? combat
             : combat with
@@ -14106,6 +14113,13 @@ public sealed partial class PrototypeGameEngine
 
         var decision = StochasticProviderScopeV111.ResolveIndex(
             provider, request, streams);
+        if (decision.ProviderMode == "native-v111" &&
+            RandomBoundaryJournalV111.HasActiveJournal &&
+            StochasticSiteRegistryV111
+                .IsCombatCardInstanceIndexAuditSite(siteId))
+            RandomBoundaryJournalV111.RecordCardInstanceIndexOutcome(
+                SemanticCardInstanceIndexAuditV111.Create(
+                    decision, orderedCardInstanceIds));
         var updated = native is null
             ? combat
             : combat with

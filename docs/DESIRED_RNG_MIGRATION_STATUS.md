@@ -331,6 +331,12 @@ carry a weighted-intent audit schema marker, and restore validation requires
 exactly one annotation for every intent-site index decision even if the
 annotation array is empty. Unmarked snapshots from before this schema remain
 readable.
+The same audit also retains the ordered physical card identities selected by
+Native index draws at registered random-hand-card, autoplay, replay, and
+enemy-theft sites. Each identity annotation is paired with the exact primitive
+index decision and its cursor span; the schema marker requires one annotation
+for every such registered decision. This records semantic outcomes without
+asserting that the candidate support or Native source route is complete.
 The intent engine's eligibility logic (source move state, weighted
 branches, anti-repeat, opening sequence and per-creature commit order)
 remains inside `PrototypeGameEngine.SelectEnemyMove`. The callback
