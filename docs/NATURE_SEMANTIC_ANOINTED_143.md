@@ -18,6 +18,11 @@ The semantic deck removes the same identities. If that removal would split
 hidden positional constraints in a way the current deck model cannot
 represent, the continuation fails closed.
 
+When the run-owned Native provider is active, each saved swap is delegated to
+`run.combat_card_selection` and the same Anointed continuation resumes without
+a Nature history choice. The provider transcript records the bounded Native
+request privately; Native stream attribution and cursor parity remain open.
+
 The seeded semantic-pilot fixture can replace its first opening-hand card
 with Anointed by setting
 `fixture_selection_card_id="proto.colorless.anointed"`. It also replaces

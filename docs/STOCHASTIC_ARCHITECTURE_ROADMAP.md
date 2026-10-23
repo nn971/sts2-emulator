@@ -2,13 +2,22 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
-**S6 combat full-pool shuffle delegation increment (2026-10-23):** The
-run-owned `SemanticOtherChanceStateV111` now resolves each saved
-`combat.generation.full_pool_shuffle.swap_index` through the registered
-`run.combat_card_generation` bounded-integer boundary, then resumes the same
-permutation continuation without a Nature history choice. The existing
-per-swap Chance Law remains exact only over its declared bound; source pool,
-stream attribution, and cursor parity remain open. Static source review and
+**S6 combat card-pool shuffle delegation increment (2026-10-23):** The
+run-owned `SemanticOtherChanceStateV111` now resolves saved full-pool swaps
+for generated cards through `run.combat_card_generation`, and Anointed Rare
+card and random-shortlist swaps through `run.combat_card_selection`. Each
+result resumes the same permutation continuation without a Nature history
+choice. The existing per-swap Chance Laws remain exact only over their
+declared bounds; source pool, stream attribution, and cursor parity remain
+open. Static source review and `git diff --check` only; no tests or builds
+were run.
+
+**S6 random replay/autoplay selection delegation increment (2026-10-23):**
+The run-owned provider now resolves saved random replay-card and autoplay
+card-instance selections through the registered
+`run.combat_card_selection` `choose_index` boundary. The existing saved
+shortlist records the selected identity and resumes without adding a Nature
+history choice. Eligibility and stream/cursor parity remain open. Static source review and
 `git diff --check` only; no tests or builds were run.
 
 **S6 Native initial-HP per-index law increment (2026-10-23):** The

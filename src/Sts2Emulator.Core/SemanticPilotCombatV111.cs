@@ -4874,7 +4874,8 @@ public static class SemanticPilotCombatEngineV111
 
     public static SemanticPilotCombatV111 ResolveCardShortlist(
         SemanticPilotCombatV111 current, string fingerprint,
-        string eventId, long cardInstanceId)
+        string eventId, long cardInstanceId,
+        SemanticOtherChanceStateV111? otherChance = null)
     {
         current.Validate();
         if (current.Fingerprint != fingerprint)
@@ -4886,12 +4887,13 @@ public static class SemanticPilotCombatEngineV111
                 "No random card-pile shortlist is pending.");
         var decision = SemanticCardShortlistChoiceV111.Select(
             pending, eventId, cardInstanceId);
-        return ResumeCardShortlistDecision(current, decision);
+        return ResumeCardShortlistDecision(current, decision, otherChance);
     }
 
     private static SemanticPilotCombatV111 ResumeCardShortlistDecision(
         SemanticPilotCombatV111 current,
-        SemanticCardShortlistDecisionV111 decision)
+        SemanticCardShortlistDecisionV111 decision,
+        SemanticOtherChanceStateV111? otherChance = null)
     {
         var pending = current.CardShortlistPending ??
             throw new InvalidOperationException(
@@ -4902,9 +4904,14 @@ public static class SemanticPilotCombatEngineV111
             "semantic_card_shortlist", CardShortlistDecision: decision.Fork());
         return ResumeAndPublishNestedChoice(
             current, choice,
-            new SemanticPilotContinuationV111(
-                "semantic_card_shortlist",
-                CardShortlistDecision: decision.Fork()));
+            otherChance is null
+                ? new SemanticPilotContinuationV111(
+                    "semantic_card_shortlist",
+                    CardShortlistDecision: decision.Fork())
+                : null,
+            normalizeEngineOwnedChoices: true,
+            validate: false,
+            otherChance: otherChance);
     }
 
     public static SemanticPilotCombatV111 ResolvePoolShuffle(
@@ -5661,6 +5668,15 @@ public static class SemanticPilotCombatEngineV111
             return endTurnEvent;
         var ordinal = current.History.Count(transition =>
             transition.Kind == "semantic_card_shortlist");
+        if (current.Run.Stochastic.SemanticOtherChance is
+                { } otherChance && otherChance.ProviderId !=
+                SemanticOtherChanceEngineV111.LegacyProviderId)
+            ordinal += otherChance.Decisions.Count(decision =>
+                decision.Request.SiteId is
+                    StochasticSiteRegistryV111
+                        .CombatRandomReplayCardSelectSiteId or
+                    StochasticSiteRegistryV111
+                        .CombatAutoplayRandomCardSelectSiteId);
         return SemanticCardShortlistChoiceV111.DescribePending(
             current.Run, current.Fingerprint, ordinal);
     }
@@ -5710,6 +5726,14 @@ public static class SemanticPilotCombatEngineV111
                 "Full-pool shuffle conflicts with another semantic boundary.");
         var ordinal = current.History.Count(transition =>
             transition.Kind == "semantic_pool_shuffle");
+        var siteId = SemanticPoolShuffleChoiceV111.SiteIdForOperation(
+            shuffle.Operation.Kind.ToString()) ?? throw new InvalidDataException(
+                "Full-pool shuffle operation has no registered site.");
+        if (current.Run.Stochastic.SemanticOtherChance is
+                { } otherChance && otherChance.ProviderId !=
+                SemanticOtherChanceEngineV111.LegacyProviderId)
+            ordinal += otherChance.Decisions.Count(decision =>
+                decision.Request.SiteId == siteId);
         return SemanticPoolShuffleChoiceV111.DescribePending(
             current.Run, current.Fingerprint, ordinal);
     }
@@ -6004,14 +6028,31 @@ public static class SemanticPilotCombatEngineV111
                     { } poolShuffleOwner &&
                 poolShuffleOwner.ProviderId !=
                     SemanticOtherChanceEngineV111.LegacyProviderId &&
-                poolShuffle.SiteId == StochasticSiteRegistryV111
-                    .CombatFullPoolShuffleSiteId)
+                SemanticOtherChanceEngineV111
+                    .SupportsEngineOwnedPoolShuffleBoundary(poolShuffle))
             {
                 var choice = SemanticOtherChanceEngineV111
                     .ResolvePoolShuffle(poolShuffleOwner, poolShuffle);
                 current = ResolvePoolShuffle(
                     current, current.Fingerprint, poolShuffle.EventId,
                     choice.Decision.SelectedIndex, choice.Next);
+                continue;
+            }
+
+            if (current.CardShortlistPending is { } cardShortlist &&
+                current.Run.Stochastic.SemanticOtherChance is
+                    { } cardShortlistOwner &&
+                cardShortlistOwner.ProviderId !=
+                    SemanticOtherChanceEngineV111.LegacyProviderId &&
+                SemanticOtherChanceEngineV111
+                    .SupportsEngineOwnedCardShortlistBoundary(cardShortlist))
+            {
+                var choice = SemanticOtherChanceEngineV111
+                    .ResolveCardShortlist(cardShortlistOwner, cardShortlist);
+                current = ResolveCardShortlist(
+                    current, current.Fingerprint, cardShortlist.EventId,
+                    cardShortlist.CandidateCardInstanceIds[
+                        choice.Decision.SelectedIndex], choice.Next);
                 continue;
             }
 

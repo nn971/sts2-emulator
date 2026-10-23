@@ -425,6 +425,49 @@ public static class SemanticOtherChanceEngineV111
     }
 
     /// <summary>
+    /// Resolve a saved random autoplay or replay-card choice through Native's
+    /// combat card-selection stream; the shortlist continuation applies the
+    /// selected physical card identity.
+    /// </summary>
+    public static (SemanticOtherChanceStateV111 Next,
+        RandomIndexDecisionV111 Decision) ResolveCardShortlist(
+        SemanticOtherChanceStateV111 previous,
+        SemanticCardShortlistEventV111 pending)
+    {
+        Validate(previous);
+        ArgumentNullException.ThrowIfNull(pending);
+        pending.Validate();
+        if (!SupportsEngineOwnedCardShortlistBoundary(pending))
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_OTHER_CHANCE site=" + pending.SiteId +
+                " operation=" + pending.OperationKind);
+
+        var request = new RandomIndexRequestV111(
+            pending.SiteId, "run.combat_card_selection", pending.OwnerId,
+            pending.Ordinal,
+            Enumerable.Range(0, pending.CandidateCardInstanceIds.Length)
+                .ToArray(), OperationKind: "choose_index");
+        return ResolveNativeIndex(previous, request);
+    }
+
+    internal static bool SupportsEngineOwnedCardShortlistBoundary(
+        SemanticCardShortlistEventV111 pending)
+    {
+        ArgumentNullException.ThrowIfNull(pending);
+        pending.Validate();
+        return pending.SiteId is (
+                StochasticSiteRegistryV111.CombatRandomReplayCardSelectSiteId or
+                StochasticSiteRegistryV111.CombatAutoplayRandomCardSelectSiteId) &&
+            (pending.StreamId is "prototype.combat" or "run.combat_card_selection") &&
+            pending.OperationKind is (
+                SemanticCardShortlistChoiceV111.ChooseCardInstanceOperation or
+                SemanticCardShortlistChoiceV111
+                    .ChooseCardInstanceWithoutReplacementOperation) &&
+            StochasticSiteRegistryV111.SupportsEngineOwnedNativeBoundary(
+                pending.SiteId, "run.combat_card_selection", "choose_index");
+    }
+
+    /// <summary>
     /// Resolve the registered enemy theft selection through Native's combat
     /// card-generation stream; the saved enemy-action frame applies the
     /// selected physical card and resumes the action.
@@ -453,9 +496,9 @@ public static class SemanticOtherChanceEngineV111
     }
 
     /// <summary>
-    /// Resolve one saved full-pool generation shuffle swap through Native's
-    /// combat card-generation stream. The semantic event retains the
-    /// permutation and source operation for the existing continuation.
+    /// Resolve one saved combat card-pool shuffle swap through its registered
+    /// Native combat stream. The semantic event retains the permutation and
+    /// source operation for the existing continuation.
     /// </summary>
     public static (SemanticOtherChanceStateV111 Next,
         RandomIndexDecisionV111 Decision) ResolvePoolShuffle(
@@ -465,20 +508,51 @@ public static class SemanticOtherChanceEngineV111
         Validate(previous);
         ArgumentNullException.ThrowIfNull(pending);
         pending.Validate();
-        if (pending.SiteId != StochasticSiteRegistryV111
-                .CombatFullPoolShuffleSiteId ||
-            pending.StreamId is not ("prototype.combat" or
-                "run.combat_card_generation") ||
-            pending.OperationKind != "bounded_integer")
+        if (!TryGetNativePoolShuffleStreamId(
+                pending.SiteId, out var nativeStreamId) ||
+            (pending.StreamId != "prototype.combat" &&
+             pending.StreamId != nativeStreamId) ||
+            pending.OperationKind != "bounded_integer" ||
+            !StochasticSiteRegistryV111.SupportsEngineOwnedNativeBoundary(
+                pending.SiteId, nativeStreamId, pending.OperationKind))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_OTHER_CHANCE site=" + pending.SiteId +
                 " operation=" + pending.OperationKind);
 
         var request = new RandomIndexRequestV111(
-            pending.SiteId, "run.combat_card_generation", pending.OwnerId,
+            pending.SiteId, nativeStreamId, pending.OwnerId,
             pending.Ordinal, [], OperationKind: "bounded_integer",
             BoundedCount: pending.NextSwapIndex + 1);
         return ResolveNativeIndex(previous, request);
+    }
+
+    internal static bool SupportsEngineOwnedPoolShuffleBoundary(
+        SemanticPoolShuffleEventV111 pending)
+    {
+        ArgumentNullException.ThrowIfNull(pending);
+        pending.Validate();
+        return TryGetNativePoolShuffleStreamId(
+                pending.SiteId, out var nativeStreamId) &&
+            (pending.StreamId == "prototype.combat" ||
+             pending.StreamId == nativeStreamId) &&
+            pending.OperationKind == "bounded_integer" &&
+            StochasticSiteRegistryV111.SupportsEngineOwnedNativeBoundary(
+                pending.SiteId, nativeStreamId, pending.OperationKind);
+    }
+
+    private static bool TryGetNativePoolShuffleStreamId(
+        string siteId, out string streamId)
+    {
+        streamId = siteId switch
+        {
+            StochasticSiteRegistryV111.CombatFullPoolShuffleSiteId =>
+                "run.combat_card_generation",
+            StochasticSiteRegistryV111.CombatRandomRareDrawToHandShuffleSiteId or
+                StochasticSiteRegistryV111.CombatRandomShortlistShuffleSiteId =>
+                "run.combat_card_selection",
+            _ => ""
+        };
+        return streamId.Length != 0;
     }
 
     /// <summary>
