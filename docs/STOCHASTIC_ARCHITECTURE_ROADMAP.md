@@ -18,6 +18,14 @@ the ordinary combat result boundary and do not add a chance owner or snapshot
 field. Static source review and `git diff --check` only; no tests or builds
 were run.
 
+**S4 legacy combat Entropic Brew continuation increment (2026-10-24):** The
+ReferenceNature run-action session now admits Entropic Brew in a legacy combat
+when its matching combat potion is available and no combat choice is pending.
+Each empty-slot model draw reuses the saved typed run-action continuation and
+ordered `reward`-stream potion support. Native combat remains excluded until
+that draw can advance both run and combat player-rewards cursors. Static source
+review and `git diff --check` only; no tests or builds were run.
+
 **S4 controlled event-choice candidate replay increment (2026-10-24):**
 Generic event-effect continuations now pass each saved decision's ordered
 candidate labels into replay and compare them with the live support before
