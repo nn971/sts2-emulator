@@ -103,6 +103,7 @@ public static class SemanticPlayerActionEngineV111
             "proto.silent.wraith_form",
             "proto.silent.storm_of_steel",
             "proto.colorless.dramatic_entrance",
+            "proto.colorless.bolas",
             "proto.colorless.ultimate_strike",
             "proto.colorless.ultimate_defend",
             "proto.colorless.shockwave",
@@ -118,6 +119,7 @@ public static class SemanticPlayerActionEngineV111
             "proto.colorless.equilibrium",
             "proto.colorless.production",
             "proto.colorless.prolong",
+            "proto.colorless.rend",
             "proto.colorless.salvo",
             "proto.colorless.gold_axe",
             "proto.colorless.fisticuffs",
@@ -128,7 +130,8 @@ public static class SemanticPlayerActionEngineV111
             "proto.colorless.rolling_boulder",
             "proto.colorless.the_gambit",
             "proto.colorless.entropy",
-            "proto.colorless.stratagem"
+            "proto.colorless.stratagem",
+            "proto.colorless.thrumming_hatchet"
         };
 
     internal static bool SupportsCard(string cardId) =>
