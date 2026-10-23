@@ -25,7 +25,6 @@ public sealed record CombatStochasticStateV111
         get => _nativeRng?.Fork();
         init => _nativeRng = value?.Fork();
     }
-    internal NativeCombatRngV111? NativeRngMutable => _nativeRng;
 
     public SemanticDeckStateV111? SemanticDeck { get; init; }
 

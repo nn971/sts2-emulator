@@ -73,10 +73,10 @@ public sealed record RunStochasticStateV111
         get => _nativeRunRng?.Fork();
         init => _nativeRunRng = value?.Fork();
     }
-    /// <summary>Internal mutable view retained for legacy engine paths.</summary>
-    internal RngBundle PrototypeRngMutable => _prototypeRng!;
-    /// <summary>Internal mutable view retained for legacy engine paths.</summary>
-    internal RngBundle? NativeRunRngMutable => _nativeRunRng;
+    /// <summary>Private mutable view used by owner validation and forking.</summary>
+    private RngBundle PrototypeRngMutable => _prototypeRng!;
+    /// <summary>Private mutable view used by owner validation and forking.</summary>
+    private RngBundle? NativeRunRngMutable => _nativeRunRng;
     public ReferenceNatureStateV111? ReferenceNature { get; init; }
     public ControlledEventChoiceTraceV111[]? ControlledEventChoiceHistory
     {
