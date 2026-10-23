@@ -6953,7 +6953,7 @@ public sealed partial class PrototypeGameEngine
                         else
                             choice = ResolveRandomCombatCardIndex(
                                 combat, rng,
-                                "combat.draw_pile.random_replay_card.select",
+                                StochasticSiteRegistryV111.CombatRandomReplayCardSelectSiteId,
                                 "combat", pool,
                                 "effect:" + operation.Kind + ":source:" +
                                     (sourceCardInstanceId?.ToString() ?? "none"));
@@ -8126,7 +8126,9 @@ public sealed partial class PrototypeGameEngine
                     else
                         selection = ResolveRandomCombatCardIndex(
                             combat, rng,
-                            "combat.autoplay.random_card.select", "combat",
+                            StochasticSiteRegistryV111
+                                .CombatAutoplayRandomCardSelectSiteId,
+                            "combat",
                             eligible,
                             "effect:" + operation.Kind + ":source:" +
                                 (sourceCardInstanceId?.ToString() ?? "none") +

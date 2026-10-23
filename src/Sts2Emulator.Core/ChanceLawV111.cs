@@ -6297,8 +6297,8 @@ public static partial class ChanceLawEngineV111
         ArgumentNullException.ThrowIfNull(shortlist);
         shortlist.Validate();
         var hasNativeIndexLaw = shortlist.SiteId is
-            "combat.autoplay.random_card.select" or
-            "combat.draw_pile.random_replay_card.select";
+            StochasticSiteRegistryV111.CombatAutoplayRandomCardSelectSiteId or
+            StochasticSiteRegistryV111.CombatRandomReplayCardSelectSiteId;
         var indexWeights = hasNativeIndexLaw
             ? NativeNextIntGridWeights(
                 shortlist.CandidateCardInstanceIds.Length)

@@ -131,15 +131,15 @@ public static class SemanticPoolShuffleChoiceV111
 {
     public const string SchemaId = "sts2-v111-semantic-pool-shuffle-v1";
     internal const string HandReturnSiteId =
-        "combat.hand_return.draw_pile.shuffle_swap_index";
+        StochasticSiteRegistryV111.CombatHandReturnShuffleSiteId;
     internal const string GenerationSiteId =
-        "combat.generation.full_pool_shuffle.swap_index";
+        StochasticSiteRegistryV111.CombatFullPoolShuffleSiteId;
     internal const string RandomRareToHandSiteId =
-        "combat.draw_pile.random_rare_to_hand.shuffle_swap_index";
+        StochasticSiteRegistryV111.CombatRandomRareDrawToHandShuffleSiteId;
     internal const string RecycleSiteId =
-        "combat.draw.recycle.shuffle_swap_index";
+        StochasticSiteRegistryV111.CombatEffectDrawRecycleShuffleSiteId;
     internal const string RandomShortlistSiteId =
-        "combat.card_selection.random_shortlist";
+        StochasticSiteRegistryV111.CombatRandomShortlistShuffleSiteId;
 
     internal static string? SiteIdForOperation(string sourceOperationKind) =>
         sourceOperationKind switch

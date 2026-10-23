@@ -105,7 +105,7 @@ public sealed record SemanticCardShortlistEventV111(
                 candidateCardInstanceIds.Length ||
             RequiredCount < 1 ||
             RequiredCount >= eligibleCardInstanceIds.Length ||
-            (SiteId == "combat.draw_pile.random_replay_card.select" &&
+            (SiteId == StochasticSiteRegistryV111.CombatRandomReplayCardSelectSiteId &&
              RequiredCount != 1) ||
             selectedCardInstanceIds.Length >= RequiredCount ||
             ProbabilityStatus != "UNVERIFIED" ||
@@ -164,10 +164,11 @@ public static class SemanticCardShortlistChoiceV111
 {
     public const string SchemaId = "sts2-v111-semantic-card-shortlist-v1";
     public const string ShortlistSiteId =
-        "combat.card_selection.random_shortlist";
-    public const string AutoplaySiteId = "combat.autoplay.random_card.select";
+        StochasticSiteRegistryV111.CombatRandomShortlistShuffleSiteId;
+    public const string AutoplaySiteId =
+        StochasticSiteRegistryV111.CombatAutoplayRandomCardSelectSiteId;
     public const string ReplaySiteId =
-        "combat.draw_pile.random_replay_card.select";
+        StochasticSiteRegistryV111.CombatRandomReplayCardSelectSiteId;
     internal const string StreamId = "prototype.combat";
     internal const string NativeStreamId = "run.combat_card_selection";
     internal const string ChooseCardInstanceOperation =

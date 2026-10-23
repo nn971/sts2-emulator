@@ -4,9 +4,10 @@
 
 **S0 stochastic SiteId ownership consolidation (2026-10-23):** The registry
 now owns the identifiers for random hand-cost selection and resolution,
-draw-cost choices, potion generation, and card transforms. Semantic choice
-owners, registry coverage and control checks, and gameplay request callsites
-all reference those constants instead of maintaining duplicate literals.
+draw-cost choices, potion generation, card transforms, and the semantic
+shortlist and pool-shuffle family. Semantic choice owners, registry coverage
+and control checks, and gameplay request callsites all reference those
+constants instead of maintaining duplicate literals.
 Static source review and `git diff --check` only; no tests or builds were run.
 
 **S0 Native request-wrapper callsite closure increment (2026-10-23):** The

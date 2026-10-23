@@ -378,6 +378,12 @@ public static class StochasticSiteRegistryV111
         "combat.card_draw.relic_energy_cost";
     public const string CombatDrawSlitherEnergyCostSiteId =
         "combat.card_draw.slither_energy_cost";
+    public const string CombatEffectDrawRecycleShuffleSiteId =
+        "combat.draw.recycle.shuffle_swap_index";
+    public const string CombatAutoplayRandomCardSelectSiteId =
+        "combat.autoplay.random_card.select";
+    public const string CombatRandomReplayCardSelectSiteId =
+        "combat.draw_pile.random_replay_card.select";
     public const string CombatEnemyDiscardRandomInsertSiteId =
         "combat.enemy.discard.random_insert_index";
     public const string CombatEnemyDrawRandomInsertSiteId =
@@ -609,12 +615,12 @@ public static class StochasticSiteRegistryV111
         CombatHandReturnShuffleSiteId,
         CombatFullPoolShuffleSiteId,
         CombatRandomRareDrawToHandShuffleSiteId,
-        "combat.draw.recycle.shuffle_swap_index",
+        CombatEffectDrawRecycleShuffleSiteId,
         DrawPileRandomInsertSiteId,
         AfterShuffleRelicDrawPileInsertSiteId,
         CombatRandomShortlistShuffleSiteId,
-        "combat.autoplay.random_card.select",
-        "combat.draw_pile.random_replay_card.select"
+        CombatAutoplayRandomCardSelectSiteId,
+        CombatRandomReplayCardSelectSiteId
     ];
 
     private static readonly string[] RunActionSites =
@@ -1129,7 +1135,7 @@ public static class StochasticSiteRegistryV111
     private static readonly string[] LegacyFisherYatesSites =
         NativeFisherYatesSites.Concat(new[]
         {
-            "combat.draw.recycle.shuffle_swap_index",
+            CombatEffectDrawRecycleShuffleSiteId,
             EventRewardCardBundleShuffleSiteId,
             "relic.sand_castle.acquisition_upgrade.shuffle_swap_index",
             RandomPoolDistinctShuffleSiteId,
@@ -1527,11 +1533,11 @@ public static class StochasticSiteRegistryV111
             {
                 CombatRandomHandCardSelectSiteId or
                 "combat.relic.jeweled_mask.random_power_draw_card" or
-                "combat.draw_pile.random_replay_card.select" or
-                "combat.autoplay.random_card.select" =>
+                CombatRandomReplayCardSelectSiteId or
+                CombatAutoplayRandomCardSelectSiteId =>
                     operationKind == "choose_index",
-                "combat.draw_pile.random_rare_to_hand.shuffle_swap_index" or
-                "combat.card_selection.random_shortlist" =>
+                CombatRandomRareDrawToHandShuffleSiteId or
+                CombatRandomShortlistShuffleSiteId =>
                     operationKind == "bounded_integer",
                 _ => false
             },
@@ -1542,7 +1548,7 @@ public static class StochasticSiteRegistryV111
                 CombatCardTransformReplacementSiteId or
                 "combat.enemy.theft_card.select" =>
                     operationKind == "choose_index",
-                "combat.generation.full_pool_shuffle.swap_index" =>
+                CombatFullPoolShuffleSiteId =>
                     operationKind == "bounded_integer",
                 _ => false
             },

@@ -187,7 +187,7 @@ public static class SemanticNatureEnumeratorV111
         else if (current.PoolShufflePending is { } pool)
         {
             eventKind = pool.SiteId ==
-                "combat.hand_return.draw_pile.shuffle_swap_index"
+                StochasticSiteRegistryV111.CombatHandReturnShuffleSiteId
                 ? "hand_return_shuffle"
                 : "generated_card_pool_shuffle";
             eventId = pool.EventId;
