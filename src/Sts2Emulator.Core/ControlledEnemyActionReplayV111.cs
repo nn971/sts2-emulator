@@ -19,7 +19,9 @@ public sealed record PrototypeControlledEnemyActionContinuationV111(
     RunState Checkpoint,
     int StepIndex,
     RandomIndexDecisionV111[] Decisions,
-    RandomIndexRequestV111 PendingRequest)
+    RandomIndexRequestV111 PendingRequest,
+    string[][]? DecisionCandidateLabels = null,
+    string[]? PendingCandidateLabels = null)
 {
     /// <summary>
     /// Atomic mechanics/provider envelope for the suspended enemy action.
@@ -33,7 +35,8 @@ public sealed record PrototypeControlledEnemyActionContinuationV111(
                 PrototypeMechanicsContinuationKindV111.ControlledEnemyAction,
                 null, Checkpoint),
             new ControlledChanceContinuationStateV111(
-                Decisions, PendingRequest));
+                Decisions, PendingRequest, PendingCandidateLabels,
+                DecisionCandidateLabels));
 
     [System.Text.Json.Serialization.JsonIgnore]
     public PrototypeMechanicsContinuationStateV111 Mechanics
@@ -71,11 +74,35 @@ public sealed record PrototypeControlledEnemyActionContinuationV111(
         init => Chance = Chance with { PendingRequest = value };
     }
 
+    public string[][]? DecisionCandidateLabels
+    {
+        get => Chance.DecisionCandidateLabels;
+        init => Chance = Chance with { DecisionCandidateLabels = value };
+    }
+
+    public string[]? PendingCandidateLabels
+    {
+        get => Chance.PendingCandidateLabels;
+        init => Chance = Chance with { PendingCandidateLabels = value };
+    }
+
     public PrototypeControlledEnemyActionContinuationV111 Fork() => this with
     {
         Checkpoint = Checkpoint.Fork(),
         Chance = Chance.Fork()
     };
+
+    public void Deconstruct(
+        out RunState checkpoint,
+        out int stepIndex,
+        out RandomIndexDecisionV111[] decisions,
+        out RandomIndexRequestV111 pendingRequest)
+    {
+        checkpoint = Checkpoint;
+        stepIndex = StepIndex;
+        decisions = Decisions;
+        pendingRequest = PendingRequest;
+    }
 
     public void Validate(int pipelineLength)
     {
@@ -83,11 +110,14 @@ public sealed record PrototypeControlledEnemyActionContinuationV111(
             PrototypeMechanicsContinuationKindV111.ControlledEnemyAction);
         if (Checkpoint is null || Decisions is null || PendingRequest is null ||
             StepIndex < 0 || StepIndex >= pipelineLength ||
+            DecisionCandidateLabels is { } candidateLabels &&
+                candidateLabels.Length != Decisions.Length ||
             PrototypeContent.Rules.EndTurnPipeline[StepIndex].Kind !=
                 PrototypeAutomaticStepKind.ResolveEnemyActions)
             throw new InvalidDataException(
                 "Malformed controlled enemy-action checkpoint.");
         PendingRequest.Validate();
+        Chance.Stochastic.Validate();
         if (!IsEnemyActionSite(PendingRequest.SiteId))
             throw new InvalidDataException(
                 "Enemy-action continuation contains an unrelated chance site.");
@@ -153,6 +183,7 @@ public sealed record PrototypeControlledEnemyActionContinuationV111(
 }
 
 internal sealed class ControlledEnemyActionChanceRequiredException(
-    RandomIndexRequestV111 request) : ControlledChanceRequiredExceptionV111(
-        request, null,
+    RandomIndexRequestV111 request, string[]? candidateLabels = null)
+    : ControlledChanceRequiredExceptionV111(
+        request, candidateLabels,
         "A controlled enemy action needs a random-choice outcome.");

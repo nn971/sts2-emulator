@@ -10,15 +10,18 @@ namespace Sts2Emulator.Core;
 public sealed record SemanticEndTurnStochasticStateV111
 {
     internal const int CurrentBoundaryTranscriptVersion = 1;
+    internal const int CurrentEnemyActionCandidateLabelsVersion = 1;
 
     private RandomIndexDecisionV111[]? _intentTranscript;
     private SemanticIntentTranscriptEntryV111[]?
         _semanticIntentTranscript = [];
     private RandomIndexDecisionV111[]? _enemyActionTranscript;
+    private string[][]? _enemyActionCandidateLabels = [];
     private SemanticTargetDecisionV111[]? _targetTranscript;
     private SemanticEndTurnBoundaryChoiceV111[]? _boundaryTranscript;
     private SemanticEndTurnNestedChoiceV111[]? _nestedChoiceTranscript = [];
     public int BoundaryTranscriptVersion { get; init; }
+    public int EnemyActionCandidateLabelsVersion { get; init; }
 
     [JsonConstructor]
     public SemanticEndTurnStochasticStateV111(
@@ -27,17 +30,23 @@ public sealed record SemanticEndTurnStochasticStateV111
         SemanticTargetDecisionV111[] TargetTranscript,
         SemanticEndTurnBoundaryChoiceV111[] BoundaryTranscript,
         SemanticCombatDrawStochasticStateV111? HandDraw = null,
-        SemanticIntentTranscriptEntryV111[]? SemanticIntentTranscript = null)
+        SemanticIntentTranscriptEntryV111[]? SemanticIntentTranscript = null,
+        string[][]? EnemyActionCandidateLabels = null,
+        int EnemyActionCandidateLabelsVersion = 0)
     {
         _intentTranscript = CopyTranscript(IntentTranscript,
             CloneIndexDecision);
         _enemyActionTranscript = CopyTranscript(EnemyActionTranscript,
             CloneIndexDecision);
+        _enemyActionCandidateLabels = CopyCandidateLabels(
+            EnemyActionCandidateLabels) ?? [];
         _targetTranscript = CopyTranscript(TargetTranscript,
             decision => decision.Fork());
         _boundaryTranscript = CopyTranscript(BoundaryTranscript,
             decision => decision);
         this.HandDraw = HandDraw;
+        this.EnemyActionCandidateLabelsVersion =
+            EnemyActionCandidateLabelsVersion;
         _semanticIntentTranscript = CopyTranscript(SemanticIntentTranscript,
             decision => decision.Fork()) ?? [];
     }
@@ -62,6 +71,11 @@ public sealed record SemanticEndTurnStochasticStateV111
             CloneIndexDecision)!;
         init => _enemyActionTranscript = CopyTranscript(value,
             CloneIndexDecision);
+    }
+    public string[][] EnemyActionCandidateLabels
+    {
+        get => CopyCandidateLabels(_enemyActionCandidateLabels)!;
+        init => _enemyActionCandidateLabels = CopyCandidateLabels(value);
     }
     public SemanticTargetDecisionV111[] TargetTranscript
     {
@@ -117,7 +131,7 @@ public sealed record SemanticEndTurnStochasticStateV111
     }
 
     internal SemanticEndTurnStochasticStateV111 AppendEnemyAction(
-        RandomIndexDecisionV111 decision)
+        RandomIndexDecisionV111 decision, string[]? candidateLabels)
     {
         ArgumentNullException.ThrowIfNull(decision);
         decision.Validate();
@@ -132,11 +146,30 @@ public sealed record SemanticEndTurnStochasticStateV111
         var boundaries = BoundaryTranscriptForAppend().Append(
             new SemanticEndTurnBoundaryChoiceV111(
                 "enemy_action", transcript.Length)).ToArray();
+        var candidateLabelsVersion =
+            EnemyActionCandidateLabelsVersion != 0 ||
+            candidateLabels is not null
+                ? CurrentEnemyActionCandidateLabelsVersion : 0;
+        var candidateLabelTranscript = EnemyActionCandidateLabels;
+        if (candidateLabelsVersion == 1)
+        {
+            if (EnemyActionCandidateLabelsVersion == 0)
+                candidateLabelTranscript = Enumerable.Repeat<string[]>(
+                    null!, transcript.Length).ToArray();
+            else if (candidateLabelTranscript.Length != transcript.Length)
+                throw new InvalidDataException(
+                    "Semantic enemy-action candidate labels are misaligned.");
+            candidateLabelTranscript = candidateLabelTranscript.Append(
+                candidateLabels is null
+                    ? null! : (string[])candidateLabels.Clone()).ToArray();
+        }
         return this with
         {
             EnemyActionTranscript = transcript
                 .Append(CloneIndexDecision(decision)).ToArray(),
-            BoundaryTranscript = boundaries
+            BoundaryTranscript = boundaries,
+            EnemyActionCandidateLabels = candidateLabelTranscript,
+            EnemyActionCandidateLabelsVersion = candidateLabelsVersion
         };
     }
 
@@ -183,6 +216,9 @@ public sealed record SemanticEndTurnStochasticStateV111
         return nextTurn with
         {
             EnemyActionTranscript = EnemyActionTranscript,
+            EnemyActionCandidateLabels = EnemyActionCandidateLabels,
+            EnemyActionCandidateLabelsVersion =
+                EnemyActionCandidateLabelsVersion,
             TargetTranscript = TargetTranscript,
             BoundaryTranscript = BoundaryTranscript,
             NestedChoiceTranscript = NestedChoiceTranscript,
@@ -198,6 +234,8 @@ public sealed record SemanticEndTurnStochasticStateV111
             decision => decision.Fork())!,
         EnemyActionTranscript = CopyTranscript(_enemyActionTranscript,
             CloneIndexDecision)!,
+        EnemyActionCandidateLabels = CopyCandidateLabels(
+            _enemyActionCandidateLabels)!,
         TargetTranscript = CopyTranscript(_targetTranscript,
             decision => decision.Fork())!,
         BoundaryTranscript = CopyTranscript(_boundaryTranscript,
@@ -228,11 +266,19 @@ public sealed record SemanticEndTurnStochasticStateV111
         var targetTranscript = this.TargetTranscript;
         var boundaryTranscript = this.BoundaryTranscript;
         var nestedChoiceTranscript = this.NestedChoiceTranscript;
+        var enemyActionCandidateLabels = this.EnemyActionCandidateLabels;
         if (intentTranscript is null || enemyActionTranscript is null ||
             targetTranscript is null || boundaryTranscript is null ||
             nestedChoiceTranscript is null ||
             BoundaryTranscriptVersion is not (0 or
-                CurrentBoundaryTranscriptVersion))
+                CurrentBoundaryTranscriptVersion) ||
+            EnemyActionCandidateLabelsVersion is not (0 or
+                CurrentEnemyActionCandidateLabelsVersion) ||
+            EnemyActionCandidateLabelsVersion == 0 &&
+                enemyActionCandidateLabels.Length != 0 ||
+            EnemyActionCandidateLabelsVersion == 1 &&
+                enemyActionCandidateLabels.Length !=
+                    enemyActionTranscript.Length)
             throw new InvalidDataException(
                 "Invalid semantic end-turn stages.");
         HandDraw?.Validate();
@@ -275,8 +321,9 @@ public sealed record SemanticEndTurnStochasticStateV111
                 throw new InvalidDataException(
                     "Semantic intent outcome differs from its retained primitive ticket.");
         }
-        foreach (var decision in enemyActionTranscript)
+        for (var index = 0; index < enemyActionTranscript.Length; index++)
         {
+            var decision = enemyActionTranscript[index];
             ValidateDecision(decision, "Enemy-action");
             if (decision.ProviderMode != "controlled-v111" ||
                 decision.NativeCursorBefore is not null ||
@@ -285,6 +332,15 @@ public sealed record SemanticEndTurnStochasticStateV111
                     .IsEnemyActionSite(decision.Request.SiteId))
                 throw new InvalidDataException(
                     "Invalid semantic enemy-action Nature decision.");
+            var candidateLabels = EnemyActionCandidateLabelsVersion == 1
+                ? enemyActionCandidateLabels[index] : null;
+            if (candidateLabels is not null &&
+                (candidateLabels.Length != decision.Request.SupportCount ||
+                 candidateLabels.Any(string.IsNullOrWhiteSpace) ||
+                 candidateLabels.Distinct(StringComparer.Ordinal).Count() !=
+                     candidateLabels.Length))
+                throw new InvalidDataException(
+                    "Invalid semantic enemy-action candidate-label transcript.");
         }
         for (int i = 0; i < targetTranscript.Length; i++)
         {
@@ -529,6 +585,10 @@ public sealed record SemanticEndTurnStochasticStateV111
     private static T[]? CopyTranscript<T>(T[]? transcript, Func<T, T> clone)
         where T : class => transcript?.Select(decision =>
             decision is null ? null! : clone(decision)).ToArray();
+
+    private static string[][]? CopyCandidateLabels(string[][]? labels) =>
+        labels?.Select(candidateLabels => candidateLabels is null
+            ? null! : (string[])candidateLabels.Clone()).ToArray();
 
     private SemanticEndTurnBoundaryChoiceV111[] BoundaryTranscriptForAppend()
     {

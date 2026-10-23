@@ -30,21 +30,42 @@ public sealed record SemanticEndTurnBoundaryChoiceV111(
 /// automatic enemy-action pipeline.</summary>
 public sealed record SemanticEndTurnIndexEventV111(
     string SchemaId, string EventId, string BoundaryFingerprint,
-    RandomIndexRequestV111 Request, string SupportFingerprint)
+    RandomIndexRequestV111 Request, string SupportFingerprint,
+    string[]? CandidateLabels = null)
 {
+    private string[]? _candidateLabels = CandidateLabels is null
+        ? null : (string[])CandidateLabels.Clone();
+
+    public string[]? CandidateLabels
+    {
+        get => _candidateLabels is null ? null :
+            (string[])_candidateLabels.Clone();
+        init => _candidateLabels = value is null ? null :
+            (string[])value.Clone();
+    }
+
     public const string CurrentSchemaId =
-        "sts2-v111-semantic-end-turn-index-event-v1";
+        "sts2-v111-semantic-end-turn-index-event-v2";
 
     public void Validate()
     {
         ArgumentNullException.ThrowIfNull(Request);
         Request.Validate();
+        var candidateLabels = this.CandidateLabels;
+        if (candidateLabels is not null &&
+            (candidateLabels.Length != Request.SupportCount ||
+             candidateLabels.Any(string.IsNullOrWhiteSpace) ||
+             candidateLabels.Distinct(StringComparer.Ordinal).Count() !=
+                 candidateLabels.Length))
+            throw new InvalidDataException(
+                "Invalid semantic enemy-action candidate labels.");
         var supportFingerprint = CanonicalJson.Sha256(Request);
         var eventId = CanonicalJson.Sha256(new
         {
             schemaId = SemanticPilotCombatV111.SchemaId,
             boundaryFingerprint = BoundaryFingerprint,
-            request = Request
+            request = Request,
+            candidateLabels
         });
         if (SchemaId != CurrentSchemaId ||
             string.IsNullOrWhiteSpace(BoundaryFingerprint) ||
@@ -56,7 +77,8 @@ public sealed record SemanticEndTurnIndexEventV111(
     }
 
     public static SemanticEndTurnIndexEventV111 Create(
-        string boundaryFingerprint, RandomIndexRequestV111 request)
+        string boundaryFingerprint, RandomIndexRequestV111 request,
+        string[]? candidateLabels = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(boundaryFingerprint);
         ArgumentNullException.ThrowIfNull(request);
@@ -65,17 +87,33 @@ public sealed record SemanticEndTurnIndexEventV111(
         {
             OrderedCandidates = (int[])request.OrderedCandidates.Clone()
         };
+        var detachedLabels = candidateLabels is null ? null :
+            (string[])candidateLabels.Clone();
         var eventId = CanonicalJson.Sha256(new
         {
             schemaId = SemanticPilotCombatV111.SchemaId,
             boundaryFingerprint,
-            request = detachedRequest
+            request = detachedRequest,
+            candidateLabels = detachedLabels
         });
         var semanticEvent = new SemanticEndTurnIndexEventV111(
             CurrentSchemaId, eventId, boundaryFingerprint, detachedRequest,
-            CanonicalJson.Sha256(detachedRequest));
+            CanonicalJson.Sha256(detachedRequest), detachedLabels);
         semanticEvent.Validate();
         return semanticEvent;
+    }
+
+    public int IndexOfCandidateLabel(string candidateLabel)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(candidateLabel);
+        Validate();
+        var labels = CandidateLabels ?? throw new InvalidOperationException(
+            "This enemy-action event has no semantic candidate labels.");
+        var index = Array.FindIndex(labels, label =>
+            StringComparer.Ordinal.Equals(label, candidateLabel));
+        return index >= 0 ? index : throw new ArgumentOutOfRangeException(
+            nameof(candidateLabel),
+            "The selected enemy-action outcome is outside the current support.");
     }
 }
 
@@ -234,10 +272,18 @@ public sealed record SemanticEndTurnV111(
             : SemanticPilotCombatEngineV111.DescribePendingTargetEvent(
                 Run, Fingerprint, TargetTranscript.Length);
     [JsonIgnore] public SemanticEndTurnIndexEventV111?
-        EnemyActionEventPending =>
-            !Complete && EnemyActionPending is { } request
-                ? SemanticEndTurnIndexEventV111.Create(Fingerprint, request)
-                : null;
+        EnemyActionEventPending
+    {
+        get
+        {
+            if (Complete || EnemyActionPending is not { } request)
+                return null;
+            var labels = Run.World?.Combat?.AutomaticPipelineContinuation?
+                .Stochastic.ControlledEnemyAction?.PendingCandidateLabels;
+            return SemanticEndTurnIndexEventV111.Create(
+                Fingerprint, request, labels);
+        }
+    }
     [JsonIgnore] public RandomIndexRequestV111? EnemyActionPending =>
         Complete ? null : Run.World?.Combat?.AutomaticPipelineContinuation?
             .ControlledEnemyAction?.PendingRequest;
@@ -445,7 +491,13 @@ public sealed record SemanticEndTurnV111(
                 .AutomaticPipelineContinuation!.Stochastic.ControlledEnemyAction!;
             cursor.Validate(PrototypeContent.Rules.EndTurnPipeline.Length);
             if (CanonicalJson.Sha256(cursor.Decisions) !=
-                CanonicalJson.Sha256(this.Stochastic.EnemyActionTranscript))
+                    CanonicalJson.Sha256(this.Stochastic.EnemyActionTranscript) ||
+                this.Stochastic.EnemyActionCandidateLabelsVersion == 1 &&
+                    CanonicalJson.Sha256(cursor.DecisionCandidateLabels ??
+                        Enumerable.Repeat<string[]>(
+                            null!, cursor.Decisions.Length).ToArray()) !=
+                    CanonicalJson.Sha256(
+                        this.Stochastic.EnemyActionCandidateLabels))
                 throw new InvalidDataException(
                     "Semantic enemy-action transcript differs from its replay frame.");
         }
@@ -723,6 +775,25 @@ public static class SemanticEndTurnEngineV111
         return (continuation, continuation.Run);
     }
 
+    public static SemanticEndTurnV111 ResolveByCandidateLabel(
+        SemanticEndTurnV111 source, string fingerprint,
+        string candidateLabel)
+    {
+        Validate(source);
+        if (!StringComparer.Ordinal.Equals(source.Fingerprint, fingerprint))
+            throw new InvalidOperationException(
+                "Stale semantic end-turn fingerprint.");
+        var pending = source.EnemyActionEventPending ??
+            throw new InvalidOperationException(
+                "No semantic enemy-action outcome is pending.");
+        if (!StringComparer.Ordinal.Equals(
+                pending.BoundaryFingerprint, fingerprint))
+            throw new InvalidDataException(
+                "Enemy-action event belongs to another end-turn boundary.");
+        return Resolve(source, fingerprint,
+            pending.IndexOfCandidateLabel(candidateLabel));
+    }
+
     public static SemanticEndTurnV111 Resolve(
         SemanticEndTurnV111 source, string fingerprint, int selectedIndex)
     {
@@ -734,6 +805,8 @@ public static class SemanticEndTurnEngineV111
         var state = source.Fork();
         if (state.EnemyActionPending is { } enemyActionRequest)
         {
+            var candidateLabels = state.EnemyActionEventPending?
+                .CandidateLabels;
             var decision = new RandomIndexDecisionV111(
                 enemyActionRequest with
                 {
@@ -753,7 +826,8 @@ public static class SemanticEndTurnEngineV111
                                 .ResumeControlledEnemyAction(
                                     checkpoint.Run.Fork(), replayedIndex);
                     });
-            var stochastic = state.Stochastic.AppendEnemyAction(decision);
+            var stochastic = state.Stochastic.AppendEnemyAction(
+                decision, candidateLabels);
             state = ContinueAutomaticPipelineBoundaryChoice(
                 state, resumed, stochastic, "combat.enemy_action");
         }
@@ -1533,16 +1607,29 @@ public static class SemanticEndTurnEngineV111
                     var choice = saved.Stochastic.EnemyActionTranscript[
                         boundary.TranscriptIndex];
                     choice.Validate();
+                    var semanticLabels =
+                        saved.Stochastic.EnemyActionCandidateLabelsVersion == 1
+                            ? saved.Stochastic.EnemyActionCandidateLabels[
+                                boundary.TranscriptIndex]
+                            : null;
+                    var replayedEvent = reproduced.EnemyActionEventPending;
                     if (choice.ProviderMode != "controlled-v111" ||
                         choice.ProbabilityStatus != "UNVERIFIED" ||
                         reproduced.EnemyActionPending is not { } request ||
                         CanonicalJson.Sha256(request) !=
-                            CanonicalJson.Sha256(choice.Request))
+                            CanonicalJson.Sha256(choice.Request) ||
+                        semanticLabels is not null &&
+                            (replayedEvent?.CandidateLabels is not { } liveLabels ||
+                             !liveLabels.SequenceEqual(
+                                 semanticLabels, StringComparer.Ordinal)))
                         throw new InvalidDataException(
                             "Semantic end-turn enemy-action transcript diverged.");
-                    reproduced = Resolve(
-                        reproduced, reproduced.Fingerprint,
-                        choice.SelectedIndex);
+                    reproduced = semanticLabels is null
+                        ? Resolve(reproduced, reproduced.Fingerprint,
+                            choice.SelectedIndex)
+                        : ResolveByCandidateLabel(
+                            reproduced, reproduced.Fingerprint,
+                            semanticLabels[choice.SelectedIndex]);
                 }
                 else if (boundary.Kind == "random_target")
                 {
@@ -1583,19 +1670,36 @@ public static class SemanticEndTurnEngineV111
         {
             // Snapshots written before automatic target suspension only had
             // a typed enemy-action transcript.
-            foreach (var choice in saved.Stochastic.EnemyActionTranscript)
+            for (var transcriptIndex = 0; transcriptIndex <
+                 saved.Stochastic.EnemyActionTranscript.Length;
+                 transcriptIndex++)
             {
+                var choice = saved.Stochastic.EnemyActionTranscript[
+                    transcriptIndex];
+                var semanticLabels =
+                    saved.Stochastic.EnemyActionCandidateLabelsVersion == 1
+                        ? saved.Stochastic.EnemyActionCandidateLabels[
+                            transcriptIndex]
+                        : null;
                 choice.Validate();
+                var replayedEvent = reproduced.EnemyActionEventPending;
                 if (choice.ProviderMode != "controlled-v111" ||
                     choice.ProbabilityStatus != "UNVERIFIED" ||
                     reproduced.EnemyActionPending is not { } request ||
                     CanonicalJson.Sha256(request) !=
-                        CanonicalJson.Sha256(choice.Request))
+                        CanonicalJson.Sha256(choice.Request) ||
+                    semanticLabels is not null &&
+                        (replayedEvent?.CandidateLabels is not { } liveLabels ||
+                         !liveLabels.SequenceEqual(
+                             semanticLabels, StringComparer.Ordinal)))
                     throw new InvalidDataException(
                         "Semantic end-turn enemy-action transcript diverged.");
-                reproduced = Resolve(
-                    reproduced, reproduced.Fingerprint,
-                    choice.SelectedIndex);
+                reproduced = semanticLabels is null
+                    ? Resolve(reproduced, reproduced.Fingerprint,
+                        choice.SelectedIndex)
+                    : ResolveByCandidateLabel(
+                        reproduced, reproduced.Fingerprint,
+                        semanticLabels[choice.SelectedIndex]);
             }
         }
         var semanticIntentsByIndex = saved.Stochastic.SemanticIntentTranscript

@@ -117,6 +117,7 @@ paths avoid that external setup chain:
 | `semantic_observe` | `semantic_handle`, `policy_id=prototype-fair-v0` | Existing **player-only** observation and legal action IDs |
 | `semantic_step` | handle, fingerprint, legal `action_id` | Child player action / Nature / terminal |
 | `semantic_resolve` | handle, fingerprint, legal `selected_index` | Child Nature / player / terminal |
+| `semantic_resolve_enemy_action` | handle, fingerprint, pending `candidate_label` (or compatibility `selected_index`) | Child Nature / player / terminal |
 | `semantic_resolve_draw_card` | handle, fingerprint, pending `event_id`, legal `card_instance_id` | Child Nature / player / terminal |
 | `semantic_resolve_random_pile_card` | handle, fingerprint, pending `event_id`, legal `card_instance_id` | Child Nature / player / terminal |
 | `semantic_resolve_random_target` | handle, fingerprint, pending `event_id`, legal `enemy_instance_id` | Child Nature / player / terminal |

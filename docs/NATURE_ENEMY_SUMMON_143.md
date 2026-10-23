@@ -40,9 +40,12 @@ action and creates the selected summon through the existing combat kernel.
 
 If the selected summoned enemy has a variable HP range, the same replay frame
 then exposes `combat.initial_unique_hp` as a second `enemy_action_chance` event.
-Earlier summon choices are injected again from the checkpoint before the HP
-choice is reached. The source action commits the selected HP and continues the
-enemy stage once all decisions are resolved.
+The event's `candidate_labels` identify summon models and pool slots, or the
+bounded HP values. JSONL callers can resolve those outcomes by `candidate_label`
+while `selected_index` remains compatible. Earlier summon choices are injected
+again from the checkpoint before the HP choice is reached. The source action
+commits the selected HP and continues the enemy stage once all decisions are
+resolved.
 
 The frame also resumes a legacy Tough Egg hatch that rolls variable Hatchling
 HP through `combat.tough_egg.hatchling_hp`. Native hatching remains routed

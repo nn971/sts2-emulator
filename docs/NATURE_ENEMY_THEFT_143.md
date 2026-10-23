@@ -4,11 +4,11 @@
 
 `combat.enemy.theft_card.select` is conditioned on the source-eligible
 persistent card instances in the draw and discard piles and the thief's
-saved enemy-action boundary. Nature receives the ordered candidate identities
-through that pending request; the player observation does not expose the
-candidate list or its support fingerprint. After resolution, the selected
-card's committed zone/deck change is visible through the ordinary combat
-projection.
+saved enemy-action boundary. The semantic enemy-action event pairs its
+bounded-index request with ordered `card-instance:<id>` candidate labels; the
+player observation does not expose those labels or the support fingerprint.
+After resolution, the selected card's committed zone/deck change is visible
+through the ordinary combat projection.
 
 The existing replay frame resolves the selected physical identity once and
 resumes the enemy action. A draw-pile selection that would split an unresolved
@@ -33,11 +33,13 @@ deck. If any draw candidate would split an unresolved pool, the end-turn action
 fails closed before exposing a partial support.
 
 The JSONL bridge exposes the choice through the existing `enemy_action_chance`
-event and `semantic_resolve_enemy_action` request. Its Chance Law exposes the
-saved index support and uses the typed Native stream ID to choose between
-exact bounded-transform masses and the legacy equal-index model. The stable
-request retains enemy ownership, ordered card-instance support identity and
-source ordinal.
+event. Its `candidate_labels` now carry ordered `card-instance:<id>` outcomes,
+and `semantic_resolve_enemy_action` accepts `candidate_label`; the prior
+`selected_index` input remains available for compatibility. The Chance Law
+continues to describe the saved index support and uses the typed Native stream
+ID to choose between exact bounded-transform masses and the legacy equal-index
+model. The stable request retains enemy ownership, ordered card-instance
+support identity and source ordinal.
 Native combat currently identifies `run.combat_card_generation` as a stream
 hypothesis; its native assignment and cursor parity remain `UNVERIFIED`.
 

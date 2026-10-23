@@ -83,7 +83,8 @@ internal static class ControlledChanceContinuationExecutorV111
             ControlledStochasticDecisionV111[] decisions,
             Func<TCheckpoint, TValue> mechanics,
             Func<ControlledStochasticRequestV111, bool>? requestFilter = null,
-            IRandomIndexProviderV111? indexFallbackProvider = null)
+            IRandomIndexProviderV111? indexFallbackProvider = null,
+            bool allowMissingCandidateLabels = false)
         where TValue : class
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
@@ -111,7 +112,8 @@ internal static class ControlledChanceContinuationExecutorV111
             throw new InvalidDataException(
                 "Index fallback requires a filtered index-only decision prefix.");
 
-        using var replay = ControlledStochasticChanceReplayV111.Begin(decisions);
+        using var replay = ControlledStochasticChanceReplayV111.Begin(
+            decisions, allowMissingCandidateLabels);
         using var providers = indexFallbackProvider is not null
             ? StochasticProviderScopeV111.EnterFiltered(
                 new ControlledStochasticIndexFallbackProviderV111(
@@ -298,10 +300,20 @@ internal static class ControlledChanceContinuationExecutorV111
     public static ControlledChanceReplayResultV111 ResumeEnemyAction(
         RunState checkpoint,
         RandomIndexDecisionV111[] decisions,
-        Func<RunState, RunState> mechanics)
+        Func<RunState, RunState> mechanics,
+        string[][]? decisionCandidateLabels = null)
     {
-        var typedDecisions = decisions.Select(decision =>
-            ControlledStochasticDecisionV111.FromIndex(decision)).ToArray();
+        ArgumentNullException.ThrowIfNull(decisions);
+        if (decisionCandidateLabels is not null &&
+            decisionCandidateLabels.Length != decisions.Length)
+            throw new InvalidDataException(
+                "Enemy-action candidate-label prefix has the wrong length.");
+        var typedDecisions = decisions.Select((decision, index) =>
+            ControlledStochasticDecisionV111.FromIndex(
+                decision,
+                decisionCandidateLabels is { } labels &&
+                    labels[index] is { } candidateLabels
+                    ? candidateLabels : null)).ToArray();
         using var replayJournal = RandomBoundaryJournalV111.Begin();
         var replay = CaptureTyped(
             checkpoint,
@@ -318,7 +330,8 @@ internal static class ControlledChanceContinuationExecutorV111
                     "UNSUPPORTED_CONTROLLED_CHANCE site=" + request.SiteId +
                     " operation=" + OperationLabel(request) +
                     " requires a saved enemy-action continuation.");
-            });
+            },
+            allowMissingCandidateLabels: true);
         if (replay.Continuation is { } pending)
         {
             var request = pending.PendingRequest.IndexRequest ??
@@ -327,7 +340,8 @@ internal static class ControlledChanceContinuationExecutorV111
                     pending.PendingRequest.SiteId +
                     " operation=non_index requires a mixed enemy-action continuation.");
             return new ControlledChanceReplayResultV111(
-                null, new ControlledEnemyActionChanceRequiredException(request));
+                null, new ControlledEnemyActionChanceRequiredException(
+                    request, pending.PendingCandidateLabels));
         }
         return new ControlledChanceReplayResultV111(
             replay.Value ?? throw new InvalidDataException(

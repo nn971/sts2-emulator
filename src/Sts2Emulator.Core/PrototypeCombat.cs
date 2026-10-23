@@ -1627,12 +1627,15 @@ public sealed partial class PrototypeGameEngine
                         state,
                         replay?.Decisions ?? [],
                         checkpointState => ResolveAutomaticStep(
-                            checkpointState, automaticStep));
+                            checkpointState, automaticStep),
+                        replay?.DecisionCandidateLabels);
                 if (replayResult.PendingChance is { } required)
                 {
                     return SetControlledEnemyActionContinuation(
                         checkpoint, index, replay?.Decisions ?? [],
-                        required.Request);
+                        required.Request,
+                        replay?.DecisionCandidateLabels,
+                        required.CandidateLabels);
                 }
                 state = replayResult.Run ?? throw new InvalidDataException(
                     "Enemy-action replay returned neither a run nor a pending chance request.");
@@ -2023,7 +2026,10 @@ public sealed partial class PrototypeGameEngine
         decision.Validate();
         var resumed = replay with
         {
-            Decisions = replay.Decisions.Append(decision).ToArray()
+            Decisions = replay.Decisions.Append(decision).ToArray(),
+            DecisionCandidateLabels = AppendCandidateLabels(
+                replay.DecisionCandidateLabels,
+                replay.Decisions.Length, replay.PendingCandidateLabels)
         };
         var checkpoint = replay.Checkpoint.Fork();
         var checkpointWorld = RequireWorld(checkpoint);
@@ -2196,7 +2202,9 @@ public sealed partial class PrototypeGameEngine
         RunState checkpoint,
         int stepIndex,
         RandomIndexDecisionV111[] decisions,
-        RandomIndexRequestV111 pendingRequest)
+        RandomIndexRequestV111 pendingRequest,
+        string[][]? decisionCandidateLabels,
+        string[]? pendingCandidateLabels)
     {
         if (checkpoint.World?.Combat is not { } originalCombat ||
             checkpoint.Phase != RunPhase.Combat || originalCombat.IsPlayerTurn)
@@ -2205,7 +2213,8 @@ public sealed partial class PrototypeGameEngine
         var savedCheckpoint = ClearAutomaticPipelineContinuation(checkpoint);
         var combat = RequireWorld(savedCheckpoint).Combat!;
         var replay = new PrototypeControlledEnemyActionContinuationV111(
-            savedCheckpoint, stepIndex, decisions, pendingRequest);
+            savedCheckpoint, stepIndex, decisions, pendingRequest,
+            decisionCandidateLabels, pendingCandidateLabels);
         replay.Validate(PrototypeContent.Rules.EndTurnPipeline.Length);
         var continuation = new PrototypeAutomaticPipelineContinuationState(
             stepIndex, ControlledEnemyAction: replay);
@@ -2218,6 +2227,22 @@ public sealed partial class PrototypeGameEngine
                 Combat = updatedCombat
             }
         };
+    }
+
+    private static string[][]? AppendCandidateLabels(
+        string[][]? previousLabels, int previousDecisionCount,
+        string[]? nextLabels)
+    {
+        if (previousLabels is null && nextLabels is null)
+            return null;
+        if (previousLabels is not null &&
+            previousLabels.Length != previousDecisionCount)
+            throw new InvalidDataException(
+                "Enemy-action candidate-label prefix is malformed.");
+        var aligned = previousLabels ?? Enumerable.Repeat<string[]>(
+            null!, previousDecisionCount).ToArray();
+        return aligned.Append(nextLabels is null
+            ? null! : (string[])nextLabels.Clone()).ToArray();
     }
 
     private static RunState ClearAutomaticPipelineContinuation(RunState state)
@@ -4976,7 +5001,13 @@ public sealed partial class PrototypeGameEngine
                                     "enemy:" + enemy.InstanceId
                                         + ":move:" + move.Id
                                         + ":pool:" + CanonicalJson.Sha256(choices),
-                                    Enumerable.Range(0, choices.Length));
+                                    Enumerable.Range(0, choices.Length),
+                                    controlledCandidateLabels: choices.Select(
+                                        (enemyId, poolSlot) =>
+                                            "enemy:" + enemyId + ":slot:" +
+                                            poolSlot.ToString(
+                                                System.Globalization.CultureInfo.InvariantCulture))
+                                        .ToArray());
                                 summonId = choices[selectedSummonIndex];
                             }
                             if (summonId is null)
@@ -13918,6 +13949,16 @@ public sealed partial class PrototypeGameEngine
             throw new ArgumentException(
                 "Legacy random selection requires a nonempty ordered support.",
                 nameof(orderedCandidates));
+        if (controlledCandidateLabels is null &&
+            PrototypeControlledEnemyActionContinuationV111
+                .IsEnemyActionSite(siteId))
+            controlledCandidateLabels = candidates.Select(candidate =>
+                candidate.ToString(
+                    System.Globalization.CultureInfo.InvariantCulture))
+                .ToArray();
+        using var typedCandidateLabels =
+            ControlledStochasticChanceReplayV111.DescribeCandidates(
+                controlledCandidateLabels);
         using var candidateLabels =
             ControlledEventChoiceReplayV111.DescribeCandidates(
                 controlledCandidateLabels);
@@ -14172,6 +14213,19 @@ public sealed partial class PrototypeGameEngine
                 CanonicalJson.Sha256(orderedCardInstanceIds),
             (int)callOrdinal,
             Enumerable.Range(0, orderedCardInstanceIds.Length).ToArray());
+        var controlledCandidateLabels = siteId ==
+                StochasticSiteRegistryV111.CombatEnemyTheftCardSelectSiteId
+            ? orderedCardInstanceIds.Select(instanceId =>
+                "card-instance:" + instanceId.ToString(
+                    System.Globalization.CultureInfo.InvariantCulture))
+                .ToArray()
+            : null;
+        using var typedCandidateLabels =
+            ControlledStochasticChanceReplayV111.DescribeCandidates(
+                controlledCandidateLabels);
+        using var eventCandidateLabels =
+            ControlledEventChoiceReplayV111.DescribeCandidates(
+                controlledCandidateLabels);
         if (ControlledChanceGuardV111.Active &&
             !ControlledChanceGuardV111.EngineOwnedNativeProviderActive)
         {

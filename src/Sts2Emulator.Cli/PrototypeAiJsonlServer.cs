@@ -1876,6 +1876,7 @@ internal static class PrototypeAiJsonlServer
                     supportCount = enemyAction.SupportCount,
                     eligibleIndices = Enumerable.Range(
                         0, enemyAction.SupportCount).ToArray(),
+                    candidateLabels = enemyActionEvent.CandidateLabels,
                     supportFingerprint =
                         enemyActionEvent.SupportFingerprint,
                     chanceLaw,
@@ -6792,11 +6793,21 @@ internal static class PrototypeAiJsonlServer
                     {
                         var parentHandle = RequiredString(request, "semantic_handle");
                         var current = RequireSemantic(request);
-                        var next = SemanticPilotCombatEngineV111.Resolve(
-                            current, RequiredString(request, "fingerprint"),
-                            OptionalInt(request, "selected_index") ??
-                                throw new ArgumentException(
-                                    "Missing selected_index."));
+                        var fingerprint = RequiredString(request, "fingerprint");
+                        var candidateLabel = OptionalString(
+                            request, "candidate_label");
+                        var selectedIndex = OptionalInt(
+                            request, "selected_index");
+                        if ((candidateLabel is null) ==
+                            (selectedIndex is null))
+                            throw new ArgumentException(
+                                "Provide exactly one of candidate_label or selected_index.");
+                        var next = candidateLabel is not null
+                            ? SemanticPilotCombatEngineV111
+                                .ResolveEnemyActionByCandidateLabel(
+                                    current, fingerprint, candidateLabel)
+                            : SemanticPilotCombatEngineV111.Resolve(
+                                current, fingerprint, selectedIndex!.Value);
                         var handle = StoreSemantic(next);
                         Write(new { requestId, ok = true,
                             result = SemanticResult(next, handle, parentHandle) });

@@ -431,11 +431,13 @@ internal sealed class ControlledStochasticChanceReplayV111 :
     private int _cursor;
     private string[]? _candidateLabels;
     private readonly bool _registeredAsActive;
+    private readonly bool _allowMissingCandidateLabels;
     private bool _disposed;
 
     private ControlledStochasticChanceReplayV111(
         ControlledStochasticDecisionV111[] decisions,
-        bool registerAsActive)
+        bool registerAsActive,
+        bool allowMissingCandidateLabels = false)
     {
         _previous = registerAsActive ? Active.Value : null;
         _decisions = decisions.Select(decision =>
@@ -445,6 +447,7 @@ internal sealed class ControlledStochasticChanceReplayV111 :
             return decision.Fork();
         }).ToArray();
         _registeredAsActive = registerAsActive;
+        _allowMissingCandidateLabels = allowMissingCandidateLabels;
         if (registerAsActive)
             Active.Value = this;
     }
@@ -457,11 +460,13 @@ internal sealed class ControlledStochasticChanceReplayV111 :
     public static bool IsActive => Active.Value is not null;
 
     public static ControlledStochasticChanceReplayV111 Begin(
-        ControlledStochasticDecisionV111[] decisions)
+        ControlledStochasticDecisionV111[] decisions,
+        bool allowMissingCandidateLabels = false)
     {
         ArgumentNullException.ThrowIfNull(decisions);
         return new ControlledStochasticChanceReplayV111(
-            decisions, registerAsActive: true);
+            decisions, registerAsActive: true,
+            allowMissingCandidateLabels: allowMissingCandidateLabels);
     }
 
     /// <summary>
@@ -645,11 +650,12 @@ internal sealed class ControlledStochasticChanceReplayV111 :
                 divergenceMessage ??
                     "Typed stochastic replay diverged from its ordered saved prefix.");
         if (compareCandidateLabels &&
-            ((expected.CandidateLabels is null) !=
-                 (candidateLabels is null) ||
-             expected.CandidateLabels is { } savedLabels &&
-                 !savedLabels.SequenceEqual(candidateLabels!,
-                     StringComparer.Ordinal)))
+            (expected.CandidateLabels is { } savedLabels
+                ? candidateLabels is null ||
+                  !savedLabels.SequenceEqual(candidateLabels,
+                      StringComparer.Ordinal)
+                : candidateLabels is not null &&
+                  !_allowMissingCandidateLabels))
             throw new InvalidDataException(
                 "Typed stochastic replay diverged from its saved candidate labels.");
         _cursor++;

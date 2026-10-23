@@ -2130,7 +2130,11 @@ public sealed record SemanticPilotCombatV111(
     [JsonIgnore] public SemanticEndTurnIndexEventV111?
         EnemyActionEventPending => PendingEndTurn is { } endTurn &&
             endTurn.EnemyActionPending is { } request
-                ? SemanticEndTurnIndexEventV111.Create(Fingerprint, request)
+                ? SemanticEndTurnIndexEventV111.Create(
+                    Fingerprint, request,
+                    endTurn.Run.World?.Combat?
+                        .AutomaticPipelineContinuation?.Stochastic
+                        .ControlledEnemyAction?.PendingCandidateLabels)
                 : null;
     [JsonIgnore] public SemanticDeckEventV111? DrawPending
     {
@@ -5025,6 +5029,26 @@ public static class SemanticPilotCombatEngineV111
     public static SemanticPilotCombatV111 Resolve(
         SemanticPilotCombatV111 current, string fingerprint, int selectedIndex)
         => Resolve(current, fingerprint, selectedIndex, null, null, false, null);
+
+    public static SemanticPilotCombatV111 ResolveEnemyActionByCandidateLabel(
+        SemanticPilotCombatV111 current, string fingerprint,
+        string candidateLabel)
+    {
+        ArgumentNullException.ThrowIfNull(current);
+        current.Validate();
+        if (!StringComparer.Ordinal.Equals(current.Fingerprint, fingerprint))
+            throw new InvalidOperationException(
+                "Stale semantic enemy-action fingerprint.");
+        var pending = current.EnemyActionEventPending ??
+            throw new InvalidOperationException(
+                "No semantic enemy-action outcome is pending.");
+        if (!StringComparer.Ordinal.Equals(
+                pending.BoundaryFingerprint, fingerprint))
+            throw new InvalidDataException(
+                "Enemy-action event belongs to another semantic-pilot boundary.");
+        return Resolve(current, fingerprint,
+            pending.IndexOfCandidateLabel(candidateLabel));
+    }
 
     public static SemanticPilotCombatV111 ResolveRandomPileCard(
         SemanticPilotCombatV111 current, string fingerprint,

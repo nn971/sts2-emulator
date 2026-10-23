@@ -2,6 +2,16 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 automatic enemy-action semantic outcomes increment (2026-10-23):** The
+existing controlled enemy-action frame now persists optional ordered
+candidate labels with its index prefix. Card theft labels physical card
+instances, summon-pool labels retain model identity and pool slot, and other
+enemy-action sites label their bounded values. The semantic end-turn event
+fingerprints those labels and `semantic_resolve_enemy_action` accepts either
+`candidate_label` or the compatibility `selected_index`. Full source replay
+validates the label support; snapshots without labels retain index replay.
+Static source review and `git diff --check` only; no tests or builds were run.
+
 **S0 Native request and combat-card helper closure increment (2026-10-23):**
 The direct-call census now resolves the Native generic bounded-index request
 through its finite operation registry after the Native provider guard, and
