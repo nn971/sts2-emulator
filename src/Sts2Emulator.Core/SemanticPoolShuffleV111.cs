@@ -62,6 +62,8 @@ public sealed record SemanticPoolShuffleEventV111(
                 SemanticPoolShuffleChoiceV111.RandomRareToHandSiteId or
                 SemanticPoolShuffleChoiceV111.RecycleSiteId or
                 SemanticPoolShuffleChoiceV111.RandomShortlistSiteId or
+                NativeFisherYatesV111.SiteId or
+                ControlledRecycleShuffleEngineV111.SiteId or
                 PrototypeNativeRelicGrabBag.QueueShuffleSiteId) ||
             Request.SiteId != expectedSite ||
             Request.OperationKind != "bounded_integer" ||
@@ -145,6 +147,10 @@ public static class SemanticPoolShuffleChoiceV111
         StochasticSiteRegistryV111.CombatRandomShortlistShuffleSiteId;
     internal const string NativeRelicQueueOperation =
         "NativeRelicGrabBagQueueShuffle";
+    internal const string NativeRecycleOperation =
+        "NativeCombatDrawPileRecycleShuffle";
+    internal const string NativeCombatEntryShuffleOperation =
+        "NativeCombatEntryDrawPileShuffle";
 
     /// <summary>Pair one Native Fisher–Yates ticket with the exact ordered
     /// source identity support immediately before its swap. These audit
@@ -307,6 +313,10 @@ public static class SemanticPoolShuffleChoiceV111
             nameof(PrototypeCombatEffectKind.ChooseGeneratedCards) or
             nameof(PrototypeCombatEffectKind.ChooseGeneratedColorlessCards) =>
                 GenerationSiteId,
+            NativeRecycleOperation =>
+                ControlledRecycleShuffleEngineV111.SiteId,
+            NativeCombatEntryShuffleOperation =>
+                NativeFisherYatesV111.SiteId,
             NativeRelicQueueOperation =>
                 PrototypeNativeRelicGrabBag.QueueShuffleSiteId,
             _ => null

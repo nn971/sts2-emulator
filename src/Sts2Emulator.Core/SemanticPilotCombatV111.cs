@@ -191,6 +191,8 @@ public sealed record SemanticNativePolicyAuditV111(
         "sts2-v111-native-pool-shuffle-audit-v1";
     public const string PoolShuffleAuditSchemaV2 =
         "sts2-v111-native-pool-shuffle-audit-v2";
+    public const string PoolShuffleAuditSchemaV3 =
+        "sts2-v111-native-pool-shuffle-audit-v3";
     public const string GeneratedCardModelAuditSchemaV1 =
         "sts2-v111-native-generated-card-model-audit-v1";
     public const string CardTransformAuditSchemaV1 =
@@ -215,8 +217,8 @@ public sealed record SemanticNativePolicyAuditV111(
     /// <summary>Null for older snapshots that predate typed per-card energy
     /// cost annotations; V1 covers hand costs and V2 also covers draw hooks.</summary>
     public string? CardEnergyCostAuditSchema { get; init; }
-    /// <summary>V1 covers Native combat-card shuffles. V2 also requires
-    /// semantic ordered support annotations for Native relic-bag queues.</summary>
+    /// <summary>V1 covers combat-card shuffles; V2 adds relic-bag queues;
+    /// V3 also covers Native entry and recycle draw-pile shuffles.</summary>
     public string? PoolShuffleAuditSchema { get; init; }
     /// <summary>Null for older snapshots that predate typed Native generated
     /// card model results.</summary>
@@ -458,7 +460,8 @@ public sealed record SemanticNativePolicyAuditV111(
                  CardEnergyCostAuditSchemaV2)) ||
             (PoolShuffleAuditSchema is not null &&
              PoolShuffleAuditSchema is not (
-                 PoolShuffleAuditSchemaV1 or PoolShuffleAuditSchemaV2)) ||
+                 PoolShuffleAuditSchemaV1 or PoolShuffleAuditSchemaV2 or
+                 PoolShuffleAuditSchemaV3)) ||
             (GeneratedCardModelAuditSchema is not null &&
              GeneratedCardModelAuditSchema !=
                 GeneratedCardModelAuditSchemaV1) ||
@@ -807,6 +810,10 @@ public sealed record SemanticNativePolicyAuditV111(
             new List<RandomIndexDecisionV111>();
         var tracePoolShuffleDecisions =
             new List<RandomIndexDecisionV111>();
+        var traceNativeEntryShuffleDecisions =
+            new List<RandomIndexDecisionV111>();
+        var traceNativeRecycleShuffleDecisions =
+            new List<RandomIndexDecisionV111>();
         var traceRelicQueueShuffleDecisions =
             new List<RandomIndexDecisionV111>();
         var traceGeneratedCardModelDecisions =
@@ -877,9 +884,21 @@ public sealed record SemanticNativePolicyAuditV111(
                         .CombatCardPoolShuffleSiteIds.Contains(
                             value.Request.SiteId, StringComparer.Ordinal))
                         tracePoolShuffleDecisions.Add(poolShuffleDecision);
-                    else
+                    else if (value.Request.SiteId ==
+                        NativeFisherYatesV111.SiteId)
+                        traceNativeEntryShuffleDecisions.Add(
+                            poolShuffleDecision);
+                    else if (value.Request.SiteId ==
+                        ControlledRecycleShuffleEngineV111.SiteId)
+                        traceNativeRecycleShuffleDecisions.Add(
+                            poolShuffleDecision);
+                    else if (value.Request.SiteId ==
+                        PrototypeNativeRelicGrabBag.QueueShuffleSiteId)
                         traceRelicQueueShuffleDecisions.Add(
                             poolShuffleDecision);
+                    else
+                        throw new InvalidDataException(
+                            "Native policy pool-shuffle site has no audit projection.");
                 }
                 if (SemanticGeneratedCardNativeAuditV111
                     .IsSupportedAuditSite(value.Request.SiteId))
@@ -1050,29 +1069,52 @@ public sealed record SemanticNativePolicyAuditV111(
             }
         }
 
-        bool completeRelicQueueShuffles =
-            PoolShuffleAuditSchema == PoolShuffleAuditSchemaV2;
+        bool completeRelicQueueShuffles = PoolShuffleAuditSchema is
+            PoolShuffleAuditSchemaV2 or PoolShuffleAuditSchemaV3;
+        bool completeNativeDrawPileShuffles =
+            PoolShuffleAuditSchema == PoolShuffleAuditSchemaV3;
         if (PoolShuffleAuditSchema == PoolShuffleAuditSchemaV1 &&
             poolShuffleOutcomes.Any(outcome =>
-                outcome.Event.Request.SiteId ==
+                outcome.Event.Request.SiteId is
+                    NativeFisherYatesV111.SiteId or
+                    ControlledRecycleShuffleEngineV111.SiteId or
                     PrototypeNativeRelicGrabBag.QueueShuffleSiteId))
             throw new InvalidDataException(
-                "Native policy pool-shuffle schema V1 cannot contain relic-queue annotations.");
-        var requiredPoolShuffleDecisions = completeRelicQueueShuffles
-            ? tracePoolShuffleDecisions.Concat(
-                traceRelicQueueShuffleDecisions).ToArray()
-            : tracePoolShuffleDecisions.ToArray();
-        var requiredPoolShuffleOutcomes = completeRelicQueueShuffles
-            ? poolShuffleOutcomes
-            : poolShuffleOutcomes.Where(outcome =>
-                StochasticSiteRegistryV111.CombatCardPoolShuffleSiteIds
-                    .Contains(outcome.Event.Request.SiteId,
-                        StringComparer.Ordinal)).ToArray();
+                "Native policy pool-shuffle schema V1 cannot contain extended Native pool annotations.");
+        if (PoolShuffleAuditSchema == PoolShuffleAuditSchemaV2 &&
+            poolShuffleOutcomes.Any(outcome =>
+                outcome.Event.Request.SiteId is
+                    NativeFisherYatesV111.SiteId or
+                    ControlledRecycleShuffleEngineV111.SiteId))
+            throw new InvalidDataException(
+                "Native policy pool-shuffle schema V2 cannot contain Native draw-pile shuffle annotations.");
+        var requiredPoolShuffleDecisions =
+            new List<RandomIndexDecisionV111>(tracePoolShuffleDecisions);
+        if (completeNativeDrawPileShuffles)
+        {
+            requiredPoolShuffleDecisions.AddRange(
+                traceNativeEntryShuffleDecisions);
+            requiredPoolShuffleDecisions.AddRange(
+                traceNativeRecycleShuffleDecisions);
+        }
+        if (completeRelicQueueShuffles)
+            requiredPoolShuffleDecisions.AddRange(
+                traceRelicQueueShuffleDecisions);
+        var requiredPoolShuffleOutcomes = poolShuffleOutcomes.Where(outcome =>
+            StochasticSiteRegistryV111.CombatCardPoolShuffleSiteIds
+                .Contains(outcome.Event.Request.SiteId, StringComparer.Ordinal) ||
+            (completeNativeDrawPileShuffles &&
+             (outcome.Event.Request.SiteId is
+                 NativeFisherYatesV111.SiteId or
+                 ControlledRecycleShuffleEngineV111.SiteId)) ||
+            (completeRelicQueueShuffles && outcome.Event.Request.SiteId ==
+                PrototypeNativeRelicGrabBag.QueueShuffleSiteId)).ToArray();
         if (PoolShuffleAuditSchema is
-                PoolShuffleAuditSchemaV1 or PoolShuffleAuditSchemaV2 ||
+                PoolShuffleAuditSchemaV1 or PoolShuffleAuditSchemaV2 or
+                PoolShuffleAuditSchemaV3 ||
             poolShuffleOutcomes.Length > 0)
         {
-            if (requiredPoolShuffleDecisions.Length !=
+            if (requiredPoolShuffleDecisions.Count !=
                 requiredPoolShuffleOutcomes.Length)
                 throw new InvalidDataException(
                     "Native policy pool-shuffle outcomes are incomplete for their mixed trace.");
@@ -3064,7 +3106,7 @@ public static class SemanticPilotCombatEngineV111
                             .EnemyPileInsertionAuditSchemaV1,
                     PoolShuffleAuditSchema =
                         SemanticNativePolicyAuditV111
-                            .PoolShuffleAuditSchemaV2,
+                            .PoolShuffleAuditSchemaV3,
                     GeneratedCardModelAuditSchema =
                         SemanticNativePolicyAuditV111
                             .GeneratedCardModelAuditSchemaV1,
@@ -3184,7 +3226,7 @@ public static class SemanticPilotCombatEngineV111
                         .EnemyPileInsertionAuditSchemaV1,
                 PoolShuffleAuditSchema =
                     SemanticNativePolicyAuditV111
-                        .PoolShuffleAuditSchemaV2,
+                        .PoolShuffleAuditSchemaV3,
                 GeneratedCardModelAuditSchema =
                     SemanticNativePolicyAuditV111
                         .GeneratedCardModelAuditSchemaV1,

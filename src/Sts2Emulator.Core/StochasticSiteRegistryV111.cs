@@ -595,8 +595,11 @@ public static class StochasticSiteRegistryV111
     ];
 
     public static string[] NativePolicyPoolShuffleSiteIds =>
-        CombatCardPoolShuffleSiteIds.Append(
-            PrototypeNativeRelicGrabBag.QueueShuffleSiteId).ToArray();
+        CombatCardPoolShuffleSiteIds
+            .Append(NativeFisherYatesV111.SiteId)
+            .Append(ControlledRecycleShuffleEngineV111.SiteId)
+            .Append(PrototypeNativeRelicGrabBag.QueueShuffleSiteId)
+            .ToArray();
 
     public static string[] CombatIntentSiteIds =>
     [

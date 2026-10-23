@@ -816,12 +816,13 @@ source-route initial-intent, and native-policy action boundaries contribute
 to that transcript; forks clone its serialized payloads. It is stored with
 the privileged session snapshot and does not enter `semantic_observe`.
 The audit also retains typed outcomes for weighted intents, selected physical
-cards, random hand and draw-hook costs, combat card-pool and Native relic-bag
-queue swaps, generated-card models, transform replacements, random enemy
-targets, in-combat potion models, draw-pile insertion positions, and
-enemy-effect draw/discard pile insertions, each linked to its exact primitive
-decision. Additive schema markers require complete annotations for their
-registered requests on new snapshots; older unmarked audits remain readable.
+cards, random hand and draw-hook costs, combat card-pool, entry draw-pile, and
+semantic recycle swaps, Native relic-bag queue swaps, generated-card models, transform
+replacements, random enemy targets, in-combat potion models, draw-pile insertion
+positions, and enemy-effect draw/discard pile insertions, each linked to its
+exact primitive decision. Additive schema markers require complete annotations
+for their registered requests on new snapshots; older unmarked audits remain
+readable.
 Older snapshots without the mixed trace continue to validate from their
 index array. This adds auditable provider evidence but does not claim complete
 source RNG coverage, calibrated laws, or native cursor parity. Core and CLI

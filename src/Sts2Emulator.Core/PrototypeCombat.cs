@@ -386,10 +386,25 @@ public sealed partial class PrototypeGameEngine
         IRandomIndexProviderV111 shuffleProvider = nativeCombatEntryRng is null
             ? new LegacyPrototypeRandomIndexProviderV111()
             : new NativeRandomIndexProviderV111();
-        _ = NativeFisherYatesV111.ShuffleInPlace(
+        var entryCardModels = nativeCombatEntryRng is not null &&
+            RandomBoundaryJournalV111.HasActiveJournal
+                ? combatCards.ToDictionary(card => card.InstanceId,
+                    card => card.CardId)
+                : null;
+        var originalDrawPileLabels = entryCardModels is null
+            ? null
+            : NativePoolShuffleLabels(entryCardModels, drawPile);
+        var initialDrawPileDecisions = NativeFisherYatesV111.ShuffleInPlace(
             drawPile, shuffleStreams, shuffleProvider,
             nativeCombatEntryRng is null ? "combat" : "run.shuffle",
             "player:0", NativeFisherYatesV111.SiteId);
+        if (entryCardModels is not null && originalDrawPileLabels is not null)
+            SemanticPoolShuffleChoiceV111.RecordNativeAudit(
+                originalDrawPileLabels,
+                NativePoolShuffleLabels(entryCardModels, drawPile),
+                initialDrawPileDecisions, drawPile.Length,
+                SemanticPoolShuffleChoiceV111.NativeCombatEntryShuffleOperation,
+                null);
         var boomingConchAtElite = roomType == PrototypeRoomType.Elite
             && state.Player.ActiveRelics.Any(relic =>
                 relic.RelicId ==
@@ -14277,6 +14292,23 @@ public sealed partial class PrototypeGameEngine
             _ => throw new NotSupportedException(
                 "UNSUPPORTED_NATIVE_POOL_SHUFFLE_IDENTITY type=" +
                 typeof(T).FullName)
+        }).ToArray();
+    }
+
+    private static string[] NativePoolShuffleLabels(
+        IReadOnlyDictionary<long, string> cardModels,
+        IReadOnlyList<long> pool)
+    {
+        ArgumentNullException.ThrowIfNull(cardModels);
+        ArgumentNullException.ThrowIfNull(pool);
+        return pool.Select(instanceId =>
+        {
+            if (!cardModels.TryGetValue(instanceId, out var cardId))
+                throw new InvalidDataException(
+                    "Native entry shuffle support contains an unknown card instance.");
+            return "card-instance:" + instanceId.ToString(
+                System.Globalization.CultureInfo.InvariantCulture) + ":" +
+                cardId;
         }).ToArray();
     }
 

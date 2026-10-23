@@ -58,6 +58,12 @@ public sealed partial class PrototypeGameEngine
             new NativeRandomIndexProviderV111(),
             ownerId: "player:0",
             siteId: ControlledRecycleShuffleEngineV111.SiteId);
+        if (RandomBoundaryJournalV111.HasActiveJournal)
+            SemanticPoolShuffleChoiceV111.RecordNativeAudit(
+                NativePoolShuffleLabels(combat, shuffle.OrderedInput),
+                NativePoolShuffleLabels(combat, shuffle.PreHookOutput),
+                shuffle.Choices, shuffle.OrderedInput.Length,
+                SemanticPoolShuffleChoiceV111.NativeRecycleOperation, null);
         var postHook = NativeShuffleStepReplayV111.CheckPostHook(
             ApplyPerfectFitShuffleOrder(combat, shuffle.PreHookOutput));
         var advanced = combat with
