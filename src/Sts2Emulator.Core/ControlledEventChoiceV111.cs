@@ -329,6 +329,7 @@ public sealed record ControlledEventChoiceTraceV111(
                 "Malformed controlled event-choice transcript.");
         var sawEventChoice = false;
         var sawRewardReroll = false;
+        var sawEntropicBrewFill = false;
         for (var index = 0; index < Decisions.Length; index++)
         {
             var decision = Decisions[index];
@@ -351,12 +352,16 @@ public sealed record ControlledEventChoiceTraceV111(
                 && index == Decisions.Length - 1;
             var isSupportedSite = isRewardReroll
                 ? sawEventChoice
-                : (!sawRewardReroll && isEventChoice)
-                    || (sawEventChoice && sawRewardReroll
+                : isEntropicBrewFill
+                    ? sawEventChoice
+                    : (!sawRewardReroll && isEventChoice)
+                    || (sawEventChoice &&
+                        (sawRewardReroll || sawEntropicBrewFill)
                         && isFinalModifierCurse);
             if (!isRewardReroll && !sawRewardReroll && isEventChoice)
                 sawEventChoice = true;
             sawRewardReroll |= isRewardReroll;
+            sawEntropicBrewFill |= isEntropicBrewFill;
             if (decision.ProviderMode != "controlled-v111"
                 || decision.NativeCursorBefore is not null
                 || decision.NativeCursorAfter is not null
