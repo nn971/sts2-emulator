@@ -1889,6 +1889,9 @@ public sealed partial class PrototypeGameEngine
     private static bool IsMayhemOpeningAutoplayTargetBoundary(
         CombatState combat)
     {
+        if (IsMayhemOpeningNestedEffectTargetBoundary(combat))
+            return true;
+
         if (IsMayhemOpeningSlyAutoplayTargetBoundary(combat))
             return true;
 
@@ -1922,6 +1925,32 @@ public sealed partial class PrototypeGameEngine
         return true;
     }
 
+    private static bool IsMayhemOpeningNestedEffectTargetBoundary(
+        CombatState combat)
+    {
+        if (combat is not
+                { Turn: 1, IsPlayerTurn: true, IsPlayerSideActive: true,
+                  PendingKnowledgeDemonChoice: null,
+                  PendingChoice:
+                    { ChoiceId: "controlled_random_target",
+                      ControlledTarget:
+                        { Kind: "effect_random_enemy",
+                          SlyCardInstanceId: null,
+                          AutoPlayCardInstanceId: null },
+                      OuterChoiceContinuation: { } continuation } pending,
+                  SemanticDeck:
+                    { Mode: SemanticDeckStateV111.NatureMode,
+                      Pending: null },
+                  AutomaticPipelineContinuation: { } pipeline } ||
+            !pipeline.Mechanics.IsAtOpeningBoundary(
+                PrototypeOpeningCombatStage.AfterAutoPrePlayPolicy) ||
+            !IsMayhemAutoPrePlayPipelineCursor(combat) ||
+            !SemanticTargetChoiceV111.HasValidLiveSupport(combat, pending))
+            return false;
+
+        return HasActiveAutoplayCardPlaySeries(combat, continuation);
+    }
+
     private static bool IsMayhemOpeningSlyAutoplayTargetBoundary(
         CombatState combat)
     {
@@ -1951,7 +1980,27 @@ public sealed partial class PrototypeGameEngine
         {
             if (frame.CardPlaySeries is
                     { IsAutoPlay: true } series &&
-                combat.PlayCardIds.Contains(series.SourceCardInstanceId))
+                combat.Cards.Any(card =>
+                    card.InstanceId == series.SourceCardInstanceId) &&
+                !combat.PlayCardIds.Contains(series.SourceCardInstanceId))
+                return true;
+        }
+
+        return false;
+    }
+
+    private static bool HasActiveAutoplayCardPlaySeries(
+        CombatState combat,
+        PrototypeChoiceResolutionContinuationState continuation)
+    {
+        for (var frame = continuation; frame is not null;
+             frame = frame.Parent)
+        {
+            if (frame.CardPlaySeries is
+                    { IsAutoPlay: true } series &&
+                combat.Cards.Any(card =>
+                    card.InstanceId == series.SourceCardInstanceId) &&
+                !combat.PlayCardIds.Contains(series.SourceCardInstanceId))
                 return true;
         }
 

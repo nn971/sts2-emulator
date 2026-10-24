@@ -1174,6 +1174,9 @@ selection-completion suffix; each result resumes the original discard-event
 order. End-turn hand-discard targets continue through the existing saved
 automatic-pipeline target transcript. Other player-card Tingsha origins and
 Native target-pool, stream, and cursor parity remain open.
+Tingsha targets nested under an autoplayed card also reuse the discard target
+owner when the saved event is the exact live Tingsha subscriber and the
+active autoplay series and automatic-pipeline boundary remain present.
 Knife Trap also enters from its physical source card and reuses the saved
 autoplay-target continuation if an earlier Shiv kills the chosen enemy before
 the remaining Shiv queue finishes.
@@ -1249,11 +1252,11 @@ changed.
 
 The same Mayhem opening cursor now admits a nested Sly autoplay target when its
 discarded source card is live, carries the Sly keyword, and targets an enemy;
-the saved continuation must also retain an autoplay card-play series whose
-source remains in the play pile. This covers nested opening effects such as a
-Mayhem autoplay that discards a Sly-marked Skill without broadening the direct
-Mayhem target admission. Whispering Earring and Imbued retain their separate
-source-specific opening checks.
+the saved continuation must also retain an active autoplay card-play series
+whose source card has left the play pile to resolve its effects. Nested
+ordinary random-effect targets from that same active autoplay series use the
+existing effect-target continuation as well. Whispering Earring and Imbued
+retain their separate source-specific opening checks.
 
 History Course autoplay after `AutoPrePlay` and Whispering Earring's opening
 autoplay both pass random target selection through the shared

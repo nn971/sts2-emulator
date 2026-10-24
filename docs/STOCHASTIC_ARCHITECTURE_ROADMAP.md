@@ -6,9 +6,20 @@
 `AfterAutoPrePlayPolicy` target boundary now admits nested Sly autoplay only
 when the discarded target card is live, Sly, and enemy-targeting, and the
 saved continuation retains an active autoplay card-play series whose source
-is still in the play pile. This covers nested Mayhem opening effects without
-changing direct autoplay-target validation or snapshot schemas. Static source
-review and `git diff --check` only; no tests or builds were run.
+has left the play pile to resolve its effects. Nested ordinary random-effect
+targets use the existing effect-target continuation when they retain that
+active series. This covers nested Mayhem opening effects without changing
+direct autoplay-target validation or snapshot schemas. Static source review
+and `git diff --check` only; no tests or builds were run.
+
+**S4 autoplay Tingsha discard-target continuation increment (2026-10-25):**
+Tingsha's automatic discard target now uses the existing target event when the
+saved CardDiscarded dispatch is its exact live relic trigger, the DamageEnemy
+operation matches the source effect, and an active autoplay card-play series
+is present at a supported automatic-pipeline boundary. Mayhem opening also
+admits nested ordinary random-effect targets from its active autoplay series.
+No event or snapshot schema changed. Static source review and
+`git diff --check` only; no tests or builds were run.
 
 **S4 Imbued nested-choice source-frame validation increment (2026-10-24):**
 Nested choices during the `LateRelicAutoPlay` sequence now identify the active
