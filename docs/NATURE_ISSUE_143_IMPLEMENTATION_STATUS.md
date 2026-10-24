@@ -1225,3 +1225,12 @@ and request-count invariants once per classified nested-child stage. Existing
 per-kind source-boundary validation remains in place, along with specialized
 pre-draw pool-shuffle and generated-selection checks. Static source review and
 `git diff --check` only; no tests or builds were run.
+
+## 2026-10-25: Native semantic-outcome mapping
+
+Native `choose_index` results for semantic target, generated-card, potion,
+transform, shortlist, random-pile-card, and hand-cost choices now pass through
+one checked mapping against their ordered semantic support before resumption.
+The Native provider audit continues to retain the primitive index and cursor
+span. Static source review and `git diff --check` only; no tests or builds were
+run.
