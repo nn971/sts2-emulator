@@ -66,11 +66,15 @@ public sealed record ControlledRunActionTraceV111(
         var rewardRelicAction =
             ControlledRunActionEngineV111
                 .IsCombatRewardRelicActionKind(ActionId);
+        var relicDeckTransformAction =
+            ControlledRunActionEngineV111
+                .IsRelicDeckTransformActionKind(ActionId);
         var restHealRewardAction = ActionId ==
             PrototypeNativeRestSiteActionsV111.Heal;
         var entropicBrewAction = ActionId == "use_potion";
         var actionPayloadRequired = shopPurchaseAction || rewardRelicAction
-            || restHealRewardAction || entropicBrewAction;
+            || relicDeckTransformAction || restHealRewardAction
+            || entropicBrewAction;
         if (ActionId is not ("start_run" or "continue_act"
                 or PrototypeNativeRestSiteActionsV111.Dig
                 or "choose_map_node")
@@ -146,6 +150,9 @@ public sealed record ControlledRunActionTraceV111(
             var isRestHealRewardDraw = restHealRewardAction
                 && StochasticSiteRegistryV111
                     .IsRunActionRestHealRewardSite(request.SiteId);
+            var isRelicDeckTransformDraw = relicDeckTransformAction
+                && ControlledRunActionEngineV111
+                    .IsSupportedRelicDeckTransformRequest(request);
             var isNativeShovelFallbackDraw = ActionId ==
                     PrototypeNativeRestSiteActionsV111.Dig
                 && (request.SiteId is "relic_grab_bag.rarity.ticket"
@@ -157,6 +164,7 @@ public sealed record ControlledRunActionTraceV111(
                 ? "event" : isShopDraw ? "shop"
                 : isNativeShovelFallbackDraw ? "reward"
                 : isTreasureDraw ? "reward"
+                : isRelicDeckTransformDraw ? "reward"
                 : isCombatPotionDraw ? "event"
                 : isNativeFormationDraw ? request.StreamId
                 : isCombatDraw ? "combat"
@@ -182,6 +190,7 @@ public sealed record ControlledRunActionTraceV111(
                         || isCombatDraw || isCombatPotionDraw
                     : actionPayloadRequired
                         ? isShopPurchaseDraw || isRestHealRewardDraw
+                            || isRelicDeckTransformDraw
                     : ControlledEventChoiceReplayV111
                         .IsRunActionShovelSite(request.SiteId);
             var prefixOwner = isOvergrowthBossDraw
@@ -213,7 +222,8 @@ public sealed record ControlledRunActionTraceV111(
             var numericLabels = !(isMapDraw || isEventEntryDraw || isShopDraw
                 || isTreasureDraw || isNativeShovelFallbackDraw
                 || isCombatDraw || isCombatPotionDraw
-                || isShopPurchaseDraw || isRestHealRewardDraw)
+                || isShopPurchaseDraw || isRestHealRewardDraw
+                || isRelicDeckTransformDraw)
                 || nativeRelicBagLabels
                 || omittedLabels ||
                 ControlledStochasticChanceReplayV111.CandidateLabelsMatch(
@@ -543,6 +553,7 @@ public sealed record PrototypeControlledRunActionContinuationV111(
         var mapNodeRequest = false;
         var shopPurchaseRequest = false;
         var rewardRelicRequest = false;
+        var relicDeckTransformRequest = false;
         var restHealRewardRequest = false;
         switch (ActionId)
         {
@@ -888,6 +899,43 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                 rewardRelicRequest = true;
                 break;
             }
+            case "choose_shop_relic_deck_card":
+            case "choose_relic_deck_card":
+            {
+                if (RunAction is null
+                    || RunAction.Kind != ActionId
+                    || MapNodeId is not null
+                    || !ControlledRunActionEngineV111
+                        .IsRandomRelicDeckTransformAction(state, RunAction)
+                    || !new PrototypeGameEngine().GetLegalActions(state)
+                        .Any(action => PrototypeAiEnvironment.StableActionId(
+                                action) ==
+                            PrototypeAiEnvironment.StableActionId(RunAction)))
+                    throw new InvalidDataException(
+                        "Controlled relic deck-transform frame is outside its legal pending-choice boundary.");
+                var payload = RunAction.ReadPayload<ChooseDeckCardPayload>();
+                var pending = ActionId == "choose_shop_relic_deck_card"
+                    ? state.World?.Shop?.PendingDeckChoice
+                    : state.World?.Reward?.PendingDeckChoice;
+                var selected = state.Player.Deck.Single(card =>
+                    card.InstanceId == payload.CardInstanceId);
+                var pool = PrototypeContent.RewardCardPool
+                    .Where(cardId => !StringComparer.Ordinal.Equals(
+                        cardId, selected.CardId))
+                    .ToArray();
+                if (pending is null || pool.Length == 0)
+                    throw new InvalidDataException(
+                        "Controlled relic deck-transform frame has no replacement support.");
+                expectedSite = "reward.card_transform.replacement.index_draw";
+                expectedStream = "reward";
+                expectedOwner = "card_instance:" + payload.CardInstanceId
+                    + ":original:" + selected.CardId + ":pool:"
+                    + CanonicalJson.Sha256(pool);
+                expectedCandidates = Enumerable.Range(0, pool.Length).ToArray();
+                expectedLabels = pool;
+                relicDeckTransformRequest = true;
+                break;
+            }
             case PrototypeNativeRestSiteActionsV111.Heal:
             {
                 if (RunAction is null
@@ -918,7 +966,7 @@ public sealed record PrototypeControlledRunActionContinuationV111(
         }
         if ((!mapNodeRequest && MapNodeId is not null)
             || (!(shopPurchaseRequest || rewardRelicRequest ||
-                    restHealRewardRequest)
+                    relicDeckTransformRequest || restHealRewardRequest)
                 && RunAction is not null)
             || PendingRequest.SiteId != expectedSite
             || PendingRequest.StreamId != expectedStream
@@ -941,6 +989,11 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                     state, RunAction!, Decisions, DecisionCandidateLabels,
                     PendingRequest,
                     PendingCandidateLabels);
+        if (relicDeckTransformRequest)
+            ControlledRunActionEngineV111
+                .ValidatePendingRelicDeckTransform(
+                    state, RunAction!, Decisions, DecisionCandidateLabels,
+                    PendingRequest, PendingCandidateLabels);
         if (restHealRewardRequest)
             ControlledRunActionEngineV111.ValidatePendingRestHealReward(
                 state, RunAction!, Decisions, DecisionCandidateLabels,
@@ -984,6 +1037,11 @@ public sealed record PrototypeControlledRunActionContinuationV111(
             var isCombatPotionDraw = ActionId == "choose_map_node"
                 && ControlledEventChoiceReplayV111
                     .IsRunActionCombatEntryPotionSite(request.SiteId);
+            var isRelicDeckTransformDraw =
+                ControlledRunActionEngineV111
+                    .IsRelicDeckTransformActionKind(ActionId)
+                && ControlledRunActionEngineV111
+                    .IsSupportedRelicDeckTransformRequest(request);
             var mapAction = ActionId == "choose_map_node"
                 ? GameAction.Create(
                     "choose_map_node",
@@ -1016,6 +1074,7 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                 ? "event" : isShopDraw ? "shop"
                 : isNativeShovelFallbackDraw ? "reward"
                 : isTreasureDraw ? "reward"
+                : isRelicDeckTransformDraw ? "reward"
                 : isCombatPotionDraw ? "event"
                 : isNativeFormationDraw ? request.StreamId
                 : isCombatDraw ? "combat"
@@ -1031,6 +1090,8 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                     ? isEventEntryDraw || isShopDraw || isTreasureDraw
                         || isCombatEntryDraw
                         || isNativeActOneCombatEntryDraw
+                    : IsRelicDeckTransformActionKind(ActionId)
+                        ? isRelicDeckTransformDraw
                     : ControlledEventChoiceReplayV111
                         .IsRunActionShovelSite(request.SiteId);
             var prefixOwner = isOvergrowthBossDraw
@@ -1058,7 +1119,8 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                     .IsLegacyNativeRelicBagLabelSupport(request, labels);
             var numericLabels = !(isMapDraw || isEventEntryDraw || isShopDraw
                 || isTreasureDraw || isNativeShovelFallbackDraw
-                || isCombatDraw || isCombatPotionDraw)
+                || isCombatDraw || isCombatPotionDraw
+                || isRelicDeckTransformDraw)
                 || nativeRelicBagLabels
                 || omittedLabels ||
                 ControlledStochasticChanceReplayV111.CandidateLabelsMatch(
@@ -1251,6 +1313,44 @@ public static class ControlledRunActionEngineV111
     public static bool IsShopPurchaseActionKind(string actionKind) =>
         actionKind is "buy_card" or "buy_potion" or
             "replace_shop_potion" or "remove_card" or "buy_relic";
+
+    internal static bool IsRelicDeckTransformActionKind(string actionKind) =>
+        actionKind is "choose_shop_relic_deck_card"
+            or "choose_relic_deck_card";
+
+    internal static bool IsRandomRelicDeckTransformAction(
+        RunState source, GameAction action)
+    {
+        if (action.Kind is not ("choose_shop_relic_deck_card"
+                or "choose_relic_deck_card"))
+            return false;
+        var pending = action.Kind == "choose_shop_relic_deck_card"
+            ? source.Phase == RunPhase.Shop
+                ? source.World?.Shop?.PendingDeckChoice : null
+            : source.Phase == RunPhase.Reward
+                ? source.World?.Reward?.PendingDeckChoice : null;
+        if (pending is not { Kind: PrototypePersistentDeckChoiceKind.Transform }
+            || PrototypeContent.Relic(pending.SourceRelicId)
+                .AcquisitionDeckChoice is not
+                {
+                    Kind: PrototypePersistentDeckChoiceKind.Transform,
+                    TransformToCardId: null
+                })
+            return false;
+        var cardInstanceId = action.ReadPayload<ChooseDeckCardPayload>()
+            .CardInstanceId;
+        return pending.CandidateCardInstanceIds.Contains(cardInstanceId)
+            && source.Player.Deck.Any(card =>
+                card.InstanceId == cardInstanceId
+                && !PrototypeCardRules.IsEternal(card));
+    }
+
+    internal static bool IsSupportedRelicDeckTransformRequest(
+        RandomIndexRequestV111 request) =>
+        request.SiteId == "reward.card_transform.replacement.index_draw"
+        && request.StreamId == "reward"
+        && request.OperationKind == "choose_index"
+        && request.SupportCount > 0;
 
     internal static bool IsConfiguredNativeReferenceNatureRunStartSource(
         RunState source)
@@ -1594,6 +1694,7 @@ public static class ControlledRunActionEngineV111
         RunState source, GameAction action) =>
         IsShopPurchaseAction(source, action)
         || IsCombatRewardRelicAction(source, action)
+        || IsRandomRelicDeckTransformAction(source, action)
         || IsLegacyRestHealRewardAction(source, action)
         || IsNativeRestHealRewardAction(source, action)
         || IsEntropicBrewRunAction(source, action);
@@ -1624,6 +1725,18 @@ public static class ControlledRunActionEngineV111
             expectedCandidateLabels,
             PendingRunActionRequestKind.RewardRelic);
 
+    internal static void ValidatePendingRelicDeckTransform(
+        RunState source,
+        GameAction action,
+        RandomIndexDecisionV111[] decisions,
+        string[][] decisionCandidateLabels,
+        RandomIndexRequestV111 expectedRequest,
+        string[] expectedCandidateLabels) =>
+        ValidatePendingRunActionChoice(
+            source, action, decisions, decisionCandidateLabels,
+            expectedRequest, expectedCandidateLabels,
+            PendingRunActionRequestKind.RelicDeckTransform);
+
     internal static void ValidatePendingRestHealReward(
         RunState source,
         GameAction action,
@@ -1641,6 +1754,7 @@ public static class ControlledRunActionEngineV111
     {
         ShopPurchase,
         RewardRelic,
+        RelicDeckTransform,
         RestHealReward
     }
 
@@ -1659,6 +1773,8 @@ public static class ControlledRunActionEngineV111
                 IsShopPurchaseAction(source, action),
             PendingRunActionRequestKind.RewardRelic =>
                 IsCombatRewardRelicAction(source, action),
+            PendingRunActionRequestKind.RelicDeckTransform =>
+                IsRandomRelicDeckTransformAction(source, action),
             PendingRunActionRequestKind.RestHealReward =>
                 IsLegacyRestHealRewardAction(source, action),
             _ => false
@@ -1673,6 +1789,8 @@ public static class ControlledRunActionEngineV111
                 StochasticSiteRegistryV111.IsRunActionShopPurchaseSite(
                     expectedRequest.SiteId)
                 && IsSupportedShopPurchaseStream(expectedRequest),
+            PendingRunActionRequestKind.RelicDeckTransform =>
+                IsSupportedRelicDeckTransformRequest(expectedRequest),
             PendingRunActionRequestKind.RestHealReward =>
                 IsSupportedRestHealRewardRequest(expectedRequest),
             _ => false
@@ -1756,6 +1874,8 @@ public static class ControlledRunActionEngineV111
             source, action);
         var rewardRelicAction = IsCombatRewardRelicAction(
             source, action);
+        var relicDeckTransformAction =
+            IsRandomRelicDeckTransformAction(source, action);
         var acquisitionAction = shopPurchaseAction || rewardRelicAction;
         var restHealRewardAction = IsLegacyRestHealRewardAction(
             source, action);
@@ -1773,7 +1893,8 @@ public static class ControlledRunActionEngineV111
                 or PrototypeNativeRestSiteActionsV111.Dig
                 or "choose_map_node")
                 && !acquisitionAction && !restHealRewardAction
-                && !outsideCombatPotionAction)
+                && !outsideCombatPotionAction
+                && !relicDeckTransformAction)
             || action.Kind == "continue_act"
                 && !supportedLegacyActTransitionAction
             || action.Kind == "choose_map_node" && !supportedMapNodeAction)
@@ -1829,6 +1950,10 @@ public static class ControlledRunActionEngineV111
                             pendingChance.Request.SiteId)
                     && IsSupportedShopPurchaseStream(
                         pendingChance.Request);
+                var supportedRelicDeckTransformSite =
+                    relicDeckTransformAction
+                    && IsSupportedRelicDeckTransformRequest(
+                        pendingChance.Request);
                 var supportedRestHealRewardSite = restHealRewardAction
                     && IsSupportedRestHealRewardRequest(
                         pendingChance.Request);
@@ -1850,7 +1975,8 @@ public static class ControlledRunActionEngineV111
                             source, action, pendingChance.Request.SiteId));
                 var labelsValid = pendingChance.CandidateLabels is { } labels
                     && ((supportedShopPurchaseSite
-                            || supportedRewardRelicSite)
+                            || supportedRewardRelicSite
+                            || supportedRelicDeckTransformSite)
                         ? labels.Length == pendingChance.Request.SupportCount
                         : labels.Length == pendingChance.Request.SupportCount
                             || labels.Length == 0
@@ -1860,6 +1986,7 @@ public static class ControlledRunActionEngineV111
                         && !supportedMapNodeSite
                         && !supportedShopPurchaseSite
                         && !supportedRewardRelicSite
+                        && !supportedRelicDeckTransformSite
                         && !supportedRestHealRewardSite
                         && !supportedShovelSite)
                     || !labelsValid)
@@ -1881,6 +2008,7 @@ public static class ControlledRunActionEngineV111
                         pendingChance.CandidateLabels!,
                         mapNodeId,
                         acquisitionAction || restHealRewardAction
+                            || relicDeckTransformAction
                             ? CloneAction(action) : null);
                 var suspended = RunStochasticStateV111
                     .SuspendControlledRunActionChoice(
@@ -1895,7 +2023,7 @@ public static class ControlledRunActionEngineV111
         if (result.Stochastic.ControlledRunActionChoice is null)
         {
             if (acquisitionAction || restHealRewardAction ||
-                outsideCombatPotionAction ||
+                outsideCombatPotionAction || relicDeckTransformAction ||
                 supportedLegacyActTransitionAction ||
                 legacyActOneCombatEntryAction ||
                 nativeActOneCombatEntryAction)

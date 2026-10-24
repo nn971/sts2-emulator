@@ -29,6 +29,14 @@ registered reward-rarity and card-model requests, including the legacy
 fallback requests used by the Native-shaped Dream Catcher reward generator;
 configured Native reward generation uses the typed ReferenceNature
 run-action continuation described below.
+The frame also supports a legal later `choose_shop_relic_deck_card` or
+`choose_relic_deck_card` action when a pending relic-acquisition choice makes a
+random persistent-deck transform. It binds the action fingerprint to the
+selected card and validates the source relic. The pending request binds the
+selected card instance, original model and ordered replacement pool, then
+replays through the same `reward.card_transform.replacement` Chance Law.
+Fixed-result transforms and unrelated deck-choice actions retain their
+existing owners.
 `ControlledRunActionEngineV111.BeginLegacyActTransition` is the explicit
 entry point for the unconfigured prototype transition route.
 Legacy Treasure selection is not offered when Silver Crucible suppresses the
@@ -106,6 +114,10 @@ commits the relic as the normal reward. The ordered candidate labels encode
 the source-eligible support for the saved request. Player-facing
 observations hide those private constraints and Nature actions until
 mechanics commits a result.
+For a random relic deck transform, the pending frame also retains the exact
+legal deck-choice action. Replay verifies the relic's transform specification,
+selected card, original model, replacement labels and request before the
+transformed deck and cursor are published.
 The pending continuation is part of ordinary run snapshots. Player-facing
 observations hide its Nature actions; the explicit controller exposes only
 `choose_controlled_run_action_outcome` actions while the frame is pending.

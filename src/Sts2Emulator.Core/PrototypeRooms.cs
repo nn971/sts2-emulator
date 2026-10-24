@@ -4429,7 +4429,9 @@ public sealed partial class PrototypeGameEngine
                     .State,
                 "buy_card" or "buy_potion" or "replace_shop_potion"
                     or "remove_card" or "buy_relic"
-                    or "take_reward_relic" or "take_reward_extra_relic" =>
+                    or "take_reward_relic" or "take_reward_extra_relic"
+                    or "choose_shop_relic_deck_card"
+                    or "choose_relic_deck_card" =>
                     new PrototypeGameEngine().Step(
                         checkpoint with
                         {
@@ -4491,6 +4493,11 @@ public sealed partial class PrototypeGameEngine
                     StochasticSiteRegistryV111
                         .IsRunActionShopPurchaseSite(
                             pendingChance.Request.SiteId),
+                "choose_shop_relic_deck_card"
+                    or "choose_relic_deck_card" =>
+                    ControlledRunActionEngineV111
+                        .IsSupportedRelicDeckTransformRequest(
+                            pendingChance.Request),
                 _ => false
             };
             if (!supportedSite

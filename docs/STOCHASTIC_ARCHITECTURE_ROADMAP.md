@@ -4106,3 +4106,13 @@ zero remain dynamic or missing, and no static ID is absent from the registry.
 The query-law resolver follows owner-named `ChanceLaw*.cs` partials. The direct
 census and contract-link checks passed; manual row-by-row and external-source
 completeness review remain open. No tests or builds were run.
+
+**S6 pending relic deck-transform action increment (2026-10-24):** The
+controlled run-action continuation now captures legal Shop and Reward card
+selections when a relic acquisition has queued a random persistent-deck
+transform. It fingerprints and replays the exact selection, validates the
+source relic and selected card, and checks the ordered replacement pool before
+committing the transformed deck and ReferenceNature cursor. Fixed-result
+transforms and other deck-choice owners remain on their existing paths; pool
+fidelity and equal-index weighting remain `UNVERIFIED`. Static source review
+and `git diff --check` only; no tests or builds were run.

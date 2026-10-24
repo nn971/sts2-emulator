@@ -111,6 +111,14 @@ The present run and combat types have overlapping representation/lifecycle respo
 
 `RunStochasticStateV111` validates and owns completed controlled event-choice and run-action trace appends. Event-reward completion replaces the latest event-choice trace through the same owner, and run-action completion publishes its trace while clearing the active continuation in one transition.
 
+The controlled run-action continuation also covers the later legal
+`choose_shop_relic_deck_card` and `choose_relic_deck_card` actions when they
+resolve a pending random relic transform. The saved action binds the selected
+card instance, original model, relic choice and ordered replacement pool; replay
+checks the legal action and source request before committing the result and
+ReferenceNature cursor. Fixed-result relic transforms and other deck-choice
+owners continue through their existing paths.
+
 The existing controlled run-action frame also saves and replays legal legacy
 `take_reward_relic` and `take_reward_extra_relic` actions from Combat, Elite,
 or Boss rewards when their acquisition hooks reach a registered
