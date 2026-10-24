@@ -4673,3 +4673,10 @@ and the validated after-shuffle relic suffix. Nature recycle itself retains
 its existing shuffled-set constraints; no recycle ticket or new snapshot field
 was added. Static source review and `git diff --check` only; no tests or builds
 were run.
+
+**S4 opening semantic draw dispatcher consolidation (2026-10-25):** Opening
+semantic draw, draw-cost, and nonfinal `CardDrawn` hook boundaries now use
+`ResolveControlledSemanticDrawResult` with the opening frame, alongside the
+after-shuffle insertion path. The final-card hook remains without a saved draw
+operation because no remainder exists. Static source review and
+`git diff --check` only; no tests or builds were run.

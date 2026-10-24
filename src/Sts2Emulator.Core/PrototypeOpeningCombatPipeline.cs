@@ -224,8 +224,10 @@ public sealed partial class PrototypeGameEngine
                 StandaloneSemanticDrawSegment: false,
                 AutomaticSemanticHandDrawSegment: false);
             var continuation = EmptyDrawChoiceContinuation();
-            if (drawn.BoundaryKind ==
-                PrototypeDrawCardsBoundaryKind.AfterShuffleInsertions)
+            bool finalCardHook = drawn.BoundaryKind ==
+                    PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice &&
+                drawn.RemainingCount == 0;
+            if (!finalCardHook)
             {
                 state = state with
                 {
@@ -236,20 +238,12 @@ public sealed partial class PrototypeGameEngine
                     state, drawn, drawFrame, continuation,
                     automaticHandDrawRequested: null,
                     recycleSite: "combat.opening_draw",
-                    recycleOperation: "after_shuffle_insertion").Run;
+                    recycleOperation:
+                        drawn.BoundaryKind ==
+                            PrototypeDrawCardsBoundaryKind.AfterShuffleInsertions
+                            ? "after_shuffle_insertion"
+                            : "opening_draw_resume").Run;
             }
-            if (drawn.BoundaryKind ==
-                PrototypeDrawCardsBoundaryKind.SemanticDraw)
-                combat = MakeControlledSemanticDrawChoice(
-                    combat, drawFrame, continuation);
-            else if (drawn.BoundaryKind ==
-                PrototypeDrawCardsBoundaryKind.ControlledDrawCost)
-                combat = AttachControlledSemanticDrawCost(
-                    combat, drawFrame, continuation);
-            else if (drawn.RemainingCount > 0)
-                combat = AttachDrawCardsAtCardDrawnChoice(
-                    combat, drawFrame, continuation,
-                    markStandaloneHookChoice: false);
         }
         else if (drawn.BoundaryKind !=
             PrototypeDrawCardsBoundaryKind.Complete)
