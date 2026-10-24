@@ -327,6 +327,11 @@ public static class SemanticDrawHookChoiceEngineV111
                 PrototypeGameEngine
                     .IsAutomaticHandDrawHookRandomHandCostContinuation(
                         advancedCombat, nextChoice);
+            bool nestedBeforeHandDrawSemanticDraw =
+                decision.Event.BeforeHandDraw &&
+                PrototypeGameEngine
+                    .IsAutomaticBeforeHandDrawHookSemanticDrawContinuation(
+                        advancedCombat, nextChoice);
             bool nestedActiveHandDrawRandomTarget =
                 decision.Event.AutomaticHandDraw &&
                 !decision.Event.BeforeHandDraw &&
@@ -399,8 +404,10 @@ public static class SemanticDrawHookChoiceEngineV111
                  !nestedBeforeHandDrawPotionGeneration &&
                  !nestedActiveHandDrawPotionGeneration) ||
                 (nextChoice.ControlledDrawCost is not null &&
+                 !nestedBeforeHandDrawSemanticDraw &&
                  !nestedActiveHandDrawSemanticDraw) ||
                 (nextChoice.ControlledSemanticDraw is not null &&
+                 !nestedBeforeHandDrawSemanticDraw &&
                  !nestedActiveHandDrawSemanticDraw) ||
                 (nextChoice.ControlledDrawInsertion is not null &&
                  !nestedBeforeHandDrawDrawInsertion &&
@@ -435,6 +442,7 @@ public static class SemanticDrawHookChoiceEngineV111
                 !nestedBeforeHandDrawCardTransform &&
                 !nestedBeforeHandDrawCardShortlist &&
                 !nestedBeforeHandDrawRandomHandCost &&
+                !nestedBeforeHandDrawSemanticDraw &&
                 !nestedActiveHandDrawRandomTarget &&
                 !nestedActiveHandDrawRandomPileCard &&
                 !nestedActiveHandDrawSemanticDraw &&
@@ -484,6 +492,13 @@ public static class SemanticDrawHookChoiceEngineV111
             else if (nestedBeforeHandDrawRandomHandCost ||
                      nestedActiveHandDrawRandomHandCost)
                 SemanticRandomHandCostChoiceV111.ValidateBoundary(advanced);
+            else if (nestedBeforeHandDrawSemanticDraw)
+            {
+                if (nextChoice.ChoiceId == "controlled_draw_cost")
+                    SemanticCostChoiceV111.ValidateDrawBoundary(advanced);
+                else
+                    SemanticDrawChoiceV111.ValidateBoundary(advanced);
+            }
             else if (nestedActiveHandDrawRandomTarget)
             {
                 advancedCombat = advancedCombat with

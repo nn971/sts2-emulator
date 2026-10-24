@@ -832,10 +832,16 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
                     .IsAtSupportedAutomaticPipelineTargetBoundary(combat) &&
                 SemanticTargetChoiceV111.HasValidLiveSupport(
                     combat, targetChoice);
+            bool pendingBeforeDrawEffectDraw =
+                combat.PendingChoice is { } beforeDrawEffectChoice &&
+                PrototypeGameEngine
+                    .IsAutomaticBeforeHandDrawHookSemanticDrawContinuation(
+                        combat, beforeDrawEffectChoice);
             bool pendingBeforeDrawChoice =
                 combat.PendingChoice?.ControlledRandomPileCard is not null ||
                 combat.PendingChoice?.AutomaticSemanticDrawHookChoice == true ||
                 pendingBeforeDrawRandomTarget ||
+                pendingBeforeDrawEffectDraw ||
                 (combat.PendingChoice is { } pendingInsertionChoice &&
                  PrototypeGameEngine
                      .IsAutomaticBeforeHandDrawHookDrawInsertionContinuation(
@@ -874,7 +880,8 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
                          combat, pendingChoice));
             if (ControlledSemanticDrawRemaining is not null ||
                 ControlledSemanticDrawRequested is not null ||
-                combat.Stochastic.SemanticDeck?.Pending is not null ||
+                (combat.Stochastic.SemanticDeck?.Pending is not null &&
+                 !pendingBeforeDrawEffectDraw) ||
                 !pendingBeforeDrawChoice)
                 throw new InvalidOperationException(
                     "Semantic BeforeHandDraw cursor has no matching choice.");

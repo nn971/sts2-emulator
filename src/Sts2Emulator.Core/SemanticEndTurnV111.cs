@@ -1021,9 +1021,12 @@ public static class SemanticEndTurnEngineV111
                  activeHandDraw.Run.World?.Combat is { } activeCombat &&
                  (activeCombat.PendingChoice is null ||
                   activeCombat.PendingChoice is { } nestedEffectDraw &&
-                  PrototypeGameEngine
-                      .IsAutomaticHandDrawHookSemanticDrawContinuation(
-                          activeCombat, nestedEffectDraw)))
+                  (PrototypeGameEngine
+                       .IsAutomaticHandDrawHookSemanticDrawContinuation(
+                           activeCombat, nestedEffectDraw) ||
+                   PrototypeGameEngine
+                       .IsAutomaticBeforeHandDrawHookSemanticDrawContinuation(
+                           activeCombat, nestedEffectDraw))))
         {
             var nextHand = SemanticCombatDrawEngineV111.Resolve(
                 activeHandDraw, activeHandDraw.Fingerprint,

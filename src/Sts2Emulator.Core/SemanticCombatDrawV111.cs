@@ -367,6 +367,14 @@ public sealed record SemanticCombatDrawV111(
                 { } targetCursor &&
             targetCursor.Stochastic.IsAtSemanticBeforeHandDraw(
                 targetCursor.Mechanics);
+        bool automaticBeforeHandDrawEffectDrawPending =
+            this.AutomaticHandDraw &&
+            this.Run.World?.Combat is { } beforeHandDrawEffectCombat &&
+            beforeHandDrawEffectCombat.PendingChoice is
+                { } beforeHandDrawEffectChoice &&
+            PrototypeGameEngine
+                .IsAutomaticBeforeHandDrawHookSemanticDrawContinuation(
+                    beforeHandDrawEffectCombat, beforeHandDrawEffectChoice);
         if (this.RequestedCount < 0 ||
             this.RemainingCount < 0 ||
             this.RemainingCount > this.RequestedCount ||
@@ -384,6 +392,7 @@ public sealed record SemanticCombatDrawV111(
              randomHandCostPending is null &&
              handCostSelectionPending is null &&
              drawHookChoicePending?.BeforeHandDraw != true &&
+             !automaticBeforeHandDrawEffectDrawPending &&
              !automaticBeforeHandDrawPoolShuffle &&
              !automaticBeforeHandDrawGeneratedSelection &&
              !automaticBeforeHandDrawRandomTarget &&
@@ -611,7 +620,8 @@ public sealed record SemanticCombatDrawV111(
             hasPipelineSemanticDrawProgress &&
             pipelineRequested == this.RequestedCount &&
             pipelineRemaining == this.RemainingCount;
-        if (automaticHandDrawEffectDrawPending)
+        if (automaticHandDrawEffectDrawPending ||
+            automaticBeforeHandDrawEffectDrawPending)
         {
             if (combat.PendingChoice?.ChoiceId ==
                 "controlled_draw_cost")
@@ -620,7 +630,8 @@ public sealed record SemanticCombatDrawV111(
                 SemanticDrawChoiceV111.ValidateBoundary(this.Run);
         }
         bool semanticDrawChoicePending = standaloneSemanticDrawPending ||
-            automaticHandDrawEffectDrawPending;
+            automaticHandDrawEffectDrawPending ||
+            automaticBeforeHandDrawEffectDrawPending;
         var targetPending = this.TargetPending;
         bool automaticSemanticHandDrawRandomTarget =
             targetPending is not null;
@@ -631,6 +642,7 @@ public sealed record SemanticCombatDrawV111(
         {
             bool awaiting = deck.Pending is not null || cost is not null ||
                 automaticHandDrawEffectDrawPending ||
+                automaticBeforeHandDrawEffectDrawPending ||
                 randomPileCardPending is not null ||
                 drawInsertionPending is not null ||
                 generatedCardPending is not null ||
@@ -676,6 +688,16 @@ public sealed record SemanticCombatDrawV111(
                     deck.Pending is not null || cost is not null)
                     throw new InvalidDataException(
                         "Semantic BeforeHandDraw action cursor is inconsistent.");
+            }
+            else if (automaticBeforeHandDrawEffectDrawPending)
+            {
+                if (pipelineCursor is null ||
+                    !pipelineCursor.Mechanics.IsAtStep(
+                        PrototypeAutomaticStepKind.DrawPlayerHand) ||
+                    !semanticBeforeHandDrawProgress ||
+                    this.RequestedCount != 0 || this.RemainingCount != 0)
+                    throw new InvalidDataException(
+                        "Semantic BeforeHandDraw effect-draw cursor is inconsistent.");
             }
             else if (automaticBeforeHandDrawPoolShuffle &&
                      automaticBeforeHandDrawPoolShuffleChoice is
@@ -901,7 +923,8 @@ public sealed record SemanticCombatDrawV111(
              !automaticSemanticHandDrawRandomTarget) ||
             (cost is not null &&
              (deck.Pending is not null ||
-              (automaticHandDrawEffectDrawPending
+              ((automaticHandDrawEffectDrawPending ||
+                automaticBeforeHandDrawEffectDrawPending)
                   ? cost.RemainingCount != controlledSemanticDraw!.RemainingCount ||
                     cost.FromHandDraw != controlledSemanticDraw.FromHandDraw ||
                     cost.EventDepth != controlledSemanticDraw.EventDepth
@@ -927,7 +950,8 @@ public sealed record SemanticCombatDrawV111(
              targetPending is null &&
              this.RemainingCount != 0) ||
             (deck.Pending is not null &&
-             (automaticHandDrawEffectDrawPending
+             ((automaticHandDrawEffectDrawPending ||
+               automaticBeforeHandDrawEffectDrawPending)
                  ? controlledSemanticDraw?.RemainingCount is not > 0
                  : this.RemainingCount <= 0)))
             throw new InvalidDataException(
@@ -1600,8 +1624,15 @@ public static class SemanticCombatDrawEngineV111
             return costNextWithChronology;
         }
 
+        bool automaticBeforeHandDrawEffectDraw =
+            state.AutomaticHandDraw && combat.PendingChoice is
+                { } beforeHandDrawEffectChoice &&
+            PrototypeGameEngine
+                .IsAutomaticBeforeHandDrawHookSemanticDrawContinuation(
+                    combat, beforeHandDrawEffectChoice);
         if (combat.PendingChoice?.ControlledSemanticDraw?
                 .StandaloneSemanticDrawSegment == true ||
+            automaticBeforeHandDrawEffectDraw ||
             (state.AutomaticHandDraw &&
              combat.PendingChoice is { } nestedEffectDraw &&
              PrototypeGameEngine
@@ -1612,9 +1643,22 @@ public static class SemanticCombatDrawEngineV111
                 state.Pending ?? throw new InvalidDataException(
                     "Semantic card-effect draw lost its pending event."),
                 selectedIndex);
-            var (resumedDraw, _) = SemanticChoiceResumeV111.ResumeEffectDraw(
+            var resumedEffectDraw = SemanticChoiceResumeV111.ResumeEffectDraw(
                 run, effectDrawDecision,
                 allowEngineOwnedPrototypeReward: false);
+            if (automaticBeforeHandDrawEffectDraw)
+            {
+                var beforeProgress = ResumeNestedAutomaticHandDraw(
+                    state, resumedEffectDraw,
+                    "BeforeHandDraw effect-draw");
+                var beforeNext = PublishDrawProgress(
+                    state, beforeProgress);
+                beforeNext = RecordNewSemanticDrawChoices(
+                    state, beforeNext);
+                Validate(beforeNext);
+                return beforeNext;
+            }
+            var resumedDraw = resumedEffectDraw.Run;
             int remaining;
             if (state.AutomaticHandDraw &&
                 resumedDraw.World?.Combat is
@@ -1908,11 +1952,18 @@ public static class SemanticCombatDrawEngineV111
         var combat = resumed.Run.World?.Combat ??
             throw new InvalidDataException(
                 $"Semantic {choiceKind.ToLowerInvariant()} choice removed combat.");
+        bool startedBeforeHandDraw = state.AutomaticHandDraw &&
+            state.Run.World?.Combat?.AutomaticPipelineContinuation is
+                { } sourceCursor &&
+            sourceCursor.Stochastic.IsAtSemanticBeforeHandDraw(
+                sourceCursor.Mechanics) &&
+            sourceCursor.Stochastic.CompletedSemanticHandDrawRequested is null;
         PrototypeDrawCardsResumeResultV111 progress;
         if (TryGetAutomaticSemanticHandDrawProgress(
                 combat, out int requested, out int remaining))
         {
-            if (requested != state.RequestedCount)
+            if (requested != state.RequestedCount &&
+                !startedBeforeHandDraw)
                 throw new InvalidDataException(
                     $"{choiceKind} continuation changed the automatic hand-draw request.");
             if (combat.PendingChoice is null &&
@@ -1946,6 +1997,17 @@ public static class SemanticCombatDrawEngineV111
             else
                 progress = PrototypeDrawCardsResumeResultV111.ForHandDraw(
                     resumed.Run, 0, 0, resumed.Boundary);
+        }
+        else if (combat.AutomaticPipelineContinuation is
+                     { } completedHandDraw &&
+                 completedHandDraw.Mechanics.IsImmediatelyAfterStep(
+                     PrototypeAutomaticStepKind.DrawPlayerHand) &&
+                 !completedHandDraw.Stochastic.HasSavedHandDrawProgress() &&
+                 completedHandDraw.Stochastic
+                     .CompletedSemanticHandDrawRequested is { } completedRequested)
+        {
+            progress = PrototypeDrawCardsResumeResultV111.ForHandDraw(
+                resumed.Run, completedRequested, 0, resumed.Boundary);
         }
         else
             throw new InvalidDataException(

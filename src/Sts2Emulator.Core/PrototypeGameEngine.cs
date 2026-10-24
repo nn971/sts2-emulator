@@ -214,6 +214,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
     internal static bool IsSupportedAutomaticPipelineSemanticDrawContinuation(
         CombatState combat, PendingCombatChoiceState pending) =>
         IsAutomaticHandDrawHookSemanticDrawContinuation(combat, pending) ||
+        IsAutomaticBeforeHandDrawHookSemanticDrawContinuation(
+            combat, pending) ||
         IsMayhemSemanticDrawContinuation(combat, pending) ||
         IsLateAutoplaySemanticDrawContinuation(combat, pending) ||
         IsAutomaticPipelineSemanticDrawInsertionContinuation(
@@ -262,6 +264,46 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         // The active hand draw is paused while a source card played from its
         // CardDrawn action resolves this separate effect-draw ticket or cost.
         return true;
+    }
+
+    internal static bool
+        IsAutomaticBeforeHandDrawHookSemanticDrawContinuation(
+            CombatState combat, PendingCombatChoiceState pending)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(pending);
+        var draw = pending.ControlledSemanticDraw;
+        var effectCost = pending.ControlledDrawCost;
+        var effectContinuation = pending.OuterChoiceContinuation;
+        var sourceCardInstanceId = effectContinuation?.SourceCardInstanceId;
+        var deck = combat.Stochastic.SemanticDeck;
+        var cursor = combat.AutomaticPipelineContinuation;
+        if (!combat.IsPlayerTurn ||
+            deck is not { Mode: SemanticDeckStateV111.NatureMode } ||
+            draw is null || effectContinuation is null ||
+            draw.StandaloneSemanticDrawSegment ||
+            draw.AutomaticSemanticHandDrawSegment ||
+            draw.RemainingCount < 0 || draw.EventDepth < 0 ||
+            !pending.HasValidControlledPayloadShape() ||
+            cursor is null ||
+            !cursor.Stochastic.IsAtSemanticBeforeHandDraw(
+                cursor.Mechanics) ||
+            cursor.Stochastic.CompletedSemanticHandDrawRequested is not null ||
+            sourceCardInstanceId is not { } sourceCardId ||
+            !combat.Cards.Any(card =>
+                card.InstanceId == sourceCardId))
+            return false;
+
+        bool effectDrawTicket = pending.ChoiceId ==
+                "controlled_semantic_draw" && effectCost is null &&
+            draw.RemainingCount > 0 && deck.Pending is
+                { Purpose: "draw" };
+        bool effectCostTicket = pending.ChoiceId ==
+                "controlled_draw_cost" && effectCost is { } cost &&
+            deck.Pending is null && cost.RemainingCount == draw.RemainingCount &&
+            cost.FromHandDraw == draw.FromHandDraw &&
+            cost.EventDepth == draw.EventDepth;
+        return effectDrawTicket || effectCostTicket;
     }
 
     internal static bool IsAutomaticHandDrawHookDrawInsertionContinuation(

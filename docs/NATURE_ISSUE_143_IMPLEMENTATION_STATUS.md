@@ -1125,3 +1125,14 @@ event owned by an active hand-draw frame through the existing
 `SemanticCombatDrawV111` resolver and completion handoff. The draw facade
 retains its typed transcript ownership. No event or snapshot schema changed.
 Static source review and `git diff --check` only; no tests or builds were run.
+
+## 2026-10-25: nested pre-draw semantic effect draw and cost
+
+A selected `BeforeHandDraw` action may now suspend on its source operation's
+semantic effect-draw ticket or drawn-card cost. The saved pre-draw cursor stays
+with the existing semantic draw frame and version 8 chronology; full replay
+resolves the child before resuming the saved stage. The requested count may
+change from the zero-count pre-draw state only when the saved cursor enters the
+actual hand draw. Other pre-draw nested choice kinds remain fail-closed. No
+event or snapshot schema changed. Static source review and `git diff --check`
+only; no tests or builds were run.

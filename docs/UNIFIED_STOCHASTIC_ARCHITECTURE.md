@@ -1192,6 +1192,16 @@ draw-hook action now use their existing event owners and the draw-owned version
 the live source operation before continuing the active draw cursor. Pipeline-
 owned hand-cost choices retain their end-turn chronology.
 
+A selected `BeforeHandDraw` action may also suspend on its source operation's
+semantic effect-draw ticket or drawn-card cost. The saved pre-draw cursor stays
+with the semantic draw frame while the existing draw or cost owner resolves the
+child; replay records it in the same version 8 chronology, then resumes the
+saved pre-draw stage and continues into the hand draw. The requested count may
+advance from the zero-count pre-draw frame only when that saved cursor enters
+`DrawPlayerHand`; an already-active hand draw still requires its original
+requested count. No event or snapshot schema changed. Other pre-draw nested
+choice kinds remain fail-closed.
+
 Runtime controlled hand-draw remainder reads now pass the mechanics cursor through the stochastic owner's query, which validates the active `DrawPlayerHand` progress before projecting its count. The no-cursor overload remains only for the flattened compatibility snapshot projection.
 
 The persistent semantic combat pilot also admits direct card-draw potion actions for Glowwater, Clarity, Cure All, Snecko Oil, and Swift. Their card identities use the existing provider-owned draw event and nested effect continuation; Snecko Oil's following hand-cost randomization stays with the existing semantic cost owner. The same path admits Restlessness, Slimed, Calculated Gamble, Finesse, Flash of Steel, Impatience, Master of Strategy, and Scrawl, including the implemented Colorless Restlessness card. The Restlessness cards retain their source enqueue conditions, Impatience retains its no-Attack condition, Calculated Gamble retains its source-queued draw count across the preceding discard, and Scrawl keeps the ordinary hand-cap behavior. These exact modeled effects preserve the physical-pile/provider boundary checks; other potion and card effects, opening draws, and Native cursor parity remain separate work.

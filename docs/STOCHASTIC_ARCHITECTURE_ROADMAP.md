@@ -2,6 +2,16 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 nested pre-draw semantic draw/cost increment (2026-10-25):** A selected
+`BeforeHandDraw` action may now suspend on its semantic effect-draw ticket or
+drawn-card cost. The existing semantic draw frame and version 8 chronology
+retain and replay the child before resuming the saved pre-draw stage. The
+automatic hand-draw request may transition from the pre-draw zero-count frame
+to its live count only at that cursor; active hand-draw counts remain checked.
+No choice or snapshot schema changed. Other pre-draw nested choice kinds
+remain fail-closed. Static source review and `git diff --check` only; no tests
+or builds were run.
+
 **S4 nested random draw-attack model continuation increment (2026-10-25):**
 Active `CardDrawn` and pre-draw hook continuations may now suspend first on
 the random free-attack model choice and then on the existing insertion-position

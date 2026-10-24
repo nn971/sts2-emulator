@@ -4635,6 +4635,31 @@ public static class SemanticPilotCombatEngineV111
                         handCostSelection.Event.EventId,
                         handCostSelection.SelectedCardInstanceId);
             else if (choice is
+                         { Kind: "semantic_cost",
+                           CostDecision: { } effectDrawCost } &&
+                     endTurn.HandDraw?.CostPending is not null &&
+                     endTurn.Run.World?.Combat?.PendingChoice is
+                         { ChoiceId: "controlled_draw_cost",
+                           ControlledSemanticDraw: not null })
+                nextEndTurn = SemanticEndTurnEngineV111.ResolveSelectedIndex(
+                    endTurn, endTurn.Fingerprint,
+                    effectDrawCost.SelectedIndex);
+            else if (choice is
+                         { Kind: "semantic_draw",
+                           DrawDecision: { } effectDraw } &&
+                     endTurn.HandDraw?.Pending is { } handDrawEvent &&
+                     endTurn.Run.World?.Combat?.PendingChoice?.ControlledSemanticDraw
+                         is not null)
+            {
+                if (CanonicalJson.Sha256(handDrawEvent) !=
+                    CanonicalJson.Sha256(effectDraw.Event))
+                    throw new InvalidDataException(
+                        "Automatic hand-draw effect event changed during resume.");
+                nextEndTurn = SemanticEndTurnEngineV111.ResolveSelectedIndex(
+                    endTurn, endTurn.Fingerprint,
+                    effectDraw.SelectedIndex);
+            }
+            else if (choice is
                     { Kind: "semantic_card_transform",
                       CardTransformDecision: { } transformedCard } &&
                 endTurn.HandDraw?.CardTransformPending is not null)
