@@ -1145,9 +1145,9 @@ public static class ControlledPlayableCombatEngineV111
     {
         var request = state.DrawInsertionPending ??
             throw new InvalidOperationException("Missing draw insertion ticket.");
-        var (resume, choice) = ResolveIndexAndRun(
+        var (resume, choice) = ResolveIndexAndPipeline(
             state, request, selectedIndex,
-            PrototypeGameEngine.ResumeControlledDrawInsertion);
+            PrototypeGameEngine.ResumeControlledDrawInsertionWithBoundary);
         var next = state.Fork() with
         {
             Run = resume.Run,

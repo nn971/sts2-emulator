@@ -318,6 +318,11 @@ public sealed partial class PrototypeGameEngine
     /// </summary>
     internal static RunState ResumeControlledDrawInsertion(
         RunState state, int chosen)
+        => ResumeControlledDrawInsertionWithBoundary(state, chosen).Run;
+
+    internal static PrototypeAutomaticPipelineResumeResultV111
+        ResumeControlledDrawInsertionWithBoundary(
+            RunState state, int chosen)
         => ResumeControlledDrawInsertionCore(state, chosen, null);
 
     internal static RunState ResumeControlledDrawInsertionByCardModel(
@@ -325,10 +330,11 @@ public sealed partial class PrototypeGameEngine
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(selectedCardModelId);
         return ResumeControlledDrawInsertionCore(
-            state, null, selectedCardModelId);
+            state, null, selectedCardModelId).Run;
     }
 
-    private static RunState ResumeControlledDrawInsertionCore(
+    private static PrototypeAutomaticPipelineResumeResultV111
+        ResumeControlledDrawInsertionCore(
         RunState state, int? chosenPosition, string? selectedCardModelId)
     {
         if (!ControlledChanceGuardV111.Active)
@@ -364,23 +370,24 @@ public sealed partial class PrototypeGameEngine
                         nameof(chosenPosition));
                 selected = choice.CandidateCardIds[chosen];
             }
-            return state with
-            {
-                World = world with
+            return PrototypeAutomaticPipelineResumeResultV111.FromRun(
+                state with
                 {
-                    Combat = combat with
+                    World = world with
                     {
-                        PendingChoice = pending with
+                        Combat = combat with
                         {
-                            ControlledDrawInsertion = choice with
+                            PendingChoice = pending with
                             {
-                                Stage = "position",
-                                SelectedCardId = selected
+                                ControlledDrawInsertion = choice with
+                                {
+                                    Stage = "position",
+                                    SelectedCardId = selected
+                                }
                             }
                         }
                     }
-                }
-            };
+                });
         }
 
         if (selectedCardModelId is not null ||
@@ -439,10 +446,11 @@ public sealed partial class PrototypeGameEngine
                 choice.SemanticDrawContinuation, continuation,
                 choice.RequestOrdinal + 1,
                 choice.AutomaticHandDrawRemaining);
-            return state with
-            {
-                World = world with { Combat = nextCombat }
-            };
+            return PrototypeAutomaticPipelineResumeResultV111.FromRun(
+                state with
+                {
+                    World = world with { Combat = nextCombat }
+                });
         }
 
         if (choice.RequestSiteId ==
@@ -462,10 +470,11 @@ public sealed partial class PrototypeGameEngine
                 requestOwnerId: choice.RequestOwnerId,
                 personalHiveDamageContinuation:
                     choice.PersonalHiveDamageContinuation);
-            return state with
-            {
-                World = world with { Combat = nextCombat }
-            };
+            return PrototypeAutomaticPipelineResumeResultV111.FromRun(
+                state with
+                {
+                    World = world with { Combat = nextCombat }
+                });
         }
 
         if (choice.SemanticDrawContinuation is { } semanticDraw)
@@ -475,7 +484,8 @@ public sealed partial class PrototypeGameEngine
                 var stratagemRun = ResumeControlledStratagemSelection(
                     state, combat, semanticDraw, continuation);
                 return semanticDraw.StandaloneSemanticDrawSegment
-                    ? stratagemRun
+                    ? PrototypeAutomaticPipelineResumeResultV111.FromRun(
+                        stratagemRun)
                     : ResumeControlledInsertionPipeline(stratagemRun);
             }
 
@@ -485,9 +495,10 @@ public sealed partial class PrototypeGameEngine
                 {
                     World = world with { Combat = combat }
                 };
-                return BeginSemanticCombatDraw(
-                    drawRun, semanticDraw.RemainingCount,
-                    semanticDraw.FromHandDraw).Run;
+                return PrototypeAutomaticPipelineResumeResultV111.FromRun(
+                    BeginSemanticCombatDraw(
+                        drawRun, semanticDraw.RemainingCount,
+                        semanticDraw.FromHandDraw).Run);
             }
 
             if (semanticDraw.AutomaticSemanticHandDrawSegment)
@@ -496,8 +507,9 @@ public sealed partial class PrototypeGameEngine
                 {
                     World = world with { Combat = combat }
                 };
-                return ResumeSemanticAutomaticHandDraw(
-                    drawRun, semanticDraw.RemainingCount).Run;
+                return PrototypeAutomaticPipelineResumeResultV111.FromRun(
+                    ResumeSemanticAutomaticHandDraw(
+                        drawRun, semanticDraw.RemainingCount).Run);
             }
 
             var effectDrawPrototypeRng = state.Stochastic.PrototypeRng;
@@ -547,8 +559,9 @@ public sealed partial class PrototypeGameEngine
                 Stochastic = RunStochasticStateV111.WithPrototypeRng(
                     drawRun.Stochastic, automaticDrawPrototypeRng)
             };
-            return ResumeSavedControlledAutomaticHandDraw(
-                drawRun, resumedDraw);
+            return PrototypeAutomaticPipelineResumeResultV111.FromRun(
+                ResumeSavedControlledAutomaticHandDraw(
+                    drawRun, resumedDraw));
         }
 
         var resumePlayer = state.Player;
@@ -578,8 +591,7 @@ public sealed partial class PrototypeGameEngine
                 state.Stochastic, prototypeRng),
             World = world with { Combat = resolved.Combat }
         };
-        updated = ResumeAutomaticPipelineContinuation(updated).Run;
-        return updated;
+        return ResumeAutomaticPipelineContinuation(updated);
     }
 
     private static CombatState MakeControlledAfterShuffleInsertionChoice(
@@ -634,11 +646,12 @@ public sealed partial class PrototypeGameEngine
         };
     }
 
-    private static RunState ResumeControlledInsertionPipeline(RunState state)
+    private static PrototypeAutomaticPipelineResumeResultV111
+        ResumeControlledInsertionPipeline(RunState state)
     {
         if (state.Phase == RunPhase.Combat)
-            state = ResumeAutomaticPipelineContinuation(state).Run;
-        return state;
+            return ResumeAutomaticPipelineContinuation(state);
+        return PrototypeAutomaticPipelineResumeResultV111.FromRun(state);
     }
 
     /// <summary>

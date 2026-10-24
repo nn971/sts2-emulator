@@ -3983,6 +3983,16 @@ are unchanged. Broader resume consolidation and cross-provider mechanical
 equivalence remain open. Static source review and `git diff --check` only; no
 tests or builds were run.
 
+**S4 draw-insertion classified handoff increment (2026-10-24):** The
+controlled draw-insertion mechanics owner now returns the existing classified
+pipeline result through `ResumeControlledDrawInsertionWithBoundary`. The
+controlled-playable adapter passes that result into turn staging, while
+`ResumeControlledDrawInsertion` retains its run-only semantic-draw facade.
+Automatic pipeline completions no longer lose their classified boundary
+inside draw insertion. Snapshot and transcript formats are unchanged. Broader
+resume consolidation and cross-provider mechanical equivalence remain open.
+Static source review and `git diff --check` only; no tests or builds were run.
+
 **S4 semantic-choice result owner increment (2026-10-24):** Semantic choice
 resume overloads that return only a run and source SiteId now use the shared
 `SemanticChoiceResumeResultV111` value. Draw resumes that also carry requested

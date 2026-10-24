@@ -232,6 +232,8 @@ The specialized `SemanticCombatDrawV111.Simulation` pairs `SemanticCombatDrawMec
 
 `ResumeControlledEnemyAction` now returns the classified `PrototypeAutomaticPipelineResumeResultV111` from its existing pipeline handoff. Semantic end-turn and controlled-playable resume adapters preserve that boundary through transcript publication and staging; the shared selected-index executor supports this value result and returns its consumed `RandomIndexDecisionV111` beside it, while run-only choice adapters project `Run` through that same executor.
 
+Controlled-playable draw-insertion resumes also retain the classified result when an insertion completes a nested draw or effect continuation. `ResumeControlledDrawInsertion` remains the run-only facade for semantic draw insertion, while the controlled-playable adapter uses `ResumeControlledDrawInsertionWithBoundary` to pass the existing engine classification into turn staging.
+
 Automatic draw-cost resumption also carries its run and remaining count in `PrototypeDrawCardsResumeResultV111`; semantic hand-draw resumes retain the requested count while another cost stage is pending and through the resumed `DrawCards` boundary. The cost adapter retains its provider-specific suspension policy and transcript ownership.
 
 Semantic automatic hand draws reached after a draw-hook action, Stratagem selection, a selected draw-pile identity, or after-shuffle insertion re-enter the source `DrawCards` kernel through `ResumeSemanticAutomaticHandDraw`. The helper owns the controlled guard and requires every caller to resume the same automatic-pipeline cursor and remaining count.
