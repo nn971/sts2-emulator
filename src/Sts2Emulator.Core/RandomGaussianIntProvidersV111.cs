@@ -59,8 +59,8 @@ public sealed record RandomGaussianIntDecisionV111(
             NativeCursorBefore, NativeCursorAfter);
         if (ProviderMode == "native-v111")
         {
-            if (!ChanceLawEngineV111.MatchesNativeMapGaussianIntRequest(
-                    Request))
+            if (!StochasticSiteRegistryV111
+                    .MatchesNativeGaussianIntRequest(Request))
                 throw new InvalidDataException(
                     "Native Gaussian-integer decision has an unsupported request shape.");
             var replayedValue = NativeRngV111.ReplayNextGaussianInt(
@@ -94,11 +94,12 @@ public sealed class NativeRandomGaussianIntProviderV111
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(streams);
         request.Validate();
-        if (!ChanceLawEngineV111.IsNativeMapGaussianIntQuerySite(
+        if (!StochasticSiteRegistryV111.IsNativeGaussianIntSite(
                 request.SiteId))
             throw new NotSupportedException(
                 $"Native Gaussian-integer sampling does not support site '{request.SiteId}'.");
-        if (!ChanceLawEngineV111.MatchesNativeMapGaussianIntRequest(request))
+        if (!StochasticSiteRegistryV111
+                .MatchesNativeGaussianIntRequest(request))
             throw new ArgumentException(
                 "Native Gaussian-integer sampling requires a registered source request shape.",
                 nameof(request));

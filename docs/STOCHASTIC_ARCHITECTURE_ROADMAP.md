@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 Native Gaussian request independence increment (2026-10-24):** Native
+Gaussian-integer sampling and decision validation now obtain site and exact
+source-shape support from `StochasticSiteRegistryV111`; Chance Law retains a
+delegating query facade. Native provider execution no longer depends on Chance
+Law query coverage. Static source review and `git diff --check` only; no tests
+or builds were run.
+
 **S4 choice-resolution continuation owner increment (2026-10-24):** The
 existing `CreateEffectContinuation`, `ResumeChoiceResolutionContinuation`,
 and outer/parent frame composition helpers now live in

@@ -729,37 +729,8 @@ public static partial class ChanceLawEngineV111
 
     public static bool MatchesNativeMapGaussianIntRequest(
         RandomGaussianIntRequestV111 request)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-        request.Validate();
-        if (request.Ordinal != 0)
-            return false;
-        return request.SiteId switch
-        {
-            PrototypeNativeOvergrowthMap.RestCountGaussianSiteId =>
-                request.StreamId == "context.act_1_map" &&
-                request.OwnerId == "act:1:rest_count" &&
-                request.Mean == 7 && request.StandardDeviation == 1 &&
-                request.MinInclusive == 6 && request.MaxInclusive == 7,
-            PrototypeNativeOvergrowthMap.UnknownCountGaussianSiteId =>
-                request.StreamId == "context.act_1_map" &&
-                request.OwnerId == "act:1:unknown_count" &&
-                request.Mean == 12 && request.StandardDeviation == 1 &&
-                request.MinInclusive == 10 && request.MaxInclusive == 14,
-            PrototypeNativeLaterActMap.HiveRestCountGaussianSiteId =>
-                request.StreamId == "context.act_2_map" &&
-                request.OwnerId == "map:act:2" &&
-                request.Mean == 6 && request.StandardDeviation == 1 &&
-                request.MinInclusive == 6 && request.MaxInclusive == 7,
-            PrototypeNativeLaterActMap.UnknownCountGaussianSiteId =>
-                (request.OwnerId is "map:act:2" or "map:act:3") &&
-                request.StreamId == (request.OwnerId == "map:act:2"
-                    ? "context.act_2_map" : "context.act_3_map") &&
-                request.Mean == 12 && request.StandardDeviation == 1 &&
-                request.MinInclusive == 10 && request.MaxInclusive == 14,
-            _ => false
-        };
-    }
+        => StochasticSiteRegistryV111
+            .MatchesNativeGaussianIntRequest(request);
 
     /// <summary>
     /// Query the emulator's continuous truncated-normal model for one of the
