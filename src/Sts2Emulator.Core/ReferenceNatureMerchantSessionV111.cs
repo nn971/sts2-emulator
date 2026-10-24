@@ -297,6 +297,9 @@ public sealed record ReferenceNatureMerchantSessionV111(
         ValidateOpeningBoundary(Origin, Action);
         if (IsToyBoxPurchase(Origin, Action))
             ValidateToyBoxPurchasePrefix();
+        if (Origin.Stochastic.NativeRunRng is null &&
+            IsAlchemicalCofferPurchase(Origin, Action))
+            ValidateLegacyAlchemicalCofferPurchasePrefix();
         PrototypeStateInvariants.Validate(Origin);
         PrototypeStateInvariants.Validate(Run);
         ReferenceNatureRunProjectionV111.ValidateNatureRelicBagProjection(
@@ -399,6 +402,35 @@ public sealed record ReferenceNatureMerchantSessionV111(
                 { SourceRoom: "Relic:ToyBox", ExtraRelicRewardIds: { Length: 5 } })
             throw new InvalidDataException(
                 "Completed Toy Box purchase does not contain all five controlled relic offers.");
+    }
+
+    private void ValidateLegacyAlchemicalCofferPurchasePrefix()
+    {
+        var expectedSites = Enumerable.Range(0, 4)
+            .SelectMany(_ => new[]
+            {
+                PrototypeNativePotionShop.RarityRollSiteId,
+                PrototypeNativePotionShop.ModelWithinRaritySiteId
+            }).ToArray();
+        if (Stochastic.ProviderDecisions.Length > expectedSites.Length)
+            throw new InvalidDataException(
+                "Legacy Alchemical Coffer purchase differs from its four rarity/model pairs.");
+        for (var index = 0; index < Stochastic.ProviderDecisions.Length; index++)
+        {
+            var decision = Stochastic.ProviderDecisions[index];
+            if (decision is null ||
+                AsRequest(decision).SiteId != expectedSites[index])
+                throw new InvalidDataException(
+                    "Legacy Alchemical Coffer purchase differs from its four rarity/model pairs.");
+        }
+        if (Stochastic.PendingRequest is { } pending &&
+            (Stochastic.ProviderDecisions.Length >= expectedSites.Length ||
+             pending.SiteId != expectedSites[Stochastic.ProviderDecisions.Length]))
+            throw new InvalidDataException(
+                "Legacy Alchemical Coffer purchase differs from its four rarity/model pairs.");
+        if (Complete && Stochastic.ProviderDecisions.Length != expectedSites.Length)
+            throw new InvalidDataException(
+                "Completed legacy Alchemical Coffer purchase is missing potion draws.");
     }
 
     public static string Save(ReferenceNatureMerchantSessionV111 session)
@@ -667,6 +699,31 @@ public sealed record ReferenceNatureMerchantSessionV111(
         ValidateLegacyNativeMerchantRequest(
             source, action, indexRequest, candidateLabels, prefix);
 
+        if (indexRequest.SiteId ==
+            PrototypeNativePotionShop.RarityRollSiteId)
+        {
+            _ = ValidateLegacyPotionFactoryRequest(
+                source, action, indexRequest, candidateLabels, prefix);
+            return ChanceLawEngineV111.QueryRandomIndex(
+                MerchantRequestEventId(source, action, request,
+                    candidateLabels, prefix), indexRequest);
+        }
+        if (indexRequest.SiteId ==
+            PrototypeNativePotionShop.ModelWithinRaritySiteId)
+        {
+            var candidates = ValidateLegacyPotionFactoryRequest(
+                source, action, indexRequest, candidateLabels, prefix);
+            var eventId = MerchantRequestEventId(source, action, request,
+                candidates, prefix);
+            var cofferPurchase = IsAlchemicalCofferPurchase(source, action);
+            return ChanceLawEngineV111.QueryUniformLabeledIndexSupport(
+                eventId, indexRequest, candidates,
+                cofferPurchase
+                    ? "legacy-alchemical-coffer-potion-model-v1"
+                    : "legacy-native-shop-potion-model-v1",
+                "Uniform index over the source-ordered, rarity-conditioned remaining potion models; pool completeness and legacy stream probabilities remain unverified.");
+        }
+
         if (IsToyBoxPurchase(source, action))
         {
             if (indexRequest.SiteId == "relic_grab_bag.rarity.ticket")
@@ -711,10 +768,16 @@ public sealed record ReferenceNatureMerchantSessionV111(
             throw new NotSupportedException(
                 $"Legacy Native merchant replay does not support stochastic site '{request.SiteId}'.");
 
+        var isLegacyPotionFactorySite = request.SiteId is
+            PrototypeNativePotionShop.RarityRollSiteId or
+            PrototypeNativePotionShop.ModelWithinRaritySiteId;
         var expectedStream = request.SiteId is "card_rarity.roll.ticket" or
             "relic_grab_bag.rarity.ticket" or
             PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId
-                ? "reward" : "shop";
+                ? "reward" :
+            isLegacyPotionFactorySite &&
+                IsAlchemicalCofferPurchase(source, action)
+                ? "event" : "shop";
         var expectedBound = request.SiteId switch
         {
             "shop.merchant.sale_slot.index_draw" => 5,
@@ -754,7 +817,13 @@ public sealed record ReferenceNatureMerchantSessionV111(
             throw new InvalidDataException(
                 "Legacy Native merchant sale-slot owner differs from the current Shop.");
 
-        if (request.SiteId ==
+        if (isLegacyPotionFactorySite)
+        {
+            if (candidateLabels is not null)
+                throw new InvalidDataException(
+                    "Legacy PotionFactory requests use an owner-bound support without candidate labels.");
+        }
+        else if (request.SiteId ==
                 PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId)
         {
             if (!IsToyBoxPurchase(source, action) ||
@@ -823,6 +892,129 @@ public sealed record ReferenceNatureMerchantSessionV111(
         }
     }
 
+    private static string[] ValidateLegacyPotionFactoryRequest(
+        RunState source, GameAction action, RandomIndexRequestV111 request,
+        string[]? candidateLabels,
+        ControlledStochasticDecisionV111[] prefix)
+    {
+        var isCofferPurchase = IsAlchemicalCofferPurchase(source, action);
+        var expectedStream = isCofferPurchase ? "event" : "shop";
+        var drawCount = isCofferPurchase ? 4 : 3;
+        if (!IsLegacyNativeMerchantFallbackBoundary(source, action) ||
+            candidateLabels is not null ||
+            request.SiteId is not (PrototypeNativePotionShop.RarityRollSiteId or
+                PrototypeNativePotionShop.ModelWithinRaritySiteId) ||
+            request.StreamId != expectedStream)
+            throw new InvalidDataException(
+                "Legacy PotionFactory request differs from its Native merchant or Alchemical Coffer boundary.");
+
+        var excluded = new List<string>();
+        PrototypeNativePotionRarity? pendingRarity = null;
+        var pickCount = 0;
+        foreach (var decision in prefix)
+        {
+            if (decision.IndexDecision is not { } previous)
+                continue;
+            if (previous.Request.SiteId ==
+                PrototypeNativePotionShop.RarityRollSiteId)
+            {
+                if (pendingRarity is not null || pickCount >= drawCount ||
+                    decision.CandidateLabels is not null ||
+                    !IsLegacyPotionRarityRequest(
+                        previous.Request, expectedStream, pickCount))
+                    throw new InvalidDataException(
+                        "Legacy PotionFactory prefix has an invalid rarity ticket.");
+                if ((uint)previous.SelectedIndex >= 100)
+                    throw new InvalidDataException(
+                        "Legacy PotionFactory rarity ticket exceeds its 100-way support.");
+                pendingRarity = ResolveLegacyPotionRarity(
+                    previous.SelectedIndex);
+                pickCount++;
+                continue;
+            }
+
+            if (previous.Request.SiteId !=
+                PrototypeNativePotionShop.ModelWithinRaritySiteId)
+                continue;
+            if (pendingRarity is not { } previousRarity || pickCount == 0 ||
+                decision.CandidateLabels is not null)
+                throw new InvalidDataException(
+                    "Legacy PotionFactory model prefix has no preceding rarity ticket.");
+            var previousCandidates = PrototypeNativePotionShop
+                .CandidatesForRarity(previousRarity, excluded);
+            var previousPick = pickCount - 1;
+            if (!IsLegacyPotionModelRequest(
+                    previous.Request, expectedStream, previousPick,
+                    previousRarity, previousCandidates) ||
+                (uint)previous.SelectedIndex >=
+                    (uint)previousCandidates.Length)
+                throw new InvalidDataException(
+                    "Legacy PotionFactory model prefix differs from its remaining rarity-conditioned pool.");
+            excluded.Add(previousCandidates[previous.SelectedIndex]);
+            pendingRarity = null;
+        }
+
+        if (request.SiteId == PrototypeNativePotionShop.RarityRollSiteId)
+        {
+            if (pendingRarity is not null || pickCount >= drawCount ||
+                !IsLegacyPotionRarityRequest(
+                    request, expectedStream, pickCount))
+                throw new InvalidDataException(
+                    "Legacy PotionFactory rarity request differs from its sequential offer prefix.");
+            return [];
+        }
+
+        if (pendingRarity is not { } currentRarity || pickCount == 0)
+            throw new InvalidDataException(
+                "Legacy PotionFactory model request has no preceding rarity ticket.");
+        var candidates = PrototypeNativePotionShop.CandidatesForRarity(
+            currentRarity, excluded);
+        if (!IsLegacyPotionModelRequest(
+                request, expectedStream, pickCount - 1,
+                currentRarity, candidates))
+            throw new InvalidDataException(
+                "Legacy PotionFactory model request differs from its remaining rarity-conditioned pool.");
+        return candidates;
+    }
+
+    private static bool IsLegacyPotionRarityRequest(
+        RandomIndexRequestV111 request, string streamId, int pickOrdinal)
+    {
+        var ownerId = $"potion:weighted_distinct:pick:{pickOrdinal}:rarity";
+        return request.SiteId == PrototypeNativePotionShop.RarityRollSiteId &&
+            request.StreamId == streamId &&
+            request.OperationKind == "bounded_integer" &&
+            request.Ordinal == pickOrdinal &&
+            request.SupportCount == 100 &&
+            request.OrderedCandidates.Length == 0 &&
+            request.OwnerId == ownerId;
+    }
+
+    private static bool IsLegacyPotionModelRequest(
+        RandomIndexRequestV111 request, string streamId, int pickOrdinal,
+        PrototypeNativePotionRarity rarity, string[] candidates)
+    {
+        var ownerId = $"potion:weighted_distinct:pick:{pickOrdinal}" +
+            $":rarity:{rarity}:pool:{CanonicalJson.Sha256(candidates)}";
+        return candidates.Length > 0 &&
+            request.SiteId == PrototypeNativePotionShop
+                .ModelWithinRaritySiteId &&
+            request.StreamId == streamId &&
+            request.OperationKind == "choose_index" &&
+            request.Ordinal == pickOrdinal &&
+            request.SupportCount == candidates.Length &&
+            request.OrderedCandidates.SequenceEqual(
+                Enumerable.Range(0, candidates.Length)) &&
+            request.OwnerId == ownerId;
+    }
+
+    private static PrototypeNativePotionRarity ResolveLegacyPotionRarity(
+        int ticket) => ticket < 10
+            ? PrototypeNativePotionRarity.Rare
+            : ticket < 35
+                ? PrototypeNativePotionRarity.Uncommon
+                : PrototypeNativePotionRarity.Common;
+
     private static bool IsLegacyNativeMerchantFallbackBoundary(
         RunState source, GameAction action) =>
         source.Stochastic.NativeRunRng is null &&
@@ -834,7 +1026,8 @@ public sealed record ReferenceNatureMerchantSessionV111(
                 .Any(node => node.NodeId ==
                         action.ReadPayload<ChooseMapNodePayload>().NodeId &&
                     node.RoomType == PrototypeRoomType.Shop)) ||
-         IsToyBoxPurchase(source, action));
+         IsToyBoxPurchase(source, action) ||
+         IsAlchemicalCofferPurchase(source, action));
 
     private static string[] ValidateRegisteredPurchaseIndexSupport(
         ControlledStochasticRequestV111 request, string[]? candidateLabels)
@@ -886,10 +1079,15 @@ public sealed record ReferenceNatureMerchantSessionV111(
         var validLegacyNativeToyBoxPurchase =
             source.Stochastic.NativeRunRng is null &&
             IsToyBoxPurchase(source, action) && source.World?.Shop is not null;
+        var validLegacyNativeCofferPurchase =
+            source.Stochastic.NativeRunRng is null &&
+            IsAlchemicalCofferPurchase(source, action) &&
+            source.World?.Shop is not null;
         if ((!validShopEntry && !validConfiguredShopPurchase &&
-                !validLegacyNativeToyBoxPurchase) || !legal)
+                !validLegacyNativeToyBoxPurchase &&
+                !validLegacyNativeCofferPurchase) || !legal)
             throw new InvalidOperationException(
-                "ReferenceNature merchant session requires a current legal Native Shop entry, configured purchase, or Native-regional Toy Box purchase.");
+                "ReferenceNature merchant session requires a current legal Native Shop entry, configured purchase, or Native-regional Toy Box or Alchemical Coffer purchase.");
         PrototypeStateInvariants.Validate(source);
     }
 

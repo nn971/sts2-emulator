@@ -604,7 +604,12 @@ The same merchant session now handles a Native-regional fallback Toy Box
 purchase with no Native RNG: five retained rarity tickets are followed by
 five identity choices from the sorted residual bag. The fallback ticket and
 identity index weights remain `UNVERIFIED`. Other unregistered stochastic
-purchase effects and continued relic-bag pulls remain outside those boundaries. The
+purchase effects and continued relic-bag pulls remain outside those boundaries.
+It also validates all three legacy weighted-potion offer pairs during fallback
+Shop entry, and accepts a Native-regional Alchemical Coffer purchase with four
+legacy rarity-ticket/model-index pairs. The Coffer and Shop fallback model
+indices use uniform weights over source-ordered, rarity-conditioned residual
+pools; those weights and legacy stream behavior remain `UNVERIFIED`. The
 generic ReferenceNature run-action session wraps deterministic Shop actions
 and a registered subset of index-only relic-acquisition hooks; it also
 continues legal legacy Act 1 Overgrowth and Underdocks Combat/Elite map-node

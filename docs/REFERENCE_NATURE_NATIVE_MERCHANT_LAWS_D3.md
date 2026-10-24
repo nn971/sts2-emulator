@@ -178,8 +178,12 @@ hooks, and later Treasure draws outside the supported Toy Box purchase remain
 outside the merchant session.
 Alchemical Coffer's four rarity-float/model-index pairs and configured Native
 Toy Box's five rarity-float/relic-identity pairs are supported purchase effects;
-Native-regional fallback Toy Box purchases use rarity tickets instead; the
-registered index-only purchase sites described above are also supported.
+Native-regional fallback Alchemical Coffer purchases use four legacy
+rarity-ticket/model-index pairs, with source-ordered residual potion supports
+and `UNVERIFIED` equal-index weights. Native-regional fallback Shop entry also
+validates each of its three legacy weighted-potion offer pairs. Native-regional
+fallback Toy Box purchases use rarity tickets instead; the registered
+index-only purchase sites described above are also supported.
 Ordinary non-Native legacy Shop-node generation continues to use the run-action
 boundary. The Native-regional fallback session uses equal request-index
 weights for its captured legacy `shop` and `reward` requests; this controls the
