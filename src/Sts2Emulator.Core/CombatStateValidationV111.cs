@@ -881,6 +881,7 @@ public sealed partial record CombatState
                         PrototypeCombatEffectKind
                             .DamageAllEnemiesRepeatPerKill) ||
                      defeatFollowUp.EventDepth < 0 ||
+                     defeatFollowUp.EventDepth >= 64 ||
                      !combat.Enemies.Any(enemy =>
                         enemy.InstanceId ==
                             (defeatFollowUp.DefeatedEnemyInstanceId ??
@@ -930,9 +931,16 @@ public sealed partial record CombatState
                     (damageRepeat.Operation.Kind !=
                         PrototypeCombatEffectKind
                             .DamageAllEnemiesRepeatPerKill ||
+                     (continuation.EnemyDefeatFollowUp is
+                         { } repeatFollowUp &&
+                      repeatFollowUp.Operation.Kind !=
+                        PrototypeCombatEffectKind
+                            .DamageAllEnemiesRepeatPerKill) ||
                      damageRepeat.PendingRounds < 0 ||
                      damageRepeat.EventDepth < 0 ||
-                     damageRepeat.NextTargetIndex < 0 ||
+                     damageRepeat.EventDepth >= 64 ||
+                     damageRepeat.CurrentRoundTargetIds.Length == 0 ||
+                     damageRepeat.NextTargetIndex <= 0 ||
                      damageRepeat.NextTargetIndex >
                         damageRepeat.CurrentRoundTargetIds.Length ||
                      damageRepeat.CurrentRoundTargetIds.Distinct().Count() !=
