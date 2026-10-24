@@ -10,6 +10,14 @@ in those trees. This does not classify Native reference-mod RNG hooks or prove
 the absence of indirect/aliased entropy. The regenerated matrix, contract-link,
 and no-ambient-entropy inventory gate passed; no tests or builds were run.
 
+**S0 typed entropy alias scan increment (2026-10-24):** Census v54 also scans
+runtime C# code for `System.Random` declarations and type aliases, using a
+comment/literal mask to avoid matching prose. The expanded gate still finds
+zero ambient entropy findings. It remains a source-level check and cannot
+prove the absence of runtime-injected or otherwise indirect entropy. Site-
+matrix, contract-link, and no-ambient-entropy inventory checks passed; no tests
+or builds were run.
+
 **S4 controlled hand-draw remainder query increment (2026-10-24):** Runtime
 controlled recycle and draw-cost continuation checks now pass the mechanics
 cursor to the pipeline stochastic owner, which validates that the saved

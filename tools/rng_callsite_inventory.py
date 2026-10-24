@@ -25,7 +25,7 @@ from urllib.parse import unquote, urlparse
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
 RUNTIME_SOURCE_ROOTS = (ROOT / "src", ROOT / "native")
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v53"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v54"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 TYPE_SOURCE_DECLARATION_PATTERN = re.compile(
     r"\b(?:class|record|struct)\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\b"
@@ -65,6 +65,14 @@ AMBIENT_ENTROPY_PATTERNS = (
     )),
     ("system_random_shared", re.compile(
         r"\b(?:(?:global::)?System\.)?Random\s*\.\s*Shared\b"
+    )),
+    ("system_random_typed_declaration", re.compile(
+        r"(?<![A-Za-z0-9_.])(?:(?:global::)?System\.)?Random\??"
+        r"(?:\s*\[\s*\])?\s+[A-Za-z_][A-Za-z0-9_]*\b"
+    )),
+    ("system_random_type_alias", re.compile(
+        r"\b(?:global\s+)?using\s+[A-Za-z_][A-Za-z0-9_]*\s*=\s*"
+        r"(?:(?:global::)?System\.)?Random\b"
     )),
     ("cryptographic_random_api", re.compile(
         r"\b(?:(?:global::)?System\.Security\.Cryptography\.)?"
@@ -2524,13 +2532,20 @@ def _simulation_boss_law_forward_values(
 def _ambient_entropy_calls(
     sources: dict[Path, str],
 ) -> list[dict[str, Any]]:
-    """Find direct ad hoc entropy APIs in runtime C# sources."""
+    """Find direct or explicitly typed ad hoc entropy in runtime C# sources."""
     calls: list[dict[str, Any]] = []
     for path, source in sources.items():
+        code_source = _mask_csharp_comments_and_literals(source)
         for api, pattern in AMBIENT_ENTROPY_PATTERNS:
-            for match in pattern.finditer(source):
+            scan_source = (
+                code_source if api in {
+                    "system_random_typed_declaration",
+                    "system_random_type_alias",
+                } else source
+            )
+            for match in pattern.finditer(scan_source):
                 line_number = source.count("\n", 0, match.start()) + 1
-                arguments = _call_arguments(source, match.start())
+                arguments = _call_arguments(scan_source, match.start())
                 finding = api
                 if api in {
                     "system_random_constructor",
@@ -2551,6 +2566,66 @@ def _ambient_entropy_calls(
                     ].strip(),
                 })
     return sorted(calls, key=lambda call: (call["path"], call["line"]))
+
+
+def _mask_csharp_comments_and_literals(source: str) -> str:
+    """Replace C# comments and literals with spaces while preserving lines."""
+    masked = list(source)
+    index = 0
+
+    def blank(start: int, end: int) -> None:
+        for position in range(start, end):
+            if masked[position] not in "\r\n":
+                masked[position] = " "
+
+    while index < len(source):
+        if source.startswith("//", index):
+            end = source.find("\n", index + 2)
+            if end < 0:
+                end = len(source)
+            blank(index, end)
+            index = end
+            continue
+        if source.startswith("/*", index):
+            end = source.find("*/", index + 2)
+            end = len(source) if end < 0 else end + 2
+            blank(index, end)
+            index = end
+            continue
+
+        if source[index] not in "\"'":
+            index += 1
+            continue
+
+        quote = source[index]
+        if quote == "\"" and source.startswith('"""', index):
+            delimiter_end = index
+            while delimiter_end < len(source) and source[delimiter_end] == '"':
+                delimiter_end += 1
+            delimiter = source[index:delimiter_end]
+            close = source.find(delimiter, delimiter_end)
+            end = len(source) if close < 0 else close + len(delimiter)
+            blank(index, end)
+            index = end
+            continue
+
+        verbatim = quote == "\"" and index > 0 and source[index - 1] == "@"
+        cursor = index + 1
+        while cursor < len(source):
+            if verbatim and source.startswith('""', cursor):
+                cursor += 2
+                continue
+            if source[cursor] == quote:
+                cursor += 1
+                break
+            if not verbatim and source[cursor] == "\\":
+                cursor += 2
+            else:
+                cursor += 1
+        blank(index, cursor)
+        index = cursor
+
+    return "".join(masked)
 
 
 def _typed_request_constructions(
@@ -3332,10 +3407,11 @@ def collect() -> dict[str, Any]:
             "or prove that every source operation is mapped. "
             "The adapter callsite inventory is Core-scoped. "
             "A separate direct-API scan reports typed and target-typed "
-            "System.Random construction, shared-instance use, and "
-            "RandomNumberGenerator use across runtime C# sources under `src/` "
-            "and `native/`, excluding tests; it cannot prove the absence of indirect "
-            "or aliased entropy sources. Explicit typed random-request "
+            "System.Random construction, typed declarations and aliases, "
+            "shared-instance use, and RandomNumberGenerator use across runtime "
+            "C# sources under `src/` and `native/`, excluding tests; it cannot "
+            "prove the absence of dynamically injected or otherwise indirect "
+            "entropy sources. Explicit typed random-request "
             "constructions are listed with their site ID, index operation-kind "
             "expression, and registry/matrix resolution status. The static "
             "operation locator does not resolve forwarded caller values on its "
@@ -3497,11 +3573,11 @@ def render_markdown(report: dict[str, Any]) -> str:
         "The NativePlayer wrapper's internal forwarding calls are represented "
         "by the higher-level NativePlayer callsite rows.",
         "",
-        "Direct ad hoc entropy API expressions in runtime C# sources (`src/`, `native/`): "
+        "Potential ad hoc entropy API/type references in runtime C# sources (`src/`, `native/`): "
         f"**{len(report['ambient_entropy_calls'])}**. The scan covers direct "
-        "System.Random typed or target-typed construction/shared-instance use and "
-        "RandomNumberGenerator APIs; it does not prove the absence of indirect "
-        "or aliased entropy sources.",
+        "System.Random typed or target-typed construction, declarations, aliases, "
+        "shared-instance use and RandomNumberGenerator APIs; it cannot prove the "
+        "absence of dynamically injected or otherwise indirect entropy sources.",
         *[
             f"- {call['path']}:{call['line']} {call['finding']}"
             for call in report["ambient_entropy_calls"]
