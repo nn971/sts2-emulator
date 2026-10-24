@@ -34,7 +34,9 @@ The frame also supports a legal later `choose_shop_relic_deck_card` or
 random persistent-deck transform. It binds the action fingerprint to the
 selected card and validates the source relic. The pending request binds the
 selected card instance, original model and ordered replacement pool, then
-replays through the same `reward.card_transform.replacement` Chance Law.
+replays through the same `reward.card_transform.replacement` Chance Law. Its
+outcomes use `card:<model>` identities from that source law; the event ID also
+binds the exact legal action boundary.
 Fixed-result transforms and unrelated deck-choice actions retain their
 existing owners.
 `ControlledRunActionEngineV111.BeginLegacyActTransition` is the explicit

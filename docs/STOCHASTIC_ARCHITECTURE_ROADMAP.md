@@ -4116,3 +4116,11 @@ committing the transformed deck and ReferenceNature cursor. Fixed-result
 transforms and other deck-choice owners remain on their existing paths; pool
 fidelity and equal-index weighting remain `UNVERIFIED`. Static source review
 and `git diff --check` only; no tests or builds were run.
+
+**S1 controlled relic-transform identity outcomes increment (2026-10-24):**
+The controlled run-action Chance Law now reuses the existing legacy transform
+query's ordered `card:<model>` outcomes after checking the pending request and
+candidate labels against that law. Its event ID remains bound to the exact
+saved action boundary, while replay continues to resolve by the same selected
+index. Pool fidelity and equal-index weighting remain `UNVERIFIED`. Static
+source review and `git diff --check` only; no tests or builds were run.

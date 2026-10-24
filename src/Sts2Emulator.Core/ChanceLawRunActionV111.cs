@@ -15,7 +15,53 @@ public static partial class ChanceLawEngineV111
             schemaId = ControlledRunActionEngineV111.SchemaId,
             boundaryFingerprint
         });
+        if (continuation.PendingRequest.SiteId ==
+            "reward.card_transform.replacement.index_draw")
+            return QueryControlledRelicDeckTransform(
+                run, continuation, eventId);
         return QueryRandomIndex(eventId, continuation.PendingRequest);
+    }
+
+    private static ChanceLawV111 QueryControlledRelicDeckTransform(
+        RunState run,
+        PrototypeControlledRunActionContinuationV111 continuation,
+        string eventId)
+    {
+        var action = continuation.RunAction ??
+            throw new InvalidDataException(
+                "Controlled relic deck transform has no saved action.");
+        if (!ControlledRunActionEngineV111
+                .IsRelicDeckTransformActionKind(action.Kind) ||
+            action.Kind != continuation.ActionId ||
+            !ControlledRunActionEngineV111.IsRandomRelicDeckTransformAction(
+                run, action))
+            throw new InvalidDataException(
+                "Controlled relic deck transform differs from its saved action.");
+
+        var cardInstanceId = action.ReadPayload<ChooseDeckCardPayload>()
+            .CardInstanceId;
+        var card = run.Player.Deck.Single(candidate =>
+            candidate.InstanceId == cardInstanceId);
+        var law = QueryLegacyRewardCardTransform(
+            cardInstanceId, card.CardId,
+            continuation.PendingRequest.Ordinal);
+        var request = continuation.PendingRequest;
+        var outcomes = law.Outcomes;
+        if (request.SiteId != law.SiteId ||
+            request.StreamId != "reward" ||
+            request.OperationKind != law.OperationKind ||
+            request.OwnerId != law.OwnerId ||
+            request.Ordinal != law.Ordinal ||
+            !request.OrderedCandidates.SequenceEqual(
+                Enumerable.Range(0, outcomes.Length)) ||
+            continuation.PendingCandidateLabels.Length != outcomes.Length ||
+            !outcomes.Select(outcome => outcome.OutcomeId)
+                .SequenceEqual(continuation.PendingCandidateLabels.Select(
+                    label => "card:" + label), StringComparer.Ordinal))
+            throw new InvalidDataException(
+                "Controlled relic deck transform law differs from its saved support.");
+
+        return law with { EventId = eventId };
     }
 
     /// <summary>Fingerprint the pending controlled action and request without
