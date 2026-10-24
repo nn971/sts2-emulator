@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 map-generation Chance Law ownership increment (2026-10-24):** Native
+map Gaussian and request laws, map-path and room-assignment laws, run-start
+encounter-pool laws, and experimental three-act assignment laws now live in
+`ChanceLawMapGenerationV111.cs`. Shared bounded-grid, event hashing, and law
+construction helpers remain in the core partial. Public query APIs, supports,
+and schemas are unchanged. Static source review and `git diff --check` only;
+no tests or builds were run.
+
 **S1 transitive Chance Law outcome-blind guard increment (2026-10-24):** The
 source inventory now follows method-name calls from all Chance Law query
 entrypoints through the static methods declared on `ChanceLawEngineV111`
