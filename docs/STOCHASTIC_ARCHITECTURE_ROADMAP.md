@@ -2,6 +2,15 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 merchant, Treasure, and combat-reward Chance Law ownership increment
+(2026-10-24):** Native merchant and Alchemical Coffer laws, Native Treasure
+laws, and the combat-reward hidden relic-identity law now live in their
+owner-named partial source files. Family policy IDs and query-specific
+validation helpers move with their query owners; shared law construction and
+float-grid mapping remain in the Chance Law core. Public query APIs, supports,
+and schemas are unchanged. Static source review and `git diff --check` only;
+no tests or builds were run.
+
 **S3 Native Gaussian request independence increment (2026-10-24):** Native
 Gaussian-integer sampling and decision validation now obtain site and exact
 source-shape support from `StochasticSiteRegistryV111`; Chance Law retains a
