@@ -1684,17 +1684,15 @@ public static class ControlledRunActionEngineV111
             throw new InvalidDataException(
                 "Controlled run-action replay has an invalid action boundary.");
 
-        ControlledChanceReplayResultV111 replay;
-        using (ControlledChanceGuardV111.Enter())
-        {
-            replay = ControlledChanceContinuationExecutorV111.Resume(
-                source, decisions, checkpoint => new PrototypeGameEngine()
-                    .Step(checkpoint with
-                    {
-                        DecisionIndex = checked(checkpoint.DecisionIndex - 1)
-                    }, CloneAction(action)).State,
-                decisionCandidateLabels: decisionCandidateLabels);
-        }
+        ControlledChanceReplayResultV111 replay =
+            ControlledChanceGuardV111.ExecuteGuarded(() =>
+                ControlledChanceContinuationExecutorV111.Resume(
+                    source, decisions, checkpoint => new PrototypeGameEngine()
+                        .Step(checkpoint with
+                        {
+                            DecisionIndex = checked(checkpoint.DecisionIndex - 1)
+                        }, CloneAction(action)).State,
+                    decisionCandidateLabels: decisionCandidateLabels));
 
         if (replay.PendingChance is not { } pending
             || !ControlledStochasticChanceReplayV111.RequestsMatch(
@@ -1793,8 +1791,7 @@ public static class ControlledRunActionEngineV111
             ? ReferenceNatureRunProjectionV111.CreateNatureReplayOrigin(
                 source, createRelicBagWhenMissing: true)
             : source.Fork();
-        RunState result;
-        using (ControlledChanceGuardV111.Enter())
+        RunState result = ControlledChanceGuardV111.ExecuteGuarded(() =>
         {
             Func<ControlledStochasticRequestV111, bool>? requestFilter =
                 configuredNativeRunStartAction
@@ -1892,9 +1889,9 @@ public static class ControlledRunActionEngineV111
                 return suspended;
             }
 
-            result = replay.Run ?? throw new InvalidDataException(
+            return replay.Run ?? throw new InvalidDataException(
                 "Controlled run-action begin returned neither a run nor a pending chance request.");
-        }
+        });
         if (result.Stochastic.ControlledRunActionChoice is null)
         {
             if (acquisitionAction || restHealRewardAction ||
@@ -2161,9 +2158,11 @@ public static class ControlledRunActionEngineV111
 
     private static RunState Step(RunState source, GameAction action)
     {
-        using var guard = ControlledChanceGuardV111.Enter();
-        var result = new PrototypeGameEngine().Step(source, action).State;
-        PrototypeStateInvariants.Validate(result);
-        return result;
+        return ControlledChanceGuardV111.ExecuteGuarded(() =>
+        {
+            var result = new PrototypeGameEngine().Step(source, action).State;
+            PrototypeStateInvariants.Validate(result);
+            return result;
+        });
     }
 }

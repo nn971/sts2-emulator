@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 guarded run-action and event-choice scope increment (2026-10-24):**
+Controlled run-action replay and entry, event-choice and reward continuations,
+and their shared `Step` adapters now use
+`ControlledChanceGuardV111.ExecuteGuarded`. Exact request filtering,
+continuation validation, and provider-specific replay stay with their existing
+owners. Static source review and `git diff --check` only; no tests or builds
+were run.
+
 **S4 guarded semantic combat-draw scope increment (2026-10-24):** Semantic
 combat-draw entry, automatic hand-draw entry, and resumed automatic hand draws
 now use `ControlledChanceGuardV111.ExecuteGuarded` for the shared synchronous

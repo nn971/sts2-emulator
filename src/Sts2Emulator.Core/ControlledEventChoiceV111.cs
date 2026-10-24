@@ -113,11 +113,11 @@ public static class ControlledEventChoiceEngineV111
                 throw new InvalidOperationException(
                     "Controlled Stone of All Time advance requires a current legal deck-choice action.");
 
-            using var pushGuard = ControlledChanceGuardV111.Enter();
-            var pushReplay = ControlledChanceContinuationExecutorV111.Resume(
-                source,
-                [],
-                checkpoint => engine.Step(checkpoint, action).State);
+            var pushReplay = ControlledChanceGuardV111.ExecuteGuarded(() =>
+                ControlledChanceContinuationExecutorV111.Resume(
+                    source,
+                    [],
+                    checkpoint => engine.Step(checkpoint, action).State));
             if (pushReplay.PendingChance is { } pushChance)
                 throw new NotSupportedException(
                     "Controlled Stone of All Time deck choice reached unsupported chance site '"
@@ -148,12 +148,12 @@ public static class ControlledEventChoiceEngineV111
                 throw new InvalidOperationException(
                     "Controlled event-reward potion use requires a current legal action.");
 
-            using var potionGuard = ControlledChanceGuardV111.Enter();
-            var potionReplay = ControlledChanceContinuationExecutorV111.Resume(
-                source,
-                [],
-                checkpoint => engine.Step(checkpoint, action).State,
-                OrdinalCounts(eventTrace.Decisions));
+            var potionReplay = ControlledChanceGuardV111.ExecuteGuarded(() =>
+                ControlledChanceContinuationExecutorV111.Resume(
+                    source,
+                    [],
+                    checkpoint => engine.Step(checkpoint, action).State,
+                    OrdinalCounts(eventTrace.Decisions)));
             if (potionReplay.PendingChance is { } potionChance)
                 throw new NotSupportedException(
                     "Deterministic event-reward potion use reached unsupported chance site '"
@@ -185,12 +185,12 @@ public static class ControlledEventChoiceEngineV111
             throw new InvalidOperationException(
                 "Controlled event-reward advance requires a current legal reward action.");
 
-        using var guard = ControlledChanceGuardV111.Enter();
-        var replay = ControlledChanceContinuationExecutorV111.Resume(
-            source,
-            [],
-            checkpoint => StepEventRewardAction(checkpoint, action),
-            OrdinalCounts(trace.Decisions));
+        var replay = ControlledChanceGuardV111.ExecuteGuarded(() =>
+            ControlledChanceContinuationExecutorV111.Resume(
+                source,
+                [],
+                checkpoint => StepEventRewardAction(checkpoint, action),
+                OrdinalCounts(trace.Decisions)));
         if (replay.PendingChance is { } pendingChance)
         {
             var pendingLabels = pendingChance.CandidateLabels;
@@ -272,12 +272,12 @@ public static class ControlledEventChoiceEngineV111
 
     private static RunState Step(RunState source, GameAction action)
     {
-        using (ControlledChanceGuardV111.Enter())
+        return ControlledChanceGuardV111.ExecuteGuarded(() =>
         {
             var result = new PrototypeGameEngine().Step(source, action).State;
             PrototypeStateInvariants.Validate(result);
             return result;
-        }
+        });
     }
 }
 

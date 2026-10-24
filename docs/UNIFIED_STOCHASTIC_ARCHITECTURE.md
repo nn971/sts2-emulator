@@ -1173,9 +1173,10 @@ composes selection with the same mechanics resume core.
 `ControlledChanceGuardV111.ExecuteGuarded` owns the synchronous guard scope
 and optional engine-owned Native-provider and prototype-reward allowances.
 Typed semantic-choice resumes, semantic-pilot and end-turn transitions,
-controlled-playable resumes, semantic combat-draw entry/resume, and the
-Native-policy action path use this runner; their source validation, result
-policies, and provider journals remain with their existing owners.
+controlled-playable resumes, semantic combat-draw entry/resume, controlled
+run-action and event-choice continuations, and the Native-policy action path
+use this runner; their source validation, result policies, and provider
+journals remain with their existing owners.
 Cross-provider mechanical equivalence remains open.
 
 Pending controlled random-target validation shares one live-support check
