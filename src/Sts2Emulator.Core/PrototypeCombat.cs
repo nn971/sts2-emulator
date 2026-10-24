@@ -16352,17 +16352,9 @@ public sealed partial class PrototypeGameEngine
                 card = RequireCombatCard(combat, cardInstanceId);
             }
 
-            var dispatched = DispatchCombatEvent(
-                player,
-                combat,
-                new PrototypeCombatEvent(
-                    PrototypeCombatEventKind.CardDrawn,
-                    SourceCardInstanceId: cardInstanceId,
-                    CardId: card.CardId,
-                    FromHandDraw: fromHandDraw),
-                rng,
-                eventDepth,
-                allowSuspension: suspension.CardDrawnChoice);
+            var dispatched = DispatchCardDrawnAfterCost(
+                player, combat, cardInstanceId, fromHandDraw, rng,
+                eventDepth, allowSuspension: suspension.CardDrawnChoice);
             player = dispatched.Player;
             combat = dispatched.Combat;
             if (suspension.CardDrawnChoice &&

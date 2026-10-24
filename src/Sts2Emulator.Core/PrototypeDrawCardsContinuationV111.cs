@@ -100,6 +100,33 @@ public sealed partial class PrototypeGameEngine
         };
     }
 
+    private static (PlayerState Player, CombatState Combat)
+        DispatchCardDrawnAfterCost(
+            PlayerState player,
+            CombatState combat,
+            long cardInstanceId,
+            bool fromHandDraw,
+            RngBundle rng,
+            int eventDepth,
+            bool allowSuspension)
+    {
+        ArgumentNullException.ThrowIfNull(player);
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(rng);
+        var card = RequireCombatCard(combat, cardInstanceId);
+        return DispatchCombatEvent(
+            player,
+            combat,
+            new PrototypeCombatEvent(
+                PrototypeCombatEventKind.CardDrawn,
+                SourceCardInstanceId: cardInstanceId,
+                CardId: card.CardId,
+                FromHandDraw: fromHandDraw),
+            rng,
+            eventDepth,
+            allowSuspension: allowSuspension);
+    }
+
     private static CombatState AttachDrawCardsAtCardDrawnChoice(
         CombatState combat,
         PrototypeControlledSemanticDrawV111 resumedDraw,

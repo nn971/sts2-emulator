@@ -113,14 +113,8 @@ public sealed partial class PrototypeGameEngine
 
         combat = combat with { PendingChoice = null };
         var prototypeRng = run.Stochastic.PrototypeRng;
-        var card = RequireCombatCard(combat, cost.CardInstanceId);
-        var dispatched = DispatchCombatEvent(
-            run.Player, combat,
-            new PrototypeCombatEvent(
-                PrototypeCombatEventKind.CardDrawn,
-                SourceCardInstanceId: cost.CardInstanceId,
-                CardId: card.CardId,
-                FromHandDraw: cost.FromHandDraw),
+        var dispatched = DispatchCardDrawnAfterCost(
+            run.Player, combat, cost.CardInstanceId, cost.FromHandDraw,
             prototypeRng, cost.EventDepth,
             allowSuspension: allowHookSuspension);
         var nextRun = run with
