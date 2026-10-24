@@ -1163,7 +1163,7 @@ public static class ControlledPlayableCombatEngineV111
         var request = state.EnemyActionPending ??
             throw new InvalidOperationException(
                 "Missing controlled enemy-action ticket.");
-        var (resume, decision) = ResolveIndexAndRun(
+        var (resume, decision) = ResolveIndexAndPipeline(
             state, request, selectedIndex,
             PrototypeGameEngine.ResumeControlledEnemyAction);
         var next = state.Fork() with
@@ -1290,6 +1290,21 @@ public static class ControlledPlayableCombatEngineV111
             RandomIndexRequestV111 request,
             int selectedIndex,
             Func<RunState, int, RunState> resume)
+        => ResolveIndexAndPipeline(
+            state, request, selectedIndex,
+            (checkpoint, replayedIndex) =>
+                PrototypeAutomaticPipelineResumeResultV111.FromRun(
+                    resume(checkpoint, replayedIndex)));
+
+    private static (
+        PrototypeAutomaticPipelineResumeResultV111 Resume,
+        RandomIndexDecisionV111 Decision)
+        ResolveIndexAndPipeline(
+            ControlledPlayableCombatV111 state,
+            RandomIndexRequestV111 request,
+            int selectedIndex,
+            Func<RunState, int,
+                PrototypeAutomaticPipelineResumeResultV111> resume)
     {
         var decision = new RandomIndexDecisionV111(
             request with
@@ -1298,14 +1313,13 @@ public static class ControlledPlayableCombatEngineV111
             }, selectedIndex, "controlled-v111");
         decision.Validate();
         var result = ControlledChanceContinuationExecutorV111
-            .ResolveSelectedIndex<ControlledPlayableCombatV111, RunState>(
+            .ResolveSelectedIndexValue<ControlledPlayableCombatV111,
+                PrototypeAutomaticPipelineResumeResultV111>(
                 state, request, selectedIndex, (checkpoint, replayedIndex) =>
                     ControlledChanceGuardV111.ExecuteGuarded(
                         () => resume(
                             checkpoint.Run.Fork(), replayedIndex)));
-        return (
-            PrototypeAutomaticPipelineResumeResultV111.FromRun(result),
-            decision);
+        return (result, decision);
     }
 
     private static ControlledPlayableCombatV111 StartPendingTurn(

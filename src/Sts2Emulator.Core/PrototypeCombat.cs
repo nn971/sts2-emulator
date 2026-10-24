@@ -1969,7 +1969,8 @@ public sealed partial class PrototypeGameEngine
                 stopBeforeSemanticHandDraw);
     }
 
-    internal static RunState ResumeControlledEnemyAction(
+    internal static PrototypeAutomaticPipelineResumeResultV111
+        ResumeControlledEnemyAction(
         RunState state, int selectedIndex)
     {
         if (!ControlledChanceGuardV111.Active)
@@ -2023,7 +2024,7 @@ public sealed partial class PrototypeGameEngine
             }
         };
         return ResumeAutomaticPipelineContinuation(
-            checkpoint, controlledEnemyActionReplay: resumed).Run;
+            checkpoint, controlledEnemyActionReplay: resumed);
     }
 
     /// <summary>

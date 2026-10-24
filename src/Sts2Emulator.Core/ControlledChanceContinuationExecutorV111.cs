@@ -48,6 +48,9 @@ internal interface IControlledChanceReplayScopeV111 : IDisposable
 /// </summary>
 internal static class ControlledChanceContinuationExecutorV111
 {
+    private sealed record SelectedValueV111<TValue>(TValue Value)
+        where TValue : struct;
+
     internal static bool RequestsMatch<TRequest>(
         TRequest? left, TRequest? right) where TRequest : class =>
         ControlledStochasticChanceReplayV111.RequestsMatch(left, right);
@@ -309,6 +312,28 @@ internal static class ControlledChanceContinuationExecutorV111
                 typedRequest, candidate));
         return replay.Value ?? throw new InvalidDataException(
             "Selected index replay suspended outside its exact request.");
+    }
+
+    /// <summary>
+    /// Value-result counterpart to <see cref="ResolveSelectedIndex"/>.
+    /// It uses the same exact request replay and boxes only the mechanics
+    /// result for the reference-type continuation envelope.
+    /// </summary>
+    public static TValue ResolveSelectedIndexValue<TCheckpoint, TValue>(
+        TCheckpoint checkpoint,
+        RandomIndexRequestV111 request,
+        int selectedIndex,
+        Func<TCheckpoint, int, TValue> mechanics)
+        where TValue : struct
+    {
+        ArgumentNullException.ThrowIfNull(mechanics);
+        var replay = ResolveSelectedIndex<TCheckpoint,
+            SelectedValueV111<TValue>>(
+                checkpoint, request, selectedIndex,
+                (savedCheckpoint, replayedIndex) =>
+                    new SelectedValueV111<TValue>(
+                        mechanics(savedCheckpoint, replayedIndex)));
+        return replay.Value;
     }
 
     public static ControlledChanceReplayResultV111 Resume(

@@ -3969,6 +3969,17 @@ chronology ownership are unchanged. Broader automatic draw-resume consolidation
 and cross-provider mechanical equivalence remain open. Static source review and
 `git diff --check` only; no tests or builds were run.
 
+**S4 enemy-action classified handoff increment (2026-10-24):**
+`ResumeControlledEnemyAction` now returns the classified
+`PrototypeAutomaticPipelineResumeResultV111` from its existing pipeline
+handoff. Semantic end-turn preserves that boundary when publishing its
+chronology, and controlled-playable routes the result through the common typed
+executor's new value-result entry point instead of classifying its run again.
+Other run-only choice resumes project their run through the same executor.
+Snapshot and transcript formats are unchanged. Broader resume consolidation
+and cross-provider mechanical equivalence remain open. Static source review
+and `git diff --check` only; no tests or builds were run.
+
 **S4 semantic-choice result owner increment (2026-10-24):** Semantic choice
 resume overloads that return only a run and source SiteId now use the shared
 `SemanticChoiceResumeResultV111` value. Draw resumes that also carry requested

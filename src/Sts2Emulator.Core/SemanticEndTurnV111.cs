@@ -808,8 +808,10 @@ public static class SemanticEndTurnEngineV111
                         enemyActionRequest.OrderedCandidates.Clone()
                 }, selectedIndex, "controlled-v111");
             decision.Validate();
-            RunState resumed = ControlledChanceContinuationExecutorV111
-                .ResolveSelectedIndex<SemanticEndTurnV111, RunState>(
+            PrototypeAutomaticPipelineResumeResultV111 resumed =
+                ControlledChanceContinuationExecutorV111
+                .ResolveSelectedIndexValue<SemanticEndTurnV111,
+                    PrototypeAutomaticPipelineResumeResultV111>(
                     state, enemyActionRequest, selectedIndex,
                     (checkpoint, replayedIndex) =>
                         ControlledChanceGuardV111.ExecuteGuarded(
@@ -820,9 +822,7 @@ public static class SemanticEndTurnEngineV111
             var stochastic = state.Stochastic.AppendEnemyAction(
                 decision, candidateLabels);
             state = ContinueAutomaticPipelineBoundaryChoice(
-                state,
-                PrototypeAutomaticPipelineResumeResultV111.FromRun(
-                    resumed),
+                state, resumed,
                 stochastic, "combat.enemy_action");
         }
         else if (state.TargetPending is { } target)
