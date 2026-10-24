@@ -85,6 +85,11 @@ public sealed partial class PrototypeGameEngine
                 { Mode: SemanticDeckStateV111.NatureMode })
             return false;
 
+        if (PrototypeGameEngine
+                .IsAutomaticHandDrawHookDrawInsertionContinuation(
+                    combat, pending))
+            return true;
+
         if (IsOpeningBlessedAntlerDrawInsertionContinuation(
                 combat, pending, insertion, continuation))
             return true;

@@ -302,6 +302,12 @@ public static class SemanticDrawHookChoiceEngineV111
                 PrototypeGameEngine
                     .IsAutomaticHandDrawHookSemanticDrawContinuation(
                         advancedCombat, nextChoice);
+            bool nestedActiveHandDrawDrawInsertion =
+                decision.Event.AutomaticHandDraw &&
+                !decision.Event.BeforeHandDraw &&
+                PrototypeGameEngine
+                    .IsAutomaticHandDrawHookDrawInsertionContinuation(
+                        advancedCombat, nextChoice);
             bool hasTaggedChildChoice =
                 nextChoice.ControlledTarget is not null ||
                 nextChoice.ControlledGeneration is not null ||
@@ -310,7 +316,8 @@ public static class SemanticDrawHookChoiceEngineV111
                  !nestedActiveHandDrawSemanticDraw) ||
                 (nextChoice.ControlledSemanticDraw is not null &&
                  !nestedActiveHandDrawSemanticDraw) ||
-                nextChoice.ControlledDrawInsertion is not null ||
+                (nextChoice.ControlledDrawInsertion is not null &&
+                 !nestedActiveHandDrawDrawInsertion) ||
                 nextChoice.ControlledPoolShuffle is not null ||
                 nextChoice.ControlledRandomCost is not null ||
                 nextChoice.ControlledCardShortlist is not null ||
@@ -323,7 +330,8 @@ public static class SemanticDrawHookChoiceEngineV111
                 !nestedBeforeHandDrawRandomTarget &&
                 !nestedActiveHandDrawRandomTarget &&
                 !nestedActiveHandDrawRandomPileCard &&
-                !nestedActiveHandDrawSemanticDraw)
+                !nestedActiveHandDrawSemanticDraw &&
+                !nestedActiveHandDrawDrawInsertion)
             {
                 throw new NotSupportedException(
                     $"UNSUPPORTED_SEMANTIC_DECK site={site} " +
@@ -363,6 +371,8 @@ public static class SemanticDrawHookChoiceEngineV111
                 else
                     SemanticDrawChoiceV111.ValidateBoundary(advanced);
             }
+            else if (nestedActiveHandDrawDrawInsertion)
+                SemanticDrawInsertionChoiceV111.ValidateBoundary(advanced);
             else if (!hasTaggedChildChoice)
             {
                 advancedCombat = advancedCombat with

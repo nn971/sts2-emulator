@@ -205,6 +205,26 @@ internal static class SemanticChoiceResumeV111
                 .EnsurePipelineBoundary(), decision);
         }
 
+        if (!pending.BeforeHandDraw &&
+            combat.PendingChoice is { } nestedDrawInsertion &&
+            PrototypeGameEngine
+                .IsAutomaticHandDrawHookDrawInsertionContinuation(
+                    combat, nestedDrawInsertion))
+        {
+            var cursor = combat.AutomaticPipelineContinuation;
+            if (cursor is null ||
+                !cursor.Stochastic.TryGetSemanticHandDrawProgress(
+                    cursor.Mechanics, out int savedRequested,
+                    out int savedRemaining) ||
+                savedRequested != requested || savedRemaining != remaining)
+                throw new InvalidDataException(
+                    "Automatic draw-hook insertion lost its tagged hand-draw progress.");
+            SemanticDrawInsertionChoiceV111.ValidateBoundary(run);
+            return (PrototypeDrawCardsResumeResultV111.ForHandDraw(
+                run, requested, savedRemaining, pipelineBoundary)
+                .EnsurePipelineBoundary(), decision);
+        }
+
         if (pending.BeforeHandDraw)
         {
             PrototypeDrawCardsResumeResultV111 progress;
