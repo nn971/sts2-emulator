@@ -358,8 +358,10 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
             var labels = replayAtBoundary.Continuation!.PendingCandidateLabels;
             var savedDecision = Stochastic.ProviderDecisions[index];
             savedDecision.Validate();
-            if (!SameRequest(request, AsRequest(savedDecision)) ||
-                !SameLabels(labels, savedDecision.CandidateLabels))
+            if (!ControlledChanceContinuationExecutorV111.RequestsMatch(
+                    request, AsRequest(savedDecision)) ||
+                !ControlledChanceContinuationExecutorV111.CandidateLabelsMatch(
+                    labels, savedDecision.CandidateLabels))
                 throw new InvalidDataException(
                     "Native event relic provider transcript changed its request.");
 
@@ -435,8 +437,10 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
                         decision.Request.SiteId))
                 : 0;
         if ((replay.Continuation is null) != Complete ||
-            !SameRequest(replay.Continuation?.PendingRequest, Stochastic.PendingRequest) ||
-            !SameLabels(replay.Continuation?.PendingCandidateLabels,
+            !ControlledChanceContinuationExecutorV111.RequestsMatch(
+                replay.Continuation?.PendingRequest, Stochastic.PendingRequest) ||
+            !ControlledChanceContinuationExecutorV111.CandidateLabelsMatch(
+                replay.Continuation?.PendingCandidateLabels,
                 Stochastic.PendingCandidateLabels) ||
             CanonicalJson.Sha256(expectedNatureState) !=
                 CanonicalJson.Sha256(Stochastic.NatureState) ||
@@ -1288,9 +1292,11 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
 
         var expected = Replay(source, action, prefix).Continuation;
         if (expected is null ||
-            !SameRequest(expected.PendingRequest,
+            !ControlledChanceContinuationExecutorV111.RequestsMatch(
+                expected.PendingRequest,
                 ControlledStochasticRequestV111.FromIndex(request)) ||
-            !SameLabels(expected.PendingCandidateLabels, candidateLabels))
+            !ControlledChanceContinuationExecutorV111.CandidateLabelsMatch(
+                expected.PendingCandidateLabels, candidateLabels))
             throw new InvalidDataException(
                 "Neow relic-acquisition request differs from replay at its saved prefix.");
 
@@ -1348,9 +1354,11 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
 
         var expected = Replay(source, action, prefix).Continuation;
         if (expected is null ||
-            !SameRequest(expected.PendingRequest,
+            !ControlledChanceContinuationExecutorV111.RequestsMatch(
+                expected.PendingRequest,
                 ControlledStochasticRequestV111.FromIndex(request)) ||
-            !SameLabels(expected.PendingCandidateLabels, candidateLabels))
+            !ControlledChanceContinuationExecutorV111.CandidateLabelsMatch(
+                expected.PendingCandidateLabels, candidateLabels))
             throw new InvalidDataException(
                 "Neow Lost Coffer request differs from replay at its saved prefix.");
 
@@ -1792,16 +1800,6 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
         action.Kind == "event_choice"
             ? action.Payload.Deserialize<EventChoicePayload>()?.ChoiceId
             : null;
-
-    private static bool SameRequest(
-        ControlledStochasticRequestV111? left,
-        ControlledStochasticRequestV111? right) =>
-        left is null ? right is null : right is not null &&
-        CanonicalJson.Sha256(left) == CanonicalJson.Sha256(right);
-
-    private static bool SameLabels(string[]? left, string[]? right) =>
-        left is null ? right is null : right is not null &&
-        left.SequenceEqual(right, StringComparer.Ordinal);
 
     private static ControlledStochasticRequestV111 AsRequest(
         ControlledStochasticDecisionV111 decision) => decision switch

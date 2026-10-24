@@ -48,6 +48,17 @@ internal interface IControlledChanceReplayScopeV111 : IDisposable
 /// </summary>
 internal static class ControlledChanceContinuationExecutorV111
 {
+    internal static bool RequestsMatch(
+        ControlledStochasticRequestV111? left,
+        ControlledStochasticRequestV111? right) =>
+        left is null ? right is null : right is not null &&
+        CanonicalJson.Sha256(left) == CanonicalJson.Sha256(right);
+
+    internal static bool CandidateLabelsMatch(
+        string[]? left, string[]? right) =>
+        left is null ? right is null : right is not null &&
+        left.SequenceEqual(right, StringComparer.Ordinal);
+
     internal static int IndexOfCandidateLabel(
         string[]? candidateLabels, int supportCount, string candidateLabel)
     {

@@ -78,6 +78,15 @@ request metadata does not encode. Numeric-only choices retain null entries;
 snapshots without the optional field retain the legacy index-only path. Static
 source review and `git diff --check` only; no tests or builds were run.
 
+**S4 shared request and candidate comparison increment (2026-10-24):** The
+existing `ControlledChanceContinuationExecutorV111` now owns canonical typed
+request matching and null-aware ordered candidate-label comparison, alongside
+label-to-index validation. Configured ReferenceNature merchant, Treasure,
+combat-reward, Shovel, and event-relic sessions plus controlled-playable replay
+reuse those rules; their duplicate facade helpers were removed. Replay
+behavior and snapshot shapes are unchanged. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S4 hand-draw progress presence owner increment (2026-10-24):** The pipeline
 stochastic owner now exposes `HasSavedHandDrawProgress` for clean-boundary
 presence checks. Semantic and controlled draw completion, automatic pipeline

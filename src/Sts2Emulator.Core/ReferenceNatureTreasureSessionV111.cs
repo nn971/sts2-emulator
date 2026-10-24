@@ -298,8 +298,10 @@ public sealed record ReferenceNatureTreasureSessionV111(
             var labels = continuationAtBoundary!.PendingCandidateLabels;
             var savedDecision = Stochastic.ProviderDecisions[index];
             savedDecision.Validate();
-            if (!SameRequest(request, AsRequest(savedDecision)) ||
-                !SameLabels(labels, savedDecision.CandidateLabels))
+            if (!ControlledChanceContinuationExecutorV111.RequestsMatch(
+                    request, AsRequest(savedDecision)) ||
+                !ControlledChanceContinuationExecutorV111.CandidateLabelsMatch(
+                    labels, savedDecision.CandidateLabels))
                 throw new InvalidDataException(
                     "ReferenceNature treasure provider transcript changed its request.");
 
@@ -321,8 +323,10 @@ public sealed record ReferenceNatureTreasureSessionV111(
 
         var replay = Replay(Origin, Action, Stochastic.ProviderDecisions);
         if ((replay.Continuation is null) != Complete ||
-            !SameRequest(replay.Continuation?.PendingRequest, Stochastic.PendingRequest) ||
-            !SameLabels(replay.Continuation?.PendingCandidateLabels,
+            !ControlledChanceContinuationExecutorV111.RequestsMatch(
+                replay.Continuation?.PendingRequest, Stochastic.PendingRequest) ||
+            !ControlledChanceContinuationExecutorV111.CandidateLabelsMatch(
+                replay.Continuation?.PendingCandidateLabels,
                 Stochastic.PendingCandidateLabels) ||
             CanonicalJson.Sha256(expectedNatureState) !=
                 CanonicalJson.Sha256(Stochastic.NatureState))
@@ -468,16 +472,6 @@ public sealed record ReferenceNatureTreasureSessionV111(
                 "Treasure relic request owner has a malformed rarity segment.");
         return value[(startIndex + start.Length)..endIndex];
     }
-
-    private static bool SameLabels(string[]? left, string[]? right) =>
-        left is null ? right is null : right is not null &&
-            left.SequenceEqual(right, StringComparer.Ordinal);
-
-    private static bool SameRequest(
-        ControlledStochasticRequestV111? left,
-        ControlledStochasticRequestV111? right) =>
-        left is null ? right is null : right is not null &&
-            CanonicalJson.Sha256(left) == CanonicalJson.Sha256(right);
 
     private static ControlledStochasticRequestV111 AsRequest(
         ControlledStochasticDecisionV111 decision) => decision.ToRequest();

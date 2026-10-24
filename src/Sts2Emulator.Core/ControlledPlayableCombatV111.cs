@@ -1028,12 +1028,6 @@ public static class ControlledPlayableCombatEngineV111
         return null;
     }
 
-    private static bool SameCandidateLabels(
-        string[]? left, string[]? right) =>
-        left is null ? right is null :
-            right is not null && left.SequenceEqual(right,
-                StringComparer.Ordinal);
-
     private static ControlledPlayableCombatV111 ResolveValidated(
         ControlledPlayableCombatV111 state, int selectedIndex)
     {
@@ -1525,7 +1519,8 @@ public static class ControlledPlayableCombatEngineV111
                     throw new InvalidDataException(
                         "Unreachable live Nature decision in replay.");
                 if (stored.Stochastic.LiveTranscriptCandidateLabels is { } labels &&
-                    !SameCandidateLabels(labels[decisionIndex],
+                    !ControlledChanceContinuationExecutorV111.CandidateLabelsMatch(
+                        labels[decisionIndex],
                         PendingCandidateLabels(current)))
                     throw new InvalidDataException(
                         "Live Nature candidate labels diverged during replay.");
