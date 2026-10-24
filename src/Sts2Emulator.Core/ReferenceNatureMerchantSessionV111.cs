@@ -1024,8 +1024,8 @@ public sealed record ReferenceNatureMerchantSessionV111(
                 .Any(node => node.NodeId ==
                         action.ReadPayload<ChooseMapNodePayload>().NodeId &&
                     node.RoomType == PrototypeRoomType.Shop)) ||
-         IsToyBoxPurchase(source, action) ||
-         IsAlchemicalCofferPurchase(source, action));
+         ControlledRunActionEngineV111.IsShopPurchaseAction(
+             source, action));
 
     private static string[] ValidateRegisteredPurchaseIndexSupport(
         ControlledStochasticRequestV111 request, string[]? candidateLabels)
@@ -1074,18 +1074,15 @@ public sealed record ReferenceNatureMerchantSessionV111(
             source.Stochastic.NativeRunRng is not null &&
             ControlledRunActionEngineV111.IsShopPurchaseAction(source, action)
             && source.World?.Shop is not null;
-        var validLegacyNativeToyBoxPurchase =
+        var validLegacyNativeShopPurchase =
             source.Stochastic.NativeRunRng is null &&
-            IsToyBoxPurchase(source, action) && source.World?.Shop is not null;
-        var validLegacyNativeCofferPurchase =
-            source.Stochastic.NativeRunRng is null &&
-            IsAlchemicalCofferPurchase(source, action) &&
+            ControlledRunActionEngineV111.IsShopPurchaseAction(
+                source, action) &&
             source.World?.Shop is not null;
         if ((!validShopEntry && !validConfiguredShopPurchase &&
-                !validLegacyNativeToyBoxPurchase &&
-                !validLegacyNativeCofferPurchase) || !legal)
+                !validLegacyNativeShopPurchase) || !legal)
             throw new InvalidOperationException(
-                "ReferenceNature merchant session requires a current legal Native Shop entry, configured purchase, or Native-regional Toy Box or Alchemical Coffer purchase.");
+                "ReferenceNature merchant session requires a current legal Native Shop entry, configured Shop purchase, or Native-regional Shop purchase without Native RNG.");
         PrototypeStateInvariants.Validate(source);
     }
 

@@ -3711,3 +3711,12 @@ pool, model owner and selection bound. Replay retains the captured stream
 ordinals. Fallback model indices use equal weights and legacy stream behavior
 remains `UNVERIFIED`; configured Native Coffer draws are unchanged. Static
 source review and `git diff --check` only; no tests or builds were run.
+
+**S6 Native-regional registered Shop purchase continuation increment (2026-10-24):**
+`ReferenceNatureMerchantSessionV111` now admits every current legal
+Native-regional Shop purchase when `NativeRunRng` is absent, routing the
+existing legacy merchant sites and registered purchase-index sites through
+its same atomic replay. Site allowlists and ordered-support checks remain
+shared with the run-action continuation; unregistered stochastic hooks remain
+fail-closed. No session or snapshot schema was added. Static source review and
+`git diff --check` only; no tests or builds were run.

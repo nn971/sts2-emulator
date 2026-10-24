@@ -45,8 +45,9 @@ query.
 
 For Shop generation, the session begins from a current legal `choose_map_node`
 action for a configured Shop. For purchases, it begins from any current legal
-configured Shop purchase action. It reruns the ordinary action from its
-checkpoint under the mixed typed provider replay. Each suspension is
+configured Shop purchase action or Native-regional Shop purchase when the run
+has no `NativeRunRng`. It reruns the ordinary action from its checkpoint under
+the mixed typed provider replay. Each suspension is
 conditioned on the exact source request and the already sampled prefix. It
 commits the completed action and run-scoped
 Nature cursor together after the source mechanics finish. Its operations are
@@ -95,8 +96,9 @@ The Native reward cursor remains unchanged.
 
 The same session also resolves every other registered index-valued request
 whose SiteId is in `StochasticSiteRegistryV111.RunActionShopPurchaseSiteIds`.
-It validates that the saved action is a current legal configured Shop
-purchase, that the request stream is permitted for its registered site, and
+It validates that the saved action is a current legal configured or
+Native-regional Shop purchase, that the request stream is permitted for its
+registered site, and
 that the request has one distinct, nonempty label per supported index. The
 stream allowlist is shared with controlled run-action continuation validation.
 The generic typed-index law fingerprints the provider-independent mechanics
@@ -183,7 +185,8 @@ rarity-ticket/model-index pairs, with source-ordered residual potion supports
 and `UNVERIFIED` equal-index weights. Native-regional fallback Shop entry also
 validates each of its three legacy weighted-potion offer pairs. Native-regional
 fallback Toy Box purchases use rarity tickets instead; the registered
-index-only purchase sites described above are also supported.
+index-only purchase sites described above are also supported on configured
+and Native-regional legal Shop purchases.
 Ordinary non-Native legacy Shop-node generation continues to use the run-action
 boundary. The Native-regional fallback session uses equal request-index
 weights for its captured legacy `shop` and `reward` requests; this controls the
@@ -232,6 +235,6 @@ law also accepts `offer_ordinal`, `relic_candidate_ids`, and
 typed `owner_id`. These arguments affect only the returned law and are not
 submitted as player actions. `State.begin_reference_nature_merchant(action_id,
 nature_seed=...)` starts the session from a legal Native-regional Shop entry
-(including the legacy-RNG fallback) or configured purchase action; its Python
-object exposes status, fork, save/load,
-release, and the committed playable state.
+(including the legacy-RNG fallback), configured purchase, or Native-regional
+Shop purchase; its Python object exposes status, fork, save/load, release, and
+the committed playable state.
