@@ -1205,7 +1205,8 @@ builds were run.
 `SemanticCombatDrawV111.Validate` now uses the same stage-aware child
 classification as automatic draw-hook replay for nested insertion, generation,
 selection, transform, shortlist, cost, and effect-draw boundaries. Its existing
-count checks and per-kind boundary validators remain in the draw-frame owner.
+count checks are shared by stage, and per-kind boundary validators dispatch
+directly from the classified child kind in the draw-frame owner.
 Static source review and `git diff --check` only; no tests or builds were run.
 
 ## 2026-10-25: shared draw-child event discovery classification
