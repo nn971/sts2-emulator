@@ -1117,3 +1117,11 @@ pile-card event as a semantic choice only when its live event and saved
 `BeforeHandDraw` or active hand-draw cursor validate. Other cursor positions
 keep their existing boundary classification. No snapshot field changed.
 Static source review and `git diff --check` only; no tests or builds were run.
+
+## 2026-10-25: end-turn active semantic draw routing
+
+The end-turn selected-index resolver now routes the pending semantic card
+event owned by an active hand-draw frame through the existing
+`SemanticCombatDrawV111` resolver and completion handoff. The draw facade
+retains its typed transcript ownership. No event or snapshot schema changed.
+Static source review and `git diff --check` only; no tests or builds were run.

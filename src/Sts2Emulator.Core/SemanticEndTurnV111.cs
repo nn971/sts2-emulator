@@ -942,6 +942,15 @@ public static class SemanticEndTurnEngineV111
                 HandCostSelectionDecision: decision.Fork());
             state = ResumeNestedSemanticChoice(state, choice);
         }
+        else if (state.HandDraw is { AtBoundary: false } activeHandDraw &&
+                 activeHandDraw.Pending is { Purpose: "draw" } &&
+                 activeHandDraw.Run.World?.Combat?.PendingChoice is null)
+        {
+            var nextHand = SemanticCombatDrawEngineV111.Resolve(
+                activeHandDraw, activeHandDraw.Fingerprint,
+                selectedIndex);
+            state = ContinueHandDraw(state, nextHand);
+        }
         else if (state.HandDraw is { AtBoundary: false } pileCardHandDraw &&
                  pileCardHandDraw.RandomPileCardPending is not null)
         {

@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 end-turn active semantic draw routing increment (2026-10-25):** The
+selected-index resolver now routes a pending semantic card event owned by an
+active `SemanticCombatDrawV111` hand-draw frame through that frame's existing
+resolver and completion handoff. The end-turn facade does not take ownership
+of the draw transcript. No event or snapshot schema changed. Static source
+review and `git diff --check` only; no tests or builds were run.
+
 **S4 active-hand-draw random pile-card continuation increment (2026-10-25):**
 A selected active `CardDrawn` hook may now suspend on the existing Jeweled Mask
 random power pile-card event. Hook replay retains its exact hand-draw counts;
