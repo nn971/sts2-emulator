@@ -5,10 +5,11 @@
 **S4 controlled-choice payload discriminator increment (2026-10-24):** The
 flattened `PendingCombatChoiceState` now owns the mapping from controlled
 choice IDs to their exclusive typed payloads, including the sole supported
-draw-cost/semantic-draw pair. Combat-state and semantic draw-cost validation
-reuse this invariant, removing repeated payload-exclusion and draw-frame shape
-checks without changing the snapshot schema. Static source review and
-`git diff --check` only; no tests or builds were run.
+draw-cost/semantic-draw pair, and enforces exclusivity of its four Stratagem
+and CardDrawn-hook mode flags. Combat-state and semantic draw-cost validation
+reuse this invariant, removing repeated payload-exclusion, draw-frame shape,
+and mode-overlap checks without changing the snapshot schema. Static source
+review and `git diff --check` only; no tests or builds were run.
 
 **S4 guarded run-action and event-choice scope increment (2026-10-24):**
 Controlled run-action replay and entry, event-choice and reward continuations,

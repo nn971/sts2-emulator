@@ -2564,11 +2564,13 @@ public sealed record PendingCombatChoiceState(
             (this.ControlledRandomPileCard is not null ? randomPileCard : 0) |
             (this.ControlledSemanticDraw is not null ? semanticDraw : 0);
 
-        if (mask != 0 &&
-            (this.SemanticStratagemDrawSelection ||
-             this.AutomaticSemanticStratagemDrawSelection ||
-             this.StandaloneSemanticDrawHookChoice ||
-             this.AutomaticSemanticDrawHookChoice))
+        int semanticDrawModes =
+            (this.SemanticStratagemDrawSelection ? 1 << 0 : 0) |
+            (this.AutomaticSemanticStratagemDrawSelection ? 1 << 1 : 0) |
+            (this.StandaloneSemanticDrawHookChoice ? 1 << 2 : 0) |
+            (this.AutomaticSemanticDrawHookChoice ? 1 << 3 : 0);
+        if ((semanticDrawModes & (semanticDrawModes - 1)) != 0 ||
+            (mask != 0 && semanticDrawModes != 0))
             return false;
 
         return this.ChoiceId switch

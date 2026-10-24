@@ -647,8 +647,7 @@ public sealed partial record CombatState
                 int expectedStratagemPicks =
                     PrototypeGameEngine.ExpectedStratagemSelectionCount(
                         combat);
-                if (pending.SemanticStratagemDrawSelection ||
-                    pending.ChoiceId != "select_cards" ||
+                if (pending.ChoiceId != "select_cards" ||
                     pending.Selection.SourceZone !=
                         PrototypeCardZone.DrawPile ||
                     pending.Selection.MinSelections != expectedStratagemPicks ||
@@ -678,9 +677,7 @@ public sealed partial record CombatState
                         hasStandaloneDrawResume = true;
                         break;
                     }
-                if (pending.SemanticStratagemDrawSelection ||
-                    pending.AutomaticSemanticStratagemDrawSelection ||
-                    !hasStandaloneDrawResume || !combat.IsPlayerTurn ||
+                if (!hasStandaloneDrawResume || !combat.IsPlayerTurn ||
                     combat.AutomaticPipelineContinuation is not null ||
                     combat.Stochastic.SemanticDeck is not
                         { Mode: SemanticDeckStateV111.NatureMode,
@@ -694,10 +691,7 @@ public sealed partial record CombatState
                 bool semanticBeforeHandDraw = pipelineCursor is not null &&
                     pipelineCursor.Stochastic.IsAtSemanticBeforeHandDraw(
                         pipelineCursor.Mechanics);
-                if (pending.StandaloneSemanticDrawHookChoice ||
-                    pending.SemanticStratagemDrawSelection ||
-                    pending.AutomaticSemanticStratagemDrawSelection ||
-                    !(PrototypeGameEngine.IsSemanticAutomaticHandDraw(combat) ||
+                if (!(PrototypeGameEngine.IsSemanticAutomaticHandDraw(combat) ||
                       semanticBeforeHandDraw) ||
                     combat.Stochastic.SemanticDeck is not
                         { Mode: SemanticDeckStateV111.NatureMode,
