@@ -1155,3 +1155,13 @@ validation remains in the draw-hook owner; the adapter validates its source
 requested and remaining counts before publishing the returned cursor. No event
 or snapshot schema changed. Static source review and `git diff --check` only;
 no tests or builds were run.
+
+## 2026-10-25: semantic target-result handoff consolidation
+
+After resolving an automatic hand-draw random-target child, the combat-draw
+adapter now delegates hand-draw cursor validation and publication to the common
+engine-owned nested-choice handoff. The target owner still validates the target
+event and handles chained target prompts; the shared handoff checks source
+requested/remaining counts and validates the resulting pipeline boundary. No
+event or snapshot schema changed. Static source review and `git diff --check`
+only; no tests or builds were run.

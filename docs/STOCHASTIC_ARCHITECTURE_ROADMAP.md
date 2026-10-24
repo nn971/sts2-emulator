@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 semantic target-result handoff consolidation (2026-10-25):** After a
+random-target child resolves, the combat-draw adapter now routes the resulting
+active hand-draw cursor through the common engine-owned nested-choice handoff.
+Target transcript validation and chained-target handling remain with the
+target/draw owners; the shared handoff checks request progress and publishes
+the classified pipeline boundary. Static source review and `git diff --check`
+only; no tests or builds were run.
+
 **S4 semantic draw-hook handoff consolidation (2026-10-25):** The semantic
 draw-hook adapter now delegates active, pre-draw, and completed cursor
 publication to the shared engine-owned hand-draw handoff. Child event

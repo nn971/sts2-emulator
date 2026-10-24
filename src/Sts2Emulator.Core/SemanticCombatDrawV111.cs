@@ -2084,11 +2084,11 @@ public static class SemanticCombatDrawEngineV111
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.CardDrawn " +
                 "operation=unsupported_resumed_target_boundary");
 
-        var progress = PrototypeGameEngine.ResumeSemanticAutomaticHandDraw(
-            resumedTarget.Run, state.RemainingCount);
-        if (progress.RequireRequestedCount() != state.RequestedCount)
-            throw new InvalidDataException(
-                "Automatic hand-draw target changed its requested count.");
+        var progress = PrototypeGameEngine
+            .ResumeSemanticAutomaticHandDrawAfterNestedChoice(
+                state.Run, resumedTarget.Run, resumedTarget.Boundary,
+                "random-target", state.RequestedCount,
+                state.RemainingCount);
         var next = PublishDrawProgress(state, progress) with
         {
             Stochastic = state.Stochastic.AppendTarget(decision)
