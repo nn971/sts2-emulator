@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 semantic draw-hook handoff consolidation (2026-10-25):** The semantic
+draw-hook adapter now delegates active, pre-draw, and completed cursor
+publication to the shared engine-owned hand-draw handoff. Child event
+validation remains in the draw-hook owner; the adapter validates its source
+counts and publishes the returned cursor through the common path. Static source
+review and `git diff --check` only; no tests or builds were run.
+
 **S4 semantic nested hand-draw handoff ownership increment (2026-10-25):**
 Nested semantic draw and drawn-cost adapters now delegate active, pre-draw,
 and completed cursor publication to one engine-owned handoff. It validates the

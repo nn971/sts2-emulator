@@ -1202,12 +1202,13 @@ advance from the zero-count pre-draw frame only when that saved cursor enters
 requested count. No event or snapshot schema changed. Other pre-draw nested
 choice kinds remain fail-closed.
 
-The engine's semantic automatic-hand-draw owner now also has one handoff for
-nested draw and drawn-cost children. Both choice adapters pass the source and
-resumed run plus the classified boundary to that owner, which validates the
-source request and publishes the resulting active, pre-draw, or completed
-cursor. The pre-draw-to-active count transition and active count preservation
-therefore use the same check.
+The engine's semantic automatic-hand-draw owner now has one handoff for
+draw-hook results and nested draw or drawn-cost children. The hook and child
+adapters pass the source and resumed run plus the classified boundary to that
+owner, which validates the source request and publishes the resulting active,
+pre-draw, or completed cursor. The pre-draw-to-active count transition and
+active count preservation therefore use the same check. Child-specific
+boundary validation remains with the draw-hook and choice owners.
 
 Runtime controlled hand-draw remainder reads now pass the mechanics cursor through the stochastic owner's query, which validates the active `DrawPlayerHand` progress before projecting its count. The no-cursor overload remains only for the flattened compatibility snapshot projection.
 

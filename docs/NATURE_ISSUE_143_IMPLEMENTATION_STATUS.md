@@ -1146,3 +1146,12 @@ count, allowing a transition only when the source cursor was pre-draw and the
 pipeline entered the actual hand-draw stage. No event or snapshot schema
 changed. Static source review and `git diff --check` only; no tests or builds
 were run.
+
+## 2026-10-25: semantic draw-hook handoff consolidation
+
+The semantic draw-hook adapter now delegates active, pre-draw, and completed
+cursor publication to the common engine-owned hand-draw handoff. Child event
+validation remains in the draw-hook owner; the adapter validates its source
+requested and remaining counts before publishing the returned cursor. No event
+or snapshot schema changed. Static source review and `git diff --check` only;
+no tests or builds were run.

@@ -1949,7 +1949,8 @@ public static class SemanticCombatDrawEngineV111
             SemanticChoiceResumeResultV111 resumed,
             string choiceKind) =>
         PrototypeGameEngine.ResumeSemanticAutomaticHandDrawAfterNestedChoice(
-            state.Run, resumed.Run, resumed.Boundary, choiceKind);
+            state.Run, resumed.Run, resumed.Boundary, choiceKind,
+            state.RequestedCount, state.RemainingCount);
 
     public static SemanticCombatDrawV111 ResolveStratagemSelection(
         SemanticCombatDrawV111 state, string fingerprint, string actionId)

@@ -72,7 +72,9 @@ public sealed partial class PrototypeGameEngine
         ResumeSemanticAutomaticHandDrawAfterNestedChoice(
             RunState source, RunState resumed,
             PrototypeAutomaticPipelineResumeBoundaryKindV111? boundary,
-            string choiceKind)
+            string choiceKind,
+            int? expectedSourceRequested = null,
+            int? expectedSourceRemaining = null)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(resumed);
@@ -81,17 +83,26 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidDataException(
                 $"Semantic {choiceKind.ToLowerInvariant()} source lost combat.");
         int? expectedRequested = null;
+        int? expectedRemaining = null;
         bool sourceWasBeforeHandDraw = false;
         if (sourceCombat.AutomaticPipelineContinuation is
                 { } sourceCursor &&
             sourceCursor.Stochastic.IsAtSemanticBeforeHandDraw(
                 sourceCursor.Mechanics) &&
             sourceCursor.Stochastic.CompletedSemanticHandDrawRequested is null)
+        {
             sourceWasBeforeHandDraw = true;
+            expectedRequested = 0;
+            expectedRemaining = 0;
+        }
         else if (SemanticCombatDrawV111
                      .TryGetAutomaticSemanticHandDrawProgress(
-                         sourceCombat, out int sourceRequested, out _))
+                         sourceCombat, out int sourceRequested,
+                         out int sourceRemaining))
+        {
             expectedRequested = sourceRequested;
+            expectedRemaining = sourceRemaining;
+        }
         else if (sourceCombat.AutomaticPipelineContinuation?.Stochastic
                      .CompletedSemanticHandDrawRequested is
                  { } completedSourceRequested)
@@ -99,6 +110,12 @@ public sealed partial class PrototypeGameEngine
         else
             throw new InvalidDataException(
                 $"Semantic {choiceKind.ToLowerInvariant()} source lost its hand-draw cursor.");
+        if ((expectedSourceRequested is { } requestedInput &&
+             requestedInput != expectedRequested) ||
+            (expectedSourceRemaining is { } remainingInput &&
+             expectedRemaining != remainingInput))
+            throw new InvalidDataException(
+                $"Semantic {choiceKind.ToLowerInvariant()} input progress changed before resume.");
 
         var combat = resumed.World?.Combat ??
             throw new InvalidDataException(
@@ -106,8 +123,9 @@ public sealed partial class PrototypeGameEngine
         if (SemanticCombatDrawV111.TryGetAutomaticSemanticHandDrawProgress(
                 combat, out int requested, out int remaining))
         {
-            if (expectedRequested is { } expected &&
-                requested != expected)
+            if (!sourceWasBeforeHandDraw &&
+                (requested != expectedRequested ||
+                 remaining != expectedRemaining))
                 throw new InvalidDataException(
                     $"Semantic {choiceKind.ToLowerInvariant()} continuation changed the automatic hand-draw request.");
             if (combat.PendingChoice is null &&
@@ -152,8 +170,8 @@ public sealed partial class PrototypeGameEngine
             cursor.Stochastic.CompletedSemanticHandDrawRequested is
                 { } completedRequested)
         {
-            if (expectedRequested is { } expected &&
-                completedRequested != expected)
+            if (!sourceWasBeforeHandDraw &&
+                completedRequested != expectedRequested)
                 throw new InvalidDataException(
                     $"Semantic {choiceKind.ToLowerInvariant()} completion changed the automatic hand-draw request.");
             return PrototypeDrawCardsResumeResultV111.ForHandDraw(
