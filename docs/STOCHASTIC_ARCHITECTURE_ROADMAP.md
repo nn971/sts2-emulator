@@ -24,6 +24,13 @@ laws, including the factory policy IDs, now live in
 helpers remain in core. Public query APIs, supports, and schemas are unchanged.
 Static source review and `git diff --check` only; no tests or builds were run.
 
+**S3 Native combat-reward law ownership follow-up (2026-10-24):** Native
+combat gold, potion odds, card rarity and upgrade, card identity, boss relic
+offers, and Lava Rock relic offers now join the reward owner. Cross-family
+relic-bag rarity and queue laws remain shared in core. Query APIs, supports,
+and schemas are unchanged. Static source review and `git diff --check` only;
+no tests or builds were run.
+
 **S3 combat-reward Chance Law ownership increment (2026-10-24):** The
 legacy combat-reward card rarity/model, potion drop/model/odds, and Elite relic
 laws now live with the existing Native combat-reward relic-identity law in

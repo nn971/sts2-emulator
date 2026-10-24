@@ -391,4 +391,283 @@ public static partial class ChanceLawEngineV111
             "source-pool fidelity and Native relic-bag parity remain " +
             "unverified.", outcomes, operationKind: "choose_index");
     }
+
+
+    /// <summary>
+    /// Query the exact Native bounded-index law for a combat gold amount.
+    /// Combat bounds require the caller's source gold proportion; elite and
+    /// boss bounds are fixed by room and Ascension.
+    /// </summary>
+    public static ChanceLawV111 QueryNativeCombatGold(
+        PrototypeRoomType room, int ascension, float? goldProportion,
+        int ordinal)
+    {
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+        if (room == PrototypeRoomType.Combat && goldProportion is null)
+            throw new ArgumentException(
+                "Combat gold queries require the declared gold proportion.",
+                nameof(goldProportion));
+        if (room != PrototypeRoomType.Combat && goldProportion is not null)
+            throw new ArgumentException(
+                "Gold proportion is only accepted for normal combat rewards.",
+                nameof(goldProportion));
+
+        var bounds = PrototypeNativeCombatGoldReward.Bounds(
+            room, ascension, goldProportion ?? 1f);
+        if (bounds is null)
+            throw new ArgumentException(
+                "No combat gold draw occurs at zero gold proportion.",
+                nameof(goldProportion));
+
+        var (minimum, maximum) = bounds.Value;
+        var supportCount = checked(maximum - minimum + 1);
+        var ownerId =
+            $"room:{room}:ascension:{ascension}:bounds:{minimum}:{maximum}";
+        const string siteId = "reward.combat_gold.index_draw";
+        var indexWeights = NativeNextIntGridWeights(supportCount);
+        var outcomes = indexWeights.Select((weight, index) =>
+            new ChanceLawOutcomeV111($"gold:{minimum + index}", weight))
+            .ToArray();
+        var eventId = CanonicalJson.Sha256(new
+        {
+            boundary = siteId,
+            ownerId,
+            ordinal
+        });
+        var conditioningFingerprint = CanonicalJson.Sha256(new
+        {
+            siteId,
+            room,
+            ascension,
+            goldProportion = room == PrototypeRoomType.Combat
+                ? goldProportion : null,
+            minimum,
+            maximum,
+            supportCount,
+            ownerId
+        });
+
+        return Create(
+            eventId,
+            siteId,
+            "bounded_integer",
+            ownerId,
+            ordinal,
+            NativeRandomIndexConditioningPolicyId,
+            conditioningFingerprint,
+            NativeBoundedIndexSourceVerifiedProvenance,
+            outcomes,
+            ChanceLawV111.SourceVerifiedStatus);
+    }
+
+    /// <summary>
+    /// Query the exact Native unit-float threshold law for combat potion
+    /// reward presence. The caller declares the persistent pity value, Elite
+    /// bonus, and that the force hook did not bypass this draw.
+    /// </summary>
+    public static ChanceLawV111 QueryNativePotionRewardOdds(
+        int currentThousandths, bool elite, bool forced, int ordinal)
+    {
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+        if (currentThousandths % 100 != 0)
+            throw new ArgumentOutOfRangeException(nameof(currentThousandths),
+                "Potion reward odds must be on the persisted 100-thousandth increment.");
+        if (forced)
+            throw new ArgumentException(
+                "Forced potion rewards bypass the odds draw.", nameof(forced));
+
+        const string siteId = "reward.potion_odds.unit_float";
+        const string ownerId = "run:potion_reward_odds";
+        var thresholdThousandths = checked(currentThousandths +
+            (elite ? PrototypeNativePotionRewardOdds.EliteBonus : 0));
+        var threshold = thresholdThousandths / 1000f;
+        var offeredWeight = NativeNextFloatGridCountBelow(threshold);
+        var missedWeight = checked(NativeNextDoubleGridSize - offeredWeight);
+        var outcomes = new List<ChanceLawOutcomeV111>(2);
+        if (offeredWeight > 0)
+            outcomes.Add(new ChanceLawOutcomeV111(
+                "potion_reward:offered", offeredWeight));
+        if (missedWeight > 0)
+            outcomes.Add(new ChanceLawOutcomeV111(
+                "potion_reward:not_offered", missedWeight));
+
+        var conditioning = new
+        {
+            siteId,
+            streamId = NativePlayerRngV111.RewardsStreamId,
+            ownerId,
+            ordinal,
+            currentThousandths,
+            elite,
+            forced,
+            thresholdThousandths,
+            threshold,
+            comparison = "source_float_strictly_less_than_threshold"
+        };
+        return CreateNativeBoundaryLaw(
+            siteId, "unit_float_threshold", ownerId, ordinal,
+            "native-combat-potion-odds-float-threshold-v1",
+            CanonicalJson.Sha256(conditioning),
+            NativeUnitFloatThresholdSourceVerifiedProvenance,
+            outcomes.ToArray(), ChanceLawV111.SourceVerifiedStatus);
+    }
+
+    /// <summary>
+    /// Query one source-conditioned Native card-rarity float threshold.
+    /// Outcomes are the raw rolled rarity before CardFactory's available-tier
+    /// fallback. The owner and stream ordinal are caller-declared.
+    /// </summary>
+    public static ChanceLawV111 QueryNativeCardRarity(
+        PrototypeNativeCardOddsSource source, int currentOffsetBasisPoints,
+        int ascension, string ownerId, int ordinal)
+    {
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
+        if (!Enum.IsDefined(source))
+            throw new ArgumentOutOfRangeException(nameof(source));
+
+        var (rareThreshold, uncommonEnd) =
+            PrototypeNativeCardRarityOdds.NativeFloatThresholds(
+                currentOffsetBasisPoints, ascension, source);
+        var weights = rareThreshold >= 10000
+            ? (Rare: NativeNextDoubleGridSize, Uncommon: 0L, Common: 0L)
+            : NativeCardRarityGridWeights(rareThreshold, uncommonEnd);
+        var outcomes = new[]
+            {
+                new ChanceLawOutcomeV111("rarity:rare", weights.Rare),
+                new ChanceLawOutcomeV111("rarity:uncommon", weights.Uncommon),
+                new ChanceLawOutcomeV111("rarity:common", weights.Common)
+            }
+            .Where(outcome => outcome.Weight > 0).ToArray();
+        const string siteId = "card_rarity.roll.unit_float";
+        var conditioning = new
+        {
+            siteId,
+            streamId = NativePlayerRngV111.RewardsStreamId,
+            ownerId,
+            ordinal,
+            source,
+            currentOffsetBasisPoints,
+            ascension,
+            rareThreshold,
+            uncommonEnd,
+            rawRarityBeforeAvailableTierFallback = true
+        };
+        return CreateNativeBoundaryLaw(
+            siteId, "unit_float_threshold", ownerId, ordinal,
+            "native-card-rarity-source-threshold-v1",
+            CanonicalJson.Sha256(conditioning),
+            NativeUnitFloatThresholdSourceVerifiedProvenance,
+            outcomes, ChanceLawV111.SourceVerifiedStatus);
+    }
+
+    /// <summary>
+    /// Query the raw Native combat-card upgrade comparison. The inclusive
+    /// float endpoint means a zero threshold still has a one-grid-input pass.
+    /// </summary>
+    public static ChanceLawV111 QueryNativeEncounterCardUpgrade(
+        string cardId, int act, int ascension, int ordinal)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(cardId);
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+        if (!PrototypeContent.NativeSilentRewardCardPool.Contains(
+                cardId, StringComparer.Ordinal))
+            throw new ArgumentException(
+                "Card-upgrade laws require an implemented Native Silent reward card.",
+                nameof(cardId));
+
+        var thresholdBasisPoints =
+            PrototypeNativeCardRarityOdds
+                .EncounterCardUpgradeThresholdBasisPoints(
+                    cardId, act, ascension);
+        var threshold = thresholdBasisPoints / 10000f;
+        var upgradedWeight =
+            NativeNextFloatGridCountAtOrBelow(threshold);
+        var notUpgradedWeight = checked(
+            NativeNextDoubleGridSize - upgradedWeight);
+        var outcomes = new List<ChanceLawOutcomeV111>(2);
+        if (upgradedWeight > 0)
+            outcomes.Add(new ChanceLawOutcomeV111(
+                "upgrade_check:passed", upgradedWeight));
+        if (notUpgradedWeight > 0)
+            outcomes.Add(new ChanceLawOutcomeV111(
+                "upgrade_check:not_passed", notUpgradedWeight));
+
+        const string siteId = "card_rarity.upgrade_roll.unit_float";
+        var ownerId = $"card:{cardId}:act:{act}:ascension:{ascension}";
+        var conditioning = new
+        {
+            siteId,
+            streamId = NativePlayerRngV111.RewardsStreamId,
+            ownerId,
+            ordinal,
+            cardId,
+            act,
+            ascension,
+            thresholdBasisPoints,
+            threshold,
+            comparison = "source_float_less_than_or_equal_to_threshold",
+            outcomeScope = "upgrade_check_flag"
+        };
+        return CreateNativeBoundaryLaw(
+            siteId, "unit_float_inclusive_threshold", ownerId, ordinal,
+            "native-card-upgrade-inclusive-float-threshold-v1",
+            CanonicalJson.Sha256(conditioning),
+            NativeUnitFloatThresholdSourceVerifiedProvenance,
+            outcomes.ToArray(), ChanceLawV111.SourceVerifiedStatus);
+    }
+
+    /// <summary>
+    /// Query a Native encounter card-model index over the caller-declared
+    /// remaining pool size. The pool and reward prefix are not inspected.
+    /// </summary>
+    public static ChanceLawV111 QueryNativeEncounterCardModelIndex(
+        string ownerId, int supportCount, int ordinal)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
+        if (supportCount <= 0)
+            throw new ArgumentOutOfRangeException(nameof(supportCount));
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+
+        const string siteId = "card_rarity.encounter_model.index_draw";
+        var request = new RandomIndexRequestV111(
+            siteId, NativePlayerRngV111.RewardsStreamId, ownerId, ordinal,
+            Enumerable.Range(0, supportCount).ToArray());
+        var eventId = CanonicalJson.Sha256(new
+        {
+            boundary = "native-encounter-card-model-index",
+            request
+        });
+        return QueryRandomIndex(eventId, request);
+    }
+
+    /// <summary>
+    /// Query one Native boss-relic offer Fisher-Yates index over its declared
+    /// current bound. The eligible pool and reward prefix are not inspected.
+    /// </summary>
+    public static ChanceLawV111 QueryNativeBossRelicOfferShuffleIndex(
+        string ownerId, int supportCount, int ordinal)
+    {
+        return QueryNativeBoundedIntegerLawSite(
+            StochasticSiteRegistryV111.RewardBossRelicOfferShuffleSiteId, ownerId,
+            supportCount, ordinal);
+    }
+
+    /// <summary>
+    /// Query one Native Lava Rock extra-relic Fisher-Yates index over its
+    /// declared current bound. The eligible pool and reward prefix are not
+    /// inspected.
+    /// </summary>
+    public static ChanceLawV111 QueryNativeLavaRockRelicOfferShuffleIndex(
+        string ownerId, int supportCount, int ordinal)
+    {
+        return QueryNativeBoundedIntegerLawSite(
+            StochasticSiteRegistryV111.RewardLavaRockRelicOfferShuffleSiteId, ownerId,
+            supportCount, ordinal);
+    }
 }
