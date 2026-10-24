@@ -49,12 +49,12 @@ internal readonly record struct PrototypeDrawCardsResumeResultV111
     internal PrototypeDrawCardsResumeResultV111 EnsurePipelineBoundary()
     {
         Validate();
-        return PipelineBoundary is not null
+        var resume = PrototypeAutomaticPipelineResumeResultV111
+            .FromPipelineProgress(Run, PipelineBoundary);
+        return PipelineBoundary == resume.Boundary
             ? this
             : new PrototypeDrawCardsResumeResultV111(
-                Run, RemainingCount, RequestedCount,
-                PrototypeAutomaticPipelineResumeResultV111
-                    .FromRun(Run).Boundary);
+                Run, RemainingCount, RequestedCount, resume.Boundary);
     }
 
     internal int RequireRequestedCount()

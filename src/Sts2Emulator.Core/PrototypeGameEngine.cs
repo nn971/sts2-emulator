@@ -12,10 +12,19 @@ internal enum PrototypeAutomaticPipelineResumeBoundaryKindV111
     SuspendedPipeline
 }
 
-internal readonly record struct PrototypeAutomaticPipelineResumeResultV111(
-    RunState Run,
-    PrototypeAutomaticPipelineResumeBoundaryKindV111 Boundary)
+internal readonly record struct PrototypeAutomaticPipelineResumeResultV111
 {
+    public RunState Run { get; }
+    public PrototypeAutomaticPipelineResumeBoundaryKindV111 Boundary { get; }
+
+    private PrototypeAutomaticPipelineResumeResultV111(
+        RunState run,
+        PrototypeAutomaticPipelineResumeBoundaryKindV111 boundary)
+    {
+        Run = run;
+        Boundary = boundary;
+    }
+
     internal static PrototypeAutomaticPipelineResumeResultV111 FromRun(
         RunState run)
     {
@@ -24,6 +33,25 @@ internal readonly record struct PrototypeAutomaticPipelineResumeResultV111(
             run,
             PrototypeGameEngine.ClassifyAutomaticPipelineResumeBoundary(
                 run));
+    }
+
+    internal static PrototypeAutomaticPipelineResumeResultV111
+        FromPipelineProgress(
+            RunState run,
+            PrototypeAutomaticPipelineResumeBoundaryKindV111? boundary)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        if (boundary is { } savedBoundary &&
+            !Enum.IsDefined(savedBoundary))
+            throw new InvalidDataException(
+                "Automatic pipeline progress has an unknown boundary.");
+
+        var result = FromRun(run);
+        if (boundary is { } suppliedBoundary &&
+            suppliedBoundary != result.Boundary)
+            throw new InvalidDataException(
+                "Automatic pipeline progress boundary does not match its run.");
+        return result;
     }
 }
 

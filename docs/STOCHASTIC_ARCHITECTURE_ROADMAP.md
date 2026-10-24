@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 single classified resume-boundary owner increment (2026-10-24):** The
+automatic-pipeline resume result now owns both boundary classification and
+validation of classifications carried by draw-progress or semantic-choice
+results. A supplied boundary that disagrees with its returned run fails closed;
+all adapters use the same conversion path. Snapshot and transcript formats are
+unchanged. Static source review and `git diff --check` only; no tests or builds
+were run.
+
 **S4 semantic draw-hook resume boundary increment (2026-10-24):** Draw-hook
 replay now exposes a classified automatic-pipeline result while retaining its
 run-only facade. Semantic automatic-choice replay passes the classification

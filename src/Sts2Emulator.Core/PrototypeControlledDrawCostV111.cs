@@ -184,10 +184,9 @@ public sealed partial class PrototypeGameEngine
             recycleSite: "combat.card_effect.draw",
             recycleOperation: "recycle_requires_composed_continuation");
         progress.Validate();
-        return new PrototypeAutomaticPipelineResumeResultV111(
-            progress.Run,
-            progress.PipelineBoundary ??
-                ClassifyAutomaticPipelineResumeBoundary(progress.Run));
+        return PrototypeAutomaticPipelineResumeResultV111
+            .FromPipelineProgress(
+                progress.Run, progress.PipelineBoundary);
     }
 
     /// <summary>Advance one cost decision, then dispatch CardDrawn once and
@@ -223,9 +222,8 @@ public sealed partial class PrototypeGameEngine
                 "UNSUPPORTED_CONTROLLED_CHANCE site=combat.draw_cost." +
                 "drawn_event operation=nested_choice");
         resumed.Validate();
-        return new PrototypeAutomaticPipelineResumeResultV111(
-            resumed.Run,
-            resumed.PipelineBoundary ??
-                ClassifyAutomaticPipelineResumeBoundary(resumed.Run));
+        return PrototypeAutomaticPipelineResumeResultV111
+            .FromPipelineProgress(
+                resumed.Run, resumed.PipelineBoundary);
     }
 }

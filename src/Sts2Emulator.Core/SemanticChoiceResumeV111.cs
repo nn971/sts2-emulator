@@ -5,9 +5,9 @@ internal readonly record struct SemanticChoiceResumeResultV111(
     PrototypeAutomaticPipelineResumeBoundaryKindV111? PipelineBoundary = null)
 {
     internal PrototypeAutomaticPipelineResumeResultV111
-        EnsurePipelineBoundary() => PipelineBoundary is { } boundary
-            ? new PrototypeAutomaticPipelineResumeResultV111(Run, boundary)
-            : PrototypeAutomaticPipelineResumeResultV111.FromRun(Run);
+        EnsurePipelineBoundary() =>
+            PrototypeAutomaticPipelineResumeResultV111
+                .FromPipelineProgress(Run, PipelineBoundary);
 }
 
 /// <summary>

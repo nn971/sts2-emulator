@@ -1066,6 +1066,13 @@ player observation.
 
 ## Current S4 continuation support
 
+`PrototypeAutomaticPipelineResumeResultV111` is the single owner for
+classifying an ephemeral run-resume boundary. Draw-progress and semantic-choice
+results pass any saved classification through that owner, which checks it
+against the returned run before publication. This keeps pipeline routing
+consistent across adapters without adding serialized fields or moving typed
+transcript ownership.
+
 `SemanticDrawPileAdapterV111.IsUnchangedDrawPile` owns the combined physical
 order and semantic-deck comparison used when a supported continuation must
 preserve the hidden pile. `RequireUnchangedDrawPile` delegates to that
