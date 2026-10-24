@@ -6058,11 +6058,55 @@ public static class SemanticPilotCombatEngineV111
                     return false;
                 break;
 
+            case "proto.silent.hidden_daggers":
+                expectedEffects =
+                [
+                    new PrototypeCombatEffectSpec(
+                        PrototypeCombatEffectKind.ChooseCards, 0,
+                        Selection: new PrototypeCardSelectionSpec(
+                            PrototypeCardZone.Hand, 2, 2,
+                            PrototypeCardSelectionResolutionKind.MoveToDiscard)),
+                    new PrototypeCombatEffectSpec(
+                        PrototypeCombatEffectKind.CreateCardsInHand, 2,
+                        CardId: "proto.silent.shiv",
+                        GeneratedCardUpgradePerSourceUpgrade: 1)
+                ];
+                expectedTailOperations = [new PrototypeQueuedOperation(
+                    PrototypeCombatEffectKind.CreateCardsInHand, 2,
+                    CardId: "proto.silent.shiv",
+                    GeneratedCardUpgradeLevel: sourceCard.UpgradeLevel,
+                    TargetMode: PrototypeEffectTarget.ActionTargetEnemy,
+                    SourceKind: PrototypeEffectSourceKind.Card)];
+                break;
+
+            case "proto.silent.concentrate":
+                expectedEffects =
+                [
+                    new PrototypeCombatEffectSpec(
+                        PrototypeCombatEffectKind.ChooseCards, 0,
+                        Selection: new PrototypeCardSelectionSpec(
+                            PrototypeCardZone.Hand, 3, 3,
+                            PrototypeCardSelectionResolutionKind.MoveToDiscard)),
+                    new PrototypeCombatEffectSpec(
+                        PrototypeCombatEffectKind.GainEnergy, 2,
+                        UpgradeDelta: 1)
+                ];
+                expectedTailOperations = [new PrototypeQueuedOperation(
+                    PrototypeCombatEffectKind.GainEnergy,
+                    2 + sourceCard.UpgradeLevel,
+                    TargetMode: PrototypeEffectTarget.ActionTargetEnemy,
+                    SourceKind: PrototypeEffectSourceKind.Card)];
+                break;
+
             default:
                 return false;
         }
+        var expectedCardType = sourceCard.CardId ==
+            "proto.silent.concentrate"
+                ? PrototypeCardType.Unknown
+                : PrototypeCardType.Skill;
         if (definition.Target != PrototypeCardTarget.None ||
-            definition.Type != PrototypeCardType.Skill ||
+            definition.Type != expectedCardType ||
             CanonicalJson.Sha256(definition.Effects) !=
                 CanonicalJson.Sha256(expectedEffects))
             return false;
