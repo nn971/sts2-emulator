@@ -103,6 +103,10 @@ public sealed record SemanticCombatDrawV111(
         CardSelectionPending =>
             SemanticCombatDrawEngineV111
                 .DescribePendingCardSelection(this);
+    [JsonIgnore] public SemanticCardTransformEventV111?
+        CardTransformPending =>
+            SemanticCombatDrawEngineV111
+                .DescribePendingCardTransform(this);
     [JsonIgnore] public SemanticCardSelectionEventV111?
         StratagemSelectionPending =>
             SemanticCombatDrawEngineV111
@@ -152,6 +156,7 @@ public sealed record SemanticCombatDrawV111(
         PotionGenerationPending is null &&
         PoolShufflePending is null &&
         CardSelectionPending is null &&
+        CardTransformPending is null &&
         StratagemSelectionPending is null &&
         DrawHookChoicePending is null && TargetPending is null &&
         CostPending is null &&
@@ -208,6 +213,14 @@ public sealed record SemanticCombatDrawV111(
         init => Stochastic = Stochastic with
         {
             CardSelectionTranscript = value
+        };
+    }
+    public SemanticCardTransformDecisionV111[] CardTransformTranscript
+    {
+        get => Stochastic.CardTransformTranscript;
+        init => Stochastic = Stochastic with
+        {
+            CardTransformTranscript = value
         };
     }
     public SemanticCardSelectionDecisionV111[] StratagemSelectionTranscript
@@ -271,6 +284,7 @@ public sealed record SemanticCombatDrawV111(
         var potionGenerationPending = this.PotionGenerationPending;
         var poolShufflePending = this.PoolShufflePending;
         var cardSelectionPending = this.CardSelectionPending;
+        var cardTransformPending = this.CardTransformPending;
         var completedHookCursor =
             this.Run.World?.Combat?.AutomaticPipelineContinuation;
         var drawHookChoicePending = this.DrawHookChoicePending;
@@ -323,6 +337,7 @@ public sealed record SemanticCombatDrawV111(
              potionGenerationPending is null &&
              poolShufflePending is null &&
              cardSelectionPending is null &&
+             cardTransformPending is null &&
              drawHookChoicePending?.BeforeHandDraw != true &&
              !automaticBeforeHandDrawPoolShuffle &&
              !automaticBeforeHandDrawGeneratedSelection &&
@@ -463,6 +478,24 @@ public sealed record SemanticCombatDrawV111(
             pipelineCursor is not null &&
             pipelineCursor.Stochastic.IsAtSemanticBeforeHandDraw(
                 pipelineCursor.Mechanics);
+        bool automaticHandDrawCardTransformPending =
+            this.AutomaticHandDraw && combat.PendingChoice is
+                { } activeCardTransformChoice &&
+            PrototypeGameEngine
+                .IsAutomaticHandDrawHookCardTransformContinuation(
+                    combat, activeCardTransformChoice) &&
+            hasPipelineSemanticDrawProgress &&
+            pipelineRequested == this.RequestedCount &&
+            pipelineRemaining == this.RemainingCount;
+        bool automaticBeforeHandDrawCardTransformPending =
+            this.AutomaticHandDraw && combat.PendingChoice is
+                { } beforeHandDrawCardTransformChoice &&
+            PrototypeGameEngine
+                .IsAutomaticHandDrawHookCardTransformContinuation(
+                    combat, beforeHandDrawCardTransformChoice) &&
+            pipelineCursor is not null &&
+            pipelineCursor.Stochastic.IsAtSemanticBeforeHandDraw(
+                pipelineCursor.Mechanics);
         if (automaticHandDrawChildInsertionPending ||
             automaticBeforeHandDrawChildInsertionPending)
             SemanticDrawInsertionChoiceV111.ValidateBoundary(this.Run);
@@ -478,6 +511,10 @@ public sealed record SemanticCombatDrawV111(
         if (automaticHandDrawCardSelectionPending ||
             automaticBeforeHandDrawCardSelectionPending)
             SemanticCardSelectionEngineV111.ValidatePendingBoundary(this.Run);
+        if (automaticHandDrawCardTransformPending ||
+            automaticBeforeHandDrawCardTransformPending)
+            SemanticCardTransformChoiceV111.ValidateBoundary(
+                this.Run, combat.PendingChoice!.ControlledCardTransform!);
         bool automaticHandDrawEffectDrawPending =
             this.AutomaticHandDraw && combat.PendingChoice is
                 { } effectDrawChoice &&
@@ -513,6 +550,7 @@ public sealed record SemanticCombatDrawV111(
                 potionGenerationPending is not null ||
                 poolShufflePending is not null ||
                 cardSelectionPending is not null ||
+                cardTransformPending is not null ||
                 stratagemSelectionPending is not null ||
                 drawHookChoicePending is not null ||
                 automaticBeforeHandDrawPoolShuffle ||
@@ -619,6 +657,15 @@ public sealed record SemanticCombatDrawV111(
                     throw new InvalidDataException(
                         "Semantic BeforeHandDraw card-selection cursor is inconsistent.");
             }
+            else if (automaticBeforeHandDrawCardTransformPending)
+            {
+                if (pipelineCursor is null ||
+                    !semanticBeforeHandDrawProgress ||
+                    this.RequestedCount != 0 || this.RemainingCount != 0 ||
+                    deck.Pending is not null || cost is not null)
+                    throw new InvalidDataException(
+                        "Semantic BeforeHandDraw card-transform cursor is inconsistent.");
+            }
             else if (automaticHandDrawGeneratedCardPending)
             {
                 if (pipelineCursor is null ||
@@ -658,6 +705,16 @@ public sealed record SemanticCombatDrawV111(
                     deck.Pending is not null || cost is not null)
                     throw new InvalidDataException(
                         "Automatic hand-draw card-selection cursor is inconsistent.");
+            }
+            else if (automaticHandDrawCardTransformPending)
+            {
+                if (pipelineCursor is null ||
+                    !hasPipelineSemanticDrawProgress ||
+                    pipelineRequested != this.RequestedCount ||
+                    pipelineRemaining != this.RemainingCount ||
+                    deck.Pending is not null || cost is not null)
+                    throw new InvalidDataException(
+                        "Automatic hand-draw card-transform cursor is inconsistent.");
             }
             else if (automaticBeforeHandDrawRandomTarget)
             {
@@ -703,6 +760,7 @@ public sealed record SemanticCombatDrawV111(
              potionGenerationPending is null &&
              poolShufflePending is null &&
              cardSelectionPending is null &&
+             cardTransformPending is null &&
              !semanticDrawChoicePending &&
              stratagemSelectionPending is null &&
              drawHookChoicePending is null &&
@@ -729,6 +787,7 @@ public sealed record SemanticCombatDrawV111(
              potionGenerationPending is null &&
              poolShufflePending is null &&
              cardSelectionPending is null &&
+             cardTransformPending is null &&
              stratagemSelectionPending is null &&
              drawHookChoicePending is null &&
              targetPending is null &&
@@ -838,6 +897,11 @@ public sealed record SemanticCombatDrawV111(
             !automaticBeforeHandDrawCardSelectionPending)
             throw new InvalidDataException(
                 "Semantic card-selection cursor is inconsistent.");
+        if (cardTransformPending is not null &&
+            !automaticHandDrawCardTransformPending &&
+            !automaticBeforeHandDrawCardTransformPending)
+            throw new InvalidDataException(
+                "Semantic card-transform cursor is inconsistent.");
     }
 
     public SemanticCombatDrawV111 Fork() => this with
@@ -984,6 +1048,21 @@ public static class SemanticCombatDrawEngineV111
             return null;
         return SemanticCardSelectionEngineV111.DescribePending(
             state.Run, CanonicalJson.Sha256(state.Run));
+    }
+
+    internal static SemanticCardTransformEventV111?
+        DescribePendingCardTransform(SemanticCombatDrawV111 state)
+    {
+        if (!state.AutomaticHandDraw ||
+            state.Run.World?.Combat is not { } combat ||
+            combat.PendingChoice is not { } pending ||
+            !PrototypeGameEngine
+                .IsAutomaticHandDrawHookCardTransformContinuation(
+                    combat, pending))
+            return null;
+        return SemanticCardTransformChoiceV111.DescribePending(
+            state.Run, CanonicalJson.Sha256(state.Run),
+            state.CardTransformTranscript.Length);
     }
 
     internal static SemanticDrawInsertionEventV111?
@@ -1513,6 +1592,33 @@ public static class SemanticCombatDrawEngineV111
         return next;
     }
 
+    public static SemanticCombatDrawV111 ResolveCardTransform(
+        SemanticCombatDrawV111 state, string fingerprint, string eventId,
+        string cardId)
+    {
+        Validate(state);
+        if (state.Fingerprint != fingerprint)
+            throw new InvalidOperationException(
+                "Stale semantic draw card-transform fingerprint.");
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(cardId);
+        var pending = state.CardTransformPending ??
+            throw new InvalidOperationException(
+                "No semantic draw card-transform choice is pending.");
+        var decision = SemanticCardTransformChoiceV111.Select(
+            pending, eventId, cardId);
+        var resumed = SemanticChoiceResumeV111.Resume(state.Run, decision);
+        var progress = ResumeNestedAutomaticHandDraw(
+            state, resumed, "Card-transform");
+        var next = PublishDrawProgress(state, progress) with
+        {
+            Stochastic = state.Stochastic.AppendCardTransform(decision)
+        };
+        next = RecordNewSemanticDrawChoices(state, next);
+        Validate(next);
+        return next;
+    }
+
     private static PrototypeDrawCardsResumeResultV111
         ResumeNestedAutomaticHandDraw(
             SemanticCombatDrawV111 state,
@@ -1854,6 +1960,21 @@ public static class SemanticCombatDrawEngineV111
                     selectionDecision.ActionId);
                 continue;
             }
+            if (reconstructed.CardTransformPending is { } cardTransform)
+            {
+                var transformDecision =
+                    transcriptCursor.NextCardTransformChoice();
+                transformDecision.Validate();
+                if (CanonicalJson.Sha256(transformDecision.Event) !=
+                    CanonicalJson.Sha256(cardTransform))
+                    throw new InvalidDataException(
+                        "Card-transform transcript diverges from source support.");
+                reconstructed = ResolveCardTransform(
+                    reconstructed, reconstructed.Fingerprint,
+                    transformDecision.Event.EventId,
+                    transformDecision.SelectedCardId);
+                continue;
+            }
             if (reconstructed.DrawInsertionPending is { } insertion)
             {
                 var insertionDecision = transcriptCursor.NextInsertion();
@@ -1918,7 +2039,7 @@ public static class SemanticCombatDrawEngineV111
         if (stored.BoundaryTranscriptVersion <
                 SemanticCombatDrawStochasticStateV111
                     .CurrentBoundaryTranscriptVersion &&
-            stored.CardSelectionTranscript.Length == 0)
+            stored.CardTransformTranscript.Length == 0)
             comparisonSnapshot = comparisonSnapshot with
             {
                 BoundaryTranscriptVersion =

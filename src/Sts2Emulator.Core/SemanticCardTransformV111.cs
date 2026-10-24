@@ -388,6 +388,10 @@ public static class SemanticCardTransformChoiceV111
             combat.Stochastic.NativeRng is null)
             throw new InvalidDataException(
                 "Native card-transform stream attribution has no Native run RNG owner.");
+        bool automaticHandDrawChild =
+            PrototypeGameEngine
+                .IsAutomaticHandDrawHookCardTransformContinuation(
+                    combat, combat.PendingChoice!);
         ValidateBoundary(checkpoint, transform);
         var sourceCardInstanceId = transform.SelectedCardInstanceIds[
             transform.NextTransformIndex];
@@ -405,8 +409,14 @@ public static class SemanticCardTransformChoiceV111
                 .ResumeControlledCardTransformWithBoundary(
                     checkpoint.Fork(), decision.SelectedCardId));
         if (resumed.Run.Phase == RunPhase.Combat)
-            SemanticPilotCombatEngineV111.ValidateSemanticCombatBoundary(
-                resumed.Run);
+        {
+            if (automaticHandDrawChild)
+                SemanticCardSelectionEngineV111
+                    .ValidateAutomaticHandDrawHookResult(resumed.Run);
+            else
+                SemanticPilotCombatEngineV111
+                    .ValidateSemanticCombatBoundary(resumed.Run);
+        }
         else if (!PrototypeGameEngine
                      .IsAtCombatRewardOrTerminalBoundary(resumed.Run))
             throw new NotSupportedException(

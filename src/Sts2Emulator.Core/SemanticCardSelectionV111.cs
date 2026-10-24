@@ -636,7 +636,7 @@ public static class SemanticCardSelectionEngineV111
         return false;
     }
 
-    private static void ValidateAutomaticHandDrawHookResult(RunState run)
+    internal static void ValidateAutomaticHandDrawHookResult(RunState run)
     {
         var combat = run.World?.Combat;
         if (run.Phase != RunPhase.Combat ||
@@ -652,7 +652,7 @@ public static class SemanticCardSelectionEngineV111
                 cursor.Mechanics) &&
                 cursor.Stochastic.CompletedSemanticHandDrawRequested is not null)
             throw new InvalidDataException(
-                "Card-selection child lost its automatic hand-draw cursor.");
+                "Automatic hand-draw child lost its semantic cursor.");
         PrototypeStateInvariants.Validate(run);
         SemanticDrawPileAdapterV111.ValidateNatureDeckBoundary(
             combat,
@@ -698,8 +698,9 @@ public static class SemanticCardSelectionEngineV111
             spec.SourceZone == PrototypeCardZone.Hand &&
             spec.Resolution ==
                 PrototypeCardSelectionResolutionKind.TransformRandom &&
-            PrototypeGameEngine
-                .IsPlayerTurnStartedEntropySelection(combat, choice);
+            (automaticHandDrawHookChoice ||
+             PrototypeGameEngine
+                 .IsPlayerTurnStartedEntropySelection(combat, choice));
         var supportedTop = IsSupportedTopMove(spec);
         var supportedDrawRemoval = IsSupportedDrawRemoval(spec);
         var supportedVisibleZoneMove =

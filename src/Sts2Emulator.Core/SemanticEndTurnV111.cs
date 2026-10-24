@@ -359,16 +359,23 @@ public sealed record SemanticEndTurnV111(
         }
     }
     [JsonIgnore] public SemanticCardTransformEventV111?
-        CardTransformPending => !Complete &&
-            HandDraw is not { AtBoundary: false } &&
-            PrototypeGameEngine
-                .HasPendingSupportedAutomaticPipelineSemanticCardTransform(
-                    Run)
-            ? SemanticCardTransformChoiceV111.DescribePending(
-                Run, Fingerprint,
-                NestedChoiceTranscript.Count(choice =>
-                    choice.Kind == "semantic_card_transform"))
-            : null;
+        CardTransformPending
+    {
+        get
+        {
+            if (Complete) return null;
+            if (HandDraw is { AtBoundary: false } handDraw)
+                return handDraw.CardTransformPending;
+            return PrototypeGameEngine
+                    .HasPendingSupportedAutomaticPipelineSemanticCardTransform(
+                        Run)
+                ? SemanticCardTransformChoiceV111.DescribePending(
+                    Run, Fingerprint,
+                    NestedChoiceTranscript.Count(choice =>
+                        choice.Kind == "semantic_card_transform"))
+                : null;
+        }
+    }
     [JsonIgnore] public SemanticCardShortlistEventV111?
         CardShortlistPending => !Complete &&
             HandDraw is not { AtBoundary: false } &&
@@ -947,13 +954,9 @@ public static class SemanticEndTurnEngineV111
             if (selectedIndex < 0 ||
                 selectedIndex >= cardTransform.CandidateCardIds.Length)
                 throw new ArgumentOutOfRangeException(nameof(selectedIndex));
-            var decision = SemanticCardTransformChoiceV111.Select(
-                cardTransform, cardTransform.EventId,
+            state = ResolveCardTransform(
+                state, state.Fingerprint, cardTransform.EventId,
                 cardTransform.CandidateCardIds[selectedIndex]);
-            var choice = new SemanticEndTurnNestedChoiceV111(
-                "semantic_card_transform",
-                CardTransformDecision: decision.Fork());
-            state = ResumeNestedSemanticChoice(state, choice);
         }
         else if (state.CardShortlistPending is { } cardShortlist)
         {
@@ -1226,9 +1229,22 @@ public static class SemanticEndTurnEngineV111
         ArgumentException.ThrowIfNullOrWhiteSpace(cardId);
         var pending = source.CardTransformPending ??
             throw new InvalidOperationException(
-                "No automatic-pipeline card-transform event is pending.");
+                "No hand-draw or automatic-pipeline card-transform event is pending.");
         var decision = SemanticCardTransformChoiceV111.Select(
             pending, eventId, cardId);
+        if (source.HandDraw is { AtBoundary: false } handDraw &&
+            handDraw.CardTransformPending is { } handDrawEvent)
+        {
+            if (CanonicalJson.Sha256(handDrawEvent) !=
+                CanonicalJson.Sha256(pending))
+                throw new InvalidDataException(
+                    "Automatic draw card-transform event changed during resume.");
+            var nextHand = SemanticCombatDrawEngineV111.ResolveCardTransform(
+                handDraw, handDraw.Fingerprint, eventId, cardId);
+            var nextHandDraw = ContinueHandDraw(source, nextHand);
+            Validate(nextHandDraw);
+            return nextHandDraw;
+        }
         var choice = new SemanticEndTurnNestedChoiceV111(
             "semantic_card_transform",
             CardTransformDecision: decision.Fork());
