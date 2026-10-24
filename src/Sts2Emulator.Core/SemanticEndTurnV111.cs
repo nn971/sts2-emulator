@@ -415,7 +415,9 @@ public sealed record SemanticEndTurnV111(
     {
         get
         {
-            if (Complete || HandDraw is { AtBoundary: false }) return null;
+            if (Complete) return null;
+            if (HandDraw is { AtBoundary: false } handDraw)
+                return handDraw.RandomHandCostPending;
             if (Run.World?.Combat?.PendingChoice is
                     { ChoiceId: "controlled_draw_cost",
                       ControlledDrawCost: not null,
@@ -467,8 +469,10 @@ public sealed record SemanticEndTurnV111(
     {
         get
         {
-            if (Complete || HandDraw is { AtBoundary: false } ||
-                !PrototypeGameEngine
+            if (Complete) return null;
+            if (HandDraw is { AtBoundary: false } handDraw)
+                return handDraw.HandCostSelectionPending;
+            if (!PrototypeGameEngine
                     .HasPendingSupportedAutomaticPipelineSemanticRandomHandCost(
                         Run) ||
                 Run.World?.Combat?.PendingChoice?.ControlledRandomCost is not
@@ -991,12 +995,9 @@ public static class SemanticEndTurnEngineV111
             if (selectedIndex < 0 ||
                 selectedIndex >= nestedCost.CandidateCosts.Length)
                 throw new ArgumentOutOfRangeException(nameof(selectedIndex));
-            var decision = SemanticCostChoiceV111.Select(
-                nestedCost, nestedCost.EventId,
+            state = ResolveRandomHandCost(
+                state, state.Fingerprint, nestedCost.EventId,
                 nestedCost.CandidateCosts[selectedIndex]);
-            var choice = new SemanticEndTurnNestedChoiceV111(
-                "semantic_cost", CostDecision: decision.Fork());
-            state = ResumeNestedSemanticChoice(state, choice);
         }
         else if (state.NestedHandCostSelectionPending is
                  { } handCostSelection)
@@ -1004,13 +1005,9 @@ public static class SemanticEndTurnEngineV111
             if (selectedIndex < 0 ||
                 selectedIndex >= handCostSelection.CandidateCardInstanceIds.Length)
                 throw new ArgumentOutOfRangeException(nameof(selectedIndex));
-            var decision = SemanticHandCostSelectionChoiceV111.Select(
-                handCostSelection, handCostSelection.EventId,
+            state = ResolveHandCostSelection(
+                state, state.Fingerprint, handCostSelection.EventId,
                 handCostSelection.CandidateCardInstanceIds[selectedIndex]);
-            var choice = new SemanticEndTurnNestedChoiceV111(
-                "semantic_hand_cost_selection",
-                HandCostSelectionDecision: decision.Fork());
-            state = ResumeNestedSemanticChoice(state, choice);
         }
         else if (state.HandDraw is { AtBoundary: false } costHandDraw &&
                  costHandDraw.CostPending is not null)
@@ -1291,6 +1288,77 @@ public static class SemanticEndTurnEngineV111
         return next;
     }
 
+    public static SemanticEndTurnV111 ResolveRandomHandCost(
+        SemanticEndTurnV111 source, string fingerprint, string eventId,
+        int selectedCost)
+    {
+        Validate(source);
+        if (!StringComparer.Ordinal.Equals(source.Fingerprint, fingerprint))
+            throw new InvalidOperationException(
+                "Stale semantic end-turn random-hand-cost fingerprint.");
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        var pending = source.NestedCostPending ??
+            throw new InvalidOperationException(
+                "No automatic draw or pipeline random-hand-cost event is pending.");
+        var decision = SemanticCostChoiceV111.Select(
+            pending, eventId, selectedCost);
+        if (source.HandDraw is { AtBoundary: false } handDraw &&
+            handDraw.RandomHandCostPending is { } handDrawEvent)
+        {
+            if (CanonicalJson.Sha256(handDrawEvent) !=
+                CanonicalJson.Sha256(pending))
+                throw new InvalidDataException(
+                    "Automatic draw random-hand-cost event changed during resume.");
+            var nextHand = SemanticCombatDrawEngineV111.ResolveRandomHandCost(
+                handDraw, handDraw.Fingerprint, eventId, selectedCost);
+            var next = ContinueHandDraw(source, nextHand);
+            Validate(next);
+            return next;
+        }
+        var choice = new SemanticEndTurnNestedChoiceV111(
+            "semantic_cost", CostDecision: decision.Fork());
+        var resumed = ResumeNestedSemanticChoice(source, choice);
+        Validate(resumed);
+        return resumed;
+    }
+
+    public static SemanticEndTurnV111 ResolveHandCostSelection(
+        SemanticEndTurnV111 source, string fingerprint, string eventId,
+        long cardInstanceId)
+    {
+        Validate(source);
+        if (!StringComparer.Ordinal.Equals(source.Fingerprint, fingerprint))
+            throw new InvalidOperationException(
+                "Stale semantic end-turn hand-cost-selection fingerprint.");
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        var pending = source.NestedHandCostSelectionPending ??
+            throw new InvalidOperationException(
+                "No automatic draw or pipeline hand-cost-selection event is pending.");
+        var decision = SemanticHandCostSelectionChoiceV111.Select(
+            pending, eventId, cardInstanceId);
+        if (source.HandDraw is { AtBoundary: false } handDraw &&
+            handDraw.HandCostSelectionPending is { } handDrawEvent)
+        {
+            if (CanonicalJson.Sha256(handDrawEvent) !=
+                CanonicalJson.Sha256(pending))
+                throw new InvalidDataException(
+                    "Automatic draw hand-cost-selection event changed during resume.");
+            var nextHand = SemanticCombatDrawEngineV111
+                .ResolveHandCostSelection(
+                    handDraw, handDraw.Fingerprint, eventId,
+                    cardInstanceId);
+            var next = ContinueHandDraw(source, nextHand);
+            Validate(next);
+            return next;
+        }
+        var choice = new SemanticEndTurnNestedChoiceV111(
+            "semantic_hand_cost_selection",
+            HandCostSelectionDecision: decision.Fork());
+        var resumed = ResumeNestedSemanticChoice(source, choice);
+        Validate(resumed);
+        return resumed;
+    }
+
     public static SemanticEndTurnV111 ResolvePoolShuffle(
         SemanticEndTurnV111 source, string fingerprint, string eventId,
         int swapIndex)
@@ -1321,28 +1389,6 @@ public static class SemanticEndTurnEngineV111
         var choice = new SemanticEndTurnNestedChoiceV111(
             "semantic_pool_shuffle",
             PoolShuffleDecision: decision.Fork());
-        var next = ResumeNestedSemanticChoice(source, choice);
-        Validate(next);
-        return next;
-    }
-
-    public static SemanticEndTurnV111 ResolveHandCostSelection(
-        SemanticEndTurnV111 source, string fingerprint, string eventId,
-        long cardInstanceId)
-    {
-        Validate(source);
-        if (!StringComparer.Ordinal.Equals(source.Fingerprint, fingerprint))
-            throw new InvalidOperationException(
-                "Stale semantic end-turn hand-cost-selection fingerprint.");
-        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
-        var pending = source.NestedHandCostSelectionPending ??
-            throw new InvalidOperationException(
-                "No automatic-pipeline hand-cost-selection event is pending.");
-        var decision = SemanticHandCostSelectionChoiceV111.Select(
-            pending, eventId, cardInstanceId);
-        var choice = new SemanticEndTurnNestedChoiceV111(
-            "semantic_hand_cost_selection",
-            HandCostSelectionDecision: decision.Fork());
         var next = ResumeNestedSemanticChoice(source, choice);
         Validate(next);
         return next;

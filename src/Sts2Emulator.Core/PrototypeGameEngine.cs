@@ -490,6 +490,38 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
               cursor.Stochastic.CompletedSemanticHandDrawRequested is null;
     }
 
+    internal static bool IsAutomaticHandDrawHookRandomHandCostContinuation(
+        CombatState combat, PendingCombatChoiceState pending)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(pending);
+        if (!combat.IsPlayerTurn ||
+            combat.PendingKnowledgeDemonChoice is not null ||
+            combat.Stochastic.SemanticDeck is not
+                { Mode: SemanticDeckStateV111.NatureMode, Pending: null } ||
+            pending is not
+                { ChoiceId: "controlled_random_hand_cost",
+                  ControlledRandomCost: { } randomCost,
+                  OuterChoiceContinuation: not null } ||
+            randomCost.Operation.Kind is not (
+                PrototypeCombatEffectKind
+                    .RandomizeHandCardEnergyCostsUntilTurnEndOrPlayed or
+                PrototypeCombatEffectKind
+                    .SetRandomHandCardEnergyCostUntilTurnEndOrPlayed) ||
+            !ValidateControlledRandomCost(combat, randomCost) ||
+            combat.AutomaticPipelineContinuation is not { } cursor ||
+            IsAutomaticPipelineSemanticRandomHandCostContinuation(
+                combat, pending))
+            return false;
+
+        return cursor.Stochastic.TryGetSemanticHandDrawProgress(
+                cursor.Mechanics, out int requested, out int remaining)
+            ? requested > 0 && remaining >= 0
+            : cursor.Stochastic.IsAtSemanticBeforeHandDraw(
+                  cursor.Mechanics) &&
+              cursor.Stochastic.CompletedSemanticHandDrawRequested is null;
+    }
+
     internal static bool IsAutomaticBeforeHandDrawHookDrawInsertionContinuation(
         CombatState combat, PendingCombatChoiceState pending)
     {

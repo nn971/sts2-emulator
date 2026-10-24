@@ -4617,6 +4617,24 @@ public static class SemanticPilotCombatEngineV111
         if (sourceEndTurn is { } endTurn)
         {
             if (choice is
+                    { Kind: "semantic_cost",
+                      CostDecision: { } randomHandCost } &&
+                endTurn.HandDraw?.RandomHandCostPending is not null)
+                nextEndTurn = SemanticEndTurnEngineV111
+                    .ResolveRandomHandCost(
+                        endTurn, endTurn.Fingerprint,
+                        randomHandCost.Event.EventId,
+                        randomHandCost.SelectedCost);
+            else if (choice is
+                         { Kind: "semantic_hand_cost_selection",
+                           HandCostSelectionDecision: { } handCostSelection } &&
+                     endTurn.HandDraw?.HandCostSelectionPending is not null)
+                nextEndTurn = SemanticEndTurnEngineV111
+                    .ResolveHandCostSelection(
+                        endTurn, endTurn.Fingerprint,
+                        handCostSelection.Event.EventId,
+                        handCostSelection.SelectedCardInstanceId);
+            else if (choice is
                     { Kind: "semantic_card_transform",
                       CardTransformDecision: { } transformedCard } &&
                 endTurn.HandDraw?.CardTransformPending is not null)

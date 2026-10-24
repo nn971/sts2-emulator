@@ -441,6 +441,9 @@ internal static class SemanticRandomHandCostChoiceV111
                 { } pending || pending.Operation.Kind != expectedOperation)
             throw new InvalidDataException(
                 "Random hand-cost choice does not match its source operation.");
+        bool automaticHandDrawChild = PrototypeGameEngine
+            .IsAutomaticHandDrawHookRandomHandCostContinuation(
+                priorCombat, priorCombat.PendingChoice!);
         ValidateBoundary(checkpoint);
 
         var resumed = ControlledChanceGuardV111.ExecuteGuarded(
@@ -452,6 +455,9 @@ internal static class SemanticRandomHandCostChoiceV111
                 " operation=unsupported_post_cost_phase");
         if (nextCombat.PendingChoice?.ControlledRandomCost is not null)
             ValidateBoundary(resumed.Run);
+        else if (automaticHandDrawChild)
+            SemanticCardSelectionEngineV111
+                .ValidateAutomaticHandDrawHookResult(resumed.Run);
         else
             SemanticPilotCombatEngineV111.ValidateSemanticCombatBoundary(
                 resumed.Run);
