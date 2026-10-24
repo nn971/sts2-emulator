@@ -27,6 +27,14 @@ selection, and the opening target admission reuse this source check. No event
 or snapshot schema changed. Static source review and `git diff --check` only;
 no tests or builds were run.
 
+**S4 controlled target continuation identity increment (2026-10-24):** Shared
+live target validation now requires the pending choice's source-card identity
+and destination to match its saved outer continuation. Effect-target choices
+must also retain a non-targeted first operation in the action-target mode
+produced by suspension. This rejects malformed target checkpoints before
+selection while preserving all target payload and snapshot schemas. Static
+source review and `git diff --check` only; no tests or builds were run.
+
 **S4 opening Mayhem target continuation increment (2026-10-24):** The shared
 opening target boundary now admits Mayhem's turn-one top-autoplay target at
 `AfterAutoPrePlayPolicy`, validating the Power-sourced `AutoPlayCombatCard`

@@ -267,6 +267,9 @@ public static class SemanticTargetChoiceV111
         var target = choice.ControlledTarget;
         if (choice.ChoiceId != "controlled_random_target" ||
             choice.OuterChoiceContinuation is not { } continuation ||
+            choice.SourceCardInstanceId != continuation.SourceCardInstanceId ||
+            choice.SourceCardDestination !=
+                continuation.SourceCardDestination ||
             target is not { Kind: "effect_random_enemy" or
                 "sly_auto_play" or "autoplay_random_enemy" } ||
             target.EligibleEnemyInstanceIds is not { Length: > 0 } support ||
@@ -297,7 +300,11 @@ public static class SemanticTargetChoiceV111
                 operations[0].TargetEnemyId is null,
             "effect_random_enemy" =>
                 target.SlyCardInstanceId is null &&
-                target.AutoPlayCardInstanceId is null,
+                target.AutoPlayCardInstanceId is null &&
+                continuation.Operations is { Length: > 0 } effectOperations &&
+                effectOperations[0].TargetMode ==
+                    PrototypeEffectTarget.ActionTargetEnemy &&
+                effectOperations[0].TargetEnemyId is null,
             _ => false
         };
     }

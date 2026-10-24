@@ -1328,7 +1328,9 @@ across semantic target boundaries, combat-state validation,
 controlled-playable validation, and target resume. It compares ordered living
 enemy identities and Sly/autoplay source identities against the suspended
 continuation; a Sly source must still be in discard, carry the live Sly
-keyword, and have an enemy target definition.
+keyword, and have an enemy target definition. The choice's saved source-card
+identity and destination must also match its outer continuation, and an
+effect target must retain the first unresolved action-target operation.
 
 `PendingCombatChoiceState.HasValidControlledPayloadShape` owns the
 discriminator invariant for the flattened controlled-choice snapshot fields.
