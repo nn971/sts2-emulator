@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 merchant and Treasure helper ownership increment (2026-10-24):**
+The legacy Shop card-type validator now lives with merchant Chance Laws, and
+the legacy Treasure relic query now lives with the existing Native Treasure
+query owner. Shared reward-pool and categorical-law helpers remain in core.
+Public query APIs, supports, and schemas are unchanged. Static source review
+and `git diff --check` only; no tests or builds were run.
+
 **S3 Ancient-offer Chance Law ownership increment (2026-10-24):** The
 Ancient offer queries, source-boundary checks, ordered shuffle-pool builders,
 Darv request builders, and family policy IDs now live in

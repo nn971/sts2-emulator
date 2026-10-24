@@ -672,4 +672,12 @@ public static partial class ChanceLawEngineV111
         PrototypeCardType.Power => 1,
         _ => throw new ArgumentOutOfRangeException(nameof(type))
     };
+    private static void ValidateLegacyShopCardType(
+        PrototypeCardType requiredType)
+    {
+        if (requiredType is not (PrototypeCardType.Attack or
+            PrototypeCardType.Skill or PrototypeCardType.Power))
+            throw new ArgumentOutOfRangeException(nameof(requiredType));
+    }
+
 }

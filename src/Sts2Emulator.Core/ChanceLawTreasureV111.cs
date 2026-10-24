@@ -308,4 +308,62 @@ public static partial class ChanceLawEngineV111
 
         return checked(left / GreatestCommonDivisor(left, right) * right);
     }
+    /// <summary>
+    /// Query the legacy Treasure relic model draw after excluding relics the
+    /// player already owns. Configured Native relic-grab-bag generation uses
+    /// a separate route.
+    /// </summary>
+    public static ChanceLawV111 QueryLegacyTreasureRelicModel(
+        int act, int floor, string[] ownedRelicIds, int ordinal)
+    {
+        if (act < 1)
+            throw new ArgumentOutOfRangeException(nameof(act));
+        if (floor < 0)
+            throw new ArgumentOutOfRangeException(nameof(floor));
+        ArgumentNullException.ThrowIfNull(ownedRelicIds);
+        if (ownedRelicIds.Any(string.IsNullOrWhiteSpace) ||
+            ownedRelicIds.Distinct(StringComparer.Ordinal).Count() !=
+                ownedRelicIds.Length)
+            throw new ArgumentException(
+                "Owned relic IDs must be non-empty and unique.",
+                nameof(ownedRelicIds));
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+
+        const string siteId = "treasure.relic_model.index_draw";
+        const string streamId = "reward";
+        var owned = ownedRelicIds.ToHashSet(StringComparer.Ordinal);
+        var pool = PrototypeContent.RelicPool
+            .Where(relicId => !owned.Contains(relicId))
+            .ToArray();
+        if (pool.Length == 0)
+            throw new ArgumentException(
+                "The legacy Treasure relic draw has no available pool and consumes no index draw.",
+                nameof(ownedRelicIds));
+
+        var poolFingerprint = CanonicalJson.Sha256(pool);
+        var ownerId = $"act:{act}:floor:{floor}:pool:" + poolFingerprint;
+        var outcomes = pool.Select(relicId =>
+            new ChanceLawOutcomeV111("relic:" + relicId, 1L))
+            .ToArray();
+        var conditioning = new
+        {
+            siteId,
+            streamId,
+            ownerId,
+            ordinal,
+            act,
+            floor,
+            orderedAvailableRelicPool = pool,
+            poolFingerprint
+        };
+        return CreateLegacyCategoricalLaw(
+            siteId, streamId, ownerId, ordinal,
+            "legacy-treasure-relic-model-pool-v1", conditioning,
+            "Equal index weights over the ordered prototype relic pool after " +
+            "owned relics are excluded; source-pool fidelity and Native " +
+            "relic-bag parity remain unverified.", outcomes,
+            operationKind: "choose_index");
+    }
+
 }
