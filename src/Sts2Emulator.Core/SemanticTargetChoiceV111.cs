@@ -283,8 +283,9 @@ public static class SemanticTargetChoiceV111
         {
             "sly_auto_play" =>
                 target.SlyCardInstanceId is { } slyCardId &&
-                combat.DiscardPile.Contains(slyCardId) &&
-                target.AutoPlayCardInstanceId is null,
+                target.AutoPlayCardInstanceId is null &&
+                PrototypeGameEngine.IsLiveSlyAutoplaySource(
+                    combat, slyCardId),
             "autoplay_random_enemy" =>
                 target.AutoPlayCardInstanceId is { } autoPlayCardId &&
                 combat.PlayCardIds.Contains(autoPlayCardId) &&

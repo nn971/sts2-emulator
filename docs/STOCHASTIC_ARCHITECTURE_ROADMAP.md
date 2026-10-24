@@ -19,6 +19,14 @@ effects inside the final Imbued card when no queued cards remain, without
 changing snapshot schemas. Static source review and `git diff --check` only;
 no tests or builds were run.
 
+**S4 Sly target source validation increment (2026-10-24):** Shared live target
+support now requires a `sly_auto_play` card to be present in discard, carry
+the current Sly keyword (including keyword overrides), and have an enemy
+target definition. Combat restore, controlled-playable validation, target
+selection, and the opening target admission reuse this source check. No event
+or snapshot schema changed. Static source review and `git diff --check` only;
+no tests or builds were run.
+
 **S4 opening Mayhem target continuation increment (2026-10-24):** The shared
 opening target boundary now admits Mayhem's turn-one top-autoplay target at
 `AfterAutoPrePlayPolicy`, validating the Power-sourced `AutoPlayCombatCard`

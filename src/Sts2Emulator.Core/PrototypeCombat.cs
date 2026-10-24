@@ -10623,6 +10623,21 @@ public sealed partial class PrototypeGameEngine
             : baseValue || grantedByAffliction || grantedByPower;
     }
 
+    internal static bool IsLiveSlyAutoplaySource(
+        CombatState combat, long cardInstanceId)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        if (!combat.DiscardPile.Contains(cardInstanceId))
+            return false;
+        var card = combat.Cards.FirstOrDefault(item =>
+            item.InstanceId == cardInstanceId);
+        return card is not null &&
+            PrototypeContent.Card(card.CardId).Target ==
+                PrototypeCardTarget.Enemy &&
+            CardHasKeyword(
+                combat, cardInstanceId, PrototypeCardKeyword.Sly);
+    }
+
     private static CombatState ApplyCardKeywordOverride(
         CombatState combat,
         long cardInstanceId,

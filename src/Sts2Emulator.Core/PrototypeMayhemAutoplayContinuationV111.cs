@@ -1942,12 +1942,7 @@ public sealed partial class PrototypeGameEngine
             !pipeline.Mechanics.IsAtOpeningBoundary(
                 PrototypeOpeningCombatStage.AfterAutoPrePlayPolicy) ||
             !IsMayhemAutoPrePlayPipelineCursor(combat) ||
-            !combat.DiscardPile.Contains(slyCardInstanceId) ||
-            !CardHasKeyword(
-                combat, slyCardInstanceId, PrototypeCardKeyword.Sly) ||
-            PrototypeContent.Card(
-                RequireCombatCard(combat, slyCardInstanceId).CardId).Target !=
-                PrototypeCardTarget.Enemy ||
+            !IsLiveSlyAutoplaySource(combat, slyCardInstanceId) ||
             !SemanticTargetChoiceV111.HasValidLiveSupport(combat, pending))
             return false;
 
