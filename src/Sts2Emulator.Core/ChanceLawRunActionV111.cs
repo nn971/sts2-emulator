@@ -63,6 +63,10 @@ public static partial class ChanceLawEngineV111
                         PrototypeNativeRestSiteActionsV111.Heal =>
                     QueryControlledLegacyRestHealRarityTicket(
                         run, continuation),
+            "map.legacy.edge_extra_chance.ticket"
+                when request.StreamId == "map" &&
+                    continuation.ActionId == "continue_act" =>
+                    QueryLegacyMapEdgeExtraChanceTicketIndices(request),
             "treasure.relic_model.index_draw"
                 when request.StreamId == "reward" =>
                     QueryControlledLegacyTreasureRelicModel(
@@ -82,6 +86,7 @@ public static partial class ChanceLawEngineV111
         };
         var expectedStream = request.SiteId switch
         {
+            "map.legacy.edge_extra_chance.ticket" => "map",
             "relic.acquisition.random_rare_card.model" or
                 "reward.card_transform.replacement.index_draw" or
                 "reward.card_model.index_draw" or
@@ -93,7 +98,8 @@ public static partial class ChanceLawEngineV111
         var outcomes = law.Outcomes;
         var numericSupportLabels = request.SiteId ==
             "treasure.relic_model.index_draw" || request.SiteId ==
-                "reward.card_rarity.ticket";
+                "reward.card_rarity.ticket" || request.SiteId ==
+                "map.legacy.edge_extra_chance.ticket";
         var supportsOmittedLabels = numericSupportLabels ||
             request.SiteId == "reward.card_model.index_draw";
         var omittedLabels = supportsOmittedLabels &&
@@ -112,8 +118,10 @@ public static partial class ChanceLawEngineV111
                 outcomes.Select(outcome => outcome.OutcomeId)
                     .SequenceEqual(continuation.PendingCandidateLabels.Select(
                         label => outcomePrefix + label), StringComparer.Ordinal);
-        var orderedSupportMatches = request.SiteId ==
-                "reward.card_rarity.ticket"
+        var boundedTicketSemanticSupport = request.SiteId is
+            "reward.card_rarity.ticket" or
+            "map.legacy.edge_extra_chance.ticket";
+        var orderedSupportMatches = boundedTicketSemanticSupport
             ? request.OperationKind == "bounded_integer" &&
                 request.BoundedCount == outcomes.Length &&
                 request.OrderedCandidates.Length == 0

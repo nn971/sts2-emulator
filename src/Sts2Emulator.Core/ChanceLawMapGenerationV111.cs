@@ -4,6 +4,44 @@ namespace Sts2Emulator.Core;
 
 public static partial class ChanceLawEngineV111
 {
+    internal static ChanceLawV111
+        QueryLegacyMapEdgeExtraChanceTicketIndices(
+            RandomIndexRequestV111 request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        request.ValidateForLegacyProvider();
+        const string siteId = "map.legacy.edge_extra_chance.ticket";
+        const int ticketCount = 100;
+        const int edgeExtensionTicketCount = 35;
+        if (request.SiteId != siteId || request.StreamId != "map" ||
+            request.OperationKind != "bounded_integer" ||
+            request.BoundedCount != ticketCount ||
+            request.OrderedCandidates.Length != 0)
+            throw new ArgumentException(
+                "Legacy map edge-extension law requires its source-shaped 100-ticket request.",
+                nameof(request));
+
+        var outcomes = Enumerable.Range(0, ticketCount)
+            .Select(ticket => new ChanceLawOutcomeV111(
+                $"ticket:{ticket}:edge_extension:" +
+                (ticket < edgeExtensionTicketCount ? "yes" : "no"), 1L))
+            .ToArray();
+        return CreateLegacyCategoricalLaw(
+            siteId, request.StreamId, request.OwnerId, request.Ordinal,
+            "legacy-map-edge-extension-ticket-index-v1",
+            new
+            {
+                request,
+                ticketCount,
+                edgeExtensionThreshold = edgeExtensionTicketCount,
+                sourceComparison = "ticket < threshold"
+            },
+            "Uniform legacy 100-ticket positions annotated with the " +
+            "prototype 35-ticket edge-extension branch; map source fidelity " +
+            "and ticket weighting remain unverified.",
+            outcomes);
+    }
+
     public static string[] NativeMapGaussianIntQuerySiteIds =>
         StochasticSiteRegistryV111.NativeGaussianIntSiteIds;
 

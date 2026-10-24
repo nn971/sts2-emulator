@@ -16,6 +16,10 @@ providers. Shop generation requires non-native regional systems and a legacy
 run RNG. Ordinary legacy Treasure generation uses that same route. Native-
 regional Treasure and Shovel fallbacks require `NativeRunRng` to be absent and
 retain the legacy reward rarity-ticket and conditional relic-index requests.
+The convergence `map.legacy.convergence.order_key` request is bounded by
+`Int32.MaxValue`; the current explicit-outcome Chance Law refuses to
+materialize that support. Its typed request remains recordable and replayable,
+but ReferenceNature resolution requires a compact law over map-order outcomes.
 The same saved action frame also supports legal `take_reward_relic` and
 `take_reward_extra_relic` actions from ordinary Combat, Elite, or Boss rewards
 when `NativeRunRng` is absent, if their acquisition hook reaches one of the
@@ -146,14 +150,17 @@ clients resolve through `controlled_run_action_resolve`.
 ## Probability provenance
 
 Each pending response now includes a read-only `chanceLaw`, its
-`boundaryFingerprint`, and an `eventId`. The law assigns equal weight to each
-legal request index (`choice_index:n`). Candidate labels identify the
-mechanical result for that index but do not change the index law. Every law
-and controlled action transcript remains `UNVERIFIED` for source probability
-and stream parity. The law fingerprints only the typed random request; the
-pending boundary fingerprint binds action/request context without including
-private RNG state. The top-level `fingerprint` is the exact-state
-stale-request guard.
+`boundaryFingerprint`, and an `eventId`. Generic legacy laws assign equal
+weight to each request index (`choice_index:n`); canonical Native `NextInt`
+requests use the exact source grid law. The legacy Rest Heal rarity and map
+edge-extension ticket laws retain one outcome per raw ticket and annotate the
+rarity or edge-extension branch. Candidate labels do not change the
+request-index law. Explicit laws reject supports above 65,536 outcomes and
+require a compact law representation. Probability and stream-parity status
+remain specific to each law. The law fingerprints only the typed request and
+declared support; the pending boundary fingerprint binds action/request context
+without including private RNG state. The top-level `fingerprint` is the
+exact-state stale-request guard.
 
 The JSONL server advertises `controlledRunActionSchemaId`. Its `hello`
 response exposes `controlledRunActionSiteGroups`, with registry-owned arrays

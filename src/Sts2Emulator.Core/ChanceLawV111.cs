@@ -407,6 +407,12 @@ public sealed record ChanceLawV111(
 {
     private ChanceLawOutcomeV111[]? _outcomes = Clone(Outcomes);
 
+    /// <summary>
+    /// Maximum support size for laws represented as an explicit outcome
+    /// array. Larger source requests need a compact law representation.
+    /// </summary>
+    public const int MaximumExplicitOutcomeCount = 65_536;
+
     public ChanceLawOutcomeV111[] Outcomes
     {
         get => Clone(_outcomes)!;
@@ -431,6 +437,9 @@ public sealed record ChanceLawV111(
     public void Validate()
     {
         var outcomes = Outcomes;
+        if (outcomes is { Length: > MaximumExplicitOutcomeCount })
+            throw new InvalidDataException(
+                "Chance Law exceeds the explicit outcome support limit.");
         if (SchemaId != CurrentSchemaId ||
             string.IsNullOrWhiteSpace(LawId) ||
             string.IsNullOrWhiteSpace(EventId) ||
@@ -946,6 +955,7 @@ private static ChanceLawOutcomeV111[] LegacyRarityOutcomes(
     {
         if (boundExclusive <= 0)
             throw new ArgumentOutOfRangeException(nameof(boundExclusive));
+        RequireExplicitOutcomeSupport(boundExclusive);
 
         var weights = new long[boundExclusive];
         long total = 0;
@@ -967,6 +977,15 @@ private static ChanceLawOutcomeV111[] LegacyRarityOutcomes(
             throw new InvalidDataException(
                 "Native bounded-index grid masses do not cover the full input grid.");
         return weights;
+    }
+
+    private static void RequireExplicitOutcomeSupport(int supportCount)
+    {
+        if (supportCount > ChanceLawV111.MaximumExplicitOutcomeCount)
+            throw new NotSupportedException(
+                $"Chance Law support of {supportCount} outcomes exceeds the " +
+                $"explicit limit of {ChanceLawV111.MaximumExplicitOutcomeCount}; " +
+                "a compact law representation is required.");
     }
 
     /// <summary>Counts grid inputs whose source-rounded unit float is strictly
@@ -1141,6 +1160,7 @@ private static ChanceLawOutcomeV111[] LegacyRarityOutcomes(
         ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
         ArgumentNullException.ThrowIfNull(request);
         request.Validate();
+        RequireExplicitOutcomeSupport(request.SupportCount);
         var nativeIndexLaw = NativeRngV111.IsCanonicalStreamId(
             request.StreamId);
         var policy = nativeIndexLaw
@@ -1356,6 +1376,7 @@ private static ChanceLawOutcomeV111[] LegacyRarityOutcomes(
         ChanceLawOutcomeV111[] outcomes,
         string probabilityStatus = ChanceLawV111.UnverifiedStatus)
     {
+        RequireExplicitOutcomeSupport(outcomes.Length);
         var totalWeight = outcomes.Aggregate(0L,
             (total, outcome) => checked(total + outcome.Weight));
         var supportFingerprint = CanonicalJson.Sha256(outcomes);

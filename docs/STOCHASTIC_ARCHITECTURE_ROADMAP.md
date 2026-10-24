@@ -2,6 +2,23 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S1 fail-closed explicit Chance Law support limit (2026-10-24):** Generic
+legacy and Native bounded-index laws now reject supports above 65,536 before
+building per-outcome arrays. This prevents the registered legacy map
+`map.legacy.convergence.order_key` request (bound `Int32.MaxValue`) from
+allocating an unbounded law; its typed request remains replayable, while
+ReferenceNature map resolution needs a compact law over map-order outcomes.
+Static source review and `git diff --check` only; no tests or builds were run.
+
+**S1 controlled legacy map edge-ticket semantics increment (2026-10-24):**
+The controlled `continue_act` Chance Law now expands the registered 100-ticket
+edge-extension request into distinct raw ticket outcomes annotated with the
+prototype's `< 35` edge-extension branch. Replay still uses the original
+bounded ticket index. Ticket weighting and map-generation order remain
+`UNVERIFIED`; the `Int32.MaxValue` convergence-key law remains unsupported
+until compact map-order outcomes are represented. Static source review and
+Chance Law boundary guards only; no tests or builds were run.
+
 **S1 controlled Rest Heal rarity-ticket semantics increment (2026-10-24):**
 Legacy Rest Heal run-action queries now expand the source-shaped rarity ticket
 law into distinct raw ticket-position outcomes annotated with the rarity bucket

@@ -796,6 +796,14 @@ bounds may be slightly uneven. Laws that use these exact source masses are
 `SOURCE_VERIFIED` under the declared uniform-grid input model. Equal-weight
 approximations at other bounds remain `UNVERIFIED`.
 
+The current `ChanceLawV111` wire model stores an explicit outcome array and
+rejects supports larger than 65,536 before allocating the law. Typed bounded
+requests can still be recorded and replayed at larger bounds. The legacy map
+convergence key has an `Int32.MaxValue` bound, so it is not currently a
+queryable ReferenceNature law; it needs a compact law over map-order mechanics
+before that map continuation can resolve through ReferenceNature. This is a
+representation limit, not a source-fidelity claim.
+
 The `combat.initial_unique_hp` direct query accepts `owner_id` in the form
 `creature:<CombatId>`, the ordered HP support, and the source ordinal. It
 returns the exact `run.niche` `NextInt` grid law over support indices and
