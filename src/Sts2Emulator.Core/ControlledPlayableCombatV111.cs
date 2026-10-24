@@ -117,6 +117,22 @@ public sealed record ControlledPlayableCombatV111(
         init => Stochastic = Stochastic with { TurnTranscript = value };
     }
 
+    [System.Text.Json.Serialization.JsonIgnore]
+    public SemanticIntentEventV111? IntentChoicePending
+    {
+        get
+        {
+            var intents = TurnIntents;
+            if (intents?.Pending is not { } request)
+                return null;
+            var support = ControlledTurnIntentEngineV111
+                .DescribePendingSemanticIntent(intents);
+            return support is null ? null :
+                SemanticIntentChoiceV111.CreateEvent(
+                    Fingerprint, request, support);
+        }
+    }
+
     public ControlledRecycleShuffleV111? Recycle
     {
         get => Stochastic.Recycle;
@@ -854,6 +870,28 @@ public static class ControlledPlayableCombatEngineV111
                 enemyAction.PendingRequest.SupportCount,
                 candidateLabel);
         return ResolveValidated(state, selectedIndex);
+    }
+
+    /// <summary>
+    /// Resolve a weighted enemy intent by its stable semantic intent ID.
+    /// The source selector receives the first legal primitive ticket in that
+    /// intent's weight interval, preserving the controlled index transcript.
+    /// </summary>
+    public static ControlledPlayableCombatV111 ResolveIntentById(
+        ControlledPlayableCombatV111 state, string fingerprint,
+        string eventId, string intentId)
+    {
+        ValidatePendingResolveRequest(state, fingerprint);
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(intentId);
+        var pending = state.IntentChoicePending ??
+            throw new InvalidOperationException(
+                "No weighted semantic intent choice is pending.");
+        if (!StringComparer.Ordinal.Equals(pending.EventId, eventId))
+            throw new InvalidOperationException(
+                "Semantic intent event ID is stale or mismatched.");
+        var selection = SemanticIntentChoiceV111.Select(pending, intentId);
+        return ResolveValidated(state, selection.SourceTicket);
     }
 
     private static void ValidatePendingResolveRequest(

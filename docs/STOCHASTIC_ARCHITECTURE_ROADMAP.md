@@ -65,8 +65,10 @@ ControlledPlayableCombatEngineV111 now accepts generated-card, potion,
 transform, and target outcomes by stable model or enemy instance ID. Each
 identity must match exactly one candidate in the live pending source support;
 the resolver then uses the existing indexed continuation and transcript path.
-No session or snapshot schema changed. Static source review and
-`git diff --check` only; no tests or builds were run.
+Its weighted turn-intent boundary exposes the existing semantic event and
+accepts an intent ID mapped to the first legal ticket in that candidate's
+weight interval. No session or snapshot schema changed. Static source review
+and `git diff --check` only; no tests or builds were run.
 
 **S4 hand-draw progress presence owner increment (2026-10-24):** The pipeline
 stochastic owner now exposes `HasSavedHandDrawProgress` for clean-boundary
