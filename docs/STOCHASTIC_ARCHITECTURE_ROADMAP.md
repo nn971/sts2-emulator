@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 draw-resume operation construction owner increment (2026-10-24):**
+`PrototypeDrawCardsContinuationV111` now constructs the queued resume operation
+directly from the saved draw frame. The scalar factory was removed from
+`PrototypeCombat`, leaving frame projection, validation, and defensive payload
+publication with the existing continuation owner. No snapshot or transcript
+format changed. Static source review and `git diff --check` only; no tests or
+builds were run.
+
 **S4 controlled-choice payload discriminator increment (2026-10-24):** The
 flattened `PendingCombatChoiceState` now owns the mapping from controlled
 choice IDs to their exclusive typed payloads, including the sole supported

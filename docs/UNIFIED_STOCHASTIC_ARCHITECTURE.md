@@ -389,7 +389,9 @@ creating semantic draw, cost, or after-shuffle choices.
 `CreateAdvancedEffectDrawFrame` now supplies that transition for all
 resumable effect-draw boundaries, including recycle, nested hook, and
 post-shuffle Stratagem paths; normal completion uses the same identity prefix
-when applying drawn-card keyword overrides.
+when applying drawn-card keyword overrides. The continuation owner also
+constructs each queued draw-resume operation from that validated frame; the
+scalar operation factory no longer lives in the general combat resolver.
 `CreateDrawResumeOperation(frame)` now projects every saved draw field through
 one factory, including the draw-equal selection count, across effect recycle,
 nested hook, cost, and Stratagem continuations.

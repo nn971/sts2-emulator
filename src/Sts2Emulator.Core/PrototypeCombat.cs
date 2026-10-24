@@ -13730,35 +13730,6 @@ public sealed partial class PrototypeGameEngine
                     .Concat(continuation.Operations).ToArray()
             });
 
-    private static PrototypeQueuedOperation CreateDrawResumeOperation(
-        int remainingCount,
-        bool fromHandDraw,
-        int eventDepth,
-        PrototypeCardKeywordOverrideSpec? drawnCardKeyword,
-        long[]? deferredDrawnCardInstanceIds,
-        bool standaloneSemanticDrawSegment = false,
-        int? drawEqualSelectionCount = null)
-    {
-        if (remainingCount < 0 || eventDepth < 0)
-            throw new ArgumentOutOfRangeException(
-                nameof(remainingCount),
-                "A saved draw cursor requires nonnegative progress values.");
-        return new PrototypeQueuedOperation(
-            PrototypeCombatEffectKind.DrawCards,
-            remainingCount,
-            FromHandDraw: fromHandDraw,
-            DrawnCardKeyword: drawnCardKeyword is null
-                ? null : drawnCardKeyword with { },
-            DeferredDrawnCardInstanceIds:
-                deferredDrawnCardInstanceIds is null
-                    ? null
-                    : (long[])deferredDrawnCardInstanceIds.Clone(),
-            DrawEventDepth: eventDepth,
-            StandaloneSemanticDrawSegment:
-                standaloneSemanticDrawSegment,
-            DrawEqualSelectionCount: drawEqualSelectionCount);
-    }
-
     private static long[] AccumulateDrawnCardInstanceIds(
         IEnumerable<long>? previousCardInstanceIds,
         IEnumerable<long> drawnCardInstanceIds)

@@ -10,11 +10,21 @@ public sealed partial class PrototypeGameEngine
         PrototypeControlledSemanticDrawV111 draw)
     {
         ArgumentNullException.ThrowIfNull(draw);
-        return CreateDrawResumeOperation(
-            draw.RemainingCount, draw.FromHandDraw, draw.EventDepth,
-            draw.DrawnCardKeyword, draw.DeferredKeywordCardInstanceIds,
-            draw.StandaloneSemanticDrawSegment,
-            draw.DrawEqualSelectionCount);
+        if (draw.RemainingCount < 0 || draw.EventDepth < 0)
+            throw new ArgumentOutOfRangeException(nameof(draw),
+                "A saved draw cursor requires nonnegative progress values.");
+        return new PrototypeQueuedOperation(
+            PrototypeCombatEffectKind.DrawCards,
+            draw.RemainingCount,
+            FromHandDraw: draw.FromHandDraw,
+            DrawnCardKeyword: draw.DrawnCardKeyword is null
+                ? null : draw.DrawnCardKeyword with { },
+            DeferredDrawnCardInstanceIds:
+                draw.DeferredKeywordCardInstanceIds,
+            DrawEventDepth: draw.EventDepth,
+            StandaloneSemanticDrawSegment:
+                draw.StandaloneSemanticDrawSegment,
+            DrawEqualSelectionCount: draw.DrawEqualSelectionCount);
     }
 
     private static PrototypeControlledSemanticDrawV111
