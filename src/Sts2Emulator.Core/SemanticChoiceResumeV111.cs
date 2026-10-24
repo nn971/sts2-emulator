@@ -78,7 +78,7 @@ internal static class SemanticChoiceResumeV111
             progress.Run, ownedDecision.Event,
             ownedDecision.SelectedIndex);
         return (
-            EnsurePipelineBoundary(progress),
+            progress.EnsurePipelineBoundary(),
             ownedDecision.Event.SiteId);
     }
 
@@ -125,7 +125,7 @@ internal static class SemanticChoiceResumeV111
             progress = ControlledChanceGuardV111.ExecuteGuarded(
                 () => PrototypeGameEngine
                     .ResumeSemanticBeforeHandDrawActionChoice(run));
-            return (EnsurePipelineBoundary(progress), decision);
+            return (progress.EnsurePipelineBoundary(), decision);
         }
 
         if (combat.PendingChoice?.AutomaticSemanticDrawHookChoice == true)
@@ -144,21 +144,10 @@ internal static class SemanticChoiceResumeV111
         var resumed = PrototypeGameEngine
             .ResumeSemanticAutomaticHandDraw(run, remaining);
         return (PrototypeDrawCardsResumeResultV111.ForHandDraw(
-            resumed.Run, requested, resumed.RemainingCount,
-            resumed.PipelineBoundary ??
-                PrototypeAutomaticPipelineResumeResultV111
-                    .FromRun(resumed.Run).Boundary), decision);
+                resumed.Run, requested, resumed.RemainingCount,
+                resumed.PipelineBoundary)
+            .EnsurePipelineBoundary(), decision);
     }
-
-    private static PrototypeDrawCardsResumeResultV111 EnsurePipelineBoundary(
-        PrototypeDrawCardsResumeResultV111 progress) =>
-        progress.PipelineBoundary is null
-            ? new PrototypeDrawCardsResumeResultV111(
-                progress.Run, progress.RemainingCount,
-                progress.RequestedCount,
-                PrototypeAutomaticPipelineResumeResultV111
-                    .FromRun(progress.Run).Boundary)
-            : progress;
 
     internal static (
         PrototypeDrawCardsResumeResultV111 Progress,
@@ -182,17 +171,14 @@ internal static class SemanticChoiceResumeV111
             pending, pending.EventId, actionId);
         var selected = Resume(checkpoint, decision);
         var selectedRun = selected.Run;
-        var selectedBoundary = selected.PipelineBoundary ??
-            PrototypeAutomaticPipelineResumeResultV111.FromRun(
-                selectedRun).Boundary;
 
         if (!automaticHandDraw)
             return (new PrototypeDrawCardsResumeResultV111(
-                selectedRun,
-                PrototypeGameEngine.GetSemanticDrawRemainingCount(
-                    selectedRun, remaining, drawnBefore),
-                PipelineBoundary: selectedBoundary),
-                decision);
+                    selectedRun,
+                    PrototypeGameEngine.GetSemanticDrawRemainingCount(
+                        selectedRun, remaining, drawnBefore),
+                    PipelineBoundary: selected.PipelineBoundary)
+                .EnsurePipelineBoundary(), decision);
 
         if (!PrototypeGameEngine.IsSemanticAutomaticHandDraw(
                 selectedRun.World?.Combat ?? throw new InvalidDataException(
@@ -202,7 +188,7 @@ internal static class SemanticChoiceResumeV111
         var resumed =
             PrototypeGameEngine.ResumeSemanticAutomaticHandDraw(
                 selectedRun, remaining);
-        return (EnsurePipelineBoundary(resumed), decision);
+        return (resumed.EnsurePipelineBoundary(), decision);
     }
 
     internal static RunState ResumeDeckReveal(
@@ -259,7 +245,7 @@ internal static class SemanticChoiceResumeV111
         progress = ControlledChanceGuardV111.ExecuteGuarded(
             () => PrototypeGameEngine.ResumeSemanticRandomPileCardChoice(
                 checkpoint.Fork(), ownedDecision));
-        return (EnsurePipelineBoundary(progress),
+        return (progress.EnsurePipelineBoundary(),
             ownedDecision.Event.SiteId);
     }
 

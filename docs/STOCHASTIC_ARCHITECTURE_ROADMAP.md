@@ -37,6 +37,13 @@ the hand-draw owner provides one. Its event and serialized draw state remain
 unchanged. Static source review and `git diff --check` only; no tests or builds
 were run.
 
+**S4 shared draw-progress boundary owner increment (2026-10-24):** The
+provider-neutral draw-progress result now owns the rule that preserves an
+existing pipeline classification or derives one from its resulting run.
+Semantic draw, draw-hook, Stratagem and random pile-card adapters share it;
+serialized state is unchanged. Static source review and `git diff --check`
+only; no tests or builds were run.
+
 **S1 compact Native bounded-index Chance Law increment (2026-10-24):**
 Chance Law v3 now represents large canonical Native `NextInt(bound)` laws by
 their exact 53-bit input grid and source multiply-and-truncate transform.
