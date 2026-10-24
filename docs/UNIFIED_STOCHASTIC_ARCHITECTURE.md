@@ -1086,9 +1086,11 @@ existing full-pool shuffle and ChoicePool card-selection continuations. Exact
 relic-trigger, source-pool, and `DrawPlayerHand` cursor checks admit each
 boundary. Selection completes the saved event dispatcher, then the hand-draw
 owner resumes without replaying `BeforeHandDraw`; the generated selection is
-kept out of the draw-hook action projection. Hello World's existing
-pre-draw common-card shuffle shares the extracted source-frame validation.
-No event or snapshot schema changed.
+kept out of the draw-hook action projection. Its exact generated-choice
+subscriber check is shared with the opening Toolbox and Choices Paradox
+continuations, while each owner retains its own cursor check. Hello World's
+existing pre-draw common-card shuffle shares the extracted source-frame
+validation. No event or snapshot schema changed.
 
 Ordinary combat sampling and the resumable generated-card choice now use the same source-pool resolver for the supported one-at-a-time hand-generation effects. Random draw-Attack insertion has its own shared resolver for Native sampling, Nature suspension, and replay validation. When Native combat run streams are present, supported generated-model and transform events carry Native's `run.combat_card_generation` stream label, and random combat-potion events carry `run.combat_potion_generation`; prototype-only runs retain `prototype.combat`, and older prototype-labeled decisions remain replayable. Full-pool generated offers, distinct Common cards, and Colorless generation likewise share one resolver between ordinary execution and Nature replay. The emulated Native Colorless generation, Colorless transforms, and Fried Eel offer use implemented solo cards whose epoch is unlocked by the configured profile; with no explicit epoch list a fully unlocked profile admits all eligible epochs, while any explicit list selects its matching cards. Unknown partial-profile data remains fail-closed. Synthetic generation keeps its conservative no-epoch pool. These paths therefore share their exact ordered eligibility results; source-pool completeness and seeded parity remain separate audits.
 

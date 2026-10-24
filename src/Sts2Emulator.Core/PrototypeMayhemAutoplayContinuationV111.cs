@@ -496,13 +496,10 @@ public sealed partial class PrototypeGameEngine
             !IsAutomaticSemanticBeforeHandDrawPoolShuffleFrame(
                 combat, pending, continuation,
                 PrototypeEffectSourceKind.Relic, out var eventDispatch) ||
-            !IsToolboxBeforeHandDrawDispatch(combat, eventDispatch))
+            !IsToolboxBeforeHandDrawDispatch(
+                combat, eventDispatch, out var expectedOperation))
             return false;
 
-        var expectedOperation = new PrototypeQueuedOperation(
-            PrototypeCombatEffectKind.ChooseGeneratedCards, 3,
-            SourceKind: PrototypeEffectSourceKind.Relic,
-            GeneratedChoiceCardsFreeThisTurn: false);
         var sourcePool = SourcePoolForShuffle(
             combat, expectedOperation, sourceCardInstanceId: null);
         if (sourcePool is null ||
@@ -517,47 +514,14 @@ public sealed partial class PrototypeGameEngine
 
     private static bool IsToolboxBeforeHandDrawDispatch(
         CombatState combat,
-        PrototypeEventDispatchContinuationState eventDispatch)
+        PrototypeEventDispatchContinuationState eventDispatch,
+        out PrototypeQueuedOperation expectedOperation)
     {
-        const string toolboxId = "proto.relic.toolbox";
-        if (combat.Turn != 1 ||
-            eventDispatch.EventDepth != 0 ||
-            eventDispatch.CombatEvent != new PrototypeCombatEvent(
-                PrototypeCombatEventKind.BeforeHandDraw) ||
-            eventDispatch.CurrentSubscriber is not
-                { SourceKind: PrototypeEffectSourceKind.Relic,
-                  RelicStateIndex: { } index,
-                  RelicTriggerIndex: 0 } ||
-            (uint)index >= (uint)combat.RelicStates.Length ||
-            combat.RelicStates[index] is not
-                { RelicId: toolboxId, IsMelted: false } relic ||
-            relic.PersistentIndex != index ||
-            relic.ApplicationOrder !=
-                eventDispatch.CurrentSubscriber.ApplicationOrder)
-            return false;
-
-        var triggers = PrototypeContent.Relic(toolboxId).Triggers ?? [];
-        var expectedTrigger = new PrototypeRelicTriggerSpec(
-            PrototypeCombatEventKind.BeforeHandDraw,
-            [new PrototypeCombatEffectSpec(
-                PrototypeCombatEffectKind.ChooseGeneratedCards, 3,
-                GeneratedChoiceCardsFreeThisTurn: false)],
-            TurnEquals: 1);
-        if (triggers.Length != 1 ||
-            CanonicalJson.Sha256(triggers[0]) !=
-                CanonicalJson.Sha256(expectedTrigger))
-            return false;
-
-        var expectedSubscriber = new PrototypeEventSubscriberState(
-            relic.ApplicationOrder, triggers[0].Effects, PowerStacks: 0,
-            PrototypeEffectSourceKind.Relic,
-            RelicStateIndex: index,
-            RelicTriggerIndex: 0,
-            EveryNth: triggers[0].EveryNth,
-            MaxTriggersPerCounterWindow:
-                triggers[0].MaxTriggersPerCounterWindow);
-        return CanonicalJson.Sha256(expectedSubscriber) ==
-            CanonicalJson.Sha256(eventDispatch.CurrentSubscriber);
+        return IsSupportedGeneratedChoiceSubscriber(
+                combat, eventDispatch, operation: null,
+                out expectedOperation, requireOpeningCursor: false) &&
+            eventDispatch.CombatEvent == new PrototypeCombatEvent(
+                PrototypeCombatEventKind.BeforeHandDraw);
     }
 
     private static bool IsAutomaticSemanticBeforeHandDrawPoolShuffleFrame(
@@ -805,12 +769,9 @@ public sealed partial class PrototypeGameEngine
         PrototypeEventDispatchContinuationState eventDispatch)
     {
         if (combat.Turn != 1 ||
-            !IsToolboxBeforeHandDrawDispatch(combat, eventDispatch))
+            !IsToolboxBeforeHandDrawDispatch(
+                combat, eventDispatch, out var expectedOperation))
             return false;
-        var expectedOperation = new PrototypeQueuedOperation(
-            PrototypeCombatEffectKind.ChooseGeneratedCards, 3,
-            SourceKind: PrototypeEffectSourceKind.Relic,
-            GeneratedChoiceCardsFreeThisTurn: false);
         var sourcePool = SourcePoolForShuffle(
             combat, expectedOperation, sourceCardInstanceId: null);
         var byInstance = combat.Cards.ToDictionary(card => card.InstanceId);
@@ -1197,9 +1158,9 @@ public sealed partial class PrototypeGameEngine
                   CompletePlayerHandCleanup: false })
             return false;
 
-        return IsOpeningGeneratedChoiceSubscriber(
+        return IsSupportedGeneratedChoiceSubscriber(
                 combat, eventDispatch, shuffle.Operation,
-                out var expectedOperation) &&
+                out var expectedOperation, requireOpeningCursor: true) &&
             CanonicalJson.Sha256(shuffle.Operation) ==
                 CanonicalJson.Sha256(expectedOperation);
     }
@@ -1258,8 +1219,9 @@ public sealed partial class PrototypeGameEngine
                   MoveSourceCardOnCompletion: true,
                   RemoveSourceCardOnCompletion: false,
                   SourceCardAlreadyMoved: false } ||
-            !IsOpeningGeneratedChoiceSubscriber(
-                combat, eventDispatch, operation: null, out var operation) ||
+            !IsSupportedGeneratedChoiceSubscriber(
+                combat, eventDispatch, operation: null, out var operation,
+                requireOpeningCursor: true) ||
             selection.MinSelections !=
                 (operation.GeneratedChoiceMustPick ? 1 : 0) ||
             candidates.Length != operation.Amount ||
@@ -1296,11 +1258,12 @@ public sealed partial class PrototypeGameEngine
                 eligible.Contains(card.CardId, StringComparer.Ordinal));
     }
 
-    private static bool IsOpeningGeneratedChoiceSubscriber(
+    private static bool IsSupportedGeneratedChoiceSubscriber(
         CombatState combat,
         PrototypeEventDispatchContinuationState eventDispatch,
         PrototypeQueuedOperation? operation,
-        out PrototypeQueuedOperation expectedOperation)
+        out PrototypeQueuedOperation expectedOperation,
+        bool requireOpeningCursor)
     {
         expectedOperation = null!;
         if (combat.Turn != 1 || eventDispatch.EventDepth != 0 ||
@@ -1361,15 +1324,18 @@ public sealed partial class PrototypeGameEngine
         else
             return false;
 
-        if (combat.AutomaticPipelineContinuation is not { } pipeline ||
-            !IsAtOpeningAutomaticPipelineCursor(
-                combat, pipeline, openingStage) ||
-            eventDispatch.CombatEvent.Kind != eventKind ||
+        if (eventDispatch.CombatEvent.Kind != eventKind ||
             eventDispatch.CurrentSubscriber is not
                 { SourceKind: PrototypeEffectSourceKind.Relic,
                   RelicStateIndex: { } relicIndex,
                   RelicTriggerIndex: 0 } subscriber ||
             (uint)relicIndex >= (uint)combat.RelicStates.Length)
+            return false;
+
+        if (requireOpeningCursor &&
+            (combat.AutomaticPipelineContinuation is not { } pipeline ||
+             !IsAtOpeningAutomaticPipelineCursor(
+                 combat, pipeline, openingStage)))
             return false;
 
         var relic = combat.RelicStates[relicIndex];
