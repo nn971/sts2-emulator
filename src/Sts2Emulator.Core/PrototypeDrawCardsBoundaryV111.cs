@@ -1,8 +1,9 @@
 namespace Sts2Emulator.Core;
 
 /// <summary>
-/// Owns the tagged mechanical result of DrawCards. Provider adapters interpret
-/// a validated boundary and retain their own continuation and transcript state.
+/// Owns the tagged mechanical result of DrawCards and its common publication
+/// boundary. Provider adapters interpret validated results and retain their
+/// own continuation and transcript state.
 /// </summary>
 public sealed partial class PrototypeGameEngine
 {
@@ -175,5 +176,31 @@ public sealed partial class PrototypeGameEngine
             player, combat, drawnCardInstanceIds, boundary);
         ValidateDrawCardsResult(result, automaticHandDrawStage);
         return result;
+    }
+
+    private static RunState PublishDrawCardsResult(
+        RunState checkpoint, PrototypeDrawCardsResult drawn)
+    {
+        ArgumentNullException.ThrowIfNull(drawn);
+        return PublishDrawMechanicsState(
+            checkpoint, drawn.Player, drawn.Combat);
+    }
+
+    /// <summary>
+    /// Publish the coupled player/combat mechanics from ordinary, nested,
+    /// opening, or automatic hand-draw resolution.
+    /// </summary>
+    private static RunState PublishDrawMechanicsState(
+        RunState checkpoint, PlayerState player, CombatState combat)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        ArgumentNullException.ThrowIfNull(player);
+        ArgumentNullException.ThrowIfNull(combat);
+        var world = RequireWorld(checkpoint);
+        return checkpoint with
+        {
+            Player = player,
+            World = world with { Combat = combat }
+        };
     }
 }

@@ -4608,3 +4608,11 @@ draw request. Its coupled player/combat result now publishes through the
 existing `PublishDrawMechanicsState` owner. Unexpected opening draw boundaries
 remain fail-closed until an opening-stage continuation owns them. Static source
 review and `git diff --check` only; no tests or builds were run.
+
+**S4 draw-result publication ownership increment (2026-10-25):** The existing
+`PrototypeDrawCardsBoundaryV111.cs` now owns both tagged-result validation and
+the provider-neutral player/combat publication helpers. Automatic, nested,
+semantic, controlled, and opening draws therefore publish coupled mechanics
+through the same owner while retaining their existing provider policies and
+transcripts. Static source review and `git diff --check` only; no tests or
+builds were run.
