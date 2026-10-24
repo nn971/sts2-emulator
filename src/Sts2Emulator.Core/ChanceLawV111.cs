@@ -1547,11 +1547,11 @@ public static partial class ChanceLawEngineV111
     }
 
     /// <summary>
-    /// Query the source-ordered PotionFactory rarity thresholds for an
-    /// explicitly declared Native request, independent of its RNG cursor.
+    /// Query the raw Native relic rarity threshold for a caller-declared
+    /// Rewards-stream request. Queue identity and tier fallback are separate.
     /// </summary>
-    public static ChanceLawV111 QueryNativePotionFactoryRarity(
-       In RandomUnitFloatRequestV111 request)
+    public static ChanceLawV111 QueryNativeRelicRarity(
+        RandomUnitFloatRequestV111 request)
     {
         ArgumentNullException.ThrowIfNull(request);
         request.Validate();
