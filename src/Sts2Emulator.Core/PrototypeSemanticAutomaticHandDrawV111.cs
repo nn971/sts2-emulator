@@ -215,11 +215,17 @@ public sealed partial class PrototypeGameEngine
         var cursor = combat.AutomaticPipelineContinuation;
         var pendingChoice = combat.PendingChoice;
         var pending = pendingChoice?.ControlledRandomPileCard;
+        int savedRequested = 0;
+        int savedRemaining = 0;
+        bool activeHandDraw = cursor is not null &&
+            cursor.Stochastic.TryGetSemanticHandDrawProgress(
+                cursor.Mechanics, out savedRequested, out savedRemaining);
+        bool beforeHandDraw = cursor is not null &&
+            cursor.Stochastic.IsAtSemanticBeforeHandDraw(
+                cursor.Mechanics);
         var currentEvent = SemanticRandomPileCardEngineV111
             .DescribePending(run);
-        if (cursor is null ||
-            !cursor.Stochastic.IsAtSemanticBeforeHandDraw(
-                cursor.Mechanics) ||
+        if ((!beforeHandDraw && !activeHandDraw) ||
             pending is null || pendingChoice?.ChoiceId !=
                 "controlled_random_pile_card" ||
             pendingChoice.OuterChoiceContinuation is not { } continuation ||
@@ -230,6 +236,8 @@ public sealed partial class PrototypeGameEngine
                 decision.SelectedCardInstanceId))
             throw new InvalidDataException(
                 "Stale or malformed semantic automatic-hook choice.");
+        var choiceSite = activeHandDraw
+            ? "combat.draw.CardDrawn" : "combat.BeforeHandDraw";
 
         var eligible = combat.DrawPile.Where(id =>
         {
@@ -280,8 +288,8 @@ public sealed partial class PrototypeGameEngine
         if (resumedEvent.Combat.PendingChoice is not null ||
             resumedEvent.Combat.PendingKnowledgeDemonChoice is not null)
             throw new NotSupportedException(
-                "UNSUPPORTED_SEMANTIC_DECK site=combat.BeforeHandDraw " +
-                "operation=nested_choice_after_random_pile_card");
+                "UNSUPPORTED_SEMANTIC_DECK site=" + choiceSite +
+                " operation=nested_choice_after_random_pile_card");
         var afterHook = run with
         {
             Player = resumedEvent.Player,
@@ -289,6 +297,29 @@ public sealed partial class PrototypeGameEngine
                 run.Stochastic, prototypeRng),
             World = world with { Combat = resumedEvent.Combat }
         };
+        if (activeHandDraw)
+        {
+            var resumedCombat = resumedEvent.Combat;
+            var resumedCursor = resumedCombat.AutomaticPipelineContinuation;
+            if (resumedCombat.PendingChoice is not null ||
+                resumedCombat.PendingKnowledgeDemonChoice is not null ||
+                resumedCursor is null ||
+                !resumedCursor.Stochastic.TryGetSemanticHandDrawProgress(
+                    resumedCursor.Mechanics, out int requestedAfter,
+                    out int remainingAfter) ||
+                requestedAfter != savedRequested ||
+                remainingAfter != savedRemaining)
+                throw new NotSupportedException(
+                    "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.CardDrawn " +
+                    "operation=nested_choice_after_random_pile_card");
+            var continued = BeginSemanticCombatDraw(
+                afterHook, remainingAfter, fromHandDraw: true);
+            if (continued.RequireRequestedCount() != requestedAfter)
+                throw new InvalidDataException(
+                    "Random pile-card child changed the hand-draw request.");
+            return continued;
+        }
+
         var beforeDrawCount = resumedEvent.Combat.CounterState
             .CardsDrawnThisCombat;
         return ResumeSemanticAutomaticHandDrawStep(

@@ -151,6 +151,37 @@ internal static class SemanticChoiceResumeV111
                 .EnsurePipelineBoundary(), decision);
         }
 
+        if (pending.BeforeHandDraw &&
+            combat.PendingChoice?.ControlledRandomPileCard is not null)
+        {
+            _ = SemanticRandomPileCardEngineV111.DescribePending(run) ??
+                throw new InvalidDataException(
+                    "BeforeHandDraw random pile-card child lost its event.");
+            return (PrototypeDrawCardsResumeResultV111.ForHandDraw(
+                run, requested, 0, pipelineBoundary)
+                .EnsurePipelineBoundary(), decision);
+        }
+
+        if (!pending.BeforeHandDraw &&
+            combat.PendingChoice?.ControlledRandomPileCard is not null)
+        {
+            var cursor = combat.AutomaticPipelineContinuation;
+            if (cursor is null ||
+                !cursor.Stochastic.TryGetSemanticHandDrawProgress(
+                    cursor.Mechanics, out int savedRequested,
+                    out int savedRemaining) ||
+                savedRequested != requested ||
+                savedRemaining != remaining)
+                throw new InvalidDataException(
+                    "Automatic draw-hook pile-card child lost its tagged hand-draw progress.");
+            _ = SemanticRandomPileCardEngineV111.DescribePending(run) ??
+                throw new InvalidDataException(
+                    "Automatic draw-hook pile-card child lost its event.");
+            return (PrototypeDrawCardsResumeResultV111.ForHandDraw(
+                run, requested, savedRemaining, pipelineBoundary)
+                .EnsurePipelineBoundary(), decision);
+        }
+
         if (pending.BeforeHandDraw)
         {
             PrototypeDrawCardsResumeResultV111 progress;

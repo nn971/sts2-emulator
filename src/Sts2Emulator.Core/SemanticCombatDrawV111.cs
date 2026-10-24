@@ -291,6 +291,8 @@ public sealed record SemanticCombatDrawV111(
             combat.Stochastic.SemanticDeck is not { } deck ||
             (!this.AutomaticHandDraw &&
              combat.AutomaticPipelineContinuation is not null) ||
+            (!this.AutomaticHandDraw &&
+             randomPileCardPending is not null) ||
             combat.PendingKnowledgeDemonChoice is not null)
             throw new InvalidDataException("Invalid semantic combat draw stage.");
         if (this.AutomaticHandDraw && originCombat.Stochastic.SemanticDeck is not null)
@@ -324,6 +326,7 @@ public sealed record SemanticCombatDrawV111(
         if (this.AutomaticHandDraw)
         {
             bool awaiting = deck.Pending is not null || cost is not null ||
+                randomPileCardPending is not null ||
                 drawInsertionPending is not null ||
                 stratagemSelectionPending is not null ||
                 drawHookChoicePending is not null ||
@@ -333,15 +336,21 @@ public sealed record SemanticCombatDrawV111(
                 automaticSemanticHandDrawRandomTarget;
             if (randomPileCardPending is not null)
             {
-                if (pipelineCursor is null ||
-                    !pipelineCursor.Mechanics.IsAtStep(
-                        PrototypeAutomaticStepKind.DrawPlayerHand) ||
-                    !semanticBeforeHandDrawProgress ||
-                    this.RequestedCount != 0 || this.RemainingCount != 0 ||
-                    combat.PendingChoice?.ControlledRandomPileCard is null ||
+                bool beforeHandDrawChoice = pipelineCursor is not null &&
+                    pipelineCursor.Mechanics.IsAtStep(
+                        PrototypeAutomaticStepKind.DrawPlayerHand) &&
+                    semanticBeforeHandDrawProgress &&
+                    this.RequestedCount == 0 && this.RemainingCount == 0;
+                bool activeHandDrawChoice = hasPipelineSemanticDrawProgress &&
+                    pipelineRequested == this.RequestedCount &&
+                    pipelineRemaining == this.RemainingCount;
+                if ((!beforeHandDrawChoice && !activeHandDrawChoice) ||
+                    combat.PendingChoice is not
+                        { ChoiceId: "controlled_random_pile_card",
+                          ControlledRandomPileCard: not null } ||
                     deck.Pending is not null || cost is not null)
                     throw new InvalidDataException(
-                        "Semantic BeforeHandDraw choice cursor is inconsistent.");
+                        "Semantic automatic hand-draw pile-card cursor is inconsistent.");
             }
             else if (drawHookChoicePending?.BeforeHandDraw == true)
             {
@@ -435,6 +444,7 @@ public sealed record SemanticCombatDrawV111(
               !PrototypeGameEngine.ValidateControlledDrawCost(
                   this.Run.Player, combat, cost with { FromHandDraw = true }))) ||
             (deck.Pending is null && cost is null &&
+             randomPileCardPending is null &&
              drawInsertionPending is null &&
              stratagemSelectionPending is null &&
              drawHookChoicePending is null &&

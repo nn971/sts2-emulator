@@ -2,6 +2,17 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 active-hand-draw random pile-card continuation increment (2026-10-25):**
+A selected active `CardDrawn` hook may now suspend on the existing Jeweled Mask
+random power pile-card event. Hook replay retains its exact hand-draw counts;
+the existing pile-card owner validates and commits the physical move, then
+resumes the same draw. The end-turn selected-index resolver routes this child
+through the active draw frame. The pre-draw hook relay now publishes its
+existing random pile-card child before resuming the pipeline. Restore uses the
+existing typed transcript and chronology. Other post-selection nested choices
+remain fail-closed. No event or snapshot schema changed. Static source review
+and `git diff --check` only; no tests or builds were run.
+
 **S4 chained active-hand-draw target continuation increment (2026-10-25):**
 Resolving a supported `CardDrawn` random target may suspend the saved source
 continuation on another random target. The semantic draw owner retags that

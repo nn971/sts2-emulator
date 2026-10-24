@@ -1096,3 +1096,16 @@ the draw owner's target transcript and chronology; replay resolves the chain
 before continuing the same hand draw. Other child choice kinds remain
 fail-closed. No event or snapshot schema changed. Static source review and
 `git diff --check` only; no tests or builds were run.
+
+## 2026-10-25: active hand-draw random pile-card child
+
+A selected active `CardDrawn` hook may now suspend on the existing Jeweled
+Mask random power pile-card event. The semantic draw frame retains and checks
+the requested and remaining counts; the existing random pile-card owner
+commits the selected physical identity and resumes the same hand draw. The
+end-turn selected-index resolver routes this child through the active draw
+frame. The pre-draw hook relay also publishes its existing random pile-card
+child before continuing the pipeline. Restore uses the existing typed
+transcript and chronology. Other post-selection nested choices remain
+fail-closed. No event or snapshot schema changed. Static source review and
+`git diff --check` only; no tests or builds were run.
