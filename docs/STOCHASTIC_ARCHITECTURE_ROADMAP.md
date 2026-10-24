@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 semantic draw adapter handoff consolidation (2026-10-25):** Automatic
+hand-draw results from semantic draw segments, generated-card, Stratagem
+selection, draw insertion, and nested effect draws now use the common
+engine-owned nested-choice handoff for cursor classification and request-count
+validation. Their typed transcript and child-event checks stay in their existing
+owners. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S4 semantic target-result handoff consolidation (2026-10-25):** After a
 random-target child resolves, the combat-draw adapter now routes the resulting
 active hand-draw cursor through the common engine-owned nested-choice handoff.

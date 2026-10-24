@@ -68,7 +68,6 @@ Versioning remains `sts2-v111-controlled-playable-fixture-v1` with the additiona
 
 **Limit:** This is a single mechanically meaningful suspension stage inside live player end-turn, not generic .NET stack capture. RNG calls before that stage (enemy effects) or after it (draw/reshuffle, random cost, targeting or nested hooks) still fail closed. They need additional explicit stage/operation continuations in later patches. All native chance-law probabilities remain `UNVERIFIED`.
 
-
 ## PR #147: live hand-draw recycle
 
 The controlled end-turn pipeline now saves the already-executed pre-draw hooks and card-draw effects on an empty draw pile, with the remaining count and original pipeline stage. Nature chooses ordered swap indices under `combat.draw_pile_recycle.swap_index`. The emulator then applies actual postshuffle ordering, pauses for after-shuffle relic insertion positions and Stratagem selection when needed, draws the remaining cards, and resumes at the next pipeline stage. Chronological intent/recycle events are replay-validated across multiple turns. Other random draw effects, target selection, summons and nested hooks remain unsupported. See [the recycle contract](NATURE_LIVE_RECYCLE_143.md).
@@ -81,20 +80,17 @@ This extension preserves the chronological `LiveTranscript` and exact replay acr
 
 Controlled-playable snapshots now also persist optional `LiveTranscriptCandidateLabels` for identity-bearing live supports. Restore checks each vector against the support reached during source replay, including controlled enemy-action labels and weighted intent ticket ranges. Numeric-only decisions carry null entries. Snapshots written before this field existed retain their index-only compatibility path; the fixture schema ID and decision indices are unchanged.
 
-
 ## PR #149: live random generated-card effects
 
 The actual `ResolveOperations` queue now creates Nature chance boundaries for five source-shaped single-card generation effects: free random character cards, zero-cost cards, random Attack, random Skill, and random Power. The selected card is created exactly once, then the original queued effects and card/event/choice continuation resume; multi-card generation creates successive chance events. The `choose_index` request uses the original ordered source eligibility pool. Nature also receives a detached `pending.candidateCardIds` array, while the player's ordinary fair observation remains separate. Pool identity is included in the event owner fingerprint.
 
 Tests exercise all three consecutive Orobic Acid generation effects in actual combat using an explicitly injected fixture potion, plus malformed support rejection, independent branches and 15-worker deterministic choices. The test fixture is not a claim of native initial potion acquisition, and unchanged starter-state snapshot replay remains the authoritative provenance contract. Original source laws remain `UNVERIFIED`. See [the generation-specific implementation note](NATURE_GENERATED_CARD_143.md).
 
-
 ## PR #150: generated-card random draw-pile placement
 
 The real combat `ResolveOperations` kernel now suspends at two additional source-defined effects. A generated fixed card has one bounded insertion-position ticket; a generated random Attack has a source-ordered model-selection ticket followed by a position ticket. The original operation and continuation queue are preserved, so card materialization and each insertion occur exactly once. Multi-insertion operations issue successive choices, and the player remains outside the fair decision boundary until the operation completes. See [draw-insertion implementation notes](NATURE_DRAW_INSERTION_143.md).
 
 Tests exercise both mechanics through a narrow guarded internal diagnostic entry on a real combat `RunState`. Neither operation is currently reached by a standard Silent starter card action, so this does not establish full JSONL `controlled_step` or native-entry replay provenance. A later continuation also handles enemy draw/discard insertion through the saved enemy-action frame; other random-effect continuations remain unsupported. Law status is `UNVERIFIED`. See [draw-insertion implementation notes](NATURE_DRAW_INSERTION_143.md).
-
 
 ## PR #151: complete source-shaped generation-pool shuffle
 
@@ -109,7 +105,6 @@ player boundary, and stores both decision types in semantic snapshot replay.
 Only the fixture potion route is enabled in this bridge; native acquisition
 and source-law calibration remain unverified. The JSONL/Python contract is in
 [Nature P0 semantic JSONL](NATURE_P0_SEMANTIC_JSONL_143.md).
-
 
 ## Controlled hand-cost operations (#143)
 
@@ -148,7 +143,6 @@ see [draw-insertion implementation notes](NATURE_DRAW_INSERTION_143.md).
 Draw-triggered relic/Slither costs beyond their existing event path,
 death/summon continuations, native laws and full terminal rollout remain.
 
-
 ## New slice: draw-triggered relic/Slither costs
 
 During the actual automatic `DrawPlayerHand` pipeline, an already-drawn
@@ -166,7 +160,6 @@ top. See [draw-cost coverage](NATURE_DRAW_COST_143.md).
 Additional gates remain: opening/action-triggered draw-cost support,
 nested `CardDrawn` hooks, semantic deck state/forced positions, weighted
 visible intents, true native parity and 15-worker terminal rollouts.
-
 
 ## Semantic deck-state kernel (opt-in, provider-owned)
 
@@ -191,7 +184,6 @@ The kernel is **not yet wired** into the normal `DrawCards`/opening-hand/
 automatic-pipeline mechanics or JSONL; integration and true native parity
 remain explicitly pending.
 
-
 ## Real `DrawCards` semantic draw segment (PR #157)
 
 The separate semantic deck state now has a guarded actual-mechanics bridge
@@ -213,7 +205,6 @@ remains. Focused tests cover one-card draw-hook timing, identity support,
 state tampering, saved mid-action replay, 2-from-3 complete enumeration,
 and deterministic 15-worker sessions. Details:
 [Nature real combat semantic draw](NATURE_SEMANTIC_COMBAT_DRAW_143.md).
-
 
 ## Semantic source-timed recycle with Perfect Fit priority (merged PR #159)
 
@@ -257,7 +248,6 @@ pending choices, Stratagem and after-shuffle random insertions, plus
 opening/automatic/player-step/JSONL semantic rollout, remain separate
 gates.
 
-
 ## Semantic DrawPlayerHand automatic-stage checkpoint (merged PR #161)
 
 The opt-in `SemanticCombatDrawEngineV111.BeginAutomaticHandDraw`
@@ -282,7 +272,6 @@ This remains a **single original automatic pipeline stage**, with
 prior enemy-intent resolution and later automatic steps supplied/
 continued elsewhere. A full player end-turn `step` → Nature →
 next `step` controller and JSONL bridge are not yet complete.
-
 
 ## First restricted real end-turn action-to-action Nature path (merged PR #162)
 
@@ -313,7 +302,6 @@ next `step`** flow. Further player actions using a persistent semantic
 deck, opening-hand/card-effect draws, full terminal episodes, weighted
 intents and the externally negotiated semantic JSONL bridge remain open.
 
-
 ## Persistent provider-owned deck across player actions and turns (merged PR #163)
 
 The real `CombatState.SemanticDeck` now survives supported player
@@ -343,7 +331,6 @@ Further work: other cards/potions, source-authentic deck mutations,
 opening-hand and card-effect draws, nested chance hooks, public JSONL
 schema, weighted intents and terminal training rollouts. Source/native
 probability law remains UNVERIFIED.
-
 
 ## Source-shaped card-selection deck mutations (merged PR #164)
 
@@ -442,7 +429,6 @@ an independent replayable child for each outcome up to the caller's limit,
 with a hard maximum of 256 and no truncation. Player card-selection actions
 remain player choices rather than Nature enumeration outcomes.
 
-
 ## P0 reprioritization: first external two-site playable semantic JSONL (merged PR #165)
 
 Issue #143 was raised to **P0** on 2026-10-16 as the next
@@ -475,7 +461,6 @@ handshake, raw filtered intent weights/IDs, provider parity, and one
 fully replayable true-terminal Silent pilot with deterministic 1-vs-15
 external worker comparison. See
 [Nature P0 semantic JSONL](NATURE_P0_SEMANTIC_JSONL_143.md).
-
 
 ## Local feature branch: source-disjoint Nature/native policy comparison
 
@@ -1165,3 +1150,28 @@ event and handles chained target prompts; the shared handoff checks source
 requested/remaining counts and validates the resulting pipeline boundary. No
 event or snapshot schema changed. Static source review and `git diff --check`
 only; no tests or builds were run.
+
+## 2026-10-25: semantic draw adapter handoff consolidation
+
+Automatic hand-draw results from Stratagem selection, draw insertion, and
+nested effect draws now use the common engine-owned nested-choice handoff for
+cursor classification and request-count validation. Typed transcript ownership
+and child-event validation remain with the respective adapters. No event or
+snapshot schema changed. Static source review and `git diff --check` only; no
+tests or builds were run.
+
+## 2026-10-25: semantic generated-card handoff consolidation
+
+The automatic hand-draw generated-card adapter now publishes its resumed
+cursor through the common engine-owned nested-choice handoff, including the
+random-attack model path that advances to a draw-insertion choice. The draw
+owner retains validation of that insertion stage and its generated-card
+transcript. Static source review and `git diff --check` only; no tests or builds
+were run.
+
+## 2026-10-25: semantic draw-ticket handoff consolidation
+
+A selected semantic draw segment now resumes an active automatic hand draw
+through the common engine-owned nested-choice handoff. The source remaining
+count and resumed pipeline cursor are validated before publishing progress.
+Static source review and `git diff --check` only; no tests or builds were run.

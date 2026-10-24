@@ -1550,32 +1550,23 @@ public static class SemanticCombatDrawEngineV111
             var resumedInsertion = SemanticChoiceResumeV111.Resume(
                 run, decision);
             var resumed = resumedInsertion.Run;
-            int insertionRemaining = state.AutomaticHandDraw
-                ? GetAutomaticHandDrawRemainingCount(resumed)
-                : PrototypeGameEngine.GetSemanticDrawRemainingCount(
-                    resumed, state.RemainingCount, drawnBefore);
             PrototypeDrawCardsResumeResultV111 insertionProgress;
-            if (state.AutomaticHandDraw &&
-                resumed.World?.Combat is
-                    { PendingChoice: null,
-                      PendingKnowledgeDemonChoice: null,
-                      SemanticDeck: { Pending: null } } completedInsertion &&
-                TryGetAutomaticSemanticHandDrawProgress(
-                    completedInsertion, out int requestedCount,
-                    out int savedRemaining))
-            {
-                var handDraw = PrototypeGameEngine
-                    .ResumeSemanticAutomaticHandDraw(
-                        resumed, savedRemaining);
-                if (handDraw.RequireRequestedCount() != requestedCount)
-                    throw new InvalidDataException(
-                        "Nested draw insertion changed the active hand-draw request.");
-                insertionProgress = handDraw;
-            }
+            if (state.AutomaticHandDraw)
+                insertionProgress = PrototypeGameEngine
+                    .ResumeSemanticAutomaticHandDrawAfterNestedChoice(
+                        state.Run, resumed,
+                        resumedInsertion.PipelineBoundary,
+                        "draw insertion", state.RequestedCount,
+                        state.RemainingCount);
             else
+            {
+                int insertionRemaining =
+                    PrototypeGameEngine.GetSemanticDrawRemainingCount(
+                        resumed, state.RemainingCount, drawnBefore);
                 insertionProgress = new PrototypeDrawCardsResumeResultV111(
                     resumed, insertionRemaining,
                     PipelineBoundary: resumedInsertion.PipelineBoundary);
+            }
             var nextInsertion = PublishDrawProgress(
                 state, insertionProgress) with
             {
@@ -1659,33 +1650,24 @@ public static class SemanticCombatDrawEngineV111
                 return beforeNext;
             }
             var resumedDraw = resumedEffectDraw.Run;
-            int remaining;
-            if (state.AutomaticHandDraw &&
-                resumedDraw.World?.Combat is
-                    { PendingChoice: null,
-                      PendingKnowledgeDemonChoice: null,
-                      SemanticDeck: { Pending: null } } completedChildDraw &&
-                TryGetAutomaticSemanticHandDrawProgress(
-                    completedChildDraw, out int requestedCount,
-                    out int savedRemaining))
-            {
-                var handDraw = PrototypeGameEngine
-                    .ResumeSemanticAutomaticHandDraw(
-                        resumedDraw, savedRemaining);
-                if (handDraw.RequireRequestedCount() != requestedCount)
-                    throw new InvalidDataException(
-                        "Nested effect draw changed the active hand-draw request.");
-                resumedDraw = handDraw.Run;
-                remaining = handDraw.RemainingCount;
-            }
+            PrototypeDrawCardsResumeResultV111 drawProgress;
+            if (state.AutomaticHandDraw)
+                drawProgress = PrototypeGameEngine
+                    .ResumeSemanticAutomaticHandDrawAfterNestedChoice(
+                        state.Run, resumedDraw,
+                        resumedEffectDraw.Boundary,
+                        "effect draw", state.RequestedCount,
+                        state.RemainingCount);
             else
-                remaining = state.AutomaticHandDraw
-                    ? GetAutomaticHandDrawRemainingCount(resumedDraw)
-                    : PrototypeGameEngine.GetSemanticDrawRemainingCount(
+            {
+                int remaining =
+                    PrototypeGameEngine.GetSemanticDrawRemainingCount(
                         resumedDraw, state.RemainingCount,
                         combat.CounterState.CardsDrawnThisCombat);
-            var drawProgress = new PrototypeDrawCardsResumeResultV111(
-                resumedDraw, remaining);
+                drawProgress = new PrototypeDrawCardsResumeResultV111(
+                    resumedDraw, remaining,
+                    PipelineBoundary: resumedEffectDraw.Boundary);
+            }
             var drawNext = PublishDrawProgress(state, drawProgress);
             drawNext = RecordNewSemanticDrawChoices(state, drawNext);
             Validate(drawNext);
@@ -1739,14 +1721,9 @@ public static class SemanticCombatDrawEngineV111
                 { Stage: "position" })
                 throw new InvalidDataException(
                     "Semantic generated-card choice did not advance to its insertion ticket.");
-            int remaining = GetAutomaticHandDrawRemainingCount(resumed.Run);
-            progress = PrototypeDrawCardsResumeResultV111.ForHandDraw(
-                resumed.Run, state.RequestedCount, remaining,
-                resumed.PipelineBoundary);
         }
-        else
-            progress = ResumeNestedAutomaticHandDraw(
-                state, resumed, "Generated-card");
+        progress = ResumeNestedAutomaticHandDraw(
+            state, resumed, "Generated-card");
 
         progress = progress.EnsurePipelineBoundary();
         var next = PublishDrawProgress(state, progress) with
@@ -2005,25 +1982,6 @@ public static class SemanticCombatDrawEngineV111
             state, next);
         Validate(nextWithChronology);
         return nextWithChronology;
-    }
-
-    private static int GetAutomaticHandDrawRemainingCount(RunState run)
-    {
-        var combat = run.World?.Combat ?? throw new InvalidDataException(
-            "Automatic semantic hand-draw resume removed combat.");
-        if (TryGetAutomaticSemanticHandDrawProgress(
-                combat, out _, out int remaining))
-            return remaining;
-        var cursor = combat.AutomaticPipelineContinuation;
-        if (cursor is not null &&
-            (cursor.Stochastic.IsAtSemanticBeforeHandDraw(
-                 cursor.Mechanics) ||
-             cursor.Mechanics.IsImmediatelyAfterStep(
-                 PrototypeAutomaticStepKind.DrawPlayerHand)) &&
-            !cursor.Stochastic.HasSavedHandDrawProgress())
-            return 0;
-        throw new InvalidDataException(
-            "Automatic semantic hand-draw resume lost its cursor.");
     }
 
     public static SemanticCombatDrawV111 ResolveTarget(

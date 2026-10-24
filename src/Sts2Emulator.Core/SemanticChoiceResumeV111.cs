@@ -75,7 +75,9 @@ internal static class SemanticChoiceResumeV111
             PrototypeGameEngine.IsSemanticAutomaticHandDraw(
                 automaticCombat))
             progress = PrototypeGameEngine
-                .ResumeSemanticAutomaticHandDraw(run, remainingCount);
+                .ResumeSemanticAutomaticHandDrawAfterNestedChoice(
+                    checkpoint, run, null, "draw segment",
+                    expectedSourceRemaining: remainingCount);
         else
             progress = ControlledChanceGuardV111.ExecuteGuarded(
                 () => PrototypeGameEngine.BeginSemanticCombatDraw(
@@ -156,14 +158,10 @@ internal static class SemanticChoiceResumeV111
                     PipelineBoundary: selected.PipelineBoundary)
                 .EnsurePipelineBoundary(), decision);
 
-        if (!PrototypeGameEngine.IsSemanticAutomaticHandDraw(
-                selectedRun.World?.Combat ?? throw new InvalidDataException(
-                    "Automatic Stratagem selection removed combat.")))
-            throw new InvalidDataException(
-                "Automatic Stratagem selection lost its pipeline cursor.");
-        var resumed =
-            PrototypeGameEngine.ResumeSemanticAutomaticHandDraw(
-                selectedRun, remaining);
+        var resumed = PrototypeGameEngine
+            .ResumeSemanticAutomaticHandDrawAfterNestedChoice(
+                checkpoint, selectedRun, selected.PipelineBoundary,
+                "Stratagem selection", expectedSourceRemaining: remaining);
         return (resumed.EnsurePipelineBoundary(), decision);
     }
 
