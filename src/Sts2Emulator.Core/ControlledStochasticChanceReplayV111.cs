@@ -472,7 +472,7 @@ internal sealed class ControlledStochasticChanceReplayV111 :
         ArgumentNullException.ThrowIfNull(request);
         var decision = Active.Value?._lastDecision;
         if (decision?.IndexDecision is not { } index ||
-            !SameRequest(index.Request, request))
+            !RequestsMatch(index.Request, request))
             return null;
         if (index.SelectedIndex != selectedIndex)
             throw new InvalidDataException(
@@ -518,7 +518,7 @@ internal sealed class ControlledStochasticChanceReplayV111 :
             ControlledStochasticRequestV111.FromIndex(request),
             active._candidateLabels);
         if (expected.IndexDecision is not { } index ||
-            !SameRequest(index.Request, request))
+            !RequestsMatch(index.Request, request))
             throw new InvalidDataException(
                 "Typed stochastic replay diverged from its saved index request.");
         var resolved = new RandomIndexDecisionV111(
@@ -542,7 +542,7 @@ internal sealed class ControlledStochasticChanceReplayV111 :
         var expected = active.Take(
             ControlledStochasticRequestV111.FromUnitFloat(request), null);
         if (expected.UnitFloatDecision is not { } unitFloat ||
-            !SameRequest(unitFloat.Request, request))
+            !RequestsMatch(unitFloat.Request, request))
             throw new InvalidDataException(
                 "Typed stochastic replay diverged from its saved unit-float request.");
         var resolved = new RandomUnitFloatDecisionV111(
@@ -563,7 +563,7 @@ internal sealed class ControlledStochasticChanceReplayV111 :
         var expected = active.Take(
             ControlledStochasticRequestV111.FromRangedFloat(request), null);
         if (expected.RangedFloatDecision is not { } rangedFloat ||
-            !SameRequest(rangedFloat.Request, request))
+            !RequestsMatch(rangedFloat.Request, request))
             throw new InvalidDataException(
                 "Typed stochastic replay diverged from its saved ranged-float request.");
         var resolved = new RandomRangedFloatDecisionV111(
@@ -584,7 +584,7 @@ internal sealed class ControlledStochasticChanceReplayV111 :
         var expected = active.Take(
             ControlledStochasticRequestV111.FromRangedDouble(request), null);
         if (expected.RangedDoubleDecision is not { } rangedDouble ||
-            !SameRequest(rangedDouble.Request, request))
+            !RequestsMatch(rangedDouble.Request, request))
             throw new InvalidDataException(
                 "Typed stochastic replay diverged from its saved ranged-double request.");
         var resolved = new RandomRangedDoubleDecisionV111(
@@ -605,7 +605,7 @@ internal sealed class ControlledStochasticChanceReplayV111 :
         var expected = active.Take(
             ControlledStochasticRequestV111.FromGaussianInt(request), null);
         if (expected.GaussianIntDecision is not { } gaussianInt ||
-            !SameRequest(gaussianInt.Request, request))
+            !RequestsMatch(gaussianInt.Request, request))
             throw new InvalidDataException(
                 "Typed stochastic replay diverged from its saved Gaussian-integer request.");
         var resolved = new RandomGaussianIntDecisionV111(
@@ -626,7 +626,7 @@ internal sealed class ControlledStochasticChanceReplayV111 :
         var expected = active.Take(
             ControlledStochasticRequestV111.FromGaussianDouble(request), null);
         if (expected.GaussianDoubleDecision is not { } gaussianDouble ||
-            !SameRequest(gaussianDouble.Request, request))
+            !RequestsMatch(gaussianDouble.Request, request))
             throw new InvalidDataException(
                 "Typed stochastic replay diverged from its saved Gaussian-double request.");
         var resolved = new RandomGaussianDoubleDecisionV111(
@@ -758,86 +758,14 @@ internal sealed class ControlledStochasticChanceReplayV111 :
         public void Dispose() { }
     }
 
+    /// <summary>Canonical equality for complete serialized request identity.</summary>
+    internal static bool RequestsMatch<TRequest>(
+        TRequest? left, TRequest? right) where TRequest : class =>
+        left is null ? right is null : right is not null &&
+        CanonicalJson.Sha256(left) == CanonicalJson.Sha256(right);
+
     internal static bool SameRequest(
         ControlledStochasticRequestV111 left,
-        ControlledStochasticRequestV111 right)
-    {
-        if (left.IndexRequest is not null || right.IndexRequest is not null)
-            return left.IndexRequest is { } a && right.IndexRequest is { } b &&
-                SameRequest(a, b);
-        if (left.UnitFloatRequest is not null || right.UnitFloatRequest is not null)
-            return left.UnitFloatRequest is { } a &&
-                right.UnitFloatRequest is { } b && SameRequest(a, b);
-        if (left.RangedFloatRequest is not null ||
-            right.RangedFloatRequest is not null)
-            return left.RangedFloatRequest is { } a &&
-                right.RangedFloatRequest is { } b && SameRequest(a, b);
-        if (left.RangedDoubleRequest is not null ||
-            right.RangedDoubleRequest is not null)
-            return left.RangedDoubleRequest is { } a &&
-                right.RangedDoubleRequest is { } b && SameRequest(a, b);
-        if (left.GaussianIntRequest is not null ||
-            right.GaussianIntRequest is not null)
-            return left.GaussianIntRequest is { } a &&
-                right.GaussianIntRequest is { } b && SameRequest(a, b);
-        return left.GaussianDoubleRequest is { } leftGaussian &&
-            right.GaussianDoubleRequest is { } rightGaussian &&
-            SameRequest(leftGaussian, rightGaussian);
-    }
-
-    private static bool SameRequest(
-        RandomIndexRequestV111 left, RandomIndexRequestV111 right) =>
-        left.SiteId == right.SiteId && left.StreamId == right.StreamId &&
-        left.OwnerId == right.OwnerId && left.Ordinal == right.Ordinal &&
-        left.SourceVersion == right.SourceVersion &&
-        left.OperationKind == right.OperationKind &&
-        left.BoundedCount == right.BoundedCount &&
-        left.OrderedCandidates.SequenceEqual(right.OrderedCandidates);
-
-    private static bool SameRequest(
-        RandomUnitFloatRequestV111 left,
-        RandomUnitFloatRequestV111 right) =>
-        left.SiteId == right.SiteId && left.StreamId == right.StreamId &&
-        left.OwnerId == right.OwnerId && left.Ordinal == right.Ordinal &&
-        left.SourceVersion == right.SourceVersion;
-
-    private static bool SameRequest(
-        RandomRangedFloatRequestV111 left,
-        RandomRangedFloatRequestV111 right) =>
-        left.SiteId == right.SiteId && left.StreamId == right.StreamId &&
-        left.OwnerId == right.OwnerId && left.Ordinal == right.Ordinal &&
-        left.MinInclusive == right.MinInclusive &&
-        left.MaxInclusive == right.MaxInclusive &&
-        left.SourceVersion == right.SourceVersion;
-
-    private static bool SameRequest(
-        RandomRangedDoubleRequestV111 left,
-        RandomRangedDoubleRequestV111 right) =>
-        left.SiteId == right.SiteId && left.StreamId == right.StreamId &&
-        left.OwnerId == right.OwnerId && left.Ordinal == right.Ordinal &&
-        left.MinInclusive == right.MinInclusive &&
-        left.MaxInclusive == right.MaxInclusive &&
-        left.SourceVersion == right.SourceVersion;
-
-    private static bool SameRequest(
-        RandomGaussianIntRequestV111 left,
-        RandomGaussianIntRequestV111 right) =>
-        left.SiteId == right.SiteId && left.StreamId == right.StreamId &&
-        left.OwnerId == right.OwnerId && left.Ordinal == right.Ordinal &&
-        left.Mean == right.Mean &&
-        left.StandardDeviation == right.StandardDeviation &&
-        left.MinInclusive == right.MinInclusive &&
-        left.MaxInclusive == right.MaxInclusive &&
-        left.SourceVersion == right.SourceVersion;
-
-    private static bool SameRequest(
-        RandomGaussianDoubleRequestV111 left,
-        RandomGaussianDoubleRequestV111 right) =>
-        left.SiteId == right.SiteId && left.StreamId == right.StreamId &&
-        left.OwnerId == right.OwnerId && left.Ordinal == right.Ordinal &&
-        left.Mean == right.Mean &&
-        left.StandardDeviation == right.StandardDeviation &&
-        left.MinInclusive == right.MinInclusive &&
-        left.MaxInclusive == right.MaxInclusive &&
-        left.SourceVersion == right.SourceVersion;
+        ControlledStochasticRequestV111 right) =>
+        RequestsMatch(left, right);
 }

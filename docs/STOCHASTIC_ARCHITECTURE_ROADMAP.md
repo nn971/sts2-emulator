@@ -2,6 +2,16 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 canonical typed-request identity increment (2026-10-24):**
+`ControlledStochasticChanceReplayV111` now owns complete serialized request
+matching for every typed request and the mixed request envelope. Its previous
+per-type field comparators were removed from both controlled replay and
+`ScriptedRandomBoundaryProviderV111`; replay's existing `SameRequest` and
+`ControlledChanceContinuationExecutorV111.RequestsMatch` entry points delegate
+to the canonical matcher. Request identity now has one implementation across
+typed replay, scripted replay, and continuation facades. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S4 guarded hand-draw completion owner increment (2026-10-24):** A clean
 guarded `DrawPlayerHand` source result now completes through the existing
 `CompleteAutomaticHandDrawStage` owner. This shares after-hand power cleanup

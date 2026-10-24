@@ -41,7 +41,8 @@ public sealed class ScriptedRandomBoundaryProviderV111 :
         ArgumentNullException.ThrowIfNull(streams);
         request.Validate();
         var (entry, expected) = Read<RandomBoundaryEventV111>("index");
-        if (!SameRequest(request, expected.Request))
+        if (!ControlledStochasticChanceReplayV111.RequestsMatch(
+                request, expected.Request))
             throw RequestMismatch(entry);
         var result = new RandomIndexDecisionV111(
             request with
@@ -66,7 +67,8 @@ public sealed class ScriptedRandomBoundaryProviderV111 :
         request.Validate();
         var (entry, expected) = Read<RandomUnitFloatBoundaryEventV111>(
             "unit_float");
-        if (!SameRequest(request, expected.Request))
+        if (!ControlledStochasticChanceReplayV111.RequestsMatch(
+                request, expected.Request))
             throw RequestMismatch(entry);
         var result = new RandomUnitFloatDecisionV111(
             request with { }, expected.SelectedValue, Mode);
@@ -84,7 +86,8 @@ public sealed class ScriptedRandomBoundaryProviderV111 :
         request.Validate();
         var (entry, expected) = Read<RandomRangedFloatBoundaryEventV111>(
             "ranged_float");
-        if (!SameRequest(request, expected.Request))
+        if (!ControlledStochasticChanceReplayV111.RequestsMatch(
+                request, expected.Request))
             throw RequestMismatch(entry);
         var result = new RandomRangedFloatDecisionV111(
             request with { }, expected.SelectedValue, Mode);
@@ -102,7 +105,8 @@ public sealed class ScriptedRandomBoundaryProviderV111 :
         request.Validate();
         var (entry, expected) = Read<RandomRangedDoubleBoundaryEventV111>(
             "ranged_double");
-        if (!SameRequest(request, expected.Request))
+        if (!ControlledStochasticChanceReplayV111.RequestsMatch(
+                request, expected.Request))
             throw RequestMismatch(entry);
         var result = new RandomRangedDoubleDecisionV111(
             request with { }, expected.SelectedValue, Mode);
@@ -120,7 +124,8 @@ public sealed class ScriptedRandomBoundaryProviderV111 :
         request.Validate();
         var (entry, expected) = Read<RandomGaussianIntBoundaryEventV111>(
             "gaussian_int");
-        if (!SameRequest(request, expected.Request))
+        if (!ControlledStochasticChanceReplayV111.RequestsMatch(
+                request, expected.Request))
             throw RequestMismatch(entry);
         var result = new RandomGaussianIntDecisionV111(
             request with { }, expected.SelectedValue, Mode);
@@ -138,7 +143,8 @@ public sealed class ScriptedRandomBoundaryProviderV111 :
         request.Validate();
         var (entry, expected) = Read<RandomGaussianDoubleBoundaryEventV111>(
             "gaussian_double");
-        if (!SameRequest(request, expected.Request))
+        if (!ControlledStochasticChanceReplayV111.RequestsMatch(
+                request, expected.Request))
             throw RequestMismatch(entry);
         var result = new RandomGaussianDoubleDecisionV111(
             request with { }, expected.SelectedValue, Mode);
@@ -185,59 +191,4 @@ public sealed class ScriptedRandomBoundaryProviderV111 :
         "Scripted random-boundary request mismatch at entry " +
         (entry.Sequence - 1) + ".");
 
-    private static bool SameRequest(
-        RandomIndexRequestV111 left, RandomIndexRequestV111 right) =>
-        left.SiteId == right.SiteId && left.StreamId == right.StreamId &&
-        left.OwnerId == right.OwnerId && left.Ordinal == right.Ordinal &&
-        left.SourceVersion == right.SourceVersion &&
-        left.OperationKind == right.OperationKind &&
-        left.BoundedCount == right.BoundedCount &&
-        left.OrderedCandidates.SequenceEqual(right.OrderedCandidates);
-
-    private static bool SameRequest(
-        RandomUnitFloatRequestV111 left,
-        RandomUnitFloatRequestV111 right) =>
-        left.SiteId == right.SiteId && left.StreamId == right.StreamId &&
-        left.OwnerId == right.OwnerId && left.Ordinal == right.Ordinal &&
-        left.SourceVersion == right.SourceVersion;
-
-    private static bool SameRequest(
-        RandomRangedFloatRequestV111 left,
-        RandomRangedFloatRequestV111 right) =>
-        left.SiteId == right.SiteId && left.StreamId == right.StreamId &&
-        left.OwnerId == right.OwnerId && left.Ordinal == right.Ordinal &&
-        left.MinInclusive == right.MinInclusive &&
-        left.MaxInclusive == right.MaxInclusive &&
-        left.SourceVersion == right.SourceVersion;
-
-    private static bool SameRequest(
-        RandomRangedDoubleRequestV111 left,
-        RandomRangedDoubleRequestV111 right) =>
-        left.SiteId == right.SiteId && left.StreamId == right.StreamId &&
-        left.OwnerId == right.OwnerId && left.Ordinal == right.Ordinal &&
-        left.MinInclusive == right.MinInclusive &&
-        left.MaxInclusive == right.MaxInclusive &&
-        left.SourceVersion == right.SourceVersion;
-
-    private static bool SameRequest(
-        RandomGaussianIntRequestV111 left,
-        RandomGaussianIntRequestV111 right) =>
-        left.SiteId == right.SiteId && left.StreamId == right.StreamId &&
-        left.OwnerId == right.OwnerId && left.Ordinal == right.Ordinal &&
-        left.Mean == right.Mean &&
-        left.StandardDeviation == right.StandardDeviation &&
-        left.MinInclusive == right.MinInclusive &&
-        left.MaxInclusive == right.MaxInclusive &&
-        left.SourceVersion == right.SourceVersion;
-
-    private static bool SameRequest(
-        RandomGaussianDoubleRequestV111 left,
-        RandomGaussianDoubleRequestV111 right) =>
-        left.SiteId == right.SiteId && left.StreamId == right.StreamId &&
-        left.OwnerId == right.OwnerId && left.Ordinal == right.Ordinal &&
-        left.Mean == right.Mean &&
-        left.StandardDeviation == right.StandardDeviation &&
-        left.MinInclusive == right.MinInclusive &&
-        left.MaxInclusive == right.MaxInclusive &&
-        left.SourceVersion == right.SourceVersion;
 }

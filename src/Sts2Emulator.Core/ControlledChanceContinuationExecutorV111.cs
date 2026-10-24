@@ -50,8 +50,7 @@ internal static class ControlledChanceContinuationExecutorV111
 {
     internal static bool RequestsMatch<TRequest>(
         TRequest? left, TRequest? right) where TRequest : class =>
-        left is null ? right is null : right is not null &&
-        CanonicalJson.Sha256(left) == CanonicalJson.Sha256(right);
+        ControlledStochasticChanceReplayV111.RequestsMatch(left, right);
 
     internal static bool CandidateLabelsMatch(
         string[]? left, string[]? right) =>
