@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 Native combat-entry Chance Law ownership increment (2026-10-24):**
+Encounter-formation, unique-monster-HP, and Tough Egg hatch-HP queries, plus
+canonical creature-owner validation, now live in
+`ChanceLawCombatEntryV111.cs`. The generic Native bounded-index router and
+shared grid construction remain in core. Public query APIs, supports, and
+schemas are unchanged. Static source review and `git diff --check` only; no
+tests or builds were run.
+
 **S3 legacy Shop Chance Law ownership increment (2026-10-24):** The five
 legacy Shop rarity/model and price queries, plus the retained legacy merchant
 request-index law, now live with Native merchant laws in
