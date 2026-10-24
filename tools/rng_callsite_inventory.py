@@ -3,10 +3,10 @@
 
 This is a source inventory aid, not a source-to-game completeness proof. It
 reports each direct provider expression, high-level MapRandom calls from the
-modeled map generators, and direct NativePlayerRngV111 adapter calls with their
-file and line so manual site audits can be linked to a stable matrix row.
-Other indirect delegates and mechanics hidden behind called helpers still
-require manual tracing.
+modeled map generators, and direct NativePlayerRngV111 and
+LegacyRandomChoiceV111 adapter calls with their file and line so manual site
+audits can be linked to a stable matrix row. Other indirect delegates and
+mechanics hidden behind called helpers still require manual tracing.
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ from urllib.parse import unquote, urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v48"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v49"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 TYPE_SOURCE_DECLARATION_PATTERN = re.compile(
     r"\b(?:class|record|struct)\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\b"
@@ -32,10 +32,11 @@ _SOURCE_CLASS_CONTENTS: dict[str, tuple[str, ...]] | None = None
 
 CALL_PATTERN = re.compile(
     r"\b(?P<api>PrototypeRng|NativeRngV111|NativeFisherYatesV111|"
-    r"NativePlayerRngV111)"
+    r"NativePlayerRngV111|LegacyRandomChoiceV111)"
     r"\.(?P<operation>NextInt|NextBool|NextFloat|NextDouble|"
     r"NextGaussianInt|NextGaussianDouble|Shuffle|ShuffleInPlace|Execute|"
     r"NextItem|NextUnitFloat|NextUnitFloatDecision|ChooseIndex|"
+    r"ChooseIndexRange|"
     r"ChooseIndexDecision|ChooseBoundedInteger|"
     r"ChooseBoundedIntegerDecision)"
     r"\s*\("
@@ -189,7 +190,7 @@ def _call_arguments(source: str, call_start: int) -> list[str]:
 
 def _site_id_argument(api: str, operation: str,
                       arguments: list[str]) -> str | None:
-    if api == "NativePlayerRngV111":
+    if api in ("NativePlayerRngV111", "LegacyRandomChoiceV111"):
         for argument in arguments:
             named = re.match(r"siteId\s*:\s*(.+)$", argument, re.DOTALL)
             if named:
@@ -898,6 +899,235 @@ def _resolve_member_site_values(
     return _resolve_site_values(
         expression, local_constants, global_constants
     )
+
+
+def _method_parameters(
+    source: str, offset: int
+) -> tuple[int, str, list[str], int, int] | None:
+    member_start, member_end = _containing_member_bounds(source, offset)
+    body_start = source.find("{", member_start, member_end)
+    expression_body_start = source.find("=>", member_start, member_end)
+    if expression_body_start >= 0 and (
+        body_start < 0 or expression_body_start < body_start
+    ):
+        body_start = expression_body_start
+    if body_start < 0:
+        return None
+    header = source[member_start:body_start].rstrip()
+    signature = re.search(
+        r"(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*\(\s*"
+        r"(?P<parameters>[^()]*)\)\s*$",
+        header,
+        re.DOTALL,
+    )
+    if signature is None:
+        return None
+    parameter_names: list[str] = []
+    for parameter in _split_call_arguments(
+        signature.group("parameters")
+    ):
+        parameter = parameter.split("=", 1)[0].strip()
+        name = re.search(r"([A-Za-z_][A-Za-z0-9_]*)\s*$", parameter)
+        if name is None:
+            return None
+        parameter_names.append(name.group(1))
+    return (
+        member_start, signature.group("name"), parameter_names,
+        member_start + signature.start("name"),
+        member_start + body_start,
+    )
+
+
+def _split_string_concatenation(expression: str) -> list[str]:
+    parts: list[str] = []
+    start = 0
+    depth = {"(": 0, "[": 0, "{": 0}
+    closing = {")": "(", "]": "[", "}": "{"}
+    in_string = False
+    escaped = False
+    for index, character in enumerate(expression):
+        if in_string:
+            if escaped:
+                escaped = False
+            elif character == "\\":
+                escaped = True
+            elif character == '"':
+                in_string = False
+            continue
+        if character == '"':
+            in_string = True
+        elif character in depth:
+            depth[character] += 1
+        elif character in closing:
+            depth[closing[character]] -= 1
+        elif character == "+" and not any(depth.values()):
+            parts.append(expression[start:index].strip())
+            start = index + 1
+    if not parts:
+        return []
+    parts.append(expression[start:].strip())
+    return parts
+
+
+def _resolve_forwarded_site_expression(
+    sources: dict[Path, str],
+    path: Path,
+    source: str,
+    offset: int,
+    expression: str,
+    global_constants: dict[str, set[str]],
+    active: frozenset[tuple[str, str, int, int]] = frozenset(),
+) -> list[str]:
+    expression = expression.strip()
+    local_constants = _method_string_constants(
+        source, offset, global_constants
+    )
+    branches = _conditional_site_branches(expression)
+    if branches is not None:
+        values: set[str] = set()
+        for branch in branches:
+            resolved = _resolve_forwarded_site_expression(
+                sources, path, source, offset, branch,
+                global_constants, active,
+            )
+            if not resolved:
+                return []
+            values.update(resolved)
+        return sorted(values)
+
+    interpolation = re.fullmatch(r'\$"(?P<body>(?:[^"\\]|\\.)*)"',
+                                 expression, re.DOTALL)
+    if interpolation is not None:
+        values = {""}
+        body = interpolation.group("body")
+        tokens = re.split(r"(\{[A-Za-z_][A-Za-z0-9_]*\})", body)
+        for token in tokens:
+            if not token:
+                continue
+            if token.startswith("{") and token.endswith("}"):
+                parameter = token[1:-1]
+                options = _resolve_forwarded_site_expression(
+                    sources, path, source, offset, parameter,
+                    global_constants, active,
+                )
+                if not options:
+                    return []
+                values = {
+                    prefix + option
+                    for prefix in values for option in options
+                }
+            else:
+                values = {prefix + token for prefix in values}
+        return sorted(values)
+
+    concatenation = _split_string_concatenation(expression)
+    if concatenation:
+        values = {""}
+        for part in concatenation:
+            options = _resolve_forwarded_site_expression(
+                sources, path, source, offset, part,
+                global_constants, active,
+            )
+            if not options:
+                return []
+            values = {
+                prefix + option
+                for prefix in values for option in options
+            }
+        return sorted(values)
+
+    direct = _resolve_member_site_values(
+        source, offset, expression, local_constants, global_constants
+    )
+    if direct:
+        return direct
+
+    identifier = re.fullmatch(
+        r"[A-Za-z_][A-Za-z0-9_]*", re.sub(r"\s+", "", expression)
+    )
+    if identifier is None:
+        return []
+    name = identifier.group(0)
+    member_start, member_end = _containing_member_bounds(source, offset)
+    member_prefix = source[member_start:offset]
+    local_declarations = list(re.finditer(
+        rf"\b(?:var|string)\s+{re.escape(name)}\s*=\s*(?P<value>[^;]+);",
+        member_prefix,
+    ))
+    if local_declarations:
+        if len(local_declarations) != 1:
+            return []
+        declaration = local_declarations[0]
+        declaration_end = member_start + declaration.end()
+        remainder = source[declaration_end:member_end]
+        if re.search(rf"\b{re.escape(name)}\s*=(?!=)", remainder):
+            return []
+        return _resolve_forwarded_site_expression(
+            sources, path, source,
+            member_start + declaration.start("value"),
+            declaration.group("value"), global_constants, active,
+        )
+
+    signature = _method_parameters(source, offset)
+    if signature is None:
+        return []
+    (member_start, method_name, parameter_names, declaration_name,
+     declaration_body) = signature
+    if name not in parameter_names:
+        return []
+    parameter_index = parameter_names.index(name)
+    identity = (
+        str(path), method_name, len(parameter_names), parameter_index
+    )
+    if identity in active:
+        return []
+    method_type = _nearest_type_name(source, offset)
+    candidate_sources = sources.items()
+    if method_type != "PrototypeGameEngine":
+        candidate_sources = ((path, source),)
+    call_pattern = re.compile(
+        rf"\b{re.escape(method_name)}\s*\("
+    )
+    values: set[str] = set()
+    saw_call = False
+    for caller_path, caller_source in candidate_sources:
+        for call in call_pattern.finditer(caller_source):
+            caller_member_start, caller_member_end = \
+                _containing_member_bounds(caller_source, call.start())
+            caller_body_start = caller_source.find(
+                "{", caller_member_start, caller_member_end
+            )
+            caller_expression_body_start = caller_source.find(
+                "=>", caller_member_start, caller_member_end
+            )
+            if caller_expression_body_start >= 0 and (
+                caller_body_start < 0 or
+                caller_expression_body_start < caller_body_start
+            ):
+                caller_body_start = caller_expression_body_start
+            if caller_body_start >= 0 and call.start() < caller_body_start:
+                continue
+            if (method_type == "PrototypeGameEngine" and
+                    _nearest_type_name(caller_source, call.start()) !=
+                    method_type):
+                continue
+            arguments = _call_arguments(caller_source, call.start())
+            if len(arguments) != len(parameter_names):
+                continue
+            argument = arguments[parameter_index].strip()
+            named = re.match(r"[A-Za-z_][A-Za-z0-9_]*\s*:\s*(.*)$",
+                             argument, re.DOTALL)
+            if named is not None:
+                argument = named.group(1).strip()
+            resolved = _resolve_forwarded_site_expression(
+                sources, caller_path, caller_source, call.start(), argument,
+                global_constants, active | {identity},
+            )
+            if not resolved:
+                return []
+            saw_call = True
+            values.update(resolved)
+    return sorted(values) if saw_call else []
 
 
 def _dictionary_site_values(
@@ -2715,6 +2945,7 @@ def collect() -> dict[str, Any]:
                     "NativeRngV111": "native_primitive_api",
                     "NativeFisherYatesV111": "native_shuffle_mechanics",
                     "NativePlayerRngV111": "native_player_rng_adapter",
+                    "LegacyRandomChoiceV111": "legacy_random_choice_adapter",
                 }[api]
                 filename = path.name
                 if filename in {
@@ -2732,6 +2963,8 @@ def collect() -> dict[str, Any]:
                     review_status = "typed_provider_shuffle_mechanics_boundary"
                 elif api == "NativePlayerRngV111":
                     review_status = "native_player_rng_adapter_callsite"
+                elif api == "LegacyRandomChoiceV111":
+                    review_status = "legacy_random_choice_adapter_callsite"
                 else:
                     review_status = "native_primitive_callsite_needs_site_review"
                 arguments = _call_arguments(
@@ -2753,6 +2986,14 @@ def collect() -> dict[str, Any]:
                         ),
                         string_constants,
                     )
+                    if api == "LegacyRandomChoiceV111":
+                        forwarded_values = _resolve_forwarded_site_expression(
+                            sources, path, source,
+                            source_offset + match.start(), site_expression,
+                            string_constants,
+                        )
+                        if forwarded_values:
+                            site_values = forwarded_values
                     if not site_values:
                         site_values = _guarded_site_values(
                             source, source_offset + match.start(),
@@ -2771,7 +3012,21 @@ def collect() -> dict[str, Any]:
                     site_value = (
                         site_values[0] if len(site_values) == 1 else None
                     )
-                if api in ("NativeFisherYatesV111", "NativePlayerRngV111"):
+                matrix_site_values = [
+                    value[:-len(".component")]
+                    if api == "LegacyRandomChoiceV111" and
+                        value.endswith(".component") and
+                        value[:-len(".component")] in matrix_site_ids
+                    else value
+                    for value in site_values
+                ]
+                gaussian_component_parent_mapping = (
+                    matrix_site_values != site_values
+                )
+                if api in (
+                    "NativeFisherYatesV111", "NativePlayerRngV111",
+                    "LegacyRandomChoiceV111",
+                ):
                     if site_expression is None:
                         review_status = "site_id_argument_missing"
                     elif site_values:
@@ -2782,13 +3037,18 @@ def collect() -> dict[str, Any]:
                             "shuffle_site_id_resolved"
                             if api == "NativeFisherYatesV111" else
                             "native_player_rng_site_id_resolved"
+                            if api == "NativePlayerRngV111" else
+                            "legacy_gaussian_component_mapped_to_parent"
+                            if gaussian_component_parent_mapping else
+                            "legacy_random_choice_site_id_resolved"
                         )
                     else:
                         review_status = "site_id_is_dynamic_or_unresolved"
                     matrix_status = (
                         "mapped"
                         if site_values and all(
-                            value in matrix_site_ids for value in site_values
+                            value in matrix_site_ids
+                            for value in matrix_site_values
                         )
                         else "unmapped"
                         if site_values
@@ -2809,6 +3069,7 @@ def collect() -> dict[str, Any]:
                         "site_id_argument": site_expression,
                         "site_id_value": site_value,
                         "site_id_values": site_values,
+                        "matrix_site_id_values": matrix_site_values,
                         "matrix_row_status": matrix_status,
                         "source_excerpt": line.strip(),
                     }
@@ -2920,13 +3181,36 @@ def collect() -> dict[str, Any]:
             if entry["matrix_row_status"] != "mapped"
         ],
     }
+    legacy_random_choice_calls = [
+        entry for entry in entries
+        if entry["category"] == "legacy_random_choice_adapter"
+    ]
+    legacy_random_choice_callsite_coverage = {
+        "call_count": len(legacy_random_choice_calls),
+        "mapped_call_count": sum(
+            entry["matrix_row_status"] == "mapped"
+            for entry in legacy_random_choice_calls
+        ),
+        "unmapped_calls": [
+            {
+                "path": entry["path"],
+                "line": entry["line"],
+                "operation": entry["operation"],
+                "site_id_argument": entry["site_id_argument"],
+                "matrix_row_status": entry["matrix_row_status"],
+            }
+            for entry in legacy_random_choice_calls
+            if entry["matrix_row_status"] != "mapped"
+        ],
+    }
 
     return {
         "schema_id": SCHEMA_ID,
         "scope": (
             "Direct qualified calls to PrototypeRng, NativeRngV111, and "
             "NativeFisherYatesV111 in Sts2Emulator.Core, direct calls through "
-            "NativePlayerRngV111, and source callsites to the private MapRandom "
+            "NativePlayerRngV111, LegacyRandomChoiceV111, and source callsites "
+            "to the private MapRandom "
             "adapters in the two modeled Native map generators. This does not "
             "include other indirect delegates, "
             "random provider interfaces, third-party/native source callsites, "
@@ -2972,6 +3256,9 @@ def collect() -> dict[str, Any]:
         "native_player_rng_adapter_calls": native_player_rng_calls,
         "native_player_rng_adapter_callsite_coverage":
             native_player_rng_callsite_coverage,
+        "legacy_random_choice_adapter_calls": legacy_random_choice_calls,
+        "legacy_random_choice_adapter_callsite_coverage":
+            legacy_random_choice_callsite_coverage,
         "counts_by_category": counts,
         "shuffle_matrix_mapping_counts": {
             status: sum(
@@ -3053,6 +3340,12 @@ def render_markdown(report: dict[str, Any]) -> str:
         f"**{report['native_player_rng_adapter_callsite_coverage']['mapped_call_count']}/"
         f"{report['native_player_rng_adapter_callsite_coverage']['call_count']}**. "
         "These are the high-level Native index and unit-float request sites; "
+        "stream and occurrence ownership remain with their callers.",
+        "",
+        "Direct `LegacyRandomChoiceV111` callsites mapped to matrix rows: "
+        f"**{report['legacy_random_choice_adapter_callsite_coverage']['mapped_call_count']}/"
+        f"{report['legacy_random_choice_adapter_callsite_coverage']['call_count']}**. "
+        "These are Core legacy index and bounded-integer adapter calls; "
         "stream and occurrence ownership remain with their callers.",
         "",
         "Direct ad hoc entropy API expressions in Core: "
@@ -3261,6 +3554,9 @@ def main() -> int:
         native_player_callsite_coverage = report[
             "native_player_rng_adapter_callsite_coverage"
         ]
+        legacy_choice_callsite_coverage = report[
+            "legacy_random_choice_adapter_callsite_coverage"
+        ]
         if (coverage["registered_site_count"] == 0 or
                 coverage["site_ids_without_matrix_rows"] or
                 coverage["duplicate_matrix_site_ids"] or
@@ -3271,13 +3567,17 @@ def main() -> int:
                 map_callsite_coverage["call_count"] == 0 or
                 map_callsite_coverage["unmapped_calls"] or
                 native_player_callsite_coverage["call_count"] == 0 or
-                native_player_callsite_coverage["unmapped_calls"]):
+                native_player_callsite_coverage["unmapped_calls"] or
+                legacy_choice_callsite_coverage["call_count"] == 0 or
+                legacy_choice_callsite_coverage["unmapped_calls"]):
             print(json.dumps({
                 "registry_matrix_coverage": coverage,
                 "source_map_random_adapter_callsite_coverage":
                     map_callsite_coverage,
                 "native_player_rng_adapter_callsite_coverage":
                     native_player_callsite_coverage,
+                "legacy_random_choice_adapter_callsite_coverage":
+                    legacy_choice_callsite_coverage,
             }, indent=2, sort_keys=True),
                   file=sys.stderr)
             return 1

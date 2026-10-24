@@ -121,7 +121,7 @@ public sealed partial class PrototypeGameEngine
                 result,
                 result.World!.Event!,
                 PrototypeNativeStoneOfAllTime.NativeRngEventId,
-                LiftTicketSiteId,
+                PrototypeNativeStoneOfAllTime.LiftTicketSiteId,
                 "event:stone_of_all_time:lift",
                 100, ordinal: 1);
             result = draw.State;
@@ -131,7 +131,7 @@ public sealed partial class PrototypeGameEngine
             var prototypeRng = result.Stochastic.PrototypeRng;
             _ = LegacyRandomChoiceV111.ChooseBoundedInteger(
                 prototypeRng,
-                LiftTicketSiteId,
+                PrototypeNativeStoneOfAllTime.LiftTicketSiteId,
                 "event",
                 "event:stone_of_all_time:lift",
                 100);
