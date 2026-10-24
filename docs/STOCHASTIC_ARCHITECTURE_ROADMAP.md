@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 potion-generation Chance Law ownership increment (2026-10-24):**
+Generic legacy potion rarity/model laws and Native PotionFactory rarity/model
+laws, including the factory policy IDs, now live in
+`ChanceLawPotionGenerationV111.cs`. Shared threshold-grid and categorical
+helpers remain in core. Public query APIs, supports, and schemas are unchanged.
+Static source review and `git diff --check` only; no tests or builds were run.
+
 **S3 combat-reward Chance Law ownership increment (2026-10-24):** The
 legacy combat-reward card rarity/model, potion drop/model/odds, and Elite relic
 laws now live with the existing Native combat-reward relic-identity law in
