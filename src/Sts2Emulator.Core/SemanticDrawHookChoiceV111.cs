@@ -127,7 +127,7 @@ public static class SemanticDrawHookChoiceEngineV111
 
     internal static AutomaticHandDrawChildKindV111
         ClassifyAutomaticHandDrawChild(
-            CombatState combat, PendingCombatChoice choice,
+            CombatState combat, PendingCombatChoiceState choice,
             bool beforeHandDraw)
     {
         if (choice.ControlledTarget is not null)
@@ -182,8 +182,23 @@ public static class SemanticDrawHookChoiceEngineV111
         return AutomaticHandDrawChildKindV111.None;
     }
 
+    internal static AutomaticHandDrawChildKindV111
+        ClassifyAutomaticHandDrawChild(RunState run)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        if (run.World?.Combat is not { } combat ||
+            combat.PendingChoice is not { } choice)
+            return AutomaticHandDrawChildKindV111.None;
+        var cursor = combat.AutomaticPipelineContinuation;
+        bool beforeHandDraw = cursor is not null &&
+            cursor.Stochastic.IsAtSemanticBeforeHandDraw(
+                cursor.Mechanics);
+        return ClassifyAutomaticHandDrawChild(
+            combat, choice, beforeHandDraw);
+    }
+
     private static bool HasTaggedAutomaticChildChoice(
-        PendingCombatChoice choice) =>
+        PendingCombatChoiceState choice) =>
         choice.ControlledTarget is not null ||
         choice.ControlledGeneration is not null ||
         choice.ControlledPotionGeneration is not null ||

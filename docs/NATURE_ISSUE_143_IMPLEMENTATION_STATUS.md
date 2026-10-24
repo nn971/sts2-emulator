@@ -1207,3 +1207,12 @@ classification as automatic draw-hook replay for nested insertion, generation,
 selection, transform, shortlist, cost, and effect-draw boundaries. Its existing
 count checks and per-kind boundary validators remain in the draw-frame owner.
 Static source review and `git diff --check` only; no tests or builds were run.
+
+## 2026-10-25: shared draw-child event discovery classification
+
+The semantic draw frame now uses the shared stage-aware child classifier when
+discovering pending generation, potion, pool-shuffle, card-selection,
+transform, shortlist, random-cost, and insertion events, as well as nested
+semantic effect draws. The child-specific event owners still validate their
+source support. Static source review and `git diff --check` only; no tests or
+builds were run.
