@@ -141,11 +141,9 @@ public sealed record SemanticIntentOutcomeV111(
 
     public void Validate()
     {
-        Event.Validate();
-        var candidate = Event.Support.Candidates.SingleOrDefault(item =>
-            item.IntentId == IntentId);
-        if (candidate is null || SourceTicket < candidate.TicketStart ||
-            SourceTicket >= checked(candidate.TicketStart + candidate.RawWeight))
+        var candidate = SemanticIntentChoiceV111.SelectBySourceTicket(
+            Event, SourceTicket);
+        if (candidate.IntentId != IntentId)
             throw new InvalidDataException(
                 "Sampled intent ticket is outside its weighted outcome interval.");
     }
@@ -214,6 +212,21 @@ public sealed record SemanticIntentTranscriptEntryV111(
 public static class SemanticIntentChoiceV111
 {
     public const string SchemaId = "sts2-v111-semantic-intent-event-v1";
+
+    internal static SemanticIntentCandidateV111 SelectBySourceTicket(
+        SemanticIntentEventV111 pending, int sourceTicket)
+    {
+        ArgumentNullException.ThrowIfNull(pending);
+        pending.Validate();
+        if (sourceTicket < 0 ||
+            sourceTicket >= pending.Support.TotalRawWeight)
+            throw new InvalidDataException(
+                "Intent source ticket is outside its weighted support.");
+        return pending.Support.Candidates.Single(candidate =>
+            sourceTicket >= candidate.TicketStart &&
+            sourceTicket < checked(
+                candidate.TicketStart + candidate.RawWeight));
+    }
 
     internal static SemanticIntentEventV111 CreateEvent(
         string boundaryFingerprint, RandomIndexRequestV111 request,

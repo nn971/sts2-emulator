@@ -3487,10 +3487,9 @@ public sealed partial class PrototypeGameEngine
                         });
                         var semanticEvent = SemanticIntentChoiceV111.CreateEvent(
                             boundaryFingerprint, request, support);
-                        var selectedCandidate = support.Candidates.Single(
-                            candidate => result.SelectedIndex >= candidate.TicketStart &&
-                                result.SelectedIndex < checked(
-                                    candidate.TicketStart + candidate.RawWeight));
+                        var selectedCandidate = SemanticIntentChoiceV111
+                            .SelectBySourceTicket(
+                                semanticEvent, result.SelectedIndex);
                         var outcome = new SemanticIntentOutcomeV111(
                             semanticEvent, selectedCandidate.IntentId,
                             result.SelectedIndex);

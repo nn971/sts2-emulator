@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 weighted intent ticket mapping owner (2026-10-25):** Native intent
+selection and weighted-audit validation now share
+`SemanticIntentChoiceV111.SelectBySourceTicket` to map a bounded ticket to
+its weighted intent interval. The ticket remains in provider audit and the
+existing semantic event and snapshot shapes are unchanged. Static source
+review and `git diff --check` only; no tests or builds were run.
+
 **S4 shared mapping for Native cost, gold, and card-instance audits
 (2026-10-25):** Native bounded costs and combat-gold amounts now map through
 the checked bounded-offset owner; physical card-instance audits use its
