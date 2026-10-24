@@ -377,16 +377,23 @@ public sealed record SemanticEndTurnV111(
         }
     }
     [JsonIgnore] public SemanticCardShortlistEventV111?
-        CardShortlistPending => !Complete &&
-            HandDraw is not { AtBoundary: false } &&
-            PrototypeGameEngine
-                .HasPendingSupportedAutomaticPipelineSemanticCardShortlist(
-                    Run)
-            ? SemanticCardShortlistChoiceV111.DescribePending(
-                Run, Fingerprint,
-                NestedChoiceTranscript.Count(choice =>
-                    choice.Kind == "semantic_card_shortlist"))
-            : null;
+        CardShortlistPending
+    {
+        get
+        {
+            if (Complete) return null;
+            if (HandDraw is { AtBoundary: false } handDraw)
+                return handDraw.CardShortlistPending;
+            return PrototypeGameEngine
+                    .HasPendingSupportedAutomaticPipelineSemanticCardShortlist(
+                        Run)
+                ? SemanticCardShortlistChoiceV111.DescribePending(
+                    Run, Fingerprint,
+                    NestedChoiceTranscript.Count(choice =>
+                        choice.Kind == "semantic_card_shortlist"))
+                : null;
+        }
+    }
     [JsonIgnore] public SemanticPoolShuffleEventV111? PoolShufflePending
     {
         get
@@ -963,13 +970,9 @@ public static class SemanticEndTurnEngineV111
             if (selectedIndex < 0 ||
                 selectedIndex >= cardShortlist.CandidateCardInstanceIds.Length)
                 throw new ArgumentOutOfRangeException(nameof(selectedIndex));
-            var decision = SemanticCardShortlistChoiceV111.Select(
-                cardShortlist, cardShortlist.EventId,
+            state = ResolveCardShortlist(
+                state, state.Fingerprint, cardShortlist.EventId,
                 cardShortlist.CandidateCardInstanceIds[selectedIndex]);
-            var choice = new SemanticEndTurnNestedChoiceV111(
-                "semantic_card_shortlist",
-                CardShortlistDecision: decision.Fork());
-            state = ResumeNestedSemanticChoice(state, choice);
         }
         else if (state.PoolShufflePending is { } poolShuffle)
         {
@@ -1267,6 +1270,19 @@ public static class SemanticEndTurnEngineV111
                 "No automatic-pipeline card-shortlist event is pending.");
         var decision = SemanticCardShortlistChoiceV111.Select(
             pending, eventId, cardInstanceId);
+        if (source.HandDraw is { AtBoundary: false } handDraw &&
+            handDraw.CardShortlistPending is { } handDrawEvent)
+        {
+            if (CanonicalJson.Sha256(handDrawEvent) !=
+                CanonicalJson.Sha256(pending))
+                throw new InvalidDataException(
+                    "Automatic draw card-shortlist event changed during resume.");
+            var nextHand = SemanticCombatDrawEngineV111.ResolveCardShortlist(
+                handDraw, handDraw.Fingerprint, eventId, cardInstanceId);
+            var next = ContinueHandDraw(source, nextHand);
+            Validate(next);
+            return next;
+        }
         var choice = new SemanticEndTurnNestedChoiceV111(
             "semantic_card_shortlist",
             CardShortlistDecision: decision.Fork());

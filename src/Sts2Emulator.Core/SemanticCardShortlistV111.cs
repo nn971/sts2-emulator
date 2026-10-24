@@ -366,6 +366,9 @@ public static class SemanticCardShortlistChoiceV111
                 combat, shortlist))
             throw new InvalidDataException(
                 "Card shortlist is not source-reachable.");
+        bool automaticHandDrawChild = PrototypeGameEngine
+            .IsAutomaticHandDrawHookCardShortlistContinuation(
+                combat, choice!);
         ValidateBoundary(checkpoint);
         ValidateLiveSupport(combat, shortlist, decision.Event);
         var randomAutoplay = shortlist.Operation.Kind ==
@@ -387,7 +390,10 @@ public static class SemanticCardShortlistChoiceV111
                 "UNSUPPORTED_SEMANTIC_SHORTLIST " +
                 "site=combat.card_selection.random_shortlist " +
                 "operation=unsupported_post_shortlist_phase");
-        if (nextCombat.PendingChoice?.ControlledCardShortlist is not null)
+        if (automaticHandDrawChild)
+            SemanticCardSelectionEngineV111
+                .ValidateAutomaticHandDrawHookResult(resumed.Run);
+        else if (nextCombat.PendingChoice?.ControlledCardShortlist is not null)
             ValidateBoundary(resumed.Run);
         else if (nextCombat.PendingChoice?.ChoiceId == "select_cards")
             SemanticCardSelectionEngineV111.ValidatePendingBoundary(

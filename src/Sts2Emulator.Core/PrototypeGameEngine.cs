@@ -460,6 +460,36 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
               cursor.Stochastic.CompletedSemanticHandDrawRequested is null;
     }
 
+    internal static bool IsAutomaticHandDrawHookCardShortlistContinuation(
+        CombatState combat, PendingCombatChoiceState pending)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(pending);
+        if (!combat.IsPlayerTurn ||
+            combat.PendingKnowledgeDemonChoice is not null ||
+            combat.Stochastic.SemanticDeck is not
+                { Mode: SemanticDeckStateV111.NatureMode, Pending: null } ||
+            pending is not
+                { ChoiceId: "controlled_card_shortlist",
+                  ControlledCardShortlist: { } shortlist,
+                  OuterChoiceContinuation: not null } ||
+            shortlist.Operation.Kind is not (
+                PrototypeCombatEffectKind.AutoPlayRandomCardsFromZone or
+                PrototypeCombatEffectKind.EmpowerRandomDrawCardReplay) ||
+            !ValidateControlledCardShortlist(combat, shortlist) ||
+            combat.AutomaticPipelineContinuation is not { } cursor ||
+            IsAutomaticPipelineSemanticCardShortlistContinuation(
+                combat, pending))
+            return false;
+
+        return cursor.Stochastic.TryGetSemanticHandDrawProgress(
+                cursor.Mechanics, out int requested, out int remaining)
+            ? requested > 0 && remaining >= 0
+            : cursor.Stochastic.IsAtSemanticBeforeHandDraw(
+                  cursor.Mechanics) &&
+              cursor.Stochastic.CompletedSemanticHandDrawRequested is null;
+    }
+
     internal static bool IsAutomaticBeforeHandDrawHookDrawInsertionContinuation(
         CombatState combat, PendingCombatChoiceState pending)
     {

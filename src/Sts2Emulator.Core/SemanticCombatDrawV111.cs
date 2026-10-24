@@ -107,6 +107,10 @@ public sealed record SemanticCombatDrawV111(
         CardTransformPending =>
             SemanticCombatDrawEngineV111
                 .DescribePendingCardTransform(this);
+    [JsonIgnore] public SemanticCardShortlistEventV111?
+        CardShortlistPending =>
+            SemanticCombatDrawEngineV111
+                .DescribePendingCardShortlist(this);
     [JsonIgnore] public SemanticCardSelectionEventV111?
         StratagemSelectionPending =>
             SemanticCombatDrawEngineV111
@@ -157,6 +161,7 @@ public sealed record SemanticCombatDrawV111(
         PoolShufflePending is null &&
         CardSelectionPending is null &&
         CardTransformPending is null &&
+        CardShortlistPending is null &&
         StratagemSelectionPending is null &&
         DrawHookChoicePending is null && TargetPending is null &&
         CostPending is null &&
@@ -223,6 +228,14 @@ public sealed record SemanticCombatDrawV111(
             CardTransformTranscript = value
         };
     }
+    public SemanticCardShortlistDecisionV111[] CardShortlistTranscript
+    {
+        get => Stochastic.CardShortlistTranscript;
+        init => Stochastic = Stochastic with
+        {
+            CardShortlistTranscript = value
+        };
+    }
     public SemanticCardSelectionDecisionV111[] StratagemSelectionTranscript
     {
         get => Stochastic.StratagemSelectionTranscript;
@@ -285,6 +298,7 @@ public sealed record SemanticCombatDrawV111(
         var poolShufflePending = this.PoolShufflePending;
         var cardSelectionPending = this.CardSelectionPending;
         var cardTransformPending = this.CardTransformPending;
+        var cardShortlistPending = this.CardShortlistPending;
         var completedHookCursor =
             this.Run.World?.Combat?.AutomaticPipelineContinuation;
         var drawHookChoicePending = this.DrawHookChoicePending;
@@ -338,6 +352,7 @@ public sealed record SemanticCombatDrawV111(
              poolShufflePending is null &&
              cardSelectionPending is null &&
              cardTransformPending is null &&
+             cardShortlistPending is null &&
              drawHookChoicePending?.BeforeHandDraw != true &&
              !automaticBeforeHandDrawPoolShuffle &&
              !automaticBeforeHandDrawGeneratedSelection &&
@@ -496,6 +511,24 @@ public sealed record SemanticCombatDrawV111(
             pipelineCursor is not null &&
             pipelineCursor.Stochastic.IsAtSemanticBeforeHandDraw(
                 pipelineCursor.Mechanics);
+        bool automaticHandDrawCardShortlistPending =
+            this.AutomaticHandDraw && combat.PendingChoice is
+                { } activeCardShortlistChoice &&
+            PrototypeGameEngine
+                .IsAutomaticHandDrawHookCardShortlistContinuation(
+                    combat, activeCardShortlistChoice) &&
+            hasPipelineSemanticDrawProgress &&
+            pipelineRequested == this.RequestedCount &&
+            pipelineRemaining == this.RemainingCount;
+        bool automaticBeforeHandDrawCardShortlistPending =
+            this.AutomaticHandDraw && combat.PendingChoice is
+                { } beforeHandDrawCardShortlistChoice &&
+            PrototypeGameEngine
+                .IsAutomaticHandDrawHookCardShortlistContinuation(
+                    combat, beforeHandDrawCardShortlistChoice) &&
+            pipelineCursor is not null &&
+            pipelineCursor.Stochastic.IsAtSemanticBeforeHandDraw(
+                pipelineCursor.Mechanics);
         if (automaticHandDrawChildInsertionPending ||
             automaticBeforeHandDrawChildInsertionPending)
             SemanticDrawInsertionChoiceV111.ValidateBoundary(this.Run);
@@ -515,6 +548,9 @@ public sealed record SemanticCombatDrawV111(
             automaticBeforeHandDrawCardTransformPending)
             SemanticCardTransformChoiceV111.ValidateBoundary(
                 this.Run, combat.PendingChoice!.ControlledCardTransform!);
+        if (automaticHandDrawCardShortlistPending ||
+            automaticBeforeHandDrawCardShortlistPending)
+            SemanticCardShortlistChoiceV111.ValidateBoundary(this.Run);
         bool automaticHandDrawEffectDrawPending =
             this.AutomaticHandDraw && combat.PendingChoice is
                 { } effectDrawChoice &&
@@ -551,6 +587,7 @@ public sealed record SemanticCombatDrawV111(
                 poolShufflePending is not null ||
                 cardSelectionPending is not null ||
                 cardTransformPending is not null ||
+                cardShortlistPending is not null ||
                 stratagemSelectionPending is not null ||
                 drawHookChoicePending is not null ||
                 automaticBeforeHandDrawPoolShuffle ||
@@ -666,6 +703,15 @@ public sealed record SemanticCombatDrawV111(
                     throw new InvalidDataException(
                         "Semantic BeforeHandDraw card-transform cursor is inconsistent.");
             }
+            else if (automaticBeforeHandDrawCardShortlistPending)
+            {
+                if (pipelineCursor is null ||
+                    !semanticBeforeHandDrawProgress ||
+                    this.RequestedCount != 0 || this.RemainingCount != 0 ||
+                    deck.Pending is not null || cost is not null)
+                    throw new InvalidDataException(
+                        "Semantic BeforeHandDraw card-shortlist cursor is inconsistent.");
+            }
             else if (automaticHandDrawGeneratedCardPending)
             {
                 if (pipelineCursor is null ||
@@ -716,6 +762,16 @@ public sealed record SemanticCombatDrawV111(
                     throw new InvalidDataException(
                         "Automatic hand-draw card-transform cursor is inconsistent.");
             }
+            else if (automaticHandDrawCardShortlistPending)
+            {
+                if (pipelineCursor is null ||
+                    !hasPipelineSemanticDrawProgress ||
+                    pipelineRequested != this.RequestedCount ||
+                    pipelineRemaining != this.RemainingCount ||
+                    deck.Pending is not null || cost is not null)
+                    throw new InvalidDataException(
+                        "Automatic hand-draw card-shortlist cursor is inconsistent.");
+            }
             else if (automaticBeforeHandDrawRandomTarget)
             {
                 if (pipelineCursor is null ||
@@ -761,6 +817,7 @@ public sealed record SemanticCombatDrawV111(
              poolShufflePending is null &&
              cardSelectionPending is null &&
              cardTransformPending is null &&
+             cardShortlistPending is null &&
              !semanticDrawChoicePending &&
              stratagemSelectionPending is null &&
              drawHookChoicePending is null &&
@@ -788,6 +845,7 @@ public sealed record SemanticCombatDrawV111(
              poolShufflePending is null &&
              cardSelectionPending is null &&
              cardTransformPending is null &&
+             cardShortlistPending is null &&
              stratagemSelectionPending is null &&
              drawHookChoicePending is null &&
              targetPending is null &&
@@ -902,6 +960,11 @@ public sealed record SemanticCombatDrawV111(
             !automaticBeforeHandDrawCardTransformPending)
             throw new InvalidDataException(
                 "Semantic card-transform cursor is inconsistent.");
+        if (cardShortlistPending is not null &&
+            !automaticHandDrawCardShortlistPending &&
+            !automaticBeforeHandDrawCardShortlistPending)
+            throw new InvalidDataException(
+                "Semantic card-shortlist cursor is inconsistent.");
     }
 
     public SemanticCombatDrawV111 Fork() => this with
@@ -1063,6 +1126,21 @@ public static class SemanticCombatDrawEngineV111
         return SemanticCardTransformChoiceV111.DescribePending(
             state.Run, CanonicalJson.Sha256(state.Run),
             state.CardTransformTranscript.Length);
+    }
+
+    internal static SemanticCardShortlistEventV111?
+        DescribePendingCardShortlist(SemanticCombatDrawV111 state)
+    {
+        if (!state.AutomaticHandDraw ||
+            state.Run.World?.Combat is not { } combat ||
+            combat.PendingChoice is not { } pending ||
+            !PrototypeGameEngine
+                .IsAutomaticHandDrawHookCardShortlistContinuation(
+                    combat, pending))
+            return null;
+        return SemanticCardShortlistChoiceV111.DescribePending(
+            state.Run, CanonicalJson.Sha256(state.Run),
+            state.CardShortlistTranscript.Length);
     }
 
     internal static SemanticDrawInsertionEventV111?
@@ -1619,6 +1697,32 @@ public static class SemanticCombatDrawEngineV111
         return next;
     }
 
+    public static SemanticCombatDrawV111 ResolveCardShortlist(
+        SemanticCombatDrawV111 state, string fingerprint, string eventId,
+        long cardInstanceId)
+    {
+        Validate(state);
+        if (state.Fingerprint != fingerprint)
+            throw new InvalidOperationException(
+                "Stale semantic draw card-shortlist fingerprint.");
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        var pending = state.CardShortlistPending ??
+            throw new InvalidOperationException(
+                "No semantic draw card-shortlist choice is pending.");
+        var decision = SemanticCardShortlistChoiceV111.Select(
+            pending, eventId, cardInstanceId);
+        var resumed = SemanticChoiceResumeV111.Resume(state.Run, decision);
+        var progress = ResumeNestedAutomaticHandDraw(
+            state, resumed, "Card-shortlist");
+        var next = PublishDrawProgress(state, progress) with
+        {
+            Stochastic = state.Stochastic.AppendCardShortlist(decision)
+        };
+        next = RecordNewSemanticDrawChoices(state, next);
+        Validate(next);
+        return next;
+    }
+
     private static PrototypeDrawCardsResumeResultV111
         ResumeNestedAutomaticHandDraw(
             SemanticCombatDrawV111 state,
@@ -1975,6 +2079,21 @@ public static class SemanticCombatDrawEngineV111
                     transformDecision.SelectedCardId);
                 continue;
             }
+            if (reconstructed.CardShortlistPending is { } cardShortlist)
+            {
+                var shortlistDecision =
+                    transcriptCursor.NextCardShortlistChoice();
+                shortlistDecision.Validate();
+                if (CanonicalJson.Sha256(shortlistDecision.Event) !=
+                    CanonicalJson.Sha256(cardShortlist))
+                    throw new InvalidDataException(
+                        "Card-shortlist transcript diverges from source support.");
+                reconstructed = ResolveCardShortlist(
+                    reconstructed, reconstructed.Fingerprint,
+                    shortlistDecision.Event.EventId,
+                    shortlistDecision.SelectedCardInstanceId);
+                continue;
+            }
             if (reconstructed.DrawInsertionPending is { } insertion)
             {
                 var insertionDecision = transcriptCursor.NextInsertion();
@@ -2039,7 +2158,7 @@ public static class SemanticCombatDrawEngineV111
         if (stored.BoundaryTranscriptVersion <
                 SemanticCombatDrawStochasticStateV111
                     .CurrentBoundaryTranscriptVersion &&
-            stored.CardTransformTranscript.Length == 0)
+            stored.CardShortlistTranscript.Length == 0)
             comparisonSnapshot = comparisonSnapshot with
             {
                 BoundaryTranscriptVersion =

@@ -4625,6 +4625,14 @@ public static class SemanticPilotCombatEngineV111
                     transformedCard.Event.EventId,
                     transformedCard.SelectedCardId);
             else if (choice is
+                         { Kind: "semantic_card_shortlist",
+                           CardShortlistDecision: { } shortlistedCard } &&
+                     endTurn.HandDraw?.CardShortlistPending is not null)
+                nextEndTurn = SemanticEndTurnEngineV111.ResolveCardShortlist(
+                    endTurn, endTurn.Fingerprint,
+                    shortlistedCard.Event.EventId,
+                    shortlistedCard.SelectedCardInstanceId);
+            else if (choice is
                     { Kind: "semantic_card_selection",
                       CardSelectionDecision: { } selectedCards } &&
                 endTurn.HandDraw?.CardSelectionPending is not null)
