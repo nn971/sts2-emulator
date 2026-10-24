@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 automatic Nature hand-draw after-shuffle insertion increment (2026-10-24):**
+The existing draw-insertion admission now accepts an after-shuffle relic
+insertion in an automatic Nature hand draw when its saved semantic draw frame
+matches the active `DrawPlayerHand` remaining count. This admits Biiig Hug's
+Soot insertion after a recycle and resumes the saved draw through the existing
+insertion owner. No event or snapshot schema changed. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S0 deferred deck-reveal source census (2026-10-24):** A targeted Core
 source search found the existing semantic deck kernel, Chance Law query, and
 typed pilot resolver for peek/scry, but no modeled card, potion, power, or

@@ -95,6 +95,19 @@ public sealed partial class PrototypeGameEngine
               AfterShuffleRelic: not null })
             return false;
 
+        if (insertion.SemanticDrawContinuation is
+                { AutomaticSemanticHandDrawSegment: true,
+                  StandaloneSemanticDrawSegment: false,
+                  FromHandDraw: true,
+                  EventDepth: 0,
+                  RemainingCount: > 0 } automaticDraw &&
+            combat.IsPlayerTurn &&
+            combat.AutomaticPipelineContinuation is { } pipeline &&
+            pipeline.Stochastic.TryGetSemanticHandDrawProgress(
+                pipeline.Mechanics, out _, out int savedRemaining) &&
+            savedRemaining == automaticDraw.RemainingCount)
+            return true;
+
         bool nestedAutoplay = false;
         for (var frame = continuation; frame is not null;
              frame = frame.Parent)
