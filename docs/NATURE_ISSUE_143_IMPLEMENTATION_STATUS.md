@@ -1183,3 +1183,11 @@ uses the common engine-owned nested-choice handoff to validate and publish its
 remaining count and pipeline cursor. The controlled insertion owner retains the
 choice and operation continuation. Static source review and `git diff --check`
 only; no tests or builds were run.
+
+## 2026-10-25: automatic random pile-card handoff consolidation
+
+After a Jeweled Mask random pile-card choice resolves, active and pre-draw
+continuations now pass through the common engine-owned nested-choice handoff.
+The random pile-card owner retains support validation and hook resumption; the
+common owner validates and publishes the hand-draw cursor. Static source review
+and `git diff --check` only; no tests or builds were run.

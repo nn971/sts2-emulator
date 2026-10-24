@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 automatic random pile-card handoff consolidation (2026-10-25):** After
+Jeweled Mask's automatic-hook card choice resolves, both active and pre-draw
+continuations now use the common engine-owned nested-choice handoff for cursor
+classification and count validation. Card support and hook continuation checks
+remain with the random pile-card owner. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S4 semantic draw adapter handoff consolidation (2026-10-25):** Automatic
 hand-draw results from semantic draw segments, generated-card, Stratagem
 selection, controlled and semantic draw insertions, and nested effect draws
