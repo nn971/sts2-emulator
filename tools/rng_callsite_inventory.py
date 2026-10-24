@@ -4,10 +4,10 @@
 This is a source inventory aid, not a source-to-game completeness proof. It
 reports each direct provider expression, high-level MapRandom calls from the
 modeled map generators, and direct NativePlayerRngV111,
-LegacyRandomChoiceV111, and NativeEventContextRngV111 adapter calls with their
-file and line so manual site audits can be linked to a stable matrix row.
-Other indirect delegates and mechanics hidden behind called helpers still
-require manual tracing.
+LegacyRandomChoiceV111, LegacyFisherYatesV111, and
+NativeEventContextRngV111 adapter calls with their file and line so manual site
+audits can be linked to a stable matrix row. Other indirect delegates and
+mechanics hidden behind called helpers still require manual tracing.
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ from urllib.parse import unquote, urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v50"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v51"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 TYPE_SOURCE_DECLARATION_PATTERN = re.compile(
     r"\b(?:class|record|struct)\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\b"
@@ -34,6 +34,7 @@ _SOURCE_CLASS_CONTENTS: dict[str, tuple[str, ...]] | None = None
 CALL_PATTERN = re.compile(
     r"\b(?P<api>PrototypeRng|NativeRngV111|NativeFisherYatesV111|"
     r"NativePlayerRngV111|LegacyRandomChoiceV111|"
+    r"LegacyFisherYatesV111|"
     r"NativeEventContextRngV111)"
     r"\.(?P<operation>NextInt|NextBool|NextFloat|NextDouble|"
     r"NextGaussianInt|NextGaussianDouble|Shuffle|ShuffleInPlace|Execute|"
@@ -199,6 +200,8 @@ def _site_id_argument(api: str, operation: str,
             if named:
                 return named.group(1).strip()
         return arguments[1] if len(arguments) > 1 else None
+    if api == "LegacyFisherYatesV111":
+        return arguments[3] if len(arguments) > 3 else None
     if api == "NativeEventContextRngV111":
         position = 4 if operation == "ShuffleInPlace" else 3
         return arguments[position] if len(arguments) > position else None
@@ -2952,6 +2955,7 @@ def collect() -> dict[str, Any]:
                     "NativeFisherYatesV111": "native_shuffle_mechanics",
                     "NativePlayerRngV111": "native_player_rng_adapter",
                     "LegacyRandomChoiceV111": "legacy_random_choice_adapter",
+                    "LegacyFisherYatesV111": "legacy_fisher_yates_adapter",
                     "NativeEventContextRngV111": "native_event_context_adapter",
                 }[api]
                 filename = path.name
@@ -2974,6 +2978,8 @@ def collect() -> dict[str, Any]:
                     review_status = "legacy_random_choice_adapter_callsite"
                 elif api == "NativeEventContextRngV111":
                     review_status = "native_event_context_adapter_callsite"
+                elif api == "LegacyFisherYatesV111":
+                    review_status = "legacy_fisher_yates_adapter_callsite"
                 else:
                     review_status = "native_primitive_callsite_needs_site_review"
                 arguments = _call_arguments(
@@ -2996,6 +3002,14 @@ def collect() -> dict[str, Any]:
                         string_constants,
                     )
                     if api == "LegacyRandomChoiceV111":
+                        forwarded_values = _resolve_forwarded_site_expression(
+                            sources, path, source,
+                            source_offset + match.start(), site_expression,
+                            string_constants,
+                        )
+                        if forwarded_values:
+                            site_values = forwarded_values
+                    if api == "LegacyFisherYatesV111" and not site_values:
                         forwarded_values = _resolve_forwarded_site_expression(
                             sources, path, source,
                             source_offset + match.start(), site_expression,
@@ -3035,6 +3049,7 @@ def collect() -> dict[str, Any]:
                 if api in (
                     "NativeFisherYatesV111", "NativePlayerRngV111",
                     "LegacyRandomChoiceV111", "NativeEventContextRngV111",
+                    "LegacyFisherYatesV111",
                 ):
                     if site_expression is None:
                         review_status = "site_id_argument_missing"
@@ -3049,6 +3064,8 @@ def collect() -> dict[str, Any]:
                             if api == "NativePlayerRngV111" else
                             "native_event_context_site_id_resolved"
                             if api == "NativeEventContextRngV111" else
+                            "legacy_fisher_yates_site_id_resolved"
+                            if api == "LegacyFisherYatesV111" else
                             "legacy_gaussian_component_mapped_to_parent"
                             if gaussian_component_parent_mapping else
                             "legacy_random_choice_site_id_resolved"
@@ -3236,6 +3253,28 @@ def collect() -> dict[str, Any]:
             if entry["matrix_row_status"] != "mapped"
         ],
     }
+    legacy_fisher_yates_calls = [
+        entry for entry in entries
+        if entry["category"] == "legacy_fisher_yates_adapter"
+    ]
+    legacy_fisher_yates_callsite_coverage = {
+        "call_count": len(legacy_fisher_yates_calls),
+        "mapped_call_count": sum(
+            entry["matrix_row_status"] == "mapped"
+            for entry in legacy_fisher_yates_calls
+        ),
+        "unmapped_calls": [
+            {
+                "path": entry["path"],
+                "line": entry["line"],
+                "operation": entry["operation"],
+                "site_id_argument": entry["site_id_argument"],
+                "matrix_row_status": entry["matrix_row_status"],
+            }
+            for entry in legacy_fisher_yates_calls
+            if entry["matrix_row_status"] != "mapped"
+        ],
+    }
 
     return {
         "schema_id": SCHEMA_ID,
@@ -3243,7 +3282,8 @@ def collect() -> dict[str, Any]:
             "Direct qualified calls to PrototypeRng, NativeRngV111, and "
             "NativeFisherYatesV111 in Sts2Emulator.Core, direct calls through "
             "NativePlayerRngV111, LegacyRandomChoiceV111, "
-            "NativeEventContextRngV111, and source callsites "
+            "LegacyFisherYatesV111, NativeEventContextRngV111, and source "
+            "callsites "
             "to the private MapRandom "
             "adapters in the two modeled Native map generators. This does not "
             "include other indirect delegates, "
@@ -3279,7 +3319,10 @@ def collect() -> dict[str, Any]:
             "unsupported handling; these matches require manual review and do not "
             "prove source completeness. The legacy random-choice forwarding row "
             "follows the source-owned provider allowlist; its four internal "
-            "Gaussian `.component` requests map to their parent Gaussian site rows."
+            "Gaussian `.component` requests map to their parent Gaussian site rows. "
+            "Legacy Fisher-Yates callsite values follow source expressions or "
+            "finite Core helper callers; event-context shuffles use their validated "
+            "operation-specific site list."
         ),
         "total_direct_calls": len(entries),
         "ambient_entropy_calls": ambient_entropy_calls,
@@ -3296,6 +3339,9 @@ def collect() -> dict[str, Any]:
         "native_event_context_adapter_calls": native_event_context_calls,
         "native_event_context_adapter_callsite_coverage":
             native_event_context_callsite_coverage,
+        "legacy_fisher_yates_adapter_calls": legacy_fisher_yates_calls,
+        "legacy_fisher_yates_adapter_callsite_coverage":
+            legacy_fisher_yates_callsite_coverage,
         "counts_by_category": counts,
         "shuffle_matrix_mapping_counts": {
             status: sum(
@@ -3391,6 +3437,12 @@ def render_markdown(report: dict[str, Any]) -> str:
         "These are Core Native event index, bounded-integer, unit-float, and "
         "shuffle adapter calls; event stream and occurrence ownership remain "
         "with their callers.",
+        "",
+        "Direct `LegacyFisherYatesV111` callsites mapped to matrix rows: "
+        f"**{report['legacy_fisher_yates_adapter_callsite_coverage']['mapped_call_count']}/"
+        f"{report['legacy_fisher_yates_adapter_callsite_coverage']['call_count']}**. "
+        "These are Core legacy shuffle adapter calls; finite map and event "
+        "helper-site values are traced through their guarded call boundaries.",
         "",
         "Direct ad hoc entropy API expressions in Core: "
         f"**{len(report['ambient_entropy_calls'])}**. The scan covers direct "
@@ -3604,6 +3656,9 @@ def main() -> int:
         native_event_context_callsite_coverage = report[
             "native_event_context_adapter_callsite_coverage"
         ]
+        legacy_fisher_yates_callsite_coverage = report[
+            "legacy_fisher_yates_adapter_callsite_coverage"
+        ]
         if (coverage["registered_site_count"] == 0 or
                 coverage["site_ids_without_matrix_rows"] or
                 coverage["duplicate_matrix_site_ids"] or
@@ -3618,7 +3673,9 @@ def main() -> int:
                 legacy_choice_callsite_coverage["call_count"] == 0 or
                 legacy_choice_callsite_coverage["unmapped_calls"] or
                 native_event_context_callsite_coverage["call_count"] == 0 or
-                native_event_context_callsite_coverage["unmapped_calls"]):
+                native_event_context_callsite_coverage["unmapped_calls"] or
+                legacy_fisher_yates_callsite_coverage["call_count"] == 0 or
+                legacy_fisher_yates_callsite_coverage["unmapped_calls"]):
             print(json.dumps({
                 "registry_matrix_coverage": coverage,
                 "source_map_random_adapter_callsite_coverage":
@@ -3629,6 +3686,8 @@ def main() -> int:
                     legacy_choice_callsite_coverage,
                 "native_event_context_adapter_callsite_coverage":
                     native_event_context_callsite_coverage,
+                "legacy_fisher_yates_adapter_callsite_coverage":
+                    legacy_fisher_yates_callsite_coverage,
             }, indent=2, sort_keys=True),
                   file=sys.stderr)
             return 1
