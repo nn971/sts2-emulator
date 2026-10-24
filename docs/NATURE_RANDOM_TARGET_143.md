@@ -43,14 +43,15 @@ formation and resumes the remaining autoplay queue. Native target-pool,
 stream, and cursor parity remain open.
 
 Tingsha's `CardDiscarded` target now enters from a manual Storm of Steel,
-Shadow Step, Survivor, Hidden Daggers, Concentrate, Dagger Throw, or Calculated
-Gamble play when the exact relic subscriber, discarded-card event, source
-card-play frame, source-card destination, and saved continuation suffix match.
-Each discarded card reuses the existing random-target event and resumes the
-saved discard-event queue in order. Other Tingsha hook origins remain
-unsupported on player-card actions. End-turn hand-discard targets already use
-the saved automatic-pipeline target transcript at its supported cursor.
-Native target-pool, stream, and cursor parity remain open.
+Shadow Step, Survivor, Hidden Daggers, Concentrate, Dagger Throw, Acrobatics,
+Prepared, or Calculated Gamble play when the exact relic subscriber,
+discarded-card event, source card-play frame, source-card destination, and
+saved continuation suffix match. Each discarded card reuses the existing
+random-target event and resumes the saved discard-event queue in order. Other
+Tingsha hook origins remain unsupported on player-card actions. End-turn
+hand-discard targets already use the saved automatic-pipeline target transcript
+at its supported cursor. Native target-pool, stream, and cursor parity remain
+open.
 
 ## Validation and limitations
 

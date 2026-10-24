@@ -6144,6 +6144,48 @@ public static class SemanticPilotCombatEngineV111
                     return false;
                 break;
 
+            case "proto.silent.acrobatics":
+                expectedTarget = PrototypeCardTarget.None;
+                expectedCardType = PrototypeCardType.Skill;
+                expectedSourceCardDestination =
+                    PrototypeCardZone.DiscardPile;
+                expectedEffects =
+                [
+                    new PrototypeCombatEffectSpec(
+                        PrototypeCombatEffectKind.DrawCards, 3,
+                        UpgradeDelta: 1),
+                    new PrototypeCombatEffectSpec(
+                        PrototypeCombatEffectKind.ChooseCards, 0,
+                        Selection: new PrototypeCardSelectionSpec(
+                            PrototypeCardZone.Hand, 1, 1,
+                            PrototypeCardSelectionResolutionKind.MoveToDiscard))
+                ];
+                expectedTailOperations = [];
+                if (remainingOperations.Length != 0)
+                    return false;
+                break;
+
+            case "proto.silent.prepared":
+                expectedTarget = PrototypeCardTarget.None;
+                expectedCardType = PrototypeCardType.Skill;
+                expectedSourceCardDestination =
+                    PrototypeCardZone.DiscardPile;
+                expectedEffects =
+                [
+                    new PrototypeCombatEffectSpec(
+                        PrototypeCombatEffectKind.DrawCards, 1,
+                        UpgradeDelta: 1),
+                    new PrototypeCombatEffectSpec(
+                        PrototypeCombatEffectKind.ChooseCards, 0,
+                        Selection: new PrototypeCardSelectionSpec(
+                            PrototypeCardZone.Hand, 1, 1,
+                            PrototypeCardSelectionResolutionKind.MoveToDiscard))
+                ];
+                expectedTailOperations = [];
+                if (remainingOperations.Length != 0)
+                    return false;
+                break;
+
             case "proto.silent.calculated_gamble":
                 expectedTarget = PrototypeCardTarget.None;
                 expectedCardType = PrototypeCardType.Skill;
