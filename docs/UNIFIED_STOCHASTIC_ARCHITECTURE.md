@@ -456,6 +456,8 @@ Ordinary `DrawCards` and resumed cost choices now share `DispatchCardDrawnAfterC
 
 Opening Nature hand draws now route Stratagem's `ShuffleSelection` boundary through the semantic draw-result owner and its saved draw continuation. Providerless and Native opening draws retain their operation-queue path.
 
+`ResolveOperations` now delegates each `DrawCards` operation to `ResolveEffectDrawOperation` in the draw-continuation owner. That owner retains the source context and remaining operation suffix while routing legacy recycle, hook, cost, semantic, insertion, and Stratagem boundaries; it returns the updated queue only when resolution can continue inline.
+
 `ContinueSemanticDrawCost` owns the shared post-cost continuation for standalone semantic hand draws and nested semantic effect draws: it resumes `CardDrawn` hook suspension, re-enters `DrawCards`, and routes the tagged result through the shared interpreter. Automatic semantic hand draws hand their tagged result to `ResumeAutomaticHandDrawCost`, alongside the legacy controlled resume. The standalone effect-draw cost adapter carries the cost owner's classified pipeline boundary on transient draw progress. Semantic standalone and effect draw callers retain their saved-frame and automatic-pipeline handoff policies.
 
 `SemanticChoiceResumeV111.ResumeDrawHookChoice` now owns the post-action continuation for standalone and automatic semantic draw-hook choices. The `PrototypeGameEngine.ResumeSemanticDrawHookChoice` compatibility facade delegates to it. It resumes the saved `BeforeHandDraw` step, retains an active automatic draw cursor, or continues the saved draw count through the engine; `SemanticCombatDrawV111` retains the typed action transcript.

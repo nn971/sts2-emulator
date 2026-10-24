@@ -147,6 +147,184 @@ public sealed partial class PrototypeGameEngine
         return combat;
     }
 
+    private readonly record struct PrototypeEffectDrawResumeResultV111(
+        PlayerState Player,
+        CombatState Combat,
+        Queue<PrototypeQueuedOperation> Operations,
+        bool ReturnFromOperations);
+
+    private static PrototypeEffectDrawResumeResultV111
+        ResolveEffectDrawOperation(
+            PlayerState player,
+            CombatState combat,
+            PrototypeQueuedOperation operation,
+            Queue<PrototypeQueuedOperation> remainingOperations,
+            RngBundle rng,
+            int eventDepth,
+            EffectContinuationContext continuationContext)
+    {
+        if (operation.Kind != PrototypeCombatEffectKind.DrawCards)
+            throw new ArgumentException(
+                "Effect draw continuation needs a DrawCards operation.",
+                nameof(operation));
+        ArgumentNullException.ThrowIfNull(remainingOperations);
+        var drawEventDepth = operation.DrawEventDepth ?? eventDepth + 1;
+        var drawn = DrawCards(
+            player, combat, operation.Amount, rng,
+            fromHandDraw: operation.FromHandDraw,
+            eventDepth: drawEventDepth,
+            suspensionPolicy:
+                PrototypeDrawCardsSuspensionPolicyV111
+                    .ControlledEffectDraw(combat));
+        player = drawn.Player;
+        combat = drawn.Combat;
+        var boundary = drawn.BoundaryKind;
+        if (boundary == PrototypeDrawCardsBoundaryKind.ControlledRecycle)
+        {
+            var suspendedDraw = CreateAdvancedEffectDrawFrame(
+                operation, drawn.RemainingCount, drawEventDepth,
+                drawn.DrawnCardInstanceIds);
+            var resumeDraw = CreateDrawResumeOperation(suspendedDraw);
+            var recycleContinuation = CreateEffectContinuation(
+                continuationContext,
+                new[] { resumeDraw }.Concat(remainingOperations));
+            if (combat.Stochastic.SemanticDeck is not null ||
+                drawn.RemainingCount <= 0 || combat.DrawPile.Length != 0 ||
+                combat.DiscardPile.Length == 0)
+                throw new InvalidDataException(
+                    "Legacy effect-draw recycle boundary is inconsistent.");
+
+            var recycleOperation = new PrototypeQueuedOperation(
+                PrototypeCombatEffectKind.RecycleDrawPileForEffectDraw, 0);
+            if (combat.DiscardPile.Length > 1)
+            {
+                if (!TryMakeControlledPoolShuffleChoice(
+                        combat, recycleOperation,
+                        continuationContext.SourceCardInstanceId,
+                        recycleContinuation, out var suspended))
+                    throw new NotSupportedException(
+                        "UNSUPPORTED_CONTROLLED_CHANCE " +
+                        "site=combat.draw.recycle " +
+                        "operation=missing_saved_shuffle_continuation");
+                return new PrototypeEffectDrawResumeResultV111(
+                    player, suspended, remainingOperations,
+                    ReturnFromOperations: true);
+            }
+
+            var recycled = (long[])combat.DiscardPile.Clone();
+            var postHook = NativeShuffleStepReplayV111.CheckPostHook(
+                ApplyPerfectFitShuffleOrder(combat, recycled));
+            combat = SemanticDrawPileAdapterV111.CommitLegacyRecycle(
+                combat, postHook);
+            var insertions = ControlledAfterShuffleRelicInsertions(combat);
+            if (insertions.Length > 0)
+            {
+                combat = MakeControlledAfterShuffleInsertionChoice(
+                    combat, insertions[0], insertions.Skip(1).ToArray(), [],
+                    null, recycleContinuation, ordinal: 0);
+                return new PrototypeEffectDrawResumeResultV111(
+                    player, combat, remainingOperations,
+                    ReturnFromOperations: true);
+            }
+            var resumed = ResumeChoiceResolutionContinuation(
+                player, combat, rng, recycleContinuation);
+            return new PrototypeEffectDrawResumeResultV111(
+                resumed.Player, resumed.Combat, remainingOperations,
+                ReturnFromOperations: true);
+        }
+
+        if (boundary == PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice)
+        {
+            var suspendedDraw = CreateAdvancedEffectDrawFrame(
+                operation, drawn.RemainingCount, drawEventDepth,
+                drawn.DrawnCardInstanceIds);
+            var continuation = CreateEffectContinuation(
+                continuationContext, remainingOperations);
+            combat = AttachDrawCardsAtCardDrawnChoice(
+                combat, suspendedDraw, continuation,
+                markStandaloneHookChoice:
+                    operation.StandaloneSemanticDrawSegment);
+            return new PrototypeEffectDrawResumeResultV111(
+                player, combat, remainingOperations,
+                ReturnFromOperations: true);
+        }
+
+        if (boundary is
+            PrototypeDrawCardsBoundaryKind.SemanticDraw or
+            PrototypeDrawCardsBoundaryKind.ControlledDrawCost or
+            PrototypeDrawCardsBoundaryKind.AfterShuffleInsertions)
+        {
+            var continuation = CreateEffectContinuation(
+                continuationContext, remainingOperations);
+            var suspendedDraw = CreateAdvancedEffectDrawFrame(
+                operation, drawn.RemainingCount, drawEventDepth,
+                drawn.DrawnCardInstanceIds,
+                stratagemSelectionPending:
+                    boundary ==
+                        PrototypeDrawCardsBoundaryKind.AfterShuffleInsertions &&
+                    ExpectedStratagemSelectionCount(combat) > 0);
+            if (boundary ==
+                PrototypeDrawCardsBoundaryKind.AfterShuffleInsertions)
+                return new PrototypeEffectDrawResumeResultV111(
+                    player,
+                    MakeControlledAfterShuffleInsertionChoice(
+                        combat,
+                        drawn.ControlledAfterShuffleInsertions![0],
+                        drawn.ControlledAfterShuffleInsertions.Skip(1).ToArray(),
+                        [], suspendedDraw, continuation, 0),
+                    remainingOperations,
+                    ReturnFromOperations: true);
+            if (boundary == PrototypeDrawCardsBoundaryKind.SemanticDraw)
+                return new PrototypeEffectDrawResumeResultV111(
+                    player,
+                    MakeControlledSemanticDrawChoice(
+                        combat, suspendedDraw, continuation),
+                    remainingOperations,
+                    ReturnFromOperations: true);
+            return new PrototypeEffectDrawResumeResultV111(
+                player,
+                AttachControlledSemanticDrawCost(
+                    combat, suspendedDraw, continuation),
+                remainingOperations,
+                ReturnFromOperations: true);
+        }
+
+        if (boundary == PrototypeDrawCardsBoundaryKind.ShuffleSelection)
+        {
+            var suspendedDraw = CreateAdvancedEffectDrawFrame(
+                operation, drawn.RemainingCount, drawEventDepth,
+                drawn.DrawnCardInstanceIds);
+            remainingOperations = new Queue<PrototypeQueuedOperation>(
+                new[]
+                {
+                    StratagemChoiceOperation(
+                        combat,
+                        suspendedDraw.StandaloneSemanticDrawSegment),
+                    operation with
+                    {
+                        Amount = suspendedDraw.RemainingCount,
+                        DeferredDrawnCardInstanceIds =
+                            suspendedDraw.DeferredKeywordCardInstanceIds,
+                        DrawEventDepth = suspendedDraw.EventDepth
+                    }
+                }.Concat(remainingOperations));
+        }
+
+        if (operation.DrawnCardKeyword is not null &&
+            boundary != PrototypeDrawCardsBoundaryKind.ShuffleSelection)
+        {
+            var completedDraw = CreateAdvancedEffectDrawFrame(
+                operation, drawn.RemainingCount, drawEventDepth,
+                drawn.DrawnCardInstanceIds);
+            combat = ApplyDrawnCardKeywordOverride(
+                combat, operation.DrawnCardKeyword,
+                completedDraw.DeferredKeywordCardInstanceIds ?? []);
+        }
+
+        return new PrototypeEffectDrawResumeResultV111(
+            player, combat, remainingOperations, ReturnFromOperations: false);
+    }
+
     internal static int GetCardsDrawnSince(
         CombatState combat, int drawnBefore)
     {
