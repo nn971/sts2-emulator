@@ -179,11 +179,8 @@ public static class SemanticCostChoiceV111
             choice is not { ChoiceId: "controlled_draw_cost",
                 ControlledSemanticDraw: not null,
                 ControlledDrawCost: not null,
-                OuterChoiceContinuation: not null,
-                ControlledTarget: null, ControlledGeneration: null,
-                ControlledDrawInsertion: null, ControlledPoolShuffle: null,
-                ControlledRandomCost: null, ControlledCardShortlist: null,
-                ControlledRandomPileCard: null } ||
+                OuterChoiceContinuation: not null } ||
+            !choice.HasValidControlledPayloadShape() ||
             draw is null || cost is null || draw.RemainingCount < 0 ||
             draw.EventDepth < 0 ||
             draw.RemainingCount != cost.RemainingCount ||

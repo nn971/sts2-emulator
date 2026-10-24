@@ -1185,6 +1185,14 @@ controlled-playable validation, and target resume. It compares ordered living
 enemy identities and Sly/autoplay source identities against the suspended
 continuation.
 
+`PendingCombatChoiceState.HasValidControlledPayloadShape` owns the
+discriminator invariant for the flattened controlled-choice snapshot fields.
+Each controlled choice ID must match exactly one typed payload; effect-draw
+cost is the only supported paired payload, with its matching semantic draw
+frame. Semantic Stratagem and CardDrawn-hook flags cannot overlap those typed
+payloads. Combat-state validation and semantic draw-cost validation share this
+check without changing snapshot fields.
+
 The shared resume path propagates the SiteId from each typed draw and
 draw-insertion event into automatic-pipeline boundary handling, preserving the
 actual supported insertion site in diagnostics and continuation handoff.

@@ -2531,6 +2531,67 @@ public sealed record PendingCombatChoiceState(
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     bool AutomaticSemanticDrawHookChoice = false)
 {
+    /// <summary>
+    /// Keeps the flattened, snapshot-compatible pending-choice payloads
+    /// mutually exclusive while recognizing the one semantic draw-cost
+    /// payload that may carry its matching draw frame.
+    /// </summary>
+    internal bool HasValidControlledPayloadShape()
+    {
+        const int target = 1 << 0;
+        const int generation = 1 << 1;
+        const int potionGeneration = 1 << 2;
+        const int cardTransform = 1 << 3;
+        const int drawInsertion = 1 << 4;
+        const int poolShuffle = 1 << 5;
+        const int randomCost = 1 << 6;
+        const int drawCost = 1 << 7;
+        const int cardShortlist = 1 << 8;
+        const int randomPileCard = 1 << 9;
+        const int semanticDraw = 1 << 10;
+
+        int mask =
+            (this.ControlledTarget is not null ? target : 0) |
+            (this.ControlledGeneration is not null ? generation : 0) |
+            (this.ControlledPotionGeneration is not null
+                ? potionGeneration : 0) |
+            (this.ControlledCardTransform is not null ? cardTransform : 0) |
+            (this.ControlledDrawInsertion is not null ? drawInsertion : 0) |
+            (this.ControlledPoolShuffle is not null ? poolShuffle : 0) |
+            (this.ControlledRandomCost is not null ? randomCost : 0) |
+            (this.ControlledDrawCost is not null ? drawCost : 0) |
+            (this.ControlledCardShortlist is not null ? cardShortlist : 0) |
+            (this.ControlledRandomPileCard is not null ? randomPileCard : 0) |
+            (this.ControlledSemanticDraw is not null ? semanticDraw : 0);
+
+        if (mask != 0 &&
+            (this.SemanticStratagemDrawSelection ||
+             this.AutomaticSemanticStratagemDrawSelection ||
+             this.StandaloneSemanticDrawHookChoice ||
+             this.AutomaticSemanticDrawHookChoice))
+            return false;
+
+        return this.ChoiceId switch
+        {
+            "controlled_random_target" => mask == target,
+            "controlled_generated_card" => mask == generation,
+            "controlled_potion_generation" => mask == potionGeneration,
+            "controlled_card_transform" => mask == cardTransform,
+            "controlled_draw_insertion" => mask == drawInsertion,
+            "controlled_pool_shuffle" => mask == poolShuffle,
+            "controlled_random_hand_cost" => mask == randomCost,
+            "controlled_draw_cost" => mask == drawCost ||
+                mask == (drawCost | semanticDraw),
+            "controlled_card_shortlist" => mask == cardShortlist,
+            "controlled_random_pile_card" => mask == randomPileCard,
+            "controlled_semantic_draw" => mask == semanticDraw,
+            _ => mask == 0 &&
+                this.ChoiceId is not null &&
+                !this.ChoiceId.StartsWith("controlled_",
+                    StringComparison.Ordinal)
+        };
+    }
+
     public PendingCombatChoiceState Fork() => this with
     {
         CandidateCardInstanceIds = (long[])CandidateCardInstanceIds.Clone(),

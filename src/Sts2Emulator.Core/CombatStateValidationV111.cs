@@ -508,6 +508,9 @@ public sealed partial record CombatState
         if (combat.PendingChoice is not null)
         {
             var pending = combat.PendingChoice;
+            if (!pending.HasValidControlledPayloadShape())
+                throw new InvalidOperationException(
+                    "Controlled combat choice carries a mismatched or overlapping payload.");
             if (pending.ControlledTarget is not null)
             {
                 if (!SemanticTargetChoiceV111.HasValidLiveSupport(
@@ -518,18 +521,7 @@ public sealed partial record CombatState
             if (pending.ControlledCardShortlist is { } cardShortlist)
             {
                 var automatic = combat.AutomaticPipelineContinuation;
-                if (pending.ChoiceId != "controlled_card_shortlist" ||
-                    pending.OuterChoiceContinuation is null ||
-                    pending.ControlledTarget is not null ||
-                    pending.ControlledGeneration is not null ||
-                    pending.ControlledPotionGeneration is not null ||
-                    pending.ControlledCardTransform is not null ||
-                    pending.ControlledDrawInsertion is not null ||
-                    pending.ControlledPoolShuffle is not null ||
-                    pending.ControlledRandomCost is not null ||
-                    pending.ControlledDrawCost is not null ||
-                    pending.ControlledRandomPileCard is not null ||
-                    pending.ControlledSemanticDraw is not null ||
+                if (pending.OuterChoiceContinuation is null ||
                     combat.PendingKnowledgeDemonChoice is not null ||
                     (automatic is null && !combat.IsPlayerTurn) ||
                     !PrototypeGameEngine.ValidateControlledCardShortlist(
@@ -540,18 +532,7 @@ public sealed partial record CombatState
             if (pending.ControlledRandomCost is { } randomCost)
             {
                 var automatic = combat.AutomaticPipelineContinuation;
-                if (pending.ChoiceId != "controlled_random_hand_cost" ||
-                    pending.OuterChoiceContinuation is null ||
-                    pending.ControlledTarget is not null ||
-                    pending.ControlledGeneration is not null ||
-                    pending.ControlledPotionGeneration is not null ||
-                    pending.ControlledCardTransform is not null ||
-                    pending.ControlledDrawInsertion is not null ||
-                    pending.ControlledPoolShuffle is not null ||
-                    pending.ControlledDrawCost is not null ||
-                    pending.ControlledCardShortlist is not null ||
-                    pending.ControlledRandomPileCard is not null ||
-                    pending.ControlledSemanticDraw is not null ||
+                if (pending.OuterChoiceContinuation is null ||
                     combat.PendingKnowledgeDemonChoice is not null ||
                     (automatic is null && !combat.IsPlayerTurn) ||
                     randomCost.Operation.Kind is not (
@@ -567,18 +548,7 @@ public sealed partial record CombatState
             if (pending.ControlledGeneration is { } generatedCard)
             {
                 var automatic = combat.AutomaticPipelineContinuation;
-                if (pending.ChoiceId != "controlled_generated_card" ||
-                    pending.OuterChoiceContinuation is null ||
-                    pending.ControlledTarget is not null ||
-                    pending.ControlledPotionGeneration is not null ||
-                    pending.ControlledCardTransform is not null ||
-                    pending.ControlledDrawInsertion is not null ||
-                    pending.ControlledPoolShuffle is not null ||
-                    pending.ControlledRandomCost is not null ||
-                    pending.ControlledDrawCost is not null ||
-                    pending.ControlledCardShortlist is not null ||
-                    pending.ControlledRandomPileCard is not null ||
-                    pending.ControlledSemanticDraw is not null ||
+                if (pending.OuterChoiceContinuation is null ||
                     combat.PendingKnowledgeDemonChoice is not null ||
                     (automatic is null && !combat.IsPlayerTurn) ||
                     !PrototypeGameEngine.ValidateControlledGenerationSupport(
@@ -589,18 +559,7 @@ public sealed partial record CombatState
             if (pending.ControlledDrawInsertion is { } drawInsertion)
             {
                 var automatic = combat.AutomaticPipelineContinuation;
-                if (pending.ChoiceId != "controlled_draw_insertion" ||
-                    pending.OuterChoiceContinuation is null ||
-                    pending.ControlledTarget is not null ||
-                    pending.ControlledGeneration is not null ||
-                    pending.ControlledPotionGeneration is not null ||
-                    pending.ControlledCardTransform is not null ||
-                    pending.ControlledPoolShuffle is not null ||
-                    pending.ControlledRandomCost is not null ||
-                    pending.ControlledDrawCost is not null ||
-                    pending.ControlledCardShortlist is not null ||
-                    pending.ControlledRandomPileCard is not null ||
-                    pending.ControlledSemanticDraw is not null ||
+                if (pending.OuterChoiceContinuation is null ||
                     combat.PendingKnowledgeDemonChoice is not null ||
                     (automatic is null && !combat.IsPlayerTurn) ||
                     pending.Selection.SourceZone != PrototypeCardZone.Hand ||
@@ -621,18 +580,7 @@ public sealed partial record CombatState
             if (pending.ControlledPoolShuffle is { } poolShuffle)
             {
                 var automatic = combat.AutomaticPipelineContinuation;
-                if (pending.ChoiceId != "controlled_pool_shuffle" ||
-                    pending.OuterChoiceContinuation is null ||
-                    pending.ControlledTarget is not null ||
-                    pending.ControlledGeneration is not null ||
-                    pending.ControlledPotionGeneration is not null ||
-                    pending.ControlledCardTransform is not null ||
-                    pending.ControlledDrawInsertion is not null ||
-                    pending.ControlledRandomCost is not null ||
-                    pending.ControlledDrawCost is not null ||
-                    pending.ControlledCardShortlist is not null ||
-                    pending.ControlledRandomPileCard is not null ||
-                    pending.ControlledSemanticDraw is not null ||
+                if (pending.OuterChoiceContinuation is null ||
                     combat.PendingKnowledgeDemonChoice is not null ||
                     (automatic is null && !combat.IsPlayerTurn) ||
                     !PrototypeGameEngine.ValidateControlledPoolShuffle(
@@ -643,18 +591,7 @@ public sealed partial record CombatState
             if (pending.ControlledPotionGeneration is { } potionGeneration)
             {
                 var automatic = combat.AutomaticPipelineContinuation;
-                if (pending.ChoiceId != "controlled_potion_generation" ||
-                    pending.OuterChoiceContinuation is null ||
-                    pending.ControlledTarget is not null ||
-                    pending.ControlledGeneration is not null ||
-                    pending.ControlledCardTransform is not null ||
-                    pending.ControlledDrawInsertion is not null ||
-                    pending.ControlledPoolShuffle is not null ||
-                    pending.ControlledRandomCost is not null ||
-                    pending.ControlledDrawCost is not null ||
-                    pending.ControlledCardShortlist is not null ||
-                    pending.ControlledRandomPileCard is not null ||
-                    pending.ControlledSemanticDraw is not null ||
+                if (pending.OuterChoiceContinuation is null ||
                     combat.PendingKnowledgeDemonChoice is not null ||
                     (automatic is null && !combat.IsPlayerTurn) ||
                     !PrototypeGameEngine.ValidateControlledPotionGeneration(
@@ -673,17 +610,6 @@ public sealed partial record CombatState
             {
                 if (!PrototypeGameEngine.ValidateControlledCardTransform(
                         combat, cardTransform) ||
-                    pending.ControlledTarget is not null ||
-                    pending.ControlledGeneration is not null ||
-                    pending.ControlledPotionGeneration is not null ||
-                    pending.ControlledDrawInsertion is not null ||
-                    pending.ControlledPoolShuffle is not null ||
-                    pending.ControlledRandomCost is not null ||
-                    pending.ControlledDrawCost is not null ||
-                    pending.ControlledCardShortlist is not null ||
-                    pending.ControlledRandomPileCard is not null ||
-                    pending.ControlledSemanticDraw is not null ||
-                    pending.ChoiceId != "controlled_card_transform" ||
                     pending.CandidateCardInstanceIds.Length != 0)
                     throw new InvalidOperationException(
                         "Controlled card-transform continuation is malformed.");
@@ -754,8 +680,6 @@ public sealed partial record CombatState
                     }
                 if (pending.SemanticStratagemDrawSelection ||
                     pending.AutomaticSemanticStratagemDrawSelection ||
-                    pending.ControlledSemanticDraw is not null ||
-                    pending.ControlledDrawCost is not null ||
                     !hasStandaloneDrawResume || !combat.IsPlayerTurn ||
                     combat.AutomaticPipelineContinuation is not null ||
                     combat.Stochastic.SemanticDeck is not
@@ -771,18 +695,6 @@ public sealed partial record CombatState
                     pipelineCursor.Stochastic.IsAtSemanticBeforeHandDraw(
                         pipelineCursor.Mechanics);
                 if (pending.StandaloneSemanticDrawHookChoice ||
-                    pending.SemanticStratagemDrawSelection ||
-                    pending.AutomaticSemanticStratagemDrawSelection ||
-                    pending.ControlledTarget is not null ||
-                    pending.ControlledGeneration is not null ||
-                    pending.ControlledPotionGeneration is not null ||
-                    pending.ControlledDrawCost is not null ||
-                    pending.ControlledSemanticDraw is not null ||
-                    pending.ControlledDrawInsertion is not null ||
-                    pending.ControlledPoolShuffle is not null ||
-                    pending.ControlledRandomCost is not null ||
-                    pending.ControlledCardShortlist is not null ||
-                    pending.ControlledRandomPileCard is not null ||
                     pending.SemanticStratagemDrawSelection ||
                     pending.AutomaticSemanticStratagemDrawSelection ||
                     !(PrototypeGameEngine.IsSemanticAutomaticHandDraw(combat) ||
@@ -860,15 +772,6 @@ public sealed partial record CombatState
                           continuation.SourceCardInstanceId ||
                       pending.SourceCardDestination !=
                           continuation.SourceCardDestination)) ||
-                    pending.ControlledTarget is not null ||
-                    pending.ControlledGeneration is not null ||
-                    pending.ControlledPotionGeneration is not null ||
-                    pending.ControlledDrawInsertion is not null ||
-                    pending.ControlledPoolShuffle is not null ||
-                    pending.ControlledRandomCost is not null ||
-                    pending.ControlledDrawCost is not null ||
-                    pending.ControlledCardShortlist is not null ||
-                    pending.ControlledRandomPileCard is not null ||
                     pending.Selection.SourceZone != PrototypeCardZone.Hand ||
                     pending.Selection.MinSelections != 0 ||
                     pending.Selection.MaxSelections != 0 ||

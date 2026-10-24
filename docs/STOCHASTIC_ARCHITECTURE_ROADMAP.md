@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 controlled-choice payload discriminator increment (2026-10-24):** The
+flattened `PendingCombatChoiceState` now owns the mapping from controlled
+choice IDs to their exclusive typed payloads, including the sole supported
+draw-cost/semantic-draw pair. Combat-state and semantic draw-cost validation
+reuse this invariant, removing repeated payload-exclusion checks without
+changing the snapshot schema. Static source review and `git diff --check`
+only; no tests or builds were run.
+
 **S4 guarded run-action and event-choice scope increment (2026-10-24):**
 Controlled run-action replay and entry, event-choice and reward continuations,
 and their shared `Step` adapters now use
