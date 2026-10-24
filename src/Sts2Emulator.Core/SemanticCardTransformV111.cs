@@ -395,10 +395,9 @@ public static class SemanticCardTransformChoiceV111
             throw new InvalidDataException(
                 "Card-transform decision no longer matches its source pool.");
 
-        RunState resumed;
-        using (ControlledChanceGuardV111.Enter())
-            resumed = PrototypeGameEngine.ResumeControlledCardTransform(
-                checkpoint.Fork(), decision.SelectedCardId);
+        var resumed = ControlledChanceGuardV111.ExecuteGuarded(
+            () => PrototypeGameEngine.ResumeControlledCardTransform(
+                checkpoint.Fork(), decision.SelectedCardId));
         if (resumed.Phase == RunPhase.Combat)
             SemanticPilotCombatEngineV111.ValidateSemanticCombatBoundary(
                 resumed);

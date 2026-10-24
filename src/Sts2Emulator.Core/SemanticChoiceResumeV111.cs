@@ -71,10 +71,9 @@ internal static class SemanticChoiceResumeV111
             (advanced, remaining) = PrototypeGameEngine
                 .ResumeSemanticAutomaticHandDraw(run, remainingCount);
         else
-            using (ControlledChanceGuardV111.Enter())
-                (advanced, remaining) = PrototypeGameEngine
-                    .BeginSemanticCombatDraw(
-                        run, remainingCount, fromHandDraw);
+            (advanced, remaining) = ControlledChanceGuardV111.ExecuteGuarded(
+                () => PrototypeGameEngine.BeginSemanticCombatDraw(
+                    run, remainingCount, fromHandDraw));
         SemanticDrawChoiceV111.ValidateRecordedChoice(
             advanced, ownedDecision.Event, ownedDecision.SelectedIndex);
         return (
@@ -119,9 +118,9 @@ internal static class SemanticChoiceResumeV111
         if (pending.BeforeHandDraw)
         {
             PrototypeDrawCardsResumeResultV111 progress;
-            using (ControlledChanceGuardV111.Enter())
-                progress = PrototypeGameEngine
-                    .ResumeSemanticBeforeHandDrawActionChoice(run);
+            progress = ControlledChanceGuardV111.ExecuteGuarded(
+                () => PrototypeGameEngine
+                    .ResumeSemanticBeforeHandDrawActionChoice(run));
             return (progress, decision);
         }
 
@@ -218,9 +217,9 @@ internal static class SemanticChoiceResumeV111
                     advanced, remainingCount, cardsDrawnBefore));
         }
 
-        using (ControlledChanceGuardV111.Enter())
-            return PrototypeGameEngine.ResumeSemanticCombatDrawCost(
-                run, selectedCost);
+        return ControlledChanceGuardV111.ExecuteGuarded(
+            () => PrototypeGameEngine.ResumeSemanticCombatDrawCost(
+                run, selectedCost));
     }
 
     internal static (PrototypeDrawCardsResumeResultV111 Progress,
@@ -233,10 +232,9 @@ internal static class SemanticChoiceResumeV111
         decision.Validate();
         var ownedDecision = decision.Fork();
         PrototypeDrawCardsResumeResultV111 progress;
-        using (ControlledChanceGuardV111.Enter())
-            progress = PrototypeGameEngine
-                .ResumeSemanticRandomPileCardChoice(
-                    checkpoint.Fork(), ownedDecision);
+        progress = ControlledChanceGuardV111.ExecuteGuarded(
+            () => PrototypeGameEngine.ResumeSemanticRandomPileCardChoice(
+                checkpoint.Fork(), ownedDecision));
         return (progress, ownedDecision.Event.SiteId);
     }
 

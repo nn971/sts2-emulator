@@ -248,13 +248,12 @@ public static class SemanticDrawHookChoiceEngineV111
             replayedEvent.Fork(), decision.ActionId);
         replayedDecision.Validate();
         var environment = new PrototypeAiEnvironment();
-        RunState advanced;
         bool beforeHandDraw = decision.Event.BeforeHandDraw;
         string site = beforeHandDraw
             ? "combat.BeforeHandDraw" : "combat.draw.CardDrawn";
-        using (ControlledChanceGuardV111.Enter())
-        using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
-            advanced = environment.Step(source.Fork(), action.ActionId).State;
+        var advanced = ControlledChanceGuardV111.ExecuteGuarded(
+            () => environment.Step(source.Fork(), action.ActionId).State,
+            allowEngineOwnedPrototypeReward: true);
         if (advanced.Phase != RunPhase.Combat ||
             advanced.World?.Combat is not { } advancedCombat)
             throw new NotSupportedException(

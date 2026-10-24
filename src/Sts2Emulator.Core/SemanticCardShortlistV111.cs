@@ -366,10 +366,9 @@ public static class SemanticCardShortlistChoiceV111
         var randomAutoplay = shortlist.Operation.Kind ==
             PrototypeCombatEffectKind.AutoPlayRandomCardsFromZone;
 
-        RunState resumed;
-        using (ControlledChanceGuardV111.Enter())
-            resumed = PrototypeGameEngine.ResumeControlledCardShortlist(
-                checkpoint.Fork(), decision.SelectedCardInstanceId);
+        var resumed = ControlledChanceGuardV111.ExecuteGuarded(
+            () => PrototypeGameEngine.ResumeControlledCardShortlist(
+                checkpoint.Fork(), decision.SelectedCardInstanceId));
         if (PrototypeGameEngine
                 .IsAtCombatRewardOrTerminalBoundary(resumed))
         {

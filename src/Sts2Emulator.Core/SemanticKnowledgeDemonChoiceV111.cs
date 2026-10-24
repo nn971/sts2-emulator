@@ -232,11 +232,10 @@ public static class SemanticKnowledgeDemonChoiceEngineV111
         _ = ValidateCurrentAction(source, current, ownedDecision.ActionId,
             ownedDecision.SelectedCardId);
 
-        RunState resumed;
-        using (ControlledChanceGuardV111.Enter())
-        using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
-            resumed = new PrototypeAiEnvironment().Step(
-                source.Fork(), ownedDecision.ActionId).State;
+        var resumed = ControlledChanceGuardV111.ExecuteGuarded(
+            () => new PrototypeAiEnvironment().Step(
+                source.Fork(), ownedDecision.ActionId).State,
+            allowEngineOwnedPrototypeReward: true);
         if (resumed.Phase is not (
                 RunPhase.Combat or RunPhase.Reward or RunPhase.Terminal) ||
             resumed.World?.Combat?.PendingKnowledgeDemonChoice is not null)

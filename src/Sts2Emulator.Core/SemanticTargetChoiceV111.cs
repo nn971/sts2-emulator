@@ -320,11 +320,10 @@ public static class SemanticTargetChoiceV111
         decision.Validate();
         ValidateBoundary(checkpoint);
 
-        RunState resumed;
-        using (ControlledChanceGuardV111.Enter())
-        using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
-            resumed = PrototypeGameEngine.ResumeControlledRandomTarget(
-                checkpoint.Fork(), decision.SelectedEnemyInstanceId);
+        var resumed = ControlledChanceGuardV111.ExecuteGuarded(
+            () => PrototypeGameEngine.ResumeControlledRandomTarget(
+                checkpoint.Fork(), decision.SelectedEnemyInstanceId),
+            allowEngineOwnedPrototypeReward: true);
         if (resumed.Phase == RunPhase.Combat)
         {
             var priorCombat = checkpoint.World?.Combat ??

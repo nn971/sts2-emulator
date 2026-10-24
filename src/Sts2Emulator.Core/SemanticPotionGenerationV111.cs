@@ -332,10 +332,9 @@ public static class SemanticPotionGenerationChoiceV111
                 "Potion-generation decision no longer matches its source pool.");
         ValidateBoundary(checkpoint);
 
-        RunState resumed;
-        using (ControlledChanceGuardV111.Enter())
-            resumed = PrototypeGameEngine.ResumeControlledPotionGeneration(
-                checkpoint.Fork(), decision.SelectedPotionId);
+        var resumed = ControlledChanceGuardV111.ExecuteGuarded(
+            () => PrototypeGameEngine.ResumeControlledPotionGeneration(
+                checkpoint.Fork(), decision.SelectedPotionId));
         if (resumed.Phase != RunPhase.Combat)
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_POTION site=combat.potion_generation " +

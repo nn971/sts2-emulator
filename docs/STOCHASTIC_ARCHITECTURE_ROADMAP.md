@@ -3799,3 +3799,14 @@ its same atomic replay. Site allowlists and ordered-support checks remain
 shared with the run-action continuation; unregistered stochastic hooks remain
 fail-closed. No session or snapshot schema was added. Static source review and
 `git diff --check` only; no tests or builds were run.
+
+**S4 guarded semantic-choice resume scope increment (2026-10-24):**
+`ControlledChanceGuardV111.ExecuteGuarded` now owns the synchronous guard
+scope and optional engine-owned reward allowance shared by typed semantic
+draw, cost, target, generation, insertion, card-selection, transform,
+shortlist, pool-shuffle, potion-generation, draw-hook, and Knowledge Demon
+resumes. Their source-boundary validation, result checks, and transcript
+policies remain with their existing choice owners. No snapshot or transcript
+format changed. Broader resume consolidation and cross-provider mechanical
+equivalence remain open. Static source review and `git diff --check` only; no
+tests or builds were run.

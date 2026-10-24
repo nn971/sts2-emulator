@@ -655,9 +655,9 @@ public static class SemanticDrawInsertionChoiceV111
         ArgumentNullException.ThrowIfNull(checkpoint);
         ArgumentNullException.ThrowIfNull(decision);
         decision.Validate();
-        using (ControlledChanceGuardV111.Enter())
-        using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
-            return PrototypeGameEngine.ResumeControlledDrawInsertion(
-                checkpoint.Fork(), decision.SelectedPosition);
+        return ControlledChanceGuardV111.ExecuteGuarded(
+            () => PrototypeGameEngine.ResumeControlledDrawInsertion(
+                checkpoint.Fork(), decision.SelectedPosition),
+            allowEngineOwnedPrototypeReward: true);
     }
 }

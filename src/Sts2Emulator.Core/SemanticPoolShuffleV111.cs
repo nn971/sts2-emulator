@@ -527,10 +527,9 @@ public static class SemanticPoolShuffleChoiceV111
             PrototypeGameEngine.IsHelloWorldAutomaticBeforeHandDrawPoolShuffle(
                 combat, choice!, shuffle, choice!.OuterChoiceContinuation!);
 
-        RunState result;
-        using (ControlledChanceGuardV111.Enter())
-            result = PrototypeGameEngine.ResumeControlledPoolShuffle(
-                checkpoint.Fork(), decision.SelectedSwapIndex);
+        var result = ControlledChanceGuardV111.ExecuteGuarded(
+            () => PrototypeGameEngine.ResumeControlledPoolShuffle(
+                checkpoint.Fork(), decision.SelectedSwapIndex));
         if (PrototypeGameEngine
                 .IsAtCombatRewardOrTerminalBoundary(result))
         {

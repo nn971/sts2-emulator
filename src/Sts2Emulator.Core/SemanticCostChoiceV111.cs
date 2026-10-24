@@ -291,22 +291,10 @@ public static class SemanticCostChoiceV111
         if (selectedCost < 0 || selectedCost >= bound)
             throw new ArgumentOutOfRangeException(nameof(selectedCost));
 
-        RunState resumed;
-        if (allowEngineOwnedPrototypeReward)
-        {
-            using (ControlledChanceGuardV111.Enter())
-            using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
-                resumed = PrototypeGameEngine
-                    .ResumeControlledSemanticEffectDrawCost(
-                        checkpoint, selectedCost);
-        }
-        else
-        {
-            using (ControlledChanceGuardV111.Enter())
-                resumed = PrototypeGameEngine
-                    .ResumeControlledSemanticEffectDrawCost(
-                        checkpoint, selectedCost);
-        }
+        var resumed = ControlledChanceGuardV111.ExecuteGuarded(
+            () => PrototypeGameEngine.ResumeControlledSemanticEffectDrawCost(
+                checkpoint, selectedCost),
+            allowEngineOwnedPrototypeReward);
 
         ValidateEffectDrawCostResult(resumed);
         return resumed;
@@ -437,9 +425,8 @@ internal static class SemanticRandomHandCostChoiceV111
                 "Random hand-cost choice does not match its source operation.");
         ValidateBoundary(checkpoint);
 
-        RunState resumed;
-        using (ControlledChanceGuardV111.Enter())
-            resumed = resume(checkpoint.Fork());
+        var resumed = ControlledChanceGuardV111.ExecuteGuarded(
+            () => resume(checkpoint.Fork()));
         var nextCombat = resumed.World?.Combat;
         if (resumed.Phase != RunPhase.Combat || nextCombat is null)
             throw new NotSupportedException(

@@ -549,22 +549,19 @@ public static class SemanticGenerationChoiceV111
             ValidateBoundary(checkpoint);
         }
 
-        RunState resumed;
-        using (ControlledChanceGuardV111.Enter())
-        using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
+        var resumed = ControlledChanceGuardV111.ExecuteGuarded(() =>
         {
             if (drawInsertionModelChoice)
-                resumed = PrototypeGameEngine
+                return PrototypeGameEngine
                     .ResumeControlledDrawInsertionByCardModel(
                         checkpoint.Fork(), decision.SelectedCardId);
             else if (crossbowTurnStartHandoff)
-                resumed = PrototypeGameEngine
+                return PrototypeGameEngine
                     .ResumeControlledGeneratedCardForSemanticHandoff(
                         checkpoint.Fork(), decision.SelectedCardId);
-            else
-                resumed = PrototypeGameEngine.ResumeControlledGeneratedCard(
-                    checkpoint.Fork(), decision.SelectedCardId);
-        }
+            return PrototypeGameEngine.ResumeControlledGeneratedCard(
+                checkpoint.Fork(), decision.SelectedCardId);
+        }, allowEngineOwnedPrototypeReward: true);
         if (resumed.Phase == RunPhase.Combat)
         {
             SemanticPilotCombatEngineV111.ValidateSemanticCombatBoundary(

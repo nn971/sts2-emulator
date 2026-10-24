@@ -52,6 +52,23 @@ public static class ControlledChanceGuardV111
     }
 
     /// <summary>
+    /// Runs one synchronous controlled transition under the chance guard and,
+    /// when requested, its narrow engine-owned prototype reward allowance.
+    /// </summary>
+    internal static T ExecuteGuarded<T>(Func<T> transition,
+        bool allowEngineOwnedPrototypeReward = false)
+    {
+        ArgumentNullException.ThrowIfNull(transition);
+        using (Enter())
+        {
+            if (!allowEngineOwnedPrototypeReward)
+                return transition();
+            using (AllowEngineOwnedPrototypeReward())
+                return transition();
+        }
+    }
+
+    /// <summary>
     /// Allow the versioned native-v111 provider while a guarded comparator
     /// action runs. Prototype RNG remains rejected, so a chance site that has
     /// not migrated to the native provider cannot silently contaminate the

@@ -399,10 +399,9 @@ public static class SemanticCardSelectionEngineV111
             deck = SemanticDeckEngineV111.RemoveCardInstances(deck, selected);
         }
 
-        RunState advanced;
-        using (ControlledChanceGuardV111.Enter())
-        using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
-            advanced = environment.Step(source.Fork(), actionId).State;
+        var advanced = ControlledChanceGuardV111.ExecuteGuarded(
+            () => environment.Step(source.Fork(), actionId).State,
+            allowEngineOwnedPrototypeReward: true);
         if (advanced.Phase == RunPhase.Combat)
         {
             if (choice.AutomaticSemanticStratagemDrawSelection)
@@ -575,11 +574,10 @@ public static class SemanticCardSelectionEngineV111
                 throw new InvalidDataException(
                     "Resumed card draw lost the provider-owned deck.");
             SemanticDrawPileAdapterV111.ValidateSynchronized(resultCombat);
-            RunState replayed;
-            using (ControlledChanceGuardV111.Enter())
-            using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
-                replayed = new PrototypeAiEnvironment().Step(
-                    state.Origin.Fork(), state.ActionId).State;
+            var replayed = ControlledChanceGuardV111.ExecuteGuarded(
+                () => new PrototypeAiEnvironment().Step(
+                    state.Origin.Fork(), state.ActionId).State,
+                allowEngineOwnedPrototypeReward: true);
             if (CanonicalJson.Sha256(replayed) !=
                 CanonicalJson.Sha256(state.Run))
                 throw new InvalidDataException(

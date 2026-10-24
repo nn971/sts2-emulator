@@ -206,22 +206,10 @@ public static class SemanticDrawChoiceV111
         ValidateDecision(
             SemanticDeckEngineV111.Inspect(deck), decision);
 
-        RunState resumed;
-        if (allowEngineOwnedPrototypeReward)
-        {
-            using (ControlledChanceGuardV111.Enter())
-            using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
-                resumed = PrototypeGameEngine
-                    .ResumeControlledSemanticEffectDraw(
-                        checkpoint, decision.SelectedCardInstanceId);
-        }
-        else
-        {
-            using (ControlledChanceGuardV111.Enter())
-                resumed = PrototypeGameEngine
-                    .ResumeControlledSemanticEffectDraw(
-                        checkpoint, decision.SelectedCardInstanceId);
-        }
+        var resumed = ControlledChanceGuardV111.ExecuteGuarded(
+            () => PrototypeGameEngine.ResumeControlledSemanticEffectDraw(
+                checkpoint, decision.SelectedCardInstanceId),
+            allowEngineOwnedPrototypeReward);
 
         ValidateEffectDrawResult(
             resumed, decision.Event, decision.SelectedCardInstanceId);
