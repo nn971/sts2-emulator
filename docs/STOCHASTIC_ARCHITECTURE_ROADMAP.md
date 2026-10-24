@@ -2,6 +2,12 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 legacy Event-reward law ownership increment (2026-10-24):** The
+legacy modifier-curse, event potion-slot fill, and custom reward potion-option
+laws now live in `ChanceLawEventRewardV111.cs`. Their query methods and source
+conditions are unchanged; shared categorical construction remains in core.
+Static source review and `git diff --check` only; no tests or builds were run.
+
 **S3 merchant and Treasure helper ownership increment (2026-10-24):**
 The legacy Shop card-type validator now lives with merchant Chance Laws, and
 the legacy Treasure relic query now lives with the existing Native Treasure
