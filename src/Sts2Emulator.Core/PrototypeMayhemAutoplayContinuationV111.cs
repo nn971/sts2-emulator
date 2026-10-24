@@ -512,13 +512,14 @@ public sealed partial class PrototypeGameEngine
         PrototypeAutomaticPipelineContinuationState continuation,
         CombatState combat, PendingCombatChoiceState pending)
     {
-        var progress = continuation.Stochastic.HandDrawProgress;
+        bool hasSavedHandDrawProgress =
+            continuation.Stochastic.HasSavedHandDrawProgress();
         bool semanticBeforeHandDrawPending =
             continuation.Stochastic.IsAtSemanticBeforeHandDraw(
                 continuation.Mechanics);
         if (!continuation.Mechanics.IsAtStep(
                 PrototypeAutomaticStepKind.DrawPlayerHand) ||
-            (progress is not null && !semanticBeforeHandDrawPending) ||
+            (hasSavedHandDrawProgress && !semanticBeforeHandDrawPending) ||
             continuation.Stochastic.ControlledEnemyAction is not null ||
             continuation.Stochastic.ControlledTurnIntents is not null ||
             continuation.Stochastic.CompletedSemanticHandDrawRequested is not null ||
@@ -1341,9 +1342,9 @@ public sealed partial class PrototypeGameEngine
         PrototypeAutomaticPipelineContinuationState continuation,
         PrototypeOpeningCombatStage expectedStage) =>
         continuation.Mechanics.IsAtOpeningBoundary(expectedStage) &&
+        !continuation.Stochastic.HasSavedHandDrawProgress() &&
         continuation.Stochastic is
-            { HandDrawProgress: null,
-              ControlledEnemyAction: null,
+            { ControlledEnemyAction: null,
               ControlledTurnIntents: null,
               CompletedSemanticHandDrawRequested: null } &&
         combat.Stochastic.SemanticDeck is
@@ -1612,9 +1613,9 @@ public sealed partial class PrototypeGameEngine
         return combat.IsPlayerTurn &&
             continuation.Mechanics.IsImmediatelyAfterDispatch(
                 PrototypeCombatEventKind.PlayerTurnStarted) &&
+            !continuation.Stochastic.HasSavedHandDrawProgress() &&
             continuation.Stochastic is
-                { HandDrawProgress: null,
-                  ControlledEnemyAction: null,
+                { ControlledEnemyAction: null,
                   ControlledTurnIntents: null } &&
             continuation.Mechanics.IsImmediatelyAfterDispatch(
                 PrototypeCombatEventKind.PlayerTurnStarted);

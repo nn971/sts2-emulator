@@ -95,10 +95,10 @@ public sealed partial class PrototypeGameEngine
             !pipeline.Mechanics.IsAtStep(
                 PrototypeAutomaticStepKind.DrawPlayerHand) ||
             pipeline.Stochastic is not
-                { HandDrawProgress: null,
-                  ControlledEnemyAction: null,
+                { ControlledEnemyAction: null,
                   ControlledTurnIntents: null,
                   CompletedSemanticHandDrawRequested: null } ||
+            pipeline.Stochastic.HasSavedHandDrawProgress() ||
             continuation.EventDispatchContinuation is not
                 { EventDepth: 0,
                   RemainingSubscribers: { } remainingSubscribers }

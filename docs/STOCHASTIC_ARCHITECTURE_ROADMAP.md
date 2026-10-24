@@ -12,6 +12,15 @@ raw saved progress tag for controlled draw continuation decisions. The saved
 payload and snapshot representation are unchanged. Static source review and
 `git diff --check` only; no tests or builds were run.
 
+**S4 hand-draw progress presence owner increment (2026-10-24):** The pipeline
+stochastic owner now exposes `HasSavedHandDrawProgress` for clean-boundary
+presence checks. Semantic and controlled draw completion, automatic pipeline
+opening and turn-start guards, generation admission, Mayhem guards, and combat
+boundary validation use that query; mode decisions use the validated stage
+queries. The mechanics diagnostic projection remains the only runtime reader
+outside the owner that projects the tagged payload. No snapshot schema changed.
+Static source review and `git diff --check` only; no tests or builds were run.
+
 **S0 Native random-choice callsite census increment (2026-10-24):** The v52
 inventory now includes the two direct `NativeRandomChoiceV111` calls in the
 Native relic-grab-bag source path, resolving both to existing matrix rows.

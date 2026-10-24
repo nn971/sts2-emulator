@@ -1078,6 +1078,15 @@ public static class ControlledPlayableCombatEngineV111
         bool hasActiveHandDrawProgress =
             continuation.Stochastic.TryGetActiveAutomaticHandDrawProgress(
                 continuation.Mechanics, out var handDrawProgress);
+        bool isBeforeHandDraw =
+            continuation.Stochastic.IsAtSemanticBeforeHandDraw(
+                continuation.Mechanics) ||
+            continuation.Stochastic.IsAtControlledBeforeHandDraw(
+                continuation.Mechanics);
+        if (continuation.Stochastic.HasSavedHandDrawProgress() &&
+            !hasActiveHandDrawProgress && !isBeforeHandDraw)
+            throw new InvalidDataException(
+                "Saved automatic hand-draw progress is outside its source stage.");
         if (hasActiveHandDrawProgress && handDrawProgress.Kind ==
             PrototypeAutomaticHandDrawProgressKindV111
                 .ControlledRecycleStratagem)

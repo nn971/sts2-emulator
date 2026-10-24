@@ -713,7 +713,7 @@ public sealed record PrototypeAutomaticPipelineContinuationState(
         ArgumentNullException.ThrowIfNull(combat);
         Validate(combat);
         return combat.Stochastic.SemanticDeck?.Pending is null &&
-            Stochastic.HandDrawProgress is null &&
+            !Stochastic.HasSavedHandDrawProgress() &&
             Stochastic.ControlledEnemyAction is null &&
             Stochastic.ControlledTurnIntents is null;
     }

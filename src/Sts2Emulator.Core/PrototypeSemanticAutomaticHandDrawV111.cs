@@ -158,7 +158,7 @@ public sealed partial class PrototypeGameEngine
         var completed = after.AutomaticPipelineContinuation;
         if (completed?.Mechanics.IsAtStep(
                 PrototypeAutomaticStepKind.DrawPlayerHand) == true &&
-            completed.Stochastic.HandDrawProgress is null &&
+            !completed.Stochastic.HasSavedHandDrawProgress() &&
             after.PendingChoice is null &&
             after.PendingKnowledgeDemonChoice is null &&
             after.Stochastic.SemanticDeck is { Pending: null })
@@ -177,7 +177,7 @@ public sealed partial class PrototypeGameEngine
             completed is null ||
             !completed.Mechanics.IsImmediatelyAfterStep(
                 PrototypeAutomaticStepKind.DrawPlayerHand) ||
-            completed.Stochastic.HandDrawProgress is not null ||
+            completed.Stochastic.HasSavedHandDrawProgress() ||
             after.Stochastic.SemanticDeck is not { Pending: null })
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.BeforeHandDraw " +

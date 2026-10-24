@@ -420,6 +420,8 @@ The pipeline stochastic owner provides `TryGetActiveAutomaticHandDrawProgress` a
 
 Controlled-playable draw-cost validation and post-choice turn-resume classification, controlled draw insertion validation, and controlled hand-draw hook and recycle resumption also use `TryGetActiveAutomaticHandDrawProgress`. The active `DrawPlayerHand` cursor is validated with the mode before matching the saved remaining count or dispatching controlled recycle work. The semantic pre-draw stage check uses `IsAtSemanticBeforeHandDraw`. These consumers leave tagged-stage interpretation with the pipeline stochastic owner while retaining the serialized progress tag as its payload.
 
+`HasSavedHandDrawProgress` owns payload-presence checks at clean boundaries; controlled and semantic draw completion, opening-cursor, generation, autoplay, and combat-boundary validators no longer inspect the tag directly. Mode and stage decisions continue through the validated owner queries above. The diagnostic mechanics projection reads the payload to publish its existing projected count.
+
 `ResumeSemanticAutomaticHandDrawStep` owns classification of the semantic
 stage's active draw, pending pre-draw choice, and completed zero or positive
 draw outcomes. `BeginSemanticAutomaticHandDraw` returns that validated

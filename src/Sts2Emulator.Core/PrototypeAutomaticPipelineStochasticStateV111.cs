@@ -197,6 +197,10 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
             HandDrawProgress, value);
     }
 
+    /// <summary>Reports whether the pipeline cursor stores a hand-draw stage
+    /// payload. Use the stage queries below when interpreting that payload.</summary>
+    public bool HasSavedHandDrawProgress() => HandDrawProgress is not null;
+
     public bool TryGetSemanticHandDrawProgress(
         PrototypeAutomaticPipelineMechanicsStateV111 mechanics,
         out int requested, out int remaining)
