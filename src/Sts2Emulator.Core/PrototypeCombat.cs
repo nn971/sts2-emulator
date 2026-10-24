@@ -6107,134 +6107,16 @@ public sealed partial class PrototypeGameEngine
 
                 case PrototypeCombatEffectKind.DamageAllEnemiesRepeatPerKill:
                 {
-                    var pendingRounds = 1;
-                    while (pendingRounds > 0 && player.Hp > 0)
-                    {
-                        pendingRounds--;
-                        var roundTargets = combat.Enemies
-                            .Where(enemy => enemy.Hp > 0)
-                            .Select(enemy => enemy.InstanceId)
-                            .ToArray();
-
-                        foreach (var enemyId in roundTargets)
-                        {
-                            var enemyBeforeHit = combat.Enemies
-                                .Single(enemy => enemy.InstanceId == enemyId);
-                            if (enemyBeforeHit.Hp <= 0)
-                            {
-                                continue;
-                            }
-
-                            if (operation.IsPoweredAttack)
-                            {
-                                var retaliation = EnemyAttackRetaliation(
-                                    combat,
-                                    enemyId);
-                                if (retaliation > 0)
-                                {
-                                    var absorbed = Math.Min(
-                                        combat.PlayerBlock,
-                                        retaliation);
-                                    combat = combat with
-                                    {
-                                        PlayerBlock =
-                                            combat.PlayerBlock - absorbed
-                                    };
-                                    player = player with
-                                    {
-                                        Hp = Math.Max(
-                                            0,
-                                            player.Hp
-                                            - Math.Max(
-                                                0,
-                                                retaliation - absorbed))
-                                    };
-                                    if (player.Hp <= 0)
-                                    {
-                                        var prevented =
-                                            TryUseAutomaticDeathPrevention(
-                                                player,
-                                                combat,
-                                                rng,
-                                                eventDepth);
-                                        player = prevented.Player;
-                                        combat = prevented.Combat;
-                                        if (player.Hp <= 0)
-                                        {
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-
-                            var echoDamageAmount = operation.Amount;
-                            if (operation.IsPoweredAttack)
-                            {
-                                echoDamageAmount = ModifyPlayerAttackDamage(
-                                    combat,
-                                    sourceCardInstanceId,
-                                    enemyId,
-                                    echoDamageAmount);
-                                echoDamageAmount = ModifyIncomingAttackDamage(
-                                    combat,
-                                    enemyId,
-                                    echoDamageAmount);
-                            }
-
-                            var echoTargetBlock = combat.Enemies.Single(enemy => enemy.InstanceId == enemyId).Block;
-                            var echoDamageResult = DamageEnemyInternal(
-                                combat,
-                                enemyId,
-                                echoDamageAmount,
-                                operation.IsPoweredAttack
-                                    ? MinimumPoweredAttackHpLoss(player) : 0,
-                                operation.IsPoweredAttack);
-                            combat = echoDamageResult.Combat;
-                            if (echoTargetBlock > 0 && echoDamageAmount >= echoTargetBlock)
-                                combat = ApplyPlayerEnemyBlockBrokenRelics(player, combat, enemyId);
-                            if (echoDamageResult.Defeated)
-                            {
-                                pendingRounds++;
-                                combat =
-                                    CleanupSourceBoundPowersForDefeatedEnemies(
-                                        combat);
-                            }
-
-                            if (echoDamageResult.DamageDealt > 0)
-                            {
-                                var damaged = DispatchCombatEvent(
-                                    player,
-                                    combat,
-                                    new PrototypeCombatEvent(
-                                        PrototypeCombatEventKind.EnemyDamaged,
-                                        TargetEnemyId: enemyId,
-                                        Amount: echoDamageResult.DamageDealt),
-                                    rng,
-                                    eventDepth + 1);
-                                player = damaged.Player;
-                                combat = damaged.Combat;
-                            }
-
-                            if (echoDamageResult.Defeated)
-                            {
-                                var defeated = DispatchCombatEvent(
-                                    player,
-                                    combat,
-                                    new PrototypeCombatEvent(
-                                        PrototypeCombatEventKind.EnemyDefeated,
-                                        TargetEnemyId: enemyId,
-                                        Amount: echoDamageResult.DamageDealt),
-                                    rng,
-                                    eventDepth + 1);
-                                player = defeated.Player;
-                                combat = defeated.Combat;
-                                combat = ResolveEnemyDeathSummons(
-                                    combat,
-                                    rng);
-                            }
-                        }
-                    }
-
+                    var effectContinuation = CreateEffectContinuation(
+                        effectContinuationContext, operations);
+                    var repeatedDamage = ResolveDamageAllEnemiesRepeatPerKill(
+                        player, combat, operation, rng,
+                        sourceCardInstanceId, eventDepth,
+                        effectContinuation);
+                    player = repeatedDamage.Player;
+                    combat = repeatedDamage.Combat;
+                    if (combat.PendingChoice is not null)
+                        return (player, combat);
                     break;
                 }
 
@@ -8625,6 +8507,191 @@ public sealed partial class PrototypeGameEngine
     }
 
     private static (PlayerState Player, CombatState Combat)
+        ResolveDamageAllEnemiesRepeatPerKill(
+            PlayerState player,
+            CombatState combat,
+            PrototypeQueuedOperation operation,
+            RngBundle rng,
+            long? sourceCardInstanceId,
+            int eventDepth,
+            PrototypeChoiceResolutionContinuationState effectContinuation,
+            PrototypeRepeatedDamageContinuationV111? savedProgress = null)
+    {
+        if (operation.Kind !=
+            PrototypeCombatEffectKind.DamageAllEnemiesRepeatPerKill)
+            throw new ArgumentException(
+                "Repeated damage continuation needs its source operation.",
+                nameof(operation));
+
+        var pendingRounds = savedProgress?.PendingRounds ?? 1;
+        var roundTargets = savedProgress?.CurrentRoundTargetIds;
+        var nextTargetIndex = savedProgress?.NextTargetIndex ?? 0;
+        while (player.Hp > 0 &&
+               (roundTargets is not null || pendingRounds > 0))
+        {
+            if (roundTargets is null)
+            {
+                pendingRounds--;
+                roundTargets = combat.Enemies
+                    .Where(enemy => enemy.Hp > 0)
+                    .Select(enemy => enemy.InstanceId)
+                    .ToArray();
+                nextTargetIndex = 0;
+                if (roundTargets.Length == 0)
+                {
+                    roundTargets = null;
+                    continue;
+                }
+            }
+
+            for (; nextTargetIndex < roundTargets.Length;
+                 nextTargetIndex++)
+            {
+                var enemyId = roundTargets[nextTargetIndex];
+                var enemyBeforeHit = combat.Enemies.Single(
+                    enemy => enemy.InstanceId == enemyId);
+                if (enemyBeforeHit.Hp <= 0)
+                    continue;
+
+                if (operation.IsPoweredAttack)
+                {
+                    var retaliation = EnemyAttackRetaliation(
+                        combat, enemyId);
+                    if (retaliation > 0)
+                    {
+                        var absorbed = Math.Min(
+                            combat.PlayerBlock, retaliation);
+                        combat = combat with
+                        {
+                            PlayerBlock = combat.PlayerBlock - absorbed
+                        };
+                        player = player with
+                        {
+                            Hp = Math.Max(0, player.Hp - Math.Max(
+                                0, retaliation - absorbed))
+                        };
+                        if (player.Hp <= 0)
+                        {
+                            var prevented =
+                                TryUseAutomaticDeathPrevention(
+                                    player, combat, rng, eventDepth);
+                            player = prevented.Player;
+                            combat = prevented.Combat;
+                            if (player.Hp <= 0)
+                                break;
+                        }
+                    }
+                }
+
+                var damageAmount = operation.Amount;
+                if (operation.IsPoweredAttack)
+                {
+                    damageAmount = ModifyPlayerAttackDamage(
+                        combat, sourceCardInstanceId, enemyId,
+                        damageAmount);
+                    damageAmount = ModifyIncomingAttackDamage(
+                        combat, enemyId, damageAmount);
+                }
+
+                var targetBlock = combat.Enemies.Single(
+                    enemy => enemy.InstanceId == enemyId).Block;
+                var damageResult = DamageEnemyInternal(
+                    combat, enemyId, damageAmount,
+                    operation.IsPoweredAttack
+                        ? MinimumPoweredAttackHpLoss(player) : 0,
+                    operation.IsPoweredAttack);
+                combat = damageResult.Combat;
+                if (targetBlock > 0 && damageAmount >= targetBlock)
+                    combat = ApplyPlayerEnemyBlockBrokenRelics(
+                        player, combat, enemyId);
+                if (damageResult.Defeated)
+                {
+                    pendingRounds++;
+                    combat = CleanupSourceBoundPowersForDefeatedEnemies(
+                        combat);
+                }
+
+                var resumeProgress = new PrototypeRepeatedDamageContinuationV111(
+                    operation, pendingRounds,
+                    (int[])roundTargets.Clone(), nextTargetIndex + 1,
+                    eventDepth);
+                if (damageResult.DamageDealt > 0)
+                {
+                    var damaged = DispatchCombatEvent(
+                        player, combat,
+                        new PrototypeCombatEvent(
+                            PrototypeCombatEventKind.EnemyDamaged,
+                            TargetEnemyId: enemyId,
+                            Amount: damageResult.DamageDealt),
+                        rng, eventDepth + 1,
+                        allowSuspension: true);
+                    player = damaged.Player;
+                    combat = damaged.Combat;
+                    if (combat.PendingChoice is not null)
+                    {
+                        var suspended = effectContinuation with
+                        {
+                            PendingDiscardEvents = damageResult.Defeated
+                                ?
+                                [new PrototypeCombatEvent(
+                                    PrototypeCombatEventKind.EnemyDefeated,
+                                    TargetEnemyId: enemyId,
+                                    Amount: damageResult.DamageDealt)]
+                                : [],
+                            EnemyDefeatFollowUp = damageResult.Defeated
+                                ? new PrototypeEnemyDefeatFollowUpV111(
+                                    operation, false, eventDepth, enemyId)
+                                : null,
+                            DamageRepeatContinuation = resumeProgress
+                        };
+                        return (player, AttachOuterChoiceContinuation(
+                            combat, suspended));
+                    }
+                }
+
+                if (damageResult.Defeated)
+                {
+                    var defeated = DispatchCombatEvent(
+                        player, combat,
+                        new PrototypeCombatEvent(
+                            PrototypeCombatEventKind.EnemyDefeated,
+                            TargetEnemyId: enemyId,
+                            Amount: damageResult.DamageDealt),
+                        rng, eventDepth + 1,
+                        allowSuspension: true);
+                    player = defeated.Player;
+                    combat = defeated.Combat;
+                    if (combat.PendingChoice is not null)
+                    {
+                        var suspended = effectContinuation with
+                        {
+                            PendingDiscardEvents = [],
+                            EnemyDefeatFollowUp =
+                                new PrototypeEnemyDefeatFollowUpV111(
+                                    operation, false, eventDepth, enemyId),
+                            DamageRepeatContinuation = resumeProgress
+                        };
+                        return (player, AttachOuterChoiceContinuation(
+                            combat, suspended));
+                    }
+
+                    var completedDefeat = CompleteEnemyDefeatFollowUp(
+                        player, combat, rng,
+                        new PrototypeEnemyDefeatFollowUpV111(
+                            operation, false, eventDepth, enemyId));
+                    player = completedDefeat.Player;
+                    combat = completedDefeat.Combat;
+                }
+            }
+
+            roundTargets = null;
+            nextTargetIndex = 0;
+        }
+
+        return (player, combat);
+    }
+
+    private static (PlayerState Player, CombatState Combat)
         ContinueDamageEnemyAfterHit(
             PlayerState player,
             CombatState combat,
@@ -8770,7 +8837,7 @@ public sealed partial class PrototypeGameEngine
                     EnemyDefeatFollowUp = defeated
                         ? new PrototypeEnemyDefeatFollowUpV111(
                             operation, continuation.FatalEligible,
-                            continuation.EventDepth)
+                            continuation.EventDepth, targetEnemyId)
                         : null
                 };
                 return (player, AttachOuterChoiceContinuation(
@@ -8799,7 +8866,7 @@ public sealed partial class PrototypeGameEngine
                     EnemyDefeatFollowUp =
                         new PrototypeEnemyDefeatFollowUpV111(
                             operation, continuation.FatalEligible,
-                            continuation.EventDepth)
+                            continuation.EventDepth, targetEnemyId)
                 };
                 return (player, AttachOuterChoiceContinuation(
                     combat, suspended));
@@ -8809,7 +8876,7 @@ public sealed partial class PrototypeGameEngine
                 player, combat, rng,
                 new PrototypeEnemyDefeatFollowUpV111(
                     operation, continuation.FatalEligible,
-                    continuation.EventDepth));
+                    continuation.EventDepth, targetEnemyId));
             player = completedDefeat.Player;
             combat = completedDefeat.Combat;
         }

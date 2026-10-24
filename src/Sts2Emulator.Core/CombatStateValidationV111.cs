@@ -876,14 +876,45 @@ public sealed partial record CombatState
                  continuation = continuation.Parent)
             {
                 if (continuation.EnemyDefeatFollowUp is { } defeatFollowUp &&
-                    (defeatFollowUp.Operation.Kind !=
-                        PrototypeCombatEffectKind.DamageEnemy ||
+                    (defeatFollowUp.Operation.Kind is not (
+                        PrototypeCombatEffectKind.DamageEnemy or
+                        PrototypeCombatEffectKind
+                            .DamageAllEnemiesRepeatPerKill) ||
                      defeatFollowUp.EventDepth < 0 ||
-                     defeatFollowUp.Operation.TargetEnemyId is not
-                        { } defeatedEnemyId ||
                      !combat.Enemies.Any(enemy =>
-                        enemy.InstanceId == defeatedEnemyId &&
+                        enemy.InstanceId ==
+                            (defeatFollowUp.DefeatedEnemyInstanceId ??
+                             defeatFollowUp.Operation.TargetEnemyId) &&
                         enemy.Hp <= 0) ||
+                     (defeatFollowUp.Operation.Kind ==
+                        PrototypeCombatEffectKind.DamageEnemy &&
+                      defeatFollowUp.DefeatedEnemyInstanceId is
+                        { } defeatedEnemyId &&
+                      defeatFollowUp.Operation.TargetEnemyId !=
+                        defeatedEnemyId) ||
+                     (defeatFollowUp.Operation.Kind ==
+                        PrototypeCombatEffectKind
+                            .DamageAllEnemiesRepeatPerKill &&
+                      (continuation.DamageRepeatContinuation is not
+                           { } repeatProgress ||
+                       defeatFollowUp.DefeatedEnemyInstanceId is not
+                           { } repeatedDefeatId ||
+                       repeatProgress.Operation.Kind !=
+                           PrototypeCombatEffectKind
+                               .DamageAllEnemiesRepeatPerKill ||
+                       repeatProgress.Operation.Amount !=
+                           defeatFollowUp.Operation.Amount ||
+                       repeatProgress.Operation.IsPoweredAttack !=
+                           defeatFollowUp.Operation.IsPoweredAttack ||
+                       repeatProgress.NextTargetIndex <= 0 ||
+                       repeatProgress.NextTargetIndex >
+                           repeatProgress.CurrentRoundTargetIds.Length ||
+                       repeatProgress.CurrentRoundTargetIds[
+                           repeatProgress.NextTargetIndex - 1] !=
+                           repeatedDefeatId)) ||
+                     (defeatFollowUp.FatalEligible &&
+                      defeatFollowUp.Operation.Kind !=
+                        PrototypeCombatEffectKind.DamageEnemy) ||
                      (defeatFollowUp.FatalEligible &&
                       defeatFollowUp.Operation.ExtraCardRewardsOnFatal <= 0 &&
                       defeatFollowUp.Operation.GoldOnFatal <= 0 &&
@@ -892,6 +923,26 @@ public sealed partial record CombatState
                 {
                     throw new InvalidOperationException(
                         "Nested choice has an invalid enemy-defeat follow-up.");
+                }
+
+                if (continuation.DamageRepeatContinuation is
+                        { } damageRepeat &&
+                    (damageRepeat.Operation.Kind !=
+                        PrototypeCombatEffectKind
+                            .DamageAllEnemiesRepeatPerKill ||
+                     damageRepeat.PendingRounds < 0 ||
+                     damageRepeat.EventDepth < 0 ||
+                     damageRepeat.NextTargetIndex < 0 ||
+                     damageRepeat.NextTargetIndex >
+                        damageRepeat.CurrentRoundTargetIds.Length ||
+                     damageRepeat.CurrentRoundTargetIds.Distinct().Count() !=
+                        damageRepeat.CurrentRoundTargetIds.Length ||
+                     damageRepeat.CurrentRoundTargetIds.Any(targetId =>
+                        !combat.Enemies.Any(enemy =>
+                            enemy.InstanceId == targetId))))
+                {
+                    throw new InvalidOperationException(
+                        "Nested choice has an invalid repeated-damage cursor.");
                 }
 
                 if (continuation.PendingSlyCardInstanceIds.Any(

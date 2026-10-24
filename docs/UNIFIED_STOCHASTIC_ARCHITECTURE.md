@@ -994,7 +994,7 @@ event-effect, and enemy-defeat continuation mechanics from their existing
 mechanics owners, including action identity, effect cursor, queued
 consequences, and the saved fatal follow-up, while omitting their random
 requests and decision payloads. The mechanics comparison schema advances to
-v18 for this expanded projection; the provider replay comparison remains v3.
+v19 for this expanded projection; the provider replay comparison remains v3.
 `SimulationMechanicsComparisonV111` copies the difference array on
 construction and replacement, then returns defensive copies to keep the
 diagnostic result immutable to callers.
@@ -1111,11 +1111,16 @@ and full-pool shuffle use it for conditional mutation admission. Their
 source-specific allowlists and failure policies remain at their existing
 boundaries.
 
-An `EnemyDamaged` or `EnemyDefeated` subscriber can now suspend a `DamageEnemy`
-operation through the existing outer choice continuation. The saved frame
+An `EnemyDamaged` or `EnemyDefeated` subscriber can now suspend either a
+`DamageEnemy` operation or `DamageAllEnemiesRepeatPerKill` (including Echoing
+Slash) through the existing outer choice continuation. The saved frame
 resumes remaining damage events, death summons, fatal rewards, and queued
-operations in source order. Pending event replay uses the same resumable
-dispatcher, and restore validates the defeated target and saved follow-up.
+operations in source order. Repeated damage also retains the current round's
+target snapshot, next target index, and pending extra kill rounds, so earlier
+hits are not replayed after a hook choice. Pending event replay uses the same
+resumable dispatcher, and restore validates the defeated target against the
+saved follow-up and repeated-damage cursor. The mechanics comparison retains
+this progress under schema v19; provider replay comparison remains v3.
 
 Toolbox's first-turn `BeforeHandDraw` generated offer now composes the
 existing full-pool shuffle and ChoicePool card-selection continuations. Exact

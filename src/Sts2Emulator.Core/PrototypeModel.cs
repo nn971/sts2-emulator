@@ -2258,6 +2258,8 @@ public sealed record PrototypeChoiceResolutionContinuationState(
         get;
         init;
     }
+    public PrototypeRepeatedDamageContinuationV111?
+        DamageRepeatContinuation { get; init; }
 
     public PrototypeChoiceResolutionContinuationState Fork() => this with
     {
@@ -2272,7 +2274,8 @@ public sealed record PrototypeChoiceResolutionContinuationState(
         EventDispatchContinuation =
             EventDispatchContinuation?.Fork(),
         Parent = Parent?.Fork(),
-        EnemyDefeatFollowUp = EnemyDefeatFollowUp?.Fork()
+        EnemyDefeatFollowUp = EnemyDefeatFollowUp?.Fork(),
+        DamageRepeatContinuation = DamageRepeatContinuation?.Fork()
     };
 }
 
@@ -2284,12 +2287,45 @@ public sealed record PrototypeChoiceResolutionContinuationState(
 public sealed record PrototypeEnemyDefeatFollowUpV111(
     PrototypeQueuedOperation Operation,
     bool FatalEligible,
-    int EventDepth)
+    int EventDepth,
+    int? DefeatedEnemyInstanceId = null)
 {
     public PrototypeEnemyDefeatFollowUpV111 Fork() => this with
     {
         Operation = Operation.Fork()
     };
+}
+
+/// <summary>
+/// Cursor for the source operation that repeats an all-enemy attack once per
+/// kill. The current round's target snapshot and next target index keep a
+/// suspended defeat hook from replaying earlier hits.
+/// </summary>
+public sealed record PrototypeRepeatedDamageContinuationV111(
+    PrototypeQueuedOperation Operation,
+    int PendingRounds,
+    int[] CurrentRoundTargetIds,
+    int NextTargetIndex,
+    int EventDepth)
+{
+    private int[]? _currentRoundTargetIds =
+        Clone(CurrentRoundTargetIds);
+
+    public int[] CurrentRoundTargetIds
+    {
+        get => Clone(_currentRoundTargetIds!);
+        init => _currentRoundTargetIds = Clone(value);
+    }
+
+    public PrototypeRepeatedDamageContinuationV111 Fork() => this with
+    {
+        Operation = Operation.Fork(),
+        CurrentRoundTargetIds = _currentRoundTargetIds!
+    };
+
+    private static int[] Clone(int[]? values) => values is null
+        ? throw new ArgumentNullException(nameof(values))
+        : (int[])values.Clone();
 }
 
 /// <summary>

@@ -89,6 +89,22 @@ public sealed partial class PrototypeGameEngine
             };
         }
 
+        if (continuation.DamageRepeatContinuation is { } damageRepeat)
+        {
+            continuation = continuation with
+            {
+                DamageRepeatContinuation = null
+            };
+            var resumedRepeat = ResolveDamageAllEnemiesRepeatPerKill(
+                player, combat, damageRepeat.Operation, rng,
+                continuation.SourceCardInstanceId,
+                damageRepeat.EventDepth, continuation, damageRepeat);
+            player = resumedRepeat.Player;
+            combat = resumedRepeat.Combat;
+            if (combat.PendingChoice is not null)
+                return (player, combat);
+        }
+
         if (continuation.CompletePlayerHandCleanup)
         {
             combat = ClearTemporaryCardKeywordOverrides(
