@@ -107,22 +107,20 @@ public sealed record SemanticCardTransformNativeAuditV111(
         var supportFingerprint = CanonicalJson.Sha256(candidates);
         var expectedProviderOwner = "card_instance:" +
             sourceCardInstanceId + ":pool:" + supportFingerprint;
-        if (providerDecision.ProviderMode != "native-v111" ||
-            request.SiteId != SiteId ||
+        if (request.SiteId != SiteId ||
             request.StreamId != NativeStreamId ||
             request.OwnerId != expectedProviderOwner ||
-            request.OperationKind != "choose_index" ||
-            request.SupportCount != candidates.Length ||
             !request.OrderedCandidates.SequenceEqual(
                 Enumerable.Range(0, candidates.Length)) ||
             sourceCardInstanceId <= 0 || candidates.Length == 0 ||
             candidates.Any(string.IsNullOrWhiteSpace) ||
             candidates.Distinct(StringComparer.Ordinal).Count() !=
-                candidates.Length ||
-            providerDecision.SelectedIndex < 0 ||
-            providerDecision.SelectedIndex >= candidates.Length)
+                candidates.Length)
             throw new InvalidDataException(
                 "Native card-transform audit has an unsupported request or replacement pool.");
+
+        var selectedCardId = NativeSemanticOutcomeV111
+            .SelectByChooseIndex(providerDecision, candidates);
 
         var boundaryFingerprint = BoundaryFingerprintFor(
             request, operation, sourceCardInstanceId, originalCardId);
@@ -131,7 +129,7 @@ public sealed record SemanticCardTransformNativeAuditV111(
             originalCardId, candidates, request.StreamId);
         var semanticOutcome = SemanticCardTransformChoiceV111.Select(
             semanticEvent, semanticEvent.EventId,
-            candidates[providerDecision.SelectedIndex]);
+            selectedCardId);
         var eventId = CanonicalJson.Sha256(new
         {
             schemaId = CurrentSchemaId,

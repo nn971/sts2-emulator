@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 shared Native audit and continuation outcome mapping (2026-10-25):**
+`NativeSemanticOutcomeV111` now owns primitive-to-semantic mapping for both
+live continuations and Native target, generation, potion, transform, shuffle,
+and insertion audit records. Each caller retains its source site, owner, and
+support checks; snapshot schemas and Native audit fields are unchanged. Static
+source review and `git diff --check` only; no tests or builds were run.
+
 **S4 Native bounded semantic-outcome mapping increment (2026-10-25):** The
 shared Native outcome mapper now validates both `choose_index` and
 `bounded_integer` support before returning the selected semantic value. The

@@ -133,22 +133,20 @@ public sealed record SemanticGeneratedCardNativeAuditV111(
         providerDecision.Validate();
         var request = providerDecision.Request;
         var candidates = candidateCardIds.ToArray();
-        if (providerDecision.ProviderMode != "native-v111" ||
-            !IsSupportedAuditSite(request.SiteId) ||
+        if (!IsSupportedAuditSite(request.SiteId) ||
             !OwnerIdMatches(operation, sourceCardInstanceId,
                 request, candidates) ||
-            request.OperationKind != "choose_index" ||
-            request.SupportCount != candidates.Length ||
             !request.OrderedCandidates.SequenceEqual(
                 Enumerable.Range(0, candidates.Length)) ||
             candidates.Length == 0 ||
             candidates.Any(string.IsNullOrWhiteSpace) ||
             candidates.Distinct(StringComparer.Ordinal).Count() !=
-                candidates.Length ||
-            providerDecision.SelectedIndex < 0 ||
-            providerDecision.SelectedIndex >= candidates.Length)
+                candidates.Length)
             throw new InvalidDataException(
                 "Native generated-card audit has an unsupported request or model support.");
+
+        var selectedCardId = NativeSemanticOutcomeV111
+            .SelectByChooseIndex(providerDecision, candidates);
 
         var boundaryFingerprint = BoundaryFingerprintFor(
             request, operation, sourceCardInstanceId);
@@ -160,7 +158,7 @@ public sealed record SemanticGeneratedCardNativeAuditV111(
                 request.Ordinal, candidates, request.StreamId);
         var semanticOutcome = SemanticGenerationChoiceV111.Select(
             semanticEvent, semanticEvent.EventId,
-            candidates[providerDecision.SelectedIndex]);
+            selectedCardId);
         var eventId = CanonicalJson.Sha256(new
         {
             schemaId = CurrentSchemaId,

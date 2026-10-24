@@ -184,9 +184,7 @@ public static class SemanticPoolShuffleChoiceV111
         var current = currentIdentities.ToArray();
         var nextSwapIndex = request.BoundedCount is { } bound
             ? bound - 1 : -1;
-        if (providerDecision.ProviderMode != "native-v111" ||
-            request.OperationKind != "bounded_integer" ||
-            request.SiteId != SiteIdForOperation(operation) ||
+        if (request.SiteId != SiteIdForOperation(operation) ||
             nextSwapIndex < 1 || original.Length <= nextSwapIndex ||
             selectedCount <= 0 || selectedCount > original.Length ||
             original.Any(string.IsNullOrWhiteSpace) ||
@@ -197,6 +195,10 @@ public static class SemanticPoolShuffleChoiceV111
                 original.Order(StringComparer.Ordinal)))
             throw new InvalidDataException(
                 "Native pool-shuffle audit has an unsupported request or ordered support.");
+
+        var selectedSwapIndex = NativeSemanticOutcomeV111
+            .SelectByBoundedInteger(providerDecision,
+                Enumerable.Range(0, nextSwapIndex + 1).ToArray());
 
         var boundaryFingerprint = NativeAuditBoundaryFingerprint(
             providerDecision, operation, sourceCardInstanceId);
@@ -224,7 +226,7 @@ public static class SemanticPoolShuffleChoiceV111
             }, original, current, nextSwapIndex, selectedCount, operation,
             sourceCardInstanceId);
         var outcome = new SemanticPoolShuffleDecisionV111(
-            semanticEvent, providerDecision.SelectedIndex);
+            semanticEvent, selectedSwapIndex);
         outcome.Validate();
         return outcome;
     }

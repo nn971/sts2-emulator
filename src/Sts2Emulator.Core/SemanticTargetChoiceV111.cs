@@ -107,18 +107,20 @@ public sealed record SemanticTargetNativeAuditV111(
         var request = providerDecision.Request;
         var targetKind = SemanticTargetChoiceV111.TargetKindForSiteId(
             request.SiteId);
-        if (providerDecision.ProviderMode != "native-v111" ||
-            targetKind is null || request.OperationKind != "choose_index" ||
+        if (targetKind is null ||
             request.StreamId != "run.combat_targets")
             throw new InvalidDataException(
                 "Native random-target audit has an unsupported provider request.");
+
+        var selectedEnemyInstanceId = NativeSemanticOutcomeV111
+            .SelectByChooseIndex(providerDecision, request.OrderedCandidates);
 
         var semanticEvent = SemanticTargetChoiceV111.CreateEvent(
             BoundaryFingerprintFor(providerDecision), targetKind, request.OwnerId,
             request.Ordinal, request.OrderedCandidates);
         var outcome = SemanticTargetChoiceV111.Select(
             semanticEvent, semanticEvent.EventId,
-            request.OrderedCandidates[providerDecision.SelectedIndex]);
+            selectedEnemyInstanceId);
         var audit = new SemanticTargetNativeAuditV111(
             CurrentSchemaId, outcome, providerDecision with
             {

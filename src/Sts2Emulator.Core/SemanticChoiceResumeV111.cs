@@ -18,33 +18,6 @@ internal readonly record struct SemanticChoiceResumeResultV111(
 /// </summary>
 internal static class SemanticChoiceResumeV111
 {
-    internal static T SelectNativeOutcome<T>(
-        RandomIndexDecisionV111 decision,
-        IReadOnlyList<T> orderedOutcomes) =>
-        SelectNativeOutcome(decision, orderedOutcomes, "choose_index");
-
-    internal static T SelectNativeBoundedOutcome<T>(
-        RandomIndexDecisionV111 decision,
-        IReadOnlyList<T> orderedOutcomes) =>
-        SelectNativeOutcome(decision, orderedOutcomes, "bounded_integer");
-
-    private static T SelectNativeOutcome<T>(
-        RandomIndexDecisionV111 decision,
-        IReadOnlyList<T> orderedOutcomes, string expectedOperationKind)
-    {
-        ArgumentNullException.ThrowIfNull(decision);
-        ArgumentNullException.ThrowIfNull(orderedOutcomes);
-        decision.Validate();
-        if (decision.ProviderMode != "native-v111" ||
-            decision.Request.OperationKind != expectedOperationKind ||
-            decision.Request.SupportCount != orderedOutcomes.Count ||
-            decision.SelectedIndex < 0 ||
-            decision.SelectedIndex >= orderedOutcomes.Count)
-            throw new InvalidDataException(
-                "Native provider decision does not match semantic outcome support.");
-        return orderedOutcomes[decision.SelectedIndex];
-    }
-
     internal static PrototypeAutomaticPipelineResumeResultV111
         ResumeTarget(
             RunState checkpoint, SemanticTargetDecisionV111 decision)

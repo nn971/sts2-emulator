@@ -211,23 +211,25 @@ public sealed record SemanticDrawInsertionNativeAuditV111(
         providerDecision.Validate();
         var request = providerDecision.Request;
         var pile = eligibleDrawPileInstanceIds.ToArray();
-        if (providerDecision.ProviderMode != "native-v111" ||
-            !StochasticSiteRegistryV111.ControlledDrawInsertionSiteIds
+        if (!StochasticSiteRegistryV111.ControlledDrawInsertionSiteIds
                 .Contains(request.SiteId, StringComparer.Ordinal) ||
             pile.Any(instanceId => instanceId <= 0) ||
             pile.Distinct().Count() != pile.Length ||
-            request.OperationKind != "bounded_integer" ||
             request.SupportCount != pile.Length + 1 ||
             !HasExactPileOwner(request, generatedCardModelId, pile))
             throw new InvalidDataException(
                 "Native draw-insertion audit has an unsupported request or pile support.");
+
+        var selectedPosition = NativeSemanticOutcomeV111
+            .SelectByBoundedInteger(providerDecision,
+                Enumerable.Range(0, request.SupportCount).ToArray());
 
         var boundaryFingerprint = BoundaryFingerprint(
             request, generatedCardModelId, pile);
         var semanticEvent = SemanticDrawInsertionEventV111.CreateEvent(
             boundaryFingerprint, request, generatedCardModelId, pile);
         var outcome = new SemanticDrawInsertionDecisionV111(
-            semanticEvent, providerDecision.SelectedIndex);
+            semanticEvent, selectedPosition);
         outcome.Validate();
         var audit = new SemanticDrawInsertionNativeAuditV111(
             CurrentSchemaId,
@@ -452,12 +454,15 @@ public sealed record SemanticEnemyPileInsertionNativeAuditV111(
             (request.SiteId ==
                 StochasticSiteRegistryV111.CombatEnemyDrawRandomInsertSiteId &&
                 pileName == "draw");
-        if (providerDecision.ProviderMode != "native-v111" || !validSite ||
+        if (!validSite ||
             pile.Any(instanceId => instanceId <= 0) ||
             pile.Distinct().Count() != pile.Length ||
             request.SupportCount != pile.Length + 1)
             throw new InvalidDataException(
                 "Native enemy pile-insertion audit has an unsupported request or support.");
+        var selectedPosition = NativeSemanticOutcomeV111
+            .SelectByBoundedInteger(providerDecision,
+                Enumerable.Range(0, request.SupportCount).ToArray());
         var boundaryFingerprint = CanonicalJson.Sha256(new
         {
             schemaId = CurrentSchemaId,
@@ -469,7 +474,7 @@ public sealed record SemanticEnemyPileInsertionNativeAuditV111(
         var semanticEvent = SemanticEnemyPileInsertionEventV111.CreateEvent(
             boundaryFingerprint, request, generatedCardModelId, pileName, pile);
         var outcome = new SemanticEnemyPileInsertionDecisionV111(
-            semanticEvent, providerDecision.SelectedIndex);
+            semanticEvent, selectedPosition);
         outcome.Validate();
         var audit = new SemanticEnemyPileInsertionNativeAuditV111(
             CurrentSchemaId,

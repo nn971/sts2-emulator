@@ -102,21 +102,22 @@ public sealed record SemanticPotionGenerationNativeAuditV111(
         providerDecision.Validate();
         var request = providerDecision.Request;
         var candidates = orderedCandidatePotionIds.ToArray();
-        if (providerDecision.ProviderMode != "native-v111" ||
-            request.SiteId != SemanticPotionGenerationChoiceV111.SiteId ||
+        if (request.SiteId != SemanticPotionGenerationChoiceV111.SiteId ||
             request.StreamId != SemanticPotionGenerationChoiceV111.NativeStreamId ||
-            request.OperationKind != "choose_index" ||
             !request.OrderedCandidates.SequenceEqual(
                 Enumerable.Range(0, candidates.Length)))
             throw new InvalidDataException(
                 "Native potion-generation audit has an unsupported provider request.");
+
+        var selectedPotionId = NativeSemanticOutcomeV111
+            .SelectByChooseIndex(providerDecision, candidates);
 
         var semanticEvent = SemanticPotionGenerationChoiceV111.CreateEvent(
             BoundaryFingerprintFor(providerDecision), request.OwnerId,
             request.Ordinal, candidates, request.StreamId);
         var outcome = SemanticPotionGenerationChoiceV111.Select(
             semanticEvent, semanticEvent.EventId,
-            candidates[providerDecision.SelectedIndex]);
+            selectedPotionId);
         var audit = new SemanticPotionGenerationNativeAuditV111(
             CurrentSchemaId, outcome, providerDecision with
             {

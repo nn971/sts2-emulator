@@ -7757,7 +7757,7 @@ public static class SemanticPilotCombatEngineV111
                     .ResolveRandomTarget(targetOwner, target);
                 current = ResolveRandomTarget(
                     current, current.Fingerprint, target.EventId,
-                    SemanticChoiceResumeV111.SelectNativeOutcome(
+                    NativeSemanticOutcomeV111.SelectByChooseIndex(
                         choice.Decision,
                         target.CandidateEnemyInstanceIds), choice.Next);
                 continue;
@@ -7773,7 +7773,7 @@ public static class SemanticPilotCombatEngineV111
                     .ResolveGeneratedCard(generatedCardOwner, generatedCard);
                 current = ResolveGeneratedCard(
                     current, current.Fingerprint, generatedCard.EventId,
-                    SemanticChoiceResumeV111.SelectNativeOutcome(
+                    NativeSemanticOutcomeV111.SelectByChooseIndex(
                         choice.Decision, generatedCard.CandidateCardIds),
                     choice.Next);
                 continue;
@@ -7790,7 +7790,7 @@ public static class SemanticPilotCombatEngineV111
                 var choice = SemanticOtherChanceEngineV111
                     .ResolveDrawInsertion(drawInsertionOwner, drawInsertion);
                 var selectedPosition =
-                    SemanticChoiceResumeV111.SelectNativeBoundedOutcome(
+                    NativeSemanticOutcomeV111.SelectByBoundedInteger(
                         choice.Decision,
                         Enumerable.Range(
                             0, drawInsertion.Request.SupportCount).ToArray());
@@ -7811,7 +7811,7 @@ public static class SemanticPilotCombatEngineV111
                         potionGenerationOwner, generatedPotion);
                 current = ResolvePotionGeneration(
                     current, current.Fingerprint, generatedPotion.EventId,
-                    SemanticChoiceResumeV111.SelectNativeOutcome(
+                    NativeSemanticOutcomeV111.SelectByChooseIndex(
                         choice.Decision,
                         generatedPotion.CandidatePotionIds), choice.Next);
                 continue;
@@ -7827,7 +7827,7 @@ public static class SemanticPilotCombatEngineV111
                     .ResolveCardTransform(cardTransformOwner, cardTransform);
                 current = ResolveCardTransform(
                     current, current.Fingerprint, cardTransform.EventId,
-                    SemanticChoiceResumeV111.SelectNativeOutcome(
+                    NativeSemanticOutcomeV111.SelectByChooseIndex(
                         choice.Decision, cardTransform.CandidateCardIds),
                     choice.Next);
                 continue;
@@ -7844,7 +7844,7 @@ public static class SemanticPilotCombatEngineV111
                 var choice = SemanticOtherChanceEngineV111
                     .ResolvePoolShuffle(poolShuffleOwner, poolShuffle);
                 var selectedSwapIndex =
-                    SemanticChoiceResumeV111.SelectNativeBoundedOutcome(
+                    NativeSemanticOutcomeV111.SelectByBoundedInteger(
                         choice.Decision,
                         Enumerable.Range(
                             0, poolShuffle.NextSwapIndex + 1).ToArray());
@@ -7866,7 +7866,7 @@ public static class SemanticPilotCombatEngineV111
                     .ResolveCardShortlist(cardShortlistOwner, cardShortlist);
                 current = ResolveCardShortlist(
                     current, current.Fingerprint, cardShortlist.EventId,
-                    SemanticChoiceResumeV111.SelectNativeOutcome(
+                    NativeSemanticOutcomeV111.SelectByChooseIndex(
                         choice.Decision,
                         cardShortlist.CandidateCardInstanceIds), choice.Next);
                 continue;
@@ -7883,7 +7883,7 @@ public static class SemanticPilotCombatEngineV111
                         randomPileCardOwner, randomPileCard);
                 current = ResolveRandomPileCard(
                     current, current.Fingerprint, randomPileCard.EventId,
-                    SemanticChoiceResumeV111.SelectNativeOutcome(
+                    NativeSemanticOutcomeV111.SelectByChooseIndex(
                         choice.Decision,
                         randomPileCard.CandidateCardInstanceIds), choice.Next);
                 continue;
@@ -7901,7 +7901,7 @@ public static class SemanticPilotCombatEngineV111
                     .ResolveHandCostTarget(handOwner, handCost);
                 var decision = SemanticHandCostSelectionChoiceV111.Select(
                     handCost, handCost.EventId,
-                    SemanticChoiceResumeV111.SelectNativeOutcome(
+                    NativeSemanticOutcomeV111.SelectByChooseIndex(
                         choice.Decision,
                         handCost.CandidateCardInstanceIds));
                 current = ResumeHandCostSelectionDecision(
@@ -7995,7 +7995,7 @@ public static class SemanticPilotCombatEngineV111
         if (decision.Request.OperationKind == "choose_index" &&
             pending?.CandidateLabels is { } labels)
         {
-            var label = SemanticChoiceResumeV111.SelectNativeOutcome(
+            var label = NativeSemanticOutcomeV111.SelectByChooseIndex(
                 decision, labels);
             return ResolveEnemyActionByCandidateLabel(
                 current, current.Fingerprint, label, nextOtherChance);
