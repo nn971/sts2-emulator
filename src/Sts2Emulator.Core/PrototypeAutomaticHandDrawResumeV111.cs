@@ -7,6 +7,121 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public sealed partial class PrototypeGameEngine
 {
+    /// <summary>
+    /// Commit provider progress at the ordinary DrawPlayerHand checkpoint.
+    /// This is the shared write boundary for legacy and semantic adapters:
+    /// the selected progress and the latest player/combat mechanics become
+    /// visible together, while the provider keeps ownership of resumption.
+    /// </summary>
+    internal static RunState CommitAutomaticHandDrawProgress(
+        RunState state,
+        PlayerState player,
+        CombatState combat,
+        PrototypeAutomaticHandDrawProgressV111? progress,
+        bool createCheckpoint = false)
+    {
+        if (!ControlledChanceGuardV111.Active)
+            throw new InvalidOperationException(
+                "Automatic hand-draw progress requires the RNG guard.");
+        ArgumentNullException.ThrowIfNull(player);
+        ArgumentNullException.ThrowIfNull(combat);
+        progress?.Validate();
+
+        int stageIndex = SemanticHandDrawStepIndex;
+        if (stageIndex < 0)
+            throw new InvalidDataException(
+                "DrawPlayerHand has no automatic pipeline index.");
+        var cursor = combat.AutomaticPipelineContinuation;
+        if (cursor is null)
+        {
+            if (!createCheckpoint)
+                throw new InvalidDataException(
+                    "Automatic hand-draw progress has no pipeline cursor.");
+            cursor = new PrototypeAutomaticPipelineContinuationState(
+                stageIndex);
+        }
+        if (!cursor.Mechanics.IsAtStep(
+                PrototypeAutomaticStepKind.DrawPlayerHand))
+            throw new InvalidDataException(
+                "Automatic hand-draw progress is outside its pipeline checkpoint.");
+
+        var updatedCombat = AttachValidatedAutomaticPipelineContinuation(
+            combat, cursor.WithHandDrawProgress(progress));
+        return PublishDrawMechanicsState(state, player, updatedCombat);
+    }
+
+    /// <summary>
+    /// Apply DrawPlayerHand post-stage cleanup and advance its pipeline cursor
+    /// for either provider before the common pipeline resumes.
+    /// </summary>
+    internal static RunState CompleteAutomaticHandDrawStage(
+        RunState state, int? completedSemanticDrawRequested = null)
+    {
+        if (!ControlledChanceGuardV111.Active)
+            throw new InvalidOperationException(
+                "Automatic hand-draw completion requires the RNG guard.");
+        var world = RequireWorld(state);
+        var combat = world.Combat ?? throw new InvalidDataException(
+            "Automatic hand-draw completion has no combat.");
+        var cursor = combat.AutomaticPipelineContinuation ??
+            throw new InvalidDataException(
+                "Automatic hand-draw completion lost its pipeline cursor.");
+        if (completedSemanticDrawRequested is < 0 ||
+            !cursor.Mechanics.IsAtStep(
+                PrototypeAutomaticStepKind.DrawPlayerHand) ||
+            cursor.Stochastic.IsAtSemanticBeforeHandDraw(cursor.Mechanics) ||
+            combat.PendingChoice is not null ||
+            combat.PendingKnowledgeDemonChoice is not null ||
+            combat.Stochastic.SemanticDeck?.Pending is not null)
+            throw new InvalidDataException(
+                "Automatic hand-draw completion is not at a clean boundary.");
+
+        var completedMechanics = cursor.Mechanics.AdvancePastStep(
+            PrototypeAutomaticStepKind.DrawPlayerHand);
+        combat = ApplyAutomaticHandDrawPostStagePowerTiming(combat);
+        var completedCursor = cursor.WithHandDrawProgress(null);
+        completedCursor = completedCursor with
+        {
+            Mechanics = completedMechanics
+        };
+        combat = completedSemanticDrawRequested is { } requested
+            ? AttachCompletedSemanticHandDrawReceipt(
+                combat, completedCursor, requested)
+            : AttachValidatedAutomaticPipelineContinuation(
+                combat, completedCursor);
+        return PublishDrawMechanicsState(state, state.Player, combat);
+    }
+
+    /// <summary>
+    /// Publish the completed semantic hand-draw receipt state at the already
+    /// advanced DrawPlayerHand cursor for adapters that resume after the
+    /// source step has advanced.
+    /// </summary>
+    internal static CombatState AttachCompletedSemanticHandDrawReceipt(
+        CombatState combat,
+        PrototypeAutomaticPipelineContinuationState cursor,
+        int? requestedCount)
+    {
+        if (!ControlledChanceGuardV111.Active)
+            throw new InvalidOperationException(
+                "Semantic hand-draw receipt publication requires the RNG guard.");
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(cursor);
+        var completedCursor = cursor.WithHandDrawProgress(null)
+            .WithCompletedSemanticHandDrawReceipt(requestedCount);
+        return AttachValidatedAutomaticPipelineContinuation(
+            combat, completedCursor);
+    }
+
+    private static CombatState ApplyAutomaticHandDrawPostStagePowerTiming(
+        CombatState combat)
+    {
+        combat = RemovePlayerPowers(
+            combat, definition => definition.RemoveAfterHandDraw);
+        return DecrementPlayerPowers(
+            combat, definition => definition.DecrementAfterHandDraw);
+    }
+
     private enum AutomaticHandDrawSourceResultContextV111
     {
         OrdinaryPipeline,

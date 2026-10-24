@@ -4591,3 +4591,11 @@ effects finds Gambler's Brew and Distilled Chaos as the only potion origins for
 discard events, and both use existing continuations. Unmodeled content and
 Native target-pool/stream/cursor parity remain open. Static source review and
 `git diff --check` only; no tests or builds were run.
+
+**S4 shared automatic hand-draw mechanics ownership increment (2026-10-25):**
+Progress publication, stage completion, semantic completion receipts, and
+post-draw power timing now live with the provider-neutral automatic hand-draw
+resume owner. Legacy controlled and semantic adapters continue to own their
+different suspension policies and transcripts. The move also corrected a
+missing statement terminator in the shared completion method. Static source
+review and `git diff --check` only; no tests or builds were run.
