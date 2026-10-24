@@ -607,31 +607,6 @@ public sealed partial class PrototypeGameEngine
         return 0;
     }
 
-    internal static int GetCardsDrawnSince(
-        CombatState combat, int drawnBefore)
-    {
-        ArgumentNullException.ThrowIfNull(combat);
-        if (drawnBefore < 0)
-            throw new ArgumentOutOfRangeException(nameof(drawnBefore));
-        var drawn = combat.CounterState.CardsDrawnThisCombat - drawnBefore;
-        if (drawn < 0)
-            throw new InvalidDataException(
-                "Combat draw count moved behind its saved resume checkpoint.");
-        return drawn;
-    }
-
-    internal static int ExpectedStratagemSelectionCount(
-        CombatState combat)
-    {
-        int stacks = combat.PlayerPowers
-            .Where(power => power.PowerId == "proto.power.stratagem")
-            .Sum(power => Math.Max(0, power.Stacks));
-        return Math.Min(stacks,
-            Math.Min(combat.DrawPile.Length,
-                PrototypeContent.Rules.RemainingHandCapacity(
-                    combat.Hand.Length)));
-    }
-
     internal static bool TryGetStandaloneSemanticDrawOperation(
         PendingCombatChoiceState choice,
         out PrototypeQueuedOperation operation)

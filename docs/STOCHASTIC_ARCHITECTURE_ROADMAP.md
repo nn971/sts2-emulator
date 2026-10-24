@@ -4616,3 +4616,10 @@ semantic, controlled, and opening draws therefore publish coupled mechanics
 through the same owner while retaining their existing provider policies and
 transcripts. Static source review and `git diff --check` only; no tests or
 builds were run.
+
+**S4 shared draw-progress rule ownership increment (2026-10-25):** The
+provider-neutral draw continuation owner now holds `GetCardsDrawnSince` and
+`ExpectedStratagemSelectionCount`, which were previously placed in the
+semantic draw adapter despite use by automatic and controlled paths. All draw
+boundaries now share those count and capacity rules. Static source review and
+`git diff --check` only; no tests or builds were run.
