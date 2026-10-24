@@ -256,11 +256,8 @@ public sealed partial class PrototypeGameEngine
             combat.Stochastic.SemanticDeck is not
                 { Mode: SemanticDeckStateV111.NatureMode })
         {
-            var operations = new Queue<PrototypeQueuedOperation>(
-            [
-                StratagemChoiceOperation(combat),
-                new(PrototypeCombatEffectKind.DrawCards, drawn.RemainingCount, FromHandDraw: true)
-            ]);
+            var operations = CreateHandDrawStratagemResumeOperations(
+                combat, drawn.RemainingCount);
             var resolved = ResolveOperations(
                 player, combat, operations, prototypeRng,
                 moveSourceCardOnCompletion: false);

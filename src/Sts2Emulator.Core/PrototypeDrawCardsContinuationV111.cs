@@ -28,6 +28,25 @@ public sealed partial class PrototypeGameEngine
             DrawEqualSelectionCount: draw.DrawEqualSelectionCount);
     }
 
+    private static Queue<PrototypeQueuedOperation>
+        CreateHandDrawStratagemResumeOperations(
+            CombatState combat, int remainingCount)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        if (remainingCount <= 0 ||
+            ExpectedStratagemSelectionCount(combat) <= 0)
+            throw new InvalidDataException(
+                "Hand-draw Stratagem resume has no remaining draw or selection.");
+        return new Queue<PrototypeQueuedOperation>(
+        [
+            StratagemChoiceOperation(combat),
+            new PrototypeQueuedOperation(
+                PrototypeCombatEffectKind.DrawCards,
+                remainingCount,
+                FromHandDraw: true)
+        ]);
+    }
+
     private static CombatState AttachDrawResumeContinuation(
         CombatState combat,
         PrototypeQueuedOperation drawOperation,
