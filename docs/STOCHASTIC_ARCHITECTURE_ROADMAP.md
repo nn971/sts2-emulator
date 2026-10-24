@@ -4638,3 +4638,10 @@ and nested `CardDrawn` suspension now share the check that locates active or
 pre-draw hand-draw progress and rejects saved progress outside its source
 stage. This keeps the same cursor invariant at both suspension boundaries.
 Static source review and `git diff --check` only; no tests or builds were run.
+
+**S4 final-card opening hook increment (2026-10-25):** `DrawOpeningHand` now
+allows a nested `CardDrawn` choice when the last requested opening card has
+already been drawn. The ordinary opening cursor resumes at `AfterHandDraw`
+after that choice resolves, so no draw count needs to be serialized. Opening
+choices with cards remaining and recycle boundaries remain fail-closed. Static
+source review and `git diff --check` only; no tests or builds were run.

@@ -166,7 +166,10 @@ public sealed partial class PrototypeGameEngine
             combat = resolved.Combat;
         }
         else if (drawn.BoundaryKind !=
-            PrototypeDrawCardsBoundaryKind.Complete)
+                PrototypeDrawCardsBoundaryKind.Complete &&
+            !(drawn.BoundaryKind ==
+                    PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice &&
+              drawn.RemainingCount == 0))
         {
             throw new NotSupportedException(
                 "UNSUPPORTED_OPENING_DRAW " +
