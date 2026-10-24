@@ -2,6 +2,18 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S1 compact Chance Law range increment (2026-10-24):** Chance Law v2 now
+represents large unverified uniform bounded-index supports by a fingerprinted
+range descriptor. ReferenceNature samples the descriptor directly, and the
+map request dispatcher routes the legacy `map.legacy.convergence.order_key`
+bound (`Int32.MaxValue`) through it without allocating per-index outcomes.
+Explicit v1 laws and their identities are unchanged. The stochastic
+capability manifest v4 advertises both schemas, and the Python binding
+validates compact laws while retaining v3 manifest support. The equal-index
+map model, seed distribution, map source parity, and cursor parity remain
+`UNVERIFIED`. Static source review, `git diff --check`, Python syntax
+compilation, and Chance Law boundary guards only; no tests or builds were run.
+
 **S1 fail-closed explicit Chance Law support limit (2026-10-24):** Generic
 legacy and Native bounded-index laws now reject supports above 65,536 before
 building per-outcome arrays. This prevents the registered legacy map

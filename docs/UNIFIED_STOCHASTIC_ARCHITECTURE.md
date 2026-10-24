@@ -796,13 +796,19 @@ bounds may be slightly uneven. Laws that use these exact source masses are
 `SOURCE_VERIFIED` under the declared uniform-grid input model. Equal-weight
 approximations at other bounds remain `UNVERIFIED`.
 
-The current `ChanceLawV111` wire model stores an explicit outcome array and
-rejects supports larger than 65,536 before allocating the law. Typed bounded
-requests can still be recorded and replayed at larger bounds. The legacy map
-convergence key has an `Int32.MaxValue` bound, so it is not currently a
-queryable ReferenceNature law; it needs a compact law over map-order mechanics
-before that map continuation can resolve through ReferenceNature. This is a
-representation limit, not a source-fidelity claim.
+The v1 `ChanceLawV111` wire model stores an explicit outcome array and limits
+that representation to 65,536 outcomes. Version 2 adds an opt-in compact
+uniform-index-range descriptor for large bounded integer requests. The range
+law fingerprints its descriptor, emits outcome IDs as needed, and lets
+ReferenceNature sample the raw index without materializing an array. The
+legacy map convergence key uses this representation for its `Int32.MaxValue`
+bound; its selected raw key still enters the existing stable ordering logic.
+This equal-index law remains `UNVERIFIED`: the compact representation does not
+establish the legacy map stream's seed distribution or map-generation parity.
+The v1 schema and fingerprints for existing explicit laws are unchanged. The
+v4 stochastic capability manifest retains the primary v1 schema field and
+advertises both supported Chance Law schemas in `chanceLawSchemaIds`; the
+Python binding accepts the prior v3 manifest and validates either law form.
 
 The `combat.initial_unique_hp` direct query accepts `owner_id` in the form
 `creature:<CombatId>`, the ordered HP support, and the source ordinal. It

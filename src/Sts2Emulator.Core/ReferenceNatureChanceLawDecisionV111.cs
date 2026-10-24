@@ -42,14 +42,14 @@ public static class ReferenceNatureChanceLawDecisionV111
         _ = ValidateSelection(law, request, selection);
         if (request.IndexRequest is not { } indexRequest ||
             law.OperationKind != indexRequest.OperationKind ||
-            law.Outcomes.Length != indexRequest.SupportCount ||
+            law.SupportCount != indexRequest.SupportCount ||
             orderedOutcomeIds.Count != indexRequest.SupportCount)
             throw new InvalidDataException(
                 "ReferenceNature selection does not match the ordered index support.");
         for (var index = 0; index < orderedOutcomeIds.Count; index++)
         {
             if (string.IsNullOrWhiteSpace(orderedOutcomeIds[index]) ||
-                law.Outcomes[index].OutcomeId != orderedOutcomeIds[index])
+                law.OutcomeIdAt(index) != orderedOutcomeIds[index])
                 throw new InvalidDataException(
                     "Chance Law outcome order differs from its typed index support.");
         }
@@ -240,7 +240,7 @@ public static class ReferenceNatureChanceLawDecisionV111
                 return controlledGold;
             }
             if (law.OperationKind != indexRequest.OperationKind ||
-                law.Outcomes.Length != indexRequest.SupportCount ||
+                law.SupportCount != indexRequest.SupportCount ||
                 !OutcomeEndsInIndex(outcome.OutcomeId,
                     selection.OutcomeIndex))
                 throw new NotSupportedException(
@@ -330,15 +330,17 @@ public static class ReferenceNatureChanceLawDecisionV111
         if (selection.LawId != law.LawId ||
             selection.EventId != law.EventId ||
             selection.OutcomeIndex < 0 ||
-            selection.OutcomeIndex >= law.Outcomes.Length ||
-            selection.OutcomeId !=
-                law.Outcomes[selection.OutcomeIndex].OutcomeId ||
+            selection.OutcomeIndex >= law.SupportCount ||
+            selection.OutcomeId != law.OutcomeIdAt(
+                selection.OutcomeIndex) ||
             law.SiteId != request.SiteId ||
             law.OwnerId != request.OwnerId ||
             law.Ordinal != request.Ordinal)
             throw new InvalidDataException(
                 "ReferenceNature selection does not match the typed provider request.");
-        return law.Outcomes[selection.OutcomeIndex];
+        return new ChanceLawOutcomeV111(
+            law.OutcomeIdAt(selection.OutcomeIndex),
+            law.OutcomeWeightAt(selection.OutcomeIndex));
     }
 
     private static float ResolveUnitFloatOutcome(

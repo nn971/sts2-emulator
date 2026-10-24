@@ -290,9 +290,9 @@ public static class ReferenceNatureV111
         if (selection.LawId != law.LawId ||
             selection.EventId != law.EventId ||
             selection.OutcomeIndex < 0 ||
-            selection.OutcomeIndex >= law.Outcomes.Length ||
-            selection.OutcomeId !=
-                law.Outcomes[selection.OutcomeIndex].OutcomeId)
+            selection.OutcomeIndex >= law.SupportCount ||
+            selection.OutcomeId != law.OutcomeIdAt(
+                selection.OutcomeIndex))
             throw new InvalidDataException(
                 "ReferenceNature sample does not match the queried Chance Law support.");
         return selection;
@@ -307,6 +307,17 @@ public static class ReferenceNatureV111
         state.Validate();
 
         ulong randomState = state.SamplerState;
+        if (law.UniformIndexRange is { } range)
+        {
+            var selectedOffset = checked((int)NextBounded(
+                ref randomState, (ulong)range.Count));
+            return new ReferenceNatureSelectionV111(
+                law.LawId, law.EventId, range.OutcomeIdAt(selectedOffset),
+                selectedOffset, new ReferenceNatureStateV111(
+                    ReferenceNatureStateV111.CurrentSchemaId, randomState,
+                    checked(state.SampleCount + 1)));
+        }
+
         ulong ticket = NextBounded(ref randomState, (ulong)law.TotalWeight);
         long cumulative = 0;
         for (var index = 0; index < law.Outcomes.Length; index++)

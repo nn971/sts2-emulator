@@ -4,6 +4,38 @@ namespace Sts2Emulator.Core;
 
 public static partial class ChanceLawEngineV111
 {
+    /// <summary>
+    /// Query a source-shaped map request. Native map sites use their
+    /// source-specific laws; the retained legacy convergence key uses a
+    /// compact uniform law over its bounded raw-index support.
+    /// </summary>
+    public static ChanceLawV111 QueryMapRequest(
+        ControlledStochasticRequestV111 request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        request.Validate();
+        if (request.IndexRequest is { } index &&
+            index.SiteId == "map.legacy.convergence.order_key")
+        {
+            index.ValidateForLegacyProvider();
+            if (index.StreamId != "map" ||
+                index.OperationKind != "bounded_integer" ||
+                index.BoundedCount != int.MaxValue ||
+                index.OrderedCandidates.Length != 0)
+                throw new ArgumentException(
+                    "Legacy convergence ordering requires its bounded map-stream integer request.",
+                    nameof(request));
+            var eventId = CanonicalJson.Sha256(new
+            {
+                boundary = "legacy-map-convergence-order-key",
+                request = index
+            });
+            return QueryRandomIndex(eventId, index);
+        }
+
+        return QueryNativeMapRequest(request);
+    }
+
     internal static ChanceLawV111
         QueryLegacyMapEdgeExtraChanceTicketIndices(
             RandomIndexRequestV111 request)

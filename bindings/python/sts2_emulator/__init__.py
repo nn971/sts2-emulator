@@ -3553,7 +3553,10 @@ class Session:
             return
         if not isinstance(manifest, dict):
             raise EmulatorError("Invalid stochastic capability manifest")
-        if (manifest.get("schemaId") != "sts2-v111-stochastic-capabilities-v3"
+        capability_schema = manifest.get("schemaId")
+        if (capability_schema not in (
+                "sts2-v111-stochastic-capabilities-v3",
+                "sts2-v111-stochastic-capabilities-v4")
                 or manifest.get("chanceLawSchemaId") !=
                 "sts2-v111-chance-law-v1"
                 or manifest.get("playerObservationSchemaId") !=
@@ -3569,6 +3572,19 @@ class Session:
                 raise EmulatorError(
                     f"Invalid stochastic capability list {field!r}")
             return value
+
+        chance_law_schema_ids = (
+            string_list(manifest.get("chanceLawSchemaIds"),
+                        "chanceLawSchemaIds")
+            if capability_schema ==
+            "sts2-v111-stochastic-capabilities-v4"
+            else [manifest["chanceLawSchemaId"]])
+        if (manifest["chanceLawSchemaId"] not in chance_law_schema_ids
+                or not set(chance_law_schema_ids).issubset({
+                    "sts2-v111-chance-law-v1",
+                    "sts2-v111-chance-law-v2-uniform-index-range"})):
+            raise EmulatorError(
+                "Unsupported negotiated Chance Law schema list")
 
         nature_sites = set(string_list(
             manifest.get("natureChoiceSiteIds"), "natureChoiceSiteIds"))
@@ -3912,7 +3928,10 @@ class Session:
 
         manifest = self.capabilities["stochasticCapabilities"]
         supported_statuses = set(manifest["probabilityStatuses"])
-        if law.get("schemaId") != manifest.get("chanceLawSchemaId"):
+        capability_schema_ids = manifest.get(
+            "chanceLawSchemaIds", [manifest.get("chanceLawSchemaId")])
+        law_schema = law.get("schemaId")
+        if law_schema not in capability_schema_ids:
             raise EmulatorError("Chance Law schema differs from negotiation")
         for field in ("lawId", "eventId", "siteId", "operationKind",
                       "ownerId", "supportFingerprint",
@@ -3936,27 +3955,51 @@ class Session:
 
         outcomes = law.get("outcomes")
         total_weight = law.get("totalWeight")
-        if (not isinstance(outcomes, list) or not outcomes
+        if (not isinstance(outcomes, list)
                 or type(total_weight) is not int or total_weight <= 0):
             raise EmulatorError("Chance Law support is invalid")
-        outcome_ids = set()
-        weight_sum = 0
-        for outcome in outcomes:
-            if not isinstance(outcome, dict):
-                raise EmulatorError("Chance Law outcome is not an object")
-            outcome_id = required_string(outcome.get("outcomeId"),
-                                         "outcomeId")
-            weight = outcome.get("weight")
-            if type(weight) is not int or weight <= 0 or outcome_id in outcome_ids:
-                raise EmulatorError("Chance Law outcome support is invalid")
-            outcome_ids.add(outcome_id)
-            weight_sum += weight
-        if weight_sum != total_weight:
-            raise EmulatorError("Chance Law total weight is inconsistent")
-
-        support = [{"outcome_id": outcome["outcomeId"],
-                    "weight": outcome["weight"]}
-                   for outcome in outcomes]
+        compact_range = law.get("uniformIndexRange")
+        if law_schema == "sts2-v111-chance-law-v2-uniform-index-range":
+            if outcomes or not isinstance(compact_range, dict):
+                raise EmulatorError("Compact Chance Law support is invalid")
+            start = compact_range.get("startInclusive")
+            count = compact_range.get("count")
+            prefix = compact_range.get("outcomeIdPrefix")
+            if (type(start) is not int or start != 0
+                    or type(count) is not int or count <= 65536
+                    or prefix != "choice_index:" or total_weight != count
+                    or law.get("probabilityStatus") != "UNVERIFIED"):
+                raise EmulatorError("Compact Chance Law range is invalid")
+            support = {
+                "support_kind": "uniform_index_range_v1",
+                "range": {
+                    "start_inclusive": start,
+                    "count": count,
+                    "outcome_id_prefix": prefix,
+                },
+            }
+        elif (law_schema != "sts2-v111-chance-law-v1"
+              or compact_range is not None or not outcomes):
+            raise EmulatorError("Explicit Chance Law support is invalid")
+        else:
+            outcome_ids = set()
+            weight_sum = 0
+            for outcome in outcomes:
+                if not isinstance(outcome, dict):
+                    raise EmulatorError("Chance Law outcome is not an object")
+                outcome_id = required_string(outcome.get("outcomeId"),
+                                             "outcomeId")
+                weight = outcome.get("weight")
+                if (type(weight) is not int or weight <= 0
+                        or outcome_id in outcome_ids):
+                    raise EmulatorError("Chance Law outcome support is invalid")
+                outcome_ids.add(outcome_id)
+                weight_sum += weight
+            if weight_sum != total_weight:
+                raise EmulatorError("Chance Law total weight is inconsistent")
+            support = [{"outcome_id": outcome["outcomeId"],
+                        "weight": outcome["weight"]}
+                       for outcome in outcomes]
         if _canonical_protocol_hash(support) != law["supportFingerprint"]:
             raise EmulatorError("Chance Law support fingerprint is invalid")
         identity = {

@@ -361,7 +361,7 @@ public sealed record ReferenceNatureMapGenerationSessionV111(
 
     [JsonIgnore]
     public ChanceLawV111? PendingLaw => Complete ? null :
-        ChanceLawEngineV111.QueryNativeMapRequest(
+        ChanceLawEngineV111.QueryMapRequest(
             StochasticState.PendingRequest ??
             throw new InvalidDataException(
                 "Incomplete map session has no pending request."));
@@ -437,7 +437,7 @@ public sealed record ReferenceNatureMapGenerationSessionV111(
         var request = StochasticState.PendingRequest ??
             throw new InvalidDataException(
                 "Incomplete map session has no pending Chance Law.");
-        var law = ChanceLawEngineV111.QueryNativeMapRequest(request);
+        var law = ChanceLawEngineV111.QueryMapRequest(request);
         var selection = ReferenceNatureV111.SampleValidated(
             law, Stochastic.NatureState);
         var typedDecision = ReferenceNatureChanceLawDecisionV111.FromSelection(
@@ -494,7 +494,7 @@ public sealed record ReferenceNatureMapGenerationSessionV111(
             decision.Validate();
             transcript.Validate();
             var request = decision.ToRequest();
-            var law = ChanceLawEngineV111.QueryNativeMapRequest(request);
+            var law = ChanceLawEngineV111.QueryMapRequest(request);
             var selection = ReferenceNatureV111.SampleValidated(
                 law, expectedNatureState);
             var expectedDecision = ReferenceNatureChanceLawDecisionV111
@@ -604,7 +604,7 @@ public sealed record ReferenceNatureMapGenerationSessionV111(
             decision.Validate();
             transcript.Validate();
             var request = decision.ToRequest();
-            var law = ChanceLawEngineV111.QueryNativeMapRequest(request);
+            var law = ChanceLawEngineV111.QueryMapRequest(request);
             var selection = ReferenceNatureV111.SampleValidated(law, cursor);
             var expectedDecision = ReferenceNatureChanceLawDecisionV111
                 .FromSelection(law, request, selection);

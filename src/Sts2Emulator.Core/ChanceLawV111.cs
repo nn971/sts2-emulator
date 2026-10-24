@@ -8,6 +8,23 @@ namespace Sts2Emulator.Core;
 /// <summary>An exact, integer-weighted outcome in a conditional chance law.</summary>
 public sealed record ChanceLawOutcomeV111(string OutcomeId, long Weight);
 
+/// <summary>
+/// Compact uniform support for a bounded integer request whose outcomes are
+/// consecutive raw indices. The current representation deliberately fixes the
+/// first value at zero so the selected outcome index remains the provider value.
+/// </summary>
+public sealed record ChanceLawUniformIndexRangeV111(
+    int StartInclusive, int Count, string OutcomeIdPrefix)
+{
+    public string OutcomeIdAt(int offset)
+    {
+        if ((uint)offset >= (uint)Count)
+            throw new ArgumentOutOfRangeException(nameof(offset));
+        return OutcomeIdPrefix + checked(StartInclusive + offset)
+            .ToString(CultureInfo.InvariantCulture);
+    }
+}
+
 public sealed record StochasticCapabilityManifestV111(
     string SchemaId,
     string ChanceLawSchemaId,
@@ -33,6 +50,8 @@ public sealed record StochasticCapabilityManifestV111(
         ["nature_choice_observe", "semantic_nature_observe"];
     private string[]? _semanticNatureChoiceViewSessionKinds =
         StochasticCapabilitiesV111.SemanticNatureChoiceViewSessionKinds;
+    private string[]? _chanceLawSchemaIds =
+        StochasticCapabilitiesV111.ChanceLawSchemaIds;
 
     public string[] NatureChoiceSiteIds
     {
@@ -123,6 +142,11 @@ public sealed record StochasticCapabilityManifestV111(
         get => Clone(_semanticNatureChoiceViewSessionKinds)!;
         init => _semanticNatureChoiceViewSessionKinds = Clone(value);
     }
+    public string[] ChanceLawSchemaIds
+    {
+        get => Clone(_chanceLawSchemaIds)!;
+        init => _chanceLawSchemaIds = Clone(value);
+    }
 
     private static string[]? Clone(string[]? values) =>
         values is null ? null : (string[])values.Clone();
@@ -130,9 +154,15 @@ public sealed record StochasticCapabilityManifestV111(
 
 public static class StochasticCapabilitiesV111
 {
-    public const string SchemaId = "sts2-v111-stochastic-capabilities-v3";
+    public const string SchemaId = "sts2-v111-stochastic-capabilities-v4";
     public const string ExternalSelectionProviderId =
         "external-semantic-selection-v1";
+
+    public static string[] ChanceLawSchemaIds =>
+    [
+        ChanceLawV111.CurrentSchemaId,
+        ChanceLawV111.UniformIndexRangeSchemaId
+    ];
 
     private static readonly string[] NatureChoiceViewSessionKinds =
     [
@@ -407,6 +437,9 @@ public sealed record ChanceLawV111(
 {
     private ChanceLawOutcomeV111[]? _outcomes = Clone(Outcomes);
 
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public ChanceLawUniformIndexRangeV111? UniformIndexRange { get; init; }
+
     /// <summary>
     /// Maximum support size for laws represented as an explicit outcome
     /// array. Larger source requests need a compact law representation.
@@ -420,9 +453,21 @@ public sealed record ChanceLawV111(
     }
 
     public const string CurrentSchemaId = "sts2-v111-chance-law-v1";
+    public const string UniformIndexRangeSchemaId =
+        "sts2-v111-chance-law-v2-uniform-index-range";
     public const string UnverifiedStatus = "UNVERIFIED";
     public const string SourceVerifiedStatus = "SOURCE_VERIFIED";
     public const long NativeSourceGridSize = 1L << 53;
+
+    [JsonIgnore]
+    public int SupportCount => UniformIndexRange?.Count ?? Outcomes.Length;
+
+    public string OutcomeIdAt(int supportOffset) => UniformIndexRange is { } range
+        ? range.OutcomeIdAt(supportOffset)
+        : Outcomes[supportOffset].OutcomeId;
+
+    public long OutcomeWeightAt(int supportOffset) =>
+        UniformIndexRange is null ? Outcomes[supportOffset].Weight : 1L;
 
     private static ChanceLawOutcomeV111[]? Clone(
         ChanceLawOutcomeV111[]? outcomes) => outcomes is null
@@ -440,7 +485,9 @@ public sealed record ChanceLawV111(
         if (outcomes is { Length: > MaximumExplicitOutcomeCount })
             throw new InvalidDataException(
                 "Chance Law exceeds the explicit outcome support limit.");
-        if (SchemaId != CurrentSchemaId ||
+        var compactRange = UniformIndexRange;
+        var compactRangeLaw = SchemaId == UniformIndexRangeSchemaId;
+        if (SchemaId is not (CurrentSchemaId or UniformIndexRangeSchemaId) ||
             string.IsNullOrWhiteSpace(LawId) ||
             string.IsNullOrWhiteSpace(EventId) ||
             string.IsNullOrWhiteSpace(SiteId) ||
@@ -451,24 +498,45 @@ public sealed record ChanceLawV111(
             string.IsNullOrWhiteSpace(ConditioningFingerprint) ||
             ProbabilityStatus is not (UnverifiedStatus or SourceVerifiedStatus) ||
             string.IsNullOrWhiteSpace(ProbabilityProvenance) ||
-            outcomes is not { Length: > 0 } || TotalWeight <= 0)
+            outcomes is null || TotalWeight <= 0 ||
+            (compactRangeLaw
+                ? compactRange is null || outcomes.Length != 0 ||
+                    compactRange.StartInclusive != 0 ||
+                    compactRange.Count <= MaximumExplicitOutcomeCount ||
+                    compactRange.OutcomeIdPrefix != "choice_index:" ||
+                    TotalWeight != compactRange.Count ||
+                    ProbabilityStatus != UnverifiedStatus
+                : compactRange is not null || outcomes.Length == 0))
             throw new InvalidDataException("Invalid Chance Law envelope.");
 
-        var ids = new HashSet<string>(StringComparer.Ordinal);
-        long total = 0;
-        foreach (var outcome in outcomes)
+        long total;
+        string expectedSupportFingerprint;
+        if (compactRange is { } range)
         {
-            if (outcome is null || string.IsNullOrWhiteSpace(outcome.OutcomeId) ||
-                outcome.Weight <= 0 || !ids.Add(outcome.OutcomeId))
-                throw new InvalidDataException("Invalid Chance Law support.");
-            total = checked(total + outcome.Weight);
+            expectedSupportFingerprint = CompactUniformIndexRangeFingerprint(
+                range);
+            total = range.Count;
+        }
+        else
+        {
+            var ids = new HashSet<string>(StringComparer.Ordinal);
+            total = 0;
+            foreach (var outcome in outcomes)
+            {
+                if (outcome is null || string.IsNullOrWhiteSpace(outcome.OutcomeId) ||
+                    outcome.Weight <= 0 || !ids.Add(outcome.OutcomeId))
+                    throw new InvalidDataException("Invalid Chance Law support.");
+                total = checked(total + outcome.Weight);
+            }
+            expectedSupportFingerprint = CanonicalJson.Sha256(outcomes);
         }
 
         if (total != TotalWeight ||
-            SupportFingerprint != CanonicalJson.Sha256(outcomes))
+            SupportFingerprint != expectedSupportFingerprint)
             throw new InvalidDataException(
                 "Chance Law support fingerprint or total weight is inconsistent.");
-        var canonicalDeterministicOutcome = outcomes.Length == 1 &&
+        var canonicalDeterministicOutcome = compactRange is null &&
+            outcomes.Length == 1 &&
             outcomes[0].Weight == 1L;
         if (ProbabilityStatus == SourceVerifiedStatus &&
             TotalWeight != NativeSourceGridSize &&
@@ -492,6 +560,13 @@ public sealed record ChanceLawV111(
         if (LawId != expectedLawId)
             throw new InvalidDataException("Chance Law identifier is inconsistent.");
     }
+
+    internal static string CompactUniformIndexRangeFingerprint(
+        ChanceLawUniformIndexRangeV111 range) => CanonicalJson.Sha256(new
+        {
+            supportKind = "uniform_index_range_v1",
+            range
+        });
 }
 
 /// <summary>
@@ -1160,9 +1235,29 @@ private static ChanceLawOutcomeV111[] LegacyRarityOutcomes(
         ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
         ArgumentNullException.ThrowIfNull(request);
         request.Validate();
-        RequireExplicitOutcomeSupport(request.SupportCount);
         var nativeIndexLaw = NativeRngV111.IsCanonicalStreamId(
             request.StreamId);
+        if (request.SupportCount > ChanceLawV111.MaximumExplicitOutcomeCount)
+        {
+            if (!nativeIndexLaw &&
+                request.OperationKind == "bounded_integer" &&
+                request.BoundedCount == request.SupportCount)
+            {
+                var compactConditioningFingerprint = CanonicalJson.Sha256(new
+                {
+                    RequestFingerprint = CanonicalJson.Sha256(request),
+                    policy = RandomIndexConditioningPolicyId
+                });
+                return CreateCompactUniformIndexRange(
+                    eventId, request.SiteId, request.OperationKind,
+                    request.OwnerId, request.Ordinal,
+                    RandomIndexConditioningPolicyId,
+                    compactConditioningFingerprint,
+                    "uniform-saved-index-support-unverified",
+                    request.SupportCount);
+            }
+            RequireExplicitOutcomeSupport(request.SupportCount);
+        }
         var policy = nativeIndexLaw
             ? NativeRandomIndexConditioningPolicyId
             : RandomIndexConditioningPolicyId;
@@ -1189,6 +1284,44 @@ private static ChanceLawOutcomeV111[] LegacyRarityOutcomes(
             nativeIndexLaw
                 ? ChanceLawV111.SourceVerifiedStatus
                 : ChanceLawV111.UnverifiedStatus);
+    }
+
+    private static ChanceLawV111 CreateCompactUniformIndexRange(
+        string eventId, string siteId, string operationKind,
+        string ownerId, int ordinal, string conditioningPolicyId,
+        string conditioningFingerprint, string probabilityProvenance,
+        int supportCount)
+    {
+        if (supportCount <= ChanceLawV111.MaximumExplicitOutcomeCount)
+            throw new ArgumentOutOfRangeException(nameof(supportCount));
+        var range = new ChanceLawUniformIndexRangeV111(
+            0, supportCount, "choice_index:");
+        var schemaId = ChanceLawV111.UniformIndexRangeSchemaId;
+        var supportFingerprint =
+            ChanceLawV111.CompactUniformIndexRangeFingerprint(range);
+        var lawId = CanonicalJson.Sha256(new
+        {
+            SchemaId = schemaId,
+            SiteId = siteId,
+            OperationKind = operationKind,
+            OwnerId = ownerId,
+            Ordinal = ordinal,
+            SupportFingerprint = supportFingerprint,
+            ConditioningPolicyId = conditioningPolicyId,
+            ConditioningFingerprint = conditioningFingerprint,
+            ProbabilityStatus = ChanceLawV111.UnverifiedStatus,
+            ProbabilityProvenance = probabilityProvenance
+        });
+        var law = new ChanceLawV111(
+            schemaId, lawId, eventId, siteId, operationKind, ownerId,
+            ordinal, supportFingerprint, conditioningPolicyId,
+            conditioningFingerprint, ChanceLawV111.UnverifiedStatus,
+            probabilityProvenance, [], supportCount)
+        {
+            UniformIndexRange = range
+        };
+        law.Validate();
+        return law;
     }
 
     internal static ChanceLawV111 QueryUniformLabeledIndexSupport(
