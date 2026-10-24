@@ -4617,6 +4617,13 @@ public static class SemanticPilotCombatEngineV111
         if (sourceEndTurn is { } endTurn)
         {
             if (choice is
+                    { Kind: "semantic_card_selection",
+                      CardSelectionDecision: { } selectedCards } &&
+                endTurn.HandDraw?.CardSelectionPending is not null)
+                nextEndTurn = SemanticEndTurnEngineV111.ResolveCardSelection(
+                    endTurn, endTurn.Fingerprint,
+                    selectedCards.Event.EventId, selectedCards.ActionId);
+            else if (choice is
                     { Kind: "semantic_generated_card",
                       GeneratedCardDecision: { } generatedCard } &&
                 endTurn.HandDraw?.GeneratedCardPending is not null)

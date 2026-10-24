@@ -285,9 +285,14 @@ public static class SemanticCardSelectionEngineV111
             PrototypeGameEngine
                 .IsAutomaticPipelineSemanticCardSelectionContinuation(
                     combat, choice);
+        bool automaticHandDrawHookChoice = combat is not null &&
+            choice is not null && PrototypeGameEngine
+                .IsAutomaticHandDrawHookCardSelectionContinuation(
+                    combat, choice);
         if (source.Phase != RunPhase.Combat ||
             combat is not { PendingKnowledgeDemonChoice: null } ||
             (!automaticStratagem && !automaticPipelineChoice &&
+             !automaticHandDrawHookChoice &&
              !combat.IsPlayerTurn) ||
             choice is not { ChoiceId: "select_cards" } ||
             combat.Stochastic.SemanticDeck is not { } deck || deck.Pending is not null)
@@ -300,13 +305,14 @@ public static class SemanticCardSelectionEngineV111
                 throw new InvalidDataException(
                     "Automatic Stratagem draw cursor is inconsistent.");
         }
-        else if (!automaticPipelineChoice &&
+        else if (!automaticPipelineChoice && !automaticHandDrawHookChoice &&
                  combat!.AutomaticPipelineContinuation is not null)
             throw new InvalidOperationException(
                 "Expected an ordinary semantic player-turn choice.");
         SemanticDrawPileAdapterV111.ValidateSynchronized(
             combat, requireIdle: true);
-        if (automaticStratagem || automaticPipelineChoice)
+        if (automaticStratagem || automaticPipelineChoice ||
+            automaticHandDrawHookChoice)
             PrototypeStateInvariants.Validate(source);
     }
 
@@ -390,6 +396,9 @@ public static class SemanticCardSelectionEngineV111
             PrototypeGameEngine
                 .IsAutomaticPipelineSemanticCardSelectionContinuation(
                     combat, choice);
+        var automaticHandDrawHookChoice = PrototypeGameEngine
+            .IsAutomaticHandDrawHookCardSelectionContinuation(
+                combat, choice);
         var spec = choice.Selection;
         var supportedTop = IsSupportedTopMove(spec);
         var supportedDrawRemoval = IsSupportedDrawRemoval(spec);
@@ -424,6 +433,8 @@ public static class SemanticCardSelectionEngineV111
             }
             else if (automaticPipelineChoice)
                 ValidateAutomaticPipelineResult(advanced);
+            else if (automaticHandDrawHookChoice)
+                ValidateAutomaticHandDrawHookResult(advanced);
             else
                 SemanticPilotCombatEngineV111.ValidateSemanticCombatBoundary(
                     advanced);
@@ -478,6 +489,11 @@ public static class SemanticCardSelectionEngineV111
             PrototypeGameEngine
                 .IsAutomaticPipelineSemanticCardSelectionContinuation(
                     from, sourceChoice);
+        var automaticHandDrawHookChoice = from is not null &&
+            from.PendingChoice is { } handDrawSourceChoice &&
+            PrototypeGameEngine
+                .IsAutomaticHandDrawHookCardSelectionContinuation(
+                    from, handDrawSourceChoice);
         var reward = state.Run.Phase == RunPhase.Reward &&
             state.Run.World?.Reward is not null && to is null;
         if (from?.PendingChoice?.ChoiceId != "select_cards" ||
@@ -504,6 +520,8 @@ public static class SemanticCardSelectionEngineV111
             }
             else if (automaticPipelineChoice)
                 ValidateAutomaticPipelineResult(state.Run);
+            else if (automaticHandDrawHookChoice)
+                ValidateAutomaticHandDrawHookResult(state.Run);
             else
                 SemanticPilotCombatEngineV111.ValidateSemanticCombatBoundary(
                     state.Run);
@@ -573,8 +591,7 @@ public static class SemanticCardSelectionEngineV111
         var resumesGeneratedSequentialDraw =
             IsCompletedSequentialSelectionWithGeneratedDraw(
                 from, state.SelectedCardInstanceIds);
-        var resumesDraw = from.PendingChoice.Continuation.Any(operation =>
-            operation.Kind == PrototypeCombatEffectKind.DrawCards) ||
+        var resumesDraw = HasPendingDrawOperation(from.PendingChoice) ||
             resumesGeneratedSequentialDraw;
         if (!reward && resumesDraw)
         {
@@ -602,6 +619,46 @@ public static class SemanticCardSelectionEngineV111
             SemanticDrawPileAdapterV111.ValidateProviderCorrespondence(
                 expected, to.DrawPile);
         }
+    }
+
+    private static bool HasPendingDrawOperation(
+        PendingCombatChoiceState choice)
+    {
+        if (choice.Continuation.Any(operation =>
+                operation.Kind == PrototypeCombatEffectKind.DrawCards))
+            return true;
+        for (var continuation = choice.OuterChoiceContinuation;
+             continuation is not null;
+             continuation = continuation.Parent)
+            if (continuation.Operations.Any(operation =>
+                    operation.Kind == PrototypeCombatEffectKind.DrawCards))
+                return true;
+        return false;
+    }
+
+    private static void ValidateAutomaticHandDrawHookResult(RunState run)
+    {
+        var combat = run.World?.Combat;
+        if (run.Phase != RunPhase.Combat ||
+            combat is not { IsPlayerTurn: true,
+                PendingKnowledgeDemonChoice: null,
+                SemanticDeck: { Mode: SemanticDeckStateV111.NatureMode } } ||
+            combat.AutomaticPipelineContinuation is not { } cursor ||
+            !(cursor.Stochastic.TryGetSemanticHandDrawProgress(
+                  cursor.Mechanics, out _, out _) ||
+              cursor.Stochastic.IsAtSemanticBeforeHandDraw(
+                  cursor.Mechanics)) ||
+            cursor.Stochastic.IsAtSemanticBeforeHandDraw(
+                cursor.Mechanics) &&
+                cursor.Stochastic.CompletedSemanticHandDrawRequested is not null)
+            throw new InvalidDataException(
+                "Card-selection child lost its automatic hand-draw cursor.");
+        PrototypeStateInvariants.Validate(run);
+        SemanticDrawPileAdapterV111.ValidateNatureDeckBoundary(
+            combat,
+            "Card-selection child diverged from its semantic draw pile.",
+            "Card-selection child diverged from its semantic draw pile.",
+            allowPending: true);
     }
 
     private static bool IsCompletedSequentialSelectionWithGeneratedDraw(
@@ -633,6 +690,10 @@ public static class SemanticCardSelectionEngineV111
                  .IsAutomaticPipelineSemanticCardSelectionContinuation(
                      combat, choice) ||
              IsSupportedManualPotionSequentialChoice(combat, choice));
+        bool automaticHandDrawHookChoice =
+            PrototypeGameEngine
+                .IsAutomaticHandDrawHookCardSelectionContinuation(
+                    combat, choice);
         bool supportedAutomaticTransform =
             spec.SourceZone == PrototypeCardZone.Hand &&
             spec.Resolution ==
@@ -664,7 +725,8 @@ public static class SemanticCardSelectionEngineV111
             (spec.SequentialOptional && !supportedSequential) ||
             (spec.DrawEqualToSelectionsOnCompletion &&
              !supportedSequential) ||
-            choice.OuterChoiceContinuation is not null)
+            (choice.OuterChoiceContinuation is not null &&
+             !automaticHandDrawHookChoice))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.card_selection " +
                 "operation=unsupported_nested_source_choice");

@@ -425,14 +425,21 @@ public sealed record SemanticEndTurnV111(
         }
     }
     [JsonIgnore] public SemanticCardSelectionEventV111?
-        NestedCardSelectionPending =>
-            !Complete && HandDraw is not { AtBoundary: false } &&
-            PrototypeGameEngine
-                .HasPendingSupportedAutomaticPipelineSemanticCardSelection(
-                    Run)
-            ? SemanticCardSelectionEngineV111.DescribePending(
-                Run, CanonicalJson.Sha256(Run))
-            : null;
+        NestedCardSelectionPending
+    {
+        get
+        {
+            if (Complete) return null;
+            if (HandDraw is { AtBoundary: false } handDraw)
+                return handDraw.CardSelectionPending;
+            return PrototypeGameEngine
+                    .HasPendingSupportedAutomaticPipelineSemanticCardSelection(
+                        Run)
+                ? SemanticCardSelectionEngineV111.DescribePending(
+                    Run, CanonicalJson.Sha256(Run))
+                : null;
+        }
+    }
     [JsonIgnore] public SemanticDrawHookChoiceEventV111?
         NestedDrawHookChoicePending =>
             !Complete && HandDraw is not { AtBoundary: false } &&
@@ -1320,9 +1327,22 @@ public static class SemanticEndTurnEngineV111
         ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
         var pending = source.NestedCardSelectionPending ??
             throw new InvalidOperationException(
-                "No automatic-pipeline card-selection event is pending.");
+                "No automatic hand-draw or pipeline card-selection event is pending.");
         var decision = SemanticCardSelectionEngineV111.Select(
             pending, eventId, actionId);
+        if (source.HandDraw is { AtBoundary: false } handDraw &&
+            handDraw.CardSelectionPending is { } handDrawEvent)
+        {
+            if (CanonicalJson.Sha256(handDrawEvent) !=
+                CanonicalJson.Sha256(pending))
+                throw new InvalidDataException(
+                    "Automatic draw card-selection event changed during resume.");
+            var nextHand = SemanticCombatDrawEngineV111.ResolveCardSelection(
+                handDraw, handDraw.Fingerprint, eventId, actionId);
+            var nextHandDraw = ContinueHandDraw(source, nextHand);
+            Validate(nextHandDraw);
+            return nextHandDraw;
+        }
         var choice = new SemanticEndTurnNestedChoiceV111(
             "semantic_card_selection",
             CardSelectionDecision: decision.Fork());

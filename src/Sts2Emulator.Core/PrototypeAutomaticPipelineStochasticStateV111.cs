@@ -852,6 +852,10 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
                  PrototypeGameEngine
                      .IsAutomaticHandDrawPoolShuffleContinuation(
                          combat, pendingPoolShuffleChoice)) ||
+                (combat.PendingChoice is { } pendingCardSelectionChoice &&
+                 PrototypeGameEngine
+                     .IsAutomaticHandDrawHookCardSelectionContinuation(
+                         combat, pendingCardSelectionChoice)) ||
                 (combat.PendingChoice is { } pendingChoice &&
                  PrototypeGameEngine
                      .IsAutomaticSemanticBeforeHandDrawGeneratedSelection(

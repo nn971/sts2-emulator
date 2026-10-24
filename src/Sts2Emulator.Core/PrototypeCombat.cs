@@ -13152,6 +13152,9 @@ public sealed partial class PrototypeGameEngine
             ?? throw new InvalidOperationException("Combat phase has no combat state.");
         var pending = combat.PendingChoice
             ?? throw new InvalidOperationException("Combat has no pending choice.");
+        bool automaticHandDrawHookCardSelection =
+            IsAutomaticHandDrawHookCardSelectionContinuation(
+                combat, pending);
 
         if (!StringComparer.Ordinal.Equals(pending.ChoiceId, "select_cards"))
         {
@@ -13420,7 +13423,8 @@ public sealed partial class PrototypeGameEngine
         // can settle a terminal reward boundary.
         if (pending.AutomaticSemanticStratagemDrawSelection ||
             pending.AutomaticSemanticDrawHookChoice ||
-            pending.AutomaticSemanticDrawTargetChoice)
+            pending.AutomaticSemanticDrawTargetChoice ||
+            automaticHandDrawHookCardSelection)
             return PrototypeAutomaticPipelineResumeResultV111.FromRun(state);
 
         return ResumeAutomaticPipelineContinuation(state);

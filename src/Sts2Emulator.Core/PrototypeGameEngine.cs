@@ -407,6 +407,32 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
               cursor.Stochastic.CompletedSemanticHandDrawRequested is null;
     }
 
+    internal static bool IsAutomaticHandDrawHookCardSelectionContinuation(
+        CombatState combat, PendingCombatChoiceState pending)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(pending);
+        if (!combat.IsPlayerTurn ||
+            combat.PendingKnowledgeDemonChoice is not null ||
+            combat.Stochastic.SemanticDeck is not
+                { Mode: SemanticDeckStateV111.NatureMode, Pending: null } ||
+            pending is not
+                { ChoiceId: "select_cards",
+                  OuterChoiceContinuation: not null } ||
+            !pending.HasValidControlledPayloadShape() ||
+            combat.AutomaticPipelineContinuation is not { } cursor ||
+            IsAutomaticPipelineSemanticCardSelectionContinuation(
+                combat, pending))
+            return false;
+
+        return cursor.Stochastic.TryGetSemanticHandDrawProgress(
+                cursor.Mechanics, out int requested, out int remaining)
+            ? requested > 0 && remaining >= 0
+            : cursor.Stochastic.IsAtSemanticBeforeHandDraw(
+                  cursor.Mechanics) &&
+              cursor.Stochastic.CompletedSemanticHandDrawRequested is null;
+    }
+
     internal static bool IsAutomaticBeforeHandDrawHookDrawInsertionContinuation(
         CombatState combat, PendingCombatChoiceState pending)
     {
