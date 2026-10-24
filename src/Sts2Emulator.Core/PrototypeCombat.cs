@@ -8615,73 +8615,20 @@ public sealed partial class PrototypeGameEngine
                     operation, pendingRounds,
                     (int[])roundTargets.Clone(), nextTargetIndex + 1,
                     eventDepth);
-                if (damageResult.DamageDealt > 0)
-                {
-                    var damaged = DispatchCombatEvent(
-                        player, combat,
-                        new PrototypeCombatEvent(
-                            PrototypeCombatEventKind.EnemyDamaged,
-                            TargetEnemyId: enemyId,
-                            Amount: damageResult.DamageDealt),
-                        rng, eventDepth + 1,
-                        allowSuspension: true);
-                    player = damaged.Player;
-                    combat = damaged.Combat;
-                    if (combat.PendingChoice is not null)
-                    {
-                        var suspended = effectContinuation with
-                        {
-                            PendingDiscardEvents = damageResult.Defeated
-                                ?
-                                [new PrototypeCombatEvent(
-                                    PrototypeCombatEventKind.EnemyDefeated,
-                                    TargetEnemyId: enemyId,
-                                    Amount: damageResult.DamageDealt)]
-                                : [],
-                            EnemyDefeatFollowUp = damageResult.Defeated
-                                ? new PrototypeEnemyDefeatFollowUpV111(
-                                    operation, false, eventDepth, enemyId)
-                                : null,
-                            DamageRepeatContinuation = resumeProgress
-                        };
-                        return (player, AttachOuterChoiceContinuation(
-                            combat, suspended));
-                    }
-                }
-
-                if (damageResult.Defeated)
-                {
-                    var defeated = DispatchCombatEvent(
-                        player, combat,
-                        new PrototypeCombatEvent(
-                            PrototypeCombatEventKind.EnemyDefeated,
-                            TargetEnemyId: enemyId,
-                            Amount: damageResult.DamageDealt),
-                        rng, eventDepth + 1,
-                        allowSuspension: true);
-                    player = defeated.Player;
-                    combat = defeated.Combat;
-                    if (combat.PendingChoice is not null)
-                    {
-                        var suspended = effectContinuation with
-                        {
-                            PendingDiscardEvents = [],
-                            EnemyDefeatFollowUp =
-                                new PrototypeEnemyDefeatFollowUpV111(
-                                    operation, false, eventDepth, enemyId),
-                            DamageRepeatContinuation = resumeProgress
-                        };
-                        return (player, AttachOuterChoiceContinuation(
-                            combat, suspended));
-                    }
-
-                    var completedDefeat = CompleteEnemyDefeatFollowUp(
-                        player, combat, rng,
-                        new PrototypeEnemyDefeatFollowUpV111(
-                            operation, false, eventDepth, enemyId));
-                    player = completedDefeat.Player;
-                    combat = completedDefeat.Combat;
-                }
+                var damageEvents =
+                    DispatchEnemyDamageEventsAfterHit(
+                        player, combat, rng, operation, enemyId,
+                        damageResult.DamageDealt,
+                        damageResult.Defeated, fatalEligible: false,
+                        eventDepth: eventDepth,
+                        effectContinuation: effectContinuation,
+                        remainingOperations:
+                            effectContinuation.Operations,
+                        repeatedDamageContinuation: resumeProgress);
+                player = damageEvents.Player;
+                combat = damageEvents.Combat;
+                if (combat.PendingChoice is not null)
+                    return (player, combat);
             }
 
             roundTargets = null;
@@ -8810,6 +8757,29 @@ public sealed partial class PrototypeGameEngine
         if (defeated)
             combat = CleanupSourceBoundPowersForDefeatedEnemies(combat);
 
+        return DispatchEnemyDamageEventsAfterHit(
+            player, combat, rng, operation, targetEnemyId, damageDealt,
+            defeated, continuation.FatalEligible,
+            continuation.EventDepth, effectContinuation,
+            operations.ToArray());
+    }
+
+    private static (PlayerState Player, CombatState Combat)
+        DispatchEnemyDamageEventsAfterHit(
+            PlayerState player,
+            CombatState combat,
+            RngBundle rng,
+            PrototypeQueuedOperation operation,
+            int targetEnemyId,
+            int damageDealt,
+            bool defeated,
+            bool fatalEligible,
+            int eventDepth,
+            PrototypeChoiceResolutionContinuationState effectContinuation,
+            PrototypeQueuedOperation[] remainingOperations,
+            PrototypeRepeatedDamageContinuationV111?
+                repeatedDamageContinuation = null)
+    {
         if (damageDealt > 0)
         {
             var damaged = DispatchCombatEvent(
@@ -8818,15 +8788,16 @@ public sealed partial class PrototypeGameEngine
                     PrototypeCombatEventKind.EnemyDamaged,
                     TargetEnemyId: targetEnemyId,
                     Amount: damageDealt),
-                rng, continuation.EventDepth + 1,
-                allowSuspension: true);
+                rng, eventDepth + 1, allowSuspension: true);
             player = damaged.Player;
             combat = damaged.Combat;
             if (combat.PendingChoice is not null)
             {
                 var suspended = effectContinuation with
                 {
-                    Operations = operations.ToArray(),
+                    Operations =
+                        (PrototypeQueuedOperation[])
+                            remainingOperations.Clone(),
                     PendingDiscardEvents = defeated
                         ?
                         [new PrototypeCombatEvent(
@@ -8836,52 +8807,52 @@ public sealed partial class PrototypeGameEngine
                         : [],
                     EnemyDefeatFollowUp = defeated
                         ? new PrototypeEnemyDefeatFollowUpV111(
-                            operation, continuation.FatalEligible,
-                            continuation.EventDepth, targetEnemyId)
-                        : null
+                            operation, fatalEligible, eventDepth,
+                            targetEnemyId)
+                        : null,
+                    DamageRepeatContinuation =
+                        repeatedDamageContinuation?.Fork()
                 };
                 return (player, AttachOuterChoiceContinuation(
                     combat, suspended));
             }
         }
 
-        if (defeated)
+        if (!defeated)
+            return (player, combat);
+
+        var defeatedResult = DispatchCombatEvent(
+            player, combat,
+            new PrototypeCombatEvent(
+                PrototypeCombatEventKind.EnemyDefeated,
+                TargetEnemyId: targetEnemyId,
+                Amount: damageDealt),
+            rng, eventDepth + 1, allowSuspension: true);
+        player = defeatedResult.Player;
+        combat = defeatedResult.Combat;
+        if (combat.PendingChoice is not null)
         {
-            var defeatedResult = DispatchCombatEvent(
-                player, combat,
-                new PrototypeCombatEvent(
-                    PrototypeCombatEventKind.EnemyDefeated,
-                    TargetEnemyId: targetEnemyId,
-                    Amount: damageDealt),
-                rng, continuation.EventDepth + 1,
-                allowSuspension: true);
-            player = defeatedResult.Player;
-            combat = defeatedResult.Combat;
-            if (combat.PendingChoice is not null)
+            var suspended = effectContinuation with
             {
-                var suspended = effectContinuation with
-                {
-                    Operations = operations.ToArray(),
-                    PendingDiscardEvents = [],
-                    EnemyDefeatFollowUp =
-                        new PrototypeEnemyDefeatFollowUpV111(
-                            operation, continuation.FatalEligible,
-                            continuation.EventDepth, targetEnemyId)
-                };
-                return (player, AttachOuterChoiceContinuation(
-                    combat, suspended));
-            }
-
-            var completedDefeat = CompleteEnemyDefeatFollowUp(
-                player, combat, rng,
-                new PrototypeEnemyDefeatFollowUpV111(
-                    operation, continuation.FatalEligible,
-                    continuation.EventDepth, targetEnemyId));
-            player = completedDefeat.Player;
-            combat = completedDefeat.Combat;
+                Operations =
+                    (PrototypeQueuedOperation[])remainingOperations.Clone(),
+                PendingDiscardEvents = [],
+                EnemyDefeatFollowUp =
+                    new PrototypeEnemyDefeatFollowUpV111(
+                        operation, fatalEligible, eventDepth,
+                        targetEnemyId),
+                DamageRepeatContinuation =
+                    repeatedDamageContinuation?.Fork()
+            };
+            return (player, AttachOuterChoiceContinuation(
+                combat, suspended));
         }
 
-        return (player, combat);
+        var completedDefeat = CompleteEnemyDefeatFollowUp(
+            player, combat, rng,
+            new PrototypeEnemyDefeatFollowUpV111(
+                operation, fatalEligible, eventDepth, targetEnemyId));
+        return completedDefeat;
     }
 
     private static (PlayerState Player, CombatState Combat)

@@ -1113,11 +1113,12 @@ boundaries.
 
 An `EnemyDamaged` or `EnemyDefeated` subscriber can now suspend either a
 `DamageEnemy` operation or `DamageAllEnemiesRepeatPerKill` (including Echoing
-Slash) through the existing outer choice continuation. The saved frame
-resumes remaining damage events, death summons, fatal rewards, and queued
-operations in source order. Repeated damage also retains the current round's
-target snapshot, next target index, and pending extra kill rounds, so earlier
-hits are not replayed after a hook choice. Pending event replay uses the same
+Slash) through the existing outer choice continuation. Both operations use
+one post-hit event dispatcher and death follow-up; the saved frame resumes
+remaining damage events, death summons, fatal rewards, and queued operations
+in source order. Repeated damage also retains the current round's target
+snapshot, next target index, and pending extra kill rounds, so earlier hits
+are not replayed after a hook choice. Pending event replay uses the same
 resumable dispatcher, and restore validates the defeated target against the
 saved follow-up and repeated-damage cursor. The mechanics comparison retains
 this progress under schema v19; provider replay comparison remains v3.
