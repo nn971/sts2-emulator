@@ -14455,6 +14455,12 @@ public sealed partial class PrototypeGameEngine
     /// </summary>
     internal static RunState ResumeControlledSemanticEffectDraw(
         RunState state, long selectedCardInstanceId)
+        => ResumeControlledSemanticEffectDrawWithBoundary(
+            state, selectedCardInstanceId).Run;
+
+    internal static PrototypeAutomaticPipelineResumeResultV111
+        ResumeControlledSemanticEffectDrawWithBoundary(
+            RunState state, long selectedCardInstanceId)
     {
         if (!ControlledChanceGuardV111.Active)
             throw new InvalidOperationException(
@@ -14505,9 +14511,7 @@ public sealed partial class PrototypeGameEngine
                     state.Stochastic, prototypeRng),
                 World = world with { Combat = resumed.Combat }
             };
-            resumedState = ResumeAutomaticPipelineContinuation(
-                resumedState).Run;
-            return resumedState;
+            return ResumeAutomaticPipelineContinuation(resumedState);
         }
         var drawn = DrawCards(
             state.Player, combat, draw.RemainingCount, prototypeRng,
@@ -14521,7 +14525,7 @@ public sealed partial class PrototypeGameEngine
                 Stochastic = RunStochasticStateV111.WithPrototypeRng(
                     state.Stochastic, prototypeRng)
             }, drawn, draw, continuation);
-        return ResumeAutomaticPipelineContinuation(continued).Run;
+        return ResumeAutomaticPipelineContinuation(continued);
     }
 
     private static RunState ContinueControlledSemanticEffectDraw(

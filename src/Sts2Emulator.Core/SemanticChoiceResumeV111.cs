@@ -33,11 +33,12 @@ internal static class SemanticChoiceResumeV111
         ArgumentNullException.ThrowIfNull(decision);
         decision.Validate();
         var ownedDecision = decision.Fork();
-        return new SemanticChoiceResumeResultV111(
-            SemanticDrawChoiceV111.ResumeControlledEffectDraw(
+        var resumed = SemanticDrawChoiceV111
+            .ResumeControlledEffectDrawWithBoundary(
                 checkpoint.Fork(), ownedDecision,
-                allowEngineOwnedPrototypeReward),
-            ownedDecision.Event.SiteId);
+                allowEngineOwnedPrototypeReward);
+        return new SemanticChoiceResumeResultV111(
+            resumed.Run, ownedDecision.Event.SiteId, resumed.Boundary);
     }
 
     internal static (PrototypeDrawCardsResumeResultV111 Progress,

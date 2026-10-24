@@ -209,11 +209,14 @@ public sealed partial class PrototypeGameEngine
         var continued = ResolveControlledSemanticDrawResult(
             run, drawn, draw, continuation, automaticHandDrawRequested,
             recycleSite, recycleOperation);
-        var result = effectDraw
-            ? ResumeAutomaticPipelineContinuation(continued.Run).Run
-            : continued.Run;
+        PrototypeAutomaticPipelineResumeResultV111? pipelineResume =
+            effectDraw
+                ? ResumeAutomaticPipelineContinuation(continued.Run)
+                : null;
+        var result = pipelineResume?.Run ?? continued.Run;
         return new PrototypeDrawCardsResumeResultV111(
-            result, continued.RemainingCount);
+            result, continued.RemainingCount,
+            PipelineBoundary: pipelineResume?.Boundary);
     }
 
     private static PrototypeDrawCardsResumeResultV111

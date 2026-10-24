@@ -198,6 +198,13 @@ public static class SemanticDrawChoiceV111
     internal static RunState ResumeControlledEffectDraw(
         RunState checkpoint, SemanticDrawDecisionV111 decision,
         bool allowEngineOwnedPrototypeReward)
+        => ResumeControlledEffectDrawWithBoundary(
+            checkpoint, decision, allowEngineOwnedPrototypeReward).Run;
+
+    internal static PrototypeAutomaticPipelineResumeResultV111
+        ResumeControlledEffectDrawWithBoundary(
+            RunState checkpoint, SemanticDrawDecisionV111 decision,
+            bool allowEngineOwnedPrototypeReward)
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
         ArgumentNullException.ThrowIfNull(decision);
@@ -207,12 +214,13 @@ public static class SemanticDrawChoiceV111
             SemanticDeckEngineV111.Inspect(deck), decision);
 
         var resumed = ControlledChanceGuardV111.ExecuteGuarded(
-            () => PrototypeGameEngine.ResumeControlledSemanticEffectDraw(
-                checkpoint, decision.SelectedCardInstanceId),
+            () => PrototypeGameEngine
+                .ResumeControlledSemanticEffectDrawWithBoundary(
+                    checkpoint, decision.SelectedCardInstanceId),
             allowEngineOwnedPrototypeReward);
 
         ValidateEffectDrawResult(
-            resumed, decision.Event, decision.SelectedCardInstanceId);
+            resumed.Run, decision.Event, decision.SelectedCardInstanceId);
         return resumed;
     }
 

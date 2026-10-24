@@ -238,6 +238,8 @@ Semantic random hand-cost choices also retain their classified automatic-pipelin
 
 Typed semantic draw-insertion, generated-card, potion-generation, card-transform, and pool-shuffle resumes also return their classified pipeline results through `SemanticChoiceResumeResultV111`. Existing validators and run-only compatibility facades remain with their choice owners.
 
+Semantic effect-draw resumes preserve their classified pipeline result through the validated draw-choice facade and `SemanticChoiceResumeResultV111`; hand-draw progress also carries that classification alongside its remaining count.
+
 Controlled-playable draw-insertion resumes also retain the classified result when an insertion completes a nested draw or effect continuation. `ResumeControlledDrawInsertion` remains the run-only facade for semantic draw insertion, while the controlled-playable adapter uses `ResumeControlledDrawInsertionWithBoundary` to pass the existing engine classification into turn staging.
 
 Controlled-playable generated-card resumes now preserve the pipeline result through the same selected-index executor and staging path. `ResumeControlledGeneratedCard` remains the run-only facade for semantic-choice consumers; `ResumeControlledGeneratedCardWithBoundary` returns the existing engine classification to controlled-playable.
