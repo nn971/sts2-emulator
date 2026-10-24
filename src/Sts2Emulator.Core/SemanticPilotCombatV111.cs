@@ -5159,7 +5159,8 @@ public static class SemanticPilotCombatEngineV111
 
     public static SemanticPilotCombatV111 ResolveEnemyActionByCandidateLabel(
         SemanticPilotCombatV111 current, string fingerprint,
-        string candidateLabel)
+        string candidateLabel,
+        SemanticOtherChanceStateV111? otherChance = null)
     {
         ArgumentNullException.ThrowIfNull(current);
         current.Validate();
@@ -5174,7 +5175,8 @@ public static class SemanticPilotCombatEngineV111
             throw new InvalidDataException(
                 "Enemy-action event belongs to another semantic-pilot boundary.");
         return Resolve(current, fingerprint,
-            pending.IndexOfCandidateLabel(candidateLabel));
+            pending.IndexOfCandidateLabel(candidateLabel),
+            null, null, false, null, otherChance: otherChance);
     }
 
     public static SemanticPilotCombatV111 ResolveRandomPileCard(
@@ -7721,10 +7723,9 @@ public static class SemanticPilotCombatEngineV111
             {
                 var choice = SemanticOtherChanceEngineV111
                     .ResolveEnemyTheft(enemyTheftOwner, enemyAction);
-                current = Resolve(
-                    current, current.Fingerprint,
-                    choice.Decision.SelectedIndex, null, null, false, null,
-                    otherChance: choice.Next);
+                current = ResumeNativeEnemyActionChoice(
+                    current, choice.Decision, choice.Next,
+                    requireCandidateLabels: true);
                 continue;
             }
 
@@ -7740,10 +7741,9 @@ public static class SemanticPilotCombatEngineV111
                 var choice = SemanticOtherChanceEngineV111
                     .ResolveEnemyActionRequest(
                         nativeEnemyActionOwner, nativeEnemyAction);
-                current = Resolve(
-                    current, current.Fingerprint,
-                    choice.Decision.SelectedIndex, null, null, false, null,
-                    otherChance: choice.Next);
+                current = ResumeNativeEnemyActionChoice(
+                    current, choice.Decision, choice.Next,
+                    requireCandidateLabels: false);
                 continue;
             }
 
@@ -7968,6 +7968,29 @@ public static class SemanticPilotCombatEngineV111
         }
         current.Validate();
         return current;
+    }
+
+    private static SemanticPilotCombatV111 ResumeNativeEnemyActionChoice(
+        SemanticPilotCombatV111 current,
+        RandomIndexDecisionV111 decision,
+        SemanticOtherChanceStateV111 nextOtherChance,
+        bool requireCandidateLabels)
+    {
+        var pending = current.EnemyActionEventPending;
+        if (decision.Request.OperationKind == "choose_index" &&
+            pending?.CandidateLabels is { } labels)
+        {
+            var label = SemanticChoiceResumeV111.SelectNativeOutcome(
+                decision, labels);
+            return ResolveEnemyActionByCandidateLabel(
+                current, current.Fingerprint, label, nextOtherChance);
+        }
+        if (requireCandidateLabels)
+            throw new InvalidDataException(
+                "Native enemy-theft choice lost its semantic card identity support.");
+        return Resolve(current, current.Fingerprint,
+            decision.SelectedIndex, null, null, false, null,
+            otherChance: nextOtherChance);
     }
 
     private static SemanticPilotCombatV111 PublishRunContinuation(

@@ -12,11 +12,11 @@ Unknown tagged choices remain fail-closed. Static source review and
 `git diff --check` only; no tests or builds were run.
 
 **S4 Native semantic-outcome mapping increment (2026-10-25):** Native
-`choose_index` results for typed target, card, and potion supports now pass
-through one checked mapping before the semantic continuation receives the
-selected identity. Primitive indices and cursor spans remain in the Native
-audit. Static source review and `git diff --check` only; no tests or builds
-were run.
+`choose_index` results for typed semantic supports and labeled enemy-action
+choices now pass through one checked mapping before the semantic continuation
+receives the selected identity. Primitive indices and cursor spans remain in
+the Native audit. Static source review and `git diff --check` only; no tests or
+builds were run.
 
 **S4 automatic random pile-card handoff consolidation (2026-10-25):** After
 Jeweled Mask's automatic-hook card choice resolves, both active and pre-draw
