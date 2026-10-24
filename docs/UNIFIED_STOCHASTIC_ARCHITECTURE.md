@@ -1147,11 +1147,12 @@ through that same owner according to its upgrade level. These paths add no new
 provider or event schema; Native target-pool and stream parity remain open.
 Concentrate uses the same selection owner for its three-card hand discard and
 then resumes the queued energy gain.
-Tingsha now reuses the random-target event when a manual Storm of Steel play
-discards cards. Admission checks the live Tingsha subscriber, exact discard
-event, physical Storm of Steel card-play frame, and queued Shiv-creation suffix;
-each result resumes the original discard-event order. Other Tingsha hook
-origins and Native target-pool, stream, and cursor parity remain open.
+Tingsha now reuses the random-target event when a manual Storm of Steel or
+Shadow Step play discards cards. Admission checks the live Tingsha subscriber,
+exact discard event, physical card-play frame, and queued Shiv-creation or
+power-application suffix; each result resumes the original discard-event order.
+Other Tingsha hook origins and Native target-pool, stream, and cursor parity
+remain open.
 Knife Trap also enters from its physical source card and reuses the saved
 autoplay-target continuation if an earlier Shiv kills the chosen enemy before
 the remaining Shiv queue finishes.

@@ -5740,10 +5740,10 @@ public static class SemanticPilotCombatEngineV111
             throw new InvalidDataException(
                 "Rip and Tear target is outside its supported card-play continuation.");
         if (IsTingshaDiscardTargetChoice(combat, choice) &&
-            !IsTingshaStormOfSteelRandomTargetChoice(
+            !IsTingshaSupportedDiscardTargetChoice(
                 combat, choice, choice?.ControlledTarget))
             throw new InvalidDataException(
-                "Tingsha target is outside its supported Storm of Steel discard continuation.");
+                "Tingsha target is outside its supported player-card discard continuation.");
         var otherChance = current.Run.Stochastic.SemanticOtherChance;
         var ordinal = current.History.Count(transition =>
             transition.Kind == "semantic_target");
@@ -5893,7 +5893,7 @@ public static class SemanticPilotCombatEngineV111
             combat.RelicStates[relicIndex].RelicId == "proto.relic.tingsha";
     }
 
-    private static bool IsTingshaStormOfSteelRandomTargetChoice(
+    private static bool IsTingshaSupportedDiscardTargetChoice(
         CombatState? combat, PendingCombatChoiceState? choice,
         PrototypeControlledTargetChoiceV111? target)
     {
@@ -5967,7 +5967,7 @@ public static class SemanticPilotCombatEngineV111
                         discardEvent.CardId) ||
             completion is not
                 { Kind: PrototypeCombatEventKind.CardPlayed,
-                  CardId: "proto.silent.storm_of_steel",
+                  CardId: { } completedCardId,
                   SourceCardInstanceId: { } completedSourceCardId,
                   TargetEnemyId: null,
                   Amount: 0,
@@ -5989,7 +5989,7 @@ public static class SemanticPilotCombatEngineV111
 
         var sourceCard = combat.Cards.SingleOrDefault(card =>
             card.InstanceId == sourceCardInstanceId &&
-            card.CardId == "proto.silent.storm_of_steel");
+            card.CardId == completedCardId);
         if (sourceCard is null || sourceCard.Enchantment is not null ||
             !combat.PlayCardIds.Contains(sourceCardInstanceId))
             return false;
@@ -5997,17 +5997,53 @@ public static class SemanticPilotCombatEngineV111
         var definition = PrototypeContent.Card(sourceCard.CardId);
         if (!definition.MechanicsImplemented || definition.MultiplayerOnly)
             return false;
-        var expectedEffects = new[]
+        PrototypeCombatEffectSpec[] expectedEffects;
+        PrototypeQueuedOperation expectedTailOperation;
+        switch (sourceCard.CardId)
         {
-            new PrototypeCombatEffectSpec(
-                PrototypeCombatEffectKind.DiscardHand, 0),
-            new PrototypeCombatEffectSpec(
-                PrototypeCombatEffectKind.CreateCardsInHand, 0,
-                CardId: "proto.silent.shiv",
-                CountKind: PrototypeCombatCountKind.OtherCardsInHand,
-                AmountPerCount: 1,
-                GeneratedCardUpgradePerSourceUpgrade: 1)
-        };
+            case "proto.silent.storm_of_steel":
+                expectedEffects =
+                [
+                    new PrototypeCombatEffectSpec(
+                        PrototypeCombatEffectKind.DiscardHand, 0),
+                    new PrototypeCombatEffectSpec(
+                        PrototypeCombatEffectKind.CreateCardsInHand, 0,
+                        CardId: "proto.silent.shiv",
+                        CountKind:
+                            PrototypeCombatCountKind.OtherCardsInHand,
+                        AmountPerCount: 1,
+                        GeneratedCardUpgradePerSourceUpgrade: 1)
+                ];
+                expectedTailOperation = new PrototypeQueuedOperation(
+                    PrototypeCombatEffectKind.CreateCardsInHand,
+                    remainingOperation.Amount,
+                    CardId: "proto.silent.shiv",
+                    GeneratedCardUpgradeLevel: sourceCard.UpgradeLevel,
+                    TargetMode: PrototypeEffectTarget.ActionTargetEnemy,
+                    SourceKind: PrototypeEffectSourceKind.Card);
+                if (remainingOperation.Amount <= 0)
+                    return false;
+                break;
+
+            case "proto.silent.shadow_step":
+                expectedEffects =
+                [
+                    new PrototypeCombatEffectSpec(
+                        PrototypeCombatEffectKind.DiscardHand, 0),
+                    new PrototypeCombatEffectSpec(
+                        PrototypeCombatEffectKind.ApplyPlayerPower, 1,
+                        PowerId: "proto.power.shadow_step")
+                ];
+                expectedTailOperation = new PrototypeQueuedOperation(
+                    PrototypeCombatEffectKind.ApplyPlayerPower, 1,
+                    PowerId: "proto.power.shadow_step",
+                    TargetMode: PrototypeEffectTarget.ActionTargetEnemy,
+                    SourceKind: PrototypeEffectSourceKind.Card);
+                break;
+
+            default:
+                return false;
+        }
         if (definition.Target != PrototypeCardTarget.None ||
             definition.Type != PrototypeCardType.Skill ||
             CanonicalJson.Sha256(definition.Effects) !=
@@ -6018,13 +6054,6 @@ public static class SemanticPilotCombatEngineV111
             PrototypeCombatEffectKind.DamageEnemy, 3,
             TargetMode: PrototypeEffectTarget.ActionTargetEnemy,
             SourceKind: PrototypeEffectSourceKind.Relic);
-        var expectedTailOperation = new PrototypeQueuedOperation(
-            PrototypeCombatEffectKind.CreateCardsInHand,
-            remainingOperation.Amount,
-            CardId: "proto.silent.shiv",
-            GeneratedCardUpgradeLevel: sourceCard.UpgradeLevel,
-            TargetMode: PrototypeEffectTarget.ActionTargetEnemy,
-            SourceKind: PrototypeEffectSourceKind.Card);
         var eventSpec = new PrototypeRelicTriggerSpec(
             PrototypeCombatEventKind.CardDiscarded,
             [new PrototypeCombatEffectSpec(
