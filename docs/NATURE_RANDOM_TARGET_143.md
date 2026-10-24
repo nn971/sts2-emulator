@@ -58,6 +58,9 @@ remaining live discard queue, and selected-count draw continuation match.
 Queued Sly IDs must still refer to live Sly cards in discard; opening Gambling
 Chip also admits the resulting Sly target and its nested random-effect targets
 at the exact opening cursor, with the active autoplay series retained.
+Tools of the Trade turn-start discards also suspend Tingsha at the exact live
+power subscriber and post-`PlayerTurnStarted` cursor, with outstanding discards
+and Sly IDs checked against the live card zones.
 
 ## Validation and limitations
 

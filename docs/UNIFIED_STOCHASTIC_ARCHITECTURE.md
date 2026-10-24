@@ -1186,6 +1186,10 @@ identities are checked against live Sly cards in discard, and Gambling Chip's
 resulting Sly target uses that same exact opening boundary. Random-effect
 targets nested within those Sly plays also require the active autoplay series
 and the exact Gambling Chip subscriber in the saved continuation chain.
+Tools of the Trade turn-start discards also reuse the target event when the
+saved parent resumes its exact live `PlayerTurnStarted` power subscriber at
+the post-dispatch cursor, with the remaining discard queue and Sly identities
+validated against live cards and the power's stack bound.
 Knife Trap also enters from its physical source card and reuses the saved
 autoplay-target continuation if an earlier Shiv kills the chosen enemy before
 the remaining Shiv queue finishes.

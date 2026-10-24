@@ -35,6 +35,14 @@ subscriber in their saved continuation chain. No event or snapshot schema
 changed. Static source review and
 `git diff --check` only; no tests or builds were run.
 
+**S4 Tools of the Trade Tingsha continuation increment (2026-10-25):**
+Tools of the Trade turn-start discards now admit Tingsha's target only when
+the saved parent resumes the exact live `PlayerTurnStarted` power subscriber
+at its post-dispatch cursor. The outstanding discard and Sly queues are
+validated against live card instances and bounded by the power's stack count;
+the existing target and event schemas are reused. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S4 Imbued nested-choice source-frame validation increment (2026-10-24):**
 Nested choices during the `LateRelicAutoPlay` sequence now identify the active
 Imbued source from its saved autoplay series after the card has left the play

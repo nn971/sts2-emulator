@@ -1835,6 +1835,106 @@ public sealed partial class PrototypeGameEngine
             candidates.SequenceEqual(combat.Hand);
     }
 
+    internal static bool
+        IsPlayerTurnStartedToolsOfTheTradeTingshaTargetBoundary(
+            CombatState combat)
+    {
+        if (combat is not
+                { IsPlayerTurn: true,
+                  PendingKnowledgeDemonChoice: null,
+                  PendingChoice: { } pending,
+                  SemanticDeck:
+                    { Mode: SemanticDeckStateV111.NatureMode,
+                      Pending: null },
+                  AutomaticPipelineContinuation: { } pipeline } ||
+            !IsAtSupportedAutomaticPipelineTargetBoundary(combat) ||
+            !IsAtPlayerTurnStartedDispatchContinuation(combat, pipeline) ||
+            !HasSupportedTingshaDiscardTargetFrame(
+                combat, pending, pending.ControlledTarget,
+                out var continuation, out _) ||
+            continuation.Parent is not
+                { Parent: null,
+                  SourceCardInstanceId: null,
+                  SourceCardDestination: PrototypeCardZone.DiscardPile,
+                  Operations: [],
+                  PendingDiscardEvents: { },
+                  PendingSlyCardInstanceIds: { },
+                  CompletionEvents: [],
+                  CardPlaySeries: null,
+                  MoveSourceCardOnCompletion: true,
+                  RemoveSourceCardOnCompletion: false,
+                  SourceCardAlreadyMoved: false,
+                  EventDispatchContinuation: { } eventDispatch,
+                  CompletePlayerHandCleanup: false } ||
+            !IsPlayerTurnStartedToolsOfTheTradeSubscriber(
+                combat, eventDispatch, out var maxSelections) ||
+            !HasSupportedTingshaDiscardEventRemainder(
+                combat, continuation, maxSelections))
+            return false;
+
+        return true;
+    }
+
+    private static bool IsPlayerTurnStartedToolsOfTheTradeSubscriber(
+        CombatState combat,
+        PrototypeEventDispatchContinuationState eventDispatch,
+        out int maxSelections)
+    {
+        maxSelections = 0;
+        const string toolsOfTheTradePowerId =
+            "proto.power.tools_of_the_trade";
+        if (eventDispatch is not
+                { EventDepth: 0,
+                  CombatEvent.Kind: PrototypeCombatEventKind.PlayerTurnStarted } ||
+            eventDispatch.CombatEvent != new PrototypeCombatEvent(
+                PrototypeCombatEventKind.PlayerTurnStarted) ||
+            eventDispatch.CurrentSubscriber is not
+                { SourceKind: PrototypeEffectSourceKind.Power,
+                  SourcePowerApplicationOrder: { } powerOrder,
+                  SourcePowerEnemyId: null,
+                  PowerTriggerIndex: 0 } subscriber)
+            return false;
+
+        var power = combat.PlayerPowers.SingleOrDefault(candidate =>
+            candidate.ApplicationOrder == powerOrder);
+        var definition = PrototypeContent.Power(toolsOfTheTradePowerId);
+        var expectedSelection = new PrototypeCardSelectionSpec(
+            PrototypeCardZone.Hand,
+            0,
+            0,
+            PrototypeCardSelectionResolutionKind.MoveToDiscard,
+            SelectionsPerPowerStack: 1);
+        var expectedTrigger = new PrototypePowerTriggerSpec(
+            PrototypeCombatEventKind.PlayerTurnStarted,
+            [new PrototypeCombatEffectSpec(
+                PrototypeCombatEffectKind.ChooseCards,
+                0,
+                Selection: expectedSelection)]);
+        if (power is not
+                { PowerId: toolsOfTheTradePowerId, Stacks: > 0 } ||
+            definition.Triggers is not [{ } trigger] ||
+            CanonicalJson.Sha256(trigger) !=
+                CanonicalJson.Sha256(expectedTrigger))
+            return false;
+
+        var expectedSubscriber = new PrototypeEventSubscriberState(
+            power.ApplicationOrder, trigger.Effects, power.Stacks,
+            PrototypeEffectSourceKind.Power,
+            SourcePowerApplicationOrder: power.ApplicationOrder,
+            PowerCardPayload: power.CardPayload?.Fork(),
+            RemoveSourcePowerAfterTrigger: trigger.RemoveSourcePowerAfterTrigger,
+            EveryNth: trigger.EveryNth,
+            PowerTriggerIndex: 0,
+            CountdownBeforeTrigger: trigger.CountdownBeforeTrigger,
+            SourcePowerStoredValue: power.StoredValue);
+        if (CanonicalJson.Sha256(expectedSubscriber) !=
+            CanonicalJson.Sha256(subscriber))
+            return false;
+
+        maxSelections = power.Stacks;
+        return true;
+    }
+
     private static bool IsAtPlayerTurnStartedDispatchContinuation(
         CombatState combat,
         PrototypeAutomaticPipelineContinuationState continuation)
@@ -1988,16 +2088,17 @@ public sealed partial class PrototypeGameEngine
     internal static bool HasSupportedTingshaDiscardEventRemainder(
         CombatState combat,
         PrototypeChoiceResolutionContinuationState continuation,
-        int selectedCount)
+        int? selectedCount)
     {
-        if (selectedCount <= 0 ||
+        if (selectedCount is <= 0 ||
             continuation.EventDispatchContinuation?.CombatEvent
                 .SourceCardInstanceId is not { } currentDiscardedCardId ||
             continuation.Parent is not
                 { PendingDiscardEvents: { } pendingDiscardEvents,
                   PendingSlyCardInstanceIds: { } pendingSlyCardInstanceIds } ||
-            pendingDiscardEvents.Length >= selectedCount ||
-            pendingSlyCardInstanceIds.Length > selectedCount)
+            selectedCount is { } boundedSelectionCount &&
+                (pendingDiscardEvents.Length >= boundedSelectionCount ||
+                 pendingSlyCardInstanceIds.Length > boundedSelectionCount))
             return false;
 
         if (!HasSupportedLivePendingSlyAutoplayQueue(

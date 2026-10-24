@@ -5905,6 +5905,10 @@ public static class SemanticPilotCombatEngineV111
                 combat, choice, target) ||
             (combat is not null &&
              PrototypeGameEngine
+                 .IsPlayerTurnStartedToolsOfTheTradeTingshaTargetBoundary(
+                     combat)) ||
+            (combat is not null &&
+             PrototypeGameEngine
                  .IsGamblingChipOpeningTingshaTargetBoundary(combat)))
             return true;
 
