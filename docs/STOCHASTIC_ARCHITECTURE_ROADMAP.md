@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 shared Native initial-HP outcome validation (2026-10-25):** The
+source-route initial-HP audit now validates its selected HP through
+`NativeSemanticOutcomeV111`, sharing operation, support, and bounds checks
+with the semantic continuation and other audit owners. Existing evidence and
+snapshot fields are unchanged. Static source review and `git diff --check`
+only; no tests or builds were run.
+
 **S4 weighted intent ticket mapping owner (2026-10-25):** Native intent
 selection and weighted-audit validation now share
 `SemanticIntentChoiceV111.SelectBySourceTicket` to map a bounded ticket to

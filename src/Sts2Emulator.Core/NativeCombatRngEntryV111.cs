@@ -100,13 +100,12 @@ public sealed record NativeInitialHpOutcomeV111(
 
         decision.Validate();
         var request = decision.Request;
-        if (decision.ProviderMode != "native-v111" ||
-            request.SiteId != NativeCombatRngEntryV111.InitialUniqueHpSiteId ||
+        if (request.SiteId != NativeCombatRngEntryV111.InitialUniqueHpSiteId ||
             request.StreamId != "run.niche" ||
             request.OwnerId != "creature:" + CombatId ||
-            request.OperationKind != "choose_index" ||
             !request.OrderedCandidates.SequenceEqual(support) ||
-            decision.SelectedValue != SelectedHp)
+            NativeSemanticOutcomeV111.SelectByChooseIndex(
+                decision, support) != SelectedHp)
             throw new InvalidDataException(
                 "Native initial-HP result disagrees with its provider ticket.");
     }

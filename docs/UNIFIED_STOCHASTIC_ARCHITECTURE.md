@@ -1141,9 +1141,10 @@ Engine-owned Native semantic choices map provider indices through
 Native provider mode, operation kind, support size, and selected bounds for
 both `choose_index` identity supports and `bounded_integer` offset outcomes.
 Live continuations and Native target, generation, potion, PotionFactory,
-transform, shuffle, insertion, combat-gold, card-instance, and card-cost audit records
-share this mapping while retaining their source checks. The Native audit keeps
-the primitive index and cursor spans alongside the semantic outcome.
+transform, shuffle, insertion, combat-gold, initial-HP, card-instance, and
+card-cost audit records share this mapping while retaining their source
+checks. The Native audit keeps the primitive index and cursor spans alongside
+the semantic outcome.
 
 `PrototypeAutomaticPipelineResumeResultV111` is the single owner for
 classifying an ephemeral run-resume boundary. Draw-progress and semantic-choice
