@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 legacy Shop Chance Law ownership increment (2026-10-24):** The five
+legacy Shop rarity/model and price queries, plus the retained legacy merchant
+request-index law, now live with Native merchant laws in
+`ChanceLawMerchantV111.cs`. Shared reward-card-pool and request construction
+remain in core. Public APIs, supports, and schemas are unchanged. Static source
+review and `git diff --check` only; no tests or builds were run.
+
 **S3 potion-generation Chance Law ownership increment (2026-10-24):**
 Generic legacy potion rarity/model laws and Native PotionFactory rarity/model
 laws, including the factory policy IDs, now live in
