@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S0 runtime entropy scan scope increment (2026-10-24):** Census v53 keeps
+adapter callsite tracing Core-scoped and extends the direct ad hoc entropy
+check to runtime C# sources under `src/` and `native/`, excluding tests. The
+gate finds zero direct `System.Random` or `RandomNumberGenerator` expressions
+in those trees. This does not classify Native reference-mod RNG hooks or prove
+the absence of indirect/aliased entropy. The regenerated matrix, contract-link,
+and no-ambient-entropy inventory gate passed; no tests or builds were run.
+
 **S4 controlled draw-progress owner increment (2026-10-24):** Controlled-
 playable validation and turn-resume classification, controlled insertion
 validation, controlled hand-draw hook and recycle resumption, and post-choice

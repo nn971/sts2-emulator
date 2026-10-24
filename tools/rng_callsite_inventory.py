@@ -24,7 +24,8 @@ from urllib.parse import unquote, urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v52"
+RUNTIME_SOURCE_ROOTS = (ROOT / "src", ROOT / "native")
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v53"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 TYPE_SOURCE_DECLARATION_PATTERN = re.compile(
     r"\b(?:class|record|struct)\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\b"
@@ -2523,7 +2524,7 @@ def _simulation_boss_law_forward_values(
 def _ambient_entropy_calls(
     sources: dict[Path, str],
 ) -> list[dict[str, Any]]:
-    """Find direct ad hoc entropy APIs in the inventoried Core sources."""
+    """Find direct ad hoc entropy APIs in runtime C# sources."""
     calls: list[dict[str, Any]] = []
     for path, source in sources.items():
         for api, pattern in AMBIENT_ENTROPY_PATTERNS:
@@ -2904,7 +2905,12 @@ def collect() -> dict[str, Any]:
         type_name: tuple(class_sources)
         for type_name, class_sources in source_class_contents.items()
     }
-    ambient_entropy_calls = _ambient_entropy_calls(sources)
+    runtime_sources = {
+        path: path.read_text(encoding="utf-8")
+        for source_root in RUNTIME_SOURCE_ROOTS
+        for path in sorted(source_root.rglob("*.cs"))
+    }
+    ambient_entropy_calls = _ambient_entropy_calls(runtime_sources)
     string_constants: dict[str, set[str]] = {}
     for source in sources.values():
         for name, values in _string_constants(source).items():
@@ -3324,9 +3330,11 @@ def collect() -> dict[str, Any]:
             "include other indirect delegates, "
             "random provider interfaces, third-party/native source callsites, "
             "or prove that every source operation is mapped. "
+            "The adapter callsite inventory is Core-scoped. "
             "A separate direct-API scan reports typed and target-typed "
             "System.Random construction, shared-instance use, and "
-            "RandomNumberGenerator use; it cannot prove the absence of indirect "
+            "RandomNumberGenerator use across runtime C# sources under `src/` "
+            "and `native/`, excluding tests; it cannot prove the absence of indirect "
             "or aliased entropy sources. Explicit typed random-request "
             "constructions are listed with their site ID, index operation-kind "
             "expression, and registry/matrix resolution status. The static "
@@ -3489,7 +3497,7 @@ def render_markdown(report: dict[str, Any]) -> str:
         "The NativePlayer wrapper's internal forwarding calls are represented "
         "by the higher-level NativePlayer callsite rows.",
         "",
-        "Direct ad hoc entropy API expressions in Core: "
+        "Direct ad hoc entropy API expressions in runtime C# sources (`src/`, `native/`): "
         f"**{len(report['ambient_entropy_calls'])}**. The scan covers direct "
         "System.Random typed or target-typed construction/shared-instance use and "
         "RandomNumberGenerator APIs; it does not prove the absence of indirect "
