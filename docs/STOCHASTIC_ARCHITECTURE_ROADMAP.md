@@ -4580,3 +4580,14 @@ of the potion's top-three autoplayed cards. Admission checks the live Tingsha
 dispatch, active autoplay series, exact `PotionUsed` root, and remaining
 potion-sourced autoplay queue. Static source review and `git diff --check`
 only; no tests or builds were run.
+
+**S4 draw-result ownership and Tingsha source census increment (2026-10-25):**
+The tagged `DrawCards` boundary/result value, constructors, and mechanical
+result validation now live together in `PrototypeDrawCardsBoundaryV111.cs`;
+provider adapters retain their existing continuation and transcript policies.
+A source census of modeled card definitions accounts for all nine direct
+player-card discard origins admitted for Tingsha. A census of modeled potion
+effects finds Gambler's Brew and Distilled Chaos as the only potion origins for
+discard events, and both use existing continuations. Unmodeled content and
+Native target-pool/stream/cursor parity remain open. Static source review and
+`git diff --check` only; no tests or builds were run.

@@ -736,7 +736,7 @@ identity requests for one legal configured Native Rest `dig` action, validates
 the selected support against the canonical bag, and commits the Reward with its
 Nature cursor after replay completes.
 
-`SemanticDrawPileAdapterV111.ApplyNewDrawPileInsertion` now publishes a newly created `CombatCardInstance`, its draw-pile membership, the next instance ID, and the provider constraint in one committed transition. `ApplyNewCardZoneInsertion` commits the corresponding card record, next identity, and membership for Hand, DiscardPile, PlayPile, ExhaustPile, and ChoicePool. Enemy, Personal Hive, generated-card, controlled insertion, Tea of Discourtesy, and generated-choice paths now use these owners. Draw-pile and non-draw zone deltas reject identities without registered card records. Transform replacement commits the old-card removal and replacement-card record with its zone and provider update; declared source-selection deletions also remove card records in the same transition. Existing-card moves now enter the same boundary, which validates the source, preserves the requested destination order, and synchronizes the provider for DrawPile changes; broader draw-resume consolidation and cross-provider equivalence remain open.
+`SemanticDrawPileAdapterV111.ApplyNewDrawPileInsertion` now publishes a newly created `CombatCardInstance`, its draw-pile membership, the next instance ID, and the provider constraint in one committed transition. `ApplyNewCardZoneInsertion` commits the corresponding card record, next identity, and membership for Hand, DiscardPile, PlayPile, ExhaustPile, and ChoicePool. Enemy, Personal Hive, generated-card, controlled insertion, Tea of Discourtesy, and generated-choice paths now use these owners. Draw-pile and non-draw zone deltas reject identities without registered card records. Transform replacement commits the old-card removal and replacement-card record with its zone and provider update; declared source-selection deletions also remove card records in the same transition. Existing-card moves now enter the same boundary, which validates the source, preserves the requested destination order, and synchronizes the provider for DrawPile changes. The tagged `DrawCards` result, boundary constructors, and mechanical result validation are co-located in `PrototypeDrawCardsBoundaryV111.cs`; provider adapters consume that validated value and retain their own resume policies. Broader draw-resume consolidation and cross-provider equivalence remain open.
 
 ## Semantic lifecycle and provider interchangeability
 
@@ -1172,8 +1172,10 @@ Tingsha subscriber, exact discard event, physical card-play frame and
 source-card destination, plus the queued Shiv-creation, power, Energy, draw, or
 selection-completion suffix; each result resumes the original discard-event
 order. End-turn hand-discard targets continue through the existing saved
-automatic-pipeline target transcript. Other player-card Tingsha origins and
-Native target-pool, stream, and cursor parity remain open.
+automatic-pipeline target transcript. A source census of card-definition
+discard effects finds these nine are all currently modeled direct player-card
+origins; unmodeled mechanics and Native target-pool, stream, and cursor parity
+remain open.
 Tingsha targets nested under an autoplayed card also reuse the discard target
 owner when the saved event is the exact live Tingsha subscriber and the
 active autoplay series and automatic-pipeline boundary remain present.
@@ -1193,8 +1195,11 @@ validated against live cards and the power's stack bound.
 Manual Distilled Chaos also admits Tingsha targets nested in its top-three
 autoplay when the saved root has the exact `PotionUsed` completion and only
 the remaining potion-sourced autoplay operations for live play-pile cards.
-This route requires an idle Nature deck and no automatic pipeline; other
-potion-origin discard hooks remain open.
+This route requires an idle Nature deck and no automatic pipeline. A source
+census of the modeled potion effects finds Gambler's Brew and Distilled Chaos
+as the only potion origins for card-discard events; both use the existing
+selection or autoplay target continuation. Unmodeled potion mechanics and
+Native target-pool, stream, and cursor parity remain open.
 Knife Trap also enters from its physical source card and reuses the saved
 autoplay-target continuation if an earlier Shiv kills the chosen enemy before
 the remaining Shiv queue finishes.
