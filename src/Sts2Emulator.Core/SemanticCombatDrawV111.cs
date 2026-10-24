@@ -317,6 +317,25 @@ public sealed record SemanticCombatDrawV111(
             TryGetAutomaticSemanticHandDrawProgress(
                 combat, out int pipelineRequested,
                 out int pipelineRemaining);
+        bool automaticHandDrawEffectDrawPending =
+            this.AutomaticHandDraw && combat.PendingChoice is
+                { } effectDrawChoice &&
+            PrototypeGameEngine
+                .IsAutomaticHandDrawHookSemanticDrawContinuation(
+                    combat, effectDrawChoice) &&
+            hasPipelineSemanticDrawProgress &&
+            pipelineRequested == this.RequestedCount &&
+            pipelineRemaining == this.RemainingCount;
+        if (automaticHandDrawEffectDrawPending)
+        {
+            if (combat.PendingChoice?.ChoiceId ==
+                "controlled_draw_cost")
+                SemanticCostChoiceV111.ValidateDrawBoundary(this.Run);
+            else
+                SemanticDrawChoiceV111.ValidateBoundary(this.Run);
+        }
+        bool semanticDrawChoicePending = standaloneSemanticDrawPending ||
+            automaticHandDrawEffectDrawPending;
         var targetPending = this.TargetPending;
         bool automaticSemanticHandDrawRandomTarget =
             targetPending is not null;
@@ -326,6 +345,7 @@ public sealed record SemanticCombatDrawV111(
         if (this.AutomaticHandDraw)
         {
             bool awaiting = deck.Pending is not null || cost is not null ||
+                automaticHandDrawEffectDrawPending ||
                 randomPileCardPending is not null ||
                 drawInsertionPending is not null ||
                 stratagemSelectionPending is not null ||
@@ -429,7 +449,7 @@ public sealed record SemanticCombatDrawV111(
         if ((combat.PendingChoice is not null && cost is null &&
              randomPileCardPending is null &&
              drawInsertionPending is null &&
-             !standaloneSemanticDrawPending &&
+             !semanticDrawChoicePending &&
              stratagemSelectionPending is null &&
              drawHookChoicePending is null &&
              !automaticBeforeHandDrawPoolShuffle &&
@@ -438,11 +458,16 @@ public sealed record SemanticCombatDrawV111(
              !automaticSemanticHandDrawRandomTarget) ||
             (cost is not null &&
              (deck.Pending is not null ||
-              cost.RemainingCount != this.RemainingCount ||
-              cost.FromHandDraw != this.FromHandDraw ||
-              cost.EventDepth != 0 ||
-              !PrototypeGameEngine.ValidateControlledDrawCost(
-                  this.Run.Player, combat, cost with { FromHandDraw = true }))) ||
+              (automaticHandDrawEffectDrawPending
+                  ? cost.RemainingCount != controlledSemanticDraw!.RemainingCount ||
+                    cost.FromHandDraw != controlledSemanticDraw.FromHandDraw ||
+                    cost.EventDepth != controlledSemanticDraw.EventDepth
+                  : cost.RemainingCount != this.RemainingCount ||
+                    cost.FromHandDraw != this.FromHandDraw ||
+                    cost.EventDepth != 0 ||
+                    !PrototypeGameEngine.ValidateControlledDrawCost(
+                        this.Run.Player, combat,
+                        cost with { FromHandDraw = true })))) ||
             (deck.Pending is null && cost is null &&
              randomPileCardPending is null &&
              drawInsertionPending is null &&
@@ -450,7 +475,10 @@ public sealed record SemanticCombatDrawV111(
              drawHookChoicePending is null &&
              targetPending is null &&
              this.RemainingCount != 0) ||
-            (deck.Pending is not null && this.RemainingCount <= 0))
+            (deck.Pending is not null &&
+             (automaticHandDrawEffectDrawPending
+                 ? controlledSemanticDraw?.RemainingCount is not > 0
+                 : this.RemainingCount <= 0)))
             throw new InvalidDataException(
                 "Semantic deck/drawn-cost checkpoint is inconsistent.");
         if (controlledSemanticDraw?.StandaloneSemanticDrawSegment == true &&
@@ -842,7 +870,12 @@ public static class SemanticCombatDrawEngineV111
         }
 
         if (combat.PendingChoice?.ControlledSemanticDraw?
-                .StandaloneSemanticDrawSegment == true)
+                .StandaloneSemanticDrawSegment == true ||
+            (state.AutomaticHandDraw &&
+             combat.PendingChoice is { } nestedEffectDraw &&
+             PrototypeGameEngine
+                 .IsAutomaticHandDrawHookSemanticDrawContinuation(
+                     combat, nestedEffectDraw)))
         {
             var effectDrawDecision = SemanticDrawChoiceV111.Select(
                 state.Pending ?? throw new InvalidDataException(
@@ -851,11 +884,33 @@ public static class SemanticCombatDrawEngineV111
             var (resumedDraw, _) = SemanticChoiceResumeV111.ResumeEffectDraw(
                 run, effectDrawDecision,
                 allowEngineOwnedPrototypeReward: false);
+            int remaining;
+            if (state.AutomaticHandDraw &&
+                resumedDraw.World?.Combat is
+                    { PendingChoice: null,
+                      PendingKnowledgeDemonChoice: null,
+                      SemanticDeck: { Pending: null } } completedChildDraw &&
+                TryGetAutomaticSemanticHandDrawProgress(
+                    completedChildDraw, out int requestedCount,
+                    out int savedRemaining))
+            {
+                var handDraw = PrototypeGameEngine
+                    .ResumeSemanticAutomaticHandDraw(
+                        resumedDraw, savedRemaining);
+                if (handDraw.RequireRequestedCount() != requestedCount)
+                    throw new InvalidDataException(
+                        "Nested effect draw changed the active hand-draw request.");
+                resumedDraw = handDraw.Run;
+                remaining = handDraw.RemainingCount;
+            }
+            else
+                remaining = state.AutomaticHandDraw
+                    ? GetAutomaticHandDrawRemainingCount(resumedDraw)
+                    : PrototypeGameEngine.GetSemanticDrawRemainingCount(
+                        resumedDraw, state.RemainingCount,
+                        combat.CounterState.CardsDrawnThisCombat);
             var drawProgress = new PrototypeDrawCardsResumeResultV111(
-                resumedDraw,
-                PrototypeGameEngine.GetSemanticDrawRemainingCount(
-                    resumedDraw, state.RemainingCount,
-                    combat.CounterState.CardsDrawnThisCombat));
+                resumedDraw, remaining);
             var drawNext = PublishDrawProgress(state, drawProgress);
             drawNext = RecordNewSemanticDrawChoices(state, drawNext);
             Validate(drawNext);
@@ -932,6 +987,25 @@ public static class SemanticCombatDrawEngineV111
             state, next);
         Validate(nextWithChronology);
         return nextWithChronology;
+    }
+
+    private static int GetAutomaticHandDrawRemainingCount(RunState run)
+    {
+        var combat = run.World?.Combat ?? throw new InvalidDataException(
+            "Automatic semantic hand-draw resume removed combat.");
+        if (TryGetAutomaticSemanticHandDrawProgress(
+                combat, out _, out int remaining))
+            return remaining;
+        var cursor = combat.AutomaticPipelineContinuation;
+        if (cursor is not null &&
+            (cursor.Stochastic.IsAtSemanticBeforeHandDraw(
+                 cursor.Mechanics) ||
+             cursor.Mechanics.IsImmediatelyAfterStep(
+                 PrototypeAutomaticStepKind.DrawPlayerHand)) &&
+            !cursor.Stochastic.HasSavedHandDrawProgress())
+            return 0;
+        throw new InvalidDataException(
+            "Automatic semantic hand-draw resume lost its cursor.");
     }
 
     public static SemanticCombatDrawV111 ResolveTarget(

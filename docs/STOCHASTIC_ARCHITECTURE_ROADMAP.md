@@ -2,6 +2,15 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 active-hand-draw semantic effect-draw child increment (2026-10-25):**
+A selected action from an active `CardDrawn` hook can now suspend on its
+source card's existing semantic effect-draw or drawn-cost ticket. Admission
+binds the ticket to the live source card and active requested/remaining
+hand-draw cursor. The semantic combat-draw and end-turn owners reuse their
+existing effect-draw selection, transcript, and replay paths. No choice or
+snapshot schema changed.
+Static source review and `git diff --check` only; no tests or builds were run.
+
 **S4 end-turn active semantic draw routing increment (2026-10-25):** The
 selected-index resolver now routes a pending semantic card event owned by an
 active `SemanticCombatDrawV111` hand-draw frame through that frame's existing

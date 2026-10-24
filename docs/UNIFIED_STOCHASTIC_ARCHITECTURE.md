@@ -1461,6 +1461,13 @@ The controlled-playable session also persists optional ordered candidate labels 
 
 Pending controlled random-target validation now shares one live-support check across semantic target boundaries, combat-state validation, controlled-playable validation, and target resume. It compares ordered living-enemy identities and the Sly/autoplay source identity against the suspended continuation.
 
+A selected action from an active semantic `CardDrawn` hook may suspend on its
+source card's semantic effect-draw or drawn-cost ticket when the automatic
+hand-draw cursor still carries the same requested and remaining counts. The
+semantic combat-draw and end-turn facades reuse the existing effect-draw
+selection, transcript, and replay owners, preserving the outer hand-draw
+continuation without adding choice or snapshot fields.
+
 ## Reading order
 
 1. This architecture contract.

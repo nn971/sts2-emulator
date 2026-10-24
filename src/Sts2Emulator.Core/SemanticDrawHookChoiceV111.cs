@@ -296,12 +296,20 @@ public static class SemanticDrawHookChoiceEngineV111
                 !decision.Event.BeforeHandDraw &&
                 nextChoice.ChoiceId == "controlled_random_pile_card" &&
                 nextChoice.ControlledRandomPileCard is not null;
+            bool nestedActiveHandDrawSemanticDraw =
+                decision.Event.AutomaticHandDraw &&
+                !decision.Event.BeforeHandDraw &&
+                PrototypeGameEngine
+                    .IsAutomaticHandDrawHookSemanticDrawContinuation(
+                        advancedCombat, nextChoice);
             bool hasTaggedChildChoice =
                 nextChoice.ControlledTarget is not null ||
                 nextChoice.ControlledGeneration is not null ||
                 nextChoice.ControlledPotionGeneration is not null ||
-                nextChoice.ControlledDrawCost is not null ||
-                nextChoice.ControlledSemanticDraw is not null ||
+                (nextChoice.ControlledDrawCost is not null &&
+                 !nestedActiveHandDrawSemanticDraw) ||
+                (nextChoice.ControlledSemanticDraw is not null &&
+                 !nestedActiveHandDrawSemanticDraw) ||
                 nextChoice.ControlledDrawInsertion is not null ||
                 nextChoice.ControlledPoolShuffle is not null ||
                 nextChoice.ControlledRandomCost is not null ||
@@ -314,7 +322,8 @@ public static class SemanticDrawHookChoiceEngineV111
             if (hasTaggedChildChoice &&
                 !nestedBeforeHandDrawRandomTarget &&
                 !nestedActiveHandDrawRandomTarget &&
-                !nestedActiveHandDrawRandomPileCard)
+                !nestedActiveHandDrawRandomPileCard &&
+                !nestedActiveHandDrawSemanticDraw)
             {
                 throw new NotSupportedException(
                     $"UNSUPPORTED_SEMANTIC_DECK site={site} " +
@@ -347,6 +356,13 @@ public static class SemanticDrawHookChoiceEngineV111
                 _ = SemanticRandomPileCardEngineV111.DescribePending(advanced)
                     ?? throw new InvalidDataException(
                         "Nested draw-hook random pile-card choice has no semantic event.");
+            else if (nestedActiveHandDrawSemanticDraw)
+            {
+                if (nextChoice.ChoiceId == "controlled_draw_cost")
+                    SemanticCostChoiceV111.ValidateDrawBoundary(advanced);
+                else
+                    SemanticDrawChoiceV111.ValidateBoundary(advanced);
+            }
             else if (!hasTaggedChildChoice)
             {
                 advancedCombat = advancedCombat with

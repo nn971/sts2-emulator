@@ -92,8 +92,7 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
 
     /// <summary>
     /// Recognizes a source-supported semantic effect draw, insertion, or its
-    /// randomized cost while an automatic pipeline is suspended in autoplay
-    /// or at an exact opening continuation.
+    /// randomized cost under the current automatic-pipeline continuation.
     /// </summary>
     internal static bool HasPendingSupportedAutomaticPipelineSemanticDraw(
         RunState run) => run.World?.Combat is { } combat &&
@@ -189,12 +188,56 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
 
     internal static bool IsSupportedAutomaticPipelineSemanticDrawContinuation(
         CombatState combat, PendingCombatChoiceState pending) =>
+        IsAutomaticHandDrawHookSemanticDrawContinuation(combat, pending) ||
         IsMayhemSemanticDrawContinuation(combat, pending) ||
         IsLateAutoplaySemanticDrawContinuation(combat, pending) ||
         IsAutomaticPipelineSemanticDrawInsertionContinuation(
             combat, pending) ||
         IsOpeningHandSemanticDrawContinuation(combat, pending) ||
         IsGamblingChipOpeningSemanticDrawContinuation(combat, pending);
+
+    internal static bool IsAutomaticHandDrawHookSemanticDrawContinuation(
+        CombatState combat, PendingCombatChoiceState pending)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(pending);
+        var draw = pending.ControlledSemanticDraw;
+        var effectCost = pending.ControlledDrawCost;
+        var effectContinuation = pending.OuterChoiceContinuation;
+        var sourceCardInstanceId = effectContinuation?.SourceCardInstanceId;
+        var deck = combat.Stochastic.SemanticDeck;
+        if (!combat.IsPlayerTurn ||
+            deck is not { Mode: SemanticDeckStateV111.NatureMode } ||
+            draw is null || effectContinuation is null ||
+            draw.StandaloneSemanticDrawSegment ||
+            draw.AutomaticSemanticHandDrawSegment ||
+            draw.RemainingCount < 0 || draw.EventDepth < 0 ||
+            !pending.HasValidControlledPayloadShape() ||
+            combat.AutomaticPipelineContinuation is not { } cursor ||
+            !cursor.Stochastic.TryGetSemanticHandDrawProgress(
+                cursor.Mechanics, out int requested, out int remaining) ||
+            requested <= 0 || remaining < 0 ||
+            sourceCardInstanceId is not { } sourceCardId ||
+            !combat.Cards.Any(card =>
+                card.InstanceId == sourceCardId))
+            return false;
+
+        bool effectDrawTicket = pending.ChoiceId ==
+                "controlled_semantic_draw" && effectCost is null &&
+            draw.RemainingCount > 0 && deck.Pending is
+                { Purpose: "draw" };
+        bool effectCostTicket = pending.ChoiceId ==
+                "controlled_draw_cost" && effectCost is { } cost &&
+            deck.Pending is null && cost.RemainingCount == draw.RemainingCount &&
+            cost.FromHandDraw == draw.FromHandDraw &&
+            cost.EventDepth == draw.EventDepth;
+        if (!effectDrawTicket && !effectCostTicket)
+            return false;
+
+        // The active hand draw is paused while a source card played from its
+        // CardDrawn action resolves this separate effect-draw ticket or cost.
+        return true;
+    }
 
     /// <summary>
     /// Identifies automatic-pipeline cursors where controlled targets may
