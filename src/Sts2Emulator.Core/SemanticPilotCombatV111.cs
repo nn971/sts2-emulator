@@ -5925,7 +5925,7 @@ public static class SemanticPilotCombatEngineV111
             continuation.Parent?.EventDispatchContinuation is not null ||
             parent is not
                 { SourceCardInstanceId: { } sourceCardInstanceId,
-                  SourceCardDestination: PrototypeCardZone.DiscardPile,
+                  SourceCardDestination: { } parentSourceCardDestination,
                   PendingSlyCardInstanceIds: [],
                   CompletionEvents: [{ } completion],
                   CardPlaySeries: { } series,
@@ -5979,7 +5979,6 @@ public static class SemanticPilotCombatEngineV111
                 combat.NextPowerApplicationOrder ||
             completedSourceCardId != sourceCardInstanceId ||
             series.SourceCardInstanceId != sourceCardInstanceId ||
-            series.SourceCardDestination != PrototypeCardZone.DiscardPile ||
             series.IsAutoPlay ||
             series.PlayCount != 1 || series.NextPlayIndex != 1 ||
             parent.MoveSourceCardOnCompletion !=
@@ -6000,11 +5999,14 @@ public static class SemanticPilotCombatEngineV111
         PrototypeQueuedOperation[] expectedTailOperations;
         PrototypeCardTarget expectedTarget;
         PrototypeCardType expectedCardType;
+        PrototypeCardZone expectedSourceCardDestination;
         switch (sourceCard.CardId)
         {
             case "proto.silent.storm_of_steel":
                 expectedTarget = PrototypeCardTarget.None;
                 expectedCardType = PrototypeCardType.Skill;
+                expectedSourceCardDestination =
+                    PrototypeCardZone.DiscardPile;
                 expectedEffects =
                 [
                     new PrototypeCombatEffectSpec(
@@ -6032,6 +6034,8 @@ public static class SemanticPilotCombatEngineV111
             case "proto.silent.shadow_step":
                 expectedTarget = PrototypeCardTarget.None;
                 expectedCardType = PrototypeCardType.Skill;
+                expectedSourceCardDestination =
+                    PrototypeCardZone.DiscardPile;
                 expectedEffects =
                 [
                     new PrototypeCombatEffectSpec(
@@ -6050,6 +6054,8 @@ public static class SemanticPilotCombatEngineV111
             case "proto.silent.survivor":
                 expectedTarget = PrototypeCardTarget.None;
                 expectedCardType = PrototypeCardType.Skill;
+                expectedSourceCardDestination =
+                    PrototypeCardZone.DiscardPile;
                 expectedEffects =
                 [
                     new PrototypeCombatEffectSpec(
@@ -6069,6 +6075,8 @@ public static class SemanticPilotCombatEngineV111
             case "proto.silent.hidden_daggers":
                 expectedTarget = PrototypeCardTarget.None;
                 expectedCardType = PrototypeCardType.Skill;
+                expectedSourceCardDestination =
+                    PrototypeCardZone.DiscardPile;
                 expectedEffects =
                 [
                     new PrototypeCombatEffectSpec(
@@ -6092,6 +6100,8 @@ public static class SemanticPilotCombatEngineV111
             case "proto.silent.concentrate":
                 expectedTarget = PrototypeCardTarget.None;
                 expectedCardType = PrototypeCardType.Unknown;
+                expectedSourceCardDestination =
+                    PrototypeCardZone.DiscardPile;
                 expectedEffects =
                 [
                     new PrototypeCombatEffectSpec(
@@ -6113,6 +6123,8 @@ public static class SemanticPilotCombatEngineV111
             case "proto.silent.dagger_throw":
                 expectedTarget = PrototypeCardTarget.Enemy;
                 expectedCardType = PrototypeCardType.Attack;
+                expectedSourceCardDestination =
+                    PrototypeCardZone.DiscardPile;
                 expectedEffects =
                 [
                     new PrototypeCombatEffectSpec(
@@ -6132,11 +6144,43 @@ public static class SemanticPilotCombatEngineV111
                     return false;
                 break;
 
+            case "proto.silent.calculated_gamble":
+                expectedTarget = PrototypeCardTarget.None;
+                expectedCardType = PrototypeCardType.Skill;
+                expectedSourceCardDestination =
+                    PrototypeCardZone.ExhaustPile;
+                expectedEffects =
+                [
+                    new PrototypeCombatEffectSpec(
+                        PrototypeCombatEffectKind.DiscardHand, 0),
+                    new PrototypeCombatEffectSpec(
+                        PrototypeCombatEffectKind.DrawCards, 0,
+                        CountKind:
+                            PrototypeCombatCountKind.OtherCardsInHand,
+                        AmountPerCount: 1)
+                ];
+                if (remainingOperations is not [{ } gambleDraw] ||
+                    gambleDraw.Amount <= 0)
+                    return false;
+                expectedTailOperations = [new PrototypeQueuedOperation(
+                    PrototypeCombatEffectKind.DrawCards,
+                    gambleDraw.Amount,
+                    TargetMode: PrototypeEffectTarget.ActionTargetEnemy,
+                    SourceKind: PrototypeEffectSourceKind.Card)];
+                break;
+
             default:
                 return false;
         }
         if (definition.Target != expectedTarget ||
             definition.Type != expectedCardType ||
+            parentSourceCardDestination !=
+                expectedSourceCardDestination ||
+            series.SourceCardDestination !=
+                expectedSourceCardDestination ||
+            definition.ExhaustOnUse !=
+                (expectedSourceCardDestination ==
+                    PrototypeCardZone.ExhaustPile) ||
             (expectedTarget == PrototypeCardTarget.None &&
                 series.TargetEnemyId is not null) ||
             CanonicalJson.Sha256(definition.Effects) !=
