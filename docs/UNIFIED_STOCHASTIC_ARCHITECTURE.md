@@ -456,7 +456,7 @@ Ordinary `DrawCards` and resumed cost choices now share `DispatchCardDrawnAfterC
 
 Opening Nature hand draws now route Stratagem's `ShuffleSelection` boundary through the semantic draw-result owner and its saved draw continuation. Providerless and Native opening draws retain their operation-queue path.
 
-`ResolveOperations` now delegates each `DrawCards` operation to `ResolveEffectDrawOperation` in the draw-continuation owner. That owner retains the source context and remaining operation suffix while routing legacy recycle, hook, cost, semantic, insertion, and Stratagem boundaries; it returns the updated queue only when resolution can continue inline.
+`ResolveOperations` now delegates each `DrawCards` operation and `ReturnHandToDrawAndShuffle` boundary to the draw-continuation owner. It retains the source context and remaining operation suffix while routing legacy recycle, hook, cost, semantic, insertion, and Stratagem boundaries; when hand-return shuffle suspends on an after-shuffle insertion, it stops the operation loop so the saved suffix runs only after that choice resumes.
 
 Opening and automatic source-stage hand draws now build the Stratagem choice plus remaining `DrawCards` suffix through `CreateHandDrawStratagemResumeOperations`, preserving one operation shape across both saved entry points.
 

@@ -6432,47 +6432,15 @@ public sealed partial class PrototypeGameEngine
 
                 case PrototypeCombatEffectKind.ReturnHandToDrawAndShuffle:
                 {
-                    if (combat.Stochastic.SemanticDeck is
-                            { Mode: SemanticDeckStateV111.NatureMode } &&
-                        (!ControlledChanceGuardV111.Active ||
-                         ControlledChanceGuardV111.EngineOwnedNativeProviderActive))
-                        throw new NotSupportedException(
-                            "UNSUPPORTED_SEMANTIC_DECK " +
-                            "site=combat.hand_return.draw_shuffle " +
-                            "operation=requires_shuffle_continuation");
-                    var returnedHandIds = (long[])combat.Hand.Clone();
-                    var shuffled = combat.DrawPile
-                        .Concat(combat.Hand)
-                        .ToArray();
-                    combat = ShuffleCombatCardPool(
-                        combat, rng, shuffled,
-                        StochasticSiteRegistryV111.CombatHandReturnShuffleSiteId,
-                        "combat", "run.shuffle",
-                        "effect:" + operation.Kind + ":source:" +
-                            (sourceCardInstanceId?.ToString() ?? "none"),
-                        operation.Kind, shuffled.Length,
-                        sourceCardInstanceId);
-                    var shuffledDrawPile = ApplyPerfectFitShuffleOrder(
-                        combat, shuffled);
-                    combat = SemanticDrawPileAdapterV111.CommitHandReturnShuffle(
-                        combat, shuffledDrawPile, returnedHandIds);
-                    var afterShuffleInsertions =
-                        ControlledAfterShuffleRelicInsertions(combat);
-                    if (ControlledChanceGuardV111.Active &&
-                        !ControlledChanceGuardV111.EngineOwnedNativeProviderActive &&
-                        afterShuffleInsertions.Length > 0)
-                    {
-                        var continuation = CreateEffectContinuation(
-                            effectContinuationContext, operations);
-                        combat = MakeControlledAfterShuffleInsertionChoice(
-                            combat, afterShuffleInsertions[0],
-                            afterShuffleInsertions.Skip(1).ToArray(), [], null,
-                            continuation, ordinal: 0);
-                    }
-                    else
-                    {
-                        combat = ApplyRelicAfterShuffleCards(combat, rng);
-                    }
+                    var shuffleProgress =
+                        ResolveHandReturnDrawShuffleOperation(
+                            player, combat, operation, operations, rng,
+                            effectContinuationContext);
+                    player = shuffleProgress.Player;
+                    combat = shuffleProgress.Combat;
+                    if (shuffleProgress.ReturnFromOperations)
+                        return (player, combat);
+                    operations = shuffleProgress.Operations;
                     break;
                 }
 

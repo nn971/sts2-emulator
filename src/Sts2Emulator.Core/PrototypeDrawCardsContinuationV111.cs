@@ -344,6 +344,65 @@ public sealed partial class PrototypeGameEngine
             player, combat, remainingOperations, ReturnFromOperations: false);
     }
 
+    private static PrototypeEffectDrawResumeResultV111
+        ResolveHandReturnDrawShuffleOperation(
+            PlayerState player,
+            CombatState combat,
+            PrototypeQueuedOperation operation,
+            Queue<PrototypeQueuedOperation> remainingOperations,
+            RngBundle rng,
+            EffectContinuationContext continuationContext)
+    {
+        if (operation.Kind !=
+            PrototypeCombatEffectKind.ReturnHandToDrawAndShuffle)
+            throw new ArgumentException(
+                "Hand-return continuation needs its shuffle operation.",
+                nameof(operation));
+        ArgumentNullException.ThrowIfNull(remainingOperations);
+        if (combat.Stochastic.SemanticDeck is
+                { Mode: SemanticDeckStateV111.NatureMode } &&
+            (!ControlledChanceGuardV111.Active ||
+             ControlledChanceGuardV111.EngineOwnedNativeProviderActive))
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_DECK " +
+                "site=combat.hand_return.draw_shuffle " +
+                "operation=requires_shuffle_continuation");
+
+        var returnedHandIds = (long[])combat.Hand.Clone();
+        var shuffled = combat.DrawPile.Concat(combat.Hand).ToArray();
+        combat = ShuffleCombatCardPool(
+            combat, rng, shuffled,
+            StochasticSiteRegistryV111.CombatHandReturnShuffleSiteId,
+            "combat", "run.shuffle",
+            "effect:" + operation.Kind + ":source:" +
+                (continuationContext.SourceCardInstanceId?.ToString() ?? "none"),
+            operation.Kind, shuffled.Length,
+            continuationContext.SourceCardInstanceId);
+        var shuffledDrawPile = ApplyPerfectFitShuffleOrder(
+            combat, shuffled);
+        combat = SemanticDrawPileAdapterV111.CommitHandReturnShuffle(
+            combat, shuffledDrawPile, returnedHandIds);
+
+        var insertions = ControlledAfterShuffleRelicInsertions(combat);
+        if (ControlledChanceGuardV111.Active &&
+            !ControlledChanceGuardV111.EngineOwnedNativeProviderActive &&
+            insertions.Length > 0)
+        {
+            var continuation = CreateEffectContinuation(
+                continuationContext, remainingOperations);
+            combat = MakeControlledAfterShuffleInsertionChoice(
+                combat, insertions[0], insertions.Skip(1).ToArray(), [], null,
+                continuation, ordinal: 0);
+            return new PrototypeEffectDrawResumeResultV111(
+                player, combat, remainingOperations,
+                ReturnFromOperations: true);
+        }
+
+        combat = ApplyRelicAfterShuffleCards(combat, rng);
+        return new PrototypeEffectDrawResumeResultV111(
+            player, combat, remainingOperations, ReturnFromOperations: false);
+    }
+
     internal static int GetCardsDrawnSince(
         CombatState combat, int drawnBefore)
     {
