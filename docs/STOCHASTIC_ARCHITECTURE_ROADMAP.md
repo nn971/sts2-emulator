@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 relic-acquisition Chance Law ownership increment (2026-10-24):**
+Legacy random Rare-card and potion acquisition laws, legacy Run potion-fill
+laws, and the Native player-model and Entropic Brew fill laws now live in
+`ChanceLawRelicAcquisitionV111.cs`. Shared index-law construction remains in
+core. Public query APIs, supports, and schemas are unchanged. Static source
+review and `git diff --check` only; no tests or builds were run.
+
 **S3 map-generation Chance Law ownership increment (2026-10-24):** Native
 map Gaussian and request laws, map-path and room-assignment laws, run-start
 encounter-pool laws, and experimental three-act assignment laws now live in
