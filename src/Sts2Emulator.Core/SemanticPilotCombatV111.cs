@@ -5935,8 +5935,7 @@ public static class SemanticPilotCombatEngineV111
                   EventDispatchContinuation: null,
                   Parent: null,
                   CompletePlayerHandCleanup: false } ||
-            parent.Operations is not [{ } remainingOperation] ||
-            remainingOperation.Amount <= 0 ||
+            parent.Operations is not { } remainingOperations ||
             targetOperation.Amount != 3 ||
             targetOperation.Kind != PrototypeCombatEffectKind.DamageEnemy ||
             targetOperation.TargetEnemyId is not null ||
@@ -5998,7 +5997,7 @@ public static class SemanticPilotCombatEngineV111
         if (!definition.MechanicsImplemented || definition.MultiplayerOnly)
             return false;
         PrototypeCombatEffectSpec[] expectedEffects;
-        PrototypeQueuedOperation expectedTailOperation;
+        PrototypeQueuedOperation[] expectedTailOperations;
         switch (sourceCard.CardId)
         {
             case "proto.silent.storm_of_steel":
@@ -6014,15 +6013,16 @@ public static class SemanticPilotCombatEngineV111
                         AmountPerCount: 1,
                         GeneratedCardUpgradePerSourceUpgrade: 1)
                 ];
-                expectedTailOperation = new PrototypeQueuedOperation(
+                if (remainingOperations is not [{ } stormTail] ||
+                    stormTail.Amount <= 0)
+                    return false;
+                expectedTailOperations = [new PrototypeQueuedOperation(
                     PrototypeCombatEffectKind.CreateCardsInHand,
-                    remainingOperation.Amount,
+                    stormTail.Amount,
                     CardId: "proto.silent.shiv",
                     GeneratedCardUpgradeLevel: sourceCard.UpgradeLevel,
                     TargetMode: PrototypeEffectTarget.ActionTargetEnemy,
-                    SourceKind: PrototypeEffectSourceKind.Card);
-                if (remainingOperation.Amount <= 0)
-                    return false;
+                    SourceKind: PrototypeEffectSourceKind.Card)];
                 break;
 
             case "proto.silent.shadow_step":
@@ -6034,11 +6034,28 @@ public static class SemanticPilotCombatEngineV111
                         PrototypeCombatEffectKind.ApplyPlayerPower, 1,
                         PowerId: "proto.power.shadow_step")
                 ];
-                expectedTailOperation = new PrototypeQueuedOperation(
+                expectedTailOperations = [new PrototypeQueuedOperation(
                     PrototypeCombatEffectKind.ApplyPlayerPower, 1,
                     PowerId: "proto.power.shadow_step",
                     TargetMode: PrototypeEffectTarget.ActionTargetEnemy,
-                    SourceKind: PrototypeEffectSourceKind.Card);
+                    SourceKind: PrototypeEffectSourceKind.Card)];
+                break;
+
+            case "proto.silent.survivor":
+                expectedEffects =
+                [
+                    new PrototypeCombatEffectSpec(
+                        PrototypeCombatEffectKind.GainPlayerBlock, 8,
+                        UpgradeDelta: 3),
+                    new PrototypeCombatEffectSpec(
+                        PrototypeCombatEffectKind.ChooseCards, 0,
+                        Selection: new PrototypeCardSelectionSpec(
+                            PrototypeCardZone.Hand, 1, 1,
+                            PrototypeCardSelectionResolutionKind.MoveToDiscard))
+                ];
+                expectedTailOperations = [];
+                if (remainingOperations.Length != 0)
+                    return false;
                 break;
 
             default:
@@ -6093,8 +6110,8 @@ public static class SemanticPilotCombatEngineV111
                         trigger.MaxTriggersPerCounterWindow)) ||
             CanonicalJson.Sha256(targetOperation) !=
                 CanonicalJson.Sha256(expectedTargetOperation) ||
-            CanonicalJson.Sha256(remainingOperation) !=
-                CanonicalJson.Sha256(expectedTailOperation))
+            CanonicalJson.Sha256(remainingOperations) !=
+                CanonicalJson.Sha256(expectedTailOperations))
             return false;
 
         return true;
