@@ -149,6 +149,31 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         IsAutomaticPipelineSemanticDrawHookChoiceContinuation(
             combat, pending);
 
+    internal static bool HasPendingSupportedAutomaticPipelineSemanticRandomPileCardChoice(
+        RunState run)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        if (run.Phase != RunPhase.Combat ||
+            run.World?.Combat is not
+                { IsPlayerTurn: true,
+                  PendingKnowledgeDemonChoice: null,
+                  SemanticDeck: { Mode: SemanticDeckStateV111.NatureMode,
+                      Pending: null },
+                  AutomaticPipelineContinuation: { } cursor,
+                  PendingChoice: { ChoiceId: "controlled_random_pile_card",
+                      ControlledRandomPileCard: not null,
+                      OuterChoiceContinuation: not null } } combat)
+            return false;
+
+        bool supportedCursor =
+            cursor.Stochastic.IsAtSemanticBeforeHandDraw(
+                cursor.Mechanics) ||
+            cursor.Stochastic.TryGetSemanticHandDrawProgress(
+                cursor.Mechanics, out _, out _);
+        return supportedCursor &&
+            SemanticRandomPileCardEngineV111.DescribePending(run) is not null;
+    }
+
     internal static bool HasPendingSupportedAutomaticPipelineSemanticChoice(
         RunState run) =>
         HasPendingSupportedAutomaticPipelineSemanticDraw(run) ||
@@ -159,7 +184,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         HasPendingSupportedAutomaticPipelineSemanticPoolShuffle(run) ||
         HasPendingSupportedAutomaticPipelineSemanticRandomHandCost(run) ||
         HasPendingSupportedAutomaticPipelineSemanticCardSelection(run) ||
-        HasPendingSupportedAutomaticPipelineSemanticDrawHookChoice(run);
+        HasPendingSupportedAutomaticPipelineSemanticDrawHookChoice(run) ||
+        HasPendingSupportedAutomaticPipelineSemanticRandomPileCardChoice(run);
 
     internal static bool IsSupportedAutomaticPipelineSemanticDrawContinuation(
         CombatState combat, PendingCombatChoiceState pending) =>

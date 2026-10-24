@@ -1109,3 +1109,11 @@ child before continuing the pipeline. Restore uses the existing typed
 transcript and chronology. Other post-selection nested choices remain
 fail-closed. No event or snapshot schema changed. Static source review and
 `git diff --check` only; no tests or builds were run.
+
+## 2026-10-25: semantic hand-draw pile-card boundary
+
+The shared automatic-pipeline classifier now identifies the typed random
+pile-card event as a semantic choice only when its live event and saved
+`BeforeHandDraw` or active hand-draw cursor validate. Other cursor positions
+keep their existing boundary classification. No snapshot field changed.
+Static source review and `git diff --check` only; no tests or builds were run.

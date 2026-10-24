@@ -49,6 +49,13 @@ continuation schema changed; other nested choices and choices opened after a
 hand-draw card hook remain unsupported. Static source review and
 `git diff --check` only; no tests or builds were run.
 
+**S4 semantic hand-draw pile-card boundary classification increment (2026-10-25):**
+The shared automatic-pipeline classifier now reports the typed random
+pile-card event as a semantic choice only when its live event and the saved
+`BeforeHandDraw` or active hand-draw cursor validate. Other cursor positions
+retain their existing classification. No snapshot field changed. Static
+source review and `git diff --check` only; no tests or builds were run.
+
 **S4 enemy-defeat hook continuation increment (2026-10-25):** A modeled
 `EnemyDamaged` or `EnemyDefeated` subscriber can now suspend the current
 `DamageEnemy` operation through the existing outer choice continuation. The
