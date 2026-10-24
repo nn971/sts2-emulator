@@ -4573,3 +4573,10 @@ candidate labels against that law. Its event ID remains bound to the exact
 saved action boundary, while replay continues to resolve by the same selected
 index. Pool fidelity and equal-index weighting remain `UNVERIFIED`. Static
 source review and `git diff --check` only; no tests or builds were run.
+
+**S4 Distilled Chaos nested Tingsha target increment (2026-10-25):** Manual
+Distilled Chaos now admits Tingsha's random target when it suspends inside one
+of the potion's top-three autoplayed cards. Admission checks the live Tingsha
+dispatch, active autoplay series, exact `PotionUsed` root, and remaining
+potion-sourced autoplay queue. Static source review and `git diff --check`
+only; no tests or builds were run.

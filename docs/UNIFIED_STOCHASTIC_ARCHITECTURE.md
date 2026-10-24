@@ -1190,6 +1190,11 @@ Tools of the Trade turn-start discards also reuse the target event when the
 saved parent resumes its exact live `PlayerTurnStarted` power subscriber at
 the post-dispatch cursor, with the remaining discard queue and Sly identities
 validated against live cards and the power's stack bound.
+Manual Distilled Chaos also admits Tingsha targets nested in its top-three
+autoplay when the saved root has the exact `PotionUsed` completion and only
+the remaining potion-sourced autoplay operations for live play-pile cards.
+This route requires an idle Nature deck and no automatic pipeline; other
+potion-origin discard hooks remain open.
 Knife Trap also enters from its physical source card and reuses the saved
 autoplay-target continuation if an earlier Shiv kills the chosen enemy before
 the remaining Shiv queue finishes.

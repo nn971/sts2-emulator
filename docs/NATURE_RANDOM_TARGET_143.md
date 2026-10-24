@@ -61,6 +61,11 @@ at the exact opening cursor, with the active autoplay series retained.
 Tools of the Trade turn-start discards also suspend Tingsha at the exact live
 power subscriber and post-`PlayerTurnStarted` cursor, with outstanding discards
 and Sly IDs checked against the live card zones.
+Manual Distilled Chaos also admits a Tingsha target inside its top-three
+autoplay when the continuation retains the exact `PotionUsed` root and the
+remaining potion-sourced autoplay operations name live play-pile cards. It
+requires an idle Nature deck and no automatic pipeline; other potion-origin
+Tingsha paths remain unsupported.
 
 ## Validation and limitations
 

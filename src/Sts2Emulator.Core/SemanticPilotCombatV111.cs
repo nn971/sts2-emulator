@@ -5903,6 +5903,8 @@ public static class SemanticPilotCombatEngineV111
 
         if (IsTingshaSupportedGamblersBrewDiscardTargetChoice(
                 combat, choice, target) ||
+            PrototypeGameEngine.IsDistilledChaosTingshaTargetBoundary(
+                combat, choice, target) ||
             (combat is not null &&
              PrototypeGameEngine
                  .IsPlayerTurnStartedToolsOfTheTradeTingshaTargetBoundary(

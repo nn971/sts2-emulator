@@ -2145,6 +2145,63 @@ public sealed partial class PrototypeGameEngine
             });
     }
 
+    internal static bool IsDistilledChaosTingshaTargetBoundary(
+        CombatState? combat,
+        PendingCombatChoiceState? choice,
+        PrototypeControlledTargetChoiceV111? target)
+    {
+        if (combat is not
+                { IsPlayerTurn: true,
+                  AutomaticPipelineContinuation: null,
+                  SemanticDeck:
+                    { Mode: SemanticDeckStateV111.NatureMode,
+                      Pending: null } } ||
+            !HasSupportedTingshaDiscardTargetFrame(
+                combat, choice, target, out var continuation, out _) ||
+            !HasActiveAutoplayCardPlaySeries(combat, continuation))
+            return false;
+
+        var root = continuation;
+        while (root.Parent is { } parent)
+            root = parent;
+
+        if (root is not
+                { SourceCardInstanceId: null,
+                  SourceCardDestination: PrototypeCardZone.DiscardPile,
+                  Operations: { Length: <= 2 } operations,
+                  PendingDiscardEvents: [],
+                  PendingSlyCardInstanceIds: [],
+                  CompletionEvents: [{ } completion],
+                  CardPlaySeries: null,
+                  MoveSourceCardOnCompletion: true,
+                  RemoveSourceCardOnCompletion: false,
+                  SourceCardAlreadyMoved: false,
+                  EventDispatchContinuation: null,
+                  Parent: null,
+                  CompletePlayerHandCleanup: false } ||
+            CanonicalJson.Sha256(completion) !=
+                CanonicalJson.Sha256(new PrototypeCombatEvent(
+                    PrototypeCombatEventKind.PotionUsed)) ||
+            !operations.All(operation =>
+                operation.CardInstanceId is { } cardInstanceId &&
+                CanonicalJson.Sha256(operation) ==
+                    CanonicalJson.Sha256(new PrototypeQueuedOperation(
+                        PrototypeCombatEffectKind.AutoPlayCombatCard,
+                        0,
+                        SourceKind: PrototypeEffectSourceKind.Potion,
+                        CardInstanceId: cardInstanceId)) &&
+                combat.PlayCardIds.Contains(cardInstanceId)) ||
+            operations.Select(operation => operation.CardInstanceId)
+                .Distinct().Count() != operations.Length)
+            return false;
+
+        var expectedPotionEffect = new PrototypeCombatEffectSpec(
+            PrototypeCombatEffectKind.AutoPlayTopDrawCards, 3);
+        return CanonicalJson.Sha256(
+                PrototypeContent.Potion("proto.potion.distilled_chaos").Effects) ==
+            CanonicalJson.Sha256(new[] { expectedPotionEffect });
+    }
+
     internal static bool IsGamblingChipOpeningTingshaTargetBoundary(
         CombatState combat)
     {
