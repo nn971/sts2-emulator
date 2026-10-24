@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 guarded hand-draw completion owner increment (2026-10-24):** A clean
+guarded `DrawPlayerHand` source result now completes through the existing
+`CompleteAutomaticHandDrawStage` owner. This shares after-hand power cleanup
+and cursor advancement with controlled and semantic continuations; ordinary
+unguarded draws retain their existing pipeline progression. Pending boundaries
+still route to their provider adapter. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S4 source-route opening continuation increment (2026-10-24):** Semantic
 initial-intent completion now transfers the already-committed physical draw pile
 into the Nature deck before replaying opening stages. It publishes the clean

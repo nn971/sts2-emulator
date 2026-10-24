@@ -297,6 +297,12 @@ public sealed partial class PrototypeGameEngine
                 .ResumedSemanticBeforeHandDraw)
             return CompleteAutomaticHandDrawStage(result, requestedCount);
 
+        if (!drawPending && ControlledChanceGuardV111.Active &&
+            resultCombat.AutomaticPipelineContinuation is { } cursor &&
+            cursor.Mechanics.IsAtStep(
+                PrototypeAutomaticStepKind.DrawPlayerHand))
+            return CompleteAutomaticHandDrawStage(result);
+
         return PublishDrawMechanicsState(
             result, result.Player,
             ApplyAutomaticHandDrawPostStagePowerTiming(resultCombat));
