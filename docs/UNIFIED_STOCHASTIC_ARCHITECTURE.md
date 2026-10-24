@@ -303,6 +303,14 @@ count delta used by semantic automatic hand-draw completion and partial
 semantic draw-resume interpretation. Both paths now derive requested or
 remaining progress from the same saved card-count checkpoint.
 
+Legacy controlled and semantic automatic hand-draw adapters return the same
+`PrototypeDrawCardsResumeResultV111` to `ResumeAutomaticHandDrawBoundary`.
+Suspended paths preserve the remaining count and completed paths report zero;
+semantic paths additionally retain the requested count when the stage needs a
+completion receipt. The router no longer reconstructs the legacy result from a
+separate run value. Provider-specific suspension and transcript policies stay
+with their adapters.
+
 The shared automatic-pipeline classifier reports `AdvanceTurn` or
 `DrawPlayerHand` only after `IsReadyForAutomaticPipelineResume` validates a
 clean cursor with no active progress or unresolved choice or Nature request.

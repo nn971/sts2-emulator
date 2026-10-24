@@ -4087,3 +4087,12 @@ instead of reading the Native event cursor. Inventory schema v57 guards all
 136 Chance Law query methods against direct sampling, cursor reads, boundary
 journals, replay captures, and engine steps; it reports no violations. Static
 source inventory and `git diff --check` only; no tests or builds were run.
+
+**S4 provider-neutral controlled hand-draw result increment (2026-10-24):**
+Legacy controlled automatic hand-draw suspension and completion now return
+`PrototypeDrawCardsResumeResultV111` directly to the shared boundary router,
+matching the semantic adapter. The router no longer wraps a bare `RunState`
+with a separately reconstructed remaining count. Suspended counts and completed
+zero progress are preserved; provider policies and saved state remain
+unchanged. Static source review and `git diff --check` only; no tests or builds
+were run.

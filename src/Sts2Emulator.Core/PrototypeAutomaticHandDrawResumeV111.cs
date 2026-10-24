@@ -202,12 +202,10 @@ public sealed partial class PrototypeGameEngine
                  PrototypeDrawCardsBoundaryKind.ShuffleSelection or
                  PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice)))
         {
-            var resumed = combat.AutomaticPipelineContinuation is null
+            return combat.AutomaticPipelineContinuation is null
                 ? ContinueInitialControlledHandDrawBoundary(
                     rngCheckpoint, drawn)
                 : ContinueControlledHandDraw(rngCheckpoint, drawn);
-            return new PrototypeDrawCardsResumeResultV111(
-                resumed, drawn.RemainingCount);
         }
 
         return null;
@@ -319,7 +317,7 @@ public sealed partial class PrototypeGameEngine
         var resumed = ResumeAutomaticHandDrawBoundary(
             state, drawn, requestedCount: 0,
             context: AutomaticHandDrawResumeContextV111.SavedControlledStage);
-        return resumed?.Run ?? ContinueControlledHandDraw(state, drawn);
+        return resumed?.Run ?? ContinueControlledHandDraw(state, drawn).Run;
     }
 
     private sealed record PrototypeAutomaticHandDrawCostResumeV111(
