@@ -284,7 +284,11 @@ public static class SemanticDrawHookChoiceEngineV111
                 decision.Event.BeforeHandDraw &&
                 nextChoice.ChoiceId == "controlled_random_pile_card" &&
                 nextChoice.ControlledRandomPileCard is not null;
-            if (nextChoice.ControlledTarget is not null ||
+            bool nestedBeforeHandDrawRandomTarget =
+                decision.Event.BeforeHandDraw &&
+                nextChoice.ControlledTarget is not null;
+            bool hasTaggedChildChoice =
+                nextChoice.ControlledTarget is not null ||
                 nextChoice.ControlledGeneration is not null ||
                 nextChoice.ControlledPotionGeneration is not null ||
                 nextChoice.ControlledDrawCost is not null ||
@@ -296,15 +300,23 @@ public static class SemanticDrawHookChoiceEngineV111
                 (nextChoice.ControlledRandomPileCard is not null &&
                  !nestedBeforeHandDrawRandomPileCard) ||
                 nextChoice.SemanticStratagemDrawSelection ||
-                nextChoice.AutomaticSemanticStratagemDrawSelection)
+                nextChoice.AutomaticSemanticStratagemDrawSelection;
+            if (hasTaggedChildChoice &&
+                !nestedBeforeHandDrawRandomTarget)
+            {
                 throw new NotSupportedException(
                     $"UNSUPPORTED_SEMANTIC_DECK site={site} " +
                     "operation=nested_controlled_choice");
-            if (nestedBeforeHandDrawRandomPileCard)
+            }
+            if (nestedBeforeHandDrawRandomTarget)
+            {
+                SemanticTargetChoiceV111.ValidateBoundary(advanced);
+            }
+            else if (nestedBeforeHandDrawRandomPileCard)
                 _ = SemanticRandomPileCardEngineV111.DescribePending(advanced)
                     ?? throw new InvalidDataException(
                         "Nested BeforeHandDraw random pile-card choice has no semantic event.");
-            else
+            else if (!hasTaggedChildChoice)
             {
                 advancedCombat = advancedCombat with
                 {

@@ -125,6 +125,14 @@ internal static class SemanticChoiceResumeV111
             return (PrototypeDrawCardsResumeResultV111.ForHandDraw(
                 run, requested, 0, pipelineBoundary), decision);
 
+        if (pending.BeforeHandDraw &&
+            combat.PendingChoice?.ControlledTarget is not null)
+        {
+            SemanticTargetChoiceV111.ValidateBoundary(run);
+            return (PrototypeDrawCardsResumeResultV111.ForHandDraw(
+                run, requested, 0, pipelineBoundary), decision);
+        }
+
         if (pending.BeforeHandDraw)
         {
             PrototypeDrawCardsResumeResultV111 progress;

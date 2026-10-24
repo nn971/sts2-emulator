@@ -174,7 +174,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
     /// Identifies automatic-pipeline cursors where controlled targets may
     /// suspend: ordinary combat work, opening autoplay from Mayhem,
     /// Whispering Earring, or Imbued, the opening Gambling Chip discard, Sly,
-    /// and nested autoplay targets, post-draw player hooks, and late autoplay.
+    /// nested autoplay targets, semantic BeforeHandDraw actions, post-draw
+    /// player hooks, and late autoplay.
     /// </summary>
     internal static bool IsAtSupportedAutomaticPipelineTargetBoundary(
         CombatState combat)
@@ -185,8 +186,15 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         var continuation = combat.AutomaticPipelineContinuation;
         if (continuation?.Mechanics.OpeningStage is not null)
             return IsSupportedOpeningAutoplayTargetBoundary(combat);
+        bool semanticBeforeHandDrawTarget = continuation is not null &&
+            continuation.Stochastic.IsAtSemanticBeforeHandDraw(
+                continuation.Mechanics) &&
+            combat.PendingChoice is { ControlledTarget: not null } targetChoice &&
+            SemanticTargetChoiceV111.HasValidLiveSupport(
+                combat, targetChoice);
         if (continuation is null ||
-            continuation.Stochastic.HasSavedHandDrawProgress() ||
+            (continuation.Stochastic.HasSavedHandDrawProgress() &&
+             !semanticBeforeHandDrawTarget) ||
             continuation.Stochastic.CompletedSemanticHandDrawRequested is not null ||
             continuation.Stochastic.ControlledEnemyAction is not null ||
             !continuation.Mechanics.IsValidOrdinaryCursor)

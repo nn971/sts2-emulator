@@ -13,6 +13,14 @@ the saved cursor, and the mechanics projection includes that progress under
 schema v19. Static source review and `git diff --check` only; no tests or
 builds were run.
 
+**S4 nested pre-draw choice continuation increment (2026-10-25):** A legal
+`BeforeHandDraw` hook action can now hand off to an already-supported random
+target choice while retaining the pre-draw cursor. The existing target owner
+resolves that child before the ordinary pipeline starts the hand draw. No
+continuation schema changed; other nested choices and choices opened after a
+hand-draw card hook remain unsupported. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S4 enemy-defeat hook continuation increment (2026-10-25):** A modeled
 `EnemyDamaged` or `EnemyDefeated` subscriber can now suspend the current
 `DamageEnemy` operation through the existing outer choice continuation. The
