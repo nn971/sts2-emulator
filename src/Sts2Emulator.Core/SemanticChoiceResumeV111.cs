@@ -243,6 +243,44 @@ internal static class SemanticChoiceResumeV111
                 .EnsurePipelineBoundary(), decision);
         }
 
+        if (pending.BeforeHandDraw &&
+            combat.PendingChoice is { } beforeHandDrawGeneratedCard &&
+            PrototypeGameEngine
+                .IsAutomaticHandDrawGeneratedCardContinuation(
+                    combat, beforeHandDrawGeneratedCard))
+        {
+            var cursor = combat.AutomaticPipelineContinuation;
+            if (requested != 0 || remaining != 0 || cursor is null ||
+                !cursor.Stochastic.IsAtSemanticBeforeHandDraw(
+                    cursor.Mechanics))
+                throw new InvalidDataException(
+                    "BeforeHandDraw generated-card choice lost its pre-draw cursor.");
+            SemanticGenerationChoiceV111.ValidateBoundary(run);
+            return (PrototypeDrawCardsResumeResultV111.ForHandDraw(
+                run, 0, 0, pipelineBoundary)
+                .EnsurePipelineBoundary(), decision);
+        }
+
+        if (!pending.BeforeHandDraw &&
+            combat.PendingChoice is { } activeHandDrawGeneratedCard &&
+            PrototypeGameEngine
+                .IsAutomaticHandDrawGeneratedCardContinuation(
+                    combat, activeHandDrawGeneratedCard))
+        {
+            var cursor = combat.AutomaticPipelineContinuation;
+            if (cursor is null ||
+                !cursor.Stochastic.TryGetSemanticHandDrawProgress(
+                    cursor.Mechanics, out int savedRequested,
+                    out int savedRemaining) ||
+                savedRequested != requested || savedRemaining != remaining)
+                throw new InvalidDataException(
+                    "Automatic draw-hook generated-card choice lost its tagged hand-draw progress.");
+            SemanticGenerationChoiceV111.ValidateBoundary(run);
+            return (PrototypeDrawCardsResumeResultV111.ForHandDraw(
+                run, requested, savedRemaining, pipelineBoundary)
+                .EnsurePipelineBoundary(), decision);
+        }
+
         if (pending.BeforeHandDraw)
         {
             PrototypeDrawCardsResumeResultV111 progress;
@@ -519,6 +557,21 @@ internal static class SemanticChoiceResumeV111
         var ownedDecision = decision.Fork();
         var resumed = SemanticGenerationChoiceV111.ResumeWithBoundary(
             checkpoint.Fork(), ownedDecision);
+        return new SemanticChoiceResumeResultV111(
+            resumed.Run, ownedDecision.Event.SiteId, resumed.Boundary);
+    }
+
+    internal static SemanticChoiceResumeResultV111
+        ResumeGeneratedCardForHandDraw(
+            RunState checkpoint, SemanticGeneratedCardDecisionV111 decision)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        ArgumentNullException.ThrowIfNull(decision);
+        decision.Validate();
+        var ownedDecision = decision.Fork();
+        var resumed = SemanticGenerationChoiceV111.ResumeWithBoundary(
+            checkpoint.Fork(), ownedDecision,
+            deferAutomaticHandDrawContinuation: true);
         return new SemanticChoiceResumeResultV111(
             resumed.Run, ownedDecision.Event.SiteId, resumed.Boundary);
     }

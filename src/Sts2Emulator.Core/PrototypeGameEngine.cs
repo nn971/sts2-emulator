@@ -36,6 +36,31 @@ internal readonly record struct PrototypeAutomaticPipelineResumeResultV111
     }
 
     internal static PrototypeAutomaticPipelineResumeResultV111
+        FromDeferredSemanticHandDraw(RunState run)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        var combat = run.World?.Combat;
+        if (run.Phase != RunPhase.Combat || combat is null ||
+            combat.AutomaticPipelineContinuation is not { } cursor)
+            throw new InvalidDataException(
+                "Deferred semantic hand-draw resume lost its generated-card boundary.");
+        bool activeDraw = cursor.Stochastic.TryGetSemanticHandDrawProgress(
+            cursor.Mechanics, out _, out _);
+        bool beforeDraw = cursor.Stochastic.IsAtSemanticBeforeHandDraw(
+            cursor.Mechanics) &&
+            cursor.Stochastic.CompletedSemanticHandDrawRequested is null;
+        if (!activeDraw && !beforeDraw)
+            throw new InvalidDataException(
+                "Deferred semantic hand-draw resume lost its draw cursor.");
+        // The draw owner immediately resumes this transient state. It can sit
+        // between a resolved nested generation choice and DrawPlayerHand,
+        // before the pipeline's pending-choice invariant is re-established.
+        return new PrototypeAutomaticPipelineResumeResultV111(
+            run, PrototypeAutomaticPipelineResumeBoundaryKindV111
+                .SuspendedPipeline);
+    }
+
+    internal static PrototypeAutomaticPipelineResumeResultV111
         FromPipelineProgress(
             RunState run,
             PrototypeAutomaticPipelineResumeBoundaryKindV111? boundary)
@@ -286,6 +311,32 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             return false;
 
         return true;
+    }
+
+    internal static bool IsAutomaticHandDrawGeneratedCardContinuation(
+        CombatState combat, PendingCombatChoiceState pending)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(pending);
+        if (!combat.IsPlayerTurn ||
+            combat.PendingKnowledgeDemonChoice is not null ||
+            combat.Stochastic.SemanticDeck is not
+                { Mode: SemanticDeckStateV111.NatureMode, Pending: null } ||
+            pending is not
+                { ChoiceId: "controlled_generated_card",
+                  ControlledGeneration: { } generation,
+                  OuterChoiceContinuation: not null } ||
+            !pending.HasValidControlledPayloadShape() ||
+            !ValidateControlledGenerationSupport(generation) ||
+            combat.AutomaticPipelineContinuation is not { } cursor)
+            return false;
+
+        return cursor.Stochastic.TryGetSemanticHandDrawProgress(
+                cursor.Mechanics, out int requested, out int remaining)
+            ? requested > 0 && remaining >= 0
+            : cursor.Stochastic.IsAtSemanticBeforeHandDraw(
+                  cursor.Mechanics) &&
+              cursor.Stochastic.CompletedSemanticHandDrawRequested is null;
     }
 
     internal static bool IsAutomaticBeforeHandDrawHookDrawInsertionContinuation(

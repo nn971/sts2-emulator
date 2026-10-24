@@ -13,6 +13,14 @@ records the external choice once. Static source review and
 `git diff --check` only; no tests or builds were run. Random-pool fidelity and
 Native stream parity remain open pending reference-mod evidence.
 
+**S4 nested hand-draw generation continuation increment (2026-10-25):**
+Generated-card model choices opened by active `CardDrawn` or pre-draw hook
+actions now stay with the semantic draw frame. It suspends the automatic draw
+cursor while the existing generation owner applies one selected model, then
+resumes the same draw or pre-draw stage. Repeated generation choices append in
+order to the generated-card transcript and chronology. Static source review
+and `git diff --check` only; no tests or builds were run.
+
 **S4 BeforeHandDraw fixed insertion child increment (2026-10-25):** A selected
 `BeforeHandDraw` action may now suspend on its source card's fixed draw-pile
 insertion ticket. Admission retains the semantic pre-draw cursor, and the

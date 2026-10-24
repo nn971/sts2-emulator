@@ -489,7 +489,8 @@ public static class SemanticGenerationChoiceV111
 
     internal static PrototypeAutomaticPipelineResumeResultV111
         ResumeWithBoundary(
-            RunState checkpoint, SemanticGeneratedCardDecisionV111 decision)
+            RunState checkpoint, SemanticGeneratedCardDecisionV111 decision,
+            bool deferAutomaticHandDrawContinuation = false)
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
         ArgumentNullException.ThrowIfNull(decision);
@@ -519,6 +520,13 @@ public static class SemanticGenerationChoiceV111
                         PrototypeCombatEffectKind.CreateRandomFreeAttacksInDrawPile
                 }
             };
+        bool automaticHandDrawGenerationHandoff =
+            deferAutomaticHandDrawContinuation &&
+            !drawInsertionModelChoice &&
+            choice is not null &&
+            PrototypeGameEngine
+                .IsAutomaticHandDrawGeneratedCardContinuation(
+                    combat, choice);
         bool generatedCardModelHandoff = !drawInsertionModelChoice &&
             choice is
             {
@@ -564,14 +572,19 @@ public static class SemanticGenerationChoiceV111
                 return PrototypeGameEngine
                     .ResumeControlledGeneratedCardForSemanticHandoffWithBoundary(
                         checkpoint.Fork(), decision.SelectedCardId);
+            else if (automaticHandDrawGenerationHandoff)
+                return PrototypeGameEngine
+                    .ResumeControlledGeneratedCardForSemanticHandDrawWithBoundary(
+                        checkpoint.Fork(), decision.SelectedCardId);
             return PrototypeGameEngine
                 .ResumeControlledGeneratedCardWithBoundary(
                     checkpoint.Fork(), decision.SelectedCardId);
         }, allowEngineOwnedPrototypeReward: true);
         if (resumed.Run.Phase == RunPhase.Combat)
         {
-            SemanticPilotCombatEngineV111.ValidateSemanticCombatBoundary(
-                resumed.Run);
+            if (!automaticHandDrawGenerationHandoff)
+                SemanticPilotCombatEngineV111
+                    .ValidateSemanticCombatBoundary(resumed.Run);
             var nextCombat = resumed.Run.World?.Combat ??
                 throw new InvalidDataException(
                     "Generated-card continuation lost its resulting combat.");

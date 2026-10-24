@@ -299,10 +299,18 @@ public sealed partial class PrototypeGameEngine
         ResumeControlledGeneratedCardCore(
             state, selectedCardId, resumeAutomaticPipeline: false);
 
+    internal static PrototypeAutomaticPipelineResumeResultV111
+        ResumeControlledGeneratedCardForSemanticHandDrawWithBoundary(
+            RunState state, string selectedCardId) =>
+        ResumeControlledGeneratedCardCore(
+            state, selectedCardId, resumeAutomaticPipeline: false,
+            deferSemanticHandDraw: true);
+
     private static PrototypeAutomaticPipelineResumeResultV111
         ResumeControlledGeneratedCardCore(
         RunState state, string selectedCardId,
-        bool resumeAutomaticPipeline)
+        bool resumeAutomaticPipeline,
+        bool deferSemanticHandDraw = false)
     {
         if (!ControlledChanceGuardV111.Active)
             throw new InvalidOperationException(
@@ -366,8 +374,11 @@ public sealed partial class PrototypeGameEngine
                 state.Stochastic, prototypeRng),
             World = world with { Combat = resolved.Combat }
         };
-        return resumeAutomaticPipeline
-            ? ResumeAutomaticPipelineContinuation(updated)
+        if (resumeAutomaticPipeline)
+            return ResumeAutomaticPipelineContinuation(updated);
+        return deferSemanticHandDraw
+            ? PrototypeAutomaticPipelineResumeResultV111
+                .FromDeferredSemanticHandDraw(updated)
             : PrototypeAutomaticPipelineResumeResultV111.FromRun(updated);
     }
 }

@@ -354,7 +354,8 @@ public sealed partial class PrototypeGameEngine
 
         return IsSupportedAutomaticPipelineAutoplayContinuation(
                 combat, continuation) ||
-            IsCrossbowTurnStartGenerationContinuation(combat, pending);
+            IsCrossbowTurnStartGenerationContinuation(combat, pending) ||
+            IsAutomaticHandDrawGeneratedCardContinuation(combat, pending);
     }
 
     internal static bool IsAutomaticPipelineSemanticPotionGenerationContinuation(

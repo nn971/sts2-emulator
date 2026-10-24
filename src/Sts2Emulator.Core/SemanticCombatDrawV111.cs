@@ -346,9 +346,30 @@ public sealed record SemanticCombatDrawV111(
             PrototypeGameEngine
                 .IsAutomaticBeforeHandDrawHookDrawInsertionContinuation(
                     combat, beforeHandDrawInsertionChoice);
+        bool automaticHandDrawGeneratedCardPending =
+            this.AutomaticHandDraw && combat.PendingChoice is
+                { } activeGeneratedCardChoice &&
+            PrototypeGameEngine
+                .IsAutomaticHandDrawGeneratedCardContinuation(
+                    combat, activeGeneratedCardChoice) &&
+            hasPipelineSemanticDrawProgress &&
+            pipelineRequested == this.RequestedCount &&
+            pipelineRemaining == this.RemainingCount;
+        bool automaticBeforeHandDrawGeneratedCardPending =
+            this.AutomaticHandDraw && combat.PendingChoice is
+                { } beforeHandDrawGeneratedCardChoice &&
+            PrototypeGameEngine
+                .IsAutomaticHandDrawGeneratedCardContinuation(
+                    combat, beforeHandDrawGeneratedCardChoice) &&
+            pipelineCursor is not null &&
+            pipelineCursor.Stochastic.IsAtSemanticBeforeHandDraw(
+                pipelineCursor.Mechanics);
         if (automaticHandDrawChildInsertionPending ||
             automaticBeforeHandDrawChildInsertionPending)
             SemanticDrawInsertionChoiceV111.ValidateBoundary(this.Run);
+        if (automaticHandDrawGeneratedCardPending ||
+            automaticBeforeHandDrawGeneratedCardPending)
+            SemanticGenerationChoiceV111.ValidateBoundary(this.Run);
         bool automaticHandDrawEffectDrawPending =
             this.AutomaticHandDraw && combat.PendingChoice is
                 { } effectDrawChoice &&
@@ -450,6 +471,25 @@ public sealed record SemanticCombatDrawV111(
                     deck.Pending is not null || cost is not null)
                     throw new InvalidDataException(
                         "Semantic BeforeHandDraw insertion cursor is inconsistent.");
+            }
+            else if (automaticBeforeHandDrawGeneratedCardPending)
+            {
+                if (pipelineCursor is null ||
+                    !semanticBeforeHandDrawProgress ||
+                    this.RequestedCount != 0 || this.RemainingCount != 0 ||
+                    deck.Pending is not null || cost is not null)
+                    throw new InvalidDataException(
+                        "Semantic BeforeHandDraw generated-card cursor is inconsistent.");
+            }
+            else if (automaticHandDrawGeneratedCardPending)
+            {
+                if (pipelineCursor is null ||
+                    !hasPipelineSemanticDrawProgress ||
+                    pipelineRequested != this.RequestedCount ||
+                    pipelineRemaining != this.RemainingCount ||
+                    deck.Pending is not null || cost is not null)
+                    throw new InvalidDataException(
+                        "Automatic hand-draw generated-card cursor is inconsistent.");
             }
             else if (automaticBeforeHandDrawRandomTarget)
             {
@@ -583,12 +623,21 @@ public sealed record SemanticCombatDrawV111(
         if (generatedCardPending is { } generatedCardEvent)
         {
             var insertion = combat.PendingChoice?.ControlledDrawInsertion;
-            if (insertion is not
+            var generation = combat.PendingChoice?.ControlledGeneration;
+            bool insertionModel = insertion is
                     { Stage: "card_model",
                       Operation.Kind: PrototypeCombatEffectKind
-                          .CreateRandomFreeAttacksInDrawPile } ||
-                !generatedCardEvent.CandidateCardIds.SequenceEqual(
-                    insertion.CandidateCardIds))
+                          .CreateRandomFreeAttacksInDrawPile } &&
+                (automaticHandDrawChildInsertionPending ||
+                 automaticBeforeHandDrawChildInsertionPending) &&
+                generatedCardEvent.CandidateCardIds.SequenceEqual(
+                    insertion.CandidateCardIds);
+            bool generatedModel = generation is not null &&
+                (automaticHandDrawGeneratedCardPending ||
+                 automaticBeforeHandDrawGeneratedCardPending) &&
+                generatedCardEvent.CandidateCardIds.SequenceEqual(
+                    generation.CandidateCardIds);
+            if (!insertionModel && !generatedModel)
                 throw new InvalidDataException(
                     "Semantic generated-card cursor is inconsistent.");
             SemanticGenerationChoiceV111.ValidateBoundary(this.Run);
@@ -651,29 +700,44 @@ public static class SemanticCombatDrawEngineV111
         var combat = run.World?.Combat;
         var pending = combat?.PendingChoice;
         var insertion = pending?.ControlledDrawInsertion;
-        if (combat is null || pending is null || insertion is not
+        if (combat is null || pending is null) return null;
+        if (insertion is
                 { Stage: "card_model",
                   Operation.Kind:
-                    PrototypeCombatEffectKind.CreateRandomFreeAttacksInDrawPile } ||
-            (!PrototypeGameEngine
+                    PrototypeCombatEffectKind.CreateRandomFreeAttacksInDrawPile } &&
+            (PrototypeGameEngine
                  .IsAutomaticHandDrawHookDrawInsertionContinuation(
-                     combat, pending) &&
-             !PrototypeGameEngine
+                     combat, pending) ||
+             PrototypeGameEngine
                  .IsAutomaticBeforeHandDrawHookDrawInsertionContinuation(
                      combat, pending)))
-            return null;
-
-        SemanticDrawInsertionChoiceV111.ValidateBoundary(run);
-        var ownerId = pending.SourceCardInstanceId is { } sourceCardId
-            ? "card_instance:" + sourceCardId
-            : "effect:" + insertion.Operation.Kind;
-        return SemanticGenerationChoiceV111.CreateEvent(
-            state.Fingerprint,
-            StochasticSiteRegistryV111.CombatRandomDrawAttackCardModelSiteId,
-            ownerId, state.GeneratedCardTranscript.Length,
-            insertion.CandidateCardIds,
-            combat.Stochastic.NativeRng?.RunStreams is not null
-                ? "run.combat_card_generation" : "prototype.combat");
+        {
+            SemanticDrawInsertionChoiceV111.ValidateBoundary(run);
+            var ownerId = pending.SourceCardInstanceId is { } sourceCardId
+                ? "card_instance:" + sourceCardId
+                : "effect:" + insertion.Operation.Kind;
+            var siteId = StochasticSiteRegistryV111
+                .CombatRandomDrawAttackCardModelSiteId;
+            return SemanticGenerationChoiceV111.CreateEvent(
+                state.Fingerprint, siteId, ownerId,
+                state.GeneratedCardTranscript.Count(decision =>
+                    decision.Event.SiteId == siteId),
+                insertion.CandidateCardIds,
+                combat.Stochastic.NativeRng?.RunStreams is not null
+                    ? "run.combat_card_generation" : "prototype.combat");
+        }
+        if (PrototypeGameEngine
+                .IsAutomaticHandDrawGeneratedCardContinuation(
+                    combat, pending))
+        {
+            var siteId = StochasticSiteRegistryV111
+                .CombatGeneratedCardSelectSiteId;
+            return SemanticGenerationChoiceV111.DescribePending(
+                run, state.Fingerprint,
+                state.GeneratedCardTranscript.Count(decision =>
+                    decision.Event.SiteId == siteId));
+        }
+        return null;
     }
 
     internal static SemanticDrawInsertionEventV111?
@@ -1087,23 +1151,76 @@ public static class SemanticCombatDrawEngineV111
                 "No semantic draw-generated card choice is pending.");
         var decision = SemanticGenerationChoiceV111.Select(
             pending, pending.EventId, cardId);
-        var resumed = SemanticChoiceResumeV111.Resume(
-            state.Run, decision);
+        var resumed = pending.SiteId ==
+                StochasticSiteRegistryV111
+                    .CombatRandomDrawAttackCardModelSiteId
+            ? SemanticChoiceResumeV111.Resume(state.Run, decision)
+            : SemanticChoiceResumeV111
+                .ResumeGeneratedCardForHandDraw(state.Run, decision);
         var resumedCombat = resumed.Run.World?.Combat ??
             throw new InvalidDataException(
                 "Semantic generated-card choice removed combat.");
-        int remaining = GetAutomaticHandDrawRemainingCount(resumed.Run);
-        var next = PublishDrawProgress(state,
-            new PrototypeDrawCardsResumeResultV111(
-                resumed.Run, remaining,
-                PipelineBoundary: resumed.PipelineBoundary)) with
+        PrototypeDrawCardsResumeResultV111 progress;
+        if (pending.SiteId ==
+            StochasticSiteRegistryV111.CombatRandomDrawAttackCardModelSiteId)
+        {
+            if (resumedCombat.PendingChoice?.ControlledDrawInsertion is not
+                { Stage: "position" })
+                throw new InvalidDataException(
+                    "Semantic generated-card choice did not advance to its insertion ticket.");
+            int remaining = GetAutomaticHandDrawRemainingCount(resumed.Run);
+            progress = PrototypeDrawCardsResumeResultV111.ForHandDraw(
+                resumed.Run, state.RequestedCount, remaining,
+                resumed.PipelineBoundary);
+        }
+        else if (TryGetAutomaticSemanticHandDrawProgress(
+                     resumedCombat, out int requested, out int remaining))
+        {
+            if (requested != state.RequestedCount)
+                throw new InvalidDataException(
+                    "Generated-card continuation changed the automatic hand-draw request.");
+            if (resumedCombat.PendingChoice is null &&
+                resumedCombat.PendingKnowledgeDemonChoice is null &&
+                resumedCombat.Stochastic.SemanticDeck?.Pending is null)
+            {
+                progress = ControlledChanceGuardV111.ExecuteGuarded(
+                    () => PrototypeGameEngine
+                        .ResumeSemanticAutomaticHandDraw(
+                            resumed.Run, remaining));
+                if (progress.RequireRequestedCount() != requested)
+                    throw new InvalidDataException(
+                        "Generated-card continuation changed the automatic hand-draw request.");
+            }
+            else
+                progress = PrototypeDrawCardsResumeResultV111.ForHandDraw(
+                    resumed.Run, requested, remaining);
+        }
+        else if (resumedCombat.AutomaticPipelineContinuation is
+                     { } beforeHandDraw &&
+                 beforeHandDraw.Stochastic.IsAtSemanticBeforeHandDraw(
+                     beforeHandDraw.Mechanics) &&
+                 beforeHandDraw.Stochastic
+                     .CompletedSemanticHandDrawRequested is null)
+        {
+            if (resumedCombat.PendingChoice is null &&
+                resumedCombat.PendingKnowledgeDemonChoice is null &&
+                resumedCombat.Stochastic.SemanticDeck?.Pending is null)
+                progress = ControlledChanceGuardV111.ExecuteGuarded(
+                    () => PrototypeGameEngine
+                        .ResumeSemanticBeforeHandDrawActionChoice(resumed.Run));
+            else
+                progress = PrototypeDrawCardsResumeResultV111.ForHandDraw(
+                    resumed.Run, 0, 0);
+        }
+        else
+            throw new InvalidDataException(
+                "Generated-card continuation lost the automatic hand-draw cursor.");
+
+        progress = progress.EnsurePipelineBoundary();
+        var next = PublishDrawProgress(state, progress) with
         {
             Stochastic = state.Stochastic.AppendGeneratedCard(decision)
         };
-        if (resumedCombat.PendingChoice?.ControlledDrawInsertion is not
-            { Stage: "position" })
-            throw new InvalidDataException(
-                "Semantic generated-card choice did not advance to its insertion ticket.");
         next = RecordNewSemanticDrawChoices(state, next);
         Validate(next);
         return next;
