@@ -1884,6 +1884,7 @@ public sealed partial class PrototypeGameEngine
         return IsWhisperingEarringOpeningAutoplayBoundary(combat) ||
             IsImbuedOpeningAutoplayContinuation(combat) ||
             IsGamblingChipOpeningTingshaTargetBoundary(combat) ||
+            IsGamblingChipOpeningSlyTargetBoundary(combat) ||
             IsMayhemOpeningAutoplayTargetBoundary(combat);
     }
 
@@ -1993,8 +1994,13 @@ public sealed partial class PrototypeGameEngine
                 .SourceCardInstanceId is not { } currentDiscardedCardId ||
             continuation.Parent is not
                 { PendingDiscardEvents: { } pendingDiscardEvents,
-                  PendingSlyCardInstanceIds: [] } ||
-            pendingDiscardEvents.Length >= selectedCount)
+                  PendingSlyCardInstanceIds: { } pendingSlyCardInstanceIds } ||
+            pendingDiscardEvents.Length >= selectedCount ||
+            pendingSlyCardInstanceIds.Length > selectedCount)
+            return false;
+
+        if (!HasSupportedLivePendingSlyAutoplayQueue(
+                combat, pendingSlyCardInstanceIds))
             return false;
 
         var seenDiscardedCards = new HashSet<long>
@@ -2020,6 +2026,21 @@ public sealed partial class PrototypeGameEngine
         }
 
         return true;
+    }
+
+    private static bool HasSupportedLivePendingSlyAutoplayQueue(
+        CombatState combat, long[] cardInstanceIds)
+    {
+        return cardInstanceIds.Distinct().Count() == cardInstanceIds.Length &&
+            cardInstanceIds.All(cardInstanceId =>
+            {
+                var card = combat.Cards.SingleOrDefault(item =>
+                    item.InstanceId == cardInstanceId);
+                return card is not null &&
+                    combat.DiscardPile.Contains(cardInstanceId) &&
+                    CardHasKeyword(combat, cardInstanceId,
+                        PrototypeCardKeyword.Sly);
+            });
     }
 
     internal static bool IsGamblingChipOpeningTingshaTargetBoundary(
@@ -2049,7 +2070,7 @@ public sealed partial class PrototypeGameEngine
                       Amount: > 0,
                       DrawEqualSelectionCount: { } selectedCount }],
                   PendingDiscardEvents: { },
-                  PendingSlyCardInstanceIds: [],
+                  PendingSlyCardInstanceIds: { },
                   CompletionEvents: [],
                   CardPlaySeries: null,
                   MoveSourceCardOnCompletion: true,
@@ -2061,6 +2082,61 @@ public sealed partial class PrototypeGameEngine
             !HasSupportedTingshaDiscardEventRemainder(
                 combat, continuation, selectedCount) ||
             CanonicalJson.Sha256(parent.Operations[0]) !=
+                CanonicalJson.Sha256(new PrototypeQueuedOperation(
+                    PrototypeCombatEffectKind.DrawCards, selectedCount,
+                    DrawEqualSelectionCount: selectedCount)) ||
+            !TryGetGamblingChipOpeningSubscriber(
+                combat, openingEventDispatch, out _))
+            return false;
+
+        return true;
+    }
+
+    private static bool IsGamblingChipOpeningSlyTargetBoundary(
+        CombatState combat)
+    {
+        if (combat is not
+                { Turn: 1, IsPlayerTurn: true, IsPlayerSideActive: true,
+                  PendingKnowledgeDemonChoice: null,
+                  PendingChoice:
+                    { ChoiceId: "controlled_random_target",
+                      ControlledTarget:
+                        { Kind: "sly_auto_play",
+                          SlyCardInstanceId: { } slyCardInstanceId,
+                          AutoPlayCardInstanceId: null },
+                      OuterChoiceContinuation: { } continuation } pending,
+                  SemanticDeck:
+                    { Mode: SemanticDeckStateV111.NatureMode,
+                      Pending: null },
+                  AutomaticPipelineContinuation: { } pipeline } ||
+            !pipeline.Mechanics.IsAtOpeningBoundary(
+                PrototypeOpeningCombatStage.BoneTeaAfterTurnStart) ||
+            !IsAtOpeningAutomaticPipelineCursor(
+                combat, pipeline,
+                PrototypeOpeningCombatStage.BoneTeaAfterTurnStart) ||
+            !IsLiveSlyAutoplaySource(combat, slyCardInstanceId) ||
+            !SemanticTargetChoiceV111.HasValidLiveSupport(combat, pending) ||
+            continuation is not
+                { Parent: null,
+                  SourceCardInstanceId: null,
+                  SourceCardDestination: PrototypeCardZone.DiscardPile,
+                  Operations: [{ Kind: PrototypeCombatEffectKind.DrawCards,
+                      Amount: > 0,
+                      DrawEqualSelectionCount: { } selectedCount }],
+                  PendingDiscardEvents: [],
+                  PendingSlyCardInstanceIds: { } pendingSlyCardInstanceIds,
+                  CompletionEvents: [],
+                  CardPlaySeries: null,
+                  MoveSourceCardOnCompletion: true,
+                  RemoveSourceCardOnCompletion: false,
+                  SourceCardAlreadyMoved: false,
+                  EventDispatchContinuation: { } openingEventDispatch,
+                  CompletePlayerHandCleanup: false } ||
+            pendingSlyCardInstanceIds.Length >= selectedCount ||
+            !HasSupportedLivePendingSlyAutoplayQueue(
+                combat, pendingSlyCardInstanceIds) ||
+            continuation.Operations[0].Amount != selectedCount ||
+            CanonicalJson.Sha256(continuation.Operations[0]) !=
                 CanonicalJson.Sha256(new PrototypeQueuedOperation(
                     PrototypeCombatEffectKind.DrawCards, selectedCount,
                     DrawEqualSelectionCount: selectedCount)) ||

@@ -55,7 +55,8 @@ open.
 Each discard from Gambler's Brew and opening Gambling Chip also admits
 Tingsha's target through the same event when its exact relic dispatch,
 remaining live discard queue, and selected-count draw continuation match.
-Pending Sly autoplay remains outside these routes.
+Queued Sly IDs must still refer to live Sly cards in discard; opening Gambling
+Chip also admits a resulting Sly target at its exact opening cursor.
 
 ## Validation and limitations
 

@@ -27,8 +27,10 @@ the saved CardDiscarded event is its live relic trigger, its remaining discard
 queue still names live discard-pile cards, and the parent contains the matching
 selected-count draw. Gambling Chip also requires its exact opening cursor and
 relic subscriber; Gambler's Brew requires its modeled potion selection and
-`PotionUsed` completion event. Pending Sly autoplay remains outside this
-continuation. No event or snapshot schema changed. Static source review and
+`PotionUsed` completion event. Queued Sly identities are checked against the
+live discard-pile cards, and Gambling Chip admits the resulting Sly target only
+at that same opening cursor and subscriber. No event or snapshot schema
+changed. Static source review and
 `git diff --check` only; no tests or builds were run.
 
 **S4 Imbued nested-choice source-frame validation increment (2026-10-24):**

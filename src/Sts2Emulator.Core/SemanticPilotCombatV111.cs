@@ -6312,7 +6312,7 @@ public static class SemanticPilotCombatEngineV111
                       Amount: > 0,
                       DrawEqualSelectionCount: { } selectedCount }],
                   PendingDiscardEvents: { },
-                  PendingSlyCardInstanceIds: [],
+                  PendingSlyCardInstanceIds: { },
                   CompletionEvents: [{ } completion],
                   CardPlaySeries: null,
                   MoveSourceCardOnCompletion: true,
