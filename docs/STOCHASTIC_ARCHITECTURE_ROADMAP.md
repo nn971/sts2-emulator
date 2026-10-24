@@ -17,6 +17,13 @@ work, it carries the typed downstream boundary or classifies the resulting
 run. Serialized draw state remains unchanged. Static source review and
 `git diff --check` only; no tests or builds were run.
 
+**S4 semantic draw-segment boundary increment (2026-10-24):** Semantic draw
+segment replay now retains the draw engine's typed progress result instead of
+reconstructing it from a run and remaining count. Missing transient boundary
+metadata is classified from the resulting run; replay identity validation and
+serialized state remain unchanged. Static source review and `git diff --check`
+only; no tests or builds were run.
+
 **S1 compact Native bounded-index Chance Law increment (2026-10-24):**
 Chance Law v3 now represents large canonical Native `NextInt(bound)` laws by
 their exact 53-bit input grid and source multiply-and-truncate transform.
