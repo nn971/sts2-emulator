@@ -5980,7 +5980,7 @@ public static class SemanticPilotCombatEngineV111
             completedSourceCardId != sourceCardInstanceId ||
             series.SourceCardInstanceId != sourceCardInstanceId ||
             series.SourceCardDestination != PrototypeCardZone.DiscardPile ||
-            series.TargetEnemyId is not null || series.IsAutoPlay ||
+            series.IsAutoPlay ||
             series.PlayCount != 1 || series.NextPlayIndex != 1 ||
             parent.MoveSourceCardOnCompletion !=
                 !series.HasRemainingExecutions)
@@ -5998,9 +5998,13 @@ public static class SemanticPilotCombatEngineV111
             return false;
         PrototypeCombatEffectSpec[] expectedEffects;
         PrototypeQueuedOperation[] expectedTailOperations;
+        PrototypeCardTarget expectedTarget;
+        PrototypeCardType expectedCardType;
         switch (sourceCard.CardId)
         {
             case "proto.silent.storm_of_steel":
+                expectedTarget = PrototypeCardTarget.None;
+                expectedCardType = PrototypeCardType.Skill;
                 expectedEffects =
                 [
                     new PrototypeCombatEffectSpec(
@@ -6026,6 +6030,8 @@ public static class SemanticPilotCombatEngineV111
                 break;
 
             case "proto.silent.shadow_step":
+                expectedTarget = PrototypeCardTarget.None;
+                expectedCardType = PrototypeCardType.Skill;
                 expectedEffects =
                 [
                     new PrototypeCombatEffectSpec(
@@ -6042,6 +6048,8 @@ public static class SemanticPilotCombatEngineV111
                 break;
 
             case "proto.silent.survivor":
+                expectedTarget = PrototypeCardTarget.None;
+                expectedCardType = PrototypeCardType.Skill;
                 expectedEffects =
                 [
                     new PrototypeCombatEffectSpec(
@@ -6059,6 +6067,8 @@ public static class SemanticPilotCombatEngineV111
                 break;
 
             case "proto.silent.hidden_daggers":
+                expectedTarget = PrototypeCardTarget.None;
+                expectedCardType = PrototypeCardType.Skill;
                 expectedEffects =
                 [
                     new PrototypeCombatEffectSpec(
@@ -6080,6 +6090,8 @@ public static class SemanticPilotCombatEngineV111
                 break;
 
             case "proto.silent.concentrate":
+                expectedTarget = PrototypeCardTarget.None;
+                expectedCardType = PrototypeCardType.Unknown;
                 expectedEffects =
                 [
                     new PrototypeCombatEffectSpec(
@@ -6098,15 +6110,35 @@ public static class SemanticPilotCombatEngineV111
                     SourceKind: PrototypeEffectSourceKind.Card)];
                 break;
 
+            case "proto.silent.dagger_throw":
+                expectedTarget = PrototypeCardTarget.Enemy;
+                expectedCardType = PrototypeCardType.Attack;
+                expectedEffects =
+                [
+                    new PrototypeCombatEffectSpec(
+                        PrototypeCombatEffectKind.DamageEnemy, 9, 3),
+                    new PrototypeCombatEffectSpec(
+                        PrototypeCombatEffectKind.DrawCards, 1),
+                    new PrototypeCombatEffectSpec(
+                        PrototypeCombatEffectKind.ChooseCards, 0,
+                        Selection: new PrototypeCardSelectionSpec(
+                            PrototypeCardZone.Hand, 1, 1,
+                            PrototypeCardSelectionResolutionKind.MoveToDiscard))
+                ];
+                expectedTailOperations = [];
+                if (series.TargetEnemyId is not { } selectedTarget ||
+                    !combat.Enemies.Any(enemy =>
+                        enemy.InstanceId == selectedTarget))
+                    return false;
+                break;
+
             default:
                 return false;
         }
-        var expectedCardType = sourceCard.CardId ==
-            "proto.silent.concentrate"
-                ? PrototypeCardType.Unknown
-                : PrototypeCardType.Skill;
-        if (definition.Target != PrototypeCardTarget.None ||
+        if (definition.Target != expectedTarget ||
             definition.Type != expectedCardType ||
+            (expectedTarget == PrototypeCardTarget.None &&
+                series.TargetEnemyId is not null) ||
             CanonicalJson.Sha256(definition.Effects) !=
                 CanonicalJson.Sha256(expectedEffects))
             return false;
