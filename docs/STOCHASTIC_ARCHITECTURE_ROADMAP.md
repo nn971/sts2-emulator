@@ -6,8 +6,10 @@
 Automatic draw-hook replay, semantic draw-frame validation, and pending child
 event discovery now share one classification against the saved pre-draw or
 active hand-draw cursor, then dispatch boundary validation or event discovery
-by child kind. Unknown tagged choices remain fail-closed. Static source review
-and `git diff --check` only; no tests or builds were run.
+by child kind. The draw frame validates shared stage and count invariants once
+for each cursor, while child-specific support validators remain in place.
+Unknown tagged choices remain fail-closed. Static source review and
+`git diff --check` only; no tests or builds were run.
 
 **S4 automatic random pile-card handoff consolidation (2026-10-25):** After
 Jeweled Mask's automatic-hook card choice resolves, both active and pre-draw

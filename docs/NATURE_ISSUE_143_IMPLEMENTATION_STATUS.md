@@ -1216,3 +1216,11 @@ transform, shortlist, random-cost, and insertion events, as well as nested
 semantic effect draws. The child-specific event owners still validate their
 source support. Static source review and `git diff --check` only; no tests or
 builds were run.
+
+## 2026-10-25: shared hand-draw nested-child cursor validation
+
+The semantic draw frame now checks the common pre-draw and active-draw cursor
+and request-count invariants once per classified nested-child stage. Existing
+per-kind source-boundary validation remains in place, along with specialized
+pre-draw pool-shuffle and generated-selection checks. Static source review and
+`git diff --check` only; no tests or builds were run.

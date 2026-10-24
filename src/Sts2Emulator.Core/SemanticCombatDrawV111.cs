@@ -533,6 +533,43 @@ public sealed record SemanticCombatDrawV111(
             IsBeforeAutomaticChild(
                 SemanticDrawHookChoiceEngineV111
                     .AutomaticHandDrawChildKindV111.RandomHandCost);
+        bool automaticBeforeHandDrawNestedChildPending =
+            this.AutomaticHandDraw && semanticBeforeHandDrawProgress &&
+            automaticHandDrawChildKind is
+                SemanticDrawHookChoiceEngineV111
+                    .AutomaticHandDrawChildKindV111.DrawInsertion or
+                SemanticDrawHookChoiceEngineV111
+                    .AutomaticHandDrawChildKindV111.GeneratedCard or
+                SemanticDrawHookChoiceEngineV111
+                    .AutomaticHandDrawChildKindV111.PotionGeneration or
+                SemanticDrawHookChoiceEngineV111
+                    .AutomaticHandDrawChildKindV111.PoolShuffle or
+                SemanticDrawHookChoiceEngineV111
+                    .AutomaticHandDrawChildKindV111.CardSelection or
+                SemanticDrawHookChoiceEngineV111
+                    .AutomaticHandDrawChildKindV111.CardTransform or
+                SemanticDrawHookChoiceEngineV111
+                    .AutomaticHandDrawChildKindV111.CardShortlist or
+                SemanticDrawHookChoiceEngineV111
+                    .AutomaticHandDrawChildKindV111.RandomHandCost;
+        bool automaticHandDrawNestedChildPending =
+            this.AutomaticHandDraw && !semanticBeforeHandDrawProgress &&
+            activeHandDrawCountsMatch &&
+            automaticHandDrawChildKind is
+                SemanticDrawHookChoiceEngineV111
+                    .AutomaticHandDrawChildKindV111.GeneratedCard or
+                SemanticDrawHookChoiceEngineV111
+                    .AutomaticHandDrawChildKindV111.PotionGeneration or
+                SemanticDrawHookChoiceEngineV111
+                    .AutomaticHandDrawChildKindV111.PoolShuffle or
+                SemanticDrawHookChoiceEngineV111
+                    .AutomaticHandDrawChildKindV111.CardSelection or
+                SemanticDrawHookChoiceEngineV111
+                    .AutomaticHandDrawChildKindV111.CardTransform or
+                SemanticDrawHookChoiceEngineV111
+                    .AutomaticHandDrawChildKindV111.CardShortlist or
+                SemanticDrawHookChoiceEngineV111
+                    .AutomaticHandDrawChildKindV111.RandomHandCost;
         if (automaticHandDrawChildInsertionPending ||
             automaticBeforeHandDrawChildInsertionPending)
             SemanticDrawInsertionChoiceV111.ValidateBoundary(this.Run);
@@ -663,79 +700,16 @@ public sealed record SemanticCombatDrawV111(
                     throw new InvalidDataException(
                         "Semantic BeforeHandDraw generated-selection cursor is inconsistent.");
             }
-            else if (automaticBeforeHandDrawChildInsertionPending)
+            else if (automaticBeforeHandDrawNestedChildPending)
             {
                 if (pipelineCursor is null ||
                     !semanticBeforeHandDrawProgress ||
                     this.RequestedCount != 0 || this.RemainingCount != 0 ||
                     deck.Pending is not null || cost is not null)
                     throw new InvalidDataException(
-                        "Semantic BeforeHandDraw insertion cursor is inconsistent.");
+                        "Semantic BeforeHandDraw nested-choice cursor is inconsistent.");
             }
-            else if (automaticBeforeHandDrawGeneratedCardPending)
-            {
-                if (pipelineCursor is null ||
-                    !semanticBeforeHandDrawProgress ||
-                    this.RequestedCount != 0 || this.RemainingCount != 0 ||
-                    deck.Pending is not null || cost is not null)
-                    throw new InvalidDataException(
-                        "Semantic BeforeHandDraw generated-card cursor is inconsistent.");
-            }
-            else if (automaticBeforeHandDrawPotionGenerationPending)
-            {
-                if (pipelineCursor is null ||
-                    !semanticBeforeHandDrawProgress ||
-                    this.RequestedCount != 0 || this.RemainingCount != 0 ||
-                    deck.Pending is not null || cost is not null)
-                    throw new InvalidDataException(
-                        "Semantic BeforeHandDraw potion-generation cursor is inconsistent.");
-            }
-            else if (automaticBeforeHandDrawPoolShufflePending)
-            {
-                if (pipelineCursor is null ||
-                    !semanticBeforeHandDrawProgress ||
-                    this.RequestedCount != 0 || this.RemainingCount != 0 ||
-                    deck.Pending is not null || cost is not null)
-                    throw new InvalidDataException(
-                        "Semantic BeforeHandDraw pool-shuffle cursor is inconsistent.");
-            }
-            else if (automaticBeforeHandDrawCardSelectionPending)
-            {
-                if (pipelineCursor is null ||
-                    !semanticBeforeHandDrawProgress ||
-                    this.RequestedCount != 0 || this.RemainingCount != 0 ||
-                    deck.Pending is not null || cost is not null)
-                    throw new InvalidDataException(
-                        "Semantic BeforeHandDraw card-selection cursor is inconsistent.");
-            }
-            else if (automaticBeforeHandDrawCardTransformPending)
-            {
-                if (pipelineCursor is null ||
-                    !semanticBeforeHandDrawProgress ||
-                    this.RequestedCount != 0 || this.RemainingCount != 0 ||
-                    deck.Pending is not null || cost is not null)
-                    throw new InvalidDataException(
-                        "Semantic BeforeHandDraw card-transform cursor is inconsistent.");
-            }
-            else if (automaticBeforeHandDrawCardShortlistPending)
-            {
-                if (pipelineCursor is null ||
-                    !semanticBeforeHandDrawProgress ||
-                    this.RequestedCount != 0 || this.RemainingCount != 0 ||
-                    deck.Pending is not null || cost is not null)
-                    throw new InvalidDataException(
-                        "Semantic BeforeHandDraw card-shortlist cursor is inconsistent.");
-            }
-            else if (automaticBeforeHandDrawRandomHandCostPending)
-            {
-                if (pipelineCursor is null ||
-                    !semanticBeforeHandDrawProgress ||
-                    this.RequestedCount != 0 || this.RemainingCount != 0 ||
-                    deck.Pending is not null || cost is not null)
-                    throw new InvalidDataException(
-                        "Semantic BeforeHandDraw random-hand-cost cursor is inconsistent.");
-            }
-            else if (automaticHandDrawGeneratedCardPending)
+            else if (automaticHandDrawNestedChildPending)
             {
                 if (pipelineCursor is null ||
                     !hasPipelineSemanticDrawProgress ||
@@ -743,67 +717,7 @@ public sealed record SemanticCombatDrawV111(
                     pipelineRemaining != this.RemainingCount ||
                     deck.Pending is not null || cost is not null)
                     throw new InvalidDataException(
-                        "Automatic hand-draw generated-card cursor is inconsistent.");
-            }
-            else if (automaticHandDrawPotionGenerationPending)
-            {
-                if (pipelineCursor is null ||
-                    !hasPipelineSemanticDrawProgress ||
-                    pipelineRequested != this.RequestedCount ||
-                    pipelineRemaining != this.RemainingCount ||
-                    deck.Pending is not null || cost is not null)
-                    throw new InvalidDataException(
-                        "Automatic hand-draw potion-generation cursor is inconsistent.");
-            }
-            else if (automaticHandDrawPoolShufflePending)
-            {
-                if (pipelineCursor is null ||
-                    !hasPipelineSemanticDrawProgress ||
-                    pipelineRequested != this.RequestedCount ||
-                    pipelineRemaining != this.RemainingCount ||
-                    deck.Pending is not null || cost is not null)
-                    throw new InvalidDataException(
-                        "Automatic hand-draw pool-shuffle cursor is inconsistent.");
-            }
-            else if (automaticHandDrawCardSelectionPending)
-            {
-                if (pipelineCursor is null ||
-                    !hasPipelineSemanticDrawProgress ||
-                    pipelineRequested != this.RequestedCount ||
-                    pipelineRemaining != this.RemainingCount ||
-                    deck.Pending is not null || cost is not null)
-                    throw new InvalidDataException(
-                        "Automatic hand-draw card-selection cursor is inconsistent.");
-            }
-            else if (automaticHandDrawCardTransformPending)
-            {
-                if (pipelineCursor is null ||
-                    !hasPipelineSemanticDrawProgress ||
-                    pipelineRequested != this.RequestedCount ||
-                    pipelineRemaining != this.RemainingCount ||
-                    deck.Pending is not null || cost is not null)
-                    throw new InvalidDataException(
-                        "Automatic hand-draw card-transform cursor is inconsistent.");
-            }
-            else if (automaticHandDrawCardShortlistPending)
-            {
-                if (pipelineCursor is null ||
-                    !hasPipelineSemanticDrawProgress ||
-                    pipelineRequested != this.RequestedCount ||
-                    pipelineRemaining != this.RemainingCount ||
-                    deck.Pending is not null || cost is not null)
-                    throw new InvalidDataException(
-                        "Automatic hand-draw card-shortlist cursor is inconsistent.");
-            }
-            else if (automaticHandDrawRandomHandCostPending)
-            {
-                if (pipelineCursor is null ||
-                    !hasPipelineSemanticDrawProgress ||
-                    pipelineRequested != this.RequestedCount ||
-                    pipelineRemaining != this.RemainingCount ||
-                    deck.Pending is not null || cost is not null)
-                    throw new InvalidDataException(
-                        "Automatic hand-draw random-hand-cost cursor is inconsistent.");
+                        "Automatic hand-draw nested-choice cursor is inconsistent.");
             }
             else if (automaticBeforeHandDrawRandomTarget)
             {
@@ -1108,8 +1022,6 @@ public static class SemanticCombatDrawEngineV111
         DescribePendingPotionGeneration(SemanticCombatDrawV111 state)
     {
         if (!state.AutomaticHandDraw ||
-            state.Run.World?.Combat is not { } combat ||
-            combat.PendingChoice is not { } pending ||
             SemanticDrawHookChoiceEngineV111
                 .ClassifyAutomaticHandDrawChild(state.Run) !=
                 SemanticDrawHookChoiceEngineV111
@@ -1146,8 +1058,6 @@ public static class SemanticCombatDrawEngineV111
         DescribePendingCardSelection(SemanticCombatDrawV111 state)
     {
         if (!state.AutomaticHandDraw ||
-            state.Run.World?.Combat is not { } combat ||
-            combat.PendingChoice is not { } pending ||
             SemanticDrawHookChoiceEngineV111
                 .ClassifyAutomaticHandDrawChild(state.Run) !=
                 SemanticDrawHookChoiceEngineV111
@@ -1161,8 +1071,6 @@ public static class SemanticCombatDrawEngineV111
         DescribePendingCardTransform(SemanticCombatDrawV111 state)
     {
         if (!state.AutomaticHandDraw ||
-            state.Run.World?.Combat is not { } combat ||
-            combat.PendingChoice is not { } pending ||
             SemanticDrawHookChoiceEngineV111
                 .ClassifyAutomaticHandDrawChild(state.Run) !=
                 SemanticDrawHookChoiceEngineV111
@@ -1177,8 +1085,6 @@ public static class SemanticCombatDrawEngineV111
         DescribePendingCardShortlist(SemanticCombatDrawV111 state)
     {
         if (!state.AutomaticHandDraw ||
-            state.Run.World?.Combat is not { } combat ||
-            combat.PendingChoice is not { } pending ||
             SemanticDrawHookChoiceEngineV111
                 .ClassifyAutomaticHandDrawChild(state.Run) !=
                 SemanticDrawHookChoiceEngineV111
