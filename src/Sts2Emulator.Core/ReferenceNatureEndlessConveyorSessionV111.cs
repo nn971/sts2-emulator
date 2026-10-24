@@ -135,35 +135,40 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
                 }).ToArray();
             }
 
-            return selections.Select(entry =>
+            var decisions = new ControlledStochasticDecisionV111[
+                selections.Length];
+            for (var index = 0; index < selections.Length; index++)
             {
+                var entry = selections[index];
                 if (entry.Law.SiteId ==
                     PrototypeNativeEndlessConveyor.DishWeightedTicketSiteId)
                 {
-                    var conditioningRun = Origin.Phase == RunPhase.MapChoice
-                        ? Origin
-                        : CaptureDishPreDrawState(Origin, ActionId);
+                    var prefix = selections.Take(index).Select(previous =>
+                        ToControlledDecision(
+                            Origin, previous.Law, previous.Selection))
+                        .ToArray();
+                    var capture = CapturePendingRequest(
+                        Origin, ActionId, entry.Law.SiteId, prefix);
+                    var conditioningRun = capture.UnitFloatCapture
+                        ?.PreDrawState
+                        ?? throw new InvalidDataException(
+                            "Endless Conveyor decision lost its pre-draw boundary.");
                     var request = BuildUnitFloatRequest(
                         Origin, entry.Law);
-                    return ReferenceNatureChanceLawDecisionV111.FromSelection(
+                    var unitFloatDecision =
+                        ReferenceNatureChanceLawDecisionV111.FromSelection(
                         entry.Law,
                         ControlledStochasticRequestV111.FromUnitFloat(request),
-                        entry.Selection, conditioningRun);
+                        entry.Selection, conditioningRun).UnitFloatDecision!;
+                    decisions[index] =
+                        ControlledStochasticDecisionV111.FromUnitFloat(
+                            unitFloatDecision);
+                    continue;
                 }
-
-                var indexRequest = BuildIndexRequest(Origin, entry.Law);
-                var controlledRequest =
-                    ControlledStochasticRequestV111.FromIndex(indexRequest);
-                return entry.Law.SiteId ==
-                    PrototypeNativePotionShop.UniformModelSiteId
-                    ? ReferenceNatureChanceLawDecisionV111
-                        .FromOrderedIndexSelection(entry.Law,
-                            controlledRequest, entry.Selection,
-                            entry.Law.Outcomes.Select(outcome =>
-                                outcome.OutcomeId).ToArray())
-                    : ReferenceNatureChanceLawDecisionV111.FromSelection(
-                        entry.Law, controlledRequest, entry.Selection);
-            }).ToArray();
+                decisions[index] = ToControlledDecision(
+                    Origin, entry.Law, entry.Selection);
+            }
+            return decisions;
         }
     }
 
@@ -187,8 +192,21 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
         Stochastic.DecisionTranscript.Length == PlannedSiteIds.Length;
 
     [JsonIgnore]
-    public ChanceLawV111? PendingLaw => Complete ? null : QuerySite(
-        Origin, ActionId, PlannedSiteIds[NextOrdinal]);
+    public ChanceLawV111? PendingLaw
+    {
+        get
+        {
+            if (Complete)
+                return null;
+            var prefix = SampleTranscript(
+                Origin, ActionId, Stochastic.InitialNatureState,
+                Stochastic.DecisionTranscript, PlannedSiteIds)
+                .Select(entry => ToControlledDecision(
+                    Origin, entry.Law, entry.Selection)).ToArray();
+            return QuerySite(Origin, ActionId,
+                PlannedSiteIds[NextOrdinal], prefix);
+        }
+    }
 
     public static ReferenceNatureEndlessConveyorSessionV111 Begin(
         RunState origin, string actionId, ulong natureSeed) => Begin(origin,
@@ -218,6 +236,16 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
         return session;
     }
 
+    public static ChanceLawV111 QueryChanceLaw(
+        RunState origin, string actionId, string siteId,
+        int? ordinal = null)
+    {
+        ArgumentNullException.ThrowIfNull(origin);
+        ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        return QuerySite(origin, actionId, siteId, [], ordinal);
+    }
+
     public ReferenceNatureEndlessConveyorSessionV111 Fork()
     {
         Validate();
@@ -235,8 +263,13 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
             throw new InvalidOperationException(
                 "ReferenceNature Endless Conveyor session is already complete.");
         var plannedSiteIds = PlannedSiteIds;
+        var prefix = SampleTranscript(
+            Origin, ActionId, Stochastic.InitialNatureState,
+            Stochastic.DecisionTranscript, plannedSiteIds)
+            .Select(entry => ToControlledDecision(
+                Origin, entry.Law, entry.Selection)).ToArray();
         var law = QuerySite(
-            Origin, ActionId, plannedSiteIds[NextOrdinal]);
+            Origin, ActionId, plannedSiteIds[NextOrdinal], prefix);
         var selection = ReferenceNatureV111.SampleValidated(
             law, NatureState);
         var transcript = Stochastic.DecisionTranscript.Append(
@@ -415,27 +448,124 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
     }
 
     private static ChanceLawV111 QuerySite(
-        RunState origin, string actionId, string siteId)
+        RunState origin, string actionId, string siteId,
+        ControlledStochasticDecisionV111[]? prefix = null,
+        int? ordinal = null)
     {
+        prefix ??= [];
         if (IsLegacyNativeFallback(origin))
             return QueryLegacyFallbackSite(origin, actionId, siteId);
 
-        return siteId switch
+        if (siteId == PrototypeNativeEndlessConveyor.DishWeightedTicketSiteId)
         {
-            PrototypeNativeEndlessConveyor.DishWeightedTicketSiteId =>
-                ChanceLawEngineV111.QueryNativeEndlessConveyorDishEntry(
-                    origin, actionId),
-            PrototypeNativeEndlessConveyor.UpgradeCardSiteId =>
-                ChanceLawEngineV111.QueryNativeEndlessConveyorUpgrade(
-                    origin, actionId),
-            PrototypeNativeEndlessConveyor.ColorlessCardSiteId =>
-                ChanceLawEngineV111.QueryNativeEndlessConveyorColorlessCard(
-                    origin, actionId),
-            PrototypeNativePotionShop.UniformModelSiteId =>
-                QuerySuspiciousCondimentPotion(origin, actionId),
-            _ => throw new NotSupportedException(
-                "Endless Conveyor session has no query for site '" + siteId + "'.")
-        };
+            var capture = CapturePendingRequest(
+                origin, actionId, siteId, prefix);
+            var preDraw = capture.UnitFloatCapture?.PreDrawState
+                ?? throw new InvalidDataException(
+                    "Endless Conveyor dish boundary did not expose its pre-draw state.");
+            var request = capture.Request.UnitFloatRequest
+                ?? throw new InvalidDataException(
+                    "Endless Conveyor dish boundary is not a unit-float request.");
+            if (ordinal is { } requestedOrdinal &&
+                requestedOrdinal != request.Ordinal)
+                throw new InvalidOperationException(
+                    "Endless Conveyor dish query ordinal differs from its pre-draw request.");
+            var law = ChanceLawEngineV111
+                .QueryNativeEndlessConveyorDishEntry(
+                    preDraw, actionId, request.Ordinal);
+            if (!ControlledStochasticChanceReplayV111.RequestsMatch(
+                    capture.Request,
+                    ControlledStochasticRequestV111.FromUnitFloat(
+                        BuildUnitFloatRequest(preDraw, law))))
+                throw new InvalidDataException(
+                    "Endless Conveyor dish law differs from its captured pre-draw request.");
+            return law;
+        }
+
+        if (siteId is PrototypeNativeEndlessConveyor.UpgradeCardSiteId or
+            PrototypeNativeEndlessConveyor.ColorlessCardSiteId)
+        {
+            var capture = CapturePendingRequest(
+                origin, actionId, siteId, prefix);
+            var request = capture.Request.IndexRequest
+                ?? throw new InvalidDataException(
+                    "Endless Conveyor card boundary is not an index request.");
+            if (ordinal is { } requestedOrdinal &&
+                requestedOrdinal != request.Ordinal)
+                throw new InvalidOperationException(
+                    "Endless Conveyor card query ordinal differs from its pre-draw request.");
+            var law = siteId == PrototypeNativeEndlessConveyor.UpgradeCardSiteId
+                ? ChanceLawEngineV111.QueryNativeEndlessConveyorUpgrade(
+                    origin, actionId, request.Ordinal)
+                : ChanceLawEngineV111.QueryNativeEndlessConveyorColorlessCard(
+                    origin, actionId, request.Ordinal);
+            if (!ControlledStochasticChanceReplayV111.RequestsMatch(
+                    capture.Request,
+                    ControlledStochasticRequestV111.FromIndex(
+                        BuildIndexRequest(origin, law))))
+                throw new InvalidDataException(
+                    "Endless Conveyor card law differs from its captured request.");
+            return law;
+        }
+
+        if (siteId == PrototypeNativePotionShop.UniformModelSiteId)
+            return QuerySuspiciousCondimentPotion(origin, actionId);
+
+        throw new NotSupportedException(
+            "Endless Conveyor session has no query for site '" + siteId + "'.");
+    }
+
+    private sealed record PendingRequestCapture(
+        ControlledStochasticRequestV111 Request,
+        NativeEventUnitFloatCaptureV111? UnitFloatCapture);
+
+    private static PendingRequestCapture CapturePendingRequest(
+        RunState origin, string actionId, string siteId,
+        ControlledStochasticDecisionV111[] prefix)
+    {
+        var action = RequireAction(origin, actionId);
+        var controlledSites = prefix.Select(decision =>
+                decision.ToRequest().SiteId)
+            .Append(siteId).ToHashSet(StringComparer.Ordinal);
+        IReadOnlyList<NativeEventUnitFloatCaptureV111> captures;
+        ControlledStochasticContinuationStateV111? continuation;
+        using (var probe = NativeEventRandomProbeV111.Begin())
+        using (NativeEngineEventJournalV111.Begin())
+        {
+            var replay = ControlledChanceContinuationExecutorV111
+                .CaptureStochastic(
+                    origin,
+                    ControlledStochasticContinuationStateV111
+                        .MixedPrimitiveSchemaId,
+                    prefix,
+                    checkpoint => new PrototypeGameEngine().Step(
+                        checkpoint, action).State,
+                    request => controlledSites.Contains(request.SiteId));
+            continuation = replay.Continuation;
+            captures = probe.UnitFloatCaptures;
+        }
+
+        var pending = continuation?.PendingRequest
+            ?? throw new InvalidOperationException(
+                "Endless Conveyor action did not suspend before its declared '"
+                + siteId + "' outcome.");
+        if (pending.SiteId != siteId)
+            throw new InvalidDataException(
+                "Endless Conveyor action suspended at a different site than requested.");
+        var unitFloatCaptures = captures.Where(capture =>
+            capture.Request.SiteId == siteId).ToArray();
+        if (unitFloatCaptures.Length > 1)
+            throw new InvalidDataException(
+                "Endless Conveyor action reached its unit-float site more than once before suspension.");
+        var unitFloatCapture = unitFloatCaptures.SingleOrDefault();
+        if (unitFloatCapture is not null &&
+            !ControlledStochasticChanceReplayV111.RequestsMatch(
+                pending,
+                ControlledStochasticRequestV111.FromUnitFloat(
+                    unitFloatCapture.Request)))
+            throw new InvalidDataException(
+                "Endless Conveyor pre-draw capture differs from its pending request.");
+        return new PendingRequestCapture(pending, unitFloatCapture);
     }
 
     private static bool IsLegacyNativeFallback(RunState state) =>
@@ -643,7 +773,10 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
             ReferenceNatureSelectionV111)>(transcript.Length);
         for (var index = 0; index < transcript.Length; index++)
         {
-            var law = QuerySite(origin, actionId, plannedSiteIds[index]);
+            var prefix = selections.Select(entry => ToControlledDecision(
+                origin, entry.Item1, entry.Item2)).ToArray();
+            var law = QuerySite(
+                origin, actionId, plannedSiteIds[index], prefix);
             var selection = ReferenceNatureV111.SampleValidated(law, cursor);
             transcript[index].Validate();
             if (CanonicalJson.Sha256(new ReferenceNatureDecisionV111(
@@ -657,6 +790,34 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
         }
         finalNatureState = cursor;
         return selections.ToArray();
+    }
+
+    private static ControlledStochasticDecisionV111 ToControlledDecision(
+        RunState origin, ChanceLawV111 law,
+        ReferenceNatureSelectionV111 selection)
+    {
+        if (law.OperationKind == "unit_float_weighted_ticket")
+        {
+            var request = BuildUnitFloatRequest(origin, law);
+            var decision = ReferenceNatureChanceLawDecisionV111.FromSelection(
+                law,
+                ControlledStochasticRequestV111.FromUnitFloat(request),
+                selection).UnitFloatDecision!;
+            return ControlledStochasticDecisionV111.FromUnitFloat(decision);
+        }
+
+        var indexRequest = BuildIndexRequest(origin, law);
+        var controlledRequest = ControlledStochasticRequestV111
+            .FromIndex(indexRequest);
+        var indexDecision = law.SiteId ==
+                PrototypeNativePotionShop.UniformModelSiteId
+            ? ReferenceNatureChanceLawDecisionV111
+                .FromOrderedIndexSelection(law, controlledRequest, selection,
+                    law.Outcomes.Select(outcome => outcome.OutcomeId).ToArray())
+                .IndexDecision!
+            : ReferenceNatureChanceLawDecisionV111.FromSelection(
+                law, controlledRequest, selection).IndexDecision!;
+        return ControlledStochasticDecisionV111.FromIndex(indexDecision);
     }
 
     private static RunState ReplaySelections(
@@ -692,7 +853,9 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
             indexChoice.Law,
             ControlledStochasticRequestV111.FromIndex(indexRequest),
             indexChoice.Selection).IndexDecision!;
-        var preDraw = CaptureDishPreDrawState(origin, actionId);
+        var preDraw = CaptureDishPreDrawState(
+            origin, actionId,
+            [ControlledStochasticDecisionV111.FromIndex(typedIndex)]);
         var floatRequest = BuildUnitFloatRequest(origin, dishChoice.Law);
         var typedFloat = ReferenceNatureChanceLawDecisionV111.FromSelection(
             dishChoice.Law,
@@ -785,8 +948,8 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
         RunState origin, string actionId, ChanceLawV111 law,
         ReferenceNatureSelectionV111 selection)
     {
-        var conditioningRun = origin.Phase == RunPhase.MapChoice
-            ? origin : CaptureDishPreDrawState(origin, actionId);
+        var conditioningRun = CaptureDishPreDrawState(
+            origin, actionId, []);
         var request = BuildUnitFloatRequest(origin, law);
         var controlled = ReferenceNatureChanceLawDecisionV111.FromSelection(
             law, ControlledStochasticRequestV111.FromUnitFloat(request),
@@ -843,6 +1006,14 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
         {
             var request = new RandomIndexRequestV111(
                 law.SiteId, "reward", law.OwnerId, law.Ordinal,
+                Enumerable.Range(0, law.Outcomes.Length).ToArray());
+            request.Validate();
+            return request;
+        }
+        if (origin.Stochastic.NativeRunRng is null)
+        {
+            var request = new RandomIndexRequestV111(
+                law.SiteId, "event", law.OwnerId, law.Ordinal,
                 Enumerable.Range(0, law.Outcomes.Length).ToArray());
             request.Validate();
             return request;
@@ -992,24 +1163,16 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
     }
 
     private static RunState CaptureDishPreDrawState(
-        RunState origin, string actionId)
+        RunState origin, string actionId,
+        ControlledStochasticDecisionV111[] prefix)
     {
-        var action = RequireAction(origin, actionId);
-        IReadOnlyList<NativeEventUnitFloatCaptureV111> captures;
-        using (var probe = NativeEventRandomProbeV111.Begin())
-        using (RandomBoundaryJournalV111.Begin())
-        using (NativeEngineEventJournalV111.Begin())
-        {
-            _ = new PrototypeGameEngine().Step(origin.Fork(), action).State;
-            captures = probe.UnitFloatCaptures;
-        }
-        var matching = captures.Where(capture =>
-            capture.Request.SiteId == PrototypeNativeEndlessConveyor
-                .DishWeightedTicketSiteId).ToArray();
-        if (matching.Length != 1)
-            throw new InvalidDataException(
-                "Endless Conveyor action no longer reaches exactly one weighted dish ticket.");
-        return matching[0].PreDrawState;
+        var capture = CapturePendingRequest(
+            origin, actionId,
+            PrototypeNativeEndlessConveyor.DishWeightedTicketSiteId,
+            prefix);
+        return capture.UnitFloatCapture?.PreDrawState
+            ?? throw new InvalidDataException(
+                "Endless Conveyor action lost its weighted-ticket pre-draw state.");
     }
 
     private static int GetPreDrawDishCount(ChanceLawV111 law)

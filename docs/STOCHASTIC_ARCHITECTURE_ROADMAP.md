@@ -3915,3 +3915,14 @@ semantic-pilot card and potion continuation checks, and full-pool shuffle use
 the shared predicate for their conditional mutation policies. Their source
 allowlists and failure handling are unchanged. No snapshot format changed.
 Static source review and `git diff --check` only; no tests or builds were run.
+
+**S1 Endless Conveyor outcome-blind query increment (2026-10-24):** Chance Law
+builders now consume a declared pre-draw Event state and request ordinal. The
+ReferenceNature session projects the same source action with its selected
+prefix and suspends at the exact pending typed request; it passes the captured
+pre-draw state to the query without resolving that outcome. Upgrade and
+Colorless-card laws receive their request ordinals from the pending request
+instead of reading the Native event cursor. Inventory schema v57 guards all
+136 Chance Law query methods against direct sampling, cursor reads, boundary
+journals, replay captures, and engine steps; it reports no violations. Static
+source inventory and `git diff --check` only; no tests or builds were run.

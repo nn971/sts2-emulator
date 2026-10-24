@@ -20,7 +20,9 @@ This is the **canonical responsibility/ownership contract** for RNG, Nature, Cha
 
 **No runtime dependency** exists from Native RNG to Chance Law. The native mod does not call Chance Law. Chance Law is a callable analytical service primarily for Nature and tests; source-game captures can later *verify* it offline.
 
-`tools/rng_callsite_inventory.py --check-no-native-chance-law-dependency` is a direct-reference regression guard for this boundary. It scans Native RNG provider/adapter sources and native mod C# sources for Chance Law symbols; it does not prove the absence of indirect dependencies.
+`tools/rng_callsite_inventory.py --check-no-native-chance-law-dependency` is a direct-reference regression guard for this boundary. It scans Native RNG provider/adapter sources and native mod C# sources for Chance Law symbols; it does not prove the absence of indirect dependencies. `--check-chance-law-outcome-blind` separately guards Chance Law query method bodies against direct sampling calls, Native cursor reads, boundary journals, replay captures, and engine steps. This is also a direct-source guard; indirect helper dependencies still need review.
+
+Endless Conveyor now follows the same boundary. Its Chance Law builders accept a pre-draw Event state and a declared request ordinal. The ReferenceNature session projects the source action through the already selected same-action prefix, suspends at the unresolved typed request, and passes the captured pre-draw state to the pure query. The projection does not resolve that pending outcome or use its cursor to define the law.
 
 Source ownership follows the same separation: `ChanceLawV111.cs` contains the Chance Law value model and shared query core, with event, offer, reward, and other source-family queries in `ChanceLaw*V111.cs` files. ReferenceNature sampling, cursor/session state, per-session SiteId lists, and its run-action, Ancient-offer, and event-choice sessions live in owner-named source files. Chance Law's existing session-list properties are delegating compatibility projections. These moves preserve public query APIs and snapshot schemas.
 

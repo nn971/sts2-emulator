@@ -4395,19 +4395,22 @@ internal static class PrototypeAiJsonlServer
                             {
                                 PrototypeNativeEndlessConveyor
                                     .DishWeightedTicketSiteId =>
-                                    ChanceLawEngineV111
-                                        .QueryNativeEndlessConveyorDishEntry(
-                                            source, actionId, suppliedOrdinal),
+                                    ReferenceNatureEndlessConveyorSessionV111
+                                        .QueryChanceLaw(
+                                            source, actionId, siteId,
+                                            suppliedOrdinal),
                                 PrototypeNativeEndlessConveyor
                                     .UpgradeCardSiteId =>
-                                    ChanceLawEngineV111
-                                        .QueryNativeEndlessConveyorUpgrade(
-                                            source, actionId, suppliedOrdinal),
+                                    ReferenceNatureEndlessConveyorSessionV111
+                                        .QueryChanceLaw(
+                                            source, actionId, siteId,
+                                            suppliedOrdinal),
                                 PrototypeNativeEndlessConveyor
                                     .ColorlessCardSiteId =>
-                                    ChanceLawEngineV111
-                                        .QueryNativeEndlessConveyorColorlessCard(
-                                            source, actionId, suppliedOrdinal),
+                                    ReferenceNatureEndlessConveyorSessionV111
+                                        .QueryChanceLaw(
+                                            source, actionId, siteId,
+                                            suppliedOrdinal),
                                 _ => throw new InvalidOperationException(
                                     "Unknown Endless Conveyor Chance Law site.")
                             };

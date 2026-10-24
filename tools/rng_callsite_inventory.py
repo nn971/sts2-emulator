@@ -27,7 +27,7 @@ from urllib.parse import unquote, urlparse
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
 RUNTIME_SOURCE_ROOTS = (ROOT / "src", ROOT / "native")
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v56"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v57"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 NATIVE_RNG_SOURCE_FILES = frozenset({
     "NativeCombatRngEntryV111.cs",
@@ -2727,6 +2727,140 @@ def _mask_csharp_comments_and_literals(source: str) -> str:
     return "".join(masked)
 
 
+def _matching_csharp_delimiter(
+    source: str, opening: int, left: str, right: str,
+) -> int | None:
+    depth = 0
+    for position in range(opening, len(source)):
+        if source[position] == left:
+            depth += 1
+        elif source[position] == right:
+            depth -= 1
+            if depth == 0:
+                return position
+    return None
+
+
+def _chance_law_query_methods(
+    sources: dict[Path, str],
+) -> list[dict[str, Any]]:
+    """Extract direct query method bodies from ChanceLaw partial sources."""
+    declaration = re.compile(
+        r"\b(?:public|private|internal)\s+static\s+"
+        r"[A-Za-z_][A-Za-z0-9_?.<>,\[\]]*\s+"
+        r"(?P<name>Query[A-Za-z0-9_]*)\s*\("
+    )
+    methods: list[dict[str, Any]] = []
+    for path, source in sources.items():
+        if not path.name.startswith("ChanceLaw") or not path.name.endswith(
+            "V111.cs"
+        ):
+            continue
+        code = _mask_csharp_comments_and_literals(source)
+        if "partial class ChanceLawEngineV111" not in code:
+            continue
+        for match in declaration.finditer(code):
+            opening_paren = code.find("(", match.start("name"))
+            closing_paren = _matching_csharp_delimiter(
+                code, opening_paren, "(", ")"
+            )
+            if closing_paren is None:
+                continue
+            cursor = closing_paren + 1
+            while cursor < len(code):
+                while cursor < len(code) and code[cursor].isspace():
+                    cursor += 1
+                if code.startswith("=>", cursor):
+                    end = code.find(";", cursor + 2)
+                    if end < 0:
+                        break
+                    body = code[cursor + 2:end]
+                    break
+                if code[cursor] == "{":
+                    closing_brace = _matching_csharp_delimiter(
+                        code, cursor, "{", "}"
+                    )
+                    if closing_brace is None:
+                        body = ""
+                    else:
+                        body = code[cursor:closing_brace + 1]
+                    break
+                if code[cursor] == ";":
+                    body = ""
+                    break
+                cursor += 1
+            else:
+                continue
+            methods.append({
+                "path": path.relative_to(ROOT).as_posix(),
+                "line": source.count("\n", 0, match.start("name")) + 1,
+                "name": match.group("name"),
+                "body": body,
+                "source": source,
+            })
+    return methods
+
+
+def _chance_law_outcome_blind_violations(
+    sources: dict[Path, str],
+) -> dict[str, Any]:
+    """Find direct sampling, cursor, and replay reads in Chance Law queries."""
+    patterns = (
+        ("direct_random_sampling", re.compile(
+            r"\b(?:PrototypeRng|NativeRngV111|NativeFisherYatesV111|"
+            r"NativePlayerRngV111|NativeRandomChoiceV111|"
+            r"NativeEventContextRngV111)\s*\.\s*"
+            r"(?:Next\w*|Sample\w*|Shuffle\w*|Execute|"
+            r"Resolve\w*|Choose\w*)\s*\("
+        )),
+        ("native_cursor_snapshot", re.compile(
+            r"\bNativeRngV111\s*\.\s*ToSnapshot\s*\("
+        )),
+        ("provider_cursor_read", re.compile(
+            r"\b[A-Za-z_]\w*\s*\.\s*(?:CallCount|Counter)\b"
+        )),
+        ("random_boundary_journal", re.compile(
+            r"\bRandomBoundaryJournalV111\b"
+        )),
+        ("native_event_probe", re.compile(
+            r"\bNativeEventRandomProbeV111\b"
+        )),
+        ("controlled_replay_capture", re.compile(
+            r"\b(?:ControlledChanceContinuationExecutorV111|"
+            r"ControlledStochasticChanceReplayV111)\s*\.\s*"
+            r"(?:Capture\w*|Resolve\w*)\s*\("
+        )),
+        ("engine_step", re.compile(
+            r"\b(?:PrototypeGameEngine|engine)\s*"
+            r"(?:\([^)]*\))?\s*\.\s*Step\s*\("
+        )),
+    )
+    methods = _chance_law_query_methods(sources)
+    violations: list[dict[str, Any]] = []
+    for method in methods:
+        for finding, pattern in patterns:
+            for match in pattern.finditer(method["body"]):
+                line = method["line"] + method["body"].count(
+                    "\n", 0, match.start()
+                )
+                excerpt = method["source"].splitlines()[line - 1].strip()
+                violations.append({
+                    "path": method["path"],
+                    "line": line,
+                    "method": method["name"],
+                    "finding": finding,
+                    "source_excerpt": excerpt,
+                })
+    return {
+        "query_method_count": len(methods),
+        "violations": sorted(
+            violations, key=lambda finding: (
+                finding["path"], finding["line"], finding["finding"]
+            )
+        ),
+    }
+
+
 def _typed_request_constructions(
     sources: dict[Path, str],
     global_constants: dict[str, set[str]],
@@ -3087,6 +3221,9 @@ def collect() -> dict[str, Any]:
     ambient_entropy_calls = _ambient_entropy_calls(runtime_sources)
     native_chance_law_dependency_references = (
         _native_chance_law_dependency_references(runtime_sources)
+    )
+    chance_law_outcome_blind_contract = (
+        _chance_law_outcome_blind_violations(sources)
     )
     string_constants: dict[str, set[str]] = {}
     for source in sources.values():
@@ -3517,7 +3654,10 @@ def collect() -> dict[str, Any]:
             "entropy sources. A separate direct-reference guard checks "
             "Chance Law symbols in Native RNG providers/adapters and native "
             "mod C# sources; it cannot establish the absence of indirect "
-            "dependencies. Explicit typed random-request "
+            "dependencies. A direct query-body guard reports Native sampling, "
+            "provider-cursor, boundary-journal, replay-capture, or engine-step "
+            "references inside Chance Law query methods; it cannot prove the "
+            "absence of indirect helper dependencies. Explicit typed random-request "
             "constructions are listed with their site ID, index operation-kind "
             "expression, and registry/matrix resolution status. The static "
             "operation locator does not resolve forwarded caller values on its "
@@ -3554,6 +3694,8 @@ def collect() -> dict[str, Any]:
         "ambient_entropy_calls": ambient_entropy_calls,
         "native_chance_law_dependency_references":
             native_chance_law_dependency_references,
+        "chance_law_outcome_blind_contract":
+            chance_law_outcome_blind_contract,
         "typed_request_constructions": typed_request_constructions,
         "source_map_random_adapter_calls": map_adapter_calls,
         "source_map_random_adapter_callsite_coverage":
@@ -3702,6 +3844,17 @@ def render_markdown(report: dict[str, Any]) -> str:
                 "native_chance_law_dependency_references"
             ]
         ],
+        "Chance Law direct outcome-blind query guard: "
+        f"**{report['chance_law_outcome_blind_contract']['query_method_count']}** query methods, "
+        f"**{len(report['chance_law_outcome_blind_contract']['violations'])}** direct sampling, cursor, or replay references. "
+        "This source check does not follow indirect helper calls.",
+        *[
+            f"- {finding['path']}:{finding['line']} `{finding['method']}` "
+            f"{finding['finding']}"
+            for finding in report[
+                "chance_law_outcome_blind_contract"
+            ]["violations"]
+        ],
         "",
         "Explicit typed random-request constructions: "
         f"**{len(report['typed_request_constructions'])}**; site IDs resolved "
@@ -3811,7 +3964,8 @@ def render_markdown(report: dict[str, Any]) -> str:
         "Regenerate this report with `python3 tools/rng_callsite_inventory.py "
         "--check-site-matrix --check-s0-contract-links "
         "--check-no-ambient-entropy "
-        "--check-no-native-chance-law-dependency --format markdown > "
+        "--check-no-native-chance-law-dependency "
+        "--check-chance-law-outcome-blind --format markdown > "
         "docs/RNG_DIRECT_CALLSITE_CENSUS.md`.",
         "Rows distinguish legacy prototype calls, native primitive calls, "
         "generic RNG-helper calls, and recognized provider/fixture support. "
@@ -3896,6 +4050,13 @@ def main() -> int:
         help=(
             "fail on direct Chance Law references in Native RNG providers, "
             "adapters, or native mod C# sources"
+        ),
+    )
+    parser.add_argument(
+        "--check-chance-law-outcome-blind", action="store_true",
+        help=(
+            "fail on direct provider sampling/cursor reads, boundary journals, "
+            "replay captures, or engine steps in Chance Law query methods"
         ),
     )
     args = parser.parse_args()
@@ -3992,6 +4153,15 @@ def main() -> int:
         print(json.dumps({
             "native_chance_law_dependency_references":
                 report["native_chance_law_dependency_references"],
+        }, indent=2, sort_keys=True), file=sys.stderr)
+        return 1
+    if args.check_chance_law_outcome_blind and (
+            report["chance_law_outcome_blind_contract"][
+                "query_method_count"] == 0 or
+            report["chance_law_outcome_blind_contract"]["violations"]):
+        print(json.dumps({
+            "chance_law_outcome_blind_contract":
+                report["chance_law_outcome_blind_contract"],
         }, indent=2, sort_keys=True), file=sys.stderr)
         return 1
     if args.format == "markdown":
