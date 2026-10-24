@@ -20,9 +20,8 @@ internal static class SemanticChoiceResumeV111
         ArgumentNullException.ThrowIfNull(decision);
         decision.Validate();
         var ownedDecision = decision.Fork();
-        var run = SemanticTargetChoiceV111.Resume(
+        return SemanticTargetChoiceV111.ResumeWithBoundary(
             checkpoint.Fork(), ownedDecision);
-        return PrototypeAutomaticPipelineResumeResultV111.FromRun(run);
     }
 
     internal static SemanticChoiceResumeResultV111 ResumeEffectDraw(
@@ -385,10 +384,10 @@ internal static class SemanticChoiceResumeV111
         ArgumentNullException.ThrowIfNull(decision);
         decision.Validate();
         var ownedDecision = decision.Fork();
+        var resumed = SemanticHandCostSelectionChoiceV111
+            .ResumeWithBoundary(checkpoint.Fork(), ownedDecision);
         return new SemanticChoiceResumeResultV111(
-            SemanticHandCostSelectionChoiceV111.Resume(
-                checkpoint.Fork(), ownedDecision),
-            ownedDecision.Event.SiteId);
+            resumed.Run, ownedDecision.Event.SiteId, resumed.Boundary);
     }
 
     internal static SemanticChoiceResumeResultV111 Resume(

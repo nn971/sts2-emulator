@@ -236,6 +236,8 @@ Automatic semantic card-shortlist replay also carries the classified pipeline re
 
 Semantic random hand-cost choices also retain their classified automatic-pipeline result. Both indexed cost outcomes and selected physical hand-card outcomes pass the result through `SemanticChoiceResumeResultV111` to end-turn boundary publication.
 
+Semantic random-target and hand-cost-selection facades also preserve their classified result through the shared semantic-choice resume owner, keeping source validation and boundary publication on one path.
+
 Typed semantic draw-insertion, generated-card, potion-generation, card-transform, and pool-shuffle resumes also return their classified pipeline results through `SemanticChoiceResumeResultV111`. Existing validators and run-only compatibility facades remain with their choice owners.
 
 Semantic effect-draw resumes preserve their classified pipeline result through the validated draw-choice facade and `SemanticChoiceResumeResultV111`; hand-draw progress also carries that classification alongside its remaining count.

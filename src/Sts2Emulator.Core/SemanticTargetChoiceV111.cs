@@ -329,6 +329,11 @@ public static class SemanticTargetChoiceV111
     /// </summary>
     internal static RunState Resume(
         RunState checkpoint, SemanticTargetDecisionV111 decision)
+        => ResumeWithBoundary(checkpoint, decision).Run;
+
+    internal static PrototypeAutomaticPipelineResumeResultV111
+        ResumeWithBoundary(
+            RunState checkpoint, SemanticTargetDecisionV111 decision)
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
         ArgumentNullException.ThrowIfNull(decision);
@@ -336,33 +341,35 @@ public static class SemanticTargetChoiceV111
         ValidateBoundary(checkpoint);
 
         var resumed = ControlledChanceGuardV111.ExecuteGuarded(
-            () => PrototypeGameEngine.ResumeControlledRandomTarget(
-                checkpoint.Fork(), decision.SelectedEnemyInstanceId),
+            () => PrototypeGameEngine
+                .ResumeControlledRandomTargetWithBoundary(
+                    checkpoint.Fork(), decision.SelectedEnemyInstanceId),
             allowEngineOwnedPrototypeReward: true);
-        if (resumed.Phase == RunPhase.Combat)
+        if (resumed.Run.Phase == RunPhase.Combat)
         {
             var priorCombat = checkpoint.World?.Combat ??
                 throw new InvalidDataException(
                     "Automatic target lost its source combat.");
-            var nextCombat = resumed.World?.Combat ??
+            var nextCombat = resumed.Run.World?.Combat ??
                 throw new InvalidDataException(
                     "Automatic target continuation lost combat.");
             if (nextCombat.PendingChoice is
                 { ChoiceId: "controlled_semantic_draw",
                   ControlledSemanticDraw: not null })
-                SemanticDrawChoiceV111.ValidateBoundary(resumed);
+                SemanticDrawChoiceV111.ValidateBoundary(resumed.Run);
             else if (nextCombat.PendingChoice is
                 { ChoiceId: "controlled_draw_cost",
                   ControlledSemanticDraw: not null,
                   ControlledDrawCost: not null })
-                SemanticCostChoiceV111.ValidateDrawBoundary(resumed);
+                SemanticCostChoiceV111.ValidateDrawBoundary(resumed.Run);
             else
                 SemanticDrawPileAdapterV111.RequireUnchangedDrawPile(
                     priorCombat, nextCombat,
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.random_target " +
                     "operation=unmodeled_draw_pile_mutation");
         }
-        else if (!PrototypeGameEngine.IsAtCombatActionResultBoundary(resumed))
+        else if (!PrototypeGameEngine
+                     .IsAtCombatActionResultBoundary(resumed.Run))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.random_target " +
                 "operation=unsupported_post_target_phase");

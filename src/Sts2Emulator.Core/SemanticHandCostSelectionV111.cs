@@ -213,6 +213,12 @@ public static class SemanticHandCostSelectionChoiceV111
     internal static RunState Resume(
         RunState checkpoint,
         SemanticHandCostSelectionDecisionV111 decision)
+        => ResumeWithBoundary(checkpoint, decision).Run;
+
+    internal static PrototypeAutomaticPipelineResumeResultV111
+        ResumeWithBoundary(
+            RunState checkpoint,
+            SemanticHandCostSelectionDecisionV111 decision)
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
         ArgumentNullException.ThrowIfNull(decision);
@@ -246,7 +252,8 @@ public static class SemanticHandCostSelectionChoiceV111
                 eventState.CandidateCardModelIds))
             throw new InvalidDataException(
                 "Hand-cost decision no longer matches its live support.");
-        return SemanticRandomHandCostChoiceV111.ResumeSelectedHandCard(
-            checkpoint, decision.SelectedCardInstanceId);
+        return SemanticRandomHandCostChoiceV111
+            .ResumeSelectedHandCardWithBoundary(
+                checkpoint, decision.SelectedCardInstanceId);
     }
 }
