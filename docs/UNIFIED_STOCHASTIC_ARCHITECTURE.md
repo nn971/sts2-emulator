@@ -1222,6 +1222,8 @@ Automatic enemy-action continuations now use the existing chance-state owner to 
 
 The controlled-playable session also persists optional ordered candidate labels beside its chronological live index transcript. It derives labels from the live identity support for enemy actions, generated cards, potions, transforms, card-model insertion, random hand-card selection, targets, and weighted intents; restore compares each saved vector with the support reached at that replay boundary. Numeric-only choices retain null entries. Snapshots without the optional field keep the legacy index-only replay path, while new snapshots reject reordered same-sized labeled support.
 
+Pending controlled random-target validation now shares one live-support check across semantic target boundaries, combat-state validation, controlled-playable validation, and target resume. It compares ordered living-enemy identities and the Sly/autoplay source identity against the suspended continuation.
+
 ## Reading order
 
 1. This architecture contract.

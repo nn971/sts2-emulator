@@ -243,38 +243,9 @@ public static class SemanticTargetChoiceV111
                 "Semantic target continuation is not at a supported player or automatic pipeline boundary.");
         var liveCombat = combat ?? throw new InvalidDataException(
             "Semantic target continuation is missing its combat state.");
-        var eligible = liveCombat.Enemies.Where(enemy => enemy.Hp > 0 &&
-                (target.Kind != "sly_auto_play" || !enemy.Escaped))
-            .Select(enemy => enemy.InstanceId).ToArray();
-        if (eligible.Length == 0 ||
-            !eligible.SequenceEqual(target.EligibleEnemyInstanceIds))
+        if (choice is null || !HasValidLiveSupport(liveCombat, choice))
             throw new InvalidDataException(
-                "Semantic target support disagrees with live enemy eligibility.");
-        if (target.Kind == "sly_auto_play" &&
-            (target.SlyCardInstanceId is not { } slyCardId ||
-             !liveCombat.DiscardPile.Contains(slyCardId) ||
-             target.AutoPlayCardInstanceId is not null))
-            throw new InvalidDataException(
-                "Sly auto-play target lost its discarded source card.");
-        if (target.Kind == "autoplay_random_enemy")
-        {
-            if (target.AutoPlayCardInstanceId is not { } autoPlayCardId ||
-                !liveCombat.PlayCardIds.Contains(autoPlayCardId) ||
-                target.SlyCardInstanceId is not null ||
-                choice?.OuterChoiceContinuation?.Operations is not
-                    { Length: > 0 } operations ||
-                operations[0].Kind !=
-                    PrototypeCombatEffectKind.AutoPlayCombatCard ||
-                operations[0].CardInstanceId != autoPlayCardId ||
-                operations[0].TargetEnemyId is not null)
-                throw new InvalidDataException(
-                    "Auto-play target lost its suspended card operation.");
-        }
-        else if (target.Kind == "effect_random_enemy" &&
-                 (target.SlyCardInstanceId is not null ||
-                  target.AutoPlayCardInstanceId is not null))
-            throw new InvalidDataException(
-                "Effect random-target event carries an auto-play card identity.");
+                "Semantic target support or source disagrees with the live continuation.");
         SemanticDrawPileAdapterV111.ValidateNatureDeckBoundary(
             liveCombat,
             "Semantic target continuation changed the hidden draw pile.",
@@ -284,6 +255,50 @@ public static class SemanticTargetChoiceV111
             liveCombat.DrawPile.Length != 0)
             throw new InvalidDataException(
                 "A semantic target without a provider deck must have an empty draw pile.");
+    }
+
+    /// <summary>
+    /// Validates the ordered live enemy support and its source-card identity
+    /// against the suspended combat continuation shared by target consumers.
+    /// </summary>
+    internal static bool HasValidLiveSupport(
+        CombatState combat, PendingCombatChoiceState choice)
+    {
+        var target = choice.ControlledTarget;
+        if (choice.ChoiceId != "controlled_random_target" ||
+            choice.OuterChoiceContinuation is not { } continuation ||
+            target is not { Kind: "effect_random_enemy" or
+                "sly_auto_play" or "autoplay_random_enemy" } ||
+            target.EligibleEnemyInstanceIds is not { Length: > 0 } support ||
+            support.Distinct().Count() != support.Length)
+            return false;
+
+        var eligible = combat.Enemies.Where(enemy => enemy.Hp > 0 &&
+                (target.Kind != "sly_auto_play" || !enemy.Escaped))
+            .Select(enemy => enemy.InstanceId).ToArray();
+        if (eligible.Length == 0 || !eligible.SequenceEqual(support))
+            return false;
+
+        return target.Kind switch
+        {
+            "sly_auto_play" =>
+                target.SlyCardInstanceId is { } slyCardId &&
+                combat.DiscardPile.Contains(slyCardId) &&
+                target.AutoPlayCardInstanceId is null,
+            "autoplay_random_enemy" =>
+                target.AutoPlayCardInstanceId is { } autoPlayCardId &&
+                combat.PlayCardIds.Contains(autoPlayCardId) &&
+                target.SlyCardInstanceId is null &&
+                continuation.Operations is { Length: > 0 } operations &&
+                operations[0].Kind ==
+                    PrototypeCombatEffectKind.AutoPlayCombatCard &&
+                operations[0].CardInstanceId == autoPlayCardId &&
+                operations[0].TargetEnemyId is null,
+            "effect_random_enemy" =>
+                target.SlyCardInstanceId is null &&
+                target.AutoPlayCardInstanceId is null,
+            _ => false
+        };
     }
 
     public static SemanticTargetDecisionV111 Select(

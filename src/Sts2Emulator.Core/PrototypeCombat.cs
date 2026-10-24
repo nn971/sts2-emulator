@@ -14670,14 +14670,10 @@ public sealed partial class PrototypeGameEngine
             pending.OuterChoiceContinuation is not { } continuation)
             throw new InvalidOperationException(
                 "The pending combat choice belongs to the player.");
-        var eligible = target.EligibleEnemyInstanceIds;
-        var currentEligible = combat.Enemies
-            .Where(e => e.Hp > 0 &&
-                (target.Kind != "sly_auto_play" || !e.Escaped))
-            .Select(e => e.InstanceId).ToArray();
-        if (!currentEligible.SequenceEqual(eligible))
+        if (!SemanticTargetChoiceV111.HasValidLiveSupport(combat, pending))
             throw new InvalidDataException(
-                "Saved target support disagrees with current live enemies.");
+                "Saved target support or source disagrees with the live continuation.");
+        var eligible = target.EligibleEnemyInstanceIds;
         var selectedIndex = Array.IndexOf(eligible,
             selectedEnemyInstanceId);
         if (selectedIndex < 0)

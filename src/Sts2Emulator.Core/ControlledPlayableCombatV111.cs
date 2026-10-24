@@ -624,36 +624,12 @@ public sealed record ControlledPlayableCombatV111(
         {
             var combat = this.Run.World?.Combat ??
                 throw new InvalidDataException("Target choice lacks combat this.");
-            var eligible = combat.Enemies
-                .Where(enemy => enemy.Hp > 0 &&
-                    (controlledTarget.Kind != "sly_auto_play" || !enemy.Escaped))
-                .Select(enemy => enemy.InstanceId).ToArray();
-            var autoPlayContinuation =
-                combat.PendingChoice?.OuterChoiceContinuation;
             if (this.Stochastic.Recycle is not null || this.TurnIntents is not null ||
                 this.Stochastic.Pending is not null ||
                 combat.PendingChoice?.ControlledPotionGeneration is not null ||
-                controlledTarget.Kind is not ("effect_random_enemy" or
-                    "sly_auto_play" or "autoplay_random_enemy") ||
-                eligible.Length == 0 ||
-                !eligible.SequenceEqual(controlledTarget.EligibleEnemyInstanceIds) ||
-                (controlledTarget.Kind == "sly_auto_play" &&
-                    (controlledTarget.SlyCardInstanceId is not { } cardId ||
-                     !combat.DiscardPile.Contains(cardId) ||
-                     controlledTarget.AutoPlayCardInstanceId is not null)) ||
-                (controlledTarget.Kind == "autoplay_random_enemy" &&
-                    (controlledTarget.AutoPlayCardInstanceId is not { } autoPlayCardId ||
-                     !combat.PlayCardIds.Contains(autoPlayCardId) ||
-                     controlledTarget.SlyCardInstanceId is not null ||
-                     autoPlayContinuation is null ||
-                     autoPlayContinuation.Operations.Length == 0 ||
-                     autoPlayContinuation.Operations[0].Kind !=
-                        PrototypeCombatEffectKind.AutoPlayCombatCard ||
-                     autoPlayContinuation.Operations[0].CardInstanceId != autoPlayCardId ||
-                     autoPlayContinuation.Operations[0].TargetEnemyId is not null)) ||
-                (controlledTarget.Kind == "effect_random_enemy" &&
-                    (controlledTarget.SlyCardInstanceId is not null ||
-                     controlledTarget.AutoPlayCardInstanceId is not null)))
+                combat.PendingChoice is not { } targetChoice ||
+                !SemanticTargetChoiceV111.HasValidLiveSupport(
+                    combat, targetChoice))
                 throw new InvalidDataException(
                     "Malformed or stale controlled target-choice support.");
         }
