@@ -44,6 +44,13 @@ Semantic draw, draw-hook, Stratagem and random pile-card adapters share it;
 serialized state is unchanged. Static source review and `git diff --check`
 only; no tests or builds were run.
 
+**S4 semantic-choice boundary conversion owner increment (2026-10-24):** The
+semantic choice resume result now owns conversion to the automatic-pipeline
+resume type used by end-turn publication, preserving a supplied classification
+or deriving it from the returned run. Choice identity and serialized state are
+unchanged. Static source review and `git diff --check` only; no tests or builds
+were run.
+
 **S1 compact Native bounded-index Chance Law increment (2026-10-24):**
 Chance Law v3 now represents large canonical Native `NextInt(bound)` laws by
 their exact 53-bit input grid and source multiply-and-truncate transform.

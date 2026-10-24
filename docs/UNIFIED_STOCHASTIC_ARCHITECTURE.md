@@ -232,6 +232,8 @@ The specialized `SemanticCombatDrawV111.Simulation` pairs `SemanticCombatDrawMec
 
 `PrototypeDrawCardsResumeResultV111.EnsurePipelineBoundary` now owns completion of transient draw-progress classification: it preserves a supplied boundary and otherwise classifies the result run. Semantic draw, draw-hook, Stratagem and random pile-card adapters share this owner; no serialized field is added.
 
+`SemanticChoiceResumeResultV111.EnsurePipelineBoundary` likewise owns conversion from a semantic choice handoff to the automatic-pipeline result used by end-turn publication, preserving its supplied classification or deriving one from the returned run.
+
 `ResumeControlledEnemyAction` now returns the classified `PrototypeAutomaticPipelineResumeResultV111` from its existing pipeline handoff. Semantic end-turn and controlled-playable resume adapters preserve that boundary through transcript publication and staging; the shared selected-index executor returns its consumed `RandomIndexDecisionV111` beside the typed resume result. All controlled-playable indexed-choice adapters use this boundary-aware path.
 
 Automatic semantic card-shortlist replay also carries the classified pipeline result through `SemanticChoiceResumeResultV111`. The shortlist mechanics owner and semantic-choice facade retain run-only projections for existing callers, while end-turn boundary publication receives the original classification.
