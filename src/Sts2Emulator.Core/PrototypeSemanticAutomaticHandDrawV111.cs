@@ -7,10 +7,6 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public sealed partial class PrototypeGameEngine
 {
-    internal static int SemanticHandDrawStepIndex =>
-        Array.FindIndex(PrototypeContent.Rules.EndTurnPipeline,
-            step => step.Kind == PrototypeAutomaticStepKind.DrawPlayerHand);
-
     internal static bool IsSemanticAutomaticHandDraw(CombatState combat)
     {
         var cursor = combat.AutomaticPipelineContinuation;
@@ -125,7 +121,7 @@ public sealed partial class PrototypeGameEngine
     {
         var result = ResolveAutomaticStep(
             checkpoint,
-            PrototypeContent.Rules.EndTurnPipeline[SemanticHandDrawStepIndex],
+            PrototypeContent.Rules.EndTurnPipeline[AutomaticHandDrawStepIndex],
             handDrawResultContext:
                 AutomaticHandDrawSourceResultContextV111
                     .DeferredSemanticStage);

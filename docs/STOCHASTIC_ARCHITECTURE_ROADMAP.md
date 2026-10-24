@@ -4620,6 +4620,7 @@ builds were run.
 **S4 shared draw-progress rule ownership increment (2026-10-25):** The
 provider-neutral draw continuation owner now holds `GetCardsDrawnSince` and
 `ExpectedStratagemSelectionCount`, which were previously placed in the
-semantic draw adapter despite use by automatic and controlled paths. All draw
-boundaries now share those count and capacity rules. Static source review and
-`git diff --check` only; no tests or builds were run.
+semantic draw adapter despite use by automatic and controlled paths. The
+automatic hand-draw resume owner now defines the shared pipeline step index.
+All draw boundaries now share those step, count, and capacity rules. Static
+source review and `git diff --check` only; no tests or builds were run.

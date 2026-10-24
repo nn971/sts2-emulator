@@ -7,6 +7,10 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public sealed partial class PrototypeGameEngine
 {
+    internal static int AutomaticHandDrawStepIndex =>
+        Array.FindIndex(PrototypeContent.Rules.EndTurnPipeline,
+            step => step.Kind == PrototypeAutomaticStepKind.DrawPlayerHand);
+
     /// <summary>
     /// Commit provider progress at the ordinary DrawPlayerHand checkpoint.
     /// This is the shared write boundary for legacy and semantic adapters:
@@ -27,7 +31,7 @@ public sealed partial class PrototypeGameEngine
         ArgumentNullException.ThrowIfNull(combat);
         progress?.Validate();
 
-        int stageIndex = SemanticHandDrawStepIndex;
+        int stageIndex = AutomaticHandDrawStepIndex;
         if (stageIndex < 0)
             throw new InvalidDataException(
                 "DrawPlayerHand has no automatic pipeline index.");
