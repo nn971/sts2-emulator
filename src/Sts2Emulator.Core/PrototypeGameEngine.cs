@@ -247,18 +247,33 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         var insertion = pending.ControlledDrawInsertion;
         var continuation = pending.OuterChoiceContinuation;
         var sourceCardInstanceId = continuation?.SourceCardInstanceId;
+        bool supportedInsertion = insertion is
+            { Stage: "position", SelectedCardId: not null,
+              AfterShuffleRelic: null,
+              SemanticDrawContinuation: null,
+              AutomaticHandDrawRemaining: null,
+              Operation: { Kind: PrototypeCombatEffectKind
+                  .CreateGeneratedCardsAtRandomDrawPositions,
+                  Amount: 1 } } or
+            { Stage: "card_model", SelectedCardId: null,
+              AfterShuffleRelic: null,
+              SemanticDrawContinuation: null,
+              AutomaticHandDrawRemaining: null,
+              Operation: { Kind: PrototypeCombatEffectKind
+                  .CreateRandomFreeAttacksInDrawPile,
+                  Amount: 1 } } or
+            { Stage: "position", SelectedCardId: not null,
+              AfterShuffleRelic: null,
+              SemanticDrawContinuation: null,
+              AutomaticHandDrawRemaining: null,
+              Operation: { Kind: PrototypeCombatEffectKind
+                  .CreateRandomFreeAttacksInDrawPile,
+                  Amount: 1 } };
         if (!combat.IsPlayerTurn ||
             combat.Stochastic.SemanticDeck is not
                 { Mode: SemanticDeckStateV111.NatureMode, Pending: null } ||
             pending is not { ChoiceId: "controlled_draw_insertion" } ||
-            insertion is not
-                { Stage: "position", SelectedCardId: not null,
-                  AfterShuffleRelic: null,
-                  SemanticDrawContinuation: null,
-                  AutomaticHandDrawRemaining: null,
-                  Operation: { Kind: PrototypeCombatEffectKind
-                      .CreateGeneratedCardsAtRandomDrawPositions,
-                      Amount: 1 } } ||
+            !supportedInsertion ||
             continuation is null ||
             !pending.HasValidControlledPayloadShape() ||
             combat.AutomaticPipelineContinuation is not { } cursor ||
@@ -281,18 +296,33 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         var insertion = pending.ControlledDrawInsertion;
         var continuation = pending.OuterChoiceContinuation;
         var sourceCardInstanceId = continuation?.SourceCardInstanceId;
+        bool supportedInsertion = insertion is
+            { Stage: "position", SelectedCardId: not null,
+              AfterShuffleRelic: null,
+              SemanticDrawContinuation: null,
+              AutomaticHandDrawRemaining: null,
+              Operation: { Kind: PrototypeCombatEffectKind
+                  .CreateGeneratedCardsAtRandomDrawPositions,
+                  Amount: 1 } } or
+            { Stage: "card_model", SelectedCardId: null,
+              AfterShuffleRelic: null,
+              SemanticDrawContinuation: null,
+              AutomaticHandDrawRemaining: null,
+              Operation: { Kind: PrototypeCombatEffectKind
+                  .CreateRandomFreeAttacksInDrawPile,
+                  Amount: 1 } } or
+            { Stage: "position", SelectedCardId: not null,
+              AfterShuffleRelic: null,
+              SemanticDrawContinuation: null,
+              AutomaticHandDrawRemaining: null,
+              Operation: { Kind: PrototypeCombatEffectKind
+                  .CreateRandomFreeAttacksInDrawPile,
+                  Amount: 1 } };
         if (!combat.IsPlayerTurn ||
             combat.Stochastic.SemanticDeck is not
                 { Mode: SemanticDeckStateV111.NatureMode, Pending: null } ||
             pending is not { ChoiceId: "controlled_draw_insertion" } ||
-            insertion is not
-                { Stage: "position", SelectedCardId: not null,
-                  AfterShuffleRelic: null,
-                  SemanticDrawContinuation: null,
-                  AutomaticHandDrawRemaining: null,
-                  Operation: { Kind: PrototypeCombatEffectKind
-                      .CreateGeneratedCardsAtRandomDrawPositions,
-                      Amount: 1 } } ||
+            !supportedInsertion ||
             continuation is null ||
             !pending.HasValidControlledPayloadShape() ||
             combat.AutomaticPipelineContinuation is not { } cursor ||

@@ -4614,8 +4614,16 @@ public static class SemanticPilotCombatEngineV111
     {
         var sourceEndTurn = current.PendingEndTurn;
         var nextEndTurn = sourceEndTurn is { } endTurn
-            ? SemanticEndTurnEngineV111.ResumeNestedSemanticChoice(
-                endTurn, choice)
+            ? choice is
+                { Kind: "semantic_generated_card",
+                  GeneratedCardDecision: { } generatedCard } &&
+              endTurn.HandDraw?.GeneratedCardPending is not null
+                ? SemanticEndTurnEngineV111.ResolveGeneratedCard(
+                    endTurn, endTurn.Fingerprint,
+                    generatedCard.Event.EventId,
+                    generatedCard.SelectedCardId)
+                : SemanticEndTurnEngineV111.ResumeNestedSemanticChoice(
+                    endTurn, choice)
             : null;
         var publishedRun = nextEndTurn?.Run ??
             SemanticChoiceResumeV111.Resume(

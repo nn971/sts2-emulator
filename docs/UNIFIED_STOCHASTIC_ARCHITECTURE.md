@@ -1096,6 +1096,16 @@ player observation.
 
 ## Current S4 continuation support
 
+The semantic draw stochastic owner also records random free-attack model
+selections reached from an active `CardDrawn` or pre-draw hook. The selected
+model is followed by the existing draw-pile insertion-position choice; the
+draw frame owns both decisions and their mixed chronology. Chronology version
+2 adds the generated-card decision kind while replay continues to accept
+version 1 snapshots that contain no such decisions. End-turn forwards this
+pending model event to its active draw frame, and pilot history records the
+external choice once. Random attack pool fidelity and Native stream parity
+remain open pending reference-mod evidence.
+
 `PrototypeAutomaticPipelineResumeResultV111` is the single owner for
 classifying an ephemeral run-resume boundary. Draw-progress and semantic-choice
 results pass any saved classification through that owner, which checks it

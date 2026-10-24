@@ -2,6 +2,17 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 nested random draw-attack model continuation increment (2026-10-25):**
+Active `CardDrawn` and pre-draw hook continuations may now suspend first on
+the random free-attack model choice and then on the existing insertion-position
+choice. The semantic draw frame owns the generated-card transcript and its
+cross-type chronology; chronology version 2 adds this choice kind, while
+version 1 snapshots without generated-card decisions remain replayable.
+End-turn forwards the pending model event to the draw frame, and pilot history
+records the external choice once. Static source review and
+`git diff --check` only; no tests or builds were run. Random-pool fidelity and
+Native stream parity remain open pending reference-mod evidence.
+
 **S4 BeforeHandDraw fixed insertion child increment (2026-10-25):** A selected
 `BeforeHandDraw` action may now suspend on its source card's fixed draw-pile
 insertion ticket. Admission retains the semantic pre-draw cursor, and the
