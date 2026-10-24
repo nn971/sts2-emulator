@@ -4599,3 +4599,11 @@ resume owner. Legacy controlled and semantic adapters continue to own their
 different suspension policies and transcripts. The move also corrected a
 missing statement terminator in the shared completion method. Static source
 review and `git diff --check` only; no tests or builds were run.
+
+**S4 committed Nature opening-draw entry increment (2026-10-25):** The source
+opening hand draw now uses the shared semantic draw profile when its committed
+physical pile is represented by a Nature deck, allowing already-known card
+identities to pass through the common `DrawCards` kernel without a second
+draw request. Unexpected opening draw boundaries remain fail-closed until an
+opening-stage continuation owns them. Static source review and
+`git diff --check` only; no tests or builds were run.

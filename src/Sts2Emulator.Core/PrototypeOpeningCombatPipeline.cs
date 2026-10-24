@@ -141,8 +141,14 @@ public sealed partial class PrototypeGameEngine
             return !card.IsTemporary && IsInnate(card);
         });
         var prototypeRng = state.Stochastic.PrototypeRng;
+        var suspensionPolicy = ControlledChanceGuardV111.Active &&
+            combat.Stochastic.SemanticDeck is
+                { Mode: SemanticDeckStateV111.NatureMode }
+            ? PrototypeDrawCardsSuspensionPolicyV111.SemanticDrawCards()
+            : PrototypeDrawCardsSuspensionPolicyV111.None;
         var drawn = DrawCards(player, combat, Math.Max(0, target - innateAlreadyDealt),
-            prototypeRng, fromHandDraw: true);
+            prototypeRng, fromHandDraw: true,
+            suspensionPolicy: suspensionPolicy);
         player = drawn.Player;
         combat = drawn.Combat;
         if (drawn.BoundaryKind ==
@@ -158,6 +164,14 @@ public sealed partial class PrototypeGameEngine
                 moveSourceCardOnCompletion: false);
             player = resolved.Player;
             combat = resolved.Combat;
+        }
+        else if (drawn.BoundaryKind !=
+            PrototypeDrawCardsBoundaryKind.Complete)
+        {
+            throw new NotSupportedException(
+                "UNSUPPORTED_OPENING_DRAW " +
+                "site=combat.opening_draw operation=" +
+                drawn.BoundaryKind);
         }
         return state with
         {
