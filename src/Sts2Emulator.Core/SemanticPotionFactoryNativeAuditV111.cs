@@ -49,6 +49,12 @@ public sealed record SemanticPotionFactoryNativeAuditV111(
         ArgumentNullException.ThrowIfNull(candidatePotionIds);
         ArgumentException.ThrowIfNullOrWhiteSpace(selectedPotionId);
         var candidates = candidatePotionIds.ToArray();
+        var mappedSelectedPotionId = NativeSemanticOutcomeV111
+            .SelectByChooseIndex(modelDecision, candidates);
+        if (!StringComparer.Ordinal.Equals(
+                mappedSelectedPotionId, selectedPotionId))
+            throw new InvalidDataException(
+                "Native PotionFactory result differs from its model request.");
         var supportFingerprint = CanonicalJson.Sha256(candidates);
         var audit = new SemanticPotionFactoryNativeAuditV111(
             CurrentSchemaId, string.Empty, supportFingerprint, candidates,
@@ -80,7 +86,6 @@ public sealed record SemanticPotionFactoryNativeAuditV111(
         if (SchemaId != CurrentSchemaId ||
             ProbabilityStatus != "UNVERIFIED" ||
             RarityDecision.ProviderMode != "native-v111" ||
-            ModelDecision.ProviderMode != "native-v111" ||
             rarityRequest.SiteId != StochasticSiteRegistryV111
                 .NativePotionFactoryRarityRollSiteId ||
             modelRequest.SiteId != StochasticSiteRegistryV111
@@ -89,7 +94,6 @@ public sealed record SemanticPotionFactoryNativeAuditV111(
             modelRequest.StreamId != NativePlayerRngV111.RewardsStreamId ||
             rarityRequest.OwnerId != modelRequest.OwnerId ||
             rarityRequest.Ordinal != modelRequest.Ordinal ||
-            modelRequest.OperationKind != "choose_index" ||
             candidates is not { Length: > 0 } ||
             candidates.Any(string.IsNullOrWhiteSpace) ||
             candidates.Distinct(StringComparer.Ordinal).Count() !=
@@ -97,10 +101,9 @@ public sealed record SemanticPotionFactoryNativeAuditV111(
             SupportFingerprint != CanonicalJson.Sha256(candidates) ||
             !modelRequest.OrderedCandidates.SequenceEqual(
                 Enumerable.Range(0, candidates.Length)) ||
-            modelRequest.SupportCount != candidates.Length ||
-            ModelDecision.SelectedIndex < 0 ||
-            ModelDecision.SelectedIndex >= candidates.Length ||
-            candidates[ModelDecision.SelectedIndex] != SelectedPotionId ||
+            !StringComparer.Ordinal.Equals(
+                NativeSemanticOutcomeV111.SelectByChooseIndex(
+                    ModelDecision, candidates), SelectedPotionId) ||
             PrototypeNativePotionShop.ResolveRarityNative(
                 RarityDecision.SelectedValue) != Rarity ||
             !IsOrderedEligibleSubset(candidates, Rarity) ||

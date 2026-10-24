@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 Native PotionFactory audit outcome mapping (2026-10-25):** The
+PotionFactory audit now maps its saved Native model index through
+`NativeSemanticOutcomeV111` both when constructed and when restored for
+validation. Its rarity, ordered-pool, stream, and owner checks remain intact;
+the audit schema is unchanged. Static source review and `git diff --check`
+only; no tests or builds were run.
+
 **S4 shared Native audit and continuation outcome mapping (2026-10-25):**
 `NativeSemanticOutcomeV111` now owns primitive-to-semantic mapping for both
 live continuations and Native target, generation, potion, transform, shuffle,
