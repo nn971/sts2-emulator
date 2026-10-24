@@ -4038,6 +4038,16 @@ unchanged. Broader resume consolidation and cross-provider mechanical
 equivalence remain open. Static source review and `git diff --check` only; no
 tests or builds were run.
 
+**S4 card-transform classified handoff increment (2026-10-24):** The
+controlled card-transform resume now exposes
+`ResumeControlledCardTransformWithBoundary` for controlled-playable replay.
+The original selection continuation also preserves its pipeline result, so
+the selected-index executor stages the engine classification directly;
+semantic-choice consumers retain the run-only facade. Snapshot and transcript
+formats are unchanged. Broader resume consolidation and cross-provider
+mechanical equivalence remain open. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S4 semantic-choice result owner increment (2026-10-24):** Semantic choice
 resume overloads that return only a run and source SiteId now use the shared
 `SemanticChoiceResumeResultV111` value. Draw resumes that also carry requested

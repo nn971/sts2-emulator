@@ -13196,6 +13196,16 @@ public sealed partial class PrototypeGameEngine
         long[] selected,
         IReadOnlyDictionary<long, string>? transformReplacementCardIds,
         bool selectionAlreadyResolved = false)
+        => ResolvePendingChoiceWithBoundary(
+            state, selected, transformReplacementCardIds,
+            selectionAlreadyResolved).Run;
+
+    private static PrototypeAutomaticPipelineResumeResultV111
+        ResolvePendingChoiceWithBoundary(
+            RunState state,
+            long[] selected,
+            IReadOnlyDictionary<long, string>? transformReplacementCardIds,
+            bool selectionAlreadyResolved = false)
     {
         var world = RequireWorld(state);
         var combat = world.Combat
@@ -13256,13 +13266,14 @@ public sealed partial class PrototypeGameEngine
                                 nextAccumulated
                         }
                     };
-                    return state with
-                    {
-                        World = world with
+                    return PrototypeAutomaticPipelineResumeResultV111.FromRun(
+                        state with
                         {
-                            Combat = combat
-                        }
-                    };
+                            World = world with
+                            {
+                                Combat = combat
+                            }
+                        });
                 }
 
                 selected = nextAccumulated;
@@ -13311,7 +13322,8 @@ public sealed partial class PrototypeGameEngine
                     "Selected card is no longer in the requested source zone.");
             combat = MakeControlledCardTransformChoice(
                 combat, pending, selected);
-            return state with { World = world with { Combat = combat } };
+            return PrototypeAutomaticPipelineResumeResultV111.FromRun(
+                state with { World = world with { Combat = combat } });
         }
 
         var prototypeRng = state.Stochastic.PrototypeRng;
@@ -13460,16 +13472,17 @@ public sealed partial class PrototypeGameEngine
             handDrawProgress.Kind ==
                 PrototypeAutomaticHandDrawProgressKindV111
                     .ControlledRecycleStratagem)
-            return ResumeControlledRecycleStratagemSelection(state);
+            return PrototypeAutomaticPipelineResumeResultV111.FromRun(
+                ResumeControlledRecycleStratagemSelection(state));
 
         // These choices are nested inside the active hand-draw stage. Their
         // owning draw continuation must finish before the ordinary pipeline
         // can settle a terminal reward boundary.
         if (pending.AutomaticSemanticStratagemDrawSelection ||
             pending.AutomaticSemanticDrawHookChoice)
-            return state;
+            return PrototypeAutomaticPipelineResumeResultV111.FromRun(state);
 
-        return ResumeAutomaticPipelineContinuation(state).Run;
+        return ResumeAutomaticPipelineContinuation(state);
     }
 
     private static int ResolveLegacyRandomIndex(

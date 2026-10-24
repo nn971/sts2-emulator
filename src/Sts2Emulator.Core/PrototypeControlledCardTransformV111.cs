@@ -121,6 +121,12 @@ public sealed partial class PrototypeGameEngine
 
     internal static RunState ResumeControlledCardTransform(
         RunState state, string selectedCardId)
+        => ResumeControlledCardTransformWithBoundary(
+            state, selectedCardId).Run;
+
+    internal static PrototypeAutomaticPipelineResumeResultV111
+        ResumeControlledCardTransformWithBoundary(
+            RunState state, string selectedCardId)
     {
         if (!ControlledChanceGuardV111.Active)
             throw new InvalidOperationException(
@@ -151,7 +157,8 @@ public sealed partial class PrototypeGameEngine
             combat = MakeControlledCardTransformChoice(
                 combat, transform.OriginalChoice,
                 transform.SelectedCardInstanceIds, replacements, nextIndex);
-            return state with { World = world with { Combat = combat } };
+            return PrototypeAutomaticPipelineResumeResultV111.FromRun(
+                state with { World = world with { Combat = combat } });
         }
 
         var replacementMap = transform.SelectedCardInstanceIds
@@ -163,7 +170,7 @@ public sealed partial class PrototypeGameEngine
             PendingChoice = transform.OriginalChoice.Fork()
         };
         state = state with { World = world with { Combat = combat } };
-        return ResolvePendingChoice(
+        return ResolvePendingChoiceWithBoundary(
             state, transform.SelectedCardInstanceIds,
             replacementMap, selectionAlreadyResolved: true);
     }
