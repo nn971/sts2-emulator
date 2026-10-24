@@ -73,7 +73,6 @@ public static partial class ChanceLawEngineV111
             outcomes);
     }
 
-
     /// <summary>
     /// Query the next legacy card-reward rarity ticket after the caller's
     /// declared within-group selections. Empty rarity pools are removed using
@@ -391,7 +390,6 @@ public static partial class ChanceLawEngineV111
             "source-pool fidelity and Native relic-bag parity remain " +
             "unverified.", outcomes, operationKind: "choose_index");
     }
-
 
     /// <summary>
     /// Query the exact Native bounded-index law for a combat gold amount.

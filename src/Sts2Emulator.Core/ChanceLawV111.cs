@@ -813,8 +813,6 @@ public static partial class ChanceLawEngineV111
             "native game RNG.", outcomes);
     }
 
-
-
     /// <summary>
     /// Query the retained legacy 50/33/17 relic rarity ticket. The merchant
     /// flag selects the exact owner suffix used by the legacy call.
@@ -898,10 +896,6 @@ public static partial class ChanceLawEngineV111
             outcomes.ToArray());
     }
 
-
-
-
-
     private static string[] RemainingRewardCardPool(
         string[] priorCardIds, PrototypeCardType? requiredType = null)
     {
@@ -923,73 +917,6 @@ public static partial class ChanceLawEngineV111
 
         return pool.Where(cardId => !selected.Contains(cardId)).ToArray();
     }
-
-
-
-
-
-
-
-
-
-
-
-    /// <summary>
-    /// Query a legacy persistent-deck transform over the ordered reward pool
-    /// with the source card model removed.
-    /// </summary>
-    public static ChanceLawV111 QueryLegacyRewardCardTransform(
-        long cardInstanceId, string originalCardId, int ordinal)
-    {
-        if (cardInstanceId < 0)
-            throw new ArgumentOutOfRangeException(nameof(cardInstanceId));
-        ArgumentException.ThrowIfNullOrWhiteSpace(originalCardId);
-        if (ordinal < 0)
-            throw new ArgumentOutOfRangeException(nameof(ordinal));
-
-        const string siteId = "reward.card_transform.replacement.index_draw";
-        const string streamId = "reward";
-        var pool = PrototypeContent.RewardCardPool.Where(cardId =>
-            !StringComparer.Ordinal.Equals(cardId, originalCardId)).ToArray();
-        if (pool.Length == 0)
-            throw new InvalidOperationException(
-                "No prototype card is available for transformation.");
-        var poolFingerprint = CanonicalJson.Sha256(pool);
-        var ownerId = "card_instance:" + cardInstanceId +
-            ":original:" + originalCardId + ":pool:" + poolFingerprint;
-        var outcomes = pool.Select(cardId =>
-            new ChanceLawOutcomeV111("card:" + cardId, 1L)).ToArray();
-        var conditioning = new
-        {
-            siteId,
-            streamId,
-            ownerId,
-            ordinal,
-            cardInstanceId,
-            originalCardId,
-            orderedCandidates = pool,
-            poolFingerprint
-        };
-        return CreateLegacyCategoricalLaw(
-            siteId, streamId, ownerId, ordinal,
-            "legacy-reward-card-transform-pool-v1", conditioning,
-            "Equal index weights over the source-ordered prototype reward " +
-            "pool excluding the original model; pool fidelity and Native " +
-            "parity remain unverified.", outcomes,
-            operationKind: "choose_index");
-    }
-
-
-
-
-
-
-
-
-
-
-
-
 
     /// <summary>
     /// Query the caller-declared unowned-relic index support on one of its
@@ -1026,8 +953,6 @@ public static partial class ChanceLawEngineV111
         });
         return QueryRandomIndex(eventId, request);
     }
-
-
 
     private static (long Rare, long Uncommon, long Common)
         LegacyRarityTicketWeights(int rareThreshold, int uncommonEnd)
@@ -1109,8 +1034,6 @@ public static partial class ChanceLawEngineV111
         });
         return QueryRandomIndex(eventId, request);
     }
-
-
 
     /// <summary>
     /// Query an allowlisted Native bounded-integer site using its fixed source
@@ -1623,14 +1546,6 @@ public static partial class ChanceLawEngineV111
         return QueryRandomIndex(eventId, request);
     }
 
-
-
-
-
-
-
-
-
     /// <summary>
     /// Query the source-ordered PotionFactory rarity thresholds for an
     /// explicitly declared Native request, independent of its RNG cursor.
@@ -1677,8 +1592,6 @@ public static partial class ChanceLawEngineV111
             outcomes, ChanceLawV111.SourceVerifiedStatus);
     }
 
-
-
     /// <summary>
     /// Query one Native relic-bag Fisher-Yates index over its caller-declared
     /// current bound. Queue eligibility and the preceding shuffle prefix are
@@ -1691,10 +1604,6 @@ public static partial class ChanceLawEngineV111
             PrototypeNativeRelicGrabBag.QueueShuffleSiteId, ownerId,
             supportCount, ordinal);
     }
-
-
-
-
 
     /// <summary>
     /// Query one Native draw-pile Fisher-Yates index over its declared

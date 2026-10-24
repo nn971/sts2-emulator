@@ -190,4 +190,49 @@ public static partial class ChanceLawEngineV111
         return QueryRandomIndex(eventId, request);
     }
 
+    /// <summary>
+    /// Query a legacy persistent-deck transform over the ordered reward pool
+    /// with the source card model removed.
+    /// </summary>
+    public static ChanceLawV111 QueryLegacyRewardCardTransform(
+        long cardInstanceId, string originalCardId, int ordinal)
+    {
+        if (cardInstanceId < 0)
+            throw new ArgumentOutOfRangeException(nameof(cardInstanceId));
+        ArgumentException.ThrowIfNullOrWhiteSpace(originalCardId);
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+
+        const string siteId = "reward.card_transform.replacement.index_draw";
+        const string streamId = "reward";
+        var pool = PrototypeContent.RewardCardPool.Where(cardId =>
+            !StringComparer.Ordinal.Equals(cardId, originalCardId)).ToArray();
+        if (pool.Length == 0)
+            throw new InvalidOperationException(
+                "No prototype card is available for transformation.");
+        var poolFingerprint = CanonicalJson.Sha256(pool);
+        var ownerId = "card_instance:" + cardInstanceId +
+            ":original:" + originalCardId + ":pool:" + poolFingerprint;
+        var outcomes = pool.Select(cardId =>
+            new ChanceLawOutcomeV111("card:" + cardId, 1L)).ToArray();
+        var conditioning = new
+        {
+            siteId,
+            streamId,
+            ownerId,
+            ordinal,
+            cardInstanceId,
+            originalCardId,
+            orderedCandidates = pool,
+            poolFingerprint
+        };
+        return CreateLegacyCategoricalLaw(
+            siteId, streamId, ownerId, ordinal,
+            "legacy-reward-card-transform-pool-v1", conditioning,
+            "Equal index weights over the source-ordered prototype reward " +
+            "pool excluding the original model; pool fidelity and Native " +
+            "parity remain unverified.", outcomes,
+            operationKind: "choose_index");
+    }
+
 }

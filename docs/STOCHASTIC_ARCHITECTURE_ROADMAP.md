@@ -66,6 +66,13 @@ session owner. Shared native bounded-index grid and law-construction helpers
 remain in core. Public query APIs, supports, and schemas are unchanged. Static
 source review and `git diff --check` only; no tests or builds were run.
 
+**S3 persistent-card acquisition law ownership increment (2026-10-24):**
+The legacy source-model-excluding card transformation law now lives in
+`ChanceLawRelicAcquisitionV111.cs` with the other relic-acquisition queries.
+Shared reward-card-pool validation remains in core for its reward and merchant
+callers. The moved query is unchanged. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S3 relic-acquisition Chance Law ownership increment (2026-10-24):**
 Legacy random Rare-card and potion acquisition laws, legacy Run potion-fill
 laws, and the Native player-model and Entropic Brew fill laws now live in
