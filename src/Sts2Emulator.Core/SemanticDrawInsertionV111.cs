@@ -651,13 +651,20 @@ public static class SemanticDrawInsertionChoiceV111
     internal static RunState Resume(
         RunState checkpoint,
         SemanticDrawInsertionDecisionV111 decision)
+        => ResumeWithBoundary(checkpoint, decision).Run;
+
+    internal static PrototypeAutomaticPipelineResumeResultV111
+        ResumeWithBoundary(
+            RunState checkpoint,
+            SemanticDrawInsertionDecisionV111 decision)
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
         ArgumentNullException.ThrowIfNull(decision);
         decision.Validate();
         return ControlledChanceGuardV111.ExecuteGuarded(
-            () => PrototypeGameEngine.ResumeControlledDrawInsertion(
-                checkpoint.Fork(), decision.SelectedPosition),
+            () => PrototypeGameEngine
+                .ResumeControlledDrawInsertionWithBoundary(
+                    checkpoint.Fork(), decision.SelectedPosition),
             allowEngineOwnedPrototypeReward: true);
     }
 }

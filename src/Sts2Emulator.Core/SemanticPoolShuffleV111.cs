@@ -509,6 +509,11 @@ public static class SemanticPoolShuffleChoiceV111
     /// full-pool shuffle continuation.</summary>
     internal static RunState Resume(
         RunState checkpoint, SemanticPoolShuffleDecisionV111 decision)
+        => ResumeWithBoundary(checkpoint, decision).Run;
+
+    internal static PrototypeAutomaticPipelineResumeResultV111
+        ResumeWithBoundary(
+            RunState checkpoint, SemanticPoolShuffleDecisionV111 decision)
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
         ArgumentNullException.ThrowIfNull(decision);
@@ -528,46 +533,51 @@ public static class SemanticPoolShuffleChoiceV111
                 combat, choice!, shuffle, choice!.OuterChoiceContinuation!);
 
         var result = ControlledChanceGuardV111.ExecuteGuarded(
-            () => PrototypeGameEngine.ResumeControlledPoolShuffle(
-                checkpoint.Fork(), decision.SelectedSwapIndex));
+            () => PrototypeGameEngine
+                .ResumeControlledPoolShuffleWithBoundary(
+                    checkpoint.Fork(), decision.SelectedSwapIndex));
         if (PrototypeGameEngine
-                .IsAtCombatRewardOrTerminalBoundary(result))
+                .IsAtCombatRewardOrTerminalBoundary(result.Run))
         {
-            PrototypeStateInvariants.Validate(result);
+            PrototypeStateInvariants.Validate(result.Run);
             return result;
         }
-        if (result.Phase != RunPhase.Combat)
+        if (result.Run.Phase != RunPhase.Combat)
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_POOL site=" + decision.Event.SiteId + " " +
                 "operation=unsupported_post_shuffle_phase");
-        var resultCombat = result.World?.Combat ??
+        var resultCombat = result.Run.World?.Combat ??
             throw new InvalidDataException(
                 "Full-pool shuffle continuation lost combat.");
         if (resultCombat.PendingChoice?.ControlledPoolShuffle is not null)
-            ValidateBoundary(result);
+            ValidateBoundary(result.Run);
         else if (resultCombat.PendingChoice?.ControlledDrawInsertion is not null)
-            SemanticDrawInsertionChoiceV111.ValidateBoundary(result);
+            SemanticDrawInsertionChoiceV111.ValidateBoundary(result.Run);
         else if (resultCombat.PendingChoice?.ControlledRandomPileCard is not null)
         {
-            if (SemanticRandomPileCardEngineV111.DescribePending(result) is null)
+            if (SemanticRandomPileCardEngineV111.DescribePending(
+                    result.Run) is null)
                 throw new InvalidDataException(
                     "Resumed hand draw lost its random pile-card event.");
         }
         else if (resultCombat.PendingChoice?
                      .AutomaticSemanticDrawHookChoice == true)
         {
-            if (SemanticDrawHookChoiceEngineV111.DescribePending(result) is null)
+            if (SemanticDrawHookChoiceEngineV111.DescribePending(
+                    result.Run) is null)
                 throw new InvalidDataException(
                     "Resumed hand draw lost its draw-hook action event.");
         }
         else if (resultCombat.PendingChoice?.ChoiceId == "select_cards")
         {
-            SemanticCardSelectionEngineV111.ValidatePendingBoundary(result);
+            SemanticCardSelectionEngineV111.ValidatePendingBoundary(
+                result.Run);
             _ = SemanticCardSelectionEngineV111.DescribePending(
-                result, CanonicalJson.Sha256(result));
+                result.Run, CanonicalJson.Sha256(result.Run));
         }
         else
-            SemanticPilotCombatEngineV111.ValidateSemanticCombatBoundary(result);
+            SemanticPilotCombatEngineV111.ValidateSemanticCombatBoundary(
+                result.Run);
 
         bool randomRareToHand = shuffle.Operation.Kind ==
             PrototypeCombatEffectKind.MoveRandomRareDrawCardsToHand;
@@ -583,7 +593,7 @@ public static class SemanticPoolShuffleChoiceV111
                 "UNSUPPORTED_SEMANTIC_DECK site=" + decision.Event.SiteId + " " +
                 "operation=unmodeled_draw_pile_mutation");
         if (randomRareToHand || handReturn || recycle)
-            PrototypeStateInvariants.Validate(result);
+            PrototypeStateInvariants.Validate(result.Run);
         return result;
     }
 

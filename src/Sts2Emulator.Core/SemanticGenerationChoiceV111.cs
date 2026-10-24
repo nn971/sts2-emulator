@@ -485,6 +485,11 @@ public static class SemanticGenerationChoiceV111
     /// </summary>
     internal static RunState Resume(
         RunState checkpoint, SemanticGeneratedCardDecisionV111 decision)
+        => ResumeWithBoundary(checkpoint, decision).Run;
+
+    internal static PrototypeAutomaticPipelineResumeResultV111
+        ResumeWithBoundary(
+            RunState checkpoint, SemanticGeneratedCardDecisionV111 decision)
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
         ArgumentNullException.ThrowIfNull(decision);
@@ -553,20 +558,21 @@ public static class SemanticGenerationChoiceV111
         {
             if (drawInsertionModelChoice)
                 return PrototypeGameEngine
-                    .ResumeControlledDrawInsertionByCardModel(
+                    .ResumeControlledDrawInsertionByCardModelWithBoundary(
                         checkpoint.Fork(), decision.SelectedCardId);
             else if (crossbowTurnStartHandoff)
                 return PrototypeGameEngine
-                    .ResumeControlledGeneratedCardForSemanticHandoff(
+                    .ResumeControlledGeneratedCardForSemanticHandoffWithBoundary(
                         checkpoint.Fork(), decision.SelectedCardId);
-            return PrototypeGameEngine.ResumeControlledGeneratedCard(
-                checkpoint.Fork(), decision.SelectedCardId);
+            return PrototypeGameEngine
+                .ResumeControlledGeneratedCardWithBoundary(
+                    checkpoint.Fork(), decision.SelectedCardId);
         }, allowEngineOwnedPrototypeReward: true);
-        if (resumed.Phase == RunPhase.Combat)
+        if (resumed.Run.Phase == RunPhase.Combat)
         {
             SemanticPilotCombatEngineV111.ValidateSemanticCombatBoundary(
-                resumed);
-            var nextCombat = resumed.World?.Combat ??
+                resumed.Run);
+            var nextCombat = resumed.Run.World?.Combat ??
                 throw new InvalidDataException(
                     "Generated-card continuation lost its resulting combat.");
             SemanticDrawPileAdapterV111.RequireUnchangedDrawPile(
@@ -574,7 +580,8 @@ public static class SemanticGenerationChoiceV111
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.generated_card " +
                 "operation=unmodeled_draw_pile_mutation");
         }
-        else if (!PrototypeGameEngine.IsAtCombatActionResultBoundary(resumed))
+        else if (!PrototypeGameEngine
+                     .IsAtCombatActionResultBoundary(resumed.Run))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.generated_card " +
                 "operation=unsupported_post_generation_phase");

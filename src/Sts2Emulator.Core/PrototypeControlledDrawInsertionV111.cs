@@ -327,10 +327,16 @@ public sealed partial class PrototypeGameEngine
 
     internal static RunState ResumeControlledDrawInsertionByCardModel(
         RunState state, string selectedCardModelId)
+        => ResumeControlledDrawInsertionByCardModelWithBoundary(
+            state, selectedCardModelId).Run;
+
+    internal static PrototypeAutomaticPipelineResumeResultV111
+        ResumeControlledDrawInsertionByCardModelWithBoundary(
+            RunState state, string selectedCardModelId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(selectedCardModelId);
         return ResumeControlledDrawInsertionCore(
-            state, null, selectedCardModelId).Run;
+            state, null, selectedCardModelId);
     }
 
     private static PrototypeAutomaticPipelineResumeResultV111

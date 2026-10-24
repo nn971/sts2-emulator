@@ -4076,6 +4076,16 @@ transcript formats are unchanged. Broader resume consolidation and
 cross-provider mechanical equivalence remain open. Static source review and
 `git diff --check` only; no tests or builds were run.
 
+**S4 typed semantic-choice classified handoff increment (2026-10-24):**
+Draw-insertion, generated-card, potion-generation, card-transform, and
+pool-shuffle choice owners now preserve their automatic-pipeline result through
+`SemanticChoiceResumeResultV111` into end-turn publication. Existing run-only
+choice APIs remain compatibility projections; source validation and transcript
+ownership stay with each choice family. Snapshot and transcript formats are
+unchanged. Broader resume consolidation and cross-provider mechanical
+equivalence remain open. Static source review and `git diff --check` only; no
+tests or builds were run.
+
 **S4 semantic card-shortlist classified handoff increment (2026-10-24):** The
 controlled shortlist mechanics owner and semantic-choice facade now preserve
 the classified automatic-pipeline result through `SemanticChoiceResumeResultV111`.

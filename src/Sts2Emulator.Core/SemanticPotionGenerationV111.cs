@@ -313,6 +313,12 @@ public static class SemanticPotionGenerationChoiceV111
     internal static RunState Resume(
         RunState checkpoint,
         SemanticPotionGenerationDecisionV111 decision)
+        => ResumeWithBoundary(checkpoint, decision).Run;
+
+    internal static PrototypeAutomaticPipelineResumeResultV111
+        ResumeWithBoundary(
+            RunState checkpoint,
+            SemanticPotionGenerationDecisionV111 decision)
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
         ArgumentNullException.ThrowIfNull(decision);
@@ -333,14 +339,16 @@ public static class SemanticPotionGenerationChoiceV111
         ValidateBoundary(checkpoint);
 
         var resumed = ControlledChanceGuardV111.ExecuteGuarded(
-            () => PrototypeGameEngine.ResumeControlledPotionGeneration(
-                checkpoint.Fork(), decision.SelectedPotionId));
-        if (resumed.Phase != RunPhase.Combat)
+            () => PrototypeGameEngine
+                .ResumeControlledPotionGenerationWithBoundary(
+                    checkpoint.Fork(), decision.SelectedPotionId));
+        if (resumed.Run.Phase != RunPhase.Combat)
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_POTION site=combat.potion_generation " +
                 "operation=unsupported_post_generation_phase");
-        SemanticPilotCombatEngineV111.ValidateSemanticCombatBoundary(resumed);
-        var nextCombat = resumed.World?.Combat ??
+        SemanticPilotCombatEngineV111.ValidateSemanticCombatBoundary(
+            resumed.Run);
+        var nextCombat = resumed.Run.World?.Combat ??
             throw new InvalidDataException(
                 "Potion-generation continuation lost its resulting combat.");
         SemanticDrawPileAdapterV111.RequireUnchangedDrawPile(

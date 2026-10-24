@@ -246,10 +246,10 @@ internal static class SemanticChoiceResumeV111
         ArgumentNullException.ThrowIfNull(decision);
         decision.Validate();
         var ownedDecision = decision.Fork();
+        var resumed = SemanticDrawInsertionChoiceV111.ResumeWithBoundary(
+            checkpoint.Fork(), ownedDecision);
         return new SemanticChoiceResumeResultV111(
-            SemanticDrawInsertionChoiceV111.Resume(
-                checkpoint.Fork(), ownedDecision),
-            ownedDecision.Event.SiteId);
+            resumed.Run, ownedDecision.Event.SiteId, resumed.Boundary);
     }
 
     internal static SemanticChoiceResumeResultV111 Resume(
@@ -318,10 +318,10 @@ internal static class SemanticChoiceResumeV111
         ArgumentNullException.ThrowIfNull(decision);
         decision.Validate();
         var ownedDecision = decision.Fork();
+        var resumed = SemanticGenerationChoiceV111.ResumeWithBoundary(
+            checkpoint.Fork(), ownedDecision);
         return new SemanticChoiceResumeResultV111(
-            SemanticGenerationChoiceV111.Resume(
-                checkpoint.Fork(), ownedDecision),
-            ownedDecision.Event.SiteId);
+            resumed.Run, ownedDecision.Event.SiteId, resumed.Boundary);
     }
 
     internal static SemanticChoiceResumeResultV111 Resume(
@@ -331,10 +331,10 @@ internal static class SemanticChoiceResumeV111
         ArgumentNullException.ThrowIfNull(decision);
         decision.Validate();
         var ownedDecision = decision.Fork();
+        var resumed = SemanticPotionGenerationChoiceV111
+            .ResumeWithBoundary(checkpoint.Fork(), ownedDecision);
         return new SemanticChoiceResumeResultV111(
-            SemanticPotionGenerationChoiceV111.Resume(
-                checkpoint.Fork(), ownedDecision),
-            ownedDecision.Event.SiteId);
+            resumed.Run, ownedDecision.Event.SiteId, resumed.Boundary);
     }
 
     internal static SemanticChoiceResumeResultV111 Resume(
@@ -344,10 +344,10 @@ internal static class SemanticChoiceResumeV111
         ArgumentNullException.ThrowIfNull(decision);
         decision.Validate();
         var ownedDecision = decision.Fork();
+        var resumed = SemanticCardTransformChoiceV111.ResumeWithBoundary(
+            checkpoint.Fork(), ownedDecision);
         return new SemanticChoiceResumeResultV111(
-            SemanticCardTransformChoiceV111.Resume(
-                checkpoint.Fork(), ownedDecision),
-            ownedDecision.Event.SiteId);
+            resumed.Run, ownedDecision.Event.SiteId, resumed.Boundary);
     }
 
     internal static SemanticChoiceResumeResultV111 Resume(
@@ -370,10 +370,10 @@ internal static class SemanticChoiceResumeV111
         ArgumentNullException.ThrowIfNull(decision);
         decision.Validate();
         var ownedDecision = decision.Fork();
+        var resumed = SemanticPoolShuffleChoiceV111.ResumeWithBoundary(
+            checkpoint.Fork(), ownedDecision);
         return new SemanticChoiceResumeResultV111(
-            SemanticPoolShuffleChoiceV111.Resume(
-                checkpoint.Fork(), ownedDecision),
-            ownedDecision.Event.SiteId);
+            resumed.Run, ownedDecision.Event.SiteId, resumed.Boundary);
     }
 
     internal static SemanticChoiceResumeResultV111 Resume(

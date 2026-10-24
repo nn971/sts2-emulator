@@ -290,8 +290,14 @@ public sealed partial class PrototypeGameEngine
 
     internal static RunState ResumeControlledGeneratedCardForSemanticHandoff(
         RunState state, string selectedCardId) =>
+        ResumeControlledGeneratedCardForSemanticHandoffWithBoundary(
+            state, selectedCardId).Run;
+
+    internal static PrototypeAutomaticPipelineResumeResultV111
+        ResumeControlledGeneratedCardForSemanticHandoffWithBoundary(
+            RunState state, string selectedCardId) =>
         ResumeControlledGeneratedCardCore(
-            state, selectedCardId, resumeAutomaticPipeline: false).Run;
+            state, selectedCardId, resumeAutomaticPipeline: false);
 
     private static PrototypeAutomaticPipelineResumeResultV111
         ResumeControlledGeneratedCardCore(

@@ -369,6 +369,11 @@ public static class SemanticCardTransformChoiceV111
     /// through the ordinary controlled transform continuation.</summary>
     internal static RunState Resume(
         RunState checkpoint, SemanticCardTransformDecisionV111 decision)
+        => ResumeWithBoundary(checkpoint, decision).Run;
+
+    internal static PrototypeAutomaticPipelineResumeResultV111
+        ResumeWithBoundary(
+            RunState checkpoint, SemanticCardTransformDecisionV111 decision)
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
         ArgumentNullException.ThrowIfNull(decision);
@@ -396,13 +401,14 @@ public static class SemanticCardTransformChoiceV111
                 "Card-transform decision no longer matches its source pool.");
 
         var resumed = ControlledChanceGuardV111.ExecuteGuarded(
-            () => PrototypeGameEngine.ResumeControlledCardTransform(
-                checkpoint.Fork(), decision.SelectedCardId));
-        if (resumed.Phase == RunPhase.Combat)
+            () => PrototypeGameEngine
+                .ResumeControlledCardTransformWithBoundary(
+                    checkpoint.Fork(), decision.SelectedCardId));
+        if (resumed.Run.Phase == RunPhase.Combat)
             SemanticPilotCombatEngineV111.ValidateSemanticCombatBoundary(
-                resumed);
+                resumed.Run);
         else if (!PrototypeGameEngine
-                     .IsAtCombatRewardOrTerminalBoundary(resumed))
+                     .IsAtCombatRewardOrTerminalBoundary(resumed.Run))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_TRANSFORM " +
                 "site=combat.card_transform " +
