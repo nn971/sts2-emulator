@@ -4655,3 +4655,11 @@ insertion still require a source-supported shuffle continuation. The shared
 nonautomatic effect-cost path also now passes a null automatic requested-count
 value. Static source review and `git diff --check` only; no tests or builds
 were run.
+
+**S4 shared saved draw-progress query ownership increment (2026-10-25):** The
+provider-neutral draw continuation owner now resolves semantic remaining-count
+progress and locates standalone draw operations in saved choice frames. Semantic
+combat-draw, end-turn, pilot, and typed choice-resume paths use the same
+mechanics queries; provider transcript and suspension policies are unchanged.
+No snapshot schema changed. Static source review and `git diff --check` only;
+no tests or builds were run.
