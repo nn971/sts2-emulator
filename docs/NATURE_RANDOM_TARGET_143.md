@@ -42,6 +42,13 @@ Shiv kills the selected enemy and a later Shiv needs a target, the saved
 formation and resumes the remaining autoplay queue. Native target-pool,
 stream, and cursor parity remain open.
 
+Tingsha's `CardDiscarded` target now enters from a manual Storm of Steel play
+when the exact relic subscriber, discarded-card event, source card-play frame,
+and remaining Shiv-creation operation match. Each discarded card reuses the
+existing random-target event and resumes the saved discard-event queue in
+order. Other Tingsha hook origins remain unsupported; Native target-pool,
+stream, and cursor parity remain open.
+
 ## Validation and limitations
 
 The focused C# regression tests cover a real Ricochet card action, a Sly-enabled targeted card discarded during end-turn, stale/illegal decisions, branch separation, private support validation and 15-worker deterministic target choices. The Bouncing Flask pilot admission has static source review only; this increment adds no test or build claim. The existing target tests do not cover the `AutoPlayCombatCard` continuation or semantic end-turn boundary save/restore. This fixture test setup intentionally injects an available card/keyword into the playable combat state; it does not establish native deck/acquisition probabilities. The joint live transcript is replay-validated for source-reachable states.

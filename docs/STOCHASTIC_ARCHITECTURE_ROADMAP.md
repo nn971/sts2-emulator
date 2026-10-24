@@ -51,6 +51,14 @@ or deriving it from the returned run. Choice identity and serialized state are
 unchanged. Static source review and `git diff --check` only; no tests or builds
 were run.
 
+**S2/S4 Tingsha discard-target continuation increment (2026-10-24):** Tingsha
+now reuses the semantic random-target event for a manual Storm of Steel
+discard. Admission checks the exact relic subscriber, discarded-card event,
+physical card-play frame, and queued Shiv-creation suffix; the saved discard
+queue resumes in order. Other Tingsha hook origins and Native target-pool,
+stream, and cursor parity remain open. No event or snapshot schema changed.
+Static source review and `git diff --check` only; no tests or builds were run.
+
 **S1 compact Native bounded-index Chance Law increment (2026-10-24):**
 Chance Law v3 now represents large canonical Native `NextInt(bound)` laws by
 their exact 53-bit input grid and source multiply-and-truncate transform.

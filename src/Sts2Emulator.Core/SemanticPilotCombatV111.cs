@@ -5739,6 +5739,11 @@ public static class SemanticPilotCombatEngineV111
                 combat, choice, choice.ControlledTarget))
             throw new InvalidDataException(
                 "Rip and Tear target is outside its supported card-play continuation.");
+        if (IsTingshaDiscardTargetChoice(combat, choice) &&
+            !IsTingshaStormOfSteelRandomTargetChoice(
+                combat, choice, choice?.ControlledTarget))
+            throw new InvalidDataException(
+                "Tingsha target is outside its supported Storm of Steel discard continuation.");
         var otherChance = current.Run.Stochastic.SemanticOtherChance;
         var ordinal = current.History.Count(transition =>
             transition.Kind == "semantic_target");
@@ -5873,6 +5878,194 @@ public static class SemanticPilotCombatEngineV111
                 PrototypeNativeUnderdocksTrashHeap.RipAndTearCardId &&
             !completion.IsAutoPlay &&
             completion.SourceCardInstanceId == sourceCardInstanceId;
+    }
+
+    private static bool IsTingshaDiscardTargetChoice(
+        CombatState? combat, PendingCombatChoiceState? choice)
+    {
+        var subscriber = choice?.OuterChoiceContinuation?
+            .EventDispatchContinuation?.CurrentSubscriber;
+        return combat is not null &&
+            subscriber is
+                { SourceKind: PrototypeEffectSourceKind.Relic,
+                  RelicStateIndex: { } relicIndex } &&
+            (uint)relicIndex < (uint)combat.RelicStates.Length &&
+            combat.RelicStates[relicIndex].RelicId == "proto.relic.tingsha";
+    }
+
+    private static bool IsTingshaStormOfSteelRandomTargetChoice(
+        CombatState? combat, PendingCombatChoiceState? choice,
+        PrototypeControlledTargetChoiceV111? target)
+    {
+        if (combat is null || target is not
+                { Kind: "effect_random_enemy",
+                  SlyCardInstanceId: null,
+                  AutoPlayCardInstanceId: null } ||
+            choice is not { ChoiceId: "controlled_random_target",
+                SourceCardInstanceId: null,
+                CompletionEvents: [],
+                OuterChoiceContinuation: { } continuation } ||
+            target.EligibleEnemyInstanceIds.Length == 0 ||
+            continuation is not
+                { SourceCardInstanceId: null,
+                  SourceCardDestination: PrototypeCardZone.DiscardPile,
+                  PendingDiscardEvents: [],
+                  PendingSlyCardInstanceIds: [],
+                  CompletionEvents: [],
+                  CardPlaySeries: null,
+                  MoveSourceCardOnCompletion: true,
+                  RemoveSourceCardOnCompletion: false,
+                  SourceCardAlreadyMoved: false,
+                  Parent: { } parent,
+                  CompletePlayerHandCleanup: false } ||
+            continuation.Operations is not [{ } targetOperation] ||
+            continuation.EventDispatchContinuation is not
+                { } eventDispatch ||
+            continuation.Parent?.Parent is not null ||
+            continuation.Parent?.EventDispatchContinuation is not null ||
+            parent is not
+                { SourceCardInstanceId: { } sourceCardInstanceId,
+                  SourceCardDestination: PrototypeCardZone.DiscardPile,
+                  PendingSlyCardInstanceIds: [],
+                  CompletionEvents: [{ } completion],
+                  CardPlaySeries: { } series,
+                  MoveSourceCardOnCompletion: true,
+                  RemoveSourceCardOnCompletion: false,
+                  SourceCardAlreadyMoved: false,
+                  EventDispatchContinuation: null,
+                  Parent: null,
+                  CompletePlayerHandCleanup: false } ||
+            parent.Operations is not [{ } remainingOperation] ||
+            remainingOperation.Amount <= 0 ||
+            targetOperation.Amount != 3 ||
+            targetOperation.Kind != PrototypeCombatEffectKind.DamageEnemy ||
+            targetOperation.TargetEnemyId is not null ||
+            targetOperation.TargetMode !=
+                PrototypeEffectTarget.ActionTargetEnemy ||
+            targetOperation.SourceKind != PrototypeEffectSourceKind.Relic ||
+            targetOperation.IsPoweredAttack ||
+            eventDispatch.CombatEvent is not
+                { Kind: PrototypeCombatEventKind.CardDiscarded,
+                  SourceCardInstanceId: { } discardedCardInstanceId,
+                  CardId: { } discardedCardId,
+                  TargetEnemyId: null,
+                  Amount: 0,
+                  PowerApplicationOrderCeiling: null,
+                  FromHandDraw: false,
+                  IsAutoPlay: false,
+                  IsPoweredAttack: false } ||
+            !combat.DiscardPile.Contains(discardedCardInstanceId) ||
+            combat.Cards.SingleOrDefault(card =>
+                card.InstanceId == discardedCardInstanceId)?.CardId !=
+                    discardedCardId ||
+            parent.PendingDiscardEvents.Any(discardEvent =>
+                discardEvent.Kind != PrototypeCombatEventKind.CardDiscarded ||
+                discardEvent.SourceCardInstanceId is not { } cardId ||
+                !combat.DiscardPile.Contains(cardId) ||
+                combat.Cards.SingleOrDefault(card =>
+                    card.InstanceId == cardId)?.CardId !=
+                        discardEvent.CardId) ||
+            completion is not
+                { Kind: PrototypeCombatEventKind.CardPlayed,
+                  CardId: "proto.silent.storm_of_steel",
+                  SourceCardInstanceId: { } completedSourceCardId,
+                  TargetEnemyId: null,
+                  Amount: 0,
+                  PowerApplicationOrderCeiling: null,
+                  FromHandDraw: false,
+                  IsAutoPlay: false,
+                  IsPoweredAttack: false } ||
+            completedSourceCardId != sourceCardInstanceId ||
+            series.SourceCardInstanceId != sourceCardInstanceId ||
+            series.SourceCardDestination != PrototypeCardZone.DiscardPile ||
+            series.TargetEnemyId is not null || series.IsAutoPlay ||
+            series.PlayCount != 1 || series.NextPlayIndex != 1 ||
+            parent.MoveSourceCardOnCompletion !=
+                !series.HasRemainingExecutions)
+            return false;
+
+        var sourceCard = combat.Cards.SingleOrDefault(card =>
+            card.InstanceId == sourceCardInstanceId &&
+            card.CardId == "proto.silent.storm_of_steel");
+        if (sourceCard is null || sourceCard.Enchantment is not null ||
+            !combat.PlayCardIds.Contains(sourceCardInstanceId))
+            return false;
+
+        var definition = PrototypeContent.Card(sourceCard.CardId);
+        if (!definition.MechanicsImplemented || definition.MultiplayerOnly)
+            return false;
+        var expectedEffects = new[]
+        {
+            new PrototypeCombatEffectSpec(
+                PrototypeCombatEffectKind.DiscardHand, 0),
+            new PrototypeCombatEffectSpec(
+                PrototypeCombatEffectKind.CreateCardsInHand, 0,
+                CardId: "proto.silent.shiv",
+                CountKind: PrototypeCombatCountKind.OtherCardsInHand,
+                AmountPerCount: 1,
+                GeneratedCardUpgradePerSourceUpgrade: 1)
+        };
+        if (definition.Target != PrototypeCardTarget.None ||
+            definition.Type != PrototypeCardType.Skill ||
+            CanonicalJson.Sha256(definition.Effects) !=
+                CanonicalJson.Sha256(expectedEffects))
+            return false;
+
+        var expectedTargetOperation = new PrototypeQueuedOperation(
+            PrototypeCombatEffectKind.DamageEnemy, 3,
+            TargetMode: PrototypeEffectTarget.ActionTargetEnemy,
+            SourceKind: PrototypeEffectSourceKind.Relic);
+        var expectedTailOperation = new PrototypeQueuedOperation(
+            PrototypeCombatEffectKind.CreateCardsInHand,
+            remainingOperation.Amount,
+            CardId: "proto.silent.shiv",
+            GeneratedCardUpgradeLevel: sourceCard.UpgradeLevel,
+            TargetMode: PrototypeEffectTarget.ActionTargetEnemy,
+            SourceKind: PrototypeEffectSourceKind.Card);
+        var eventSpec = new PrototypeRelicTriggerSpec(
+            PrototypeCombatEventKind.CardDiscarded,
+            [new PrototypeCombatEffectSpec(
+                PrototypeCombatEffectKind.DamageEnemy, 3,
+                Target: PrototypeEffectTarget.RandomEnemy)],
+            RequiresPlayerSide: true);
+        var relicTrigger = PrototypeContent.Relic("proto.relic.tingsha")
+            .Triggers;
+        var dispatchRelicIndex = eventDispatch.CurrentSubscriber
+            .RelicStateIndex;
+        var dispatchEvent = new PrototypeCombatEvent(
+            PrototypeCombatEventKind.CardDiscarded,
+            SourceCardInstanceId: discardedCardInstanceId,
+            CardId: discardedCardId);
+        if (dispatchRelicIndex is not { } relicIndex ||
+            (uint)relicIndex >= (uint)combat.RelicStates.Length ||
+            combat.RelicStates[relicIndex] is not
+                { RelicId: "proto.relic.tingsha", IsMelted: false } relic ||
+            relic.PersistentIndex != relicIndex ||
+            !combat.IsPlayerSideActive ||
+            relicTrigger is not [{ } trigger] ||
+            CanonicalJson.Sha256(trigger) !=
+                CanonicalJson.Sha256(eventSpec) ||
+            trigger.EveryNth != 1 ||
+            trigger.MaxTriggersPerCounterWindow is not null ||
+            CanonicalJson.Sha256(eventDispatch.CombatEvent) !=
+                CanonicalJson.Sha256(dispatchEvent) ||
+            eventDispatch.CurrentSubscriber is not { } subscriber ||
+            CanonicalJson.Sha256(subscriber) != CanonicalJson.Sha256(
+                new PrototypeEventSubscriberState(
+                    relic.ApplicationOrder, trigger.Effects, 0,
+                    PrototypeEffectSourceKind.Relic,
+                    RelicStateIndex: relicIndex,
+                    RelicTriggerIndex: 0,
+                    EveryNth: trigger.EveryNth,
+                    MaxTriggersPerCounterWindow:
+                        trigger.MaxTriggersPerCounterWindow)) ||
+            CanonicalJson.Sha256(targetOperation) !=
+                CanonicalJson.Sha256(expectedTargetOperation) ||
+            CanonicalJson.Sha256(remainingOperation) !=
+                CanonicalJson.Sha256(expectedTailOperation))
+            return false;
+
+        return true;
     }
 
     internal static SemanticTargetEventV111? DescribePendingTargetEvent(
