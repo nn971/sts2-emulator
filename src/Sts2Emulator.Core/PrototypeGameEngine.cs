@@ -171,8 +171,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
 
     /// <summary>
     /// Identifies automatic-pipeline cursors where controlled targets may
-    /// suspend: ordinary combat work, post-draw player hooks, late autoplay,
-    /// or the exact first-turn Whispering Earring opening continuation.
+    /// suspend: ordinary combat work, opening autoplay from Mayhem,
+    /// Whispering Earring, or Imbued, post-draw player hooks, and late autoplay.
     /// </summary>
     internal static bool IsAtSupportedAutomaticPipelineTargetBoundary(
         CombatState combat)

@@ -1882,7 +1882,41 @@ public sealed partial class PrototypeGameEngine
         CombatState combat)
     {
         return IsWhisperingEarringOpeningAutoplayBoundary(combat) ||
-            IsImbuedOpeningAutoplayContinuation(combat);
+            IsImbuedOpeningAutoplayContinuation(combat) ||
+            IsMayhemOpeningAutoplayTargetBoundary(combat);
+    }
+
+    private static bool IsMayhemOpeningAutoplayTargetBoundary(
+        CombatState combat)
+    {
+        if (combat is not
+                { Turn: 1, IsPlayerTurn: true, IsPlayerSideActive: true,
+                  PendingKnowledgeDemonChoice: null,
+                  PendingChoice:
+                    { ChoiceId: "controlled_random_target",
+                      ControlledTarget:
+                        { Kind: "autoplay_random_enemy",
+                          SlyCardInstanceId: null,
+                          AutoPlayCardInstanceId: { } cardInstanceId },
+                      OuterChoiceContinuation: { } continuation } pending,
+                  SemanticDeck:
+                    { Mode: SemanticDeckStateV111.NatureMode,
+                      Pending: null },
+                  AutomaticPipelineContinuation: { } pipeline } ||
+            !pipeline.Mechanics.IsAtOpeningBoundary(
+                PrototypeOpeningCombatStage.AfterAutoPrePlayPolicy) ||
+            !IsMayhemAutoPrePlayPipelineCursor(combat) ||
+            continuation.Operations is not { Length: > 0 } operations ||
+            operations[0] is not
+                { Kind: PrototypeCombatEffectKind.AutoPlayCombatCard,
+                  Amount: 0, TargetEnemyId: null,
+                  SourceKind: PrototypeEffectSourceKind.Power,
+                  CardInstanceId: { } operationCardInstanceId } ||
+            operationCardInstanceId != cardInstanceId ||
+            !SemanticTargetChoiceV111.HasValidLiveSupport(combat, pending))
+            return false;
+
+        return true;
     }
 
     private static bool IsWhisperingEarringOpeningAutoplayBoundary(

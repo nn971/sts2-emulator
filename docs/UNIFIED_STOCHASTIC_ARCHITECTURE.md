@@ -1240,6 +1240,13 @@ the exact pre-play target operation. Existing typed choice owners resume nested
 card effects before the opening pipeline completes; other opening-stage
 choices remain separately gated.
 
+The opening target boundary also admits the initial target for Mayhem's turn-one
+top autoplay at `AfterAutoPrePlayPolicy`, but only when the pending target names
+the first saved Power-sourced `AutoPlayCombatCard` operation and its live enemy
+support matches. The common target resolver can then resume the staged autoplay
+and opening pipeline through their existing owners; no event or snapshot schema
+changed.
+
 History Course autoplay after `AutoPrePlay` and Whispering Earring's opening
 autoplay both pass random target selection through the shared
 `ResolveRandomEnemyTarget` owner. With a Native combat sidecar, that owner forks

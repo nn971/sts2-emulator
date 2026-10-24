@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 opening Mayhem target continuation increment (2026-10-24):** The shared
+opening target boundary now admits Mayhem's turn-one top-autoplay target at
+`AfterAutoPrePlayPolicy`, validating the Power-sourced `AutoPlayCombatCard`
+operation, selected card identity, and live enemy support. Target replay
+resumes the staged autoplay through the existing owners. No event or snapshot
+schema changed. Static source review and `git diff --check` only; no tests or
+builds were run.
+
 **S4 automatic Nature hand-draw after-shuffle insertion increment (2026-10-24):**
 The existing draw-insertion admission now accepts an after-shuffle relic
 insertion in an automatic Nature hand draw when its saved semantic draw frame
