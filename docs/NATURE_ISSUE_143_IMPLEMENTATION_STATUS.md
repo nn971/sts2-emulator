@@ -1175,3 +1175,11 @@ A selected semantic draw segment now resumes an active automatic hand draw
 through the common engine-owned nested-choice handoff. The source remaining
 count and resumed pipeline cursor are validated before publishing progress.
 Static source review and `git diff --check` only; no tests or builds were run.
+
+## 2026-10-25: controlled insertion handoff consolidation
+
+A resumed automatic hand draw after a controlled draw-insertion choice now
+uses the common engine-owned nested-choice handoff to validate and publish its
+remaining count and pipeline cursor. The controlled insertion owner retains the
+choice and operation continuation. Static source review and `git diff --check`
+only; no tests or builds were run.

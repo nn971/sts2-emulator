@@ -513,9 +513,15 @@ public sealed partial class PrototypeGameEngine
                 {
                     World = world with { Combat = combat }
                 };
-                return PrototypeAutomaticPipelineResumeResultV111.FromRun(
-                    ResumeSemanticAutomaticHandDraw(
-                        drawRun, semanticDraw.RemainingCount).Run);
+                var resumedHandDraw =
+                    ResumeSemanticAutomaticHandDrawAfterNestedChoice(
+                        state, drawRun, null, "controlled draw insertion",
+                        expectedSourceRemaining:
+                            semanticDraw.RemainingCount);
+                return PrototypeAutomaticPipelineResumeResultV111
+                    .FromPipelineProgress(
+                        resumedHandDraw.Run,
+                        resumedHandDraw.PipelineBoundary);
             }
 
             var effectDrawPrototypeRng = state.Stochastic.PrototypeRng;

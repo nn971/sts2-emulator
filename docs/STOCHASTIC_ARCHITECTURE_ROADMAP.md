@@ -4,7 +4,8 @@
 
 **S4 semantic draw adapter handoff consolidation (2026-10-25):** Automatic
 hand-draw results from semantic draw segments, generated-card, Stratagem
-selection, draw insertion, and nested effect draws now use the common
+selection, controlled and semantic draw insertions, and nested effect draws
+now use the common
 engine-owned nested-choice handoff for cursor classification and request-count
 validation. Their typed transcript and child-event checks stay in their existing
 owners. Static source review and
