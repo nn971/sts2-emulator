@@ -27,8 +27,23 @@ from urllib.parse import unquote, urlparse
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
 RUNTIME_SOURCE_ROOTS = (ROOT / "src", ROOT / "native")
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v55"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v56"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
+NATIVE_RNG_SOURCE_FILES = frozenset({
+    "NativeCombatRngEntryV111.cs",
+    "NativeEventContextRngV111.cs",
+    "NativeFisherYatesV111.cs",
+    "NativePlayerRngV111.cs",
+    "NativeRandomBoundaryProviderV111.cs",
+    "NativeRandomChoiceV111.cs",
+    "NativeRngV111.cs",
+    "NativeRngV111Contexts.cs",
+    "NativeRunRngV111.cs",
+})
+CHANCE_LAW_DEPENDENCY_PATTERN = re.compile(
+    r"\b(?P<symbol>(?:ChanceLaw|StochasticChanceLaw)"
+    r"[A-Za-z0-9_]*)\b"
+)
 TYPE_SOURCE_DECLARATION_PATTERN = re.compile(
     r"\b(?:class|record|struct)\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\b"
 )
@@ -2622,6 +2637,36 @@ def _ambient_entropy_calls(
     return sorted(calls, key=lambda call: (call["path"], call["line"]))
 
 
+def _native_chance_law_dependency_references(
+    sources: dict[Path, str],
+) -> list[dict[str, Any]]:
+    """Find direct Chance Law references in Native RNG and native mod code."""
+    references: list[dict[str, Any]] = []
+    native_root = ROOT / "native"
+    for path, source in sources.items():
+        is_native_rng_source = (
+            path.parent == SOURCE_ROOT and (
+                path.name in NATIVE_RNG_SOURCE_FILES or
+                path.name.startswith("Random") and
+                "ProvidersV111" in path.name
+            )
+        )
+        if not is_native_rng_source and not path.is_relative_to(native_root):
+            continue
+        code_source = _mask_csharp_comments_and_literals(source)
+        for match in CHANCE_LAW_DEPENDENCY_PATTERN.finditer(code_source):
+            line_number = source.count("\n", 0, match.start()) + 1
+            references.append({
+                "path": path.relative_to(ROOT).as_posix(),
+                "line": line_number,
+                "symbol": match.group("symbol"),
+                "source_excerpt": source.splitlines()[
+                    line_number - 1
+                ].strip(),
+            })
+    return sorted(references, key=lambda call: (call["path"], call["line"]))
+
+
 def _mask_csharp_comments_and_literals(source: str) -> str:
     """Replace C# comments and literals with spaces while preserving lines."""
     masked = list(source)
@@ -3040,6 +3085,9 @@ def collect() -> dict[str, Any]:
         for path in sorted(source_root.rglob("*.cs"))
     }
     ambient_entropy_calls = _ambient_entropy_calls(runtime_sources)
+    native_chance_law_dependency_references = (
+        _native_chance_law_dependency_references(runtime_sources)
+    )
     string_constants: dict[str, set[str]] = {}
     for source in sources.values():
         for name, values in _string_constants(source).items():
@@ -3466,7 +3514,10 @@ def collect() -> dict[str, Any]:
             "shared-instance use, and RandomNumberGenerator use across runtime "
             "C# sources under `src/` and `native/`, excluding tests; it cannot "
             "prove the absence of dynamically injected or otherwise indirect "
-            "entropy sources. Explicit typed random-request "
+            "entropy sources. A separate direct-reference guard checks "
+            "Chance Law symbols in Native RNG providers/adapters and native "
+            "mod C# sources; it cannot establish the absence of indirect "
+            "dependencies. Explicit typed random-request "
             "constructions are listed with their site ID, index operation-kind "
             "expression, and registry/matrix resolution status. The static "
             "operation locator does not resolve forwarded caller values on its "
@@ -3501,6 +3552,8 @@ def collect() -> dict[str, Any]:
         ),
         "total_direct_calls": len(entries),
         "ambient_entropy_calls": ambient_entropy_calls,
+        "native_chance_law_dependency_references":
+            native_chance_law_dependency_references,
         "typed_request_constructions": typed_request_constructions,
         "source_map_random_adapter_calls": map_adapter_calls,
         "source_map_random_adapter_callsite_coverage":
@@ -3639,6 +3692,17 @@ def render_markdown(report: dict[str, Any]) -> str:
             for call in report["ambient_entropy_calls"]
         ],
         "",
+        "Direct Chance Law symbol references in Native RNG provider/adapter "
+        "and native mod C# sources: "
+        f"**{len(report['native_chance_law_dependency_references'])}**. "
+        "The scan cannot establish the absence of indirect dependencies.",
+        *[
+            f"- {call['path']}:{call['line']} `{call['symbol']}`"
+            for call in report[
+                "native_chance_law_dependency_references"
+            ]
+        ],
+        "",
         "Explicit typed random-request constructions: "
         f"**{len(report['typed_request_constructions'])}**; site IDs resolved "
         f"to registry: **{sum(call['registry_status'] in ('mapped', 'conditional') for call in report['typed_request_constructions'])}**; "
@@ -3746,7 +3810,8 @@ def render_markdown(report: dict[str, Any]) -> str:
         "",
         "Regenerate this report with `python3 tools/rng_callsite_inventory.py "
         "--check-site-matrix --check-s0-contract-links "
-        "--check-no-ambient-entropy --format markdown > "
+        "--check-no-ambient-entropy "
+        "--check-no-native-chance-law-dependency --format markdown > "
         "docs/RNG_DIRECT_CALLSITE_CENSUS.md`.",
         "Rows distinguish legacy prototype calls, native primitive calls, "
         "generic RNG-helper calls, and recognized provider/fixture support. "
@@ -3825,6 +3890,13 @@ def main() -> int:
     parser.add_argument(
         "--check-no-ambient-entropy", action="store_true",
         help="fail if Core directly constructs or consumes ad hoc entropy APIs",
+    )
+    parser.add_argument(
+        "--check-no-native-chance-law-dependency", action="store_true",
+        help=(
+            "fail on direct Chance Law references in Native RNG providers, "
+            "adapters, or native mod C# sources"
+        ),
     )
     args = parser.parse_args()
     report = collect()
@@ -3913,6 +3985,13 @@ def main() -> int:
     if args.check_no_ambient_entropy and report["ambient_entropy_calls"]:
         print(json.dumps({
             "ambient_entropy_calls": report["ambient_entropy_calls"],
+        }, indent=2, sort_keys=True), file=sys.stderr)
+        return 1
+    if (args.check_no_native_chance_law_dependency and
+            report["native_chance_law_dependency_references"]):
+        print(json.dumps({
+            "native_chance_law_dependency_references":
+                report["native_chance_law_dependency_references"],
         }, indent=2, sort_keys=True), file=sys.stderr)
         return 1
     if args.format == "markdown":

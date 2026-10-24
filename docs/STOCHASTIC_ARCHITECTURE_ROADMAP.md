@@ -9,6 +9,14 @@ delegating query facade. Native provider execution no longer depends on Chance
 Law query coverage. Static source review and `git diff --check` only; no tests
 or builds were run.
 
+**S3 Native/Chance Law dependency guard increment (2026-10-24):** The source
+inventory now reports direct Chance Law symbol references in Native RNG
+provider/adapter files and native mod C# sources, and
+`--check-no-native-chance-law-dependency` fails if any are present. The scan is
+a direct-reference regression guard and does not prove the absence of indirect
+dependencies. The inventory found zero such references. The source inventory
+and `git diff --check` passed; no tests or builds were run.
+
 **S4 choice-resolution continuation owner increment (2026-10-24):** The
 existing `CreateEffectContinuation`, `ResumeChoiceResolutionContinuation`,
 and outer/parent frame composition helpers now live in
