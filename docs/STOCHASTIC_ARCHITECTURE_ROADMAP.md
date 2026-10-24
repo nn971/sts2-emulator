@@ -38,6 +38,13 @@ laws now live with the existing Native combat-reward relic-identity law in
 remain in core. Public query APIs and supports are unchanged. Static source
 review and `git diff --check` only; no tests or builds were run.
 
+**S1 Chance Law duplicate-signature guard increment (2026-10-24):** The
+v59 static inventory records identical masked method signatures across
+`ChanceLawEngineV111` partials and fails the outcome-blind check if any are
+present. This catches duplicate declarations while preserving legal overloads
+with distinct source signatures; it does not resolve call overloads. Static
+inventory and `git diff --check` passed; no tests or builds were run.
+
 **S3 legacy Event effect model ownership follow-up (2026-10-24):** The
 generic random-potion and Rare-card Event effect laws now join the existing
 modifier-curse, potion-slot-fill, and custom reward potion-option queries in

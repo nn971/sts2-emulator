@@ -27,7 +27,7 @@ from urllib.parse import unquote, urlparse
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
 RUNTIME_SOURCE_ROOTS = (ROOT / "src", ROOT / "native")
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v58"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v59"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 NATIVE_RNG_SOURCE_FILES = frozenset({
     "NativeCombatRngEntryV111.cs",
@@ -2844,6 +2844,10 @@ def _chance_law_engine_methods(
                 "line": source.count("\n", 0, absolute_name) + 1,
                 "body_line": source.count("\n", 0, absolute_body) + 1,
                 "name": match.group("name"),
+                "signature": " ".join(
+                    class_body[match.start("name"):closing_paren + 1]
+                    .split()
+                ),
                 "body": body,
                 "source": source,
             })
@@ -2887,6 +2891,22 @@ def _chance_law_outcome_blind_violations(
     methods = _chance_law_engine_methods(sources)
     query_methods = [
         method for method in methods if method["name"].startswith("Query")
+    ]
+    methods_by_signature: dict[str, list[dict[str, Any]]] = {}
+    for method in methods:
+        methods_by_signature.setdefault(
+            method["signature"], []
+        ).append(method)
+    duplicate_method_signatures = [
+        {
+            "signature": signature,
+            "declarations": [
+                {"path": method["path"], "line": method["line"]}
+                for method in declarations
+            ],
+        }
+        for signature, declarations in sorted(methods_by_signature.items())
+        if len(declarations) > 1
     ]
     methods_by_name: dict[str, list[dict[str, Any]]] = {}
     methods_by_id: dict[tuple[str, int, str], dict[str, Any]] = {}
@@ -2943,6 +2963,7 @@ def _chance_law_outcome_blind_violations(
         "query_method_count": len(query_methods),
         "engine_method_count": len(methods),
         "reachable_method_count": len(reachable_method_ids),
+        "duplicate_method_signatures": duplicate_method_signatures,
         "unparsed_query_methods": [
             {
                 "path": method["path"],
@@ -3950,9 +3971,10 @@ def render_markdown(report: dict[str, Any]) -> str:
         f"**{report['chance_law_outcome_blind_contract']['query_method_count']}** query methods, "
         f"**{report['chance_law_outcome_blind_contract']['reachable_method_count']}** reachable methods in "
         f"**{report['chance_law_outcome_blind_contract']['engine_method_count']}** indexed ChanceLawEngine methods, "
+        f"**{len(report['chance_law_outcome_blind_contract']['duplicate_method_signatures'])}** duplicate identical method signatures, "
         f"**{len(report['chance_law_outcome_blind_contract']['unparsed_query_methods'])}** query bodies without parsed code, "
         f"**{len(report['chance_law_outcome_blind_contract']['violations'])}** forbidden sampling, cursor, or replay references. "
-        "Calls are matched by method name; overload resolution, other types, delegates, and reflection are outside this source check.",
+        "Signatures use exact masked source syntax; calls are matched by method name, and overload resolution, other types, delegates, and reflection are outside this source check.",
         *[
             f"- {finding['path']}:{finding['line']} "
             f"`{finding['entry_method']}` via "
@@ -4268,6 +4290,8 @@ def main() -> int:
                 "query_method_count"] == 0 or
             report["chance_law_outcome_blind_contract"][
                 "unparsed_query_methods"] or
+            report["chance_law_outcome_blind_contract"][
+                "duplicate_method_signatures"] or
             report["chance_law_outcome_blind_contract"]["violations"]):
         print(json.dumps({
             "chance_law_outcome_blind_contract":
