@@ -1128,9 +1128,9 @@ public static class ControlledPlayableCombatEngineV111
     {
         var request = state.PoolShufflePending ??
             throw new InvalidOperationException("Missing pool-shuffle ticket.");
-        var (resume, choice) = ResolveIndexAndRun(
+        var (resume, choice) = ResolveIndexAndPipeline(
             state, request, selectedIndex,
-            PrototypeGameEngine.ResumeControlledPoolShuffle);
+            PrototypeGameEngine.ResumeControlledPoolShuffleWithBoundary);
         var next = state.Fork() with
         {
             Run = resume.Run,

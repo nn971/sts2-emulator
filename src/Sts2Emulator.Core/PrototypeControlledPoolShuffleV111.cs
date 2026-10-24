@@ -238,6 +238,16 @@ public sealed partial class PrototypeGameEngine
     /// </summary>
     internal static RunState ResumeControlledPoolShuffle(
         RunState state, int chosen)
+        => ResumeControlledPoolShuffleWithBoundary(state, chosen).Run;
+
+    internal static PrototypeAutomaticPipelineResumeResultV111
+        ResumeControlledPoolShuffleWithBoundary(
+            RunState state, int chosen)
+        => ResumeControlledPoolShuffleCore(state, chosen);
+
+    private static PrototypeAutomaticPipelineResumeResultV111
+        ResumeControlledPoolShuffleCore(
+        RunState state, int chosen)
     {
         if (!ControlledChanceGuardV111.Active)
             throw new InvalidOperationException(
@@ -258,23 +268,24 @@ public sealed partial class PrototypeGameEngine
         (values[shuffle.NextSwapIndex], values[chosen]) =
             (values[chosen], values[shuffle.NextSwapIndex]);
         if (shuffle.NextSwapIndex > 1)
-            return state with
-            {
-                World = world with
+            return PrototypeAutomaticPipelineResumeResultV111.FromRun(
+                state with
                 {
-                    Combat = combat with
+                    World = world with
                     {
-                        PendingChoice = pending with
+                        Combat = combat with
                         {
-                            ControlledPoolShuffle = shuffle with
+                            PendingChoice = pending with
                             {
-                                CurrentCardIds = values,
-                                NextSwapIndex = shuffle.NextSwapIndex - 1
+                                ControlledPoolShuffle = shuffle with
+                                {
+                                    CurrentCardIds = values,
+                                    NextSwapIndex = shuffle.NextSwapIndex - 1
+                                }
                             }
                         }
                     }
-                }
-            };
+                });
 
         combat = combat with { PendingChoice = null };
         var prototypeRng = state.Stochastic.PrototypeRng;
@@ -332,7 +343,8 @@ public sealed partial class PrototypeGameEngine
                     EventDispatchContinuation:
                         continuation.EventDispatchContinuation?.Fork())
             };
-            return state with { World = world with { Combat = combat } };
+            return PrototypeAutomaticPipelineResumeResultV111.FromRun(
+                state with { World = world with { Combat = combat } });
         }
 
         if (op.Kind == PrototypeCombatEffectKind.ChooseCards)
@@ -370,7 +382,7 @@ public sealed partial class PrototypeGameEngine
                         state.Stochastic, prototypeRng),
                     World = world with { Combat = resumed.Combat }
                 };
-                return ResumeAutomaticPipelineContinuation(updated).Run;
+                return ResumeAutomaticPipelineContinuation(updated);
             }
 
             var effective = selection with
@@ -409,7 +421,8 @@ public sealed partial class PrototypeGameEngine
                     AutomaticSemanticStratagemDrawSelection:
                         op.AutomaticSemanticStratagemDrawSelection)
             };
-            return state with { World = world with { Combat = combat } };
+            return PrototypeAutomaticPipelineResumeResultV111.FromRun(
+                state with { World = world with { Combat = combat } });
         }
 
         if (op.Kind ==
@@ -438,10 +451,11 @@ public sealed partial class PrototypeGameEngine
                     combat, afterShuffleInsertions[0],
                     afterShuffleInsertions.Skip(1).ToArray(), [], null,
                     continuation, ordinal: 0);
-                return state with
-                {
-                    World = world with { Combat = nextCombat }
-                };
+                return PrototypeAutomaticPipelineResumeResultV111.FromRun(
+                    state with
+                    {
+                        World = world with { Combat = nextCombat }
+                    });
             }
             if (afterShuffleInsertions.Length > 0)
                 combat = ApplyRelicAfterShuffleCards(combat, prototypeRng);
@@ -493,10 +507,11 @@ public sealed partial class PrototypeGameEngine
                     combat, afterShuffleInsertions[0],
                     afterShuffleInsertions.Skip(1).ToArray(), [], null,
                     continuation, ordinal: 0);
-                return state with
-                {
-                    World = world with { Combat = nextCombat }
-                };
+                return PrototypeAutomaticPipelineResumeResultV111.FromRun(
+                    state with
+                    {
+                        World = world with { Combat = nextCombat }
+                    });
             }
             if (afterShuffleInsertions.Length > 0)
                 combat = ApplyRelicAfterShuffleCards(combat, prototypeRng);
@@ -534,7 +549,7 @@ public sealed partial class PrototypeGameEngine
                 state.Stochastic, prototypeRng),
             World = world with { Combat = resolved.Combat }
         };
-        return ResumeAutomaticPipelineContinuation(updated).Run;
+        return ResumeAutomaticPipelineContinuation(updated);
     }
 
     private static long ParseShuffledCardInstanceToken(string token)

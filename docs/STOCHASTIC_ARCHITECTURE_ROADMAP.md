@@ -4011,6 +4011,15 @@ unchanged. Broader resume consolidation and cross-provider mechanical
 equivalence remain open. Static source review and `git diff --check` only; no
 tests or builds were run.
 
+**S4 pool-shuffle classified handoff increment (2026-10-24):** The
+controlled pool-shuffle mechanics owner now exposes
+`ResumeControlledPoolShuffleWithBoundary` for controlled-playable replay.
+It carries the existing automatic-pipeline classification through the
+selected-index executor into turn staging; semantic-choice consumers retain
+the run-only facade. Snapshot and transcript formats are unchanged. Broader
+resume consolidation and cross-provider mechanical equivalence remain open.
+Static source review and `git diff --check` only; no tests or builds were run.
+
 **S4 semantic-choice result owner increment (2026-10-24):** Semantic choice
 resume overloads that return only a run and source SiteId now use the shared
 `SemanticChoiceResumeResultV111` value. Draw resumes that also carry requested
