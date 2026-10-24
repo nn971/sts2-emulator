@@ -48,6 +48,27 @@ internal interface IControlledChanceReplayScopeV111 : IDisposable
 /// </summary>
 internal static class ControlledChanceContinuationExecutorV111
 {
+    internal static int IndexOfCandidateLabel(
+        string[]? candidateLabels, int supportCount, string candidateLabel)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(candidateLabel);
+        if (supportCount < 0)
+            throw new ArgumentOutOfRangeException(nameof(supportCount));
+        var labels = candidateLabels ??
+            throw new InvalidOperationException(
+                "This controlled request has no semantic candidate labels.");
+        if (labels.Length != supportCount ||
+            labels.Any(string.IsNullOrWhiteSpace) ||
+            labels.Distinct(StringComparer.Ordinal).Count() != labels.Length)
+            throw new InvalidDataException(
+                "Controlled candidate labels do not match their source support.");
+        var index = Array.FindIndex(labels, label =>
+            StringComparer.Ordinal.Equals(label, candidateLabel));
+        return index >= 0 ? index : throw new ArgumentOutOfRangeException(
+            nameof(candidateLabel),
+            "The selected outcome is outside the current support.");
+    }
+
     /// <summary>
     /// Runs mechanics from its checkpoint with a saved outcome prefix and
     /// returns either the completed run or a versioned continuation envelope

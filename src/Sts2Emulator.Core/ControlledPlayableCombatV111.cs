@@ -833,6 +833,29 @@ public static class ControlledPlayableCombatEngineV111
             candidates, enemyInstanceId, "enemy instance"));
     }
 
+    /// <summary>
+    /// Resolve a controlled enemy action by its saved semantic candidate
+    /// label, sharing the same label validation used by semantic end-turn.
+    /// </summary>
+    public static ControlledPlayableCombatV111
+        ResolveEnemyActionByCandidateLabel(
+            ControlledPlayableCombatV111 state, string fingerprint,
+            string candidateLabel)
+    {
+        ValidatePendingResolveRequest(state, fingerprint);
+        var enemyAction =
+            state.Run.World?.Combat?.AutomaticPipelineContinuation
+                ?.Stochastic.ControlledEnemyAction ??
+            throw new InvalidOperationException(
+                "No controlled enemy-action outcome is pending.");
+        var selectedIndex = ControlledChanceContinuationExecutorV111
+            .IndexOfCandidateLabel(
+                enemyAction.PendingCandidateLabels,
+                enemyAction.PendingRequest.SupportCount,
+                candidateLabel);
+        return ResolveValidated(state, selectedIndex);
+    }
+
     private static void ValidatePendingResolveRequest(
         ControlledPlayableCombatV111 state, string fingerprint)
     {

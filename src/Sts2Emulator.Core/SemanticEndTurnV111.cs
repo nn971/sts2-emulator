@@ -105,15 +105,10 @@ public sealed record SemanticEndTurnIndexEventV111(
 
     public int IndexOfCandidateLabel(string candidateLabel)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(candidateLabel);
         Validate();
-        var labels = CandidateLabels ?? throw new InvalidOperationException(
-            "This enemy-action event has no semantic candidate labels.");
-        var index = Array.FindIndex(labels, label =>
-            StringComparer.Ordinal.Equals(label, candidateLabel));
-        return index >= 0 ? index : throw new ArgumentOutOfRangeException(
-            nameof(candidateLabel),
-            "The selected enemy-action outcome is outside the current support.");
+        return ControlledChanceContinuationExecutorV111
+            .IndexOfCandidateLabel(
+                CandidateLabels, Request.SupportCount, candidateLabel);
     }
 }
 

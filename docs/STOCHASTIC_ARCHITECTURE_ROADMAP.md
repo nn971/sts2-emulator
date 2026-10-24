@@ -52,6 +52,14 @@ raw saved progress tag for controlled draw continuation decisions. The saved
 payload and snapshot representation are unchanged. Static source review and
 `git diff --check` only; no tests or builds were run.
 
+**S4 shared enemy-action label resolver increment (2026-10-24):**
+ControlledChanceContinuationExecutorV111 now owns candidate-label validation
+and index translation. SemanticEndTurnIndexEventV111 and the new
+controlled-playable enemy-action label entry point use the same helper against
+the saved ordered support. The numeric decision transcript and snapshot shape
+are unchanged. Static source review and git diff --check only; no tests or
+builds were run.
+
 **S4 controlled-playable identity resolver increment (2026-10-24):**
 ControlledPlayableCombatEngineV111 now accepts generated-card, potion,
 transform, and target outcomes by stable model or enemy instance ID. Each
