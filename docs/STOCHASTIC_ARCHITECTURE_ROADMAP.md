@@ -2,6 +2,23 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 remaining legacy ticket and relic-selection law ownership follow-up
+(2026-10-24):** Legacy card rarity and upgrade-ticket queries now live with
+combat-reward laws; the caller-bound unowned-relic index query now lives with
+relic-acquisition laws. Cross-family relic grab-bag rarity and generic request
+routing remain shared in core. Query APIs, supports, and policies are unchanged.
+Static source preservation and `git diff --check` only; no tests or builds
+were run.
+
+**S3 semantic-combat Chance Law ownership increment (2026-10-24):**
+Intent and end-turn; Native draw/recycle shuffles and Personal Hive insertion;
+and target, generated-card, cost, pile-card, transform, potion-generation,
+hand-cost, pool-shuffle, draw-insertion, shortlist, and deck-reveal laws now live in
+`ChanceLawSemanticCombatV111.cs` with their policy IDs. Shared Native grid and
+law-construction helpers remain in core. Public APIs and supports are unchanged.
+Static source preservation, signature inventory, and `git diff --check` only;
+no tests or builds were run.
+
 **S3 combat-end and relic-acquisition law ownership increment
 (2026-10-24):** Fishing Rod, Improvement, and Pael's Tooth combat-end laws
 now live with the existing Native event-shuffle query owner; Pael's Legion
