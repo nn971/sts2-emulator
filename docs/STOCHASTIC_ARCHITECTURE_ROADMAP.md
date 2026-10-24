@@ -2,6 +2,12 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 combat-reward ticket helper ownership follow-up (2026-10-24):** The
+legacy card-rarity ticket weight helper now lives with its sole combat-reward
+query caller. Shared cross-family rarity outcome and grid helpers remain in
+core. Query policy and weights are unchanged. Static source preservation and
+`git diff --check` only; no tests or builds were run.
+
 **S3 shared Chance Law Native helper ownership follow-up (2026-10-24):**
 Exact Native unit-float-to-integer grid mapping and Native boundary-law
 construction now live in `ChanceLawV111.cs`, alongside shared grid and law

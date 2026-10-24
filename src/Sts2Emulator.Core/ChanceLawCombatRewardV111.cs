@@ -757,4 +757,15 @@ public static partial class ChanceLawEngineV111
             "upgrade threshold remains unverified against the native game RNG.",
             outcomes.ToArray());
     }
+
+    private static (long Rare, long Uncommon, long Common)
+        LegacyRarityTicketWeights(int rareThreshold, int uncommonEnd)
+    {
+        const int ticketCount = 10000;
+        var rare = Math.Clamp(rareThreshold, 0, ticketCount);
+        var uncommonThrough = Math.Clamp(uncommonEnd, 0, ticketCount);
+        var uncommon = Math.Max(0, uncommonThrough - rare);
+        var common = checked(ticketCount - rare - uncommon);
+        return (rare, uncommon, common);
+    }
 }
