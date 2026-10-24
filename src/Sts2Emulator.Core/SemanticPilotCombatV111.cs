@@ -5971,10 +5971,13 @@ public static class SemanticPilotCombatEngineV111
                   SourceCardInstanceId: { } completedSourceCardId,
                   TargetEnemyId: null,
                   Amount: 0,
-                  PowerApplicationOrderCeiling: null,
+                  PowerApplicationOrderCeiling:
+                    { } completionPowerOrderCeiling,
                   FromHandDraw: false,
                   IsAutoPlay: false,
                   IsPoweredAttack: false } ||
+            completionPowerOrderCeiling >=
+                combat.NextPowerApplicationOrder ||
             completedSourceCardId != sourceCardInstanceId ||
             series.SourceCardInstanceId != sourceCardInstanceId ||
             series.SourceCardDestination != PrototypeCardZone.DiscardPile ||
