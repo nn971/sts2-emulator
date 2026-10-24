@@ -180,13 +180,18 @@ internal static class SemanticChoiceResumeV111
                 "Semantic Stratagem draw progress is invalid.");
         var decision = SemanticCardSelectionEngineV111.Select(
             pending, pending.EventId, actionId);
-        var (selectedRun, _) = Resume(checkpoint, decision);
+        var selected = Resume(checkpoint, decision);
+        var selectedRun = selected.Run;
+        var selectedBoundary = selected.PipelineBoundary ??
+            PrototypeAutomaticPipelineResumeResultV111.FromRun(
+                selectedRun).Boundary;
 
         if (!automaticHandDraw)
             return (new PrototypeDrawCardsResumeResultV111(
                 selectedRun,
                 PrototypeGameEngine.GetSemanticDrawRemainingCount(
-                    selectedRun, remaining, drawnBefore)),
+                    selectedRun, remaining, drawnBefore),
+                PipelineBoundary: selectedBoundary),
                 decision);
 
         if (!PrototypeGameEngine.IsSemanticAutomaticHandDraw(
@@ -197,7 +202,7 @@ internal static class SemanticChoiceResumeV111
         var resumed =
             PrototypeGameEngine.ResumeSemanticAutomaticHandDraw(
                 selectedRun, remaining);
-        return (resumed, decision);
+        return (EnsurePipelineBoundary(resumed), decision);
     }
 
     internal static RunState ResumeDeckReveal(

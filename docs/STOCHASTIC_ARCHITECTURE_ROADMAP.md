@@ -10,6 +10,13 @@ draw-resume adapter keeps it on its transient progress result without adding a
 serialized field. Static source review and `git diff --check` only; no tests or
 builds were run.
 
+**S4 semantic Stratagem resume boundary increment (2026-10-24):** The
+Stratagem card-selection adapter retains its typed selection boundary on
+transient draw progress. If selection immediately resumes more hand-draw
+work, it carries the typed downstream boundary or classifies the resulting
+run. Serialized draw state remains unchanged. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S1 compact Native bounded-index Chance Law increment (2026-10-24):**
 Chance Law v3 now represents large canonical Native `NextInt(bound)` laws by
 their exact 53-bit input grid and source multiply-and-truncate transform.
