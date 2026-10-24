@@ -48,6 +48,11 @@ Native index masses.
 Legacy Treasure entry likewise reuses the existing `relic:<id>` law after
 validating the saved Act, floor, owned-relic pool and ordered indices. The
 player action still resolves by the selected index.
+For legacy Rest Heal rewards, `reward.card_model.index_draw` reuses its
+`card:<model>` law after reconstructing the source reward group, selected
+rarity and prior card picks from the saved action prefix. The preceding
+`reward.card_rarity.ticket` remains a raw ticket law for source-compatible
+resolution.
 `ControlledRunActionEngineV111.BeginLegacyActTransition` is the explicit
 entry point for the unconfigured prototype transition route.
 Legacy Treasure selection is not offered when Silver Crucible suppresses the

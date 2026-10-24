@@ -38,6 +38,15 @@ Replay continues by selected index. Source-pool fidelity and equal-index
 weighting remain `UNVERIFIED`. Static source review and Chance Law boundary
 guards only; no tests or builds were run.
 
+**S1 Rest Heal reward-card identity query increment (2026-10-24):** Legacy
+Rest Heal card-model requests now reuse the source-specific `card:<model>`
+law. The query reconstructs the external reward-group owner, selected rarity
+and prior card identities from the saved request and decision prefix, then
+checks the resulting support against the pending request. The rarity ticket
+continues to expose raw ticket positions for source-compatible resolution.
+Pool fidelity and equal-index weighting remain `UNVERIFIED`. Static source
+review and Chance Law boundary guards only; no tests or builds were run.
+
 **S3 controlled-choice Chance Law ownership increment (2026-10-24):** The
 controlled run-action law and boundary fingerprint now live in
 `ChanceLawRunActionV111.cs`; controlled event-choice dispatch, Stone of All Time

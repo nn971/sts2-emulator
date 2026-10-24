@@ -51,6 +51,12 @@ public static partial class ChanceLawEngineV111
                         ControlledPotionSlotIndex(request),
                         canAcquirePotion: true, slotIsEmpty: true,
                         ordinal: request.Ordinal),
+            "reward.card_model.index_draw"
+                when request.StreamId == "reward" &&
+                    continuation.ActionId ==
+                        PrototypeNativeRestSiteActionsV111.Heal =>
+                    QueryControlledLegacyRestHealCardModel(
+                        run, continuation),
             "treasure.relic_model.index_draw"
                 when request.StreamId == "reward" =>
                     QueryControlledLegacyTreasureRelicModel(
@@ -63,7 +69,8 @@ public static partial class ChanceLawEngineV111
         var outcomePrefix = request.SiteId switch
         {
             "relic.acquisition.random_rare_card.model" or
-                "reward.card_transform.replacement.index_draw" => "card:",
+                "reward.card_transform.replacement.index_draw" or
+                "reward.card_model.index_draw" => "card:",
             "treasure.relic_model.index_draw" => "relic:",
             _ => "potion:"
         };
@@ -71,6 +78,7 @@ public static partial class ChanceLawEngineV111
         {
             "relic.acquisition.random_rare_card.model" or
                 "reward.card_transform.replacement.index_draw" or
+                "reward.card_model.index_draw" or
                 "treasure.relic_model.index_draw" or
                 "run.potion.fill_empty_slots.model" => "reward",
             _ => "event"
@@ -78,18 +86,21 @@ public static partial class ChanceLawEngineV111
         var outcomes = law.Outcomes;
         var numericSupportLabels = request.SiteId ==
             "treasure.relic_model.index_draw";
-        var omittedTreasureLabels = numericSupportLabels &&
+        var supportsOmittedLabels = numericSupportLabels ||
+            request.SiteId == "reward.card_model.index_draw";
+        var omittedLabels = supportsOmittedLabels &&
             continuation.PendingCandidateLabels.Length == 0 &&
             outcomes.Length >
                 ControlledRunActionEngineV111.MaximumInlineOutcomeActions;
         var labelsMatch = numericSupportLabels
-            ? omittedTreasureLabels ||
+            ? omittedLabels ||
                 continuation.PendingCandidateLabels.SequenceEqual(
                     Enumerable.Range(0, outcomes.Length).Select(index =>
                         index.ToString(
                             System.Globalization.CultureInfo.InvariantCulture)),
                     StringComparer.Ordinal)
-            : continuation.PendingCandidateLabels.Length == outcomes.Length &&
+            : omittedLabels ||
+                continuation.PendingCandidateLabels.Length == outcomes.Length &&
                 outcomes.Select(outcome => outcome.OutcomeId)
                     .SequenceEqual(continuation.PendingCandidateLabels.Select(
                         label => outcomePrefix + label), StringComparer.Ordinal);
@@ -147,6 +158,69 @@ public static partial class ChanceLawEngineV111
         return QueryLegacyTreasureRelicModel(
             world.Act, world.Floor, ownedRelicIds,
             continuation.PendingRequest.Ordinal);
+    }
+
+    private static ChanceLawV111 QueryControlledLegacyRestHealCardModel(
+        RunState run,
+        PrototypeControlledRunActionContinuationV111 continuation)
+    {
+        var action = continuation.RunAction ??
+            throw new InvalidDataException(
+                "Controlled rest-heal card query has no saved action.");
+        if (!ControlledRunActionEngineV111.IsLegacyRestHealRewardAction(
+                run, action) || run.World is not { } world)
+            throw new InvalidDataException(
+                "Controlled rest-heal card query is outside its legacy reward boundary.");
+
+        var request = continuation.PendingRequest;
+        var groupOwnerId = $"act:{world.Act}:reward_group:external";
+        var groupMarker = groupOwnerId + ":card:";
+        const string rarityMarker = ":rarity:";
+        const string poolMarker = ":pool:";
+        if (!request.OwnerId.StartsWith(groupMarker,
+                StringComparison.Ordinal))
+            throw new InvalidDataException(
+                "Controlled rest-heal card request has an invalid reward-group owner.");
+        var suffix = request.OwnerId[groupMarker.Length..];
+        var rarityOffset = suffix.IndexOf(rarityMarker,
+            StringComparison.Ordinal);
+        var poolSearchOffset = rarityOffset + rarityMarker.Length;
+        var poolOffset = rarityOffset < 0 ||
+            poolSearchOffset > suffix.Length ? -1 : suffix.IndexOf(
+                poolMarker, poolSearchOffset, StringComparison.Ordinal);
+        if (rarityOffset < 0 || poolOffset < 0 ||
+            !int.TryParse(suffix[..rarityOffset],
+                System.Globalization.NumberStyles.None,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var priorPickCount) || priorPickCount < 0 ||
+            !Enum.TryParse<PrototypeCardRarity>(
+                suffix[(rarityOffset + rarityMarker.Length)..poolOffset],
+                ignoreCase: true, out var rarity) ||
+            !Enum.IsDefined(rarity))
+            throw new InvalidDataException(
+                "Controlled rest-heal card request has an invalid rarity owner.");
+
+        var priorCardIds = new List<string>(priorPickCount);
+        for (var index = continuation.Decisions.Length - 1;
+             index >= 0 && priorCardIds.Count < priorPickCount; index--)
+        {
+            var decision = continuation.Decisions[index];
+            if (decision.Request.SiteId != "reward.card_model.index_draw")
+                continue;
+            var labels = continuation.DecisionCandidateLabels[index];
+            if ((uint)decision.SelectedIndex >= (uint)labels.Length)
+                throw new InvalidDataException(
+                    "Controlled rest-heal prefix has an invalid selected card index.");
+            priorCardIds.Add(labels[decision.SelectedIndex]);
+        }
+        if (priorCardIds.Count != priorPickCount)
+            throw new InvalidDataException(
+                "Controlled rest-heal request is missing its prior card picks.");
+        priorCardIds.Reverse();
+
+        return QueryLegacyRewardCardModel(
+            world.Act, groupOwnerId, rarity, priorCardIds.ToArray(),
+            request.Ordinal);
     }
 
     private static int ControlledPotionSlotIndex(
