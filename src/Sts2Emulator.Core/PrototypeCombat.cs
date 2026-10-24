@@ -14337,6 +14337,12 @@ public sealed partial class PrototypeGameEngine
     /// </summary>
     internal static RunState ResumeControlledRandomTarget(
         RunState state, int selectedEnemyInstanceId)
+        => ResumeControlledRandomTargetWithBoundary(
+            state, selectedEnemyInstanceId).Run;
+
+    internal static PrototypeAutomaticPipelineResumeResultV111
+        ResumeControlledRandomTargetWithBoundary(
+            RunState state, int selectedEnemyInstanceId)
     {
         if (!ControlledChanceGuardV111.Active)
             throw new InvalidOperationException(
@@ -14427,8 +14433,7 @@ public sealed partial class PrototypeGameEngine
                 state.Stochastic, prototypeRng),
             World = world with { Combat = resolved.Combat }
         };
-        result = ResumeAutomaticPipelineContinuation(result).Run;
-        return result;
+        return ResumeAutomaticPipelineContinuation(result);
     }
 
     /// <summary>
