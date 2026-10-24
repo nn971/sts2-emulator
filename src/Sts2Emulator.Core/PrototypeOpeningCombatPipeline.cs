@@ -252,7 +252,9 @@ public sealed partial class PrototypeGameEngine
         player = drawn.Player;
         combat = drawn.Combat;
         if (drawn.BoundaryKind ==
-            PrototypeDrawCardsBoundaryKind.ShuffleSelection)
+                PrototypeDrawCardsBoundaryKind.ShuffleSelection &&
+            combat.Stochastic.SemanticDeck is not
+                { Mode: SemanticDeckStateV111.NatureMode })
         {
             var operations = new Queue<PrototypeQueuedOperation>(
             [
