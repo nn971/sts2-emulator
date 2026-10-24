@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 Crossbow opening generation continuation increment (2026-10-24):**
+Crossbow's existing generated-card continuation now admits its exact turn-one
+opening `BeforeHandDraw` cursor as well as the later-turn `DrawPlayerHand`
+cursor. The saved opening stage resumes through the existing opening-combat
+pipeline after the card is selected; exact trigger, operation, and supported
+remainder checks remain in force. Static source review and `git diff --check`
+only; no tests or builds were run.
+
 **S0 runtime entropy scan scope increment (2026-10-24):** Census v53 keeps
 adapter callsite tracing Core-scoped and extends the direct ad hoc entropy
 check to runtime C# sources under `src/` and `native/`, excluding tests. The

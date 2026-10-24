@@ -497,10 +497,12 @@ public static class SemanticGenerationChoiceV111
         var insertion = choice?.ControlledDrawInsertion;
         bool drawInsertionModelChoice = decision.Event.SiteId ==
             "combat.random_draw_attack.card_model";
-        bool crossbowTurnStartHandoff = !drawInsertionModelChoice &&
+        bool crossbowTurnStartContinuation = !drawInsertionModelChoice &&
             choice is not null &&
             PrototypeGameEngine.IsCrossbowTurnStartGenerationContinuation(
                 combat, choice);
+        bool crossbowTurnStartHandoff = crossbowTurnStartContinuation &&
+            combat.Turn >= 2;
         bool randomDrawAttackModelHandoff = drawInsertionModelChoice &&
             choice is
             {

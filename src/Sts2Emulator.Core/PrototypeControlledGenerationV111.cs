@@ -79,7 +79,7 @@ public sealed partial class PrototypeGameEngine
         ArgumentNullException.ThrowIfNull(combat);
         ArgumentNullException.ThrowIfNull(pending);
         if (combat is not
-                { Turn: >= 2, IsPlayerTurn: true,
+                { Turn: >= 1, IsPlayerTurn: true,
                   IsPlayerSideActive: true,
                   PendingKnowledgeDemonChoice: null,
                   SemanticDeck:
@@ -92,8 +92,11 @@ public sealed partial class PrototypeGameEngine
 
         var pipeline = combat.AutomaticPipelineContinuation;
         if (pipeline is null ||
-            !pipeline.Mechanics.IsAtStep(
-                PrototypeAutomaticStepKind.DrawPlayerHand) ||
+            !(combat.Turn == 1
+                ? pipeline.Mechanics.IsAtOpeningBoundary(
+                    PrototypeOpeningCombatStage.BeforeHandDraw)
+                : combat.Turn >= 2 && pipeline.Mechanics.IsAtStep(
+                    PrototypeAutomaticStepKind.DrawPlayerHand)) ||
             pipeline.Stochastic is not
                 { ControlledEnemyAction: null,
                   ControlledTurnIntents: null,
