@@ -803,12 +803,18 @@ law fingerprints its descriptor, emits outcome IDs as needed, and lets
 ReferenceNature sample the raw index without materializing an array. The
 legacy map convergence key uses this representation for its `Int32.MaxValue`
 bound; its selected raw key still enters the existing stable ordering logic.
-This equal-index law remains `UNVERIFIED`: the compact representation does not
-establish the legacy map stream's seed distribution or map-generation parity.
-The v1 schema and fingerprints for existing explicit laws are unchanged. The
-v4 stochastic capability manifest retains the primary v1 schema field and
-advertises both supported Chance Law schemas in `chanceLawSchemaIds`; the
-Python binding accepts the prior v3 manifest and validates either law form.
+Version 3 adds a compact Native bounded-index law for large canonical
+`NextInt(bound)` supports. It fingerprints the bound and uniform 53-bit input
+grid, samples one grid point, and applies the same multiply-and-truncate
+transform; the law retains exact grid masses and `SOURCE_VERIFIED` status
+without enumerating outcomes. It does not establish stream-seed derivation or
+cursor parity. The v1 schema and fingerprints for existing explicit laws are
+unchanged. The v4 stochastic capability manifest retains the primary v1
+schema field and advertises all supported Chance Law schemas in
+`chanceLawSchemaIds`; the Python binding accepts the prior v3 manifest and
+validates all three law forms. The legacy uniform range remains `UNVERIFIED`
+because it does not establish the legacy map stream's seed distribution or
+map-generation parity.
 
 The `combat.initial_unique_hp` direct query accepts `owner_id` in the form
 `creature:<CombatId>`, the ordered HP support, and the source ordinal. It

@@ -307,6 +307,21 @@ public static class ReferenceNatureV111
         state.Validate();
 
         ulong randomState = state.SamplerState;
+        if (law.NativeBoundedIndexGrid is { } nativeGrid)
+        {
+            var gridIndex = checked((long)NextBounded(
+                ref randomState, (ulong)nativeGrid.InputGridSize));
+            var selectedIndex = ChanceLawEngineV111
+                .NativeNextIntOutcomeFromGrid(
+                    nativeGrid.BoundExclusive, gridIndex);
+            return new ReferenceNatureSelectionV111(
+                law.LawId, law.EventId,
+                nativeGrid.OutcomeIdAt(selectedIndex), selectedIndex,
+                new ReferenceNatureStateV111(
+                    ReferenceNatureStateV111.CurrentSchemaId, randomState,
+                    checked(state.SampleCount + 1)));
+        }
+
         if (law.UniformIndexRange is { } range)
         {
             var selectedOffset = checked((int)NextBounded(

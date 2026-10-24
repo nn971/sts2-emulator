@@ -3582,7 +3582,8 @@ class Session:
         if (manifest["chanceLawSchemaId"] not in chance_law_schema_ids
                 or not set(chance_law_schema_ids).issubset({
                     "sts2-v111-chance-law-v1",
-                    "sts2-v111-chance-law-v2-uniform-index-range"})):
+                    "sts2-v111-chance-law-v2-uniform-index-range",
+                    "sts2-v111-chance-law-v3-native-nextint-grid"})):
             raise EmulatorError(
                 "Unsupported negotiated Chance Law schema list")
 
@@ -3959,14 +3960,17 @@ class Session:
                 or type(total_weight) is not int or total_weight <= 0):
             raise EmulatorError("Chance Law support is invalid")
         compact_range = law.get("uniformIndexRange")
+        native_grid = law.get("nativeBoundedIndexGrid")
         if law_schema == "sts2-v111-chance-law-v2-uniform-index-range":
-            if outcomes or not isinstance(compact_range, dict):
+            if (outcomes or native_grid is not None
+                    or not isinstance(compact_range, dict)):
                 raise EmulatorError("Compact Chance Law support is invalid")
             start = compact_range.get("startInclusive")
             count = compact_range.get("count")
             prefix = compact_range.get("outcomeIdPrefix")
             if (type(start) is not int or start != 0
                     or type(count) is not int or count <= 65536
+                    or count > 2147483647
                     or prefix != "choice_index:" or total_weight != count
                     or law.get("probabilityStatus") != "UNVERIFIED"):
                 raise EmulatorError("Compact Chance Law range is invalid")
@@ -3978,8 +3982,36 @@ class Session:
                     "outcome_id_prefix": prefix,
                 },
             }
+        elif law_schema == "sts2-v111-chance-law-v3-native-nextint-grid":
+            native_range = native_grid
+            if outcomes or compact_range is not None or not isinstance(
+                    native_range, dict):
+                raise EmulatorError("Native compact Chance Law support is invalid")
+            bound = native_range.get("boundExclusive")
+            input_grid_size = native_range.get("inputGridSize")
+            prefix = native_range.get("outcomeIdPrefix")
+            if (type(bound) is not int or bound <= 65536
+                    or bound > 2147483647
+                    or type(input_grid_size) is not int
+                    or input_grid_size != 1 << 53
+                    or prefix != "choice_index:"
+                    or total_weight != input_grid_size
+                    or law.get("operationKind") not in
+                    ("choose_index", "bounded_integer")
+                    or law.get("probabilityStatus") != "SOURCE_VERIFIED"):
+                raise EmulatorError(
+                    "Native compact Chance Law range is invalid")
+            support = {
+                "support_kind": "native_next_int_grid_v1",
+                "range": {
+                    "bound_exclusive": bound,
+                    "input_grid_size": input_grid_size,
+                    "outcome_id_prefix": prefix,
+                },
+            }
         elif (law_schema != "sts2-v111-chance-law-v1"
-              or compact_range is not None or not outcomes):
+              or compact_range is not None or native_grid is not None
+              or not outcomes):
             raise EmulatorError("Explicit Chance Law support is invalid")
         else:
             outcome_ids = set()

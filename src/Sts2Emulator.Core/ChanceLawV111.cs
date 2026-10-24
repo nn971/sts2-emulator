@@ -25,6 +25,22 @@ public sealed record ChanceLawUniformIndexRangeV111(
     }
 }
 
+/// <summary>
+/// Compact exact support for Native NextInt(boundExclusive), represented as
+/// the source's uniform 53-bit input grid and its bounded-index transform.
+/// </summary>
+public sealed record ChanceLawNativeBoundedIndexGridV111(
+    int BoundExclusive, long InputGridSize, string OutcomeIdPrefix)
+{
+    public string OutcomeIdAt(int index)
+    {
+        if ((uint)index >= (uint)BoundExclusive)
+            throw new ArgumentOutOfRangeException(nameof(index));
+        return OutcomeIdPrefix + index.ToString(
+            CultureInfo.InvariantCulture);
+    }
+}
+
 public sealed record StochasticCapabilityManifestV111(
     string SchemaId,
     string ChanceLawSchemaId,
@@ -161,7 +177,8 @@ public static class StochasticCapabilitiesV111
     public static string[] ChanceLawSchemaIds =>
     [
         ChanceLawV111.CurrentSchemaId,
-        ChanceLawV111.UniformIndexRangeSchemaId
+        ChanceLawV111.UniformIndexRangeSchemaId,
+        ChanceLawV111.NativeBoundedIndexGridSchemaId
     ];
 
     private static readonly string[] NatureChoiceViewSessionKinds =
@@ -440,6 +457,10 @@ public sealed record ChanceLawV111(
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public ChanceLawUniformIndexRangeV111? UniformIndexRange { get; init; }
 
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public ChanceLawNativeBoundedIndexGridV111?
+        NativeBoundedIndexGrid { get; init; }
+
     /// <summary>
     /// Maximum support size for laws represented as an explicit outcome
     /// array. Larger source requests need a compact law representation.
@@ -455,19 +476,29 @@ public sealed record ChanceLawV111(
     public const string CurrentSchemaId = "sts2-v111-chance-law-v1";
     public const string UniformIndexRangeSchemaId =
         "sts2-v111-chance-law-v2-uniform-index-range";
+    public const string NativeBoundedIndexGridSchemaId =
+        "sts2-v111-chance-law-v3-native-nextint-grid";
     public const string UnverifiedStatus = "UNVERIFIED";
     public const string SourceVerifiedStatus = "SOURCE_VERIFIED";
     public const long NativeSourceGridSize = 1L << 53;
 
     [JsonIgnore]
-    public int SupportCount => UniformIndexRange?.Count ?? Outcomes.Length;
+    public int SupportCount => NativeBoundedIndexGrid?.BoundExclusive ??
+        UniformIndexRange?.Count ?? Outcomes.Length;
 
-    public string OutcomeIdAt(int supportOffset) => UniformIndexRange is { } range
-        ? range.OutcomeIdAt(supportOffset)
-        : Outcomes[supportOffset].OutcomeId;
+    public string OutcomeIdAt(int supportOffset) =>
+        NativeBoundedIndexGrid is { } nativeRange
+            ? nativeRange.OutcomeIdAt(supportOffset)
+            : UniformIndexRange is { } range
+                ? range.OutcomeIdAt(supportOffset)
+                : Outcomes[supportOffset].OutcomeId;
 
     public long OutcomeWeightAt(int supportOffset) =>
-        UniformIndexRange is null ? Outcomes[supportOffset].Weight : 1L;
+        NativeBoundedIndexGrid is { } nativeRange
+            ? ChanceLawEngineV111.NativeNextIntGridWeightAt(
+                nativeRange.BoundExclusive, supportOffset)
+            : UniformIndexRange is null
+                ? Outcomes[supportOffset].Weight : 1L;
 
     private static ChanceLawOutcomeV111[]? Clone(
         ChanceLawOutcomeV111[]? outcomes) => outcomes is null
@@ -486,8 +517,11 @@ public sealed record ChanceLawV111(
             throw new InvalidDataException(
                 "Chance Law exceeds the explicit outcome support limit.");
         var compactRange = UniformIndexRange;
+        var nativeGrid = NativeBoundedIndexGrid;
         var compactRangeLaw = SchemaId == UniformIndexRangeSchemaId;
-        if (SchemaId is not (CurrentSchemaId or UniformIndexRangeSchemaId) ||
+        var nativeGridLaw = SchemaId == NativeBoundedIndexGridSchemaId;
+        if (SchemaId is not (CurrentSchemaId or UniformIndexRangeSchemaId or
+                NativeBoundedIndexGridSchemaId) ||
             string.IsNullOrWhiteSpace(LawId) ||
             string.IsNullOrWhiteSpace(EventId) ||
             string.IsNullOrWhiteSpace(SiteId) ||
@@ -500,18 +534,37 @@ public sealed record ChanceLawV111(
             string.IsNullOrWhiteSpace(ProbabilityProvenance) ||
             outcomes is null || TotalWeight <= 0 ||
             (compactRangeLaw
-                ? compactRange is null || outcomes.Length != 0 ||
+                ? compactRange is null || nativeGrid is not null ||
+                    outcomes.Length != 0 ||
                     compactRange.StartInclusive != 0 ||
                     compactRange.Count <= MaximumExplicitOutcomeCount ||
                     compactRange.OutcomeIdPrefix != "choice_index:" ||
                     TotalWeight != compactRange.Count ||
                     ProbabilityStatus != UnverifiedStatus
-                : compactRange is not null || outcomes.Length == 0))
+                : nativeGridLaw
+                    ? nativeGrid is null || compactRange is not null ||
+                        outcomes.Length != 0 ||
+                        nativeGrid.BoundExclusive <=
+                            MaximumExplicitOutcomeCount ||
+                        nativeGrid.InputGridSize != NativeSourceGridSize ||
+                        nativeGrid.OutcomeIdPrefix != "choice_index:" ||
+                        OperationKind is not ("bounded_integer" or
+                            "choose_index") ||
+                        TotalWeight != NativeSourceGridSize ||
+                        ProbabilityStatus != SourceVerifiedStatus
+                    : compactRange is not null || nativeGrid is not null ||
+                        outcomes.Length == 0))
             throw new InvalidDataException("Invalid Chance Law envelope.");
 
         long total;
         string expectedSupportFingerprint;
-        if (compactRange is { } range)
+        if (nativeGrid is { } nativeRange)
+        {
+            expectedSupportFingerprint = NativeBoundedIndexGridFingerprint(
+                nativeRange);
+            total = nativeRange.InputGridSize;
+        }
+        else if (compactRange is { } range)
         {
             expectedSupportFingerprint = CompactUniformIndexRangeFingerprint(
                 range);
@@ -536,6 +589,7 @@ public sealed record ChanceLawV111(
             throw new InvalidDataException(
                 "Chance Law support fingerprint or total weight is inconsistent.");
         var canonicalDeterministicOutcome = compactRange is null &&
+            nativeGrid is null &&
             outcomes.Length == 1 &&
             outcomes[0].Weight == 1L;
         if (ProbabilityStatus == SourceVerifiedStatus &&
@@ -565,6 +619,13 @@ public sealed record ChanceLawV111(
         ChanceLawUniformIndexRangeV111 range) => CanonicalJson.Sha256(new
         {
             supportKind = "uniform_index_range_v1",
+            range
+        });
+
+    internal static string NativeBoundedIndexGridFingerprint(
+        ChanceLawNativeBoundedIndexGridV111 range) => CanonicalJson.Sha256(new
+        {
+            supportKind = "native_next_int_grid_v1",
             range
         });
 }
@@ -1036,11 +1097,7 @@ private static ChanceLawOutcomeV111[] LegacyRarityOutcomes(
         long total = 0;
         for (var index = 0; index < boundExclusive; index++)
         {
-            var first = index == 0 ? 0 : NativeNextIntBoundaryGridIndex(
-                index, boundExclusive);
-            var end = NativeNextIntBoundaryGridIndex(
-                index + 1, boundExclusive);
-            var weight = checked(end - first);
+            var weight = NativeNextIntGridWeightAt(boundExclusive, index);
             if (weight <= 0)
                 throw new InvalidDataException(
                     "Native bounded-index grid produced an empty outcome bin.");
@@ -1052,6 +1109,35 @@ private static ChanceLawOutcomeV111[] LegacyRarityOutcomes(
             throw new InvalidDataException(
                 "Native bounded-index grid masses do not cover the full input grid.");
         return weights;
+    }
+
+    internal static long NativeNextIntGridWeightAt(
+        int boundExclusive, int outcomeIndex)
+    {
+        if (boundExclusive <= 0)
+            throw new ArgumentOutOfRangeException(nameof(boundExclusive));
+        if ((uint)outcomeIndex >= (uint)boundExclusive)
+            throw new ArgumentOutOfRangeException(nameof(outcomeIndex));
+        var first = outcomeIndex == 0 ? 0 :
+            NativeNextIntBoundaryGridIndex(outcomeIndex, boundExclusive);
+        var end = NativeNextIntBoundaryGridIndex(
+            checked(outcomeIndex + 1), boundExclusive);
+        return checked(end - first);
+    }
+
+    internal static int NativeNextIntOutcomeFromGrid(
+        int boundExclusive, long gridIndex)
+    {
+        if (boundExclusive <= 0)
+            throw new ArgumentOutOfRangeException(nameof(boundExclusive));
+        if (gridIndex < 0 || gridIndex >= NativeNextDoubleGridSize)
+            throw new ArgumentOutOfRangeException(nameof(gridIndex));
+        var unit = gridIndex * (1.0 / NativeNextDoubleGridSize);
+        var outcome = checked((int)(long)(unit * boundExclusive));
+        if ((uint)outcome >= (uint)boundExclusive)
+            throw new InvalidDataException(
+                "Native bounded-index grid transform escaped its declared support.");
+        return outcome;
     }
 
     private static void RequireExplicitOutcomeSupport(int supportCount)
@@ -1239,6 +1325,18 @@ private static ChanceLawOutcomeV111[] LegacyRarityOutcomes(
             request.StreamId);
         if (request.SupportCount > ChanceLawV111.MaximumExplicitOutcomeCount)
         {
+            if (nativeIndexLaw)
+            {
+                var nativeConditioningFingerprint = CanonicalJson.Sha256(new
+                {
+                    RequestFingerprint = CanonicalJson.Sha256(request),
+                    policy = NativeRandomIndexConditioningPolicyId
+                });
+                return CreateCompactNativeBoundedIndexGrid(
+                    eventId, request.SiteId, request.OperationKind,
+                    request.OwnerId, request.Ordinal,
+                    nativeConditioningFingerprint, request.SupportCount);
+            }
             if (!nativeIndexLaw &&
                 request.OperationKind == "bounded_integer" &&
                 request.BoundedCount == request.SupportCount)
@@ -1319,6 +1417,47 @@ private static ChanceLawOutcomeV111[] LegacyRarityOutcomes(
             probabilityProvenance, [], supportCount)
         {
             UniformIndexRange = range
+        };
+        law.Validate();
+        return law;
+    }
+
+    private static ChanceLawV111 CreateCompactNativeBoundedIndexGrid(
+        string eventId, string siteId, string operationKind,
+        string ownerId, int ordinal, string conditioningFingerprint,
+        int supportCount)
+    {
+        if (supportCount <= ChanceLawV111.MaximumExplicitOutcomeCount)
+            throw new ArgumentOutOfRangeException(nameof(supportCount));
+        var range = new ChanceLawNativeBoundedIndexGridV111(
+            supportCount, ChanceLawV111.NativeSourceGridSize,
+            "choice_index:");
+        var schemaId = ChanceLawV111.NativeBoundedIndexGridSchemaId;
+        var supportFingerprint =
+            ChanceLawV111.NativeBoundedIndexGridFingerprint(range);
+        var lawId = CanonicalJson.Sha256(new
+        {
+            SchemaId = schemaId,
+            SiteId = siteId,
+            OperationKind = operationKind,
+            OwnerId = ownerId,
+            Ordinal = ordinal,
+            SupportFingerprint = supportFingerprint,
+            ConditioningPolicyId = NativeRandomIndexConditioningPolicyId,
+            ConditioningFingerprint = conditioningFingerprint,
+            ProbabilityStatus = ChanceLawV111.SourceVerifiedStatus,
+            ProbabilityProvenance =
+                NativeBoundedIndexSourceVerifiedProvenance
+        });
+        var law = new ChanceLawV111(
+            schemaId, lawId, eventId, siteId, operationKind, ownerId,
+            ordinal, supportFingerprint,
+            NativeRandomIndexConditioningPolicyId,
+            conditioningFingerprint, ChanceLawV111.SourceVerifiedStatus,
+            NativeBoundedIndexSourceVerifiedProvenance, [],
+            ChanceLawV111.NativeSourceGridSize)
+        {
+            NativeBoundedIndexGrid = range
         };
         law.Validate();
         return law;

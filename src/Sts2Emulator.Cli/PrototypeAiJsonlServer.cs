@@ -3429,7 +3429,7 @@ internal static class PrototypeAiJsonlServer
                                 requestId,
                                 ok = true,
                                 chanceLawSchemaId =
-                                    ChanceLawV111.CurrentSchemaId,
+                                    law.SchemaId,
                                 law
                             });
                             break;

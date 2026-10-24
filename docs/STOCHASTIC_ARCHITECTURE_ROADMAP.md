@@ -2,6 +2,18 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S1 compact Native bounded-index Chance Law increment (2026-10-24):**
+Chance Law v3 now represents large canonical Native `NextInt(bound)` laws by
+their exact 53-bit input grid and source multiply-and-truncate transform.
+ReferenceNature samples the grid and maps it to the raw index without an
+outcome array; the descriptor carries the full grid mass and remains
+`SOURCE_VERIFIED` for that transform. Existing explicit laws and compact
+legacy-uniform v2 laws retain their identities. The v4 capability manifest
+advertises all three schemas, and the Python binding validates the Native
+compact form. Seed derivation and cursor parity remain separate. Static source
+review, `git diff --check`, Python syntax compilation, and Chance Law boundary
+guards only; no tests or builds were run.
+
 **S1 compact Chance Law range increment (2026-10-24):** Chance Law v2 now
 represents large unverified uniform bounded-index supports by a fingerprinted
 range descriptor. ReferenceNature samples the descriptor directly, and the
