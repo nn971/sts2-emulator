@@ -13200,7 +13200,7 @@ public sealed partial class PrototypeGameEngine
             state, selected, transformReplacementCardIds,
             selectionAlreadyResolved).Run;
 
-    private static PrototypeAutomaticPipelineResumeResultV111
+    internal static PrototypeAutomaticPipelineResumeResultV111
         ResolvePendingChoiceWithBoundary(
             RunState state,
             long[] selected,
@@ -13483,6 +13483,18 @@ public sealed partial class PrototypeGameEngine
             return PrototypeAutomaticPipelineResumeResultV111.FromRun(state);
 
         return ResumeAutomaticPipelineContinuation(state);
+    }
+
+    internal static PrototypeAutomaticPipelineResumeResultV111
+        ResumeSemanticCardSelectionWithBoundary(
+            RunState state, long[] selectedCardInstanceIds)
+    {
+        if (!ControlledChanceGuardV111.Active)
+            throw new InvalidOperationException(
+                "Semantic card selection requires the controlled RNG guard.");
+        ArgumentNullException.ThrowIfNull(selectedCardInstanceIds);
+        return ResolvePendingChoiceWithBoundary(
+            state, selectedCardInstanceIds, transformReplacementCardIds: null);
     }
 
     private static int ResolveLegacyRandomIndex(

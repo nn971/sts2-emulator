@@ -353,11 +353,18 @@ public static class SemanticCardSelectionEngineV111
             source, CanonicalJson.Sha256(source));
         var decision = Select(
             semanticEvent, semanticEvent.EventId, actionId);
-        return ResumeValidated(source, semanticEvent, decision);
+        return ResumeValidated(source, semanticEvent, decision).Selection;
     }
 
     public static SemanticCardSelectionV111 Resume(
         RunState source, SemanticCardSelectionDecisionV111 decision)
+        => ResumeWithBoundary(source, decision).Selection;
+
+    internal static (
+        SemanticCardSelectionV111 Selection,
+        PrototypeAutomaticPipelineResumeResultV111 Resume)
+        ResumeWithBoundary(
+            RunState source, SemanticCardSelectionDecisionV111 decision)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(decision);
@@ -367,7 +374,9 @@ public static class SemanticCardSelectionEngineV111
         return ResumeValidated(source, current, decision.Fork());
     }
 
-    private static SemanticCardSelectionV111 ResumeValidated(
+    private static (
+        SemanticCardSelectionV111 Selection,
+        PrototypeAutomaticPipelineResumeResultV111 Resume) ResumeValidated(
         RunState source, SemanticCardSelectionEventV111 semanticEvent,
         SemanticCardSelectionDecisionV111 decision)
     {
@@ -386,7 +395,6 @@ public static class SemanticCardSelectionEngineV111
         var supportedDrawRemoval = IsSupportedDrawRemoval(spec);
         var actionId = decision.ActionId;
         var selected = decision.SelectedCardInstanceIds;
-        var environment = new PrototypeAiEnvironment();
         var selectedUnknownPosition = supportedDrawRemoval && selected.Any(id =>
             !deck.Slots.Any(slot => slot.KnownCardInstanceId == id));
 
@@ -399,9 +407,11 @@ public static class SemanticCardSelectionEngineV111
             deck = SemanticDeckEngineV111.RemoveCardInstances(deck, selected);
         }
 
-        var advanced = ControlledChanceGuardV111.ExecuteGuarded(
-            () => environment.Step(source.Fork(), actionId).State,
+        var pipelineResume = ControlledChanceGuardV111.ExecuteGuarded(
+            () => PrototypeGameEngine.ResumeSemanticCardSelectionWithBoundary(
+                source.Fork(), selected),
             allowEngineOwnedPrototypeReward: true);
+        var advanced = pipelineResume.Run;
         if (advanced.Phase == RunPhase.Combat)
         {
             if (choice.AutomaticSemanticStratagemDrawSelection)
@@ -436,7 +446,7 @@ public static class SemanticCardSelectionEngineV111
                     :
                     "preserve_draw_pile", decision.Fork());
         Validate(result);
-        return result;
+        return (result, pipelineResume);
     }
 
     public static string Save(SemanticCardSelectionV111 state)

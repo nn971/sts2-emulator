@@ -259,7 +259,8 @@ internal static class SemanticChoiceResumeV111
         ArgumentNullException.ThrowIfNull(decision);
         decision.Validate();
         var ownedDecision = decision.Fork();
-        var selection = SemanticCardSelectionEngineV111.Resume(
+        var (selection, pipelineResume) =
+            SemanticCardSelectionEngineV111.ResumeWithBoundary(
             checkpoint.Fork(), ownedDecision);
         var replayed = selection.Decision ??
             throw new InvalidDataException(
@@ -271,7 +272,8 @@ internal static class SemanticChoiceResumeV111
             throw new InvalidDataException(
                 "Semantic card-selection replay chose a different action.");
         return new SemanticChoiceResumeResultV111(
-            selection.Run, "combat.card_selection");
+            selection.Run, "combat.card_selection",
+            pipelineResume.Boundary);
     }
 
     internal static SemanticChoiceResumeResultV111 Resume(

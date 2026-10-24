@@ -4092,6 +4092,15 @@ run-only projection. Snapshot and transcript formats are unchanged. Broader
 resume consolidation and cross-provider mechanical equivalence remain open.
 Static source review and `git diff --check` only; no tests or builds were run.
 
+**S4 semantic card-selection classified handoff increment (2026-10-24):**
+Automatic semantic card-selection replay now uses the typed pending-choice
+resolver and carries its pipeline classification through
+`SemanticChoiceResumeResultV111`. The serialized semantic selection frame is
+unchanged. Source validation and transcript ownership remain with the card
+selection owner. Broader resume consolidation and cross-provider mechanical
+equivalence remain open. Static source review and `git diff --check` only; no
+tests or builds were run.
+
 **S4 typed semantic-choice classified handoff increment (2026-10-24):**
 Draw-insertion, generated-card, potion-generation, card-transform, and
 pool-shuffle choice owners now preserve their automatic-pipeline result through

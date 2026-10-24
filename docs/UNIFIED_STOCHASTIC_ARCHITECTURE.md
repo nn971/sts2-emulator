@@ -240,6 +240,8 @@ Semantic random-target and hand-cost-selection facades also preserve their class
 
 Knowledge Demon semantic-choice replay now calls its typed engine action continuation and passes the classified automatic-pipeline result through `SemanticChoiceResumeResultV111`.
 
+Automatic semantic card-selection replay uses the typed pending-choice resolver and carries its classified pipeline result beside the unchanged semantic selection frame. End-turn publication receives that result through `SemanticChoiceResumeResultV111`.
+
 Typed semantic draw-insertion, generated-card, potion-generation, card-transform, and pool-shuffle resumes also return their classified pipeline results through `SemanticChoiceResumeResultV111`. Existing validators and run-only compatibility facades remain with their choice owners.
 
 Semantic effect-draw resumes preserve their classified pipeline result through the validated draw-choice facade and `SemanticChoiceResumeResultV111`; hand-draw progress also carries that classification alongside its remaining count.
