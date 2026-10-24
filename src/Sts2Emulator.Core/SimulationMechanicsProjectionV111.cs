@@ -13,7 +13,7 @@ public sealed record SimulationMechanicsComparisonV111(
         CloneDifferences(Differences);
 
     public const string SchemaId =
-        "sts2-v111-simulation-mechanics-comparison-v17";
+        "sts2-v111-simulation-mechanics-comparison-v18";
 
     public SimulationMechanicsDifferenceV111[] Differences
     {
@@ -612,7 +612,15 @@ public static class SimulationMechanicsProjectionEngineV111
                     .Select(MechanicsOperation).ToArray(),
                 EventDispatchContinuation = MechanicsEventDispatch(
                     continuation.EventDispatchContinuation),
-                Parent = MechanicsChoiceContinuation(continuation.Parent)
+                Parent = MechanicsChoiceContinuation(continuation.Parent),
+                EnemyDefeatFollowUp =
+                    continuation.EnemyDefeatFollowUp is { } followUp
+                        ? followUp with
+                        {
+                            Operation = MechanicsOperation(
+                                followUp.Operation)
+                        }
+                        : null
             };
 
     private static PrototypeEventDispatchContinuationState?

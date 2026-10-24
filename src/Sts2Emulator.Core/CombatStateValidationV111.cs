@@ -875,6 +875,25 @@ public sealed partial record CombatState
                  continuation is not null;
                  continuation = continuation.Parent)
             {
+                if (continuation.EnemyDefeatFollowUp is { } defeatFollowUp &&
+                    (defeatFollowUp.Operation.Kind !=
+                        PrototypeCombatEffectKind.DamageEnemy ||
+                     defeatFollowUp.EventDepth < 0 ||
+                     defeatFollowUp.Operation.TargetEnemyId is not
+                        { } defeatedEnemyId ||
+                     !combat.Enemies.Any(enemy =>
+                        enemy.InstanceId == defeatedEnemyId &&
+                        enemy.Hp <= 0) ||
+                     (defeatFollowUp.FatalEligible &&
+                      defeatFollowUp.Operation.ExtraCardRewardsOnFatal <= 0 &&
+                      defeatFollowUp.Operation.GoldOnFatal <= 0 &&
+                      (defeatFollowUp.Operation.PlayerPowerOnFatalId is null ||
+                       defeatFollowUp.Operation.PlayerPowerOnFatalAmount == 0))))
+                {
+                    throw new InvalidOperationException(
+                        "Nested choice has an invalid enemy-defeat follow-up.");
+                }
+
                 if (continuation.PendingSlyCardInstanceIds.Any(
                         cardId => !combat.DiscardPile.Contains(cardId)))
                 {

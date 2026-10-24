@@ -6092,12 +6092,17 @@ public sealed partial class PrototypeGameEngine
                             fatalEligible,
                             personalHiveStacks,
                             eventDepth);
+                    var effectContinuation = CreateEffectContinuation(
+                        effectContinuationContext, operations);
                     var continuedDamage =
-                        ContinueDamageEnemyAfterPersonalHiveInsertion(
+                        ContinueDamageEnemyAfterHit(
                             player, combat, rng, damageContinuation,
-                            sourceCardInstanceId, operations);
+                            sourceCardInstanceId, operations,
+                            effectContinuation);
                     player = continuedDamage.Player;
                     combat = continuedDamage.Combat;
+                    if (combat.PendingChoice is not null)
+                        return (player, combat);
                     break;
 
                 case PrototypeCombatEffectKind.DamageAllEnemiesRepeatPerKill:
@@ -8620,13 +8625,15 @@ public sealed partial class PrototypeGameEngine
     }
 
     private static (PlayerState Player, CombatState Combat)
-        ContinueDamageEnemyAfterPersonalHiveInsertion(
+        ContinueDamageEnemyAfterHit(
             PlayerState player,
             CombatState combat,
             RngBundle rng,
             PrototypePersonalHiveDamageContinuationV111 continuation,
             long? sourceCardInstanceId,
-            Queue<PrototypeQueuedOperation> operations)
+            Queue<PrototypeQueuedOperation> operations,
+            PrototypeChoiceResolutionContinuationState
+                effectContinuation)
     {
         var operation = continuation.Operation;
         var targetEnemyId = continuation.TargetEnemyId;
@@ -8744,9 +8751,31 @@ public sealed partial class PrototypeGameEngine
                     PrototypeCombatEventKind.EnemyDamaged,
                     TargetEnemyId: targetEnemyId,
                     Amount: damageDealt),
-                rng, continuation.EventDepth + 1);
+                rng, continuation.EventDepth + 1,
+                allowSuspension: true);
             player = damaged.Player;
             combat = damaged.Combat;
+            if (combat.PendingChoice is not null)
+            {
+                var suspended = effectContinuation with
+                {
+                    Operations = operations.ToArray(),
+                    PendingDiscardEvents = defeated
+                        ?
+                        [new PrototypeCombatEvent(
+                            PrototypeCombatEventKind.EnemyDefeated,
+                            TargetEnemyId: targetEnemyId,
+                            Amount: damageDealt)]
+                        : [],
+                    EnemyDefeatFollowUp = defeated
+                        ? new PrototypeEnemyDefeatFollowUpV111(
+                            operation, continuation.FatalEligible,
+                            continuation.EventDepth)
+                        : null
+                };
+                return (player, AttachOuterChoiceContinuation(
+                    combat, suspended));
+            }
         }
 
         if (defeated)
@@ -8757,31 +8786,65 @@ public sealed partial class PrototypeGameEngine
                     PrototypeCombatEventKind.EnemyDefeated,
                     TargetEnemyId: targetEnemyId,
                     Amount: damageDealt),
-                rng, continuation.EventDepth + 1);
+                rng, continuation.EventDepth + 1,
+                allowSuspension: true);
             player = defeatedResult.Player;
-            combat = ResolveEnemyDeathSummons(defeatedResult.Combat, rng);
-
-            if (continuation.FatalEligible)
+            combat = defeatedResult.Combat;
+            if (combat.PendingChoice is not null)
             {
-                if (operation.GoldOnFatal > 0)
-                    player = player with
-                    {
-                        Gold = GoldAfterGain(player, operation.GoldOnFatal)
-                    };
-                if (operation.ExtraCardRewardsOnFatal > 0)
-                    combat = combat with
-                    {
-                        ExtraCardRewardsEarned = combat.ExtraCardRewardsEarned +
-                            operation.ExtraCardRewardsOnFatal
-                    };
-                if (operation.PlayerPowerOnFatalId is { } fatalPowerId &&
-                    operation.PlayerPowerOnFatalAmount != 0)
-                    combat = ApplyPlayerPower(
-                        combat, fatalPowerId,
-                        operation.PlayerPowerOnFatalAmount);
+                var suspended = effectContinuation with
+                {
+                    Operations = operations.ToArray(),
+                    PendingDiscardEvents = [],
+                    EnemyDefeatFollowUp =
+                        new PrototypeEnemyDefeatFollowUpV111(
+                            operation, continuation.FatalEligible,
+                            continuation.EventDepth)
+                };
+                return (player, AttachOuterChoiceContinuation(
+                    combat, suspended));
             }
+
+            var completedDefeat = CompleteEnemyDefeatFollowUp(
+                player, combat, rng,
+                new PrototypeEnemyDefeatFollowUpV111(
+                    operation, continuation.FatalEligible,
+                    continuation.EventDepth));
+            player = completedDefeat.Player;
+            combat = completedDefeat.Combat;
         }
 
+        return (player, combat);
+    }
+
+    private static (PlayerState Player, CombatState Combat)
+        CompleteEnemyDefeatFollowUp(
+            PlayerState player,
+            CombatState combat,
+            RngBundle rng,
+            PrototypeEnemyDefeatFollowUpV111 continuation)
+    {
+        combat = ResolveEnemyDeathSummons(combat, rng);
+        var operation = continuation.Operation;
+        if (continuation.FatalEligible)
+        {
+            if (operation.GoldOnFatal > 0)
+                player = player with
+                {
+                    Gold = GoldAfterGain(player, operation.GoldOnFatal)
+                };
+            if (operation.ExtraCardRewardsOnFatal > 0)
+                combat = combat with
+                {
+                    ExtraCardRewardsEarned = combat.ExtraCardRewardsEarned +
+                        operation.ExtraCardRewardsOnFatal
+                };
+            if (operation.PlayerPowerOnFatalId is { } fatalPowerId &&
+                operation.PlayerPowerOnFatalAmount != 0)
+                combat = ApplyPlayerPower(
+                    combat, fatalPowerId,
+                    operation.PlayerPowerOnFatalAmount);
+        }
         return (player, combat);
     }
 

@@ -2,6 +2,15 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 enemy-defeat hook continuation increment (2026-10-25):** A modeled
+`EnemyDamaged` or `EnemyDefeated` subscriber can now suspend the current
+`DamageEnemy` operation through the existing outer choice continuation. The
+saved frame resumes remaining damage hooks, death summons, fatal rewards, and
+the operation suffix in source order; pending enemy-defeat event dispatches
+also use the resumable dispatcher. Combat restore validates the saved
+follow-up, and the mechanics comparison retains it under schema v18. Static
+source review and `git diff --check` only; no tests or builds were run.
+
 **S4 DrawCards continuation-owner increment (2026-10-25):**
 `ResolveOperations` now delegates effect `DrawCards` and
 `ReturnHandToDrawAndShuffle` boundaries to the shared draw-continuation owner.

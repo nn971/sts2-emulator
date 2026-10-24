@@ -43,11 +43,20 @@ public sealed partial class PrototypeGameEngine
              eventIndex < continuation.PendingDiscardEvents.Length;
              eventIndex++)
         {
+            var pendingEvent =
+                continuation.PendingDiscardEvents[eventIndex];
+            var pendingEventDepth =
+                pendingEvent.Kind ==
+                    PrototypeCombatEventKind.EnemyDefeated &&
+                continuation.EnemyDefeatFollowUp is { } defeatFollowUp
+                    ? defeatFollowUp.EventDepth + 1
+                    : 0;
             var dispatched = DispatchCombatEvent(
                 player,
                 combat,
-                continuation.PendingDiscardEvents[eventIndex],
+                pendingEvent,
                 rng,
+                pendingEventDepth,
                 allowSuspension: true);
             player = dispatched.Player;
             combat = dispatched.Combat;
@@ -66,6 +75,18 @@ public sealed partial class PrototypeGameEngine
                     remaining);
                 return (player, combat);
             }
+        }
+
+        if (continuation.EnemyDefeatFollowUp is { } pendingDefeatFollowUp)
+        {
+            var completedDefeat = CompleteEnemyDefeatFollowUp(
+                player, combat, rng, pendingDefeatFollowUp);
+            player = completedDefeat.Player;
+            combat = completedDefeat.Combat;
+            continuation = continuation with
+            {
+                EnemyDefeatFollowUp = null
+            };
         }
 
         if (continuation.CompletePlayerHandCleanup)

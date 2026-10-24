@@ -578,15 +578,28 @@ public sealed partial class PrototypeGameEngine
         {
             var remainingOperations = new Queue<PrototypeQueuedOperation>(
                 continuation.Operations);
-            var afterHive = ContinueDamageEnemyAfterPersonalHiveInsertion(
+            var afterHive = ContinueDamageEnemyAfterHit(
                 resumePlayer, resumeCombat, prototypeRng, hiveDamage,
-                continuation.SourceCardInstanceId, remainingOperations);
+                continuation.SourceCardInstanceId, remainingOperations,
+                continuation);
             resumePlayer = afterHive.Player;
             resumeCombat = afterHive.Combat;
             resumeContinuation = continuation with
             {
                 Operations = remainingOperations.ToArray()
             };
+
+            if (resumeCombat.PendingChoice is not null)
+            {
+                var suspendedRun = state with
+                {
+                    Player = resumePlayer,
+                    Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                        state.Stochastic, prototypeRng),
+                    World = world with { Combat = resumeCombat }
+                };
+                return ResumeAutomaticPipelineContinuation(suspendedRun);
+            }
         }
         var resolved = ResumeChoiceResolutionContinuation(
             resumePlayer, resumeCombat, prototypeRng, resumeContinuation);

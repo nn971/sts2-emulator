@@ -989,12 +989,12 @@ Before projecting, it validates the complete `RunState`, including provider and
 mechanics correspondence. Raw-state comparisons and mechanics fingerprints
 therefore reject malformed or unsynchronized inputs before stochastic data is
 removed from the view.
-The projection also retains pending run-action, post-reward event-action, and
-event-effect continuation mechanics from their existing mechanics owners,
-including action identity, effect cursor, and queued consequences, while
-omitting their random requests and decision payloads. The comparison schemas
-advance to mechanics-comparison v17 and provider-replay-comparison v3 for this
-expanded projection.
+The projection also retains pending run-action, post-reward event-action,
+event-effect, and enemy-defeat continuation mechanics from their existing
+mechanics owners, including action identity, effect cursor, queued
+consequences, and the saved fatal follow-up, while omitting their random
+requests and decision payloads. The mechanics comparison schema advances to
+v18 for this expanded projection; the provider replay comparison remains v3.
 `SimulationMechanicsComparisonV111` copies the difference array on
 construction and replacement, then returns defensive copies to keep the
 diagnostic result immutable to callers.
@@ -1110,6 +1110,12 @@ predicate; semantic player-action validation, pilot action and potion checks,
 and full-pool shuffle use it for conditional mutation admission. Their
 source-specific allowlists and failure policies remain at their existing
 boundaries.
+
+An `EnemyDamaged` or `EnemyDefeated` subscriber can now suspend a `DamageEnemy`
+operation through the existing outer choice continuation. The saved frame
+resumes remaining damage events, death summons, fatal rewards, and queued
+operations in source order. Pending event replay uses the same resumable
+dispatcher, and restore validates the defeated target and saved follow-up.
 
 Toolbox's first-turn `BeforeHandDraw` generated offer now composes the
 existing full-pool shuffle and ChoicePool card-selection continuations. Exact

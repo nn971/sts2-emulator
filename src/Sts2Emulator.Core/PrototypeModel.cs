@@ -2253,6 +2253,12 @@ public sealed record PrototypeChoiceResolutionContinuationState(
     PrototypeChoiceResolutionContinuationState? Parent = null,
     bool CompletePlayerHandCleanup = false)
 {
+    public PrototypeEnemyDefeatFollowUpV111? EnemyDefeatFollowUp
+    {
+        get;
+        init;
+    }
+
     public PrototypeChoiceResolutionContinuationState Fork() => this with
     {
         Operations = Operations.Select(operation => operation.Fork())
@@ -2265,7 +2271,24 @@ public sealed record PrototypeChoiceResolutionContinuationState(
             (PrototypeCombatEvent[])CompletionEvents.Clone(),
         EventDispatchContinuation =
             EventDispatchContinuation?.Fork(),
-        Parent = Parent?.Fork()
+        Parent = Parent?.Fork(),
+        EnemyDefeatFollowUp = EnemyDefeatFollowUp?.Fork()
+    };
+}
+
+/// <summary>
+/// Mechanics that follow an enemy-defeat event after one of its subscribers
+/// suspends. The event itself resumes through the ordinary event-dispatch
+/// continuation; this value retains only the post-event death and fatal work.
+/// </summary>
+public sealed record PrototypeEnemyDefeatFollowUpV111(
+    PrototypeQueuedOperation Operation,
+    bool FatalEligible,
+    int EventDepth)
+{
+    public PrototypeEnemyDefeatFollowUpV111 Fork() => this with
+    {
+        Operation = Operation.Fork()
     };
 }
 
