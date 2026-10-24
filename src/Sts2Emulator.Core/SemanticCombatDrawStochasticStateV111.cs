@@ -9,7 +9,8 @@ public sealed record SemanticCombatDrawBoundaryChoiceV111(
     {
         if (Kind is not ("semantic_draw" or "semantic_cost" or
                 "random_pile_card" or "semantic_draw_insertion" or
-                "stratagem_selection" or "draw_hook_choice") ||
+                "stratagem_selection" or "draw_hook_choice" or
+                "random_target") ||
             TranscriptIndex < 0)
             throw new InvalidDataException(
                 "Invalid semantic combat-draw boundary transcript entry.");
@@ -29,6 +30,7 @@ public sealed record SemanticCombatDrawStochasticStateV111
     private SemanticDrawInsertionDecisionV111[]? _drawInsertionTranscript = [];
     private SemanticCardSelectionDecisionV111[]? _stratagemSelectionTranscript = [];
     private SemanticDrawHookChoiceDecisionV111[]? _drawHookChoiceTranscript = [];
+    private SemanticTargetDecisionV111[]? _targetTranscript = [];
     private RandomIndexDecisionV111[]? _costTranscript = [];
     private SemanticCombatDrawBoundaryChoiceV111[]? _boundaryTranscript = [];
     public int BoundaryTranscriptVersion { get; init; }
@@ -59,6 +61,13 @@ public sealed record SemanticCombatDrawStochasticStateV111
         get => CopyTranscript(_drawHookChoiceTranscript,
             decision => decision.Fork())!;
         init => _drawHookChoiceTranscript = CopyTranscript(value,
+            decision => decision.Fork());
+    }
+    public SemanticTargetDecisionV111[] TargetTranscript
+    {
+        get => CopyTranscript(_targetTranscript,
+            decision => decision.Fork())!;
+        init => _targetTranscript = CopyTranscript(value,
             decision => decision.Fork());
     }
     public RandomIndexDecisionV111[] CostTranscript
@@ -127,6 +136,19 @@ public sealed record SemanticCombatDrawStochasticStateV111
         }).AppendBoundary("draw_hook_choice", transcript.Length - 1);
     }
 
+    internal SemanticCombatDrawStochasticStateV111 AppendTarget(
+        SemanticTargetDecisionV111 decision)
+    {
+        ArgumentNullException.ThrowIfNull(decision);
+        decision.Validate();
+        var transcript = TargetTranscript
+            .Append(decision.Fork()).ToArray();
+        return (this with
+        {
+            TargetTranscript = transcript
+        }).AppendBoundary("random_target", transcript.Length - 1);
+    }
+
     internal SemanticCombatDrawStochasticStateV111 AppendCost(
         RandomIndexDecisionV111 decision)
     {
@@ -171,6 +193,8 @@ public sealed record SemanticCombatDrawStochasticStateV111
             decision => decision.Fork())!,
         DrawHookChoiceTranscript = CopyTranscript(_drawHookChoiceTranscript,
             decision => decision.Fork())!,
+        TargetTranscript = CopyTranscript(_targetTranscript,
+            decision => decision.Fork())!,
         CostTranscript = CopyTranscript(_costTranscript, CloneCostDecision)!,
         BoundaryTranscript = CopyTranscript(_boundaryTranscript,
             decision => decision)!
@@ -182,11 +206,13 @@ public sealed record SemanticCombatDrawStochasticStateV111
         var drawInsertionTranscript = DrawInsertionTranscript;
         var stratagemSelectionTranscript = StratagemSelectionTranscript;
         var drawHookChoiceTranscript = DrawHookChoiceTranscript;
+        var targetTranscript = TargetTranscript;
         var randomPileCardTranscript = RandomPileCardTranscript;
         var boundaryTranscript = BoundaryTranscript;
         if (costTranscript is null || drawInsertionTranscript is null ||
             stratagemSelectionTranscript is null ||
-            drawHookChoiceTranscript is null || boundaryTranscript is null)
+            drawHookChoiceTranscript is null || targetTranscript is null ||
+            boundaryTranscript is null)
             throw new InvalidDataException(
                 "Invalid semantic combat draw stage.");
         if (randomPileCardTranscript is null)
@@ -220,6 +246,10 @@ public sealed record SemanticCombatDrawStochasticStateV111
             (decision ?? throw new InvalidDataException(
                 "Semantic draw-hook transcript contains a null decision."))
                 .Validate();
+        foreach (var decision in targetTranscript)
+            (decision ?? throw new InvalidDataException(
+                "Semantic draw target transcript contains a null decision."))
+                .Validate();
         foreach (var decision in boundaryTranscript)
             (decision ?? throw new InvalidDataException(
                 "Semantic combat-draw boundary transcript contains a null entry."))
@@ -238,9 +268,11 @@ public sealed record SemanticCombatDrawStochasticStateV111
             ["random_pile_card"] = RandomPileCardTranscript.Length,
             ["semantic_draw_insertion"] = DrawInsertionTranscript.Length,
             ["stratagem_selection"] = StratagemSelectionTranscript.Length,
-            ["draw_hook_choice"] = DrawHookChoiceTranscript.Length
+            ["draw_hook_choice"] = DrawHookChoiceTranscript.Length,
+            ["random_target"] = TargetTranscript.Length
         };
-        if (BoundaryTranscriptVersion == 0 && transcript.Length == 0)
+        if (BoundaryTranscriptVersion == 0 && transcript.Length == 0 &&
+            TargetTranscript.Length == 0)
             return; // Legacy snapshots predate the chronology member.
         if (BoundaryTranscriptVersion != CurrentBoundaryTranscriptVersion)
             throw new InvalidDataException(
@@ -290,6 +322,7 @@ internal sealed class SemanticCombatDrawReplayCursorV111
     private readonly SemanticDrawInsertionDecisionV111[] _insertions;
     private readonly SemanticCardSelectionDecisionV111[] _stratagemChoices;
     private readonly SemanticDrawHookChoiceDecisionV111[] _drawHookChoices;
+    private readonly SemanticTargetDecisionV111[] _targetChoices;
     private readonly SemanticCombatDrawBoundaryChoiceV111[] _boundaryChoices;
     private readonly bool _hasBoundaryTranscript;
     private int _deckIndex;
@@ -298,6 +331,7 @@ internal sealed class SemanticCombatDrawReplayCursorV111
     private int _insertionIndex;
     private int _stratagemIndex;
     private int _drawHookIndex;
+    private int _targetIndex;
     private int _boundaryIndex;
 
     internal SemanticCombatDrawReplayCursorV111(
@@ -310,6 +344,7 @@ internal sealed class SemanticCombatDrawReplayCursorV111
         _insertions = state.DrawInsertionTranscript;
         _stratagemChoices = state.StratagemSelectionTranscript;
         _drawHookChoices = state.DrawHookChoiceTranscript;
+        _targetChoices = state.TargetTranscript;
         _boundaryChoices = state.Stochastic.BoundaryTranscript;
         _hasBoundaryTranscript = _boundaryChoices.Length > 0;
     }
@@ -320,7 +355,8 @@ internal sealed class SemanticCombatDrawReplayCursorV111
         _pileCardIndex < _pileCardChoices.Length ||
         _insertionIndex < _insertions.Length ||
         _stratagemIndex < _stratagemChoices.Length ||
-        _drawHookIndex < _drawHookChoices.Length;
+        _drawHookIndex < _drawHookChoices.Length ||
+        _targetIndex < _targetChoices.Length;
 
     internal SemanticDeckChoiceV111 NextDeckChoice() => Take(
         _deckChoices, ref _deckIndex,
@@ -351,6 +387,11 @@ internal sealed class SemanticCombatDrawReplayCursorV111
         _drawHookChoices, ref _drawHookIndex,
         "Missing nested CardDrawn hook choice in replay.",
         "draw_hook_choice");
+
+    internal SemanticTargetDecisionV111 NextTargetChoice() => Take(
+        _targetChoices, ref _targetIndex,
+        "Missing automatic hand-draw target decision in replay.",
+        "random_target");
 
     internal void ValidateComplete()
     {

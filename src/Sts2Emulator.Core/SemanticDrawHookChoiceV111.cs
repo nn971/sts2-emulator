@@ -287,6 +287,10 @@ public static class SemanticDrawHookChoiceEngineV111
             bool nestedBeforeHandDrawRandomTarget =
                 decision.Event.BeforeHandDraw &&
                 nextChoice.ControlledTarget is not null;
+            bool nestedActiveHandDrawRandomTarget =
+                decision.Event.AutomaticHandDraw &&
+                !decision.Event.BeforeHandDraw &&
+                nextChoice.ControlledTarget is not null;
             bool hasTaggedChildChoice =
                 nextChoice.ControlledTarget is not null ||
                 nextChoice.ControlledGeneration is not null ||
@@ -302,7 +306,8 @@ public static class SemanticDrawHookChoiceEngineV111
                 nextChoice.SemanticStratagemDrawSelection ||
                 nextChoice.AutomaticSemanticStratagemDrawSelection;
             if (hasTaggedChildChoice &&
-                !nestedBeforeHandDrawRandomTarget)
+                !nestedBeforeHandDrawRandomTarget &&
+                !nestedActiveHandDrawRandomTarget)
             {
                 throw new NotSupportedException(
                     $"UNSUPPORTED_SEMANTIC_DECK site={site} " +
@@ -310,6 +315,24 @@ public static class SemanticDrawHookChoiceEngineV111
             }
             if (nestedBeforeHandDrawRandomTarget)
             {
+                SemanticTargetChoiceV111.ValidateBoundary(advanced);
+            }
+            else if (nestedActiveHandDrawRandomTarget)
+            {
+                advancedCombat = advancedCombat with
+                {
+                    PendingChoice = nextChoice with
+                    {
+                        AutomaticSemanticDrawTargetChoice = true
+                    }
+                };
+                advanced = advanced with
+                {
+                    World = advanced.World! with
+                    {
+                        Combat = advancedCombat
+                    }
+                };
                 SemanticTargetChoiceV111.ValidateBoundary(advanced);
             }
             else if (nestedBeforeHandDrawRandomPileCard)

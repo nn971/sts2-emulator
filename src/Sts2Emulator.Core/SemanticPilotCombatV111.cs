@@ -4723,14 +4723,31 @@ public static class SemanticPilotCombatEngineV111
         ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
         if (current.PendingEndTurn is { TargetPending: not null } endTurn)
         {
+            bool drawOwnsTarget = endTurn.HandDraw?.TargetPending is not null;
+            int priorDrawTargetCount =
+                endTurn.HandDraw?.TargetTranscript.Length ?? 0;
             var resolvedEndTurn = SemanticEndTurnEngineV111.ResolveTarget(
                 endTurn, endTurn.Fingerprint, eventId, enemyInstanceId);
-            if (resolvedEndTurn.Stochastic.TargetTranscript.Length <=
-                endTurn.Stochastic.TargetTranscript.Length)
-                throw new InvalidDataException(
-                    "End-turn target resolution omitted its selected identity.");
-            var endTurnDecision =
-                resolvedEndTurn.Stochastic.TargetTranscript[^1];
+            SemanticTargetDecisionV111 endTurnDecision;
+            if (drawOwnsTarget)
+            {
+                var resolvedDrawTranscript =
+                    resolvedEndTurn.HandDraw?.TargetTranscript;
+                if (resolvedDrawTranscript is null ||
+                    resolvedDrawTranscript.Length <= priorDrawTargetCount)
+                    throw new InvalidDataException(
+                        "Hand-draw target resolution omitted its selected identity.");
+                endTurnDecision = resolvedDrawTranscript[^1];
+            }
+            else
+            {
+                if (resolvedEndTurn.Stochastic.TargetTranscript.Length <=
+                    endTurn.Stochastic.TargetTranscript.Length)
+                    throw new InvalidDataException(
+                        "End-turn target resolution omitted its selected identity.");
+                endTurnDecision =
+                    resolvedEndTurn.Stochastic.TargetTranscript[^1];
+            }
             var resolvedSession = PublishRunContinuation(
                 current, resolvedEndTurn.Run, resolvedEndTurn,
                 otherChance is null

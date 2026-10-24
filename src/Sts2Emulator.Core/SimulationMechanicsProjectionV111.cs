@@ -597,7 +597,8 @@ public static class SimulationMechanicsProjectionEngineV111
             SemanticStratagemDrawSelection = false,
             AutomaticSemanticStratagemDrawSelection = false,
             StandaloneSemanticDrawHookChoice = false,
-            AutomaticSemanticDrawHookChoice = false
+            AutomaticSemanticDrawHookChoice = false,
+            AutomaticSemanticDrawTargetChoice = false
         };
     }
 

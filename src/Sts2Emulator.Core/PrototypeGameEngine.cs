@@ -192,9 +192,17 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             combat.PendingChoice is { ControlledTarget: not null } targetChoice &&
             SemanticTargetChoiceV111.HasValidLiveSupport(
                 combat, targetChoice);
+        bool semanticHandDrawTarget = continuation is not null &&
+            continuation.Stochastic.TryGetSemanticHandDrawProgress(
+                continuation.Mechanics, out _, out _) &&
+            combat.PendingChoice is
+                { AutomaticSemanticDrawTargetChoice: true,
+                  ControlledTarget: not null } handDrawTargetChoice &&
+            SemanticTargetChoiceV111.HasValidLiveSupport(
+                combat, handDrawTargetChoice);
         if (continuation is null ||
             (continuation.Stochastic.HasSavedHandDrawProgress() &&
-             !semanticBeforeHandDrawTarget) ||
+             !semanticBeforeHandDrawTarget && !semanticHandDrawTarget) ||
             continuation.Stochastic.CompletedSemanticHandDrawRequested is not null ||
             continuation.Stochastic.ControlledEnemyAction is not null ||
             !continuation.Mechanics.IsValidOrdinaryCursor)

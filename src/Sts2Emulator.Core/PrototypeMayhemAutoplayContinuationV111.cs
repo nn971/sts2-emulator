@@ -223,6 +223,7 @@ public sealed partial class PrototypeGameEngine
                   AutomaticSemanticStratagemDrawSelection: false,
                   StandaloneSemanticDrawHookChoice: false,
                   AutomaticSemanticDrawHookChoice: false,
+                  AutomaticSemanticDrawTargetChoice: false,
                   MoveSourceCardOnCompletion: true,
                   RemoveSourceCardOnCompletion: false,
                   SourceCardAlreadyMoved: false } ||
@@ -639,6 +640,7 @@ public sealed partial class PrototypeGameEngine
                   AutomaticSemanticStratagemDrawSelection: false,
                   StandaloneSemanticDrawHookChoice: false,
                   AutomaticSemanticDrawHookChoice: false,
+                  AutomaticSemanticDrawTargetChoice: false,
                   MoveSourceCardOnCompletion: true,
                   RemoveSourceCardOnCompletion: false,
                   SourceCardAlreadyMoved: false } ||
@@ -790,6 +792,7 @@ public sealed partial class PrototypeGameEngine
                   AutomaticSemanticStratagemDrawSelection: false,
                   StandaloneSemanticDrawHookChoice: false,
                   AutomaticSemanticDrawHookChoice: false,
+                  AutomaticSemanticDrawTargetChoice: false,
                   MoveSourceCardOnCompletion: true,
                   RemoveSourceCardOnCompletion: false,
                   SourceCardAlreadyMoved: false } ||
@@ -913,6 +916,7 @@ public sealed partial class PrototypeGameEngine
                   AutomaticSemanticStratagemDrawSelection: false,
                   StandaloneSemanticDrawHookChoice: false,
                   AutomaticSemanticDrawHookChoice: false,
+                  AutomaticSemanticDrawTargetChoice: false,
                   MoveSourceCardOnCompletion: true,
                   RemoveSourceCardOnCompletion: false,
                   SourceCardAlreadyMoved: false } ||
@@ -1053,6 +1057,7 @@ public sealed partial class PrototypeGameEngine
                   AutomaticSemanticStratagemDrawSelection: false,
                   StandaloneSemanticDrawHookChoice: false,
                   AutomaticSemanticDrawHookChoice: false,
+                  AutomaticSemanticDrawTargetChoice: false,
                   MoveSourceCardOnCompletion: true,
                   RemoveSourceCardOnCompletion: false,
                   SourceCardAlreadyMoved: false } ||
@@ -1304,6 +1309,7 @@ public sealed partial class PrototypeGameEngine
                   AutomaticSemanticStratagemDrawSelection: false,
                   StandaloneSemanticDrawHookChoice: false,
                   AutomaticSemanticDrawHookChoice: false,
+                  AutomaticSemanticDrawTargetChoice: false,
                   MoveSourceCardOnCompletion: true,
                   RemoveSourceCardOnCompletion: false,
                   SourceCardAlreadyMoved: false } ||
@@ -1480,6 +1486,7 @@ public sealed partial class PrototypeGameEngine
                   AutomaticSemanticStratagemDrawSelection: false,
                   StandaloneSemanticDrawHookChoice: false,
                   AutomaticSemanticDrawHookChoice: false,
+                  AutomaticSemanticDrawTargetChoice: false,
                   MoveSourceCardOnCompletion: true,
                   RemoveSourceCardOnCompletion: false,
                   SourceCardAlreadyMoved: false } ||
@@ -1808,6 +1815,7 @@ public sealed partial class PrototypeGameEngine
                   AutomaticSemanticStratagemDrawSelection: false,
                   StandaloneSemanticDrawHookChoice: false,
                   AutomaticSemanticDrawHookChoice: false,
+                  AutomaticSemanticDrawTargetChoice: false,
                   MoveSourceCardOnCompletion: true,
                   RemoveSourceCardOnCompletion: false,
                   SourceCardAlreadyMoved: false } ||

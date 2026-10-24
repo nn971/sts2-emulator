@@ -193,6 +193,7 @@ public sealed partial class PrototypeGameEngine
                   AutomaticSemanticStratagemDrawSelection: false,
                   StandaloneSemanticDrawHookChoice: false,
                   AutomaticSemanticDrawHookChoice: false,
+                  AutomaticSemanticDrawTargetChoice: false,
                   Selection: { SourceZone: PrototypeCardZone.DrawPile,
                       Resolution: PrototypeCardSelectionResolutionKind.MoveToHand,
                       RequiredCardType: null,

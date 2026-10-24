@@ -262,10 +262,12 @@ public sealed record SemanticEndTurnV111(
     }
     [JsonIgnore] public string Fingerprint => CanonicalJson.Sha256(this);
     [JsonIgnore] public SemanticTargetEventV111? TargetPending =>
-        Complete || HandDraw is { AtBoundary: false }
+        Complete
             ? null
-            : SemanticPilotCombatEngineV111.DescribePendingTargetEvent(
-                Run, Fingerprint, TargetTranscript.Length);
+            : HandDraw is { AtBoundary: false } handDraw
+                ? handDraw.TargetPending
+                : SemanticPilotCombatEngineV111.DescribePendingTargetEvent(
+                    Run, Fingerprint, TargetTranscript.Length);
     [JsonIgnore] public SemanticEndTurnIndexEventV111?
         EnemyActionEventPending
     {
@@ -499,8 +501,12 @@ public sealed record SemanticEndTurnV111(
         else if (this.TargetPending is { } target)
         {
             target.Validate();
+            bool handDrawOwnsTarget =
+                this.HandDraw is { AtBoundary: false } handDraw &&
+                handDraw.TargetPending is not null;
             if (this.Complete || this.Intents is not null ||
-                this.HandDraw is { AtBoundary: false } ||
+                (this.HandDraw is { AtBoundary: false } &&
+                 !handDrawOwnsTarget) ||
                 this.Run.World?.Combat?.PendingChoice?
                     .ControlledTarget is null ||
                 !PrototypeGameEngine
@@ -516,7 +522,9 @@ public sealed record SemanticEndTurnV111(
             }
             else
                 SemanticEndTurnEngineV111.ValidateOrigin(this.Origin);
-            if (target.Ordinal != this.Stochastic.TargetTranscript.Length)
+            if (target.Ordinal != (handDrawOwnsTarget
+                    ? this.HandDraw!.TargetTranscript.Length
+                    : this.Stochastic.TargetTranscript.Length))
                 throw new InvalidDataException(
                     "Automatic-pipeline target ordinal differs from its transcript.");
         }
@@ -1206,6 +1214,16 @@ public static class SemanticEndTurnEngineV111
         var pending = source.TargetPending ??
             throw new InvalidOperationException(
                 "No automatic-pipeline random-target event is pending.");
+        if (source.HandDraw is { AtBoundary: false } activeHandDraw &&
+            activeHandDraw.TargetPending is not null)
+        {
+            var resumedHandDraw = SemanticCombatDrawEngineV111.ResolveTarget(
+                activeHandDraw, activeHandDraw.Fingerprint, eventId,
+                enemyInstanceId);
+            var nextHandDraw = ContinueHandDraw(source, resumedHandDraw);
+            Validate(nextHandDraw);
+            return nextHandDraw;
+        }
         var decision = SemanticTargetChoiceV111.Select(
             pending, eventId, enemyInstanceId);
         var resumed = SemanticChoiceResumeV111.ResumeTarget(

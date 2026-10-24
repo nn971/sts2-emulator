@@ -13419,7 +13419,8 @@ public sealed partial class PrototypeGameEngine
         // owning draw continuation must finish before the ordinary pipeline
         // can settle a terminal reward boundary.
         if (pending.AutomaticSemanticStratagemDrawSelection ||
-            pending.AutomaticSemanticDrawHookChoice)
+            pending.AutomaticSemanticDrawHookChoice ||
+            pending.AutomaticSemanticDrawTargetChoice)
             return PrototypeAutomaticPipelineResumeResultV111.FromRun(state);
 
         return ResumeAutomaticPipelineContinuation(state);

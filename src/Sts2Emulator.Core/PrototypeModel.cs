@@ -2588,7 +2588,9 @@ public sealed record PendingCombatChoiceState(
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     bool StandaloneSemanticDrawHookChoice = false,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-    bool AutomaticSemanticDrawHookChoice = false)
+    bool AutomaticSemanticDrawHookChoice = false,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    bool AutomaticSemanticDrawTargetChoice = false)
 {
     /// <summary>
     /// Keeps the flattened, snapshot-compatible pending-choice payloads
@@ -2629,7 +2631,10 @@ public sealed record PendingCombatChoiceState(
             (this.StandaloneSemanticDrawHookChoice ? 1 << 2 : 0) |
             (this.AutomaticSemanticDrawHookChoice ? 1 << 3 : 0);
         if ((semanticDrawModes & (semanticDrawModes - 1)) != 0 ||
-            (mask != 0 && semanticDrawModes != 0))
+            (mask != 0 && semanticDrawModes != 0) ||
+            (this.AutomaticSemanticDrawTargetChoice &&
+             (this.ChoiceId != "controlled_random_target" ||
+              mask != target)))
             return false;
 
         return this.ChoiceId switch

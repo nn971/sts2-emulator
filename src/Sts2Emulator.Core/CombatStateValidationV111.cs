@@ -699,6 +699,23 @@ public sealed partial record CombatState
                     throw new InvalidOperationException(
                         "Automatic CardDrawn hook choice is malformed.");
             }
+            if (pending.AutomaticSemanticDrawTargetChoice)
+            {
+                var pipelineCursor = combat.AutomaticPipelineContinuation;
+                bool hasSemanticHandDrawProgress =
+                    pipelineCursor is not null &&
+                    pipelineCursor.Stochastic.TryGetSemanticHandDrawProgress(
+                        pipelineCursor.Mechanics, out _, out _);
+                if (!hasSemanticHandDrawProgress ||
+                    combat.Stochastic.SemanticDeck is not
+                        { Mode: SemanticDeckStateV111.NatureMode,
+                          Pending: null } ||
+                    pending.ControlledTarget is null ||
+                    !SemanticTargetChoiceV111.HasValidLiveSupport(
+                        combat, pending))
+                    throw new InvalidOperationException(
+                        "Automatic hand-draw target choice is malformed.");
+            }
             var savedChoiceOperations = new List<PrototypeQueuedOperation>(
                 pending.Continuation);
             for (var outer = pending.OuterChoiceContinuation;

@@ -95,6 +95,14 @@ public sealed record SemanticCombatDrawV111(
     [JsonIgnore] public SemanticDrawHookChoiceEventV111?
         DrawHookChoicePending =>
             SemanticDrawHookChoiceEngineV111.DescribePending(Run);
+    [JsonIgnore] public SemanticTargetEventV111? TargetPending =>
+        AutomaticHandDraw &&
+        Run.World?.Combat?.PendingChoice is
+            { AutomaticSemanticDrawTargetChoice: true,
+              ControlledTarget: not null }
+            ? SemanticPilotCombatEngineV111.DescribePendingTargetEvent(
+                Run, Fingerprint, TargetTranscript.Length)
+            : null;
     /// <summary>Cost chance follows the *already committed* card instance.
     /// Bound reflects the current source Snecko/Slither stage.</summary>
     [JsonIgnore] public RandomIndexRequestV111? CostPending
@@ -126,7 +134,8 @@ public sealed record SemanticCombatDrawV111(
     [JsonIgnore] public bool AtBoundary =>
         Pending is null && RandomPileCardPending is null &&
         DrawInsertionPending is null && StratagemSelectionPending is null &&
-        DrawHookChoicePending is null && CostPending is null &&
+        DrawHookChoicePending is null && TargetPending is null &&
+        CostPending is null &&
         RemainingCount == 0;
     // The provider's transcript survives across turns. Only decisions
     // newly made during THIS draw segment are replayed by this envelope.
@@ -164,6 +173,14 @@ public sealed record SemanticCombatDrawV111(
         init => Stochastic = Stochastic with
         {
             DrawHookChoiceTranscript = value
+        };
+    }
+    public SemanticTargetDecisionV111[] TargetTranscript
+    {
+        get => Stochastic.TargetTranscript;
+        init => Stochastic = Stochastic with
+        {
+            TargetTranscript = value
         };
     }
     public RandomIndexDecisionV111[] CostTranscript
@@ -298,6 +315,9 @@ public sealed record SemanticCombatDrawV111(
             TryGetAutomaticSemanticHandDrawProgress(
                 combat, out int pipelineRequested,
                 out int pipelineRemaining);
+        var targetPending = this.TargetPending;
+        bool automaticSemanticHandDrawRandomTarget =
+            targetPending is not null;
         bool semanticBeforeHandDrawProgress = pipelineCursor is not null &&
             pipelineCursor.Stochastic.IsAtSemanticBeforeHandDraw(
                 pipelineCursor.Mechanics);
@@ -309,7 +329,8 @@ public sealed record SemanticCombatDrawV111(
                 drawHookChoicePending is not null ||
                 automaticBeforeHandDrawPoolShuffle ||
                 automaticBeforeHandDrawGeneratedSelection ||
-                automaticBeforeHandDrawRandomTarget;
+                automaticBeforeHandDrawRandomTarget ||
+                automaticSemanticHandDrawRandomTarget;
             if (randomPileCardPending is not null)
             {
                 if (pipelineCursor is null ||
@@ -370,6 +391,18 @@ public sealed record SemanticCombatDrawV111(
                         "Semantic BeforeHandDraw target cursor is inconsistent.");
                 SemanticTargetChoiceV111.ValidateBoundary(this.Run);
             }
+            else if (automaticSemanticHandDrawRandomTarget)
+            {
+                if (pipelineCursor is null ||
+                    !hasPipelineSemanticDrawProgress ||
+                    pipelineRequested != this.RequestedCount ||
+                    pipelineRemaining != this.RemainingCount ||
+                    deck.Pending is not null || cost is not null ||
+                    combat.PendingChoice?.AutomaticSemanticDrawTargetChoice != true)
+                    throw new InvalidDataException(
+                        "Automatic hand-draw target cursor is inconsistent.");
+                SemanticTargetChoiceV111.ValidateBoundary(this.Run);
+            }
             else if (pipelineCursor is null ||
                 semanticBeforeHandDrawProgress ||
                 (awaiting &&
@@ -392,7 +425,8 @@ public sealed record SemanticCombatDrawV111(
              drawHookChoicePending is null &&
              !automaticBeforeHandDrawPoolShuffle &&
              !automaticBeforeHandDrawGeneratedSelection &&
-             !automaticBeforeHandDrawRandomTarget) ||
+             !automaticBeforeHandDrawRandomTarget &&
+             !automaticSemanticHandDrawRandomTarget) ||
             (cost is not null &&
              (deck.Pending is not null ||
               cost.RemainingCount != this.RemainingCount ||
@@ -404,6 +438,7 @@ public sealed record SemanticCombatDrawV111(
              drawInsertionPending is null &&
              stratagemSelectionPending is null &&
              drawHookChoicePending is null &&
+             targetPending is null &&
              this.RemainingCount != 0) ||
             (deck.Pending is not null && this.RemainingCount <= 0))
             throw new InvalidDataException(
@@ -889,6 +924,45 @@ public static class SemanticCombatDrawEngineV111
         return nextWithChronology;
     }
 
+    public static SemanticCombatDrawV111 ResolveTarget(
+        SemanticCombatDrawV111 state, string fingerprint,
+        string eventId, int enemyInstanceId)
+    {
+        Validate(state);
+        if (state.Fingerprint != fingerprint)
+            throw new InvalidOperationException(
+                "Stale semantic combat-draw target fingerprint.");
+        var pending = state.TargetPending ??
+            throw new InvalidOperationException(
+                "No automatic hand-draw target event is pending.");
+        var decision = SemanticTargetChoiceV111.Select(
+            pending, eventId, enemyInstanceId);
+        var resumedTarget = SemanticChoiceResumeV111.ResumeTarget(
+            state.Run, decision);
+        if (resumedTarget.Run.World?.Combat is not { PendingChoice: null,
+                PendingKnowledgeDemonChoice: null } resumedCombat ||
+            !TryGetAutomaticSemanticHandDrawProgress(
+                resumedCombat, out int requested, out int remaining) ||
+            requested != state.RequestedCount ||
+            remaining != state.RemainingCount)
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.CardDrawn " +
+                "operation=unsupported_resumed_target_boundary");
+
+        var progress = PrototypeGameEngine.ResumeSemanticAutomaticHandDraw(
+            resumedTarget.Run, state.RemainingCount);
+        if (progress.RequireRequestedCount() != state.RequestedCount)
+            throw new InvalidDataException(
+                "Automatic hand-draw target changed its requested count.");
+        var next = PublishDrawProgress(state, progress) with
+        {
+            Stochastic = state.Stochastic.AppendTarget(decision)
+        };
+        next = RecordNewSemanticDrawChoices(state, next);
+        Validate(next);
+        return next;
+    }
+
     public static string Save(SemanticCombatDrawV111 state)
     {
         Validate(state);
@@ -929,6 +1003,20 @@ public static class SemanticCombatDrawEngineV111
                 reconstructed = ResolveDrawHookChoice(
                     reconstructed, reconstructed.Fingerprint,
                     hookDecision.ActionId);
+                continue;
+            }
+            if (reconstructed.TargetPending is { } target)
+            {
+                var targetDecision = transcriptCursor.NextTargetChoice();
+                targetDecision.Validate();
+                if (CanonicalJson.Sha256(targetDecision.Event) !=
+                    CanonicalJson.Sha256(target))
+                    throw new InvalidDataException(
+                        "Automatic hand-draw target transcript diverges from source support.");
+                reconstructed = ResolveTarget(
+                    reconstructed, reconstructed.Fingerprint,
+                    targetDecision.Event.EventId,
+                    targetDecision.SelectedEnemyInstanceId);
                 continue;
             }
             if (reconstructed.StratagemSelectionPending is { } selection)
