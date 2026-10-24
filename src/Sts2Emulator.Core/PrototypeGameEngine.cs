@@ -369,6 +369,44 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
               cursor.Stochastic.CompletedSemanticHandDrawRequested is null;
     }
 
+    internal static bool IsAutomaticHandDrawPoolShuffleContinuation(
+        CombatState combat, PendingCombatChoiceState pending)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(pending);
+        if (!combat.IsPlayerTurn ||
+            combat.PendingKnowledgeDemonChoice is not null ||
+            combat.Stochastic.SemanticDeck is not
+                { Mode: SemanticDeckStateV111.NatureMode, Pending: null } ||
+            pending is not
+                { ChoiceId: "controlled_pool_shuffle",
+                  ControlledPoolShuffle: { } shuffle,
+                  OuterChoiceContinuation: not null } ||
+            shuffle.Operation.Kind is not (
+                PrototypeCombatEffectKind.CreateDistinctCharacterCommonCardsInHand or
+                PrototypeCombatEffectKind.CreateDistinctColorlessCardsInHand or
+                PrototypeCombatEffectKind.MoveRandomRareDrawCardsToHand or
+                PrototypeCombatEffectKind.ReturnHandToDrawAndShuffle) ||
+            !pending.HasValidControlledPayloadShape() ||
+            !ValidateControlledPoolShuffle(
+                combat, shuffle, pending.SourceCardInstanceId) ||
+            combat.AutomaticPipelineContinuation is not { } cursor)
+            return false;
+
+        // Preserve the established end-turn owner for supported automatic
+        // pipeline shuffles such as Hello World's BeforeHandDraw generation.
+        if (IsAutomaticPipelineSemanticPoolShuffleContinuation(
+                combat, pending))
+            return false;
+
+        return cursor.Stochastic.TryGetSemanticHandDrawProgress(
+                cursor.Mechanics, out int requested, out int remaining)
+            ? requested > 0 && remaining >= 0
+            : cursor.Stochastic.IsAtSemanticBeforeHandDraw(
+                  cursor.Mechanics) &&
+              cursor.Stochastic.CompletedSemanticHandDrawRequested is null;
+    }
+
     internal static bool IsAutomaticBeforeHandDrawHookDrawInsertionContinuation(
         CombatState combat, PendingCombatChoiceState pending)
     {

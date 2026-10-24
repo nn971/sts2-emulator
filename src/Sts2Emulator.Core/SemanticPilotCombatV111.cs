@@ -4613,26 +4613,38 @@ public static class SemanticPilotCombatEngineV111
         SemanticOtherChanceStateV111? otherChance = null)
     {
         var sourceEndTurn = current.PendingEndTurn;
-        var nextEndTurn = sourceEndTurn is { } endTurn
-            ? choice is
-                { Kind: "semantic_generated_card",
-                  GeneratedCardDecision: { } generatedCard } &&
-              endTurn.HandDraw?.GeneratedCardPending is not null
-                ? SemanticEndTurnEngineV111.ResolveGeneratedCard(
+        SemanticEndTurnV111? nextEndTurn = null;
+        if (sourceEndTurn is { } endTurn)
+        {
+            if (choice is
+                    { Kind: "semantic_generated_card",
+                      GeneratedCardDecision: { } generatedCard } &&
+                endTurn.HandDraw?.GeneratedCardPending is not null)
+                nextEndTurn = SemanticEndTurnEngineV111.ResolveGeneratedCard(
                     endTurn, endTurn.Fingerprint,
                     generatedCard.Event.EventId,
-                    generatedCard.SelectedCardId)
-                : choice is
-                    { Kind: "semantic_potion_generation",
-                      PotionGenerationDecision: { } generatedPotion } &&
-                  endTurn.HandDraw?.PotionGenerationPending is not null
-                    ? SemanticEndTurnEngineV111.ResolvePotionGeneration(
+                    generatedCard.SelectedCardId);
+            else if (choice is
+                         { Kind: "semantic_potion_generation",
+                           PotionGenerationDecision: { } generatedPotion } &&
+                     endTurn.HandDraw?.PotionGenerationPending is not null)
+                nextEndTurn = SemanticEndTurnEngineV111
+                    .ResolvePotionGeneration(
                         endTurn, endTurn.Fingerprint,
                         generatedPotion.Event.EventId,
-                        generatedPotion.SelectedPotionId)
-                : SemanticEndTurnEngineV111.ResumeNestedSemanticChoice(
-                    endTurn, choice)
-            : null;
+                        generatedPotion.SelectedPotionId);
+            else if (choice is
+                         { Kind: "semantic_pool_shuffle",
+                           PoolShuffleDecision: { } poolShuffle } &&
+                     endTurn.HandDraw?.PoolShufflePending is not null)
+                nextEndTurn = SemanticEndTurnEngineV111.ResolvePoolShuffle(
+                    endTurn, endTurn.Fingerprint,
+                    poolShuffle.Event.EventId,
+                    poolShuffle.SelectedSwapIndex);
+            else
+                nextEndTurn = SemanticEndTurnEngineV111
+                    .ResumeNestedSemanticChoice(endTurn, choice);
+        }
         var publishedRun = nextEndTurn?.Run ??
             SemanticChoiceResumeV111.Resume(
                 current.Run, choice).Run;

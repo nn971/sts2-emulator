@@ -380,15 +380,23 @@ public sealed record SemanticEndTurnV111(
                 NestedChoiceTranscript.Count(choice =>
                     choice.Kind == "semantic_card_shortlist"))
             : null;
-    [JsonIgnore] public SemanticPoolShuffleEventV111? PoolShufflePending =>
-        !Complete && HandDraw is not { AtBoundary: false } &&
-            PrototypeGameEngine
-                .HasPendingSupportedAutomaticPipelineSemanticPoolShuffle(Run)
-            ? SemanticPoolShuffleChoiceV111.DescribePending(
-                Run, Fingerprint,
-                NestedChoiceTranscript.Count(choice =>
-                    choice.Kind == "semantic_pool_shuffle"))
-            : null;
+    [JsonIgnore] public SemanticPoolShuffleEventV111? PoolShufflePending
+    {
+        get
+        {
+            if (Complete) return null;
+            if (HandDraw is { AtBoundary: false } handDraw)
+                return handDraw.PoolShufflePending;
+            return PrototypeGameEngine
+                    .HasPendingSupportedAutomaticPipelineSemanticPoolShuffle(
+                        Run)
+                ? SemanticPoolShuffleChoiceV111.DescribePending(
+                    Run, Fingerprint,
+                    NestedChoiceTranscript.Count(choice =>
+                        choice.Kind == "semantic_pool_shuffle"))
+                : null;
+        }
+    }
     [JsonIgnore] public SemanticCostEventV111? NestedCostPending
     {
         get
@@ -904,6 +912,16 @@ public static class SemanticEndTurnEngineV111
                     handPotion.CandidatePotionIds[selectedIndex]);
             state = ContinueHandDraw(state, nextHand);
         }
+        else if (state.HandDraw is { AtBoundary: false } poolHandDraw &&
+                 poolHandDraw.PoolShufflePending is { } handPoolShuffle)
+        {
+            if (selectedIndex < 0 ||
+                selectedIndex > handPoolShuffle.NextSwapIndex)
+                throw new ArgumentOutOfRangeException(nameof(selectedIndex));
+            var nextHand = SemanticCombatDrawEngineV111.ResolvePoolShuffle(
+                poolHandDraw, poolHandDraw.Fingerprint, selectedIndex);
+            state = ContinueHandDraw(state, nextHand);
+        }
         else if (state.PotionGenerationPending is { } generatedPotion)
         {
             if (selectedIndex < 0 ||
@@ -1248,6 +1266,19 @@ public static class SemanticEndTurnEngineV111
                 "No automatic-pipeline pool-shuffle event is pending.");
         var decision = SemanticPoolShuffleChoiceV111.Select(
             pending, eventId, swapIndex);
+        if (source.HandDraw is { AtBoundary: false } handDraw &&
+            handDraw.PoolShufflePending is { } handDrawEvent)
+        {
+            if (CanonicalJson.Sha256(handDrawEvent) !=
+                CanonicalJson.Sha256(pending))
+                throw new InvalidDataException(
+                    "Automatic draw pool-shuffle event changed during resume.");
+            var nextHand = SemanticCombatDrawEngineV111.ResolvePoolShuffle(
+                handDraw, handDraw.Fingerprint, swapIndex);
+            var next = ContinueHandDraw(source, nextHand);
+            Validate(next);
+            return next;
+        }
         var choice = new SemanticEndTurnNestedChoiceV111(
             "semantic_pool_shuffle",
             PoolShuffleDecision: decision.Fork());

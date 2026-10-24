@@ -319,6 +319,44 @@ internal static class SemanticChoiceResumeV111
                 .EnsurePipelineBoundary(), decision);
         }
 
+        if (pending.BeforeHandDraw &&
+            combat.PendingChoice is { } beforeHandDrawPoolShuffle &&
+            PrototypeGameEngine
+                .IsAutomaticHandDrawPoolShuffleContinuation(
+                    combat, beforeHandDrawPoolShuffle))
+        {
+            var cursor = combat.AutomaticPipelineContinuation;
+            if (requested != 0 || remaining != 0 || cursor is null ||
+                !cursor.Stochastic.IsAtSemanticBeforeHandDraw(
+                    cursor.Mechanics))
+                throw new InvalidDataException(
+                    "BeforeHandDraw pool shuffle lost its pre-draw cursor.");
+            SemanticPoolShuffleChoiceV111.ValidateBoundary(run);
+            return (PrototypeDrawCardsResumeResultV111.ForHandDraw(
+                run, 0, 0, pipelineBoundary)
+                .EnsurePipelineBoundary(), decision);
+        }
+
+        if (!pending.BeforeHandDraw &&
+            combat.PendingChoice is { } activeHandDrawPoolShuffle &&
+            PrototypeGameEngine
+                .IsAutomaticHandDrawPoolShuffleContinuation(
+                    combat, activeHandDrawPoolShuffle))
+        {
+            var cursor = combat.AutomaticPipelineContinuation;
+            if (cursor is null ||
+                !cursor.Stochastic.TryGetSemanticHandDrawProgress(
+                    cursor.Mechanics, out int savedRequested,
+                    out int savedRemaining) ||
+                savedRequested != requested || savedRemaining != remaining)
+                throw new InvalidDataException(
+                    "Automatic draw-hook pool shuffle lost its tagged hand-draw progress.");
+            SemanticPoolShuffleChoiceV111.ValidateBoundary(run);
+            return (PrototypeDrawCardsResumeResultV111.ForHandDraw(
+                run, requested, savedRemaining, pipelineBoundary)
+                .EnsurePipelineBoundary(), decision);
+        }
+
         if (pending.BeforeHandDraw)
         {
             PrototypeDrawCardsResumeResultV111 progress;
@@ -678,6 +716,21 @@ internal static class SemanticChoiceResumeV111
         var ownedDecision = decision.Fork();
         var resumed = SemanticPoolShuffleChoiceV111.ResumeWithBoundary(
             checkpoint.Fork(), ownedDecision);
+        return new SemanticChoiceResumeResultV111(
+            resumed.Run, ownedDecision.Event.SiteId, resumed.Boundary);
+    }
+
+    internal static SemanticChoiceResumeResultV111
+        ResumePoolShuffleForHandDraw(
+            RunState checkpoint, SemanticPoolShuffleDecisionV111 decision)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        ArgumentNullException.ThrowIfNull(decision);
+        decision.Validate();
+        var ownedDecision = decision.Fork();
+        var resumed = SemanticPoolShuffleChoiceV111.ResumeWithBoundary(
+            checkpoint.Fork(), ownedDecision,
+            deferAutomaticHandDrawContinuation: true);
         return new SemanticChoiceResumeResultV111(
             resumed.Run, ownedDecision.Event.SiteId, resumed.Boundary);
     }

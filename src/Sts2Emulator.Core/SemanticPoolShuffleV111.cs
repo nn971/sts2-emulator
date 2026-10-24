@@ -513,7 +513,8 @@ public static class SemanticPoolShuffleChoiceV111
 
     internal static PrototypeAutomaticPipelineResumeResultV111
         ResumeWithBoundary(
-            RunState checkpoint, SemanticPoolShuffleDecisionV111 decision)
+            RunState checkpoint, SemanticPoolShuffleDecisionV111 decision,
+            bool deferAutomaticHandDrawContinuation = false)
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
         ArgumentNullException.ThrowIfNull(decision);
@@ -526,6 +527,15 @@ public static class SemanticPoolShuffleChoiceV111
         if (shuffle is null)
             throw new InvalidDataException(
                 "Full-pool shuffle is missing its source operation.");
+        bool automaticHandDrawPoolShuffle =
+            deferAutomaticHandDrawContinuation &&
+            choice is not null && PrototypeGameEngine
+                .IsAutomaticHandDrawPoolShuffleContinuation(
+                    combat, choice);
+        if (deferAutomaticHandDrawContinuation &&
+            !automaticHandDrawPoolShuffle)
+            throw new InvalidDataException(
+                "Pool-shuffle decision is outside the semantic hand-draw continuation.");
         ValidateBoundary(checkpoint);
         ValidateLiveSupport(combat, choice!, shuffle, decision.Event);
         bool helloWorldAutomaticBeforeHandDraw =
@@ -533,9 +543,13 @@ public static class SemanticPoolShuffleChoiceV111
                 combat, choice!, shuffle, choice!.OuterChoiceContinuation!);
 
         var result = ControlledChanceGuardV111.ExecuteGuarded(
-            () => PrototypeGameEngine
-                .ResumeControlledPoolShuffleWithBoundary(
-                    checkpoint.Fork(), decision.SelectedSwapIndex));
+            () => automaticHandDrawPoolShuffle
+                ? PrototypeGameEngine
+                    .ResumeControlledPoolShuffleForSemanticHandDrawWithBoundary(
+                        checkpoint.Fork(), decision.SelectedSwapIndex)
+                : PrototypeGameEngine
+                    .ResumeControlledPoolShuffleWithBoundary(
+                        checkpoint.Fork(), decision.SelectedSwapIndex));
         if (PrototypeGameEngine
                 .IsAtCombatRewardOrTerminalBoundary(result.Run))
         {
@@ -575,7 +589,7 @@ public static class SemanticPoolShuffleChoiceV111
             _ = SemanticCardSelectionEngineV111.DescribePending(
                 result.Run, CanonicalJson.Sha256(result.Run));
         }
-        else
+        else if (!automaticHandDrawPoolShuffle)
             SemanticPilotCombatEngineV111.ValidateSemanticCombatBoundary(
                 result.Run);
 

@@ -243,11 +243,18 @@ public sealed partial class PrototypeGameEngine
     internal static PrototypeAutomaticPipelineResumeResultV111
         ResumeControlledPoolShuffleWithBoundary(
             RunState state, int chosen)
-        => ResumeControlledPoolShuffleCore(state, chosen);
+        => ResumeControlledPoolShuffleCore(
+            state, chosen, deferSemanticHandDraw: false);
+
+    internal static PrototypeAutomaticPipelineResumeResultV111
+        ResumeControlledPoolShuffleForSemanticHandDrawWithBoundary(
+            RunState state, int chosen)
+        => ResumeControlledPoolShuffleCore(
+            state, chosen, deferSemanticHandDraw: true);
 
     private static PrototypeAutomaticPipelineResumeResultV111
         ResumeControlledPoolShuffleCore(
-        RunState state, int chosen)
+        RunState state, int chosen, bool deferSemanticHandDraw)
     {
         if (!ControlledChanceGuardV111.Active)
             throw new InvalidOperationException(
@@ -382,7 +389,10 @@ public sealed partial class PrototypeGameEngine
                         state.Stochastic, prototypeRng),
                     World = world with { Combat = resumed.Combat }
                 };
-                return ResumeAutomaticPipelineContinuation(updated);
+                return deferSemanticHandDraw
+                    ? PrototypeAutomaticPipelineResumeResultV111
+                        .FromDeferredSemanticHandDraw(updated)
+                    : ResumeAutomaticPipelineContinuation(updated);
             }
 
             var effective = selection with
@@ -549,7 +559,10 @@ public sealed partial class PrototypeGameEngine
                 state.Stochastic, prototypeRng),
             World = world with { Combat = resolved.Combat }
         };
-        return ResumeAutomaticPipelineContinuation(updated);
+        return deferSemanticHandDraw
+            ? PrototypeAutomaticPipelineResumeResultV111
+                .FromDeferredSemanticHandDraw(updated)
+            : ResumeAutomaticPipelineContinuation(updated);
     }
 
     private static long ParseShuffledCardInstanceToken(string token)
