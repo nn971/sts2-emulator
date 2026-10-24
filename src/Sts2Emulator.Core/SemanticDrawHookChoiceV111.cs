@@ -109,6 +109,96 @@ public sealed record SemanticDrawHookChoiceDecisionV111(
 
 public static class SemanticDrawHookChoiceEngineV111
 {
+    private enum AutomaticHandDrawChildKindV111
+    {
+        None,
+        RandomTarget,
+        RandomPileCard,
+        DrawInsertion,
+        GeneratedCard,
+        PotionGeneration,
+        PoolShuffle,
+        CardSelection,
+        CardTransform,
+        CardShortlist,
+        RandomHandCost,
+        SemanticDraw
+    }
+
+    private static AutomaticHandDrawChildKindV111
+        ClassifyAutomaticHandDrawChild(
+            CombatState combat, PendingCombatChoice choice,
+            bool beforeHandDraw)
+    {
+        if (choice.ControlledTarget is not null)
+            return AutomaticHandDrawChildKindV111.RandomTarget;
+        if (choice.ChoiceId == "controlled_random_pile_card" &&
+            choice.ControlledRandomPileCard is not null)
+            return AutomaticHandDrawChildKindV111.RandomPileCard;
+        if (beforeHandDraw
+                ? PrototypeGameEngine
+                    .IsAutomaticBeforeHandDrawHookDrawInsertionContinuation(
+                        combat, choice)
+                : PrototypeGameEngine
+                    .IsAutomaticHandDrawHookDrawInsertionContinuation(
+                        combat, choice))
+            return AutomaticHandDrawChildKindV111.DrawInsertion;
+        if (PrototypeGameEngine
+                .IsAutomaticHandDrawGeneratedCardContinuation(
+                    combat, choice))
+            return AutomaticHandDrawChildKindV111.GeneratedCard;
+        if (PrototypeGameEngine
+                .IsAutomaticHandDrawPotionGenerationContinuation(
+                    combat, choice))
+            return AutomaticHandDrawChildKindV111.PotionGeneration;
+        if (PrototypeGameEngine
+                .IsAutomaticHandDrawPoolShuffleContinuation(
+                    combat, choice))
+            return AutomaticHandDrawChildKindV111.PoolShuffle;
+        if (PrototypeGameEngine
+                .IsAutomaticHandDrawHookCardSelectionContinuation(
+                    combat, choice))
+            return AutomaticHandDrawChildKindV111.CardSelection;
+        if (PrototypeGameEngine
+                .IsAutomaticHandDrawHookCardTransformContinuation(
+                    combat, choice))
+            return AutomaticHandDrawChildKindV111.CardTransform;
+        if (PrototypeGameEngine
+                .IsAutomaticHandDrawHookCardShortlistContinuation(
+                    combat, choice))
+            return AutomaticHandDrawChildKindV111.CardShortlist;
+        if (PrototypeGameEngine
+                .IsAutomaticHandDrawHookRandomHandCostContinuation(
+                    combat, choice))
+            return AutomaticHandDrawChildKindV111.RandomHandCost;
+        if (beforeHandDraw
+                ? PrototypeGameEngine
+                    .IsAutomaticBeforeHandDrawHookSemanticDrawContinuation(
+                        combat, choice)
+                : PrototypeGameEngine
+                    .IsAutomaticHandDrawHookSemanticDrawContinuation(
+                        combat, choice))
+            return AutomaticHandDrawChildKindV111.SemanticDraw;
+        return AutomaticHandDrawChildKindV111.None;
+    }
+
+    private static bool HasTaggedAutomaticChildChoice(
+        PendingCombatChoice choice) =>
+        choice.ControlledTarget is not null ||
+        choice.ControlledGeneration is not null ||
+        choice.ControlledPotionGeneration is not null ||
+        choice.ControlledDrawCost is not null ||
+        choice.ControlledSemanticDraw is not null ||
+        choice.ControlledDrawInsertion is not null ||
+        choice.ControlledPoolShuffle is not null ||
+        choice.ControlledCardTransform is not null ||
+        choice.ControlledCardShortlist is not null ||
+        choice.ChoiceId == "select_cards" ||
+        choice.ControlledRandomCost is not null ||
+        choice.ControlledRandomPileCard is not null ||
+        choice.SemanticStratagemDrawSelection ||
+        choice.AutomaticSemanticStratagemDrawSelection;
+
     public static SemanticDrawHookChoiceEventV111? DescribePending(
         RunState source)
     {
@@ -280,270 +370,105 @@ public static class SemanticDrawHookChoiceEngineV111
         if (decision.Event.AutomaticHandDraw &&
             advancedCombat.PendingChoice is { } nextChoice)
         {
-            bool nestedBeforeHandDrawRandomPileCard =
-                decision.Event.BeforeHandDraw &&
-                nextChoice.ChoiceId == "controlled_random_pile_card" &&
-                nextChoice.ControlledRandomPileCard is not null;
-            bool nestedBeforeHandDrawRandomTarget =
-                decision.Event.BeforeHandDraw &&
-                nextChoice.ControlledTarget is not null;
-            bool nestedBeforeHandDrawDrawInsertion =
-                decision.Event.BeforeHandDraw &&
-                PrototypeGameEngine
-                    .IsAutomaticBeforeHandDrawHookDrawInsertionContinuation(
-                        advancedCombat, nextChoice);
-            bool nestedBeforeHandDrawGeneratedCard =
-                decision.Event.BeforeHandDraw &&
-                PrototypeGameEngine
-                    .IsAutomaticHandDrawGeneratedCardContinuation(
-                        advancedCombat, nextChoice);
-            bool nestedBeforeHandDrawPotionGeneration =
-                decision.Event.BeforeHandDraw &&
-                PrototypeGameEngine
-                    .IsAutomaticHandDrawPotionGenerationContinuation(
-                        advancedCombat, nextChoice);
-            bool nestedBeforeHandDrawPoolShuffle =
-                decision.Event.BeforeHandDraw &&
-                PrototypeGameEngine
-                    .IsAutomaticHandDrawPoolShuffleContinuation(
-                        advancedCombat, nextChoice);
-            bool nestedBeforeHandDrawCardSelection =
-                decision.Event.BeforeHandDraw &&
-                PrototypeGameEngine
-                    .IsAutomaticHandDrawHookCardSelectionContinuation(
-                        advancedCombat, nextChoice);
-            bool nestedBeforeHandDrawCardTransform =
-                decision.Event.BeforeHandDraw &&
-                PrototypeGameEngine
-                    .IsAutomaticHandDrawHookCardTransformContinuation(
-                        advancedCombat, nextChoice);
-            bool nestedBeforeHandDrawCardShortlist =
-                decision.Event.BeforeHandDraw &&
-                PrototypeGameEngine
-                    .IsAutomaticHandDrawHookCardShortlistContinuation(
-                        advancedCombat, nextChoice);
-            bool nestedBeforeHandDrawRandomHandCost =
-                decision.Event.BeforeHandDraw &&
-                PrototypeGameEngine
-                    .IsAutomaticHandDrawHookRandomHandCostContinuation(
-                        advancedCombat, nextChoice);
-            bool nestedBeforeHandDrawSemanticDraw =
-                decision.Event.BeforeHandDraw &&
-                PrototypeGameEngine
-                    .IsAutomaticBeforeHandDrawHookSemanticDrawContinuation(
-                        advancedCombat, nextChoice);
-            bool nestedActiveHandDrawRandomTarget =
-                decision.Event.AutomaticHandDraw &&
-                !decision.Event.BeforeHandDraw &&
-                nextChoice.ControlledTarget is not null;
-            bool nestedActiveHandDrawRandomPileCard =
-                decision.Event.AutomaticHandDraw &&
-                !decision.Event.BeforeHandDraw &&
-                nextChoice.ChoiceId == "controlled_random_pile_card" &&
-                nextChoice.ControlledRandomPileCard is not null;
-            bool nestedActiveHandDrawSemanticDraw =
-                decision.Event.AutomaticHandDraw &&
-                !decision.Event.BeforeHandDraw &&
-                PrototypeGameEngine
-                    .IsAutomaticHandDrawHookSemanticDrawContinuation(
-                        advancedCombat, nextChoice);
-            bool nestedActiveHandDrawDrawInsertion =
-                decision.Event.AutomaticHandDraw &&
-                !decision.Event.BeforeHandDraw &&
-                PrototypeGameEngine
-                    .IsAutomaticHandDrawHookDrawInsertionContinuation(
-                        advancedCombat, nextChoice);
-            bool nestedActiveHandDrawGeneratedCard =
-                decision.Event.AutomaticHandDraw &&
-                !decision.Event.BeforeHandDraw &&
-                PrototypeGameEngine
-                    .IsAutomaticHandDrawGeneratedCardContinuation(
-                        advancedCombat, nextChoice);
-            bool nestedActiveHandDrawPotionGeneration =
-                decision.Event.AutomaticHandDraw &&
-                !decision.Event.BeforeHandDraw &&
-                PrototypeGameEngine
-                    .IsAutomaticHandDrawPotionGenerationContinuation(
-                        advancedCombat, nextChoice);
-            bool nestedActiveHandDrawPoolShuffle =
-                decision.Event.AutomaticHandDraw &&
-                !decision.Event.BeforeHandDraw &&
-                PrototypeGameEngine
-                    .IsAutomaticHandDrawPoolShuffleContinuation(
-                        advancedCombat, nextChoice);
-            bool nestedActiveHandDrawCardSelection =
-                decision.Event.AutomaticHandDraw &&
-                !decision.Event.BeforeHandDraw &&
-                PrototypeGameEngine
-                    .IsAutomaticHandDrawHookCardSelectionContinuation(
-                        advancedCombat, nextChoice);
-            bool nestedActiveHandDrawCardTransform =
-                decision.Event.AutomaticHandDraw &&
-                !decision.Event.BeforeHandDraw &&
-                PrototypeGameEngine
-                    .IsAutomaticHandDrawHookCardTransformContinuation(
-                        advancedCombat, nextChoice);
-            bool nestedActiveHandDrawCardShortlist =
-                decision.Event.AutomaticHandDraw &&
-                !decision.Event.BeforeHandDraw &&
-                PrototypeGameEngine
-                    .IsAutomaticHandDrawHookCardShortlistContinuation(
-                        advancedCombat, nextChoice);
-            bool nestedActiveHandDrawRandomHandCost =
-                decision.Event.AutomaticHandDraw &&
-                !decision.Event.BeforeHandDraw &&
-                PrototypeGameEngine
-                    .IsAutomaticHandDrawHookRandomHandCostContinuation(
-                        advancedCombat, nextChoice);
+            var childKind = ClassifyAutomaticHandDrawChild(
+                advancedCombat, nextChoice,
+                decision.Event.BeforeHandDraw);
             bool hasTaggedChildChoice =
-                nextChoice.ControlledTarget is not null ||
-                (nextChoice.ControlledGeneration is not null &&
-                 !nestedBeforeHandDrawGeneratedCard &&
-                 !nestedActiveHandDrawGeneratedCard) ||
-                (nextChoice.ControlledPotionGeneration is not null &&
-                 !nestedBeforeHandDrawPotionGeneration &&
-                 !nestedActiveHandDrawPotionGeneration) ||
-                (nextChoice.ControlledDrawCost is not null &&
-                 !nestedBeforeHandDrawSemanticDraw &&
-                 !nestedActiveHandDrawSemanticDraw) ||
-                (nextChoice.ControlledSemanticDraw is not null &&
-                 !nestedBeforeHandDrawSemanticDraw &&
-                 !nestedActiveHandDrawSemanticDraw) ||
-                (nextChoice.ControlledDrawInsertion is not null &&
-                 !nestedBeforeHandDrawDrawInsertion &&
-                 !nestedActiveHandDrawDrawInsertion) ||
-                (nextChoice.ControlledPoolShuffle is not null &&
-                 !nestedBeforeHandDrawPoolShuffle &&
-                 !nestedActiveHandDrawPoolShuffle) ||
-                (nextChoice.ControlledCardTransform is not null &&
-                 !nestedBeforeHandDrawCardTransform &&
-                 !nestedActiveHandDrawCardTransform) ||
-                (nextChoice.ControlledCardShortlist is not null &&
-                 !nestedBeforeHandDrawCardShortlist &&
-                 !nestedActiveHandDrawCardShortlist) ||
-                (nextChoice.ChoiceId == "select_cards" &&
-                 !nestedBeforeHandDrawCardSelection &&
-                 !nestedActiveHandDrawCardSelection) ||
-                (nextChoice.ControlledRandomCost is not null &&
-                 !nestedBeforeHandDrawRandomHandCost &&
-                 !nestedActiveHandDrawRandomHandCost) ||
-                (nextChoice.ControlledRandomPileCard is not null &&
-                 !nestedBeforeHandDrawRandomPileCard &&
-                 !nestedActiveHandDrawRandomPileCard) ||
-                nextChoice.SemanticStratagemDrawSelection ||
-                nextChoice.AutomaticSemanticStratagemDrawSelection;
+                HasTaggedAutomaticChildChoice(nextChoice);
             if (hasTaggedChildChoice &&
-                !nestedBeforeHandDrawRandomTarget &&
-                !nestedBeforeHandDrawDrawInsertion &&
-                !nestedBeforeHandDrawGeneratedCard &&
-                !nestedBeforeHandDrawPotionGeneration &&
-                !nestedBeforeHandDrawPoolShuffle &&
-                !nestedBeforeHandDrawCardSelection &&
-                !nestedBeforeHandDrawCardTransform &&
-                !nestedBeforeHandDrawCardShortlist &&
-                !nestedBeforeHandDrawRandomHandCost &&
-                !nestedBeforeHandDrawSemanticDraw &&
-                !nestedActiveHandDrawRandomTarget &&
-                !nestedActiveHandDrawRandomPileCard &&
-                !nestedActiveHandDrawSemanticDraw &&
-                !nestedActiveHandDrawDrawInsertion &&
-                !nestedActiveHandDrawGeneratedCard &&
-                !nestedActiveHandDrawPotionGeneration &&
-                !nestedActiveHandDrawPoolShuffle &&
-                !nestedActiveHandDrawCardSelection &&
-                !nestedActiveHandDrawCardTransform &&
-                !nestedActiveHandDrawCardShortlist &&
-                !nestedActiveHandDrawRandomHandCost)
-            {
+                childKind == AutomaticHandDrawChildKindV111.None)
                 throw new NotSupportedException(
                     $"UNSUPPORTED_SEMANTIC_DECK site={site} " +
                     "operation=nested_controlled_choice");
-            }
-            if (nestedBeforeHandDrawRandomTarget)
+
+            switch (childKind)
             {
-                SemanticTargetChoiceV111.ValidateBoundary(advanced);
-            }
-            else if (nestedBeforeHandDrawDrawInsertion)
-                SemanticDrawInsertionChoiceV111.ValidateBoundary(advanced);
-            else if (nestedBeforeHandDrawGeneratedCard ||
-                     nestedActiveHandDrawGeneratedCard)
-                SemanticGenerationChoiceV111.ValidateBoundary(advanced);
-            else if (nestedBeforeHandDrawPotionGeneration ||
-                     nestedActiveHandDrawPotionGeneration)
-                SemanticPotionGenerationChoiceV111.ValidateBoundary(advanced);
-            else if (nestedBeforeHandDrawPoolShuffle ||
-                     nestedActiveHandDrawPoolShuffle)
-                SemanticPoolShuffleChoiceV111.ValidateBoundary(advanced);
-            else if (nestedBeforeHandDrawCardSelection ||
-                     nestedActiveHandDrawCardSelection)
-            {
-                SemanticCardSelectionEngineV111.ValidatePendingBoundary(
-                    advanced);
-                _ = SemanticCardSelectionEngineV111.DescribePending(
-                    advanced, CanonicalJson.Sha256(advanced));
-            }
-            else if (nestedBeforeHandDrawCardTransform ||
-                     nestedActiveHandDrawCardTransform)
-                SemanticCardTransformChoiceV111.ValidateBoundary(
-                    advanced, nextChoice.ControlledCardTransform!);
-            else if (nestedBeforeHandDrawCardShortlist ||
-                     nestedActiveHandDrawCardShortlist)
-                SemanticCardShortlistChoiceV111.ValidateBoundary(advanced);
-            else if (nestedBeforeHandDrawRandomHandCost ||
-                     nestedActiveHandDrawRandomHandCost)
-                SemanticRandomHandCostChoiceV111.ValidateBoundary(advanced);
-            else if (nestedBeforeHandDrawSemanticDraw)
-            {
-                if (nextChoice.ChoiceId == "controlled_draw_cost")
-                    SemanticCostChoiceV111.ValidateDrawBoundary(advanced);
-                else
-                    SemanticDrawChoiceV111.ValidateBoundary(advanced);
-            }
-            else if (nestedActiveHandDrawRandomTarget)
-            {
-                advancedCombat = advancedCombat with
-                {
-                    PendingChoice = nextChoice with
+                case AutomaticHandDrawChildKindV111.RandomTarget:
+                    if (decision.Event.BeforeHandDraw)
                     {
-                        AutomaticSemanticDrawTargetChoice = true
+                        SemanticTargetChoiceV111.ValidateBoundary(advanced);
                     }
-                };
-                advanced = advanced with
-                {
-                    World = advanced.World! with
+                    else
                     {
-                        Combat = advancedCombat
+                        advancedCombat = advancedCombat with
+                        {
+                            PendingChoice = nextChoice with
+                            {
+                                AutomaticSemanticDrawTargetChoice = true
+                            }
+                        };
+                        advanced = advanced with
+                        {
+                            World = advanced.World! with
+                            {
+                                Combat = advancedCombat
+                            }
+                        };
+                        SemanticTargetChoiceV111.ValidateBoundary(advanced);
                     }
-                };
-                SemanticTargetChoiceV111.ValidateBoundary(advanced);
-            }
-            else if (nestedBeforeHandDrawRandomPileCard ||
-                     nestedActiveHandDrawRandomPileCard)
-                _ = SemanticRandomPileCardEngineV111.DescribePending(advanced)
-                    ?? throw new InvalidDataException(
-                        "Nested draw-hook random pile-card choice has no semantic event.");
-            else if (nestedActiveHandDrawSemanticDraw)
-            {
-                if (nextChoice.ChoiceId == "controlled_draw_cost")
-                    SemanticCostChoiceV111.ValidateDrawBoundary(advanced);
-                else
-                    SemanticDrawChoiceV111.ValidateBoundary(advanced);
-            }
-            else if (nestedActiveHandDrawDrawInsertion)
-                SemanticDrawInsertionChoiceV111.ValidateBoundary(advanced);
-            else if (!hasTaggedChildChoice)
-            {
-                advancedCombat = advancedCombat with
-                {
-                    PendingChoice = nextChoice with
+                    break;
+                case AutomaticHandDrawChildKindV111.RandomPileCard:
+                    _ = SemanticRandomPileCardEngineV111
+                        .DescribePending(advanced)
+                        ?? throw new InvalidDataException(
+                            "Nested draw-hook random pile-card choice has no semantic event.");
+                    break;
+                case AutomaticHandDrawChildKindV111.DrawInsertion:
+                    SemanticDrawInsertionChoiceV111.ValidateBoundary(
+                        advanced);
+                    break;
+                case AutomaticHandDrawChildKindV111.GeneratedCard:
+                    SemanticGenerationChoiceV111.ValidateBoundary(advanced);
+                    break;
+                case AutomaticHandDrawChildKindV111.PotionGeneration:
+                    SemanticPotionGenerationChoiceV111.ValidateBoundary(
+                        advanced);
+                    break;
+                case AutomaticHandDrawChildKindV111.PoolShuffle:
+                    SemanticPoolShuffleChoiceV111.ValidateBoundary(advanced);
+                    break;
+                case AutomaticHandDrawChildKindV111.CardSelection:
+                    SemanticCardSelectionEngineV111
+                        .ValidatePendingBoundary(advanced);
+                    _ = SemanticCardSelectionEngineV111.DescribePending(
+                        advanced, CanonicalJson.Sha256(advanced));
+                    break;
+                case AutomaticHandDrawChildKindV111.CardTransform:
+                    SemanticCardTransformChoiceV111.ValidateBoundary(
+                        advanced, nextChoice.ControlledCardTransform!);
+                    break;
+                case AutomaticHandDrawChildKindV111.CardShortlist:
+                    SemanticCardShortlistChoiceV111.ValidateBoundary(advanced);
+                    break;
+                case AutomaticHandDrawChildKindV111.RandomHandCost:
+                    SemanticRandomHandCostChoiceV111.ValidateBoundary(
+                        advanced);
+                    break;
+                case AutomaticHandDrawChildKindV111.SemanticDraw:
+                    if (nextChoice.ChoiceId == "controlled_draw_cost")
+                        SemanticCostChoiceV111.ValidateDrawBoundary(advanced);
+                    else
+                        SemanticDrawChoiceV111.ValidateBoundary(advanced);
+                    break;
+                case AutomaticHandDrawChildKindV111.None:
+                    if (!hasTaggedChildChoice)
                     {
-                        AutomaticSemanticDrawHookChoice = true
+                        advancedCombat = advancedCombat with
+                        {
+                            PendingChoice = nextChoice with
+                            {
+                                AutomaticSemanticDrawHookChoice = true
+                            }
+                        };
+                        advanced = advanced with
+                        {
+                            World = advanced.World! with
+                            {
+                                Combat = advancedCombat
+                            }
+                        };
                     }
-                };
-                advanced = advanced with
-                {
-                    World = advanced.World! with { Combat = advancedCombat }
-                };
+                    break;
             }
         }
         else if (beforeHandDraw && advancedCombat.PendingChoice is not null)

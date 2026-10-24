@@ -1191,3 +1191,11 @@ continuations now pass through the common engine-owned nested-choice handoff.
 The random pile-card owner retains support validation and hook resumption; the
 common owner validates and publishes the hand-draw cursor. Static source review
 and `git diff --check` only; no tests or builds were run.
+
+## 2026-10-25: nested draw-hook child classification consolidation
+
+Automatic draw-hook replay now classifies a nested child once against its saved
+pre-draw or active hand-draw cursor, then dispatches boundary validation by
+child kind. It keeps the existing per-kind validators and rejects unknown
+tagged children. Static source review and `git diff --check` only; no tests or
+builds were run.
