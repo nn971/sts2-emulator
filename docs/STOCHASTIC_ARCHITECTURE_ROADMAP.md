@@ -3975,10 +3975,13 @@ and cross-provider mechanical equivalence remain open. Static source review and
 handoff. Semantic end-turn preserves that boundary when publishing its
 chronology, and controlled-playable routes the result through the common typed
 executor's new value-result entry point instead of classifying its run again.
-Other run-only choice resumes project their run through the same executor.
-Snapshot and transcript formats are unchanged. Broader resume consolidation
-and cross-provider mechanical equivalence remain open. Static source review
-and `git diff --check` only; no tests or builds were run.
+The executor now returns the compatibility `RandomIndexDecisionV111` beside
+that mechanics result, so these transcript owners append the same selected
+ticket that exact request replay consumed. Other run-only choice resumes
+project their run through the same executor. Snapshot and transcript formats
+are unchanged. Broader resume consolidation and cross-provider mechanical
+equivalence remain open. Static source review and `git diff --check` only; no
+tests or builds were run.
 
 **S4 semantic-choice result owner increment (2026-10-24):** Semantic choice
 resume overloads that return only a run and source SiteId now use the shared

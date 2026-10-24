@@ -1306,20 +1306,13 @@ public static class ControlledPlayableCombatEngineV111
             Func<RunState, int,
                 PrototypeAutomaticPipelineResumeResultV111> resume)
     {
-        var decision = new RandomIndexDecisionV111(
-            request with
-            {
-                OrderedCandidates = (int[])request.OrderedCandidates.Clone()
-            }, selectedIndex, "controlled-v111");
-        decision.Validate();
-        var result = ControlledChanceContinuationExecutorV111
-            .ResolveSelectedIndexValue<ControlledPlayableCombatV111,
+        return ControlledChanceContinuationExecutorV111
+            .ResolveSelectedIndexValueWithDecision<ControlledPlayableCombatV111,
                 PrototypeAutomaticPipelineResumeResultV111>(
                 state, request, selectedIndex, (checkpoint, replayedIndex) =>
                     ControlledChanceGuardV111.ExecuteGuarded(
                         () => resume(
                             checkpoint.Run.Fork(), replayedIndex)));
-        return (result, decision);
     }
 
     private static ControlledPlayableCombatV111 StartPendingTurn(

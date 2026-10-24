@@ -287,18 +287,29 @@ internal static class ControlledChanceContinuationExecutorV111
         Func<TCheckpoint, int, TValue> mechanics)
         where TValue : class
     {
-        ArgumentNullException.ThrowIfNull(checkpoint);
-        ArgumentNullException.ThrowIfNull(request);
-        ArgumentNullException.ThrowIfNull(mechanics);
-        request.Validate();
+        var decision = CreateSelectedIndexDecision(request, selectedIndex);
+        return ReplaySelectedIndex(
+            checkpoint, decision, mechanics);
+    }
 
+    private static TValue ReplaySelectedIndex<TCheckpoint, TValue>(
+        TCheckpoint checkpoint,
+        RandomIndexDecisionV111 decision,
+        Func<TCheckpoint, int, TValue> mechanics)
+        where TValue : class
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        ArgumentNullException.ThrowIfNull(decision);
+        ArgumentNullException.ThrowIfNull(mechanics);
+        decision.Validate();
+
+        var request = decision.Request;
         var typedRequest = ControlledStochasticRequestV111.FromIndex(request);
         var continuation = new ControlledStochasticContinuationStateV111(
             ControlledStochasticContinuationStateV111.CurrentSchemaId,
             [], typedRequest);
         var selectedOutcome = ControlledStochasticDecisionV111.FromIndex(
-            new RandomIndexDecisionV111(
-                request, selectedIndex, "controlled-v111"));
+            decision);
         var replay = ResolveTyped<TCheckpoint, TValue>(
             checkpoint, continuation, selectedOutcome,
             (savedCheckpoint) =>
@@ -325,15 +336,40 @@ internal static class ControlledChanceContinuationExecutorV111
         int selectedIndex,
         Func<TCheckpoint, int, TValue> mechanics)
         where TValue : struct
+        => ResolveSelectedIndexValueWithDecision(
+            checkpoint, request, selectedIndex, mechanics).Value;
+
+    public static (TValue Value, RandomIndexDecisionV111 Decision)
+        ResolveSelectedIndexValueWithDecision<TCheckpoint, TValue>(
+            TCheckpoint checkpoint,
+            RandomIndexRequestV111 request,
+            int selectedIndex,
+            Func<TCheckpoint, int, TValue> mechanics)
+        where TValue : struct
     {
         ArgumentNullException.ThrowIfNull(mechanics);
-        var replay = ResolveSelectedIndex<TCheckpoint,
-            SelectedValueV111<TValue>>(
-                checkpoint, request, selectedIndex,
+        var decision = CreateSelectedIndexDecision(request, selectedIndex);
+        var replay = ReplaySelectedIndex<TCheckpoint,
+            SelectedValueV111<TValue>>(checkpoint, decision,
                 (savedCheckpoint, replayedIndex) =>
                     new SelectedValueV111<TValue>(
                         mechanics(savedCheckpoint, replayedIndex)));
-        return replay.Value;
+        return (replay.Value, decision);
+    }
+
+    private static RandomIndexDecisionV111 CreateSelectedIndexDecision(
+        RandomIndexRequestV111 request, int selectedIndex)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        request.Validate();
+        var decision = new RandomIndexDecisionV111(
+            request with
+            {
+                OrderedCandidates =
+                    (int[])request.OrderedCandidates.Clone()
+            }, selectedIndex, "controlled-v111");
+        decision.Validate();
+        return decision;
     }
 
     public static ControlledChanceReplayResultV111 Resume(

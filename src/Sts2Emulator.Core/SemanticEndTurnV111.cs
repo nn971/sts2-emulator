@@ -801,16 +801,9 @@ public static class SemanticEndTurnEngineV111
         {
             var candidateLabels = state.EnemyActionEventPending?
                 .CandidateLabels;
-            var decision = new RandomIndexDecisionV111(
-                enemyActionRequest with
-                {
-                    OrderedCandidates = (int[])
-                        enemyActionRequest.OrderedCandidates.Clone()
-                }, selectedIndex, "controlled-v111");
-            decision.Validate();
-            PrototypeAutomaticPipelineResumeResultV111 resumed =
+            var (resumed, decision) =
                 ControlledChanceContinuationExecutorV111
-                .ResolveSelectedIndexValue<SemanticEndTurnV111,
+                .ResolveSelectedIndexValueWithDecision<SemanticEndTurnV111,
                     PrototypeAutomaticPipelineResumeResultV111>(
                     state, enemyActionRequest, selectedIndex,
                     (checkpoint, replayedIndex) =>
