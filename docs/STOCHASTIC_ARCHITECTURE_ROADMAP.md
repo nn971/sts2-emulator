@@ -4604,6 +4604,7 @@ review and `git diff --check` only; no tests or builds were run.
 opening hand draw now uses the shared semantic draw profile when its committed
 physical pile is represented by a Nature deck, allowing already-known card
 identities to pass through the common `DrawCards` kernel without a second
-draw request. Unexpected opening draw boundaries remain fail-closed until an
-opening-stage continuation owns them. Static source review and
-`git diff --check` only; no tests or builds were run.
+draw request. Its coupled player/combat result now publishes through the
+existing `PublishDrawMechanicsState` owner. Unexpected opening draw boundaries
+remain fail-closed until an opening-stage continuation owns them. Static source
+review and `git diff --check` only; no tests or builds were run.

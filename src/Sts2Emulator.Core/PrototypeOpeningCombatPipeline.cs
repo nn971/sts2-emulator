@@ -173,12 +173,11 @@ public sealed partial class PrototypeGameEngine
                 "site=combat.opening_draw operation=" +
                 drawn.BoundaryKind);
         }
-        return state with
+        state = state with
         {
-            Player = player,
             Stochastic = RunStochasticStateV111.WithPrototypeRng(
-                state.Stochastic, prototypeRng),
-            World = world with { Combat = combat }
+                state.Stochastic, prototypeRng)
         };
+        return PublishDrawMechanicsState(state, player, combat);
     }
 }
