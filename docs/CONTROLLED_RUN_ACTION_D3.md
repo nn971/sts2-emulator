@@ -51,8 +51,9 @@ player action still resolves by the selected index.
 For legacy Rest Heal rewards, `reward.card_model.index_draw` reuses its
 `card:<model>` law after reconstructing the source reward group, selected
 rarity and prior card picks from the saved action prefix. The preceding
-`reward.card_rarity.ticket` remains a raw ticket law for source-compatible
-resolution.
+`reward.card_rarity.ticket` law labels each raw ticket position with the
+rarity bucket it resolves to. Resolution still uses the original ticket index;
+pool fidelity and ticket weighting remain unverified.
 `ControlledRunActionEngineV111.BeginLegacyActTransition` is the explicit
 entry point for the unconfigured prototype transition route.
 Legacy Treasure selection is not offered when Silver Crucible suppresses the

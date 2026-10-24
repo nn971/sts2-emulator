@@ -241,6 +241,41 @@ public static partial class ChanceLawEngineV111
             outcomes);
     }
 
+    internal static ChanceLawV111 QueryLegacyRewardCardRarityTicketIndices(
+        int act, string groupOwnerId, string[] priorCardIds, int ordinal)
+    {
+        var rarityLaw = QueryLegacyRewardCardRarityTicket(
+            act, groupOwnerId, priorCardIds, ordinal);
+        var outcomes = new List<ChanceLawOutcomeV111>();
+        var ticketIndex = 0;
+        foreach (var rarity in rarityLaw.Outcomes)
+        {
+            var rarityId = rarity.OutcomeId["rarity:".Length..];
+            for (var offset = 0; offset < rarity.Weight; offset++)
+            {
+                outcomes.Add(new ChanceLawOutcomeV111(
+                    $"ticket:{ticketIndex}:rarity:{rarityId}", 1L));
+                ticketIndex = checked(ticketIndex + 1);
+            }
+        }
+
+        return CreateLegacyCategoricalLaw(
+            rarityLaw.SiteId, "reward", rarityLaw.OwnerId,
+            rarityLaw.Ordinal,
+            "legacy-reward-card-rarity-ticket-index-v1",
+            new
+            {
+                sourceLawId = rarityLaw.LawId,
+                sourceConditioningFingerprint =
+                    rarityLaw.ConditioningFingerprint,
+                orderedTicketOutcomes = outcomes
+            },
+            "Uniform raw ticket positions annotated with the source-shaped " +
+            "rarity bucket they resolve to; ticket and pool fidelity remain " +
+            "unverified.",
+            outcomes.ToArray(), operationKind: "bounded_integer");
+    }
+
     /// <summary>
     /// Query the legacy reward-potion model after a successful drop ticket.
     /// It uses the fixed ordered prototype pool and does not verify source

@@ -2,6 +2,15 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S1 controlled Rest Heal rarity-ticket semantics increment (2026-10-24):**
+Legacy Rest Heal run-action queries now expand the source-shaped rarity ticket
+law into distinct raw ticket-position outcomes annotated with the rarity bucket
+each position reaches. The continuation verifies bounded support and numeric
+labels, while action replay still receives the unchanged raw ticket index.
+Pool fidelity and ticket weighting remain `UNVERIFIED`. Static source review,
+`git diff --check`, and Chance Law boundary guards only; no tests or builds
+were run.
+
 **S3 combat-reward ticket helper ownership follow-up (2026-10-24):** The
 legacy card-rarity ticket weight helper now lives with its sole combat-reward
 query caller. Shared cross-family rarity outcome and grid helpers remain in
