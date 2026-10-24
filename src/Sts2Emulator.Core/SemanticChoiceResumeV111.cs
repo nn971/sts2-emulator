@@ -107,15 +107,16 @@ internal static class SemanticChoiceResumeV111
 
         var decision = SemanticDrawHookChoiceEngineV111.Select(
             checkpoint, pending, actionId);
-        var resumed = Resume(checkpoint, decision);
+        var resumed = Resume(checkpoint, decision)
+            .EnsurePipelineBoundary();
         var run = resumed.Run;
-        var pipelineBoundary = resumed.PipelineBoundary ??
-            PrototypeAutomaticPipelineResumeResultV111.FromRun(run).Boundary;
+        var pipelineBoundary = resumed.Boundary;
         if (!pending.AutomaticHandDraw)
             return (PrototypeDrawCardsResumeResultV111.ForHandDraw(
                     run, requested,
                     PrototypeGameEngine.GetSemanticDrawRemainingCount(
-                        run, remaining, drawnBefore), pipelineBoundary),
+                        run, remaining, drawnBefore), pipelineBoundary)
+                .EnsurePipelineBoundary(),
                 decision);
 
         var combat = run.World?.Combat ?? throw new InvalidDataException(
@@ -123,14 +124,16 @@ internal static class SemanticChoiceResumeV111
         if (pending.BeforeHandDraw &&
             combat.PendingChoice?.AutomaticSemanticDrawHookChoice == true)
             return (PrototypeDrawCardsResumeResultV111.ForHandDraw(
-                run, requested, 0, pipelineBoundary), decision);
+                run, requested, 0, pipelineBoundary)
+                .EnsurePipelineBoundary(), decision);
 
         if (pending.BeforeHandDraw &&
             combat.PendingChoice?.ControlledTarget is not null)
         {
             SemanticTargetChoiceV111.ValidateBoundary(run);
             return (PrototypeDrawCardsResumeResultV111.ForHandDraw(
-                run, requested, 0, pipelineBoundary), decision);
+                run, requested, 0, pipelineBoundary)
+                .EnsurePipelineBoundary(), decision);
         }
 
         if (pending.BeforeHandDraw)
@@ -152,15 +155,16 @@ internal static class SemanticChoiceResumeV111
                     "Automatic draw-hook choice lost its tagged cursor.");
             remaining = savedRemaining;
             return (PrototypeDrawCardsResumeResultV111.ForHandDraw(
-                run, requested, remaining, pipelineBoundary), decision);
+                run, requested, remaining, pipelineBoundary)
+                .EnsurePipelineBoundary(), decision);
         }
 
         var resumedDraw = PrototypeGameEngine
             .ResumeSemanticAutomaticHandDraw(run, remaining);
-        return (PrototypeDrawCardsResumeResultV111.ForHandDraw(
-                resumedDraw.Run, requested, resumedDraw.RemainingCount,
-                resumedDraw.PipelineBoundary)
-            .EnsurePipelineBoundary(), decision);
+        if (resumedDraw.RequireRequestedCount() != requested)
+            throw new InvalidDataException(
+                "Automatic draw-hook resume changed its requested count.");
+        return (resumedDraw.EnsurePipelineBoundary(), decision);
     }
 
     internal static (

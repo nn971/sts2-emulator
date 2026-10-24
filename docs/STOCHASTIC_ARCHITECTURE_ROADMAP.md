@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 draw-hook resume boundary validation increment (2026-10-25):** The shared
+draw-hook resume now validates the classified automatic-pipeline boundary
+against the returned run on every branch, including standalone draws and
+saved pre-draw progress. Resuming the active automatic hand draw also checks
+that its requested count is unchanged and returns the already-classified
+progress value. Choice transcripts and snapshot fields are unchanged. Static
+source review and `git diff --check` only; no tests or builds were run.
+
 **S4 repeated-damage defeat-hook continuation increment (2026-10-25):** The
 same resumable `EnemyDamaged` and `EnemyDefeated` boundary now covers
 `DamageAllEnemiesRepeatPerKill` (including Echoing Slash). Single and repeated
