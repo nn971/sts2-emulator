@@ -373,6 +373,8 @@ public sealed partial class PrototypeGameEngine
             IsOpeningGeneratedPoolShuffleContinuation(
                 combat, pending, shuffle, continuation) ||
             IsHelloWorldAutomaticBeforeHandDrawPoolShuffle(
+                combat, pending, shuffle, continuation) ||
+            IsToolboxAutomaticBeforeHandDrawPoolShuffle(
                 combat, pending, shuffle, continuation);
     }
 
@@ -381,11 +383,195 @@ public sealed partial class PrototypeGameEngine
         PrototypeControlledPoolShuffleV111 shuffle,
         PrototypeChoiceResolutionContinuationState continuation)
     {
+        if (combat.Turn < 2 ||
+            !IsAutomaticSemanticBeforeHandDrawPoolShuffleFrame(
+                combat, pending, continuation,
+                PrototypeEffectSourceKind.Power, out var eventDispatch) ||
+            !IsHelloWorldBeforeHandDrawDispatch(
+                combat, eventDispatch, out var power) ||
+            shuffle.Operation.Kind !=
+                PrototypeCombatEffectKind.CreateDistinctCharacterCommonCardsInHand ||
+            shuffle.Operation.SourceKind != PrototypeEffectSourceKind.Power ||
+            shuffle.Operation.SourcePowerApplicationOrder is not
+                { } powerOrder ||
+            powerOrder != power.ApplicationOrder)
+            return false;
+
+        if (shuffle.Operation.Amount != power.Stacks)
+            return false;
+
+        var triggers = PrototypeContent.Power(power.PowerId).Triggers;
+        var expectedOperation = new PrototypeQueuedOperation(
+            PrototypeCombatEffectKind.CreateDistinctCharacterCommonCardsInHand,
+            power.Stacks,
+            SourceKind: PrototypeEffectSourceKind.Power,
+            SourcePowerApplicationOrder: power.ApplicationOrder);
+        var sourcePool = SourcePoolForShuffle(
+            combat, expectedOperation, sourceCardInstanceId: null);
+        if (sourcePool is null ||
+            CanonicalJson.Sha256(shuffle.Operation) !=
+                CanonicalJson.Sha256(expectedOperation) ||
+            shuffle.SelectedCount != Math.Min(
+                power.StoredValue, sourcePool.Length) ||
+            !shuffle.OriginalCardIds.SequenceEqual(sourcePool))
+            return false;
+
+        var expectedSubscriber = new PrototypeEventSubscriberState(
+            power.ApplicationOrder, triggers[0].Effects, power.Stacks,
+            PrototypeEffectSourceKind.Power,
+            SourcePowerApplicationOrder: power.ApplicationOrder,
+            PowerCardPayload: power.CardPayload?.Fork(),
+            RemoveSourcePowerAfterTrigger:
+                triggers[0].RemoveSourcePowerAfterTrigger,
+            EveryNth: triggers[0].EveryNth,
+            PowerTriggerIndex: 0,
+            CountdownBeforeTrigger: triggers[0].CountdownBeforeTrigger,
+            SourcePowerStoredValue: power.StoredValue);
+        return CanonicalJson.Sha256(expectedSubscriber) ==
+            CanonicalJson.Sha256(eventDispatch.CurrentSubscriber);
+    }
+
+    private static bool IsHelloWorldBeforeHandDrawDispatch(
+        CombatState combat,
+        PrototypeEventDispatchContinuationState eventDispatch,
+        out PrototypePowerInstanceState power)
+    {
+        power = null!;
         const string helloWorldPowerId = "proto.power.hello_world";
-        if (combat is not { IsPlayerTurn: true, Turn: >= 2,
-                SemanticDeck: { Mode: SemanticDeckStateV111.NatureMode,
-                    Pending: null },
-                AutomaticPipelineContinuation: { } pipeline } ||
+        if (combat.Turn < 2 || eventDispatch.EventDepth != 0 ||
+            eventDispatch.CombatEvent != new PrototypeCombatEvent(
+                PrototypeCombatEventKind.BeforeHandDraw) ||
+            eventDispatch.CurrentSubscriber is not
+                { SourceKind: PrototypeEffectSourceKind.Power,
+                  SourcePowerApplicationOrder: { } powerOrder,
+                  PowerTriggerIndex: 0 } ||
+            combat.PlayerPowers.SingleOrDefault(candidate =>
+                candidate.ApplicationOrder == powerOrder) is not
+                { PowerId: helloWorldPowerId, Stacks: > 0,
+                  StoredValue: > 0 } sourcePower)
+            return false;
+
+        var definition = PrototypeContent.Power(sourcePower.PowerId);
+        var triggers = definition.Triggers;
+        var expectedTrigger = new PrototypePowerTriggerSpec(
+            PrototypeCombatEventKind.BeforeHandDraw,
+            [new PrototypeCombatEffectSpec(
+                PrototypeCombatEffectKind.CreateDistinctCharacterCommonCardsInHand,
+                0, AmountPerPowerStack: 1)]);
+        if (!definition.SnapshotGenerationStacksAtTurnStart ||
+            triggers.Length != 1 ||
+            CanonicalJson.Sha256(triggers[0]) !=
+                CanonicalJson.Sha256(expectedTrigger))
+            return false;
+
+        var expectedSubscriber = new PrototypeEventSubscriberState(
+            sourcePower.ApplicationOrder, triggers[0].Effects,
+            sourcePower.Stacks, PrototypeEffectSourceKind.Power,
+            SourcePowerApplicationOrder: sourcePower.ApplicationOrder,
+            PowerCardPayload: sourcePower.CardPayload?.Fork(),
+            RemoveSourcePowerAfterTrigger:
+                triggers[0].RemoveSourcePowerAfterTrigger,
+            EveryNth: triggers[0].EveryNth,
+            PowerTriggerIndex: 0,
+            CountdownBeforeTrigger: triggers[0].CountdownBeforeTrigger,
+            SourcePowerStoredValue: sourcePower.StoredValue);
+        if (CanonicalJson.Sha256(expectedSubscriber) !=
+            CanonicalJson.Sha256(eventDispatch.CurrentSubscriber))
+            return false;
+
+        power = sourcePower;
+        return true;
+    }
+
+    internal static bool IsToolboxAutomaticBeforeHandDrawPoolShuffle(
+        CombatState combat, PendingCombatChoiceState pending,
+        PrototypeControlledPoolShuffleV111 shuffle,
+        PrototypeChoiceResolutionContinuationState continuation)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(pending);
+        ArgumentNullException.ThrowIfNull(shuffle);
+        ArgumentNullException.ThrowIfNull(continuation);
+        if (combat.Turn != 1 ||
+            !IsAutomaticSemanticBeforeHandDrawPoolShuffleFrame(
+                combat, pending, continuation,
+                PrototypeEffectSourceKind.Relic, out var eventDispatch) ||
+            !IsToolboxBeforeHandDrawDispatch(combat, eventDispatch))
+            return false;
+
+        var expectedOperation = new PrototypeQueuedOperation(
+            PrototypeCombatEffectKind.ChooseGeneratedCards, 3,
+            SourceKind: PrototypeEffectSourceKind.Relic,
+            GeneratedChoiceCardsFreeThisTurn: false);
+        var sourcePool = SourcePoolForShuffle(
+            combat, expectedOperation, sourceCardInstanceId: null);
+        if (sourcePool is null ||
+            CanonicalJson.Sha256(shuffle.Operation) !=
+                CanonicalJson.Sha256(expectedOperation) ||
+            shuffle.SelectedCount != Math.Min(3, sourcePool.Length) ||
+            !shuffle.OriginalCardIds.SequenceEqual(sourcePool))
+            return false;
+
+        return true;
+    }
+
+    private static bool IsToolboxBeforeHandDrawDispatch(
+        CombatState combat,
+        PrototypeEventDispatchContinuationState eventDispatch)
+    {
+        const string toolboxId = "proto.relic.toolbox";
+        if (combat.Turn != 1 ||
+            eventDispatch.EventDepth != 0 ||
+            eventDispatch.CombatEvent != new PrototypeCombatEvent(
+                PrototypeCombatEventKind.BeforeHandDraw) ||
+            eventDispatch.CurrentSubscriber is not
+                { SourceKind: PrototypeEffectSourceKind.Relic,
+                  RelicStateIndex: { } index,
+                  RelicTriggerIndex: 0 } ||
+            (uint)index >= (uint)combat.RelicStates.Length ||
+            combat.RelicStates[index] is not
+                { RelicId: toolboxId, IsMelted: false } relic ||
+            relic.PersistentIndex != index ||
+            relic.ApplicationOrder !=
+                eventDispatch.CurrentSubscriber.ApplicationOrder)
+            return false;
+
+        var triggers = PrototypeContent.Relic(toolboxId).Triggers ?? [];
+        var expectedTrigger = new PrototypeRelicTriggerSpec(
+            PrototypeCombatEventKind.BeforeHandDraw,
+            [new PrototypeCombatEffectSpec(
+                PrototypeCombatEffectKind.ChooseGeneratedCards, 3,
+                GeneratedChoiceCardsFreeThisTurn: false)],
+            TurnEquals: 1);
+        if (triggers.Length != 1 ||
+            CanonicalJson.Sha256(triggers[0]) !=
+                CanonicalJson.Sha256(expectedTrigger))
+            return false;
+
+        var expectedSubscriber = new PrototypeEventSubscriberState(
+            relic.ApplicationOrder, triggers[0].Effects, PowerStacks: 0,
+            PrototypeEffectSourceKind.Relic,
+            RelicStateIndex: index,
+            RelicTriggerIndex: 0,
+            EveryNth: triggers[0].EveryNth,
+            MaxTriggersPerCounterWindow:
+                triggers[0].MaxTriggersPerCounterWindow);
+        return CanonicalJson.Sha256(expectedSubscriber) ==
+            CanonicalJson.Sha256(eventDispatch.CurrentSubscriber);
+    }
+
+    private static bool IsAutomaticSemanticBeforeHandDrawPoolShuffleFrame(
+        CombatState combat, PendingCombatChoiceState pending,
+        PrototypeChoiceResolutionContinuationState continuation,
+        PrototypeEffectSourceKind expectedSourceKind,
+        out PrototypeEventDispatchContinuationState eventDispatch)
+    {
+        eventDispatch = null!;
+        if (combat is not
+                { IsPlayerTurn: true,
+                  SemanticDeck: { Mode: SemanticDeckStateV111.NatureMode,
+                      Pending: null },
+                  AutomaticPipelineContinuation: { } pipeline } ||
             !IsAtAutomaticSemanticBeforeHandDrawHookCursor(
                 pipeline, combat, pending) ||
             pending is not
@@ -431,11 +617,6 @@ public sealed partial class PrototypeGameEngine
                   MoveSourceCardOnCompletion: true,
                   RemoveSourceCardOnCompletion: false,
                   SourceCardAlreadyMoved: false } ||
-            shuffle.Operation.Kind !=
-                PrototypeCombatEffectKind.CreateDistinctCharacterCommonCardsInHand ||
-            shuffle.Operation.SourceKind != PrototypeEffectSourceKind.Power ||
-            shuffle.Operation.SourcePowerApplicationOrder is not
-                { } powerOrder ||
             continuation is not
                 { Parent: null,
                   SourceCardInstanceId: null,
@@ -448,64 +629,16 @@ public sealed partial class PrototypeGameEngine
                   MoveSourceCardOnCompletion: true,
                   RemoveSourceCardOnCompletion: false,
                   SourceCardAlreadyMoved: false,
-                  EventDispatchContinuation: { } eventDispatch,
+                  EventDispatchContinuation: { } dispatch,
                   CompletePlayerHandCleanup: false } ||
-            eventDispatch.EventDepth != 0 ||
-            eventDispatch.CombatEvent != new PrototypeCombatEvent(
-                PrototypeCombatEventKind.BeforeHandDraw))
+            dispatch.EventDepth != 0 ||
+            dispatch.CombatEvent != new PrototypeCombatEvent(
+                PrototypeCombatEventKind.BeforeHandDraw) ||
+            dispatch.CurrentSubscriber.SourceKind != expectedSourceKind)
             return false;
 
-        var power = combat.PlayerPowers.SingleOrDefault(candidate =>
-            candidate.ApplicationOrder == powerOrder);
-        if (power is not
-                { PowerId: helloWorldPowerId, Stacks: > 0,
-                  StoredValue: > 0 } ||
-            shuffle.Operation.Amount != power.Stacks)
-            return false;
-
-        var definition = PrototypeContent.Power(power.PowerId);
-        var triggers = definition.Triggers;
-        var expectedTrigger = new PrototypePowerTriggerSpec(
-            PrototypeCombatEventKind.BeforeHandDraw,
-            [new PrototypeCombatEffectSpec(
-                PrototypeCombatEffectKind.CreateDistinctCharacterCommonCardsInHand,
-                0, AmountPerPowerStack: 1)]);
-        if (!definition.SnapshotGenerationStacksAtTurnStart ||
-            triggers.Length != 1 ||
-            CanonicalJson.Sha256(triggers[0]) !=
-                CanonicalJson.Sha256(expectedTrigger) ||
-            eventDispatch.CurrentSubscriber.PowerTriggerIndex != 0)
-            return false;
-
-        var expectedOperation = new PrototypeQueuedOperation(
-            PrototypeCombatEffectKind.CreateDistinctCharacterCommonCardsInHand,
-            power.Stacks,
-            SourceKind: PrototypeEffectSourceKind.Power,
-            SourcePowerApplicationOrder: power.ApplicationOrder);
-        var sourcePool = SourcePoolForShuffle(
-            combat, expectedOperation, sourceCardInstanceId: null);
-        if (sourcePool is null)
-            return false;
-        if (CanonicalJson.Sha256(shuffle.Operation) !=
-                CanonicalJson.Sha256(expectedOperation) ||
-            shuffle.SelectedCount != Math.Min(
-                power.StoredValue, sourcePool.Length) ||
-            !shuffle.OriginalCardIds.SequenceEqual(sourcePool))
-            return false;
-
-        var expectedSubscriber = new PrototypeEventSubscriberState(
-            power.ApplicationOrder, triggers[0].Effects, power.Stacks,
-            PrototypeEffectSourceKind.Power,
-            SourcePowerApplicationOrder: power.ApplicationOrder,
-            PowerCardPayload: power.CardPayload?.Fork(),
-            RemoveSourcePowerAfterTrigger:
-                triggers[0].RemoveSourcePowerAfterTrigger,
-            EveryNth: triggers[0].EveryNth,
-            PowerTriggerIndex: 0,
-            CountdownBeforeTrigger: triggers[0].CountdownBeforeTrigger,
-            SourcePowerStoredValue: power.StoredValue);
-        return CanonicalJson.Sha256(expectedSubscriber) ==
-            CanonicalJson.Sha256(eventDispatch.CurrentSubscriber);
+        eventDispatch = dispatch;
+        return true;
     }
 
     private static bool IsAtAutomaticSemanticBeforeHandDrawHookCursor(
@@ -565,7 +698,9 @@ public sealed partial class PrototypeGameEngine
             IsPlayerTurnStartedEntropySelection(combat, pending) ||
             IsToastyMittensTurnStartSelection(combat, pending) ||
             IsOpeningGeneratedCardSelection(combat, pending) ||
-            IsGamblingChipOpeningSelection(combat, pending))
+            IsGamblingChipOpeningSelection(combat, pending) ||
+            IsAutomaticSemanticBeforeHandDrawGeneratedSelection(
+                combat, pending))
             return true;
         if (pending.CardPlaySeries is not { IsAutoPlay: true })
             return false;
@@ -573,6 +708,119 @@ public sealed partial class PrototypeGameEngine
         return IsMayhemAutoPrePlayPipelineCursor(combat) ||
             combat.IsPlayerTurn &&
             IsAtSupportedAutomaticPipelineTargetBoundary(combat);
+    }
+
+    internal static bool IsAutomaticSemanticBeforeHandDrawGeneratedSelection(
+        CombatState combat, PendingCombatChoiceState pending)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(pending);
+        var cursor = combat.AutomaticPipelineContinuation;
+        if (combat is not
+                { IsPlayerTurn: true,
+                  SemanticDeck: { Mode: SemanticDeckStateV111.NatureMode,
+                      Pending: null } } ||
+            cursor is null ||
+            !cursor.Stochastic.IsAtSemanticBeforeHandDraw(
+                cursor.Mechanics) ||
+            pending is not
+                { ChoiceId: "select_cards",
+                  SourceCardInstanceId: null,
+                  SourceCardDestination: PrototypeCardZone.DiscardPile,
+                  CandidateCardInstanceIds: { Length: > 0 },
+                  Continuation: { Length: 0 },
+                  CompletionEvents: { Length: 0 },
+                  Selection: { SourceZone: PrototypeCardZone.ChoicePool,
+                      MinSelections: 0,
+                      MaxSelections: 1,
+                      Resolution:
+                        PrototypeCardSelectionResolutionKind.MoveToHand,
+                      RequiredCardType: null,
+                      SelectionsPerPowerStack: 0,
+                      RandomCandidateCount: 0,
+                      RequireAttackOrPower: false,
+                      RequireEnergyCostingCard: false,
+                      SequentialOptional: false,
+                      DrawEqualToSelectionsOnCompletion: false,
+                      RemoveUnselectedFromSource: true,
+                      CopiesPerSelection: 0,
+                      CopiesPerSelectionUpgradeDelta: 0 },
+                  OuterChoiceContinuation: null,
+                  CardPlaySeries: null,
+                  EventDispatchContinuation: { } eventDispatch,
+                  ControlledTarget: null,
+                  ControlledGeneration: null,
+                  ControlledPotionGeneration: null,
+                  ControlledCardTransform: null,
+                  ControlledPoolShuffle: null,
+                  ControlledDrawInsertion: null,
+                  ControlledRandomCost: null,
+                  ControlledDrawCost: null,
+                  ControlledCardShortlist: null,
+                  ControlledRandomPileCard: null,
+                  ControlledSemanticDraw: null,
+                  SemanticStratagemDrawSelection: false,
+                  AutomaticSemanticStratagemDrawSelection: false,
+                  StandaloneSemanticDrawHookChoice: false,
+                  AutomaticSemanticDrawHookChoice: false,
+                  MoveSourceCardOnCompletion: true,
+                  RemoveSourceCardOnCompletion: false,
+                  SourceCardAlreadyMoved: false } ||
+            pending.SequentialSelectedCardInstanceIds is not null ||
+            eventDispatch.EventDepth != 0 ||
+            eventDispatch.CombatEvent != new PrototypeCombatEvent(
+                PrototypeCombatEventKind.BeforeHandDraw))
+            return false;
+
+        var candidates = pending.CandidateCardInstanceIds;
+        if (!combat.ChoiceCardIds.SequenceEqual(candidates) ||
+            candidates.Distinct().Count() != candidates.Length)
+            return false;
+        var byInstance = combat.Cards.ToDictionary(card => card.InstanceId);
+        if (candidates.Any(instanceId =>
+                !byInstance.ContainsKey(instanceId)))
+            return false;
+        var offered = candidates.Select(id => byInstance[id]).ToArray();
+        if (offered.Select(card => card.CardId).Distinct(
+                StringComparer.Ordinal).Count() != offered.Length ||
+            offered.Any(card =>
+            {
+                var expected = new CombatCardInstance(
+                    card.InstanceId, PersistentCardInstanceId: null,
+                    CardId: card.CardId, UpgradeLevel: 0,
+                    IsTemporary: true, State: PrototypeJson.EmptyObject());
+                expected = ApplyActiveSourceBoundAfflictionToCard(
+                    combat, expected);
+                return CanonicalJson.Sha256(expected) !=
+                    CanonicalJson.Sha256(card);
+            }))
+            return false;
+
+        return IsToolboxAutomaticBeforeHandDrawSelection(
+            combat, candidates, eventDispatch);
+    }
+
+    private static bool IsToolboxAutomaticBeforeHandDrawSelection(
+        CombatState combat, long[] candidates,
+        PrototypeEventDispatchContinuationState eventDispatch)
+    {
+        if (combat.Turn != 1 ||
+            !IsToolboxBeforeHandDrawDispatch(combat, eventDispatch))
+            return false;
+        var expectedOperation = new PrototypeQueuedOperation(
+            PrototypeCombatEffectKind.ChooseGeneratedCards, 3,
+            SourceKind: PrototypeEffectSourceKind.Relic,
+            GeneratedChoiceCardsFreeThisTurn: false);
+        var sourcePool = SourcePoolForShuffle(
+            combat, expectedOperation, sourceCardInstanceId: null);
+        var byInstance = combat.Cards.ToDictionary(card => card.InstanceId);
+        if (sourcePool is null ||
+            candidates.Length != Math.Min(3, sourcePool.Length) ||
+            candidates.Any(instanceId =>
+                !sourcePool.Contains(
+                    byInstance[instanceId].CardId, StringComparer.Ordinal)))
+            return false;
+        return true;
     }
 
     internal static bool IsPlayerTurnStartedEntropySelection(

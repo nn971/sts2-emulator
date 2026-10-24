@@ -745,9 +745,10 @@ The automatic semantic hand-draw continuation now also suspends on ordinary
 source action choices opened by `BeforeHandDraw`. The typed hook-choice event
 identifies this pre-draw stage; resolving an action resumes the saved event
 dispatcher before the hand-draw prelude, without replaying earlier
-subscribers. Controlled nested chance choices remain unsupported. The Release
-solution build passes with zero warnings or errors; tests were not run for this
-checkpoint. Conditional probabilities remain `UNVERIFIED`; see
+subscribers. At this checkpoint, controlled nested chance choices remained
+unsupported. The Release solution build passed with zero warnings or errors;
+tests were not run for this checkpoint. Conditional probabilities remain
+`UNVERIFIED`; see
 [`NATURE_SEMANTIC_AUTOMATIC_HAND_DRAW_143.md`](NATURE_SEMANTIC_AUTOMATIC_HAND_DRAW_143.md).
 
 ## 2026-10-17: player-action auto-play targets
@@ -1072,3 +1073,13 @@ mechanics boundary against that cross-type order. Older snapshots without the
 new transcript remain readable and source replay adds the chronology on
 restore. No event identity or provider decision schema changed. Static source
 review and `git diff --check` only; no tests or builds were run.
+
+## 2026-10-24: Toolbox BeforeHandDraw generated offer
+
+Toolbox's first-turn `BeforeHandDraw` generated-card offer now continues
+through the existing full-pool shuffle and ChoicePool selection owners. Exact
+trigger, source-pool, cursor, and selected-card checks keep the generated offer
+attached to the saved pre-draw dispatcher; resolving the selection resumes
+the same hand draw without replaying completed subscribers. The shuffle is not
+projected as a draw-hook action. No event or snapshot schema changed. Static
+source review and `git diff --check` only; no tests or builds were run.

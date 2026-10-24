@@ -212,6 +212,14 @@ public sealed record SemanticCombatDrawV111(
                 ? poolShuffleChoice : null;
         bool automaticBeforeHandDrawPoolShuffle =
             automaticBeforeHandDrawPoolShuffleChoice is not null;
+        bool automaticBeforeHandDrawGeneratedSelection =
+            this.AutomaticHandDraw &&
+            this.Run.World?.Combat is { } generatedSelectionCombat &&
+            generatedSelectionCombat.PendingChoice is
+                { } generatedSelectionChoice &&
+            PrototypeGameEngine
+                .IsAutomaticSemanticBeforeHandDrawGeneratedSelection(
+                    generatedSelectionCombat, generatedSelectionChoice);
         bool completedAutomaticHandDraw = this.AutomaticHandDraw &&
             this.RequestedCount == 0 && this.RemainingCount == 0 &&
             completedHookCursor is { } completedCursor &&
@@ -232,6 +240,7 @@ public sealed record SemanticCombatDrawV111(
              drawInsertionPending is null &&
              drawHookChoicePending?.BeforeHandDraw != true &&
              !automaticBeforeHandDrawPoolShuffle &&
+             !automaticBeforeHandDrawGeneratedSelection &&
              !completedAutomaticHandDraw) ||
             this.Origin.Phase != RunPhase.Combat ||
             this.Origin.World?.Combat is not { } originCombat ||
@@ -288,7 +297,8 @@ public sealed record SemanticCombatDrawV111(
                 drawInsertionPending is not null ||
                 stratagemSelectionPending is not null ||
                 drawHookChoicePending is not null ||
-                automaticBeforeHandDrawPoolShuffle;
+                automaticBeforeHandDrawPoolShuffle ||
+                automaticBeforeHandDrawGeneratedSelection;
             if (randomPileCardPending is not null)
             {
                 if (pipelineCursor is null ||
@@ -327,6 +337,17 @@ public sealed record SemanticCombatDrawV111(
                     throw new InvalidDataException(
                         "Semantic BeforeHandDraw pool-shuffle cursor is inconsistent.");
             }
+            else if (automaticBeforeHandDrawGeneratedSelection)
+            {
+                if (pipelineCursor is null ||
+                    !pipelineCursor.Mechanics.IsAtStep(
+                        PrototypeAutomaticStepKind.DrawPlayerHand) ||
+                    !semanticBeforeHandDrawProgress ||
+                    this.RequestedCount != 0 || this.RemainingCount != 0 ||
+                    deck.Pending is not null || cost is not null)
+                    throw new InvalidDataException(
+                        "Semantic BeforeHandDraw generated-selection cursor is inconsistent.");
+            }
             else if (pipelineCursor is null ||
                 semanticBeforeHandDrawProgress ||
                 (awaiting &&
@@ -347,7 +368,8 @@ public sealed record SemanticCombatDrawV111(
              !standaloneSemanticDrawPending &&
              stratagemSelectionPending is null &&
              drawHookChoicePending is null &&
-             !automaticBeforeHandDrawPoolShuffle) ||
+             !automaticBeforeHandDrawPoolShuffle &&
+             !automaticBeforeHandDrawGeneratedSelection) ||
             (cost is not null &&
              (deck.Pending is not null ||
               cost.RemainingCount != this.RemainingCount ||

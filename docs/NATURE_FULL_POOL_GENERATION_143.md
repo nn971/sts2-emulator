@@ -64,6 +64,13 @@ operation, `CardPlayed` completion, and saved manual card-play frame before
 reusing the existing full-pool shuffle owner. Fixture setup remains optional;
 pool completeness and Native cursor parity remain open.
 
+Toolbox's turn-one `BeforeHandDraw` offer now enters the same shuffle from its
+exact relic subscriber and saved `DrawPlayerHand` cursor. After the full-pool
+swap transcript completes, its ChoicePool offer reuses the existing player
+card-selection event; selecting a card completes the saved hook dispatcher and
+resumes the original hand-draw stage once. No event or snapshot schema changed.
+Source-pool completeness and Native cursor parity remain open.
+
 ## Validation and boundaries
 
 Focused tests exercise Attack and Colorless Potions through the **real potion-use effect kernel** on a fixture-modified playable combat state, including a resumed player card-selection action, and the distinct-common operation through an internal operation fixture. They verify full-pool RNG call shape, source card-model order, source eligibility, invalid/stale swap decisions, mid-shuffle forgery checks, replay event IDs, and 15-worker independent execution.

@@ -827,7 +827,11 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
         {
             bool pendingBeforeDrawChoice =
                 combat.PendingChoice?.ControlledRandomPileCard is not null ||
-                combat.PendingChoice?.AutomaticSemanticDrawHookChoice == true;
+                combat.PendingChoice?.AutomaticSemanticDrawHookChoice == true ||
+                combat.PendingChoice is { } pendingChoice &&
+                PrototypeGameEngine
+                    .IsAutomaticSemanticBeforeHandDrawGeneratedSelection(
+                        combat, pendingChoice);
             if (ControlledSemanticDrawRemaining is not null ||
                 ControlledSemanticDrawRequested is not null ||
                 combat.Stochastic.SemanticDeck?.Pending is not null ||

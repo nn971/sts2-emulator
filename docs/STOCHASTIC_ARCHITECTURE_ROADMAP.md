@@ -2,6 +2,16 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S2/S4 Toolbox pre-draw generation continuation increment (2026-10-24):**
+Toolbox's turn-one `BeforeHandDraw` generated offer now reuses the existing
+full-pool shuffle and ChoicePool selection owners. Both boundaries are admitted
+only for the exact Toolbox relic trigger and saved draw-stage cursor; selection
+resumes the same hand-draw stage after its event dispatcher completes. The
+pre-draw generated selection is accepted by the existing draw and pipeline
+owners, and is not projected as a draw-hook player action. No event or snapshot
+schema changed. Static source review and `git diff --check` only; no tests or
+builds were run.
+
 **S4 single classified resume-boundary owner increment (2026-10-24):** The
 automatic-pipeline resume result now owns both boundary classification and
 validation of classifications carried by draw-progress or semantic-choice

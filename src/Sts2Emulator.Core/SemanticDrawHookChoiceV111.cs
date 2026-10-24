@@ -125,6 +125,13 @@ public static class SemanticDrawHookChoiceEngineV111
             PrototypeGameEngine
                 .IsAutomaticPipelineSemanticDrawHookChoiceContinuation(
                     combat, choice);
+        if (automatic &&
+            choice is { ControlledPoolShuffle: not null } poolShuffleChoice &&
+            combat is not null &&
+            PrototypeGameEngine
+                .IsAutomaticPipelineSemanticPoolShuffleContinuation(
+                    combat, poolShuffleChoice))
+            return null;
         if (choice?.StandaloneSemanticDrawHookChoice != true && !automatic)
             return null;
         if (choice is null || source.Phase != RunPhase.Combat ||
