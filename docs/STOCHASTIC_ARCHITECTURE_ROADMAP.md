@@ -2,6 +2,15 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 source-route opening continuation increment (2026-10-24):** Semantic
+initial-intent completion now transfers the already-committed physical draw pile
+into the Nature deck before replaying opening stages. It publishes the clean
+player boundary or an exact supported opening-pipeline choice, allowing
+turn-one Crossbow generation to use its existing generated-card owner without
+rerandomizing the opening shuffle or hand. Unsupported opening suspensions
+remain fail-closed. Static source review and `git diff --check` only; no tests
+or builds were run.
+
 **S4 Crossbow opening generation continuation increment (2026-10-24):**
 Crossbow's existing generated-card continuation now admits its exact turn-one
 opening `BeforeHandDraw` cursor as well as the later-turn `DrawPlayerHand`

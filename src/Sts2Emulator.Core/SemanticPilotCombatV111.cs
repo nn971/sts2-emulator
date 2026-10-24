@@ -6989,29 +6989,35 @@ public static class SemanticPilotCombatEngineV111
             throw new InvalidOperationException(
                 "Initial combat intents are still pending.");
         intents.Validate();
+        var sourceCombat = intents.Combat;
+        if (sourceCombat.Stochastic.SemanticDeck is not null ||
+            sourceCombat.Stochastic.NativeRng is not null)
+            throw new InvalidDataException(
+                "Nature opening replay requires a provider-free committed pile.");
+        var semanticCombat = SemanticDrawPileAdapterV111
+            .InitializeFromCommittedOpening(sourceCombat);
         RunState resumed;
         using (ControlledChanceGuardV111.Enter())
             resumed = PrototypeGameEngine.ResumeSemanticInitialCombatEntry(
-                checkpoint, intents.Combat);
+                checkpoint, semanticCombat);
 
         var world = resumed.World ?? throw new InvalidDataException(
             "Initial intent completion lost the source route world.");
         var combat = world.Combat ?? throw new InvalidDataException(
             "Initial intent completion lost combat.");
-        if (!PrototypeGameEngine
-                .IsAtCombatPlayerDecisionBoundary(resumed))
+        bool playerBoundary = PrototypeGameEngine
+            .IsAtCombatPlayerDecisionBoundary(resumed);
+        bool supportedOpeningSuspension =
+            combat.AutomaticPipelineContinuation?.Mechanics.OpeningStage is not null &&
+            PrototypeGameEngine.HasPendingSupportedAutomaticPipelineChoice(
+                resumed);
+        if (!playerBoundary && !supportedOpeningSuspension)
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_ROUTE site=combat.opening " +
                 "operation=unmodeled_opening_continuation");
 
-        var semanticCombat = SemanticDrawPileAdapterV111
-            .InitializeFromCommittedOpening(combat);
-        var result = resumed with
-        {
-            World = world with { Combat = semanticCombat }
-        };
-        PrototypeStateInvariants.Validate(result);
-        return result;
+        PrototypeStateInvariants.Validate(resumed);
+        return resumed;
     }
 
     /// <summary>
