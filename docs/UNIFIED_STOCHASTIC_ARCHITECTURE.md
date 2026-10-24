@@ -1177,6 +1177,12 @@ Native target-pool, stream, and cursor parity remain open.
 Tingsha targets nested under an autoplayed card also reuse the discard target
 owner when the saved event is the exact live Tingsha subscriber and the
 active autoplay series and automatic-pipeline boundary remain present.
+Gambler's Brew and opening Gambling Chip also reuse the discard target owner
+for each selected-card discard when the saved parent contains the matching
+selected-count draw and its remaining discard queue still names cards in the
+live discard pile. Gambling Chip also requires its exact opening subscriber and
+cursor; Gambler's Brew requires its potion completion event. Pending Sly
+autoplay remains outside this route.
 Knife Trap also enters from its physical source card and reuses the saved
 autoplay-target continuation if an earlier Shiv kills the chosen enemy before
 the remaining Shiv queue finishes.

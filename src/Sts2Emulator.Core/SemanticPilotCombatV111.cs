@@ -5901,6 +5901,13 @@ public static class SemanticPilotCombatEngineV111
                 combat, choice, target))
             return true;
 
+        if (IsTingshaSupportedGamblersBrewDiscardTargetChoice(
+                combat, choice, target) ||
+            (combat is not null &&
+             PrototypeGameEngine
+                 .IsGamblingChipOpeningTingshaTargetBoundary(combat)))
+            return true;
+
         if (combat is null || target is not
                 { Kind: "effect_random_enemy",
                   SlyCardInstanceId: null,
@@ -6283,6 +6290,62 @@ public static class SemanticPilotCombatEngineV111
             return false;
 
         return true;
+    }
+
+    private static bool IsTingshaSupportedGamblersBrewDiscardTargetChoice(
+        CombatState? combat, PendingCombatChoiceState? choice,
+        PrototypeControlledTargetChoiceV111? target)
+    {
+        if (combat is not
+                { IsPlayerTurn: true,
+                  AutomaticPipelineContinuation: null,
+                  SemanticDeck:
+                    { Mode: SemanticDeckStateV111.NatureMode,
+                      Pending: null } } ||
+            !PrototypeGameEngine.HasSupportedTingshaDiscardTargetFrame(
+                combat, choice, target, out var continuation, out _) ||
+            continuation.Parent is not
+                { Parent: null,
+                  SourceCardInstanceId: null,
+                  SourceCardDestination: PrototypeCardZone.DiscardPile,
+                  Operations: [{ Kind: PrototypeCombatEffectKind.DrawCards,
+                      Amount: > 0,
+                      DrawEqualSelectionCount: { } selectedCount }],
+                  PendingDiscardEvents: { },
+                  PendingSlyCardInstanceIds: [],
+                  CompletionEvents: [{ } completion],
+                  CardPlaySeries: null,
+                  MoveSourceCardOnCompletion: true,
+                  RemoveSourceCardOnCompletion: false,
+                  SourceCardAlreadyMoved: false,
+                  EventDispatchContinuation: null,
+                  CompletePlayerHandCleanup: false } parent ||
+            parent.Operations[0].Amount != selectedCount ||
+            !PrototypeGameEngine
+                .HasSupportedTingshaDiscardEventRemainder(
+                    combat, continuation, selectedCount) ||
+            CanonicalJson.Sha256(parent.Operations[0]) !=
+                CanonicalJson.Sha256(new PrototypeQueuedOperation(
+                    PrototypeCombatEffectKind.DrawCards, selectedCount,
+                    DrawEqualSelectionCount: selectedCount)) ||
+            CanonicalJson.Sha256(completion) !=
+                CanonicalJson.Sha256(new PrototypeCombatEvent(
+                    PrototypeCombatEventKind.PotionUsed)))
+            return false;
+
+        var expectedPotionEffect = new PrototypeCombatEffectSpec(
+            PrototypeCombatEffectKind.ChooseCards,
+            0,
+            Selection: new PrototypeCardSelectionSpec(
+                PrototypeCardZone.Hand,
+                0,
+                999999999,
+                PrototypeCardSelectionResolutionKind.MoveToDiscard,
+                SequentialOptional: true,
+                DrawEqualToSelectionsOnCompletion: true));
+        return CanonicalJson.Sha256(
+                PrototypeContent.Potion("proto.potion.gamblers_brew").Effects) ==
+            CanonicalJson.Sha256(new[] { expectedPotionEffect });
     }
 
     private static bool IsTingshaSupportedAutomaticDiscardTargetChoice(

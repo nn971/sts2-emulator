@@ -21,6 +21,16 @@ admits nested ordinary random-effect targets from its active autoplay series.
 No event or snapshot schema changed. Static source review and
 `git diff --check` only; no tests or builds were run.
 
+**S4 sequential-discard Tingsha continuation increment (2026-10-25):**
+Gambler's Brew and opening Gambling Chip now admit each Tingsha target when
+the saved CardDiscarded event is its live relic trigger, its remaining discard
+queue still names live discard-pile cards, and the parent contains the matching
+selected-count draw. Gambling Chip also requires its exact opening cursor and
+relic subscriber; Gambler's Brew requires its modeled potion selection and
+`PotionUsed` completion event. Pending Sly autoplay remains outside this
+continuation. No event or snapshot schema changed. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S4 Imbued nested-choice source-frame validation increment (2026-10-24):**
 Nested choices during the `LateRelicAutoPlay` sequence now identify the active
 Imbued source from its saved autoplay series after the card has left the play

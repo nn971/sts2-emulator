@@ -1883,7 +1883,192 @@ public sealed partial class PrototypeGameEngine
     {
         return IsWhisperingEarringOpeningAutoplayBoundary(combat) ||
             IsImbuedOpeningAutoplayContinuation(combat) ||
+            IsGamblingChipOpeningTingshaTargetBoundary(combat) ||
             IsMayhemOpeningAutoplayTargetBoundary(combat);
+    }
+
+    internal static bool HasSupportedTingshaDiscardTargetFrame(
+        CombatState? combat,
+        PendingCombatChoiceState? choice,
+        PrototypeControlledTargetChoiceV111? target,
+        out PrototypeChoiceResolutionContinuationState continuation,
+        out PrototypeEventDispatchContinuationState eventDispatch)
+    {
+        continuation = null!;
+        eventDispatch = null!;
+        if (combat is not { IsPlayerTurn: true,
+                IsPlayerSideActive: true,
+                PendingKnowledgeDemonChoice: null } ||
+            target is not { Kind: "effect_random_enemy",
+                SlyCardInstanceId: null, AutoPlayCardInstanceId: null } ||
+            choice is not
+                { ChoiceId: "controlled_random_target",
+                  SourceCardInstanceId: null,
+                  SourceCardDestination: PrototypeCardZone.DiscardPile,
+                  CompletionEvents: [],
+                  OuterChoiceContinuation: { } savedContinuation } pending ||
+            savedContinuation is not
+                { SourceCardInstanceId: null,
+                  SourceCardDestination: PrototypeCardZone.DiscardPile,
+                  Operations: [{ } targetOperation],
+                  PendingDiscardEvents: [],
+                  PendingSlyCardInstanceIds: [],
+                  CompletionEvents: [],
+                  CardPlaySeries: null,
+                  MoveSourceCardOnCompletion: true,
+                  RemoveSourceCardOnCompletion: false,
+                  SourceCardAlreadyMoved: false,
+                  EventDispatchContinuation: { } savedEventDispatch } ||
+            savedEventDispatch is not
+                { EventDepth: 0,
+                  CombatEvent:
+                    { Kind: PrototypeCombatEventKind.CardDiscarded,
+                      SourceCardInstanceId: { } discardedCardInstanceId,
+                      CardId: { } discardedCardId,
+                      TargetEnemyId: null,
+                      Amount: 0,
+                      PowerApplicationOrderCeiling: null,
+                      FromHandDraw: false,
+                      IsAutoPlay: false,
+                      IsPoweredAttack: false } } ||
+            !combat.DiscardPile.Contains(discardedCardInstanceId) ||
+            combat.Cards.SingleOrDefault(card =>
+                card.InstanceId == discardedCardInstanceId)?.CardId !=
+                    discardedCardId ||
+            CanonicalJson.Sha256(savedEventDispatch.CombatEvent) !=
+                CanonicalJson.Sha256(new PrototypeCombatEvent(
+                    PrototypeCombatEventKind.CardDiscarded,
+                    SourceCardInstanceId: discardedCardInstanceId,
+                    CardId: discardedCardId)) ||
+            CanonicalJson.Sha256(targetOperation) !=
+                CanonicalJson.Sha256(new PrototypeQueuedOperation(
+                    PrototypeCombatEffectKind.DamageEnemy, 3,
+                    TargetMode: PrototypeEffectTarget.ActionTargetEnemy,
+                    SourceKind: PrototypeEffectSourceKind.Relic)) ||
+            !SemanticTargetChoiceV111.HasValidLiveSupport(combat, pending))
+            return false;
+
+        var relicTriggers = PrototypeContent.Relic("proto.relic.tingsha")
+            .Triggers;
+        var expectedTrigger = new PrototypeRelicTriggerSpec(
+            PrototypeCombatEventKind.CardDiscarded,
+            [new PrototypeCombatEffectSpec(
+                PrototypeCombatEffectKind.DamageEnemy, 3,
+                Target: PrototypeEffectTarget.RandomEnemy)],
+            RequiresPlayerSide: true);
+        if (relicTriggers is not [{ } trigger] ||
+            CanonicalJson.Sha256(trigger) !=
+                CanonicalJson.Sha256(expectedTrigger) ||
+            savedEventDispatch.CurrentSubscriber is not
+                { SourceKind: PrototypeEffectSourceKind.Relic,
+                  RelicStateIndex: { } relicIndex,
+                  RelicTriggerIndex: 0 } subscriber ||
+            (uint)relicIndex >= (uint)combat.RelicStates.Length ||
+            combat.RelicStates[relicIndex] is not
+                { RelicId: "proto.relic.tingsha", IsMelted: false } relic ||
+            relic.PersistentIndex != relicIndex ||
+            CanonicalJson.Sha256(subscriber) != CanonicalJson.Sha256(
+                new PrototypeEventSubscriberState(
+                    relic.ApplicationOrder, trigger.Effects, 0,
+                    PrototypeEffectSourceKind.Relic,
+                    RelicStateIndex: relicIndex,
+                    RelicTriggerIndex: 0,
+                    EveryNth: trigger.EveryNth,
+                    MaxTriggersPerCounterWindow:
+                        trigger.MaxTriggersPerCounterWindow)))
+            return false;
+
+        continuation = savedContinuation;
+        eventDispatch = savedEventDispatch;
+        return true;
+    }
+
+    internal static bool HasSupportedTingshaDiscardEventRemainder(
+        CombatState combat,
+        PrototypeChoiceResolutionContinuationState continuation,
+        int selectedCount)
+    {
+        if (selectedCount <= 0 ||
+            continuation.EventDispatchContinuation?.CombatEvent
+                .SourceCardInstanceId is not { } currentDiscardedCardId ||
+            continuation.Parent is not
+                { PendingDiscardEvents: { } pendingDiscardEvents,
+                  PendingSlyCardInstanceIds: [] } ||
+            pendingDiscardEvents.Length >= selectedCount)
+            return false;
+
+        var seenDiscardedCards = new HashSet<long>
+        {
+            currentDiscardedCardId
+        };
+        foreach (var discardEvent in pendingDiscardEvents)
+        {
+            if (discardEvent is not
+                    { Kind: PrototypeCombatEventKind.CardDiscarded,
+                      SourceCardInstanceId: { } discardedCardId,
+                      CardId: { } cardId } ||
+                !seenDiscardedCards.Add(discardedCardId) ||
+                !combat.DiscardPile.Contains(discardedCardId) ||
+                combat.Cards.SingleOrDefault(card =>
+                    card.InstanceId == discardedCardId)?.CardId != cardId ||
+                CanonicalJson.Sha256(discardEvent) !=
+                    CanonicalJson.Sha256(new PrototypeCombatEvent(
+                        PrototypeCombatEventKind.CardDiscarded,
+                        SourceCardInstanceId: discardedCardId,
+                        CardId: cardId)))
+                return false;
+        }
+
+        return true;
+    }
+
+    internal static bool IsGamblingChipOpeningTingshaTargetBoundary(
+        CombatState combat)
+    {
+        if (combat is not
+                { Turn: 1, IsPlayerTurn: true, IsPlayerSideActive: true,
+                  PendingKnowledgeDemonChoice: null,
+                  PendingChoice:
+                    { ControlledTarget: { } target } pending,
+                  SemanticDeck:
+                    { Mode: SemanticDeckStateV111.NatureMode,
+                      Pending: null },
+                  AutomaticPipelineContinuation: { } pipeline } ||
+            !pipeline.Mechanics.IsAtOpeningBoundary(
+                PrototypeOpeningCombatStage.BoneTeaAfterTurnStart) ||
+            !IsAtOpeningAutomaticPipelineCursor(
+                combat, pipeline,
+                PrototypeOpeningCombatStage.BoneTeaAfterTurnStart) ||
+            !HasSupportedTingshaDiscardTargetFrame(
+                combat, pending, target, out var continuation, out _) ||
+            continuation.Parent is not
+                { Parent: null,
+                  SourceCardInstanceId: null,
+                  SourceCardDestination: PrototypeCardZone.DiscardPile,
+                  Operations: [{ Kind: PrototypeCombatEffectKind.DrawCards,
+                      Amount: > 0,
+                      DrawEqualSelectionCount: { } selectedCount }],
+                  PendingDiscardEvents: { },
+                  PendingSlyCardInstanceIds: [],
+                  CompletionEvents: [],
+                  CardPlaySeries: null,
+                  MoveSourceCardOnCompletion: true,
+                  RemoveSourceCardOnCompletion: false,
+                  SourceCardAlreadyMoved: false,
+                  EventDispatchContinuation: { } openingEventDispatch,
+                  CompletePlayerHandCleanup: false } parent ||
+            parent.Operations[0].Amount != selectedCount ||
+            !HasSupportedTingshaDiscardEventRemainder(
+                combat, continuation, selectedCount) ||
+            CanonicalJson.Sha256(parent.Operations[0]) !=
+                CanonicalJson.Sha256(new PrototypeQueuedOperation(
+                    PrototypeCombatEffectKind.DrawCards, selectedCount,
+                    DrawEqualSelectionCount: selectedCount)) ||
+            !TryGetGamblingChipOpeningSubscriber(
+                combat, openingEventDispatch, out _))
+            return false;
+
+        return true;
     }
 
     private static bool IsMayhemOpeningAutoplayTargetBoundary(

@@ -52,6 +52,10 @@ Tingsha hook origins remain unsupported on player-card actions. End-turn
 hand-discard targets already use the saved automatic-pipeline target transcript
 at its supported cursor. Native target-pool, stream, and cursor parity remain
 open.
+Each discard from Gambler's Brew and opening Gambling Chip also admits
+Tingsha's target through the same event when its exact relic dispatch,
+remaining live discard queue, and selected-count draw continuation match.
+Pending Sly autoplay remains outside these routes.
 
 ## Validation and limitations
 
