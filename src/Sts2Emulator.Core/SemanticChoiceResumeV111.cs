@@ -468,142 +468,23 @@ internal static class SemanticChoiceResumeV111
         var run = checkpoint.Fork();
         var pending = run.World?.Combat?.PendingChoice;
         if (pending is not null &&
-            run.World?.Combat is { } activeHandDrawCombat &&
-            PrototypeGameEngine
-                .IsAutomaticHandDrawHookSemanticDrawContinuation(
-                    activeHandDrawCombat, pending))
-        {
-            var cursor = activeHandDrawCombat.AutomaticPipelineContinuation!;
-            if (!cursor.Stochastic.TryGetSemanticHandDrawProgress(
-                    cursor.Mechanics, out int requested, out _))
-                throw new InvalidDataException(
-                    "Nested effect-draw cost lost its active hand-draw cursor.");
-            var resumedEffectCost = SemanticCostChoiceV111
-                .ResumeEffectDrawCostWithBoundary(
-                    run, selectedCost,
-                    allowEngineOwnedPrototypeReward: false);
-            run = resumedEffectCost.Run;
-            var resumedCombat = run.World?.Combat ??
-                throw new InvalidDataException(
-                    "Nested effect-draw cost removed combat.");
-            if (resumedCombat.PendingChoice is null &&
-                resumedCombat.PendingKnowledgeDemonChoice is null &&
-                resumedCombat.Stochastic.SemanticDeck?.Pending is null &&
-                SemanticCombatDrawV111.TryGetAutomaticSemanticHandDrawProgress(
-                    resumedCombat, out _, out int savedRemaining))
-            {
-                var handDraw = PrototypeGameEngine
-                    .ResumeSemanticAutomaticHandDraw(run, savedRemaining);
-                if (handDraw.RequireRequestedCount() != requested)
-                    throw new InvalidDataException(
-                        "Nested effect-draw cost changed the active hand-draw request.");
-                return PrototypeDrawCardsResumeResultV111.ForHandDraw(
-                    handDraw.Run, requested, handDraw.RemainingCount,
-                    handDraw.PipelineBoundary);
-            }
-
-            if (SemanticCombatDrawV111.TryGetAutomaticSemanticHandDrawProgress(
-                    resumedCombat, out int resumedRequested,
-                    out int resumedRemaining))
-            {
-                if (resumedRequested != requested)
-                    throw new InvalidDataException(
-                        "Nested effect-draw cost changed the active hand-draw request.");
-                return PrototypeDrawCardsResumeResultV111.ForHandDraw(
-                    run, requested, resumedRemaining,
-                    resumedEffectCost.Boundary);
-            }
-            var completedCursor = resumedCombat.AutomaticPipelineContinuation;
-            if (completedCursor is not null &&
-                (completedCursor.Stochastic.IsAtSemanticBeforeHandDraw(
-                     completedCursor.Mechanics) ||
-                 completedCursor.Mechanics.IsImmediatelyAfterStep(
-                     PrototypeAutomaticStepKind.DrawPlayerHand)) &&
-                !completedCursor.Stochastic.HasSavedHandDrawProgress())
-                return PrototypeDrawCardsResumeResultV111.ForHandDraw(
-                    run, requested, 0, resumedEffectCost.Boundary);
-            throw new InvalidDataException(
-                "Nested effect-draw cost lost its active hand-draw cursor.");
-        }
-
-        if (pending is not null &&
-            run.World?.Combat is { } beforeHandDrawCombat &&
-            PrototypeGameEngine
-                .IsAutomaticBeforeHandDrawHookSemanticDrawContinuation(
-                    beforeHandDrawCombat, pending))
+            run.World?.Combat is { } nestedHandDrawCombat &&
+            (PrototypeGameEngine
+                 .IsAutomaticHandDrawHookSemanticDrawContinuation(
+                     nestedHandDrawCombat, pending) ||
+             PrototypeGameEngine
+                 .IsAutomaticBeforeHandDrawHookSemanticDrawContinuation(
+                     nestedHandDrawCombat, pending)))
         {
             var resumedEffectCost = SemanticCostChoiceV111
                 .ResumeEffectDrawCostWithBoundary(
                     run, selectedCost,
                     allowEngineOwnedPrototypeReward: false);
-            run = resumedEffectCost.Run;
-            var resumedCombat = run.World?.Combat ??
-                throw new InvalidDataException(
-                    "BeforeHandDraw effect-draw cost removed combat.");
-            if (SemanticCombatDrawV111.TryGetAutomaticSemanticHandDrawProgress(
-                    resumedCombat, out int requested, out int savedRemaining))
-            {
-                if (resumedCombat.PendingChoice is null &&
-                    resumedCombat.PendingKnowledgeDemonChoice is null &&
-                    resumedCombat.Stochastic.SemanticDeck?.Pending is null)
-                {
-                    var handDraw = ControlledChanceGuardV111.ExecuteGuarded(
-                        () => PrototypeGameEngine
-                            .ResumeSemanticAutomaticHandDraw(
-                                run, savedRemaining));
-                    if (handDraw.RequireRequestedCount() != requested)
-                        throw new InvalidDataException(
-                            "BeforeHandDraw effect-draw cost changed the hand-draw request.");
-                    return handDraw.EnsurePipelineBoundary();
-                }
-                return PrototypeDrawCardsResumeResultV111.ForHandDraw(
-                    run, requested, savedRemaining,
-                    resumedEffectCost.Boundary)
-                    .EnsurePipelineBoundary();
-            }
-
-            var cursor = resumedCombat.AutomaticPipelineContinuation;
-            if (cursor is not null &&
-                cursor.Stochastic.IsAtSemanticBeforeHandDraw(
-                    cursor.Mechanics) &&
-                cursor.Stochastic.CompletedSemanticHandDrawRequested is null &&
-                resumedCombat.PendingChoice is null &&
-                resumedCombat.PendingKnowledgeDemonChoice is null &&
-                resumedCombat.Stochastic.SemanticDeck?.Pending is null)
-                return ControlledChanceGuardV111.ExecuteGuarded(
-                    () => PrototypeGameEngine
-                        .ResumeSemanticBeforeHandDrawActionChoice(run))
-                    .EnsurePipelineBoundary();
-
-            if (cursor is not null &&
-                cursor.Stochastic.IsAtSemanticBeforeHandDraw(
-                    cursor.Mechanics) &&
-                cursor.Stochastic.CompletedSemanticHandDrawRequested is null)
-                return PrototypeDrawCardsResumeResultV111.ForHandDraw(
-                    run, 0, 0, resumedEffectCost.Boundary)
-                    .EnsurePipelineBoundary();
-
-            if (cursor is not null &&
-                cursor.Mechanics.IsImmediatelyAfterStep(
-                    PrototypeAutomaticStepKind.DrawPlayerHand) &&
-                !cursor.Stochastic.HasSavedHandDrawProgress() &&
-                cursor.Stochastic.CompletedSemanticHandDrawRequested is
-                    { } completedRequested)
-                return PrototypeDrawCardsResumeResultV111.ForHandDraw(
-                    run, completedRequested, 0,
-                    resumedEffectCost.Boundary)
-                    .EnsurePipelineBoundary();
-
-            if (resumedCombat.PendingChoice is not null ||
-                resumedCombat.PendingKnowledgeDemonChoice is not null)
-                throw new InvalidDataException(
-                    "BeforeHandDraw effect-draw cost lost its saved cursor.");
-
-            if (cursor is null)
-                throw new InvalidDataException(
-                    "BeforeHandDraw effect-draw cost lost its saved cursor.");
-            throw new InvalidDataException(
-                "BeforeHandDraw effect-draw cost resumed at an unsupported cursor.");
+            return PrototypeGameEngine
+                .ResumeSemanticAutomaticHandDrawAfterNestedChoice(
+                    run, resumedEffectCost.Run,
+                    resumedEffectCost.Boundary,
+                    "effect-draw cost");
         }
 
         if (pending?.ControlledSemanticDraw?

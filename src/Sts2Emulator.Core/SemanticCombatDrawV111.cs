@@ -1947,74 +1947,9 @@ public static class SemanticCombatDrawEngineV111
         ResumeNestedAutomaticHandDraw(
             SemanticCombatDrawV111 state,
             SemanticChoiceResumeResultV111 resumed,
-            string choiceKind)
-    {
-        var combat = resumed.Run.World?.Combat ??
-            throw new InvalidDataException(
-                $"Semantic {choiceKind.ToLowerInvariant()} choice removed combat.");
-        bool startedBeforeHandDraw = state.AutomaticHandDraw &&
-            state.Run.World?.Combat?.AutomaticPipelineContinuation is
-                { } sourceCursor &&
-            sourceCursor.Stochastic.IsAtSemanticBeforeHandDraw(
-                sourceCursor.Mechanics) &&
-            sourceCursor.Stochastic.CompletedSemanticHandDrawRequested is null;
-        PrototypeDrawCardsResumeResultV111 progress;
-        if (TryGetAutomaticSemanticHandDrawProgress(
-                combat, out int requested, out int remaining))
-        {
-            if (requested != state.RequestedCount &&
-                !startedBeforeHandDraw)
-                throw new InvalidDataException(
-                    $"{choiceKind} continuation changed the automatic hand-draw request.");
-            if (combat.PendingChoice is null &&
-                combat.PendingKnowledgeDemonChoice is null &&
-                combat.Stochastic.SemanticDeck?.Pending is null)
-            {
-                progress = ControlledChanceGuardV111.ExecuteGuarded(
-                    () => PrototypeGameEngine.ResumeSemanticAutomaticHandDraw(
-                        resumed.Run, remaining));
-                if (progress.RequireRequestedCount() != requested)
-                    throw new InvalidDataException(
-                        $"{choiceKind} continuation changed the automatic hand-draw request.");
-            }
-            else
-                progress = PrototypeDrawCardsResumeResultV111.ForHandDraw(
-                    resumed.Run, requested, remaining, resumed.Boundary);
-        }
-        else if (combat.AutomaticPipelineContinuation is
-                     { } beforeHandDraw &&
-                 beforeHandDraw.Stochastic.IsAtSemanticBeforeHandDraw(
-                     beforeHandDraw.Mechanics) &&
-                 beforeHandDraw.Stochastic
-                     .CompletedSemanticHandDrawRequested is null)
-        {
-            if (combat.PendingChoice is null &&
-                combat.PendingKnowledgeDemonChoice is null &&
-                combat.Stochastic.SemanticDeck?.Pending is null)
-                progress = ControlledChanceGuardV111.ExecuteGuarded(
-                    () => PrototypeGameEngine
-                        .ResumeSemanticBeforeHandDrawActionChoice(resumed.Run));
-            else
-                progress = PrototypeDrawCardsResumeResultV111.ForHandDraw(
-                    resumed.Run, 0, 0, resumed.Boundary);
-        }
-        else if (combat.AutomaticPipelineContinuation is
-                     { } completedHandDraw &&
-                 completedHandDraw.Mechanics.IsImmediatelyAfterStep(
-                     PrototypeAutomaticStepKind.DrawPlayerHand) &&
-                 !completedHandDraw.Stochastic.HasSavedHandDrawProgress() &&
-                 completedHandDraw.Stochastic
-                     .CompletedSemanticHandDrawRequested is { } completedRequested)
-        {
-            progress = PrototypeDrawCardsResumeResultV111.ForHandDraw(
-                resumed.Run, completedRequested, 0, resumed.Boundary);
-        }
-        else
-            throw new InvalidDataException(
-                $"{choiceKind} continuation lost the automatic hand-draw cursor.");
-
-        return progress.EnsurePipelineBoundary();
-    }
+            string choiceKind) =>
+        PrototypeGameEngine.ResumeSemanticAutomaticHandDrawAfterNestedChoice(
+            state.Run, resumed.Run, resumed.Boundary, choiceKind);
 
     public static SemanticCombatDrawV111 ResolveStratagemSelection(
         SemanticCombatDrawV111 state, string fingerprint, string actionId)

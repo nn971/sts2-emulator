@@ -1136,3 +1136,13 @@ change from the zero-count pre-draw state only when the saved cursor enters the
 actual hand draw. Other pre-draw nested choice kinds remain fail-closed. No
 event or snapshot schema changed. Static source review and `git diff --check`
 only; no tests or builds were run.
+
+## 2026-10-25: semantic nested hand-draw handoff ownership
+
+Nested semantic draw and drawn-cost continuation adapters now use one engine-
+owned handoff to validate and publish active, pre-draw, and completed
+automatic hand-draw cursors. It compares the source request with the resumed
+count, allowing a transition only when the source cursor was pre-draw and the
+pipeline entered the actual hand-draw stage. No event or snapshot schema
+changed. Static source review and `git diff --check` only; no tests or builds
+were run.

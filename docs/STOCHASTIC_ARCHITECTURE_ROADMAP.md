@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 semantic nested hand-draw handoff ownership increment (2026-10-25):**
+Nested semantic draw and drawn-cost adapters now delegate active, pre-draw,
+and completed cursor publication to one engine-owned handoff. It validates the
+source request and permits a changed request count only when the source cursor
+was pre-draw and the resumed cursor entered the actual hand-draw stage. Static
+source review and `git diff --check` only; no tests or builds were run.
+
 **S4 nested pre-draw semantic draw/cost increment (2026-10-25):** A selected
 `BeforeHandDraw` action may now suspend on its semantic effect-draw ticket or
 drawn-card cost. The existing semantic draw frame and version 8 chronology
