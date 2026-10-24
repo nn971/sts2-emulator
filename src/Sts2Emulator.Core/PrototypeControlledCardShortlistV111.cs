@@ -173,6 +173,12 @@ public sealed partial class PrototypeGameEngine
 
     internal static RunState ResumeControlledCardShortlist(
         RunState state, long selectedCardInstanceId)
+        => ResumeControlledCardShortlistWithBoundary(
+            state, selectedCardInstanceId).Run;
+
+    internal static PrototypeAutomaticPipelineResumeResultV111
+        ResumeControlledCardShortlistWithBoundary(
+            RunState state, long selectedCardInstanceId)
     {
         if (!ControlledChanceGuardV111.Active)
             throw new InvalidOperationException(
@@ -210,13 +216,14 @@ public sealed partial class PrototypeGameEngine
                     RemainingCandidateCardInstanceIds = remaining
                 }
             };
-            return state with
-            {
-                World = world with
+            return PrototypeAutomaticPipelineResumeResultV111.FromRun(
+                state with
                 {
-                    Combat = combat with { PendingChoice = nextPending }
-                }
-            };
+                    World = world with
+                    {
+                        Combat = combat with { PendingChoice = nextPending }
+                    }
+                });
         }
 
         if (shortlist.Operation.Kind ==
@@ -359,16 +366,18 @@ public sealed partial class PrototypeGameEngine
             EventDispatchContinuation:
                 continuation.EventDispatchContinuation?.Fork(),
             OuterChoiceContinuation: continuation.Parent?.Fork());
-        return state with
-        {
-            World = world with
+        return PrototypeAutomaticPipelineResumeResultV111.FromRun(
+            state with
             {
-                Combat = combat with { PendingChoice = choice }
-            }
-        };
+                World = world with
+                {
+                    Combat = combat with { PendingChoice = choice }
+                }
+            });
     }
 
-    private static RunState ResumeAfterCardShortlist(
+    private static PrototypeAutomaticPipelineResumeResultV111
+        ResumeAfterCardShortlist(
         RunState state, RunWorldState world,
         (PlayerState Player, CombatState Combat) resumed)
     {
@@ -377,7 +386,6 @@ public sealed partial class PrototypeGameEngine
             Player = resumed.Player,
             World = world with { Combat = resumed.Combat }
         };
-        updated = ResumeAutomaticPipelineContinuation(updated).Run;
-        return updated;
+        return ResumeAutomaticPipelineContinuation(updated);
     }
 }

@@ -1,7 +1,8 @@
 namespace Sts2Emulator.Core;
 
 internal readonly record struct SemanticChoiceResumeResultV111(
-    RunState Run, string SiteId);
+    RunState Run, string SiteId,
+    PrototypeAutomaticPipelineResumeBoundaryKindV111? PipelineBoundary = null);
 
 /// <summary>
 /// Applies a recorded supported semantic choice to its run checkpoint,
@@ -343,10 +344,10 @@ internal static class SemanticChoiceResumeV111
         ArgumentNullException.ThrowIfNull(decision);
         decision.Validate();
         var ownedDecision = decision.Fork();
+        var resumed = SemanticCardShortlistChoiceV111.ResumeWithBoundary(
+            checkpoint.Fork(), ownedDecision);
         return new SemanticChoiceResumeResultV111(
-            SemanticCardShortlistChoiceV111.Resume(
-                checkpoint.Fork(), ownedDecision),
-            ownedDecision.Event.SiteId);
+            resumed.Run, ownedDecision.Event.SiteId, resumed.Boundary);
     }
 
     internal static SemanticChoiceResumeResultV111 Resume(
@@ -462,9 +463,13 @@ internal static class SemanticChoiceResumeV111
     {
         var resumed = Resume(
             checkpoint, choice, allowEngineOwnedPrototypeReward);
+        var pipelineResume = resumed.PipelineBoundary is { } boundary
+            ? new PrototypeAutomaticPipelineResumeResultV111(
+                resumed.Run, boundary)
+            : PrototypeAutomaticPipelineResumeResultV111.FromRun(
+                resumed.Run);
         return (
-            PrototypeAutomaticPipelineResumeResultV111.FromRun(
-                resumed.Run),
+            pipelineResume,
             resumed.SiteId);
     }
 

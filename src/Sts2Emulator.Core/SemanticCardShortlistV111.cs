@@ -343,6 +343,11 @@ public static class SemanticCardShortlistChoiceV111
     /// selection, replay, or autoplay operation.</summary>
     internal static RunState Resume(
         RunState checkpoint, SemanticCardShortlistDecisionV111 decision)
+        => ResumeWithBoundary(checkpoint, decision).Run;
+
+    internal static PrototypeAutomaticPipelineResumeResultV111
+        ResumeWithBoundary(
+            RunState checkpoint, SemanticCardShortlistDecisionV111 decision)
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
         ArgumentNullException.ThrowIfNull(decision);
@@ -367,27 +372,29 @@ public static class SemanticCardShortlistChoiceV111
             PrototypeCombatEffectKind.AutoPlayRandomCardsFromZone;
 
         var resumed = ControlledChanceGuardV111.ExecuteGuarded(
-            () => PrototypeGameEngine.ResumeControlledCardShortlist(
-                checkpoint.Fork(), decision.SelectedCardInstanceId));
+            () => PrototypeGameEngine
+                .ResumeControlledCardShortlistWithBoundary(
+                    checkpoint.Fork(), decision.SelectedCardInstanceId));
         if (PrototypeGameEngine
-                .IsAtCombatRewardOrTerminalBoundary(resumed))
+                .IsAtCombatRewardOrTerminalBoundary(resumed.Run))
         {
-            PrototypeStateInvariants.Validate(resumed);
+            PrototypeStateInvariants.Validate(resumed.Run);
             return resumed;
         }
-        var nextCombat = resumed.World?.Combat;
-        if (resumed.Phase != RunPhase.Combat || nextCombat is null)
+        var nextCombat = resumed.Run.World?.Combat;
+        if (resumed.Run.Phase != RunPhase.Combat || nextCombat is null)
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_SHORTLIST " +
                 "site=combat.card_selection.random_shortlist " +
                 "operation=unsupported_post_shortlist_phase");
         if (nextCombat.PendingChoice?.ControlledCardShortlist is not null)
-            ValidateBoundary(resumed);
+            ValidateBoundary(resumed.Run);
         else if (nextCombat.PendingChoice?.ChoiceId == "select_cards")
-            SemanticCardSelectionEngineV111.ValidatePendingBoundary(resumed);
+            SemanticCardSelectionEngineV111.ValidatePendingBoundary(
+                resumed.Run);
         else
             SemanticPilotCombatEngineV111.ValidateSemanticCombatBoundary(
-                resumed);
+                resumed.Run);
         if (!randomAutoplay)
             SemanticDrawPileAdapterV111.RequireUnchangedDrawPile(
                 combat, nextCombat,
@@ -395,7 +402,7 @@ public static class SemanticCardShortlistChoiceV111
                 "site=combat.card_selection.random_shortlist " +
                 "operation=unmodeled_draw_pile_mutation");
         if (randomAutoplay)
-            PrototypeStateInvariants.Validate(resumed);
+            PrototypeStateInvariants.Validate(resumed.Run);
         return resumed;
     }
 

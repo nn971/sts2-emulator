@@ -4067,6 +4067,15 @@ Snapshot and transcript formats are unchanged. Broader resume consolidation
 and cross-provider mechanical equivalence remain open. Static source review
 and `git diff --check` only; no tests or builds were run.
 
+**S4 semantic card-shortlist classified handoff increment (2026-10-24):** The
+controlled shortlist mechanics owner and semantic-choice facade now preserve
+the classified automatic-pipeline result through `SemanticChoiceResumeResultV111`.
+End-turn publication receives that result directly, while existing run-only
+callers retain their projection. Snapshot and transcript formats are
+unchanged. Broader resume consolidation and cross-provider mechanical
+equivalence remain open. Static source review and `git diff --check` only; no
+tests or builds were run.
+
 **S4 semantic-choice result owner increment (2026-10-24):** Semantic choice
 resume overloads that return only a run and source SiteId now use the shared
 `SemanticChoiceResumeResultV111` value. Draw resumes that also carry requested

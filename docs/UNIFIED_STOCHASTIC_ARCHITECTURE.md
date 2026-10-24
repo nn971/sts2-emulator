@@ -232,6 +232,8 @@ The specialized `SemanticCombatDrawV111.Simulation` pairs `SemanticCombatDrawMec
 
 `ResumeControlledEnemyAction` now returns the classified `PrototypeAutomaticPipelineResumeResultV111` from its existing pipeline handoff. Semantic end-turn and controlled-playable resume adapters preserve that boundary through transcript publication and staging; the shared selected-index executor returns its consumed `RandomIndexDecisionV111` beside the typed resume result. All controlled-playable indexed-choice adapters use this boundary-aware path.
 
+Automatic semantic card-shortlist replay also carries the classified pipeline result through `SemanticChoiceResumeResultV111`. The shortlist mechanics owner and semantic-choice facade retain run-only projections for existing callers, while end-turn boundary publication receives the original classification.
+
 Controlled-playable draw-insertion resumes also retain the classified result when an insertion completes a nested draw or effect continuation. `ResumeControlledDrawInsertion` remains the run-only facade for semantic draw insertion, while the controlled-playable adapter uses `ResumeControlledDrawInsertionWithBoundary` to pass the existing engine classification into turn staging.
 
 Controlled-playable generated-card resumes now preserve the pipeline result through the same selected-index executor and staging path. `ResumeControlledGeneratedCard` remains the run-only facade for semantic-choice consumers; `ResumeControlledGeneratedCardWithBoundary` returns the existing engine classification to controlled-playable.
