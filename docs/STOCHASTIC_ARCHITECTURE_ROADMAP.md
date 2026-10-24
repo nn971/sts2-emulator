@@ -4680,3 +4680,11 @@ semantic draw, draw-cost, and nonfinal `CardDrawn` hook boundaries now use
 after-shuffle insertion path. The final-card hook remains without a saved draw
 operation because no remainder exists. Static source review and
 `git diff --check` only; no tests or builds were run.
+
+**S4 opening recycled-draw Stratagem increment (2026-10-25):** Nature-owned
+opening draws now route the tagged `ShuffleSelection` boundary through the
+shared draw dispatcher. The existing semantic card-selection owner admits
+only the exact opening `AfterHandDraw` cursor, expected Stratagem pick count,
+current draw-pile support, and single saved hand-draw operation. Resolving the
+selection resumes that operation before opening advances. Static source review
+and `git diff --check` only; no tests or builds were run.

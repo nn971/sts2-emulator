@@ -157,6 +157,69 @@ public sealed partial class PrototypeGameEngine
         };
     }
 
+    internal static bool IsOpeningHandSemanticStratagemSelectionContinuation(
+        CombatState combat, PendingCombatChoiceState pending)
+    {
+        var cursor = combat.AutomaticPipelineContinuation;
+        if (combat is not
+                { IsPlayerTurn: true,
+                  PendingKnowledgeDemonChoice: null } ||
+            cursor is null ||
+            !cursor.Mechanics.IsAtOpeningBoundary(
+                PrototypeOpeningCombatStage.AfterHandDraw) ||
+            combat.Stochastic.SemanticDeck is not
+                { Mode: SemanticDeckStateV111.NatureMode, Pending: null } ||
+            pending is not
+                { ChoiceId: "select_cards",
+                  SourceCardInstanceId: null,
+                  SourceCardDestination: PrototypeCardZone.DrawPile,
+                  Continuation: { Length: 1 },
+                  OuterChoiceContinuation: null,
+                  CardPlaySeries: null,
+                  EventDispatchContinuation: null,
+                  CompletionEvents: { Length: 0 },
+                  ControlledTarget: null,
+                  ControlledGeneration: null,
+                  ControlledPotionGeneration: null,
+                  ControlledCardTransform: null,
+                  ControlledPoolShuffle: null,
+                  ControlledDrawInsertion: null,
+                  ControlledRandomCost: null,
+                  ControlledDrawCost: null,
+                  ControlledCardShortlist: null,
+                  ControlledRandomPileCard: null,
+                  ControlledSemanticDraw: null,
+                  SemanticStratagemDrawSelection: false,
+                  AutomaticSemanticStratagemDrawSelection: false,
+                  StandaloneSemanticDrawHookChoice: false,
+                  AutomaticSemanticDrawHookChoice: false,
+                  Selection: { SourceZone: PrototypeCardZone.DrawPile,
+                      Resolution: PrototypeCardSelectionResolutionKind.MoveToHand,
+                      RequiredCardType: null,
+                      SequentialOptional: false,
+                      DrawEqualToSelectionsOnCompletion: false,
+                      RemoveUnselectedFromSource: false,
+                      MinSelections: > 0,
+                      MaxSelections: > 0 } } ||
+            pending.Continuation[0] is not
+                { Kind: PrototypeCombatEffectKind.DrawCards,
+                  Amount: > 0,
+                  FromHandDraw: true,
+                  DrawEventDepth: 0,
+                  DrawnCardKeyword: null,
+                  StandaloneSemanticDrawSegment: false,
+                  DrawEqualSelectionCount: null })
+            return false;
+
+        var expected = ExpectedStratagemSelectionCount(combat);
+        return expected > 0 &&
+            pending.Selection.MinSelections == expected &&
+            pending.Selection.MaxSelections == expected &&
+            pending.CandidateCardInstanceIds.Length > 0 &&
+            pending.CandidateCardInstanceIds.SequenceEqual(
+                combat.DrawPile);
+    }
+
     private static RunState DrawOpeningHand(RunState state)
     {
         var world = RequireWorld(state);
@@ -203,6 +266,7 @@ public sealed partial class PrototypeGameEngine
             combat = resolved.Combat;
         }
         else if (drawn.BoundaryKind is
+            PrototypeDrawCardsBoundaryKind.ShuffleSelection or
             PrototypeDrawCardsBoundaryKind.SemanticDraw or
             PrototypeDrawCardsBoundaryKind.ControlledDrawCost or
             PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice or

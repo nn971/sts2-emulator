@@ -722,6 +722,8 @@ public sealed partial class PrototypeGameEngine
             IsPlayerTurnStartedToolsOfTheTradeSelection(combat, pending) ||
             IsPlayerTurnStartedEntropySelection(combat, pending) ||
             IsToastyMittensTurnStartSelection(combat, pending) ||
+            IsOpeningHandSemanticStratagemSelectionContinuation(
+                combat, pending) ||
             IsOpeningGeneratedCardSelection(combat, pending) ||
             IsGamblingChipOpeningSelection(combat, pending) ||
             IsAutomaticSemanticBeforeHandDrawGeneratedSelection(
