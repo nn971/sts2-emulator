@@ -2,6 +2,12 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 shared Chance Law Native helper ownership follow-up (2026-10-24):**
+Exact Native unit-float-to-integer grid mapping and Native boundary-law
+construction now live in `ChanceLawV111.cs`, alongside shared grid and law
+helpers. Callers and query behavior are unchanged. Static source preservation
+and `git diff --check` only; no tests or builds were run.
+
 **S3 Ancient-offer policy ownership follow-up (2026-10-24):** The public
 `EventOfferConditioningPolicyId` value now lives with the Ancient-offer laws in
 `ChanceLawAncientOfferV111.cs`; its value and public API are unchanged. Static

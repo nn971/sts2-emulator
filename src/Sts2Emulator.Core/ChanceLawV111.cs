@@ -1297,6 +1297,69 @@ public static partial class ChanceLawEngineV111
         return QueryRandomIndex(eventId, request);
     }
 
+    /// <summary>
+    /// Counts exact 53-bit NextDouble grid preimages for a monotone integer
+    /// mapping of the source-rounded unit NextFloat. Binary search locates
+    /// each integer outcome's contiguous grid interval.
+    /// </summary>
+    private static SortedDictionary<int, long>
+        NativeNextFloatMappedIntegerWeights(Func<float, int> mapOutcome)
+    {
+        ArgumentNullException.ThrowIfNull(mapOutcome);
+        var weights = new SortedDictionary<int, long>();
+        long firstGridIndex = 0;
+        long totalWeight = 0;
+        while (firstGridIndex < NativeNextDoubleGridSize)
+        {
+            var mappedOutcome = mapOutcome(
+                NativeUnitFloatGridValue(firstGridIndex));
+            var low = firstGridIndex + 1;
+            var high = NativeNextDoubleGridSize;
+            while (low < high)
+            {
+                var middle = low + ((high - low) >> 1);
+                var candidate = mapOutcome(
+                    NativeUnitFloatGridValue(middle));
+                if (candidate > mappedOutcome)
+                    high = middle;
+                else
+                    low = middle + 1;
+            }
+
+            var endGridIndex = low;
+            var weight = checked(endGridIndex - firstGridIndex);
+            if (weight <= 0 ||
+                weights.Count > 0 && weights.Last().Key >= mappedOutcome)
+                throw new InvalidDataException(
+                    "Native unit-float outcome mapping is not monotone.");
+            weights.Add(mappedOutcome, weight);
+            totalWeight = checked(totalWeight + weight);
+            firstGridIndex = endGridIndex;
+        }
+
+        if (weights.Count == 0 ||
+            totalWeight != NativeNextDoubleGridSize)
+            throw new InvalidOperationException(
+                "Native unit-float outcome masses do not cover the input grid.");
+        return weights;
+    }
+
+    private static ChanceLawV111 CreateNativeBoundaryLaw(
+        string siteId, string operationKind, string ownerId, int ordinal,
+        string policy, string conditioningFingerprint,
+        string provenance, ChanceLawOutcomeV111[] outcomes,
+        string probabilityStatus = ChanceLawV111.UnverifiedStatus)
+    {
+        var eventId = CanonicalJson.Sha256(new
+        {
+            schemaId = ChanceLawV111.CurrentSchemaId,
+            siteId, ownerId, ordinal, conditioningFingerprint
+        });
+        return Create(eventId, siteId, operationKind, ownerId, ordinal,
+            policy, conditioningFingerprint, provenance, outcomes,
+            probabilityStatus);
+    }
+
     private static ChanceLawV111 Create(
         string eventId, string siteId, string operationKind, string ownerId,
         int ordinal, string conditioningPolicyId,
