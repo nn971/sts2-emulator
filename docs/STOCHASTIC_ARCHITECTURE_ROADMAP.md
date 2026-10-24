@@ -2,6 +2,15 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 DrawCards continuation-owner increment (2026-10-25):**
+`ResolveOperations` now delegates effect `DrawCards` boundaries to
+`ResolveEffectDrawOperation` in the shared draw-continuation owner. Ordinary
+and resumed cost draws also share `DispatchCardDrawnAfterCost`; opening Nature
+Stratagem draws use the semantic result dispatcher; opening and automatic
+source-stage hand draws build the same Stratagem-plus-draw suffix through one
+operation constructor. Saved fields and transcript schemas are unchanged.
+Static source review and `git diff --check` only; no tests or builds were run.
+
 **S4 Mayhem opening Sly-target continuation increment (2026-10-24):** The
 `AfterAutoPrePlayPolicy` target boundary now admits nested Sly autoplay only
 when the discarded target card is live, Sly, and enemy-targeting, and the
