@@ -1111,9 +1111,9 @@ public static class ControlledPlayableCombatEngineV111
     {
         var request = state.RandomCostPending ??
             throw new InvalidOperationException("Missing random-cost ticket.");
-        var (resume, decision) = ResolveIndexAndRun(
+        var (resume, decision) = ResolveIndexAndPipeline(
             state, request, selectedIndex,
-            PrototypeGameEngine.ResumeControlledRandomCost);
+            PrototypeGameEngine.ResumeControlledRandomCostWithBoundary);
         var next = state.Fork() with
         {
             Run = resume.Run,

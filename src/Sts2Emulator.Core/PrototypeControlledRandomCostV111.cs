@@ -70,6 +70,11 @@ public sealed partial class PrototypeGameEngine
 
     internal static RunState ResumeControlledRandomCost(
         RunState state, int selectedIndex)
+        => ResumeControlledRandomCostWithBoundary(state, selectedIndex).Run;
+
+    internal static PrototypeAutomaticPipelineResumeResultV111
+        ResumeControlledRandomCostWithBoundary(
+            RunState state, int selectedIndex)
     {
         if (!ControlledChanceGuardV111.Active)
             throw new InvalidOperationException("Controlled cost needs RNG guard.");
@@ -100,22 +105,23 @@ public sealed partial class PrototypeGameEngine
         if (!single &&
             choice.NextCardIndex + 1 < choice.EligibleCardInstanceIds.Length)
         {
-            return state with
-            {
-                World = world with
+            return PrototypeAutomaticPipelineResumeResultV111.FromRun(
+                state with
                 {
-                    Combat = combat with
+                    World = world with
                     {
-                        PendingChoice = pending with
+                        Combat = combat with
                         {
-                            ControlledRandomCost = choice with
+                            PendingChoice = pending with
                             {
-                                NextCardIndex = choice.NextCardIndex + 1
+                                ControlledRandomCost = choice with
+                                {
+                                    NextCardIndex = choice.NextCardIndex + 1
+                                }
                             }
                         }
                     }
-                }
-            };
+                });
         }
 
         combat = combat with { PendingChoice = null };
@@ -129,8 +135,7 @@ public sealed partial class PrototypeGameEngine
                 state.Stochastic, prototypeRng),
             World = world with { Combat = resolved.Combat }
         };
-        updated = ResumeAutomaticPipelineContinuation(updated).Run;
-        return updated;
+        return ResumeAutomaticPipelineContinuation(updated);
     }
 
     internal static RunState ResumeControlledRandomCostByCard(
