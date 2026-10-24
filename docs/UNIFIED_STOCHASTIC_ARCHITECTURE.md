@@ -1171,10 +1171,11 @@ the pending source event, validates the saved selected identities against the
 live support, and applies that action. The string-action `Step` entry point
 composes selection with the same mechanics resume core.
 `ControlledChanceGuardV111.ExecuteGuarded` owns the synchronous guard scope
-and optional narrow engine-owned reward allowance used by typed semantic
-draw, cost, target, generation, insertion, card-selection, transform,
-shortlist, pool-shuffle, potion-generation, draw-hook, and Knowledge Demon
-resumes; source validation and result policies remain with each choice owner.
+and optional engine-owned Native-provider and prototype-reward allowances.
+Typed semantic-choice resumes, semantic-pilot and end-turn transitions,
+controlled-playable resumes, and the Native-policy action path use this runner;
+their source validation, result policies, and provider journals remain with
+their existing owners.
 Cross-provider mechanical equivalence remains open.
 
 The shared resume path propagates the SiteId from each typed draw and

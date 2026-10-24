@@ -52,20 +52,20 @@ public static class ControlledChanceGuardV111
     }
 
     /// <summary>
-    /// Runs one synchronous controlled transition under the chance guard and,
-    /// when requested, its narrow engine-owned prototype reward allowance.
+    /// Runs one synchronous controlled transition under the chance guard and
+    /// its requested engine-owned provider allowances.
     /// </summary>
     internal static T ExecuteGuarded<T>(Func<T> transition,
-        bool allowEngineOwnedPrototypeReward = false)
+        bool allowEngineOwnedPrototypeReward = false,
+        bool allowEngineOwnedNativeProvider = false)
     {
         ArgumentNullException.ThrowIfNull(transition);
         using (Enter())
-        {
-            if (!allowEngineOwnedPrototypeReward)
-                return transition();
-            using (AllowEngineOwnedPrototypeReward())
-                return transition();
-        }
+        using (allowEngineOwnedNativeProvider
+            ? AllowEngineOwnedNativeProvider() : NoopScope)
+        using (allowEngineOwnedPrototypeReward
+            ? AllowEngineOwnedPrototypeReward() : NoopScope)
+            return transition();
     }
 
     /// <summary>

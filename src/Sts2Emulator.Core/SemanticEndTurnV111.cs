@@ -727,11 +727,10 @@ public static class SemanticEndTurnEngineV111
         if (actions.Length != 1)
             throw new InvalidOperationException(
                 "Expected exactly one legal end_turn player action.");
-        RunState advanced;
-        using (ControlledChanceGuardV111.Enter())
-        using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
-            advanced = environment.Step(
-                playerBoundary.Fork(), actions[0].ActionId).State;
+        var advanced = ControlledChanceGuardV111.ExecuteGuarded(
+            () => environment.Step(
+                playerBoundary.Fork(), actions[0].ActionId).State,
+            allowEngineOwnedPrototypeReward: true);
         var resumeBoundary = PrototypeGameEngine
             .ClassifyAutomaticPipelineResumeBoundary(advanced);
         if (resumeBoundary ==
@@ -813,14 +812,11 @@ public static class SemanticEndTurnEngineV111
                 .ResolveSelectedIndex<SemanticEndTurnV111, RunState>(
                     state, enemyActionRequest, selectedIndex,
                     (checkpoint, replayedIndex) =>
-                    {
-                        using (ControlledChanceGuardV111.Enter())
-                        using (ControlledChanceGuardV111
-                            .AllowEngineOwnedPrototypeReward())
-                            return PrototypeGameEngine
+                        ControlledChanceGuardV111.ExecuteGuarded(
+                            () => PrototypeGameEngine
                                 .ResumeControlledEnemyAction(
-                                    checkpoint.Run.Fork(), replayedIndex);
-                    });
+                                    checkpoint.Run.Fork(), replayedIndex),
+                            allowEngineOwnedPrototypeReward: true));
             var stochastic = state.Stochastic.AppendEnemyAction(
                 decision, candidateLabels);
             state = ContinueAutomaticPipelineBoundaryChoice(
@@ -1475,11 +1471,9 @@ public static class SemanticEndTurnEngineV111
 
     private static SemanticEndTurnV111 CompleteIntents(SemanticEndTurnV111 state)
     {
-        PrototypeAutomaticPipelineResumeResultV111 handoff;
-        using (ControlledChanceGuardV111.Enter())
-            handoff = PrototypeGameEngine.ResumeControlledTurnAfterIntents(
-                state.Run.Fork(),
-                stopBeforeSemanticHandDraw: true);
+        var handoff = ControlledChanceGuardV111.ExecuteGuarded(
+            () => PrototypeGameEngine.ResumeControlledTurnAfterIntents(
+                state.Run.Fork(), stopBeforeSemanticHandDraw: true));
         var withoutIntents = state with { Intents = null };
         if (TryPublishResumedPipelineBoundary(
                 withoutIntents, handoff, out var published))
@@ -1504,11 +1498,9 @@ public static class SemanticEndTurnEngineV111
         if (state.HandDraw is not { AtBoundary: true } draw)
             throw new InvalidOperationException(
                 "Cannot finish end turn with pending drawn-card choices.");
-        PrototypeAutomaticPipelineResumeResultV111 result;
-        using (ControlledChanceGuardV111.Enter())
-            result = PrototypeGameEngine
-                .ResumeAutomaticPipelineContinuation(
-                    draw.Run.Fork());
+        var result = ControlledChanceGuardV111.ExecuteGuarded(
+            () => PrototypeGameEngine.ResumeAutomaticPipelineContinuation(
+                draw.Run.Fork()));
         if (TryPublishResumedPipelineBoundary(
                 state, result, out var published))
             return published;

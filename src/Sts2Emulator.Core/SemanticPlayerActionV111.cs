@@ -326,9 +326,8 @@ public static class SemanticPlayerActionEngineV111
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
                 "operation=card_effect_requires_semantic_audit");
 
-        RunState run;
-        using (ControlledChanceGuardV111.Enter())
-            run = environment.Step(source.Fork(), actionId).State;
+        var run = ControlledChanceGuardV111.ExecuteGuarded(
+            () => environment.Step(source.Fork(), actionId).State);
         // The allowlisted action may still activate an unmodeled relic,
         // power, draw hook or enemy mechanic. Supported returns must match
         // an exact physical-card transition committed by the shared adapter.

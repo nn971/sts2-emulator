@@ -1104,9 +1104,8 @@ public static class ControlledPlayableCombatEngineV111
         // Unmigrated RNG always aborts BEFORE the session stores a child.
         // No rerunning earlier effects is used to resolve an action.
         var input = state.Run.Fork();
-        RunState result;
-        using (ControlledChanceGuardV111.Enter())
-            result = environment.Step(input, actionId).State;
+        var result = ControlledChanceGuardV111.ExecuteGuarded(
+            () => environment.Step(input, actionId).State);
         var next = state.Fork() with
         {
             Mechanics = state.Mechanics.AppendPlayerAction(actionId, result)
@@ -1325,10 +1324,9 @@ public static class ControlledPlayableCombatEngineV111
         var result = ControlledChanceContinuationExecutorV111
             .ResolveSelectedIndex<ControlledPlayableCombatV111, RunState>(
                 state, request, selectedIndex, (checkpoint, replayedIndex) =>
-                {
-                    using (ControlledChanceGuardV111.Enter())
-                        return resume(checkpoint.Run.Fork(), replayedIndex);
-                });
+                    ControlledChanceGuardV111.ExecuteGuarded(
+                        () => resume(
+                            checkpoint.Run.Fork(), replayedIndex)));
         return (
             PrototypeAutomaticPipelineResumeResultV111.FromRun(result),
             decision);
@@ -1442,10 +1440,9 @@ public static class ControlledPlayableCombatEngineV111
         if (!stage.Complete)
             throw new InvalidOperationException("Nature recycle swaps are pending.");
         ControlledRecycleShuffleEngineV111.Validate(stage);
-        RunState result;
-        using (ControlledChanceGuardV111.Enter())
-            result = PrototypeGameEngine.ResumeControlledDrawAfterRecycle(
-                state.Run.Fork(), stage.Shuffled);
+        var result = ControlledChanceGuardV111.ExecuteGuarded(
+            () => PrototypeGameEngine.ResumeControlledDrawAfterRecycle(
+                state.Run.Fork(), stage.Shuffled));
         return StartPendingTurn(state with
         {
             Recycle = null,
@@ -1457,10 +1454,9 @@ public static class ControlledPlayableCombatEngineV111
     private static ControlledPlayableCombatV111 FinishTurnIntents(
         ControlledPlayableCombatV111 state)
     {
-        PrototypeAutomaticPipelineResumeResultV111 resume;
-        using (ControlledChanceGuardV111.Enter())
-            resume = PrototypeGameEngine.ResumeControlledTurnAfterIntents(
-                state.Run.Fork());
+        var resume = ControlledChanceGuardV111.ExecuteGuarded(
+            () => PrototypeGameEngine.ResumeControlledTurnAfterIntents(
+                state.Run.Fork()));
         return StartPendingTurn(state with
         {
             TurnIntents = null,

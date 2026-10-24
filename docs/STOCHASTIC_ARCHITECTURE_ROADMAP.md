@@ -21,6 +21,16 @@ from the Native run-action transcript, Shovel and event-relic bag replay,
 controlled event/run-action validation, and the source run-start boundary.
 Static source review and `git diff --check` only; no tests or builds were run.
 
+**S4 shared guarded transition runner increment (2026-10-24):**
+`ControlledChanceGuardV111.ExecuteGuarded` now owns optional Native-provider
+and prototype-reward scopes as well as the base controlled guard. Semantic
+pilot actions and Native-policy transitions, end-turn pipeline resumes,
+controlled-playable continuations, and ordinary semantic player actions use
+the same runner. Their validation, chronology, and provider journals remain
+with the existing owners. No snapshot or transcript format changed. Broader
+resume consolidation and cross-provider mechanical equivalence remain open.
+Static source review and `git diff --check` only; no tests or builds were run.
+
 **S4 guarded hand-draw completion owner increment (2026-10-24):** A clean
 guarded `DrawPlayerHand` source result now completes through the existing
 `CompleteAutomaticHandDrawStage` owner. This shares after-hand power cleanup

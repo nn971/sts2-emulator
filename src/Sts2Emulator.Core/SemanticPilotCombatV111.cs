@@ -3038,10 +3038,9 @@ public static class SemanticPilotCombatEngineV111
         var operation = new PrototypeQueuedOperation(
             PrototypeCombatEffectKind.CreateGeneratedCardsAtRandomDrawPositions,
             Amount: 1, CardId: cardId);
-        RunState result;
-        using (ControlledChanceGuardV111.Enter())
-            result = PrototypeGameEngine.BeginControlledDrawInsertionFixture(
-                state.Run.Fork(), operation);
+        var result = ControlledChanceGuardV111.ExecuteGuarded(
+            () => PrototypeGameEngine.BeginControlledDrawInsertionFixture(
+                state.Run.Fork(), operation));
         SemanticDrawInsertionChoiceV111.ValidateBoundary(result);
         return state with { Run = result };
     }
@@ -3052,10 +3051,9 @@ public static class SemanticPilotCombatEngineV111
         var operation = new PrototypeQueuedOperation(
             PrototypeCombatEffectKind.CreateRandomFreeAttacksInDrawPile,
             Amount: 1);
-        RunState result;
-        using (ControlledChanceGuardV111.Enter())
-            result = PrototypeGameEngine.BeginControlledDrawInsertionFixture(
-                state.Run.Fork(), operation);
+        var result = ControlledChanceGuardV111.ExecuteGuarded(
+            () => PrototypeGameEngine.BeginControlledDrawInsertionFixture(
+                state.Run.Fork(), operation));
         SemanticDrawInsertionChoiceV111.ValidateBoundary(result);
         return state with { Run = result };
     }
@@ -3066,10 +3064,9 @@ public static class SemanticPilotCombatEngineV111
         var operation = new PrototypeQueuedOperation(
             PrototypeCombatEffectKind.RandomizeHandCardEnergyCostsUntilTurnEndOrPlayed,
             Amount: maxExclusive);
-        RunState result;
-        using (ControlledChanceGuardV111.Enter())
-            result = PrototypeGameEngine.BeginControlledRandomCostFixture(
-                state.Run.Fork(), operation);
+        var result = ControlledChanceGuardV111.ExecuteGuarded(
+            () => PrototypeGameEngine.BeginControlledRandomCostFixture(
+                state.Run.Fork(), operation));
         SemanticRandomHandCostChoiceV111.ValidateBoundary(result);
         return state with { Run = result };
     }
@@ -3080,10 +3077,9 @@ public static class SemanticPilotCombatEngineV111
         var operation = new PrototypeQueuedOperation(
             PrototypeCombatEffectKind.SetRandomHandCardEnergyCostUntilTurnEndOrPlayed,
             Amount: cost);
-        RunState result;
-        using (ControlledChanceGuardV111.Enter())
-            result = PrototypeGameEngine.BeginControlledRandomCostFixture(
-                state.Run.Fork(), operation);
+        var result = ControlledChanceGuardV111.ExecuteGuarded(
+            () => PrototypeGameEngine.BeginControlledRandomCostFixture(
+                state.Run.Fork(), operation));
         SemanticRandomHandCostChoiceV111.ValidateBoundary(result);
         return state with { Run = result };
     }
@@ -3781,19 +3777,19 @@ public static class SemanticPilotCombatEngineV111
             RandomBoundaryTranscriptEntryV111[] committedIntentTrace;
             using (var intentJournal = RandomBoundaryJournalV111.Begin())
             {
-                PrototypeGameEngine.NativeCommittedIntentAuditV111 committed;
-                using (ControlledChanceGuardV111.Enter())
-                using (ControlledChanceGuardV111.AllowEngineOwnedNativeProvider())
-                using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
-                    committed = PrototypeGameEngine.CommitEnemyIntentsWithAudit(
+                var committed = ControlledChanceGuardV111.ExecuteGuarded(
+                    () => PrototypeGameEngine.CommitEnemyIntentsWithAudit(
                         combat, RngBundle.Empty,
-                        NativeCombatRngEntryV111.CommittedIntentSiteId);
+                        NativeCombatRngEntryV111.CommittedIntentSiteId),
+                    allowEngineOwnedPrototypeReward: true,
+                    allowEngineOwnedNativeProvider: true);
                 nativeIntentOutcomes = committed.WeightedOutcomes;
-                using (ControlledChanceGuardV111.Enter())
-                using (ControlledChanceGuardV111.AllowEngineOwnedNativeProvider())
-                using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
-                    run = PrototypeGameEngine.ResumeSemanticInitialCombatEntry(
-                        run, committed.Combat);
+                run = ControlledChanceGuardV111.ExecuteGuarded(
+                    () => PrototypeGameEngine
+                        .ResumeSemanticInitialCombatEntry(
+                            run, committed.Combat),
+                    allowEngineOwnedPrototypeReward: true,
+                    allowEngineOwnedNativeProvider: true);
                 committedIntentDecisions = intentJournal.Entries
                     .Where(decision => decision.ProviderMode == "native-v111")
                     .ToArray();
@@ -4147,11 +4143,9 @@ public static class SemanticPilotCombatEngineV111
                 Combat = openingCombat
             }
         };
-        RunState drawn;
-        int remaining;
-        using (ControlledChanceGuardV111.Enter())
-            (drawn, remaining) = PrototypeGameEngine.BeginSemanticCombatDraw(
-                prepared, dealt.Length, fromHandDraw: true);
+        var (drawn, remaining) = ControlledChanceGuardV111.ExecuteGuarded(
+            () => PrototypeGameEngine.BeginSemanticCombatDraw(
+                prepared, dealt.Length, fromHandDraw: true));
         var result = drawn.World?.Combat;
         if (remaining != 0 || drawn.Phase != RunPhase.Combat ||
             result is null || result.PendingChoice is not null ||
@@ -4389,10 +4383,10 @@ public static class SemanticPilotCombatEngineV111
             // Preserve actual source damage, relic/power hooks and victory
             // transitions. Supported hidden-pile mutations must update the
             // provider-owned semantic deck at their source boundary.
-            using (ControlledChanceGuardV111.Enter())
-            using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
-                result = environment.StepResolved(
-                    source, resolvedAction.Action).State;
+            result = ControlledChanceGuardV111.ExecuteGuarded(
+                () => environment.StepResolved(
+                    source, resolvedAction.Action).State,
+                allowEngineOwnedPrototypeReward: true);
             if (!PrototypeGameEngine.IsAtCombatActionResultBoundary(result))
                 throw new NotSupportedException(
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
@@ -4507,10 +4501,10 @@ public static class SemanticPilotCombatEngineV111
                 throw new NotSupportedException(
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
                     "operation=potion_effect_requires_semantic_audit");
-            using (ControlledChanceGuardV111.Enter())
-            using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
-                result = environment.StepResolved(
-                    source, resolvedAction.Action).State;
+            result = ControlledChanceGuardV111.ExecuteGuarded(
+                () => environment.StepResolved(
+                    source, resolvedAction.Action).State,
+                allowEngineOwnedPrototypeReward: true);
             if (result.Phase != RunPhase.Combat &&
                 !((isDistilledChaos || isSemanticDrawPotion ||
                    isDeterministicDamagePotion) &&
@@ -4911,14 +4905,15 @@ public static class SemanticPilotCombatEngineV111
         var environment = new PrototypeAiEnvironment();
         RunState result;
         using var boundaries = RandomBoundaryJournalV111.Begin();
-        using (ControlledChanceGuardV111.Enter())
-        using (ControlledChanceGuardV111.AllowEngineOwnedNativeProvider())
-        using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
-        using (StochasticProviderScopeV111.EnterBoundary(
-            new NativeRandomBoundaryProviderV111(),
-            overrideExplicitProviders: false))
-            result = environment.StepResolved(
-                current.Run.Fork(), resolvedAction).State;
+        result = ControlledChanceGuardV111.ExecuteGuarded(() =>
+        {
+            using (StochasticProviderScopeV111.EnterBoundary(
+                new NativeRandomBoundaryProviderV111(),
+                overrideExplicitProviders: false))
+                return environment.StepResolved(
+                    current.Run.Fork(), resolvedAction).State;
+        }, allowEngineOwnedPrototypeReward: true,
+            allowEngineOwnedNativeProvider: true);
 
         var audit = current.Stochastic.NativePolicyAudit ??
             throw new InvalidDataException(
@@ -6995,10 +6990,9 @@ public static class SemanticPilotCombatEngineV111
                 "Nature opening replay requires a provider-free committed pile.");
         var semanticCombat = SemanticDrawPileAdapterV111
             .InitializeFromCommittedOpening(sourceCombat);
-        RunState resumed;
-        using (ControlledChanceGuardV111.Enter())
-            resumed = PrototypeGameEngine.ResumeSemanticInitialCombatEntry(
-                checkpoint, semanticCombat);
+        var resumed = ControlledChanceGuardV111.ExecuteGuarded(
+            () => PrototypeGameEngine.ResumeSemanticInitialCombatEntry(
+                checkpoint, semanticCombat));
 
         var world = resumed.World ?? throw new InvalidDataException(
             "Initial intent completion lost the source route world.");
