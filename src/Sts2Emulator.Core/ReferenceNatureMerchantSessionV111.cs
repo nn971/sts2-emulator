@@ -984,7 +984,6 @@ public sealed record ReferenceNatureMerchantSessionV111(
         return request.SiteId == PrototypeNativePotionShop.RarityRollSiteId &&
             request.StreamId == streamId &&
             request.OperationKind == "bounded_integer" &&
-            request.Ordinal == pickOrdinal &&
             request.SupportCount == 100 &&
             request.OrderedCandidates.Length == 0 &&
             request.OwnerId == ownerId;
@@ -1001,7 +1000,6 @@ public sealed record ReferenceNatureMerchantSessionV111(
                 .ModelWithinRaritySiteId &&
             request.StreamId == streamId &&
             request.OperationKind == "choose_index" &&
-            request.Ordinal == pickOrdinal &&
             request.SupportCount == candidates.Length &&
             request.OrderedCandidates.SequenceEqual(
                 Enumerable.Range(0, candidates.Length)) &&

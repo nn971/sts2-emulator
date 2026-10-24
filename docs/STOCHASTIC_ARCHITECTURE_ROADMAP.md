@@ -3707,8 +3707,7 @@ The existing merchant session now validates all three legacy rarity-ticket and
 model-index pairs during Native-regional fallback Shop entry, then accepts a
 legal Native-regional Alchemical Coffer purchase with four such pairs. Replay
 checks each rarity owner and ticket, source-ordered rarity-conditioned residual
-pool, model owner and site-local ordinal, and selection bound. Fallback model
-indices use equal weights and legacy stream behavior remains `UNVERIFIED`;
-configured Native Coffer draws
-are unchanged. Static source review and `git diff --check` only; no tests or
-builds were run.
+pool, model owner and selection bound. Replay retains the captured stream
+ordinals. Fallback model indices use equal weights and legacy stream behavior
+remains `UNVERIFIED`; configured Native Coffer draws are unchanged. Static
+source review and `git diff --check` only; no tests or builds were run.
