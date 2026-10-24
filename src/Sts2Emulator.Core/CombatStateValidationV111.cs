@@ -730,10 +730,6 @@ public sealed partial record CombatState
             var isEffectDrawCostChoice =
                 pending.ChoiceId == "controlled_draw_cost" &&
                 pending.ControlledDrawCost is not null && draw is not null;
-            if (isSemanticDrawChoice != (draw is not null) &&
-                !isEffectDrawCostChoice)
-                throw new InvalidOperationException(
-                    "Controlled semantic draw choice and continuation disagree.");
             if (draw is not null)
             {
                 var continuation = pending.OuterChoiceContinuation;
@@ -787,8 +783,7 @@ public sealed partial record CombatState
                     pending.CompletionEvents.Length != 0 ||
                     deck is not { Mode: SemanticDeckStateV111.NatureMode } ||
                     (isSemanticDrawChoice &&
-                     (pending.ControlledDrawCost is not null ||
-                      deck.Pending is not
+                     (deck.Pending is not
                         { Purpose: "draw", TopOffset: 0 })) ||
                     (isTopAutoplayDraw &&
                      (draw.FromHandDraw || topAutoplayOperation is null ||
