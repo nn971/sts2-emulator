@@ -19,6 +19,16 @@ and `git diff --check` only; no tests or builds were run.
 `ChanceLawAncientOfferV111.cs`; its value and public API are unchanged. Static
 source review and `git diff --check` only; no tests or builds were run.
 
+**S1 controlled relic-acquisition identity outcomes increment (2026-10-24):**
+The run-action Chance Law now routes supported legacy random Rare-card and
+potion acquisition requests, plus event and run empty-slot potion fills,
+through their existing source-specific semantic laws. It verifies each law
+against the saved request owner, ordinal, ordered indices and candidate
+labels, then binds the returned event ID to the exact saved action boundary.
+Native `player.rewards` requests keep their Native index law. Source pool
+fidelity and equal-index weighting remain `UNVERIFIED`. Static source review
+and Chance Law boundary guards only; no tests or builds were run.
+
 **S3 controlled-choice Chance Law ownership increment (2026-10-24):** The
 controlled run-action law and boundary fingerprint now live in
 `ChanceLawRunActionV111.cs`; controlled event-choice dispatch, Stone of All Time

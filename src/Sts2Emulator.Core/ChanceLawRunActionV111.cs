@@ -15,17 +15,81 @@ public static partial class ChanceLawEngineV111
             schemaId = ControlledRunActionEngineV111.SchemaId,
             boundaryFingerprint
         });
-        if (continuation.PendingRequest.SiteId ==
-            "reward.card_transform.replacement.index_draw")
-            return QueryControlledRelicDeckTransform(
-                run, continuation, eventId);
+        if (QueryControlledRunActionSemanticLaw(
+                run, continuation, eventId) is { } semanticLaw)
+            return semanticLaw;
         return QueryRandomIndex(eventId, continuation.PendingRequest);
+    }
+
+    private static ChanceLawV111? QueryControlledRunActionSemanticLaw(
+        RunState run,
+        PrototypeControlledRunActionContinuationV111 continuation,
+        string eventId)
+    {
+        var request = continuation.PendingRequest;
+        ChanceLawV111? law = request.SiteId switch
+        {
+            "reward.card_transform.replacement.index_draw" =>
+                QueryControlledRelicDeckTransform(run, continuation),
+            "relic.acquisition.random_rare_card.model"
+                when request.StreamId == "reward" =>
+                    QueryLegacyRelicAcquisitionRareCardModel(
+                        request.Ordinal),
+            "relic.acquisition.random_potion.model"
+                when request.StreamId == "event" =>
+                    QueryLegacyRelicAcquisitionPotionModel(
+                        ControlledPotionSlotIndex(request), request.Ordinal),
+            "event.potion.fill_empty_slots.model"
+                when request.StreamId == "event" =>
+                    QueryLegacyEventFillPotionSlot(
+                        ControlledPotionSlotIndex(request),
+                        canAcquirePotion: true, slotIsEmpty: true,
+                        ordinal: request.Ordinal),
+            "run.potion.fill_empty_slots.model"
+                when request.StreamId == "reward" =>
+                    QueryLegacyRunPotionFillSlotModel(
+                        ControlledPotionSlotIndex(request),
+                        canAcquirePotion: true, slotIsEmpty: true,
+                        ordinal: request.Ordinal),
+            _ => null
+        };
+        if (law is null)
+            return null;
+
+        var outcomePrefix = request.SiteId switch
+        {
+            "relic.acquisition.random_rare_card.model" or
+                "reward.card_transform.replacement.index_draw" => "card:",
+            _ => "potion:"
+        };
+        var expectedStream = request.SiteId switch
+        {
+            "relic.acquisition.random_rare_card.model" or
+                "reward.card_transform.replacement.index_draw" or
+                "run.potion.fill_empty_slots.model" => "reward",
+            _ => "event"
+        };
+        var outcomes = law.Outcomes;
+        if (request.SiteId != law.SiteId ||
+            request.StreamId != expectedStream ||
+            request.OperationKind != law.OperationKind ||
+            request.OwnerId != law.OwnerId ||
+            request.Ordinal != law.Ordinal ||
+            !request.OrderedCandidates.SequenceEqual(
+                Enumerable.Range(0, outcomes.Length)) ||
+            continuation.PendingCandidateLabels.Length != outcomes.Length ||
+            !outcomes.Select(outcome => outcome.OutcomeId)
+                .SequenceEqual(continuation.PendingCandidateLabels.Select(
+                    label => outcomePrefix + label), StringComparer.Ordinal))
+            throw new InvalidDataException(
+                "Controlled run-action law differs from its saved semantic support.");
+
+        return law with { EventId = eventId };
     }
 
     private static ChanceLawV111 QueryControlledRelicDeckTransform(
         RunState run,
-        PrototypeControlledRunActionContinuationV111 continuation,
-        string eventId)
+        PrototypeControlledRunActionContinuationV111 continuation)
     {
         var action = continuation.RunAction ??
             throw new InvalidDataException(
@@ -45,23 +109,31 @@ public static partial class ChanceLawEngineV111
         var law = QueryLegacyRewardCardTransform(
             cardInstanceId, card.CardId,
             continuation.PendingRequest.Ordinal);
-        var request = continuation.PendingRequest;
-        var outcomes = law.Outcomes;
-        if (request.SiteId != law.SiteId ||
-            request.StreamId != "reward" ||
-            request.OperationKind != law.OperationKind ||
-            request.OwnerId != law.OwnerId ||
-            request.Ordinal != law.Ordinal ||
-            !request.OrderedCandidates.SequenceEqual(
-                Enumerable.Range(0, outcomes.Length)) ||
-            continuation.PendingCandidateLabels.Length != outcomes.Length ||
-            !outcomes.Select(outcome => outcome.OutcomeId)
-                .SequenceEqual(continuation.PendingCandidateLabels.Select(
-                    label => "card:" + label), StringComparer.Ordinal))
-            throw new InvalidDataException(
-                "Controlled relic deck transform law differs from its saved support.");
+        return law;
+    }
 
-        return law with { EventId = eventId };
+    private static int ControlledPotionSlotIndex(
+        RandomIndexRequestV111 request)
+    {
+        const string ownerPrefix = "player:potion_slot:";
+        var poolFingerprint = CanonicalJson.Sha256(
+            PrototypeContent.PotionPool);
+        var ownerSuffix = ":pool:" + poolFingerprint;
+        if (!request.OwnerId.StartsWith(ownerPrefix,
+                StringComparison.Ordinal) ||
+            !request.OwnerId.EndsWith(ownerSuffix,
+                StringComparison.Ordinal))
+            throw new InvalidDataException(
+                "Controlled potion-slot request has an invalid owner.");
+        var slotText = request.OwnerId[ownerPrefix.Length..
+            ^ownerSuffix.Length];
+        if (!int.TryParse(slotText,
+                System.Globalization.NumberStyles.None,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var slotIndex) || slotIndex < 0)
+            throw new InvalidDataException(
+                "Controlled potion-slot request has an invalid slot index.");
+        return slotIndex;
     }
 
     /// <summary>Fingerprint the pending controlled action and request without

@@ -39,6 +39,12 @@ outcomes use `card:<model>` identities from that source law; the event ID also
 binds the exact legal action boundary.
 Fixed-result transforms and unrelated deck-choice actions retain their
 existing owners.
+For supported legacy acquisition requests, the run-action Chance Law also
+reuses the existing `card:<model>` and `potion:<id>` laws for random Rare
+card grants, random potion grants, and empty-slot potion fills. It checks the
+saved request owner, ordinal and support against those laws and binds the
+event ID to the action boundary. Native `player.rewards` requests keep their
+Native index masses.
 `ControlledRunActionEngineV111.BeginLegacyActTransition` is the explicit
 entry point for the unconfigured prototype transition route.
 Legacy Treasure selection is not offered when Silver Crucible suppresses the
