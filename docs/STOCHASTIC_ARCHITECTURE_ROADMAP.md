@@ -70,6 +70,14 @@ accepts an intent ID mapped to the first legal ticket in that candidate's
 weight interval. No session or snapshot schema changed. Static source review
 and `git diff --check` only; no tests or builds were run.
 
+**S4 controlled-playable replay identity increment (2026-10-24):** The
+existing chronological live transcript now optionally stores ordered outcome
+labels for identity-bearing supports. Restore compares them with the live
+support at every replay boundary, catching same-sized support reorders that
+request metadata does not encode. Numeric-only choices retain null entries;
+snapshots without the optional field retain the legacy index-only path. Static
+source review and `git diff --check` only; no tests or builds were run.
+
 **S4 hand-draw progress presence owner increment (2026-10-24):** The pipeline
 stochastic owner now exposes `HasSavedHandDrawProgress` for clean-boundary
 presence checks. Semantic and controlled draw completion, automatic pipeline

@@ -193,6 +193,13 @@ public sealed record ControlledPlayableCombatV111(
         init => Stochastic = Stochastic with { LiveTranscript = value };
     }
 
+    public string[]?[]? LiveTranscriptCandidateLabels
+    {
+        get => Stochastic.LiveTranscriptCandidateLabels;
+        init => Stochastic = Stochastic with
+        { LiveTranscriptCandidateLabels = value };
+    }
+
     public RandomIndexDecisionV111[] TargetTranscript
     {
         get => Stochastic.TargetTranscript;
@@ -445,6 +452,8 @@ public sealed record ControlledPlayableCombatV111(
             this.Stochastic.RecycleTranscriptPrefix is null ||
             this.Stochastic.TurnTranscript is null || this.RecycleTranscript is null ||
             this.Stochastic.LiveTranscript is null ||
+            (this.Stochastic.LiveTranscriptCandidateLabels is { } liveLabels &&
+                liveLabels.Length != this.Stochastic.LiveTranscript.Length) ||
             this.Stochastic.TargetTranscript is null ||
             this.Stochastic.GeneratedCardTranscript is null ||
             this.Stochastic.DrawInsertionTranscript is null ||
@@ -457,6 +466,15 @@ public sealed record ControlledPlayableCombatV111(
             (this.Stochastic.Recycle is not null &&
                 (this.Stochastic.Pending is not null || this.TurnIntents is not null)))
             throw new InvalidDataException("Malformed controlled playable stage.");
+        if (this.Stochastic.LiveTranscriptCandidateLabels is { } candidateLabels)
+        {
+            for (int index = 0; index < candidateLabels.Length; index++)
+            {
+                if (candidateLabels[index] is { } labels)
+                    ControlledStochasticDecisionV111.FromIndex(
+                        this.Stochastic.LiveTranscript[index], labels).Validate();
+            }
+        }
         var enemyAction = this.Run.World?.Combat?
             .AutomaticPipelineContinuation?.Stochastic.ControlledEnemyAction;
         if (enemyAction is not null)
@@ -930,6 +948,92 @@ public static class ControlledPlayableCombatEngineV111
                 " is outside the pending source support.");
     }
 
+    private static ControlledPlayableCombatStochasticStateV111
+        AppendLiveDecision(
+            ControlledPlayableCombatV111 state,
+            ControlledPlayableLiveDecisionKindV111 kind,
+            RandomIndexDecisionV111 decision) =>
+        state.Stochastic.AppendLiveDecision(
+            kind, decision, PendingCandidateLabels(state));
+
+    private static string[]? PendingCandidateLabels(
+        ControlledPlayableCombatV111 state)
+    {
+        if (state.DrawCostPending is not null)
+            return null;
+        var randomCost = state.Run.World?.Combat?.PendingChoice?
+            .ControlledRandomCost;
+        if (state.RandomCostPending is not null)
+        {
+            if (randomCost?.Operation.Kind !=
+                PrototypeCombatEffectKind.SetRandomHandCardEnergyCostUntilTurnEndOrPlayed)
+                return null;
+            return randomCost.EligibleCardInstanceIds.Select(instanceId =>
+                "card_instance:" + instanceId.ToString(
+                    System.Globalization.CultureInfo.InvariantCulture)).ToArray();
+        }
+        var potionGeneration = state.Run.World?.Combat?.PendingChoice?
+            .ControlledPotionGeneration;
+        if (state.PotionGenerationPending is not null)
+            return potionGeneration?.CandidatePotionIds.Select(potionId =>
+                "potion_model:" + potionId).ToArray();
+        var cardTransform = state.Run.World?.Combat?.PendingChoice?
+            .ControlledCardTransform;
+        if (state.CardTransformPending is not null)
+            return cardTransform?.CandidateCardIds.Select(cardId =>
+                "card_model:" + cardId).ToArray();
+        if (state.PoolShufflePending is not null)
+            return null;
+        var drawInsertion = state.Run.World?.Combat?.PendingChoice?
+            .ControlledDrawInsertion;
+        if (state.DrawInsertionPending is not null)
+            return drawInsertion?.Stage == "card_model"
+                ? drawInsertion.CandidateCardIds.Select(cardId =>
+                    "card_model:" + cardId).ToArray()
+                : null;
+        if (state.EnemyActionPending is not null)
+            return state.Run.World?.Combat?.AutomaticPipelineContinuation?
+                .Stochastic.ControlledEnemyAction?.PendingCandidateLabels;
+        var generated = state.Run.World?.Combat?.PendingChoice?
+            .ControlledGeneration;
+        if (state.GeneratedCardPending is not null)
+            return generated?.CandidateCardIds.Select(cardId =>
+                "card_model:" + cardId).ToArray();
+        if (state.TargetPending is { } target)
+            return target.OrderedCandidates.Select(enemyId =>
+                "enemy_instance:" + enemyId.ToString(
+                    System.Globalization.CultureInfo.InvariantCulture)).ToArray();
+        if (state.Stochastic.Recycle?.Pending is not null)
+            return null;
+        if (state.TurnIntents?.Pending is { } intentRequest)
+        {
+            var support = state.IntentChoicePending?.Support ??
+                throw new InvalidDataException(
+                    "Pending turn-intent request has no semantic support.");
+            if (support.TotalRawWeight != intentRequest.SupportCount)
+                throw new InvalidDataException(
+                    "Turn-intent labels disagree with the pending ticket bound.");
+            var labels = new string[support.TotalRawWeight];
+            foreach (var candidate in support.Candidates)
+            {
+                if (candidate.TicketStart < 0 || candidate.RawWeight <= 0 ||
+                    candidate.TicketStart + candidate.RawWeight > labels.Length)
+                    throw new InvalidDataException(
+                        "Turn-intent label interval is outside its pending ticket.");
+                Array.Fill(labels, candidate.IntentId, candidate.TicketStart,
+                    candidate.RawWeight);
+            }
+            return labels;
+        }
+        return null;
+    }
+
+    private static bool SameCandidateLabels(
+        string[]? left, string[]? right) =>
+        left is null ? right is null :
+            right is not null && left.SequenceEqual(right,
+                StringComparer.Ordinal);
+
     private static ControlledPlayableCombatV111 ResolveValidated(
         ControlledPlayableCombatV111 state, int selectedIndex)
     {
@@ -1027,7 +1131,7 @@ public static class ControlledPlayableCombatEngineV111
         var next = state.Fork() with
         {
             Run = resume.Run,
-            Stochastic = state.Stochastic.AppendLiveDecision(
+            Stochastic = AppendLiveDecision(state,
                 ControlledPlayableLiveDecisionKindV111.DrawCost, decision)
         };
         return StartPendingTurn(next, resume);
@@ -1044,7 +1148,7 @@ public static class ControlledPlayableCombatEngineV111
         var next = state.Fork() with
         {
             Run = resume.Run,
-            Stochastic = state.Stochastic.AppendLiveDecision(
+            Stochastic = AppendLiveDecision(state,
                 ControlledPlayableLiveDecisionKindV111.RandomCost, decision)
         };
         return StartPendingTurn(next, resume);
@@ -1061,7 +1165,7 @@ public static class ControlledPlayableCombatEngineV111
         var next = state.Fork() with
         {
             Run = resume.Run,
-            Stochastic = state.Stochastic.AppendLiveDecision(
+            Stochastic = AppendLiveDecision(state,
                 ControlledPlayableLiveDecisionKindV111.PoolShuffle, choice)
         };
         return StartPendingTurn(next, resume);
@@ -1078,7 +1182,7 @@ public static class ControlledPlayableCombatEngineV111
         var next = state.Fork() with
         {
             Run = resume.Run,
-            Stochastic = state.Stochastic.AppendLiveDecision(
+            Stochastic = AppendLiveDecision(state,
                 ControlledPlayableLiveDecisionKindV111.DrawInsertion, choice)
         };
         return StartPendingTurn(next, resume);
@@ -1096,7 +1200,7 @@ public static class ControlledPlayableCombatEngineV111
         var next = state.Fork() with
         {
             Run = resume.Run,
-            Stochastic = state.Stochastic.AppendLiveDecision(
+            Stochastic = AppendLiveDecision(state,
                 ControlledPlayableLiveDecisionKindV111.LiveOnly, decision)
         };
         return StartPendingTurn(next, resume);
@@ -1123,7 +1227,7 @@ public static class ControlledPlayableCombatEngineV111
         var next = state.Fork() with
         {
             Run = resume.Run,
-            Stochastic = state.Stochastic.AppendLiveDecision(
+            Stochastic = AppendLiveDecision(state,
                 ControlledPlayableLiveDecisionKindV111.GeneratedCard, choice)
         };
         return StartPendingTurn(next, resume);
@@ -1153,7 +1257,7 @@ public static class ControlledPlayableCombatEngineV111
         var next = state.Fork() with
         {
             Run = resume.Run,
-            Stochastic = state.Stochastic.AppendLiveDecision(
+            Stochastic = AppendLiveDecision(state,
                 ControlledPlayableLiveDecisionKindV111.PotionGeneration,
                 choice)
         };
@@ -1184,7 +1288,7 @@ public static class ControlledPlayableCombatEngineV111
         var next = state.Fork() with
         {
             Run = resume.Run,
-            Stochastic = state.Stochastic.AppendLiveDecision(
+            Stochastic = AppendLiveDecision(state,
                 ControlledPlayableLiveDecisionKindV111.CardTransform, choice)
         };
         return StartPendingTurn(next, resume);
@@ -1203,7 +1307,7 @@ public static class ControlledPlayableCombatEngineV111
         var next = state.Fork() with
         {
             Run = resume.Run,
-            Stochastic = state.Stochastic.AppendLiveDecision(
+            Stochastic = AppendLiveDecision(state,
                 ControlledPlayableLiveDecisionKindV111.Target, choice)
         };
         return StartPendingTurn(next, resume);
@@ -1310,7 +1414,7 @@ public static class ControlledPlayableCombatEngineV111
         var fresh = state.Fork() with
         {
             TurnIntents = nextIntents,
-            Stochastic = state.Stochastic.AppendLiveDecision(
+            Stochastic = AppendLiveDecision(state,
                 ControlledPlayableLiveDecisionKindV111.TurnIntent,
                 nextIntents.Transcript[^1])
         };
@@ -1327,7 +1431,7 @@ public static class ControlledPlayableCombatEngineV111
         var choice = next.Transcript[^1];
         var updated = state.Fork() with
         {
-            Stochastic = state.Stochastic.AppendLiveDecision(
+            Stochastic = AppendLiveDecision(state,
                 ControlledPlayableLiveDecisionKindV111.LiveOnly, choice) with
             {
                 Recycle = next
@@ -1381,6 +1485,7 @@ public static class ControlledPlayableCombatEngineV111
         ArgumentException.ThrowIfNullOrWhiteSpace(snapshot);
         var stored = JsonSerializer.Deserialize<ControlledPlayableCombatV111>(snapshot)
             ?? throw new InvalidDataException("Null controlled playable snapshot.");
+        stored.Validate();
         // Full provenance replay, from source-verified controlled HP+intent
         // completion through the entire ordered shuffle and player transcript.
         var current = Begin(stored.Origin, stored.Seed);
@@ -1408,7 +1513,8 @@ public static class ControlledPlayableCombatEngineV111
             while (current.ActivePending is not null &&
                 liveCursor < stored.Stochastic.LiveTranscript.Length)
             {
-                var recorded = stored.Stochastic.LiveTranscript[liveCursor++];
+                int decisionIndex = liveCursor++;
+                var recorded = stored.Stochastic.LiveTranscript[decisionIndex];
                 recorded.Validate();
                 if (recorded.ProviderMode != "controlled-v111" ||
                     recorded.ProbabilityStatus != "UNVERIFIED" ||
@@ -1418,12 +1524,23 @@ public static class ControlledPlayableCombatEngineV111
                         CanonicalJson.Sha256(current.ActivePending))
                     throw new InvalidDataException(
                         "Unreachable live Nature decision in replay.");
+                if (stored.Stochastic.LiveTranscriptCandidateLabels is { } labels &&
+                    !SameCandidateLabels(labels[decisionIndex],
+                        PendingCandidateLabels(current)))
+                    throw new InvalidDataException(
+                        "Live Nature candidate labels diverged during replay.");
                 current = Resolve(current, current.Fingerprint, recorded.SelectedIndex);
             }
         }
         if (liveCursor != stored.Stochastic.LiveTranscript.Length)
             throw new InvalidDataException(
                 "Unconsumed or out-of-order live Nature transcript.");
+        if (stored.Stochastic.LiveTranscriptCandidateLabels is null)
+            current = current with
+            {
+                Stochastic = current.Stochastic with
+                { LiveTranscriptCandidateLabels = null }
+            };
         if (!current.Stochastic.TurnTranscript.SequenceEqual(stored.Stochastic.TurnTranscript) ||
             !current.RecycleTranscript.SequenceEqual(stored.RecycleTranscript) ||
             !current.Stochastic.TargetTranscript.SequenceEqual(

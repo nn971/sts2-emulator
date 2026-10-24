@@ -79,6 +79,8 @@ The real `ResolveOperations` kernel suspends at `combat.effect.random_enemy`, pr
 
 This extension preserves the chronological `LiveTranscript` and exact replay across player actions, target decisions, intent and shuffle decisions. Focused Ricochet and Storm of Steel/Sly tests use explicit combat-fixture card substitutions; initial native run/deck acquisition is not claimed. See [the target-choice design and coverage](NATURE_RANDOM_TARGET_143.md). Other dynamic chance and nested operations still need migration. All original conditional laws remain `UNVERIFIED`.
 
+Controlled-playable snapshots now also persist optional `LiveTranscriptCandidateLabels` for identity-bearing live supports. Restore checks each vector against the support reached during source replay, including controlled enemy-action labels and weighted intent ticket ranges. Numeric-only decisions carry null entries. Snapshots written before this field existed retain their index-only compatibility path; the fixture schema ID and decision indices are unchanged.
+
 
 ## PR #149: live random generated-card effects
 
