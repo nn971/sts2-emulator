@@ -385,20 +385,31 @@ internal static class SemanticRandomHandCostChoiceV111
 
     internal static RunState Resume(
         RunState checkpoint, string siteId, int selectedIndex)
+        => ResumeWithBoundary(checkpoint, siteId, selectedIndex).Run;
+
+    internal static PrototypeAutomaticPipelineResumeResultV111
+        ResumeWithBoundary(
+            RunState checkpoint, string siteId, int selectedIndex)
         => ResumeCore(checkpoint, siteId, savedRun =>
-            PrototypeGameEngine.ResumeControlledRandomCost(
+            PrototypeGameEngine.ResumeControlledRandomCostWithBoundary(
                 savedRun, selectedIndex));
 
     internal static RunState ResumeSelectedHandCard(
         RunState checkpoint, long selectedCardInstanceId) =>
+        ResumeSelectedHandCardWithBoundary(
+            checkpoint, selectedCardInstanceId).Run;
+
+    internal static PrototypeAutomaticPipelineResumeResultV111
+        ResumeSelectedHandCardWithBoundary(
+            RunState checkpoint, long selectedCardInstanceId) =>
         ResumeCore(checkpoint, StochasticSiteRegistryV111.CombatRandomHandCardSelectSiteId,
             savedRun => PrototypeGameEngine
-                .ResumeControlledRandomCostByCard(
+                .ResumeControlledRandomCostByCardWithBoundary(
                     savedRun, selectedCardInstanceId));
 
-    private static RunState ResumeCore(
+    private static PrototypeAutomaticPipelineResumeResultV111 ResumeCore(
         RunState checkpoint, string siteId,
-        Func<RunState, RunState> resume)
+        Func<RunState, PrototypeAutomaticPipelineResumeResultV111> resume)
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
         ArgumentNullException.ThrowIfNull(resume);
@@ -424,16 +435,16 @@ internal static class SemanticRandomHandCostChoiceV111
 
         var resumed = ControlledChanceGuardV111.ExecuteGuarded(
             () => resume(checkpoint.Fork()));
-        var nextCombat = resumed.World?.Combat;
-        if (resumed.Phase != RunPhase.Combat || nextCombat is null)
+        var nextCombat = resumed.Run.World?.Combat;
+        if (resumed.Run.Phase != RunPhase.Combat || nextCombat is null)
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_COST site=" + siteId +
                 " operation=unsupported_post_cost_phase");
         if (nextCombat.PendingChoice?.ControlledRandomCost is not null)
-            ValidateBoundary(resumed);
+            ValidateBoundary(resumed.Run);
         else
             SemanticPilotCombatEngineV111.ValidateSemanticCombatBoundary(
-                resumed);
+                resumed.Run);
         SemanticDrawPileAdapterV111.RequireUnchangedDrawPile(
             priorCombat, nextCombat,
             "UNSUPPORTED_SEMANTIC_DECK site=" + siteId +

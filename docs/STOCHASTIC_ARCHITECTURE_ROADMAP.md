@@ -4067,6 +4067,15 @@ Snapshot and transcript formats are unchanged. Broader resume consolidation
 and cross-provider mechanical equivalence remain open. Static source review
 and `git diff --check` only; no tests or builds were run.
 
+**S4 semantic hand-cost classified handoff increment (2026-10-24):** The
+indexed random-cost and physical hand-card cost continuations now return the
+engine-classified automatic-pipeline result through
+`SemanticChoiceResumeResultV111`. Semantic end-turn receives the original
+boundary while existing run-only choice facades remain available. Snapshot and
+transcript formats are unchanged. Broader resume consolidation and
+cross-provider mechanical equivalence remain open. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S4 semantic card-shortlist classified handoff increment (2026-10-24):** The
 controlled shortlist mechanics owner and semantic-choice facade now preserve
 the classified automatic-pipeline result through `SemanticChoiceResumeResultV111`.

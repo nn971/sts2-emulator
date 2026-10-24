@@ -234,6 +234,8 @@ The specialized `SemanticCombatDrawV111.Simulation` pairs `SemanticCombatDrawMec
 
 Automatic semantic card-shortlist replay also carries the classified pipeline result through `SemanticChoiceResumeResultV111`. The shortlist mechanics owner and semantic-choice facade retain run-only projections for existing callers, while end-turn boundary publication receives the original classification.
 
+Semantic random hand-cost choices also retain their classified automatic-pipeline result. Both indexed cost outcomes and selected physical hand-card outcomes pass the result through `SemanticChoiceResumeResultV111` to end-turn boundary publication.
+
 Controlled-playable draw-insertion resumes also retain the classified result when an insertion completes a nested draw or effect continuation. `ResumeControlledDrawInsertion` remains the run-only facade for semantic draw insertion, while the controlled-playable adapter uses `ResumeControlledDrawInsertionWithBoundary` to pass the existing engine classification into turn staging.
 
 Controlled-playable generated-card resumes now preserve the pipeline result through the same selected-index executor and staging path. `ResumeControlledGeneratedCard` remains the run-only facade for semantic-choice consumers; `ResumeControlledGeneratedCardWithBoundary` returns the existing engine classification to controlled-playable.

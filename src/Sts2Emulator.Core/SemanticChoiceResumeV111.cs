@@ -288,14 +288,27 @@ internal static class SemanticChoiceResumeV111
             checkpoint.World?.Combat?.Stochastic.NativeRng is null)
             throw new InvalidDataException(
                 "Native random-hand-cost stream attribution has no Native combat RNG owner.");
-        var run = checkpoint.World?.Combat?.PendingChoice?
-                .ControlledRandomCost is not null
-            ? SemanticRandomHandCostChoiceV111.Resume(
-                checkpoint.Fork(), siteId, ownedDecision.SelectedIndex)
-            : SemanticCostChoiceV111.ResumeEffectDrawCost(
+        RunState run;
+        PrototypeAutomaticPipelineResumeBoundaryKindV111?
+            pipelineBoundary = null;
+        if (checkpoint.World?.Combat?.PendingChoice?
+                .ControlledRandomCost is not null)
+        {
+            var resumed = SemanticRandomHandCostChoiceV111
+                .ResumeWithBoundary(
+                    checkpoint.Fork(), siteId,
+                    ownedDecision.SelectedIndex);
+            run = resumed.Run;
+            pipelineBoundary = resumed.Boundary;
+        }
+        else
+        {
+            run = SemanticCostChoiceV111.ResumeEffectDrawCost(
                 checkpoint.Fork(), ownedDecision.SelectedCost,
                 allowEngineOwnedPrototypeReward);
-        return new SemanticChoiceResumeResultV111(run, siteId);
+        }
+        return new SemanticChoiceResumeResultV111(
+            run, siteId, pipelineBoundary);
     }
 
     internal static SemanticChoiceResumeResultV111 Resume(

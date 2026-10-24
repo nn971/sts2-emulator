@@ -140,6 +140,12 @@ public sealed partial class PrototypeGameEngine
 
     internal static RunState ResumeControlledRandomCostByCard(
         RunState state, long selectedCardInstanceId)
+        => ResumeControlledRandomCostByCardWithBoundary(
+            state, selectedCardInstanceId).Run;
+
+    internal static PrototypeAutomaticPipelineResumeResultV111
+        ResumeControlledRandomCostByCardWithBoundary(
+            RunState state, long selectedCardInstanceId)
     {
         if (!ControlledChanceGuardV111.Active)
             throw new InvalidOperationException(
@@ -179,7 +185,7 @@ public sealed partial class PrototypeGameEngine
                 state.Stochastic, prototypeRng),
             World = world with { Combat = resolved.Combat }
         };
-        return ResumeAutomaticPipelineContinuation(updated).Run;
+        return ResumeAutomaticPipelineContinuation(updated);
     }
 
     /// <summary>Narrow test entry using the actual operations kernel for
