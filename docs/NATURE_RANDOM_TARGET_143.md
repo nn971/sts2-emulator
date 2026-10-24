@@ -48,7 +48,9 @@ Gamble play when the exact relic subscriber, discarded-card event, source
 card-play frame, source-card destination, and saved continuation suffix match.
 Each discarded card reuses the existing random-target event and resumes the
 saved discard-event queue in order. Other Tingsha hook origins remain
-unsupported; Native target-pool, stream, and cursor parity remain open.
+unsupported on player-card actions. End-turn hand-discard targets already use
+the saved automatic-pipeline target transcript at its supported cursor.
+Native target-pool, stream, and cursor parity remain open.
 
 ## Validation and limitations
 

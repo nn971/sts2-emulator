@@ -1152,8 +1152,10 @@ Shadow Step, Survivor, Hidden Daggers, Concentrate, Dagger Throw, or Calculated
 Gamble play discards cards. Admission checks the live Tingsha subscriber, exact
 discard event, physical card-play frame and source-card destination, plus the
 queued Shiv-creation, power, Energy, draw, or selection-completion suffix; each
-result resumes the original discard-event order. Other Tingsha hook origins
-and Native target-pool, stream, and cursor parity remain open.
+result resumes the original discard-event order. End-turn hand-discard targets
+continue through the existing saved automatic-pipeline target transcript.
+Other player-card Tingsha origins and Native target-pool, stream, and cursor
+parity remain open.
 Knife Trap also enters from its physical source card and reuses the saved
 autoplay-target continuation if an earlier Shiv kills the chosen enemy before
 the remaining Shiv queue finishes.
