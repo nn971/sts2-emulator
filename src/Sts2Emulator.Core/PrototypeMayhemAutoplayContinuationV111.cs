@@ -89,6 +89,10 @@ public sealed partial class PrototypeGameEngine
                 combat, pending, insertion, continuation))
             return true;
 
+        if (IsOpeningAfterShuffleDrawInsertionContinuation(
+                combat, pending, insertion, continuation))
+            return true;
+
         if (insertion is not
             { Stage: "position", SelectedCardId: not null,
               SemanticDrawContinuation: not null,
@@ -121,6 +125,50 @@ public sealed partial class PrototypeGameEngine
         return IsMayhemAutoPrePlayPipelineCursor(combat) ||
             combat.IsPlayerTurn &&
             IsAtSupportedAutomaticPipelineTargetBoundary(combat);
+    }
+
+    private static bool IsOpeningAfterShuffleDrawInsertionContinuation(
+        CombatState combat, PendingCombatChoiceState pending,
+        PrototypeControlledDrawInsertionV111 insertion,
+        PrototypeChoiceResolutionContinuationState continuation)
+    {
+        var pipeline = combat.AutomaticPipelineContinuation;
+        if (combat is not
+                { IsPlayerTurn: true, Turn: 1,
+                  PendingKnowledgeDemonChoice: null } ||
+            combat.Stochastic.SemanticDeck is not
+                { Mode: SemanticDeckStateV111.NatureMode, Pending: null } ||
+            pipeline is null ||
+            !pipeline.Mechanics.IsAtOpeningBoundary(
+                PrototypeOpeningCombatStage.AfterHandDraw) ||
+            pending is not
+                { ChoiceId: "controlled_draw_insertion",
+                  SourceCardInstanceId: null,
+                  SourceCardDestination: PrototypeCardZone.DrawPile,
+                  Continuation: { Length: 0 },
+                  CompletionEvents: { Length: 0 } } ||
+            continuation is not
+                { SourceCardInstanceId: null,
+                  SourceCardDestination: PrototypeCardZone.DrawPile,
+                  Operations: { Length: 0 },
+                  PendingDiscardEvents: { Length: 0 },
+                  PendingSlyCardInstanceIds: { Length: 0 },
+                  CompletionEvents: { Length: 0 },
+                  CardPlaySeries: null,
+                  EventDispatchContinuation: null,
+                  Parent: null } ||
+            insertion is not
+                { Stage: "position", SelectedCardId: not null,
+                  AfterShuffleRelic: not null,
+                  SemanticDrawContinuation:
+                    { FromHandDraw: true, EventDepth: 0,
+                      RemainingCount: > 0,
+                      StandaloneSemanticDrawSegment: false,
+                      AutomaticSemanticHandDrawSegment: false,
+                      DrawnCardKeyword: null } })
+            return false;
+
+        return ValidateControlledDrawInsertion(combat, insertion);
     }
 
     private static bool IsOpeningBlessedAntlerDrawInsertionContinuation(

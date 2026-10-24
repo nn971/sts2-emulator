@@ -4663,3 +4663,13 @@ combat-draw, end-turn, pilot, and typed choice-resume paths use the same
 mechanics queries; provider transcript and suspension policies are unchanged.
 No snapshot schema changed. Static source review and `git diff --check` only;
 no tests or builds were run.
+
+**S4 opening after-shuffle insertion continuation increment (2026-10-25):** A
+Nature-owned opening hand draw now routes its after-shuffle relic insertion
+through the existing typed draw-insertion continuation, preserving the
+remaining draw frame and opening pipeline cursor. Admission requires the exact
+opening `AfterHandDraw` cursor, a live Nature deck, an empty source continuation,
+and the validated after-shuffle relic suffix. Nature recycle itself retains
+its existing shuffled-set constraints; no recycle ticket or new snapshot field
+was added. Static source review and `git diff --check` only; no tests or builds
+were run.

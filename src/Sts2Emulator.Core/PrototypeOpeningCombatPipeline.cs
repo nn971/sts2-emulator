@@ -205,7 +205,8 @@ public sealed partial class PrototypeGameEngine
         else if (drawn.BoundaryKind is
             PrototypeDrawCardsBoundaryKind.SemanticDraw or
             PrototypeDrawCardsBoundaryKind.ControlledDrawCost or
-            PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice)
+            PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice or
+            PrototypeDrawCardsBoundaryKind.AfterShuffleInsertions)
         {
             if (!ControlledChanceGuardV111.Active ||
                 combat.Stochastic.SemanticDeck is not
@@ -223,6 +224,20 @@ public sealed partial class PrototypeGameEngine
                 StandaloneSemanticDrawSegment: false,
                 AutomaticSemanticHandDrawSegment: false);
             var continuation = EmptyDrawChoiceContinuation();
+            if (drawn.BoundaryKind ==
+                PrototypeDrawCardsBoundaryKind.AfterShuffleInsertions)
+            {
+                state = state with
+                {
+                    Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                        state.Stochastic, prototypeRng)
+                };
+                return ResolveControlledSemanticDrawResult(
+                    state, drawn, drawFrame, continuation,
+                    automaticHandDrawRequested: null,
+                    recycleSite: "combat.opening_draw",
+                    recycleOperation: "after_shuffle_insertion").Run;
+            }
             if (drawn.BoundaryKind ==
                 PrototypeDrawCardsBoundaryKind.SemanticDraw)
                 combat = MakeControlledSemanticDrawChoice(
