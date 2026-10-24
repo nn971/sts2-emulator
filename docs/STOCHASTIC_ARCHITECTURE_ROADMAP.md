@@ -4645,3 +4645,13 @@ already been drawn. The ordinary opening cursor resumes at `AfterHandDraw`
 after that choice resolves, so no draw count needs to be serialized. Opening
 choices with cards remaining and recycle boundaries remain fail-closed. Static
 source review and `git diff --check` only; no tests or builds were run.
+
+**S4 resumable Nature opening draw increment (2026-10-25):** Opening semantic
+draw and draw-cost boundaries now save the existing semantic draw frame, and
+nested `CardDrawn` choices prepend the remaining hand draw to the existing
+choice continuation. The shared automatic-pipeline admission recognizes these
+frames only at the opening `AfterHandDraw` cursor. Recycle and after-shuffle
+insertion still require a source-supported shuffle continuation. The shared
+nonautomatic effect-cost path also now passes a null automatic requested-count
+value. Static source review and `git diff --check` only; no tests or builds
+were run.

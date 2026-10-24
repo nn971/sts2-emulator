@@ -167,6 +167,7 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         IsLateAutoplaySemanticDrawContinuation(combat, pending) ||
         IsAutomaticPipelineSemanticDrawInsertionContinuation(
             combat, pending) ||
+        IsOpeningHandSemanticDrawContinuation(combat, pending) ||
         IsGamblingChipOpeningSemanticDrawContinuation(combat, pending);
 
     /// <summary>

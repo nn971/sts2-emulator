@@ -120,6 +120,43 @@ public sealed partial class PrototypeGameEngine
         };
     }
 
+    private static bool IsOpeningHandSemanticDrawContinuation(
+        CombatState combat, PendingCombatChoiceState pending)
+    {
+        var cursor = combat.AutomaticPipelineContinuation;
+        var draw = pending.ControlledSemanticDraw;
+        if (combat is not
+                { IsPlayerTurn: true,
+                  PendingKnowledgeDemonChoice: null } ||
+            cursor is null ||
+            !cursor.Mechanics.IsAtOpeningBoundary(
+                PrototypeOpeningCombatStage.AfterHandDraw) ||
+            combat.Stochastic.SemanticDeck is not
+                { Mode: SemanticDeckStateV111.NatureMode } ||
+            pending.OuterChoiceContinuation is null ||
+            draw is not
+                { FromHandDraw: true,
+                  EventDepth: 0,
+                  DrawnCardKeyword: null,
+                  StratagemSelectionPending: false,
+                  StandaloneSemanticDrawSegment: false,
+                  AutomaticSemanticHandDrawSegment: false,
+                  DrawEqualSelectionCount: null })
+            return false;
+
+        return pending.ChoiceId switch
+        {
+            "controlled_semantic_draw" =>
+                pending.ControlledDrawCost is null &&
+                draw.RemainingCount > 0,
+            "controlled_draw_cost" =>
+                pending.ControlledDrawCost is { } cost &&
+                cost.RemainingCount == draw.RemainingCount &&
+                cost.FromHandDraw && cost.EventDepth == 0,
+            _ => false
+        };
+    }
+
     private static RunState DrawOpeningHand(RunState state)
     {
         var world = RequireWorld(state);
@@ -165,11 +202,42 @@ public sealed partial class PrototypeGameEngine
             player = resolved.Player;
             combat = resolved.Combat;
         }
+        else if (drawn.BoundaryKind is
+            PrototypeDrawCardsBoundaryKind.SemanticDraw or
+            PrototypeDrawCardsBoundaryKind.ControlledDrawCost or
+            PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice)
+        {
+            if (!ControlledChanceGuardV111.Active ||
+                combat.Stochastic.SemanticDeck is not
+                    { Mode: SemanticDeckStateV111.NatureMode })
+                throw new NotSupportedException(
+                    "UNSUPPORTED_OPENING_DRAW " +
+                    "site=combat.opening_draw operation=" +
+                    drawn.BoundaryKind);
+
+            var drawFrame = new PrototypeControlledSemanticDrawV111(
+                drawn.RemainingCount, FromHandDraw: true, EventDepth: 0,
+                DrawnCardKeyword: null,
+                DeferredKeywordCardInstanceIds: [],
+                StratagemSelectionPending: false,
+                StandaloneSemanticDrawSegment: false,
+                AutomaticSemanticHandDrawSegment: false);
+            var continuation = EmptyDrawChoiceContinuation();
+            if (drawn.BoundaryKind ==
+                PrototypeDrawCardsBoundaryKind.SemanticDraw)
+                combat = MakeControlledSemanticDrawChoice(
+                    combat, drawFrame, continuation);
+            else if (drawn.BoundaryKind ==
+                PrototypeDrawCardsBoundaryKind.ControlledDrawCost)
+                combat = AttachControlledSemanticDrawCost(
+                    combat, drawFrame, continuation);
+            else if (drawn.RemainingCount > 0)
+                combat = AttachDrawCardsAtCardDrawnChoice(
+                    combat, drawFrame, continuation,
+                    markStandaloneHookChoice: false);
+        }
         else if (drawn.BoundaryKind !=
-                PrototypeDrawCardsBoundaryKind.Complete &&
-            !(drawn.BoundaryKind ==
-                    PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice &&
-              drawn.RemainingCount == 0))
+            PrototypeDrawCardsBoundaryKind.Complete)
         {
             throw new NotSupportedException(
                 "UNSUPPORTED_OPENING_DRAW " +

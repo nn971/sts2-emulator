@@ -207,7 +207,7 @@ public sealed partial class PrototypeGameEngine
                 run.Stochastic, prototypeRng)
         };
         var continued = ResolveControlledSemanticDrawResult(
-            run, drawn, draw, continuation, automaticHandDrawRequested,
+            run, drawn, draw, continuation, null,
             recycleSite, recycleOperation);
         PrototypeAutomaticPipelineResumeResultV111? pipelineResume =
             effectDraw
