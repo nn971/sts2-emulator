@@ -45,6 +45,9 @@ card grants, random potion grants, and empty-slot potion fills. It checks the
 saved request owner, ordinal and support against those laws and binds the
 event ID to the action boundary. Native `player.rewards` requests keep their
 Native index masses.
+Legacy Treasure entry likewise reuses the existing `relic:<id>` law after
+validating the saved Act, floor, owned-relic pool and ordered indices. The
+player action still resolves by the selected index.
 `ControlledRunActionEngineV111.BeginLegacyActTransition` is the explicit
 entry point for the unconfigured prototype transition route.
 Legacy Treasure selection is not offered when Silver Crucible suppresses the

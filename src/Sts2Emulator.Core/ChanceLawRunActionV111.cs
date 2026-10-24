@@ -51,6 +51,10 @@ public static partial class ChanceLawEngineV111
                         ControlledPotionSlotIndex(request),
                         canAcquirePotion: true, slotIsEmpty: true,
                         ordinal: request.Ordinal),
+            "treasure.relic_model.index_draw"
+                when request.StreamId == "reward" =>
+                    QueryControlledLegacyTreasureRelicModel(
+                        run, continuation),
             _ => null
         };
         if (law is null)
@@ -60,16 +64,35 @@ public static partial class ChanceLawEngineV111
         {
             "relic.acquisition.random_rare_card.model" or
                 "reward.card_transform.replacement.index_draw" => "card:",
+            "treasure.relic_model.index_draw" => "relic:",
             _ => "potion:"
         };
         var expectedStream = request.SiteId switch
         {
             "relic.acquisition.random_rare_card.model" or
                 "reward.card_transform.replacement.index_draw" or
+                "treasure.relic_model.index_draw" or
                 "run.potion.fill_empty_slots.model" => "reward",
             _ => "event"
         };
         var outcomes = law.Outcomes;
+        var numericSupportLabels = request.SiteId ==
+            "treasure.relic_model.index_draw";
+        var omittedTreasureLabels = numericSupportLabels &&
+            continuation.PendingCandidateLabels.Length == 0 &&
+            outcomes.Length >
+                ControlledRunActionEngineV111.MaximumInlineOutcomeActions;
+        var labelsMatch = numericSupportLabels
+            ? omittedTreasureLabels ||
+                continuation.PendingCandidateLabels.SequenceEqual(
+                    Enumerable.Range(0, outcomes.Length).Select(index =>
+                        index.ToString(
+                            System.Globalization.CultureInfo.InvariantCulture)),
+                    StringComparer.Ordinal)
+            : continuation.PendingCandidateLabels.Length == outcomes.Length &&
+                outcomes.Select(outcome => outcome.OutcomeId)
+                    .SequenceEqual(continuation.PendingCandidateLabels.Select(
+                        label => outcomePrefix + label), StringComparer.Ordinal);
         if (request.SiteId != law.SiteId ||
             request.StreamId != expectedStream ||
             request.OperationKind != law.OperationKind ||
@@ -77,10 +100,7 @@ public static partial class ChanceLawEngineV111
             request.Ordinal != law.Ordinal ||
             !request.OrderedCandidates.SequenceEqual(
                 Enumerable.Range(0, outcomes.Length)) ||
-            continuation.PendingCandidateLabels.Length != outcomes.Length ||
-            !outcomes.Select(outcome => outcome.OutcomeId)
-                .SequenceEqual(continuation.PendingCandidateLabels.Select(
-                    label => outcomePrefix + label), StringComparer.Ordinal))
+            !labelsMatch)
             throw new InvalidDataException(
                 "Controlled run-action law differs from its saved semantic support.");
 
@@ -110,6 +130,23 @@ public static partial class ChanceLawEngineV111
             cardInstanceId, card.CardId,
             continuation.PendingRequest.Ordinal);
         return law;
+    }
+
+    private static ChanceLawV111 QueryControlledLegacyTreasureRelicModel(
+        RunState run,
+        PrototypeControlledRunActionContinuationV111 continuation)
+    {
+        if (continuation.ActionId != "choose_map_node" ||
+            continuation.MapNodeId is null ||
+            run.Phase != RunPhase.MapChoice || run.World is not { } world)
+            throw new InvalidDataException(
+                "Controlled legacy Treasure law is outside its map-node boundary.");
+
+        var ownedRelicIds = run.Player.Relics
+            .Select(relic => relic.RelicId).ToArray();
+        return QueryLegacyTreasureRelicModel(
+            world.Act, world.Floor, ownedRelicIds,
+            continuation.PendingRequest.Ordinal);
     }
 
     private static int ControlledPotionSlotIndex(

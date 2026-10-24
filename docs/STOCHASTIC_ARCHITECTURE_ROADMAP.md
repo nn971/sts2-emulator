@@ -29,6 +29,15 @@ Native `player.rewards` requests keep their Native index law. Source pool
 fidelity and equal-index weighting remain `UNVERIFIED`. Static source review
 and Chance Law boundary guards only; no tests or builds were run.
 
+**S1 controlled legacy Treasure identity outcomes increment (2026-10-24):**
+The generic legacy Treasure map-entry continuation now reuses the existing
+`relic:<id>` Chance Law after validating its Act, floor, owned-relic pool,
+request owner, and ordered index support. Large supports may omit the saved
+inline numeric labels; the source pool and owner still determine the law.
+Replay continues by selected index. Source-pool fidelity and equal-index
+weighting remain `UNVERIFIED`. Static source review and Chance Law boundary
+guards only; no tests or builds were run.
+
 **S3 controlled-choice Chance Law ownership increment (2026-10-24):** The
 controlled run-action law and boundary fingerprint now live in
 `ChanceLawRunActionV111.cs`; controlled event-choice dispatch, Stone of All Time
