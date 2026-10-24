@@ -24,6 +24,12 @@ metadata is classified from the resulting run; replay identity validation and
 serialized state remain unchanged. Static source review and `git diff --check`
 only; no tests or builds were run.
 
+**S4 semantic effect-draw cost boundary increment (2026-10-24):** Standalone
+semantic effect-draw cost replay now uses the cost owner's classified resume
+result and carries its boundary on transient draw progress. The existing
+run-only facade, saved draw frame, and serialized state remain unchanged.
+Static source review and `git diff --check` only; no tests or builds were run.
+
 **S1 compact Native bounded-index Chance Law increment (2026-10-24):**
 Chance Law v3 now represents large canonical Native `NextInt(bound)` laws by
 their exact 53-bit input grid and source multiply-and-truncate transform.

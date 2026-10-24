@@ -230,13 +230,15 @@ internal static class SemanticChoiceResumeV111
         if (pending?.ControlledSemanticDraw?
                 .StandaloneSemanticDrawSegment == true)
         {
-            var advanced = SemanticCostChoiceV111.ResumeEffectDrawCost(
-                run, selectedCost,
-                allowEngineOwnedPrototypeReward: false);
+            var resumed = SemanticCostChoiceV111
+                .ResumeEffectDrawCostWithBoundary(
+                    run, selectedCost,
+                    allowEngineOwnedPrototypeReward: false);
             return new PrototypeDrawCardsResumeResultV111(
-                advanced,
+                resumed.Run,
                 PrototypeGameEngine.GetSemanticDrawRemainingCount(
-                    advanced, remainingCount, cardsDrawnBefore));
+                    resumed.Run, remainingCount, cardsDrawnBefore),
+                PipelineBoundary: resumed.Boundary);
         }
 
         return ControlledChanceGuardV111.ExecuteGuarded(
