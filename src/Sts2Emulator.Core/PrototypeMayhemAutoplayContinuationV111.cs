@@ -90,6 +90,11 @@ public sealed partial class PrototypeGameEngine
                     combat, pending))
             return true;
 
+        if (PrototypeGameEngine
+                .IsAutomaticBeforeHandDrawHookDrawInsertionContinuation(
+                    combat, pending))
+            return true;
+
         if (IsOpeningBlessedAntlerDrawInsertionContinuation(
                 combat, pending, insertion, continuation))
             return true;

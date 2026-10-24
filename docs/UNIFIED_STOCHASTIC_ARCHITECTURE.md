@@ -1468,6 +1468,11 @@ remaining counts. The semantic combat-draw and end-turn facades reuse the
 existing draw, cost, insertion, transcript, and replay owners, preserving the
 outer hand-draw continuation without adding choice or snapshot fields.
 
+When a `BeforeHandDraw` action opens a fixed draw-pile insertion, the
+semantic draw frame retains the existing pre-draw cursor and insertion
+transcript. Resolving the insertion resumes the ordinary hand-draw step
+through its pipeline owner; no choice or snapshot fields were added.
+
 ## Reading order
 
 1. This architecture contract.

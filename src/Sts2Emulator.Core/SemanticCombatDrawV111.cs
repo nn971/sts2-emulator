@@ -326,7 +326,14 @@ public sealed record SemanticCombatDrawV111(
             hasPipelineSemanticDrawProgress &&
             pipelineRequested == this.RequestedCount &&
             pipelineRemaining == this.RemainingCount;
-        if (automaticHandDrawChildInsertionPending)
+        bool automaticBeforeHandDrawChildInsertionPending =
+            this.AutomaticHandDraw && combat.PendingChoice is
+                { } beforeHandDrawInsertionChoice &&
+            PrototypeGameEngine
+                .IsAutomaticBeforeHandDrawHookDrawInsertionContinuation(
+                    combat, beforeHandDrawInsertionChoice);
+        if (automaticHandDrawChildInsertionPending ||
+            automaticBeforeHandDrawChildInsertionPending)
             SemanticDrawInsertionChoiceV111.ValidateBoundary(this.Run);
         bool automaticHandDrawEffectDrawPending =
             this.AutomaticHandDraw && combat.PendingChoice is
@@ -419,6 +426,15 @@ public sealed record SemanticCombatDrawV111(
                     deck.Pending is not null || cost is not null)
                     throw new InvalidDataException(
                         "Semantic BeforeHandDraw generated-selection cursor is inconsistent.");
+            }
+            else if (automaticBeforeHandDrawChildInsertionPending)
+            {
+                if (pipelineCursor is null ||
+                    !semanticBeforeHandDrawProgress ||
+                    this.RequestedCount != 0 || this.RemainingCount != 0 ||
+                    deck.Pending is not null || cost is not null)
+                    throw new InvalidDataException(
+                        "Semantic BeforeHandDraw insertion cursor is inconsistent.");
             }
             else if (automaticBeforeHandDrawRandomTarget)
             {
@@ -538,6 +554,7 @@ public sealed record SemanticCombatDrawV111(
         {
             var insertion = combat.PendingChoice?.ControlledDrawInsertion;
             if ((!automaticHandDrawChildInsertionPending &&
+                 !automaticBeforeHandDrawChildInsertionPending &&
                  (this.RemainingCount <= 0 ||
                   insertion?.SemanticDrawContinuation?.RemainingCount !=
                     this.RemainingCount)) ||
@@ -607,9 +624,12 @@ public static class SemanticCombatDrawEngineV111
         if (insertion is null)
             return null;
         if (combat is not null && pending is not null &&
-            PrototypeGameEngine
-                .IsAutomaticHandDrawHookDrawInsertionContinuation(
-                    combat, pending))
+            (PrototypeGameEngine
+                 .IsAutomaticHandDrawHookDrawInsertionContinuation(
+                     combat, pending) ||
+             PrototypeGameEngine
+                 .IsAutomaticBeforeHandDrawHookDrawInsertionContinuation(
+                     combat, pending)))
             return SemanticDrawInsertionChoiceV111
                 .DescribeAutomaticSemanticDrawContinuation(
                     run, state.Fingerprint);

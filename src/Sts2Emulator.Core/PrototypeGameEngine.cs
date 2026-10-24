@@ -273,6 +273,40 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         return true;
     }
 
+    internal static bool IsAutomaticBeforeHandDrawHookDrawInsertionContinuation(
+        CombatState combat, PendingCombatChoiceState pending)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(pending);
+        var insertion = pending.ControlledDrawInsertion;
+        var continuation = pending.OuterChoiceContinuation;
+        var sourceCardInstanceId = continuation?.SourceCardInstanceId;
+        if (!combat.IsPlayerTurn ||
+            combat.Stochastic.SemanticDeck is not
+                { Mode: SemanticDeckStateV111.NatureMode, Pending: null } ||
+            pending is not { ChoiceId: "controlled_draw_insertion" } ||
+            insertion is not
+                { Stage: "position", SelectedCardId: not null,
+                  AfterShuffleRelic: null,
+                  SemanticDrawContinuation: null,
+                  AutomaticHandDrawRemaining: null,
+                  Operation: { Kind: PrototypeCombatEffectKind
+                      .CreateGeneratedCardsAtRandomDrawPositions,
+                      Amount: 1 } } ||
+            continuation is null ||
+            !pending.HasValidControlledPayloadShape() ||
+            combat.AutomaticPipelineContinuation is not { } cursor ||
+            !cursor.Stochastic.IsAtSemanticBeforeHandDraw(
+                cursor.Mechanics) ||
+            cursor.Stochastic.CompletedSemanticHandDrawRequested is not null ||
+            sourceCardInstanceId is not { } sourceCardId ||
+            !combat.Cards.Any(card => card.InstanceId == sourceCardId) ||
+            !ValidateControlledDrawInsertion(combat, insertion))
+            return false;
+
+        return true;
+    }
+
     /// <summary>
     /// Identifies automatic-pipeline cursors where controlled targets may
     /// suspend: ordinary combat work, opening autoplay from Mayhem,

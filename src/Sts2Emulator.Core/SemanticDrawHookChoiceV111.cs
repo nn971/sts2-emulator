@@ -287,6 +287,11 @@ public static class SemanticDrawHookChoiceEngineV111
             bool nestedBeforeHandDrawRandomTarget =
                 decision.Event.BeforeHandDraw &&
                 nextChoice.ControlledTarget is not null;
+            bool nestedBeforeHandDrawDrawInsertion =
+                decision.Event.BeforeHandDraw &&
+                PrototypeGameEngine
+                    .IsAutomaticBeforeHandDrawHookDrawInsertionContinuation(
+                        advancedCombat, nextChoice);
             bool nestedActiveHandDrawRandomTarget =
                 decision.Event.AutomaticHandDraw &&
                 !decision.Event.BeforeHandDraw &&
@@ -317,6 +322,7 @@ public static class SemanticDrawHookChoiceEngineV111
                 (nextChoice.ControlledSemanticDraw is not null &&
                  !nestedActiveHandDrawSemanticDraw) ||
                 (nextChoice.ControlledDrawInsertion is not null &&
+                 !nestedBeforeHandDrawDrawInsertion &&
                  !nestedActiveHandDrawDrawInsertion) ||
                 nextChoice.ControlledPoolShuffle is not null ||
                 nextChoice.ControlledRandomCost is not null ||
@@ -328,6 +334,7 @@ public static class SemanticDrawHookChoiceEngineV111
                 nextChoice.AutomaticSemanticStratagemDrawSelection;
             if (hasTaggedChildChoice &&
                 !nestedBeforeHandDrawRandomTarget &&
+                !nestedBeforeHandDrawDrawInsertion &&
                 !nestedActiveHandDrawRandomTarget &&
                 !nestedActiveHandDrawRandomPileCard &&
                 !nestedActiveHandDrawSemanticDraw &&
@@ -341,6 +348,8 @@ public static class SemanticDrawHookChoiceEngineV111
             {
                 SemanticTargetChoiceV111.ValidateBoundary(advanced);
             }
+            else if (nestedBeforeHandDrawDrawInsertion)
+                SemanticDrawInsertionChoiceV111.ValidateBoundary(advanced);
             else if (nestedActiveHandDrawRandomTarget)
             {
                 advancedCombat = advancedCombat with

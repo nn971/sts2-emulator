@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 BeforeHandDraw fixed insertion child increment (2026-10-25):** A selected
+`BeforeHandDraw` action may now suspend on its source card's fixed draw-pile
+insertion ticket. Admission retains the semantic pre-draw cursor, and the
+existing insertion owner resumes into the ordinary hand draw. No choice or
+snapshot schema changed. Static source review and `git diff --check` only; no
+tests or builds were run.
+
 **S4 active-hand-draw nested draw-ticket increment (2026-10-25):**
 A selected action from an active `CardDrawn` hook can now suspend on its
 source card's semantic effect-draw, drawn-cost, or fixed draw-insertion

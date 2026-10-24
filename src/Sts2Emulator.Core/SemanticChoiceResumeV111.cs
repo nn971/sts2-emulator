@@ -225,6 +225,24 @@ internal static class SemanticChoiceResumeV111
                 .EnsurePipelineBoundary(), decision);
         }
 
+        if (pending.BeforeHandDraw &&
+            combat.PendingChoice is { } beforeHandDrawInsertion &&
+            PrototypeGameEngine
+                .IsAutomaticBeforeHandDrawHookDrawInsertionContinuation(
+                    combat, beforeHandDrawInsertion))
+        {
+            var cursor = combat.AutomaticPipelineContinuation;
+            if (requested != 0 || remaining != 0 || cursor is null ||
+                !cursor.Stochastic.IsAtSemanticBeforeHandDraw(
+                    cursor.Mechanics))
+                throw new InvalidDataException(
+                    "BeforeHandDraw insertion lost its pre-draw cursor.");
+            SemanticDrawInsertionChoiceV111.ValidateBoundary(run);
+            return (PrototypeDrawCardsResumeResultV111.ForHandDraw(
+                run, 0, 0, pipelineBoundary)
+                .EnsurePipelineBoundary(), decision);
+        }
+
         if (pending.BeforeHandDraw)
         {
             PrototypeDrawCardsResumeResultV111 progress;
