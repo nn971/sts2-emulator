@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 choice-resolution continuation owner increment (2026-10-24):** The
+existing `ResumeChoiceResolutionContinuation` and its outer/parent frame
+composition helpers now live in `PrototypeChoiceResolutionContinuationV111`.
+The combat resolver retains effect execution and calls the same private
+engine methods; nested-choice replay and state formats are unchanged. Static
+source review and `git diff --check` only; no tests or builds were run.
+
 **S4 draw-continuation helper ownership increment (2026-10-24):** The
 provider-neutral draw continuation owner now also prepends the saved draw
 operation to an outer choice frame and accumulates distinct deferred drawn
