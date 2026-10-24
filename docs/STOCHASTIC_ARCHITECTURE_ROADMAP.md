@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 combat-reward Chance Law ownership increment (2026-10-24):** The
+legacy combat-reward card rarity/model, potion drop/model/odds, and Elite relic
+laws now live with the existing Native combat-reward relic-identity law in
+`ChanceLawCombatRewardV111.cs`. Shared pool and categorical-law helpers
+remain in core. Public query APIs and supports are unchanged. Static source
+review and `git diff --check` only; no tests or builds were run.
+
 **S3 legacy Event effect model ownership follow-up (2026-10-24):** The
 generic random-potion and Rare-card Event effect laws now join the existing
 modifier-curse, potion-slot-fill, and custom reward potion-option queries in
