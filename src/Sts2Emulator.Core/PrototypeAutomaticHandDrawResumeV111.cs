@@ -784,45 +784,4 @@ public sealed partial class PrototypeGameEngine
                 "Controlled automatic draw-cost cursor is inconsistent.");
         return null;
     }
-
-    private static PrototypeDrawCardsResult ResumeAutomaticHandDrawCards(
-        RunState checkpoint,
-        int remaining,
-        PrototypeDrawCardsSuspensionPolicyV111 suspensionPolicy,
-        RngBundle prototypeRng,
-        int eventDepth = 0)
-    {
-        if (!ControlledChanceGuardV111.Active)
-            throw new InvalidOperationException(
-                "Automatic hand-draw resumption requires the RNG guard.");
-        if (remaining < 0 || eventDepth < 0)
-            throw new ArgumentOutOfRangeException(
-                remaining < 0 ? nameof(remaining) : nameof(eventDepth));
-
-        var world = RequireWorld(checkpoint);
-        var combat = world.Combat ?? throw new InvalidDataException(
-            "Automatic hand-draw resumption has no combat.");
-        var cursor = combat.AutomaticPipelineContinuation;
-        if (cursor is null ||
-            !cursor.Stochastic.TryGetActiveAutomaticHandDrawProgress(
-                cursor.Mechanics, out var progress) ||
-            progress.RemainingCount != remaining)
-            throw new InvalidDataException(
-                "Automatic hand-draw resume cursor is inconsistent.");
-
-        if (combat.PendingChoice is not null ||
-            combat.PendingKnowledgeDemonChoice is not null ||
-            combat.Stochastic.SemanticDeck?.Pending is not null)
-            throw new InvalidDataException(
-                "Automatic hand-draw resume boundary is inconsistent.");
-
-        var cleared = CommitAutomaticHandDrawProgress(
-            checkpoint, checkpoint.Player, combat, progress: null);
-        return DrawCards(
-            cleared.Player, RequireWorld(cleared).Combat!, remaining,
-            prototypeRng,
-            fromHandDraw: true, eventDepth: eventDepth,
-            suspensionPolicy: suspensionPolicy,
-            automaticHandDrawStage: true);
-    }
 }

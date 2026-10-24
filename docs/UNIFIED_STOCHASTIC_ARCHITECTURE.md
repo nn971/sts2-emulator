@@ -1267,6 +1267,8 @@ The current repository's automatic-trigger census accounts for the modeled stoch
 
 Source-route opening combat now gives `DrawOpeningHand` the shared semantic-draw suspension profile when its already committed pile is held by a Nature deck. Known opening identities are consumed through the same `DrawCards` kernel without creating a second draw request, then player/combat mechanics publish through `PublishDrawMechanicsState`. `PrototypeDrawCardsBoundaryV111.cs` owns that shared publisher alongside tagged-result construction and validation. The opening adapter still rejects other draw boundaries unless it has an explicit saved continuation; unresolved recycle and nested opening-draw cases remain unsupported.
 
+`PrototypeDrawCardsContinuationV111.cs` also owns the provider-neutral saved automatic hand-draw kernel: it validates the active count against the `DrawPlayerHand` cursor, clears progress through the shared publication boundary, and re-enters `DrawCards` with the caller's provider policy and local RNG. Controlled and semantic adapters now use this same operation before interpreting their tagged result.
+
 Semantic end-turn routes a supported choice resume at `DrawPlayerHand` through the same validated hand-draw entry used after next-turn intent resolution. Turn-one Crossbow resumes through its saved opening stage and reaches the opening hand draw through the shared opening-combat resumer. The source predicate validates Crossbow's exact relic trigger and generated-card operation at either cursor before exposing the choice.
 
 Whispering Earring's first-turn opening autoplay now uses the shared automatic
