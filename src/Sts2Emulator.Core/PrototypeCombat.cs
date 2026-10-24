@@ -2043,10 +2043,8 @@ public sealed partial class PrototypeGameEngine
         var prototypeRng = state.Stochastic.PrototypeRng;
         var continuation = combat.AutomaticPipelineContinuation ??
             throw new InvalidOperationException("Missing draw continuation.");
-        if (continuation.Mechanics.CurrentStepKind !=
-                PrototypeAutomaticStepKind.DrawPlayerHand ||
-            !continuation.Stochastic.TryGetControlledHandDrawRemainder(
-                out int remainingHandDraw) ||
+        if (!continuation.Stochastic.TryGetControlledHandDrawRemainder(
+                continuation.Mechanics, out int remainingHandDraw) ||
             remainingHandDraw <= 0 ||
             combat.DrawPile.Length != 0 ||
             combat.DiscardPile.Length == 0)

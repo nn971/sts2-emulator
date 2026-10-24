@@ -10,6 +10,13 @@ in those trees. This does not classify Native reference-mod RNG hooks or prove
 the absence of indirect/aliased entropy. The regenerated matrix, contract-link,
 and no-ambient-entropy inventory gate passed; no tests or builds were run.
 
+**S4 controlled hand-draw remainder query increment (2026-10-24):** Runtime
+controlled recycle and draw-cost continuation checks now pass the mechanics
+cursor to the pipeline stochastic owner, which validates that the saved
+controlled mode is active at `DrawPlayerHand` before returning its remaining
+count. The no-cursor query remains for the flattened snapshot projection.
+Static source review and `git diff --check` only; no tests or builds were run.
+
 **S4 controlled draw-progress owner increment (2026-10-24):** Controlled-
 playable validation and turn-resume classification, controlled insertion
 validation, controlled hand-draw hook and recycle resumption, and post-choice

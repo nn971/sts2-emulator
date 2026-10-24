@@ -738,7 +738,8 @@ public sealed partial class PrototypeGameEngine
         if (combat.Stochastic.SemanticDeck is not null ||
             progress.Kind != PrototypeAutomaticHandDrawProgressKindV111
                 .ControlledDrawCost ||
-            cursor.Stochastic.TryGetControlledHandDrawRemainder(out _))
+            cursor.Stochastic.TryGetControlledHandDrawRemainder(
+                cursor.Mechanics, out _))
             throw new InvalidDataException(
                 "Controlled automatic draw-cost cursor is inconsistent.");
         return null;

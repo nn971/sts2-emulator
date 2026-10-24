@@ -320,9 +320,31 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
         return true;
     }
 
-    /// <summary>Reads the legacy controlled-draw count from its tagged
-    /// progress mode. Runtime continuations use this query so the flattened
+    /// <summary>Reads the active legacy controlled-draw count at the saved
+    /// pipeline cursor. Runtime continuations use this query so the flattened
     /// counter remains only a snapshot projection.</summary>
+    public bool TryGetControlledHandDrawRemainder(
+        PrototypeAutomaticPipelineMechanicsStateV111 mechanics,
+        out int remaining)
+    {
+        ArgumentNullException.ThrowIfNull(mechanics);
+        remaining = 0;
+        if (!TryGetActiveAutomaticHandDrawProgress(
+                mechanics, out var progress) ||
+            progress.Kind is not (
+                PrototypeAutomaticHandDrawProgressKindV111.ControlledDraw or
+                PrototypeAutomaticHandDrawProgressKindV111
+                    .ControlledDrawHookChoice or
+                PrototypeAutomaticHandDrawProgressKindV111
+                    .ControlledRecycleStratagem))
+            return false;
+
+        remaining = progress.RemainingCount!.Value;
+        return true;
+    }
+
+    /// <summary>Projects the legacy controlled-draw counter without cursor
+    /// validation for snapshot compatibility.</summary>
     public bool TryGetControlledHandDrawRemainder(out int remaining)
     {
         remaining = 0;

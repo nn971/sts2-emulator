@@ -637,7 +637,7 @@ public sealed record ControlledPlayableCombatV111(
                 combat.DrawPile.Length != 0 ||
                 combat.AutomaticPipelineContinuation is not { } continuation ||
                 !continuation.Stochastic.TryGetControlledHandDrawRemainder(
-                    out int remaining) || remaining <= 0)
+                    continuation.Mechanics, out int remaining) || remaining <= 0)
                 throw new InvalidDataException(
                     "Recycle chance state disagrees with suspended draw.");
         }
@@ -1100,7 +1100,7 @@ public static class ControlledPlayableCombatEngineV111
             return state;
         }
         if (continuation.Stochastic.TryGetControlledHandDrawRemainder(
-                out _))
+                continuation.Mechanics, out _))
         {
             if (stepKind != PrototypeAutomaticStepKind.DrawPlayerHand ||
                 state.Stochastic.Recycle is not null || state.TurnIntents is not null ||
