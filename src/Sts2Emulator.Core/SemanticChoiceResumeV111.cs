@@ -147,11 +147,11 @@ internal static class SemanticChoiceResumeV111
                 run, requested, remaining, pipelineBoundary), decision);
         }
 
-        var resumed = PrototypeGameEngine
+        var resumedDraw = PrototypeGameEngine
             .ResumeSemanticAutomaticHandDraw(run, remaining);
         return (PrototypeDrawCardsResumeResultV111.ForHandDraw(
-                resumed.Run, requested, resumed.RemainingCount,
-                resumed.PipelineBoundary)
+                resumedDraw.Run, requested, resumedDraw.RemainingCount,
+                resumedDraw.PipelineBoundary)
             .EnsurePipelineBoundary(), decision);
     }
 
