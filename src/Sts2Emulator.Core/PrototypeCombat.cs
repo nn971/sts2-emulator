@@ -5639,22 +5639,15 @@ public sealed partial class PrototypeGameEngine
         var autoPlayTargetOrdinal = 0;
         var generatedCardOrdinal = 0;
         var drawInsertionOrdinal = 0;
-        PrototypeChoiceResolutionContinuationState CaptureEffectContinuation(
-            IEnumerable<PrototypeQueuedOperation> remainingOperations)
-        {
-            return new PrototypeChoiceResolutionContinuationState(
-                SourceCardInstanceId: sourceCardInstanceId,
-                SourceCardDestination: sourceCardDestination,
-                Operations: remainingOperations.ToArray(),
-                PendingDiscardEvents: [],
-                PendingSlyCardInstanceIds: [],
-                CompletionEvents: completionEvents?.ToArray() ?? [],
-                CardPlaySeries: cardPlaySeries,
-                MoveSourceCardOnCompletion: moveSourceCardOnCompletion,
-                RemoveSourceCardOnCompletion: removeSourceCardOnCompletion,
-                SourceCardAlreadyMoved: sourceCardAlreadyMoved,
-                EventDispatchContinuation: eventDispatchContinuation?.Fork());
-        }
+        var effectContinuationContext = new EffectContinuationContext(
+            SourceCardInstanceId: sourceCardInstanceId,
+            SourceCardDestination: sourceCardDestination,
+            CompletionEvents: completionEvents,
+            CardPlaySeries: cardPlaySeries,
+            MoveSourceCardOnCompletion: moveSourceCardOnCompletion,
+            RemoveSourceCardOnCompletion: removeSourceCardOnCompletion,
+            SourceCardAlreadyMoved: sourceCardAlreadyMoved,
+            EventDispatchContinuation: eventDispatchContinuation);
 
         while (operations.Count > 0)
         {
@@ -6448,7 +6441,8 @@ public sealed partial class PrototypeGameEngine
                             drawn.DrawnCardInstanceIds);
                         var resumeDraw = CreateDrawResumeOperation(
                             suspendedDraw);
-                        var recycleContinuation = CaptureEffectContinuation(
+                        var recycleContinuation = CreateEffectContinuation(
+                            effectContinuationContext,
                             new[] { resumeDraw }.Concat(operations));
                         if (combat.Stochastic.SemanticDeck is not null ||
                             drawn.RemainingCount <= 0 ||
@@ -6500,8 +6494,8 @@ public sealed partial class PrototypeGameEngine
                         var suspendedDraw = CreateAdvancedEffectDrawFrame(
                             operation, drawn.RemainingCount, drawEventDepth,
                             drawn.DrawnCardInstanceIds);
-                        var continuation = CaptureEffectContinuation(
-                            operations);
+                        var continuation = CreateEffectContinuation(
+                            effectContinuationContext, operations);
                         combat = AttachDrawCardsAtCardDrawnChoice(
                             combat, suspendedDraw, continuation,
                             markStandaloneHookChoice:
@@ -6513,8 +6507,8 @@ public sealed partial class PrototypeGameEngine
                         PrototypeDrawCardsBoundaryKind.ControlledDrawCost or
                         PrototypeDrawCardsBoundaryKind.AfterShuffleInsertions)
                     {
-                        var continuation = CaptureEffectContinuation(
-                            operations);
+                        var continuation = CreateEffectContinuation(
+                            effectContinuationContext, operations);
                         var suspendedDraw = CreateAdvancedEffectDrawFrame(
                             operation, drawn.RemainingCount, drawEventDepth,
                             drawn.DrawnCardInstanceIds,
@@ -6616,8 +6610,8 @@ public sealed partial class PrototypeGameEngine
                         !ControlledChanceGuardV111.EngineOwnedNativeProviderActive &&
                         afterShuffleInsertions.Length > 0)
                     {
-                        var continuation = CaptureEffectContinuation(
-                            operations);
+                        var continuation = CreateEffectContinuation(
+                            effectContinuationContext, operations);
                         combat = MakeControlledAfterShuffleInsertionChoice(
                             combat, afterShuffleInsertions[0],
                             afterShuffleInsertions.Skip(1).ToArray(), [], null,

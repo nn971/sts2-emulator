@@ -2,6 +2,35 @@ namespace Sts2Emulator.Core;
 
 public sealed partial class PrototypeGameEngine
 {
+    private readonly record struct EffectContinuationContext(
+        long? SourceCardInstanceId,
+        PrototypeCardZone SourceCardDestination,
+        PrototypeCombatEvent[]? CompletionEvents,
+        PrototypeCardPlaySeriesState? CardPlaySeries,
+        bool MoveSourceCardOnCompletion,
+        bool RemoveSourceCardOnCompletion,
+        bool SourceCardAlreadyMoved,
+        PrototypeEventDispatchContinuationState? EventDispatchContinuation);
+
+    private static PrototypeChoiceResolutionContinuationState
+        CreateEffectContinuation(
+            EffectContinuationContext context,
+            IEnumerable<PrototypeQueuedOperation> remainingOperations) =>
+        new(
+            SourceCardInstanceId: context.SourceCardInstanceId,
+            SourceCardDestination: context.SourceCardDestination,
+            Operations: remainingOperations.ToArray(),
+            PendingDiscardEvents: [],
+            PendingSlyCardInstanceIds: [],
+            CompletionEvents: context.CompletionEvents?.ToArray() ?? [],
+            CardPlaySeries: context.CardPlaySeries,
+            MoveSourceCardOnCompletion: context.MoveSourceCardOnCompletion,
+            RemoveSourceCardOnCompletion:
+                context.RemoveSourceCardOnCompletion,
+            SourceCardAlreadyMoved: context.SourceCardAlreadyMoved,
+            EventDispatchContinuation:
+                context.EventDispatchContinuation?.Fork());
+
     private static (PlayerState Player, CombatState Combat)
         ResumeChoiceResolutionContinuation(
             PlayerState player,
