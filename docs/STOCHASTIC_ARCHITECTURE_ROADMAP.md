@@ -2,6 +2,16 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S0 deferred deck-reveal source census (2026-10-24):** A targeted Core
+source search found the existing semantic deck kernel, Chance Law query, and
+typed pilot resolver for peek/scry, but no modeled card, potion, power, or
+relic operation that requests a reveal. The migration row now records that
+source integration needs a source-defined operation; the typed kernel remains
+available for that continuation. This emulator census does not establish
+whether the installed game has additional reveal callers. No code or schema
+changed. Static source review and `git diff --check` only; no tests or builds
+were run.
+
 **S2/S4 generated-choice subscriber validation merge (2026-10-24):** The
 turn-one Toolbox automatic `BeforeHandDraw` shuffle and ChoicePool-selection
 owners now reuse the exact generated-choice subscriber validator already used
