@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Sts2Emulator.Core;
 
 public static partial class ChanceLawEngineV111
@@ -235,4 +237,29 @@ public static partial class ChanceLawEngineV111
             operationKind: "choose_index");
     }
 
+    public static ChanceLawV111 QueryPaelsLegionSkin(
+        string ownerId, int ordinal)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
+        const string ownerPrefix = "relic:paels_legion:instance:";
+        var slotText = ownerId.StartsWith(ownerPrefix,
+            StringComparison.Ordinal)
+            ? ownerId[ownerPrefix.Length..] : string.Empty;
+        if (ordinal != 0 || !int.TryParse(slotText,
+                System.Globalization.NumberStyles.None,
+                CultureInfo.InvariantCulture, out var slot) || slot < 0)
+            throw new ArgumentException(
+                "Pael's Legion law requires its relic-instance owner ID and isolated stream ordinal zero.",
+                ordinal != 0 ? nameof(ordinal) : nameof(ownerId));
+        var request = new RandomIndexRequestV111(
+            NativePaelRewardsV111.LegionSkinSiteId, "reward", ownerId,
+            ordinal, Enumerable.Range(0,
+                NativePaelRewardsV111.LegionSkins.Length).ToArray());
+        var eventId = CanonicalJson.Sha256(new
+        {
+            boundary = "relic.paels_legion.skin_choice",
+            slot
+        });
+        return QueryRandomIndex(eventId, request);
+    }
 }

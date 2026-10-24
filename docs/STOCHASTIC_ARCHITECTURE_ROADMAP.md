@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 combat-end and relic-acquisition law ownership increment
+(2026-10-24):** Fishing Rod, Improvement, and Pael's Tooth combat-end laws
+now live with the existing Native event-shuffle query owner; Pael's Legion
+skin acquisition now lives with relic-acquisition laws. Public and internal
+query APIs are unchanged. Static source preservation, the Chance Law signature
+inventory, and `git diff --check` passed; no tests or builds were run.
+
 **S3 Native combat-entry Chance Law ownership increment (2026-10-24):**
 Encounter-formation, unique-monster-HP, and Tough Egg hatch-HP queries, plus
 canonical creature-owner validation, now live in

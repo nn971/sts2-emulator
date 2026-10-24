@@ -477,5 +477,63 @@ public static partial class ChanceLawEngineV111
             ChanceLawV111.SourceVerifiedStatus);
     }
 
+    /// <summary>
+    /// Query the bounded-index transform used by Fishing Rod's persistent
+    /// combat-end upgrade. The caller supplies the declared support size;
+    /// this law certifies only Native NextInt masses on that support, not the
+    /// source relic trigger or eligible-card pool.
+    /// </summary>
+    public static ChanceLawV111 QueryNativePersistentCombatEndUpgrade(
+        RandomIndexRequestV111 request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        request.Validate();
+        if (request.SiteId != PrototypeGameEngine.FishingRodUpgradeSiteId ||
+            request.StreamId != "run.niche" ||
+            request.OperationKind != "choose_index")
+            throw new ArgumentException(
+                "Fishing Rod law requires its Native run.niche index request.",
+                nameof(request));
+        return QueryRandomIndex("relic.persistent_combat_end", request);
+    }
 
+    internal static ChanceLawV111 QueryImprovementCombatEndUpgrade(
+        string actionId, RandomIndexRequestV111 request)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
+        ArgumentNullException.ThrowIfNull(request);
+        request.Validate();
+        if (request.SiteId != PrototypeGameEngine.ImprovementCardSiteId ||
+            request.StreamId != "combat" ||
+            request.OperationKind != "choose_index")
+            throw new ArgumentException(
+                "Improvement law requires its legacy combat index request.",
+                nameof(request));
+        var eventId = CanonicalJson.Sha256(new
+        {
+            boundary = "combat.improvement.power.index_choice",
+            actionId
+        });
+        return QueryRandomIndex(eventId, request);
+    }
+
+    internal static ChanceLawV111 QueryPaelsToothCombatEndReturn(
+        string actionId, RandomIndexRequestV111 request)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
+        ArgumentNullException.ThrowIfNull(request);
+        request.Validate();
+        if (request.SiteId != PrototypeGameEngine.PaelsToothCardReturnSiteId ||
+            request.StreamId != "reward" ||
+            request.OperationKind != "choose_index")
+            throw new ArgumentException(
+                "Pael's Tooth law requires its legacy reward index request.",
+                nameof(request));
+        var eventId = CanonicalJson.Sha256(new
+        {
+            boundary = "relic.paels_tooth.card_return.index_choice",
+            actionId
+        });
+        return QueryRandomIndex(eventId, request);
+    }
 }
