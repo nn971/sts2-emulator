@@ -1883,6 +1883,7 @@ public sealed partial class PrototypeGameEngine
     {
         return IsWhisperingEarringOpeningAutoplayBoundary(combat) ||
             IsImbuedOpeningAutoplayContinuation(combat) ||
+            IsGamblingChipOpeningNestedEffectTargetBoundary(combat) ||
             IsGamblingChipOpeningTingshaTargetBoundary(combat) ||
             IsGamblingChipOpeningSlyTargetBoundary(combat) ||
             IsMayhemOpeningAutoplayTargetBoundary(combat);
@@ -2145,6 +2146,44 @@ public sealed partial class PrototypeGameEngine
             return false;
 
         return true;
+    }
+
+    private static bool IsGamblingChipOpeningNestedEffectTargetBoundary(
+        CombatState combat)
+    {
+        if (combat is not
+                { Turn: 1, IsPlayerTurn: true, IsPlayerSideActive: true,
+                  PendingKnowledgeDemonChoice: null,
+                  PendingChoice:
+                    { ChoiceId: "controlled_random_target",
+                      ControlledTarget:
+                        { Kind: "effect_random_enemy",
+                          SlyCardInstanceId: null,
+                          AutoPlayCardInstanceId: null },
+                      OuterChoiceContinuation: { } continuation } pending,
+                  SemanticDeck:
+                    { Mode: SemanticDeckStateV111.NatureMode,
+                      Pending: null },
+                  AutomaticPipelineContinuation: { } pipeline } ||
+            !pipeline.Mechanics.IsAtOpeningBoundary(
+                PrototypeOpeningCombatStage.BoneTeaAfterTurnStart) ||
+            !IsAtOpeningAutomaticPipelineCursor(
+                combat, pipeline,
+                PrototypeOpeningCombatStage.BoneTeaAfterTurnStart) ||
+            !SemanticTargetChoiceV111.HasValidLiveSupport(combat, pending) ||
+            !HasActiveAutoplayCardPlaySeries(combat, continuation))
+            return false;
+
+        for (var frame = continuation; frame is not null;
+             frame = frame.Parent)
+        {
+            if (frame.EventDispatchContinuation is { } eventDispatch &&
+                TryGetGamblingChipOpeningSubscriber(
+                    combat, eventDispatch, out _))
+                return true;
+        }
+
+        return false;
     }
 
     private static bool IsMayhemOpeningAutoplayTargetBoundary(

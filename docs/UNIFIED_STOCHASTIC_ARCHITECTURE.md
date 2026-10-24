@@ -1183,7 +1183,9 @@ selected-count draw and its remaining discard queue still names cards in the
 live discard pile. Gambling Chip also requires its exact opening subscriber and
 cursor; Gambler's Brew requires its potion completion event. Queued Sly card
 identities are checked against live Sly cards in discard, and Gambling Chip's
-resulting Sly target uses that same exact opening boundary.
+resulting Sly target uses that same exact opening boundary. Random-effect
+targets nested within those Sly plays also require the active autoplay series
+and the exact Gambling Chip subscriber in the saved continuation chain.
 Knife Trap also enters from its physical source card and reuses the saved
 autoplay-target continuation if an earlier Shiv kills the chosen enemy before
 the remaining Shiv queue finishes.

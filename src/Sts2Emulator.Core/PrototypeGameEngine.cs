@@ -172,8 +172,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
     /// <summary>
     /// Identifies automatic-pipeline cursors where controlled targets may
     /// suspend: ordinary combat work, opening autoplay from Mayhem,
-    /// Whispering Earring, or Imbued, the opening Gambling Chip discard and
-    /// resulting Sly targets, post-draw player hooks, and late autoplay.
+    /// Whispering Earring, or Imbued, the opening Gambling Chip discard, Sly,
+    /// and nested autoplay targets, post-draw player hooks, and late autoplay.
     /// </summary>
     internal static bool IsAtSupportedAutomaticPipelineTargetBoundary(
         CombatState combat)

@@ -29,7 +29,9 @@ selected-count draw. Gambling Chip also requires its exact opening cursor and
 relic subscriber; Gambler's Brew requires its modeled potion selection and
 `PotionUsed` completion event. Queued Sly identities are checked against the
 live discard-pile cards, and Gambling Chip admits the resulting Sly target only
-at that same opening cursor and subscriber. No event or snapshot schema
+at that same opening cursor and subscriber. Nested random-effect targets in
+those Sly plays also require the active autoplay series and the exact opening
+subscriber in their saved continuation chain. No event or snapshot schema
 changed. Static source review and
 `git diff --check` only; no tests or builds were run.
 
