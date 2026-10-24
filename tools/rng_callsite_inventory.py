@@ -27,7 +27,7 @@ from urllib.parse import unquote, urlparse
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
 RUNTIME_SOURCE_ROOTS = (ROOT / "src", ROOT / "native")
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v59"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v60"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 NATIVE_RNG_SOURCE_FILES = frozenset({
     "NativeCombatRngEntryV111.cs",
@@ -2526,8 +2526,9 @@ def _simulation_boss_law_forward_values(
     if branch_calls != query_names:
         return [], []
 
-    law_source = (SOURCE_ROOT / "ChanceLawV111.cs").read_text(
-        encoding="utf-8"
+    law_source = "\n".join(
+        candidate.read_text(encoding="utf-8")
+        for candidate in sorted(SOURCE_ROOT.glob("ChanceLaw*.cs"))
     )
     wrapper_sites: set[str] = set()
     for query_name in query_names:
@@ -2596,6 +2597,39 @@ def _simulation_boss_law_forward_values(
     if len(operation_values) != 1:
         return [], []
     return sorted(wrapper_sites), operation_values
+
+
+def _guarded_site_array_membership_values(
+    path: Path,
+    source: str,
+    construction_start: int,
+    expression: str | None,
+    global_constants: dict[str, set[str]],
+) -> list[str]:
+    """Trace a forwarded SiteId through a fail-closed finite site-list guard."""
+    if (path.name != "ReferenceNatureNeowOfferSessionV111.cs" or
+            re.sub(r"\s+", "", expression or "") != "siteId"):
+        return []
+    member = _containing_member_source(source, construction_start)
+    guard = re.search(
+        r"\bif\s*\(\s*!\s*(?P<sites>"
+        r"[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*)"
+        r"\.Contains\s*\(\s*siteId\s*,\s*StringComparer\.Ordinal"
+        r"\s*\)\s*\)\s*throw\s+new\s+NotSupportedException\b",
+        member,
+        re.DOTALL,
+    )
+    if guard is None:
+        return []
+    sites_expression = guard.group("sites")
+    if "." not in sites_expression:
+        sites_expression = f"{path.stem}.{sites_expression}"
+    values, unresolved = _resolve_site_array_property(
+        sites_expression, global_constants
+    )
+    if unresolved or not values:
+        return []
+    return values
 
 
 def _ambient_entropy_calls(
@@ -3115,6 +3149,13 @@ def _typed_request_constructions(
                     resolution_source = (
                         "validated_semantic_event_site_domain"
                     )
+            if not values:
+                values = _guarded_site_array_membership_values(
+                    path, source, match.start(), expression,
+                    global_constants,
+                )
+                if values:
+                    resolution_source = "guarded_site_array_membership"
             if not values and path.name == "PrototypeCombat.cs":
                 member_source = _containing_member_source(
                     source, match.start()
@@ -3231,6 +3272,7 @@ def _typed_request_constructions(
                         "registry_dictionary_guard",
                         "shared_shuffle_core_finite_registry",
                         "validated_semantic_event_site_domain",
+                        "guarded_site_array_membership",
                         "native_operation_registry_validation",
                     )
                     else "finite_core_helper_callsite_sites"
