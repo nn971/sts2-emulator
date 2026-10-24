@@ -305,9 +305,12 @@ internal static class SemanticChoiceResumeV111
         }
         else
         {
-            run = SemanticCostChoiceV111.ResumeEffectDrawCost(
-                checkpoint.Fork(), ownedDecision.SelectedCost,
-                allowEngineOwnedPrototypeReward);
+            var resumed = SemanticCostChoiceV111
+                .ResumeEffectDrawCostWithBoundary(
+                    checkpoint.Fork(), ownedDecision.SelectedCost,
+                    allowEngineOwnedPrototypeReward);
+            run = resumed.Run;
+            pipelineBoundary = resumed.Boundary;
         }
         return new SemanticChoiceResumeResultV111(
             run, siteId, pipelineBoundary);

@@ -144,6 +144,12 @@ public sealed partial class PrototypeGameEngine
     /// </summary>
     internal static RunState ResumeControlledSemanticEffectDrawCost(
         RunState state, int value)
+        => ResumeControlledSemanticEffectDrawCostWithBoundary(
+            state, value).Run;
+
+    internal static PrototypeAutomaticPipelineResumeResultV111
+        ResumeControlledSemanticEffectDrawCostWithBoundary(
+            RunState state, int value)
     {
         if (!ControlledChanceGuardV111.Active)
             throw new InvalidOperationException(
@@ -172,11 +178,16 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidDataException(
                 "Semantic effect-draw cost checkpoint is inconsistent.");
 
-        return ContinueSemanticDrawCost(
+        var progress = ContinueSemanticDrawCost(
             state, cost, draw, value, continuation,
             resumeKind: SemanticDrawCostResumeKindV111.CardEffect,
             recycleSite: "combat.card_effect.draw",
-            recycleOperation: "recycle_requires_composed_continuation").Run;
+            recycleOperation: "recycle_requires_composed_continuation");
+        progress.Validate();
+        return new PrototypeAutomaticPipelineResumeResultV111(
+            progress.Run,
+            progress.PipelineBoundary ??
+                ClassifyAutomaticPipelineResumeBoundary(progress.Run));
     }
 
     /// <summary>Advance one cost decision, then dispatch CardDrawn once and

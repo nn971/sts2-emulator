@@ -279,6 +279,13 @@ public static class SemanticCostChoiceV111
     internal static RunState ResumeEffectDrawCost(
         RunState checkpoint, int selectedCost,
         bool allowEngineOwnedPrototypeReward)
+        => ResumeEffectDrawCostWithBoundary(
+            checkpoint, selectedCost, allowEngineOwnedPrototypeReward).Run;
+
+    internal static PrototypeAutomaticPipelineResumeResultV111
+        ResumeEffectDrawCostWithBoundary(
+            RunState checkpoint, int selectedCost,
+            bool allowEngineOwnedPrototypeReward)
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
         ValidateDrawBoundary(checkpoint);
@@ -289,16 +296,19 @@ public static class SemanticCostChoiceV111
             throw new ArgumentOutOfRangeException(nameof(selectedCost));
 
         var resumed = ControlledChanceGuardV111.ExecuteGuarded(
-            () => PrototypeGameEngine.ResumeControlledSemanticEffectDrawCost(
-                checkpoint, selectedCost),
+            () => PrototypeGameEngine
+                .ResumeControlledSemanticEffectDrawCostWithBoundary(
+                    checkpoint, selectedCost),
             allowEngineOwnedPrototypeReward);
 
         ValidateEffectDrawCostResult(resumed);
         return resumed;
     }
 
-    private static void ValidateEffectDrawCostResult(RunState run)
+    private static void ValidateEffectDrawCostResult(
+        PrototypeAutomaticPipelineResumeResultV111 resumed)
     {
+        var run = resumed.Run;
         if (run.Phase == RunPhase.Combat)
         {
             SemanticPilotCombatEngineV111

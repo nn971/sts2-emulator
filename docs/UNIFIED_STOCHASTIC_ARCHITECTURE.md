@@ -236,6 +236,8 @@ Automatic semantic card-shortlist replay also carries the classified pipeline re
 
 Semantic random hand-cost choices also retain their classified automatic-pipeline result. Both indexed cost outcomes and selected physical hand-card outcomes pass the result through `SemanticChoiceResumeResultV111` to end-turn boundary publication.
 
+Semantic card-effect draw costs now preserve the classified pipeline result through `PrototypeDrawCardsResumeResultV111` and `SemanticChoiceResumeResultV111`, including completed draw progress and remaining-count reporting.
+
 Semantic random-target and hand-cost-selection facades also preserve their classified result through the shared semantic-choice resume owner, keeping source validation and boundary publication on one path.
 
 Knowledge Demon semantic-choice replay now calls its typed engine action continuation and passes the classified automatic-pipeline result through `SemanticChoiceResumeResultV111`.

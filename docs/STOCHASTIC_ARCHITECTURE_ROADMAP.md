@@ -4120,6 +4120,15 @@ ownership are unchanged. Snapshot formats are unchanged. Broader resume
 consolidation and cross-provider mechanical equivalence remain open. Static
 source review and `git diff --check` only; no tests or builds were run.
 
+**S4 semantic effect-draw cost classified handoff increment (2026-10-24):**
+Semantic card-effect draw-cost resumes now carry the automatic-pipeline result
+through `PrototypeDrawCardsResumeResultV111` and
+`SemanticChoiceResumeResultV111`. Remaining-count and reward-policy ownership
+are unchanged, and the result is transient. Snapshot and transcript formats
+are unchanged. Broader resume consolidation and cross-provider mechanical
+equivalence remain open. Static source review and `git diff --check` only; no
+tests or builds were run.
+
 **S4 semantic card-shortlist classified handoff increment (2026-10-24):** The
 controlled shortlist mechanics owner and semantic-choice facade now preserve
 the classified automatic-pipeline result through `SemanticChoiceResumeResultV111`.
