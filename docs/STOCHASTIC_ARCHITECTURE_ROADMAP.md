@@ -7,6 +7,10 @@
 `ReturnHandToDrawAndShuffle` boundaries to the shared draw-continuation owner.
 Hand-return shuffle now stops before executing its saved suffix when an
 after-shuffle insertion suspends, preserving Bottled Potential's draw order.
+The complete `ResolveOperations` choice-site review found that all other
+suspending branches already return their saved suffix; the kernel now enforces
+that boundary after each operation and fails immediately if a pending choice
+would otherwise continue inline.
 Ordinary and resumed cost draws also share `DispatchCardDrawnAfterCost`;
 opening Nature Stratagem draws use the semantic result dispatcher; opening and
 automatic source-stage hand draws build the same Stratagem-plus-draw suffix

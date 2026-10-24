@@ -8475,6 +8475,11 @@ public sealed partial class PrototypeGameEngine
                 default:
                     throw new ArgumentOutOfRangeException();
             }
+
+            if (combat.PendingChoice is not null)
+                throw new InvalidOperationException(
+                    "ResolveOperations cannot continue after a pending choice; " +
+                    "the suspending operation must return its continuation.");
         }
 
         var sourceExhaustEvent =
