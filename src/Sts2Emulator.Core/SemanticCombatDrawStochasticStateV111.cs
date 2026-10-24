@@ -10,7 +10,7 @@ public sealed record SemanticCombatDrawBoundaryChoiceV111(
         if (Kind is not ("semantic_draw" or "semantic_cost" or
                 "random_pile_card" or "semantic_draw_insertion" or
                 "semantic_generated_card" or "stratagem_selection" or "draw_hook_choice" or
-                "random_target") ||
+                "random_target" or "semantic_potion_generation") ||
             TranscriptIndex < 0)
             throw new InvalidDataException(
                 "Invalid semantic combat-draw boundary transcript entry.");
@@ -25,11 +25,13 @@ public sealed record SemanticCombatDrawBoundaryChoiceV111(
 public sealed record SemanticCombatDrawStochasticStateV111
 {
     internal const int LegacyBoundaryTranscriptVersion = 1;
-    internal const int CurrentBoundaryTranscriptVersion = 2;
+    internal const int GeneratedCardBoundaryTranscriptVersion = 2;
+    internal const int CurrentBoundaryTranscriptVersion = 3;
 
     private SemanticRandomPileCardDecisionV111[]? _randomPileCardTranscript = [];
     private SemanticDrawInsertionDecisionV111[]? _drawInsertionTranscript = [];
     private SemanticGeneratedCardDecisionV111[]? _generatedCardTranscript = [];
+    private SemanticPotionGenerationDecisionV111[]? _potionGenerationTranscript = [];
     private SemanticCardSelectionDecisionV111[]? _stratagemSelectionTranscript = [];
     private SemanticDrawHookChoiceDecisionV111[]? _drawHookChoiceTranscript = [];
     private SemanticTargetDecisionV111[]? _targetTranscript = [];
@@ -56,6 +58,13 @@ public sealed record SemanticCombatDrawStochasticStateV111
         get => CopyTranscript(_generatedCardTranscript,
             decision => decision.Fork())!;
         init => _generatedCardTranscript = CopyTranscript(value,
+            decision => decision.Fork());
+    }
+    public SemanticPotionGenerationDecisionV111[] PotionGenerationTranscript
+    {
+        get => CopyTranscript(_potionGenerationTranscript,
+            decision => decision.Fork())!;
+        init => _potionGenerationTranscript = CopyTranscript(value,
             decision => decision.Fork());
     }
     public SemanticCardSelectionDecisionV111[] StratagemSelectionTranscript
@@ -130,6 +139,19 @@ public sealed record SemanticCombatDrawStochasticStateV111
         {
             GeneratedCardTranscript = transcript
         }).AppendBoundary("semantic_generated_card", transcript.Length - 1);
+    }
+
+    internal SemanticCombatDrawStochasticStateV111 AppendPotionGeneration(
+        SemanticPotionGenerationDecisionV111 decision)
+    {
+        ArgumentNullException.ThrowIfNull(decision);
+        decision.Validate();
+        var transcript = PotionGenerationTranscript
+            .Append(decision.Fork()).ToArray();
+        return (this with
+        {
+            PotionGenerationTranscript = transcript
+        }).AppendBoundary("semantic_potion_generation", transcript.Length - 1);
     }
 
     internal SemanticCombatDrawStochasticStateV111 AppendStratagemSelection(
@@ -213,6 +235,8 @@ public sealed record SemanticCombatDrawStochasticStateV111
             decision => decision.Fork())!,
         GeneratedCardTranscript = CopyTranscript(_generatedCardTranscript,
             decision => decision.Fork())!,
+        PotionGenerationTranscript = CopyTranscript(
+            _potionGenerationTranscript, decision => decision.Fork())!,
         StratagemSelectionTranscript = CopyTranscript(_stratagemSelectionTranscript,
             decision => decision.Fork())!,
         DrawHookChoiceTranscript = CopyTranscript(_drawHookChoiceTranscript,
@@ -229,6 +253,7 @@ public sealed record SemanticCombatDrawStochasticStateV111
         var costTranscript = CostTranscript;
         var drawInsertionTranscript = DrawInsertionTranscript;
         var generatedCardTranscript = GeneratedCardTranscript;
+        var potionGenerationTranscript = PotionGenerationTranscript;
         var stratagemSelectionTranscript = StratagemSelectionTranscript;
         var drawHookChoiceTranscript = DrawHookChoiceTranscript;
         var targetTranscript = TargetTranscript;
@@ -236,6 +261,7 @@ public sealed record SemanticCombatDrawStochasticStateV111
         var boundaryTranscript = BoundaryTranscript;
         if (costTranscript is null || drawInsertionTranscript is null ||
             generatedCardTranscript is null ||
+            potionGenerationTranscript is null ||
             stratagemSelectionTranscript is null ||
             drawHookChoiceTranscript is null || targetTranscript is null ||
             boundaryTranscript is null)
@@ -268,6 +294,10 @@ public sealed record SemanticCombatDrawStochasticStateV111
             (decision ?? throw new InvalidDataException(
                 "Semantic generated-card transcript contains a null decision."))
                 .Validate();
+        foreach (var decision in potionGenerationTranscript)
+            (decision ?? throw new InvalidDataException(
+                "Semantic potion-generation transcript contains a null decision."))
+                .Validate();
         foreach (var decision in stratagemSelectionTranscript)
             (decision ?? throw new InvalidDataException(
                 "Semantic Stratagem transcript contains a null decision."))
@@ -298,13 +328,16 @@ public sealed record SemanticCombatDrawStochasticStateV111
             ["random_pile_card"] = RandomPileCardTranscript.Length,
             ["semantic_draw_insertion"] = DrawInsertionTranscript.Length,
             ["semantic_generated_card"] = GeneratedCardTranscript.Length,
+            ["semantic_potion_generation"] =
+                PotionGenerationTranscript.Length,
             ["stratagem_selection"] = StratagemSelectionTranscript.Length,
             ["draw_hook_choice"] = DrawHookChoiceTranscript.Length,
             ["random_target"] = TargetTranscript.Length
         };
         if (BoundaryTranscriptVersion == 0 && transcript.Length == 0 &&
             TargetTranscript.Length == 0 &&
-            GeneratedCardTranscript.Length == 0)
+            GeneratedCardTranscript.Length == 0 &&
+            PotionGenerationTranscript.Length == 0)
             return; // Legacy snapshots predate the chronology member.
         if (BoundaryTranscriptVersion == LegacyBoundaryTranscriptVersion &&
             GeneratedCardTranscript.Length != 0)
@@ -312,9 +345,14 @@ public sealed record SemanticCombatDrawStochasticStateV111
                 "Legacy semantic combat-draw chronology cannot contain generated-card choices.");
         if (BoundaryTranscriptVersion is not (
                 LegacyBoundaryTranscriptVersion or
+                GeneratedCardBoundaryTranscriptVersion or
                 CurrentBoundaryTranscriptVersion))
             throw new InvalidDataException(
                 "Unsupported semantic combat-draw chronology version.");
+        if (BoundaryTranscriptVersion < CurrentBoundaryTranscriptVersion &&
+            PotionGenerationTranscript.Length != 0)
+            throw new InvalidDataException(
+                "Legacy semantic combat-draw chronology cannot contain potion-generation choices.");
         var nextIndexes = typedCounts.Keys.ToDictionary(
             kind => kind, _ => 0, StringComparer.Ordinal);
         if (transcript.Length != typedCounts.Values.Sum())
@@ -359,6 +397,7 @@ internal sealed class SemanticCombatDrawReplayCursorV111
     private readonly SemanticRandomPileCardDecisionV111[] _pileCardChoices;
     private readonly SemanticDrawInsertionDecisionV111[] _insertions;
     private readonly SemanticGeneratedCardDecisionV111[] _generatedCardChoices;
+    private readonly SemanticPotionGenerationDecisionV111[] _potionGenerationChoices;
     private readonly SemanticCardSelectionDecisionV111[] _stratagemChoices;
     private readonly SemanticDrawHookChoiceDecisionV111[] _drawHookChoices;
     private readonly SemanticTargetDecisionV111[] _targetChoices;
@@ -369,6 +408,7 @@ internal sealed class SemanticCombatDrawReplayCursorV111
     private int _pileCardIndex;
     private int _insertionIndex;
     private int _generatedCardIndex;
+    private int _potionGenerationIndex;
     private int _stratagemIndex;
     private int _drawHookIndex;
     private int _targetIndex;
@@ -383,6 +423,7 @@ internal sealed class SemanticCombatDrawReplayCursorV111
         _pileCardChoices = state.RandomPileCardTranscript;
         _insertions = state.DrawInsertionTranscript;
         _generatedCardChoices = state.GeneratedCardTranscript;
+        _potionGenerationChoices = state.PotionGenerationTranscript;
         _stratagemChoices = state.StratagemSelectionTranscript;
         _drawHookChoices = state.DrawHookChoiceTranscript;
         _targetChoices = state.TargetTranscript;
@@ -396,6 +437,7 @@ internal sealed class SemanticCombatDrawReplayCursorV111
         _pileCardIndex < _pileCardChoices.Length ||
         _insertionIndex < _insertions.Length ||
         _generatedCardIndex < _generatedCardChoices.Length ||
+        _potionGenerationIndex < _potionGenerationChoices.Length ||
         _stratagemIndex < _stratagemChoices.Length ||
         _drawHookIndex < _drawHookChoices.Length ||
         _targetIndex < _targetChoices.Length;
@@ -424,6 +466,12 @@ internal sealed class SemanticCombatDrawReplayCursorV111
         _generatedCardChoices, ref _generatedCardIndex,
         "Missing semantic generated-card decision in draw replay.",
         "semantic_generated_card");
+
+    internal SemanticPotionGenerationDecisionV111
+        NextPotionGenerationChoice() => Take(
+            _potionGenerationChoices, ref _potionGenerationIndex,
+            "Missing semantic potion-generation decision in draw replay.",
+            "semantic_potion_generation");
 
     internal SemanticCardSelectionDecisionV111 NextStratagemChoice() => Take(
         _stratagemChoices, ref _stratagemIndex,

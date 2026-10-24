@@ -4622,6 +4622,14 @@ public static class SemanticPilotCombatEngineV111
                     endTurn, endTurn.Fingerprint,
                     generatedCard.Event.EventId,
                     generatedCard.SelectedCardId)
+                : choice is
+                    { Kind: "semantic_potion_generation",
+                      PotionGenerationDecision: { } generatedPotion } &&
+                  endTurn.HandDraw?.PotionGenerationPending is not null
+                    ? SemanticEndTurnEngineV111.ResolvePotionGeneration(
+                        endTurn, endTurn.Fingerprint,
+                        generatedPotion.Event.EventId,
+                        generatedPotion.SelectedPotionId)
                 : SemanticEndTurnEngineV111.ResumeNestedSemanticChoice(
                     endTurn, choice)
             : null;
@@ -6591,7 +6599,7 @@ public static class SemanticPilotCombatEngineV111
             current.Run, current.Fingerprint, ordinal);
     }
 
-    private static bool IsAlchemizePotionGenerationChoice(
+    internal static bool IsAlchemizePotionGenerationChoice(
         CombatState? combat, PendingCombatChoiceState? choice,
         PrototypeControlledPotionGenerationV111 generation)
     {

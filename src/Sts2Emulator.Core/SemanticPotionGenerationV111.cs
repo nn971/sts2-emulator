@@ -318,7 +318,8 @@ public static class SemanticPotionGenerationChoiceV111
     internal static PrototypeAutomaticPipelineResumeResultV111
         ResumeWithBoundary(
             RunState checkpoint,
-            SemanticPotionGenerationDecisionV111 decision)
+            SemanticPotionGenerationDecisionV111 decision,
+            bool deferSemanticHandDrawContinuation = false)
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
         ArgumentNullException.ThrowIfNull(decision);
@@ -336,18 +337,32 @@ public static class SemanticPotionGenerationChoiceV111
                 decision.Event.CandidatePotionIds))
             throw new InvalidDataException(
                 "Potion-generation decision no longer matches its source pool.");
+        bool automaticHandDrawPotionHandoff =
+            deferSemanticHandDrawContinuation &&
+            PrototypeGameEngine
+                .IsAutomaticHandDrawPotionGenerationContinuation(
+                    combat, combat.PendingChoice!);
+        if (deferSemanticHandDrawContinuation &&
+            !automaticHandDrawPotionHandoff)
+            throw new InvalidDataException(
+                "Potion-generation decision is outside the semantic hand-draw continuation.");
         ValidateBoundary(checkpoint);
 
         var resumed = ControlledChanceGuardV111.ExecuteGuarded(
-            () => PrototypeGameEngine
-                .ResumeControlledPotionGenerationWithBoundary(
-                    checkpoint.Fork(), decision.SelectedPotionId));
+            () => deferSemanticHandDrawContinuation
+                ? PrototypeGameEngine
+                    .ResumeControlledPotionGenerationForSemanticHandDrawWithBoundary(
+                        checkpoint.Fork(), decision.SelectedPotionId)
+                : PrototypeGameEngine
+                    .ResumeControlledPotionGenerationWithBoundary(
+                        checkpoint.Fork(), decision.SelectedPotionId));
         if (resumed.Run.Phase != RunPhase.Combat)
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_POTION site=combat.potion_generation " +
                 "operation=unsupported_post_generation_phase");
-        SemanticPilotCombatEngineV111.ValidateSemanticCombatBoundary(
-            resumed.Run);
+        if (!automaticHandDrawPotionHandoff)
+            SemanticPilotCombatEngineV111.ValidateSemanticCombatBoundary(
+                resumed.Run);
         var nextCombat = resumed.Run.World?.Combat ??
             throw new InvalidDataException(
                 "Potion-generation continuation lost its resulting combat.");

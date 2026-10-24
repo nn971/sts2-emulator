@@ -297,6 +297,11 @@ public static class SemanticDrawHookChoiceEngineV111
                 PrototypeGameEngine
                     .IsAutomaticHandDrawGeneratedCardContinuation(
                         advancedCombat, nextChoice);
+            bool nestedBeforeHandDrawPotionGeneration =
+                decision.Event.BeforeHandDraw &&
+                PrototypeGameEngine
+                    .IsAutomaticHandDrawPotionGenerationContinuation(
+                        advancedCombat, nextChoice);
             bool nestedActiveHandDrawRandomTarget =
                 decision.Event.AutomaticHandDraw &&
                 !decision.Event.BeforeHandDraw &&
@@ -324,12 +329,20 @@ public static class SemanticDrawHookChoiceEngineV111
                 PrototypeGameEngine
                     .IsAutomaticHandDrawGeneratedCardContinuation(
                         advancedCombat, nextChoice);
+            bool nestedActiveHandDrawPotionGeneration =
+                decision.Event.AutomaticHandDraw &&
+                !decision.Event.BeforeHandDraw &&
+                PrototypeGameEngine
+                    .IsAutomaticHandDrawPotionGenerationContinuation(
+                        advancedCombat, nextChoice);
             bool hasTaggedChildChoice =
                 nextChoice.ControlledTarget is not null ||
                 (nextChoice.ControlledGeneration is not null &&
                  !nestedBeforeHandDrawGeneratedCard &&
                  !nestedActiveHandDrawGeneratedCard) ||
-                nextChoice.ControlledPotionGeneration is not null ||
+                (nextChoice.ControlledPotionGeneration is not null &&
+                 !nestedBeforeHandDrawPotionGeneration &&
+                 !nestedActiveHandDrawPotionGeneration) ||
                 (nextChoice.ControlledDrawCost is not null &&
                  !nestedActiveHandDrawSemanticDraw) ||
                 (nextChoice.ControlledSemanticDraw is not null &&
@@ -349,11 +362,13 @@ public static class SemanticDrawHookChoiceEngineV111
                 !nestedBeforeHandDrawRandomTarget &&
                 !nestedBeforeHandDrawDrawInsertion &&
                 !nestedBeforeHandDrawGeneratedCard &&
+                !nestedBeforeHandDrawPotionGeneration &&
                 !nestedActiveHandDrawRandomTarget &&
                 !nestedActiveHandDrawRandomPileCard &&
                 !nestedActiveHandDrawSemanticDraw &&
                 !nestedActiveHandDrawDrawInsertion &&
-                !nestedActiveHandDrawGeneratedCard)
+                !nestedActiveHandDrawGeneratedCard &&
+                !nestedActiveHandDrawPotionGeneration)
             {
                 throw new NotSupportedException(
                     $"UNSUPPORTED_SEMANTIC_DECK site={site} " +
@@ -368,6 +383,9 @@ public static class SemanticDrawHookChoiceEngineV111
             else if (nestedBeforeHandDrawGeneratedCard ||
                      nestedActiveHandDrawGeneratedCard)
                 SemanticGenerationChoiceV111.ValidateBoundary(advanced);
+            else if (nestedBeforeHandDrawPotionGeneration ||
+                     nestedActiveHandDrawPotionGeneration)
+                SemanticPotionGenerationChoiceV111.ValidateBoundary(advanced);
             else if (nestedActiveHandDrawRandomTarget)
             {
                 advancedCombat = advancedCombat with

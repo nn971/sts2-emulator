@@ -70,6 +70,19 @@ public sealed partial class PrototypeGameEngine
     internal static PrototypeAutomaticPipelineResumeResultV111
         ResumeControlledPotionGenerationWithBoundary(
             RunState state, string selectedPotionId)
+        => ResumeControlledPotionGenerationCore(
+            state, selectedPotionId, deferSemanticHandDraw: false);
+
+    internal static PrototypeAutomaticPipelineResumeResultV111
+        ResumeControlledPotionGenerationForSemanticHandDrawWithBoundary(
+            RunState state, string selectedPotionId)
+        => ResumeControlledPotionGenerationCore(
+            state, selectedPotionId, deferSemanticHandDraw: true);
+
+    private static PrototypeAutomaticPipelineResumeResultV111
+        ResumeControlledPotionGenerationCore(
+            RunState state, string selectedPotionId,
+            bool deferSemanticHandDraw)
     {
         if (!ControlledChanceGuardV111.Active)
             throw new InvalidOperationException(
@@ -130,6 +143,9 @@ public sealed partial class PrototypeGameEngine
                 state.Stochastic, prototypeRng),
             World = world with { Combat = resumed.Combat }
         };
-        return ResumeAutomaticPipelineContinuation(updated);
+        return deferSemanticHandDraw
+            ? PrototypeAutomaticPipelineResumeResultV111
+                .FromDeferredSemanticHandDraw(updated)
+            : ResumeAutomaticPipelineContinuation(updated);
     }
 }

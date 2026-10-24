@@ -91,6 +91,10 @@ public sealed record SemanticCombatDrawV111(
     [JsonIgnore] public SemanticGeneratedCardEventV111?
         GeneratedCardPending =>
             SemanticCombatDrawEngineV111.DescribePendingGeneratedCard(this);
+    [JsonIgnore] public SemanticPotionGenerationEventV111?
+        PotionGenerationPending =>
+            SemanticCombatDrawEngineV111
+                .DescribePendingPotionGeneration(this);
     [JsonIgnore] public SemanticCardSelectionEventV111?
         StratagemSelectionPending =>
             SemanticCombatDrawEngineV111
@@ -137,6 +141,7 @@ public sealed record SemanticCombatDrawV111(
     [JsonIgnore] public bool AtBoundary =>
         Pending is null && RandomPileCardPending is null &&
         DrawInsertionPending is null && GeneratedCardPending is null &&
+        PotionGenerationPending is null &&
         StratagemSelectionPending is null &&
         DrawHookChoicePending is null && TargetPending is null &&
         CostPending is null &&
@@ -169,6 +174,14 @@ public sealed record SemanticCombatDrawV111(
         init => Stochastic = Stochastic with
         {
             GeneratedCardTranscript = value
+        };
+    }
+    public SemanticPotionGenerationDecisionV111[] PotionGenerationTranscript
+    {
+        get => Stochastic.PotionGenerationTranscript;
+        init => Stochastic = Stochastic with
+        {
+            PotionGenerationTranscript = value
         };
     }
     public SemanticCardSelectionDecisionV111[] StratagemSelectionTranscript
@@ -229,6 +242,7 @@ public sealed record SemanticCombatDrawV111(
         var randomPileCardPending = this.RandomPileCardPending;
         var drawInsertionPending = this.DrawInsertionPending;
         var generatedCardPending = this.GeneratedCardPending;
+        var potionGenerationPending = this.PotionGenerationPending;
         var completedHookCursor =
             this.Run.World?.Combat?.AutomaticPipelineContinuation;
         var drawHookChoicePending = this.DrawHookChoicePending;
@@ -278,6 +292,7 @@ public sealed record SemanticCombatDrawV111(
             (this.RequestedCount == 0 && randomPileCardPending is null &&
              drawInsertionPending is null &&
              generatedCardPending is null &&
+             potionGenerationPending is null &&
              drawHookChoicePending?.BeforeHandDraw != true &&
              !automaticBeforeHandDrawPoolShuffle &&
              !automaticBeforeHandDrawGeneratedSelection &&
@@ -364,12 +379,33 @@ public sealed record SemanticCombatDrawV111(
             pipelineCursor is not null &&
             pipelineCursor.Stochastic.IsAtSemanticBeforeHandDraw(
                 pipelineCursor.Mechanics);
+        bool automaticHandDrawPotionGenerationPending =
+            this.AutomaticHandDraw && combat.PendingChoice is
+                { } activePotionGenerationChoice &&
+            PrototypeGameEngine
+                .IsAutomaticHandDrawPotionGenerationContinuation(
+                    combat, activePotionGenerationChoice) &&
+            hasPipelineSemanticDrawProgress &&
+            pipelineRequested == this.RequestedCount &&
+            pipelineRemaining == this.RemainingCount;
+        bool automaticBeforeHandDrawPotionGenerationPending =
+            this.AutomaticHandDraw && combat.PendingChoice is
+                { } beforeHandDrawPotionGenerationChoice &&
+            PrototypeGameEngine
+                .IsAutomaticHandDrawPotionGenerationContinuation(
+                    combat, beforeHandDrawPotionGenerationChoice) &&
+            pipelineCursor is not null &&
+            pipelineCursor.Stochastic.IsAtSemanticBeforeHandDraw(
+                pipelineCursor.Mechanics);
         if (automaticHandDrawChildInsertionPending ||
             automaticBeforeHandDrawChildInsertionPending)
             SemanticDrawInsertionChoiceV111.ValidateBoundary(this.Run);
         if (automaticHandDrawGeneratedCardPending ||
             automaticBeforeHandDrawGeneratedCardPending)
             SemanticGenerationChoiceV111.ValidateBoundary(this.Run);
+        if (automaticHandDrawPotionGenerationPending ||
+            automaticBeforeHandDrawPotionGenerationPending)
+            SemanticPotionGenerationChoiceV111.ValidateBoundary(this.Run);
         bool automaticHandDrawEffectDrawPending =
             this.AutomaticHandDraw && combat.PendingChoice is
                 { } effectDrawChoice &&
@@ -402,6 +438,7 @@ public sealed record SemanticCombatDrawV111(
                 randomPileCardPending is not null ||
                 drawInsertionPending is not null ||
                 generatedCardPending is not null ||
+                potionGenerationPending is not null ||
                 stratagemSelectionPending is not null ||
                 drawHookChoicePending is not null ||
                 automaticBeforeHandDrawPoolShuffle ||
@@ -481,6 +518,15 @@ public sealed record SemanticCombatDrawV111(
                     throw new InvalidDataException(
                         "Semantic BeforeHandDraw generated-card cursor is inconsistent.");
             }
+            else if (automaticBeforeHandDrawPotionGenerationPending)
+            {
+                if (pipelineCursor is null ||
+                    !semanticBeforeHandDrawProgress ||
+                    this.RequestedCount != 0 || this.RemainingCount != 0 ||
+                    deck.Pending is not null || cost is not null)
+                    throw new InvalidDataException(
+                        "Semantic BeforeHandDraw potion-generation cursor is inconsistent.");
+            }
             else if (automaticHandDrawGeneratedCardPending)
             {
                 if (pipelineCursor is null ||
@@ -490,6 +536,16 @@ public sealed record SemanticCombatDrawV111(
                     deck.Pending is not null || cost is not null)
                     throw new InvalidDataException(
                         "Automatic hand-draw generated-card cursor is inconsistent.");
+            }
+            else if (automaticHandDrawPotionGenerationPending)
+            {
+                if (pipelineCursor is null ||
+                    !hasPipelineSemanticDrawProgress ||
+                    pipelineRequested != this.RequestedCount ||
+                    pipelineRemaining != this.RemainingCount ||
+                    deck.Pending is not null || cost is not null)
+                    throw new InvalidDataException(
+                        "Automatic hand-draw potion-generation cursor is inconsistent.");
             }
             else if (automaticBeforeHandDrawRandomTarget)
             {
@@ -555,6 +611,7 @@ public sealed record SemanticCombatDrawV111(
              randomPileCardPending is null &&
              drawInsertionPending is null &&
              generatedCardPending is null &&
+             potionGenerationPending is null &&
              stratagemSelectionPending is null &&
              drawHookChoicePending is null &&
              targetPending is null &&
@@ -641,6 +698,18 @@ public sealed record SemanticCombatDrawV111(
                 throw new InvalidDataException(
                     "Semantic generated-card cursor is inconsistent.");
             SemanticGenerationChoiceV111.ValidateBoundary(this.Run);
+        }
+        if (potionGenerationPending is { } potionGenerationEvent)
+        {
+            var generation = combat.PendingChoice?.ControlledPotionGeneration;
+            if ((!automaticHandDrawPotionGenerationPending &&
+                 !automaticBeforeHandDrawPotionGenerationPending) ||
+                generation is null ||
+                !potionGenerationEvent.CandidatePotionIds.SequenceEqual(
+                    generation.CandidatePotionIds))
+                throw new InvalidDataException(
+                    "Semantic potion-generation cursor is inconsistent.");
+            SemanticPotionGenerationChoiceV111.ValidateBoundary(this.Run);
         }
     }
 
@@ -738,6 +807,23 @@ public static class SemanticCombatDrawEngineV111
                     decision.Event.SiteId == siteId));
         }
         return null;
+    }
+
+    internal static SemanticPotionGenerationEventV111?
+        DescribePendingPotionGeneration(SemanticCombatDrawV111 state)
+    {
+        if (!state.AutomaticHandDraw ||
+            state.Run.World?.Combat is not { } combat ||
+            combat.PendingChoice is not { } pending ||
+            !PrototypeGameEngine
+                .IsAutomaticHandDrawPotionGenerationContinuation(
+                    combat, pending))
+            return null;
+        return SemanticPotionGenerationChoiceV111.DescribePending(
+            state.Run, state.Fingerprint,
+            state.PotionGenerationTranscript.Count(decision =>
+                decision.Event.SiteId ==
+                    SemanticPotionGenerationChoiceV111.SiteId));
     }
 
     internal static SemanticDrawInsertionEventV111?
@@ -1173,48 +1259,9 @@ public static class SemanticCombatDrawEngineV111
                 resumed.Run, state.RequestedCount, remaining,
                 resumed.PipelineBoundary);
         }
-        else if (TryGetAutomaticSemanticHandDrawProgress(
-                     resumedCombat, out int requested, out int remaining))
-        {
-            if (requested != state.RequestedCount)
-                throw new InvalidDataException(
-                    "Generated-card continuation changed the automatic hand-draw request.");
-            if (resumedCombat.PendingChoice is null &&
-                resumedCombat.PendingKnowledgeDemonChoice is null &&
-                resumedCombat.Stochastic.SemanticDeck?.Pending is null)
-            {
-                progress = ControlledChanceGuardV111.ExecuteGuarded(
-                    () => PrototypeGameEngine
-                        .ResumeSemanticAutomaticHandDraw(
-                            resumed.Run, remaining));
-                if (progress.RequireRequestedCount() != requested)
-                    throw new InvalidDataException(
-                        "Generated-card continuation changed the automatic hand-draw request.");
-            }
-            else
-                progress = PrototypeDrawCardsResumeResultV111.ForHandDraw(
-                    resumed.Run, requested, remaining);
-        }
-        else if (resumedCombat.AutomaticPipelineContinuation is
-                     { } beforeHandDraw &&
-                 beforeHandDraw.Stochastic.IsAtSemanticBeforeHandDraw(
-                     beforeHandDraw.Mechanics) &&
-                 beforeHandDraw.Stochastic
-                     .CompletedSemanticHandDrawRequested is null)
-        {
-            if (resumedCombat.PendingChoice is null &&
-                resumedCombat.PendingKnowledgeDemonChoice is null &&
-                resumedCombat.Stochastic.SemanticDeck?.Pending is null)
-                progress = ControlledChanceGuardV111.ExecuteGuarded(
-                    () => PrototypeGameEngine
-                        .ResumeSemanticBeforeHandDrawActionChoice(resumed.Run));
-            else
-                progress = PrototypeDrawCardsResumeResultV111.ForHandDraw(
-                    resumed.Run, 0, 0);
-        }
         else
-            throw new InvalidDataException(
-                "Generated-card continuation lost the automatic hand-draw cursor.");
+            progress = ResumeNestedAutomaticHandDraw(
+                state, resumed, "Generated-card");
 
         progress = progress.EnsurePipelineBoundary();
         var next = PublishDrawProgress(state, progress) with
@@ -1224,6 +1271,89 @@ public static class SemanticCombatDrawEngineV111
         next = RecordNewSemanticDrawChoices(state, next);
         Validate(next);
         return next;
+    }
+
+    public static SemanticCombatDrawV111 ResolvePotionGeneration(
+        SemanticCombatDrawV111 state, string fingerprint, string potionId)
+    {
+        Validate(state);
+        if (state.Fingerprint != fingerprint)
+            throw new InvalidOperationException(
+                "Stale semantic draw potion-generation fingerprint.");
+        ArgumentException.ThrowIfNullOrWhiteSpace(potionId);
+        var pending = state.PotionGenerationPending ??
+            throw new InvalidOperationException(
+                "No semantic draw potion-generation choice is pending.");
+        var decision = SemanticPotionGenerationChoiceV111.Select(
+            pending, pending.EventId, potionId);
+        var resumed = SemanticChoiceResumeV111
+            .ResumePotionGenerationForHandDraw(state.Run, decision);
+        var progress = ResumeNestedAutomaticHandDraw(
+            state, resumed, "Potion-generation");
+
+        progress = progress.EnsurePipelineBoundary();
+        var next = PublishDrawProgress(state, progress) with
+        {
+            Stochastic = state.Stochastic.AppendPotionGeneration(decision)
+        };
+        next = RecordNewSemanticDrawChoices(state, next);
+        Validate(next);
+        return next;
+    }
+
+    private static PrototypeDrawCardsResumeResultV111
+        ResumeNestedAutomaticHandDraw(
+            SemanticCombatDrawV111 state,
+            SemanticChoiceResumeResultV111 resumed,
+            string choiceKind)
+    {
+        var combat = resumed.Run.World?.Combat ??
+            throw new InvalidDataException(
+                $"Semantic {choiceKind.ToLowerInvariant()} choice removed combat.");
+        PrototypeDrawCardsResumeResultV111 progress;
+        if (TryGetAutomaticSemanticHandDrawProgress(
+                combat, out int requested, out int remaining))
+        {
+            if (requested != state.RequestedCount)
+                throw new InvalidDataException(
+                    $"{choiceKind} continuation changed the automatic hand-draw request.");
+            if (combat.PendingChoice is null &&
+                combat.PendingKnowledgeDemonChoice is null &&
+                combat.Stochastic.SemanticDeck?.Pending is null)
+            {
+                progress = ControlledChanceGuardV111.ExecuteGuarded(
+                    () => PrototypeGameEngine.ResumeSemanticAutomaticHandDraw(
+                        resumed.Run, remaining));
+                if (progress.RequireRequestedCount() != requested)
+                    throw new InvalidDataException(
+                        $"{choiceKind} continuation changed the automatic hand-draw request.");
+            }
+            else
+                progress = PrototypeDrawCardsResumeResultV111.ForHandDraw(
+                    resumed.Run, requested, remaining, resumed.Boundary);
+        }
+        else if (combat.AutomaticPipelineContinuation is
+                     { } beforeHandDraw &&
+                 beforeHandDraw.Stochastic.IsAtSemanticBeforeHandDraw(
+                     beforeHandDraw.Mechanics) &&
+                 beforeHandDraw.Stochastic
+                     .CompletedSemanticHandDrawRequested is null)
+        {
+            if (combat.PendingChoice is null &&
+                combat.PendingKnowledgeDemonChoice is null &&
+                combat.Stochastic.SemanticDeck?.Pending is null)
+                progress = ControlledChanceGuardV111.ExecuteGuarded(
+                    () => PrototypeGameEngine
+                        .ResumeSemanticBeforeHandDrawActionChoice(resumed.Run));
+            else
+                progress = PrototypeDrawCardsResumeResultV111.ForHandDraw(
+                    resumed.Run, 0, 0, resumed.Boundary);
+        }
+        else
+            throw new InvalidDataException(
+                $"{choiceKind} continuation lost the automatic hand-draw cursor.");
+
+        return progress.EnsurePipelineBoundary();
     }
 
     public static SemanticCombatDrawV111 ResolveStratagemSelection(
@@ -1469,6 +1599,20 @@ public static class SemanticCombatDrawEngineV111
                     generatedDecision.SelectedCardId);
                 continue;
             }
+            if (reconstructed.PotionGenerationPending is { } potion)
+            {
+                var potionDecision =
+                    transcriptCursor.NextPotionGenerationChoice();
+                potionDecision.Validate();
+                if (CanonicalJson.Sha256(potionDecision.Event) !=
+                    CanonicalJson.Sha256(potion))
+                    throw new InvalidDataException(
+                        "Potion-generation transcript diverges from source support.");
+                reconstructed = ResolvePotionGeneration(
+                    reconstructed, reconstructed.Fingerprint,
+                    potionDecision.SelectedPotionId);
+                continue;
+            }
             if (reconstructed.DrawInsertionPending is { } insertion)
             {
                 var insertionDecision = transcriptCursor.NextInsertion();
@@ -1530,10 +1674,10 @@ public static class SemanticCombatDrawEngineV111
                 BoundaryTranscriptVersion =
                     reconstructed.BoundaryTranscriptVersion
             };
-        if (stored.BoundaryTranscriptVersion ==
+        if (stored.BoundaryTranscriptVersion <
                 SemanticCombatDrawStochasticStateV111
-                    .LegacyBoundaryTranscriptVersion &&
-            stored.GeneratedCardTranscript.Length == 0)
+                    .CurrentBoundaryTranscriptVersion &&
+            stored.PotionGenerationTranscript.Length == 0)
             comparisonSnapshot = comparisonSnapshot with
             {
                 BoundaryTranscriptVersion =
