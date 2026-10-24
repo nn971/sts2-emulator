@@ -144,7 +144,9 @@ public static class ControlledInitialHpV111
             throw new InvalidOperationException("Stale or mismatched Nature boundary fingerprint.");
         ValidateOwners(state);
         var expected = MakePending(state);
-        if (expected is null || !SameRequest(expected, state.Pending!))
+        if (expected is null ||
+            !ControlledChanceContinuationExecutorV111.RequestsMatch(
+                expected, state.Pending!))
             throw new InvalidOperationException("Persisted pending eligibility is stale.");
         var working = state.Fork();
         var request = working.Pending!;
@@ -169,7 +171,8 @@ public static class ControlledInitialHpV111
         var state = JsonSerializer.Deserialize<ControlledInitialHpStateV111>(json)
             ?? throw new InvalidDataException("Controlled HP snapshot was null.");
         ValidateOwners(state);
-        if (!state.Complete && !SameRequest(
+        if (!state.Complete &&
+            !ControlledChanceContinuationExecutorV111.RequestsMatch(
                 MakePending(state) ?? throw new InvalidDataException("Missing pending owner."),
                 state.Pending!))
             throw new InvalidDataException("Controlled HP pending eligibility mismatch.");
@@ -198,15 +201,6 @@ public static class ControlledInitialHpV111
             "combat.initial_unique_hp", "run.niche",
             "creature:" + owner.CombatId, state.NextEnemyIndex, candidates);
     }
-
-    private static bool SameRequest(
-        RandomIndexRequestV111 a, RandomIndexRequestV111 b) =>
-        a.SiteId == b.SiteId && a.StreamId == b.StreamId &&
-        a.OwnerId == b.OwnerId && a.Ordinal == b.Ordinal &&
-        a.SourceVersion == b.SourceVersion &&
-        a.OperationKind == b.OperationKind &&
-        a.BoundedCount == b.BoundedCount &&
-        a.OrderedCandidates.SequenceEqual(b.OrderedCandidates);
 
     private static void ValidateOwners(ControlledInitialHpStateV111 state)
     {
@@ -246,7 +240,8 @@ public static class ControlledInitialHpV111
                 if (choice.ProviderMode != "controlled-v111" ||
                     choice.NativeCursorBefore is not null ||
                     choice.NativeCursorAfter is not null ||
-                    !SameRequest(expected, choice.Request) ||
+                    !ControlledChanceContinuationExecutorV111.RequestsMatch(
+                        expected, choice.Request) ||
                     e.Hp != choice.SelectedValue || e.MaxHp != choice.SelectedValue)
                     throw new InvalidDataException("Controlled HP transcript does not match source eligibility/state.");
             }

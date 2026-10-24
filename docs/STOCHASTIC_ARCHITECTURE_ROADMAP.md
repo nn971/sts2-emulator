@@ -87,6 +87,14 @@ reuse those rules; their duplicate facade helpers were removed. Replay
 behavior and snapshot shapes are unchanged. Static source review and
 `git diff --check` only; no tests or builds were run.
 
+**S4 shared index-request comparison increment (2026-10-24):** The existing
+executor now also compares nullable `RandomIndexRequestV111` values through
+the canonical request projection. Controlled initial-HP and intent replay plus
+ReferenceNature map-generation and later-act-preparation validation reuse it;
+their duplicate request comparators were removed. Every request field and
+ordered candidate remains part of the comparison. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S4 hand-draw progress presence owner increment (2026-10-24):** The pipeline
 stochastic owner now exposes `HasSavedHandDrawProgress` for clean-boundary
 presence checks. Semantic and controlled draw completion, automatic pipeline

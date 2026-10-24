@@ -430,7 +430,7 @@ public sealed record ReferenceNatureMapGenerationSessionV111(
         var continuation = capturedPrefix.Continuation ??
             throw new InvalidDataException(
                 "Incomplete map session lost its typed continuation.");
-        if (!SameRequest(
+        if (!ControlledChanceContinuationExecutorV111.RequestsMatch(
                 continuation.PendingRequest, StochasticState.PendingRequest))
             throw new InvalidDataException(
                 "Map session request differs from the typed replay checkpoint.");
@@ -515,7 +515,8 @@ public sealed record ReferenceNatureMapGenerationSessionV111(
                 "ReferenceNature map sampler cursor differs from its transcript.");
 
         var captured = Capture(Seed, Act, Ascension, decisions);
-        if (!SameRequest(captured.Continuation?.PendingRequest,
+        if (!ControlledChanceContinuationExecutorV111.RequestsMatch(
+                captured.Continuation?.PendingRequest,
                 StochasticState.PendingRequest) ||
             (captured.Value is null) != (Map is null) ||
             captured.Value is not null &&
@@ -648,9 +649,4 @@ public sealed record ReferenceNatureMapGenerationSessionV111(
             throw new ArgumentOutOfRangeException(nameof(ascension));
     }
 
-    private static bool SameRequest(
-        ControlledStochasticRequestV111? left,
-        ControlledStochasticRequestV111? right) =>
-        left is null ? right is null : right is not null &&
-            ControlledStochasticChanceReplayV111.SameRequest(left, right);
 }

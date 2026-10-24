@@ -253,7 +253,8 @@ public static class ControlledIntentsV111
                 if (prefixCursor >= prefix.Length)
                     throw new ChoiceBoundary(request);
                 var recorded = prefix[prefixCursor++];
-                if (!SameRequest(recorded.Request, request) ||
+                if (!ControlledChanceContinuationExecutorV111.RequestsMatch(
+                        recorded.Request, request) ||
                     recorded.ProviderMode != "controlled-v111" ||
                     recorded.NativeCursorBefore is not null ||
                     recorded.NativeCursorAfter is not null)
@@ -327,7 +328,8 @@ public static class ControlledIntentsV111
                         state.BaselineCombat, enemy, usedHp));
                 var decision = earlier[i];
                 decision.Validate();
-                if (!SameRequest(expectedRequest, decision.Request) ||
+                if (!ControlledChanceContinuationExecutorV111.RequestsMatch(
+                        expectedRequest, decision.Request) ||
                     decision.ProviderMode != "controlled-v111" ||
                     decision.NativeCursorBefore is not null ||
                     decision.NativeCursorAfter is not null ||
@@ -360,7 +362,8 @@ public static class ControlledIntentsV111
         foreach (var choice in state.Transcript)
         {
             if (replay.Pending is null ||
-                !SameRequest(replay.Pending, choice.Request) ||
+                !ControlledChanceContinuationExecutorV111.RequestsMatch(
+                    replay.Pending, choice.Request) ||
                 choice.ProviderMode != "controlled-v111" ||
                 choice.NativeCursorAfter is not null ||
                 choice.NativeCursorBefore is not null)
@@ -371,11 +374,4 @@ public static class ControlledIntentsV111
             throw new InvalidDataException("Controlled intent state was not source-reachable.");
     }
 
-    private static bool SameRequest(RandomIndexRequestV111 a, RandomIndexRequestV111 b) =>
-        a.SiteId == b.SiteId && a.StreamId == b.StreamId &&
-        a.OwnerId == b.OwnerId && a.Ordinal == b.Ordinal &&
-        a.OperationKind == b.OperationKind &&
-        a.SourceVersion == b.SourceVersion &&
-        a.BoundedCount == b.BoundedCount &&
-        a.OrderedCandidates.SequenceEqual(b.OrderedCandidates);
 }

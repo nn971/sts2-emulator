@@ -374,7 +374,8 @@ public sealed record ReferenceNatureLaterActPreparationSessionV111(
             stochastic.ChanceLaws.Length != cursor.DecisionTranscript.Length ||
             CanonicalJson.Sha256(stochastic.ChanceLaws) !=
                 CanonicalJson.Sha256(capture.ChanceLaws) ||
-            !SameRequest(stochastic.PendingRequest, capture.PendingRequest) ||
+            !ControlledChanceContinuationExecutorV111.RequestsMatch(
+                stochastic.PendingRequest, capture.PendingRequest) ||
             (stochastic.PendingLaw is null) != (capture.PendingLaw is null) ||
             stochastic.PendingLaw is not null &&
                 CanonicalJson.Sha256(stochastic.PendingLaw) !=
@@ -577,10 +578,5 @@ public sealed record ReferenceNatureLaterActPreparationSessionV111(
         CloneProviderDecisions(
             ControlledStochasticDecisionV111[]? decisions) => decisions?
                 .Select(decision => decision?.Fork()!).ToArray();
-
-    private static bool SameRequest(
-        RandomIndexRequestV111? left, RandomIndexRequestV111? right) =>
-        left is null ? right is null : right is not null &&
-        CanonicalJson.Sha256(left) == CanonicalJson.Sha256(right);
 
 }
