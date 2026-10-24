@@ -62,10 +62,22 @@ public static class SemanticDrawPileAdapterV111
         ArgumentNullException.ThrowIfNull(before);
         ArgumentNullException.ThrowIfNull(after);
         ArgumentException.ThrowIfNullOrWhiteSpace(errorMessage);
-        if (!before.DrawPile.SequenceEqual(after.DrawPile) ||
-            CanonicalJson.Sha256(before.Stochastic.SemanticDeck) !=
-                CanonicalJson.Sha256(after.Stochastic.SemanticDeck))
+        if (!IsUnchangedDrawPile(before, after))
             throw new NotSupportedException(errorMessage);
+    }
+
+    /// <summary>
+    /// Compares the physical draw-pile order and its semantic provider state
+    /// for continuations that must leave both unchanged.
+    /// </summary>
+    internal static bool IsUnchangedDrawPile(
+        CombatState before, CombatState after)
+    {
+        ArgumentNullException.ThrowIfNull(before);
+        ArgumentNullException.ThrowIfNull(after);
+        return before.DrawPile.SequenceEqual(after.DrawPile) &&
+            CanonicalJson.Sha256(before.Stochastic.SemanticDeck) ==
+                CanonicalJson.Sha256(after.Stochastic.SemanticDeck);
     }
 
     /// <summary>

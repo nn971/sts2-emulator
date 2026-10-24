@@ -577,9 +577,8 @@ public static class SemanticPoolShuffleChoiceV111
             PrototypeCombatEffectKind.RecycleDrawPileForEffectDraw;
         if (!randomRareToHand && !handReturn && !recycle &&
             !helloWorldAutomaticBeforeHandDraw &&
-            (!combat.DrawPile.SequenceEqual(resultCombat.DrawPile) ||
-             CanonicalJson.Sha256(combat.Stochastic.SemanticDeck) !=
-                 CanonicalJson.Sha256(resultCombat.Stochastic.SemanticDeck)))
+            !SemanticDrawPileAdapterV111.IsUnchangedDrawPile(
+                combat, resultCombat))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=" + decision.Event.SiteId + " " +
                 "operation=unmodeled_draw_pile_mutation");

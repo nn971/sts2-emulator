@@ -971,6 +971,14 @@ player observation.
 
 ## Current S4 continuation support
 
+`SemanticDrawPileAdapterV111.IsUnchangedDrawPile` owns the combined physical
+order and semantic-deck comparison used when a supported continuation must
+preserve the hidden pile. `RequireUnchangedDrawPile` delegates to that
+predicate; semantic player-action validation, pilot action and potion checks,
+and full-pool shuffle use it for conditional mutation admission. Their
+source-specific allowlists and failure policies remain at their existing
+boundaries.
+
 Ordinary combat sampling and the resumable generated-card choice now use the same source-pool resolver for the supported one-at-a-time hand-generation effects. Random draw-Attack insertion has its own shared resolver for Native sampling, Nature suspension, and replay validation. When Native combat run streams are present, supported generated-model and transform events carry Native's `run.combat_card_generation` stream label, and random combat-potion events carry `run.combat_potion_generation`; prototype-only runs retain `prototype.combat`, and older prototype-labeled decisions remain replayable. Full-pool generated offers, distinct Common cards, and Colorless generation likewise share one resolver between ordinary execution and Nature replay. The emulated Native Colorless generation, Colorless transforms, and Fried Eel offer use implemented solo cards whose epoch is unlocked by the configured profile; with no explicit epoch list a fully unlocked profile admits all eligible epochs, while any explicit list selects its matching cards. Unknown partial-profile data remains fail-closed. Synthetic generation keeps its conservative no-epoch pool. These paths therefore share their exact ordered eligibility results; source-pool completeness and seeded parity remain separate audits.
 
 Semantic end-turn now admits a source `CardDrawn` hook action reached inside an autoplayed card's semantic effect draw, but only at the supported Mayhem or late player-turn cursor. The hook event uses a new schema version for its automatic-pipeline context, and the end-turn transcript preserves its order with nested draw, cost, insertion, selection, and other autoplay outcomes. Full restore replays the source action before resuming the pipeline. Existing standalone and automatic hand-draw hook choices retain their prior event schema and identity. The automatic hand-draw continuation owner decides whether saved count progress or a pre-draw choice keeps the pipeline at `DrawPlayerHand`; the generic pipeline loop does not interpret those hand-draw tags. Resolving an automatic `BeforeHandDraw` action may also open Jeweled Mask's random power draw-pile choice; that outcome stays with the existing semantic random pile-card event and hand-draw transcript, so restore replays the action then the pile-card choice. Other nested hook choices and pipeline-owned action choices remain open.

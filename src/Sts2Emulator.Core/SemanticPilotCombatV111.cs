@@ -4437,10 +4437,12 @@ public static class SemanticPilotCombatEngineV111
                     throw new InvalidDataException(
                         "Combat defeat did not close its active mechanics state.");
             }
-            else if (next is null ||
-                     !previous.DrawPile.SequenceEqual(next.DrawPile) ||
-                     CanonicalJson.Sha256(previous.Stochastic.SemanticDeck) !=
-                         CanonicalJson.Sha256(next.Stochastic.SemanticDeck))
+            else if (next is null)
+                throw new NotSupportedException(
+                    "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
+                    "operation=unmodeled_draw_pile_mutation");
+            else if (!SemanticDrawPileAdapterV111.IsUnchangedDrawPile(
+                         previous, next))
             {
                 if ((!semanticDrawCard && !semanticDynamicDrawCard &&
                      !semanticAutoplayCard &&
@@ -4545,13 +4547,10 @@ public static class SemanticPilotCombatEngineV111
             var next = result.World?.Combat;
             if (result.Phase == RunPhase.Combat &&
                 (next is null ||
-                (!isHandReturnPotion && !isDistilledChaos &&
-                !isSemanticDrawPotion &&
-                !previous.DrawPile.SequenceEqual(next.DrawPile) ||
-                !isHandReturnPotion && !isDistilledChaos &&
-                !isSemanticDrawPotion &&
-                CanonicalJson.Sha256(previous.Stochastic.SemanticDeck) !=
-                    CanonicalJson.Sha256(next.Stochastic.SemanticDeck))))
+                 ((!isHandReturnPotion && !isDistilledChaos &&
+                   !isSemanticDrawPotion) &&
+                  !SemanticDrawPileAdapterV111.IsUnchangedDrawPile(
+                      previous, next))))
                 throw new NotSupportedException(
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
                     "operation=unmodeled_draw_pile_mutation");

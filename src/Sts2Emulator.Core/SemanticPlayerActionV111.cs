@@ -338,9 +338,8 @@ public static class SemanticPlayerActionEngineV111
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
                 "operation=action_crossed_chance_or_turn_boundary");
-        if ((!combat.DrawPile.SequenceEqual(afterCombat.DrawPile) ||
-             CanonicalJson.Sha256(combat.Stochastic.SemanticDeck) !=
-                CanonicalJson.Sha256(afterCombat.Stochastic.SemanticDeck)) &&
+        if (!SemanticDrawPileAdapterV111.IsUnchangedDrawPile(
+                combat, afterCombat) &&
             !IsSupportedNostalgiaDrawReturn(source, run, action) &&
             !IsSupportedReboundDrawReturn(source, run, action))
             throw new NotSupportedException(
@@ -383,10 +382,8 @@ public static class SemanticPlayerActionEngineV111
             : new PrototypeAiEnvironment().ResolvePlayerAction(
                 state.Origin, state.ActionId).Action;
         if (state.ActionKind != "play_card" || sourceAction is null ||
-            ((!state.Origin.World!.Combat!.DrawPile.SequenceEqual(
-                  state.Run.World!.Combat!.DrawPile) ||
-              CanonicalJson.Sha256(state.Origin.World.Combat.Stochastic.SemanticDeck) !=
-                  CanonicalJson.Sha256(state.Run.World.Combat.Stochastic.SemanticDeck)) &&
+            (!SemanticDrawPileAdapterV111.IsUnchangedDrawPile(
+                 state.Origin.World!.Combat!, state.Run.World!.Combat!) &&
              (!IsSupportedNostalgiaDrawReturn(
                   state.Origin, state.Run, sourceAction) &&
               !IsSupportedReboundDrawReturn(

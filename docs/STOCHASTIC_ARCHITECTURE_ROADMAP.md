@@ -3810,3 +3810,12 @@ policies remain with their existing choice owners. No snapshot or transcript
 format changed. Broader resume consolidation and cross-provider mechanical
 equivalence remain open. Static source review and `git diff --check` only; no
 tests or builds were run.
+
+**S3 hidden draw-pile comparison owner increment (2026-10-24):**
+`SemanticDrawPileAdapterV111.IsUnchangedDrawPile` now owns comparison of
+physical draw-pile order and the semantic deck state, and
+`RequireUnchangedDrawPile` delegates to it. Semantic player-action validation,
+semantic-pilot card and potion continuation checks, and full-pool shuffle use
+the shared predicate for their conditional mutation policies. Their source
+allowlists and failure handling are unchanged. No snapshot format changed.
+Static source review and `git diff --check` only; no tests or builds were run.
