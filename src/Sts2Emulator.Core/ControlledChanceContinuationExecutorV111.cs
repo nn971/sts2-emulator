@@ -54,8 +54,8 @@ internal static class ControlledChanceContinuationExecutorV111
 
     internal static bool CandidateLabelsMatch(
         string[]? left, string[]? right) =>
-        left is null ? right is null : right is not null &&
-        left.SequenceEqual(right, StringComparer.Ordinal);
+        ControlledStochasticChanceReplayV111.CandidateLabelsMatch(
+            left, right);
 
     internal static int IndexOfCandidateLabel(
         string[]? candidateLabels, int supportCount, string candidateLabel)

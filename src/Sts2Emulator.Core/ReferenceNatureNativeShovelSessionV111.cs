@@ -484,7 +484,8 @@ public sealed record ReferenceNatureNativeShovelSessionV111(
                 bag, rarity, merchant: false, source.Player);
             var expected = plan.CandidateIds;
             if (plan.SelectedTier is null ||
-                !labels.SequenceEqual(expected, StringComparer.Ordinal) ||
+                !ControlledStochasticChanceReplayV111.CandidateLabelsMatch(
+                    labels, expected) ||
                 indexDecision.Request.OwnerId !=
                     PrototypeNativeRelicGrabBag.TreasureModelOwnerId(
                         source.World!, rarity, expected))

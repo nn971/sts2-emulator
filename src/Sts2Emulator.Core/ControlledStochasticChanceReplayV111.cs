@@ -683,8 +683,7 @@ internal sealed class ControlledStochasticChanceReplayV111 :
         if (compareCandidateLabels &&
             (expected.CandidateLabels is { } savedLabels
                 ? candidateLabels is null ||
-                  !savedLabels.SequenceEqual(candidateLabels,
-                      StringComparer.Ordinal)
+                  !CandidateLabelsMatch(savedLabels, candidateLabels)
                 : candidateLabels is not null &&
                   !_allowMissingCandidateLabels))
             throw new InvalidDataException(
@@ -763,5 +762,11 @@ internal sealed class ControlledStochasticChanceReplayV111 :
         TRequest? left, TRequest? right) where TRequest : class =>
         left is null ? right is null : right is not null &&
         CanonicalJson.Sha256(left) == CanonicalJson.Sha256(right);
+
+    /// <summary>Null-aware equality for ordered semantic candidate labels.</summary>
+    internal static bool CandidateLabelsMatch(
+        string[]? left, string[]? right) =>
+        left is null ? right is null : right is not null &&
+        left.SequenceEqual(right, StringComparer.Ordinal);
 
 }

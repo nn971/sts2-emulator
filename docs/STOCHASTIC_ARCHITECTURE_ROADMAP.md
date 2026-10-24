@@ -13,6 +13,14 @@ now has one implementation across typed replay, scripted replay, and saved
 source-boundary validation. Static source review and `git diff --check` only; no
 tests or builds were run.
 
+**S4 candidate-label equality owner increment (2026-10-24):** Ordered,
+null-aware candidate-label equality now sits beside canonical request identity
+in `ControlledStochasticChanceReplayV111`; the executor retains a facade and
+label-to-index translation. Duplicate string-array comparisons were removed
+from the Native run-action transcript, Shovel and event-relic bag replay,
+controlled event/run-action validation, and the source run-start boundary.
+Static source review and `git diff --check` only; no tests or builds were run.
+
 **S4 guarded hand-draw completion owner increment (2026-10-24):** A clean
 guarded `DrawPlayerHand` source result now completes through the existing
 `CompleteAutomaticHandDrawStage` owner. This shares after-hand power cleanup

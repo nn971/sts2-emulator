@@ -1162,8 +1162,9 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                     "run.encounter.overgrowth_boss.index_draw"
                 || exception.Request.StreamId != "combat"
                 || exception.CandidateLabels is null
-                || !exception.CandidateLabels.SequenceEqual(
-                    bossPool, StringComparer.Ordinal))
+                || !ControlledStochasticChanceReplayV111
+                    .CandidateLabelsMatch(
+                        exception.CandidateLabels, bossPool))
                 throw new NotSupportedException(
                     "Controlled run start reached an unsupported chance request.");
 

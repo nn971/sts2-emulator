@@ -215,15 +215,15 @@ public sealed record ControlledRunActionTraceV111(
                 || isCombatDraw || isCombatPotionDraw
                 || isShopPurchaseDraw || isRestHealRewardDraw)
                 || nativeRelicBagLabels
-                || omittedLabels || labels.SequenceEqual(
-                Enumerable.Range(0, labels.Length).Select(index =>
-                    index.ToString(CultureInfo.InvariantCulture)),
-                StringComparer.Ordinal);
+                || omittedLabels ||
+                ControlledStochasticChanceReplayV111.CandidateLabelsMatch(
+                    labels, Enumerable.Range(0, labels.Length).Select(index =>
+                        index.ToString(CultureInfo.InvariantCulture)));
             var numericUnderdocksBossLabels = !isUnderdocksBossDraw
-                || labels.SequenceEqual(Enumerable.Range(0, labels.Length)
+                || ControlledStochasticChanceReplayV111.CandidateLabelsMatch(
+                    labels, Enumerable.Range(0, labels.Length)
                     .Select(index => index.ToString(
-                        CultureInfo.InvariantCulture)),
-                    StringComparer.Ordinal);
+                        CultureInfo.InvariantCulture)));
             if (decision.ProviderMode != "controlled-v111"
                 || decision.NativeCursorBefore is not null
                 || decision.NativeCursorAfter is not null
@@ -358,9 +358,9 @@ public sealed record ControlledRunActionTraceV111(
             && request.SupportCount == 100
             && request.BoundedCount == 100
             && request.OrderedCandidates.Length == 0
-            && labels.SequenceEqual(
-                PrototypeNativeRelicGrabBag.LegacyRarityTicketLabels(),
-                StringComparer.Ordinal);
+            && ControlledStochasticChanceReplayV111.CandidateLabelsMatch(
+                labels,
+                PrototypeNativeRelicGrabBag.LegacyRarityTicketLabels());
         var identity = request.SiteId == PrototypeNativeRelicGrabBag
                 .NativeTreasureModelSiteId
             && request.StreamId == "reward"
@@ -371,9 +371,9 @@ public sealed record ControlledRunActionTraceV111(
                 Enumerable.Range(0, labels.Length))
             && labels.Distinct(StringComparer.Ordinal).Count() ==
                 labels.Length
-            && labels.SequenceEqual(labels.OrderBy(
-                label => label, StringComparer.Ordinal),
-                StringComparer.Ordinal);
+            && ControlledStochasticChanceReplayV111.CandidateLabelsMatch(
+                labels, labels.OrderBy(
+                    label => label, StringComparer.Ordinal).ToArray());
         return rarityTicket || identity;
     }
 
@@ -925,8 +925,8 @@ public sealed record PrototypeControlledRunActionContinuationV111(
             || PendingRequest.OwnerId != expectedOwner
             || !PendingRequest.OrderedCandidates.SequenceEqual(expectedCandidates)
             || PendingCandidateLabels.Length != expectedLabels.Length
-            || !PendingCandidateLabels.SequenceEqual(expectedLabels,
-                StringComparer.Ordinal))
+            || !ControlledStochasticChanceReplayV111.CandidateLabelsMatch(
+                PendingCandidateLabels, expectedLabels))
             throw new InvalidDataException(
                 "Controlled run-action candidates do not match their source pool.");
 
@@ -1060,15 +1060,15 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                 || isTreasureDraw || isNativeShovelFallbackDraw
                 || isCombatDraw || isCombatPotionDraw)
                 || nativeRelicBagLabels
-                || omittedLabels || labels.SequenceEqual(
-                Enumerable.Range(0, labels.Length).Select(index =>
-                    index.ToString(CultureInfo.InvariantCulture)),
-                StringComparer.Ordinal);
+                || omittedLabels ||
+                ControlledStochasticChanceReplayV111.CandidateLabelsMatch(
+                    labels, Enumerable.Range(0, labels.Length).Select(index =>
+                        index.ToString(CultureInfo.InvariantCulture)));
             var numericUnderdocksBossLabels = !isUnderdocksBossDraw
-                || labels.SequenceEqual(Enumerable.Range(0, labels.Length)
-                    .Select(index => index.ToString(
-                        CultureInfo.InvariantCulture)),
-                    StringComparer.Ordinal);
+                || ControlledStochasticChanceReplayV111.CandidateLabelsMatch(
+                    labels, Enumerable.Range(0, labels.Length)
+                        .Select(index => index.ToString(
+                            CultureInfo.InvariantCulture)));
             if (decision.ProviderMode != "controlled-v111"
                 || decision.NativeCursorBefore is not null
                 || decision.NativeCursorAfter is not null
@@ -1700,8 +1700,8 @@ public static class ControlledRunActionEngineV111
             || !ControlledStochasticChanceReplayV111.RequestsMatch(
                 pending.Request, expectedRequest)
             || pending.CandidateLabels is null
-            || !pending.CandidateLabels.SequenceEqual(
-                expectedCandidateLabels, StringComparer.Ordinal))
+            || !ControlledStochasticChanceReplayV111.CandidateLabelsMatch(
+                pending.CandidateLabels, expectedCandidateLabels))
             throw new InvalidDataException(
                 "Controlled run-action request differs from its source replay.");
     }

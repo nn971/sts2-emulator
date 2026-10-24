@@ -370,9 +370,9 @@ public sealed record ControlledEventChoiceTraceV111(
                     decision.Request.SupportCount
                 || CandidateLabels[index].Any(string.IsNullOrWhiteSpace)
                 || isEntropicBrewFill
-                    && !CandidateLabels[index].SequenceEqual(
-                        PrototypeContent.PotionPool,
-                        StringComparer.Ordinal))
+                    && !ControlledStochasticChanceReplayV111.CandidateLabelsMatch(
+                        CandidateLabels[index],
+                        PrototypeContent.PotionPool))
                 throw new InvalidDataException(
                     "Controlled event-choice transcript contains an invalid outcome.");
         }
@@ -696,10 +696,10 @@ public sealed record PrototypeControlledEventChoiceContinuationV111(
             throw new InvalidDataException(
                 "Controlled event-choice continuation is missing candidate labels.");
         if ((isStoneLiftTicket || isStonePushTicket) &&
-            !PendingCandidateLabels.SequenceEqual(
+            !ControlledStochasticChanceReplayV111.CandidateLabelsMatch(
+                PendingCandidateLabels,
                 Enumerable.Range(0, 100).Select(index =>
-                    index.ToString(CultureInfo.InvariantCulture)),
-                StringComparer.Ordinal))
+                    index.ToString(CultureInfo.InvariantCulture))))
             throw new InvalidDataException(
                 "Stone of All Time ticket continuation has malformed labels.");
         for (var index = 0; index < Decisions.Length; index++)
@@ -917,8 +917,8 @@ public sealed record PrototypeControlledEventRewardChoiceContinuationV111(
                 ControlledRunActionEngineV111
                     .IsEntropicBrewFillRequest(
                         PartialState, ResumeAction, PendingRequest)
-                && PendingCandidateLabels.SequenceEqual(
-                    PrototypeContent.PotionPool, StringComparer.Ordinal);
+                && ControlledStochasticChanceReplayV111.CandidateLabelsMatch(
+                    PendingCandidateLabels, PrototypeContent.PotionPool);
             if ((!isRerollAction && !isEntropicBrewAction)
                 || !new PrototypeGameEngine().GetLegalActions(PartialState)
                     .Any(action => StringComparer.Ordinal.Equals(
@@ -988,9 +988,9 @@ public sealed record PrototypeControlledEventRewardChoiceContinuationV111(
                 || DecisionCandidateLabels[index].Any(
                     string.IsNullOrWhiteSpace)
                 || isEntropicBrewDecision
-                    && !DecisionCandidateLabels[index].SequenceEqual(
-                        PrototypeContent.PotionPool,
-                        StringComparer.Ordinal))
+                    && !ControlledStochasticChanceReplayV111.CandidateLabelsMatch(
+                        DecisionCandidateLabels[index],
+                        PrototypeContent.PotionPool))
                 throw new InvalidDataException(
                     "Controlled event-reward prefix contains an invalid outcome.");
         }

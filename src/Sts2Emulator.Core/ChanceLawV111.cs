@@ -8519,7 +8519,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
             savedDecision.Validate();
             if (!ControlledStochasticChanceReplayV111.RequestsMatch(
                     boundary.PendingRequest, savedDecision.ToRequest()) ||
-                !SameNativeRunActionLabels(
+                !ControlledStochasticChanceReplayV111.CandidateLabelsMatch(
                     boundary.PendingCandidateLabels,
                     savedDecision.CandidateLabels))
                 throw new InvalidDataException(
@@ -8564,11 +8564,6 @@ public sealed record ReferenceNatureRunActionSessionV111(
             throw new InvalidDataException(
                 "Native run-action result differs from its typed stochastic replay.");
     }
-
-    private static bool SameNativeRunActionLabels(
-        string[]? left, string[]? right) =>
-        left is null ? right is null : right is not null &&
-            left.SequenceEqual(right, StringComparer.Ordinal);
 
     private static bool SameNativeRunActionContinuation(
         ControlledStochasticContinuationStateV111? left,
