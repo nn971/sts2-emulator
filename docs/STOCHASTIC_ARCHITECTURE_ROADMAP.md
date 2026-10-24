@@ -24,6 +24,16 @@ owner-named source files instead of the Chance Law core file. Public type
 names, behavior, and snapshot schemas are unchanged. Static source review and
 `git diff --check` only; no tests or builds were run.
 
+**S3 Chance Law query source ownership increment (2026-10-24):** Eight existing
+`ChanceLawEngineV111` partial implementations for Native events, event
+shuffles, Neow, Punch Off, Tablet of Truth, Trash Heap, and Trial now live in
+`ChanceLaw*V111.cs` files rather than ReferenceNature session sources. The
+ReferenceNature session files retain their existing session and replay owners;
+their SiteId lists now live on those session types and the registry resolves
+them directly. Chance Law retains delegating list projections for compatibility.
+Public query methods, behavior, and schemas are unchanged. The full source
+inventory passed; no tests or builds were run.
+
 **S4 choice-resolution continuation owner increment (2026-10-24):** The
 existing `CreateEffectContinuation`, `ResumeChoiceResolutionContinuation`,
 and outer/parent frame composition helpers now live in
