@@ -27,7 +27,7 @@ from urllib.parse import unquote, urlparse
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
 RUNTIME_SOURCE_ROOTS = (ROOT / "src", ROOT / "native")
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v57"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v58"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 NATIVE_RNG_SOURCE_FILES = frozenset({
     "NativeCombatRngEntryV111.cs",
@@ -2741,14 +2741,33 @@ def _matching_csharp_delimiter(
     return None
 
 
-def _chance_law_query_methods(
+def _csharp_expression_body_end(source: str, start: int) -> int | None:
+    """Find an expression-bodied member's top-level terminating semicolon."""
+    closing_to_opening = {")": "(", "]": "[", "}": "{"}
+    opening_delimiters = set(closing_to_opening.values())
+    stack: list[str] = []
+    for position in range(start, len(source)):
+        character = source[position]
+        if character in opening_delimiters:
+            stack.append(character)
+        elif character in closing_to_opening:
+            if stack and stack[-1] == closing_to_opening[character]:
+                stack.pop()
+        elif character == ";" and not stack:
+            return position
+    return None
+
+
+def _chance_law_engine_methods(
     sources: dict[Path, str],
 ) -> list[dict[str, Any]]:
-    """Extract direct query method bodies from ChanceLaw partial sources."""
+    """Extract static method bodies declared on ChanceLawEngine partials."""
     declaration = re.compile(
-        r"\b(?:public|private|internal)\s+static\s+"
-        r"[A-Za-z_][A-Za-z0-9_?.<>,\[\]]*\s+"
-        r"(?P<name>Query[A-Za-z0-9_]*)\s*\("
+        r"^[ \t]*(?:public|private|internal|protected)\s+static\s+"
+        r"(?:(?:async|unsafe|extern|new)\s+)*"
+        r"[A-Za-z_][A-Za-z0-9_?.<>,\[\]()\s]*?\s+"
+        r"(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*\(",
+        re.MULTILINE,
     )
     methods: list[dict[str, Any]] = []
     for path, source in sources.items():
@@ -2757,43 +2776,73 @@ def _chance_law_query_methods(
         ):
             continue
         code = _mask_csharp_comments_and_literals(source)
-        if "partial class ChanceLawEngineV111" not in code:
+        class_match = re.search(
+            r"\bpublic\s+static\s+partial\s+class\s+"
+            r"ChanceLawEngineV111\b",
+            code,
+        )
+        if class_match is None:
             continue
-        for match in declaration.finditer(code):
-            opening_paren = code.find("(", match.start("name"))
+        class_opening = code.find("{", class_match.end())
+        class_closing = _matching_csharp_delimiter(
+            code, class_opening, "{", "}"
+        )
+        if class_opening < 0 or class_closing is None:
+            continue
+        class_body_start = class_opening + 1
+        class_body = code[class_body_start:class_closing]
+        for match in declaration.finditer(class_body):
+            opening_paren = class_body.find("(", match.start("name"))
             closing_paren = _matching_csharp_delimiter(
-                code, opening_paren, "(", ")"
+                class_body, opening_paren, "(", ")"
             )
             if closing_paren is None:
                 continue
             cursor = closing_paren + 1
-            while cursor < len(code):
-                while cursor < len(code) and code[cursor].isspace():
+            while cursor < len(class_body):
+                while cursor < len(class_body) and class_body[cursor].isspace():
                     cursor += 1
-                if code.startswith("=>", cursor):
-                    end = code.find(";", cursor + 2)
-                    if end < 0:
-                        break
-                    body = code[cursor + 2:end]
+                if cursor >= len(class_body):
+                    body = ""
+                    body_offset = cursor
                     break
-                if code[cursor] == "{":
-                    closing_brace = _matching_csharp_delimiter(
-                        code, cursor, "{", "}"
+                if class_body.startswith("=>", cursor):
+                    body_start = cursor + 2
+                    body_end = _csharp_expression_body_end(
+                        class_body, body_start
                     )
-                    if closing_brace is None:
+                    if body_end is None:
+                        body = ""
+                        body_offset = body_start
+                    else:
+                        body = class_body[body_start:body_end]
+                        body_offset = body_start
+                    break
+                if class_body[cursor] == "{":
+                    body_start = cursor
+                    body_end = _matching_csharp_delimiter(
+                        class_body, body_start, "{", "}"
+                    )
+                    if body_end is None:
                         body = ""
                     else:
-                        body = code[cursor:closing_brace + 1]
+                        body = class_body[body_start:body_end + 1]
+                    body_offset = body_start
                     break
-                if code[cursor] == ";":
+                if class_body[cursor] == ";":
                     body = ""
+                    body_offset = cursor
                     break
                 cursor += 1
             else:
                 continue
+
+            absolute_name = class_body_start + match.start("name")
+            absolute_body = class_body_start + body_offset
             methods.append({
                 "path": path.relative_to(ROOT).as_posix(),
-                "line": source.count("\n", 0, match.start("name")) + 1,
+                "line": source.count("\n", 0, absolute_name) + 1,
+                "body_line": source.count("\n", 0, absolute_body) + 1,
                 "name": match.group("name"),
                 "body": body,
                 "source": source,
@@ -2804,7 +2853,7 @@ def _chance_law_query_methods(
 def _chance_law_outcome_blind_violations(
     sources: dict[Path, str],
 ) -> dict[str, Any]:
-    """Find direct sampling, cursor, and replay reads in Chance Law queries."""
+    """Follow ChanceLawEngine helper calls and find forbidden query effects."""
     patterns = (
         ("direct_random_sampling", re.compile(
             r"\b(?:PrototypeRng|NativeRngV111|NativeFisherYatesV111|"
@@ -2835,27 +2884,77 @@ def _chance_law_outcome_blind_violations(
             r"(?:\([^)]*\))?\s*\.\s*Step\s*\("
         )),
     )
-    methods = _chance_law_query_methods(sources)
-    violations: list[dict[str, Any]] = []
+    methods = _chance_law_engine_methods(sources)
+    query_methods = [
+        method for method in methods if method["name"].startswith("Query")
+    ]
+    methods_by_name: dict[str, list[dict[str, Any]]] = {}
+    methods_by_id: dict[tuple[str, int, str], dict[str, Any]] = {}
     for method in methods:
-        for finding, pattern in patterns:
-            for match in pattern.finditer(method["body"]):
-                line = method["line"] + method["body"].count(
-                    "\n", 0, match.start()
-                )
-                excerpt = method["source"].splitlines()[line - 1].strip()
-                violations.append({
-                    "path": method["path"],
-                    "line": line,
-                    "method": method["name"],
-                    "finding": finding,
-                    "source_excerpt": excerpt,
-                })
+        method_id = (method["path"], method["line"], method["name"])
+        methods_by_name.setdefault(method["name"], []).append(method)
+        methods_by_id[method_id] = method
+
+    call_pattern = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*)\s*\(")
+    violations: list[dict[str, Any]] = []
+    reachable_method_ids: set[tuple[str, int, str]] = set()
+    for query in query_methods:
+        query_id = (query["path"], query["line"], query["name"])
+        pending = [(query_id, (query["name"],))]
+        visited: set[tuple[str, int, str]] = set()
+        while pending:
+            method_id, call_chain = pending.pop()
+            if method_id in visited:
+                continue
+            visited.add(method_id)
+            reachable_method_ids.add(method_id)
+            method = methods_by_id[method_id]
+            for finding, pattern in patterns:
+                for match in pattern.finditer(method["body"]):
+                    line = method["body_line"] + method["body"].count(
+                        "\n", 0, match.start()
+                    )
+                    excerpt = method["source"].splitlines()[line - 1].strip()
+                    violations.append({
+                        "path": method["path"],
+                        "line": line,
+                        "entry_method": query["name"],
+                        "method": method["name"],
+                        "call_chain": list(call_chain),
+                        "finding": finding,
+                        "source_excerpt": excerpt,
+                    })
+
+            called_names = list(dict.fromkeys(
+                match.group(1)
+                for match in call_pattern.finditer(method["body"])
+                if match.group(1) in methods_by_name
+            ))
+            for called_name in reversed(called_names):
+                for helper in reversed(methods_by_name[called_name]):
+                    helper_id = (
+                        helper["path"], helper["line"], helper["name"]
+                    )
+                    if helper_id not in visited:
+                        pending.append((
+                            helper_id, call_chain + (helper["name"],)
+                        ))
     return {
-        "query_method_count": len(methods),
+        "query_method_count": len(query_methods),
+        "engine_method_count": len(methods),
+        "reachable_method_count": len(reachable_method_ids),
+        "unparsed_query_methods": [
+            {
+                "path": method["path"],
+                "line": method["line"],
+                "method": method["name"],
+            }
+            for method in query_methods if not method["body"].strip()
+        ],
         "violations": sorted(
             violations, key=lambda finding: (
-                finding["path"], finding["line"], finding["finding"]
+                finding["entry_method"], finding["path"],
+                finding["line"], finding["finding"]
             )
         ),
     }
@@ -3654,10 +3753,13 @@ def collect() -> dict[str, Any]:
             "entropy sources. A separate direct-reference guard checks "
             "Chance Law symbols in Native RNG providers/adapters and native "
             "mod C# sources; it cannot establish the absence of indirect "
-            "dependencies. A direct query-body guard reports Native sampling, "
+            "dependencies. A Chance Law query call-graph guard follows calls "
+            "by method name through static methods declared on the "
+            "ChanceLawEngineV111 partial type and reports Native sampling, "
             "provider-cursor, boundary-journal, replay-capture, or engine-step "
-            "references inside Chance Law query methods; it cannot prove the "
-            "absence of indirect helper dependencies. Explicit typed random-request "
+            "references reached from query methods. It does not resolve "
+            "overloads or calls into other types, delegates, or reflection. "
+            "Explicit typed random-request "
             "constructions are listed with their site ID, index operation-kind "
             "expression, and registry/matrix resolution status. The static "
             "operation locator does not resolve forwarded caller values on its "
@@ -3844,12 +3946,17 @@ def render_markdown(report: dict[str, Any]) -> str:
                 "native_chance_law_dependency_references"
             ]
         ],
-        "Chance Law direct outcome-blind query guard: "
+        "Chance Law transitive outcome-blind query guard: "
         f"**{report['chance_law_outcome_blind_contract']['query_method_count']}** query methods, "
-        f"**{len(report['chance_law_outcome_blind_contract']['violations'])}** direct sampling, cursor, or replay references. "
-        "This source check does not follow indirect helper calls.",
+        f"**{report['chance_law_outcome_blind_contract']['reachable_method_count']}** reachable methods in "
+        f"**{report['chance_law_outcome_blind_contract']['engine_method_count']}** indexed ChanceLawEngine methods, "
+        f"**{len(report['chance_law_outcome_blind_contract']['unparsed_query_methods'])}** query bodies without parsed code, "
+        f"**{len(report['chance_law_outcome_blind_contract']['violations'])}** forbidden sampling, cursor, or replay references. "
+        "Calls are matched by method name; overload resolution, other types, delegates, and reflection are outside this source check.",
         *[
-            f"- {finding['path']}:{finding['line']} `{finding['method']}` "
+            f"- {finding['path']}:{finding['line']} "
+            f"`{finding['entry_method']}` via "
+            f"`{' -> '.join(finding['call_chain'])}` "
             f"{finding['finding']}"
             for finding in report[
                 "chance_law_outcome_blind_contract"
@@ -4055,8 +4162,9 @@ def main() -> int:
     parser.add_argument(
         "--check-chance-law-outcome-blind", action="store_true",
         help=(
-            "fail on direct provider sampling/cursor reads, boundary journals, "
-            "replay captures, or engine steps in Chance Law query methods"
+            "fail on provider sampling/cursor reads, boundary journals, replay "
+            "captures, or engine steps reachable from Chance Law queries "
+            "through methods declared on ChanceLawEngineV111"
         ),
     )
     args = parser.parse_args()
@@ -4158,6 +4266,8 @@ def main() -> int:
     if args.check_chance_law_outcome_blind and (
             report["chance_law_outcome_blind_contract"][
                 "query_method_count"] == 0 or
+            report["chance_law_outcome_blind_contract"][
+                "unparsed_query_methods"] or
             report["chance_law_outcome_blind_contract"]["violations"]):
         print(json.dumps({
             "chance_law_outcome_blind_contract":

@@ -2,6 +2,16 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S1 transitive Chance Law outcome-blind guard increment (2026-10-24):** The
+source inventory now follows method-name calls from all Chance Law query
+entrypoints through the static methods declared on `ChanceLawEngineV111`
+partials, checking direct and helper-mediated paths for provider sampling,
+cursor reads, boundary journals, replay capture, and engine steps. It indexes
+the query owner’s methods and conservatively includes overloads by name; calls
+into other types, delegates, and reflection remain outside its evidence. The
+136-query static inventory passed with no forbidden references. No tests or
+builds were run.
+
 **S3 merchant, Treasure, and combat-reward Chance Law ownership increment
 (2026-10-24):** Native merchant and Alchemical Coffer laws, Native Treasure
 laws, and the combat-reward hidden relic-identity law now live in their
