@@ -327,8 +327,21 @@ public sealed record SemanticCombatDrawV111(
         var cardShortlistPending = this.CardShortlistPending;
         var randomHandCostPending = this.RandomHandCostPending;
         var handCostSelectionPending = this.HandCostSelectionPending;
-        var completedHookCursor =
-            this.Run.World?.Combat?.AutomaticPipelineContinuation;
+        var cursorCombat = this.Run.World?.Combat;
+        var pipelineCursor = cursorCombat?.AutomaticPipelineContinuation;
+        bool semanticBeforeHandDrawProgress = pipelineCursor is not null &&
+            pipelineCursor.Stochastic.IsAtSemanticBeforeHandDraw(
+                pipelineCursor.Mechanics);
+        var automaticHandDrawChildKind = this.AutomaticHandDraw &&
+            cursorCombat is not null &&
+            cursorCombat.PendingChoice is { } automaticChildChoice
+            ? SemanticDrawHookChoiceEngineV111
+                .ClassifyAutomaticHandDrawChild(
+                    cursorCombat, automaticChildChoice,
+                    semanticBeforeHandDrawProgress)
+            : SemanticDrawHookChoiceEngineV111
+                .AutomaticHandDrawChildKindV111.None;
+        var completedHookCursor = pipelineCursor;
         var drawHookChoicePending = this.DrawHookChoicePending;
         PendingCombatChoiceState? automaticBeforeHandDrawPoolShuffleChoice =
             this.AutomaticHandDraw &&
@@ -361,20 +374,16 @@ public sealed record SemanticCombatDrawV111(
         bool automaticBeforeHandDrawRandomTarget =
             this.AutomaticHandDraw && this.RequestedCount == 0 &&
             this.RemainingCount == 0 &&
-            this.Run.World?.Combat is { } targetCombat &&
-            targetCombat.PendingChoice?.ControlledTarget is not null &&
-            targetCombat.AutomaticPipelineContinuation is
-                { } targetCursor &&
-            targetCursor.Stochastic.IsAtSemanticBeforeHandDraw(
-                targetCursor.Mechanics);
+            semanticBeforeHandDrawProgress &&
+            automaticHandDrawChildKind ==
+                SemanticDrawHookChoiceEngineV111
+                    .AutomaticHandDrawChildKindV111.RandomTarget;
         bool automaticBeforeHandDrawEffectDrawPending =
             this.AutomaticHandDraw &&
-            this.Run.World?.Combat is { } beforeHandDrawEffectCombat &&
-            beforeHandDrawEffectCombat.PendingChoice is
-                { } beforeHandDrawEffectChoice &&
-            PrototypeGameEngine
-                .IsAutomaticBeforeHandDrawHookSemanticDrawContinuation(
-                    beforeHandDrawEffectCombat, beforeHandDrawEffectChoice);
+            semanticBeforeHandDrawProgress &&
+            automaticHandDrawChildKind ==
+                SemanticDrawHookChoiceEngineV111
+                    .AutomaticHandDrawChildKindV111.SemanticDraw;
         if (this.RequestedCount < 0 ||
             this.RemainingCount < 0 ||
             this.RemainingCount > this.RequestedCount ||
@@ -440,152 +449,90 @@ public sealed record SemanticCombatDrawV111(
             .StandaloneSemanticDrawSegment == true ||
             combat.PendingChoice?.StandaloneSemanticDrawHookChoice == true;
         var stratagemSelectionPending = this.StratagemSelectionPending;
-        var pipelineCursor = combat.AutomaticPipelineContinuation;
         bool hasPipelineSemanticDrawProgress =
             TryGetAutomaticSemanticHandDrawProgress(
                 combat, out int pipelineRequested,
                 out int pipelineRemaining);
+        bool activeHandDrawCountsMatch =
+            hasPipelineSemanticDrawProgress &&
+            pipelineRequested == this.RequestedCount &&
+            pipelineRemaining == this.RemainingCount;
+        bool IsActiveAutomaticChild(
+            SemanticDrawHookChoiceEngineV111
+                .AutomaticHandDrawChildKindV111 kind) =>
+            this.AutomaticHandDraw &&
+            !semanticBeforeHandDrawProgress &&
+            activeHandDrawCountsMatch &&
+            automaticHandDrawChildKind == kind;
+        bool IsBeforeAutomaticChild(
+            SemanticDrawHookChoiceEngineV111
+                .AutomaticHandDrawChildKindV111 kind) =>
+            this.AutomaticHandDraw && semanticBeforeHandDrawProgress &&
+            automaticHandDrawChildKind == kind;
         bool automaticHandDrawChildInsertionPending =
-            this.AutomaticHandDraw && combat.PendingChoice is
-                { } insertionChoice &&
-            PrototypeGameEngine
-                .IsAutomaticHandDrawHookDrawInsertionContinuation(
-                    combat, insertionChoice) &&
-            hasPipelineSemanticDrawProgress &&
-            pipelineRequested == this.RequestedCount &&
-            pipelineRemaining == this.RemainingCount;
+            IsActiveAutomaticChild(
+                SemanticDrawHookChoiceEngineV111
+                    .AutomaticHandDrawChildKindV111.DrawInsertion);
         bool automaticBeforeHandDrawChildInsertionPending =
-            this.AutomaticHandDraw && combat.PendingChoice is
-                { } beforeHandDrawInsertionChoice &&
-            PrototypeGameEngine
-                .IsAutomaticBeforeHandDrawHookDrawInsertionContinuation(
-                    combat, beforeHandDrawInsertionChoice);
+            IsBeforeAutomaticChild(
+                SemanticDrawHookChoiceEngineV111
+                    .AutomaticHandDrawChildKindV111.DrawInsertion);
         bool automaticHandDrawGeneratedCardPending =
-            this.AutomaticHandDraw && combat.PendingChoice is
-                { } activeGeneratedCardChoice &&
-            PrototypeGameEngine
-                .IsAutomaticHandDrawGeneratedCardContinuation(
-                    combat, activeGeneratedCardChoice) &&
-            hasPipelineSemanticDrawProgress &&
-            pipelineRequested == this.RequestedCount &&
-            pipelineRemaining == this.RemainingCount;
+            IsActiveAutomaticChild(
+                SemanticDrawHookChoiceEngineV111
+                    .AutomaticHandDrawChildKindV111.GeneratedCard);
         bool automaticBeforeHandDrawGeneratedCardPending =
-            this.AutomaticHandDraw && combat.PendingChoice is
-                { } beforeHandDrawGeneratedCardChoice &&
-            PrototypeGameEngine
-                .IsAutomaticHandDrawGeneratedCardContinuation(
-                    combat, beforeHandDrawGeneratedCardChoice) &&
-            pipelineCursor is not null &&
-            pipelineCursor.Stochastic.IsAtSemanticBeforeHandDraw(
-                pipelineCursor.Mechanics);
+            IsBeforeAutomaticChild(
+                SemanticDrawHookChoiceEngineV111
+                    .AutomaticHandDrawChildKindV111.GeneratedCard);
         bool automaticHandDrawPotionGenerationPending =
-            this.AutomaticHandDraw && combat.PendingChoice is
-                { } activePotionGenerationChoice &&
-            PrototypeGameEngine
-                .IsAutomaticHandDrawPotionGenerationContinuation(
-                    combat, activePotionGenerationChoice) &&
-            hasPipelineSemanticDrawProgress &&
-            pipelineRequested == this.RequestedCount &&
-            pipelineRemaining == this.RemainingCount;
+            IsActiveAutomaticChild(
+                SemanticDrawHookChoiceEngineV111
+                    .AutomaticHandDrawChildKindV111.PotionGeneration);
         bool automaticBeforeHandDrawPotionGenerationPending =
-            this.AutomaticHandDraw && combat.PendingChoice is
-                { } beforeHandDrawPotionGenerationChoice &&
-            PrototypeGameEngine
-                .IsAutomaticHandDrawPotionGenerationContinuation(
-                    combat, beforeHandDrawPotionGenerationChoice) &&
-            pipelineCursor is not null &&
-            pipelineCursor.Stochastic.IsAtSemanticBeforeHandDraw(
-                pipelineCursor.Mechanics);
+            IsBeforeAutomaticChild(
+                SemanticDrawHookChoiceEngineV111
+                    .AutomaticHandDrawChildKindV111.PotionGeneration);
         bool automaticHandDrawPoolShufflePending =
-            this.AutomaticHandDraw && combat.PendingChoice is
-                { } activePoolShuffleChoice &&
-            PrototypeGameEngine
-                .IsAutomaticHandDrawPoolShuffleContinuation(
-                    combat, activePoolShuffleChoice) &&
-            hasPipelineSemanticDrawProgress &&
-            pipelineRequested == this.RequestedCount &&
-            pipelineRemaining == this.RemainingCount;
+            IsActiveAutomaticChild(
+                SemanticDrawHookChoiceEngineV111
+                    .AutomaticHandDrawChildKindV111.PoolShuffle);
         bool automaticBeforeHandDrawPoolShufflePending =
-            this.AutomaticHandDraw && combat.PendingChoice is
-                { } beforeHandDrawPoolShuffleChoice &&
-            PrototypeGameEngine
-                .IsAutomaticHandDrawPoolShuffleContinuation(
-                    combat, beforeHandDrawPoolShuffleChoice) &&
-            pipelineCursor is not null &&
-            pipelineCursor.Stochastic.IsAtSemanticBeforeHandDraw(
-                pipelineCursor.Mechanics);
+            IsBeforeAutomaticChild(
+                SemanticDrawHookChoiceEngineV111
+                    .AutomaticHandDrawChildKindV111.PoolShuffle);
         bool automaticHandDrawCardSelectionPending =
-            this.AutomaticHandDraw && combat.PendingChoice is
-                { } activeCardSelectionChoice &&
-            PrototypeGameEngine
-                .IsAutomaticHandDrawHookCardSelectionContinuation(
-                    combat, activeCardSelectionChoice) &&
-            hasPipelineSemanticDrawProgress &&
-            pipelineRequested == this.RequestedCount &&
-            pipelineRemaining == this.RemainingCount;
+            IsActiveAutomaticChild(
+                SemanticDrawHookChoiceEngineV111
+                    .AutomaticHandDrawChildKindV111.CardSelection);
         bool automaticBeforeHandDrawCardSelectionPending =
-            this.AutomaticHandDraw && combat.PendingChoice is
-                { } beforeHandDrawCardSelectionChoice &&
-            PrototypeGameEngine
-                .IsAutomaticHandDrawHookCardSelectionContinuation(
-                    combat, beforeHandDrawCardSelectionChoice) &&
-            pipelineCursor is not null &&
-            pipelineCursor.Stochastic.IsAtSemanticBeforeHandDraw(
-                pipelineCursor.Mechanics);
+            IsBeforeAutomaticChild(
+                SemanticDrawHookChoiceEngineV111
+                    .AutomaticHandDrawChildKindV111.CardSelection);
         bool automaticHandDrawCardTransformPending =
-            this.AutomaticHandDraw && combat.PendingChoice is
-                { } activeCardTransformChoice &&
-            PrototypeGameEngine
-                .IsAutomaticHandDrawHookCardTransformContinuation(
-                    combat, activeCardTransformChoice) &&
-            hasPipelineSemanticDrawProgress &&
-            pipelineRequested == this.RequestedCount &&
-            pipelineRemaining == this.RemainingCount;
+            IsActiveAutomaticChild(
+                SemanticDrawHookChoiceEngineV111
+                    .AutomaticHandDrawChildKindV111.CardTransform);
         bool automaticBeforeHandDrawCardTransformPending =
-            this.AutomaticHandDraw && combat.PendingChoice is
-                { } beforeHandDrawCardTransformChoice &&
-            PrototypeGameEngine
-                .IsAutomaticHandDrawHookCardTransformContinuation(
-                    combat, beforeHandDrawCardTransformChoice) &&
-            pipelineCursor is not null &&
-            pipelineCursor.Stochastic.IsAtSemanticBeforeHandDraw(
-                pipelineCursor.Mechanics);
+            IsBeforeAutomaticChild(
+                SemanticDrawHookChoiceEngineV111
+                    .AutomaticHandDrawChildKindV111.CardTransform);
         bool automaticHandDrawCardShortlistPending =
-            this.AutomaticHandDraw && combat.PendingChoice is
-                { } activeCardShortlistChoice &&
-            PrototypeGameEngine
-                .IsAutomaticHandDrawHookCardShortlistContinuation(
-                    combat, activeCardShortlistChoice) &&
-            hasPipelineSemanticDrawProgress &&
-            pipelineRequested == this.RequestedCount &&
-            pipelineRemaining == this.RemainingCount;
+            IsActiveAutomaticChild(
+                SemanticDrawHookChoiceEngineV111
+                    .AutomaticHandDrawChildKindV111.CardShortlist);
         bool automaticBeforeHandDrawCardShortlistPending =
-            this.AutomaticHandDraw && combat.PendingChoice is
-                { } beforeHandDrawCardShortlistChoice &&
-            PrototypeGameEngine
-                .IsAutomaticHandDrawHookCardShortlistContinuation(
-                    combat, beforeHandDrawCardShortlistChoice) &&
-            pipelineCursor is not null &&
-            pipelineCursor.Stochastic.IsAtSemanticBeforeHandDraw(
-                pipelineCursor.Mechanics);
+            IsBeforeAutomaticChild(
+                SemanticDrawHookChoiceEngineV111
+                    .AutomaticHandDrawChildKindV111.CardShortlist);
         bool automaticHandDrawRandomHandCostPending =
-            this.AutomaticHandDraw && combat.PendingChoice is
-                { } activeRandomHandCostChoice &&
-            PrototypeGameEngine
-                .IsAutomaticHandDrawHookRandomHandCostContinuation(
-                    combat, activeRandomHandCostChoice) &&
-            hasPipelineSemanticDrawProgress &&
-            pipelineRequested == this.RequestedCount &&
-            pipelineRemaining == this.RemainingCount;
+            IsActiveAutomaticChild(
+                SemanticDrawHookChoiceEngineV111
+                    .AutomaticHandDrawChildKindV111.RandomHandCost);
         bool automaticBeforeHandDrawRandomHandCostPending =
-            this.AutomaticHandDraw && combat.PendingChoice is
-                { } beforeHandDrawRandomHandCostChoice &&
-            PrototypeGameEngine
-                .IsAutomaticHandDrawHookRandomHandCostContinuation(
-                    combat, beforeHandDrawRandomHandCostChoice) &&
-            pipelineCursor is not null &&
-            pipelineCursor.Stochastic.IsAtSemanticBeforeHandDraw(
-                pipelineCursor.Mechanics);
+            IsBeforeAutomaticChild(
+                SemanticDrawHookChoiceEngineV111
+                    .AutomaticHandDrawChildKindV111.RandomHandCost);
         if (automaticHandDrawChildInsertionPending ||
             automaticBeforeHandDrawChildInsertionPending)
             SemanticDrawInsertionChoiceV111.ValidateBoundary(this.Run);
@@ -612,14 +559,9 @@ public sealed record SemanticCombatDrawV111(
             automaticBeforeHandDrawRandomHandCostPending)
             SemanticRandomHandCostChoiceV111.ValidateBoundary(this.Run);
         bool automaticHandDrawEffectDrawPending =
-            this.AutomaticHandDraw && combat.PendingChoice is
-                { } effectDrawChoice &&
-            PrototypeGameEngine
-                .IsAutomaticHandDrawHookSemanticDrawContinuation(
-                    combat, effectDrawChoice) &&
-            hasPipelineSemanticDrawProgress &&
-            pipelineRequested == this.RequestedCount &&
-            pipelineRemaining == this.RemainingCount;
+            IsActiveAutomaticChild(
+                SemanticDrawHookChoiceEngineV111
+                    .AutomaticHandDrawChildKindV111.SemanticDraw);
         if (automaticHandDrawEffectDrawPending ||
             automaticBeforeHandDrawEffectDrawPending)
         {
@@ -635,9 +577,6 @@ public sealed record SemanticCombatDrawV111(
         var targetPending = this.TargetPending;
         bool automaticSemanticHandDrawRandomTarget =
             targetPending is not null;
-        bool semanticBeforeHandDrawProgress = pipelineCursor is not null &&
-            pipelineCursor.Stochastic.IsAtSemanticBeforeHandDraw(
-                pipelineCursor.Mechanics);
         if (this.AutomaticHandDraw)
         {
             bool awaiting = deck.Pending is not null || cost is not null ||

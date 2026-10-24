@@ -109,7 +109,7 @@ public sealed record SemanticDrawHookChoiceDecisionV111(
 
 public static class SemanticDrawHookChoiceEngineV111
 {
-    private enum AutomaticHandDrawChildKindV111
+    internal enum AutomaticHandDrawChildKindV111
     {
         None,
         RandomTarget,
@@ -125,7 +125,7 @@ public static class SemanticDrawHookChoiceEngineV111
         SemanticDraw
     }
 
-    private static AutomaticHandDrawChildKindV111
+    internal static AutomaticHandDrawChildKindV111
         ClassifyAutomaticHandDrawChild(
             CombatState combat, PendingCombatChoice choice,
             bool beforeHandDraw)

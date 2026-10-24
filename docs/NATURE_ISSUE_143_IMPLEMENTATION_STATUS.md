@@ -1199,3 +1199,11 @@ pre-draw or active hand-draw cursor, then dispatches boundary validation by
 child kind. It keeps the existing per-kind validators and rejects unknown
 tagged children. Static source review and `git diff --check` only; no tests or
 builds were run.
+
+## 2026-10-25: shared draw-child validation classification
+
+`SemanticCombatDrawV111.Validate` now uses the same stage-aware child
+classification as automatic draw-hook replay for nested insertion, generation,
+selection, transform, shortlist, cost, and effect-draw boundaries. Its existing
+count checks and per-kind boundary validators remain in the draw-frame owner.
+Static source review and `git diff --check` only; no tests or builds were run.

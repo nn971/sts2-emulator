@@ -3,10 +3,11 @@
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
 **S4 nested draw-hook child classification consolidation (2026-10-25):**
-Automatic draw-hook replay now classifies a supported child once against its
-saved pre-draw or active hand-draw cursor, then dispatches boundary validation
-by child kind. Unknown tagged choices remain fail-closed. Static source review
-and `git diff --check` only; no tests or builds were run.
+Automatic draw-hook replay and semantic draw-frame validation now share one
+classification of a child against its saved pre-draw or active hand-draw
+cursor, then dispatch boundary validation by child kind. Unknown tagged choices
+remain fail-closed. Static source review and `git diff --check` only; no tests
+or builds were run.
 
 **S4 automatic random pile-card handoff consolidation (2026-10-25):** After
 Jeweled Mask's automatic-hook card choice resolves, both active and pre-draw
