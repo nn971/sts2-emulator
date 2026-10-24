@@ -52,6 +52,14 @@ raw saved progress tag for controlled draw continuation decisions. The saved
 payload and snapshot representation are unchanged. Static source review and
 `git diff --check` only; no tests or builds were run.
 
+**S4 controlled-playable identity resolver increment (2026-10-24):**
+ControlledPlayableCombatEngineV111 now accepts generated-card, potion,
+transform, and target outcomes by stable model or enemy instance ID. Each
+identity must match exactly one candidate in the live pending source support;
+the resolver then uses the existing indexed continuation and transcript path.
+No session or snapshot schema changed. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S4 hand-draw progress presence owner increment (2026-10-24):** The pipeline
 stochastic owner now exposes `HasSavedHandDrawProgress` for clean-boundary
 presence checks. Semantic and controlled draw completion, automatic pipeline
