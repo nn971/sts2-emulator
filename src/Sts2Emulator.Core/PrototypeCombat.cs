@@ -13718,29 +13718,6 @@ public sealed partial class PrototypeGameEngine
         };
     }
 
-    private static CombatState AttachDrawResumeContinuation(
-        CombatState combat,
-        PrototypeQueuedOperation drawOperation,
-        PrototypeChoiceResolutionContinuationState continuation) =>
-        AttachOuterChoiceContinuation(
-            combat,
-            continuation with
-            {
-                Operations = new[] { drawOperation }
-                    .Concat(continuation.Operations).ToArray()
-            });
-
-    private static long[] AccumulateDrawnCardInstanceIds(
-        IEnumerable<long>? previousCardInstanceIds,
-        IEnumerable<long> drawnCardInstanceIds)
-    {
-        ArgumentNullException.ThrowIfNull(drawnCardInstanceIds);
-        return (previousCardInstanceIds ?? [])
-            .Concat(drawnCardInstanceIds)
-            .Distinct()
-            .ToArray();
-    }
-
     private static CombatState AttachParentChoiceContinuation(
         CombatState combat,
         PrototypeChoiceResolutionContinuationState? parent) =>

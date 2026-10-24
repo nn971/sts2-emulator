@@ -383,6 +383,9 @@ RNG state, and semantic transcripts remain in their provider owner.
 
 The state-only frame advancement and choice attachment helpers live in
 `PrototypeDrawCardsContinuationV111`; run publication stays in the adapter.
+That owner also builds the draw-resume prefix on an outer choice frame and
+accumulates distinct deferred drawn-card identities; generic choice-parent
+composition remains in the shared choice-continuation helper.
 Initial effect draws also use `AdvanceControlledSemanticDrawFrame` to combine
 newly drawn identities with the saved keyword prefix and Stratagem state before
 creating semantic draw, cost, or after-shuffle choices.

@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 draw-continuation helper ownership increment (2026-10-24):** The
+provider-neutral draw continuation owner now also prepends the saved draw
+operation to an outer choice frame and accumulates distinct deferred drawn
+card identities. These draw-specific helpers were removed from
+`PrototypeCombat`; generic choice-parent composition remains with its existing
+owner. Static source review and `git diff --check` only; no tests or builds
+were run.
+
 **S4 draw-resume operation construction owner increment (2026-10-24):**
 `PrototypeDrawCardsContinuationV111` now constructs the queued resume operation
 directly from the saved draw frame. The scalar factory was removed from
