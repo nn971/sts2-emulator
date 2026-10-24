@@ -4038,6 +4038,16 @@ unchanged. Broader draw-resume policy consolidation and cross-provider
 mechanical equivalence remain open. Static source review and `git diff --check`
 only; no tests or builds were run.
 
+**S4 automatic draw-cost progress result increment (2026-10-24):** The
+automatic draw-cost resume's private run/requested-count pair now composes the
+provider-neutral `PrototypeDrawCardsResumeResultV111`. Pending cost stages
+retain semantic requested-count progress, and resumed draw boundaries validate
+and propagate that count through the common hand-draw router. Controlled
+progress remains without a semantic requested count. Snapshot and transcript
+formats are unchanged. Broader draw-resume policy consolidation and
+cross-provider mechanical equivalence remain open. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S4 provider-neutral draw resume result increment (2026-10-24):** The shared
 draw-resume handoff is now named `PrototypeDrawCardsResumeResultV111` and
 defined with the other provider-neutral mechanics values. Semantic and legacy

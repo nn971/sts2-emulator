@@ -321,9 +321,8 @@ public sealed partial class PrototypeGameEngine
     }
 
     private sealed record PrototypeAutomaticHandDrawCostResumeV111(
-        RunState Run,
-        PrototypeDrawCardsResult? Drawn,
-        int? SemanticRequested);
+        PrototypeDrawCardsResumeResultV111 Progress,
+        PrototypeDrawCardsResult? Drawn);
 
     private static void ValidateDrawCardsResult(
         PrototypeDrawCardsResult drawn, bool automaticHandDraw)
@@ -629,7 +628,9 @@ public sealed partial class PrototypeGameEngine
             checkpoint, cost, selectedCost, allowHookSuspension);
         if (costProgress.CostStagePending)
             return new PrototypeAutomaticHandDrawCostResumeV111(
-                costProgress.Run, null, savedRequested);
+                new PrototypeDrawCardsResumeResultV111(
+                    costProgress.Run, cost.RemainingCount, savedRequested),
+                null);
 
         var world = RequireWorld(costProgress.Run);
         var combat = world.Combat ?? throw new InvalidDataException(
@@ -638,11 +639,13 @@ public sealed partial class PrototypeGameEngine
             combat.PendingChoice is not null &&
             combat.PendingKnowledgeDemonChoice is null)
             return new PrototypeAutomaticHandDrawCostResumeV111(
-                costProgress.Run, CreateDrawCardsResult(
+                new PrototypeDrawCardsResumeResultV111(
+                    costProgress.Run, cost.RemainingCount, savedRequested),
+                CreateDrawCardsResult(
                     costProgress.Run.Player, combat, [],
                     PrototypeDrawCardsBoundaryV111.NestedCardDrawnChoice(
                         cost.RemainingCount),
-                    automaticHandDrawStage: true), savedRequested);
+                    automaticHandDrawStage: true));
         if (costProgress.DrawnHookSuspended ||
             combat.PendingChoice is not null ||
             combat.PendingKnowledgeDemonChoice is not null)
@@ -658,7 +661,9 @@ public sealed partial class PrototypeGameEngine
                 costProgress.Run.Stochastic, prototypeRng)
         };
         return new PrototypeAutomaticHandDrawCostResumeV111(
-            resumedRun, drawn, savedRequested);
+            new PrototypeDrawCardsResumeResultV111(
+                resumedRun, drawn.RemainingCount, savedRequested),
+            drawn);
     }
 
     /// <summary>
@@ -687,19 +692,19 @@ public sealed partial class PrototypeGameEngine
         var resumed = ResumeAutomaticHandDrawAfterCost(
             checkpoint, cost, selectedCost, suspensionPolicy,
             allowHookSuspension, unsupportedBoundaryMessage, semantic);
+        resumed.Progress.Validate();
         if (resumed.Drawn is not { } drawn)
-            return new PrototypeDrawCardsResumeResultV111(
-                resumed.Run, cost.RemainingCount);
+            return resumed.Progress;
 
-        int requestedCount = resumed.SemanticRequested ?? 0;
+        int requestedCount = resumed.Progress.RequestedCount ?? 0;
         if (semantic && requestedCount <= 0)
             throw new InvalidDataException(
                 "Semantic automatic draw resume lost its request.");
-        if (!semantic && resumed.SemanticRequested is not null)
+        if (!semantic && resumed.Progress.RequestedCount is not null)
             throw new InvalidDataException(
                 "Controlled automatic draw acquired semantic progress.");
-        return ResumeAutomaticHandDrawBoundary(
-                resumed.Run, drawn, requestedCount,
+        var progress = ResumeAutomaticHandDrawBoundary(
+                resumed.Progress.Run, drawn, requestedCount,
                 context: semantic
                     ? AutomaticHandDrawResumeContextV111.SavedSemanticStage
                     : AutomaticHandDrawResumeContextV111.SavedControlledStage,
@@ -709,6 +714,14 @@ public sealed partial class PrototypeGameEngine
                     "unsupported_nested_stage") ??
             throw new InvalidDataException(
                 "Automatic hand-draw result lost its continuation owner.");
+        if (!semantic)
+            return progress;
+        if (progress.RequestedCount is { } reportedRequested &&
+            reportedRequested != requestedCount)
+            throw new InvalidDataException(
+                "Semantic hand-draw resume changed its requested count.");
+        return PrototypeDrawCardsResumeResultV111.ForHandDraw(
+            progress.Run, requestedCount, progress.RemainingCount);
     }
 
     private static int? ValidateAutomaticHandDrawCostCheckpoint(
