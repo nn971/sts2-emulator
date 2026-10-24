@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 legacy Event effect model ownership follow-up (2026-10-24):** The
+generic random-potion and Rare-card Event effect laws now join the existing
+modifier-curse, potion-slot-fill, and custom reward potion-option queries in
+`ChanceLawEventRewardV111.cs`. Shared pool and categorical-law helpers remain
+in core. Static source review and `git diff --check` only; no tests or builds
+were run.
+
 **S3 legacy Event-reward law ownership increment (2026-10-24):** The
 legacy modifier-curse, event potion-slot fill, and custom reward potion-option
 laws now live in `ChanceLawEventRewardV111.cs`. Their query methods and source
