@@ -4624,3 +4624,11 @@ semantic draw adapter despite use by automatic and controlled paths. The
 automatic hand-draw resume owner now defines the shared pipeline step index.
 All draw boundaries now share those step, count, and capacity rules. Static
 source review and `git diff --check` only; no tests or builds were run.
+
+**S4 saved automatic hand-draw kernel ownership increment (2026-10-25):** The
+provider-neutral draw continuation owner now validates saved hand-draw count
+against the `DrawPlayerHand` cursor, clears progress through the common
+publication boundary, and re-enters the draw kernel using the adapter's
+suspension policy and local RNG. Controlled and semantic adapters share this
+operation before interpreting the tagged result. Static source review and
+`git diff --check` only; no tests or builds were run.
