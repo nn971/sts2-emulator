@@ -13458,10 +13458,15 @@ public sealed partial class PrototypeGameEngine
             World = world with { Combat = resolved.Combat }
         };
 
-        if (resolved.Combat.AutomaticPipelineContinuation is
-            { Stochastic: { HandDrawProgress:
-                { Kind: PrototypeAutomaticHandDrawProgressKindV111
-                    .ControlledRecycleStratagem } } })
+        var automaticContinuation =
+            resolved.Combat.AutomaticPipelineContinuation;
+        if (automaticContinuation is not null &&
+            automaticContinuation.Stochastic
+                .TryGetActiveAutomaticHandDrawProgress(
+                    automaticContinuation.Mechanics, out var handDrawProgress) &&
+            handDrawProgress.Kind ==
+                PrototypeAutomaticHandDrawProgressKindV111
+                    .ControlledRecycleStratagem)
             return ResumeControlledRecycleStratagemSelection(state);
 
         // These choices are nested inside the active hand-draw stage. Their

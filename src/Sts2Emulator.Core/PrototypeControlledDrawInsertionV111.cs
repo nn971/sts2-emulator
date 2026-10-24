@@ -156,16 +156,17 @@ public sealed partial class PrototypeGameEngine
                 if (choice.AutomaticHandDrawRemaining is { } handRemaining)
                 {
                     var cursor = combat.AutomaticPipelineContinuation;
+                    bool savedControlledDrawProgress = cursor is not null &&
+                        cursor.Stochastic.TryGetActiveAutomaticHandDrawProgress(
+                            cursor.Mechanics, out var progress) &&
+                        progress.Kind is (
+                            PrototypeAutomaticHandDrawProgressKindV111.ControlledDraw or
+                            PrototypeAutomaticHandDrawProgressKindV111.ControlledDrawHookChoice) &&
+                        progress.RemainingCount == handRemaining;
                     if (handRemaining <= 0 ||
                         choice.AfterShuffleRelic is null ||
                         combat.Stochastic.SemanticDeck is not null || cursor is null ||
-                        cursor.Stochastic.HandDrawProgress is not
-                            { Kind: PrototypeAutomaticHandDrawProgressKindV111.ControlledDraw or
-                                PrototypeAutomaticHandDrawProgressKindV111.ControlledDrawHookChoice,
-                              RemainingCount: { } savedRemaining } ||
-                        savedRemaining != handRemaining ||
-                        !cursor.Mechanics.IsAtStep(
-                            PrototypeAutomaticStepKind.DrawPlayerHand))
+                        !savedControlledDrawProgress)
                         return false;
                 }
                 if (choice.AfterShuffleRelic is null)

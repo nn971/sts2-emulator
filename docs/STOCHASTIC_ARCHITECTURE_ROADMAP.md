@@ -2,6 +2,16 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 controlled draw-progress owner increment (2026-10-24):** Controlled-
+playable validation and turn-resume classification, controlled insertion
+validation, controlled hand-draw hook and recycle resumption, and post-choice
+recycle dispatch now obtain active automatic hand-draw modes through the
+pipeline stochastic owner's cursor-validated query. The draw completion guard
+also uses its semantic pre-draw stage query. These consumers no longer read the
+raw saved progress tag for controlled draw continuation decisions. The saved
+payload and snapshot representation are unchanged. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S0 Native random-choice callsite census increment (2026-10-24):** The v52
 inventory now includes the two direct `NativeRandomChoiceV111` calls in the
 Native relic-grab-bag source path, resolving both to existing matrix rows.

@@ -458,16 +458,17 @@ public sealed record ControlledPlayableCombatV111(
         if (drawnCost is not null)
         {
             var automatic = drawnCostCombat?.AutomaticPipelineContinuation;
+            bool savedDrawCostProgress = automatic is not null &&
+                automatic.Stochastic.TryGetActiveAutomaticHandDrawProgress(
+                    automatic.Mechanics, out var progress) &&
+                progress.Kind == PrototypeAutomaticHandDrawProgressKindV111
+                    .ControlledDrawCost &&
+                progress.RemainingCount == drawnCost.RemainingCount;
             if (this.Stochastic.Pending is not null || this.Stochastic.Recycle is not null ||
                 this.TurnIntents is not null ||
                 drawnCostCombat?.PendingChoice?.ControlledPotionGeneration is not null ||
                 !drawnCost.FromHandDraw ||
-                automatic is null ||
-                automatic.Stochastic.HandDrawProgress is not
-                    { Kind: PrototypeAutomaticHandDrawProgressKindV111
-                        .ControlledDrawCost,
-                      RemainingCount: { } savedRemaining } ||
-                savedRemaining != drawnCost.RemainingCount ||
+                !savedDrawCostProgress ||
                 !PrototypeGameEngine.ValidateControlledDrawCost(
                     this.Run.Player, drawnCostCombat!, drawnCost))
                 throw new InvalidDataException(
@@ -1074,12 +1075,14 @@ public static class ControlledPlayableCombatEngineV111
             combat.AutomaticPipelineContinuation is not { } continuation)
             return state;
         var stepKind = continuation.Mechanics.CurrentStepKind;
-        var handDrawProgress = continuation.Stochastic.HandDrawProgress;
-        if (handDrawProgress?.Kind ==
+        bool hasActiveHandDrawProgress =
+            continuation.Stochastic.TryGetActiveAutomaticHandDrawProgress(
+                continuation.Mechanics, out var handDrawProgress);
+        if (hasActiveHandDrawProgress && handDrawProgress.Kind ==
             PrototypeAutomaticHandDrawProgressKindV111
                 .ControlledRecycleStratagem)
             return state;
-        if (handDrawProgress?.Kind ==
+        if (hasActiveHandDrawProgress && handDrawProgress.Kind ==
             PrototypeAutomaticHandDrawProgressKindV111.ControlledDrawCost)
         {
             if (stepKind != PrototypeAutomaticStepKind.DrawPlayerHand ||
