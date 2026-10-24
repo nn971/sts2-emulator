@@ -61,6 +61,15 @@ queries. The mechanics diagnostic projection remains the only runtime reader
 outside the owner that projects the tagged payload. No snapshot schema changed.
 Static source review and `git diff --check` only; no tests or builds were run.
 
+**S0 Native combat RNG entry-point census increment (2026-10-24):** The v55
+inventory now traces Native initial-HP attachment, Tough Egg hatch, summoned
+enemy creation, and monster-local sampling callsites through their fixed or
+forwarded SiteIds. All seven Core callsites resolve to registered migration
+rows, and the existing matrix check rejects unmapped Native combat-entry
+helpers. This extends the source locator only; it does not establish native
+source completeness or fidelity. Static inventory generation and
+`git diff --check` only; no tests or builds were run.
+
 **S0 Native random-choice callsite census increment (2026-10-24):** The v52
 inventory now includes the two direct `NativeRandomChoiceV111` calls in the
 Native relic-grab-bag source path, resolving both to existing matrix rows.

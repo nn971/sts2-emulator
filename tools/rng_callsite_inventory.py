@@ -5,9 +5,11 @@ This is a source inventory aid, not a source-to-game completeness proof. It
 reports each direct provider expression, high-level MapRandom calls from the
 modeled map generators, and direct NativePlayerRngV111,
 LegacyRandomChoiceV111, LegacyFisherYatesV111, and
-NativeEventContextRngV111 adapter calls with their file and line so manual site
-audits can be linked to a stable matrix row. Other indirect delegates and
-mechanics hidden behind called helpers still require manual tracing.
+NativeEventContextRngV111 adapter calls with their file and line. It also
+traces NativeCombatRngEntryV111 random boundary entry points through their
+fixed or forwarded SiteId so manual audits can link them to stable matrix
+rows. Other indirect delegates and mechanics hidden behind called helpers
+still require manual tracing.
 """
 
 from __future__ import annotations
@@ -25,7 +27,7 @@ from urllib.parse import unquote, urlparse
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
 RUNTIME_SOURCE_ROOTS = (ROOT / "src", ROOT / "native")
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v54"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v55"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 TYPE_SOURCE_DECLARATION_PATTERN = re.compile(
     r"\b(?:class|record|struct)\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\b"
@@ -2330,6 +2332,48 @@ def _site_id_forwarder_calls(
             },
         },
         {
+            "callee": "NativeCombatRngEntryV111.AttachAndRollInitialHp",
+            "pattern": re.compile(
+                r"\bNativeCombatRngEntryV111\.AttachAndRollInitialHp\s*\("
+            ),
+            "site_argument": None,
+            "fixed_site_expression":
+                "NativeCombatRngEntryV111.InitialUniqueHpSiteId",
+            "paths": None,
+            "exclude_paths": {"NativeCombatRngEntryV111.cs"},
+        },
+        {
+            "callee": "NativeCombatRngEntryV111.HatchToughEgg",
+            "pattern": re.compile(
+                r"\bNativeCombatRngEntryV111\.HatchToughEgg\s*\("
+            ),
+            "site_argument": None,
+            "fixed_site_expression":
+                "NativeCombatRngEntryV111.ToughEggHatchHpSiteId",
+            "paths": None,
+            "exclude_paths": {"NativeCombatRngEntryV111.cs"},
+        },
+        {
+            "callee": "NativeCombatRngEntryV111.AppendSummonedEnemy",
+            "pattern": re.compile(
+                r"\bNativeCombatRngEntryV111\.AppendSummonedEnemy\s*\("
+            ),
+            "site_argument": None,
+            "fixed_site_expression":
+                "NativeCombatRngEntryV111.InitialUniqueHpSiteId",
+            "paths": None,
+            "exclude_paths": {"NativeCombatRngEntryV111.cs"},
+        },
+        {
+            "callee": "NativeCombatRngEntryV111.AdvanceMonsterLocal",
+            "pattern": re.compile(
+                r"\bNativeCombatRngEntryV111\.AdvanceMonsterLocal\s*\("
+            ),
+            "site_argument": 2,
+            "paths": None,
+            "exclude_paths": {"NativeCombatRngEntryV111.cs"},
+        },
+        {
             "callee": "NativePlayerRngV111.ChooseIndex",
             "pattern": re.compile(
                 r"\bNativePlayerRngV111\.ChooseIndex\s*\("
@@ -2394,14 +2438,8 @@ def _site_id_forwarder_calls(
                 continue
             for match in specification["pattern"].finditer(source):
                 arguments = _call_arguments(source, match.start())
-                position = specification["site_argument"]
-                if len(arguments) <= position:
-                    expression = None
-                    value = None
-                else:
-                    expression = arguments[position]
-                    if expression.strip() == "string siteId":
-                        continue
+                if specification["site_argument"] is None:
+                    expression = specification["fixed_site_expression"]
                     values = _resolve_member_site_values(
                         source, match.start(), expression,
                         _method_string_constants(
@@ -2409,6 +2447,22 @@ def _site_id_forwarder_calls(
                         ), global_constants,
                     )
                     value = values[0] if len(values) == 1 else None
+                else:
+                    position = specification["site_argument"]
+                    if len(arguments) <= position:
+                        expression = None
+                        value = None
+                    else:
+                        expression = arguments[position]
+                        if expression.strip() == "string siteId":
+                            continue
+                        values = _resolve_member_site_values(
+                            source, match.start(), expression,
+                            _method_string_constants(
+                                source, match.start(), global_constants
+                            ), global_constants,
+                        )
+                        value = values[0] if len(values) == 1 else None
                 line = source.count("\n", 0, match.start()) + 1
                 calls.append({
                     "path": path.relative_to(ROOT).as_posix(),
@@ -3398,7 +3452,8 @@ def collect() -> dict[str, Any]:
             "NativePlayerRngV111, LegacyRandomChoiceV111, "
             "LegacyFisherYatesV111, NativeEventContextRngV111, direct "
             "NativeRandomChoiceV111 callers outside NativePlayerRngV111, "
-            "and source "
+            "source callsites through NativeCombatRngEntryV111 random "
+            "boundaries, and source "
             "callsites "
             "to the private MapRandom "
             "adapters in the two modeled Native map generators. This does not "
@@ -3418,7 +3473,8 @@ def collect() -> dict[str, Any]:
             "own. Generic Native bounded-index requests resolve to the finite "
             "runtime-validated Native operation registry, while the other "
             "generic Native request constructors resolve through mapped "
-            "player-choice/helper callsites in Core; callers outside Core "
+            "player-choice and Native combat-entry helper callsites in Core; "
+            "callers outside Core "
             "remain outside this "
             "census. Runtime request validation "
             "checks operation kinds against the "
@@ -3698,7 +3754,8 @@ def render_markdown(report: dict[str, Any]) -> str:
         "available, and exact migration-matrix match for static IDs. The "
         "supplemental table traces site IDs passed through known event, "
         "combat-pool and map shuffle helpers, plus Native player-choice "
-        "wrappers and combat card-selection helpers at their source "
+        "wrappers, Native combat HP/summon/hatch/monster-local entry points, "
+        "and combat card-selection helpers at their source "
         "callsites. Generic constructors resolve through their mapped Core "
         "caller closures or the validated Native operation registry; this "
         "does not claim coverage of callers outside Core.",
