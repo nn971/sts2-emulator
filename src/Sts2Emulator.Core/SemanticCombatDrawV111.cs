@@ -591,12 +591,9 @@ public static class SemanticCombatDrawEngineV111
                 Combat = semanticCombat
             }
         };
-        RunState advanced;
-        int remaining;
-        using (ControlledChanceGuardV111.Enter())
-            (advanced, remaining) =
-                PrototypeGameEngine.BeginSemanticCombatDraw(
-                    attached, cardCount, fromHandDraw);
+        var (advanced, remaining) = ControlledChanceGuardV111.ExecuteGuarded(
+            () => PrototypeGameEngine.BeginSemanticCombatDraw(
+                attached, cardCount, fromHandDraw));
         var result = new SemanticCombatDrawV111(
             baseRun, advanced, cardCount, remaining, fromHandDraw);
         Validate(result);
@@ -649,10 +646,9 @@ public static class SemanticCombatDrawEngineV111
                 Combat = semanticCombat
             }
         };
-        PrototypeDrawCardsResumeResultV111 handDraw;
-        using (ControlledChanceGuardV111.Enter())
-            handDraw = PrototypeGameEngine
-                .BeginSemanticAutomaticHandDraw(attached);
+        PrototypeDrawCardsResumeResultV111 handDraw =
+            ControlledChanceGuardV111.ExecuteGuarded(() =>
+                PrototypeGameEngine.BeginSemanticAutomaticHandDraw(attached));
         var run = handDraw.Run;
         int requested = handDraw.RequireRequestedCount();
         int remaining = handDraw.RemainingCount;

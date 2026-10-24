@@ -2,6 +2,19 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 guarded semantic combat-draw scope increment (2026-10-24):** Semantic
+combat-draw entry, automatic hand-draw entry, and resumed automatic hand draws
+now use `ControlledChanceGuardV111.ExecuteGuarded` for the shared synchronous
+guard boundary. Draw progress and source-boundary policy remain in their
+existing owners. Static source review and `git diff --check` only; no tests or
+builds were run.
+
+**S4 controlled random-target validation owner increment (2026-10-24):** The
+semantic target owner now validates ordered live enemy support and Sly/autoplay
+source identity for semantic boundaries, combat-state validation,
+controlled-playable validation, and target resume. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S4 canonical typed-request identity increment (2026-10-24):**
 `ControlledStochasticChanceReplayV111` now owns complete serialized request
 matching for every typed request and the mixed request envelope. Its previous

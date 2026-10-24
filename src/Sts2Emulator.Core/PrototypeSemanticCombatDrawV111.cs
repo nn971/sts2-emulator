@@ -70,9 +70,9 @@ public sealed partial class PrototypeGameEngine
         ResumeSemanticAutomaticHandDraw(
             RunState checkpoint, int remainingCount)
     {
-        using (ControlledChanceGuardV111.Enter())
-            return BeginSemanticCombatDraw(
-                checkpoint, remainingCount, fromHandDraw: true);
+        return ControlledChanceGuardV111.ExecuteGuarded(() =>
+            BeginSemanticCombatDraw(
+                checkpoint, remainingCount, fromHandDraw: true));
     }
 
     /// <summary>
