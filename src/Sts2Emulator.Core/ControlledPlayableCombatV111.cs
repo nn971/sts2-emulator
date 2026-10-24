@@ -1288,20 +1288,6 @@ public static class ControlledPlayableCombatEngineV111
     private static (
         PrototypeAutomaticPipelineResumeResultV111 Resume,
         RandomIndexDecisionV111 Decision)
-        ResolveIndexAndRun(
-            ControlledPlayableCombatV111 state,
-            RandomIndexRequestV111 request,
-            int selectedIndex,
-            Func<RunState, int, RunState> resume)
-        => ResolveIndexAndPipeline(
-            state, request, selectedIndex,
-            (checkpoint, replayedIndex) =>
-                PrototypeAutomaticPipelineResumeResultV111.FromRun(
-                    resume(checkpoint, replayedIndex)));
-
-    private static (
-        PrototypeAutomaticPipelineResumeResultV111 Resume,
-        RandomIndexDecisionV111 Decision)
         ResolveIndexAndPipeline(
             ControlledPlayableCombatV111 state,
             RandomIndexRequestV111 request,
