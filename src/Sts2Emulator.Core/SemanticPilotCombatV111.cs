@@ -5903,6 +5903,7 @@ public static class SemanticPilotCombatEngineV111
                   AutoPlayCardInstanceId: null } ||
             choice is not { ChoiceId: "controlled_random_target",
                 SourceCardInstanceId: null,
+                SourceCardDestination: PrototypeCardZone.DiscardPile,
                 CompletionEvents: [],
                 OuterChoiceContinuation: { } continuation } ||
             target.EligibleEnemyInstanceIds.Length == 0 ||
@@ -5980,6 +5981,7 @@ public static class SemanticPilotCombatEngineV111
             completedSourceCardId != sourceCardInstanceId ||
             series.SourceCardInstanceId != sourceCardInstanceId ||
             series.IsAutoPlay ||
+            series.RemoveSourceCardOnCompletion ||
             series.PlayCount != 1 || series.NextPlayIndex != 1 ||
             parent.MoveSourceCardOnCompletion !=
                 !series.HasRemainingExecutions)
