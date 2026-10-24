@@ -109,6 +109,17 @@ transcript; other player-card Tingsha origins and Native target-pool, stream,
 and cursor parity remain open. No event or snapshot schema changed. Static
 source review and `git diff --check` only; no tests or builds were run.
 
+**S4 modeled automatic-trigger census increment (2026-10-24):** The unified
+architecture now records the current repository's stochastic opening,
+hand-draw-entry, turn-start, and pre-play continuation census, including each
+supported typed choice owner and the deterministic `BeforeHandDraw`
+hand-creation hooks. The census found no
+additional modeled source requiring an unimplemented continuation in those
+trigger families; installed-game hook completeness, trigger order, and stream
+attribution still require the Native reference mod or Fidelity Inspector.
+This closes the repository inventory only. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S1 compact Native bounded-index Chance Law increment (2026-10-24):**
 Chance Law v3 now represents large canonical Native `NextInt(bound)` laws by
 their exact 53-bit input grid and source multiply-and-truncate transform.
