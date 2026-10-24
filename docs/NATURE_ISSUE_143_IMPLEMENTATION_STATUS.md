@@ -1086,3 +1086,13 @@ shared with the existing opening generated-choice owner, as is the validation
 of generated card instances and their source-pool membership. No event or
 snapshot schema changed. Static source review and `git diff --check` only; no
 tests or builds were run.
+
+## 2026-10-25: chained active hand-draw target choices
+
+Resolving a supported `CardDrawn` random target may now retain the existing
+semantic draw frame when the saved source continuation opens another random
+target. Each target uses the existing semantic target event and is recorded in
+the draw owner's target transcript and chronology; replay resolves the chain
+before continuing the same hand draw. Other child choice kinds remain
+fail-closed. No event or snapshot schema changed. Static source review and
+`git diff --check` only; no tests or builds were run.

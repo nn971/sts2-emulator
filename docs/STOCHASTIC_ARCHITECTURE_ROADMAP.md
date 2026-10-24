@@ -2,6 +2,15 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 chained active-hand-draw target continuation increment (2026-10-25):**
+Resolving a supported `CardDrawn` random target may suspend the saved source
+continuation on another random target. The semantic draw owner retags that
+child with the existing active-hand-draw marker, appends it to the target
+transcript and chronology, and preserves the same requested/remaining cursor.
+Restore replays each target in order before resuming the hand draw. Other child
+choice kinds remain fail-closed. No event or snapshot schema changed. Static
+source review and `git diff --check` only; no tests or builds were run.
+
 **S4 draw-hook resume boundary validation increment (2026-10-25):** The shared
 draw-hook resume now validates the classified automatic-pipeline boundary
 against the returned run on every branch, including standalone draws and

@@ -939,12 +939,45 @@ public static class SemanticCombatDrawEngineV111
             pending, eventId, enemyInstanceId);
         var resumedTarget = SemanticChoiceResumeV111.ResumeTarget(
             state.Run, decision);
-        if (resumedTarget.Run.World?.Combat is not { PendingChoice: null,
-                PendingKnowledgeDemonChoice: null } resumedCombat ||
+        if (resumedTarget.Run.World?.Combat is not
+                { PendingKnowledgeDemonChoice: null } resumedCombat ||
             !TryGetAutomaticSemanticHandDrawProgress(
                 resumedCombat, out int requested, out int remaining) ||
             requested != state.RequestedCount ||
             remaining != state.RemainingCount)
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.CardDrawn " +
+                "operation=unsupported_resumed_target_boundary");
+
+        if (resumedCombat.PendingChoice is
+                { ControlledTarget: not null } childTarget)
+        {
+            var taggedCombat = resumedCombat with
+            {
+                PendingChoice = childTarget with
+                {
+                    AutomaticSemanticDrawTargetChoice = true
+                }
+            };
+            var taggedRun = resumedTarget.Run with
+            {
+                World = resumedTarget.Run.World! with
+                {
+                    Combat = taggedCombat
+                }
+            };
+            SemanticTargetChoiceV111.ValidateBoundary(taggedRun);
+            PrototypeStateInvariants.Validate(taggedRun);
+            var chained = state with
+            {
+                Run = taggedRun,
+                Stochastic = state.Stochastic.AppendTarget(decision)
+            };
+            chained = RecordNewSemanticDrawChoices(state, chained);
+            Validate(chained);
+            return chained;
+        }
+        if (resumedCombat.PendingChoice is not null)
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.CardDrawn " +
                 "operation=unsupported_resumed_target_boundary");
