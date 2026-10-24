@@ -238,6 +238,17 @@ public static class SemanticDrawHookChoiceEngineV111
     internal static (RunState Run, SemanticDrawHookChoiceDecisionV111 Decision)
         Resume(RunState source, SemanticDrawHookChoiceDecisionV111 decision)
     {
+        var (resumed, replayedDecision) =
+            ResumeWithBoundary(source, decision);
+        return (resumed.Run, replayedDecision);
+    }
+
+    internal static (
+        PrototypeAutomaticPipelineResumeResultV111 Resume,
+        SemanticDrawHookChoiceDecisionV111 Decision)
+        ResumeWithBoundary(
+            RunState source, SemanticDrawHookChoiceDecisionV111 decision)
+    {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(decision);
         decision.Validate();
@@ -306,7 +317,9 @@ public static class SemanticDrawHookChoiceEngineV111
                 $"UNSUPPORTED_SEMANTIC_DECK site={site} " +
                 "operation=nested_controlled_choice");
         PrototypeStateInvariants.Validate(advanced);
-        return (advanced, replayedDecision);
+        return (
+            PrototypeAutomaticPipelineResumeResultV111.FromRun(advanced),
+            replayedDecision);
     }
 
     internal static bool HasStandaloneDrawResume(

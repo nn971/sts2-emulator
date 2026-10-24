@@ -101,12 +101,15 @@ internal static class SemanticChoiceResumeV111
 
         var decision = SemanticDrawHookChoiceEngineV111.Select(
             checkpoint, pending, actionId);
-        var (run, _) = Resume(checkpoint, decision);
+        var resumed = Resume(checkpoint, decision);
+        var run = resumed.Run;
+        var pipelineBoundary = resumed.PipelineBoundary ??
+            PrototypeAutomaticPipelineResumeResultV111.FromRun(run).Boundary;
         if (!pending.AutomaticHandDraw)
             return (PrototypeDrawCardsResumeResultV111.ForHandDraw(
                     run, requested,
                     PrototypeGameEngine.GetSemanticDrawRemainingCount(
-                        run, remaining, drawnBefore)),
+                        run, remaining, drawnBefore), pipelineBoundary),
                 decision);
 
         var combat = run.World?.Combat ?? throw new InvalidDataException(
@@ -114,7 +117,7 @@ internal static class SemanticChoiceResumeV111
         if (pending.BeforeHandDraw &&
             combat.PendingChoice?.AutomaticSemanticDrawHookChoice == true)
             return (PrototypeDrawCardsResumeResultV111.ForHandDraw(
-                run, requested, 0), decision);
+                run, requested, 0, pipelineBoundary), decision);
 
         if (pending.BeforeHandDraw)
         {
@@ -122,7 +125,7 @@ internal static class SemanticChoiceResumeV111
             progress = ControlledChanceGuardV111.ExecuteGuarded(
                 () => PrototypeGameEngine
                     .ResumeSemanticBeforeHandDrawActionChoice(run));
-            return (progress, decision);
+            return (EnsurePipelineBoundary(progress), decision);
         }
 
         if (combat.PendingChoice?.AutomaticSemanticDrawHookChoice == true)
@@ -135,14 +138,27 @@ internal static class SemanticChoiceResumeV111
                     "Automatic draw-hook choice lost its tagged cursor.");
             remaining = savedRemaining;
             return (PrototypeDrawCardsResumeResultV111.ForHandDraw(
-                run, requested, remaining), decision);
+                run, requested, remaining, pipelineBoundary), decision);
         }
 
         var resumed = PrototypeGameEngine
             .ResumeSemanticAutomaticHandDraw(run, remaining);
         return (PrototypeDrawCardsResumeResultV111.ForHandDraw(
-            resumed.Run, requested, resumed.RemainingCount), decision);
+            resumed.Run, requested, resumed.RemainingCount,
+            resumed.PipelineBoundary ??
+                PrototypeAutomaticPipelineResumeResultV111
+                    .FromRun(resumed.Run).Boundary), decision);
     }
+
+    private static PrototypeDrawCardsResumeResultV111 EnsurePipelineBoundary(
+        PrototypeDrawCardsResumeResultV111 progress) =>
+        progress.PipelineBoundary is null
+            ? new PrototypeDrawCardsResumeResultV111(
+                progress.Run, progress.RemainingCount,
+                progress.RequestedCount,
+                PrototypeAutomaticPipelineResumeResultV111
+                    .FromRun(progress.Run).Boundary)
+            : progress;
 
     internal static (
         PrototypeDrawCardsResumeResultV111 Progress,
@@ -402,14 +418,15 @@ internal static class SemanticChoiceResumeV111
         ArgumentNullException.ThrowIfNull(decision);
         decision.Validate();
         var ownedDecision = decision.Fork();
-        var (run, replayed) = SemanticDrawHookChoiceEngineV111.Resume(
-            checkpoint.Fork(), ownedDecision);
+        var (resumed, replayed) =
+            SemanticDrawHookChoiceEngineV111.ResumeWithBoundary(
+                checkpoint.Fork(), ownedDecision);
         if (CanonicalJson.Sha256(ownedDecision) !=
             CanonicalJson.Sha256(replayed))
             throw new InvalidDataException(
                 "Semantic draw-hook replay diverged.");
         return new SemanticChoiceResumeResultV111(
-            run, "combat.draw.CardDrawn");
+            resumed.Run, "combat.draw.CardDrawn", resumed.Boundary);
     }
 
     internal static SemanticChoiceResumeResultV111 Resume(

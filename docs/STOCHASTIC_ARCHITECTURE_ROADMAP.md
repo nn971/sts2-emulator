@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 semantic draw-hook resume boundary increment (2026-10-24):** Draw-hook
+replay now exposes a classified automatic-pipeline result while retaining its
+run-only facade. Semantic automatic-choice replay passes the classification
+through the nested-choice adapter to boundary publication. The separate
+draw-resume adapter keeps it on its transient progress result without adding a
+serialized field. Static source review and `git diff --check` only; no tests or
+builds were run.
+
 **S1 compact Native bounded-index Chance Law increment (2026-10-24):**
 Chance Law v3 now represents large canonical Native `NextInt(bound)` laws by
 their exact 53-bit input grid and source multiply-and-truncate transform.
