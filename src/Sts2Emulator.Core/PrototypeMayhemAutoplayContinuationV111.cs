@@ -1889,6 +1889,9 @@ public sealed partial class PrototypeGameEngine
     private static bool IsMayhemOpeningAutoplayTargetBoundary(
         CombatState combat)
     {
+        if (IsMayhemOpeningSlyAutoplayTargetBoundary(combat))
+            return true;
+
         if (combat is not
                 { Turn: 1, IsPlayerTurn: true, IsPlayerSideActive: true,
                   PendingKnowledgeDemonChoice: null,
@@ -1917,6 +1920,47 @@ public sealed partial class PrototypeGameEngine
             return false;
 
         return true;
+    }
+
+    private static bool IsMayhemOpeningSlyAutoplayTargetBoundary(
+        CombatState combat)
+    {
+        if (combat is not
+                { Turn: 1, IsPlayerTurn: true, IsPlayerSideActive: true,
+                  PendingKnowledgeDemonChoice: null,
+                  PendingChoice:
+                    { ChoiceId: "controlled_random_target",
+                      ControlledTarget:
+                        { Kind: "sly_auto_play",
+                          SlyCardInstanceId: { } slyCardInstanceId,
+                          AutoPlayCardInstanceId: null },
+                      OuterChoiceContinuation: { } continuation } pending,
+                  SemanticDeck:
+                    { Mode: SemanticDeckStateV111.NatureMode,
+                      Pending: null },
+                  AutomaticPipelineContinuation: { } pipeline } ||
+            !pipeline.Mechanics.IsAtOpeningBoundary(
+                PrototypeOpeningCombatStage.AfterAutoPrePlayPolicy) ||
+            !IsMayhemAutoPrePlayPipelineCursor(combat) ||
+            !combat.DiscardPile.Contains(slyCardInstanceId) ||
+            !CardHasKeyword(
+                combat, slyCardInstanceId, PrototypeCardKeyword.Sly) ||
+            PrototypeContent.Card(
+                RequireCombatCard(combat, slyCardInstanceId).CardId).Target !=
+                PrototypeCardTarget.Enemy ||
+            !SemanticTargetChoiceV111.HasValidLiveSupport(combat, pending))
+            return false;
+
+        for (var frame = continuation; frame is not null;
+             frame = frame.Parent)
+        {
+            if (frame.CardPlaySeries is
+                    { IsAutoPlay: true } series &&
+                combat.PlayCardIds.Contains(series.SourceCardInstanceId))
+                return true;
+        }
+
+        return false;
     }
 
     private static bool IsWhisperingEarringOpeningAutoplayBoundary(

@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 Mayhem opening Sly-target continuation increment (2026-10-24):** The
+`AfterAutoPrePlayPolicy` target boundary now admits nested Sly autoplay only
+when the discarded target card is live, Sly, and enemy-targeting, and the
+saved continuation retains an active autoplay card-play series whose source
+is still in the play pile. This covers nested Mayhem opening effects without
+changing direct autoplay-target validation or snapshot schemas. Static source
+review and `git diff --check` only; no tests or builds were run.
+
 **S4 opening Mayhem target continuation increment (2026-10-24):** The shared
 opening target boundary now admits Mayhem's turn-one top-autoplay target at
 `AfterAutoPrePlayPolicy`, validating the Power-sourced `AutoPlayCombatCard`

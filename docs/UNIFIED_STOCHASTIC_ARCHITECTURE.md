@@ -1247,6 +1247,14 @@ support matches. The common target resolver can then resume the staged autoplay
 and opening pipeline through their existing owners; no event or snapshot schema
 changed.
 
+The same Mayhem opening cursor now admits a nested Sly autoplay target when its
+discarded source card is live, carries the Sly keyword, and targets an enemy;
+the saved continuation must also retain an autoplay card-play series whose
+source remains in the play pile. This covers nested opening effects such as a
+Mayhem autoplay that discards a Sly-marked Skill without broadening the direct
+Mayhem target admission. Whispering Earring and Imbued retain their separate
+source-specific opening checks.
+
 History Course autoplay after `AutoPrePlay` and Whispering Earring's opening
 autoplay both pass random target selection through the shared
 `ResolveRandomEnemyTarget` owner. With a Native combat sidecar, that owner forks
