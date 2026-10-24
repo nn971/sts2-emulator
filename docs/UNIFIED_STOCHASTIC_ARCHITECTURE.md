@@ -236,6 +236,8 @@ Controlled-playable draw-insertion resumes also retain the classified result whe
 
 Controlled-playable generated-card resumes now preserve the pipeline result through the same selected-index executor and staging path. `ResumeControlledGeneratedCard` remains the run-only facade for semantic-choice consumers; `ResumeControlledGeneratedCardWithBoundary` returns the existing engine classification to controlled-playable.
 
+Controlled-playable potion-generation resumes likewise preserve the classified automatic-pipeline result. `ResumeControlledPotionGeneration` remains the run-only semantic-choice facade, while `ResumeControlledPotionGenerationWithBoundary` carries the existing engine result through controlled-playable staging.
+
 Automatic draw-cost resumption also carries its run and remaining count in `PrototypeDrawCardsResumeResultV111`; semantic hand-draw resumes retain the requested count while another cost stage is pending and through the resumed `DrawCards` boundary. The cost adapter retains its provider-specific suspension policy and transcript ownership.
 
 Semantic automatic hand draws reached after a draw-hook action, Stratagem selection, a selected draw-pile identity, or after-shuffle insertion re-enter the source `DrawCards` kernel through `ResumeSemanticAutomaticHandDraw`. The helper owns the controlled guard and requires every caller to resume the same automatic-pipeline cursor and remaining count.

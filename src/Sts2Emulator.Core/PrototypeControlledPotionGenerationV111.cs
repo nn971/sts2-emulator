@@ -64,6 +64,12 @@ public sealed partial class PrototypeGameEngine
 
     internal static RunState ResumeControlledPotionGeneration(
         RunState state, string selectedPotionId)
+        => ResumeControlledPotionGenerationWithBoundary(
+            state, selectedPotionId).Run;
+
+    internal static PrototypeAutomaticPipelineResumeResultV111
+        ResumeControlledPotionGenerationWithBoundary(
+            RunState state, string selectedPotionId)
     {
         if (!ControlledChanceGuardV111.Active)
             throw new InvalidOperationException(
@@ -124,7 +130,6 @@ public sealed partial class PrototypeGameEngine
                 state.Stochastic, prototypeRng),
             World = world with { Combat = resumed.Combat }
         };
-        updated = ResumeAutomaticPipelineContinuation(updated).Run;
-        return updated;
+        return ResumeAutomaticPipelineContinuation(updated);
     }
 }
