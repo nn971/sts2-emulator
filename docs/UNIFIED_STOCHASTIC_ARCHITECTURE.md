@@ -570,7 +570,13 @@ existing interactive path.
 and use the shared law-to-source mapping. Their opening projections sort the existing
 relic bag queues so Native's committed hidden queue order is not retained in
 Nature snapshots. Merchant and Treasure sessions seed sorted eligible rarity
-sets if the source run has no bag; the merchant purchase replay also consumes Toy Box's five relic-bag pulls against the captured sorted residual support. The Native event-gold entry replay preserves an absent bag and the Native event-relic, Neow pickup, and Shovel sessions create a canonical bag when needed. Nature-owned sets
+sets if the source run has no bag; merchant purchase replay consumes Toy Box's
+five relic-bag pulls against the captured sorted residual support for both
+configured Native purchases and Native-regional fallback purchases with no
+Native RNG. The fallback path retains its 100-way legacy rarity tickets and
+uses equal weights over each sorted residual identity support. The Native
+event-gold entry replay preserves an absent bag and the Native event-relic,
+Neow pickup, and Shovel sessions create a canonical bag when needed. Nature-owned sets
 serialize an optional `NatureUnordered` tag in the v3 snapshot schema, while
 Native bags omit the field and keep their current snapshot shape. The merchant,
 Treasure, and combat reward sessions do not model Native cursor advancement;
@@ -594,8 +600,11 @@ Shop-purchase index site through the shared typed-index law after checking
 the action mechanics fingerprint, request, ordered candidate labels, and
 prior prefix. This gives the continuation a legal law for those indices
 without claiming their source pools or stream assignments are correct.
-Unregistered stochastic purchase effects and continued relic-bag pulls
-remain outside those boundaries. The
+The same merchant session now handles a Native-regional fallback Toy Box
+purchase with no Native RNG: five retained rarity tickets are followed by
+five identity choices from the sorted residual bag. The fallback ticket and
+identity index weights remain `UNVERIFIED`. Other unregistered stochastic
+purchase effects and continued relic-bag pulls remain outside those boundaries. The
 generic ReferenceNature run-action session wraps deterministic Shop actions
 and a registered subset of index-only relic-acquisition hooks; it also
 continues legal legacy Act 1 Overgrowth and Underdocks Combat/Elite map-node
@@ -617,9 +626,11 @@ Shovel, and combat-reward replay use those operations to rebuild later
 supports from the earlier selected identities. The merchant,
 Treasure, and combat reward sessions own their relic identity choices during
 their respective room/reward boundaries; queue construction and later Treasure
-draws after purchases remain outside those boundaries. The merchant session
-also handles Alchemical Coffer's four rarity/model pairs, Toy Box's five
-rarity/identity pairs, and registered index-only Shop-purchase effects;
+draws after purchases remain outside those boundaries except for Toy Box's
+five relic-bag draws. The merchant session also handles Alchemical Coffer's
+four rarity/model pairs, Toy Box's five rarity/identity pairs on configured
+and Native-regional fallback purchase routes, and registered index-only
+Shop-purchase effects;
 unregistered stochastic purchase effects remain outside its coverage. Nature
 residual sets retain canonical identity support only; unsupported queue-order
 pulls fail closed until their matching Chance Law continuation is implemented.
@@ -817,7 +828,7 @@ remain separate evidence.
 - A source random-pile shortlist preserves its Native descending Fisher–Yates sequence as typed per-swap pool-shuffle events, then exposes the shuffled prefix through the ordinary player card choice. Each recognized Native `run.combat_card_selection` swap has an exact bounded-index law; legacy and compatibility shortlist paths remain `UNVERIFIED`.
 - Supported draw-pile insertion events carry `run.shuffle` when a Native combat stream owner is present and `prototype.combat` on the legacy path. Their Native position laws use exact bounded-index grid masses; the legacy equal-position model remains `UNVERIFIED`.
 - The Native-regional Shop fallback with no `NativeRunRng` now uses `ReferenceNatureMerchantSessionV111` for atomic Shop setup. It captures the legacy sale-slot, card rarity/model and no-effect upgrade, Colorless-card, weighted potion, relic rarity/identity, and price requests from the legal Shop-entry action. Legacy `shop` and `reward` request-index weights remain `UNVERIFIED`; the session samples relic identities from the canonical Nature bag support without exposing queue order.
-- Native merchant laws are queryable at a pre-entry configured Shop boundary and are consumed by `ReferenceNatureMerchantSessionV111` during atomic Shop generation. Sale-slot and card, Colorless-card, and merchant-potion model indices use exact Native bounded-index masses; merchant Colorless support is filtered by the run's configured unlocked epochs and shared with ordinary Shop generation. Merchant card, potion, and relic rarity thresholds use exact preimages of the rounded Native `NextFloat()` grid; supported rounded-price mappings count exact preimages through the source modifier and price conversion. The same mixed merchant session also accepts legal configured Shop purchases, including Alchemical Coffer's four PotionFactory rarity/model pairs, registered Native `player.rewards` model indices, and Toy Box's five relic-bag rarity/identity pulls. Toy Box rarity uses exact rounded Native threshold masses; identity choices use equal weights over each captured sorted residual support and remain `UNVERIFIED`. Other registered purchase index requests use the shared typed-index law with the purchase mechanics boundary, request, ordered labels, and prior transcript in its event fingerprint; the session and controlled run-action continuation share a per-site stream allowlist. Generic request-index weights remain `UNVERIFIED` on noncanonical streams; source-pool completeness, trigger eligibility, seed frequencies, and cursor parity remain separate. Unregistered stochastic purchase hooks stay fail-closed.
+- Native merchant laws are queryable at a pre-entry configured Shop boundary and are consumed by `ReferenceNatureMerchantSessionV111` during atomic Shop generation. Sale-slot and card, Colorless-card, and merchant-potion model indices use exact Native bounded-index masses; merchant Colorless support is filtered by the run's configured unlocked epochs and shared with ordinary Shop generation. Merchant card, potion, and relic rarity thresholds use exact preimages of the rounded Native `NextFloat()` grid; supported rounded-price mappings count exact preimages through the source modifier and price conversion. The same mixed merchant session also accepts legal configured Shop purchases, including Alchemical Coffer's four PotionFactory rarity/model pairs, registered Native `player.rewards` model indices, and Toy Box's five relic-bag rarity/identity pulls. Native-regional fallback Toy Box purchases with no Native RNG use the same session with equal-index laws for five rarity tickets and five sorted residual identity requests. Configured Toy Box rarity uses exact rounded Native threshold masses; identity choices use equal weights over each captured sorted residual support and remain `UNVERIFIED`. Other registered purchase index requests use the shared typed-index law with the purchase mechanics boundary, request, ordered labels, and prior transcript in its event fingerprint; the session and controlled run-action continuation share a per-site stream allowlist. Generic request-index weights remain `UNVERIFIED` on noncanonical streams; source-pool completeness, trigger eligibility, seed frequencies, and cursor parity remain separate. Unregistered stochastic purchase hooks stay fail-closed.
 - Native Treasure laws are available before a reachable, non-skipped configured Treasure node. The compact `treasure.relic_grab_bag.draw` query integrates nominal rarity thresholds with the hidden uniform permutation of remaining rarity queues. The atomic `ReferenceNatureTreasureSessionV111` samples the rarity float and then, when eligible, a conditional relic identity, applying the shared source fallback plan without exposing queue order. For Native-regional Treasure or Shovel entry when `NativeRunRng` is absent, the generic `ReferenceNatureRunActionSessionV111` controls the retained `relic_grab_bag.rarity.ticket` and conditional `treasure.relic_grab_bag.model.index_draw` requests using sorted Nature support. These legacy index laws remain `UNVERIFIED`. Ordinary Native entry retains its source-owned rarity roll and queue-front draw.
 - Combat victory has an atomic `ReferenceNatureCombatRewardSessionV111` for configured Native requests and a registered subset of retained Prototype `reward`-stream index requests. Begin with a legal Combat, Elite, or Boss action that immediately enters `Reward`; replay captures the supported pity, gold, potion, card, relic, boss-offer, and Lava Rock prefix, and publishes the reward state with the Nature cursor only after replay validation. Native bounded indices and threshold floats use exact source-grid laws; hidden relic identities use equal weights over the remaining canonical bag support and remain `UNVERIFIED`. Legacy requests use equal-index `UNVERIFIED` laws. Ordinary Native relic-bag queue construction, unlisted requests, source-pool completeness, stream attribution, seeded Native parity, and Native cursor parity remain outside the claim. See the [combat reward session contract](REFERENCE_NATURE_COMBAT_REWARD_D3.md).
 - Native Lost Wisp and Jungle Maze Adventure unit-float mappings and the pinned generated-gold bounded-index mappings have conditional read-only laws with exact source-grid masses. Callers supply `event_id` as an explicit branch condition; queries do not inspect event-selection results. `ReferenceNatureNativeEventGoldSessionV111` consumes those requests during configured Event-node entry and also captures supported Native-regional legacy generated-gold index requests on the saved `event` stream. Those fallback laws preserve the typed request ordinal, validate each ordered event-stage support, and assign equal `UNVERIFIED` weights. The session does not model the complete Event-node selection law; other legacy entry draws, event-pool completeness, seed frequencies, stream attribution, and cursor parity remain open.

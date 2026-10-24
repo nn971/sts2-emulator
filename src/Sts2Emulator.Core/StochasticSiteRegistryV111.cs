@@ -1059,6 +1059,7 @@ public static class StochasticSiteRegistryV111
         PrototypeNativePotionShop.ModelWithinRaritySiteId,
         "shop.merchant.potion_price_modifier.index_draw",
         "relic_grab_bag.rarity.ticket",
+        PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId,
         PrototypeNativeRelicGrabBag.NativeMerchantModelSiteId,
         "shop.merchant.relic_price_modifier.index_draw"
     ];
@@ -1077,7 +1078,6 @@ public static class StochasticSiteRegistryV111
         NativePotionFactoryRarityRollSiteId,
         NativePotionFactoryModelSiteId,
         RelicGrabBagRaritySiteId,
-        PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId,
         "shop.merchant.card_price_modifier.unit_float",
         "shop.merchant.potion_price_modifier.unit_float",
         "shop.merchant.relic_price_modifier.unit_float",

@@ -81,14 +81,17 @@ request prefix and ordered candidate labels. This establishes the index
 transform only; pool fidelity, trigger completeness, and Native stream
 attribution remain unverified.
 
-Buying Toy Box composes five `relic_grab_bag.rarity.unit_float` and
-`treasure.relic_grab_bag.model.index_draw` request pairs into the same purchase
-session. Each rarity law uses the exact rounded Native `NextFloat()` threshold
-masses. Each identity law uses the sorted remaining support captured from the
-Nature-owned unordered bag and conditions on the preceding pulls; its equal
-identity weights remain `UNVERIFIED`. Replay checks every request, owner, and
-ordered label prefix before committing the purchase and all five rewards with
-the Nature cursor. The Native reward cursor remains unchanged.
+Buying Toy Box composes five rarity and identity request pairs into the same
+purchase session. Configured Native purchases use
+`relic_grab_bag.rarity.unit_float` with exact rounded Native `NextFloat()`
+threshold masses. Native-regional fallback purchases without a Native RNG use
+the retained `relic_grab_bag.rarity.ticket` site with equal weights over its
+100 indices. Both routes use `treasure.relic_grab_bag.model.index_draw` with
+the sorted remaining support captured from the Nature-owned unordered bag and
+condition each identity on the preceding pulls; identity weights remain
+`UNVERIFIED`. Replay checks every request, owner, and ordered label prefix
+before committing the purchase and all five rewards with the Nature cursor.
+The Native reward cursor remains unchanged.
 
 The same session also resolves every other registered index-valued request
 whose SiteId is in `StochasticSiteRegistryV111.RunActionShopPurchaseSiteIds`.
@@ -114,9 +117,9 @@ stream assignment.
 | `shop.colorless_card_model.index_draw` | Ordered implemented single-player Colorless models filtered by configured unlocked epochs; ordinal 0 is Uncommon and ordinal 1 is Rare, with exact Native bounded-index grid masses |
 | `potion_factory.rarity_roll.unit_float` | Common, Uncommon, Rare using the PotionFactory's inclusive float thresholds and exact rounded Native `NextFloat` grid masses; standalone law queries bind the declared supported stream and owner |
 | `potion_factory.model_within_rarity.index_draw` | Ordered potion models in the requested tier after supplied exclusions, with exact Native bounded-index grid masses on the merchant branch |
-| `relic_grab_bag.rarity.unit_float` | Common, Uncommon, Rare using the grab bag's float thresholds and exact rounded Native `NextFloat` grid masses; the third merchant relic offer is forced Shop rarity and has no draw; Toy Box purchase uses this draw for each wax relic |
+| `relic_grab_bag.rarity.unit_float` | Common, Uncommon, Rare using the grab bag's float thresholds and exact rounded Native `NextFloat` grid masses; the third merchant relic offer is forced Shop rarity and has no draw; configured Native Toy Box purchases use this draw for each wax relic |
 | `shop.merchant.relic_model.index_draw` | Eligible relic identities from the first nonempty fallback tier after the selected rarity, with earlier same-shop selections removed and queue order hidden |
-| `treasure.relic_grab_bag.model.index_draw` | Toy Box purchase only: sorted eligible identities remaining after prior wax pulls; equal identity weights are `UNVERIFIED` |
+| `treasure.relic_grab_bag.model.index_draw` | Toy Box purchase on configured Native and Native-regional fallback routes: sorted eligible identities remaining after prior wax pulls; equal identity weights are `UNVERIFIED` |
 | `shop.merchant.card_price_modifier.unit_float` | Exact Native grid masses for the rounded card price under the 0.95–1.05 modifier; `card_id`, `colorless_offer`, and optional `sale_reprice` identify the source branch |
 | `shop.merchant.potion_price_modifier.unit_float` | Exact Native grid masses for the rounded potion price under the 0.95–1.05 modifier for the supplied `potion_id` |
 | `shop.merchant.relic_price_modifier.unit_float` | Exact Native grid masses for the rounded relic price under the 0.85–1.15 modifier for the supplied `relic_id` |
@@ -171,9 +174,11 @@ cursor parity. Legacy merchant percentage-bin requests and hidden relic queue
 identity retain their separate `UNVERIFIED` status.
 
 Native queue construction and queue shuffling, unregistered stochastic Shop
-hooks, and other later Treasure draws remain outside the merchant session.
-Alchemical Coffer's four rarity-float/model-index pairs and Toy Box's five
-rarity-float/relic-identity pairs are supported purchase effects; the
+hooks, and later Treasure draws outside the supported Toy Box purchase remain
+outside the merchant session.
+Alchemical Coffer's four rarity-float/model-index pairs and configured Native
+Toy Box's five rarity-float/relic-identity pairs are supported purchase effects;
+Native-regional fallback Toy Box purchases use rarity tickets instead; the
 registered index-only purchase sites described above are also supported.
 Ordinary non-Native legacy Shop-node generation continues to use the run-action
 boundary. The Native-regional fallback session uses equal request-index
@@ -197,8 +202,8 @@ the earlier v3 Nature-bag snapshot schema. Ordinary queue-order pulls reject a
 Nature-owned set unless a controlled Chance Law replay selects an identity.
 Native bag construction and queue shuffling remain outside this session, and
 the completeness of the modeled eligible sets remains unverified. Unregistered
-stochastic Shop hooks, later Treasure draws, and Native cursor parity remain
-unsupported. Alchemical Coffer, Toy Box, and the registered index-only purchase
+stochastic Shop hooks, later Treasure draws outside Toy Box, and Native cursor
+parity remain unsupported. Alchemical Coffer, Toy Box, and the registered index-only purchase
 sites are covered as described above; other purchase effects remain unsupported
 unless they reach a registered continuation boundary. Ordinary non-Native
 legacy Shop-node generation continues to use its existing run-action contract.

@@ -8854,7 +8854,7 @@ internal static class PrototypeAiJsonlServer
                                 StringComparer.Ordinal.Equals(
                                     candidate.ActionId, actionId))
                             ?? throw new InvalidOperationException(
-                                "ReferenceNature merchant begin requires a current legal Native-regional Shop entry or configured Shop purchase action.");
+                                "ReferenceNature merchant begin requires a current legal Native-regional Shop entry, configured Shop purchase, or Native-regional Toy Box purchase.");
                         var seed = OptionalULong(request, "nature_seed");
                         var session = seed is { } natureSeed
                             ? ReferenceNatureMerchantSessionV111.Begin(

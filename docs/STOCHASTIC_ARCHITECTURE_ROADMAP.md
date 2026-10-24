@@ -3691,3 +3691,13 @@ existing operation boundary. The value is transient; snapshot schemas are
 unchanged. Broader draw-resume policy consolidation and cross-provider
 mechanical equivalence remain open. Static source review and `git diff --check`
 only; no tests or builds were run.
+
+**S6 Native-regional Toy Box purchase continuation increment (2026-10-24):**
+`ReferenceNatureMerchantSessionV111` now also accepts a legal Native-regional
+Toy Box purchase when the source run has no Native RNG. It replays the five
+legacy relic-rarity tickets and five Nature-only relic-identity selections
+against the sorted residual bag, validating each request, rarity owner,
+candidate support, and prior pull before committing the purchase and rewards
+with the existing Nature cursor. Ticket and identity index weights remain
+`UNVERIFIED`; configured Native Toy Box behavior is unchanged. Static source
+review and `git diff --check` only; no tests or builds were run.
