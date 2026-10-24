@@ -10,6 +10,15 @@ is still in the play pile. This covers nested Mayhem opening effects without
 changing direct autoplay-target validation or snapshot schemas. Static source
 review and `git diff --check` only; no tests or builds were run.
 
+**S4 Imbued nested-choice source-frame validation increment (2026-10-24):**
+Nested choices during the `LateRelicAutoPlay` sequence now identify the active
+Imbued source from its saved autoplay series after the card has left the play
+pile, then match the continuation's exact remaining Imbued driver queue.
+Direct target validation still requires the live queue head. This admits
+effects inside the final Imbued card when no queued cards remain, without
+changing snapshot schemas. Static source review and `git diff --check` only;
+no tests or builds were run.
+
 **S4 opening Mayhem target continuation increment (2026-10-24):** The shared
 opening target boundary now admits Mayhem's turn-one top-autoplay target at
 `AfterAutoPrePlayPolicy`, validating the Power-sourced `AutoPlayCombatCard`

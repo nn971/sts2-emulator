@@ -2047,20 +2047,16 @@ public sealed partial class PrototypeGameEngine
                 card.EnchantmentTriggeredThisCombat &&
                 combat.PlayCardIds.Contains(card.InstanceId))
             .OrderBy(card => card.PersistentCardInstanceId).ToArray();
-        if (triggeredImbuedCards.Length == 0)
-            return false;
-
         var driverOperations = triggeredImbuedCards.Select(card =>
             new PrototypeQueuedOperation(
                 PrototypeCombatEffectKind.AutoPlayCombatCard, 0,
                 SourceKind: PrototypeEffectSourceKind.Card,
                 CardInstanceId: card.InstanceId)).ToArray();
-        var firstSourceCardId = triggeredImbuedCards[0].InstanceId;
-        var remainingOperations = driverOperations.Skip(1).ToArray();
-        bool suspendedBeforeTarget = pending.ControlledTarget is
+        bool suspendedBeforeTarget = driverOperations.Length > 0 &&
+            pending.ControlledTarget is
                 { Kind: "autoplay_random_enemy",
                   AutoPlayCardInstanceId: { } targetCardId } &&
-            targetCardId == firstSourceCardId &&
+            targetCardId == triggeredImbuedCards[0].InstanceId &&
             IsImbuedDriverContinuation(root, driverOperations);
 
         bool suspendedWithinAutoplay = false;
@@ -2068,13 +2064,15 @@ public sealed partial class PrototypeGameEngine
         {
             if (frame.CardPlaySeries is
                     { IsAutoPlay: true } series &&
-                series.SourceCardInstanceId == firstSourceCardId)
+                IsActiveImbuedAutoplaySource(
+                    combat, series.SourceCardInstanceId,
+                    triggeredImbuedCards))
             {
                 for (var parent = frame.Parent; parent is not null;
                      parent = parent.Parent)
                 {
                     if (!IsImbuedDriverContinuation(
-                            parent, remainingOperations))
+                            parent, driverOperations))
                         continue;
                     suspendedWithinAutoplay = true;
                     break;
@@ -2085,6 +2083,25 @@ public sealed partial class PrototypeGameEngine
         }
 
         return suspendedBeforeTarget || suspendedWithinAutoplay;
+    }
+
+    private static bool IsActiveImbuedAutoplaySource(
+        CombatState combat, long sourceCardInstanceId,
+        CombatCardInstance[] queuedImbuedCards)
+    {
+        var sourceCard = combat.Cards.FirstOrDefault(card =>
+            card.InstanceId == sourceCardInstanceId);
+        if (sourceCard is not
+                { Enchantment:
+                    { Kind: PrototypeCardEnchantmentKind.Imbued },
+                  EnchantmentTriggeredThisCombat: true,
+                  PersistentCardInstanceId: { } sourcePersistentId } ||
+            combat.PlayCardIds.Contains(sourceCardInstanceId))
+            return false;
+
+        return queuedImbuedCards.All(card =>
+            card.PersistentCardInstanceId is { } queuedPersistentId &&
+            queuedPersistentId > sourcePersistentId);
     }
 
     private static bool IsImbuedDriverContinuation(
