@@ -4048,6 +4048,16 @@ formats are unchanged. Broader resume consolidation and cross-provider
 mechanical equivalence remain open. Static source review and
 `git diff --check` only; no tests or builds were run.
 
+**S4 draw-cost classified handoff increment (2026-10-24):** Transient
+`PrototypeDrawCardsResumeResultV111` progress now carries an optional
+automatic-pipeline boundary classification. Controlled draw-cost completion
+preserves the engine result through hand-draw progress and exposes
+`ResumeControlledDrawCostWithBoundary` to controlled-playable staging;
+run-only callers retain the compatibility facade. Snapshot and transcript
+formats are unchanged. Broader resume consolidation and cross-provider
+mechanical equivalence remain open. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S4 semantic-choice result owner increment (2026-10-24):** Semantic choice
 resume overloads that return only a run and source SiteId now use the shared
 `SemanticChoiceResumeResultV111` value. Draw resumes that also carry requested

@@ -1094,9 +1094,9 @@ public static class ControlledPlayableCombatEngineV111
     {
         var request = state.DrawCostPending ??
             throw new InvalidOperationException("Missing drawn-card cost ticket.");
-        var (resume, decision) = ResolveIndexAndRun(
+        var (resume, decision) = ResolveIndexAndPipeline(
             state, request, selectedIndex,
-            PrototypeGameEngine.ResumeControlledDrawCost);
+            PrototypeGameEngine.ResumeControlledDrawCostWithBoundary);
         var next = state.Fork() with
         {
             Run = resume.Run,

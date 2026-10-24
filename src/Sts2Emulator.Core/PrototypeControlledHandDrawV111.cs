@@ -247,10 +247,11 @@ public sealed partial class PrototypeGameEngine
                 "operation=nested_draw_continuation");
 
         var advanced = PublishDrawCardsResult(state, drawn);
+        var pipelineResume = ResumeAutomaticPipelineContinuation(
+            CompleteAutomaticHandDrawStage(advanced));
         return new PrototypeDrawCardsResumeResultV111(
-            ResumeAutomaticPipelineContinuation(
-                CompleteAutomaticHandDrawStage(advanced)).Run,
-            0);
+            pipelineResume.Run, 0,
+            PipelineBoundary: pipelineResume.Boundary);
     }
 
     /// <summary>

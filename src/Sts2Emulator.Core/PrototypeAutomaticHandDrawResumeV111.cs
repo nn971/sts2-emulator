@@ -721,7 +721,8 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidDataException(
                 "Semantic hand-draw resume changed its requested count.");
         return PrototypeDrawCardsResumeResultV111.ForHandDraw(
-            progress.Run, requestedCount, progress.RemainingCount);
+            progress.Run, requestedCount, progress.RemainingCount,
+            progress.PipelineBoundary);
     }
 
     private static int? ValidateAutomaticHandDrawCostCheckpoint(

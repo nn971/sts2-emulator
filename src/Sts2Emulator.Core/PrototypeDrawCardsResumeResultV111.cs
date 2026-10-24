@@ -10,30 +10,39 @@ internal readonly record struct PrototypeDrawCardsResumeResultV111
     public RunState Run { get; }
     public int RemainingCount { get; }
     public int? RequestedCount { get; }
+    public PrototypeAutomaticPipelineResumeBoundaryKindV111?
+        PipelineBoundary { get; }
 
     public PrototypeDrawCardsResumeResultV111(
-        RunState Run, int RemainingCount, int? RequestedCount = null)
+        RunState Run, int RemainingCount, int? RequestedCount = null,
+        PrototypeAutomaticPipelineResumeBoundaryKindV111?
+            PipelineBoundary = null)
     {
         ArgumentNullException.ThrowIfNull(Run);
-        if (RemainingCount < 0 || RequestedCount is < 0)
+        if (RemainingCount < 0 || RequestedCount is < 0 ||
+            (PipelineBoundary is { } boundary && !Enum.IsDefined(boundary)))
             throw new InvalidDataException(
-                "Draw resume progress contains a negative count.");
+                "Draw resume progress contains an invalid count or pipeline boundary.");
 
         this.Run = Run;
         this.RemainingCount = RemainingCount;
         this.RequestedCount = RequestedCount;
+        this.PipelineBoundary = PipelineBoundary;
     }
 
     internal static PrototypeDrawCardsResumeResultV111 ForHandDraw(
-        RunState run, int requestedCount, int remainingCount) =>
+        RunState run, int requestedCount, int remainingCount,
+        PrototypeAutomaticPipelineResumeBoundaryKindV111?
+            pipelineBoundary = null) =>
         new PrototypeDrawCardsResumeResultV111(
-            run, remainingCount, requestedCount);
+            run, remainingCount, requestedCount, pipelineBoundary);
 
     internal PrototypeDrawCardsResumeResultV111 Validate()
     {
-        if (Run is null || RemainingCount < 0 || RequestedCount is < 0)
+        if (Run is null || RemainingCount < 0 || RequestedCount is < 0 ||
+            (PipelineBoundary is { } boundary && !Enum.IsDefined(boundary)))
             throw new InvalidDataException(
-                "Draw resume progress contains a null run or negative count.");
+                "Draw resume progress contains an invalid run, count, or pipeline boundary.");
         return this;
     }
 

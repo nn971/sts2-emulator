@@ -246,6 +246,8 @@ Controlled-playable random-cost resumes now preserve the classified automatic-pi
 
 Controlled-playable card-transform resumes now preserve the classified automatic-pipeline result through turn staging, including completion of the original card-selection continuation. `ResumeControlledCardTransform` remains the run-only semantic-choice facade, while `ResumeControlledCardTransformWithBoundary` returns the engine classification through the shared selected-index executor.
 
+Controlled-playable draw-cost resumes retain the automatic-pipeline classification alongside transient draw progress. `ResumeControlledDrawCostWithBoundary` passes that result through the selected-index executor; run-only consumers keep the existing facade. This progress is ephemeral and does not change snapshot or transcript formats.
+
 Automatic draw-cost resumption also carries its run and remaining count in `PrototypeDrawCardsResumeResultV111`; semantic hand-draw resumes retain the requested count while another cost stage is pending and through the resumed `DrawCards` boundary. The cost adapter retains its provider-specific suspension policy and transcript ownership.
 
 Semantic automatic hand draws reached after a draw-hook action, Stratagem selection, a selected draw-pile identity, or after-shuffle insertion re-enter the source `DrawCards` kernel through `ResumeSemanticAutomaticHandDraw`. The helper owns the controlled guard and requires every caller to resume the same automatic-pipeline cursor and remaining count.

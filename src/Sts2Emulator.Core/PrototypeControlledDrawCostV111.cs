@@ -184,6 +184,11 @@ public sealed partial class PrototypeGameEngine
     /// and hook side effects remain intact in the saved combat state.</summary>
     internal static RunState ResumeControlledDrawCost(
         RunState state, int value)
+        => ResumeControlledDrawCostWithBoundary(state, value).Run;
+
+    internal static PrototypeAutomaticPipelineResumeResultV111
+        ResumeControlledDrawCostWithBoundary(
+            RunState state, int value)
     {
         if (!ControlledChanceGuardV111.Active)
             throw new InvalidOperationException(
@@ -206,6 +211,10 @@ public sealed partial class PrototypeGameEngine
             unsupportedBoundaryMessage:
                 "UNSUPPORTED_CONTROLLED_CHANCE site=combat.draw_cost." +
                 "drawn_event operation=nested_choice");
-        return resumed.Run;
+        resumed.Validate();
+        return new PrototypeAutomaticPipelineResumeResultV111(
+            resumed.Run,
+            resumed.PipelineBoundary ??
+                ClassifyAutomaticPipelineResumeBoundary(resumed.Run));
     }
 }
