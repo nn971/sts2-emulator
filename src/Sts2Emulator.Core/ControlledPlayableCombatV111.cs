@@ -1180,7 +1180,7 @@ public static class ControlledPlayableCombatEngineV111
     {
         var request = state.GeneratedCardPending ??
             throw new InvalidOperationException("Missing generated-card Nature ticket.");
-        var (resume, choice) = ResolveIndexAndRun(
+        var (resume, choice) = ResolveIndexAndPipeline(
             state, request, selectedIndex,
             (checkpoint, replayedIndex) =>
             {
@@ -1190,8 +1190,9 @@ public static class ControlledPlayableCombatEngineV111
                 if (replayedIndex < 0 || replayedIndex >= candidates.Length)
                     throw new InvalidDataException(
                         "Generated-card provider index is outside its source support.");
-                return PrototypeGameEngine.ResumeControlledGeneratedCard(
-                    checkpoint, candidates[replayedIndex]);
+                return PrototypeGameEngine
+                    .ResumeControlledGeneratedCardWithBoundary(
+                        checkpoint, candidates[replayedIndex]);
             });
         var next = state.Fork() with
         {

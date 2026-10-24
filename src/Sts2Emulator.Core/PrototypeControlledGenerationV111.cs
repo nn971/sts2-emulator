@@ -279,15 +279,22 @@ public sealed partial class PrototypeGameEngine
     /// </summary>
     internal static RunState ResumeControlledGeneratedCard(
         RunState state, string selectedCardId) =>
+        ResumeControlledGeneratedCardWithBoundary(
+            state, selectedCardId).Run;
+
+    internal static PrototypeAutomaticPipelineResumeResultV111
+        ResumeControlledGeneratedCardWithBoundary(
+            RunState state, string selectedCardId) =>
         ResumeControlledGeneratedCardCore(
             state, selectedCardId, resumeAutomaticPipeline: true);
 
     internal static RunState ResumeControlledGeneratedCardForSemanticHandoff(
         RunState state, string selectedCardId) =>
         ResumeControlledGeneratedCardCore(
-            state, selectedCardId, resumeAutomaticPipeline: false);
+            state, selectedCardId, resumeAutomaticPipeline: false).Run;
 
-    private static RunState ResumeControlledGeneratedCardCore(
+    private static PrototypeAutomaticPipelineResumeResultV111
+        ResumeControlledGeneratedCardCore(
         RunState state, string selectedCardId,
         bool resumeAutomaticPipeline)
     {
@@ -353,8 +360,8 @@ public sealed partial class PrototypeGameEngine
                 state.Stochastic, prototypeRng),
             World = world with { Combat = resolved.Combat }
         };
-        if (resumeAutomaticPipeline)
-            updated = ResumeAutomaticPipelineContinuation(updated).Run;
-        return updated;
+        return resumeAutomaticPipeline
+            ? ResumeAutomaticPipelineContinuation(updated)
+            : PrototypeAutomaticPipelineResumeResultV111.FromRun(updated);
     }
 }
