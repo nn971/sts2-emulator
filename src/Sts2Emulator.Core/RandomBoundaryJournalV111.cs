@@ -298,8 +298,8 @@ public sealed record SemanticCardInstanceIndexAuditV111(
         if (SchemaId != CurrentSchemaId ||
             ProviderDecision.ProviderMode != "native-v111" ||
             ProviderDecision.SelectedIndex != SelectedIndex ||
-            CanonicalJson.Sha256(ProviderDecision.Request) !=
-                CanonicalJson.Sha256(Request) ||
+            !ControlledStochasticChanceReplayV111.RequestsMatch(
+                ProviderDecision.Request, Request) ||
             !StochasticSiteRegistryV111.IsNativePolicyCardInstanceIndexAuditSite(
                 Request.SiteId) ||
             Request.OperationKind != "choose_index" || identities is null ||
@@ -460,8 +460,8 @@ public sealed record SemanticCardEnergyCostAuditV111(
                     : "slither");
         if (SchemaId != CurrentSchemaId ||
             ProviderDecision.ProviderMode != "native-v111" ||
-            CanonicalJson.Sha256(semanticEvent.Request) !=
-                CanonicalJson.Sha256(ProviderDecision.Request) ||
+            !ControlledStochasticChanceReplayV111.RequestsMatch(
+                semanticEvent.Request, ProviderDecision.Request) ||
             Outcome.SelectedIndex != ProviderDecision.SelectedIndex ||
             Outcome.SelectedCost != ProviderDecision.SelectedIndex ||
             (!handCost && !drawHookCost) ||
@@ -825,8 +825,8 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
             if (providerDecision.ProviderMode != "native-v111" ||
                 CanonicalJson.Sha256(providerDecision) !=
                     CanonicalJson.Sha256(journalDecision) ||
-                CanonicalJson.Sha256(outcome.Event.Request) !=
-                    CanonicalJson.Sha256(providerDecision.Request) ||
+                !ControlledStochasticChanceReplayV111.RequestsMatch(
+                    outcome.Event.Request, providerDecision.Request) ||
                 outcome.SelectedSwapIndex != providerDecision.SelectedIndex)
                 throw new InvalidDataException(
                     "Native pool-shuffle annotation differs from its ordered primitive transcript.");

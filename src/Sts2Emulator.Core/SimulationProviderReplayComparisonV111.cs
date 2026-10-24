@@ -377,8 +377,8 @@ public sealed record SimulationProviderReplayCaptureV111(
             Enumerable.Range(0, bossLaw.Outcomes.Length).ToArray(),
             OperationKind: bossLaw.OperationKind);
         if (trace.Decisions.Length != 1 ||
-            CanonicalJson.Sha256(trace.Decisions[0].Request) !=
-                CanonicalJson.Sha256(expectedBossRequest) ||
+            !ControlledStochasticChanceReplayV111.RequestsMatch(
+                trace.Decisions[0].Request, expectedBossRequest) ||
             trace.Decisions[0].SelectedIndex !=
                 initialization.DecisionTranscript[0].OutcomeIndex)
             return null;

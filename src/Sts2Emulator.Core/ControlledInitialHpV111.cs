@@ -60,8 +60,8 @@ public sealed record ControlledInitialHpStateV111(
             choice.Request.SiteId != "combat.initial_unique_hp" ||
             choice.Request.StreamId != "run.niche" ||
             choice.Request.Ordinal != NextEnemyIndex ||
-            CanonicalJson.Sha256(choice.Request) !=
-                CanonicalJson.Sha256(pending))
+            !ControlledStochasticChanceReplayV111.RequestsMatch(
+                choice.Request, pending))
             throw new InvalidDataException(
                 "Initial HP decision does not resolve its saved request.");
 

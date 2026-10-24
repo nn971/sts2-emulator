@@ -18,13 +18,13 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
         ArgumentException.ThrowIfNullOrWhiteSpace(eventName);
         selected.Validate();
         var typedRequest = ControlledStochasticRequestV111.FromIndex(request);
-        if (!ControlledStochasticChanceReplayV111.SameRequest(
+        if (!ControlledStochasticChanceReplayV111.RequestsMatch(
                 selected.ToRequest(), typedRequest))
             throw new InvalidDataException(
                 $"Selected {eventName} outcome differs from its index request.");
         return ReplayControlledPrefix(
             origin, [selected], mechanics, nativeEventRngEventId, eventName,
-            candidate => ControlledStochasticChanceReplayV111.SameRequest(
+            candidate => ControlledStochasticChanceReplayV111.RequestsMatch(
                 candidate, typedRequest));
     }
 
@@ -42,7 +42,7 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
         return ReplayControlledPrefix(
             origin, selected, mechanics, nativeEventRngEventId, eventName,
             requestFilter ?? (candidate => requests.Any(request =>
-                ControlledStochasticChanceReplayV111.SameRequest(
+                ControlledStochasticChanceReplayV111.RequestsMatch(
                     candidate, request))));
     }
 
@@ -203,7 +203,7 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
                         if (candidate.IndexRequest is not { } request)
                             return false;
                         if (requests.Any(selectedRequest =>
-                                ControlledStochasticChanceReplayV111.SameRequest(
+                                ControlledStochasticChanceReplayV111.RequestsMatch(
                                     candidate, selectedRequest)))
                             return true;
                         if (request.SiteId == scriptedSiteId)
@@ -410,8 +410,8 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
             preDrawEvent.Stochastic.RandomOutcomes.NativeDishId is not null &&
             preDrawEvent.Stochastic.RandomOutcomes.NativeDishId == preDrawEvent.Stochastic.RandomOutcomes.NativeLastDishId;
         if (capture is null || preDrawEvent is null ||
-            CanonicalJson.Sha256(capture.Request) !=
-                CanonicalJson.Sha256(decision.Request) ||
+            !ControlledStochasticChanceReplayV111.RequestsMatch(
+                capture.Request, decision.Request) ||
             capture.PreDrawState.Phase != RunPhase.Event ||
             capture.PreDrawState.World?.Combat is not null ||
             preDrawEvent.EventId != expectedEventId ||
@@ -512,8 +512,8 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
         var matching = captures.Where(capture =>
             capture.Request.SiteId == scriptedUnitFloatSiteId).ToArray();
         if (matching.Length != 1 ||
-            CanonicalJson.Sha256(matching[0].Request) !=
-                CanonicalJson.Sha256(unitFloatDecision.Request) ||
+            !ControlledStochasticChanceReplayV111.RequestsMatch(
+                matching[0].Request, unitFloatDecision.Request) ||
             matching[0].PreDrawState.World?.Event?.Stochastic.NativeRng is not
                 { } preDrawStream ||
             preDrawStream.StreamId != originStream.StreamId ||

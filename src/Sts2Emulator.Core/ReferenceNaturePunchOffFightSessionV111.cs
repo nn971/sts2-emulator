@@ -598,8 +598,8 @@ public sealed record ReferenceNaturePunchOffFightSessionV111(
             entries.Length != 2 || entries.Any(entry =>
                 entry.ProviderMode != "controlled-v111") ||
             entries.Where((entry, index) =>
-                CanonicalJson.Sha256(entry.Request) !=
-                    CanonicalJson.Sha256(plan.Requests[index]) ||
+                !ControlledStochasticChanceReplayV111.RequestsMatch(
+                    entry.Request, plan.Requests[index]) ||
                 entry.SelectedIndex !=
                     transcript[index].OutcomeIndex).Any() ||
             !expectedCursors.SequenceEqual(actualCursors ?? []) ||

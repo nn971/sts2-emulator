@@ -383,7 +383,7 @@ public sealed record ReferenceNatureGloryReflectionsSessionV111(
                 typedDecisions,
                 ReplayAction,
                 candidate => requests.Any(request =>
-                    ControlledStochasticChanceReplayV111.SameRequest(
+                    ControlledStochasticChanceReplayV111.RequestsMatch(
                         candidate, request)));
         if (replay.Suspended || replay.Run is not { } fallbackRun)
             throw new InvalidDataException(

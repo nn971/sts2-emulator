@@ -468,7 +468,7 @@ public sealed record ReferenceNatureTrashHeapSessionV111(
                         run, GameAction.Create("event_choice",
                             new EventChoicePayload(choiceId))).State,
                     candidate =>
-                        ControlledStochasticChanceReplayV111.SameRequest(
+                        ControlledStochasticChanceReplayV111.RequestsMatch(
                             candidate, request));
             if (replay.Suspended || replay.Run is not { } fallbackRun)
                 throw new InvalidDataException(

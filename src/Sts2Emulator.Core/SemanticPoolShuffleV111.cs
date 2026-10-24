@@ -285,8 +285,8 @@ public static class SemanticPoolShuffleChoiceV111
         providerDecision.Validate();
         var semanticEvent = outcome.Event;
         if (providerDecision.ProviderMode != "native-v111" ||
-            CanonicalJson.Sha256(semanticEvent.Request) !=
-                CanonicalJson.Sha256(providerDecision.Request) ||
+            !ControlledStochasticChanceReplayV111.RequestsMatch(
+                semanticEvent.Request, providerDecision.Request) ||
             outcome.SelectedSwapIndex != providerDecision.SelectedIndex ||
             semanticEvent.BoundaryFingerprint !=
                 NativeAuditBoundaryFingerprint(
@@ -602,8 +602,8 @@ public static class SemanticPoolShuffleChoiceV111
             pending.SelectedCount != shuffle.SelectedCount ||
             pending.SourceOperationKind != shuffle.Operation.Kind.ToString() ||
             pending.SourceCardInstanceId != sourceCardId ||
-            CanonicalJson.Sha256(pending.Request) !=
-                CanonicalJson.Sha256(expectedRequest))
+            !ControlledStochasticChanceReplayV111.RequestsMatch(
+                pending.Request, expectedRequest))
             throw new InvalidDataException(
                 "Pool-shuffle decision no longer matches its live support.");
     }

@@ -76,9 +76,8 @@ public sealed record ControlledTurnIntentStochasticStateV111
                 decision.Request.SiteId) ||
             decision.Request.StreamId != "run.monster_ai" ||
             decision.Request.Ordinal != transcript.Length ||
-            !StringComparer.Ordinal.Equals(
-                CanonicalJson.Sha256(decision.Request),
-                CanonicalJson.Sha256(pending)))
+            !ControlledStochasticChanceReplayV111.RequestsMatch(
+                decision.Request, pending))
             throw new InvalidDataException(
                 "Turn-intent decision does not resolve the saved request prefix.");
         foreach (var previous in transcript)

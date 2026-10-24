@@ -108,9 +108,9 @@ public sealed record ControlledTurnIntentsV111(
         var streams = NativeRngV111.CreateBundle("validation-no-native-consumption");
         foreach (var choice in this.Stochastic.Transcript)
         {
-            if (replay.Stochastic.Pending is null ||
-                CanonicalJson.Sha256(replay.Stochastic.Pending) !=
-                    CanonicalJson.Sha256(choice.Request))
+            if (replay.Stochastic.Pending is not { } pending ||
+                !ControlledStochasticChanceReplayV111.RequestsMatch(
+                    pending, choice.Request))
                 throw new InvalidDataException(
                     "Turn-intent decisions diverge from saved eligibility.");
             // Do not recursively validate while reconstructing the prefix.

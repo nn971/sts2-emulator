@@ -1797,7 +1797,7 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
                         run => new PrototypeGameEngine().Step(
                             run, plan.ReplayAction).State,
                         request => requests.Any(selectedRequest =>
-                            ControlledStochasticChanceReplayV111.SameRequest(
+                            ControlledStochasticChanceReplayV111.RequestsMatch(
                                 request, selectedRequest)));
                 entries = journal.Entries.Where(entry =>
                     entry.Request.StreamId == "reward").ToArray();
@@ -1806,8 +1806,8 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
                 entries.Length != requests.Length ||
                 entries.Where((entry, index) =>
                     requests[index].IndexRequest is not { } expectedRequest ||
-                    CanonicalJson.Sha256(entry.Request) !=
-                        CanonicalJson.Sha256(expectedRequest) ||
+                    !ControlledStochasticChanceReplayV111.RequestsMatch(
+                        entry.Request, expectedRequest) ||
                     entry.ProviderMode != "controlled-v111" ||
                     entry.NativeCursorBefore is not null ||
                     entry.NativeCursorAfter is not null).Any() ||
@@ -1853,7 +1853,7 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
                     run => new PrototypeGameEngine().Step(
                         run, plan.ReplayAction).State,
                     request => requests.Any(selectedRequest =>
-                        ControlledStochasticChanceReplayV111.SameRequest(
+                        ControlledStochasticChanceReplayV111.RequestsMatch(
                             request, selectedRequest)));
             captures = shuffleProbe.ShuffleCaptures.Where(capture =>
                 capture.SiteId == plan.SiteId).ToArray();

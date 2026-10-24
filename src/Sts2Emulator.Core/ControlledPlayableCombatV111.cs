@@ -482,8 +482,8 @@ public sealed record ControlledPlayableCombatV111(
             enemyAction.Validate(PrototypeContent.Rules.EndTurnPipeline.Length);
             if (this.Stochastic.Pending is not null || this.Stochastic.Recycle is not null ||
                 this.TurnIntents is not null ||
-                CanonicalJson.Sha256(this.EnemyActionPending) !=
-                    CanonicalJson.Sha256(enemyAction.PendingRequest))
+                !ControlledStochasticChanceReplayV111.RequestsMatch(
+                    this.EnemyActionPending, enemyAction.PendingRequest))
                 throw new InvalidDataException(
                     "Enemy-action chance conflicts with another controlled boundary.");
         }
@@ -559,8 +559,8 @@ public sealed record ControlledPlayableCombatV111(
                 if (recorded.ProviderMode != "controlled-v111" ||
                     recorded.NativeCursorBefore is not null ||
                     recorded.NativeCursorAfter is not null ||
-                    CanonicalJson.Sha256(recorded.Request) !=
-                        CanonicalJson.Sha256(expectedRequest))
+                    !ControlledStochasticChanceReplayV111.RequestsMatch(
+                        recorded.Request, expectedRequest))
                     throw new InvalidDataException(
                         "Pool shuffle swap transcript is not source-reachable.");
                 var i = pool.OriginalCardIds.Length - 1 - step;
@@ -1491,8 +1491,8 @@ public static class ControlledPlayableCombatEngineV111
                 decision.NativeCursorBefore is not null ||
                 decision.NativeCursorAfter is not null ||
                 current.Stochastic.Pending is null ||
-                CanonicalJson.Sha256(decision.Request) !=
-                    CanonicalJson.Sha256(current.Stochastic.Pending))
+                !ControlledStochasticChanceReplayV111.RequestsMatch(
+                    decision.Request, current.Stochastic.Pending))
                 throw new InvalidDataException(
                     "Unreachable controlled shuffle transcript.");
             current = Resolve(current, current.Fingerprint, decision.SelectedIndex);
@@ -1514,8 +1514,8 @@ public static class ControlledPlayableCombatEngineV111
                     recorded.ProbabilityStatus != "UNVERIFIED" ||
                     recorded.NativeCursorBefore is not null ||
                     recorded.NativeCursorAfter is not null ||
-                    CanonicalJson.Sha256(recorded.Request) !=
-                        CanonicalJson.Sha256(current.ActivePending))
+                    !ControlledStochasticChanceReplayV111.RequestsMatch(
+                        recorded.Request, current.ActivePending))
                     throw new InvalidDataException(
                         "Unreachable live Nature decision in replay.");
                 if (stored.Stochastic.LiveTranscriptCandidateLabels is { } labels &&

@@ -1697,8 +1697,8 @@ public static class ControlledRunActionEngineV111
         }
 
         if (replay.PendingChance is not { } pending
-            || CanonicalJson.Sha256(pending.Request) !=
-                CanonicalJson.Sha256(expectedRequest)
+            || !ControlledStochasticChanceReplayV111.RequestsMatch(
+                pending.Request, expectedRequest)
             || pending.CandidateLabels is null
             || !pending.CandidateLabels.SequenceEqual(
                 expectedCandidateLabels, StringComparer.Ordinal))

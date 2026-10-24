@@ -8517,7 +8517,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
                     "Native run-action replay completed before its saved typed decision.");
             var savedDecision = NativeCombatEntryProviderDecisions[index];
             savedDecision.Validate();
-            if (!ControlledStochasticChanceReplayV111.SameRequest(
+            if (!ControlledStochasticChanceReplayV111.RequestsMatch(
                     boundary.PendingRequest, savedDecision.ToRequest()) ||
                 !SameNativeRunActionLabels(
                     boundary.PendingCandidateLabels,

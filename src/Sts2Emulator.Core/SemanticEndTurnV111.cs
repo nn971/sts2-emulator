@@ -1617,8 +1617,8 @@ public static class SemanticEndTurnEngineV111
                     if (choice.ProviderMode != "controlled-v111" ||
                         choice.ProbabilityStatus != "UNVERIFIED" ||
                         reproduced.EnemyActionPending is not { } request ||
-                        CanonicalJson.Sha256(request) !=
-                            CanonicalJson.Sha256(choice.Request) ||
+                        !ControlledStochasticChanceReplayV111.RequestsMatch(
+                            request, choice.Request) ||
                         semanticLabels is not null &&
                             (replayedEvent?.CandidateLabels is not { } liveLabels ||
                              !liveLabels.SequenceEqual(
@@ -1687,8 +1687,8 @@ public static class SemanticEndTurnEngineV111
                 if (choice.ProviderMode != "controlled-v111" ||
                     choice.ProbabilityStatus != "UNVERIFIED" ||
                     reproduced.EnemyActionPending is not { } request ||
-                    CanonicalJson.Sha256(request) !=
-                        CanonicalJson.Sha256(choice.Request) ||
+                    !ControlledStochasticChanceReplayV111.RequestsMatch(
+                        request, choice.Request) ||
                     semanticLabels is not null &&
                         (replayedEvent?.CandidateLabels is not { } liveLabels ||
                          !liveLabels.SequenceEqual(
@@ -1713,8 +1713,8 @@ public static class SemanticEndTurnEngineV111
             if (reproduced.IntentPending is not { } request ||
                 choice.ProviderMode != "controlled-v111" ||
                 choice.ProbabilityStatus != "UNVERIFIED" ||
-                CanonicalJson.Sha256(request) !=
-                    CanonicalJson.Sha256(choice.Request))
+                !ControlledStochasticChanceReplayV111.RequestsMatch(
+                    request, choice.Request))
                 throw new InvalidDataException(
                     "Semantic end-turn intent transcript diverged.");
             if (semanticIntentsByIndex.TryGetValue(

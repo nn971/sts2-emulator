@@ -252,8 +252,8 @@ public sealed record SemanticDrawInsertionNativeAuditV111(
         var request = semanticEvent.Request;
         if (SchemaId != CurrentSchemaId ||
             ProviderDecision.ProviderMode != "native-v111" ||
-            CanonicalJson.Sha256(request) !=
-                CanonicalJson.Sha256(ProviderDecision.Request) ||
+            !ControlledStochasticChanceReplayV111.RequestsMatch(
+                request, ProviderDecision.Request) ||
             Outcome.SelectedPosition != ProviderDecision.SelectedIndex ||
             !HasExactPileOwner(request,
                 semanticEvent.GeneratedCardModelId,
@@ -503,8 +503,8 @@ public sealed record SemanticEnemyPileInsertionNativeAuditV111(
         });
         if (SchemaId != CurrentSchemaId ||
             ProviderDecision.ProviderMode != "native-v111" ||
-            CanonicalJson.Sha256(request) !=
-                CanonicalJson.Sha256(ProviderDecision.Request) ||
+            !ControlledStochasticChanceReplayV111.RequestsMatch(
+                request, ProviderDecision.Request) ||
             Outcome.SelectedPosition != ProviderDecision.SelectedIndex ||
             semanticEvent.BoundaryFingerprint != expectedBoundaryFingerprint ||
             EventId != CanonicalJson.Sha256(new

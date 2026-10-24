@@ -212,7 +212,7 @@ internal static class ControlledChanceContinuationExecutorV111
         ArgumentNullException.ThrowIfNull(mechanics);
         continuation.Validate();
         selectedOutcome.Validate();
-        if (!ControlledStochasticChanceReplayV111.SameRequest(
+        if (!ControlledStochasticChanceReplayV111.RequestsMatch(
                 continuation.PendingRequest, selectedOutcome.ToRequest()) ||
             (continuation.PendingCandidateLabels is null) !=
                 (selectedOutcome.CandidateLabels is null) ||
@@ -251,7 +251,7 @@ internal static class ControlledChanceContinuationExecutorV111
         ArgumentNullException.ThrowIfNull(mechanics);
         continuation.Validate();
         request.Validate();
-        if (!ControlledStochasticChanceReplayV111.SameRequest(
+        if (!ControlledStochasticChanceReplayV111.RequestsMatch(
                 continuation.PendingRequest,
                 ControlledStochasticRequestV111.FromIndex(request)))
             throw new InvalidDataException(
@@ -305,7 +305,7 @@ internal static class ControlledChanceContinuationExecutorV111
                         null, request, RngBundle.Empty).SelectedIndex;
                 return mechanics(savedCheckpoint, resolvedIndex);
             },
-            candidate => ControlledStochasticChanceReplayV111.SameRequest(
+            candidate => ControlledStochasticChanceReplayV111.RequestsMatch(
                 typedRequest, candidate));
         return replay.Value ?? throw new InvalidDataException(
             "Selected index replay suspended outside its exact request.");

@@ -676,7 +676,7 @@ internal sealed class ControlledStochasticChanceReplayV111 :
         }
 
         var expected = _decisions[_cursor];
-        if (!SameRequest(expected.ToRequest(), request))
+        if (!RequestsMatch(expected.ToRequest(), request))
             throw new InvalidDataException(
                 divergenceMessage ??
                     "Typed stochastic replay diverged from its ordered saved prefix.");
@@ -764,8 +764,4 @@ internal sealed class ControlledStochasticChanceReplayV111 :
         left is null ? right is null : right is not null &&
         CanonicalJson.Sha256(left) == CanonicalJson.Sha256(right);
 
-    internal static bool SameRequest(
-        ControlledStochasticRequestV111 left,
-        ControlledStochasticRequestV111 right) =>
-        RequestsMatch(left, right);
 }

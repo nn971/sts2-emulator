@@ -787,8 +787,8 @@ public sealed record SemanticNativePolicyAuditV111(
                 auditEntry.SelectedSwapIndex
             });
             var matchingDecisions = decisions.Where(decision =>
-                CanonicalJson.Sha256(decision.Request) ==
-                    CanonicalJson.Sha256(poolEvent.Request) &&
+                ControlledStochasticChanceReplayV111.RequestsMatch(
+                    decision.Request, poolEvent.Request) &&
                 decision.SelectedIndex == auditEntry.SelectedSwapIndex)
                 .ToArray();
             if (matchingDecisions.Length != 1)
@@ -1587,8 +1587,8 @@ public sealed record SemanticNativePolicyAuditV111(
             foreach (var poolDecision in requiredPoolShuffleDecisions)
             {
                 var matchingOutcomes = requiredPoolShuffleOutcomes.Count(outcome =>
-                    CanonicalJson.Sha256(outcome.Event.Request) ==
-                        CanonicalJson.Sha256(poolDecision.Request) &&
+                    ControlledStochasticChanceReplayV111.RequestsMatch(
+                        outcome.Event.Request, poolDecision.Request) &&
                     outcome.SelectedSwapIndex == poolDecision.SelectedIndex);
                 if (matchingOutcomes != 1)
                     throw new InvalidDataException(
@@ -5570,8 +5570,8 @@ public static class SemanticPilotCombatEngineV111
         {
             var transcript = resolved.HandDraw?.CostTranscript ?? [];
             var recorded = transcript.LastOrDefault(decision =>
-                CanonicalJson.Sha256(decision.Request) ==
-                CanonicalJson.Sha256(costEvent.Request)) ??
+                ControlledStochasticChanceReplayV111.RequestsMatch(
+                    decision.Request, costEvent.Request)) ??
                 throw new InvalidDataException(
                     "Semantic draw cost did not record its source event.");
             if (recorded.SelectedIndex != selectedIndex)

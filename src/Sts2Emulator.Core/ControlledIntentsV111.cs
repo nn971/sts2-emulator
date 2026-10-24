@@ -77,9 +77,8 @@ public sealed record ControlledIntentStateV111(
                 NativeCombatRngEntryV111.CommittedIntentSiteId ||
             choice.Request.StreamId != "run.monster_ai" ||
             choice.Request.Ordinal != _transcript.Length ||
-            !StringComparer.Ordinal.Equals(
-                CanonicalJson.Sha256(choice.Request),
-                CanonicalJson.Sha256(pending)))
+            !ControlledStochasticChanceReplayV111.RequestsMatch(
+                choice.Request, pending))
             throw new InvalidDataException(
                 "Controlled intent decision does not resolve the saved request.");
         return this with

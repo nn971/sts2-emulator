@@ -70,8 +70,8 @@ public sealed record ControlledRecycleShuffleV111(
             decision.Request.OwnerId != "player:0" ||
             decision.Request.Ordinal != FirstOrdinal + _transcript.Length ||
             decision.Request.SupportCount != NextSwapIndex + 1 ||
-            CanonicalJson.Sha256(decision.Request) !=
-                CanonicalJson.Sha256(pending))
+            !ControlledStochasticChanceReplayV111.RequestsMatch(
+                decision.Request, pending))
             throw new InvalidDataException(
                 "Recycle decision does not advance its saved swap request.");
 

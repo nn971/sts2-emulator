@@ -121,10 +121,10 @@ internal static class NativePunchOffRewardPlanBuilderV111
                 NativePlayerRngV111.RewardsStreamId, potionOwner,
                 unchecked(cursorBefore.Counter + 1),
                 Enumerable.Range(0, potionCandidates.Length).ToArray());
-            if (CanonicalJson.Sha256(matching[0].Request) !=
-                    CanonicalJson.Sha256(expectedRelicRequest) ||
-                CanonicalJson.Sha256(matching[1].Request) !=
-                    CanonicalJson.Sha256(expectedPotionRequest))
+            if (!ControlledStochasticChanceReplayV111.RequestsMatch(
+                    matching[0].Request, expectedRelicRequest) ||
+                !ControlledStochasticChanceReplayV111.RequestsMatch(
+                    matching[1].Request, expectedPotionRequest))
                 throw new InvalidOperationException(
                     "Punch Off reward requests do not match the ordered candidate pools or player.rewards cursor.");
         }
@@ -684,10 +684,10 @@ public sealed record ReferenceNaturePunchOffRewardSessionV111(
             rewardEntries[0].Request.SiteId != relicPlan.RelicRequest.SiteId ||
             rewardEntries[1].ProviderMode != "controlled-v111" ||
             rewardEntries[1].Request.SiteId != potionPlan.PotionRequest.SiteId ||
-            CanonicalJson.Sha256(rewardEntries[0].Request) !=
-                CanonicalJson.Sha256(relicPlan.RelicRequest) ||
-            CanonicalJson.Sha256(rewardEntries[1].Request) !=
-                CanonicalJson.Sha256(potionPlan.PotionRequest))
+            !ControlledStochasticChanceReplayV111.RequestsMatch(
+                rewardEntries[0].Request, relicPlan.RelicRequest) ||
+            !ControlledStochasticChanceReplayV111.RequestsMatch(
+                rewardEntries[1].Request, potionPlan.PotionRequest))
             throw new InvalidDataException(
                 "Scripted Punch Off rewards changed their candidate order, player.rewards cursor, event cursor, or reward identity.");
         return run;

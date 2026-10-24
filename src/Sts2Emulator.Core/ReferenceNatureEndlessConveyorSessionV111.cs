@@ -758,7 +758,7 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
                 checkpoint, action).State,
             request => request.IndexRequest is not null &&
                 requestSet.Any(expected =>
-                    ControlledStochasticChanceReplayV111.SameRequest(
+                    ControlledStochasticChanceReplayV111.RequestsMatch(
                         request, expected)));
         if (replay.Suspended || replay.Run is not { } run)
             throw new InvalidDataException(
