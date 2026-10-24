@@ -8,6 +8,8 @@ public static partial class ChanceLawEngineV111
         "uniform-ancient-offer-fisher-yates-swap-v1";
     public const string DarvOfferVariantConditioningPolicyId =
         "uniform-darv-offer-variant-v1";
+    public const string EventOfferConditioningPolicyId =
+        "uniform-ordered-event-offer-entry-v1";
 
     /// <summary>
     /// Query one pre-event Ancient offer decision. Direct offer pools return

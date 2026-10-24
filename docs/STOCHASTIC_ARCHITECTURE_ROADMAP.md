@@ -2,6 +2,19 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S3 Ancient-offer policy ownership follow-up (2026-10-24):** The public
+`EventOfferConditioningPolicyId` value now lives with the Ancient-offer laws in
+`ChanceLawAncientOfferV111.cs`; its value and public API are unchanged. Static
+source review and `git diff --check` only; no tests or builds were run.
+
+**S3 controlled-choice Chance Law ownership increment (2026-10-24):** The
+controlled run-action law and boundary fingerprint now live in
+`ChanceLawRunActionV111.cs`; controlled event-choice dispatch, Stone of All Time
+ticket law, and boundary description now live with Native event-choice laws.
+Shared random-index law construction remains in core. Public APIs and boundary
+policies are unchanged. Static source preservation and `git diff --check` only;
+no tests or builds were run.
+
 **S3 remaining legacy ticket and relic-selection law ownership follow-up
 (2026-10-24):** Legacy card rarity and upgrade-ticket queries now live with
 combat-reward laws; the caller-bound unowned-relic index query now lives with

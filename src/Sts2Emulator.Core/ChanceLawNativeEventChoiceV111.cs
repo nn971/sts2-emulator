@@ -992,4 +992,139 @@ public static partial class ChanceLawEngineV111
                 ? ChanceLawV111.SourceVerifiedStatus
                 : ChanceLawV111.UnverifiedStatus);
     }
+
+    public static ChanceLawV111 QueryControlledEventChoice(RunState run)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        var description = DescribeControlledEventChoice(run);
+        if (run.World?.Event?.EventId ==
+                PrototypeNativeStoneOfAllTime.EventId &&
+            run.World?.Event?.Stochastic.ControlledChoice?.ChoiceId is
+                "push" or "lift")
+            return QueryControlledStoneOfAllTimeTicket(
+                run, description.Request,
+                description.BoundaryFingerprint);
+        return QueryRandomIndex(description.EventId, description.Request);
+    }
+
+    private static ChanceLawV111 QueryControlledStoneOfAllTimeTicket(
+        RunState run, RandomIndexRequestV111 request,
+        string boundaryFingerprint)
+    {
+        var continuation = run.World?.Event?.Stochastic.ControlledChoice ??
+            throw new InvalidOperationException(
+                "Stone of All Time ticket law requires a pending controlled event choice.");
+        continuation.Validate();
+        var choiceId = continuation.ChoiceId;
+        var expectedSiteId = choiceId switch
+        {
+            "push" => NativeStoneOfAllTimePushTicketSiteId,
+            "lift" => NativeStoneOfAllTimeLiftTicketSiteId,
+            _ => throw new InvalidOperationException(
+                "Stone of All Time controlled choice has no ticket law.")
+        };
+        var partialState = continuation.PartialState;
+        var partialWorld = partialState.World;
+        var partialEvent = partialWorld?.Event ??
+            throw new InvalidOperationException(
+                "Pending Stone of All Time ticket has no event state.");
+        var nativeRoute = partialState.Stochastic.NativeRunRng is not null;
+        var expectedStreamId = nativeRoute
+            ? NativeRngV111Contexts.EventStreamId(
+                PrototypeNativeStoneOfAllTime.NativeRngEventId)
+            : "event";
+        if (continuation.EventId != PrototypeNativeStoneOfAllTime.EventId ||
+            request.SiteId != expectedSiteId ||
+            request.StreamId != expectedStreamId ||
+            request.OwnerId != $"event:stone_of_all_time:{choiceId}" ||
+            (nativeRoute && request.Ordinal != 1) ||
+            request.OperationKind != "bounded_integer" ||
+            request.BoundedCount != 100)
+            throw new InvalidOperationException(
+                "Pending Stone of All Time ticket request disagrees with its source boundary.");
+        var nativeRouteMismatch = nativeRoute &&
+            (partialWorld is not { Act: 2 } ||
+             !PrototypeGameEngine.UsesNativeRegionalSystems(partialWorld!));
+        var legacyRouteMismatch = !nativeRoute &&
+            partialWorld is not { Act: 2 };
+        var eventRngMismatch = nativeRoute
+            ? partialEvent.Stochastic.NativeRng?.StreamId != expectedStreamId ||
+                partialEvent.Stochastic.ProviderMode is not null
+            : partialEvent.Stochastic.NativeRng is not null ||
+                partialEvent.Stochastic.ProviderMode is not null;
+        if (partialState.Phase != RunPhase.Event ||
+            partialWorld is not { Act: 2 } ||
+            partialEvent.EventId != PrototypeNativeStoneOfAllTime.EventId ||
+            partialEvent.NativePageIndex != 0 ||
+            eventRngMismatch ||
+            nativeRouteMismatch || legacyRouteMismatch ||
+            (choiceId == "lift" && partialEvent.ChosenChoiceId is not null) ||
+            (choiceId == "push" && partialEvent.ChosenChoiceId != "push"))
+            throw new InvalidOperationException(
+                "Pending Stone of All Time ticket is outside its Native or legacy event-action boundary.");
+        var conditioningFingerprint = CanonicalJson.Sha256(new
+        {
+            boundary = "reference_nature.controlled_event.stone_of_all_time.ticket",
+            boundaryFingerprint,
+            eventId = partialEvent.EventId,
+            actionId = choiceId,
+            providerRoute = nativeRoute ? "native" : "legacy",
+            request
+        });
+        return CreateNativeBoundaryLaw(
+            request.SiteId, "bounded_integer_no_effect", request.OwnerId,
+            request.Ordinal,
+            nativeRoute
+                ? NativeStoneOfAllTimeNoEffectPolicyId
+                : LegacyStoneOfAllTimeNoEffectPolicyId,
+            conditioningFingerprint,
+            nativeRoute
+                ? NativeStoneOfAllTimeNoEffectProvenance
+                : LegacyStoneOfAllTimeNoEffectProvenance,
+            [new ChanceLawOutcomeV111("no_effect", 1L)],
+            ChanceLawV111.SourceVerifiedStatus);
+    }
+
+    public static string ControlledEventChoiceBoundaryFingerprint(RunState run)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        return DescribeControlledEventChoice(run).BoundaryFingerprint;
+    }
+
+    private static (string EventId, string ChoiceId,
+        RandomIndexRequestV111 Request, string[] CandidateLabels,
+        string BoundaryFingerprint) DescribeControlledEventChoice(RunState run)
+    {
+        var effect = run.World?.Event?.Stochastic.ControlledChoice;
+        var reward = run.Stochastic.ControlledEventRewardChoice;
+        if ((effect is null) == (reward is null))
+            throw new InvalidOperationException(
+                "A controlled event-choice law requires exactly one pending request.");
+        effect?.Validate();
+        reward?.Validate();
+        var eventId = effect?.EventId ?? reward!.EventId;
+        var choiceId = effect?.ChoiceId ?? reward!.ChoiceId;
+        var request = effect?.PendingRequest ?? reward!.PendingRequest;
+        var candidateLabels = effect?.PendingCandidateLabels ??
+            reward!.PendingCandidateLabels;
+        var boundaryFingerprint = CanonicalJson.Sha256(new
+        {
+            schemaId = ControlledEventChoiceEngineV111.SchemaId,
+            kind = effect is null ? "event_reward_random_choice" :
+                "event_random_choice",
+            eventId,
+            choiceId,
+            nextEffectIndex = effect?.NextEffectIndex,
+            decisionPrefixLength = reward?.DecisionPrefixLength,
+            request,
+            candidateLabels
+        });
+        var chanceEventId = CanonicalJson.Sha256(new
+        {
+            schemaId = ControlledEventChoiceEngineV111.SchemaId,
+            boundaryFingerprint
+        });
+        return (chanceEventId, choiceId, request, candidateLabels,
+            boundaryFingerprint);
+    }
 }
