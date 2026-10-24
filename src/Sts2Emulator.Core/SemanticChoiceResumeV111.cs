@@ -20,18 +20,28 @@ internal static class SemanticChoiceResumeV111
 {
     internal static T SelectNativeOutcome<T>(
         RandomIndexDecisionV111 decision,
-        IReadOnlyList<T> orderedOutcomes)
+        IReadOnlyList<T> orderedOutcomes) =>
+        SelectNativeOutcome(decision, orderedOutcomes, "choose_index");
+
+    internal static T SelectNativeBoundedOutcome<T>(
+        RandomIndexDecisionV111 decision,
+        IReadOnlyList<T> orderedOutcomes) =>
+        SelectNativeOutcome(decision, orderedOutcomes, "bounded_integer");
+
+    private static T SelectNativeOutcome<T>(
+        RandomIndexDecisionV111 decision,
+        IReadOnlyList<T> orderedOutcomes, string expectedOperationKind)
     {
         ArgumentNullException.ThrowIfNull(decision);
         ArgumentNullException.ThrowIfNull(orderedOutcomes);
         decision.Validate();
         if (decision.ProviderMode != "native-v111" ||
-            decision.Request.OperationKind != "choose_index" ||
+            decision.Request.OperationKind != expectedOperationKind ||
             decision.Request.SupportCount != orderedOutcomes.Count ||
             decision.SelectedIndex < 0 ||
             decision.SelectedIndex >= orderedOutcomes.Count)
             throw new InvalidDataException(
-                "Native index decision does not match semantic outcome support.");
+                "Native provider decision does not match semantic outcome support.");
         return orderedOutcomes[decision.SelectedIndex];
     }
 

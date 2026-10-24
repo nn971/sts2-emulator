@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 Native bounded semantic-outcome mapping increment (2026-10-25):** The
+shared Native outcome mapper now validates both `choose_index` and
+`bounded_integer` support before returning the selected semantic value. The
+engine-owned semantic continuation uses it for draw insertion positions, pool
+shuffle destinations, and random costs, including end-turn draw costs. Native
+decision indices and cursor spans remain in the audit. Static source review
+and `git diff --check` only; no tests or builds were run.
+
 **S4 nested draw-hook child classification consolidation (2026-10-25):**
 Automatic draw-hook replay, semantic draw-frame validation, and pending child
 event discovery now share one classification against the saved pre-draw or

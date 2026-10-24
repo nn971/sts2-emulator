@@ -1136,6 +1136,14 @@ and pilot history records each external choice once. Other child-choice kinds,
 unsupported selection specifications, random attack pool fidelity, and Native
 stream parity remain open pending reference-mod evidence.
 
+Engine-owned Native semantic choices map provider indices through
+`SemanticChoiceResumeV111` before resuming mechanics. The mapper checks the
+Native provider mode, operation kind, support size, and selected bounds for
+both `choose_index` identity supports and `bounded_integer` outcomes. It covers
+typed candidate identities and labeled enemy actions, plus draw insertion
+positions, pool-shuffle destinations, and random costs. The Native audit keeps
+the primitive index and cursor spans alongside the semantic outcome.
+
 `PrototypeAutomaticPipelineResumeResultV111` is the single owner for
 classifying an ephemeral run-resume boundary. Draw-progress and semantic-choice
 results pass any saved classification through that owner, which checks it
