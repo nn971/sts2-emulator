@@ -1082,6 +1082,7 @@ trigger, source-pool, cursor, and selected-card checks keep the generated offer
 attached to the saved pre-draw dispatcher; resolving the selection resumes
 the same hand draw without replaying completed subscribers. The shuffle is not
 projected as a draw-hook action. The exact Toolbox subscriber validation is
-shared with the existing opening generated-choice owner. No event or snapshot
-schema changed. Static source review and `git diff --check` only; no tests or
-builds were run.
+shared with the existing opening generated-choice owner, as is the validation
+of generated card instances and their source-pool membership. No event or
+snapshot schema changed. Static source review and `git diff --check` only; no
+tests or builds were run.

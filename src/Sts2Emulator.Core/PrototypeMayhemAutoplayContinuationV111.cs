@@ -740,26 +740,6 @@ public sealed partial class PrototypeGameEngine
         if (!combat.ChoiceCardIds.SequenceEqual(candidates) ||
             candidates.Distinct().Count() != candidates.Length)
             return false;
-        var byInstance = combat.Cards.ToDictionary(card => card.InstanceId);
-        if (candidates.Any(instanceId =>
-                !byInstance.ContainsKey(instanceId)))
-            return false;
-        var offered = candidates.Select(id => byInstance[id]).ToArray();
-        if (offered.Select(card => card.CardId).Distinct(
-                StringComparer.Ordinal).Count() != offered.Length ||
-            offered.Any(card =>
-            {
-                var expected = new CombatCardInstance(
-                    card.InstanceId, PersistentCardInstanceId: null,
-                    CardId: card.CardId, UpgradeLevel: 0,
-                    IsTemporary: true, State: PrototypeJson.EmptyObject());
-                expected = ApplyActiveSourceBoundAfflictionToCard(
-                    combat, expected);
-                return CanonicalJson.Sha256(expected) !=
-                    CanonicalJson.Sha256(card);
-            }))
-            return false;
-
         return IsToolboxAutomaticBeforeHandDrawSelection(
             combat, candidates, eventDispatch);
     }
@@ -774,14 +754,59 @@ public sealed partial class PrototypeGameEngine
             return false;
         var sourcePool = SourcePoolForShuffle(
             combat, expectedOperation, sourceCardInstanceId: null);
-        var byInstance = combat.Cards.ToDictionary(card => card.InstanceId);
         if (sourcePool is null ||
             candidates.Length != Math.Min(3, sourcePool.Length) ||
-            candidates.Any(instanceId =>
-                !sourcePool.Contains(
-                    byInstance[instanceId].CardId, StringComparer.Ordinal)))
+            !HasGeneratedChoiceInstances(
+                combat, candidates, expectedOperation, sourcePool))
             return false;
         return true;
+    }
+
+    private static bool HasGeneratedChoiceInstances(
+        CombatState combat, long[] candidates,
+        PrototypeQueuedOperation operation, string[] sourcePool)
+    {
+        if (candidates.Distinct().Count() != candidates.Length)
+            return false;
+        var byInstance = combat.Cards.ToDictionary(card => card.InstanceId);
+        if (candidates.Any(instanceId =>
+                !byInstance.ContainsKey(instanceId)))
+            return false;
+
+        var offered = candidates.Select(id => byInstance[id]).ToArray();
+        if (offered.Select(card => card.CardId).Distinct(
+                StringComparer.Ordinal).Count() != offered.Length)
+            return false;
+
+        PrototypeCardKeywordOverride[]? expectedKeywords =
+            operation.GeneratedChoiceCardsRetain
+                ? [new PrototypeCardKeywordOverride(
+                    PrototypeCardKeyword.Retain, true,
+                    PrototypeCardKeywordOverrideExpiry.None)]
+                : null;
+        var expectedTemporaryCost =
+            operation.GeneratedChoiceCardsFreeThisTurn
+                ? new PrototypeTemporaryCardCost(0,
+                    PrototypeTemporaryCardCostExpiry.EndOfTurn |
+                    PrototypeTemporaryCardCostExpiry.WhenPlayed)
+                : null;
+        return offered.All(card =>
+        {
+            var expected = new CombatCardInstance(
+                InstanceId: card.InstanceId,
+                PersistentCardInstanceId: null,
+                CardId: card.CardId,
+                UpgradeLevel: operation.GeneratedChoiceCardsUpgraded ? 1 : 0,
+                IsTemporary: true,
+                State: PrototypeJson.EmptyObject(),
+                TemporaryEnergyCost: expectedTemporaryCost,
+                KeywordOverrides: expectedKeywords);
+            expected = ApplyActiveSourceBoundAfflictionToCard(
+                combat, expected);
+            return sourcePool.Contains(card.CardId, StringComparer.Ordinal) &&
+                CanonicalJson.Sha256(expected) ==
+                    CanonicalJson.Sha256(card);
+        });
     }
 
     internal static bool IsPlayerTurnStartedEntropySelection(
@@ -1228,34 +1253,11 @@ public sealed partial class PrototypeGameEngine
             !candidates.SequenceEqual(combat.ChoiceCardIds))
             return false;
 
-        var offered = candidates.Select(id => combat.Cards.Single(card =>
-            card.InstanceId == id)).ToArray();
         var eligible = SourcePoolForShuffle(
             combat, operation, sourceCardInstanceId: null);
-        if (eligible is null || offered.Length != candidates.Length)
-            return false;
-        PrototypeCardKeywordOverride[]? expectedKeywords =
-            operation.GeneratedChoiceCardsRetain
-                ? [new PrototypeCardKeywordOverride(
-                    PrototypeCardKeyword.Retain, true,
-                    PrototypeCardKeywordOverrideExpiry.None)]
-                : null;
-        return offered.Select(card => card.CardId).Distinct(
-                StringComparer.Ordinal).Count() == offered.Length &&
-            offered.All(card => card.IsTemporary &&
-                card.PersistentCardInstanceId is null &&
-                card.UpgradeLevel == (operation.GeneratedChoiceCardsUpgraded
-                    ? 1 : 0) &&
-                card.TemporaryEnergyCost ==
-                    (operation.GeneratedChoiceCardsFreeThisTurn
-                        ? new PrototypeTemporaryCardCost(0,
-                            PrototypeTemporaryCardCostExpiry.EndOfTurn |
-                            PrototypeTemporaryCardCostExpiry.WhenPlayed)
-                        : null) &&
-                card.Enchantment is null &&
-                CanonicalJson.Sha256(card.KeywordOverrides) ==
-                    CanonicalJson.Sha256(expectedKeywords) &&
-                eligible.Contains(card.CardId, StringComparer.Ordinal));
+        return eligible is not null &&
+            HasGeneratedChoiceInstances(
+                combat, candidates, operation, eligible);
     }
 
     private static bool IsSupportedGeneratedChoiceSubscriber(

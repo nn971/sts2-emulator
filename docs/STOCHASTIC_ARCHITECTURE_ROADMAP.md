@@ -5,10 +5,12 @@
 **S2/S4 generated-choice subscriber validation merge (2026-10-24):** The
 turn-one Toolbox automatic `BeforeHandDraw` shuffle and ChoicePool-selection
 owners now reuse the exact generated-choice subscriber validator already used
-by Toolbox and Choices Paradox opening continuations. The shared source check
-still leaves opening-stage and automatic draw-cursor validation at their
-respective continuation boundaries. No event or snapshot schema changed.
-Static source review and `git diff --check` only; no tests or builds were run.
+by Toolbox and Choices Paradox opening continuations. Opening and automatic
+offers also share validation of generated physical-card attributes and source
+pool membership. The shared source check still leaves opening-stage and
+automatic draw-cursor validation at their respective continuation boundaries.
+No event or snapshot schema changed. Static source review and
+`git diff --check` only; no tests or builds were run.
 
 **S2/S4 Toolbox pre-draw generation continuation increment (2026-10-24):**
 Toolbox's turn-one `BeforeHandDraw` generated offer now reuses the existing
