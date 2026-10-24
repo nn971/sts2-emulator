@@ -254,19 +254,17 @@ public sealed record SemanticCardInstanceIndexAuditV111(
         providerDecision.Validate();
         var request = providerDecision.Request;
         var identities = orderedCardInstanceIds.ToArray();
-        if (providerDecision.ProviderMode != "native-v111" ||
-            request.OperationKind != "choose_index" ||
-            !StochasticSiteRegistryV111.IsNativePolicyCardInstanceIndexAuditSite(
+        if (!StochasticSiteRegistryV111.IsNativePolicyCardInstanceIndexAuditSite(
                 request.SiteId) ||
-            request.SupportCount != identities.Length ||
             !request.OrderedCandidates.SequenceEqual(
                 Enumerable.Range(0, identities.Length)) ||
             identities.Length == 0 || identities.Any(id => id <= 0) ||
-            identities.Distinct().Count() != identities.Length ||
-            providerDecision.SelectedIndex < 0 ||
-            providerDecision.SelectedIndex >= identities.Length)
+            identities.Distinct().Count() != identities.Length)
             throw new InvalidDataException(
                 "Native card-instance index audit has an unsupported request or identity support.");
+
+        var selectedCardInstanceId = NativeSemanticOutcomeV111
+            .SelectByChooseIndex(providerDecision, identities);
 
         var supportFingerprint = CanonicalJson.Sha256(identities);
         var eventId = CanonicalJson.Sha256(new
@@ -282,7 +280,7 @@ public sealed record SemanticCardInstanceIndexAuditV111(
             {
                 OrderedCandidates = (int[])request.OrderedCandidates.Clone()
             }, identities, providerDecision.SelectedIndex,
-            identities[providerDecision.SelectedIndex],
+            selectedCardInstanceId,
             CloneDecision(providerDecision));
         outcome.Validate();
         return outcome;
@@ -296,21 +294,19 @@ public sealed record SemanticCardInstanceIndexAuditV111(
         Request.ValidateForNativeProvider();
         ProviderDecision.Validate();
         if (SchemaId != CurrentSchemaId ||
-            ProviderDecision.ProviderMode != "native-v111" ||
             ProviderDecision.SelectedIndex != SelectedIndex ||
             !ControlledStochasticChanceReplayV111.RequestsMatch(
                 ProviderDecision.Request, Request) ||
             !StochasticSiteRegistryV111.IsNativePolicyCardInstanceIndexAuditSite(
                 Request.SiteId) ||
-            Request.OperationKind != "choose_index" || identities is null ||
+            identities is null ||
             identities.Length == 0 ||
             !Request.OrderedCandidates.SequenceEqual(
                 Enumerable.Range(0, identities.Length)) ||
             identities.Any(identity => identity <= 0) ||
             identities.Distinct().Count() != identities.Length ||
-            Request.SupportCount != identities.Length ||
-            SelectedIndex < 0 || SelectedIndex >= identities.Length ||
-            SelectedCardInstanceId != identities[SelectedIndex] ||
+            SelectedCardInstanceId != NativeSemanticOutcomeV111
+                .SelectByChooseIndex(ProviderDecision, identities) ||
             SupportFingerprint != CanonicalJson.Sha256(identities) ||
             EventId != CanonicalJson.Sha256(new
             {
@@ -388,9 +384,7 @@ public sealed record SemanticCardEnergyCostAuditV111(
                 StochasticSiteRegistryV111.CombatDrawRelicEnergyCostSiteId
                     ? "relic"
                     : "slither");
-        if (providerDecision.ProviderMode != "native-v111" ||
-            (!handCost && !drawHookCost) ||
-            request.OperationKind != "bounded_integer" ||
+        if ((!handCost && !drawHookCost) ||
             request.BoundedCount is not > 0 ||
             identities.Length == 0 || identities.Any(id => id <= 0) ||
             identities.Distinct().Count() != identities.Length ||
@@ -406,6 +400,10 @@ public sealed record SemanticCardEnergyCostAuditV111(
             throw new InvalidDataException(
                 "Native card energy-cost audit has an unsupported request or card support.");
 
+        var selectedCost = NativeSemanticOutcomeV111
+            .SelectByBoundedOffset(providerDecision, 0,
+                request.SupportCount);
+
         var boundaryFingerprint = CanonicalJson.Sha256(new
         {
             schemaId = CurrentSchemaId,
@@ -415,8 +413,7 @@ public sealed record SemanticCardEnergyCostAuditV111(
         var semanticEvent = SemanticCostChoiceV111.CreateEvent(
             boundaryFingerprint, request, cardInstanceId, cardModelId);
         var semanticOutcome = SemanticCostChoiceV111.Select(
-            semanticEvent, semanticEvent.EventId,
-            providerDecision.SelectedIndex);
+            semanticEvent, semanticEvent.EventId, selectedCost);
         var eventId = CanonicalJson.Sha256(new
         {
             schemaId = CurrentSchemaId,
@@ -459,13 +456,13 @@ public sealed record SemanticCardEnergyCostAuditV111(
                     ? "relic"
                     : "slither");
         if (SchemaId != CurrentSchemaId ||
-            ProviderDecision.ProviderMode != "native-v111" ||
             !ControlledStochasticChanceReplayV111.RequestsMatch(
                 semanticEvent.Request, ProviderDecision.Request) ||
             Outcome.SelectedIndex != ProviderDecision.SelectedIndex ||
-            Outcome.SelectedCost != ProviderDecision.SelectedIndex ||
+            Outcome.SelectedCost != NativeSemanticOutcomeV111
+                .SelectByBoundedOffset(ProviderDecision, 0,
+                    semanticEvent.CandidateCosts.Length) ||
             (!handCost && !drawHookCost) ||
-            semanticEvent.Request.OperationKind != "bounded_integer" ||
             semanticEvent.BoundaryFingerprint !=
                 expectedBoundaryFingerprint ||
             identities is not { Length: > 0 } ||

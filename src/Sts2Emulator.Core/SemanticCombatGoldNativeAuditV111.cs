@@ -33,10 +33,12 @@ public sealed record SemanticCombatGoldNativeAuditV111(
             room, ascension, goldProportion)
             ?? throw new InvalidDataException(
                 "Native combat-gold audit cannot annotate a draw-free reward.");
+        var amount = NativeSemanticOutcomeV111
+            .SelectByBoundedOffset(providerDecision, bounds.Min,
+                checked(bounds.Max - bounds.Min + 1));
         var audit = new SemanticCombatGoldNativeAuditV111(
             CurrentSchemaId, string.Empty, room, ascension, goldProportion,
-            bounds.Min, bounds.Max,
-            checked(bounds.Min + providerDecision.SelectedIndex),
+            bounds.Min, bounds.Max, amount,
             providerDecision with
             {
                 Request = providerDecision.Request with
@@ -66,17 +68,14 @@ public sealed record SemanticCombatGoldNativeAuditV111(
                 "Native combat-gold request has no bounded support.");
         if (SchemaId != CurrentSchemaId ||
             ProbabilityStatus != "UNVERIFIED" ||
-            ProviderDecision.ProviderMode != "native-v111" ||
             request.SiteId != StochasticSiteRegistryV111.NativeCombatGoldSiteId ||
             request.StreamId != NativePlayerRngV111.RewardsStreamId ||
-            request.OperationKind != "bounded_integer" ||
             boundedCount <= 0 ||
             request.OwnerId != expectedOwner || bounds is null ||
             Minimum != bounds.Value.Min || Maximum != bounds.Value.Max ||
             boundedCount != checked(Maximum - Minimum + 1) ||
-            ProviderDecision.SelectedIndex < 0 ||
-            ProviderDecision.SelectedIndex >= boundedCount ||
-            Amount != checked(Minimum + ProviderDecision.SelectedIndex) ||
+            Amount != NativeSemanticOutcomeV111.SelectByBoundedOffset(
+                ProviderDecision, Minimum, boundedCount) ||
             EventId != FingerprintFor())
             throw new InvalidDataException(
                 "Native combat-gold result differs from its bounded reward request.");

@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 shared mapping for Native cost, gold, and card-instance audits
+(2026-10-25):** Native bounded costs and combat-gold amounts now map through
+the checked bounded-offset owner; physical card-instance audits use its
+ordered `choose_index` mapping. Audit records retain the primitive index and
+their existing schemas. Static source review and `git diff --check` only; no
+tests or builds were run.
+
 **S4 Native PotionFactory audit outcome mapping (2026-10-25):** The
 PotionFactory audit now maps its saved Native model index through
 `NativeSemanticOutcomeV111` both when constructed and when restored for

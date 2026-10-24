@@ -7790,10 +7790,9 @@ public static class SemanticPilotCombatEngineV111
                 var choice = SemanticOtherChanceEngineV111
                     .ResolveDrawInsertion(drawInsertionOwner, drawInsertion);
                 var selectedPosition =
-                    NativeSemanticOutcomeV111.SelectByBoundedInteger(
-                        choice.Decision,
-                        Enumerable.Range(
-                            0, drawInsertion.Request.SupportCount).ToArray());
+                    NativeSemanticOutcomeV111.SelectByBoundedOffset(
+                        choice.Decision, 0,
+                        drawInsertion.Request.SupportCount);
                 current = ResolveDrawInsertion(
                     current, current.Fingerprint, drawInsertion.EventId,
                     selectedPosition, choice.Next);
@@ -7844,10 +7843,9 @@ public static class SemanticPilotCombatEngineV111
                 var choice = SemanticOtherChanceEngineV111
                     .ResolvePoolShuffle(poolShuffleOwner, poolShuffle);
                 var selectedSwapIndex =
-                    NativeSemanticOutcomeV111.SelectByBoundedInteger(
-                        choice.Decision,
-                        Enumerable.Range(
-                            0, poolShuffle.NextSwapIndex + 1).ToArray());
+                    NativeSemanticOutcomeV111.SelectByBoundedOffset(
+                        choice.Decision, 0,
+                        poolShuffle.NextSwapIndex + 1);
                 current = ResolvePoolShuffle(
                     current, current.Fingerprint, poolShuffle.EventId,
                     selectedSwapIndex, choice.Next);
@@ -7930,10 +7928,9 @@ public static class SemanticPilotCombatEngineV111
                     .ResolveNonNatureCost(costOwner, semanticCost);
                 var decision = SemanticCostChoiceV111.Select(
                     semanticCost, semanticCost.EventId,
-                    SemanticChoiceResumeV111
-                        .SelectNativeBoundedOutcome(
-                            choice.Decision,
-                            semanticCost.CandidateCosts));
+                    NativeSemanticOutcomeV111.SelectByBoundedOffset(
+                        choice.Decision, 0,
+                        semanticCost.CandidateCosts.Length));
                 current = ResumeCostDecision(
                     current, decision, choice.Next);
                 continue;
@@ -7957,10 +7954,8 @@ public static class SemanticPilotCombatEngineV111
                     var choice = SemanticOtherChanceEngineV111.ResolveDrawCost(
                         other, cost);
                     nextOther = choice.Next;
-                    index = SemanticChoiceResumeV111
-                        .SelectNativeBoundedOutcome(
-                            choice.Decision,
-                            Enumerable.Range(0, bound).ToArray());
+                    index = NativeSemanticOutcomeV111
+                        .SelectByBoundedOffset(choice.Decision, 0, bound);
                 }
                 else
                 {

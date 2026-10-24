@@ -197,8 +197,8 @@ public static class SemanticPoolShuffleChoiceV111
                 "Native pool-shuffle audit has an unsupported request or ordered support.");
 
         var selectedSwapIndex = NativeSemanticOutcomeV111
-            .SelectByBoundedInteger(providerDecision,
-                Enumerable.Range(0, nextSwapIndex + 1).ToArray());
+            .SelectByBoundedOffset(providerDecision, 0,
+                nextSwapIndex + 1);
 
         var boundaryFingerprint = NativeAuditBoundaryFingerprint(
             providerDecision, operation, sourceCardInstanceId);

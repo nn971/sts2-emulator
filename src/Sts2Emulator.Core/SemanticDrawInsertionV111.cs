@@ -221,8 +221,8 @@ public sealed record SemanticDrawInsertionNativeAuditV111(
                 "Native draw-insertion audit has an unsupported request or pile support.");
 
         var selectedPosition = NativeSemanticOutcomeV111
-            .SelectByBoundedInteger(providerDecision,
-                Enumerable.Range(0, request.SupportCount).ToArray());
+            .SelectByBoundedOffset(providerDecision, 0,
+                request.SupportCount);
 
         var boundaryFingerprint = BoundaryFingerprint(
             request, generatedCardModelId, pile);
@@ -461,8 +461,8 @@ public sealed record SemanticEnemyPileInsertionNativeAuditV111(
             throw new InvalidDataException(
                 "Native enemy pile-insertion audit has an unsupported request or support.");
         var selectedPosition = NativeSemanticOutcomeV111
-            .SelectByBoundedInteger(providerDecision,
-                Enumerable.Range(0, request.SupportCount).ToArray());
+            .SelectByBoundedOffset(providerDecision, 0,
+                request.SupportCount);
         var boundaryFingerprint = CanonicalJson.Sha256(new
         {
             schemaId = CurrentSchemaId,
