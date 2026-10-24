@@ -259,7 +259,8 @@ internal static class SemanticChoiceResumeV111
         progress = ControlledChanceGuardV111.ExecuteGuarded(
             () => PrototypeGameEngine.ResumeSemanticRandomPileCardChoice(
                 checkpoint.Fork(), ownedDecision));
-        return (progress, ownedDecision.Event.SiteId);
+        return (EnsurePipelineBoundary(progress),
+            ownedDecision.Event.SiteId);
     }
 
     internal static SemanticChoiceResumeResultV111 Resume(
