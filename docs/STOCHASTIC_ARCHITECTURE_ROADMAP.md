@@ -4632,3 +4632,9 @@ publication boundary, and re-enters the draw kernel using the adapter's
 suspension policy and local RNG. Controlled and semantic adapters share this
 operation before interpreting the tagged result. Static source review and
 `git diff --check` only; no tests or builds were run.
+
+**S4 automatic hand-draw progress-position increment (2026-10-25):** Stratagem
+and nested `CardDrawn` suspension now share the check that locates active or
+pre-draw hand-draw progress and rejects saved progress outside its source
+stage. This keeps the same cursor invariant at both suspension boundaries.
+Static source review and `git diff --check` only; no tests or builds were run.

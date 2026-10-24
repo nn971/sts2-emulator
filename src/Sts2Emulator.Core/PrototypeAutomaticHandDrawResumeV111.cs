@@ -248,6 +248,24 @@ public sealed partial class PrototypeGameEngine
             stochastic.IsAtControlledBeforeHandDraw(mechanics);
     }
 
+    private static bool InspectAutomaticHandDrawProgressPosition(
+        PrototypeAutomaticPipelineContinuationState? cursor)
+    {
+        if (cursor is null)
+            return false;
+        bool hasActiveProgress =
+            cursor.Stochastic.TryGetActiveAutomaticHandDrawProgress(
+                cursor.Mechanics, out _);
+        bool isBeforeHandDraw =
+            cursor.Stochastic.IsAtSemanticBeforeHandDraw(cursor.Mechanics) ||
+            cursor.Stochastic.IsAtControlledBeforeHandDraw(cursor.Mechanics);
+        if (cursor.Stochastic.HasSavedHandDrawProgress() &&
+            !hasActiveProgress && !isBeforeHandDraw)
+            throw new InvalidDataException(
+                "Saved automatic hand-draw progress is outside its source stage.");
+        return isBeforeHandDraw;
+    }
+
     /// <summary>
     /// Routes a completed DrawPlayerHand call to the matching continuation
     /// owner. Source-stage calls route only suspended boundaries; saved-stage
@@ -465,16 +483,8 @@ public sealed partial class PrototypeGameEngine
                  PrototypeAutomaticStepKind.DrawPlayerHand)))
             throw new InvalidDataException(
                 "Automatic Stratagem selection lost its hand-draw boundary.");
-        bool hasActiveProgress = cursor is not null &&
-            cursor.Stochastic.TryGetActiveAutomaticHandDrawProgress(
-                cursor.Mechanics, out _);
-        bool isBeforeHandDraw = cursor is not null &&
-            (cursor.Stochastic.IsAtSemanticBeforeHandDraw(cursor.Mechanics) ||
-             cursor.Stochastic.IsAtControlledBeforeHandDraw(cursor.Mechanics));
-        if (cursor?.Stochastic.HasSavedHandDrawProgress() == true &&
-            !hasActiveProgress && !isBeforeHandDraw)
-            throw new InvalidDataException(
-                "Saved automatic hand-draw progress is outside its source stage.");
+        bool isBeforeHandDraw =
+            InspectAutomaticHandDrawProgressPosition(cursor);
         if (choice!.Selection.MinSelections != expectedSelections ||
             choice.Selection.MaxSelections != expectedSelections)
             throw new InvalidDataException(
@@ -520,11 +530,6 @@ public sealed partial class PrototypeGameEngine
                 ? activeProgress : null;
             bool hasSemanticDrawProgress = priorProgress?.Kind ==
                     PrototypeAutomaticHandDrawProgressKindV111.SemanticDraw;
-            bool isBeforeHandDraw = cursor is not null &&
-                (cursor.Stochastic.IsAtSemanticBeforeHandDraw(
-                     cursor.Mechanics) ||
-                 cursor.Stochastic.IsAtControlledBeforeHandDraw(
-                     cursor.Mechanics));
             if (combat.Stochastic.SemanticDeck is not null ||
                 choice!.AutomaticSemanticStratagemDrawSelection ||
                 choice.SemanticStratagemDrawSelection ||
@@ -550,16 +555,8 @@ public sealed partial class PrototypeGameEngine
         int? semanticRequested)
     {
         var cursor = combat.AutomaticPipelineContinuation;
-        bool hasActiveProgress = cursor is not null &&
-            cursor.Stochastic.TryGetActiveAutomaticHandDrawProgress(
-                cursor.Mechanics, out _);
-        bool isBeforeHandDraw = cursor is not null &&
-            (cursor.Stochastic.IsAtSemanticBeforeHandDraw(cursor.Mechanics) ||
-             cursor.Stochastic.IsAtControlledBeforeHandDraw(cursor.Mechanics));
-        if (cursor?.Stochastic.HasSavedHandDrawProgress() == true &&
-            !hasActiveProgress && !isBeforeHandDraw)
-            throw new InvalidDataException(
-                "Saved automatic hand-draw progress is outside its source stage.");
+        bool isBeforeHandDraw =
+            InspectAutomaticHandDrawProgressPosition(cursor);
         if (!ControlledChanceGuardV111.Active || remaining < 0 ||
             combat.PendingChoice is null ||
             combat.PendingKnowledgeDemonChoice is not null ||
