@@ -415,10 +415,11 @@ internal static class SemanticChoiceResumeV111
         ArgumentNullException.ThrowIfNull(decision);
         decision.Validate();
         var ownedDecision = decision.Fork();
-        var run = SemanticKnowledgeDemonChoiceEngineV111.Resume(
+        var resumed = SemanticKnowledgeDemonChoiceEngineV111.ResumeWithBoundary(
             checkpoint.Fork(), ownedDecision);
         return new SemanticChoiceResumeResultV111(
-            run, "combat.ResolveEnemyActions.KnowledgeDemon");
+            resumed.Run, "combat.ResolveEnemyActions.KnowledgeDemon",
+            resumed.Boundary);
     }
 
     internal static SemanticChoiceResumeResultV111 Resume(

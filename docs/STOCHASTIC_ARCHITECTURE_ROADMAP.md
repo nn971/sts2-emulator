@@ -4084,6 +4084,14 @@ and transcript formats are unchanged. Broader resume consolidation and
 cross-provider mechanical equivalence remain open. Static source review and
 `git diff --check` only; no tests or builds were run.
 
+**S4 Knowledge Demon classified handoff increment (2026-10-24):** Semantic
+Knowledge Demon replay now calls the typed engine action continuation and
+preserves its automatic-pipeline classification through
+`SemanticChoiceResumeResultV111`. The ordinary action-step path retains its
+run-only projection. Snapshot and transcript formats are unchanged. Broader
+resume consolidation and cross-provider mechanical equivalence remain open.
+Static source review and `git diff --check` only; no tests or builds were run.
+
 **S4 typed semantic-choice classified handoff increment (2026-10-24):**
 Draw-insertion, generated-card, potion-generation, card-transform, and
 pool-shuffle choice owners now preserve their automatic-pipeline result through

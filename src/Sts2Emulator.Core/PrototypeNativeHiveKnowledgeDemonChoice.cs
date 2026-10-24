@@ -124,6 +124,11 @@ public sealed partial class PrototypeGameEngine
 
     private static RunState ResolveKnowledgeDemonChoice(
         RunState state, GameAction action)
+        => ResolveKnowledgeDemonChoiceWithBoundary(state, action).Run;
+
+    internal static PrototypeAutomaticPipelineResumeResultV111
+        ResolveKnowledgeDemonChoiceWithBoundary(
+            RunState state, GameAction action)
     {
         RequireKind(action, "choose_knowledge_curse");
         var world = RequireWorld(state);
@@ -175,6 +180,6 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidOperationException(
                 "Knowledge Demon choice lost its automatic-step continuation.");
         return ResumeAutomaticPipelineContinuation(
-            state with { World = world with { Combat = combat } }).Run;
+            state with { World = world with { Combat = combat } });
     }
 }

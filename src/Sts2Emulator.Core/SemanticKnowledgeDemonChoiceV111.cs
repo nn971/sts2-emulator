@@ -219,6 +219,12 @@ public static class SemanticKnowledgeDemonChoiceEngineV111
 
     public static RunState Resume(
         RunState source, SemanticKnowledgeDemonChoiceDecisionV111 decision)
+        => ResumeWithBoundary(source, decision).Run;
+
+    internal static PrototypeAutomaticPipelineResumeResultV111
+        ResumeWithBoundary(
+            RunState source,
+            SemanticKnowledgeDemonChoiceDecisionV111 decision)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(decision);
@@ -233,12 +239,15 @@ public static class SemanticKnowledgeDemonChoiceEngineV111
             ownedDecision.SelectedCardId);
 
         var resumed = ControlledChanceGuardV111.ExecuteGuarded(
-            () => new PrototypeAiEnvironment().Step(
-                source.Fork(), ownedDecision.ActionId).State,
+            () => PrototypeGameEngine.ResolveKnowledgeDemonChoiceWithBoundary(
+                source.Fork(), GameAction.Create(
+                    "choose_knowledge_curse",
+                    new ChooseKnowledgeCursePayload(
+                        ownedDecision.SelectedCardId))),
             allowEngineOwnedPrototypeReward: true);
-        if (resumed.Phase is not (
+        if (resumed.Run.Phase is not (
                 RunPhase.Combat or RunPhase.Reward or RunPhase.Terminal) ||
-            resumed.World?.Combat?.PendingKnowledgeDemonChoice is not null)
+            resumed.Run.World?.Combat?.PendingKnowledgeDemonChoice is not null)
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_ACTION site=knowledge_demon.choice " +
                 "operation=unexpected_resume_result");
