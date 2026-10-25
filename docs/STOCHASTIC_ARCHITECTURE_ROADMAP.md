@@ -5338,12 +5338,12 @@ replay captures now retain the indexed Nature event, law, and selected outcome
 identities from fully replay-validated semantic combat histories. Comparison
 reports semantic outcome availability and equality separately from typed
 primitive boundaries; complete semantic equality can establish trajectory
-equivalence for two semantic ReferenceNature captures. Capture v2 remains
-readable with endpoint-only provenance and no semantic trace. A normalized
-Native semantic trace and cross-provider semantic outcome equality remain
-open. Release builds for Core and CLI passed with zero warnings and errors;
-the CLI build also exposed and fixed existing JSONL response and handle-lookup
-compile errors. No tests were run.
+equivalence for two semantic ReferenceNature captures. At this point a Native
+semantic trace and cross-provider outcome equality were still open. Capture v2
+remains readable with endpoint-only provenance and no semantic trace. Release
+builds for Core and CLI passed with zero warnings and errors; the CLI build
+also exposed and fixed existing JSONL response and handle-lookup compile
+errors. No tests were run.
 
 **S4 semantic pool-shuffle outcome identity increment (2026-10-25):** Semantic
 enumeration v2 now identifies each Fisher–Yates swap outcome by the current
@@ -5359,4 +5359,22 @@ ordinal, semantic support fingerprint, and the event's provider-neutral
 outcome identity. Semantic comparison uses that key and the history position;
 provider-specific event and law IDs remain diagnostic fields. Capture v2 and
 v3 readers retain their prior meaning. Cross-provider Native outcome trace
-capture remains open. Release Core and CLI builds passed; no tests were run.
+capture remains gated on complete outcome coverage. Release Core and CLI builds
+passed; no tests were run.
+
+**S4 Native semantic replay trace increment (2026-10-25):** Native-policy
+capture now projects validated intent, supported physical-card, cost,
+draw-insertion, combat pool-shuffle, generated-card, transform, target, and
+potion-generation audit entries into the provider-independent semantic trace.
+It marks that trace complete only when every provider boundary in the action
+interval maps to one supported annotation and each drawn card is identified;
+other captures retain their typed trace with semantic comparison unavailable.
+This enables cross-provider outcome comparison for covered intervals. Core
+Release build passed with zero warnings and errors; no tests were run.
+
+**S4 Native semantic identity normalization increment (2026-10-25):** Native
+semantic traces now project shared hand-cost owner identity and normalize
+request ordinals for semantic event families whose ordinal counts prior
+choices. Event-owned turn or source ordinals remain attached to their events.
+The architecture doc records the distinction. Core Release build passed with
+zero warnings and errors; no tests were run.

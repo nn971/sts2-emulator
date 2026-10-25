@@ -1055,25 +1055,31 @@ event-effect, and enemy-defeat continuation mechanics from their existing
 mechanics owners, including action identity, effect cursor, queued
 consequences, and the saved fatal follow-up, while omitting their random
 requests and decision payloads. The mechanics comparison schema advances to
-v19 for this expanded projection; the provider replay comparison remains v3.
+v19 for this expanded projection; the provider replay comparison is v5.
 `SimulationMechanicsComparisonV111` copies the difference array on
 construction and replacement, then returns defensive copies to keep the
 diagnostic result immutable to callers.
 
 `SimulationProviderReplayCaptureV111` groups an origin run, player-action
 sequence, ordered typed random-boundary trace, semantic event-outcome trace,
-and result run in the existing `SimulationStateV111` envelope. Its v3 schema
-includes capture provenance; v2 captures remain readable with no semantic
-trace. Explicit fields are marked caller-supplied and unverified, while
+and result run in the existing `SimulationStateV111` envelope. Its v4 schema
+includes capture provenance; v2 and v3 captures remain readable with their
+original trace meaning. Explicit fields are marked caller-supplied and unverified, while
 scripted and Native-policy factories mark the histories they replay-validate.
 `SimulationProviderReplayComparisonEngineV111` compares two such captures by
 fingerprinting their action sequences, comparing origin mechanics, comparing
 every supplied typed boundary in order, comparing complete semantic outcome
 traces when both captures provide them, and comparing the resulting mechanics,
 returning each agreement and both capture provenance values separately. The
-semantic trace records event and law identity, selected outcome identity and
-index, and its transition position within the captured history. It does not
-rewrite Chance Law outcomes as primitive provider draws. Callers must provide
+semantic trace records provider event and law identity, provider-independent
+site/operation/owner/ordinal, a fingerprint of ordered semantic outcome IDs,
+the selected semantic identity and index, and its transition position within
+the captured history. Event and law IDs remain diagnostic; equality uses the
+provider-independent fields. For Native projections, site families whose
+semantic ordinal is based on prior choices use that family order instead of
+the Native stream call count; turn-based and source-owned event ordinals stay
+attached to their event. It does not rewrite Chance Law outcomes as primitive
+provider draws. Callers must provide
 captures covering the same interval and all typed boundaries in it;
 caller-supplied provenance remains an assertion and does not prove capture
 completeness. Native cursor equality is an optional additional boundary check.
@@ -1085,16 +1091,14 @@ does not require matching intermediate stochastic outcomes. The stricter
 `EquivalentUnderComparedActions` additionally requires equality of a complete
 stochastic trace: typed provider boundaries when both captures have those, or
 semantic event outcomes when both have a replay-validated semantic trace.
-Currently `FromReferenceNatureSemanticCombatSession` is the semantic trace
-factory, so this second route compares complete ReferenceNature semantic
-combat captures with each other. New captures retain both the provider's
-`EventId`/`LawId` evidence and a provider-independent key made from site,
-operation, owner, ordinal, semantic support fingerprint, and selected semantic
-outcome identity. Equality uses that common key and its history position;
-event and law IDs remain diagnostic because they can include provider-specific
-boundary evidence. Older v2 captures retain endpoint-only provenance, and v3
-captures keep their original trace meaning. Neither is treated as a normalized
-semantic trace. A normalized Native semantic trace remains open. The result
+ReferenceNature semantic combat captures provide complete semantic traces.
+Native-policy captures provide them only when every provider boundary in the
+action interval has one supported semantic annotation and every drawn card is
+individually identified; unsupported or unannotated boundaries leave semantic
+comparison unavailable. This permits cross-provider trajectory comparison
+for covered intervals without claiming completeness for other Native captures.
+Older v2 captures retain endpoint-only provenance, and v3 captures keep their
+original trace meaning. Neither is treated as a normalized semantic trace. The result
 exposes `TypedRandomBoundaryComparisonAvailable` and
 `SemanticOutcomeComparisonAvailable` separately, so an absent trace is not
 reported as a matching empty trace. `SameSemanticOutcomes` and
@@ -1111,15 +1115,24 @@ with the same setup and committed-intent prefix, and replays the saved player
 actions to recover their exact mechanics actions. The capture starts at that
 initial player boundary, so route setup and initial-intent decisions are
 excluded; its boundary trace contains only subsequent player-action outcomes.
+It also projects the audit's weighted intent, supported card-instance, cost,
+draw-insertion, combat pool-shuffle, generated-card, transform, target, and
+potion-generation annotations to common semantic identities when those
+annotations cover the entire interval. Ordinary draws without individual
+identity annotations and any unrecognized provider boundary prevent the
+semantic trace from being marked complete; the typed boundary trace remains
+available. The projection normalizes Native ordinals for target, generated
+card, potion generation, transform, energy cost, hand-card selection, combat
+pool-shuffle, and ordinary draw-insertion families against earlier requests
+in that semantic family.
 The JSONL operation accepts `<side>_semantic_native_policy_handle` for this
 capture path. `FromReferenceNatureSemanticCombatSession` replays a fully
 indexed mixed player-action/Nature history, reconstructs the exact player
 actions from its initial committed boundary, and captures the resulting
 mechanics interval. Nature's Chance Law outcome identities are not converted
 into primitive provider draws, so this provenance explicitly has no complete
-typed-boundary trace. It can support an endpoint mechanics match for the same
-actions and origin, but cannot establish typed-boundary or intermediate
-outcome equivalence. JSONL accepts
+typed-boundary trace. Its indexed semantic trace can establish intermediate
+outcome equivalence against another complete semantic trace. JSONL accepts
 `<side>_reference_nature_semantic_combat_handle` for this path.
 `FromReferenceNatureEventChoiceSession` restores and replays the
 session's interleaved player-action/Nature chronology, checks the completed
@@ -1312,7 +1325,7 @@ snapshot, next target index, and pending extra kill rounds, so earlier hits
 are not replayed after a hook choice. Pending event replay uses the same
 resumable dispatcher, and restore validates the defeated target against the
 saved follow-up and repeated-damage cursor. The mechanics comparison retains
-this progress under schema v19; provider replay comparison remains v3.
+this progress under schema v19; provider replay comparison remains v5.
 
 Toolbox's first-turn `BeforeHandDraw` generated offer now composes the
 existing full-pool shuffle and ChoicePool card-selection continuations. Exact
