@@ -283,6 +283,10 @@ resume classification and automatic card-selection child validation, reuse
 this owner predicate; each still validates its own typed payload and source
 support.
 
+`GetSavedSemanticHandDrawRequestedCount` is the shared projection for the
+active request or completed-stage receipt. Semantic facade state updates and
+source-stage completion use it instead of reading the receipt field directly.
+
 The draw stochastic owner also includes card-shortlist choices in its typed
 transcripts, mixed boundary chronology, and provenance replay. End-turn and
 pilot facades route a shortlist opened by an active or pre-draw hand-draw hook

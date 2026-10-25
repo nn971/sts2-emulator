@@ -237,7 +237,8 @@ public sealed partial class PrototypeGameEngine
                 "operation=" + unsupportedOperation);
 
         var savedRequested = completed.Stochastic
-            .CompletedSemanticHandDrawRequested;
+            .GetSavedSemanticHandDrawRequestedCount(
+                completed.Mechanics);
         var completedRequested = savedRequested ??
             GetCardsDrawnSince(after, cardsDrawnBefore);
         // The common stage owner already recorded semantic completions that

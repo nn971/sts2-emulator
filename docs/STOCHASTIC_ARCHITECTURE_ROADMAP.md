@@ -6075,3 +6075,11 @@ the semantic result owner. That owner publishes mechanics once through
 router's temporary `RunState` reconstruction and duplicate publication. No
 snapshot or transcript schema changed. Core Release build and
 `git diff --check` passed; no tests were run.
+
+**S4 completed hand-draw request projection reuse (2026-10-26):** The semantic
+combat-draw mechanics facade and semantic source-stage completion now resolve
+the saved requested count through
+`GetSavedSemanticHandDrawRequestedCount`, which projects active progress or
+the completed-stage receipt. They no longer read the receipt field directly;
+the pipeline stochastic owner remains authoritative. No snapshot schema
+changed. Core Release build and `git diff --check` passed; no tests were run.

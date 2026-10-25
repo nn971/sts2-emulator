@@ -66,12 +66,11 @@ public sealed record SemanticCombatDrawMechanicsStateV111
         else if (priorProgress is { } progress)
         {
             var nextCursor = value.World?.Combat?.AutomaticPipelineContinuation;
-            int? nextRequested = nextCursor is not null &&
-                nextCursor.Stochastic.TryGetSemanticHandDrawProgress(
-                    nextCursor.Mechanics, out int savedRequested, out _)
-                    ? savedRequested
-                    : nextCursor?.Stochastic
-                        .CompletedSemanticHandDrawRequested;
+            int? nextRequested = nextCursor is null
+                ? null
+                : nextCursor.Stochastic
+                    .GetSavedSemanticHandDrawRequestedCount(
+                        nextCursor.Mechanics);
             requested = nextRequested ??
                 (progress.Requested > 0 ? progress.Requested : requested);
             remaining = 0;
