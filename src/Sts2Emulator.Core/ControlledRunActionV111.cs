@@ -9,29 +9,24 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public sealed class ControlledRunActionPendingV111
 {
-    private readonly string[] _candidateLabels;
+    private readonly ControlledChancePendingBoundaryV111 _chanceBoundary;
 
     public string ActionId { get; }
     public string? MapNodeId { get; }
-    public RandomIndexRequestV111 Request { get; }
-    public string[] CandidateLabels => (string[])_candidateLabels.Clone();
-    public string BoundaryFingerprint { get; }
-    public string ChanceEventId { get; }
+    public RandomIndexRequestV111 Request => _chanceBoundary.Request;
+    public string[] CandidateLabels => _chanceBoundary.CandidateLabels;
+    public string BoundaryFingerprint =>
+        _chanceBoundary.BoundaryFingerprint;
+    public string ChanceEventId => _chanceBoundary.ChanceEventId;
 
     private ControlledRunActionPendingV111(
         string actionId, string? mapNodeId,
-        RandomIndexRequestV111 request, string[] candidateLabels,
-        string boundaryFingerprint, string chanceEventId)
+        ControlledChancePendingBoundaryV111 chanceBoundary)
     {
         ActionId = actionId;
         MapNodeId = mapNodeId;
-        Request = request with
-        {
-            OrderedCandidates = request.OrderedCandidates
-        };
-        _candidateLabels = (string[])candidateLabels.Clone();
-        BoundaryFingerprint = boundaryFingerprint;
-        ChanceEventId = chanceEventId;
+        _chanceBoundary = chanceBoundary ??
+            throw new ArgumentNullException(nameof(chanceBoundary));
     }
 
     public static ControlledRunActionPendingV111 Describe(RunState run)
@@ -61,14 +56,11 @@ public sealed class ControlledRunActionPendingV111
                 actionFingerprint = PrototypeAiEnvironment.StableActionId(
                     continuation.RunAction)
             });
-        var chanceEventId = CanonicalJson.Sha256(new
-        {
-            schemaId = ControlledRunActionEngineV111.SchemaId,
-            boundaryFingerprint
-        });
         return new ControlledRunActionPendingV111(
             continuation.ActionId, continuation.MapNodeId,
-            request, candidateLabels, boundaryFingerprint, chanceEventId);
+            ControlledChancePendingBoundaryV111.Create(
+                ControlledRunActionEngineV111.SchemaId, request,
+                candidateLabels, boundaryFingerprint));
     }
 }
 

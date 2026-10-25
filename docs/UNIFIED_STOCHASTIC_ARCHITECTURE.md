@@ -838,7 +838,10 @@ is projected from those steps, so the chronology has one stored history.
 `ControlledEventChoicePendingV111` owns the active event-effect or
 post-reward boundary projection; Chance Law queries, outcome resolution,
 enumeration, and JSONL pending views share its request, ordered labels, and
-boundary fingerprint.
+boundary fingerprint. Event-choice and run-action projections reuse
+`ControlledChancePendingBoundaryV111` for defensive request/label ownership
+and Chance Law event-ID derivation; each context retains its own boundary
+identity and fingerprint inputs.
 Transient Overgrowth, Underdocks, encounter-formation, and later-act Nature
 providers also use the shared cursor/transcript owner; `Advance` applies one
 sampled cursor and appends its decision as a single owner transition. Run

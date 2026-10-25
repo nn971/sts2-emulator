@@ -10,31 +10,26 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public sealed class ControlledEventChoicePendingV111
 {
-    private readonly string[] _candidateLabels;
+    private readonly ControlledChancePendingBoundaryV111 _chanceBoundary;
 
     public string EventId { get; }
     public string ChoiceId { get; }
     public string Kind { get; }
-    public RandomIndexRequestV111 Request { get; }
-    public string[] CandidateLabels => (string[])_candidateLabels.Clone();
-    public string BoundaryFingerprint { get; }
-    public string ChanceEventId { get; }
+    public RandomIndexRequestV111 Request => _chanceBoundary.Request;
+    public string[] CandidateLabels => _chanceBoundary.CandidateLabels;
+    public string BoundaryFingerprint =>
+        _chanceBoundary.BoundaryFingerprint;
+    public string ChanceEventId => _chanceBoundary.ChanceEventId;
 
     private ControlledEventChoicePendingV111(
         string eventId, string choiceId, string kind,
-        RandomIndexRequestV111 request, string[] candidateLabels,
-        string boundaryFingerprint, string chanceEventId)
+        ControlledChancePendingBoundaryV111 chanceBoundary)
     {
         EventId = eventId;
         ChoiceId = choiceId;
         Kind = kind;
-        Request = request with
-        {
-            OrderedCandidates = request.OrderedCandidates
-        };
-        _candidateLabels = (string[])candidateLabels.Clone();
-        BoundaryFingerprint = boundaryFingerprint;
-        ChanceEventId = chanceEventId;
+        _chanceBoundary = chanceBoundary ??
+            throw new ArgumentNullException(nameof(chanceBoundary));
     }
 
     public static ControlledEventChoicePendingV111 Describe(RunState run)
@@ -67,14 +62,11 @@ public sealed class ControlledEventChoicePendingV111
             request,
             candidateLabels
         });
-        var chanceEventId = CanonicalJson.Sha256(new
-        {
-            schemaId = ControlledEventChoiceEngineV111.SchemaId,
-            boundaryFingerprint
-        });
         return new ControlledEventChoicePendingV111(
-            eventId, choiceId, kind, request, candidateLabels,
-            boundaryFingerprint, chanceEventId);
+            eventId, choiceId, kind,
+            ControlledChancePendingBoundaryV111.Create(
+                ControlledEventChoiceEngineV111.SchemaId, request,
+                candidateLabels, boundaryFingerprint));
     }
 }
 

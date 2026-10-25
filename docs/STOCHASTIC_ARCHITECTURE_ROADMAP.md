@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 shared controlled pending-boundary projection (2026-10-25):** Event-choice
+and run-action pending descriptors now reuse
+`ControlledChancePendingBoundaryV111` for defensive typed-request and label
+ownership plus Chance Law event-ID derivation. Context-specific boundary
+fingerprints and public projections remain with their existing owners; no
+snapshot or JSONL schema changed. Static source review and `git diff --check`
+only; no tests or builds were run.
+
 **S4 semantic ReferenceNature history-index append ownership (2026-10-25):**
 The base semantic session's stochastic owner now appends a sampled law
 selection, its next cursor, and its mechanics-history index as one transition.
