@@ -1524,6 +1524,51 @@ public static class SemanticCombatDrawEngineV111
         return next;
     }
 
+    internal static (SemanticCostDecisionV111? CostDecision,
+        SemanticRandomPileCardDecisionV111? RandomPileCardDecision)
+        ValidateAndGetRecordedOutcomeDecisions(
+            SemanticCombatDrawV111? draw,
+            SemanticCostEventV111? costEvent,
+            SemanticRandomPileCardEventV111? randomPileCardEvent,
+            int selectedIndex)
+    {
+        SemanticCostDecisionV111? costDecision = null;
+        if (costEvent is not null)
+        {
+            costEvent.Validate();
+            var transcript = draw?.CostTranscript ?? [];
+            var recorded = transcript.LastOrDefault(decision =>
+                ControlledStochasticChanceReplayV111.RequestsMatch(
+                    decision.Request, costEvent.Request)) ??
+                throw new InvalidDataException(
+                    "Semantic draw cost did not record its source event.");
+            if (recorded.SelectedIndex != selectedIndex)
+                throw new InvalidDataException(
+                    "Semantic draw cost selected a different bounded value.");
+            costDecision = new SemanticCostDecisionV111(
+                costEvent, recorded.SelectedIndex,
+                costEvent.CandidateCosts[recorded.SelectedIndex]);
+            costDecision.Validate();
+        }
+
+        SemanticRandomPileCardDecisionV111? randomPileCardDecision = null;
+        if (randomPileCardEvent is not null)
+        {
+            randomPileCardEvent.Validate();
+            var transcript = draw?.RandomPileCardTranscript ?? [];
+            randomPileCardDecision = transcript.LastOrDefault(decision =>
+                decision.Event.EventId == randomPileCardEvent.EventId) ??
+                throw new InvalidDataException(
+                    "Random pile-card selection did not record its event.");
+            if (CanonicalJson.Sha256(randomPileCardDecision.Event) !=
+                    CanonicalJson.Sha256(randomPileCardEvent) ||
+                randomPileCardDecision.SelectedIndex != selectedIndex)
+                throw new InvalidDataException(
+                    "Random pile-card selection diverged from its support.");
+        }
+        return (costDecision, randomPileCardDecision);
+    }
+
     internal static (SemanticCombatDrawV111 Draw,
         SemanticDrawInsertionDecisionV111 Decision)
         ResolveDrawInsertionWithDecision(

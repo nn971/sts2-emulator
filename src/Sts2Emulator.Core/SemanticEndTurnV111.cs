@@ -1127,37 +1127,11 @@ public static class SemanticEndTurnEngineV111
         if (drawEvent is not null)
             drawDecision = SemanticDrawChoiceV111.ValidateRecordedChoice(
                 next.Run, drawEvent, selectedIndex);
-        SemanticCostDecisionV111? costDecision = null;
-        if (costEvent is not null)
-        {
-            var transcript = next.HandDraw?.CostTranscript ?? [];
-            var recorded = transcript.LastOrDefault(decision =>
-                ControlledStochasticChanceReplayV111.RequestsMatch(
-                    decision.Request, costEvent.Request)) ??
-                throw new InvalidDataException(
-                    "Semantic draw cost did not record its source event.");
-            if (recorded.SelectedIndex != selectedIndex)
-                throw new InvalidDataException(
-                    "Semantic draw cost selected a different bounded value.");
-            costDecision = new SemanticCostDecisionV111(
-                costEvent, recorded.SelectedIndex,
-                costEvent.CandidateCosts[recorded.SelectedIndex]);
-            costDecision.Validate();
-        }
-        SemanticRandomPileCardDecisionV111? randomPileCardDecision = null;
-        if (randomPileCardEvent is not null)
-        {
-            var transcript = next.HandDraw?.RandomPileCardTranscript ?? [];
-            randomPileCardDecision = transcript.LastOrDefault(decision =>
-                decision.Event.EventId == randomPileCardEvent.EventId) ??
-                throw new InvalidDataException(
-                    "Random pile-card selection did not record its event.");
-            if (CanonicalJson.Sha256(randomPileCardDecision.Event) !=
-                    CanonicalJson.Sha256(randomPileCardEvent) ||
-                randomPileCardDecision.SelectedIndex != selectedIndex)
-                throw new InvalidDataException(
-                    "Random pile-card selection diverged from its support.");
-        }
+        var (costDecision, randomPileCardDecision) =
+            SemanticCombatDrawEngineV111
+                .ValidateAndGetRecordedOutcomeDecisions(
+                    next.HandDraw, costEvent, randomPileCardEvent,
+                    selectedIndex);
         return (next, drawDecision, costDecision, randomPileCardDecision);
     }
 

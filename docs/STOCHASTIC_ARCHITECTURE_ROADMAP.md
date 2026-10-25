@@ -4964,10 +4964,11 @@ transcript owners or selects newly appended entries. Static source review and
 `git diff --check` only; no tests or builds were run.
 
 **S4 semantic hand-draw decision publication increment (2026-10-25):** The
-end-turn owner now returns typed cost and random-pile-card decisions from the
-active hand-draw frame during pilot resolution. Pilot replay comparison no
-longer reads those hand-draw transcripts. Static source review and
-`git diff --check` only; no tests or builds were run.
+draw owner now validates and returns typed cost and random-pile-card decisions
+from the active hand-draw frame; end-turn passes them through during pilot
+resolution. Pilot replay comparison no longer reads those hand-draw
+transcripts. Static source review and `git diff --check` only; no tests or
+builds were run.
 
 **S4 semantic draw transcript validation increment (2026-10-25):** End-turn
 pilot resolution now validates the selected card against the committed

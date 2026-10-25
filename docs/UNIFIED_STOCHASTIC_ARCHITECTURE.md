@@ -1578,9 +1578,9 @@ decision selected from the pending event together with the resumed frame. The
 owning draw or end-turn stochastic state records and validates its transcript;
 pilot publication does not inspect transcript lengths or select appended
 entries.
-The same boundary returns semantic draw-cost and random-pile-card decisions
-recorded by the active hand-draw frame; pilot replay checks compare the returned
-decisions without reading that frame's transcripts.
+The draw owner validates and returns semantic draw-cost and random-pile-card
+decisions recorded by the active hand-draw frame; end-turn passes them through
+for pilot publication, so the pilot does not read those transcripts.
 It also validates the selected card against the committed semantic-deck event
 and returns that typed decision for pilot history publication.
 Semantic pilot request ordinals now use one projection over completed typed
