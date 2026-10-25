@@ -549,6 +549,12 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
                 StochasticSiteRegistryV111.NativePotionFactoryRarityRollSiteId)
                 return ChanceLawEngineV111.QueryNativePotionFactoryRarity(
                     unitFloatRequest);
+            if (unitFloatRequest.SiteId ==
+                    StochasticSiteRegistryV111.RelicGrabBagRaritySiteId &&
+                unitFloatRequest.StreamId ==
+                    NativePlayerRngV111.RewardsStreamId)
+                return ChanceLawEngineV111.QueryNativeRelicRarity(
+                    unitFloatRequest);
             if (QueryNativeCombatPotionOdds(active, unitFloatRequest) is
                 { } combatPotionOddsLaw)
                 return combatPotionOddsLaw;

@@ -2,6 +2,15 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 whole-run relic-rarity law increment (2026-10-26):** The
+ReferenceNature whole-run dispatcher now routes registered
+`relic_grab_bag.rarity.unit_float` requests on `player.rewards` through the
+existing Native threshold law. This closes the gap between specialized
+relic-acquisition sessions and ordinary whole-run action replay; requests on
+other streams retain caller-scripted handling. Core and CLI Release builds
+passed with zero warnings or errors; `git diff --check` passed. No tests were
+added or run.
+
 **S4 whole-run Nature semantic replay increment (2026-10-26):** Provider
 replay capture now projects each aligned whole-run Nature selection to a
 provider-independent identity after replaying its action prefix and
