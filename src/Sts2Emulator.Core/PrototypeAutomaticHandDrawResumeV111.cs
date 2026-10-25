@@ -301,17 +301,8 @@ public sealed partial class PrototypeGameEngine
     {
         if (cursor is null)
             return false;
-        bool hasActiveProgress =
-            cursor.Stochastic.TryGetActiveAutomaticHandDrawProgress(
-                cursor.Mechanics, out _);
-        bool isBeforeHandDraw =
-            cursor.Stochastic.IsAtSemanticBeforeHandDraw(cursor.Mechanics) ||
-            cursor.Stochastic.IsAtControlledBeforeHandDraw(cursor.Mechanics);
-        if (cursor.Stochastic.HasSavedHandDrawProgress() &&
-            !hasActiveProgress && !isBeforeHandDraw)
-            throw new InvalidDataException(
-                "Saved automatic hand-draw progress is outside its source stage.");
-        return isBeforeHandDraw;
+        return cursor.Stochastic.ValidateHandDrawProgressPosition(
+            cursor.Mechanics);
     }
 
     /// <summary>

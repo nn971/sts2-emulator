@@ -313,6 +313,27 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
                 PrototypeAutomaticStepKind.DrawPlayerHand);
     }
 
+    /// <summary>
+    /// Validates that saved hand-draw progress is attached to its active
+    /// DrawPlayerHand cursor or a supported pre-draw hook boundary. Returns
+    /// true when the cursor is at that pre-draw boundary.
+    /// </summary>
+    public bool ValidateHandDrawProgressPosition(
+        PrototypeAutomaticPipelineMechanicsStateV111 mechanics)
+    {
+        ArgumentNullException.ThrowIfNull(mechanics);
+        bool hasActiveProgress =
+            TryGetActiveAutomaticHandDrawProgress(mechanics, out _);
+        bool isBeforeHandDraw =
+            IsAtSemanticBeforeHandDraw(mechanics) ||
+            IsAtControlledBeforeHandDraw(mechanics);
+        if (HasSavedHandDrawProgress() &&
+            !hasActiveProgress && !isBeforeHandDraw)
+            throw new InvalidDataException(
+                "Saved automatic hand-draw progress is outside its source stage.");
+        return isBeforeHandDraw;
+    }
+
     public bool TryGetAutomaticHandDrawRemainder(
         PrototypeAutomaticPipelineMechanicsStateV111 mechanics,
         out int remaining)

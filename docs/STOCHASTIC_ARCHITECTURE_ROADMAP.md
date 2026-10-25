@@ -5987,3 +5987,11 @@ remaining progress through the same owner, then retain their active-boundary
 requirement. This removes duplicate count-parity checks from those adapters;
 choice support and boundary policy remain local. Core Release build passed
 with zero warnings and errors; `git diff --check` passed. No tests were run.
+
+**S4 saved hand-draw position validation increment (2026-10-26):** The
+automatic-pipeline stochastic owner now validates that saved progress is at
+an active count-bearing stage or a supported pre-draw hook cursor, and returns
+the pre-draw classification used by Stratagem and draw-hook continuation
+owners. The resume adapter no longer reconstructs this cursor invariant.
+Core Release build passed with zero warnings and errors; `git diff --check`
+passed. No tests were run.
