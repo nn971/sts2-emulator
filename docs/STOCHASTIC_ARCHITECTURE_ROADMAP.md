@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S5 Python provider replay comparison integration (2026-10-26):** The
+standard-library binding now exposes `Session.compare_provider_replays` using
+the advertised JSONL capture inputs. It checks operation availability,
+validates positive comparison bounds, and verifies both negotiated schema IDs
+in the response. Python syntax compilation and `git diff --check` passed; no
+tests were run.
+
 **S4 semantic-outcome mechanics acceptance predicate (2026-10-26):** The
 provider replay comparison now exposes `SameMechanicsForSameSemanticOutcomes`,
 which requires matching player actions, origin mechanics, complete semantic
