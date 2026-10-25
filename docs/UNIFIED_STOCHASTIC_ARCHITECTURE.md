@@ -383,6 +383,12 @@ the same provider-independent rarity identity already used by the specialized
 Treasure, Shovel, event-relic, merchant, and combat-reward sessions; other
 streams remain caller-scripted.
 
+Combat-ending whole-run actions also route the registered Native
+`reward.combat_gold.index_draw` bounded request through its source law. The
+dispatcher derives the room and Ascension from the action's combat origin and
+checks the Rewards stream, operation, owner, ordinal, and bound against the
+law before resolving the amount.
+
 The existing index-only `ControlledChanceContinuationStateV111` is now a compatibility projection over `ControlledStochasticContinuationStateV111`. Its mechanics-facing index and candidate-label properties preserve the flattened continuation accessors, while the typed stochastic envelope owns the actual provider prefix and pending request. This lets existing controlled event, run-action, and enemy-action frames share the mixed replay state model without changing their snapshot fields. Scripted sessions use their v2 schema marker for six-primitive transcripts and migrate earlier v1 snapshots through the same mixed continuation owner.
 
 Controlled run-action restoration and pending-frame source validation now pass saved per-decision candidate labels through the existing event/run-action replay owner. Each labeled prefix decision is matched against the live ordered support before its selected index is reused; this protects map entry, combat entry, Shop, reward, rest, and act-transition continuations from same-sized support reordering. Prefixes from older callers that have no label transcript retain their prior request/index matching.

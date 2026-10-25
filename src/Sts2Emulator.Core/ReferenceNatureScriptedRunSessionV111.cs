@@ -526,6 +526,9 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
                     indexRequest.SiteId))
                 return ChanceLawEngineV111.QueryNativeMapRequest(request);
             if (indexRequest.SiteId == StochasticSiteRegistryV111
+                    .NativeCombatGoldSiteId)
+                return QueryNativeCombatGold(active, indexRequest);
+            if (indexRequest.SiteId == StochasticSiteRegistryV111
                     .NativePotionFactoryModelSiteId)
                 return QueryNativePotionFactoryModel(active, indexRequest);
             return ChanceLawEngineV111.QueryRandomIndex(
@@ -575,6 +578,37 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
                 gaussianRequest))
             return ChanceLawEngineV111.QueryNativeMapRequest(request);
         return null;
+    }
+
+    private static ChanceLawV111 QueryNativeCombatGold(
+        ScriptedRunActionSessionV111 active,
+        RandomIndexRequestV111 request)
+    {
+        request.Validate();
+        var run = active.Origin;
+        if (request.StreamId != NativePlayerRngV111.RewardsStreamId ||
+            request.OperationKind != "bounded_integer" ||
+            run.Phase != RunPhase.Combat ||
+            run.World is not { ActiveRoom: { } room } ||
+            room is not (PrototypeRoomType.Combat or
+                PrototypeRoomType.Elite or PrototypeRoomType.Boss))
+            throw new InvalidDataException(
+                "Native combat-gold request differs from its active reward boundary.");
+
+        var law = ChanceLawEngineV111.QueryNativeCombatGold(
+            room, run.Ascension,
+            room == PrototypeRoomType.Combat ? 1f : null,
+            request.Ordinal);
+        var expected = new RandomIndexRequestV111(
+            law.SiteId, NativePlayerRngV111.RewardsStreamId,
+            law.OwnerId, law.Ordinal, [],
+            OperationKind: "bounded_integer",
+            BoundedCount: law.SupportCount);
+        if (CanonicalJson.Sha256(expected) !=
+            CanonicalJson.Sha256(request))
+            throw new InvalidDataException(
+                "Native combat-gold request differs from its source law.");
+        return law;
     }
 
     private static ChanceLawV111 QueryNativePotionFactoryModel(

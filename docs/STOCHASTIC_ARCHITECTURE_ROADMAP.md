@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 whole-run combat-gold law increment (2026-10-26):** Combat-ending
+ReferenceNature whole-run actions now route registered Native
+`reward.combat_gold.index_draw` requests through the source law. The action's
+combat origin supplies room and Ascension, and replay checks the Rewards
+stream, bounded-integer operation, owner, ordinal, and bound before resolving
+the amount. Core and CLI Release builds passed with zero warnings or errors;
+`git diff --check` passed. No tests were added or run.
+
 **S4 whole-run relic-rarity law increment (2026-10-26):** The
 ReferenceNature whole-run dispatcher now routes registered
 `relic_grab_bag.rarity.unit_float` requests on `player.rewards` through the
