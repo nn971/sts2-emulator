@@ -2919,6 +2919,7 @@ internal static class PrototypeAiJsonlServer
                                 "<side>_scripted_run_handle",
                                 "<side>_scripted_run_action_handle",
                                 "<side>_semantic_native_policy_handle",
+                                "<side>_reference_nature_semantic_combat_handle",
                                 "<side>_reference_nature_run_action_handle",
                                 "<side>_reference_nature_neow_offer_handle (setup interval; no player actions)",
                                 "<side>_reference_nature_ancient_offer_handle (setup interval; no player actions)",
@@ -2941,7 +2942,7 @@ internal static class PrototypeAiJsonlServer
                                 "<side>_origin_snapshot, <side>_actions, <side>_boundaries, and <side>_result_snapshot"
                             },
                             simulationProviderReplayComparisonScope =
-                                "privileged-provider-trace-and-mechanics-diagnostic; not a fair player observation",
+                                "privileged-provider-trace-and-semantic-outcome-endpoint-mechanics-diagnostic; not a fair player observation",
                             semanticNatureChoiceViewSessionKinds =
                                 stochasticCapabilities
                                     .SemanticNatureChoiceViewSessionKinds,
@@ -9943,6 +9944,8 @@ internal static class PrototypeAiJsonlServer
                                 side + "_scripted_run_action_handle";
                             var semanticNativeHandleName =
                                 side + "_semantic_native_policy_handle";
+                            var referenceNatureSemanticCombatHandleName =
+                                side + "_reference_nature_semantic_combat_handle";
                             var referenceNatureRunActionHandleName =
                                 side + "_reference_nature_run_action_handle";
                             var referenceNatureNeowOfferHandleName =
@@ -9996,6 +9999,10 @@ internal static class PrototypeAiJsonlServer
                                 request.TryGetProperty(
                                     semanticNativeHandleName,
                                     out var semanticNativeHandleElement);
+                            bool hasReferenceNatureSemanticCombatHandle =
+                                request.TryGetProperty(
+                                    referenceNatureSemanticCombatHandleName,
+                                    out var referenceNatureSemanticCombatHandleElement);
                             bool hasReferenceNatureRunActionHandle =
                                 request.TryGetProperty(
                                     referenceNatureRunActionHandleName,
@@ -10075,6 +10082,7 @@ internal static class PrototypeAiJsonlServer
                             if (hasScriptedRunHandle ||
                                 hasScriptedActionHandle ||
                                 hasSemanticNativeHandle ||
+                                hasReferenceNatureSemanticCombatHandle ||
                                 hasReferenceNatureRunActionHandle ||
                                 hasReferenceNatureNeowOfferHandle ||
                                 hasReferenceNatureAncientOfferHandle ||
@@ -10098,6 +10106,7 @@ internal static class PrototypeAiJsonlServer
                                 if ((hasScriptedRunHandle ? 1 : 0) +
                                     (hasScriptedActionHandle ? 1 : 0) +
                                     (hasSemanticNativeHandle ? 1 : 0) +
+                                    (hasReferenceNatureSemanticCombatHandle ? 1 : 0) +
                                     (hasReferenceNatureRunActionHandle ? 1 : 0) +
                                     (hasReferenceNatureNeowOfferHandle ? 1 : 0) +
                                     (hasReferenceNatureAncientOfferHandle ? 1 : 0) +
@@ -10131,6 +10140,9 @@ internal static class PrototypeAiJsonlServer
                                 else if (hasSemanticNativeHandle)
                                     (handleElement, handleName) =
                                         (semanticNativeHandleElement, semanticNativeHandleName);
+                                else if (hasReferenceNatureSemanticCombatHandle)
+                                    (handleElement, handleName) =
+                                        (referenceNatureSemanticCombatHandleElement, referenceNatureSemanticCombatHandleName);
                                 else if (hasReferenceNatureRunActionHandle)
                                     (handleElement, handleName) =
                                         (referenceNatureRunActionHandleElement, referenceNatureRunActionHandleName);
@@ -10230,6 +10242,15 @@ internal static class PrototypeAiJsonlServer
                                                 referenceNatureRunAction)
                                         : throw new InvalidOperationException(
                                             "Unknown ReferenceNature run-action handle: " +
+                                            handle);
+                                if (hasReferenceNatureSemanticCombatHandle)
+                                    return referenceNatureStates.TryGetValue(
+                                            handle, out var referenceNatureCombat)
+                                        ? SimulationProviderReplayCaptureV111
+                                            .FromReferenceNatureSemanticCombatSession(
+                                                referenceNatureCombat)
+                                        : throw new InvalidOperationException(
+                                            "Unknown ReferenceNature semantic-combat handle: " +
                                             handle);
                                 if (hasReferenceNatureNeowOfferHandle)
                                     return referenceNatureNeowOfferStates

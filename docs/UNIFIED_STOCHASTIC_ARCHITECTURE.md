@@ -1057,6 +1057,13 @@ boundaries in it; caller-supplied provenance remains an assertion and does not
 prove capture completeness. Native cursor equality is an optional additional
 boundary check. This is diagnostic evidence under the supplied captures, not
 proof of source-hook parity, complete Native coverage, or Chance Law fidelity.
+`SameMechanicsAtCapturedBoundariesForSameActions` reports equal projected
+origin and result mechanics when the captured player actions also match. It
+does not require matching intermediate stochastic outcomes. The stricter
+`EquivalentUnderComparedActions` additionally requires complete typed-boundary
+comparison and equality at every captured boundary. The result exposes
+`TypedRandomBoundaryComparisonAvailable` so an absent primitive trace is not
+reported as a matching empty trace.
 `SimulationProviderReplayCaptureV111.FromScriptedRunSession` and
 `FromScriptedRunActionSession` provide a stronger path for scripted replays:
 each session replays its completed action history from the origin, and the
@@ -1070,7 +1077,16 @@ actions to recover their exact mechanics actions. The capture starts at that
 initial player boundary, so route setup and initial-intent decisions are
 excluded; its boundary trace contains only subsequent player-action outcomes.
 The JSONL operation accepts `<side>_semantic_native_policy_handle` for this
-capture path. `FromReferenceNatureEventChoiceSession` restores and replays the
+capture path. `FromReferenceNatureSemanticCombatSession` replays a fully
+indexed mixed player-action/Nature history, reconstructs the exact player
+actions from its initial committed boundary, and captures the resulting
+mechanics interval. Nature's Chance Law outcome identities are not converted
+into primitive provider draws, so this provenance explicitly has no complete
+typed-boundary trace. It can support an endpoint mechanics match for the same
+actions and origin, but cannot establish typed-boundary or intermediate
+outcome equivalence. JSONL accepts
+`<side>_reference_nature_semantic_combat_handle` for this path.
+`FromReferenceNatureEventChoiceSession` restores and replays the
 session's interleaved player-action/Nature chronology, checks the completed
 controlled-choice trace against its Nature outcomes and prior history, then
 materializes its typed requests through the same boundary journal. JSONL accepts
@@ -1120,9 +1136,9 @@ accepts `<side>_reference_nature_neow_offer_handle` and
 `<side>_reference_nature_ancient_offer_handle` for these setup intervals.
 The JSONL `provider_replay_compare` operation constructs a current capture for
 each side either from a completed scripted-run or scripted-action handle, or
-from replay-validated semantic Native-policy, ReferenceNature event-choice,
-controlled-action or run-action handles, or from exact origin/result snapshots
-plus action and boundary arrays,
+from replay-validated semantic Native-policy, ReferenceNature semantic-combat,
+event-choice, controlled-action or run-action handles, or from exact
+origin/result snapshots plus action and boundary arrays,
 with optional Native cursor equality and a mechanics-difference bound.
 `hello` advertises its capture and result schemas, operation, and inputs. These
 provider traces are privileged diagnostic data and are not part of the fair

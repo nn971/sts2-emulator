@@ -5313,3 +5313,14 @@ semantic history and matching non-legacy provider decisions. This keeps
 request identity consistent across target, generation, cost, transform,
 shortlist, shuffle, and insertion boundaries. Static source review and
 `git diff --check` only; no tests or builds were run.
+
+**S4 semantic ReferenceNature mechanics comparison increment (2026-10-25):**
+`provider_replay_compare` now accepts a replay-validated semantic combat
+ReferenceNature handle. Capture reconstructs its origin boundary and exact
+player-action sequence by replaying the indexed mixed Nature/action history.
+Chance Law outcomes remain semantic decisions and are not mislabeled as
+primitive provider draws. Comparison reports whether typed-boundary comparison
+is available and whether endpoint mechanics match for the same actions and
+origin; the stricter trajectory-equivalence result still requires complete,
+matching typed boundaries. JSONL advertises the new handle. Static source
+review and `git diff --check` only; no tests or builds were run.

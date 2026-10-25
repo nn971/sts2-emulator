@@ -134,6 +134,8 @@ public static class SimulationProviderReplayCaptureProvenanceV111
         "reference-nature-neow-offer-replay-validated-v1";
     public const string ReferenceNatureRunSetupReplayValidated =
         "reference-nature-run-setup-replay-validated-v1";
+    public const string ReferenceNatureSemanticCombatReplayValidated =
+        "reference-nature-semantic-combat-replay-validated-v1";
 
     public static bool IsKnown(string? provenance) => provenance is
         CallerSupplied or ScriptedRunReplayValidated or
@@ -142,7 +144,18 @@ public static class SimulationProviderReplayCaptureProvenanceV111
         ReferenceNatureEventChoiceReplayValidated or
         ReferenceNatureControlledActionReplayValidated or
         ReferenceNatureNeowOfferReplayValidated or
-        ReferenceNatureRunSetupReplayValidated;
+        ReferenceNatureRunSetupReplayValidated or
+        ReferenceNatureSemanticCombatReplayValidated;
+
+    /// <summary>
+    /// Whether this capture represents every primitive provider boundary in
+    /// its interval. Semantic ReferenceNature selections are replayed as
+    /// outcome identities and do not provide a primitive provider trace.
+    /// Caller-supplied provenance remains an assertion by the caller.
+    /// </summary>
+    public static bool HasCompleteTypedBoundaryTrace(string? provenance) =>
+        IsKnown(provenance) && provenance !=
+            ReferenceNatureSemanticCombatReplayValidated;
 }
 
 /// <summary>
@@ -814,6 +827,81 @@ public sealed record SimulationProviderReplayCaptureV111(
         return capture;
     }
 
+    /// <summary>
+    /// Captures a replay-validated semantic ReferenceNature combat interval.
+    /// Player actions are recovered from the mixed action/outcome history;
+    /// Chance Law selections remain semantic outcomes and are not rewritten
+    /// as primitive provider draws.
+    /// </summary>
+    public static SimulationProviderReplayCaptureV111
+        FromReferenceNatureSemanticCombatSession(
+            ReferenceNatureSessionV111 session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        // Restore replays the mechanics history and validates every saved
+        // Nature selection against its law. Keep replay callbacks out of any
+        // journal owned by the caller.
+        using var validationJournal = RandomBoundaryJournalV111.Begin();
+        var validated = ReferenceNatureSessionV111.Restore(
+            ReferenceNatureSessionV111.Save(session));
+        if (validated.Combat.NativePolicyAudit is not null)
+            throw new InvalidOperationException(
+                "Semantic ReferenceNature capture does not accept Native-policy audit sessions.");
+        var historyIndices = validated.Stochastic.DecisionHistoryIndices;
+        if (historyIndices is null || historyIndices.Any(index => index is null))
+            throw new NotSupportedException(
+                "Semantic ReferenceNature capture requires a fully indexed Nature transcript.");
+        var initialHistoryLength =
+            validated.Stochastic.InitialHistoryLength ??
+            throw new InvalidDataException(
+                "Semantic ReferenceNature session is missing its initial history boundary.");
+        var origin = SemanticPilotCombatEngineV111.ReplayHistoryPrefix(
+            validated.Combat, initialHistoryLength);
+        if (!IsCommittedSemanticCombatBoundary(origin))
+            throw new NotSupportedException(
+                "Semantic ReferenceNature capture requires a committed origin boundary.");
+
+        var replay = origin;
+        var environment = new PrototypeAiEnvironment();
+        var history = validated.Combat.History;
+        var actions = new List<GameAction>(history.Length - initialHistoryLength);
+        for (var historyIndex = initialHistoryLength;
+            historyIndex < history.Length; historyIndex++)
+        {
+            var transition = history[historyIndex];
+            if (transition.Kind == "player")
+            {
+                if (string.IsNullOrWhiteSpace(transition.ActionId))
+                    throw new InvalidDataException(
+                        "Semantic ReferenceNature player history is missing its action ID.");
+                actions.Add(environment.ResolvePlayerAction(
+                    replay.Run, transition.ActionId).Action);
+            }
+            replay = SemanticPilotCombatEngineV111.ReplayHistoryTransition(
+                replay, transition);
+        }
+        if (CanonicalJson.Sha256(replay) !=
+            CanonicalJson.Sha256(validated.Combat))
+            throw new InvalidDataException(
+                "Semantic ReferenceNature capture replay differs from the saved session.");
+        if (!IsCommittedSemanticCombatBoundary(validated.Combat))
+            throw new NotSupportedException(
+                "Semantic ReferenceNature capture requires a committed result boundary.");
+
+        var capture = Create(origin.Run, actions, [], validated.Combat.Run) with
+        {
+            CaptureProvenance =
+                SimulationProviderReplayCaptureProvenanceV111
+                    .ReferenceNatureSemanticCombatReplayValidated
+        };
+        capture.Validate();
+        return capture;
+    }
+
+    private static bool IsCommittedSemanticCombatBoundary(
+        SemanticPilotCombatV111 combat) => combat.AtPlayerBoundary ||
+        combat.AtPlayerChoiceBoundary || combat.CombatTerminal;
+
     private static SimulationProviderReplayCaptureV111 FromScriptedDecisions(
         RunState origin, IReadOnlyList<GameAction> actions,
         IEnumerable<ControlledStochasticDecisionV111> decisions,
@@ -904,7 +992,23 @@ public sealed record SimulationProviderReplayComparisonV111(
     public bool SameOriginMechanics => OriginMechanics.Equivalent;
 
     public bool SameTypedRandomBoundaries =>
+        TypedRandomBoundaryComparisonAvailable &&
         RandomBoundaries.Status == "RANDOM_BOUNDARIES_CONSISTENT";
+
+    public bool TypedRandomBoundaryComparisonAvailable =>
+        SimulationProviderReplayCaptureProvenanceV111
+            .HasCompleteTypedBoundaryTrace(LeftCaptureProvenance) &&
+        SimulationProviderReplayCaptureProvenanceV111
+            .HasCompleteTypedBoundaryTrace(RightCaptureProvenance);
+
+    /// <summary>
+    /// Reports endpoint mechanics agreement for captures with the same player
+    /// actions and origin. This does not require matching typed random traces
+    /// and does not claim that their intermediate outcomes matched.
+    /// </summary>
+    public bool SameMechanicsAtCapturedBoundariesForSameActions =>
+        SchemaId == CurrentSchemaId && SamePlayerActions &&
+        SameOriginMechanics && SameResultMechanics;
 
     public bool SameResultMechanics => ResultMechanics.Equivalent;
 
