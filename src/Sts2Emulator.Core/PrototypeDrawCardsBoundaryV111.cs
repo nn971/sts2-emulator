@@ -193,11 +193,12 @@ public sealed partial class PrototypeGameEngine
     }
 
     private static RunState PublishDrawCardsResult(
-        RunState checkpoint, PrototypeDrawCardsResult drawn)
+        PrototypeDrawCardsSegmentV111 segment)
     {
-        ArgumentNullException.ThrowIfNull(drawn);
+        ArgumentNullException.ThrowIfNull(segment.Run);
+        ArgumentNullException.ThrowIfNull(segment.Drawn);
         return PublishDrawMechanicsState(
-            checkpoint, drawn.Player, drawn.Combat);
+            segment.Run, segment.Drawn.Player, segment.Drawn.Combat);
     }
 
     /// <summary>

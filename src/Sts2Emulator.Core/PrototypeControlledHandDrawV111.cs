@@ -7,9 +7,11 @@ public sealed partial class PrototypeGameEngine
 {
     private static PrototypeDrawCardsResumeResultV111
         ContinueInitialControlledHandDrawBoundary(
-        RunState state, PrototypeDrawCardsResult drawn,
+        PrototypeDrawCardsSegmentV111 segment,
         int? requestedCount)
     {
+        var state = segment.Run;
+        var drawn = segment.Drawn;
         bool nestedHookChoice = drawn.BoundaryKind ==
             PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice &&
             drawn.Combat.Stochastic.SemanticDeck is null &&
@@ -38,8 +40,11 @@ public sealed partial class PrototypeGameEngine
             createCheckpoint: true);
         var suspendedCombat = checkpoint.World!.Combat!;
         return ContinueControlledHandDraw(
-            checkpoint, drawn with { Combat = suspendedCombat },
-            requestedCount);
+            segment with
+            {
+                Run = checkpoint,
+                Drawn = drawn with { Combat = suspendedCombat }
+            }, requestedCount);
     }
 
     internal static RunState ResumeControlledAutomaticHandDrawHookChoice(
@@ -149,9 +154,11 @@ public sealed partial class PrototypeGameEngine
 
     private static PrototypeDrawCardsResumeResultV111
         ContinueControlledHandDraw(
-        RunState state, PrototypeDrawCardsResult drawn,
+        PrototypeDrawCardsSegmentV111 segment,
         int? requestedCount = null)
     {
+        var state = segment.Run;
+        var drawn = segment.Drawn;
         var combat = drawn.Combat;
         var drawBoundary = drawn.BoundaryKind;
         requestedCount = ResolveAutomaticHandDrawRequestedCount(
@@ -210,7 +217,7 @@ public sealed partial class PrototypeGameEngine
                 "UNSUPPORTED_CONTROLLED_CHANCE site=combat.draw.recycle " +
                 "operation=nested_draw_continuation");
 
-        var advanced = PublishDrawCardsResult(state, drawn);
+        var advanced = PublishDrawCardsResult(segment);
         var pipelineResume = ResumeAutomaticPipelineContinuation(
             CompleteAutomaticHandDrawStage(advanced));
         return new PrototypeDrawCardsResumeResultV111(

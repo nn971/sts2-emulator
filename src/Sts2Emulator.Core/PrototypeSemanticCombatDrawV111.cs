@@ -277,7 +277,6 @@ public sealed partial class PrototypeGameEngine
     {
         var run = segment.Run;
         var drawn = segment.Drawn;
-        var advanced = PublishDrawCardsResult(run, drawn);
         var boundary = drawn.BoundaryKind;
         bool automatic = automaticHandDrawRequested is not null;
         if (automatic)
@@ -294,9 +293,11 @@ public sealed partial class PrototypeGameEngine
             EmptyDrawChoiceContinuation();
         if (boundary == PrototypeDrawCardsBoundaryKind.AfterShuffleInsertions)
             return SuspendDrawCardsAfterShuffleInsertion(
-                advanced, drawn, draw, outerContinuation,
+                segment, draw, outerContinuation,
                 automaticHandDrawRequested,
                 accumulateDrawnCardIds: nestedEffect);
+
+        var advanced = PublishDrawCardsResult(segment);
 
         if (boundary ==
             PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice)
@@ -318,7 +319,7 @@ public sealed partial class PrototypeGameEngine
                     drawn.RemainingCount);
             return new PrototypeDrawCardsResumeResultV111(
                 SuspendStandaloneSemanticDrawForHookChoice(
-                    advanced, drawn, draw.FromHandDraw),
+                    segment with { Run = advanced }, draw.FromHandDraw),
                 drawn.RemainingCount);
         }
 
@@ -331,7 +332,7 @@ public sealed partial class PrototypeGameEngine
         {
             return new PrototypeDrawCardsResumeResultV111(
                 SuspendDrawCardsForStratagemSelection(
-                    advanced, drawn, draw, outerContinuation,
+                    segment, draw, outerContinuation,
                     automaticHandDrawRequested,
                     accumulateDrawnCardIds: nestedEffect),
                 drawn.RemainingCount);
@@ -386,7 +387,8 @@ public sealed partial class PrototypeGameEngine
             !HasSemanticAutomaticHandDrawProgress(drawn.Combat))
             return new PrototypeDrawCardsResumeResultV111(
                 SaveAutomaticSemanticHandDrawBoundary(
-                    advanced, drawn, automaticHandDrawRequested!.Value),
+                    segment with { Run = advanced },
+                    automaticHandDrawRequested!.Value),
                 drawn.RemainingCount);
         return automatic
             ? CommitSemanticAutomaticHandDrawProgress(
@@ -396,8 +398,10 @@ public sealed partial class PrototypeGameEngine
     }
 
     private static RunState SaveAutomaticSemanticHandDrawBoundary(
-        RunState run, PrototypeDrawCardsResult drawn, int requested)
+        PrototypeDrawCardsSegmentV111 segment, int requested)
     {
+        var run = segment.Run;
+        var drawn = segment.Drawn;
         var combat = drawn.Combat;
         var boundary = drawn.BoundaryKind;
         if (drawn.RemainingCount < 0 || requested <= 0 ||
@@ -416,13 +420,13 @@ public sealed partial class PrototypeGameEngine
 
     private static PrototypeDrawCardsResumeResultV111
         SuspendDrawCardsAfterShuffleInsertion(
-            RunState run,
-            PrototypeDrawCardsResult drawn,
+            PrototypeDrawCardsSegmentV111 segment,
             PrototypeControlledSemanticDrawV111 semanticDraw,
             PrototypeChoiceResolutionContinuationState continuation,
             int? automaticHandDrawRequested = null,
             bool accumulateDrawnCardIds = true)
     {
+        var drawn = segment.Drawn;
         if (drawn.BoundaryKind !=
                 PrototypeDrawCardsBoundaryKind.AfterShuffleInsertions ||
             drawn.RemainingCount <= 0 ||
@@ -439,7 +443,7 @@ public sealed partial class PrototypeGameEngine
             drawn.DrawnCardInstanceIds, accumulateDrawnCardIds,
             stratagemSelectionPending);
 
-        var advanced = PublishDrawCardsResult(run, drawn);
+        var advanced = PublishDrawCardsResult(segment);
         var insertionCombat = drawn.Combat;
         if (automaticHandDrawRequested is { } requested)
         {
@@ -466,13 +470,14 @@ public sealed partial class PrototypeGameEngine
     }
 
     private static RunState SuspendDrawCardsForStratagemSelection(
-        RunState run,
-        PrototypeDrawCardsResult drawn,
+        PrototypeDrawCardsSegmentV111 segment,
         PrototypeControlledSemanticDrawV111 semanticDraw,
         PrototypeChoiceResolutionContinuationState continuation,
         int? automaticHandDrawRequested,
         bool accumulateDrawnCardIds)
     {
+        var run = segment.Run;
+        var drawn = segment.Drawn;
         if (drawn.BoundaryKind !=
                 PrototypeDrawCardsBoundaryKind.ShuffleSelection ||
             drawn.RemainingCount <= 0 ||
@@ -486,7 +491,7 @@ public sealed partial class PrototypeGameEngine
             stratagemSelectionPending: false);
 
         var combat = drawn.Combat;
-        var advanced = PublishDrawCardsResult(run, drawn);
+        var advanced = PublishDrawCardsResult(segment);
         var selected = ResumeControlledStratagemSelection(
             advanced, combat, semanticDraw, continuation);
         if (automaticHandDrawRequested is { } requested)
@@ -516,8 +521,10 @@ public sealed partial class PrototypeGameEngine
                 PendingSlyCardInstanceIds: [], CompletionEvents: []);
 
     private static RunState SuspendStandaloneSemanticDrawForHookChoice(
-        RunState run, PrototypeDrawCardsResult drawn, bool fromHandDraw)
+        PrototypeDrawCardsSegmentV111 segment, bool fromHandDraw)
     {
+        var run = segment.Run;
+        var drawn = segment.Drawn;
         if (drawn.BoundaryKind !=
             PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice)
             throw new InvalidDataException(

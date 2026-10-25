@@ -2,6 +2,8 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 draw-segment paired publication increment (2026-10-26):** The shared draw result publisher and controlled/semantic boundary routers now consume `PrototypeDrawCardsSegmentV111` as one value, keeping its advanced provider checkpoint paired with its tagged mechanics result through boundary classification and publication. Core Release build passed with zero warnings or errors; `git diff --check` passed. No tests were run.
+
 **S4 automatic hand-draw request-count reconciliation increment (2026-10-26):** The shared automatic hand-draw result adapters now reconcile a supplied request count with active pipeline progress. The saved controlled-stage zero sentinel is normalized at its boundary, while nonpositive counts supplied to the common result paths fail validation. Older progress that omits the request count keeps the validated caller value. Core Release build passed with zero warnings or errors; `git diff --check` passed. No tests were run.
 
 **S4 hand-draw count state ownership increment (2026-10-26):** Requested-count reconciliation now lives on `PrototypeAutomaticPipelineStochasticStateV111`, beside its tagged progress queries and validation. The engine helper delegates to this owner, so controlled and semantic adapters share the same saved-count consistency rule. Core Release build and `git diff --check` passed; no tests were run.

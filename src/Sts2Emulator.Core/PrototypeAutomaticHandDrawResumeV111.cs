@@ -388,9 +388,9 @@ public sealed partial class PrototypeGameEngine
                 combat, controlledRequested);
             return combat.AutomaticPipelineContinuation is null
                 ? ContinueInitialControlledHandDrawBoundary(
-                    rngCheckpoint, drawn, controlledRequested)
+                    segment, controlledRequested)
                 : ContinueControlledHandDraw(
-                    rngCheckpoint, drawn, controlledRequested);
+                    segment, controlledRequested);
         }
 
         return null;
@@ -427,7 +427,7 @@ public sealed partial class PrototypeGameEngine
         if (providerResume is { } resumed)
             return resumed.Run;
 
-        var result = PublishDrawCardsResult(checkpoint, drawn);
+        var result = PublishDrawCardsResult(segment);
         if (drawn.BoundaryKind ==
             PrototypeDrawCardsBoundaryKind.ShuffleSelection)
         {
@@ -488,8 +488,7 @@ public sealed partial class PrototypeGameEngine
         var resumed = ResumeAutomaticHandDrawBoundary(
             segment, requestedCount: 0,
             context: AutomaticHandDrawResumeContextV111.SavedControlledStage);
-        return resumed ?? ContinueControlledHandDraw(
-            segment.Run, segment.Drawn);
+        return resumed ?? ContinueControlledHandDraw(segment);
     }
 
     private sealed record PrototypeAutomaticHandDrawCostResumeV111(
