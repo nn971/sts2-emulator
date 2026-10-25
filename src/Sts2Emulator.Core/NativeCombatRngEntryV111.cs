@@ -64,14 +64,14 @@ public sealed record NativeInitialHpOutcomeV111(
     long CombatId, string EnemyId, int[] OrderedHpSupport, int SelectedHp,
     RandomIndexDecisionV111 ProviderDecision)
 {
-    private int[]? _orderedHpSupport = Clone(OrderedHpSupport);
+    private int[]? _orderedHpSupport = Copy(OrderedHpSupport);
     private RandomIndexDecisionV111? _providerDecision =
         CloneDecision(ProviderDecision);
 
     public int[] OrderedHpSupport
     {
-        get => Clone(_orderedHpSupport)!;
-        init => _orderedHpSupport = Clone(value);
+        get => Copy(_orderedHpSupport)!;
+        init => _orderedHpSupport = Copy(value);
     }
 
     public RandomIndexDecisionV111 ProviderDecision
@@ -110,7 +110,7 @@ public sealed record NativeInitialHpOutcomeV111(
                 "Native initial-HP result disagrees with its provider ticket.");
     }
 
-    private static int[]? Clone(int[]? values) =>
+    private static int[]? Copy(int[]? values) =>
         values is null ? null : (int[])values.Clone();
 
     private static RandomIndexDecisionV111? CloneDecision(

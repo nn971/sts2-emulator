@@ -6,12 +6,12 @@ namespace Sts2Emulator.Core;
 public sealed record StochasticChanceLawQueryCoverageV111(
     string SchemaId, string QueryOperation, string[] SiteIds)
 {
-    private string[]? _siteIds = Clone(SiteIds);
+    private string[]? _siteIds = Copy(SiteIds);
 
     public string[] SiteIds
     {
-        get => Clone(_siteIds)!;
-        init => _siteIds = Clone(value);
+        get => Copy(_siteIds)!;
+        init => _siteIds = Copy(value);
     }
 
     public const string CurrentSchemaId =
@@ -27,7 +27,7 @@ public sealed record StochasticChanceLawQueryCoverageV111(
                 "Invalid stochastic Chance Law query coverage.");
     }
 
-    private static string[]? Clone(string[]? values) =>
+    private static string[]? Copy(string[]? values) =>
         values is null ? null : (string[])values.Clone();
 }
 
@@ -46,11 +46,11 @@ public sealed record StochasticSessionCoverageV111(
     string[] ReferenceNatureEventChoiceSiteIds)
 {
     private string[]? _semanticReferenceNatureSiteIds =
-        Clone(SemanticReferenceNatureSiteIds);
+        Copy(SemanticReferenceNatureSiteIds);
     private string[]? _referenceNatureRunActionSiteIds =
-        Clone(ReferenceNatureRunActionSiteIds);
+        Copy(ReferenceNatureRunActionSiteIds);
     private string[]? _referenceNatureEventChoiceSiteIds =
-        Clone(ReferenceNatureEventChoiceSiteIds);
+        Copy(ReferenceNatureEventChoiceSiteIds);
     private string[]? _referenceNatureNeowOfferSiteIds = [];
     private string[]? _referenceNatureTrashHeapSiteIds = [];
     private string[]? _referenceNatureTabletOfTruthSiteIds = [];
@@ -72,18 +72,18 @@ public sealed record StochasticSessionCoverageV111(
 
     public string[] SemanticReferenceNatureSiteIds
     {
-        get => Clone(_semanticReferenceNatureSiteIds)!;
-        init => _semanticReferenceNatureSiteIds = Clone(value);
+        get => Copy(_semanticReferenceNatureSiteIds)!;
+        init => _semanticReferenceNatureSiteIds = Copy(value);
     }
     public string[] ReferenceNatureRunActionSiteIds
     {
-        get => Clone(_referenceNatureRunActionSiteIds)!;
-        init => _referenceNatureRunActionSiteIds = Clone(value);
+        get => Copy(_referenceNatureRunActionSiteIds)!;
+        init => _referenceNatureRunActionSiteIds = Copy(value);
     }
     public string[] ReferenceNatureEventChoiceSiteIds
     {
-        get => Clone(_referenceNatureEventChoiceSiteIds)!;
-        init => _referenceNatureEventChoiceSiteIds = Clone(value);
+        get => Copy(_referenceNatureEventChoiceSiteIds)!;
+        init => _referenceNatureEventChoiceSiteIds = Copy(value);
     }
 
     public string ReferenceNatureAncientOfferSessionSchemaId { get; init; } =
@@ -92,125 +92,125 @@ public sealed record StochasticSessionCoverageV111(
         ReferenceNatureNeowOfferSessionV111.CurrentSchemaId;
     public string[] ReferenceNatureNeowOfferSiteIds
     {
-        get => Clone(_referenceNatureNeowOfferSiteIds)!;
-        init => _referenceNatureNeowOfferSiteIds = Clone(value);
+        get => Copy(_referenceNatureNeowOfferSiteIds)!;
+        init => _referenceNatureNeowOfferSiteIds = Copy(value);
     }
     public string ReferenceNatureTrashHeapSessionSchemaId { get; init; } =
         ReferenceNatureTrashHeapSessionV111.CurrentSchemaId;
     public string[] ReferenceNatureTrashHeapSiteIds
     {
-        get => Clone(_referenceNatureTrashHeapSiteIds)!;
-        init => _referenceNatureTrashHeapSiteIds = Clone(value);
+        get => Copy(_referenceNatureTrashHeapSiteIds)!;
+        init => _referenceNatureTrashHeapSiteIds = Copy(value);
     }
     public string ReferenceNatureTabletOfTruthSessionSchemaId { get; init; } =
         ReferenceNatureTabletOfTruthSessionV111.CurrentSchemaId;
     public string[] ReferenceNatureTabletOfTruthSiteIds
     {
-        get => Clone(_referenceNatureTabletOfTruthSiteIds)!;
-        init => _referenceNatureTabletOfTruthSiteIds = Clone(value);
+        get => Copy(_referenceNatureTabletOfTruthSiteIds)!;
+        init => _referenceNatureTabletOfTruthSiteIds = Copy(value);
     }
     public string ReferenceNatureTrialSessionSchemaId { get; init; } =
         ReferenceNatureTrialSessionV111.CurrentSchemaId;
     public string[] ReferenceNatureTrialSiteIds
     {
-        get => Clone(_referenceNatureTrialSiteIds)!;
-        init => _referenceNatureTrialSiteIds = Clone(value);
+        get => Copy(_referenceNatureTrialSiteIds)!;
+        init => _referenceNatureTrialSiteIds = Copy(value);
     }
     public string ReferenceNatureNativeEventShuffleSessionSchemaId { get; init; } =
         ReferenceNatureNativeEventShuffleSessionV111.CurrentSchemaId;
     public string[] ReferenceNatureNativeEventShuffleSiteIds
     {
-        get => Clone(_referenceNatureNativeEventShuffleSiteIds)!;
-        init => _referenceNatureNativeEventShuffleSiteIds = Clone(value);
+        get => Copy(_referenceNatureNativeEventShuffleSiteIds)!;
+        init => _referenceNatureNativeEventShuffleSiteIds = Copy(value);
     }
     public string ReferenceNatureNativeEventGoldSessionSchemaId { get; init; } =
         ReferenceNatureNativeEventGoldSessionV111.CurrentSchemaId;
     public string[] ReferenceNatureNativeEventGoldSiteIds
     {
-        get => Clone(_referenceNatureNativeEventGoldSiteIds)!;
-        init => _referenceNatureNativeEventGoldSiteIds = Clone(value);
+        get => Copy(_referenceNatureNativeEventGoldSiteIds)!;
+        init => _referenceNatureNativeEventGoldSiteIds = Copy(value);
     }
     public string ReferenceNatureNativeEventRelicSessionSchemaId { get; init; } =
         ReferenceNatureNativeEventRelicSessionV111.CurrentSchemaId;
     public string[] ReferenceNatureNativeEventRelicSiteIds
     {
-        get => Clone(_referenceNatureNativeEventRelicSiteIds)!;
-        init => _referenceNatureNativeEventRelicSiteIds = Clone(value);
+        get => Copy(_referenceNatureNativeEventRelicSiteIds)!;
+        init => _referenceNatureNativeEventRelicSiteIds = Copy(value);
     }
     public string ReferenceNatureNativeShovelSessionSchemaId { get; init; } =
         ReferenceNatureNativeShovelSessionV111.CurrentSchemaId;
     public string[] ReferenceNatureNativeShovelSiteIds
     {
-        get => Clone(_referenceNatureNativeShovelSiteIds)!;
-        init => _referenceNatureNativeShovelSiteIds = Clone(value);
+        get => Copy(_referenceNatureNativeShovelSiteIds)!;
+        init => _referenceNatureNativeShovelSiteIds = Copy(value);
     }
     public string ReferenceNatureEndlessConveyorSessionSchemaId { get; init; } =
         ReferenceNatureEndlessConveyorSessionV111.CurrentSchemaId;
     public string[] ReferenceNatureEndlessConveyorSiteIds
     {
-        get => Clone(_referenceNatureEndlessConveyorSiteIds)!;
-        init => _referenceNatureEndlessConveyorSiteIds = Clone(value);
+        get => Copy(_referenceNatureEndlessConveyorSiteIds)!;
+        init => _referenceNatureEndlessConveyorSiteIds = Copy(value);
     }
     public string ReferenceNatureGloryReflectionsSessionSchemaId { get; init; } =
         ReferenceNatureGloryReflectionsSessionV111.CurrentSchemaId;
     public string[] ReferenceNatureGloryReflectionsSiteIds
     {
-        get => Clone(_referenceNatureGloryReflectionsSiteIds)!;
-        init => _referenceNatureGloryReflectionsSiteIds = Clone(value);
+        get => Copy(_referenceNatureGloryReflectionsSiteIds)!;
+        init => _referenceNatureGloryReflectionsSiteIds = Copy(value);
     }
     public string ReferenceNatureInfestedAutomatonSessionSchemaId { get; init; } =
         ReferenceNatureInfestedAutomatonSessionV111.CurrentSchemaId;
     public string[] ReferenceNatureInfestedAutomatonSiteIds
     {
-        get => Clone(_referenceNatureInfestedAutomatonSiteIds)!;
-        init => _referenceNatureInfestedAutomatonSiteIds = Clone(value);
+        get => Copy(_referenceNatureInfestedAutomatonSiteIds)!;
+        init => _referenceNatureInfestedAutomatonSiteIds = Copy(value);
     }
     public string ReferenceNaturePunchOffRewardSessionSchemaId { get; init; } =
         ReferenceNaturePunchOffRewardSessionV111.CurrentSchemaId;
     public string[] ReferenceNaturePunchOffRewardSiteIds
     {
-        get => Clone(_referenceNaturePunchOffRewardSiteIds)!;
-        init => _referenceNaturePunchOffRewardSiteIds = Clone(value);
+        get => Copy(_referenceNaturePunchOffRewardSiteIds)!;
+        init => _referenceNaturePunchOffRewardSiteIds = Copy(value);
     }
     public string ReferenceNaturePunchOffFightSessionSchemaId { get; init; } =
         ReferenceNaturePunchOffFightSessionV111.CurrentSchemaId;
     public string[] ReferenceNaturePunchOffFightSiteIds
     {
-        get => Clone(_referenceNaturePunchOffFightSiteIds)!;
-        init => _referenceNaturePunchOffFightSiteIds = Clone(value);
+        get => Copy(_referenceNaturePunchOffFightSiteIds)!;
+        init => _referenceNaturePunchOffFightSiteIds = Copy(value);
     }
     public string[] ReferenceNatureAncientOfferSiteIds
     {
-        get => Clone(_referenceNatureAncientOfferSiteIds)!;
-        init => _referenceNatureAncientOfferSiteIds = Clone(value);
+        get => Copy(_referenceNatureAncientOfferSiteIds)!;
+        init => _referenceNatureAncientOfferSiteIds = Copy(value);
     }
     public string ReferenceNatureMerchantSessionSchemaId { get; init; } =
         ReferenceNatureMerchantSessionV111.CurrentSchemaId;
     public string[] ReferenceNatureMerchantSiteIds
     {
-        get => Clone(_referenceNatureMerchantSiteIds)!;
-        init => _referenceNatureMerchantSiteIds = Clone(value);
+        get => Copy(_referenceNatureMerchantSiteIds)!;
+        init => _referenceNatureMerchantSiteIds = Copy(value);
     }
     public string ReferenceNatureTreasureSessionSchemaId { get; init; } =
         ReferenceNatureTreasureSessionV111.CurrentSchemaId;
     public string[] ReferenceNatureTreasureSiteIds
     {
-        get => Clone(_referenceNatureTreasureSiteIds)!;
-        init => _referenceNatureTreasureSiteIds = Clone(value);
+        get => Copy(_referenceNatureTreasureSiteIds)!;
+        init => _referenceNatureTreasureSiteIds = Copy(value);
     }
     public string ReferenceNatureCombatRewardSessionSchemaId { get; init; } =
         ReferenceNatureCombatRewardSessionV111.CurrentSchemaId;
     public string[] ReferenceNatureCombatRewardSiteIds
     {
-        get => Clone(_referenceNatureCombatRewardSiteIds)!;
-        init => _referenceNatureCombatRewardSiteIds = Clone(value);
+        get => Copy(_referenceNatureCombatRewardSiteIds)!;
+        init => _referenceNatureCombatRewardSiteIds = Copy(value);
     }
     public string ReferenceNatureMapGenerationSessionSchemaId { get; init; } =
         ReferenceNatureMapGenerationSessionV111.CurrentSchemaId;
     public string[] ReferenceNatureMapGenerationSiteIds
     {
-        get => Clone(_referenceNatureMapGenerationSiteIds)!;
-        init => _referenceNatureMapGenerationSiteIds = Clone(value);
+        get => Copy(_referenceNatureMapGenerationSiteIds)!;
+        init => _referenceNatureMapGenerationSiteIds = Copy(value);
     }
 
     public const string CurrentSchemaId =
@@ -327,7 +327,7 @@ public sealed record StochasticSessionCoverageV111(
                 "Stochastic session coverage contains invalid site identifiers.");
     }
 
-    private static string[]? Clone(string[]? values) =>
+    private static string[]? Copy(string[]? values) =>
         values is null ? null : (string[])values.Clone();
 }
 

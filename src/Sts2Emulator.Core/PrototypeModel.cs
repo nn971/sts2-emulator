@@ -1062,13 +1062,13 @@ public sealed record PrototypeQueuedOperation(
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     int? DrawEqualSelectionCount = null)
 {
-    private long[]? _deferredDrawnCardInstanceIds = Clone(
+    private long[]? _deferredDrawnCardInstanceIds = Copy(
         DeferredDrawnCardInstanceIds);
 
     public long[]? DeferredDrawnCardInstanceIds
     {
-        get => Clone(_deferredDrawnCardInstanceIds);
-        init => _deferredDrawnCardInstanceIds = Clone(value);
+        get => Copy(_deferredDrawnCardInstanceIds);
+        init => _deferredDrawnCardInstanceIds = Copy(value);
     }
 
     public PrototypeQueuedOperation Fork() => this with
@@ -1076,7 +1076,7 @@ public sealed record PrototypeQueuedOperation(
         DeferredDrawnCardInstanceIds = _deferredDrawnCardInstanceIds
     };
 
-    private static long[]? Clone(long[]? values) => values is null
+    private static long[]? Copy(long[]? values) => values is null
         ? null : (long[])values.Clone();
 }
 
@@ -1967,12 +1967,12 @@ public sealed record MapNodeState
     {
         get => _nextNodeIds is null
             ? null : (string[])_nextNodeIds.Clone();
-        init => _nextNodeIds = Clone(value);
+        init => _nextNodeIds = Copy(value);
     }
 
     public MapNodeState Fork() => this with
     {
-        _nextNodeIds = Clone(_nextNodeIds)
+        _nextNodeIds = Copy(_nextNodeIds)
     };
 
     public void Deconstruct(
@@ -1989,7 +1989,7 @@ public sealed record MapNodeState
         NextNodeIds = this.NextNodeIds;
     }
 
-    private static string[]? Clone(string[]? values) =>
+    private static string[]? Copy(string[]? values) =>
         values is null ? null : (string[])values.Clone();
 }
 
@@ -2014,20 +2014,20 @@ public sealed record MapState
     public MapNodeState[] Nodes
     {
         get => _nodes is null ? null! : (MapNodeState[])_nodes.Clone();
-        init => _nodes = Clone(value);
+        init => _nodes = Copy(value);
     }
     public string? CurrentNodeId { get; init; }
     public string[]? EntryNodeIds
     {
         get => _entryNodeIds is null ? null : (string[])_entryNodeIds.Clone();
-        init => _entryNodeIds = Clone(value);
+        init => _entryNodeIds = Copy(value);
     }
     public string? GenerationProfileId { get; init; }
 
     public MapState Fork() => this with
     {
         _nodes = _nodes!.Select(node => node.Fork()).ToArray(),
-        _entryNodeIds = Clone(_entryNodeIds)
+        _entryNodeIds = Copy(_entryNodeIds)
     };
 
     public void Deconstruct(
@@ -2072,10 +2072,10 @@ public sealed record MapState
     // Compatibility/readability alias for code that only needs the currently legal map choices.
     public MapNodeState[] Options => AvailableNodes();
 
-    private static MapNodeState[]? Clone(MapNodeState[]? values) =>
+    private static MapNodeState[]? Copy(MapNodeState[]? values) =>
         values is null ? null : (MapNodeState[])values.Clone();
 
-    private static string[]? Clone(string[]? values) =>
+    private static string[]? Copy(string[]? values) =>
         values is null ? null : (string[])values.Clone();
 }
 
@@ -2309,12 +2309,12 @@ public sealed record PrototypeRepeatedDamageContinuationV111(
     int EventDepth)
 {
     private int[]? _currentRoundTargetIds =
-        Clone(CurrentRoundTargetIds);
+        Copy(CurrentRoundTargetIds);
 
     public int[] CurrentRoundTargetIds
     {
-        get => Clone(_currentRoundTargetIds!);
-        init => _currentRoundTargetIds = Clone(value);
+        get => Copy(_currentRoundTargetIds!);
+        init => _currentRoundTargetIds = Copy(value);
     }
 
     public PrototypeRepeatedDamageContinuationV111 Fork() => this with
@@ -2323,7 +2323,7 @@ public sealed record PrototypeRepeatedDamageContinuationV111(
         CurrentRoundTargetIds = _currentRoundTargetIds!
     };
 
-    private static int[] Clone(int[]? values) => values is null
+    private static int[] Copy(int[]? values) => values is null
         ? throw new ArgumentNullException(nameof(values))
         : (int[])values.Clone();
 }
@@ -2705,29 +2705,29 @@ public sealed record PrototypeCombatCounters(
     PrototypeCombatCardSnapshot? LastOriginalAttackLastTurn = null,
     int MaulDamageBonus = 0)
 {
-    private string[]? _playedCardTagsThisTurn = Clone(
+    private string[]? _playedCardTagsThisTurn = Copy(
         PlayedCardTagsThisTurn);
-    private long[]? _playedCardIdsThisTurn = Clone(
+    private long[]? _playedCardIdsThisTurn = Copy(
         PlayedCardIdsThisTurn);
-    private long[]? _playedCardIdsLastTurn = Clone(
+    private long[]? _playedCardIdsLastTurn = Copy(
         PlayedCardIdsLastTurn);
 
     public string[]? PlayedCardTagsThisTurn
     {
-        get => Clone(_playedCardTagsThisTurn);
-        init => _playedCardTagsThisTurn = Clone(value);
+        get => Copy(_playedCardTagsThisTurn);
+        init => _playedCardTagsThisTurn = Copy(value);
     }
 
     public long[]? PlayedCardIdsThisTurn
     {
-        get => Clone(_playedCardIdsThisTurn);
-        init => _playedCardIdsThisTurn = Clone(value);
+        get => Copy(_playedCardIdsThisTurn);
+        init => _playedCardIdsThisTurn = Copy(value);
     }
 
     public long[]? PlayedCardIdsLastTurn
     {
-        get => Clone(_playedCardIdsLastTurn);
-        init => _playedCardIdsLastTurn = Clone(value);
+        get => Copy(_playedCardIdsLastTurn);
+        init => _playedCardIdsLastTurn = Copy(value);
     }
 
     public string[] PlayedTags =>
@@ -2746,7 +2746,7 @@ public sealed record PrototypeCombatCounters(
         LastOriginalAttackLastTurn = LastOriginalAttackLastTurn?.Fork()
     };
 
-    private static T[]? Clone<T>(T[]? values) => values is null
+    private static T[]? Copy<T>(T[]? values) => values is null
         ? null : (T[])values.Clone();
 }
 
@@ -3259,25 +3259,25 @@ public sealed record RewardState(
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     bool AddRandomCurseAfterReward = false)
 {
-    private string[]? _cardOptions = Clone(CardOptions);
+    private string[]? _cardOptions = Copy(CardOptions);
     private string[][]? _extraCardOptions = CloneNested(ExtraCardOptions);
-    private string[]? _relicOptions = Clone(RelicOptions);
-    private bool[]? _extraCardOptionsUpgraded = Clone(ExtraCardOptionsUpgraded);
+    private string[]? _relicOptions = Copy(RelicOptions);
+    private bool[]? _extraCardOptionsUpgraded = Copy(ExtraCardOptionsUpgraded);
     private string[][]? _cardBundles = CloneNested(CardBundles);
-    private string[]? _extraRelicRewardIds = Clone(ExtraRelicRewardIds);
-    private bool[]? _cardOptionUpgradeFlags = Clone(CardOptionUpgradeFlags);
+    private string[]? _extraRelicRewardIds = Copy(ExtraRelicRewardIds);
+    private bool[]? _cardOptionUpgradeFlags = Copy(CardOptionUpgradeFlags);
     private bool[][]? _extraCardOptionUpgradeFlags =
         CloneNested(ExtraCardOptionUpgradeFlags);
-    private bool[]? _extraCardGroupsResolved = Clone(ExtraCardGroupsResolved);
-    private bool[]? _extraRelicGroupsResolved = Clone(ExtraRelicGroupsResolved);
-    private int[]? _extraGoldOptions = Clone(ExtraGoldOptions);
-    private bool[]? _extraGoldGroupsResolved = Clone(ExtraGoldGroupsResolved);
+    private bool[]? _extraCardGroupsResolved = Copy(ExtraCardGroupsResolved);
+    private bool[]? _extraRelicGroupsResolved = Copy(ExtraRelicGroupsResolved);
+    private int[]? _extraGoldOptions = Copy(ExtraGoldOptions);
+    private bool[]? _extraGoldGroupsResolved = Copy(ExtraGoldGroupsResolved);
     private CardInstance[]? _returnedStolenCards = CloneCards(ReturnedStolenCards);
-    private bool[]? _extraRelicWaxFlags = Clone(ExtraRelicWaxFlags);
+    private bool[]? _extraRelicWaxFlags = Copy(ExtraRelicWaxFlags);
     private PrototypeCardRewardGenerator?[]? _cardRewardGenerators =
-        Clone(CardRewardGenerators);
-    private string[]? _extraPotionOptions = Clone(ExtraPotionOptions);
-    private bool[]? _extraPotionGroupsResolved = Clone(ExtraPotionGroupsResolved);
+        Copy(CardRewardGenerators);
+    private string[]? _extraPotionOptions = Copy(ExtraPotionOptions);
+    private bool[]? _extraPotionGroupsResolved = Copy(ExtraPotionGroupsResolved);
     private PrototypeCardEnchantment?[]? _cardOptionEnchantments =
         CloneEnchantments(CardOptionEnchantments);
     private PrototypeCardEnchantment?[][]? _extraCardOptionEnchantments =
@@ -3286,7 +3286,7 @@ public sealed record RewardState(
     public string[] CardOptions
     {
         get => _cardOptions is null ? null! : (string[])_cardOptions.Clone();
-        init => _cardOptions = Clone(value);
+        init => _cardOptions = Copy(value);
     }
 
     public string[][]? ExtraCardOptions
@@ -3297,14 +3297,14 @@ public sealed record RewardState(
 
     public string[]? RelicOptions
     {
-        get => Clone(_relicOptions);
-        init => _relicOptions = Clone(value);
+        get => Copy(_relicOptions);
+        init => _relicOptions = Copy(value);
     }
 
     public bool[]? ExtraCardOptionsUpgraded
     {
-        get => Clone(_extraCardOptionsUpgraded);
-        init => _extraCardOptionsUpgraded = Clone(value);
+        get => Copy(_extraCardOptionsUpgraded);
+        init => _extraCardOptionsUpgraded = Copy(value);
     }
 
     public string[][]? CardBundles
@@ -3315,14 +3315,14 @@ public sealed record RewardState(
 
     public string[]? ExtraRelicRewardIds
     {
-        get => Clone(_extraRelicRewardIds);
-        init => _extraRelicRewardIds = Clone(value);
+        get => Copy(_extraRelicRewardIds);
+        init => _extraRelicRewardIds = Copy(value);
     }
 
     public bool[]? CardOptionUpgradeFlags
     {
-        get => Clone(_cardOptionUpgradeFlags);
-        init => _cardOptionUpgradeFlags = Clone(value);
+        get => Copy(_cardOptionUpgradeFlags);
+        init => _cardOptionUpgradeFlags = Copy(value);
     }
 
     public bool[][]? ExtraCardOptionUpgradeFlags
@@ -3333,30 +3333,30 @@ public sealed record RewardState(
 
     public bool[]? ExtraCardGroupsResolved
     {
-        get => Clone(_extraCardGroupsResolved);
-        init => _extraCardGroupsResolved = Clone(value);
+        get => Copy(_extraCardGroupsResolved);
+        init => _extraCardGroupsResolved = Copy(value);
     }
 
     public bool[]? ExtraRelicGroupsResolved
     {
-        get => Clone(_extraRelicGroupsResolved);
-        init => _extraRelicGroupsResolved = Clone(value);
+        get => Copy(_extraRelicGroupsResolved);
+        init => _extraRelicGroupsResolved = Copy(value);
     }
 
     [System.Text.Json.Serialization.JsonIgnore(Condition =
         System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public int[]? ExtraGoldOptions
     {
-        get => Clone(_extraGoldOptions);
-        init => _extraGoldOptions = Clone(value);
+        get => Copy(_extraGoldOptions);
+        init => _extraGoldOptions = Copy(value);
     }
 
     [System.Text.Json.Serialization.JsonIgnore(Condition =
         System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public bool[]? ExtraGoldGroupsResolved
     {
-        get => Clone(_extraGoldGroupsResolved);
-        init => _extraGoldGroupsResolved = Clone(value);
+        get => Copy(_extraGoldGroupsResolved);
+        init => _extraGoldGroupsResolved = Copy(value);
     }
 
     [System.Text.Json.Serialization.JsonIgnore(Condition =
@@ -3371,32 +3371,32 @@ public sealed record RewardState(
         System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public bool[]? ExtraRelicWaxFlags
     {
-        get => Clone(_extraRelicWaxFlags);
-        init => _extraRelicWaxFlags = Clone(value);
+        get => Copy(_extraRelicWaxFlags);
+        init => _extraRelicWaxFlags = Copy(value);
     }
 
     [System.Text.Json.Serialization.JsonIgnore(Condition =
         System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public PrototypeCardRewardGenerator?[]? CardRewardGenerators
     {
-        get => Clone(_cardRewardGenerators);
-        init => _cardRewardGenerators = Clone(value);
+        get => Copy(_cardRewardGenerators);
+        init => _cardRewardGenerators = Copy(value);
     }
 
     [System.Text.Json.Serialization.JsonIgnore(Condition =
         System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public string[]? ExtraPotionOptions
     {
-        get => Clone(_extraPotionOptions);
-        init => _extraPotionOptions = Clone(value);
+        get => Copy(_extraPotionOptions);
+        init => _extraPotionOptions = Copy(value);
     }
 
     [System.Text.Json.Serialization.JsonIgnore(Condition =
         System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public bool[]? ExtraPotionGroupsResolved
     {
-        get => Clone(_extraPotionGroupsResolved);
-        init => _extraPotionGroupsResolved = Clone(value);
+        get => Copy(_extraPotionGroupsResolved);
+        init => _extraPotionGroupsResolved = Copy(value);
     }
 
     [System.Text.Json.Serialization.JsonIgnore(Condition =
@@ -3599,23 +3599,23 @@ public sealed record RewardState(
 
     public RewardState Fork() => this with
     {
-        _cardOptions = Clone(_cardOptions),
+        _cardOptions = Copy(_cardOptions),
         _extraCardOptions = CloneNested(_extraCardOptions),
-        _relicOptions = Clone(_relicOptions),
-        _extraCardOptionsUpgraded = Clone(_extraCardOptionsUpgraded),
-        _cardOptionUpgradeFlags = Clone(_cardOptionUpgradeFlags),
+        _relicOptions = Copy(_relicOptions),
+        _extraCardOptionsUpgraded = Copy(_extraCardOptionsUpgraded),
+        _cardOptionUpgradeFlags = Copy(_cardOptionUpgradeFlags),
         _extraCardOptionUpgradeFlags =
             CloneNested(_extraCardOptionUpgradeFlags),
         _cardBundles = CloneNested(_cardBundles),
-        _extraRelicRewardIds = Clone(_extraRelicRewardIds),
-        _extraCardGroupsResolved = Clone(_extraCardGroupsResolved),
-        _extraRelicGroupsResolved = Clone(_extraRelicGroupsResolved),
-        _extraRelicWaxFlags = Clone(_extraRelicWaxFlags),
+        _extraRelicRewardIds = Copy(_extraRelicRewardIds),
+        _extraCardGroupsResolved = Copy(_extraCardGroupsResolved),
+        _extraRelicGroupsResolved = Copy(_extraRelicGroupsResolved),
+        _extraRelicWaxFlags = Copy(_extraRelicWaxFlags),
         _cardRewardGenerators = CloneGenerators(_cardRewardGenerators),
-        _extraGoldOptions = Clone(_extraGoldOptions),
-        _extraGoldGroupsResolved = Clone(_extraGoldGroupsResolved),
-        _extraPotionOptions = Clone(_extraPotionOptions),
-        _extraPotionGroupsResolved = Clone(_extraPotionGroupsResolved),
+        _extraGoldOptions = Copy(_extraGoldOptions),
+        _extraGoldGroupsResolved = Copy(_extraGoldGroupsResolved),
+        _extraPotionOptions = Copy(_extraPotionOptions),
+        _extraPotionGroupsResolved = Copy(_extraPotionGroupsResolved),
         _cardOptionEnchantments = CloneEnchantments(
             _cardOptionEnchantments),
         _extraCardOptionEnchantments = CloneNestedEnchantments(
@@ -3624,7 +3624,7 @@ public sealed record RewardState(
         _returnedStolenCards = CloneCards(_returnedStolenCards)
     };
 
-    private static T[]? Clone<T>(T[]? values) =>
+    private static T[]? Copy<T>(T[]? values) =>
         values is null ? null : (T[])values.Clone();
 
     private static T[][]? CloneNested<T>(T[][]? groups) =>
@@ -3737,7 +3737,7 @@ public sealed record ShopState
     public ShopOffer[] CardOffers
     {
         get => _cardOffers is null ? null! : (ShopOffer[])_cardOffers.Clone();
-        init => _cardOffers = Clone(value);
+        init => _cardOffers = Copy(value);
     }
     public ShopOffer? PotionOffer { get; init; }
     public ShopOffer? RelicOffer { get; init; }
@@ -3746,13 +3746,13 @@ public sealed record ShopState
     public int? BaseRemovalPrice { get; init; }
     public ShopOffer[]? AdditionalPotionOffers
     {
-        get => Clone(_additionalPotionOffers);
-        init => _additionalPotionOffers = Clone(value);
+        get => Copy(_additionalPotionOffers);
+        init => _additionalPotionOffers = Copy(value);
     }
     public ShopOffer[]? AdditionalRelicOffers
     {
-        get => Clone(_additionalRelicOffers);
-        init => _additionalRelicOffers = Clone(value);
+        get => Copy(_additionalRelicOffers);
+        init => _additionalRelicOffers = Copy(value);
     }
     public PrototypePendingDeckChoiceState? PendingDeckChoice { get; init; }
     public bool LordsParasolPurchaseFlowActive { get; init; }
@@ -3826,7 +3826,7 @@ public sealed record ShopState
         LordsParasolPotionOffersSkipped = this.LordsParasolPotionOffersSkipped;
     }
 
-    private static ShopOffer[]? Clone(ShopOffer[]? offers) =>
+    private static ShopOffer[]? Copy(ShopOffer[]? offers) =>
         offers is null ? null : (ShopOffer[])offers.Clone();
 }
 

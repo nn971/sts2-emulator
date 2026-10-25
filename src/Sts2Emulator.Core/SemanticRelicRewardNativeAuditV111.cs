@@ -12,15 +12,15 @@ public sealed record SemanticRelicRewardNativeAuditV111(
     RandomUnitFloatDecisionV111 ProviderDecision,
     string ProbabilityStatus = "UNVERIFIED")
 {
-    private string[]? _candidateRelicIds = Clone(CandidateRelicIds);
+    private string[]? _candidateRelicIds = Copy(CandidateRelicIds);
 
     public const string CurrentSchemaId =
         "sts2-v111-native-relic-reward-audit-v1";
 
     public string[] CandidateRelicIds
     {
-        get => Clone(_candidateRelicIds)!;
-        init => _candidateRelicIds = Clone(value);
+        get => Copy(_candidateRelicIds)!;
+        init => _candidateRelicIds = Copy(value);
     }
 
     public SemanticRelicRewardNativeAuditV111 Fork() => this with
@@ -34,7 +34,8 @@ public sealed record SemanticRelicRewardNativeAuditV111(
 
     public static SemanticRelicRewardNativeAuditV111 Create(
         RandomUnitFloatDecisionV111 providerDecision,
-        PrototypeRelicBagPullPlanV111 plan, string? selectedRelicId,
+        PrototypeNativeRelicGrabBag.PrototypeRelicBagPullPlanV111 plan,
+        string? selectedRelicId,
         bool merchant)
     {
         ArgumentNullException.ThrowIfNull(providerDecision);
@@ -106,7 +107,7 @@ public sealed record SemanticRelicRewardNativeAuditV111(
         providerDecision = ProviderDecision
     });
 
-    private static string[]? Clone(string[]? values) => values is null
+    private static string[]? Copy(string[]? values) => values is null
         ? null
         : (string[])values.Clone();
 }

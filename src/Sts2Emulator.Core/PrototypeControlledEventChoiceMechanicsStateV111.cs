@@ -24,12 +24,12 @@ public sealed record PrototypeControlledEventChoiceMechanicsStateV111
     public string[] QueuedPotionIds
     {
         get => (string[])_queuedPotionIds.Clone();
-        init => _queuedPotionIds = Clone(value);
+        init => _queuedPotionIds = Copy(value);
     }
     public PrototypePendingEventDeckChoiceState[] QueuedDeckChoices
     {
-        get => Clone(_queuedDeckChoices);
-        init => _queuedDeckChoices = Clone(value);
+        get => Copy(_queuedDeckChoices);
+        init => _queuedDeckChoices = Copy(value);
     }
     public RewardState? DeferredReward { get; init; }
     public int DeferredHpLoss { get; init; }
@@ -64,13 +64,13 @@ public sealed record PrototypeControlledEventChoiceMechanicsStateV111
         this.DeferredCardId = DeferredCardId;
     }
 
-    private static string[] Clone(string[] values)
+    private static string[] Copy(string[] values)
     {
         ArgumentNullException.ThrowIfNull(values);
         return (string[])values.Clone();
     }
 
-    private static PrototypePendingEventDeckChoiceState[] Clone(
+    private static PrototypePendingEventDeckChoiceState[] Copy(
         PrototypePendingEventDeckChoiceState[] values)
     {
         ArgumentNullException.ThrowIfNull(values);

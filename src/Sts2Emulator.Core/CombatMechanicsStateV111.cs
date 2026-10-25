@@ -41,12 +41,12 @@ public sealed record CombatMechanicsStateV111(
         ClonePlayerPowers(PlayerPowers);
     private CombatRelicState[]? _relics = CloneRelics(Relics);
     private CombatPotionState[]? _potions = ClonePotions(Potions);
-    private PrototypeToricShield[]? _toricShields = Clone(ToricShields);
+    private PrototypeToricShield[]? _toricShields = Copy(ToricShields);
     private long[]? _transformedPersistentCardIds =
-        Clone(TransformedPersistentCardIds);
+        Copy(TransformedPersistentCardIds);
     private PrototypeAutoPlayTargetRoll[]? _autoPlayTargetRolls =
-        Clone(AutoPlayTargetRolls);
-    private PrototypeCombatPetState[]? _pets = Clone(Pets);
+        Copy(AutoPlayTargetRolls);
+    private PrototypeCombatPetState[]? _pets = Copy(Pets);
     private PendingCombatChoiceState? _pendingChoice = PendingChoice?.Fork();
     private PrototypeAutomaticPipelineContinuationState?
         _automaticPipelineContinuation = AutomaticPipelineContinuation?.Fork();
@@ -59,8 +59,8 @@ public sealed record CombatMechanicsStateV111(
 
     public string[]? ConfiguredUnlockedColorlessEpochs
     {
-        get => Clone(_configuredUnlockedColorlessEpochs);
-        init => _configuredUnlockedColorlessEpochs = Clone(value);
+        get => Copy(_configuredUnlockedColorlessEpochs);
+        init => _configuredUnlockedColorlessEpochs = Copy(value);
     }
 
     public EnemyCombatState[] Enemies
@@ -121,26 +121,26 @@ public sealed record CombatMechanicsStateV111(
 
     public PrototypeToricShield[]? ToricShields
     {
-        get => Clone(_toricShields);
-        init => _toricShields = Clone(value);
+        get => Copy(_toricShields);
+        init => _toricShields = Copy(value);
     }
 
     public long[]? TransformedPersistentCardIds
     {
-        get => Clone(_transformedPersistentCardIds);
-        init => _transformedPersistentCardIds = Clone(value);
+        get => Copy(_transformedPersistentCardIds);
+        init => _transformedPersistentCardIds = Copy(value);
     }
 
     public PrototypeAutoPlayTargetRoll[]? AutoPlayTargetRolls
     {
-        get => Clone(_autoPlayTargetRolls);
-        init => _autoPlayTargetRolls = Clone(value);
+        get => Copy(_autoPlayTargetRolls);
+        init => _autoPlayTargetRolls = Copy(value);
     }
 
     public PrototypeCombatPetState[]? Pets
     {
-        get => Clone(_pets);
-        init => _pets = Clone(value);
+        get => Copy(_pets);
+        init => _pets = Copy(value);
     }
 
     public CombatMechanicsStateV111 Fork() => this with
@@ -191,7 +191,7 @@ public sealed record CombatMechanicsStateV111(
         CombatPotionState[]? values) =>
         values?.Select(potion => potion.Fork()).ToArray();
 
-    private static T[]? Clone<T>(T[]? values) =>
+    private static T[]? Copy<T>(T[]? values) =>
         values is null ? null : (T[])values.Clone();
 
     // Compatibility projections used by the existing immutable mechanics

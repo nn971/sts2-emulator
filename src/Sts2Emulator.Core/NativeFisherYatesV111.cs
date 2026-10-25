@@ -153,20 +153,20 @@ public sealed record NativeFisherYatesResultV111(
     RandomIndexDecisionV111[] Choices,
     string OutputStage)
 {
-    private long[]? _orderedInput = Clone(OrderedInput);
-    private long[]? _preHookOutput = Clone(PreHookOutput);
+    private long[]? _orderedInput = Copy(OrderedInput);
+    private long[]? _preHookOutput = Copy(PreHookOutput);
     private RandomIndexDecisionV111[]? _choices = CloneDecisions(Choices);
 
     public long[] OrderedInput
     {
-        get => Clone(_orderedInput)!;
-        init => _orderedInput = Clone(value);
+        get => Copy(_orderedInput)!;
+        init => _orderedInput = Copy(value);
     }
 
     public long[] PreHookOutput
     {
-        get => Clone(_preHookOutput)!;
-        init => _preHookOutput = Clone(value);
+        get => Copy(_preHookOutput)!;
+        init => _preHookOutput = Copy(value);
     }
 
     public RandomIndexDecisionV111[] Choices
@@ -182,7 +182,7 @@ public sealed record NativeFisherYatesResultV111(
         Choices = _choices!
     };
 
-    private static long[]? Clone(long[]? values) => values is null
+    private static long[]? Copy(long[]? values) => values is null
         ? null
         : (long[])values.Clone();
 

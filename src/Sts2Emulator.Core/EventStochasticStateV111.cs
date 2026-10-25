@@ -19,27 +19,27 @@ public sealed record EventCommittedRandomStateV111(
     string? NativeTinkerType = null,
     PrototypeFuturePotionOffer[]? FuturePotionOffers = null)
 {
-    private string[]? _repyChestPotionIds = Clone(RepyChestPotionIds);
-    private string[]? _repyChestRelicIds = Clone(RepyChestRelicIds);
+    private string[]? _repyChestPotionIds = Copy(RepyChestPotionIds);
+    private string[]? _repyChestRelicIds = Copy(RepyChestRelicIds);
     private PrototypeFuturePotionOffer[]? _futurePotionOffers =
-        Clone(FuturePotionOffers);
+        Copy(FuturePotionOffers);
 
     public string[]? RepyChestPotionIds
     {
-        get => Clone(_repyChestPotionIds);
-        init => _repyChestPotionIds = Clone(value);
+        get => Copy(_repyChestPotionIds);
+        init => _repyChestPotionIds = Copy(value);
     }
 
     public string[]? RepyChestRelicIds
     {
-        get => Clone(_repyChestRelicIds);
-        init => _repyChestRelicIds = Clone(value);
+        get => Copy(_repyChestRelicIds);
+        init => _repyChestRelicIds = Copy(value);
     }
 
     public PrototypeFuturePotionOffer[]? FuturePotionOffers
     {
-        get => Clone(_futurePotionOffers);
-        init => _futurePotionOffers = Clone(value);
+        get => Copy(_futurePotionOffers);
+        init => _futurePotionOffers = Copy(value);
     }
 
     public EventCommittedRandomStateV111 Fork() => this with
@@ -49,10 +49,10 @@ public sealed record EventCommittedRandomStateV111(
         FuturePotionOffers = _futurePotionOffers
     };
 
-    private static string[]? Clone(string[]? values) =>
+    private static string[]? Copy(string[]? values) =>
         values is null ? null : (string[])values.Clone();
 
-    private static PrototypeFuturePotionOffer[]? Clone(
+    private static PrototypeFuturePotionOffer[]? Copy(
         PrototypeFuturePotionOffer[]? values) =>
         values is null ? null : (PrototypeFuturePotionOffer[])values.Clone();
 }

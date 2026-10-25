@@ -25,15 +25,15 @@ public sealed record ReferenceNatureRunActionSessionSnapshotV111(
     }
 
     private ReferenceNatureDecisionV111[]? _decisionTranscript =
-        Clone(DecisionTranscript);
+        Copy(DecisionTranscript);
 
     public ReferenceNatureDecisionV111[] DecisionTranscript
     {
-        get => Clone(_decisionTranscript)!;
-        init => _decisionTranscript = Clone(value);
+        get => Copy(_decisionTranscript)!;
+        init => _decisionTranscript = Copy(value);
     }
 
-    private static ReferenceNatureDecisionV111[]? Clone(
+    private static ReferenceNatureDecisionV111[]? Copy(
         ReferenceNatureDecisionV111[]? transcript) => transcript is null
         ? null
         : (ReferenceNatureDecisionV111[])transcript.Clone();

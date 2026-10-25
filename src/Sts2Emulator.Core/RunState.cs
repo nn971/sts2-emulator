@@ -81,17 +81,17 @@ public sealed record PlayerState
     public CardInstance[] Deck
     {
         get => _deck is null ? null! : (CardInstance[])_deck.Clone();
-        init => _deck = Clone(value);
+        init => _deck = Copy(value);
     }
     public RelicInstance[] Relics
     {
         get => _relics is null ? null! : (RelicInstance[])_relics.Clone();
-        init => _relics = Clone(value);
+        init => _relics = Copy(value);
     }
     public PotionInstance?[] PotionSlots
     {
         get => _potionSlots is null ? null! : (PotionInstance?[])_potionSlots.Clone();
-        init => _potionSlots = Clone(value);
+        init => _potionSlots = Copy(value);
     }
     [System.Text.Json.Serialization.JsonIgnore(Condition =
         System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
@@ -131,7 +131,7 @@ public sealed record PlayerState
         Resources = this.Resources;
     }
 
-    private static T[]? Clone<T>(T[]? values) =>
+    private static T[]? Copy<T>(T[]? values) =>
         values is null ? null : (T[])values.Clone();
 }
 

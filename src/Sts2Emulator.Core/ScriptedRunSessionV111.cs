@@ -67,15 +67,15 @@ public sealed record ScriptedRunSessionSnapshotV111(
     string? ActiveActionSnapshotJson)
 {
     private ScriptedRunActionRecordV111[]? _completedActions =
-        Clone(CompletedActions);
+        Copy(CompletedActions);
 
     public ScriptedRunActionRecordV111[] CompletedActions
     {
-        get => Clone(_completedActions)!;
-        init => _completedActions = Clone(value);
+        get => Copy(_completedActions)!;
+        init => _completedActions = Copy(value);
     }
 
-    private static ScriptedRunActionRecordV111[]? Clone(
+    private static ScriptedRunActionRecordV111[]? Copy(
         ScriptedRunActionRecordV111[]? actions) => actions is null
             ? null
             : (ScriptedRunActionRecordV111[])actions.Clone();

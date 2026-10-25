@@ -10,15 +10,15 @@ public sealed record SemanticPotionFactoryNativeAuditV111(
     RandomIndexDecisionV111 ModelDecision,
     string ProbabilityStatus = "UNVERIFIED")
 {
-    private string[]? _candidatePotionIds = Clone(CandidatePotionIds);
+    private string[]? _candidatePotionIds = Copy(CandidatePotionIds);
 
     public const string CurrentSchemaId =
         "sts2-v111-native-potion-factory-audit-v1";
 
     public string[] CandidatePotionIds
     {
-        get => Clone(_candidatePotionIds)!;
-        init => _candidatePotionIds = Clone(value);
+        get => Copy(_candidatePotionIds)!;
+        init => _candidatePotionIds = Copy(value);
     }
 
     public SemanticPotionFactoryNativeAuditV111 Fork() => this with
@@ -141,7 +141,7 @@ public sealed record SemanticPotionFactoryNativeAuditV111(
         return true;
     }
 
-    private static string[]? Clone(string[]? values) => values is null
+    private static string[]? Copy(string[]? values) => values is null
         ? null
         : (string[])values.Clone();
 }

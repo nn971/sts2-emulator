@@ -6,14 +6,14 @@ public sealed record NativeNeowOfferAuditV111(
     RandomIndexDecisionV111[] Choices,
     string ProviderMode)
 {
-    private string[]? _offeredChoiceIds = Clone(OfferedChoiceIds);
+    private string[]? _offeredChoiceIds = Copy(OfferedChoiceIds);
     private RandomIndexDecisionV111[]? _choices = CloneDecisions(Choices);
     private RngStreamState? _nativeEventRng = NativeEventRng.Fork();
 
     public string[] OfferedChoiceIds
     {
-        get => Clone(_offeredChoiceIds)!;
-        init => _offeredChoiceIds = Clone(value);
+        get => Copy(_offeredChoiceIds)!;
+        init => _offeredChoiceIds = Copy(value);
     }
 
     public RngStreamState NativeEventRng
@@ -36,7 +36,7 @@ public sealed record NativeNeowOfferAuditV111(
         Choices = _choices!
     };
 
-    private static string[]? Clone(string[]? values) => values is null
+    private static string[]? Copy(string[]? values) => values is null
         ? null
         : (string[])values.Clone();
 

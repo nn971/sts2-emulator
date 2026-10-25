@@ -16,7 +16,7 @@ public sealed record ReferenceNatureLaterActPreparationSessionSnapshotV111(
     private RngBundle? _initialPrototypeRng = InitialPrototypeRng?.Fork();
     private SimulationProfile? _profile = Profile?.Fork();
     private ReferenceNatureDecisionV111[]? _decisionTranscript =
-        Clone(DecisionTranscript);
+        Copy(DecisionTranscript);
 
     public RngBundle InitialPrototypeRng
     {
@@ -32,11 +32,11 @@ public sealed record ReferenceNatureLaterActPreparationSessionSnapshotV111(
 
     public ReferenceNatureDecisionV111[] DecisionTranscript
     {
-        get => Clone(_decisionTranscript)!;
-        init => _decisionTranscript = Clone(value);
+        get => Copy(_decisionTranscript)!;
+        init => _decisionTranscript = Copy(value);
     }
 
-    private static ReferenceNatureDecisionV111[]? Clone(
+    private static ReferenceNatureDecisionV111[]? Copy(
         ReferenceNatureDecisionV111[]? values) => values is null ? null :
         (ReferenceNatureDecisionV111[])values.Clone();
 }

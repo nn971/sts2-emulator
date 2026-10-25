@@ -21,27 +21,27 @@ public sealed record EventMechanicsStateV111(
     bool? NativeTanxTriEligible = null,
     bool? NativeNonupeipeBraceletEligible = null)
 {
-    private string[]? _queuedPotionIds = Clone(QueuedPotionIds);
+    private string[]? _queuedPotionIds = Copy(QueuedPotionIds);
     private PrototypePendingEventDeckChoiceState[]? _queuedDeckChoices =
-        Clone(QueuedDeckChoices);
-    private string[]? _offeredChoiceIds = Clone(OfferedChoiceIds);
+        Copy(QueuedDeckChoices);
+    private string[]? _offeredChoiceIds = Copy(OfferedChoiceIds);
 
     public string[]? QueuedPotionIds
     {
-        get => Clone(_queuedPotionIds);
-        init => _queuedPotionIds = Clone(value);
+        get => Copy(_queuedPotionIds);
+        init => _queuedPotionIds = Copy(value);
     }
 
     public PrototypePendingEventDeckChoiceState[]? QueuedDeckChoices
     {
-        get => Clone(_queuedDeckChoices);
-        init => _queuedDeckChoices = Clone(value);
+        get => Copy(_queuedDeckChoices);
+        init => _queuedDeckChoices = Copy(value);
     }
 
     public string[]? OfferedChoiceIds
     {
-        get => Clone(_offeredChoiceIds);
-        init => _offeredChoiceIds = Clone(value);
+        get => Copy(_offeredChoiceIds);
+        init => _offeredChoiceIds = Copy(value);
     }
 
     public EventMechanicsStateV111 Fork() => this with
@@ -54,10 +54,10 @@ public sealed record EventMechanicsStateV111(
         PendingReward = PendingReward?.Fork()
     };
 
-    private static string[]? Clone(string[]? values) =>
+    private static string[]? Copy(string[]? values) =>
         values is null ? null : (string[])values.Clone();
 
-    private static PrototypePendingEventDeckChoiceState[]? Clone(
+    private static PrototypePendingEventDeckChoiceState[]? Copy(
         PrototypePendingEventDeckChoiceState[]? values) =>
         values?.Select(choice => choice.Fork()).ToArray();
 }

@@ -3,7 +3,7 @@ namespace Sts2Emulator.Core;
 public sealed record TransitionResult(RunState State, string[] Diagnostics)
 {
     private RunState? _state = State.Fork();
-    private string[]? _diagnostics = Clone(Diagnostics);
+    private string[]? _diagnostics = Copy(Diagnostics);
 
     public RunState State
     {
@@ -14,8 +14,8 @@ public sealed record TransitionResult(RunState State, string[] Diagnostics)
 
     public string[] Diagnostics
     {
-        get => Clone(_diagnostics)!;
-        init => _diagnostics = Clone(value);
+        get => Copy(_diagnostics)!;
+        init => _diagnostics = Copy(value);
     }
 
     public TransitionResult Fork() => this with
@@ -25,7 +25,7 @@ public sealed record TransitionResult(RunState State, string[] Diagnostics)
         Diagnostics = _diagnostics!
     };
 
-    private static string[]? Clone(string[]? values) => values is null
+    private static string[]? Copy(string[]? values) => values is null
         ? null
         : (string[])values.Clone();
 }

@@ -33,21 +33,21 @@ public sealed record RunWorldMechanicsStateV111(
     long? LastCombatEndDecisionIndex = null,
     PrototypeCustomRewardReturnState? CustomRewardReturn = null)
 {
-    private string[]? _encounterHistory = Clone(EncounterHistory);
-    private string[]? _eventHistory = Clone(EventHistory);
+    private string[]? _encounterHistory = Copy(EncounterHistory);
+    private string[]? _eventHistory = Copy(EventHistory);
     private PrototypeCompletedRoomRecord[]? _completedRoomHistory =
-        Clone(CompletedRoomHistory);
+        Copy(CompletedRoomHistory);
 
     public string[]? EncounterHistory
     {
-        get => Clone(_encounterHistory);
-        init => _encounterHistory = Clone(value);
+        get => Copy(_encounterHistory);
+        init => _encounterHistory = Copy(value);
     }
 
     public string[]? EventHistory
     {
-        get => Clone(_eventHistory);
-        init => _eventHistory = Clone(value);
+        get => Copy(_eventHistory);
+        init => _eventHistory = Copy(value);
     }
 
     internal RunWorldMechanicsStateV111 AppendEventId(string eventId)
@@ -83,10 +83,10 @@ public sealed record RunWorldMechanicsStateV111(
 
     public PrototypeCompletedRoomRecord[]? CompletedRoomHistory
     {
-        get => Clone(_completedRoomHistory);
-        init => _completedRoomHistory = Clone(value);
+        get => Copy(_completedRoomHistory);
+        init => _completedRoomHistory = Copy(value);
     }
 
-    private static T[]? Clone<T>(T[]? values) =>
+    private static T[]? Copy<T>(T[]? values) =>
         values is null ? null : (T[])values.Clone();
 }

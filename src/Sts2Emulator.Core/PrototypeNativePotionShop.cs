@@ -15,14 +15,14 @@ public sealed record NativePotionModelSelectionAuditV111(
     string IndexProviderMode,
     string FloatProviderMode)
 {
-    private string[]? _potionIds = Clone(PotionIds);
+    private string[]? _potionIds = Copy(PotionIds);
     private RandomIndexDecisionV111[]? _choices = CloneDecisions(Choices);
-    private RandomUnitFloatDecisionV111[]? _rarityRolls = Clone(RarityRolls);
+    private RandomUnitFloatDecisionV111[]? _rarityRolls = Copy(RarityRolls);
 
     public string[] PotionIds
     {
-        get => Clone(_potionIds)!;
-        init => _potionIds = Clone(value);
+        get => Copy(_potionIds)!;
+        init => _potionIds = Copy(value);
     }
 
     public RandomIndexDecisionV111[] Choices
@@ -33,8 +33,8 @@ public sealed record NativePotionModelSelectionAuditV111(
 
     public RandomUnitFloatDecisionV111[] RarityRolls
     {
-        get => Clone(_rarityRolls)!;
-        init => _rarityRolls = Clone(value);
+        get => Copy(_rarityRolls)!;
+        init => _rarityRolls = Copy(value);
     }
 
     public NativePotionModelSelectionAuditV111 Fork() => this with
@@ -44,7 +44,7 @@ public sealed record NativePotionModelSelectionAuditV111(
         RarityRolls = _rarityRolls!
     };
 
-    private static T[]? Clone<T>(T[]? values) => values is null
+    private static T[]? Copy<T>(T[]? values) => values is null
         ? null
         : (T[])values.Clone();
 

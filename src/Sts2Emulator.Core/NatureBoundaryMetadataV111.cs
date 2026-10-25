@@ -10,26 +10,26 @@ public sealed record NatureBoundaryEventV111(
     string? ReferenceLawId = null,
     string[]? CandidateCardIds = null)
 {
-    private int[]? _orderedCandidates = Clone(OrderedCandidates);
-    private string[]? _candidateCardIds = Clone(CandidateCardIds);
+    private int[]? _orderedCandidates = Copy(OrderedCandidates);
+    private string[]? _candidateCardIds = Copy(CandidateCardIds);
     private string[]? _candidateLabels;
 
     public int[] OrderedCandidates
     {
-        get => Clone(_orderedCandidates)!;
-        init => _orderedCandidates = Clone(value);
+        get => Copy(_orderedCandidates)!;
+        init => _orderedCandidates = Copy(value);
     }
 
     public string[]? CandidateCardIds
     {
-        get => Clone(_candidateCardIds);
-        init => _candidateCardIds = Clone(value);
+        get => Copy(_candidateCardIds);
+        init => _candidateCardIds = Copy(value);
     }
 
     public string[]? CandidateLabels
     {
-        get => Clone(_candidateLabels);
-        init => _candidateLabels = Clone(value);
+        get => Copy(_candidateLabels);
+        init => _candidateLabels = Copy(value);
     }
 
     public NatureBoundaryEventV111 Fork() => this with
@@ -39,11 +39,11 @@ public sealed record NatureBoundaryEventV111(
         CandidateLabels = _candidateLabels
     };
 
-    private static int[]? Clone(int[]? values) => values is null
+    private static int[]? Copy(int[]? values) => values is null
         ? null
         : (int[])values.Clone();
 
-    private static string[]? Clone(string[]? values) => values is null
+    private static string[]? Copy(string[]? values) => values is null
         ? null
         : (string[])values.Clone();
 }
@@ -54,12 +54,12 @@ public sealed record NatureReplayChoiceV111(
     int[] OrderedCandidates, int? BoundedCount, int SelectedIndex,
     string ProbabilityStatus = "UNVERIFIED")
 {
-    private int[]? _orderedCandidates = Clone(OrderedCandidates);
+    private int[]? _orderedCandidates = Copy(OrderedCandidates);
 
     public int[] OrderedCandidates
     {
-        get => Clone(_orderedCandidates)!;
-        init => _orderedCandidates = Clone(value);
+        get => Copy(_orderedCandidates)!;
+        init => _orderedCandidates = Copy(value);
     }
 
     public NatureReplayChoiceV111 Fork() => this with
@@ -67,7 +67,7 @@ public sealed record NatureReplayChoiceV111(
         OrderedCandidates = _orderedCandidates!
     };
 
-    private static int[]? Clone(int[]? values) => values is null
+    private static int[]? Copy(int[]? values) => values is null
         ? null
         : (int[])values.Clone();
 }
@@ -78,7 +78,7 @@ public sealed record NatureBoundaryViewV111(
     NatureReplayChoiceV111[] Transcript)
 {
     private NatureBoundaryEventV111? _pending = Pending?.Fork();
-    private NatureReplayChoiceV111[]? _transcript = Clone(Transcript);
+    private NatureReplayChoiceV111[]? _transcript = Copy(Transcript);
 
     public NatureBoundaryEventV111? Pending
     {
@@ -88,8 +88,8 @@ public sealed record NatureBoundaryViewV111(
 
     public NatureReplayChoiceV111[] Transcript
     {
-        get => Clone(_transcript)!;
-        init => _transcript = Clone(value);
+        get => Copy(_transcript)!;
+        init => _transcript = Copy(value);
     }
 
     public NatureBoundaryViewV111 Fork() => this with
@@ -98,7 +98,7 @@ public sealed record NatureBoundaryViewV111(
         Transcript = _transcript!
     };
 
-    private static NatureReplayChoiceV111[]? Clone(
+    private static NatureReplayChoiceV111[]? Copy(
         NatureReplayChoiceV111[]? values) => values?.Select(choice =>
             choice?.Fork()!).ToArray();
 }

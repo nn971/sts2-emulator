@@ -12,12 +12,12 @@ public sealed record ReferenceNatureAncientOfferSessionSnapshotV111(
     ReferenceNatureDecisionV111[] DecisionTranscript)
 {
     private ReferenceNatureDecisionV111[]? _decisionTranscript =
-        Clone(DecisionTranscript);
+        Copy(DecisionTranscript);
 
     public ReferenceNatureDecisionV111[] DecisionTranscript
     {
-        get => Clone(_decisionTranscript)!;
-        init => _decisionTranscript = Clone(value);
+        get => Copy(_decisionTranscript)!;
+        init => _decisionTranscript = Copy(value);
     }
 
     public ReferenceNatureAncientOfferSessionSnapshotV111 Fork() => this with
@@ -28,7 +28,7 @@ public sealed record ReferenceNatureAncientOfferSessionSnapshotV111(
             DecisionTranscript.Clone()
     };
 
-    private static ReferenceNatureDecisionV111[]? Clone(
+    private static ReferenceNatureDecisionV111[]? Copy(
         ReferenceNatureDecisionV111[]? transcript) => transcript is null
         ? null
         : (ReferenceNatureDecisionV111[])transcript.Clone();

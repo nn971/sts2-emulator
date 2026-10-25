@@ -36,14 +36,14 @@ public sealed record NativeEncounterFormationV111(
     int? MapColumn = null,
     int? MapRow = null)
 {
-    private PrototypeEncounterEnemySpec[] _enemies = Clone(Enemies);
+    private PrototypeEncounterEnemySpec[] _enemies = Copy(Enemies);
     private NativeEncounterMonsterContextV111[] _monsterContexts =
         CloneContexts(MonsterContexts);
 
     public PrototypeEncounterEnemySpec[] Enemies
     {
-        get => Clone(_enemies);
-        init => _enemies = Clone(value);
+        get => Copy(_enemies);
+        init => _enemies = Copy(value);
     }
 
     public NativeEncounterMonsterContextV111[] MonsterContexts
@@ -59,7 +59,7 @@ public sealed record NativeEncounterFormationV111(
         MonsterContexts = _monsterContexts
     };
 
-    private static PrototypeEncounterEnemySpec[] Clone(
+    private static PrototypeEncounterEnemySpec[] Copy(
         PrototypeEncounterEnemySpec[] values)
     {
         ArgumentNullException.ThrowIfNull(values);

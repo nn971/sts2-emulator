@@ -12,12 +12,12 @@ public sealed record ScriptedRunActionOutcomeV111(
     RandomBoundaryTranscriptEntryV111 Entry,
     string[]? CandidateLabels = null)
 {
-    private string[]? _candidateLabels = Clone(CandidateLabels);
+    private string[]? _candidateLabels = Copy(CandidateLabels);
 
     public string[]? CandidateLabels
     {
-        get => Clone(_candidateLabels);
-        init => _candidateLabels = Clone(value);
+        get => Copy(_candidateLabels);
+        init => _candidateLabels = Copy(value);
     }
 
     public ScriptedRunActionOutcomeV111 Fork() => this with
@@ -85,7 +85,7 @@ public sealed record ScriptedRunActionOutcomeV111(
                 (string[])CandidateLabels.Clone());
     }
 
-    private static string[]? Clone(string[]? labels) => labels is null
+    private static string[]? Copy(string[]? labels) => labels is null
         ? null
         : (string[])labels.Clone();
 

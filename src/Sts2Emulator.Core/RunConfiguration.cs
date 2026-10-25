@@ -47,13 +47,13 @@ public sealed record SimulationProfile
     {
         get => _unlockedCharacters is null
             ? null! : (string[])_unlockedCharacters.Clone();
-        init => _unlockedCharacters = Clone(value);
+        init => _unlockedCharacters = Copy(value);
     }
     public string[] RevealedEpochs
     {
         get => _revealedEpochs is null
             ? null! : (string[])_revealedEpochs.Clone();
-        init => _revealedEpochs = Clone(value);
+        init => _revealedEpochs = Copy(value);
     }
 
     /// <summary>
@@ -66,8 +66,8 @@ public sealed record SimulationProfile
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string[]? UnlockedColorlessEpochs
     {
-        get => Clone(_unlockedColorlessEpochs);
-        init => _unlockedColorlessEpochs = Clone(value);
+        get => Copy(_unlockedColorlessEpochs);
+        init => _unlockedColorlessEpochs = Copy(value);
     }
 
     /// <summary>
@@ -79,7 +79,7 @@ public sealed record SimulationProfile
     {
         get => _seenBossEncounters is null
             ? null! : (string[])_seenBossEncounters.Clone();
-        init => _seenBossEncounters = Clone(value);
+        init => _seenBossEncounters = Copy(value);
     }
 
     public static SimulationProfile Unlocked() => new(true, [], []);
@@ -101,7 +101,7 @@ public sealed record SimulationProfile
         RevealedEpochs = this.RevealedEpochs;
     }
 
-    private static string[]? Clone(string[]? values) =>
+    private static string[]? Copy(string[]? values) =>
         values is null ? null : (string[])values.Clone();
 }
 
@@ -134,7 +134,7 @@ public sealed record RunConfiguration
     public ActIdentity[] Acts
     {
         get => _acts is null ? null! : (ActIdentity[])_acts.Clone();
-        init => _acts = Clone(value);
+        init => _acts = Copy(value);
     }
     public SimulationProfile Profile
     {
@@ -184,7 +184,7 @@ public sealed record RunConfiguration
         FidelityId = this.FidelityId;
     }
 
-    private static ActIdentity[]? Clone(ActIdentity[]? values) =>
+    private static ActIdentity[]? Copy(ActIdentity[]? values) =>
         values is null ? null : (ActIdentity[])values.Clone();
 
     public void Validate()
@@ -330,13 +330,13 @@ public sealed record V111CharacterDefinition
     {
         get => _startingDeck is null
             ? null! : (string[])_startingDeck.Clone();
-        init => _startingDeck = Clone(value);
+        init => _startingDeck = Copy(value);
     }
     public string[] StartingRelics
     {
         get => _startingRelics is null
             ? null! : (string[])_startingRelics.Clone();
-        init => _startingRelics = Clone(value);
+        init => _startingRelics = Copy(value);
     }
 
     public V111CharacterDefinition Fork() => new(
@@ -361,7 +361,7 @@ public sealed record V111CharacterDefinition
         StartingRelics = this.StartingRelics;
     }
 
-    private static string[]? Clone(string[]? values) =>
+    private static string[]? Copy(string[]? values) =>
         values is null ? null : (string[])values.Clone();
 }
 

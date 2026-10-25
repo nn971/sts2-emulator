@@ -52,16 +52,16 @@ public sealed record StochasticCapabilityManifestV111(
     string[] ProviderModes,
     string[] ReferenceNatureOperations)
 {
-    private string[]? _natureChoiceSiteIds = Clone(NatureChoiceSiteIds);
-    private string[]? _providerModes = Clone(ProviderModes);
+    private string[]? _natureChoiceSiteIds = Copy(NatureChoiceSiteIds);
+    private string[]? _providerModes = Copy(ProviderModes);
     private string[]? _referenceNatureOperations =
-        Clone(ReferenceNatureOperations);
+        Copy(ReferenceNatureOperations);
     private string[]? _probabilityStatuses =
         [ChanceLawV111.UnverifiedStatus];
     private string[]? _scriptedRunActionOperations =
-        Clone(ScriptedRunActionSessionV111.Operations);
+        Copy(ScriptedRunActionSessionV111.Operations);
     private string[]? _scriptedRunSessionOperations =
-        Clone(ScriptedRunSessionV111.Operations);
+        Copy(ScriptedRunSessionV111.Operations);
     private string[]? _semanticNatureChoiceViewOperations =
         ["nature_choice_observe", "semantic_nature_observe"];
     private string[]? _semanticNatureChoiceViewSessionKinds =
@@ -71,26 +71,26 @@ public sealed record StochasticCapabilityManifestV111(
 
     public string[] NatureChoiceSiteIds
     {
-        get => Clone(_natureChoiceSiteIds)!;
-        init => _natureChoiceSiteIds = Clone(value);
+        get => Copy(_natureChoiceSiteIds)!;
+        init => _natureChoiceSiteIds = Copy(value);
     }
     public string[] ProviderModes
     {
-        get => Clone(_providerModes)!;
-        init => _providerModes = Clone(value);
+        get => Copy(_providerModes)!;
+        init => _providerModes = Copy(value);
     }
     public string[] ReferenceNatureOperations
     {
-        get => Clone(_referenceNatureOperations)!;
-        init => _referenceNatureOperations = Clone(value);
+        get => Copy(_referenceNatureOperations)!;
+        init => _referenceNatureOperations = Copy(value);
     }
 
     /// <summary>Individual Chance Laws carry one of these statuses. The
     /// legacy ProbabilityStatus field remains the conservative default.</summary>
     public string[] ProbabilityStatuses
     {
-        get => Clone(_probabilityStatuses)!;
-        init => _probabilityStatuses = Clone(value);
+        get => Copy(_probabilityStatuses)!;
+        init => _probabilityStatuses = Copy(value);
     }
     public string ReferenceNatureRunActionSessionSchemaId { get; init; } =
         ReferenceNatureRunActionSessionV111.CurrentSchemaId;
@@ -136,35 +136,35 @@ public sealed record StochasticCapabilityManifestV111(
         ScriptedRunActionSessionV111.CurrentSchemaId;
     public string[] ScriptedRunActionOperations
     {
-        get => Clone(_scriptedRunActionOperations)!;
-        init => _scriptedRunActionOperations = Clone(value);
+        get => Copy(_scriptedRunActionOperations)!;
+        init => _scriptedRunActionOperations = Copy(value);
     }
     public string ScriptedRunSessionSchemaId { get; init; } =
         ScriptedRunSessionV111.CurrentSchemaId;
     public string[] ScriptedRunSessionOperations
     {
-        get => Clone(_scriptedRunSessionOperations)!;
-        init => _scriptedRunSessionOperations = Clone(value);
+        get => Copy(_scriptedRunSessionOperations)!;
+        init => _scriptedRunSessionOperations = Copy(value);
     }
     public string SemanticNatureChoiceViewSchemaId { get; init; } =
         SemanticNatureChoiceViewV111.CurrentSchemaId;
     public string[] SemanticNatureChoiceViewOperations
     {
-        get => Clone(_semanticNatureChoiceViewOperations)!;
-        init => _semanticNatureChoiceViewOperations = Clone(value);
+        get => Copy(_semanticNatureChoiceViewOperations)!;
+        init => _semanticNatureChoiceViewOperations = Copy(value);
     }
     public string[] SemanticNatureChoiceViewSessionKinds
     {
-        get => Clone(_semanticNatureChoiceViewSessionKinds)!;
-        init => _semanticNatureChoiceViewSessionKinds = Clone(value);
+        get => Copy(_semanticNatureChoiceViewSessionKinds)!;
+        init => _semanticNatureChoiceViewSessionKinds = Copy(value);
     }
     public string[] ChanceLawSchemaIds
     {
-        get => Clone(_chanceLawSchemaIds)!;
-        init => _chanceLawSchemaIds = Clone(value);
+        get => Copy(_chanceLawSchemaIds)!;
+        init => _chanceLawSchemaIds = Copy(value);
     }
 
-    private static string[]? Clone(string[]? values) =>
+    private static string[]? Copy(string[]? values) =>
         values is null ? null : (string[])values.Clone();
 }
 
@@ -452,7 +452,7 @@ public sealed record ChanceLawV111(
     ChanceLawOutcomeV111[] Outcomes,
     long TotalWeight)
 {
-    private ChanceLawOutcomeV111[]? _outcomes = Clone(Outcomes);
+    private ChanceLawOutcomeV111[]? _outcomes = Copy(Outcomes);
 
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public ChanceLawUniformIndexRangeV111? UniformIndexRange { get; init; }
@@ -469,8 +469,8 @@ public sealed record ChanceLawV111(
 
     public ChanceLawOutcomeV111[] Outcomes
     {
-        get => Clone(_outcomes)!;
-        init => _outcomes = Clone(value);
+        get => Copy(_outcomes)!;
+        init => _outcomes = Copy(value);
     }
 
     public const string CurrentSchemaId = "sts2-v111-chance-law-v1";
@@ -500,7 +500,7 @@ public sealed record ChanceLawV111(
             : UniformIndexRange is null
                 ? Outcomes[supportOffset].Weight : 1L;
 
-    private static ChanceLawOutcomeV111[]? Clone(
+    private static ChanceLawOutcomeV111[]? Copy(
         ChanceLawOutcomeV111[]? outcomes) => outcomes is null
         ? null
         : (ChanceLawOutcomeV111[])outcomes.Clone();

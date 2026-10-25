@@ -809,7 +809,7 @@ public sealed record ReferenceNatureLaterActAssignmentsV111(
     ChanceLawV111[] ChanceLaws,
     ReferenceNatureDecisionV111[] DecisionTranscript)
 {
-    private string[]? _assignments = Clone(Assignments);
+    private string[]? _assignments = Copy(Assignments);
     private ChanceLawV111[]? _chanceLaws = ChanceLaws?.Select(law =>
         law.Fork()).ToArray();
 
@@ -833,7 +833,7 @@ public sealed record ReferenceNatureLaterActAssignmentsV111(
     public string[] Assignments
     {
         get => _assignments is null ? null! : (string[])_assignments.Clone();
-        init => _assignments = Clone(value);
+        init => _assignments = Copy(value);
     }
 
     public ChanceLawV111[] ChanceLaws
@@ -945,7 +945,7 @@ public sealed record ReferenceNatureLaterActAssignmentsV111(
         }
     }
 
-    private static string[]? Clone(string[]? values) => values is null
+    private static string[]? Copy(string[]? values) => values is null
         ? null : (string[])values.Clone();
 }
 

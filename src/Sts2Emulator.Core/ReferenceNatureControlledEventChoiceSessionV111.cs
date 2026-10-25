@@ -57,8 +57,8 @@ public sealed record ReferenceNatureControlledEventChoiceStochasticStateV111
 
     public ReferenceNatureControlledEventChoiceStepV111[] Steps
     {
-        get => Clone(_steps)!;
-        init => _steps = Clone(value);
+        get => Copy(_steps)!;
+        init => _steps = Copy(value);
     }
 
     [JsonIgnore]
@@ -102,7 +102,7 @@ public sealed record ReferenceNatureControlledEventChoiceStochasticStateV111
         }
     }
 
-    private static ReferenceNatureControlledEventChoiceStepV111[]? Clone(
+    private static ReferenceNatureControlledEventChoiceStepV111[]? Copy(
         ReferenceNatureControlledEventChoiceStepV111[]? steps) => steps is null
             ? null
             : steps.Select(step => step?.Fork()!).ToArray();
@@ -115,15 +115,15 @@ public sealed record ReferenceNatureControlledEventChoiceSnapshotV111(
     ReferenceNatureControlledEventChoiceStepV111[] Steps)
 {
     private ReferenceNatureControlledEventChoiceStepV111[]? _steps =
-        Clone(Steps);
+        Copy(Steps);
 
     public ReferenceNatureControlledEventChoiceStepV111[] Steps
     {
-        get => Clone(_steps)!;
-        init => _steps = Clone(value);
+        get => Copy(_steps)!;
+        init => _steps = Copy(value);
     }
 
-    private static ReferenceNatureControlledEventChoiceStepV111[]? Clone(
+    private static ReferenceNatureControlledEventChoiceStepV111[]? Copy(
         ReferenceNatureControlledEventChoiceStepV111[]? steps) => steps is null
         ? null
         : steps.Select(step => step.Fork()).ToArray();

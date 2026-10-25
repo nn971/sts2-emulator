@@ -153,9 +153,17 @@ Action-only draw-hook choices retain their pipeline-versus-active-draw owner
 distinction. Typed resolvers keep their support checks, transcripts, and resume
 behavior; the projection adds no snapshot fields. Static source review and
 the RNG callsite inventory guard plus `git diff --check` passed. A Core build
-was attempted and remains blocked by
-pre-existing compiler errors in untouched files (record members named
-`Clone` and an unresolved relic-bag plan type); no tests were run.
+was attempted at that point and reported record members named `Clone` plus an
+unresolved relic-bag plan type. The follow-up repair and current compile state
+are recorded below; no tests were run.
+
+**S3 immutable-envelope compile repair (2026-10-25):** Private array-copy
+helpers on record owners now use `Copy`, avoiding C#'s reserved synthesized
+record member name while preserving defensive-copy behavior. The Native relic
+reward audit now qualifies the nested relic-bag pull-plan type. These changes
+remove the earlier record-name and unresolved-type errors. A Core build now
+reports 132 unrelated compiler errors elsewhere in the current tree; no tests
+were run.
 
 **S5 shared candidate-label binding validation (2026-10-25):** Controlled
 event-choice, run-action, and playable-combat Python facades now use one
