@@ -179,7 +179,7 @@ public sealed record StochasticCapabilityManifestV111(
 
 public static class StochasticCapabilitiesV111
 {
-    public const string SchemaId = "sts2-v111-stochastic-capabilities-v5";
+    public const string SchemaId = "sts2-v111-stochastic-capabilities-v6";
     public const string ExternalSelectionProviderId =
         "external-semantic-selection-v1";
 

@@ -530,8 +530,9 @@ public sealed record SimulationProviderReplayCaptureV111(
 
     /// <summary>
     /// Builds a capture from a completed whole-run ReferenceNature session.
-    /// The provider-boundary trace contains its indexed controlled decisions;
-    /// the separate Nature transcript remains in the replay-validated session.
+    /// The provider-boundary trace contains all six typed controlled
+    /// decisions; the aligned optional Nature transcript remains in the
+    /// replay-validated session.
     /// </summary>
     public static SimulationProviderReplayCaptureV111
         FromReferenceNatureScriptedRunSession(
@@ -561,8 +562,9 @@ public sealed record SimulationProviderReplayCaptureV111(
                 replayRun = replayed.Run?.Fork() ??
                     throw new InvalidDataException(
                         "ReferenceNature whole-run action replay has no result.");
-                if (action.NatureDecisions.Length != 0)
-                    nature = action.NatureDecisions[^1].NextState.Fork();
+                if (action.NatureDecisions.LastOrDefault(decision =>
+                        decision is not null) is { } lastNatureDecision)
+                    nature = lastNatureDecision.NextState.Fork();
                 replayRun = ReferenceNatureRunCursorV111.Commit(
                     replayRun, nature);
                 actionBoundaries[index] = replayRun.Fork();

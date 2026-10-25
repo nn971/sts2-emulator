@@ -37,6 +37,64 @@ public sealed record ScriptedRunActionOutcomeV111(
                 "Scripted run-action candidate labels require a valid index entry.");
     }
 
+    public static ScriptedRunActionOutcomeV111 FromDecision(
+        ControlledStochasticDecisionV111 decision, int sequence)
+    {
+        ArgumentNullException.ThrowIfNull(decision);
+        if (sequence < 1)
+            throw new ArgumentOutOfRangeException(nameof(sequence));
+        decision.Validate();
+        object boundary = decision.IndexDecision is { } index
+            ? new RandomBoundaryEventV111(sequence, index.Request,
+                index.SelectedIndex, index.SelectedValue, index.ProviderMode,
+                index.NativeCursorBefore, index.NativeCursorAfter)
+            : decision.UnitFloatDecision is { } unitFloat
+                ? new RandomUnitFloatBoundaryEventV111(sequence,
+                    unitFloat.Request, unitFloat.SelectedValue,
+                    unitFloat.ProviderMode, unitFloat.NativeCursorBefore,
+                    unitFloat.NativeCursorAfter)
+                : decision.RangedFloatDecision is { } rangedFloat
+                    ? new RandomRangedFloatBoundaryEventV111(sequence,
+                        rangedFloat.Request, rangedFloat.SelectedValue,
+                        rangedFloat.ProviderMode,
+                        rangedFloat.NativeCursorBefore,
+                        rangedFloat.NativeCursorAfter)
+                    : decision.RangedDoubleDecision is { } rangedDouble
+                        ? new RandomRangedDoubleBoundaryEventV111(sequence,
+                            rangedDouble.Request,
+                            rangedDouble.SelectedValue,
+                            rangedDouble.ProviderMode,
+                            rangedDouble.NativeCursorBefore,
+                            rangedDouble.NativeCursorAfter)
+                        : decision.GaussianIntDecision is { } gaussianInt
+                            ? new RandomGaussianIntBoundaryEventV111(
+                                sequence, gaussianInt.Request,
+                                gaussianInt.SelectedValue,
+                                gaussianInt.ProviderMode,
+                                gaussianInt.NativeCursorBefore,
+                                gaussianInt.NativeCursorAfter)
+                            : decision.GaussianDoubleDecision is { } gaussianDouble
+                                ? new RandomGaussianDoubleBoundaryEventV111(
+                                    sequence, gaussianDouble.Request,
+                                    gaussianDouble.SelectedValue,
+                                    gaussianDouble.ProviderMode,
+                                    gaussianDouble.NativeCursorBefore,
+                                    gaussianDouble.NativeCursorAfter)
+                                : throw new InvalidDataException(
+                                    "Typed stochastic outcome has no decision.");
+        var operationKind = decision.IndexDecision is not null ? "index" :
+            decision.UnitFloatDecision is not null ? "unit_float" :
+            decision.RangedFloatDecision is not null ? "ranged_float" :
+            decision.RangedDoubleDecision is not null ? "ranged_double" :
+            decision.GaussianIntDecision is not null ? "gaussian_int" :
+            "gaussian_double";
+        var entry = new RandomBoundaryTranscriptEntryV111(sequence,
+            operationKind,
+            RandomBoundaryTranscriptEntryV111.SerializeEvent(boundary));
+        return new ScriptedRunActionOutcomeV111(entry,
+            decision.CandidateLabels);
+    }
+
     internal ControlledStochasticDecisionV111 ToDecision()
     {
         Validate();

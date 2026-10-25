@@ -1818,9 +1818,9 @@ internal static class PrototypeAiJsonlServer
                 out var runStateHandle);
             var pendingLaw = session.PendingLaw;
             var pendingRequest = session.PendingRequest;
-            object? pending = pendingLaw is null || pendingRequest is null
-                ? null
-                : new
+            object? pending = null;
+            if (pendingLaw is not null && pendingRequest is not null)
+                pending = new
                 {
                     kind = "scripted_run_index",
                     eventId = pendingLaw.EventId,
@@ -1832,6 +1832,17 @@ internal static class PrototypeAiJsonlServer
                     chanceLaw = pendingLaw,
                     probabilityStatus = pendingLaw.ProbabilityStatus
                 };
+            else if (pendingRequest is not null)
+                pending = new
+                {
+                    kind = "scripted_run_typed_request",
+                    siteId = pendingRequest.SiteId,
+                    operationKind = session.PendingOperationKind,
+                    request = pendingRequest,
+                    boundaryFingerprint = session.ActiveAction!.Fingerprint,
+                    candidateLabels = session.PendingCandidateLabels,
+                    probabilityStatus = ChanceLawV111.UnverifiedStatus
+                };
             return new
             {
                 ok = true,
@@ -1841,8 +1852,8 @@ internal static class PrototypeAiJsonlServer
                 fingerprint = session.Fingerprint,
                 boundary = session.Complete ? "terminal" :
                     session.ActiveAction is null ? "player" :
-                    session.UnsupportedBoundary is null ? "nature" :
-                    "unsupported",
+                    pendingLaw is not null ? "nature" :
+                    pendingRequest is not null ? "scripted" : "unsupported",
                 completedActionCount = session.CompletedActions.Length,
                 activeActionId = session.ActiveAction is null ? null :
                     PrototypeAiEnvironment.StableActionId(
@@ -1850,14 +1861,17 @@ internal static class PrototypeAiJsonlServer
                 nextSequence = session.ActiveAction is null ? (int?)null :
                     session.ActiveAction.Decisions.Length + 1,
                 pending,
-                unsupportedBoundary = session.UnsupportedBoundary,
-                decisionTranscript = session.ActiveNatureDecisions.Select(
-                    decision => new
+                unsupportedBoundary = (string?)null,
+                decisionTranscript = session.ActiveNatureDecisions
+                    .Select((decision, index) => new { decision, index })
+                    .Where(item => item.decision is not null)
+                    .Select(item => new
                     {
-                        decision.LawId,
-                        decision.EventId,
-                        decision.OutcomeId,
-                        decision.OutcomeIndex
+                        decisionSequence = item.index + 1,
+                        item.decision!.LawId,
+                        item.decision.EventId,
+                        item.decision.OutcomeId,
+                        item.decision.OutcomeIndex
                     }).ToArray(),
                 legalActions = session.LegalActions.Select(action =>
                     new
@@ -3105,7 +3119,7 @@ internal static class PrototypeAiJsonlServer
                             referenceNatureScriptedRunSessionOperations =
                                 ReferenceNatureScriptedRunSessionV111.Operations,
                             referenceNatureScriptedRunSessionScope =
-                                "whole-run-ordinary-actions-with-finite-index-chance-laws-and-reference-nature-sampling",
+                                "whole-run-ordinary-actions-with-reference-nature-index-sampling-and-six-primitive-scripted-outcome-continuation",
                             referenceNatureEventChoiceSessionSchemaId =
                                 ReferenceNatureControlledEventChoiceSessionV111
                                     .CurrentSchemaId,
@@ -7392,6 +7406,33 @@ internal static class PrototypeAiJsonlServer
                         var session = RequireReferenceNatureScriptedRun(request);
                         var next = session.ResolveNext(
                             RequiredString(request, "fingerprint"));
+                        var handle = StoreReferenceNatureScriptedRun(next);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureScriptedRunResult(next, handle,
+                                parentHandle) });
+                        break;
+                    }
+
+                    case "reference_nature_scripted_run_resolve_outcome":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "reference_nature_scripted_run_handle");
+                        var session = RequireReferenceNatureScriptedRun(request);
+                        if (!request.TryGetProperty("transcript_entry",
+                                out var entryElement) ||
+                            entryElement.ValueKind != JsonValueKind.Object)
+                            throw new ArgumentException(
+                                "transcript_entry must be a random-boundary transcript object.");
+                        var entry = entryElement.Deserialize<
+                                RandomBoundaryTranscriptEntryV111>(
+                                SnakeCaseJsonOptions)
+                            ?? throw new InvalidDataException(
+                                "transcript_entry is empty.");
+                        var next = session.ResolveOutcome(
+                            RequiredString(request, "fingerprint"),
+                            new ScriptedRunActionOutcomeV111(
+                                entry, OptionalStringArray(request,
+                                    "candidate_labels")));
                         var handle = StoreReferenceNatureScriptedRun(next);
                         Write(new { requestId, ok = true, result =
                             ReferenceNatureScriptedRunResult(next, handle,

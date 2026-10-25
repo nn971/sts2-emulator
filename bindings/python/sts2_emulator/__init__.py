@@ -518,10 +518,11 @@ class State:
 
     def begin_reference_nature_scripted_run(
             self, nature_seed: int | None = None):
-        """Begin whole-run ReferenceNature sampling at indexed boundaries."""
+        """Begin whole-run ReferenceNature and typed replay continuation."""
         if self.session.capabilities.get(
-                "referenceNatureScriptedRunSessionSchemaId") != (
-                "sts2-v111-reference-nature-scripted-run-session-v1"):
+                "referenceNatureScriptedRunSessionSchemaId") not in (
+                    "sts2-v111-reference-nature-scripted-run-session-v1",
+                    "sts2-v111-reference-nature-scripted-run-session-v2"):
             raise EmulatorError(
                 "Emulator does not expose whole-run ReferenceNature sessions")
         operations = self.session.capabilities.get(
@@ -530,6 +531,12 @@ class State:
                 "reference_nature_scripted_run_begin" not in operations):
             raise EmulatorError(
                 "Whole-run ReferenceNature begin is not advertised")
+        if (self.session.capabilities.get(
+                "referenceNatureScriptedRunSessionSchemaId") ==
+                "sts2-v111-reference-nature-scripted-run-session-v2" and
+                "reference_nature_scripted_run_resolve_outcome" not in operations):
+            raise EmulatorError(
+                "Whole-run ReferenceNature typed resolution is not advertised")
         if (nature_seed is not None and
                 (not isinstance(nature_seed, int) or
                  isinstance(nature_seed, bool) or nature_seed < 0 or
@@ -1344,7 +1351,7 @@ class ScriptedRunSession:
 
 @dataclass(frozen=True)
 class ReferenceNatureScriptedRunSession:
-    """Whole-run ReferenceNature sampling over finite index requests."""
+    """Whole-run ReferenceNature with typed scripted-outcome fallback."""
     session: "Session"
     handle: str
     fingerprint: str
@@ -1361,8 +1368,9 @@ class ReferenceNatureScriptedRunSession:
 
     @classmethod
     def from_wire(cls, session, payload):
-        if payload.get("schemaId") != (
-                "sts2-v111-reference-nature-scripted-run-session-v1"):
+        if payload.get("schemaId") not in (
+                "sts2-v111-reference-nature-scripted-run-session-v1",
+                "sts2-v111-reference-nature-scripted-run-session-v2"):
             raise EmulatorError(
                 "Unsupported whole-run ReferenceNature session schema")
         state_handle = payload.get("runStateHandle")
@@ -1392,7 +1400,7 @@ class ReferenceNatureScriptedRunSession:
         return self.legal_actions
 
     def observe_nature_choice(self):
-        """Return the separate Nature-only view at an indexed chance."""
+        """Return the Nature-only view when an indexed chance is pending."""
         return self.session.observe_nature_choice(
             "reference_nature_scripted_run", self.handle)
 
@@ -1424,6 +1432,37 @@ class ReferenceNatureScriptedRunSession:
             "reference_nature_scripted_run_resolve_next",
             reference_nature_scripted_run_handle=self.handle,
             fingerprint=self.fingerprint)
+        return ReferenceNatureScriptedRunSession.from_wire(
+            self.session, result["result"])
+
+    def resolve_outcome(self, transcript_entry: dict,
+                        candidate_labels: list[str] | None = None):
+        """Resolve the pending typed request from a caller-supplied entry.
+
+        Use this for non-index primitives or when replaying a prescribed
+        indexed outcome. The entry uses the same shape as
+        ``scripted_run_resolve_next`` and is replay-validated against the
+        active request.
+        """
+        if self.boundary not in ("nature", "scripted") or self.pending is None:
+            raise EmulatorError(
+                "ReferenceNature run has no pending typed stochastic request")
+        if not isinstance(transcript_entry, dict):
+            raise TypeError("transcript_entry must be a dictionary")
+        if candidate_labels is not None and (
+                not isinstance(candidate_labels, list) or
+                any(not isinstance(label, str) or not label
+                    for label in candidate_labels)):
+            raise TypeError("candidate_labels must be a list of nonempty strings")
+        payload = {
+            "reference_nature_scripted_run_handle": self.handle,
+            "fingerprint": self.fingerprint,
+            "transcript_entry": transcript_entry,
+        }
+        if candidate_labels is not None:
+            payload["candidate_labels"] = candidate_labels
+        result = self.session.call(
+            "reference_nature_scripted_run_resolve_outcome", **payload)
         return ReferenceNatureScriptedRunSession.from_wire(
             self.session, result["result"])
 
@@ -3777,7 +3816,8 @@ class Session:
         if (capability_schema not in (
                 "sts2-v111-stochastic-capabilities-v3",
                 "sts2-v111-stochastic-capabilities-v4",
-                "sts2-v111-stochastic-capabilities-v5")
+                "sts2-v111-stochastic-capabilities-v5",
+                "sts2-v111-stochastic-capabilities-v6")
                 or manifest.get("chanceLawSchemaId") !=
                 "sts2-v111-chance-law-v1"
                 or manifest.get("playerObservationSchemaId") !=
@@ -3797,10 +3837,10 @@ class Session:
         chance_law_schema_ids = (
             string_list(manifest.get("chanceLawSchemaIds"),
                         "chanceLawSchemaIds")
-            if capability_schema ==
-            "sts2-v111-stochastic-capabilities-v4" or
-            capability_schema ==
-            "sts2-v111-stochastic-capabilities-v5"
+            if capability_schema in (
+                "sts2-v111-stochastic-capabilities-v4",
+                "sts2-v111-stochastic-capabilities-v5",
+                "sts2-v111-stochastic-capabilities-v6")
             else [manifest["chanceLawSchemaId"]])
         if (manifest["chanceLawSchemaId"] not in chance_law_schema_ids
                 or not set(chance_law_schema_ids).issubset({
@@ -3816,7 +3856,9 @@ class Session:
                       "scriptedRunActionOperations",
                       "scriptedRunSessionOperations"):
             string_list(manifest.get(field), field)
-        if capability_schema == "sts2-v111-stochastic-capabilities-v5":
+        if capability_schema in (
+                "sts2-v111-stochastic-capabilities-v5",
+                "sts2-v111-stochastic-capabilities-v6"):
             whole_run_schema = manifest.get(
                 "referenceNatureScriptedRunSessionSchemaId")
             whole_run_operations = string_list(
@@ -3824,12 +3866,21 @@ class Session:
                 "referenceNatureScriptedRunSessionOperations")
             if (whole_run_schema != self.capabilities.get(
                     "referenceNatureScriptedRunSessionSchemaId") or
-                    whole_run_schema !=
-                    "sts2-v111-reference-nature-scripted-run-session-v1" or
+                    whole_run_schema != (
+                        "sts2-v111-reference-nature-scripted-run-session-v2"
+                        if capability_schema ==
+                        "sts2-v111-stochastic-capabilities-v6" else
+                        "sts2-v111-reference-nature-scripted-run-session-v1") or
                     whole_run_operations != self.capabilities.get(
                         "referenceNatureScriptedRunSessionOperations")):
                 raise EmulatorError(
                     "Whole-run ReferenceNature schema or operations differ from the stochastic manifest")
+            if (capability_schema ==
+                    "sts2-v111-stochastic-capabilities-v6" and
+                    "reference_nature_scripted_run_resolve_outcome" not in
+                    whole_run_operations):
+                raise EmulatorError(
+                    "Whole-run ReferenceNature is missing typed outcome resolution")
         reference_nature_operations = set(string_list(
             manifest.get("referenceNatureOperations"),
             "referenceNatureOperations"))
@@ -3886,7 +3937,9 @@ class Session:
                     "semanticNatureChoiceViewOperations", [])):
             raise EmulatorError(
                 "Nature-choice observation is missing from its manifest")
-        if (capability_schema == "sts2-v111-stochastic-capabilities-v5" and
+        if (capability_schema in (
+                "sts2-v111-stochastic-capabilities-v5",
+                "sts2-v111-stochastic-capabilities-v6") and
                 "reference_nature_scripted_run" not in view_session_kinds):
             raise EmulatorError(
                 "Whole-run ReferenceNature Nature-choice view is not advertised")
@@ -4489,8 +4542,9 @@ class Session:
 
     def load_reference_nature_scripted_run_snapshot(self, snapshot: str):
         if self.capabilities.get(
-                "referenceNatureScriptedRunSessionSchemaId") != (
-                "sts2-v111-reference-nature-scripted-run-session-v1"):
+                "referenceNatureScriptedRunSessionSchemaId") not in (
+                    "sts2-v111-reference-nature-scripted-run-session-v1",
+                    "sts2-v111-reference-nature-scripted-run-session-v2"):
             raise EmulatorError(
                 "Emulator does not expose whole-run ReferenceNature sessions")
         operations = self.capabilities.get(

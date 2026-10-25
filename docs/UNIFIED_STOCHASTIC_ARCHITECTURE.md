@@ -892,17 +892,21 @@ with the session facades.
 owner with one run-level ReferenceNature cursor and a typed Chance Law
 selection transcript. It chains ordinary legal actions across player
 boundaries, commits the cursor with each completed action, and replays the
-whole action history during validation and restore. Its current resolver
-supports finite index requests through `QueryRandomIndex`: canonical Native
+whole action history during validation and restore. Its `resolve_next` path
+samples finite index requests through `QueryRandomIndex`: canonical Native
 `NextInt` streams use the exact declared grid transform, while legacy and
-unknown streams retain the explicit unverified uniform-index model. A
-non-index request remains pending and is reported as unsupported. The
-session preserves the last committed run boundary while an action is active,
-and its JSONL and standard-library Python interfaces expose begin,
-action-begin, sampled resolve, status, fork, save, load, release, and the
-separate Nature-choice projection. This is whole-run composition over indexed
-boundaries, not complete coverage of every stochastic operation or every
-specialized event controller ([session contract](REFERENCE_NATURE_SCRIPTED_RUN_D3.md)).
+unknown streams retain the explicit unverified uniform-index model. Its
+`resolve_outcome` path accepts replay-validated caller-supplied outcomes for
+all six typed random primitives. Each action history aligns its typed
+decisions with optional Nature selections, so scripted outcomes do not
+advance or masquerade as Nature samples. The session preserves the last
+committed run boundary while an action is active, and its JSONL and
+standard-library Python interfaces expose both resolution paths, status,
+fork, save, load, release, and the separate Nature-choice projection. This
+closes the six-primitive whole-run continuation gap for ordinary legal
+actions; Chance Law sampling remains indexed, and specialized event
+controllers retain their existing owners
+([session contract](REFERENCE_NATURE_SCRIPTED_RUN_D3.md)).
 
 The **same game mechanics** issues semantic stochastic operations and applies their resolved outcomes regardless of provider:
 
@@ -1162,11 +1166,11 @@ existing typed boundary journal materializes its saved outcomes into the
 capture. The whole-run path retains each replayed action result as a mechanics
 checkpoint. They accept only sessions at committed action boundaries.
 `FromReferenceNatureScriptedRunSession` adds the matching whole-run path for
-finite index boundaries. It replays each indexed action prefix, materializes
-the saved outcomes through the same boundary journal, and retains completed
-action checkpoints and physical draw identities. Its typed boundary trace is
-complete; semantic outcome identity remains unavailable until a
-source-aware semantic projection is added.
+ordinary actions with complete six-primitive typed traces. It replays each
+action prefix, materializes the saved outcomes through the same boundary
+journal, and retains completed action checkpoints and physical draw
+identities. Its typed boundary trace is complete; semantic outcome identity
+remains unavailable until a source-aware semantic projection is added.
 `FromSemanticNativePolicySession` provides a corresponding path for a
 replay-validated Native-policy baseline. It reconstructs the initial player
 boundary from the seeded entry, verifies that the saved provider trace begins

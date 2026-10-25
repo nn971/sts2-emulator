@@ -6,12 +6,12 @@ namespace Sts2Emulator.Core;
 public sealed record ReferenceNatureScriptedRunActionRecordV111(
     GameAction Action,
     ControlledStochasticDecisionV111[] Decisions,
-    ReferenceNatureSelectionV111[] NatureDecisions)
+    ReferenceNatureSelectionV111?[] NatureDecisions)
 {
     private GameAction? _action = CopyAction(Action);
     private ControlledStochasticDecisionV111[]? _decisions =
         CopyDecisions(Decisions);
-    private ReferenceNatureSelectionV111[]? _natureDecisions =
+    private ReferenceNatureSelectionV111?[]? _natureDecisions =
         CopyNatureDecisions(NatureDecisions);
 
     public GameAction Action
@@ -27,7 +27,7 @@ public sealed record ReferenceNatureScriptedRunActionRecordV111(
         init => _decisions = CopyDecisions(value);
     }
 
-    public ReferenceNatureSelectionV111[] NatureDecisions
+    public ReferenceNatureSelectionV111?[] NatureDecisions
     {
         get => CopyNatureDecisions(_natureDecisions)!;
         init => _natureDecisions = CopyNatureDecisions(value);
@@ -55,7 +55,8 @@ public sealed record ReferenceNatureScriptedRunActionRecordV111(
             decision.Validate();
         }
         foreach (var decision in _natureDecisions)
-            ValidateNatureDecision(decision);
+            if (decision is not null)
+                ValidateNatureDecision(decision);
     }
 
     internal static void ValidateNatureDecision(
@@ -78,9 +79,9 @@ public sealed record ReferenceNatureScriptedRunActionRecordV111(
         ControlledStochasticDecisionV111[]? decisions) => decisions?
             .Select(decision => decision?.Fork()!).ToArray();
 
-    private static ReferenceNatureSelectionV111[]? CopyNatureDecisions(
-        ReferenceNatureSelectionV111[]? decisions) => decisions?
-            .Select(decision => decision is null ? null! : decision with
+    private static ReferenceNatureSelectionV111?[]? CopyNatureDecisions(
+        ReferenceNatureSelectionV111?[]? decisions) => decisions?
+            .Select(decision => decision is null ? null : decision with
             {
                 NextState = decision.NextState.Fork()
             }).ToArray();
@@ -133,7 +134,7 @@ public sealed record ReferenceNatureScriptedRunStochasticStateV111(
     ReferenceNatureStateV111 NatureState,
     ReferenceNatureScriptedRunActionRecordV111[] CompletedActions,
     ScriptedRunActionSessionV111? ActiveAction,
-    ReferenceNatureSelectionV111[] ActiveNatureDecisions)
+    ReferenceNatureSelectionV111?[] ActiveNatureDecisions)
 {
     public ReferenceNatureScriptedRunActionRecordV111[] CompletedActions
     {
@@ -152,13 +153,13 @@ public sealed record ReferenceNatureScriptedRunStochasticStateV111(
 
     private ScriptedRunActionSessionV111? _activeAction = ActiveAction?.Fork();
 
-    public ReferenceNatureSelectionV111[] ActiveNatureDecisions
+    public ReferenceNatureSelectionV111?[] ActiveNatureDecisions
     {
         get => CopyNatureDecisions(_activeNatureDecisions)!;
         init => _activeNatureDecisions = CopyNatureDecisions(value);
     }
 
-    private ReferenceNatureSelectionV111[]? _activeNatureDecisions =
+    private ReferenceNatureSelectionV111?[]? _activeNatureDecisions =
         CopyNatureDecisions(ActiveNatureDecisions);
 
     public ReferenceNatureScriptedRunStochasticStateV111 Fork() => this with
@@ -178,7 +179,6 @@ public sealed record ReferenceNatureScriptedRunStochasticStateV111(
         var active = ActiveNatureDecisions;
         if (completed is null || active is null ||
             completed.Any(action => action is null) ||
-            active.Any(decision => decision is null) ||
             (ActiveAction is null && active.Length != 0) ||
             ActiveAction is { } activeAction &&
                 active.Length != activeAction.Decisions.Length)
@@ -187,8 +187,9 @@ public sealed record ReferenceNatureScriptedRunStochasticStateV111(
         foreach (var action in completed)
             action.Validate();
         foreach (var decision in active)
-            ReferenceNatureScriptedRunActionRecordV111
-                .ValidateNatureDecision(decision);
+            if (decision is not null)
+                ReferenceNatureScriptedRunActionRecordV111
+                    .ValidateNatureDecision(decision);
         ActiveAction?.Validate();
     }
 
@@ -196,9 +197,9 @@ public sealed record ReferenceNatureScriptedRunStochasticStateV111(
         ReferenceNatureScriptedRunActionRecordV111[]? actions) => actions?
             .Select(action => action?.Fork()!).ToArray();
 
-    private static ReferenceNatureSelectionV111[]? CopyNatureDecisions(
-        ReferenceNatureSelectionV111[]? decisions) => decisions?
-            .Select(decision => decision is null ? null! : decision with
+    private static ReferenceNatureSelectionV111?[]? CopyNatureDecisions(
+        ReferenceNatureSelectionV111?[]? decisions) => decisions?
+            .Select(decision => decision is null ? null : decision with
             {
                 NextState = decision.NextState.Fork()
             }).ToArray();
@@ -212,11 +213,11 @@ public sealed record ReferenceNatureScriptedRunSessionSnapshotV111(
     ReferenceNatureStateV111 NatureState,
     ReferenceNatureScriptedRunActionRecordV111[] CompletedActions,
     string? ActiveActionSnapshotJson,
-    ReferenceNatureSelectionV111[] ActiveNatureDecisions)
+    ReferenceNatureSelectionV111?[] ActiveNatureDecisions)
 {
     private ReferenceNatureScriptedRunActionRecordV111[]? _completedActions =
         CopyActions(CompletedActions);
-    private ReferenceNatureSelectionV111[]? _activeNatureDecisions =
+    private ReferenceNatureSelectionV111?[]? _activeNatureDecisions =
         CopyDecisions(ActiveNatureDecisions);
 
     public ReferenceNatureScriptedRunActionRecordV111[] CompletedActions
@@ -225,7 +226,7 @@ public sealed record ReferenceNatureScriptedRunSessionSnapshotV111(
         init => _completedActions = CopyActions(value);
     }
 
-    public ReferenceNatureSelectionV111[] ActiveNatureDecisions
+    public ReferenceNatureSelectionV111?[] ActiveNatureDecisions
     {
         get => CopyDecisions(_activeNatureDecisions)!;
         init => _activeNatureDecisions = CopyDecisions(value);
@@ -235,18 +236,18 @@ public sealed record ReferenceNatureScriptedRunSessionSnapshotV111(
         ReferenceNatureScriptedRunActionRecordV111[]? actions) => actions?
             .Select(action => action?.Fork()!).ToArray();
 
-    private static ReferenceNatureSelectionV111[]? CopyDecisions(
-        ReferenceNatureSelectionV111[]? decisions) => decisions?
-            .Select(decision => decision is null ? null! : decision with
+    private static ReferenceNatureSelectionV111?[]? CopyDecisions(
+        ReferenceNatureSelectionV111?[]? decisions) => decisions?
+            .Select(decision => decision is null ? null : decision with
             {
                 NextState = decision.NextState.Fork()
             }).ToArray();
 }
 
 /// <summary>
-/// Whole-run ReferenceNature session for ordinary legal actions whose
-/// stochastic boundaries have finite index supports. It composes the
-/// scripted action replay owner with the shared Nature cursor and transcript.
+/// Whole-run ReferenceNature session for ordinary legal actions. Finite index
+/// boundaries can be sampled by ReferenceNature; any of the six typed
+/// boundaries can instead be resolved from a caller-supplied transcript.
 /// </summary>
 public sealed record ReferenceNatureScriptedRunSessionV111(
     string SchemaId,
@@ -256,7 +257,7 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
     ReferenceNatureStateV111 NatureState,
     ReferenceNatureScriptedRunActionRecordV111[] CompletedActions,
     ScriptedRunActionSessionV111? ActiveAction,
-    ReferenceNatureSelectionV111[] ActiveNatureDecisions)
+    ReferenceNatureSelectionV111?[] ActiveNatureDecisions)
 {
     [JsonIgnore]
     public SimulationStateV111<ReferenceNatureScriptedRunMechanicsStateV111,
@@ -317,7 +318,7 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
         init => Stochastic = Stochastic with { ActiveAction = value };
     }
 
-    public ReferenceNatureSelectionV111[] ActiveNatureDecisions
+    public ReferenceNatureSelectionV111?[] ActiveNatureDecisions
     {
         get => Stochastic.ActiveNatureDecisions;
         init => Stochastic = Stochastic with
@@ -327,6 +328,8 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
     }
 
     public const string CurrentSchemaId =
+        "sts2-v111-reference-nature-scripted-run-session-v2";
+    public const string LegacySchemaId =
         "sts2-v111-reference-nature-scripted-run-session-v1";
 
     public static string[] Operations =>
@@ -335,6 +338,7 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
         "reference_nature_scripted_run_status",
         "reference_nature_scripted_run_begin_action",
         "reference_nature_scripted_run_resolve_next",
+        "reference_nature_scripted_run_resolve_outcome",
         "reference_nature_scripted_run_fork",
         "reference_nature_scripted_run_save",
         "reference_nature_scripted_run_load",
@@ -354,15 +358,19 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
         ActiveAction?.PendingCandidateLabels;
 
     [JsonIgnore]
-    public string? UnsupportedBoundary => ActiveAction?.PendingRequest is
-        { IndexRequest: null } pending
-            ? pending.SiteId + ":" +
-                (pending.UnitFloatRequest is not null ? "unit_float" :
-                 pending.RangedFloatRequest is not null ? "ranged_float" :
-                 pending.RangedDoubleRequest is not null ? "ranged_double" :
-                 pending.GaussianIntRequest is not null ? "gaussian_int" :
-                 pending.GaussianDoubleRequest is not null ? "gaussian_double" :
-                 "unknown")
+    public bool RequiresScriptedOutcome =>
+        ActiveAction?.PendingRequest is { IndexRequest: null };
+
+    [JsonIgnore]
+    public string? PendingOperationKind => ActiveAction?.PendingRequest is
+        { } pending
+            ? pending.IndexRequest is not null ? "index" :
+                pending.UnitFloatRequest is not null ? "unit_float" :
+                pending.RangedFloatRequest is not null ? "ranged_float" :
+                pending.RangedDoubleRequest is not null ? "ranged_double" :
+                pending.GaussianIntRequest is not null ? "gaussian_int" :
+                pending.GaussianDoubleRequest is not null ? "gaussian_double" :
+                "unknown"
             : null;
 
     [JsonIgnore]
@@ -437,23 +445,56 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
             "No stochastic request is pending for the active action.");
         if (request.IndexRequest is not { } indexRequest)
             throw new NotSupportedException(
-                $"UNSUPPORTED_REFERENCE_NATURE site={request.SiteId} " +
-                "operation=whole_run_requires_finite_index_support");
+                $"Whole-run request {request.SiteId} " +
+                $"({PendingOperationKind}) requires a caller-supplied typed outcome.");
         var law = ChanceLawEngineV111.QueryRandomIndex(
             PendingEventId(active, indexRequest), indexRequest);
         var selection = ReferenceNatureV111.SampleValidated(
             law, NatureState);
         var outcome = CreateOutcome(active, indexRequest, selection);
+        return ResolveOutcomeCore(fingerprint, outcome, selection);
+    }
+
+    public ReferenceNatureScriptedRunSessionV111 ResolveOutcome(
+        string fingerprint, ScriptedRunActionOutcomeV111 outcome)
+    {
+        ArgumentNullException.ThrowIfNull(outcome);
+        return ResolveOutcomeCore(fingerprint, outcome, null);
+    }
+
+    private ReferenceNatureScriptedRunSessionV111 ResolveOutcomeCore(
+        string fingerprint, ScriptedRunActionOutcomeV111 outcome,
+        ReferenceNatureSelectionV111? natureSelection)
+    {
+        Validate();
+        if (Fingerprint != fingerprint)
+            throw new InvalidOperationException(
+                "Stale ReferenceNature whole-run fingerprint.");
+        var active = ActiveAction ?? throw new InvalidOperationException(
+            "No ReferenceNature whole-run action is active.");
+        var request = active.PendingRequest ?? throw new InvalidOperationException(
+            "No stochastic request is pending for the active action.");
+        outcome.Validate();
+        var decision = outcome.ToDecision();
+        if (CanonicalJson.Sha256(decision.ToRequest()) !=
+                CanonicalJson.Sha256(request) ||
+            natureSelection is not null && request.IndexRequest is null)
+            throw new InvalidDataException(
+                "Whole-run typed outcome does not match the pending request or resolution owner.");
         var resolved = active.ResolveNext(outcome);
-        var natureDecisions = ActiveNatureDecisions.Append(
-            selection).ToArray();
+        var natureDecisions = ActiveNatureDecisions
+            .Append(natureSelection is null ? null :
+                natureSelection with
+                {
+                    NextState = natureSelection.NextState.Fork()
+                }).ToArray();
+        var cursor = natureSelection?.NextState ?? NatureState;
         if (resolved.Complete)
-            return CommitAction(this, resolved, natureDecisions,
-                selection.NextState);
+            return CommitAction(this, resolved, natureDecisions, cursor);
         var next = this with
         {
             ActiveAction = resolved,
-            NatureState = selection.NextState,
+            NatureState = cursor,
             ActiveNatureDecisions = natureDecisions
         };
         next.Validate();
@@ -550,7 +591,7 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
                 ReferenceNatureScriptedRunSessionSnapshotV111>(json)
             ?? throw new InvalidDataException(
                 "Null ReferenceNature whole-run snapshot.");
-        if (snapshot.SchemaId != CurrentSchemaId ||
+        if (snapshot.SchemaId is not (LegacySchemaId or CurrentSchemaId) ||
             string.IsNullOrWhiteSpace(snapshot.OriginSnapshotJson) ||
             string.IsNullOrWhiteSpace(snapshot.RunSnapshotJson) ||
             snapshot.InitialNatureState is null ||
@@ -576,7 +617,7 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
     private static ReferenceNatureScriptedRunSessionV111 CommitAction(
         ReferenceNatureScriptedRunSessionV111 session,
         ScriptedRunActionSessionV111 action, 
-        ReferenceNatureSelectionV111[] natureDecisions,
+        ReferenceNatureSelectionV111?[] natureDecisions,
         ReferenceNatureStateV111? nextNatureState = null)
     {
         if (!action.Complete || action.Run is null)
@@ -606,7 +647,7 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
     private static ScriptedRunActionSessionV111 ReplayAction(
         RunState origin, GameAction action,
         ControlledStochasticDecisionV111[] decisions,
-        ReferenceNatureSelectionV111[] natureDecisions,
+        ReferenceNatureSelectionV111?[] natureDecisions,
         ReferenceNatureStateV111 initialNatureState,
         out ReferenceNatureStateV111 finalNatureState)
     {
@@ -621,15 +662,30 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
         {
             var request = replay.PendingRequest ?? throw new InvalidDataException(
                 "ReferenceNature action transcript exceeds its provider requests.");
+            if (natureDecisions[index] is null)
+            {
+                var scriptedOutcome = ScriptedRunActionOutcomeV111.FromDecision(
+                    decisions[index], index + 1);
+                if (CanonicalJson.Sha256(
+                        scriptedOutcome.ToDecision()) !=
+                    CanonicalJson.Sha256(decisions[index]))
+                    throw new InvalidDataException(
+                        "Scripted whole-run outcome differs from its saved decision.");
+                replay = replay.ResolveNext(scriptedOutcome);
+                if (CanonicalJson.Sha256(replay.Decisions[index]) !=
+                    CanonicalJson.Sha256(decisions[index]))
+                    throw new InvalidDataException(
+                        "Scripted provider decision differs from its saved action transcript.");
+                continue;
+            }
             if (request.IndexRequest is not { } indexRequest)
-                throw new NotSupportedException(
-                    $"UNSUPPORTED_REFERENCE_NATURE site={request.SiteId} " +
-                    "operation=whole_run_requires_finite_index_support");
+                throw new InvalidDataException(
+                    "Nature-sampled whole-run decisions require an indexed request.");
             var law = ChanceLawEngineV111.QueryRandomIndex(
                 PendingEventId(replay, indexRequest), indexRequest);
             var selection = ReferenceNatureV111.SampleValidated(law, cursor);
             if (CanonicalJson.Sha256(selection) !=
-                CanonicalJson.Sha256(natureDecisions[index]) ||
+                CanonicalJson.Sha256(natureDecisions[index]!) ||
                 !DecisionMatchesSelection(decisions[index], indexRequest,
                     selection.OutcomeIndex))
                 throw new InvalidDataException(
