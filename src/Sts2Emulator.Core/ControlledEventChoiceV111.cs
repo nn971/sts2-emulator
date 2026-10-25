@@ -161,6 +161,23 @@ public static class ControlledEventChoiceEngineV111
             new ChooseControlledEventOutcomePayload(selectedIndex)));
     }
 
+    /// <summary>
+    /// Resolve a controlled event outcome by its saved semantic candidate
+    /// label while retaining the established index transcript.
+    /// </summary>
+    public static RunState ResolveByCandidateLabel(
+        RunState source, string candidateLabel)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentException.ThrowIfNullOrWhiteSpace(candidateLabel);
+        var pending = ControlledEventChoicePendingV111.Describe(source);
+        var selectedIndex = ControlledChanceContinuationExecutorV111
+            .IndexOfCandidateLabel(
+                pending.CandidateLabels, pending.Request.SupportCount,
+                candidateLabel);
+        return Resolve(source, selectedIndex);
+    }
+
     public static RunState Advance(RunState source, GameAction action)
     {
         ArgumentNullException.ThrowIfNull(source);

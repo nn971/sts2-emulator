@@ -16,6 +16,12 @@ semantic outcome identity resolvers. Provider code cannot bypass active
 support identity checks through an index dispatcher. No public schema changed;
 static source review and `git diff --check` only; no tests or builds were run.
 
+**S4 controlled event-choice identity resolution (2026-10-25):** The event
+choice owner now resolves a unique saved candidate label directly, while
+retaining the established selected-index request and transcript for existing
+clients and snapshots. JSONL accepts either selector additively. Static source
+review and `git diff --check` only; no tests or builds were run.
+
 **S4 Native semantic-resume bridge ownership (2026-10-25):** Supported
 engine-owned Native semantic choices now pass through one pilot transition
 that maps the typed primitive result to the active semantic index and invokes

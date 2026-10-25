@@ -9716,10 +9716,20 @@ internal static class PrototypeAiJsonlServer
                     {
                         var parentHandle = RequiredString(request, "state_handle");
                         var source = RequireState(request);
-                        var selectedIndex = OptionalInt(request, "selected_index")
-                            ?? throw new ArgumentException("Missing selected_index.");
-                        var next = ControlledEventChoiceEngineV111.Resolve(
-                            source, selectedIndex);
+                        var selectedIndex = OptionalInt(
+                            request, "selected_index");
+                        var candidateLabel = OptionalString(
+                            request, "candidate_label");
+                        if ((selectedIndex is null) ==
+                            (candidateLabel is null))
+                            throw new ArgumentException(
+                                "Provide exactly one of selected_index or candidate_label.");
+                        var next = selectedIndex is { } index
+                            ? ControlledEventChoiceEngineV111.Resolve(
+                                source, index)
+                            : ControlledEventChoiceEngineV111
+                                .ResolveByCandidateLabel(
+                                    source, candidateLabel!);
                         var handle = Store(next, parentHandle);
                         Write(ControlledEventChoiceResult(
                             next, handle, parentHandle));

@@ -838,7 +838,9 @@ is projected from those steps, so the chronology has one stored history.
 `ControlledEventChoicePendingV111` owns the active event-effect or
 post-reward boundary projection; Chance Law queries, outcome resolution,
 enumeration, and JSONL pending views share its request, ordered labels, and
-boundary fingerprint. Event-choice and run-action projections reuse
+boundary fingerprint. Controlled event-choice resolution accepts a unique
+candidate label and retains the index transcript as its compatibility journal.
+Event-choice and run-action projections reuse
 `ControlledChancePendingBoundaryV111` for defensive request/label ownership
 and Chance Law event-ID derivation; each context retains its own boundary
 identity and fingerprint inputs.

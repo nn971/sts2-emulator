@@ -172,9 +172,13 @@ ordinary run `state_handle`:
 | --- | --- | --- |
 | `controlled_event_begin` | `state_handle`, `choice_id` | Child run handle, pending request and labels, transcript, legal actions |
 | `controlled_event_advance` | controlled event-choice `state_handle`, legal player `action_id` | Apply one supported player action under the controlled guard, including Stone's deck-card choice or a supported reward action |
-| `controlled_event_resolve` | pending `state_handle`, `selected_index` | Child run handle with the next request or committed option |
+| `controlled_event_resolve` | pending `state_handle`, exactly one of `selected_index` or `candidate_label` | Child run handle with the next request or committed option |
 | `controlled_event_inspect` | pending `state_handle` | Restore the Nature-facing request and legal outcome actions after loading a snapshot |
 | `controlled_event_enumerate` | pending `state_handle`, current `fingerprint`, optional `maximum_outcomes` | Independent child run handle for each outcome of this one request |
+
+`candidate_label` selects a unique saved label from the active ordered support;
+the existing `selected_index` form remains supported. Both forms retain the
+controlled index transcript.
 
 The exact event-effect or event-reward continuation frame is part of the
 ordinary run snapshot. A pending continuation exposes only
