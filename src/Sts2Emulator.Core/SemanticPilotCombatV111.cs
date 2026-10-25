@@ -260,7 +260,8 @@ public sealed record SemanticNativePolicyAuditV111(
     /// rarity and committed queue outcomes.</summary>
     public string? RelicRewardAuditSchema { get; init; }
     /// <summary>Null for older snapshots; V1 requires the source-route
-    /// encounter-formation result and its typed index choices.</summary>
+    /// encounter-formation result and typed index choices, while V2 also
+    /// requires the ordered initial-HP results.</summary>
     public string? EncounterFormationAuditSchema { get; init; }
     /// <summary>Null for older snapshots that predate typed Native card
     /// transform replacement results.</summary>
@@ -532,6 +533,22 @@ public sealed record SemanticNativePolicyAuditV111(
                 journal.CombatGoldOutcomes).ToArray(),
             RelicRewardOutcomes = RelicRewardOutcomes.Concat(
                 journal.RelicRewardOutcomes).ToArray()
+        };
+    }
+
+    internal SemanticNativePolicyAuditV111 AppendSourceRouteEncounterFormation(
+        NativeEncounterFormationAuditV111 outcome)
+    {
+        ArgumentNullException.ThrowIfNull(outcome);
+        if (EncounterFormationAuditSchema is not null ||
+            EncounterFormationOutcomes.Length != 0)
+            throw new InvalidDataException(
+                "Native source-route encounter formation is already recorded.");
+
+        return this with
+        {
+            EncounterFormationOutcomes = [outcome],
+            EncounterFormationAuditSchema = EncounterFormationAuditSchemaV2
         };
     }
 
@@ -3827,13 +3844,9 @@ public static class SemanticPilotCombatEngineV111
                 nativePolicyAudit = SemanticNativePolicyAuditV111
                     .CreateForNativePolicySession()
                     .AppendTransition(setupJournal)
-                    .AppendTransition(intentJournal) with
-                {
-                    EncounterFormationOutcomes = [nativeFormationAudit],
-                    EncounterFormationAuditSchema =
-                        SemanticNativePolicyAuditV111
-                            .EncounterFormationAuditSchemaV2
-                };
+                    .AppendTransition(intentJournal)
+                    .AppendSourceRouteEncounterFormation(
+                        nativeFormationAudit);
             }
             var completedWorld = run.World ?? throw new InvalidDataException(
                 "Native source route lost its world after intent resolution.");
