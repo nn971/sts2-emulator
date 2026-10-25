@@ -1287,8 +1287,9 @@ S4 cross-provider acceptance case directly: it requires the same player
 actions, origin mechanics, complete provider-independent semantic outcomes,
 result mechanics, and every captured action-boundary mechanics state. It also
 rejects a physical draw-identity mismatch when that trace is available,
-without requiring provider-specific primitive requests or cursors to match.
-Its schema is v8; comparisons with unavailable semantic or action-boundary
+and requires matching ordered combat event/hook transcripts, without requiring
+provider-specific primitive requests or cursors to match. Its schema is v9;
+comparisons with unavailable semantic, action-boundary, or combat event/hook
 traces do not claim this stronger equivalence.
 ReferenceNature semantic combat captures provide complete semantic traces.
 Native-policy semantic outcome traces are complete only when every provider
@@ -1311,6 +1312,14 @@ each session replays its completed action history from the origin, and the
 existing typed boundary journal materializes its saved outcomes into the
 capture. The whole-run path retains each replayed action result as a mechanics
 checkpoint. They accept only sessions at committed action boundaries.
+Replay-validated captures also retain a detached per-action combat event/hook
+transcript from the opt-in engine journal. It records dispatch metadata,
+triggered subscriber identity, and hook start/completion order, including
+nested event dispatches and resumed hooks. The provider comparator reports the
+first differing action and journal entry; ordinary combat execution does not
+allocate these transcript details, and the journal is not part of run snapshots.
+This field is additive in provider replay capture schema v9; older capture
+schemas remain loadable without a combat event/hook trace.
 `FromReferenceNatureTreasureSession` also retains the completed action's
 replay-validated rarity and hidden-queue relic identities beside its complete
 typed provider trace. The identity projection re-queries the Treasure law,
@@ -1984,7 +1993,10 @@ controlled-playable resumes, semantic combat-draw entry/resume, controlled
 run-action and event-choice continuations, and the Native-policy action path
 use this runner; their source validation, result policies, and provider
 journals remain with their existing owners.
-Cross-provider mechanical equivalence remains open.
+Replay-validated combat captures now compare their ordered event dispatch and
+triggered-hook transcript as part of the same-semantic-outcomes predicate.
+Cross-provider equivalence outside the semantic traces and action families
+captured by this comparator remains open.
 
 Pending controlled random-target validation shares one live-support check
 across semantic target boundaries, combat-state validation,

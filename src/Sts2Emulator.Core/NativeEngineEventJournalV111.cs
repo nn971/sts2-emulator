@@ -13,12 +13,16 @@ public sealed record NativeEngineJournalEntryV111(
     string Kind,
     long? SourceCardInstanceId = null,
     int? TargetEnemyInstanceId = null,
-    int? Amount = null);
+    int? Amount = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    string? Detail = null);
 
 /// <summary>
 /// Strictly opt-in, synchronous observation of the real emulator pipeline.
-/// An AsyncLocal scope keeps concurrent independent step tests separated and
-/// permits nested scopes. No RunState mutation or RNG reads are performed.
+/// An AsyncLocal scope keeps concurrent independent captures separated;
+/// nested captures also receive events recorded inside their scope. No
+/// RunState mutation or RNG reads are performed.
 /// </summary>
 public sealed class NativeEngineEventJournalV111 : IDisposable
 {
@@ -34,6 +38,8 @@ public sealed class NativeEngineEventJournalV111 : IDisposable
 
     public IReadOnlyList<NativeEngineJournalEntryV111> Entries => _entries;
 
+    internal static bool IsActive => Active.Value is not null;
+
     public static NativeEngineEventJournalV111 Begin()
     {
         var journal = new NativeEngineEventJournalV111(Active.Value);
@@ -46,18 +52,23 @@ public sealed class NativeEngineEventJournalV111 : IDisposable
         string kind,
         long? sourceCardInstanceId = null,
         int? targetEnemyInstanceId = null,
-        int? amount = null)
+        int? amount = null,
+        string? detail = null)
     {
-        var journal = Active.Value;
-        if (journal is null)
-            return;
-        journal._entries.Add(new NativeEngineJournalEntryV111(
-            journal._entries.Count + 1,
-            stage,
-            kind,
-            sourceCardInstanceId,
-            targetEnemyInstanceId,
-            amount));
+        for (var journal = Active.Value; journal is not null;
+            journal = journal._previous)
+        {
+            if (journal._disposed)
+                continue;
+            journal._entries.Add(new NativeEngineJournalEntryV111(
+                journal._entries.Count + 1,
+                stage,
+                kind,
+                sourceCardInstanceId,
+                targetEnemyInstanceId,
+                amount,
+                detail));
+        }
     }
 
     public void Dispose()

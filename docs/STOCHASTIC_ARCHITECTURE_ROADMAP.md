@@ -71,6 +71,15 @@ without requiring provider-specific primitive traces or cursors to match.
 Comparison schema v8 adds this explicit cross-provider acceptance predicate.
 CLI Release build and `git diff --check` passed; no tests were run.
 
+**S4 ordered combat event/hook evidence (2026-10-26):** Replay-validated
+provider captures now keep each action's ordered combat event dispatches and
+triggered subscriber start/completion entries. Nested event calls remain in
+the parent action transcript, and the comparator reports the first differing
+action and entry. `SameMechanicsForSameSemanticOutcomes` requires matching
+transcripts; old capture schemas remain readable without this evidence.
+Capture and comparison schemas are v9. Core Release build and
+`git diff --check` passed; no tests were run.
+
 **S4 Native enemy pile-insertion semantic capture (2026-10-26):** Native
 policy replay now includes its existing enemy draw/discard insertion audit in
 the provider-independent outcome trace. Capture re-queries the registered

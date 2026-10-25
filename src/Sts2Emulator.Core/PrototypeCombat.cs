@@ -12439,11 +12439,19 @@ public sealed partial class PrototypeGameEngine
                 "Prototype combat event chain exceeded the safety depth limit.");
         }
 
-        NativeEngineEventJournalV111.Record(
-            "combat_event_dispatch", combatEvent.Kind.ToString(),
-            sourceCardInstanceId: combatEvent.SourceCardInstanceId,
-            targetEnemyInstanceId: combatEvent.TargetEnemyId,
-            amount: combatEvent.Amount);
+        if (NativeEngineEventJournalV111.IsActive)
+        {
+            NativeEngineEventJournalV111.Record(
+                "combat_event_dispatch", combatEvent.Kind.ToString(),
+                sourceCardInstanceId: combatEvent.SourceCardInstanceId,
+                targetEnemyInstanceId: combatEvent.TargetEnemyId,
+                amount: combatEvent.Amount,
+                detail: $"card_id={combatEvent.CardId ?? "-"};" +
+                    $"from_hand_draw={combatEvent.FromHandDraw};" +
+                    $"is_auto_play={combatEvent.IsAutoPlay};" +
+                    $"is_powered_attack={combatEvent.IsPoweredAttack};" +
+                    $"power_order_ceiling={combatEvent.PowerApplicationOrderCeiling?.ToString() ?? "-"}");
+        }
 
         if (combatEvent.Kind
             == PrototypeCombatEventKind.PlayerTurnStarted)
@@ -12772,6 +12780,15 @@ public sealed partial class PrototypeGameEngine
                 }
             }
 
+            var journalKind = NativeEngineEventJournalV111.IsActive
+                ? GetCombatEventSubscriberJournalKind(combat, subscriber)
+                : null;
+            if (journalKind is not null)
+                NativeEngineEventJournalV111.Record(
+                    "combat_event_hook_start", journalKind,
+                    sourceCardInstanceId: combatEvent.SourceCardInstanceId,
+                    targetEnemyInstanceId: combatEvent.TargetEnemyId,
+                    amount: combatEvent.Amount);
             var operations = new Queue<PrototypeQueuedOperation>();
             foreach (var effect in subscriber.Effects)
             {
@@ -12829,6 +12846,12 @@ public sealed partial class PrototypeGameEngine
             combat = FinalizeEventSubscriber(
                 combat,
                 subscriber);
+            if (journalKind is not null)
+                NativeEngineEventJournalV111.Record(
+                    "combat_event_hook_complete", journalKind,
+                    sourceCardInstanceId: combatEvent.SourceCardInstanceId,
+                    targetEnemyInstanceId: combatEvent.TargetEnemyId,
+                    amount: combatEvent.Amount);
         }
 
         if (combatEvent.Kind == PrototypeCombatEventKind.PlayerTurnEnded)
@@ -12864,9 +12887,22 @@ public sealed partial class PrototypeGameEngine
             PrototypeEventDispatchContinuationState continuation,
             RngBundle rng)
     {
+        var completedJournalKind = NativeEngineEventJournalV111.IsActive
+            ? GetCombatEventSubscriberJournalKind(
+                combat, continuation.CurrentSubscriber)
+            : null;
         combat = FinalizeEventSubscriber(
             combat,
             continuation.CurrentSubscriber);
+        if (completedJournalKind is not null)
+            NativeEngineEventJournalV111.Record(
+                "combat_event_hook_complete",
+                completedJournalKind,
+                sourceCardInstanceId:
+                    continuation.CombatEvent.SourceCardInstanceId,
+                targetEnemyInstanceId:
+                    continuation.CombatEvent.TargetEnemyId,
+                amount: continuation.CombatEvent.Amount);
 
         var remaining = continuation.RemainingSubscribers;
         for (var index = 0; index < remaining.Length; index++)
@@ -12914,6 +12950,17 @@ public sealed partial class PrototypeGameEngine
                 }
             }
 
+            var journalKind = NativeEngineEventJournalV111.IsActive
+                ? GetCombatEventSubscriberJournalKind(combat, subscriber)
+                : null;
+            if (journalKind is not null)
+                NativeEngineEventJournalV111.Record(
+                    "combat_event_hook_start", journalKind,
+                    sourceCardInstanceId:
+                        continuation.CombatEvent.SourceCardInstanceId,
+                    targetEnemyInstanceId:
+                        continuation.CombatEvent.TargetEnemyId,
+                    amount: continuation.CombatEvent.Amount);
             var operations = new Queue<PrototypeQueuedOperation>();
             foreach (var effect in subscriber.Effects)
             {
@@ -12966,6 +13013,14 @@ public sealed partial class PrototypeGameEngine
             combat = FinalizeEventSubscriber(
                 combat,
                 subscriber);
+            if (journalKind is not null)
+                NativeEngineEventJournalV111.Record(
+                    "combat_event_hook_complete", journalKind,
+                    sourceCardInstanceId:
+                        continuation.CombatEvent.SourceCardInstanceId,
+                    targetEnemyInstanceId:
+                        continuation.CombatEvent.TargetEnemyId,
+                    amount: continuation.CombatEvent.Amount);
         }
 
         if (continuation.CombatEvent.Kind
@@ -12994,6 +13049,39 @@ public sealed partial class PrototypeGameEngine
         }
 
         return (player, combat);
+    }
+
+    private static string GetCombatEventSubscriberJournalKind(
+        CombatState combat,
+        PrototypeEventSubscriberState subscriber)
+    {
+        if (subscriber.PowerTriggerIndex is { } powerTriggerIndex
+            && subscriber.SourcePowerApplicationOrder is { } powerOrder)
+        {
+            var powerId = subscriber.SourcePowerEnemyId is { } enemyId
+                ? combat.Enemies.FirstOrDefault(enemy =>
+                    enemy.InstanceId == enemyId)?.PowerStates
+                    .FirstOrDefault(power =>
+                        power.ApplicationOrder == powerOrder)?.PowerId
+                : combat.PlayerPowers.FirstOrDefault(power =>
+                    power.ApplicationOrder == powerOrder)?.PowerId;
+            return $"power:{powerId ?? "unresolved"}:" +
+                $"owner_enemy={subscriber.SourcePowerEnemyId?.ToString() ?? "player"}:" +
+                $"application={powerOrder}:trigger={powerTriggerIndex}";
+        }
+
+        if (subscriber.RelicStateIndex is { } relicIndex
+            && subscriber.RelicTriggerIndex is { } relicTriggerIndex)
+        {
+            var relic = (uint)relicIndex < (uint)combat.RelicStates.Length
+                ? combat.RelicStates[relicIndex]
+                : null;
+            return $"relic:{relic?.RelicId ?? "unresolved"}:" +
+                $"application={relic?.ApplicationOrder.ToString() ?? "unresolved"}:" +
+                $"trigger={relicTriggerIndex}";
+        }
+
+        return $"{subscriber.SourceKind}:application={subscriber.ApplicationOrder}";
     }
 
     private static CombatState FinalizeEventSubscriber(

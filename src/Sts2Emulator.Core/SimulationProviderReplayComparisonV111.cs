@@ -11,6 +11,8 @@ public sealed record SimulationProviderReplayMechanicsCaptureV111
     private RunState _result = null!;
     private RunState[]? _actionBoundaryStates;
     private long[][]? _drawnCardInstanceIdsByAction;
+    private NativeEngineJournalEntryV111[][]?
+        _combatEventHookTranscriptByAction;
 
     public RunState Origin
     {
@@ -51,12 +53,25 @@ public sealed record SimulationProviderReplayMechanicsCaptureV111
         init => _drawnCardInstanceIdsByAction = CloneDrawnCards(value);
     }
 
+    /// <summary>
+    /// Ordered combat event dispatch and triggered-hook journal for each
+    /// replayed player action. Null means this capture has no such transcript.
+    /// </summary>
+    public NativeEngineJournalEntryV111[][]?
+        CombatEventHookTranscriptByAction
+    {
+        get => CloneCombatEventHookTranscripts(
+            _combatEventHookTranscriptByAction);
+        init => _combatEventHookTranscriptByAction =
+            CloneCombatEventHookTranscripts(value);
+    }
+
     [System.Text.Json.Serialization.JsonIgnore]
     public bool HasActionBoundaryStates => _actionBoundaryStates is not null;
 
     public SimulationProviderReplayMechanicsCaptureV111(
         RunState Origin, GameAction[] Actions, RunState Result)
-        : this(Origin, Actions, Result, null, null)
+        : this(Origin, Actions, Result, null, null, null)
     {
     }
 
@@ -64,13 +79,17 @@ public sealed record SimulationProviderReplayMechanicsCaptureV111
     public SimulationProviderReplayMechanicsCaptureV111(
         RunState Origin, GameAction[] Actions, RunState Result,
         RunState[]? ActionBoundaryStates,
-        long[][]? DrawnCardInstanceIdsByAction = null)
+        long[][]? DrawnCardInstanceIdsByAction = null,
+        NativeEngineJournalEntryV111[][]?
+            CombatEventHookTranscriptByAction = null)
     {
         this.Origin = Origin;
         this.Actions = Actions;
         this.Result = Result;
         this.ActionBoundaryStates = ActionBoundaryStates;
         this.DrawnCardInstanceIdsByAction = DrawnCardInstanceIdsByAction;
+        this.CombatEventHookTranscriptByAction =
+            CombatEventHookTranscriptByAction;
     }
 
     public SimulationProviderReplayMechanicsCaptureV111 Fork() => this with
@@ -80,7 +99,10 @@ public sealed record SimulationProviderReplayMechanicsCaptureV111
         Result = _result.Fork(),
         ActionBoundaryStates = CloneStates(_actionBoundaryStates),
         DrawnCardInstanceIdsByAction =
-            CloneDrawnCards(_drawnCardInstanceIdsByAction)
+            CloneDrawnCards(_drawnCardInstanceIdsByAction),
+        CombatEventHookTranscriptByAction =
+            CloneCombatEventHookTranscripts(
+                _combatEventHookTranscriptByAction)
     };
 
     public void Validate()
@@ -110,6 +132,34 @@ public sealed record SimulationProviderReplayMechanicsCaptureV111
                  cards.Any(cardId => cardId <= 0))))
             throw new InvalidDataException(
                 "Provider replay drawn-card identity trace is invalid.");
+        if (_combatEventHookTranscriptByAction is not null &&
+            _combatEventHookTranscriptByAction.Length != _actions.Length)
+            throw new InvalidDataException(
+                "Provider replay combat event/hook transcript count does not match its actions.");
+        if (_combatEventHookTranscriptByAction is not null)
+        {
+            for (var actionIndex = 0;
+                actionIndex < _combatEventHookTranscriptByAction.Length;
+                actionIndex++)
+            {
+                var transcript = _combatEventHookTranscriptByAction[actionIndex];
+                if (transcript is null)
+                    throw new InvalidDataException(
+                        "Provider replay combat event/hook transcript is null at " +
+                        actionIndex + ".");
+                for (var entryIndex = 0; entryIndex < transcript.Length;
+                    entryIndex++)
+                {
+                    var entry = transcript[entryIndex];
+                    if (entry is null || entry.Sequence != entryIndex + 1 ||
+                        string.IsNullOrWhiteSpace(entry.Stage) ||
+                        string.IsNullOrWhiteSpace(entry.Kind))
+                        throw new InvalidDataException(
+                            "Provider replay combat event/hook entry is invalid at action " +
+                            actionIndex + ", entry " + entryIndex + ".");
+                }
+            }
+        }
         for (var index = 0; index < _actions.Length; index++)
             if (_actions[index] is null ||
                 string.IsNullOrWhiteSpace(_actions[index].Kind) ||
@@ -135,6 +185,13 @@ public sealed record SimulationProviderReplayMechanicsCaptureV111
         cards?.Select(actionCards => actionCards is null
             ? null!
             : (long[])actionCards.Clone()).ToArray();
+
+    private static NativeEngineJournalEntryV111[][]?
+        CloneCombatEventHookTranscripts(
+            NativeEngineJournalEntryV111[][]? transcripts) =>
+        transcripts?.Select(transcript => transcript is null
+            ? null!
+            : (NativeEngineJournalEntryV111[])transcript.Clone()).ToArray();
 }
 
 /// <summary>One replay-validated semantic outcome in a captured interval.</summary>
@@ -473,19 +530,21 @@ public sealed record SimulationProviderReplayCaptureV111(
         SimulationProviderReplayStochasticCaptureV111> Simulation)
 {
     public const string PreviousSchemaId =
-        "sts2-v111-simulation-provider-replay-capture-v7";
+        "sts2-v111-simulation-provider-replay-capture-v8";
     public const string PreviousPreviousSchemaId =
-        "sts2-v111-simulation-provider-replay-capture-v6";
+        "sts2-v111-simulation-provider-replay-capture-v7";
     public const string PreviousPreviousPreviousSchemaId =
-        "sts2-v111-simulation-provider-replay-capture-v5";
+        "sts2-v111-simulation-provider-replay-capture-v6";
     public const string PreviousPreviousPreviousPreviousSchemaId =
-        "sts2-v111-simulation-provider-replay-capture-v4";
+        "sts2-v111-simulation-provider-replay-capture-v5";
     public const string PreviousPreviousPreviousPreviousPreviousSchemaId =
+        "sts2-v111-simulation-provider-replay-capture-v4";
+    public const string PreviousPreviousPreviousPreviousPreviousPreviousSchemaId =
         "sts2-v111-simulation-provider-replay-capture-v3";
     public const string OlderSchemaId =
         "sts2-v111-simulation-provider-replay-capture-v2";
     public const string CurrentSchemaId =
-        "sts2-v111-simulation-provider-replay-capture-v8";
+        "sts2-v111-simulation-provider-replay-capture-v9";
 
     [System.Text.Json.Serialization.JsonInclude]
     public string CaptureProvenance { get; private init; } =
@@ -513,7 +572,9 @@ public sealed record SimulationProviderReplayCaptureV111(
         IEnumerable<SimulationProviderReplaySemanticOutcomeV111>?
             semanticOutcomes,
         IEnumerable<RunState>? actionBoundaryStates,
-        IEnumerable<long[]>? drawnCardInstanceIdsByAction = null)
+        IEnumerable<long[]>? drawnCardInstanceIdsByAction = null,
+        IEnumerable<NativeEngineJournalEntryV111[]>?
+            combatEventHookTranscriptByAction = null)
     {
         ArgumentNullException.ThrowIfNull(origin);
         ArgumentNullException.ThrowIfNull(actions);
@@ -527,7 +588,8 @@ public sealed record SimulationProviderReplayCaptureV111(
                     new SimulationProviderReplayMechanicsCaptureV111(
                         origin, actions.ToArray(), result,
                         actionBoundaryStates?.ToArray(),
-                        drawnCardInstanceIdsByAction?.ToArray()),
+                        drawnCardInstanceIdsByAction?.ToArray(),
+                        combatEventHookTranscriptByAction?.ToArray()),
                     new SimulationProviderReplayStochasticCaptureV111(
                         boundaries.ToArray(),
                         semanticOutcomes?.ToArray())));
@@ -598,7 +660,8 @@ public sealed record SimulationProviderReplayCaptureV111(
             SimulationProviderReplayCaptureProvenanceV111
                 .ScriptedRunReplayValidated,
             replay.ActionBoundaryStates,
-            replay.DrawnCardInstanceIdsByAction);
+            replay.DrawnCardInstanceIdsByAction,
+            replay.CombatEventHookTranscriptByAction);
         if (TryCaptureScriptedSemanticOutcomes(
                 session.Origin,
                 completedActions.Select(action =>
@@ -632,6 +695,8 @@ public sealed record SimulationProviderReplayCaptureV111(
         var nature = session.InitialNatureState.Fork();
         var actionBoundaries = new RunState[actions.Length];
         var drawnCardsByAction = new long[actions.Length][];
+        var combatEventHookTranscripts =
+            new NativeEngineJournalEntryV111[actions.Length][];
         var actionStartStates = new RunState[actions.Length];
         using (RandomBoundaryJournalV111.Begin())
         {
@@ -639,6 +704,8 @@ public sealed record SimulationProviderReplayCaptureV111(
             {
                 using var drawJournal =
                     SemanticDrawIdentityJournalV111.Begin();
+                using var eventJournal =
+                    NativeEngineEventJournalV111.Begin();
                 var action = actions[index];
                 actionStartStates[index] = replayRun.Fork();
                 var replayed = ScriptedRunActionSessionV111.ReplayCompleted(
@@ -653,6 +720,8 @@ public sealed record SimulationProviderReplayCaptureV111(
                     replayRun, nature);
                 actionBoundaries[index] = replayRun.Fork();
                 drawnCardsByAction[index] = drawJournal.CardInstanceIds;
+                combatEventHookTranscripts[index] =
+                    eventJournal.Entries.ToArray();
             }
         }
         if (CanonicalJson.Sha256(replayRun) !=
@@ -755,7 +824,8 @@ public sealed record SimulationProviderReplayCaptureV111(
             actions.SelectMany(action => action.Decisions), session.Run,
             SimulationProviderReplayCaptureProvenanceV111
                 .ReferenceNatureWholeRunReplayValidated,
-            actionBoundaries, drawnCardsByAction);
+            actionBoundaries, drawnCardsByAction,
+            combatEventHookTranscripts);
         if (!semanticTraceComplete)
         {
             var replayedSemanticOutcomes =
@@ -1327,7 +1397,8 @@ public sealed record SimulationProviderReplayCaptureV111(
             SimulationProviderReplayCaptureProvenanceV111
                 .ReferenceNatureEventChoiceReplayValidated,
             actionReplay.ActionBoundaryStates,
-            actionReplay.DrawnCardInstanceIdsByAction);
+            actionReplay.DrawnCardInstanceIdsByAction,
+            actionReplay.CombatEventHookTranscriptByAction);
         if (natureSteps.Length == 0)
             return capture;
 
@@ -2305,6 +2376,8 @@ public sealed record SimulationProviderReplayCaptureV111(
             validated.History.Length);
         var drawnCardsByAction = new List<long[]>(
             validated.History.Length);
+        var combatEventHookTranscripts = new List<
+            NativeEngineJournalEntryV111[]>(validated.History.Length);
         var actionTraceRanges = new List<
             SimulationProviderReplayNativeSemanticOutcomeTraceV111.ActionRange>(
                 validated.History.Length);
@@ -2326,6 +2399,8 @@ public sealed record SimulationProviderReplayCaptureV111(
                     .GetCardsDrawnCount(replay.Run);
             using var drawJournal =
                 SemanticDrawIdentityJournalV111.Begin();
+            using var eventJournal =
+                NativeEngineEventJournalV111.Begin();
             replay = SemanticPilotCombatEngineV111
                 .StepResolvedNativePolicyBaseline(
                     replay, replay.Fingerprint, transition.ActionId,
@@ -2335,6 +2410,8 @@ public sealed record SimulationProviderReplayCaptureV111(
                     "Native policy capture requires every action replay to settle at a committed boundary.");
             actionBoundaryStates.Add(replay.Run);
             drawnCardsByAction.Add(drawJournal.CardInstanceIds);
+            combatEventHookTranscripts.Add(
+                eventJournal.Entries.ToArray());
             var afterAudit = replay.Stochastic.NativePolicyAudit ??
                 throw new InvalidDataException(
                     "Native policy replay lost its provider trace after an action.");
@@ -2367,7 +2444,7 @@ public sealed record SimulationProviderReplayCaptureV111(
                 actionStartStates);
         var capture = Create(initial.Run, actions, boundaries, validated.Run,
             semanticOutcomes ?? [], actionBoundaryStates,
-            drawnCardsByAction) with
+            drawnCardsByAction, combatEventHookTranscripts) with
         {
             CaptureProvenance = semanticOutcomes is null
                 ? SimulationProviderReplayCaptureProvenanceV111
@@ -2425,47 +2502,73 @@ public sealed record SimulationProviderReplayCaptureV111(
             history.Length - initialHistoryLength);
         var drawnCardsByAction = new List<long[]>(
             history.Length - initialHistoryLength);
-        var decisionIndex = 0;
-        for (var historyIndex = initialHistoryLength;
-            historyIndex < history.Length; historyIndex++)
-        {
-            var transition = history[historyIndex];
-            if (transition.Kind == "player")
-            {
-                if (actions.Count > actionBoundaryStates.Count)
-                {
-                    if (!IsCommittedSemanticCombatBoundary(replay))
-                        throw new NotSupportedException(
-                            "Semantic ReferenceNature capture requires each action continuation to settle at a committed boundary.");
-                    actionBoundaryStates.Add(replay.Run);
-                }
-                if (string.IsNullOrWhiteSpace(transition.ActionId))
-                    throw new InvalidDataException(
-                        "Semantic ReferenceNature player history is missing its action ID.");
-                actions.Add(environment.ResolvePlayerAction(
-                    replay.Run, transition.ActionId).Action);
-                semanticOutcomesByAction.Add([]);
-                drawnCardsByAction.Add([]);
-            }
-            else if (actions.Count == 0)
-                throw new InvalidDataException(
-                    "Semantic ReferenceNature outcome precedes its first captured player action.");
+        var combatEventHookTranscripts = new List<
+            NativeEngineJournalEntryV111[]>(
+                history.Length - initialHistoryLength);
+        NativeEngineEventJournalV111? activeEventJournal = null;
 
-            if (decisionIndex < decisions.Length &&
-                historyIndices[decisionIndex] == historyIndex)
+        void FinishActionEventJournal()
+        {
+            if (activeEventJournal is null)
+                return;
+            activeEventJournal.Dispose();
+            combatEventHookTranscripts.Add(
+                activeEventJournal.Entries.ToArray());
+            activeEventJournal = null;
+        }
+
+        var decisionIndex = 0;
+        try
+        {
+            for (var historyIndex = initialHistoryLength;
+                historyIndex < history.Length; historyIndex++)
             {
-                if (!IsPendingSemanticDraw(replay))
-                    semanticOutcomesByAction[^1].Add(
-                        CaptureReferenceNatureOutcome(
-                            replay, decisions[decisionIndex], 0));
-                decisionIndex++;
+                var transition = history[historyIndex];
+                if (transition.Kind == "player")
+                {
+                    FinishActionEventJournal();
+                    if (actions.Count > actionBoundaryStates.Count)
+                    {
+                        if (!IsCommittedSemanticCombatBoundary(replay))
+                            throw new NotSupportedException(
+                                "Semantic ReferenceNature capture requires each action continuation to settle at a committed boundary.");
+                        actionBoundaryStates.Add(replay.Run);
+                    }
+                    if (string.IsNullOrWhiteSpace(transition.ActionId))
+                        throw new InvalidDataException(
+                            "Semantic ReferenceNature player history is missing its action ID.");
+                    actions.Add(environment.ResolvePlayerAction(
+                        replay.Run, transition.ActionId).Action);
+                    semanticOutcomesByAction.Add([]);
+                    drawnCardsByAction.Add([]);
+                    activeEventJournal =
+                        NativeEngineEventJournalV111.Begin();
+                }
+                else if (actions.Count == 0)
+                    throw new InvalidDataException(
+                        "Semantic ReferenceNature outcome precedes its first captured player action.");
+
+                if (decisionIndex < decisions.Length &&
+                    historyIndices[decisionIndex] == historyIndex)
+                {
+                    if (!IsPendingSemanticDraw(replay))
+                        semanticOutcomesByAction[^1].Add(
+                            CaptureReferenceNatureOutcome(
+                                replay, decisions[decisionIndex], 0));
+                    decisionIndex++;
+                }
+                using var drawJournal =
+                    SemanticDrawIdentityJournalV111.Begin();
+                replay = SemanticPilotCombatEngineV111.ReplayHistoryTransition(
+                    replay, transition);
+                drawnCardsByAction[^1] = drawnCardsByAction[^1]
+                    .Concat(drawJournal.CardInstanceIds).ToArray();
             }
-            using var drawJournal =
-                SemanticDrawIdentityJournalV111.Begin();
-            replay = SemanticPilotCombatEngineV111.ReplayHistoryTransition(
-                replay, transition);
-            drawnCardsByAction[^1] = drawnCardsByAction[^1]
-                .Concat(drawJournal.CardInstanceIds).ToArray();
+            FinishActionEventJournal();
+        }
+        finally
+        {
+            activeEventJournal?.Dispose();
         }
         if (actions.Count > actionBoundaryStates.Count)
         {
@@ -2503,7 +2606,7 @@ public sealed record SimulationProviderReplayCaptureV111(
         }
         var capture = Create(origin.Run, actions, [], validated.Combat.Run,
             semanticOutcomes, actionBoundaryStates,
-            drawnCardsByAction) with
+            drawnCardsByAction, combatEventHookTranscripts) with
         {
             CaptureProvenance =
                 SimulationProviderReplayCaptureProvenanceV111
@@ -2596,7 +2699,9 @@ public sealed record SimulationProviderReplayCaptureV111(
         IEnumerable<ControlledStochasticDecisionV111> decisions,
         RunState result, string captureProvenance,
         IEnumerable<RunState>? actionBoundaryStates = null,
-        IEnumerable<long[]>? drawnCardInstanceIdsByAction = null)
+        IEnumerable<long[]>? drawnCardInstanceIdsByAction = null,
+        IEnumerable<NativeEngineJournalEntryV111[]>?
+            combatEventHookTranscriptByAction = null)
     {
         using var journal = RandomBoundaryJournalV111.Begin();
         foreach (var decision in decisions)
@@ -2621,7 +2726,11 @@ public sealed record SimulationProviderReplayCaptureV111(
 
         var boundaries = journal.OrderedTranscript;
         var capture = Create(origin, actions, boundaries, result, null,
-            actionBoundaryStates, drawnCardInstanceIdsByAction) with
+            actionBoundaryStates, drawnCardInstanceIdsByAction,
+            combatEventHookTranscriptByAction ??
+                (actions.Count == 0
+                    ? Array.Empty<NativeEngineJournalEntryV111[]>()
+                    : null)) with
         {
             CaptureProvenance = captureProvenance
         };
@@ -2741,7 +2850,9 @@ public sealed record SimulationProviderReplayCaptureV111(
 
     private sealed record ScriptedActionReplayBoundariesV111(
         RunState[] ActionBoundaryStates,
-        long[][] DrawnCardInstanceIdsByAction);
+        long[][] DrawnCardInstanceIdsByAction,
+        NativeEngineJournalEntryV111[][]
+            CombatEventHookTranscriptByAction);
 
     private static SimulationProviderReplayCaptureV111
         FromReplayValidatedAction(
@@ -2754,7 +2865,8 @@ public sealed record SimulationProviderReplayCaptureV111(
         return FromScriptedDecisions(
             origin, [action], decisions, expectedResult, captureProvenance,
             replay.ActionBoundaryStates,
-            replay.DrawnCardInstanceIdsByAction);
+            replay.DrawnCardInstanceIdsByAction,
+            replay.CombatEventHookTranscriptByAction);
     }
 
     private static ScriptedActionReplayBoundariesV111
@@ -2769,6 +2881,8 @@ public sealed record SimulationProviderReplayCaptureV111(
 
         var boundaries = new RunState[actions.Count];
         var drawnCardIds = new long[actions.Count][];
+        var eventHookTranscripts =
+            new NativeEngineJournalEntryV111[actions.Count][];
         var replay = origin.Fork();
         using (RandomBoundaryJournalV111.Begin())
         {
@@ -2776,6 +2890,8 @@ public sealed record SimulationProviderReplayCaptureV111(
             {
                 using var drawJournal =
                     SemanticDrawIdentityJournalV111.Begin();
+                using var eventJournal =
+                    NativeEngineEventJournalV111.Begin();
                 var replayedAction =
                     ScriptedRunActionSessionV111.ReplayCompleted(
                         replay, actions[index], decisionsByAction[index]);
@@ -2784,13 +2900,15 @@ public sealed record SimulationProviderReplayCaptureV111(
                         "Completed scripted action replay has no run state.");
                 boundaries[index] = replay;
                 drawnCardIds[index] = drawJournal.CardInstanceIds;
+                eventHookTranscripts[index] =
+                    eventJournal.Entries.ToArray();
             }
         }
         if (CanonicalJson.Sha256(replay) !=
             CanonicalJson.Sha256(expectedResult))
             throw new InvalidDataException(
                 "Provider replay action-boundary replay differs from the saved result.");
-        return new(boundaries, drawnCardIds);
+        return new(boundaries, drawnCardIds, eventHookTranscripts);
     }
 
     public SimulationProviderReplayCaptureV111 Fork()
@@ -2809,10 +2927,10 @@ public sealed record SimulationProviderReplayCaptureV111(
     public void Validate()
     {
         if (SchemaId is not (CurrentSchemaId or PreviousSchemaId or
-                PreviousPreviousSchemaId or
-                PreviousPreviousPreviousSchemaId or
+                PreviousPreviousSchemaId or PreviousPreviousPreviousSchemaId or
                 PreviousPreviousPreviousPreviousSchemaId or
                 PreviousPreviousPreviousPreviousPreviousSchemaId or
+                PreviousPreviousPreviousPreviousPreviousPreviousSchemaId or
                 OlderSchemaId) ||
             !SimulationProviderReplayCaptureProvenanceV111
                 .IsKnown(CaptureProvenance) || Simulation is null ||
@@ -2822,33 +2940,45 @@ public sealed record SimulationProviderReplayCaptureV111(
         Simulation.Mechanics.Validate();
         Simulation.Stochastic.Validate();
         if (SchemaId is not (CurrentSchemaId or PreviousSchemaId or
-                PreviousPreviousSchemaId or
-                PreviousPreviousPreviousSchemaId) &&
+                PreviousPreviousSchemaId or PreviousPreviousPreviousSchemaId or
+                PreviousPreviousPreviousPreviousSchemaId) &&
             Simulation.Mechanics.HasActionBoundaryStates)
             throw new InvalidDataException(
                 "Legacy provider replay captures cannot contain action-boundary mechanics snapshots.");
-        if (SchemaId is not (CurrentSchemaId or PreviousSchemaId) &&
+        if (SchemaId is not (CurrentSchemaId or PreviousSchemaId or
+                PreviousPreviousSchemaId) &&
             Simulation.Mechanics.DrawnCardInstanceIdsByAction is not null)
             throw new InvalidDataException(
                 "Legacy provider replay captures cannot contain drawn-card identity traces.");
-        if ((SchemaId is CurrentSchemaId or PreviousSchemaId) &&
+        if ((SchemaId is CurrentSchemaId or PreviousSchemaId or
+                PreviousPreviousSchemaId) &&
             CaptureProvenance !=
                 SimulationProviderReplayCaptureProvenanceV111.CallerSupplied &&
             Simulation.Mechanics.DrawnCardInstanceIdsByAction is null)
             throw new InvalidDataException(
-                "Replay-validated v7 and v8 provider captures require drawn-card identity traces.");
+                "Replay-validated v7 through v9 provider captures require drawn-card identity traces.");
+        if (SchemaId != CurrentSchemaId &&
+            Simulation.Mechanics.CombatEventHookTranscriptByAction is not null)
+            throw new InvalidDataException(
+                "Legacy provider replay captures cannot contain v9 combat event/hook transcripts.");
         if (SchemaId == CurrentSchemaId &&
             CaptureProvenance !=
                 SimulationProviderReplayCaptureProvenanceV111.CallerSupplied &&
             !Simulation.Mechanics.HasActionBoundaryStates)
             throw new InvalidDataException(
                 "Replay-validated provider captures require action-boundary mechanics snapshots.");
+        if (SchemaId == CurrentSchemaId &&
+            CaptureProvenance !=
+                SimulationProviderReplayCaptureProvenanceV111.CallerSupplied &&
+            Simulation.Mechanics.CombatEventHookTranscriptByAction is null)
+            throw new InvalidDataException(
+                "Replay-validated v9 provider captures require combat event/hook transcripts.");
         if (SchemaId == OlderSchemaId &&
             Simulation.Stochastic.SemanticOutcomes.Length != 0)
             throw new InvalidDataException(
                 "Legacy provider replay captures cannot contain semantic outcomes.");
         if ((SchemaId is OlderSchemaId or
-                PreviousPreviousPreviousPreviousSchemaId) &&
+                PreviousPreviousPreviousPreviousPreviousSchemaId) &&
             SimulationProviderReplayCaptureProvenanceV111
                 .HasProviderIndependentSemanticIdentity(CaptureProvenance))
             throw new InvalidDataException(
@@ -3677,6 +3807,10 @@ public sealed record SimulationProviderReplayDrawnCardIdentityDiffV111(
     string Status, int Compared, int? FirstMismatchActionIndex,
     int? FirstMismatchDrawIndex);
 
+public sealed record SimulationProviderReplayCombatEventHookTranscriptDiffV111(
+    string Status, int ComparedEntryCount, int? FirstMismatchActionIndex,
+    int? FirstMismatchEntryIndex);
+
 /// <summary>
 /// Composed evidence for comparing two provider trajectories under the same
 /// player actions: matching origin and final mechanics, plus agreement from
@@ -3693,7 +3827,7 @@ public sealed record SimulationProviderReplayComparisonV111(
     bool RequireNativeCursorEquality)
 {
     public const string CurrentSchemaId =
-        "sts2-v111-simulation-provider-replay-comparison-v8";
+        "sts2-v111-simulation-provider-replay-comparison-v9";
 
     public string LeftCaptureProvenance { get; init; } =
         SimulationProviderReplayCaptureProvenanceV111.CallerSupplied;
@@ -3708,6 +3842,9 @@ public sealed record SimulationProviderReplayComparisonV111(
     public SimulationProviderReplayDrawnCardIdentityDiffV111
         DrawnCardIdentities { get; init; } = new(
             "DRAWN_CARD_IDENTITIES_UNAVAILABLE", 0, null, null);
+    public SimulationProviderReplayCombatEventHookTranscriptDiffV111
+        CombatEventHookTranscript { get; init; } = new(
+            "COMBAT_EVENT_HOOK_TRANSCRIPT_UNAVAILABLE", 0, null, null);
 
     public bool SamePlayerActions => StringComparer.Ordinal.Equals(
         LeftActionFingerprint, RightActionFingerprint);
@@ -3749,6 +3886,18 @@ public sealed record SimulationProviderReplayComparisonV111(
         DrawnCardIdentityComparisonAvailable &&
         DrawnCardIdentities.Status ==
             "DRAWN_CARD_IDENTITIES_CONSISTENT";
+
+    public bool CombatEventHookTranscriptComparisonAvailable =>
+        CombatEventHookTranscript.Status is
+            "COMBAT_EVENT_HOOK_TRANSCRIPT_CONSISTENT" or
+            "COMBAT_EVENT_HOOK_TRANSCRIPT_MISMATCH" or
+            "COMBAT_EVENT_HOOK_ACTION_COUNT_MISMATCH" or
+            "COMBAT_EVENT_HOOK_ACTIONS_DIFFER";
+
+    public bool SameCombatEventHookTranscript =>
+        CombatEventHookTranscriptComparisonAvailable &&
+        CombatEventHookTranscript.Status ==
+            "COMBAT_EVENT_HOOK_TRANSCRIPT_CONSISTENT";
 
     public bool SameStochasticOutcomes
     {
@@ -3810,6 +3959,8 @@ public sealed record SimulationProviderReplayComparisonV111(
         SameResultMechanics &&
         ActionBoundaryMechanicsComparisonAvailable &&
         SameMechanicsAtEveryActionBoundaryForSameActions &&
+        CombatEventHookTranscriptComparisonAvailable &&
+        SameCombatEventHookTranscript &&
         (!DrawnCardIdentityComparisonAvailable || SameDrawnCardIdentities);
 
     public bool SameResultMechanics => ResultMechanics.Equivalent;
@@ -3819,7 +3970,9 @@ public sealed record SimulationProviderReplayComparisonV111(
         SameOriginMechanics && SameStochasticOutcomes &&
         SameResultMechanics &&
         (!ActionBoundaryMechanicsComparisonAvailable ||
-            SameMechanicsAtEveryActionBoundaryForSameActions);
+            SameMechanicsAtEveryActionBoundaryForSameActions) &&
+        (!CombatEventHookTranscriptComparisonAvailable ||
+            SameCombatEventHookTranscript);
 }
 
 /// <summary>
@@ -3859,8 +4012,57 @@ public static class SimulationProviderReplayComparisonEngineV111
                     .HasCompleteSemanticOutcomeTrace(right.CaptureProvenance)),
             ActionBoundaryMechanics = CompareActionBoundaryMechanics(
                 left, right, maximumMechanicsDifferences),
-            DrawnCardIdentities = CompareDrawnCardIdentities(left, right)
+            DrawnCardIdentities = CompareDrawnCardIdentities(left, right),
+            CombatEventHookTranscript =
+                CompareCombatEventHookTranscripts(left, right)
         };
+    }
+
+    private static SimulationProviderReplayCombatEventHookTranscriptDiffV111
+        CompareCombatEventHookTranscripts(
+            SimulationProviderReplayCaptureV111 left,
+            SimulationProviderReplayCaptureV111 right)
+    {
+        var leftTranscript =
+            left.Mechanics.CombatEventHookTranscriptByAction;
+        var rightTranscript =
+            right.Mechanics.CombatEventHookTranscriptByAction;
+        if (leftTranscript is null || rightTranscript is null)
+            return new(
+                "COMBAT_EVENT_HOOK_TRANSCRIPT_UNAVAILABLE", 0, null, null);
+        if (!StringComparer.Ordinal.Equals(
+                FingerprintActions(left.Mechanics.Actions),
+                FingerprintActions(right.Mechanics.Actions)))
+            return new(
+                "COMBAT_EVENT_HOOK_ACTIONS_DIFFER", 0, null, null);
+        if (leftTranscript.Length != rightTranscript.Length)
+            return new(
+                "COMBAT_EVENT_HOOK_ACTION_COUNT_MISMATCH", 0,
+                Math.Min(leftTranscript.Length, rightTranscript.Length),
+                null);
+
+        var compared = 0;
+        for (var actionIndex = 0; actionIndex < leftTranscript.Length;
+            actionIndex++)
+        {
+            var expected = leftTranscript[actionIndex];
+            var actual = rightTranscript[actionIndex];
+            var shared = Math.Min(expected.Length, actual.Length);
+            for (var entryIndex = 0; entryIndex < shared; entryIndex++)
+            {
+                compared++;
+                if (expected[entryIndex] != actual[entryIndex])
+                    return new(
+                        "COMBAT_EVENT_HOOK_TRANSCRIPT_MISMATCH", compared,
+                        actionIndex, entryIndex);
+            }
+            if (expected.Length != actual.Length)
+                return new(
+                    "COMBAT_EVENT_HOOK_TRANSCRIPT_MISMATCH", compared,
+                    actionIndex, shared);
+        }
+        return new(
+            "COMBAT_EVENT_HOOK_TRANSCRIPT_CONSISTENT", compared, null, null);
     }
 
     private static SimulationProviderReplayDrawnCardIdentityDiffV111
