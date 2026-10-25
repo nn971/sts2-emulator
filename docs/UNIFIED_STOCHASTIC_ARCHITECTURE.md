@@ -1064,18 +1064,23 @@ diagnostic result immutable to callers.
 
 `SimulationProviderReplayCaptureV111` groups an origin run, player-action
 sequence, ordered typed random-boundary trace, semantic event-outcome trace,
-and result run in the existing `SimulationStateV111` envelope. Its v6 schema
+and result run in the existing `SimulationStateV111` envelope. Its v7 schema
 includes the initiating event-choice action in ReferenceNature event-choice
-intervals and can carry one mechanics snapshot after each completed action.
-Earlier captures remain readable with their original interval meaning; v5
-captures may include action-boundary trajectories for the replay paths that
-already supplied them. Explicit fields are marked caller-supplied and unverified, while
-scripted and Native-policy factories mark the histories they replay-validate.
+intervals, can carry one mechanics snapshot after each completed action, and
+records the ordered physical card identities drawn during each action. Native
+committed-order draws and ReferenceNature deferred draw choices therefore
+compare through the same mechanics-owned trace without treating a Native draw
+as a separate RNG call. Earlier captures remain readable with their original
+interval meaning; v5 and v6 captures may include action-boundary trajectories
+but do not provide the new draw trace. Explicit fields are marked
+caller-supplied and unverified, while scripted and Native-policy factories
+mark the histories they replay-validate.
 `SimulationProviderReplayComparisonEngineV111` compares two such captures by
 fingerprinting their action sequences, comparing origin mechanics, comparing
 every supplied typed boundary in order, comparing complete semantic outcome
-traces when both captures provide them, and comparing the resulting mechanics,
-returning each agreement and both capture provenance values separately. The
+traces and per-action drawn-card identities when both captures provide them,
+and comparing the resulting mechanics. The result returns each agreement and
+both capture provenance values separately. The
 semantic trace records provider event and law identity, provider-independent
 site/operation/owner/ordinal, a fingerprint of ordered semantic outcome IDs,
 the selected semantic identity and index, and its transition position within
@@ -1104,26 +1109,29 @@ the trajectory. This comparison is unavailable for older or caller-supplied
 captures without the snapshots, and it does not include provider-private
 state in its projection. When both captures carry aligned action-boundary
 snapshots, `EquivalentUnderComparedActions` also requires their projected
-mechanics to match, along with equality of the available complete stochastic
-traces. If both captures have complete typed-boundary and replay-validated
-semantic traces, both forms must agree. If only one form is complete on both
-sides, equality of that form is sufficient. An absent trace is not treated as
-an empty matching trace.
+mechanics to match, along with equality of every complete stochastic trace
+available on both captures. This includes typed provider boundaries,
+provider-independent semantic outcomes, and per-action physical draw
+identities. If only one complete trace is available on both sides, equality
+of that trace is sufficient. An absent trace is not treated as an empty
+matching trace. The draw trace is compared separately because Native draws
+consume an already committed order while ReferenceNature draws may be deferred
+choices; the selected physical card identity is common evidence for both.
 ReferenceNature semantic combat captures provide complete semantic traces.
-Native-policy captures provide them only when every provider boundary in the
-action interval has one supported semantic annotation and every drawn card is
-individually identified; unsupported or unannotated boundaries leave semantic
-comparison unavailable. This permits cross-provider trajectory comparison
-for covered intervals without claiming completeness for other Native captures.
-Older v2 captures retain endpoint-only provenance, v3 captures keep their
-original trace meaning, v4 captures retain semantic-identity trace support,
-and v5 captures retain their original action intervals and any supplied
-action-boundary trajectory. The result
+Native-policy semantic outcome traces are complete only when every provider
+boundary in the action interval has one supported semantic annotation;
+unsupported or unannotated boundaries leave semantic comparison unavailable.
+Their physical draws are validated and compared through the separate
+per-action draw trace. Older v2 captures retain endpoint-only provenance, v3
+captures keep their original trace meaning, v4 captures retain
+semantic-identity trace support, and v5 and v6 captures retain their original
+action intervals and any supplied action-boundary trajectory. The result
 exposes `TypedRandomBoundaryComparisonAvailable` and
 `SemanticOutcomeComparisonAvailable` separately, so an absent trace is not
 reported as a matching empty trace. `SameSemanticOutcomes` and
 `SameStochasticOutcomes` expose the corresponding equality results; the latter
-requires agreement from every complete trace available on both captures.
+requires agreement from every complete trace available on both captures,
+including the draw identity comparison when both captures provide it.
 `SimulationProviderReplayCaptureV111.FromScriptedRunSession` and
 `FromScriptedRunActionSession` provide a stronger path for scripted replays:
 each session replays its completed action history from the origin, and the
@@ -1141,10 +1149,10 @@ It also projects the audit's weighted intent, hand-cost and Jeweled Mask card
 instance, random replay/autoplay shortlist, cost, draw-insertion, combat
 pool-shuffle, generated-card, transform, target, and potion-generation
 annotations to common semantic identities when those
-annotations cover the entire interval. Ordinary draws without individual
-identity annotations and any unrecognized provider boundary prevent the
-semantic trace from being marked complete; the typed boundary trace remains
-available. The projection normalizes Native ordinals for target, generated
+annotations cover the entire interval. Ordinary physical draws are recorded
+separately per player action. Any unrecognized provider boundary prevents
+the semantic trace from being marked complete; the typed boundary trace
+remains available. The projection normalizes Native ordinals for target, generated
 card, potion generation, transform, energy cost, hand-card selection,
 card-shortlist, combat pool-shuffle, and ordinary draw-insertion families
 against earlier requests in that semantic family. Shortlist owner identity

@@ -2,6 +2,15 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 per-action physical draw identity comparison increment (2026-10-25):**
+Replay-validated captures now retain the ordered physical card identities
+consumed by `DrawCards` within each player action. Native committed-order draws
+and ReferenceNature deferred draw choices therefore compare the same physical
+outcomes without treating a Native draw as a separate RNG boundary. The v7
+capture schema preserves v2–v6 readers; comparison v7 requires agreement from
+the draw identity trace whenever both captures provide one. Core and CLI
+Release builds passed with zero warnings or errors; no tests were run.
+
 **S4 complete-trace agreement increment (2026-10-25):** Provider replay
 comparison now requires typed-boundary and semantic-outcome equality together
 when both complete traces are available; when only one form is complete on

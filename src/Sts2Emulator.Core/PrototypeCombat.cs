@@ -16199,6 +16199,7 @@ public sealed partial class PrototypeGameEngine
             combat = SemanticDrawPileAdapterV111.CommitTopCardResolutions(
                 combat, [resolvedTop], nextZones);
             drawnCardInstanceIds.Add(cardInstanceId);
+            SemanticDrawIdentityJournalV111.Record(cardInstanceId);
 
             var card = RequireCombatCard(combat, cardInstanceId);
             var randomizedCostUpperBound =
