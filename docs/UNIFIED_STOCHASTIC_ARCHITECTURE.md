@@ -1153,12 +1153,14 @@ Provider-selected indices for the semantic pilot now converge through
 validates the sampled law first; the Native adapter validates provider mode
 and primitive support first. `DescribePendingIndexChanceEvent` owns the
 precedence and support-size projection for active index-valued semantic
-events; ReferenceNature queries the law for that typed event, and the shared
-dispatcher uses the same descriptor to validate the selection before
-invoking the existing target, generation, cost, draw, reveal, shuffle,
-insertion, shortlist, or potion mechanics resolver. Weighted intent IDs and
-low-level nonsemantic Native requests keep their specialized paths. This
-descriptor is transient and adds no snapshot field.
+events; ReferenceNature queries the law for that typed event, and both the
+Native auto-resolver and shared dispatcher consume the same descriptor.
+Provider-specific law, primitive, eligibility, and provenance checks remain
+at their provider boundaries before the existing target, generation, cost,
+draw, reveal, shuffle, insertion, shortlist, or potion mechanics resolver is
+called. Weighted intent IDs and low-level nonsemantic Native requests keep
+their specialized paths. This descriptor is transient and adds no snapshot
+field.
 
 `PrototypeAutomaticPipelineResumeResultV111` is the single owner for
 classifying an ephemeral run-resume boundary. Draw-progress and semantic-choice

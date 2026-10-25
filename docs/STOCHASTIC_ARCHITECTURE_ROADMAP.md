@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 Native semantic event dispatch ownership (2026-10-25):** The run-owned
+Native auto-resolver now consumes the same active typed chance-event
+descriptor and precedence as ReferenceNature and the mechanics dispatcher.
+Its Native provider-mode, source-support, and fixture-eligibility checks stay
+at the Native boundary; weighted intent and end-turn draw-cost routes retain
+their specialized handling. No snapshot schema changed. Static source review
+and `git diff --check` only; no tests or builds were run.
+
 **S4 active semantic chance event ownership (2026-10-25):** The semantic
 engine now publishes one transient typed descriptor for the active
 index-valued chance event and its ordered support size. ReferenceNature uses

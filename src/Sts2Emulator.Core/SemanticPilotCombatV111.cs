@@ -7436,226 +7436,9 @@ public static class SemanticPilotCombatEngineV111
     {
         while (true)
         {
-            if (current.EnemyActionPending is { } enemyAction &&
-                enemyAction.SiteId == StochasticSiteRegistryV111
-                    .CombatEnemyTheftCardSelectSiteId &&
-                current.Run.Stochastic.SemanticOtherChance is
-                    { } enemyTheftOwner &&
-                enemyTheftOwner.ProviderId !=
-                    SemanticOtherChanceEngineV111.LegacyProviderId)
+            if (TryResolveEngineOwnedSemanticChance(current, out var resolved))
             {
-                var choice = SemanticOtherChanceEngineV111
-                    .ResolveEnemyTheft(enemyTheftOwner, enemyAction);
-                current = ResumeNativeEnemyActionChoice(
-                    current, choice.Decision, choice.Next,
-                    requireCandidateLabels: true);
-                continue;
-            }
-
-            if (current.EnemyActionPending is { } nativeEnemyAction &&
-                current.Run.Stochastic.SemanticOtherChance is
-                    { } nativeEnemyActionOwner &&
-                nativeEnemyActionOwner.ProviderId !=
-                    SemanticOtherChanceEngineV111.LegacyProviderId &&
-                StochasticSiteRegistryV111.SupportsEngineOwnedNativeBoundary(
-                    nativeEnemyAction.SiteId, nativeEnemyAction.StreamId,
-                    nativeEnemyAction.OperationKind))
-            {
-                var choice = SemanticOtherChanceEngineV111
-                    .ResolveEnemyActionRequest(
-                        nativeEnemyActionOwner, nativeEnemyAction);
-                current = ResumeNativeEnemyActionChoice(
-                    current, choice.Decision, choice.Next,
-                    requireCandidateLabels: false);
-                continue;
-            }
-
-            if (current.TargetPending is { } target &&
-                current.Run.Stochastic.SemanticOtherChance is
-                    { } targetOwner &&
-                targetOwner.ProviderId !=
-                    SemanticOtherChanceEngineV111.LegacyProviderId)
-            {
-                var choice = SemanticOtherChanceEngineV111
-                    .ResolveRandomTarget(targetOwner, target);
-                _ = NativeSemanticOutcomeV111.SelectByChooseIndex(
-                    choice.Decision, target.CandidateEnemyInstanceIds);
-                current = ResolveChanceOutcomeByIndex(
-                    current, target.EventId, choice.Decision.SelectedIndex,
-                    choice.Next);
-                continue;
-            }
-
-            if (current.GeneratedCardPending is { } generatedCard &&
-                current.Run.Stochastic.SemanticOtherChance is
-                    { } generatedCardOwner &&
-                generatedCardOwner.ProviderId !=
-                    SemanticOtherChanceEngineV111.LegacyProviderId)
-            {
-                var choice = SemanticOtherChanceEngineV111
-                    .ResolveGeneratedCard(generatedCardOwner, generatedCard);
-                _ = NativeSemanticOutcomeV111.SelectByChooseIndex(
-                    choice.Decision, generatedCard.CandidateCardIds);
-                current = ResolveChanceOutcomeByIndex(
-                    current, generatedCard.EventId,
-                    choice.Decision.SelectedIndex, choice.Next);
-                continue;
-            }
-
-            if (current.DrawInsertionPending is { } drawInsertion &&
-                current.Run.Stochastic.SemanticOtherChance is
-                    { } drawInsertionOwner &&
-                drawInsertionOwner.ProviderId !=
-                    SemanticOtherChanceEngineV111.LegacyProviderId &&
-                SemanticOtherChanceEngineV111
-                    .SupportsEngineOwnedDrawInsertionBoundary(drawInsertion))
-            {
-                var choice = SemanticOtherChanceEngineV111
-                    .ResolveDrawInsertion(drawInsertionOwner, drawInsertion);
-                var selectedPosition =
-                    NativeSemanticOutcomeV111.SelectByBoundedOffset(
-                        choice.Decision, 0,
-                        drawInsertion.Request.SupportCount);
-                current = ResolveChanceOutcomeByIndex(
-                    current, drawInsertion.EventId, selectedPosition,
-                    choice.Next);
-                continue;
-            }
-
-            if (current.PotionGenerationPending is { } generatedPotion &&
-                current.Run.Stochastic.SemanticOtherChance is
-                    { } potionGenerationOwner &&
-                potionGenerationOwner.ProviderId !=
-                    SemanticOtherChanceEngineV111.LegacyProviderId)
-            {
-                var choice = SemanticOtherChanceEngineV111
-                    .ResolvePotionGeneration(
-                        potionGenerationOwner, generatedPotion);
-                _ = NativeSemanticOutcomeV111.SelectByChooseIndex(
-                    choice.Decision, generatedPotion.CandidatePotionIds);
-                current = ResolveChanceOutcomeByIndex(
-                    current, generatedPotion.EventId,
-                    choice.Decision.SelectedIndex, choice.Next);
-                continue;
-            }
-
-            if (current.CardTransformPending is { } cardTransform &&
-                current.Run.Stochastic.SemanticOtherChance is
-                    { } cardTransformOwner &&
-                cardTransformOwner.ProviderId !=
-                    SemanticOtherChanceEngineV111.LegacyProviderId)
-            {
-                var choice = SemanticOtherChanceEngineV111
-                    .ResolveCardTransform(cardTransformOwner, cardTransform);
-                _ = NativeSemanticOutcomeV111.SelectByChooseIndex(
-                    choice.Decision, cardTransform.CandidateCardIds);
-                current = ResolveChanceOutcomeByIndex(
-                    current, cardTransform.EventId,
-                    choice.Decision.SelectedIndex, choice.Next);
-                continue;
-            }
-
-            if (current.PoolShufflePending is { } poolShuffle &&
-                current.Run.Stochastic.SemanticOtherChance is
-                    { } poolShuffleOwner &&
-                poolShuffleOwner.ProviderId !=
-                    SemanticOtherChanceEngineV111.LegacyProviderId &&
-                SemanticOtherChanceEngineV111
-                    .SupportsEngineOwnedPoolShuffleBoundary(poolShuffle))
-            {
-                var choice = SemanticOtherChanceEngineV111
-                    .ResolvePoolShuffle(poolShuffleOwner, poolShuffle);
-                var selectedSwapIndex =
-                    NativeSemanticOutcomeV111.SelectByBoundedOffset(
-                        choice.Decision, 0,
-                        poolShuffle.NextSwapIndex + 1);
-                current = ResolveChanceOutcomeByIndex(
-                    current, poolShuffle.EventId, selectedSwapIndex,
-                    choice.Next);
-                continue;
-            }
-
-            if (current.CardShortlistPending is { } cardShortlist &&
-                current.Run.Stochastic.SemanticOtherChance is
-                    { } cardShortlistOwner &&
-                cardShortlistOwner.ProviderId !=
-                    SemanticOtherChanceEngineV111.LegacyProviderId &&
-                SemanticOtherChanceEngineV111
-                    .SupportsEngineOwnedCardShortlistBoundary(cardShortlist))
-            {
-                var choice = SemanticOtherChanceEngineV111
-                    .ResolveCardShortlist(cardShortlistOwner, cardShortlist);
-                _ = NativeSemanticOutcomeV111.SelectByChooseIndex(
-                    choice.Decision,
-                    cardShortlist.CandidateCardInstanceIds);
-                current = ResolveChanceOutcomeByIndex(
-                    current, cardShortlist.EventId,
-                    choice.Decision.SelectedIndex, choice.Next);
-                continue;
-            }
-
-            if (current.RandomPileCardPending is { } randomPileCard &&
-                current.Run.Stochastic.SemanticOtherChance is
-                    { } randomPileCardOwner &&
-                randomPileCardOwner.ProviderId !=
-                    SemanticOtherChanceEngineV111.LegacyProviderId)
-            {
-                var choice = SemanticOtherChanceEngineV111
-                    .ResolveRandomPileCard(
-                        randomPileCardOwner, randomPileCard);
-                _ = NativeSemanticOutcomeV111.SelectByChooseIndex(
-                    choice.Decision,
-                    randomPileCard.CandidateCardInstanceIds);
-                current = ResolveChanceOutcomeByIndex(
-                    current, randomPileCard.EventId,
-                    choice.Decision.SelectedIndex, choice.Next);
-                continue;
-            }
-
-            if (current.HandCostSelectionPending is { } handCost &&
-                current.Stochastic.SeededEntry?.FixtureSetRandomHandCardCost
-                    is null &&
-                current.Run.Stochastic.SemanticOtherChance is
-                    { } handOwner &&
-                handOwner.ProviderId !=
-                    SemanticOtherChanceEngineV111.LegacyProviderId)
-            {
-                var choice = SemanticOtherChanceEngineV111
-                    .ResolveHandCostTarget(handOwner, handCost);
-                _ = NativeSemanticOutcomeV111.SelectByChooseIndex(
-                    choice.Decision, handCost.CandidateCardInstanceIds);
-                current = ResolveChanceOutcomeByIndex(
-                    current, handCost.EventId,
-                    choice.Decision.SelectedIndex, choice.Next);
-                continue;
-            }
-
-            if (current.CostPending is { } semanticCost &&
-                !(current.Stochastic.SeededEntry?.FixtureNatureDrawCosts == true &&
-                  (semanticCost.Request.SiteId is
-                    StochasticSiteRegistryV111.CombatDrawRelicEnergyCostSiteId or
-                    StochasticSiteRegistryV111.CombatDrawSlitherEnergyCostSiteId)) &&
-                !(current.Stochastic.SeededEntry?
-                    .FixtureRandomizeHandCostsMaxExclusive is not null &&
-                  semanticCost.Request.SiteId ==
-                    StochasticSiteRegistryV111
-                        .CombatRandomHandCardEnergyCostSiteId) &&
-                current.Run.Stochastic.SemanticOtherChance is { } costOwner &&
-                (costOwner.ProviderId !=
-                    SemanticOtherChanceEngineV111.LegacyProviderId ||
-                 (semanticCost.Request.SiteId is
-                    StochasticSiteRegistryV111.CombatDrawRelicEnergyCostSiteId or
-                    StochasticSiteRegistryV111.CombatDrawSlitherEnergyCostSiteId)))
-            {
-                var choice = SemanticOtherChanceEngineV111
-                    .ResolveNonNatureCost(costOwner, semanticCost);
-                var selectedCostIndex =
-                    NativeSemanticOutcomeV111.SelectByBoundedOffset(
-                        choice.Decision, 0,
-                        semanticCost.CandidateCosts.Length);
-                current = ResolveChanceOutcomeByIndex(
-                    current, semanticCost.EventId, selectedCostIndex,
-                    choice.Next);
+                current = resolved;
                 continue;
             }
 
@@ -7701,6 +7484,242 @@ public static class SemanticPilotCombatEngineV111
         }
         current.Validate();
         return current;
+    }
+
+    private static bool TryResolveEngineOwnedSemanticChance(
+        SemanticPilotCombatV111 current,
+        out SemanticPilotCombatV111 resolved)
+    {
+        resolved = current;
+        var pending = DescribePendingIndexChanceEvent(current);
+        if (pending is null)
+            return false;
+
+        var other = current.Run.Stochastic.SemanticOtherChance;
+        switch (pending.Event)
+        {
+            case SemanticEndTurnIndexEventV111:
+                if (current.EnemyActionPending is not { } enemyAction)
+                    return false;
+                if (enemyAction.SiteId == StochasticSiteRegistryV111
+                        .CombatEnemyTheftCardSelectSiteId &&
+                    other is { } theftOwner &&
+                    theftOwner.ProviderId !=
+                        SemanticOtherChanceEngineV111.LegacyProviderId)
+                {
+                    var choice = SemanticOtherChanceEngineV111
+                        .ResolveEnemyTheft(theftOwner, enemyAction);
+                    resolved = ResumeNativeEnemyActionChoice(
+                        current, choice.Decision, choice.Next,
+                        requireCandidateLabels: true);
+                    return true;
+                }
+                if (other is { } enemyActionOwner &&
+                    enemyActionOwner.ProviderId !=
+                        SemanticOtherChanceEngineV111.LegacyProviderId &&
+                    StochasticSiteRegistryV111
+                        .SupportsEngineOwnedNativeBoundary(
+                            enemyAction.SiteId, enemyAction.StreamId,
+                            enemyAction.OperationKind))
+                {
+                    var choice = SemanticOtherChanceEngineV111
+                        .ResolveEnemyActionRequest(
+                            enemyActionOwner, enemyAction);
+                    resolved = ResumeNativeEnemyActionChoice(
+                        current, choice.Decision, choice.Next,
+                        requireCandidateLabels: false);
+                    return true;
+                }
+                return false;
+
+            case SemanticTargetEventV111 target when
+                other is { } targetOwner &&
+                targetOwner.ProviderId !=
+                    SemanticOtherChanceEngineV111.LegacyProviderId:
+            {
+                var choice = SemanticOtherChanceEngineV111
+                    .ResolveRandomTarget(targetOwner, target);
+                _ = NativeSemanticOutcomeV111.SelectByChooseIndex(
+                    choice.Decision, target.CandidateEnemyInstanceIds);
+                resolved = ResolveChanceOutcomeByIndex(
+                    current, target.EventId, choice.Decision.SelectedIndex,
+                    choice.Next);
+                return true;
+            }
+
+            case SemanticGeneratedCardEventV111 generatedCard when
+                other is { } generatedCardOwner &&
+                generatedCardOwner.ProviderId !=
+                    SemanticOtherChanceEngineV111.LegacyProviderId:
+            {
+                var choice = SemanticOtherChanceEngineV111
+                    .ResolveGeneratedCard(generatedCardOwner, generatedCard);
+                _ = NativeSemanticOutcomeV111.SelectByChooseIndex(
+                    choice.Decision, generatedCard.CandidateCardIds);
+                resolved = ResolveChanceOutcomeByIndex(
+                    current, generatedCard.EventId,
+                    choice.Decision.SelectedIndex, choice.Next);
+                return true;
+            }
+
+            case SemanticDrawInsertionEventV111 drawInsertion when
+                other is { } drawInsertionOwner &&
+                drawInsertionOwner.ProviderId !=
+                    SemanticOtherChanceEngineV111.LegacyProviderId &&
+                SemanticOtherChanceEngineV111
+                    .SupportsEngineOwnedDrawInsertionBoundary(drawInsertion):
+            {
+                var choice = SemanticOtherChanceEngineV111
+                    .ResolveDrawInsertion(drawInsertionOwner, drawInsertion);
+                var selectedPosition =
+                    NativeSemanticOutcomeV111.SelectByBoundedOffset(
+                        choice.Decision, 0,
+                        drawInsertion.Request.SupportCount);
+                resolved = ResolveChanceOutcomeByIndex(
+                    current, drawInsertion.EventId, selectedPosition,
+                    choice.Next);
+                return true;
+            }
+
+            case SemanticPotionGenerationEventV111 generatedPotion when
+                other is { } potionGenerationOwner &&
+                potionGenerationOwner.ProviderId !=
+                    SemanticOtherChanceEngineV111.LegacyProviderId:
+            {
+                var choice = SemanticOtherChanceEngineV111
+                    .ResolvePotionGeneration(
+                        potionGenerationOwner, generatedPotion);
+                _ = NativeSemanticOutcomeV111.SelectByChooseIndex(
+                    choice.Decision, generatedPotion.CandidatePotionIds);
+                resolved = ResolveChanceOutcomeByIndex(
+                    current, generatedPotion.EventId,
+                    choice.Decision.SelectedIndex, choice.Next);
+                return true;
+            }
+
+            case SemanticCardTransformEventV111 cardTransform when
+                other is { } cardTransformOwner &&
+                cardTransformOwner.ProviderId !=
+                    SemanticOtherChanceEngineV111.LegacyProviderId:
+            {
+                var choice = SemanticOtherChanceEngineV111
+                    .ResolveCardTransform(cardTransformOwner, cardTransform);
+                _ = NativeSemanticOutcomeV111.SelectByChooseIndex(
+                    choice.Decision, cardTransform.CandidateCardIds);
+                resolved = ResolveChanceOutcomeByIndex(
+                    current, cardTransform.EventId,
+                    choice.Decision.SelectedIndex, choice.Next);
+                return true;
+            }
+
+            case SemanticPoolShuffleEventV111 poolShuffle when
+                other is { } poolShuffleOwner &&
+                poolShuffleOwner.ProviderId !=
+                    SemanticOtherChanceEngineV111.LegacyProviderId &&
+                SemanticOtherChanceEngineV111
+                    .SupportsEngineOwnedPoolShuffleBoundary(poolShuffle):
+            {
+                var choice = SemanticOtherChanceEngineV111
+                    .ResolvePoolShuffle(poolShuffleOwner, poolShuffle);
+                var selectedSwapIndex =
+                    NativeSemanticOutcomeV111.SelectByBoundedOffset(
+                        choice.Decision, 0,
+                        poolShuffle.NextSwapIndex + 1);
+                resolved = ResolveChanceOutcomeByIndex(
+                    current, poolShuffle.EventId, selectedSwapIndex,
+                    choice.Next);
+                return true;
+            }
+
+            case SemanticCardShortlistEventV111 cardShortlist when
+                other is { } cardShortlistOwner &&
+                cardShortlistOwner.ProviderId !=
+                    SemanticOtherChanceEngineV111.LegacyProviderId &&
+                SemanticOtherChanceEngineV111
+                    .SupportsEngineOwnedCardShortlistBoundary(cardShortlist):
+            {
+                var choice = SemanticOtherChanceEngineV111
+                    .ResolveCardShortlist(
+                        cardShortlistOwner, cardShortlist);
+                _ = NativeSemanticOutcomeV111.SelectByChooseIndex(
+                    choice.Decision,
+                    cardShortlist.CandidateCardInstanceIds);
+                resolved = ResolveChanceOutcomeByIndex(
+                    current, cardShortlist.EventId,
+                    choice.Decision.SelectedIndex, choice.Next);
+                return true;
+            }
+
+            case SemanticRandomPileCardEventV111 randomPileCard when
+                other is { } randomPileCardOwner &&
+                randomPileCardOwner.ProviderId !=
+                    SemanticOtherChanceEngineV111.LegacyProviderId:
+            {
+                var choice = SemanticOtherChanceEngineV111
+                    .ResolveRandomPileCard(
+                        randomPileCardOwner, randomPileCard);
+                _ = NativeSemanticOutcomeV111.SelectByChooseIndex(
+                    choice.Decision,
+                    randomPileCard.CandidateCardInstanceIds);
+                resolved = ResolveChanceOutcomeByIndex(
+                    current, randomPileCard.EventId,
+                    choice.Decision.SelectedIndex, choice.Next);
+                return true;
+            }
+
+            case SemanticHandCostSelectionEventV111 handCost when
+                current.Stochastic.SeededEntry?.FixtureSetRandomHandCardCost
+                    is null &&
+                other is { } handCostOwner &&
+                handCostOwner.ProviderId !=
+                    SemanticOtherChanceEngineV111.LegacyProviderId:
+            {
+                var choice = SemanticOtherChanceEngineV111
+                    .ResolveHandCostTarget(handCostOwner, handCost);
+                _ = NativeSemanticOutcomeV111.SelectByChooseIndex(
+                    choice.Decision, handCost.CandidateCardInstanceIds);
+                resolved = ResolveChanceOutcomeByIndex(
+                    current, handCost.EventId,
+                    choice.Decision.SelectedIndex, choice.Next);
+                return true;
+            }
+
+            case SemanticCostEventV111 semanticCost when
+                !(current.Stochastic.SeededEntry?.FixtureNatureDrawCosts ==
+                  true &&
+                  (semanticCost.Request.SiteId is
+                      StochasticSiteRegistryV111
+                          .CombatDrawRelicEnergyCostSiteId or
+                      StochasticSiteRegistryV111
+                          .CombatDrawSlitherEnergyCostSiteId)) &&
+                !(current.Stochastic.SeededEntry?
+                    .FixtureRandomizeHandCostsMaxExclusive is not null &&
+                  semanticCost.Request.SiteId ==
+                    StochasticSiteRegistryV111
+                        .CombatRandomHandCardEnergyCostSiteId) &&
+                other is { } costOwner &&
+                (costOwner.ProviderId !=
+                    SemanticOtherChanceEngineV111.LegacyProviderId ||
+                 semanticCost.Request.SiteId is
+                    StochasticSiteRegistryV111
+                        .CombatDrawRelicEnergyCostSiteId or
+                    StochasticSiteRegistryV111
+                        .CombatDrawSlitherEnergyCostSiteId):
+            {
+                var choice = SemanticOtherChanceEngineV111
+                    .ResolveNonNatureCost(costOwner, semanticCost);
+                var selectedCostIndex =
+                    NativeSemanticOutcomeV111.SelectByBoundedOffset(
+                        choice.Decision, 0,
+                        semanticCost.CandidateCosts.Length);
+                resolved = ResolveChanceOutcomeByIndex(
+                    current, semanticCost.EventId, selectedCostIndex,
+                    choice.Next);
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static SemanticPilotCombatV111 ResumeNativeEnemyActionChoice(
