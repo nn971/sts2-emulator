@@ -113,6 +113,13 @@ one classification result, so unsupported tagged payloads remain fail-closed
 without a second pending-choice scan. No schema changed. Static source review
 and `git diff --check` only; no tests or builds were run.
 
+**S4 semantic draw pending-child projection (2026-10-25):** A transient draw
+owner projection now carries one child classification and the corresponding
+pending child events. Frame validation and `AtBoundary` share it, while
+individual event properties remain available as compatibility projections.
+No schema changed. Static source review and `git diff --check` only; no tests
+or builds were run.
+
 **S5 shared candidate-label binding validation (2026-10-25):** Controlled
 event-choice, run-action, and playable-combat Python facades now use one
 validator for non-empty labels and membership in the saved pending support.
