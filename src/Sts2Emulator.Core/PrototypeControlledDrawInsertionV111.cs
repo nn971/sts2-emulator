@@ -524,23 +524,22 @@ public sealed partial class PrototypeGameEngine
                     .ToAutomaticPipelineResumeResult();
             }
 
-            var effectDrawPrototypeRng = state.Stochastic.PrototypeRng;
-            var resumedDraw = DrawCards(
-                state.Player, combat, semanticDraw.RemainingCount,
-                effectDrawPrototypeRng,
-                semanticDraw.FromHandDraw, eventDepth: semanticDraw.EventDepth,
-                suspensionPolicy:
-                    PrototypeDrawCardsSuspensionPolicyV111
-                        .SemanticDrawCards(effectDraw: true));
-            var drawState = state with
+            var drawnSegment = ExecuteDrawCardsSegment(
+                state, prototypeRng => DrawCards(
+                    state.Player, combat, semanticDraw.RemainingCount,
+                    prototypeRng, semanticDraw.FromHandDraw,
+                    eventDepth: semanticDraw.EventDepth,
+                    suspensionPolicy:
+                        PrototypeDrawCardsSuspensionPolicyV111
+                            .SemanticDrawCards(effectDraw: true)));
+            var drawState = drawnSegment.Run with
             {
-                Stochastic = RunStochasticStateV111.WithPrototypeRng(
-                    state.Stochastic, effectDrawPrototypeRng),
                 World = world with { Combat = combat }
             };
             return ResumeControlledInsertionPipeline(
                 ContinueControlledSemanticEffectDraw(
-                    drawState, resumedDraw, semanticDraw, continuation));
+                    drawState, drawnSegment.Drawn, semanticDraw,
+                    continuation));
         }
 
         if (choice.AutomaticHandDrawRemaining is { } handDrawRemaining)

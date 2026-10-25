@@ -557,10 +557,26 @@ public sealed partial class PrototypeGameEngine
         PrototypeDrawCardsSuspensionPolicyV111 suspensionPolicy,
         int eventDepth = 0)
     {
+        return ExecuteDrawCardsSegment(checkpoint, prototypeRng =>
+            ResumeAutomaticHandDrawCards(
+                checkpoint, remaining, suspensionPolicy, prototypeRng,
+                eventDepth));
+    }
+
+    /// <summary>
+    /// Run one draw kernel segment with a local prototype RNG projection and
+    /// publish the advanced provider state with its source checkpoint.
+    /// Callers continue to own mechanics and boundary interpretation.
+    /// </summary>
+    private static (RunState Run, PrototypeDrawCardsResult Drawn)
+        ExecuteDrawCardsSegment(
+        RunState checkpoint,
+        Func<RngBundle, PrototypeDrawCardsResult> drawSegment)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        ArgumentNullException.ThrowIfNull(drawSegment);
         var prototypeRng = checkpoint.Stochastic.PrototypeRng;
-        var drawn = ResumeAutomaticHandDrawCards(
-            checkpoint, remaining, suspensionPolicy, prototypeRng,
-            eventDepth);
+        var drawn = drawSegment(prototypeRng);
         var run = checkpoint with
         {
             Stochastic = RunStochasticStateV111.WithPrototypeRng(

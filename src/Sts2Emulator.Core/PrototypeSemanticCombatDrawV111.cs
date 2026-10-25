@@ -51,15 +51,12 @@ public sealed partial class PrototypeGameEngine
         }
         else
         {
-            var prototypeRng = run.Stochastic.PrototypeRng;
-            result = DrawCards(
-                run.Player, combat, count, prototypeRng, fromHandDraw,
-                suspensionPolicy: suspensionPolicy);
-            run = run with
-            {
-                Stochastic = RunStochasticStateV111.WithPrototypeRng(
-                    run.Stochastic, prototypeRng)
-            };
+            var drawnSegment = ExecuteDrawCardsSegment(
+                run, prototypeRng => DrawCards(
+                    run.Player, combat, count, prototypeRng, fromHandDraw,
+                    suspensionPolicy: suspensionPolicy));
+            run = drawnSegment.Run;
+            result = drawnSegment.Drawn;
         }
         return ResumeSemanticCombatDrawResult(
             run, result, fromHandDraw, eventDepth: 0,
@@ -196,18 +193,15 @@ public sealed partial class PrototypeGameEngine
                 cost.RemainingCount);
         }
 
-        var prototypeRng = run.Stochastic.PrototypeRng;
-        var drawn = DrawCards(
-            run.Player, combat, cost.RemainingCount, prototypeRng,
-            cost.FromHandDraw, eventDepth: cost.EventDepth,
-            suspensionPolicy:
-                PrototypeDrawCardsSuspensionPolicyV111.SemanticDrawCards(
-                    effectDraw: effectDraw));
-        run = run with
-        {
-            Stochastic = RunStochasticStateV111.WithPrototypeRng(
-                run.Stochastic, prototypeRng)
-        };
+        var drawnSegment = ExecuteDrawCardsSegment(
+            run, prototypeRng => DrawCards(
+                run.Player, combat, cost.RemainingCount, prototypeRng,
+                cost.FromHandDraw, eventDepth: cost.EventDepth,
+                suspensionPolicy:
+                    PrototypeDrawCardsSuspensionPolicyV111.SemanticDrawCards(
+                        effectDraw: effectDraw)));
+        run = drawnSegment.Run;
+        var drawn = drawnSegment.Drawn;
         var continued = ResolveControlledSemanticDrawResult(
             run, drawn, draw, continuation, null,
             recycleSite, recycleOperation);
