@@ -1272,8 +1272,10 @@ child boundary checks to the draw-hook choice owner, which shares that dispatch
 with hook replay. Replay-only semantic event materialization stays at the hook
 boundary, and each child choice retains its own support validator. The frame
 also passes its single child classification to pending-event discovery instead
-of reclassifying once per event descriptor. Standalone descriptor calls retain
-their self-classifying behavior. No schema changed.
+of reclassifying once per event descriptor. Hook replay carries tagged-child
+presence in that same classification, preserving fail-closed handling of
+unsupported tagged choices. Standalone descriptor calls retain their
+self-classifying behavior. No schema changed.
 
 Supported random autoplay and replay-card shortlist children opened by a
 draw-hook action now use the existing card-shortlist event and decision owner

@@ -107,6 +107,12 @@ all pending-child event descriptors, avoiding a second classification for each
 event while preserving standalone descriptor callers. No schema changed.
 Static source review and `git diff --check` only; no tests or builds were run.
 
+**S4 tagged automatic hand-draw child classification (2026-10-25):** Draw-hook
+replay now gets both the supported child kind and tagged-child presence from
+one classification result, so unsupported tagged payloads remain fail-closed
+without a second pending-choice scan. No schema changed. Static source review
+and `git diff --check` only; no tests or builds were run.
+
 **S5 shared candidate-label binding validation (2026-10-25):** Controlled
 event-choice, run-action, and playable-combat Python facades now use one
 validator for non-empty labels and membership in the saved pending support.

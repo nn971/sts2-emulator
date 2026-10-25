@@ -125,16 +125,31 @@ public static class SemanticDrawHookChoiceEngineV111
         SemanticDraw
     }
 
+    internal readonly record struct AutomaticHandDrawChildClassificationV111(
+        AutomaticHandDrawChildKindV111 Kind, bool HasTaggedChildChoice);
+
     internal static AutomaticHandDrawChildKindV111
         ClassifyAutomaticHandDrawChild(
             CombatState combat, PendingCombatChoiceState choice,
+            bool beforeHandDraw) =>
+        ClassifyAutomaticHandDrawChildBoundary(
+            combat, choice, beforeHandDraw).Kind;
+
+    internal static AutomaticHandDrawChildClassificationV111
+        ClassifyAutomaticHandDrawChildBoundary(
+            CombatState combat, PendingCombatChoiceState choice,
             bool beforeHandDraw)
     {
+        bool hasTaggedChildChoice = HasTaggedAutomaticChildChoice(choice);
         if (choice.ControlledTarget is not null)
-            return AutomaticHandDrawChildKindV111.RandomTarget;
+            return new(
+                AutomaticHandDrawChildKindV111.RandomTarget,
+                hasTaggedChildChoice);
         if (choice.ChoiceId == "controlled_random_pile_card" &&
             choice.ControlledRandomPileCard is not null)
-            return AutomaticHandDrawChildKindV111.RandomPileCard;
+            return new(
+                AutomaticHandDrawChildKindV111.RandomPileCard,
+                hasTaggedChildChoice);
         if (beforeHandDraw
                 ? PrototypeGameEngine
                     .IsAutomaticBeforeHandDrawHookDrawInsertionContinuation(
@@ -142,35 +157,51 @@ public static class SemanticDrawHookChoiceEngineV111
                 : PrototypeGameEngine
                     .IsAutomaticHandDrawHookDrawInsertionContinuation(
                         combat, choice))
-            return AutomaticHandDrawChildKindV111.DrawInsertion;
+            return new(
+                AutomaticHandDrawChildKindV111.DrawInsertion,
+                hasTaggedChildChoice);
         if (PrototypeGameEngine
                 .IsAutomaticHandDrawGeneratedCardContinuation(
                     combat, choice))
-            return AutomaticHandDrawChildKindV111.GeneratedCard;
+            return new(
+                AutomaticHandDrawChildKindV111.GeneratedCard,
+                hasTaggedChildChoice);
         if (PrototypeGameEngine
                 .IsAutomaticHandDrawPotionGenerationContinuation(
                     combat, choice))
-            return AutomaticHandDrawChildKindV111.PotionGeneration;
+            return new(
+                AutomaticHandDrawChildKindV111.PotionGeneration,
+                hasTaggedChildChoice);
         if (PrototypeGameEngine
                 .IsAutomaticHandDrawPoolShuffleContinuation(
                     combat, choice))
-            return AutomaticHandDrawChildKindV111.PoolShuffle;
+            return new(
+                AutomaticHandDrawChildKindV111.PoolShuffle,
+                hasTaggedChildChoice);
         if (PrototypeGameEngine
                 .IsAutomaticHandDrawHookCardSelectionContinuation(
                     combat, choice))
-            return AutomaticHandDrawChildKindV111.CardSelection;
+            return new(
+                AutomaticHandDrawChildKindV111.CardSelection,
+                hasTaggedChildChoice);
         if (PrototypeGameEngine
                 .IsAutomaticHandDrawHookCardTransformContinuation(
                     combat, choice))
-            return AutomaticHandDrawChildKindV111.CardTransform;
+            return new(
+                AutomaticHandDrawChildKindV111.CardTransform,
+                hasTaggedChildChoice);
         if (PrototypeGameEngine
                 .IsAutomaticHandDrawHookCardShortlistContinuation(
                     combat, choice))
-            return AutomaticHandDrawChildKindV111.CardShortlist;
+            return new(
+                AutomaticHandDrawChildKindV111.CardShortlist,
+                hasTaggedChildChoice);
         if (PrototypeGameEngine
                 .IsAutomaticHandDrawHookRandomHandCostContinuation(
                     combat, choice))
-            return AutomaticHandDrawChildKindV111.RandomHandCost;
+            return new(
+                AutomaticHandDrawChildKindV111.RandomHandCost,
+                hasTaggedChildChoice);
         if (beforeHandDraw
                 ? PrototypeGameEngine
                     .IsAutomaticBeforeHandDrawHookSemanticDrawContinuation(
@@ -178,22 +209,29 @@ public static class SemanticDrawHookChoiceEngineV111
                 : PrototypeGameEngine
                     .IsAutomaticHandDrawHookSemanticDrawContinuation(
                         combat, choice))
-            return AutomaticHandDrawChildKindV111.SemanticDraw;
-        return AutomaticHandDrawChildKindV111.None;
+            return new(
+                AutomaticHandDrawChildKindV111.SemanticDraw,
+                hasTaggedChildChoice);
+        return new(AutomaticHandDrawChildKindV111.None,
+            hasTaggedChildChoice);
     }
 
     internal static AutomaticHandDrawChildKindV111
         ClassifyAutomaticHandDrawChild(RunState run)
+        => ClassifyAutomaticHandDrawChildBoundary(run).Kind;
+
+    internal static AutomaticHandDrawChildClassificationV111
+        ClassifyAutomaticHandDrawChildBoundary(RunState run)
     {
         ArgumentNullException.ThrowIfNull(run);
         if (run.World?.Combat is not { } combat ||
             combat.PendingChoice is not { } choice)
-            return AutomaticHandDrawChildKindV111.None;
+            return new(AutomaticHandDrawChildKindV111.None, false);
         var cursor = combat.AutomaticPipelineContinuation;
         bool beforeHandDraw = cursor is not null &&
             cursor.Stochastic.IsAtSemanticBeforeHandDraw(
                 cursor.Mechanics);
-        return ClassifyAutomaticHandDrawChild(
+        return ClassifyAutomaticHandDrawChildBoundary(
             combat, choice, beforeHandDraw);
     }
 
@@ -449,11 +487,12 @@ public static class SemanticDrawHookChoiceEngineV111
         if (decision.Event.AutomaticHandDraw &&
             advancedCombat.PendingChoice is { } nextChoice)
         {
-            var childKind = ClassifyAutomaticHandDrawChild(
+            var childClassification = ClassifyAutomaticHandDrawChildBoundary(
                 advancedCombat, nextChoice,
                 decision.Event.BeforeHandDraw);
+            var childKind = childClassification.Kind;
             bool hasTaggedChildChoice =
-                HasTaggedAutomaticChildChoice(nextChoice);
+                childClassification.HasTaggedChildChoice;
             if (hasTaggedChildChoice &&
                 childKind == AutomaticHandDrawChildKindV111.None)
                 throw new NotSupportedException(
