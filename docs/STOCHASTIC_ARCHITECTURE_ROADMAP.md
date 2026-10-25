@@ -6053,8 +6053,17 @@ through `PrototypeGameEngine.Step`, records ordered typed provider requests,
 per-action mechanics boundaries, physical draws, and event/hook transcripts,
 and rejects a final endpoint mismatch. JSONL keeps the existing supplied
 boundary path and uses this replay-validated path when the array is omitted.
-The capture has typed and physical-draw evidence but no provider-independent
-semantic identities; source-hook completeness, Native probability fidelity,
-and broad cross-provider acceptance remain open. Core and CLI Release builds
-passed with zero warnings or errors; `git diff --check` passed. No tests were
-run.
+The capture has replay-validated typed and physical-draw evidence.
+Source-hook completeness, Native probability fidelity, and broad
+cross-provider acceptance remain open. Core and CLI Release builds passed
+with zero warnings or errors; `git diff --check` passed. No tests were run.
+
+**S4 ordinary engine-action semantic identity projection increment
+(2026-10-26):** Prototype engine replay captures now group typed requests by
+action and pass a separate controlled-decision projection to the existing
+scripted Chance Law mapper. When every boundary has a unique supported law
+outcome, the capture adds provider-independent semantic IDs while retaining
+its original Native provider transcript. Unsupported or ambiguous mappings
+keep the typed-only capture. This does not establish Native probability
+fidelity or source-hook completeness. Core and CLI Release builds passed with
+zero warnings or errors; `git diff --check` passed. No tests were run.

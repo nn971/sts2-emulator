@@ -1512,10 +1512,14 @@ requires each action to resolve to exactly one legal action, replays the
 sequence through `PrototypeGameEngine.Step`, records the ordered typed
 provider trace and each action's mechanics, draw-identity, and event/hook
 boundary traces, then checks the resulting run against the supplied endpoint.
-This provides replay-validated typed and physical-draw comparison for ordinary
-engine actions without caller-authored stochastic traces. It does not attach
-provider-independent semantic outcome IDs, and it does not validate source
-hook completeness or Native probability fidelity. Supplying a boundary array
+It then replays the typed choices through the existing scripted semantic
+mapper; when every boundary has a unique supported Chance Law identity, the
+capture also carries provider-independent semantic outcomes. Unsupported or
+ambiguous mappings retain the typed-only capture. This provides
+replay-validated typed and physical-draw comparison for ordinary engine
+actions without caller-authored stochastic traces, with semantic comparison
+available for the supported subset. It does not validate source-hook
+completeness or Native probability fidelity. Supplying a boundary array
 continues to create a caller-supplied capture. `hello` advertises the capture
 and result schemas, operation, inputs, and optional trace behavior. The
 standard-library Python binding exposes the operation as

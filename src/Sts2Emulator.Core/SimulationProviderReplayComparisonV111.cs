@@ -445,6 +445,8 @@ public static class SimulationProviderReplayCaptureProvenanceV111
         "scripted-action-replay-validated-v1";
     public const string PrototypeEngineActionReplayValidated =
         "prototype-engine-action-replay-validated-v1";
+    public const string PrototypeEngineActionSemanticIdentityReplayValidated =
+        "prototype-engine-action-semantic-identity-replay-validated-v1";
     public const string ScriptedActionSemanticIdentityReplayValidated =
         "scripted-action-semantic-identity-replay-validated-v1";
     public const string SemanticNativePolicyReplayValidated =
@@ -513,6 +515,7 @@ public static class SimulationProviderReplayCaptureProvenanceV111
     public static bool HasProviderIndependentSemanticIdentity(
         string? provenance) => provenance is
         SemanticNativePolicySemanticIdentityReplayValidated or
+        PrototypeEngineActionSemanticIdentityReplayValidated or
         ReferenceNatureRunActionSemanticIdentityReplayValidated or
         ReferenceNatureEventChoiceSemanticIdentityReplayValidated or
         ReferenceNatureWholeRunSemanticIdentityReplayValidated or
@@ -990,6 +993,8 @@ public sealed record SimulationProviderReplayCaptureV111(
         var replay = origin.Fork();
         var resolvedActions = new GameAction[actions.Count];
         var actionBoundaries = new RunState[actions.Count];
+        var actionStartStates = new RunState[actions.Count];
+        var actionBoundaryCounts = new int[actions.Count];
         var drawnCardIds = new long[actions.Count][];
         var eventHookTranscripts =
             new NativeEngineJournalEntryV111[actions.Count][];
@@ -1016,11 +1021,17 @@ public sealed record SimulationProviderReplayCaptureV111(
                         " does not identify exactly one legal action.");
 
                 resolvedActions[index] = matches[0];
+                actionStartStates[index] = replay.Fork();
+                var boundaryCountBefore =
+                    providerJournal.OrderedTranscriptCount;
                 using var drawJournal =
                     SemanticDrawIdentityJournalV111.Begin();
                 using var eventJournal = NativeEngineEventJournalV111.Begin();
                 replay = engine.Step(replay, matches[0]).State;
                 actionBoundaries[index] = replay.Fork();
+                actionBoundaryCounts[index] =
+                    providerJournal.OrderedTranscriptCount -
+                    boundaryCountBefore;
                 drawnCardIds[index] = drawJournal.CardInstanceIds;
                 eventHookTranscripts[index] =
                     eventJournal.Entries.ToArray();
@@ -1034,13 +1045,52 @@ public sealed record SimulationProviderReplayCaptureV111(
             throw new InvalidDataException(
                 "Prototype engine action replay differs from the supplied result snapshot.");
 
+        var actionDecisions = new ControlledStochasticDecisionV111[
+            actions.Count][];
+        var boundaryOffset = 0;
+        for (var index = 0; index < actionBoundaryCounts.Length; index++)
+        {
+            var boundaryCount = actionBoundaryCounts[index];
+            actionDecisions[index] = boundaries
+                .Skip(boundaryOffset).Take(boundaryCount)
+                .Select(boundary => new ScriptedRunActionOutcomeV111(boundary)
+                    .ToDecision())
+                .ToArray();
+            boundaryOffset += boundaryCount;
+        }
+        if (boundaryOffset != boundaries.Length)
+            throw new InvalidDataException(
+                "Prototype engine action boundary grouping is incomplete.");
+
+        SimulationProviderReplaySemanticOutcomeV111[]? semanticOutcomes;
+        try
+        {
+            semanticOutcomes = TryCaptureScriptedSemanticOutcomes(
+                origin,
+                resolvedActions.Select((action, index) =>
+                    (Action: action, Decisions: actionDecisions[index]))
+                    .ToArray(),
+                actionStartStates);
+        }
+        catch (Exception exception) when (exception is InvalidDataException or
+            NotSupportedException or InvalidOperationException or
+            ArgumentException)
+        {
+            // Semantic identity is optional here: a failed or incomplete
+            // mapping leaves the already replay-validated typed capture intact.
+            semanticOutcomes = null;
+        }
+
         var capture = Create(origin, resolvedActions, boundaries,
-            expectedResult, semanticOutcomes: null, actionBoundaries,
+            expectedResult, semanticOutcomes, actionBoundaries,
             drawnCardIds, eventHookTranscripts) with
         {
             CaptureProvenance =
-                SimulationProviderReplayCaptureProvenanceV111
-                    .PrototypeEngineActionReplayValidated
+                semanticOutcomes is null
+                    ? SimulationProviderReplayCaptureProvenanceV111
+                        .PrototypeEngineActionReplayValidated
+                    : SimulationProviderReplayCaptureProvenanceV111
+                        .PrototypeEngineActionSemanticIdentityReplayValidated
         };
         capture.Validate();
         return capture;

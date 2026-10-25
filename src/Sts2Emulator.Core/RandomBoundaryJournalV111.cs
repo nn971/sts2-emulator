@@ -588,6 +588,7 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
         Project<RandomGaussianDoubleBoundaryEventV111>("gaussian_double");
     public IReadOnlyList<RandomBoundaryTranscriptEntryV111> OrderedTranscript =>
         _orderedTranscript.ToArray();
+    internal int OrderedTranscriptCount => _orderedTranscript.Count;
 
     /// <summary>
     /// Semantic annotations for sampled weighted intent tickets in this
