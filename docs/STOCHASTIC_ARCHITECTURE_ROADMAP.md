@@ -12,6 +12,14 @@ snapshots without decision positions retain an unindexed prefix and can append
 replay-validated decisions after restore. Static source review and
 `git diff --check` only; no tests or builds were run.
 
+**S4 semantic chance enumeration dispatch (2026-10-25):** The small-support
+semantic enumerator now discovers index-valued events through the shared
+pending-event descriptor and resolves each child through the common mechanics
+dispatcher. It covers automatic enemy-action choices and retains their
+candidate labels as outcome IDs; weighted intent enumeration keeps its
+identity resolver. Static source review and `git diff --check` only; no tests
+or builds were run.
+
 **S4 semantic ReferenceNature transcript ownership (2026-10-25):** The base
 semantic combat session now composes the shared initial/current cursor and
 typed transcript owner through `SimulationStateV111`. Each selected law

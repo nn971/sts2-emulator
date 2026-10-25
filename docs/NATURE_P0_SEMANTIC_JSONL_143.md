@@ -149,7 +149,10 @@ Underdocks weak encounters.
 `SemanticCombat.enumerate_chance(max_outcomes=32)` exposes the optional
 enumeration provider. It returns one independent child session per legal
 outcome for the pending Nature event and leaves the parent handle unchanged.
-The request fails if support is larger than the requested cap; the service
+Index-valued events use the same pending-event precedence and mechanics
+dispatcher as ReferenceNature and Native, including automatic enemy-action
+choices; enemy-action candidate labels are returned as outcome IDs. The
+request fails if support is larger than the requested cap; the service
 supports caps through 256 and never returns a silently truncated list.
 Player-owned `select_cards` actions are not chance events and are not
 enumerated by this method.

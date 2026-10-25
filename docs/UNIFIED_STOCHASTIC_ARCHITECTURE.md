@@ -1194,6 +1194,12 @@ called. Weighted intent IDs and low-level nonsemantic Native requests keep
 their specialized paths. This descriptor is transient and adds no snapshot
 field.
 
+`SemanticNatureEnumeratorV111` uses the same descriptor precedence and shared
+outcome dispatcher for index-valued semantic events, so enumeration resolves
+the same active boundary as ReferenceNature and Native. It includes the
+automatic enemy-action event and preserves its candidate labels as outcome
+IDs; weighted intent enumeration retains its identity-based resolver.
+
 `PrototypeAutomaticPipelineResumeResultV111` is the single owner for
 classifying an ephemeral run-resume boundary. Draw-progress and semantic-choice
 results pass any saved classification through that owner, which checks it
