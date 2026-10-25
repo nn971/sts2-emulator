@@ -203,7 +203,9 @@ public static class SemanticDrawHookChoiceEngineV111
             return new(
                 AutomaticHandDrawChildKindV111.RandomHandCost,
                 hasTaggedChildChoice);
-        if (IsAutomaticHandDrawStratagemSelection(combat, choice))
+        if (PrototypeGameEngine
+                .IsAutomaticHandDrawStratagemSelectionContinuation(
+                    combat, choice, out _, out _))
             return new(
                 AutomaticHandDrawChildKindV111.StratagemSelection,
                 hasTaggedChildChoice);
@@ -307,31 +309,6 @@ public static class SemanticDrawHookChoiceEngineV111
             default:
                 throw new ArgumentOutOfRangeException(nameof(childKind));
         }
-    }
-
-    private static bool IsAutomaticHandDrawStratagemSelection(
-        CombatState combat, PendingCombatChoiceState choice)
-    {
-        if (!combat.IsPlayerTurn ||
-            choice is not
-                { ChoiceId: "select_cards",
-                  SemanticStratagemDrawSelection: false,
-                  AutomaticSemanticStratagemDrawSelection: true,
-                  Selection.SourceZone: PrototypeCardZone.DrawPile } ||
-            !choice.HasValidControlledPayloadShape() ||
-            combat.Stochastic.SemanticDeck is not
-                { Mode: SemanticDeckStateV111.NatureMode, Pending: null } ||
-            combat.AutomaticPipelineContinuation is not { } cursor ||
-            !cursor.Stochastic.TryGetSemanticHandDrawProgress(
-                cursor.Mechanics, out int requested, out int remaining) ||
-            requested <= 0 || remaining <= 0)
-            return false;
-
-        int expectedSelections =
-            PrototypeGameEngine.ExpectedStratagemSelectionCount(combat);
-        return expectedSelections > 0 &&
-            choice.Selection.MinSelections == expectedSelections &&
-            choice.Selection.MaxSelections == expectedSelections;
     }
 
     private static bool HasTaggedAutomaticChildChoice(

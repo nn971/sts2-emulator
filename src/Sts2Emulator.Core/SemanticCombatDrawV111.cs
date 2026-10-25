@@ -1275,8 +1275,14 @@ public static class SemanticCombatDrawEngineV111
         var run = state.Run;
         var combat = run.World?.Combat;
         var choice = combat?.PendingChoice;
+        int automaticRequested = 0;
+        int automaticRemaining = 0;
         bool automaticSelection = state.AutomaticHandDraw &&
-            choice?.AutomaticSemanticStratagemDrawSelection == true;
+            combat is not null && choice is not null &&
+            PrototypeGameEngine
+                .IsAutomaticHandDrawStratagemSelectionContinuation(
+                    combat, choice, out automaticRequested,
+                    out automaticRemaining);
         bool standaloneSelection = !state.AutomaticHandDraw &&
             choice?.SemanticStratagemDrawSelection == true;
         if (combat is not { SemanticDeck:
@@ -1285,10 +1291,8 @@ public static class SemanticCombatDrawEngineV111
         int expectedSelections =
             PrototypeGameEngine.ExpectedStratagemSelectionCount(combat);
         bool automaticProgressMatches = automaticSelection &&
-            PrototypeGameEngine.TryGetSemanticAutomaticHandDrawProgress(
-                combat, out int requested, out int remaining) &&
-            requested == state.RequestedCount &&
-            remaining == state.RemainingCount;
+            automaticRequested == state.RequestedCount &&
+            automaticRemaining == state.RemainingCount;
         if (
             (standaloneSelection && !combat.IsPlayerTurn) ||
             choice is not { ChoiceId: "select_cards" } ||

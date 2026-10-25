@@ -2,7 +2,7 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
-**S4 nested automatic Stratagem continuation increment (2026-10-25):** A semantic `CardDrawn` hook action may now continue into the automatic hand draw's existing Stratagem card-selection event. The child classifier validates its active semantic draw cursor and exact pick count, and frame validation, selection replay, and chronology reuse the existing Stratagem owners. No transcript schema changed. Core and CLI Release builds passed with zero warnings or errors; no tests were run.
+**S4 nested automatic Stratagem continuation increment (2026-10-25):** A semantic `CardDrawn` hook action may now continue into the automatic hand draw's existing Stratagem card-selection event. One shared engine predicate validates the active semantic draw cursor and exact pick count for both child classification and event projection; frame validation, selection replay, and chronology reuse the existing Stratagem owners. No transcript schema changed. Core and CLI Release builds passed with zero warnings or errors; no tests were run.
 
 **S4 draw-progress pipeline-result conversion increment (2026-10-25):** `PrototypeDrawCardsResumeResultV111` now validates its full progress payload and converts its run plus optional boundary through one `ToAutomaticPipelineResumeResult` method. Controlled and semantic hand-draw hook, recycle, cost, and insertion adapters use that owner rather than repeating count validation and pipeline-result construction. Core and CLI Release builds passed with zero warnings or errors; no tests were run.
 

@@ -1302,8 +1302,9 @@ snapshots without random-hand-cost or hand-cost-selection decisions. End-turn
 forwards these pending choices to its active draw frame,
 and pilot history records each external choice once. An automatic Stratagem
 selection opened while replaying a draw-hook action now uses the existing
-card-selection event, resolver, and draw-frame chronology after validating the
-active semantic hand-draw cursor and exact pick count. Other child-choice
+card-selection event, resolver, and draw-frame chronology. The shared engine
+predicate owns its active semantic hand-draw cursor and exact pick-count
+validation for both child classification and event projection. Other child-choice
 kinds and unsupported selection specifications remain open; random attack
 pool fidelity and Native stream parity require reference-mod evidence.
 
