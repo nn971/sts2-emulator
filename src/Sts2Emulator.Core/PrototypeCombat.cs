@@ -3007,18 +3007,17 @@ public sealed partial class PrototypeGameEngine
                         player, combat.Turn);
                 int requestedHandDraw = Math.Max(0,
                     PrototypeContent.Rules.HandSize + handDrawBonus);
-                var drawn = DrawCards(
-                    player,
-                    combat,
-                    requestedHandDraw,
-                    prototypeRng,
-                    fromHandDraw: true,
-                    suspensionPolicy:
-                        PrototypeDrawCardsSuspensionPolicyV111
-                            .AutomaticHandDraw(combat),
-                    automaticHandDrawStage: true);
+                var drawnSegment = ExecuteDrawCardsSegment(
+                    state, prototypeRng, rng => DrawCards(
+                        player, combat, requestedHandDraw, rng,
+                        fromHandDraw: true,
+                        suspensionPolicy:
+                            PrototypeDrawCardsSuspensionPolicyV111
+                                .AutomaticHandDraw(combat),
+                        automaticHandDrawStage: true));
                 return ResumeAutomaticHandDrawSourceResult(
-                    state, drawn, requestedHandDraw, prototypeRng,
+                    drawnSegment.Run, drawnSegment.Drawn,
+                    requestedHandDraw,
                     handDrawResultContext);
             }
 
@@ -14464,18 +14463,15 @@ public sealed partial class PrototypeGameEngine
             };
             return ResumeAutomaticPipelineContinuation(resumedState);
         }
-        var drawn = DrawCards(
-            state.Player, combat, draw.RemainingCount, prototypeRng,
-            draw.FromHandDraw, eventDepth: draw.EventDepth,
-            suspensionPolicy:
-                PrototypeDrawCardsSuspensionPolicyV111
-                    .SemanticDrawCards(effectDraw: true));
+        var drawnSegment = ExecuteDrawCardsSegment(
+            state, prototypeRng, rng => DrawCards(
+                state.Player, combat, draw.RemainingCount, rng,
+                draw.FromHandDraw, eventDepth: draw.EventDepth,
+                suspensionPolicy:
+                    PrototypeDrawCardsSuspensionPolicyV111
+                        .SemanticDrawCards(effectDraw: true)));
         var continued = ContinueControlledSemanticEffectDraw(
-            state with
-            {
-                Stochastic = RunStochasticStateV111.WithPrototypeRng(
-                    state.Stochastic, prototypeRng)
-            }, drawn, draw, continuation);
+            drawnSegment.Run, drawnSegment.Drawn, draw, continuation);
         return ResumeAutomaticPipelineContinuation(continued);
     }
 

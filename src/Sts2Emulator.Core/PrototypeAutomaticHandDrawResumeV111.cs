@@ -400,12 +400,10 @@ public sealed partial class PrototypeGameEngine
         RunState checkpoint,
         PrototypeDrawCardsResult drawn,
         int requestedCount,
-        RngBundle prototypeRng,
         AutomaticHandDrawSourceResultContextV111 context)
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
         ArgumentNullException.ThrowIfNull(drawn);
-        ArgumentNullException.ThrowIfNull(prototypeRng);
         if (requestedCount < 0)
             throw new ArgumentOutOfRangeException(nameof(requestedCount));
         if (!Enum.IsDefined(context))
@@ -417,18 +415,13 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidDataException(
                 "Semantic hand-draw result context has no active provider.");
 
-        var rngCheckpoint = checkpoint with
-        {
-            Stochastic = RunStochasticStateV111.WithPrototypeRng(
-                checkpoint.Stochastic, prototypeRng)
-        };
         var providerResume = ResumeAutomaticHandDrawBoundary(
-            rngCheckpoint, drawn, requestedCount,
+            checkpoint, drawn, requestedCount,
             AutomaticHandDrawResumeContextV111.SourceStageBoundary);
         if (providerResume is { } resumed)
             return resumed.Run;
 
-        var result = PublishDrawCardsResult(rngCheckpoint, drawn);
+        var result = PublishDrawCardsResult(checkpoint, drawn);
         if (drawn.BoundaryKind ==
             PrototypeDrawCardsBoundaryKind.ShuffleSelection)
         {
@@ -438,6 +431,7 @@ public sealed partial class PrototypeGameEngine
             var pendingDraw =
                 CreateHandDrawStratagemResumeOperations(
                     combat, drawn.RemainingCount);
+            var prototypeRng = result.Stochastic.PrototypeRng;
             var continued = ResolveOperations(
                 result.Player, combat, pendingDraw, prototypeRng,
                 moveSourceCardOnCompletion: false);

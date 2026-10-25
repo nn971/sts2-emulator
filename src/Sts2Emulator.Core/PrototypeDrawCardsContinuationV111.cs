@@ -575,7 +575,23 @@ public sealed partial class PrototypeGameEngine
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
         ArgumentNullException.ThrowIfNull(drawSegment);
-        var prototypeRng = checkpoint.Stochastic.PrototypeRng;
+        return ExecuteDrawCardsSegment(
+            checkpoint, checkpoint.Stochastic.PrototypeRng, drawSegment);
+    }
+
+    /// <summary>
+    /// Use a caller-owned local projection when earlier operations in the same
+    /// source transition have already advanced the prototype provider.
+    /// </summary>
+    private static (RunState Run, PrototypeDrawCardsResult Drawn)
+        ExecuteDrawCardsSegment(
+        RunState checkpoint,
+        RngBundle prototypeRng,
+        Func<RngBundle, PrototypeDrawCardsResult> drawSegment)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        ArgumentNullException.ThrowIfNull(prototypeRng);
+        ArgumentNullException.ThrowIfNull(drawSegment);
         var drawn = drawSegment(prototypeRng);
         var run = checkpoint with
         {

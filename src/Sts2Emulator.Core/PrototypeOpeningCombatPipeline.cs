@@ -241,15 +241,20 @@ public sealed partial class PrototypeGameEngine
             var card = RequireCombatCard(combat, id);
             return !card.IsTemporary && IsInnate(card);
         });
-        var prototypeRng = state.Stochastic.PrototypeRng;
         var suspensionPolicy = ControlledChanceGuardV111.Active &&
             combat.Stochastic.SemanticDeck is
                 { Mode: SemanticDeckStateV111.NatureMode }
             ? PrototypeDrawCardsSuspensionPolicyV111.SemanticDrawCards()
             : PrototypeDrawCardsSuspensionPolicyV111.None;
-        var drawn = DrawCards(player, combat, Math.Max(0, target - innateAlreadyDealt),
-            prototypeRng, fromHandDraw: true,
-            suspensionPolicy: suspensionPolicy);
+        var drawnSegment = ExecuteDrawCardsSegment(
+            state, prototypeRng => DrawCards(
+                player, combat,
+                Math.Max(0, target - innateAlreadyDealt), prototypeRng,
+                fromHandDraw: true,
+                suspensionPolicy: suspensionPolicy));
+        state = drawnSegment.Run;
+        var prototypeRng = state.Stochastic.PrototypeRng;
+        var drawn = drawnSegment.Drawn;
         player = drawn.Player;
         combat = drawn.Combat;
         if (drawn.BoundaryKind ==
@@ -292,12 +297,6 @@ public sealed partial class PrototypeGameEngine
                     PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice &&
                 drawn.RemainingCount == 0;
             if (!finalCardHook)
-            {
-                state = state with
-                {
-                    Stochastic = RunStochasticStateV111.WithPrototypeRng(
-                        state.Stochastic, prototypeRng)
-                };
                 return ResolveControlledSemanticDrawResult(
                     state, drawn, drawFrame, continuation,
                     automaticHandDrawRequested: null,
@@ -307,7 +306,6 @@ public sealed partial class PrototypeGameEngine
                             PrototypeDrawCardsBoundaryKind.AfterShuffleInsertions
                             ? "after_shuffle_insertion"
                             : "opening_draw_resume").Run;
-            }
         }
         else if (drawn.BoundaryKind !=
             PrototypeDrawCardsBoundaryKind.Complete)
