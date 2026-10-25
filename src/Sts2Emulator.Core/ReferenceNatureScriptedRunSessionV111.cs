@@ -595,6 +595,12 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
                 ReferenceNatureEndlessConveyorSessionV111.SessionSiteIds
                     .Contains(indexRequest.SiteId, StringComparer.Ordinal))
                 return QueryNativeEventContextIndex(active, indexRequest);
+            if (ReferenceNatureNativeEventShuffleSessionV111
+                .NativeEventShuffleSessionSiteIds
+                .Contains(indexRequest.SiteId, StringComparer.Ordinal) &&
+                QueryNativeEventShuffle(active, indexRequest) is
+                    { } eventShuffleLaw)
+                return eventShuffleLaw;
             if (indexRequest.SiteId == StochasticSiteRegistryV111
                     .NativeGloryTrialDamageSiteId)
             {
@@ -801,6 +807,71 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
             CanonicalJson.Sha256(request))
             throw new InvalidDataException(
                 "Native Event-context request differs from its conditioned source law.");
+        return law;
+    }
+
+    private static ChanceLawV111? QueryNativeEventShuffle(
+        ScriptedRunActionSessionV111 active,
+        RandomIndexRequestV111 request)
+    {
+        request.Validate();
+        var requiresCandidateIds = request.SiteId == PrototypeNativeFakeMerchant
+                .RelicOfferShuffleSiteId ||
+            request.SiteId == PrototypeNativeGloryEvents
+                .BattlewornUpgradeShuffleSiteId;
+        var candidateIds = requiresCandidateIds
+            ? active.PendingCandidateLabels
+            : null;
+        if (requiresCandidateIds && candidateIds is not { Length: > 0 })
+            return null;
+        var actionId = active.Action.Kind == "event_choice"
+            ? active.Action.ReadPayload<EventChoicePayload>().ChoiceId
+            : PrototypeAiEnvironment.StableActionId(active.Action);
+        var plan = NativeEventShufflePlanBuilderV111.Build(
+            active.Origin, request.SiteId, actionId, candidateIds);
+        if (plan.CandidateCount <= 0)
+            return null;
+        if (plan.IsCombatEndIndex)
+        {
+            var combatEndLaw = ReferenceNatureNativeEventShuffleSessionV111
+                .QueryCombatEndLawForCapture(plan, request);
+            RequireIndexRequestMatchesLaw(
+                request, combatEndLaw, "Native event shuffle");
+            return combatEndLaw;
+        }
+
+        int ordinal;
+        int[] priorIndices;
+        if (plan.IsRepyChestOffer && request.SiteId ==
+            PrototypeNativeHiveEvents.WarHistorianRepyPotionOfferSiteId)
+        {
+            priorIndices = active.Decisions
+                .Where(decision => decision.IndexDecision?.Request.SiteId is
+                    var siteId && (siteId == plan.SiteId ||
+                        siteId == PrototypeNativeHiveEvents
+                            .WarHistorianRepyPotionOfferSiteId))
+                .Select(decision => decision.IndexDecision!.SelectedIndex)
+                .ToArray();
+            var earlierPotionOffers = active.Decisions.Count(decision =>
+                decision.IndexDecision?.Request.SiteId ==
+                PrototypeNativeHiveEvents.WarHistorianRepyPotionOfferSiteId);
+            ordinal = checked(plan.SwapCount + earlierPotionOffers);
+        }
+        else
+        {
+            priorIndices = active.Decisions
+                .Where(decision => decision.IndexDecision?.Request.SiteId ==
+                    request.SiteId)
+                .Select(decision => decision.IndexDecision!.SelectedIndex)
+                .ToArray();
+            ordinal = priorIndices.Length;
+        }
+        var law = ReferenceNatureNativeEventShuffleSessionV111
+            .QueryBoundaryLawForCapture(
+                plan, active.Origin, ordinal, priorIndices, actionId,
+                plan.OrderedCandidateIds);
+        RequireIndexRequestMatchesLaw(request, law,
+            "Native event shuffle");
         return law;
     }
 

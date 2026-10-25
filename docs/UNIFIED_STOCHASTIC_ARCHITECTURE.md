@@ -435,6 +435,11 @@ existing session law owners. Their saved action, current source pool, and
 ordered typed prefix therefore condition the same laws used by the dedicated
 sessions.
 
+Registered whole-run Native event shuffles also use the event-shuffle plan and
+its saved swap or Repy offer prefix. Requests are matched against the rebuilt
+source law; Fake Merchant and Battleworn keep the generic bounded law when
+their ordered candidate identities are not available in the action frame.
+
 Whole-run ReferenceNature resolution now sends index, unit-float, and
 Gaussian-integer law outcomes through `ReferenceNatureChanceLawDecisionV111`.
 That shared adapter preserves candidate labels and converts mapped semantic
