@@ -1724,9 +1724,10 @@ The engine's semantic automatic-hand-draw owner now has one handoff for
 draw-hook results and nested draw or drawn-cost children. The hook and child
 adapters pass the source and resumed run plus the classified boundary to that
 owner, which validates the source request and publishes the resulting active,
-pre-draw, or completed cursor. The pre-draw-to-active count transition and
-active count preservation therefore use the same check. Child-specific
-boundary validation remains with the draw-hook and choice owners.
+pre-draw, or completed cursor. The stochastic state owner checks the complete
+source-to-result progress transition, including saved requested/remaining
+counts, pre-draw advance, and the completed receipt. Child-specific boundary
+validation remains with the draw-hook and choice owners.
 
 Runtime controlled hand-draw remainder reads, semantic draw-entry count checks, semantic progress-presence checks, and requested-count reconciliation use the automatic-pipeline stochastic owner, which validates the active `DrawPlayerHand` cursor before projecting requested/remaining counts or matching a caller's count to saved progress. When older saved progress omits its requested count, the caller's validated count remains authoritative. The no-cursor overload remains only for the flattened compatibility snapshot projection.
 

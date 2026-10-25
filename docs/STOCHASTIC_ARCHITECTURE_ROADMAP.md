@@ -8,6 +8,8 @@
 
 **S4 pending child-choice payload census increment (2026-10-26):** `PendingCombatChoiceState` now owns the typed controlled-payload mask used both by payload-shape validation and automatic draw-hook child classification. New payload fields therefore enter the tagged-child failure path through the same field census, while the draw owner still requires an explicit child-kind and resume policy before supporting them. Core Release build and `git diff --check` passed; no tests were run.
 
+**S4 semantic hand-draw progress transition ownership increment (2026-10-26):** `PrototypeAutomaticPipelineStochasticStateV111` now validates semantic hand-draw progress from the source cursor to its resumed active, pre-draw, or completed state. It owns the request/count consistency checks used by nested-choice resumption; pending-choice validation and the actual resume remain with their existing owners. Core Release build and `git diff --check` passed; no tests were run.
+
 **S4 modeled draw-hook and selection census (2026-10-26):** A source scan of
 Core found three `CardDrawn` subscribers (Automation, Corrosive Wave, and
 Speedster), all deterministic, and found that each in-tree `ChooseCards`

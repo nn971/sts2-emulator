@@ -378,6 +378,91 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
         return progress.RequestedCount ?? requestedCount;
     }
 
+    /// <summary>
+    /// Validates a semantic hand-draw continuation transition against its
+    /// source progress and any count projection carried by the facade.
+    /// </summary>
+    public void ValidateSemanticHandDrawProgressTransitionFrom(
+        PrototypeAutomaticPipelineStochasticStateV111 source,
+        PrototypeAutomaticPipelineMechanicsStateV111 sourceMechanics,
+        PrototypeAutomaticPipelineMechanicsStateV111 mechanics,
+        int? expectedSourceRequested,
+        int? expectedSourceRemaining)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(sourceMechanics);
+        ArgumentNullException.ThrowIfNull(mechanics);
+
+        bool sourceWasBeforeHandDraw =
+            source.CompletedSemanticHandDrawRequested is null &&
+            source.IsAtSemanticBeforeHandDraw(sourceMechanics);
+        int? expectedRequested;
+        int? expectedRemaining = null;
+        if (sourceWasBeforeHandDraw)
+        {
+            expectedRequested = 0;
+            expectedRemaining = 0;
+        }
+        else if (source.TryGetSemanticHandDrawProgress(
+                     sourceMechanics, out int sourceRequested,
+                     out int sourceRemaining))
+        {
+            expectedRequested = sourceRequested;
+            expectedRemaining = sourceRemaining;
+        }
+        else if (!source.HasSavedHandDrawProgress() &&
+                 sourceMechanics.IsImmediatelyAfterStep(
+                     PrototypeAutomaticStepKind.DrawPlayerHand) &&
+                 source.CompletedSemanticHandDrawRequested is
+                     { } completedSourceRequested)
+            expectedRequested = completedSourceRequested;
+        else
+            throw new InvalidDataException(
+                "Semantic hand-draw source has no valid continuation progress.");
+
+        if ((expectedSourceRequested is { } requestedInput &&
+             requestedInput != expectedRequested) ||
+            (expectedSourceRemaining is { } remainingInput &&
+             remainingInput != expectedRemaining))
+            throw new InvalidDataException(
+                "Semantic hand-draw source progress changed before resume.");
+
+        if (TryGetSemanticHandDrawProgress(
+                mechanics, out int requested, out int remaining))
+        {
+            if (!sourceWasBeforeHandDraw &&
+                (requested != expectedRequested ||
+                 remaining != expectedRemaining))
+                throw new InvalidDataException(
+                    "Semantic hand-draw continuation changed its active progress.");
+            return;
+        }
+
+        if (CompletedSemanticHandDrawRequested is null &&
+            IsAtSemanticBeforeHandDraw(mechanics))
+        {
+            if (!sourceWasBeforeHandDraw)
+                throw new InvalidDataException(
+                    "Semantic hand draw moved back before its source stage.");
+            return;
+        }
+
+        if (!HasSavedHandDrawProgress() &&
+            mechanics.IsImmediatelyAfterStep(
+                PrototypeAutomaticStepKind.DrawPlayerHand) &&
+            CompletedSemanticHandDrawRequested is { } completedRequested)
+        {
+            if (!sourceWasBeforeHandDraw &&
+                completedRequested != expectedRequested)
+                throw new InvalidDataException(
+                    "Semantic hand-draw completion changed its request count.");
+            return;
+        }
+
+        throw new InvalidDataException(
+            "Semantic hand-draw continuation lost its pipeline progress.");
+    }
+
     /// <summary>Reads the active legacy controlled-draw count at the saved
     /// pipeline cursor. Runtime continuations use this query so the flattened
     /// counter remains only a snapshot projection.</summary>
