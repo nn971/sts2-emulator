@@ -3,8 +3,11 @@ using System.Text.Json.Serialization;
 
 namespace Sts2Emulator.Core;
 
-internal sealed record SemanticCombatDrawPendingChildEventsV111(
+internal sealed record SemanticCombatDrawPendingEventsV111(
     SemanticDrawHookChoiceEngineV111.AutomaticHandDrawChildKindV111 ChildKind,
+    SemanticDeckEventV111? PendingDraw,
+    SemanticRandomPileCardEventV111? RandomPileCard,
+    RandomIndexRequestV111? Cost,
     SemanticDrawHookChoiceEventV111? DrawHookChoice,
     SemanticCardSelectionEventV111? StratagemSelection,
     SemanticTargetEventV111? Target,
@@ -181,23 +184,24 @@ public sealed record SemanticCombatDrawV111(
     {
         get
         {
-            if (Pending is not null || RandomPileCardPending is not null)
-                return false;
-            var childEvents = SemanticCombatDrawEngineV111
-                .DescribePendingChildEvents(this);
-            return childEvents.DrawInsertion is null &&
-                childEvents.GeneratedCard is null &&
-                childEvents.PotionGeneration is null &&
-                childEvents.PoolShuffle is null &&
-                childEvents.CardSelection is null &&
-                childEvents.CardTransform is null &&
-                childEvents.CardShortlist is null &&
-                childEvents.RandomHandCost is null &&
-                childEvents.HandCostSelection is null &&
-                childEvents.StratagemSelection is null &&
-                childEvents.DrawHookChoice is null &&
-                childEvents.Target is null &&
-                CostPending is null && RemainingCount == 0;
+            var pending = SemanticCombatDrawEngineV111
+                .DescribePendingEvents(this);
+            return pending.PendingDraw is null &&
+                pending.RandomPileCard is null &&
+                pending.Cost is null &&
+                pending.DrawHookChoice is null &&
+                pending.StratagemSelection is null &&
+                pending.Target is null &&
+                pending.DrawInsertion is null &&
+                pending.GeneratedCard is null &&
+                pending.PotionGeneration is null &&
+                pending.PoolShuffle is null &&
+                pending.CardSelection is null &&
+                pending.CardTransform is null &&
+                pending.CardShortlist is null &&
+                pending.RandomHandCost is null &&
+                pending.HandCostSelection is null &&
+                RemainingCount == 0;
         }
     }
     // The provider's transcript survives across turns. Only decisions
@@ -342,14 +346,14 @@ public sealed record SemanticCombatDrawV111(
             PrototypeMechanicsContinuationKindV111.SemanticCombatDraw);
         this.Stochastic.Validate();
         this.Stochastic.ValidateBoundaryTranscript(this.Transcript.Length);
-        var randomPileCardPending = this.RandomPileCardPending;
         var cursorCombat = this.Run.World?.Combat;
         var pipelineCursor = cursorCombat?.AutomaticPipelineContinuation;
         bool semanticBeforeHandDrawProgress = pipelineCursor is not null &&
             pipelineCursor.Stochastic.IsAtSemanticBeforeHandDraw(
                 pipelineCursor.Mechanics);
         var pendingChildEvents = SemanticCombatDrawEngineV111
-            .DescribePendingChildEvents(this);
+            .DescribePendingEvents(this);
+        var randomPileCardPending = pendingChildEvents.RandomPileCard;
         var classifiedAutomaticHandDrawChildKind =
             pendingChildEvents.ChildKind;
         var automaticHandDrawChildKind = this.AutomaticHandDraw
@@ -986,14 +990,17 @@ public static class SemanticCombatDrawEngineV111
         return resumed with { Stochastic = stochastic };
     }
 
-    internal static SemanticCombatDrawPendingChildEventsV111
-        DescribePendingChildEvents(SemanticCombatDrawV111 state)
+    internal static SemanticCombatDrawPendingEventsV111
+        DescribePendingEvents(SemanticCombatDrawV111 state)
     {
         ArgumentNullException.ThrowIfNull(state);
         var childKind = SemanticDrawHookChoiceEngineV111
             .ClassifyAutomaticHandDrawChild(state.Run);
-        return new SemanticCombatDrawPendingChildEventsV111(
+        return new SemanticCombatDrawPendingEventsV111(
             childKind,
+            state.Pending,
+            SemanticRandomPileCardEngineV111.DescribePending(state.Run),
+            state.CostPending,
             SemanticDrawHookChoiceEngineV111.DescribePending(state.Run),
             DescribePendingStratagemSelection(state),
             state.TargetPending,

@@ -1275,18 +1275,15 @@ also passes its single child classification to pending-event discovery instead
 of reclassifying once per event descriptor. Hook replay carries tagged-child
 presence in that same classification, preserving fail-closed handling of
 unsupported tagged choices. Standalone descriptor calls retain their
-self-classifying behavior. The draw frame's transient pending-child projection
-provides the same classified child events to `Validate` and `AtBoundary`; the
-serialized frame still owns the existing typed transcripts. The projection
-also carries draw-hook, Stratagem, and target events, so validation and
-boundary checks reuse those events from the same frame. End-turn validation
-reuses its projected hand-draw frame and delegates active nested-choice boundary
-checks to it, while retaining pipeline-choice checks outside active draw
-ownership. No schema changed.
-
-The selected-index end-turn dispatcher also captures its forked hand-draw
-frame once and passes it to event descriptions and active draw branches.
-Choice-specific resolvers retain their support checks and resume ownership.
+self-classifying behavior. The draw frame's transient pending-event projection
+holds its semantic draw, random pile-card, cost, draw-hook, Stratagem, target,
+and typed nested-choice events together with one classified child kind.
+`Validate` and `AtBoundary` reuse that projection. End-turn validation and its
+selected-index dispatcher each capture one hand-draw frame; the dispatcher
+passes its frame's projection to active draw branches. Active nested-choice
+boundary checks stay with the draw frame, while pipeline-choice checks remain
+at end-turn boundaries outside active draw ownership. Typed resolvers retain
+their support checks and resume ownership. No schema changed.
 
 Supported random autoplay and replay-card shortlist children opened by a
 draw-hook action now use the existing card-shortlist event and decision owner

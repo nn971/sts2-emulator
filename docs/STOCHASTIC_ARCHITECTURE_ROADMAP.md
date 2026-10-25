@@ -138,6 +138,13 @@ event descriptions and active draw branches. Typed resolvers retain their
 choice-specific checks and resume ownership. No schema changed. Static source
 review and `git diff --check` only; no tests or builds were run.
 
+**S4 shared draw pending-event projection (2026-10-25):** The draw owner now
+projects its pending semantic draw, random pile card, cost, hook, Stratagem,
+target, and typed nested choices together with the classified child kind.
+Validation, `AtBoundary`, and end-turn selected-index dispatch consume this
+projection. No schema changed. Static source review and `git diff --check`
+only; no tests or builds were run.
+
 **S5 shared candidate-label binding validation (2026-10-25):** Controlled
 event-choice, run-action, and playable-combat Python facades now use one
 validator for non-empty labels and membership in the saved pending support.
