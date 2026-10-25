@@ -67,6 +67,14 @@ typed prefix before it claims semantic completeness. Core and CLI Release
 builds passed with zero warnings or errors; `git diff --check` passed. No
 tests were added or run.
 
+**S4 Trial, Trash Heap, and Tablet semantic capture increment (2026-10-26):**
+JSONL provider replay now captures these completed controlled choices with
+their typed boundaries and provider-independent identities for the selected
+case, fixed-pool reward, or physical card. Each dedicated factory restores the
+session, re-queries its law, and validates the semantic selection before it
+claims completeness. Core and CLI Release builds passed with zero warnings or
+errors; `git diff --check` passed. No tests were added or run.
+
 **S4 whole-run six-primitive continuation increment (2026-10-25):** The
 ReferenceNature whole-run session now accepts caller-supplied, replay-validated
 transcript entries for all six typed random operations alongside its existing

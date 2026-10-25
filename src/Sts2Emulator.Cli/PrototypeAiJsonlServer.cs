@@ -10632,7 +10632,7 @@ internal static class PrototypeAiJsonlServer
                                     return referenceNatureTrialStates
                                         .TryGetValue(handle, out var trial)
                                         ? SimulationProviderReplayCaptureV111
-                                            .FromReferenceNatureControlledActionSession(
+                                            .FromReferenceNatureTrialSession(
                                                 trial)
                                         : throw new InvalidOperationException(
                                             "Unknown ReferenceNature Trial handle: " +
@@ -10641,7 +10641,7 @@ internal static class PrototypeAiJsonlServer
                                     return referenceNatureTrashHeapStates
                                         .TryGetValue(handle, out var trashHeap)
                                         ? SimulationProviderReplayCaptureV111
-                                            .FromReferenceNatureControlledActionSession(
+                                            .FromReferenceNatureTrashHeapSession(
                                                 trashHeap)
                                         : throw new InvalidOperationException(
                                             "Unknown ReferenceNature Trash Heap handle: " +
@@ -10650,7 +10650,7 @@ internal static class PrototypeAiJsonlServer
                                     return referenceNatureTabletOfTruthStates
                                         .TryGetValue(handle, out var tabletOfTruth)
                                         ? SimulationProviderReplayCaptureV111
-                                            .FromReferenceNatureControlledActionSession(
+                                            .FromReferenceNatureTabletOfTruthSession(
                                                 tabletOfTruth)
                                         : throw new InvalidOperationException(
                                             "Unknown ReferenceNature Tablet of Truth handle: " +
