@@ -354,6 +354,30 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
         return true;
     }
 
+    /// <summary>
+    /// Reconciles the caller's requested count with the active tagged
+    /// DrawPlayerHand progress. A saved older payload may omit the count, so
+    /// the caller's value remains authoritative in that case.
+    /// </summary>
+    public int? ResolveAutomaticHandDrawRequestedCount(
+        PrototypeAutomaticPipelineMechanicsStateV111 mechanics,
+        int? requestedCount)
+    {
+        ArgumentNullException.ThrowIfNull(mechanics);
+        if (requestedCount is <= 0)
+            throw new ArgumentOutOfRangeException(nameof(requestedCount));
+        if (!TryGetActiveAutomaticHandDrawProgress(
+                mechanics, out var progress))
+            return requestedCount;
+
+        if (progress.RequestedCount is { } savedRequested &&
+            requestedCount is { } actualRequested &&
+            actualRequested != savedRequested)
+            throw new InvalidDataException(
+                "Automatic hand-draw continuation changed its requested count.");
+        return progress.RequestedCount ?? requestedCount;
+    }
+
     /// <summary>Reads the active legacy controlled-draw count at the saved
     /// pipeline cursor. Runtime continuations use this query so the flattened
     /// counter remains only a snapshot projection.</summary>

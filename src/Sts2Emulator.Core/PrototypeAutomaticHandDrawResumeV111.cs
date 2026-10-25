@@ -44,20 +44,15 @@ public sealed partial class PrototypeGameEngine
         CombatState combat, int? requestedCount)
     {
         ArgumentNullException.ThrowIfNull(combat);
-        if (requestedCount is <= 0)
-            throw new ArgumentOutOfRangeException(nameof(requestedCount));
         var cursor = combat.AutomaticPipelineContinuation;
-        if (cursor is null ||
-            !cursor.Stochastic.TryGetActiveAutomaticHandDrawProgress(
-                cursor.Mechanics, out var progress))
+        if (cursor is null)
+        {
+            if (requestedCount is <= 0)
+                throw new ArgumentOutOfRangeException(nameof(requestedCount));
             return requestedCount;
-
-        if (progress.RequestedCount is { } savedRequested &&
-            requestedCount is { } actualRequested &&
-            actualRequested != savedRequested)
-            throw new InvalidDataException(
-                "Automatic hand-draw continuation changed its requested count.");
-        return progress.RequestedCount ?? requestedCount;
+        }
+        return cursor.Stochastic.ResolveAutomaticHandDrawRequestedCount(
+            cursor.Mechanics, requestedCount);
     }
 
     /// <summary>
