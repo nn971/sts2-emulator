@@ -5692,3 +5692,12 @@ provided ID against that saved support before submission, while older servers
 without the additive field keep their existing route. Native-policy pending
 responses remain unchanged. Static source review and `git diff --check` passed;
 the CLI Release build passed with zero warnings and errors. No tests were run.
+
+**S2 whole-run Native Event-entry law increment (2026-10-26):** Ordinary
+ReferenceNature run actions now route Stone of All Time potion-slot and
+Future of Potions card-type requests through the existing Event-entry law
+owner. Replay derives the event branch from the registered site and checks the
+legal Event-node action plus exact stream, owner, ordinal, operation, and
+ordered support, including Native-regional legacy requests. Core Release build
+passed with zero warnings and errors; `git diff --check` passed. No tests were
+run.

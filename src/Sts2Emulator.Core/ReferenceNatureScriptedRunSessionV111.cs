@@ -536,6 +536,10 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
             if (indexRequest.SiteId == ChanceLawEngineV111
                     .NativeEventGoldIndexSiteId)
                 return QueryNativeEventGoldIndex(active, indexRequest);
+            if (indexRequest.SiteId is
+                ChanceLawEngineV111.NativeStoneOfAllTimePotionSlotSiteId or
+                ChanceLawEngineV111.NativeFutureOfPotionsCardTypeSiteId)
+                return QueryNativeEventEntryIndex(active, indexRequest);
             if (indexRequest.SiteId == StochasticSiteRegistryV111
                     .NativeGloryTrialDamageSiteId)
             {
@@ -597,6 +601,39 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
                 gaussianRequest))
             return ChanceLawEngineV111.QueryNativeMapRequest(request);
         return null;
+    }
+
+    private static ChanceLawV111 QueryNativeEventEntryIndex(
+        ScriptedRunActionSessionV111 active,
+        RandomIndexRequestV111 request)
+    {
+        request.Validate();
+        var eventId = request.SiteId switch
+        {
+            var siteId when siteId == ChanceLawEngineV111
+                .NativeStoneOfAllTimePotionSlotSiteId =>
+                PrototypeNativeStoneOfAllTime.EventId,
+            var siteId when siteId == ChanceLawEngineV111
+                .NativeFutureOfPotionsCardTypeSiteId =>
+                PrototypeNativeFutureOfPotions.EventId,
+            _ => throw new InvalidDataException(
+                "Native Event-entry request has no declared event branch.")
+        };
+        var law = ReferenceNatureNativeEventGoldSessionV111
+            .QueryLawForCapture(
+                active.Origin,
+                PrototypeAiEnvironment.StableActionId(active.Action),
+                eventId,
+                new ControlledStochasticRequestV111(request));
+        var expected = new RandomIndexRequestV111(
+            law.SiteId, request.StreamId, law.OwnerId, law.Ordinal,
+            Enumerable.Range(0, law.Outcomes.Length).ToArray(),
+            OperationKind: law.OperationKind);
+        if (CanonicalJson.Sha256(expected) !=
+            CanonicalJson.Sha256(request))
+            throw new InvalidDataException(
+                "Native Event-entry request differs from its source law.");
+        return law;
     }
 
     private static ChanceLawV111 QueryNativeCombatGold(

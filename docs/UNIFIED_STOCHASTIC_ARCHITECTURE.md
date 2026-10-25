@@ -403,6 +403,12 @@ degenerate `no_effect` law. Since the source discards the bounded ticket,
 replay supplies a stable representative only to resume that typed request;
 the Nature outcome remains the single semantic `no_effect` result.
 
+Whole-run Event-node entry also routes Stone of All Time potion-slot and
+Future of Potions card-type requests through the existing event-entry laws.
+The declared event branch and legal map-node action bind each law, while
+replay checks the exact stream, owner, ordinal, operation, and ordered index
+support, including captured Native-regional legacy requests.
+
 Whole-run ReferenceNature resolution now sends index, unit-float, and
 Gaussian-integer law outcomes through `ReferenceNatureChanceLawDecisionV111`.
 That shared adapter preserves candidate labels and converts mapped semantic
