@@ -301,7 +301,8 @@ public static class SemanticCardSelectionEngineV111
         if (automaticStratagem)
         {
             if (choice!.SemanticStratagemDrawSelection ||
-                !PrototypeGameEngine.IsSemanticAutomaticHandDraw(combat!))
+                !PrototypeGameEngine
+                    .HasSemanticAutomaticHandDrawProgress(combat!))
                 throw new InvalidDataException(
                     "Automatic Stratagem draw cursor is inconsistent.");
         }
@@ -426,7 +427,8 @@ public static class SemanticCardSelectionEngineV111
             if (choice.AutomaticSemanticStratagemDrawSelection)
             {
                 if (advanced.World?.Combat is not { PendingChoice: null } after ||
-                    !PrototypeGameEngine.IsSemanticAutomaticHandDraw(after))
+                    !PrototypeGameEngine
+                        .HasSemanticAutomaticHandDrawProgress(after))
                     throw new InvalidDataException(
                         "Automatic Stratagem selection lost its draw cursor.");
                 PrototypeStateInvariants.Validate(advanced);
@@ -513,7 +515,8 @@ public static class SemanticCardSelectionEngineV111
                 true)
             {
                 if (to?.PendingChoice is not null ||
-                    !PrototypeGameEngine.IsSemanticAutomaticHandDraw(to!))
+                    !PrototypeGameEngine
+                        .HasSemanticAutomaticHandDrawProgress(to!))
                     throw new InvalidDataException(
                         "Saved automatic Stratagem selection lost its draw cursor.");
                 PrototypeStateInvariants.Validate(state.Run);

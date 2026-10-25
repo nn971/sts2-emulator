@@ -28,6 +28,13 @@ public sealed partial class PrototypeGameEngine
                 cursor.Mechanics, out requested, out remaining);
     }
 
+    /// <summary>Check whether the shared DrawPlayerHand cursor carries
+    /// semantic requested/remaining progress.</summary>
+    internal static bool HasSemanticAutomaticHandDrawProgress(
+        CombatState combat) =>
+        TryGetSemanticAutomaticHandDrawProgress(
+            combat, out _, out _);
+
     /// <summary>
     /// Commit provider progress at the ordinary DrawPlayerHand checkpoint.
     /// This is the shared write boundary for legacy and semantic adapters:

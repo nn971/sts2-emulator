@@ -234,7 +234,8 @@ public sealed partial class PrototypeGameEngine
                 (!semanticDraw.AutomaticSemanticHandDrawSegment ||
                  (semanticDraw.FromHandDraw &&
                   semanticDraw.EventDepth == 0 &&
-                  PrototypeGameEngine.IsSemanticAutomaticHandDraw(combat))) &&
+                  PrototypeGameEngine
+                      .HasSemanticAutomaticHandDrawProgress(combat))) &&
                 afterShuffle is not null &&
                 choice.Operation.Amount == 1 &&
                 choice.Operation.CardId == afterShuffle.CardId &&

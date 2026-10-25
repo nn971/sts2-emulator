@@ -656,7 +656,8 @@ public sealed partial record CombatState
                     combat.Stochastic.SemanticDeck is not
                         { Mode: SemanticDeckStateV111.NatureMode,
                             Pending: null } ||
-                    !PrototypeGameEngine.IsSemanticAutomaticHandDraw(combat))
+                    !PrototypeGameEngine
+                        .HasSemanticAutomaticHandDrawProgress(combat))
                     throw new InvalidOperationException(
                         "Automatic Stratagem selection is malformed.");
             }
@@ -691,7 +692,8 @@ public sealed partial record CombatState
                 bool semanticBeforeHandDraw = pipelineCursor is not null &&
                     pipelineCursor.Stochastic.IsAtSemanticBeforeHandDraw(
                         pipelineCursor.Mechanics);
-                if (!(PrototypeGameEngine.IsSemanticAutomaticHandDraw(combat) ||
+                if (!(PrototypeGameEngine
+                          .HasSemanticAutomaticHandDrawProgress(combat) ||
                       semanticBeforeHandDraw) ||
                     combat.Stochastic.SemanticDeck is not
                         { Mode: SemanticDeckStateV111.NatureMode,

@@ -89,7 +89,7 @@ public sealed partial class PrototypeGameEngine
         SemanticDeckEngineV111.Validate(deck);
         var pending = combat.PendingChoice;
         var cost = pending?.ControlledDrawCost;
-        bool automatic = IsSemanticAutomaticHandDraw(combat);
+        bool automatic = HasSemanticAutomaticHandDrawProgress(combat);
         if (cost is null || deck.Pending is not null ||
             (combat.AutomaticPipelineContinuation is not null && !automatic) ||
             combat.PendingKnowledgeDemonChoice is not null ||
@@ -382,7 +382,7 @@ public sealed partial class PrototypeGameEngine
             PrototypeDrawCardsBoundaryKind.SemanticDraw or
                 PrototypeDrawCardsBoundaryKind.ControlledDrawCost;
         if (automatic && pending &&
-            !IsSemanticAutomaticHandDraw(drawn.Combat))
+            !HasSemanticAutomaticHandDrawProgress(drawn.Combat))
             return new PrototypeDrawCardsResumeResultV111(
                 SaveAutomaticSemanticHandDrawBoundary(
                     advanced, drawn, automaticHandDrawRequested!.Value),

@@ -437,15 +437,9 @@ public sealed partial class PrototypeGameEngine
             pending?.ControlledDrawCost?.RemainingCount;
         if (savedCount is { } remaining)
             return remaining;
-        if (IsSemanticAutomaticHandDraw(combat))
-        {
-            var cursor = combat.AutomaticPipelineContinuation!;
-            if (!cursor.Stochastic.TryGetSemanticHandDrawProgress(
-                    cursor.Mechanics, out _, out int remaining))
-                throw new InvalidDataException(
-                    "Semantic automatic draw lost its tagged progress.");
+        if (TryGetSemanticAutomaticHandDrawProgress(
+                combat, out _, out int remaining))
             return remaining;
-        }
         if (combat.Stochastic.SemanticDeck?.Pending is not null)
             return Math.Max(0, previousRemaining -
                 GetCardsDrawnSince(combat, drawnBefore));

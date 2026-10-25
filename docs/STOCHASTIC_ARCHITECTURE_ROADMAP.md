@@ -87,6 +87,13 @@ progress query when validating its requested count, instead of unpacking the
 pipeline cursor directly. Progress semantics and snapshots are unchanged.
 Static source review and `git diff --check` only; no tests or builds were run.
 
+**S4 semantic hand-draw presence query ownership (2026-10-25):** Semantic
+automatic-hand-draw presence checks now delegate to the same owner as the
+requested/remaining projection. The semantic adapter's duplicate cursor
+inspection wrapper was removed, and mechanics validation plus draw-choice
+facades call the shared owner. No snapshot or transcript format changed.
+Static source review and `git diff --check` only; no tests or builds were run.
+
 **S5 shared candidate-label binding validation (2026-10-25):** Controlled
 event-choice, run-action, and playable-combat Python facades now use one
 validator for non-empty labels and membership in the saved pending support.

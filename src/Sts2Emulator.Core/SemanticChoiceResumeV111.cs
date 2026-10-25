@@ -104,7 +104,7 @@ internal static class SemanticChoiceResumeV111
 
         PrototypeDrawCardsResumeResultV111 progress;
         if (fromHandDraw && run.World?.Combat is { } automaticCombat &&
-            PrototypeGameEngine.IsSemanticAutomaticHandDraw(
+            PrototypeGameEngine.HasSemanticAutomaticHandDrawProgress(
                 automaticCombat))
             progress = PrototypeGameEngine
                 .ResumeSemanticAutomaticHandDrawAfterNestedChoice(

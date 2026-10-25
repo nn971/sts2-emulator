@@ -258,7 +258,8 @@ public static class SemanticDrawHookChoiceEngineV111
             choice.AutomaticSemanticStratagemDrawSelection ||
             (automatic
                 ? !beforeHandDraw &&
-                  !PrototypeGameEngine.IsSemanticAutomaticHandDraw(combat)
+                  !PrototypeGameEngine
+                      .HasSemanticAutomaticHandDrawProgress(combat)
                 : (!automaticPipelineAutoplay &&
                    combat.AutomaticPipelineContinuation is not null) ||
                   !HasStandaloneDrawResume(choice)))

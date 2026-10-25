@@ -7,14 +7,6 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public sealed partial class PrototypeGameEngine
 {
-    internal static bool IsSemanticAutomaticHandDraw(CombatState combat)
-    {
-        var cursor = combat.AutomaticPipelineContinuation;
-        return cursor is not null &&
-            cursor.Stochastic.TryGetSemanticHandDrawProgress(
-                cursor.Mechanics, out _, out _);
-    }
-
     internal static PrototypeDrawCardsResumeResultV111
         BeginSemanticAutomaticHandDraw(RunState run)
     {
@@ -189,17 +181,13 @@ public sealed partial class PrototypeGameEngine
         var world = RequireWorld(run);
         var combat = world.Combat ??
             throw new InvalidOperationException("Missing semantic hand draw.");
-        if (!IsSemanticAutomaticHandDraw(combat) ||
+        if (!TryGetSemanticAutomaticHandDrawProgress(
+                combat, out int semanticRequested, out _) ||
             (combat.Stochastic.SemanticDeck?.Pending is not null &&
              combat.PendingChoice?.ControlledDrawCost is not null) ||
             remaining < 0)
             throw new InvalidDataException(
                 "Semantic automatic draw cursor or pending stage diverged.");
-        var cursor = combat.AutomaticPipelineContinuation!;
-        if (!cursor.Stochastic.TryGetSemanticHandDrawProgress(
-                cursor.Mechanics, out int semanticRequested, out _))
-            throw new InvalidDataException(
-                "Semantic automatic draw lost its tagged progress.");
         if (hasPending)
         {
             if (combat.Stochastic.SemanticDeck?.Pending is null &&
@@ -246,13 +234,9 @@ public sealed partial class PrototypeGameEngine
                 throw new InvalidDataException(missingCombatMessage);
             throw new InvalidOperationException(missingCombatMessage);
         }
-        if (IsSemanticAutomaticHandDraw(after))
+        if (TryGetSemanticAutomaticHandDrawProgress(
+                after, out int requested, out int remaining))
         {
-            var cursor = after.AutomaticPipelineContinuation!;
-            if (!cursor.Stochastic.TryGetSemanticHandDrawProgress(
-                    cursor.Mechanics, out int requested, out int remaining))
-                throw new InvalidDataException(
-                    "Semantic automatic hand draw lost its tagged progress.");
             return PrototypeDrawCardsResumeResultV111.ForHandDraw(
                 result, requested, remaining);
         }
