@@ -82,7 +82,7 @@ public static class SemanticNatureEnumeratorV111
                     "No semantic Nature chance event is pending to enumerate.");
             eventId = pending.Event.EventId;
             outcomeIds = pending.SemanticOutcomeIds;
-            eventKind = DescribeEventKind(pending.Event);
+            eventKind = pending.EnumerationEventKind;
             if (outcomeIds.Length != pending.SupportCount)
                 throw new InvalidDataException(
                     "Semantic enumeration support differs from the active chance event.");
@@ -105,28 +105,4 @@ public static class SemanticNatureEnumeratorV111
             SchemaId, eventKind, eventId, outcomes);
     }
 
-    private static string DescribeEventKind(
-        ISemanticChanceEventV111 chanceEvent) => chanceEvent switch
-    {
-        SemanticEndTurnIndexEventV111 => "enemy_action_chance",
-        SemanticTargetEventV111 => "random_target",
-        SemanticGeneratedCardEventV111 generated => generated.SiteId ==
-            "combat.random_draw_attack.card_model"
-                ? "random_draw_attack_card_model" : "generated_card",
-        SemanticCostEventV111 cost => cost.TargetCardInstanceId is null
-            ? "drawn_card_cost" : "random_hand_card_cost",
-        SemanticRandomPileCardEventV111 => "random_pile_card",
-        SemanticCardTransformEventV111 => "random_card_transform",
-        SemanticPotionGenerationEventV111 => "random_potion_generation",
-        SemanticHandCostSelectionEventV111 => "random_hand_card_selection",
-        SemanticPoolShuffleEventV111 poolShuffle => poolShuffle.SiteId ==
-            StochasticSiteRegistryV111.CombatHandReturnShuffleSiteId
-                ? "hand_return_shuffle" : "generated_card_pool_shuffle",
-        SemanticDrawInsertionEventV111 => "generated_draw_pile_insertion",
-        SemanticCardShortlistEventV111 => "random_pile_selection_shortlist",
-        SemanticDeckEventV111 deckEvent => deckEvent.Purpose == "draw"
-            ? "draw_card" : "deck_reveal",
-        _ => throw new NotSupportedException(
-            $"UNSUPPORTED_SEMANTIC_CHANCE site={chanceEvent.SiteId}")
-    };
 }

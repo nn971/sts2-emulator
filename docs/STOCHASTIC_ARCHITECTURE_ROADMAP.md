@@ -4,11 +4,11 @@
 
 **S4 semantic outcome-identity dispatch (2026-10-25):** The pending-event
 descriptor now owns separate, checked Chance Law and semantic enumeration ID
-projections over the same ordered support. ReferenceNature resolves law IDs;
-enumeration preserves its existing candidate IDs and labels; engine-owned
-Native decisions map to those semantic IDs before reaching the shared
-mechanics dispatcher. No public schema changed. Static source review and
-`git diff --check` only; no tests or builds were run.
+projections and the enumeration event kind over the same ordered support.
+ReferenceNature resolves law IDs; enumeration preserves its existing
+candidate IDs and labels; engine-owned Native decisions map to those semantic
+IDs before reaching the shared mechanics dispatcher. No public schema changed.
+Static source review and `git diff --check` only; no tests or builds were run.
 
 **S4 identity-only mechanics dispatcher boundary (2026-10-25):** The
 index-valued mechanics switch is now private behind the Chance Law and

@@ -1207,10 +1207,11 @@ field.
 
 `SemanticNatureEnumeratorV111` uses the same descriptor precedence and shared
 outcome dispatcher for index-valued semantic events. The descriptor keeps the
-Chance Law outcome IDs separate from the existing semantic enumeration IDs;
-both are checked against the same ordered support and live boundary before the
-shared mechanics resolver translates them. This preserves candidate labels in
-enumeration and lets ReferenceNature resolve its law's outcome ID directly.
+Chance Law outcome IDs separate from the existing semantic enumeration IDs
+and event-kind projection; both IDs are checked against the same ordered
+support and live boundary before the shared mechanics resolver translates
+them. This preserves candidate labels and event kinds in enumeration and lets
+ReferenceNature resolve its law's outcome ID directly.
 The engine-owned Native path maps its primitive decision to the corresponding
 semantic enumeration ID before dispatch. Weighted intent enumeration retains
 its identity-based resolver.

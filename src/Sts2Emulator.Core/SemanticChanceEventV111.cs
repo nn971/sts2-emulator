@@ -48,6 +48,8 @@ internal sealed record SemanticPendingIndexChanceEventV111(
 
     public string[] OrderedOutcomeIds => CreateOrderedOutcomeIds(Event);
     public string[] SemanticOutcomeIds => CreateSemanticOutcomeIds(Event);
+    public string EnumerationEventKind =>
+        DescribeEnumerationEventKind(Event);
 
     public void ValidateSelection(string boundaryFingerprint, int index)
     {
@@ -199,6 +201,31 @@ internal sealed record SemanticPendingIndexChanceEventV111(
         SemanticDeckEventV111 deck => deck.CandidateCardInstanceIds
             .Select(id => id.ToString(
                 CultureInfo.InvariantCulture)).ToArray(),
+        _ => throw new NotSupportedException(
+            $"UNSUPPORTED_SEMANTIC_CHANCE site={chanceEvent.SiteId}")
+    };
+
+    private static string DescribeEnumerationEventKind(
+        ISemanticChanceEventV111 chanceEvent) => chanceEvent switch
+    {
+        SemanticEndTurnIndexEventV111 => "enemy_action_chance",
+        SemanticTargetEventV111 => "random_target",
+        SemanticGeneratedCardEventV111 generated => generated.SiteId ==
+            "combat.random_draw_attack.card_model"
+                ? "random_draw_attack_card_model" : "generated_card",
+        SemanticCostEventV111 cost => cost.TargetCardInstanceId is null
+            ? "drawn_card_cost" : "random_hand_card_cost",
+        SemanticRandomPileCardEventV111 => "random_pile_card",
+        SemanticCardTransformEventV111 => "random_card_transform",
+        SemanticPotionGenerationEventV111 => "random_potion_generation",
+        SemanticHandCostSelectionEventV111 => "random_hand_card_selection",
+        SemanticPoolShuffleEventV111 poolShuffle => poolShuffle.SiteId ==
+            StochasticSiteRegistryV111.CombatHandReturnShuffleSiteId
+                ? "hand_return_shuffle" : "generated_card_pool_shuffle",
+        SemanticDrawInsertionEventV111 => "generated_draw_pile_insertion",
+        SemanticCardShortlistEventV111 => "random_pile_selection_shortlist",
+        SemanticDeckEventV111 deck => deck.Purpose == "draw"
+            ? "draw_card" : "deck_reveal",
         _ => throw new NotSupportedException(
             $"UNSUPPORTED_SEMANTIC_CHANCE site={chanceEvent.SiteId}")
     };
