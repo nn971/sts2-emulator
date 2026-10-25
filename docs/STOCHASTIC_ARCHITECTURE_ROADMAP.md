@@ -6101,3 +6101,10 @@ also binds each weighted semantic intent annotation to the latest primitive
 ticket's request identity and selected outcome. The resolver no longer
 rebuilds these append invariants. No snapshot schema changed. Core Release
 build and `git diff --check` passed; no tests were run.
+
+**S4 semantic enemy-action request append ownership increment (2026-10-26):**
+The semantic end-turn stochastic owner now receives the pending enemy-action
+request with its selected decision, requires exact request identity, and
+validates optional candidate labels against the request support before
+publishing the decision and chronology entry. No snapshot schema changed.
+Core Release build and `git diff --check` passed; no tests were run.

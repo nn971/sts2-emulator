@@ -158,17 +158,29 @@ public sealed record SemanticEndTurnStochasticStateV111
     }
 
     internal SemanticEndTurnStochasticStateV111 AppendEnemyAction(
+        RandomIndexRequestV111 expectedRequest,
         RandomIndexDecisionV111 decision, string[]? candidateLabels)
     {
+        ArgumentNullException.ThrowIfNull(expectedRequest);
         ArgumentNullException.ThrowIfNull(decision);
+        expectedRequest.Validate();
         decision.Validate();
         if (decision.ProviderMode != "controlled-v111" ||
             decision.NativeCursorBefore is not null ||
             decision.NativeCursorAfter is not null ||
+            !ControlledStochasticChanceReplayV111.RequestsMatch(
+                expectedRequest, decision.Request) ||
             !PrototypeControlledEnemyActionContinuationV111
                 .IsEnemyActionSite(decision.Request.SiteId))
             throw new InvalidDataException(
-                "Invalid semantic enemy-action Nature decision.");
+                "Semantic enemy-action decision differs from its pending request.");
+        if (candidateLabels is not null &&
+            (candidateLabels.Length != decision.Request.SupportCount ||
+             candidateLabels.Any(string.IsNullOrWhiteSpace) ||
+             candidateLabels.Distinct(StringComparer.Ordinal).Count() !=
+                candidateLabels.Length))
+            throw new InvalidDataException(
+                "Semantic enemy-action labels differ from their ordered request support.");
         var transcript = EnemyActionTranscript;
         var boundaries = BoundaryTranscriptForAppend().Append(
             new SemanticEndTurnBoundaryChoiceV111(

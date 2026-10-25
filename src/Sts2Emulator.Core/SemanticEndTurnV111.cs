@@ -1051,7 +1051,7 @@ public static class SemanticEndTurnEngineV111
                                     checkpoint.Run.Fork(), replayedIndex),
                             allowEngineOwnedPrototypeReward: true));
             var stochastic = state.Stochastic.AppendEnemyAction(
-                decision, candidateLabels);
+                enemyActionRequest, decision, candidateLabels);
             state = ContinueAutomaticPipelineBoundaryChoice(
                 state, resumed,
                 stochastic, "combat.enemy_action");
