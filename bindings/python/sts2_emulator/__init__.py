@@ -3024,6 +3024,12 @@ class SemanticCombat:
             raise EmulatorError("Expected a pending semantic Nature event")
         if not isinstance(outcome_id, str) or not outcome_id.strip():
             raise ValueError("outcome_id must be a non-empty string")
+        semantic_outcome_ids = self.pending.get("semanticOutcomeIds")
+        if semantic_outcome_ids is not None:
+            if (not isinstance(semantic_outcome_ids, list)
+                    or outcome_id not in semantic_outcome_ids):
+                raise ValueError(
+                    "outcome_id is outside the pending semantic support")
         return SemanticCombat.from_wire(
             self.session, self.session.call(
                 "semantic_resolve", semantic_handle=self.handle,

@@ -1783,7 +1783,9 @@ Semantic-combat Nature-choice metadata also exposes the ordered
 `semanticOutcomeIds` for its active Chance Law support. These
 provider-neutral identities let clients inspect physical outcomes such as
 draw-pile insertion gaps, while the Chance Law keeps its existing outcome IDs
-and weights.
+and weights. The semantic-combat `pending` projection exposes the same ordered
+IDs, and the Python `resolve_outcome_id` helper checks membership against that
+saved support before submission.
 
 ## Reading order
 

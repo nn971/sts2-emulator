@@ -2271,6 +2271,30 @@ internal static class PrototypeAiJsonlServer
                     SemanticPilotCombatEngineV111
                         .DescribePendingSemanticOutcomeIds(state));
 
+        object? DescribeSemanticPendingWithOutcomeIds(
+            SemanticPilotCombatV111 state)
+        {
+            var pending = DescribeSemanticPending(state);
+            if (pending is null || state.UsesNativePolicyBaseline)
+                return pending;
+            var semanticOutcomeIds = SemanticPilotCombatEngineV111
+                .DescribePendingSemanticOutcomeIds(state);
+            if (semanticOutcomeIds is null) return pending;
+
+            var options = new JsonSerializerOptions(
+                JsonSerializerDefaults.Web);
+            var payload = JsonSerializer.SerializeToElement(
+                pending, pending.GetType(), options);
+            if (payload.ValueKind != JsonValueKind.Object) return pending;
+            var properties = payload.EnumerateObject().ToDictionary(
+                property => property.Name,
+                property => property.Value.Clone(), StringComparer.Ordinal);
+            properties["semanticOutcomeIds"] =
+                JsonSerializer.SerializeToElement(
+                    semanticOutcomeIds, options);
+            return JsonSerializer.SerializeToElement(properties, options);
+        }
+
         (string Fingerprint, SemanticNatureChoiceViewV111? Choice)
             DescribeNatureChoiceStatus(string sessionKind, string handle)
         {
@@ -2547,7 +2571,7 @@ internal static class PrototypeAiJsonlServer
                 boundary = state.CombatTerminal ? "terminal" :
                     state.AtPlayerBoundary ? "player" :
                     state.AtPlayerChoiceBoundary ? "player_choice" : "nature",
-                pending = DescribeSemanticPending(state),
+                pending = DescribeSemanticPendingWithOutcomeIds(state),
                 terminal = state.CombatTerminal,
                 outcome = state.CombatOutcome,
                 exitHp = state.CombatTerminal ? state.Run.Player.Hp : (int?)null,

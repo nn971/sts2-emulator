@@ -5403,3 +5403,11 @@ Core and Python validate that this optional list has the law's
 support size and contains unique nonempty strings. No view schema or law format
 changed. Core and CLI Release builds passed with zero warnings and errors; no
 tests were run.
+
+**S4 semantic pending identity handoff increment (2026-10-25):** The normal
+semantic-combat `pending` projection now exposes the same provider-neutral
+outcome IDs as the Nature-choice view. Python `resolve_outcome_id` checks a
+provided ID against that saved support before submission, while older servers
+without the additive field keep their existing route. Native-policy pending
+responses remain unchanged. Static source review and `git diff --check` only;
+the CLI Release build passed with zero warnings and errors; no tests were run.
