@@ -101,6 +101,12 @@ context-specific target/hook retagging and replay-only event materialization;
 each choice owner retains support validation. No schema changed. Static source
 review and `git diff --check` only; no tests or builds were run.
 
+**S4 shared automatic hand-draw child discovery classification (2026-10-25):**
+`SemanticCombatDrawV111.Validate` now passes its classified child kind through
+all pending-child event descriptors, avoiding a second classification for each
+event while preserving standalone descriptor callers. No schema changed.
+Static source review and `git diff --check` only; no tests or builds were run.
+
 **S5 shared candidate-label binding validation (2026-10-25):** Controlled
 event-choice, run-action, and playable-combat Python facades now use one
 validator for non-empty labels and membership in the saved pending support.

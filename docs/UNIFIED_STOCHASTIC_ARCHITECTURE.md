@@ -1270,8 +1270,10 @@ Semantic draw-hook replay now returns its classified automatic-pipeline boundary
 Semantic draw-frame validation now delegates classified automatic hand-draw
 child boundary checks to the draw-hook choice owner, which shares that dispatch
 with hook replay. Replay-only semantic event materialization stays at the hook
-boundary, and each child choice retains its own support validator. No schema
-changed.
+boundary, and each child choice retains its own support validator. The frame
+also passes its single child classification to pending-event discovery instead
+of reclassifying once per event descriptor. Standalone descriptor calls retain
+their self-classifying behavior. No schema changed.
 
 Supported random autoplay and replay-card shortlist children opened by a
 draw-hook action now use the existing card-shortlist event and decision owner

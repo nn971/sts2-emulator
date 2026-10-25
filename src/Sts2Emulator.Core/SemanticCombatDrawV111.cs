@@ -318,29 +318,51 @@ public sealed record SemanticCombatDrawV111(
         this.Stochastic.Validate();
         this.Stochastic.ValidateBoundaryTranscript(this.Transcript.Length);
         var randomPileCardPending = this.RandomPileCardPending;
-        var drawInsertionPending = this.DrawInsertionPending;
-        var generatedCardPending = this.GeneratedCardPending;
-        var potionGenerationPending = this.PotionGenerationPending;
-        var poolShufflePending = this.PoolShufflePending;
-        var cardSelectionPending = this.CardSelectionPending;
-        var cardTransformPending = this.CardTransformPending;
-        var cardShortlistPending = this.CardShortlistPending;
-        var randomHandCostPending = this.RandomHandCostPending;
-        var handCostSelectionPending = this.HandCostSelectionPending;
         var cursorCombat = this.Run.World?.Combat;
         var pipelineCursor = cursorCombat?.AutomaticPipelineContinuation;
         bool semanticBeforeHandDrawProgress = pipelineCursor is not null &&
             pipelineCursor.Stochastic.IsAtSemanticBeforeHandDraw(
                 pipelineCursor.Mechanics);
-        var automaticHandDrawChildKind = this.AutomaticHandDraw &&
+        var classifiedAutomaticHandDrawChildKind =
             cursorCombat is not null &&
             cursorCombat.PendingChoice is { } automaticChildChoice
-            ? SemanticDrawHookChoiceEngineV111
-                .ClassifyAutomaticHandDrawChild(
-                    cursorCombat, automaticChildChoice,
-                    semanticBeforeHandDrawProgress)
+                ? SemanticDrawHookChoiceEngineV111
+                    .ClassifyAutomaticHandDrawChild(
+                        cursorCombat, automaticChildChoice,
+                        semanticBeforeHandDrawProgress)
+                : SemanticDrawHookChoiceEngineV111
+                    .AutomaticHandDrawChildKindV111.None;
+        var automaticHandDrawChildKind = this.AutomaticHandDraw
+            ? classifiedAutomaticHandDrawChildKind
             : SemanticDrawHookChoiceEngineV111
                 .AutomaticHandDrawChildKindV111.None;
+        var drawInsertionPending = SemanticCombatDrawEngineV111
+            .DescribePendingDrawInsertion(
+                this, classifiedAutomaticHandDrawChildKind);
+        var generatedCardPending = SemanticCombatDrawEngineV111
+            .DescribePendingGeneratedCard(
+                this, classifiedAutomaticHandDrawChildKind);
+        var potionGenerationPending = SemanticCombatDrawEngineV111
+            .DescribePendingPotionGeneration(
+                this, classifiedAutomaticHandDrawChildKind);
+        var poolShufflePending = SemanticCombatDrawEngineV111
+            .DescribePendingPoolShuffle(
+                this, classifiedAutomaticHandDrawChildKind);
+        var cardSelectionPending = SemanticCombatDrawEngineV111
+            .DescribePendingCardSelection(
+                this, classifiedAutomaticHandDrawChildKind);
+        var cardTransformPending = SemanticCombatDrawEngineV111
+            .DescribePendingCardTransform(
+                this, classifiedAutomaticHandDrawChildKind);
+        var cardShortlistPending = SemanticCombatDrawEngineV111
+            .DescribePendingCardShortlist(
+                this, classifiedAutomaticHandDrawChildKind);
+        var randomHandCostPending = SemanticCombatDrawEngineV111
+            .DescribePendingRandomHandCost(
+                this, classifiedAutomaticHandDrawChildKind);
+        var handCostSelectionPending = SemanticCombatDrawEngineV111
+            .DescribePendingHandCostSelection(
+                this, classifiedAutomaticHandDrawChildKind);
         var completedHookCursor = pipelineCursor;
         var drawHookChoicePending = this.DrawHookChoicePending;
         PendingCombatChoiceState? automaticBeforeHandDrawPoolShuffleChoice =
@@ -962,15 +984,19 @@ public static class SemanticCombatDrawEngineV111
     }
 
     internal static SemanticGeneratedCardEventV111?
-        DescribePendingGeneratedCard(SemanticCombatDrawV111 state)
+        DescribePendingGeneratedCard(
+            SemanticCombatDrawV111 state,
+            SemanticDrawHookChoiceEngineV111
+                .AutomaticHandDrawChildKindV111? classifiedChildKind = null)
     {
         var run = state.Run;
         var combat = run.World?.Combat;
         var pending = combat?.PendingChoice;
         var insertion = pending?.ControlledDrawInsertion;
         if (combat is null || pending is null) return null;
-        var automaticChildKind = SemanticDrawHookChoiceEngineV111
-            .ClassifyAutomaticHandDrawChild(run);
+        var automaticChildKind = classifiedChildKind ??
+            SemanticDrawHookChoiceEngineV111
+                .ClassifyAutomaticHandDrawChild(run);
         if (automaticChildKind == SemanticDrawHookChoiceEngineV111
                 .AutomaticHandDrawChildKindV111.DrawInsertion && insertion is
                 { Stage: "card_model",
@@ -1005,11 +1031,14 @@ public static class SemanticCombatDrawEngineV111
     }
 
     internal static SemanticPotionGenerationEventV111?
-        DescribePendingPotionGeneration(SemanticCombatDrawV111 state)
+        DescribePendingPotionGeneration(
+            SemanticCombatDrawV111 state,
+            SemanticDrawHookChoiceEngineV111
+                .AutomaticHandDrawChildKindV111? classifiedChildKind = null)
     {
         if (!state.AutomaticHandDraw ||
-            SemanticDrawHookChoiceEngineV111
-                .ClassifyAutomaticHandDrawChild(state.Run) !=
+            (classifiedChildKind ?? SemanticDrawHookChoiceEngineV111
+                .ClassifyAutomaticHandDrawChild(state.Run)) !=
                 SemanticDrawHookChoiceEngineV111
                     .AutomaticHandDrawChildKindV111.PotionGeneration)
             return null;
@@ -1021,13 +1050,16 @@ public static class SemanticCombatDrawEngineV111
     }
 
     internal static SemanticPoolShuffleEventV111?
-        DescribePendingPoolShuffle(SemanticCombatDrawV111 state)
+        DescribePendingPoolShuffle(
+            SemanticCombatDrawV111 state,
+            SemanticDrawHookChoiceEngineV111
+                .AutomaticHandDrawChildKindV111? classifiedChildKind = null)
     {
         if (!state.AutomaticHandDraw ||
             state.Run.World?.Combat is not { } combat ||
             combat.PendingChoice is not { } pending ||
-            SemanticDrawHookChoiceEngineV111
-                .ClassifyAutomaticHandDrawChild(state.Run) !=
+            (classifiedChildKind ?? SemanticDrawHookChoiceEngineV111
+                .ClassifyAutomaticHandDrawChild(state.Run)) !=
                 SemanticDrawHookChoiceEngineV111
                     .AutomaticHandDrawChildKindV111.PoolShuffle)
             return null;
@@ -1041,11 +1073,14 @@ public static class SemanticCombatDrawEngineV111
     }
 
     internal static SemanticCardSelectionEventV111?
-        DescribePendingCardSelection(SemanticCombatDrawV111 state)
+        DescribePendingCardSelection(
+            SemanticCombatDrawV111 state,
+            SemanticDrawHookChoiceEngineV111
+                .AutomaticHandDrawChildKindV111? classifiedChildKind = null)
     {
         if (!state.AutomaticHandDraw ||
-            SemanticDrawHookChoiceEngineV111
-                .ClassifyAutomaticHandDrawChild(state.Run) !=
+            (classifiedChildKind ?? SemanticDrawHookChoiceEngineV111
+                .ClassifyAutomaticHandDrawChild(state.Run)) !=
                 SemanticDrawHookChoiceEngineV111
                     .AutomaticHandDrawChildKindV111.CardSelection)
             return null;
@@ -1054,11 +1089,14 @@ public static class SemanticCombatDrawEngineV111
     }
 
     internal static SemanticCardTransformEventV111?
-        DescribePendingCardTransform(SemanticCombatDrawV111 state)
+        DescribePendingCardTransform(
+            SemanticCombatDrawV111 state,
+            SemanticDrawHookChoiceEngineV111
+                .AutomaticHandDrawChildKindV111? classifiedChildKind = null)
     {
         if (!state.AutomaticHandDraw ||
-            SemanticDrawHookChoiceEngineV111
-                .ClassifyAutomaticHandDrawChild(state.Run) !=
+            (classifiedChildKind ?? SemanticDrawHookChoiceEngineV111
+                .ClassifyAutomaticHandDrawChild(state.Run)) !=
                 SemanticDrawHookChoiceEngineV111
                     .AutomaticHandDrawChildKindV111.CardTransform)
             return null;
@@ -1068,11 +1106,14 @@ public static class SemanticCombatDrawEngineV111
     }
 
     internal static SemanticCardShortlistEventV111?
-        DescribePendingCardShortlist(SemanticCombatDrawV111 state)
+        DescribePendingCardShortlist(
+            SemanticCombatDrawV111 state,
+            SemanticDrawHookChoiceEngineV111
+                .AutomaticHandDrawChildKindV111? classifiedChildKind = null)
     {
         if (!state.AutomaticHandDraw ||
-            SemanticDrawHookChoiceEngineV111
-                .ClassifyAutomaticHandDrawChild(state.Run) !=
+            (classifiedChildKind ?? SemanticDrawHookChoiceEngineV111
+                .ClassifyAutomaticHandDrawChild(state.Run)) !=
                 SemanticDrawHookChoiceEngineV111
                     .AutomaticHandDrawChildKindV111.CardShortlist)
             return null;
@@ -1082,7 +1123,10 @@ public static class SemanticCombatDrawEngineV111
     }
 
     internal static SemanticCostEventV111?
-        DescribePendingRandomHandCost(SemanticCombatDrawV111 state)
+        DescribePendingRandomHandCost(
+            SemanticCombatDrawV111 state,
+            SemanticDrawHookChoiceEngineV111
+                .AutomaticHandDrawChildKindV111? classifiedChildKind = null)
     {
         if (!state.AutomaticHandDraw ||
             state.Run.World?.Combat is not { } combat ||
@@ -1090,8 +1134,8 @@ public static class SemanticCombatDrawEngineV111
             pending.ControlledRandomCost?.Operation.Kind !=
                 PrototypeCombatEffectKind
                     .RandomizeHandCardEnergyCostsUntilTurnEndOrPlayed ||
-            SemanticDrawHookChoiceEngineV111
-                .ClassifyAutomaticHandDrawChild(state.Run) !=
+            (classifiedChildKind ?? SemanticDrawHookChoiceEngineV111
+                .ClassifyAutomaticHandDrawChild(state.Run)) !=
                 SemanticDrawHookChoiceEngineV111
                     .AutomaticHandDrawChildKindV111.RandomHandCost)
             return null;
@@ -1101,7 +1145,10 @@ public static class SemanticCombatDrawEngineV111
     }
 
     internal static SemanticHandCostSelectionEventV111?
-        DescribePendingHandCostSelection(SemanticCombatDrawV111 state)
+        DescribePendingHandCostSelection(
+            SemanticCombatDrawV111 state,
+            SemanticDrawHookChoiceEngineV111
+                .AutomaticHandDrawChildKindV111? classifiedChildKind = null)
     {
         if (!state.AutomaticHandDraw ||
             state.Run.World?.Combat is not { } combat ||
@@ -1109,8 +1156,8 @@ public static class SemanticCombatDrawEngineV111
             pending.ControlledRandomCost is not { } randomCost ||
             randomCost.Operation.Kind != PrototypeCombatEffectKind
                 .SetRandomHandCardEnergyCostUntilTurnEndOrPlayed ||
-            SemanticDrawHookChoiceEngineV111
-                .ClassifyAutomaticHandDrawChild(state.Run) !=
+            (classifiedChildKind ?? SemanticDrawHookChoiceEngineV111
+                .ClassifyAutomaticHandDrawChild(state.Run)) !=
                 SemanticDrawHookChoiceEngineV111
                     .AutomaticHandDrawChildKindV111.RandomHandCost)
             return null;
@@ -1126,7 +1173,10 @@ public static class SemanticCombatDrawEngineV111
     }
 
     internal static SemanticDrawInsertionEventV111?
-        DescribePendingDrawInsertion(SemanticCombatDrawV111 state)
+        DescribePendingDrawInsertion(
+            SemanticCombatDrawV111 state,
+            SemanticDrawHookChoiceEngineV111
+                .AutomaticHandDrawChildKindV111? classifiedChildKind = null)
     {
         var run = state.Run;
         var combat = run.World?.Combat;
@@ -1135,8 +1185,8 @@ public static class SemanticCombatDrawEngineV111
         if (insertion is null)
             return null;
         if (combat is not null && pending is not null &&
-            SemanticDrawHookChoiceEngineV111
-                .ClassifyAutomaticHandDrawChild(run) ==
+            (classifiedChildKind ?? SemanticDrawHookChoiceEngineV111
+                .ClassifyAutomaticHandDrawChild(run)) ==
                 SemanticDrawHookChoiceEngineV111
                     .AutomaticHandDrawChildKindV111.DrawInsertion)
         {
