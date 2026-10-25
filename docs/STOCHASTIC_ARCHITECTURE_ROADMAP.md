@@ -19,6 +19,12 @@ rediscover the active event after sampling. Event precedence stays with the
 semantic engine; no snapshot schema changed. Static source review and
 `git diff --check` only; no tests or builds were run.
 
+**S4 site-specific fail-closed chance dispatch (2026-10-25):** Unknown typed
+event variants now fail before law sampling or mechanics mutation and include
+the event SiteId in the unsupported-operation error. No snapshot schema
+changed. Static source review and `git diff --check` only; no tests or builds
+were run.
+
 **S4 active semantic chance event ownership (2026-10-25):** The semantic
 engine now publishes one transient typed descriptor for the active
 index-valued chance event and its ordered support size. ReferenceNature uses

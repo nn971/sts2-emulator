@@ -63,7 +63,7 @@ internal sealed record SemanticPendingIndexChanceEventV111(
             SemanticDeckEventV111 deck =>
                 deck.CandidateCardInstanceIds.Length,
             _ => throw new NotSupportedException(
-                "Unsupported pending semantic chance event type.")
+                $"UNSUPPORTED_SEMANTIC_CHANCE site={chanceEvent.SiteId}")
         };
         var pending = new SemanticPendingIndexChanceEventV111(
             chanceEvent, supportCount, boundaryFingerprint);

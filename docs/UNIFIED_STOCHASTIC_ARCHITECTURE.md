@@ -1157,6 +1157,8 @@ checked support size from the typed event and binds it to the originating
 pilot boundary fingerprint. ReferenceNature queries the law for that event.
 The Native auto-resolver and shared dispatcher consume the same descriptor;
 the dispatcher rejects it if the pilot has advanced to another boundary.
+Unrecognized event variants fail before sampling or mechanics mutation and
+include the event SiteId in the unsupported-operation error.
 Provider-specific law, primitive, eligibility, and provenance checks remain
 at their provider boundaries before the existing target, generation, cost,
 draw, reveal, shuffle, insertion, shortlist, or potion mechanics resolver is

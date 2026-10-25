@@ -7400,7 +7400,7 @@ public static class SemanticPilotCombatEngineV111
                     deckEvent.CandidateCardInstanceIds[outcomeIndex]);
             default:
                 throw new NotSupportedException(
-                    "UNSUPPORTED_SEMANTIC_CHANCE site=unhandled_pending_event");
+                    $"UNSUPPORTED_SEMANTIC_CHANCE site={pending.Event.SiteId}");
         }
     }
 

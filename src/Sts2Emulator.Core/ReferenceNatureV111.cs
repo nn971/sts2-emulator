@@ -101,7 +101,7 @@ public static class ReferenceNatureV111
             SemanticDeckEventV111 =>
                 ChanceLawEngineV111.QueryDeckReveal(GetSemanticDeck(combat)),
             _ => throw new NotSupportedException(
-                "UNSUPPORTED_REFERENCE_NATURE site=unhandled_pending_event")
+                $"UNSUPPORTED_REFERENCE_NATURE site={pending.SiteId}")
         };
 
     private static SemanticDeckStateV111 GetSemanticDeck(
