@@ -1279,6 +1279,9 @@ whole-run path also re-query the existing formation law after validating the
 selected combat map node, encounter entry, floor, Native context stream, and
 source-ordered index range. Encounter-pool draws retain their existing
 run-action law handling.
+Native creature creation and Tough Egg hatch HP draws on `run.niche` also use
+their existing source laws, which validate each creature owner and the
+distinct HP support (including the ascension-selected hatch range).
 It marks that semantic trace complete only when the saved selections cover
 every typed boundary; caller-scripted or unsupported outcomes keep semantic
 comparison unavailable while the typed trace remains complete. Shared

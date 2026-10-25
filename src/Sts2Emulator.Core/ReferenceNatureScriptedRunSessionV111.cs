@@ -566,6 +566,11 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
                 ControlledRunActionEngineV111.IsNativeActOneCombatEntrySite(
                     active.Origin, active.Action, indexRequest.SiteId))
                 return QueryNativeEncounterFormation(active, indexRequest);
+            if (active.Origin.Stochastic.NativeRunRng is not null &&
+                indexRequest.SiteId is
+                    NativeCombatRngEntryV111.InitialUniqueHpSiteId or
+                    NativeCombatRngEntryV111.ToughEggHatchHpSiteId)
+                return QueryNativeCreatureHp(active, indexRequest);
             if (ChanceLawEngineV111.IsNativeMapGenerationRequestSite(
                     indexRequest.SiteId))
                 return ChanceLawEngineV111.QueryNativeMapRequest(request);
@@ -955,6 +960,40 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
             CanonicalJson.Sha256(request))
             throw new InvalidDataException(
                 "Native encounter-formation request differs from its source law.");
+        return law;
+    }
+
+    private static ChanceLawV111 QueryNativeCreatureHp(
+        ScriptedRunActionSessionV111 active,
+        RandomIndexRequestV111 request)
+    {
+        request.Validate();
+        if (active.Origin.Stochastic.NativeRunRng is null ||
+            request.StreamId != "run.niche")
+            throw new InvalidDataException(
+                "Native creature HP request is outside the run.niche boundary.");
+
+        var law = request.SiteId switch
+        {
+            NativeCombatRngEntryV111.InitialUniqueHpSiteId =>
+                ChanceLawEngineV111.QueryNativeInitialHpIndex(
+                    request.OwnerId, request.OrderedCandidates,
+                    request.Ordinal),
+            NativeCombatRngEntryV111.ToughEggHatchHpSiteId =>
+                ChanceLawEngineV111.QueryNativeToughEggHatchHpIndex(
+                    request.OwnerId, active.Origin.Ascension,
+                    request.Ordinal),
+            _ => throw new NotSupportedException(
+                $"Native creature HP query does not support '{request.SiteId}'.")
+        };
+        var expectedRequest = new RandomIndexRequestV111(
+            law.SiteId, "run.niche", law.OwnerId, law.Ordinal,
+            (int[])request.OrderedCandidates.Clone(),
+            OperationKind: law.OperationKind);
+        if (CanonicalJson.Sha256(expectedRequest) !=
+            CanonicalJson.Sha256(request))
+            throw new InvalidDataException(
+                "Native creature HP request differs from its source law.");
         return law;
     }
 

@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S2 whole-run Native creature HP law increment (2026-10-26):** Whole-run
+ReferenceNature replay now routes Native initial unique-monster HP and Tough
+Egg hatch HP requests through their source laws. The `run.niche` stream,
+canonical creature owner, ordered distinct HP support, and ascension-selected
+hatch range are validated against the typed request. Core and CLI Release
+builds passed with zero warnings or errors; `git diff --check` passed. No
+tests were run.
+
 **S2 whole-run Native encounter-formation law increment (2026-10-26):** The
 whole-run ReferenceNature dispatcher now re-queries configured experimental
 Act 1 Native formation draws through the existing formation law after checking
