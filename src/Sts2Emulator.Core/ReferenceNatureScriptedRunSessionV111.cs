@@ -525,6 +525,9 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
             if (ChanceLawEngineV111.IsNativeMapGenerationRequestSite(
                     indexRequest.SiteId))
                 return ChanceLawEngineV111.QueryNativeMapRequest(request);
+            if (indexRequest.SiteId == StochasticSiteRegistryV111
+                    .NativePotionFactoryModelSiteId)
+                return QueryNativePotionFactoryModel(active, indexRequest);
             return ChanceLawEngineV111.QueryRandomIndex(
                 PendingEventId(active, indexRequest), indexRequest);
         }
@@ -566,6 +569,67 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
                 gaussianRequest))
             return ChanceLawEngineV111.QueryNativeMapRequest(request);
         return null;
+    }
+
+    private static ChanceLawV111 QueryNativePotionFactoryModel(
+        ScriptedRunActionSessionV111 active,
+        RandomIndexRequestV111 request)
+    {
+        var excludedPotionIds = new List<string>();
+        PrototypeNativePotionRarity? pendingRarity = null;
+        foreach (var decision in active.Decisions)
+        {
+            if (decision.UnitFloatDecision is { } rarityDecision &&
+                rarityDecision.Request.SiteId == StochasticSiteRegistryV111
+                    .NativePotionFactoryRarityRollSiteId &&
+                rarityDecision.Request.StreamId == request.StreamId &&
+                rarityDecision.Request.OwnerId == request.OwnerId)
+            {
+                if (pendingRarity is not null)
+                    throw new InvalidDataException(
+                        "Native PotionFactory model prefix has an unresolved rarity outcome.");
+                if (rarityDecision.Request.Ordinal !=
+                    excludedPotionIds.Count)
+                    throw new InvalidDataException(
+                        "Native PotionFactory rarity ordinal differs from its model prefix.");
+                pendingRarity = PrototypeNativePotionShop
+                    .ResolveRarityNative(rarityDecision.SelectedValue);
+            }
+            else if (decision.IndexDecision is { } modelDecision &&
+                     modelDecision.Request.SiteId == request.SiteId &&
+                     modelDecision.Request.StreamId == request.StreamId &&
+                     modelDecision.Request.OwnerId == request.OwnerId)
+            {
+                if (pendingRarity is not { } rarity)
+                    throw new InvalidDataException(
+                        "Native PotionFactory model prefix has no preceding rarity outcome.");
+                var previousLaw = ChanceLawEngineV111
+                    .QueryNativePotionFactoryModelIndex(
+                        modelDecision.Request, rarity,
+                        excludedPotionIds.ToArray());
+                var selectedIndex = modelDecision.SelectedIndex;
+                if (selectedIndex < 0 ||
+                    selectedIndex >= previousLaw.SupportCount)
+                    throw new InvalidDataException(
+                        "Native PotionFactory model prefix selected outside its remaining pool.");
+                var potionId = previousLaw.OutcomeIdAt(selectedIndex);
+                const string prefix = "potion_model:";
+                var marker = potionId.IndexOf(":index:",
+                    StringComparison.Ordinal);
+                if (!potionId.StartsWith(prefix, StringComparison.Ordinal) ||
+                    marker <= prefix.Length)
+                    throw new InvalidDataException(
+                        "Native PotionFactory model law has a malformed potion identity.");
+                excludedPotionIds.Add(
+                    potionId[prefix.Length..marker]);
+                pendingRarity = null;
+            }
+        }
+        if (pendingRarity is not { } currentRarity)
+            throw new InvalidDataException(
+                "Native PotionFactory model request has no unresolved rarity outcome.");
+        return ChanceLawEngineV111.QueryNativePotionFactoryModelIndex(
+            request, currentRarity, excludedPotionIds.ToArray());
     }
 
     private static ChanceLawV111? QueryNativeMerchantPrice(

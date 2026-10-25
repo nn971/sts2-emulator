@@ -14,6 +14,16 @@ with zero warnings or errors; `git diff --check` passed. No tests were added
 or run. This comparison evidence does not establish hook-order parity or
 Chance Law fidelity.
 
+**S4 whole-run PotionFactory model-law increment (2026-10-26):** The
+ReferenceNature whole-run dispatcher now routes registered Native
+PotionFactory model-index requests through the existing source law. It
+reconstructs the matching preceding rarity roll and replays prior model picks
+for the same stream and owner, validating each pick against its changing
+rarity-conditioned pool before querying the pending request. Native streams,
+ordinal, ordered support, and exclusions remain law-validated. Core and CLI
+Release builds passed with zero warnings or errors; `git diff --check` passed.
+No tests were added or run.
+
 **S4 whole-run six-primitive continuation increment (2026-10-25):** The
 ReferenceNature whole-run session now accepts caller-supplied, replay-validated
 transcript entries for all six typed random operations alongside its existing

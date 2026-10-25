@@ -904,9 +904,12 @@ gold, combat-potion odds, card rarity and upgrade, PotionFactory rarity,
 merchant prices and the inert merchant upgrade roll, plus the Endless
 Conveyor weighted dish ticket. Each sampled outcome maps back through the
 existing typed law-to-provider adapter and is replay-validated against its
-saved action, request, and conditioning boundary. Unsupported non-index
-requests remain available through `resolve_outcome` as replay-validated
-caller-supplied outcomes for all six typed random primitives. Each action
+saved action, request, and conditioning boundary. Native PotionFactory
+model-index requests use the immediately preceding rarity roll and replayed
+prior model selections to validate the current source-ordered remaining tier
+pool. Unsupported non-index requests remain available through
+`resolve_outcome` as replay-validated caller-supplied outcomes for all six
+typed random primitives. Each action
 history aligns its typed decisions with optional Nature selections, so
 scripted outcomes do not advance or masquerade as Nature samples. The session
 preserves the last committed run boundary while an action is active, and its
