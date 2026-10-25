@@ -33,6 +33,15 @@ only after re-querying each source law and its conditioned support. JSONL
 Release builds passed with zero warnings or errors; `git diff --check` passed.
 No tests were added or run.
 
+**S4 Native Shovel semantic capture increment (2026-10-26):** The provider
+replay comparator now captures completed ReferenceNature Native Shovel
+actions with their typed boundaries and semantic relic rarity/identity
+outcomes. Each law is re-queried against the saved action and ordered relic
+bag prefix before the capture claims semantic completeness. JSONL
+`provider_replay_compare` uses this capture for Native Shovel handles. Core and
+CLI Release builds passed with zero warnings or errors; `git diff --check`
+passed. No tests were added or run.
+
 **S4 whole-run six-primitive continuation increment (2026-10-25):** The
 ReferenceNature whole-run session now accepts caller-supplied, replay-validated
 transcript entries for all six typed random operations alongside its existing

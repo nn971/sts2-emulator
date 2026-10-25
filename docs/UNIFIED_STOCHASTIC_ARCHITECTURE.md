@@ -1179,7 +1179,9 @@ checkpoint. They accept only sessions at committed action boundaries.
 replay-validated rarity and hidden-queue relic identities beside its complete
 typed provider trace. The identity projection re-queries the Treasure law,
 including the conditioned remaining queue support, before the capture claims
-semantic completeness.
+semantic completeness. The Native Shovel capture applies the same rule to
+its ordered rarity and relic identity pulls, replaying the saved bag prefix
+before annotating each selected relic.
 `FromReferenceNatureScriptedRunSession` adds the matching whole-run path for
 ordinary actions with complete six-primitive typed traces. It replays each
 action prefix, materializes the saved outcomes through the same boundary

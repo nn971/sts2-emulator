@@ -10623,7 +10623,7 @@ internal static class PrototypeAiJsonlServer
                                     return referenceNatureNativeShovelStates
                                         .TryGetValue(handle, out var nativeShovel)
                                         ? SimulationProviderReplayCaptureV111
-                                            .FromReferenceNatureControlledActionSession(
+                                            .FromReferenceNatureNativeShovelSession(
                                                 nativeShovel)
                                         : throw new InvalidOperationException(
                                             "Unknown ReferenceNature Native Shovel handle: " +
