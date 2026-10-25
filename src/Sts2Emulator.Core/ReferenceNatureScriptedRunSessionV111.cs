@@ -517,8 +517,13 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
         ControlledStochasticRequestV111 request)
     {
         if (request.IndexRequest is { } indexRequest)
+        {
+            if (ChanceLawEngineV111.IsNativeMapGenerationRequestSite(
+                    indexRequest.SiteId))
+                return ChanceLawEngineV111.QueryNativeMapRequest(request);
             return ChanceLawEngineV111.QueryRandomIndex(
                 PendingEventId(active, indexRequest), indexRequest);
+        }
         if (request.GaussianIntRequest is { } gaussianRequest &&
             ChanceLawEngineV111.MatchesNativeMapGaussianIntRequest(
                 gaussianRequest))
@@ -532,7 +537,9 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
         ChanceLawV111 law,
         ReferenceNatureSelectionV111 selection)
     {
-        if (request.IndexRequest is { } indexRequest)
+        if (request.IndexRequest is { } indexRequest &&
+            !ChanceLawEngineV111.IsNativeMapGenerationRequestSite(
+                indexRequest.SiteId))
             return CreateOutcome(active, indexRequest, selection);
         var decision = ReferenceNatureChanceLawDecisionV111.FromSelection(
             law, request, selection);

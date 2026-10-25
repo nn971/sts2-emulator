@@ -77,6 +77,13 @@ public static partial class ChanceLawEngineV111
     public static string[] NativeMapGaussianIntQuerySiteIds =>
         StochasticSiteRegistryV111.NativeGaussianIntSiteIds;
 
+    public static bool IsNativeMapGenerationRequestSite(string siteId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        return StochasticSiteRegistryV111.NativeMapGenerationSessionSiteIds
+            .Contains(siteId, StringComparer.Ordinal);
+    }
+
     public static bool IsNativeMapGaussianIntQuerySite(string siteId) =>
         StochasticSiteRegistryV111.IsNativeGaussianIntSite(siteId);
 
