@@ -196,6 +196,11 @@ public sealed record ReferenceNatureRunActionSessionV111(
             ReferenceNatureRunCursorV111.Begin(
                 source, null, "Run-action"));
 
+    internal static ReferenceNatureRunActionSessionV111 BeginForCapture(
+        RunState source, GameAction action,
+        ReferenceNatureStateV111 initialNatureState) =>
+        Begin(source, action, initialNatureState);
+
     private static ReferenceNatureRunActionSessionV111 Begin(
         RunState source, GameAction action,
         ReferenceNatureStateV111 initialNatureState)

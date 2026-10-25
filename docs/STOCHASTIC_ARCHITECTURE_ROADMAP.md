@@ -121,6 +121,14 @@ re-query each law against the selected prefix, and attach outcomes to the
 no-player-action setup interval. Core and CLI Release builds passed with zero
 warnings or errors; `git diff --check` passed. No tests were added or run.
 
+**S4 run-action semantic capture increment (2026-10-26):** JSONL provider
+replay now attaches provider-independent outcomes when every saved Nature
+choice has a replayable Chance Law. The factory rebuilds the run-action
+session from its origin and initial cursor, replays the conditional prefix,
+and falls back to its complete typed trace when law coverage is incomplete.
+Core and CLI Release builds passed with zero warnings or errors;
+`git diff --check` passed. No tests were added or run.
+
 **S4 whole-run six-primitive continuation increment (2026-10-25):** The
 ReferenceNature whole-run session now accepts caller-supplied, replay-validated
 transcript entries for all six typed random operations alongside its existing

@@ -1293,6 +1293,10 @@ Legacy Native Ancient completions replay the saved map transcript, rerun the
 assigned Native Ancient through its audited opening generator, and require the
 committed result to match the saved run before adding the Native provider
 decisions and cursor spans after the map decisions in the capture.
+When every saved Nature choice also has a replayable Chance Law, the capture
+replays the run-action prefix and attaches provider-independent outcome
+identities. A missing or unsupported law leaves the complete typed trace
+available without claiming semantic completeness.
 JSONL accepts
 `<side>_reference_nature_run_action_handle` for this path.
 `FromReferenceNatureRunSetupSession` remains the typed-only path for a

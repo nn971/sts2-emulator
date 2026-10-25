@@ -314,6 +314,8 @@ public static class SimulationProviderReplayCaptureProvenanceV111
         "semantic-native-policy-semantic-identity-replay-validated-v2";
     public const string ReferenceNatureRunActionReplayValidated =
         "reference-nature-run-action-replay-validated-v1";
+    public const string ReferenceNatureRunActionSemanticIdentityReplayValidated =
+        "reference-nature-run-action-semantic-identity-replay-validated-v1";
     public const string ReferenceNatureWholeRunReplayValidated =
         "reference-nature-whole-run-replay-validated-v1";
     public const string ReferenceNatureWholeRunSemanticIdentityReplayValidated =
@@ -372,6 +374,7 @@ public static class SimulationProviderReplayCaptureProvenanceV111
         ScriptedActionReplayValidated or SemanticNativePolicyReplayValidated or
         SemanticNativePolicySemanticIdentityReplayValidated or
         ReferenceNatureRunActionReplayValidated or
+        ReferenceNatureRunActionSemanticIdentityReplayValidated or
         ReferenceNatureWholeRunReplayValidated or
         ReferenceNatureWholeRunSemanticIdentityReplayValidated or
         ReferenceNatureTreasureSemanticIdentityReplayValidated or
@@ -415,6 +418,7 @@ public static class SimulationProviderReplayCaptureProvenanceV111
         provenance is SemanticNativePolicySemanticIdentityReplayValidated or
             ReferenceNatureSemanticCombatOutcomeReplayValidated or
             ReferenceNatureWholeRunSemanticIdentityReplayValidated or
+            ReferenceNatureRunActionSemanticIdentityReplayValidated or
             ReferenceNatureTreasureSemanticIdentityReplayValidated or
             ReferenceNatureNativeShovelSemanticIdentityReplayValidated or
             ReferenceNatureNativeEventGoldSemanticIdentityReplayValidated or
@@ -815,10 +819,8 @@ public sealed record SimulationProviderReplayCaptureV111(
                     TryBuildConfiguredExperimentalActTransitionPrefix(
                         session);
             if (transitionDecisions is not null)
-                return FromReplayValidatedAction(
-                    session.Origin, session.Action, transitionDecisions,
-                    session.Run, SimulationProviderReplayCaptureProvenanceV111
-                        .ReferenceNatureRunActionReplayValidated);
+                return FromReferenceNatureRunAction(
+                    session, transitionDecisions);
         }
         if (resultHistory.Length == originHistory.Length &&
             session.DecisionTranscript.Length == 0)
@@ -859,10 +861,83 @@ public sealed record SimulationProviderReplayCaptureV111(
         if (decisions.Length != session.DecisionTranscript.Length)
             throw new NotSupportedException(
                 "ReferenceNature run-action trace does not cover every sampled provider request.");
-        return FromReplayValidatedAction(
-            session.Origin, session.Action, decisions, session.Run,
+        return FromReferenceNatureRunAction(session, decisions);
+    }
+
+    private static SimulationProviderReplayCaptureV111
+        FromReferenceNatureRunAction(
+            ReferenceNatureRunActionSessionV111 session,
+            ControlledStochasticDecisionV111[] providerDecisions)
+    {
+        SimulationProviderReplayCaptureV111 TypedCapture() =>
+            FromReplayValidatedAction(
+                session.Origin, session.Action, providerDecisions, session.Run,
+                SimulationProviderReplayCaptureProvenanceV111
+                    .ReferenceNatureRunActionReplayValidated);
+
+        var decisions = session.DecisionTranscript;
+        if (providerDecisions.Length != decisions.Length ||
+            decisions.Length == 0)
+            return TypedCapture();
+
+        var transcript = decisions.Select(selection =>
+            new SimulationProviderReplaySemanticSelectionV111(
+                selection.LawId, selection.EventId, selection.OutcomeId,
+                selection.OutcomeIndex)).ToArray();
+        var laws = new ChanceLawV111[decisions.Length];
+        var supported = true;
+        try
+        {
+            using (RandomBoundaryJournalV111.Begin())
+            {
+                var replay = ReferenceNatureRunActionSessionV111.BeginForCapture(
+                    session.Origin, session.Action,
+                    session.InitialNatureState);
+                for (var index = 0; index < decisions.Length; index++)
+                {
+                    var law = replay.PendingLaw;
+                    if (law is null)
+                    {
+                        supported = false;
+                        break;
+                    }
+                    law.Validate();
+                    var selection = decisions[index];
+                    if (selection is null ||
+                        selection.LawId != law.LawId ||
+                        selection.EventId != law.EventId ||
+                        selection.OutcomeIndex < 0 ||
+                        selection.OutcomeIndex >= law.SupportCount ||
+                        selection.OutcomeId != law.OutcomeIdAt(
+                            selection.OutcomeIndex))
+                        throw new InvalidDataException(
+                            "ReferenceNature run-action outcome differs from its replayed Chance Law.");
+                    laws[index] = law;
+                    replay = replay.ResolveNext();
+                }
+                if (supported &&
+                    (replay.DecisionTranscript.Length != decisions.Length ||
+                     !replay.DecisionTranscript.SequenceEqual(decisions) ||
+                     CanonicalJson.Sha256(replay.Run) !=
+                         CanonicalJson.Sha256(session.Run) ||
+                     CanonicalJson.Sha256(replay.NatureState) !=
+                         CanonicalJson.Sha256(session.NatureState)))
+                    throw new InvalidDataException(
+                        "ReferenceNature run-action semantic prefix replay differs from its saved result.");
+            }
+        }
+        catch (NotSupportedException)
+        {
+            supported = false;
+        }
+        if (!supported)
+            return TypedCapture();
+
+        return FromReferenceNatureSemanticAction(
+            session.Origin, session.Action, session.Run, providerDecisions,
+            transcript, index => laws[index],
             SimulationProviderReplayCaptureProvenanceV111
-                .ReferenceNatureRunActionReplayValidated);
+                .ReferenceNatureRunActionSemanticIdentityReplayValidated);
     }
 
     private static ControlledStochasticDecisionV111[]?
@@ -2553,6 +2628,8 @@ public sealed record SimulationProviderReplayCaptureV111(
                  SimulationProviderReplayCaptureProvenanceV111
                     .ReferenceNatureWholeRunSemanticIdentityReplayValidated or
                  SimulationProviderReplayCaptureProvenanceV111
+                    .ReferenceNatureRunActionSemanticIdentityReplayValidated or
+                 SimulationProviderReplayCaptureProvenanceV111
                     .ReferenceNatureTreasureSemanticIdentityReplayValidated or
                  SimulationProviderReplayCaptureProvenanceV111
                     .ReferenceNatureNativeShovelSemanticIdentityReplayValidated or
@@ -2593,6 +2670,8 @@ public sealed record SimulationProviderReplayCaptureV111(
                     .ReferenceNatureSemanticIdentityReplayValidated or
                  SimulationProviderReplayCaptureProvenanceV111
                     .ReferenceNatureWholeRunSemanticIdentityReplayValidated or
+                 SimulationProviderReplayCaptureProvenanceV111
+                    .ReferenceNatureRunActionSemanticIdentityReplayValidated or
                  SimulationProviderReplayCaptureProvenanceV111
                     .ReferenceNatureTreasureSemanticIdentityReplayValidated or
                  SimulationProviderReplayCaptureProvenanceV111
