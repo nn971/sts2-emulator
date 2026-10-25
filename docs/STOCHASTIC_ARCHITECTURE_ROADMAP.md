@@ -5388,3 +5388,10 @@ pool-shuffle and draw-pile insertion sites. Their site, shared ordinal, ordered
 support identity, and selected result remain comparison fields, while the
 provider-specific request owners remain in the source traces. Core and CLI
 Release builds passed with zero warnings and errors; no tests were run.
+
+**S4 draw-insertion physical-gap identity increment (2026-10-25):** Semantic
+insertion outcomes now identify the selected gap by its adjacent physical card
+instances and generated-card model. The semantic support fingerprint therefore
+captures the ordered pile's actual gaps instead of only its numeric positions;
+the primitive Chance Law still reports bounded position indices. Core and CLI
+Release builds passed with zero warnings and errors; no tests were run.

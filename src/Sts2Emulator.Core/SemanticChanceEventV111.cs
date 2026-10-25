@@ -192,9 +192,8 @@ internal sealed record SemanticPendingIndexChanceEventV111(
         SemanticPoolShuffleEventV111 poolShuffle => poolShuffle.CurrentCardIds
             .Take(poolShuffle.Request.SupportCount)
             .Select(identity => "pool_entry:" + identity).ToArray(),
-        SemanticDrawInsertionEventV111 drawInsertion => Enumerable.Range(
-            0, drawInsertion.Request.SupportCount).Select(index =>
-            index.ToString(CultureInfo.InvariantCulture)).ToArray(),
+        SemanticDrawInsertionEventV111 drawInsertion =>
+            DrawInsertionOutcomeIds(drawInsertion),
         SemanticCardShortlistEventV111 shortlist =>
             shortlist.CandidateCardInstanceIds.Select(id =>
                 id.ToString(CultureInfo.InvariantCulture)).ToArray(),
@@ -204,6 +203,25 @@ internal sealed record SemanticPendingIndexChanceEventV111(
         _ => throw new NotSupportedException(
             $"UNSUPPORTED_SEMANTIC_CHANCE site={chanceEvent.SiteId}")
     };
+
+    private static string[] DrawInsertionOutcomeIds(
+        SemanticDrawInsertionEventV111 drawInsertion)
+    {
+        drawInsertion.Validate();
+        var pile = drawInsertion.EligibleDrawPileInstanceIds;
+        return Enumerable.Range(0, pile.Length + 1).Select(position =>
+        {
+            long? below = position == 0 ? null : pile[position - 1];
+            long? above = position == pile.Length ? null : pile[position];
+            var gapIdentity = CanonicalJson.Sha256(new
+            {
+                drawInsertion.GeneratedCardModelId,
+                BelowCardInstanceId = below,
+                AboveCardInstanceId = above
+            });
+            return "draw_gap:" + gapIdentity;
+        }).ToArray();
+    }
 
     private static string DescribeEnumerationEventKind(
         ISemanticChanceEventV111 chanceEvent) => chanceEvent switch
