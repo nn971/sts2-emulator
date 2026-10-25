@@ -5254,16 +5254,10 @@ public static class SemanticPilotCombatEngineV111
             pending.EnemyActionPending is null)
             throw new InvalidOperationException(
                 "No semantic enemy intent, draw or cost choice is pending.");
-        var (resolved, costDecision, randomPileCardDecision) =
+        var (resolved, deckDecision, costDecision, randomPileCardDecision) =
             SemanticEndTurnEngineV111.ResolvePilotChoice(
-                pending, pending.Fingerprint, selectedIndex, costEvent,
-                randomPileCardEvent);
-        SemanticDrawDecisionV111? deckDecision = null;
-        if (drawEvent is not null)
-        {
-            deckDecision = SemanticDrawChoiceV111.ValidateRecordedChoice(
-                resolved.Run, drawEvent, selectedIndex);
-        }
+                pending, pending.Fingerprint, selectedIndex, drawEvent,
+                costEvent, randomPileCardEvent);
         if (expectedDeckDecision is not null &&
             CanonicalJson.Sha256(expectedDeckDecision) !=
                 CanonicalJson.Sha256(deckDecision))

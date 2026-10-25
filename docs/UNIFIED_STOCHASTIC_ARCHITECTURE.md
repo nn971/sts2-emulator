@@ -1583,6 +1583,8 @@ entries itself.
 The same boundary returns semantic draw-cost and random-pile-card decisions
 recorded by the active hand-draw frame; pilot replay checks compare the returned
 decisions without reading that frame's transcripts.
+It also validates the selected card against the committed semantic-deck event
+and returns that typed decision for pilot history publication.
 
 Ordinary, controlled, semantic, and ReferenceNature `observe` operations now
 project payloads, hashes, and legal actions from the shared fair-observation

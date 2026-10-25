@@ -1112,15 +1112,21 @@ public static class SemanticEndTurnEngineV111
     }
 
     public static (SemanticEndTurnV111 EndTurn,
+        SemanticDrawDecisionV111? DrawDecision,
         SemanticCostDecisionV111? CostDecision,
         SemanticRandomPileCardDecisionV111? RandomPileCardDecision)
         ResolvePilotChoice(
             SemanticEndTurnV111 source, string fingerprint, int selectedIndex,
+            SemanticDeckEventV111? drawEvent,
             SemanticCostEventV111? costEvent,
             SemanticRandomPileCardEventV111? randomPileCardEvent)
     {
         Validate(source);
         var next = Resolve(source, fingerprint, selectedIndex);
+        SemanticDrawDecisionV111? drawDecision = null;
+        if (drawEvent is not null)
+            drawDecision = SemanticDrawChoiceV111.ValidateRecordedChoice(
+                next.Run, drawEvent, selectedIndex);
         SemanticCostDecisionV111? costDecision = null;
         if (costEvent is not null)
         {
@@ -1152,7 +1158,7 @@ public static class SemanticEndTurnEngineV111
                 throw new InvalidDataException(
                     "Random pile-card selection diverged from its support.");
         }
-        return (next, costDecision, randomPileCardDecision);
+        return (next, drawDecision, costDecision, randomPileCardDecision);
     }
 
     public static SemanticEndTurnV111 ResolveIntent(

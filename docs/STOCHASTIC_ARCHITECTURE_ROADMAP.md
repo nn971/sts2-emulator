@@ -4968,3 +4968,9 @@ end-turn owner now returns typed cost and random-pile-card decisions from the
 active hand-draw frame during pilot resolution. Pilot replay comparison no
 longer reads those hand-draw transcripts. Static source review and
 `git diff --check` only; no tests or builds were run.
+
+**S4 semantic draw transcript validation increment (2026-10-25):** End-turn
+pilot resolution now validates the selected card against the committed
+semantic-deck event and returns that typed decision with its frame. Pilot
+history publication no longer performs the provider transcript lookup. Static
+source review and `git diff --check` only; no tests or builds were run.
