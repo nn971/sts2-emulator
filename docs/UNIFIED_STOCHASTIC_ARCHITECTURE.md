@@ -1470,9 +1470,11 @@ from a completed ReferenceNature whole-run handle, replay-validated semantic Nat
 event-choice, controlled-action or run-action handles, or from exact
 origin/result snapshots plus action and boundary arrays,
 with optional Native cursor equality and a mechanics-difference bound.
-`hello` advertises its capture and result schemas, operation, and inputs. These
-provider traces are privileged diagnostic data and are not part of the fair
-player observation.
+`hello` advertises its capture and result schemas, operation, and inputs. The
+standard-library Python binding exposes the same operation as
+`Session.compare_provider_replays(**capture_inputs)` and validates both
+advertised schema IDs on the response. These provider traces are privileged
+diagnostic data and are not part of the fair player observation.
 
 **ReferenceNature cannot certify its own Chance Law** merely by sampling from it. Correctness of `p` needs an independent oracle: exact enumeration for small decks, separately specified analytic weights/rules, and eventually pinned original-game evidence. A statistical comparison between Native and ReferenceNature is helpful only when Native's distribution at the compared information boundary is well specified.
 

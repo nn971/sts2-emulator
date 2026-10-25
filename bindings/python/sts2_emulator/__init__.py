@@ -4027,6 +4027,57 @@ class Session:
                 and coverage.get("queryOperation") == "chance_law_query"
                 and site_id in coverage.get("siteIds", []))
 
+    def compare_provider_replays(self, *,
+                                 require_native_cursor_equality=False,
+                                 maximum_differences=64, **capture_inputs):
+        """Compare two replay captures through the negotiated diagnostic API.
+
+        ``capture_inputs`` uses the operation's JSONL field names, such as
+        ``left_reference_nature_semantic_combat_handle`` and
+        ``right_semantic_native_policy_handle``. This keeps the wrapper
+        compatible with the operation's versioned set of capture sources.
+        """
+        comparison_schema_id = self.capabilities.get(
+            "simulationProviderReplayComparisonSchemaId")
+        capture_schema_id = self.capabilities.get(
+            "simulationProviderReplayCaptureSchemaId")
+        operations = self.capabilities.get(
+            "simulationProviderReplayComparisonOperations")
+        inputs = self.capabilities.get(
+            "simulationProviderReplayComparisonInputs")
+        if (not isinstance(comparison_schema_id, str)
+                or not comparison_schema_id
+                or not isinstance(capture_schema_id, str)
+                or not capture_schema_id
+                or not isinstance(operations, list)
+                or "provider_replay_compare" not in operations
+                or not isinstance(inputs, list)
+                or not inputs):
+            raise EmulatorError(
+                "Emulator does not expose provider replay comparison")
+        if not isinstance(require_native_cursor_equality, bool):
+            raise TypeError("require_native_cursor_equality must be a bool")
+        if (isinstance(maximum_differences, bool)
+                or not isinstance(maximum_differences, int)
+                or maximum_differences <= 0):
+            raise ValueError("maximum_differences must be a positive integer")
+        if not capture_inputs:
+            raise ValueError("provider replay comparison needs both captures")
+
+        result = self.call(
+            "provider_replay_compare",
+            require_native_cursor_equality=require_native_cursor_equality,
+            maximum_differences=maximum_differences,
+            **capture_inputs)
+        comparison = result.get("comparison")
+        if (result.get("schemaId") != comparison_schema_id
+                or result.get("captureSchemaId") != capture_schema_id
+                or not isinstance(comparison, dict)
+                or comparison.get("schemaId") != comparison_schema_id):
+            raise EmulatorError(
+                "Provider replay comparison response differs from negotiation")
+        return comparison
+
     def _validate_semantic_deck_prefix_distribution_capabilities(self):
         self._semantic_deck_sequential_audit_supported = False
         self._semantic_deck_sequential_audit_max_prefix_length = 0

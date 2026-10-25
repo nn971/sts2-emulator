@@ -93,6 +93,23 @@ session; release invalidates them. Calls are serialized with a lock.
 Act 1 mechanics with explicit prototype RNG fidelity; unsupported characters
 fail on start. Exact snapshots contain hidden state; `observe()` is fair.
 
+Provider replay comparison is available through the negotiated diagnostic
+helper. Pass the same side-prefixed capture fields accepted by the JSONL
+operation; the helper checks the advertised capture and comparison schemas:
+
+```python
+comparison = emulator.compare_provider_replays(
+    left_semantic_native_policy_handle=native_state.handle,
+    right_reference_nature_semantic_combat_handle=nature_state.handle,
+    require_native_cursor_equality=False,
+)
+if comparison["sameMechanicsForSameSemanticOutcomes"]:
+    print("The compared trajectories agree under their semantic outcomes.")
+```
+
+This result is a privileged diagnostic. It does not appear in fair player
+observations and does not establish Native stream parity or source-law fidelity.
+
 The opt-in controlled run-action controller can be sampled atomically with
 `State.begin_reference_nature_run_action(nature_seed=None, action_id=...)`. Supply a seed
 for the first ReferenceNature session on a run; after a session commits, its
