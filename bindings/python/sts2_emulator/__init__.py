@@ -16,6 +16,21 @@ def _canonical_protocol_hash(value):
     return hashlib.sha256(encoded).hexdigest()
 
 
+def _require_candidate_label(pending, candidate_label, *, context,
+                             expected_kind=None,
+                             expected_kind_error=None):
+    if (expected_kind is not None and
+            (not pending or pending.get("kind") != expected_kind)):
+        raise EmulatorError(expected_kind_error or
+                            f"Expected a {expected_kind} boundary")
+    if not isinstance(candidate_label, str) or not candidate_label.strip():
+        raise ValueError("candidate_label must be a non-empty string")
+    labels = (pending or {}).get("candidateLabels")
+    if labels is None or candidate_label not in labels:
+        raise ValueError(
+            f"candidate_label is not in the pending {context} support")
+
+
 @dataclass(frozen=True)
 class State:
     session: "Session"
@@ -1124,11 +1139,8 @@ class ControlledEventChoice:
 
     def resolve_candidate_label(self, candidate_label: str):
         """Resolve the pending event choice by its saved candidate label."""
-        if not isinstance(candidate_label, str) or not candidate_label.strip():
-            raise ValueError("candidate_label must be a non-empty string")
-        labels = (self.pending or {}).get("candidateLabels")
-        if labels is None or candidate_label not in labels:
-            raise ValueError("candidate_label is not in the pending event support")
+        _require_candidate_label(
+            self.pending, candidate_label, context="event")
         result = self.session.call(
             "controlled_event_resolve", state_handle=self.handle,
             candidate_label=candidate_label)
@@ -1191,12 +1203,8 @@ class ControlledRunActionChoice:
 
     def resolve_candidate_label(self, candidate_label: str):
         """Resolve the pending run action by its saved candidate label."""
-        if not isinstance(candidate_label, str) or not candidate_label.strip():
-            raise ValueError("candidate_label must be a non-empty string")
-        labels = (self.pending or {}).get("candidateLabels")
-        if labels is None or candidate_label not in labels:
-            raise ValueError(
-                "candidate_label is not in the pending run-action support")
+        _require_candidate_label(
+            self.pending, candidate_label, context="run-action")
         result = self.session.call(
             "controlled_run_action_resolve", state_handle=self.handle,
             candidate_label=candidate_label)
@@ -2866,12 +2874,8 @@ class ControlledCombat:
 
     def resolve_candidate_label(self, candidate_label: str):
         """Resolve a controlled outcome by its saved semantic label."""
-        if not isinstance(candidate_label, str) or not candidate_label.strip():
-            raise ValueError("candidate_label must be a non-empty string")
-        labels = (self.pending or {}).get("candidateLabels")
-        if labels is None or candidate_label not in labels:
-            raise ValueError(
-                "candidate_label is not in the pending combat support")
+        _require_candidate_label(
+            self.pending, candidate_label, context="combat")
         return ControlledCombat.from_wire(self.session,
             self.session.call("controlled_resolve",
                               controlled_handle=self.handle,
@@ -3002,16 +3006,11 @@ class SemanticCombat:
 
     def resolve_candidate_label(self, candidate_label: str):
         """Resolve a pending automatic enemy action by its saved label."""
-        if not self.pending or self.pending.get("kind") != (
-                "enemy_action_chance"):
-            raise EmulatorError(
-                "Expected a semantic enemy_action_chance event")
-        if not isinstance(candidate_label, str) or not candidate_label.strip():
-            raise ValueError("candidate_label must be a non-empty string")
-        labels = self.pending.get("candidateLabels")
-        if labels is None or candidate_label not in labels:
-            raise ValueError(
-                "candidate_label is not in the pending enemy-action support")
+        _require_candidate_label(
+            self.pending, candidate_label, context="enemy-action",
+            expected_kind="enemy_action_chance",
+            expected_kind_error=(
+                "Expected a semantic enemy_action_chance event"))
         return SemanticCombat.from_wire(
             self.session, self.session.call(
                 "semantic_resolve_enemy_action",

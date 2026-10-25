@@ -59,6 +59,14 @@ boundary checks remain with their existing owners. No saved transcript format
 changed. Static source review and `git diff --check` only; no tests or builds
 were run.
 
+**S5 shared candidate-label binding validation (2026-10-25):** Controlled
+event-choice, run-action, and playable-combat Python facades now use one
+validator for non-empty labels and membership in the saved pending support.
+Semantic enemy-action resolution uses the same validator with its event-kind
+check. Request names, support projections, and protocol calls remain with each
+facade. Static source review and `git diff --check` only; no tests or builds
+were run.
+
 **S4 identity-only mechanics dispatcher boundary (2026-10-25):** The
 index-valued mechanics switch is now private behind the Chance Law and
 semantic outcome identity resolvers. Provider code cannot bypass active
