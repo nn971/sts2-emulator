@@ -2098,24 +2098,20 @@ public sealed partial class PrototypeGameEngine
         state = state with
         {
             Stochastic = RunStochasticStateV111.WithPrototypeRng(
-                state.Stochastic, prototypeRng)
+                state.Stochastic, prototypeRng),
+            World = world with { Combat = combat }
         };
         if (ExpectedStratagemSelectionCount(combat) > 0)
             return BeginControlledRecycleStratagemSelection(
                 state, state.Player, combat,
                 remainingHandDraw, requestedHandDraw);
 
-        var player = state.Player;
-        var drawnSegment = ExecuteDrawCardsSegment(
-            state, prototypeRng, rng => DrawCards(
-                player, combat, remainingHandDraw, rng,
-                fromHandDraw: true,
-                suspensionPolicy:
-                    PrototypeDrawCardsSuspensionPolicyV111
-                        .ControlledLegacyAutomaticHandDraw(combat),
-                automaticHandDrawStage: true));
+        var resumedSegment = ResumeAutomaticHandDrawSegment(
+            state, remainingHandDraw,
+            PrototypeDrawCardsSuspensionPolicyV111
+                .ControlledLegacyAutomaticHandDraw(combat));
         return ResumeSavedControlledAutomaticHandDraw(
-            drawnSegment.Run, drawnSegment.Drawn).Run;
+            resumedSegment.Run, resumedSegment.Drawn).Run;
     }
 
     private static CombatState CompleteAdvanceTurnAfterCommittedIntents(

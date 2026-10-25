@@ -4,12 +4,12 @@
 
 **S4 controlled recycle draw publication increment (2026-10-26):** The
 resumed controlled legacy automatic hand draw now routes its post-recycle
-`DrawCards` segment through `ExecuteDrawCardsSegment`, carrying the caller's
-RNG projection already advanced by the shuffle and post-shuffle relic hooks.
-The shared helper publishes the draw's final RNG checkpoint; recycle,
-insertion, Stratagem, and boundary handling remain with their existing
-owners. Core and CLI Release builds and `git diff --check` passed; no tests
-were run.
+`DrawCards` segment through `ResumeAutomaticHandDrawSegment`, after publishing
+the committed recycle mechanics and RNG projection. The common segment owner
+clears the saved cursor, invokes the draw kernel, and publishes its advanced
+RNG; recycle, insertion, Stratagem, and boundary handling remain with their
+existing owners. Core and CLI Release builds and `git diff --check` passed; no
+tests were run.
 
 **S4 shared draw-segment RNG publication increment (2026-10-26):** Direct
 semantic draw segments, opening-hand draws, the automatic pipeline's
