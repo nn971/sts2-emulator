@@ -7279,13 +7279,16 @@ public static class SemanticPilotCombatEngineV111
         ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
         if (outcomeIndex < 0)
             throw new ArgumentOutOfRangeException(nameof(outcomeIndex));
+        if (current.IntentPending is not null)
+            throw new InvalidOperationException(
+                "Weighted intent outcomes require their semantic identity resolver.");
 
         static void ValidateSelection(
-            string expectedEventId, string actualEventId, int index,
+            string selectedEventId, string pendingEventId, int index,
             int supportCount)
         {
             if (!StringComparer.Ordinal.Equals(
-                    expectedEventId, actualEventId) ||
+                    selectedEventId, pendingEventId) ||
                 supportCount < 1 || index >= supportCount)
                 throw new InvalidOperationException(
                     "Semantic chance selection is stale or outside current support.");
