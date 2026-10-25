@@ -131,7 +131,7 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
             var request = replay.Continuation?.PendingRequest ??
                 throw new InvalidDataException(
                     "Native event gold replay completed before its sampled prefix.");
-            return QueryLaw(Origin, ActionId, EventId, request);
+            return QueryLawForCapture(Origin, ActionId, EventId, request);
         }
     }
 
@@ -168,7 +168,7 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
             throw new NotSupportedException(
                 "Configured Event entry did not reach a supported event-entry draw.");
         var eventId = ParseSupportedEventId(request);
-        _ = QueryLaw(origin, actionId, eventId, request);
+        _ = QueryLawForCapture(origin, actionId, eventId, request);
         var session = new ReferenceNatureNativeEventGoldSessionV111(
             CurrentSchemaId, eventId, actionId, origin.Fork(), origin.Fork(),
             initialNatureState.Fork(), initialNatureState.Fork(), []);
@@ -198,7 +198,8 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
         var pending = replayAtBoundary.Continuation ??
             throw new InvalidDataException(
                 "Native event gold request disappeared before resolution.");
-        var law = QueryLaw(Origin, ActionId, EventId, pending.PendingRequest);
+        var law = QueryLawForCapture(Origin, ActionId, EventId,
+            pending.PendingRequest);
         var selection = ReferenceNatureV111.SampleValidated(law, Stochastic.NatureState);
         var providerDecision = ReferenceNatureChanceLawDecisionV111.FromSelection(
             law, pending.PendingRequest, selection, Origin);
@@ -254,7 +255,7 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
             var request = replayAtBoundary.Continuation?.PendingRequest ??
                 throw new InvalidDataException(
                     "Native event gold replay completed before its saved transcript.");
-            var law = QueryLaw(Origin, ActionId, EventId, request);
+            var law = QueryLawForCapture(Origin, ActionId, EventId, request);
             var selection = ReferenceNatureV111.SampleValidated(
                 law, expectedNatureState);
             var expectedDecision = new ReferenceNatureDecisionV111(
@@ -370,7 +371,7 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
             var request = replay.Continuation?.PendingRequest ??
                 throw new InvalidDataException(
                     "Native event gold replay ended before its provider prefix.");
-            var law = QueryLaw(Origin, ActionId, EventId, request);
+            var law = QueryLawForCapture(Origin, ActionId, EventId, request);
             var selection = ReferenceNatureV111.SampleValidated(
                 law, expectedNatureState);
             var expectedDecision = new ReferenceNatureDecisionV111(
@@ -387,7 +388,7 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
         return prefix.ToArray();
     }
 
-    private static ChanceLawV111 QueryLaw(
+    internal static ChanceLawV111 QueryLawForCapture(
         RunState origin, string actionId, string eventId,
         ControlledStochasticRequestV111 request)
     {

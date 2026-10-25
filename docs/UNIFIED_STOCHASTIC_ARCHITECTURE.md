@@ -1182,6 +1182,8 @@ including the conditioned remaining queue support, before the capture claims
 semantic completeness. The Native Shovel capture applies the same rule to
 its ordered rarity and relic identity pulls, replaying the saved bag prefix
 before annotating each selected relic.
+The Native Event-entry capture re-queries each saved law for generated gold,
+potion-slot, and event-offer outcomes before publishing its semantic trace.
 `FromReferenceNatureScriptedRunSession` adds the matching whole-run path for
 ordinary actions with complete six-primitive typed traces. It replays each
 action prefix, materializes the saved outcomes through the same boundary

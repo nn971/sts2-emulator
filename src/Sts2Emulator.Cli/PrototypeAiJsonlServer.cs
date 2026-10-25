@@ -10668,7 +10668,7 @@ internal static class PrototypeAiJsonlServer
                                     return referenceNatureNativeEventGoldStates
                                         .TryGetValue(handle, out var nativeEventGold)
                                         ? SimulationProviderReplayCaptureV111
-                                            .FromReferenceNatureControlledActionSession(
+                                            .FromReferenceNatureNativeEventGoldSession(
                                                 nativeEventGold)
                                         : throw new InvalidOperationException(
                                             "Unknown ReferenceNature Native event-gold handle: " +

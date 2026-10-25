@@ -42,6 +42,15 @@ bag prefix before the capture claims semantic completeness. JSONL
 CLI Release builds passed with zero warnings or errors; `git diff --check`
 passed. No tests were added or run.
 
+**S4 Native Event-entry semantic capture increment (2026-10-26):** The
+provider replay comparator now captures the completed ReferenceNature Native
+Event-entry action with a complete typed trace and provider-independent
+outcomes for its validated event laws. It re-queries each law from the saved
+action and request before publishing semantic completeness. JSONL
+`provider_replay_compare` uses this capture for Native Event-entry handles.
+Core and CLI Release builds passed with zero warnings or errors;
+`git diff --check` passed. No tests were added or run.
+
 **S4 whole-run six-primitive continuation increment (2026-10-25):** The
 ReferenceNature whole-run session now accepts caller-supplied, replay-validated
 transcript entries for all six typed random operations alongside its existing
