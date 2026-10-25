@@ -469,7 +469,7 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
         return law;
     }
 
-    private static string NativeEventEntry(string eventId) => eventId switch
+    internal static string NativeEventEntry(string eventId) => eventId switch
     {
         PrototypeNativeStoneOfAllTime.EventId =>
             PrototypeNativeStoneOfAllTime.NativeRngEventId,

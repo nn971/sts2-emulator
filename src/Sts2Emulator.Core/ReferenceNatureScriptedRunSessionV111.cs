@@ -528,6 +528,9 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
             if (indexRequest.SiteId == StochasticSiteRegistryV111
                     .NativeCombatGoldSiteId)
                 return QueryNativeCombatGold(active, indexRequest);
+            if (indexRequest.SiteId == ChanceLawEngineV111
+                    .NativeEventGoldIndexSiteId)
+                return QueryNativeEventGoldIndex(active, indexRequest);
             if (indexRequest.SiteId == StochasticSiteRegistryV111
                     .NativePotionFactoryModelSiteId)
                 return QueryNativePotionFactoryModel(active, indexRequest);
@@ -608,6 +611,43 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
             CanonicalJson.Sha256(request))
             throw new InvalidDataException(
                 "Native combat-gold request differs from its source law.");
+        return law;
+    }
+
+    private static ChanceLawV111 QueryNativeEventGoldIndex(
+        ScriptedRunActionSessionV111 active,
+        RandomIndexRequestV111 request)
+    {
+        request.Validate();
+        var eventId = NativeEventGoldEventId(request.OwnerId) ??
+            throw new InvalidDataException(
+                "Native event-gold index owner has no declared event branch.");
+        var actionId = PrototypeAiEnvironment.StableActionId(active.Action);
+        var origin = active.Origin;
+        if (origin.Stochastic.NativeRunRng is null)
+        {
+            if (request.StreamId != "event" ||
+                origin.World is not { } legacyWorld ||
+                !PrototypeGameEngine.UsesNativeRegionalSystems(legacyWorld))
+                throw new InvalidDataException(
+                    "Legacy event-gold index request has no Native-regional event stream.");
+            return ChanceLawEngineV111
+                .QueryLegacyNativeRegionalEventGoldIndex(
+                    origin, request, actionId, eventId);
+        }
+
+        var law = ChanceLawEngineV111.QueryNativeEventGoldIndex(
+            origin, request.SiteId, request.Ordinal, actionId, eventId);
+        var expectedStream = NativeRngV111Contexts.EventStreamId(
+            ReferenceNatureNativeEventGoldSessionV111.NativeEventEntry(
+                eventId));
+        if (request.StreamId != expectedStream ||
+            request.OperationKind != "bounded_integer" ||
+            request.OwnerId != law.OwnerId ||
+            request.Ordinal != law.Ordinal ||
+            request.BoundedCount != law.SupportCount)
+            throw new InvalidDataException(
+                "Native event-gold index request differs from its source law.");
         return law;
     }
 

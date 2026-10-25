@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 whole-run generated Event gold law increment (2026-10-26):**
+ReferenceNature whole-run replay now routes registered Native and
+Native-regional legacy generated-gold index requests through the existing
+event-branch laws. The outcome is the mapped gold amount; Native requests
+validate event-stream attribution and bounded support. Core and CLI Release
+builds passed with zero warnings or errors; `git diff --check` passed. No
+tests were added or run.
+
 **S4 whole-run combat-gold law increment (2026-10-26):** Combat-ending
 ReferenceNature whole-run actions now route registered Native
 `reward.combat_gold.index_draw` requests through the source law. The action's
