@@ -43,17 +43,14 @@ public static class ReferenceNatureV111
             var law = ChanceLawEngineV111.QueryEndTurnIndex(
                 enemyActionEvent);
             var selection = SampleValidated(law, state);
-            if (selection.EventId != enemyActionEvent.EventId ||
-                selection.OutcomeIndex < 0 ||
-                selection.OutcomeIndex >=
-                    enemyActionEvent.Request.SupportCount ||
-                selection.OutcomeId != "choice_index:" +
-                    selection.OutcomeIndex.ToString(
-                        CultureInfo.InvariantCulture))
+            if (selection.OutcomeId != "choice_index:" +
+                selection.OutcomeIndex.ToString(
+                    CultureInfo.InvariantCulture))
                 throw new InvalidDataException(
                     "ReferenceNature law no longer matches the pending enemy-action index event.");
-            var child = SemanticPilotCombatEngineV111.Resolve(
-                combat, combat.Fingerprint, selection.OutcomeIndex);
+            var child = SemanticPilotCombatEngineV111
+                .ResolveChanceOutcomeByIndex(
+                    combat, selection.EventId, selection.OutcomeIndex);
             return new ReferenceNatureResolutionV111(child, law, selection);
         }
 
@@ -61,17 +58,9 @@ public static class ReferenceNatureV111
         {
             var law = ChanceLawEngineV111.QueryTarget(targetEvent);
             var selection = SampleValidated(law, state);
-            if (selection.EventId != targetEvent.EventId ||
-                selection.OutcomeIndex < 0 ||
-                selection.OutcomeIndex >=
-                    targetEvent.CandidateEnemyInstanceIds.Length)
-                throw new InvalidDataException(
-                    "ReferenceNature law no longer matches the pending target event.");
-            var enemyInstanceId =
-                targetEvent.CandidateEnemyInstanceIds[selection.OutcomeIndex];
-            var child = SemanticPilotCombatEngineV111.ResolveRandomTarget(
-                combat, combat.Fingerprint, targetEvent.EventId,
-                enemyInstanceId);
+            var child = SemanticPilotCombatEngineV111
+                .ResolveChanceOutcomeByIndex(
+                    combat, selection.EventId, selection.OutcomeIndex);
             return new ReferenceNatureResolutionV111(child, law, selection);
         }
 
@@ -80,17 +69,9 @@ public static class ReferenceNatureV111
             var law = ChanceLawEngineV111.QueryGeneratedCard(
                 generatedCardEvent);
             var selection = SampleValidated(law, state);
-            if (selection.EventId != generatedCardEvent.EventId ||
-                selection.OutcomeIndex < 0 ||
-                selection.OutcomeIndex >=
-                    generatedCardEvent.CandidateCardIds.Length)
-                throw new InvalidDataException(
-                    "ReferenceNature law no longer matches the pending generated-card event.");
-            var cardId = generatedCardEvent.CandidateCardIds[
-                selection.OutcomeIndex];
-            var child = SemanticPilotCombatEngineV111.ResolveGeneratedCard(
-                combat, combat.Fingerprint, generatedCardEvent.EventId,
-                cardId);
+            var child = SemanticPilotCombatEngineV111
+                .ResolveChanceOutcomeByIndex(
+                    combat, selection.EventId, selection.OutcomeIndex);
             return new ReferenceNatureResolutionV111(child, law, selection);
         }
 
@@ -98,16 +79,9 @@ public static class ReferenceNatureV111
         {
             var law = ChanceLawEngineV111.QueryCost(costEvent);
             var selection = SampleValidated(law, state);
-            if (selection.EventId != costEvent.EventId ||
-                selection.OutcomeIndex < 0 ||
-                selection.OutcomeIndex >= costEvent.CandidateCosts.Length)
-                throw new InvalidDataException(
-                    "ReferenceNature law no longer matches the pending cost event.");
-            var selectedCost = costEvent.CandidateCosts[
-                selection.OutcomeIndex];
-            var child = SemanticPilotCombatEngineV111.ResolveCost(
-                combat, combat.Fingerprint, costEvent.EventId,
-                selectedCost);
+            var child = SemanticPilotCombatEngineV111
+                .ResolveChanceOutcomeByIndex(
+                    combat, selection.EventId, selection.OutcomeIndex);
             return new ReferenceNatureResolutionV111(child, law, selection);
         }
 
@@ -116,17 +90,9 @@ public static class ReferenceNatureV111
             var law = ChanceLawEngineV111.QueryRandomPileCard(
                 randomPileCardEvent);
             var selection = SampleValidated(law, state);
-            if (selection.EventId != randomPileCardEvent.EventId ||
-                selection.OutcomeIndex < 0 ||
-                selection.OutcomeIndex >=
-                    randomPileCardEvent.CandidateCardInstanceIds.Length)
-                throw new InvalidDataException(
-                    "ReferenceNature law no longer matches the pending pile-card event.");
-            var cardInstanceId = randomPileCardEvent
-                .CandidateCardInstanceIds[selection.OutcomeIndex];
-            var child = SemanticPilotCombatEngineV111.ResolveRandomPileCard(
-                combat, combat.Fingerprint, randomPileCardEvent.EventId,
-                cardInstanceId);
+            var child = SemanticPilotCombatEngineV111
+                .ResolveChanceOutcomeByIndex(
+                    combat, selection.EventId, selection.OutcomeIndex);
             return new ReferenceNatureResolutionV111(child, law, selection);
         }
 
@@ -134,16 +100,9 @@ public static class ReferenceNatureV111
         {
             var law = ChanceLawEngineV111.QueryCardTransform(transformEvent);
             var selection = SampleValidated(law, state);
-            if (selection.EventId != transformEvent.EventId ||
-                selection.OutcomeIndex < 0 ||
-                selection.OutcomeIndex >=
-                    transformEvent.CandidateCardIds.Length)
-                throw new InvalidDataException(
-                    "ReferenceNature law no longer matches the pending transform event.");
-            var cardId = transformEvent.CandidateCardIds[
-                selection.OutcomeIndex];
-            var child = SemanticPilotCombatEngineV111.ResolveCardTransform(
-                combat, combat.Fingerprint, transformEvent.EventId, cardId);
+            var child = SemanticPilotCombatEngineV111
+                .ResolveChanceOutcomeByIndex(
+                    combat, selection.EventId, selection.OutcomeIndex);
             return new ReferenceNatureResolutionV111(child, law, selection);
         }
 
@@ -151,15 +110,9 @@ public static class ReferenceNatureV111
         {
             var law = ChanceLawEngineV111.QueryPotionGeneration(potionEvent);
             var selection = SampleValidated(law, state);
-            if (selection.EventId != potionEvent.EventId ||
-                selection.OutcomeIndex < 0 ||
-                selection.OutcomeIndex >= potionEvent.CandidatePotionIds.Length)
-                throw new InvalidDataException(
-                    "ReferenceNature law no longer matches the pending potion event.");
-            var potionId = potionEvent.CandidatePotionIds[
-                selection.OutcomeIndex];
-            var child = SemanticPilotCombatEngineV111.ResolvePotionGeneration(
-                combat, combat.Fingerprint, potionEvent.EventId, potionId);
+            var child = SemanticPilotCombatEngineV111
+                .ResolveChanceOutcomeByIndex(
+                    combat, selection.EventId, selection.OutcomeIndex);
             return new ReferenceNatureResolutionV111(child, law, selection);
         }
 
@@ -168,18 +121,9 @@ public static class ReferenceNatureV111
             var law = ChanceLawEngineV111.QueryHandCostSelection(
                 handCostEvent);
             var selection = SampleValidated(law, state);
-            if (selection.EventId != handCostEvent.EventId ||
-                selection.OutcomeIndex < 0 ||
-                selection.OutcomeIndex >=
-                    handCostEvent.CandidateCardInstanceIds.Length)
-                throw new InvalidDataException(
-                    "ReferenceNature law no longer matches the pending hand-cost event.");
-            var cardInstanceId = handCostEvent.CandidateCardInstanceIds[
-                selection.OutcomeIndex];
             var child = SemanticPilotCombatEngineV111
-                .ResolveHandCostSelection(
-                    combat, combat.Fingerprint, handCostEvent.EventId,
-                    cardInstanceId);
+                .ResolveChanceOutcomeByIndex(
+                    combat, selection.EventId, selection.OutcomeIndex);
             return new ReferenceNatureResolutionV111(child, law, selection);
         }
 
@@ -187,14 +131,9 @@ public static class ReferenceNatureV111
         {
             var law = ChanceLawEngineV111.QueryPoolShuffle(poolShuffleEvent);
             var selection = SampleValidated(law, state);
-            if (selection.EventId != poolShuffleEvent.EventId ||
-                selection.OutcomeIndex < 0 ||
-                selection.OutcomeIndex >= poolShuffleEvent.Request.SupportCount)
-                throw new InvalidDataException(
-                    "ReferenceNature law no longer matches the pending pool-shuffle event.");
-            var child = SemanticPilotCombatEngineV111.ResolvePoolShuffle(
-                combat, combat.Fingerprint, poolShuffleEvent.EventId,
-                selection.OutcomeIndex);
+            var child = SemanticPilotCombatEngineV111
+                .ResolveChanceOutcomeByIndex(
+                    combat, selection.EventId, selection.OutcomeIndex);
             return new ReferenceNatureResolutionV111(child, law, selection);
         }
 
@@ -202,14 +141,9 @@ public static class ReferenceNatureV111
         {
             var law = ChanceLawEngineV111.QueryDrawInsertion(insertionEvent);
             var selection = SampleValidated(law, state);
-            if (selection.EventId != insertionEvent.EventId ||
-                selection.OutcomeIndex < 0 ||
-                selection.OutcomeIndex >= insertionEvent.Request.SupportCount)
-                throw new InvalidDataException(
-                    "ReferenceNature law no longer matches the pending draw-insertion event.");
-            var child = SemanticPilotCombatEngineV111.ResolveDrawInsertion(
-                combat, combat.Fingerprint, insertionEvent.EventId,
-                selection.OutcomeIndex);
+            var child = SemanticPilotCombatEngineV111
+                .ResolveChanceOutcomeByIndex(
+                    combat, selection.EventId, selection.OutcomeIndex);
             return new ReferenceNatureResolutionV111(child, law, selection);
         }
 
@@ -217,17 +151,9 @@ public static class ReferenceNatureV111
         {
             var law = ChanceLawEngineV111.QueryCardShortlist(shortlistEvent);
             var selection = SampleValidated(law, state);
-            if (selection.EventId != shortlistEvent.EventId ||
-                selection.OutcomeIndex < 0 ||
-                selection.OutcomeIndex >=
-                    shortlistEvent.CandidateCardInstanceIds.Length)
-                throw new InvalidDataException(
-                    "ReferenceNature law no longer matches the pending shortlist event.");
-            var cardInstanceId = shortlistEvent.CandidateCardInstanceIds[
-                selection.OutcomeIndex];
-            var child = SemanticPilotCombatEngineV111.ResolveCardShortlist(
-                combat, combat.Fingerprint, shortlistEvent.EventId,
-                cardInstanceId);
+            var child = SemanticPilotCombatEngineV111
+                .ResolveChanceOutcomeByIndex(
+                    combat, selection.EventId, selection.OutcomeIndex);
             return new ReferenceNatureResolutionV111(child, law, selection);
         }
 
@@ -238,20 +164,17 @@ public static class ReferenceNatureV111
                     "Pending semantic draw lost its provider-owned deck.");
             var law = ChanceLawEngineV111.QueryDraw(deck);
             var selection = SampleValidated(law, state);
-            if (selection.EventId != drawEvent.EventId ||
-                selection.OutcomeIndex < 0 ||
-                selection.OutcomeIndex >= drawEvent.CandidateCardInstanceIds.Length ||
+            if (selection.OutcomeIndex >=
+                    drawEvent.CandidateCardInstanceIds.Length ||
                 selection.OutcomeId != "card_instance:" +
                     drawEvent.CandidateCardInstanceIds[
                         selection.OutcomeIndex].ToString(
                             CultureInfo.InvariantCulture))
                 throw new InvalidDataException(
                     "ReferenceNature law no longer matches the pending draw event.");
-            var cardInstanceId =
-                drawEvent.CandidateCardInstanceIds[selection.OutcomeIndex];
-            var child = SemanticPilotCombatEngineV111.ResolveDrawCard(
-                combat, combat.Fingerprint, drawEvent.EventId,
-                cardInstanceId);
+            var child = SemanticPilotCombatEngineV111
+                .ResolveChanceOutcomeByIndex(
+                    combat, selection.EventId, selection.OutcomeIndex);
             return new ReferenceNatureResolutionV111(child, law, selection);
         }
 
@@ -262,9 +185,7 @@ public static class ReferenceNatureV111
                     "Pending semantic reveal lost its provider-owned deck.");
             var law = ChanceLawEngineV111.QueryDeckReveal(deck);
             var selection = SampleValidated(law, state);
-            if (selection.EventId != revealEvent.EventId ||
-                selection.OutcomeIndex < 0 ||
-                selection.OutcomeIndex >=
+            if (selection.OutcomeIndex >=
                     revealEvent.CandidateCardInstanceIds.Length ||
                 selection.OutcomeId != "card_instance:" +
                     revealEvent.CandidateCardInstanceIds[
@@ -272,10 +193,9 @@ public static class ReferenceNatureV111
                             CultureInfo.InvariantCulture))
                 throw new InvalidDataException(
                     "ReferenceNature law no longer matches the pending deck reveal.");
-            var child = SemanticPilotCombatEngineV111.ResolveDeckReveal(
-                combat, combat.Fingerprint, revealEvent.EventId,
-                revealEvent.CandidateCardInstanceIds[
-                    selection.OutcomeIndex]);
+            var child = SemanticPilotCombatEngineV111
+                .ResolveChanceOutcomeByIndex(
+                    combat, selection.EventId, selection.OutcomeIndex);
             return new ReferenceNatureResolutionV111(child, law, selection);
         }
 

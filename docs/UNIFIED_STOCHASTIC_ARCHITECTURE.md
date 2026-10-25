@@ -1148,6 +1148,15 @@ card-cost audit records share this mapping while retaining their source
 checks. The Native audit keeps the primitive index and cursor spans alongside
 the semantic outcome.
 
+Provider-selected indices for the semantic pilot now converge through
+`SemanticPilotCombatEngineV111.ResolveChanceOutcomeByIndex`. ReferenceNature
+validates the sampled law first; the Native adapter validates provider mode
+and primitive support first. The shared dispatcher then checks the live event
+identity and support bound before invoking the existing target, generation,
+cost, draw, reveal, shuffle, insertion, shortlist, or potion mechanics
+resolvers. Weighted intent IDs and low-level nonsemantic Native requests keep
+their specialized paths.
+
 `PrototypeAutomaticPipelineResumeResultV111` is the single owner for
 classifying an ephemeral run-resume boundary. Draw-progress and semantic-choice
 results pass any saved classification through that owner, which checks it

@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 shared semantic chance outcome dispatch (2026-10-25):** ReferenceNature
+and the run-owned Native provider now route their selected indices through
+`SemanticPilotCombatEngineV111.ResolveChanceOutcomeByIndex` for the registered
+typed pilot events. Law sampling and Native primitive checks remain with each
+provider; the shared owner validates the live event and invokes its existing
+mechanics resolver. No continuation or snapshot schema changed. Static source
+review and `git diff --check` only; no tests or builds were run.
+
 **S4 Native encounter-formation audit append ownership (2026-10-25):**
 Source-route Native audit construction now appends the formation result through
 `SemanticNativePolicyAuditV111`, which couples the evidence with its V2 schema

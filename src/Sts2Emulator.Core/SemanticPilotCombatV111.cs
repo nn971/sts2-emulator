@@ -7265,6 +7265,142 @@ public static class SemanticPilotCombatEngineV111
     }
 
     /// <summary>
+    /// Apply one provider-selected index to the active semantic event through
+    /// the event's existing mechanics resolver. Providers retain their own
+    /// law and provenance checks; this owner binds the selection to the live
+    /// event and publishes its mechanics continuation.
+    /// </summary>
+    internal static SemanticPilotCombatV111 ResolveChanceOutcomeByIndex(
+        SemanticPilotCombatV111 current, string eventId, int outcomeIndex,
+        SemanticOtherChanceStateV111? otherChance = null)
+    {
+        ArgumentNullException.ThrowIfNull(current);
+        current.Validate();
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        if (outcomeIndex < 0)
+            throw new ArgumentOutOfRangeException(nameof(outcomeIndex));
+
+        static void ValidateSelection(
+            string expectedEventId, string actualEventId, int index,
+            int supportCount)
+        {
+            if (!StringComparer.Ordinal.Equals(
+                    expectedEventId, actualEventId) ||
+                supportCount < 1 || index >= supportCount)
+                throw new InvalidOperationException(
+                    "Semantic chance selection is stale or outside current support.");
+        }
+
+        var fingerprint = current.Fingerprint;
+        if (current.EnemyActionEventPending is { } enemyAction)
+        {
+            ValidateSelection(eventId, enemyAction.EventId, outcomeIndex,
+                enemyAction.Request.SupportCount);
+            return Resolve(current, fingerprint, outcomeIndex,
+                null, null, false, null, otherChance: otherChance);
+        }
+        if (current.TargetPending is { } target)
+        {
+            ValidateSelection(eventId, target.EventId, outcomeIndex,
+                target.CandidateEnemyInstanceIds.Length);
+            return ResolveRandomTarget(current, fingerprint, target.EventId,
+                target.CandidateEnemyInstanceIds[outcomeIndex], otherChance);
+        }
+        if (current.GeneratedCardPending is { } generatedCard)
+        {
+            ValidateSelection(eventId, generatedCard.EventId, outcomeIndex,
+                generatedCard.CandidateCardIds.Length);
+            return ResolveGeneratedCard(current, fingerprint,
+                generatedCard.EventId,
+                generatedCard.CandidateCardIds[outcomeIndex], otherChance);
+        }
+        if (current.CostPending is { } cost)
+        {
+            ValidateSelection(eventId, cost.EventId, outcomeIndex,
+                cost.CandidateCosts.Length);
+            var decision = SemanticCostChoiceV111.Select(
+                cost, cost.EventId, cost.CandidateCosts[outcomeIndex]);
+            return ResumeCostDecision(current, decision, otherChance);
+        }
+        if (current.RandomPileCardPending is { } randomPileCard)
+        {
+            ValidateSelection(eventId, randomPileCard.EventId, outcomeIndex,
+                randomPileCard.CandidateCardInstanceIds.Length);
+            return ResolveRandomPileCard(current, fingerprint,
+                randomPileCard.EventId,
+                randomPileCard.CandidateCardInstanceIds[outcomeIndex],
+                otherChance);
+        }
+        if (current.CardTransformPending is { } cardTransform)
+        {
+            ValidateSelection(eventId, cardTransform.EventId, outcomeIndex,
+                cardTransform.CandidateCardIds.Length);
+            return ResolveCardTransform(current, fingerprint,
+                cardTransform.EventId,
+                cardTransform.CandidateCardIds[outcomeIndex], otherChance);
+        }
+        if (current.PotionGenerationPending is { } potionGeneration)
+        {
+            ValidateSelection(eventId, potionGeneration.EventId,
+                outcomeIndex, potionGeneration.CandidatePotionIds.Length);
+            return ResolvePotionGeneration(current, fingerprint,
+                potionGeneration.EventId,
+                potionGeneration.CandidatePotionIds[outcomeIndex],
+                otherChance);
+        }
+        if (current.HandCostSelectionPending is { } handCost)
+        {
+            ValidateSelection(eventId, handCost.EventId, outcomeIndex,
+                handCost.CandidateCardInstanceIds.Length);
+            var decision = SemanticHandCostSelectionChoiceV111.Select(
+                handCost, handCost.EventId,
+                handCost.CandidateCardInstanceIds[outcomeIndex]);
+            return ResumeHandCostSelectionDecision(
+                current, decision, otherChance);
+        }
+        if (current.PoolShufflePending is { } poolShuffle)
+        {
+            ValidateSelection(eventId, poolShuffle.EventId, outcomeIndex,
+                poolShuffle.Request.SupportCount);
+            return ResolvePoolShuffle(current, fingerprint,
+                poolShuffle.EventId, outcomeIndex, otherChance);
+        }
+        if (current.DrawInsertionPending is { } drawInsertion)
+        {
+            ValidateSelection(eventId, drawInsertion.EventId, outcomeIndex,
+                drawInsertion.Request.SupportCount);
+            return ResolveDrawInsertion(current, fingerprint,
+                drawInsertion.EventId, outcomeIndex, otherChance);
+        }
+        if (current.CardShortlistPending is { } shortlist)
+        {
+            ValidateSelection(eventId, shortlist.EventId, outcomeIndex,
+                shortlist.CandidateCardInstanceIds.Length);
+            return ResolveCardShortlist(current, fingerprint,
+                shortlist.EventId,
+                shortlist.CandidateCardInstanceIds[outcomeIndex],
+                otherChance);
+        }
+        if (current.DrawPending is { } draw)
+        {
+            ValidateSelection(eventId, draw.EventId, outcomeIndex,
+                draw.CandidateCardInstanceIds.Length);
+            return ResolveDrawCard(current, fingerprint, draw.EventId,
+                draw.CandidateCardInstanceIds[outcomeIndex]);
+        }
+        if (current.DeckRevealPending is { } reveal)
+        {
+            ValidateSelection(eventId, reveal.EventId, outcomeIndex,
+                reveal.CandidateCardInstanceIds.Length);
+            return ResolveDeckReveal(current, fingerprint, reveal.EventId,
+                reveal.CandidateCardInstanceIds[outcomeIndex]);
+        }
+
+        throw new NotSupportedException(
+            "UNSUPPORTED_SEMANTIC_CHANCE site=no_matching_pending_event");
+    }
+
+    /// <summary>
     /// The two-site pilot keeps registered random outcomes outside Nature.
     /// The run-owned Native provider resolves supported semantic
     /// continuations; older snapshots without that owner retain their
@@ -7317,11 +7453,11 @@ public static class SemanticPilotCombatEngineV111
             {
                 var choice = SemanticOtherChanceEngineV111
                     .ResolveRandomTarget(targetOwner, target);
-                current = ResolveRandomTarget(
-                    current, current.Fingerprint, target.EventId,
-                    NativeSemanticOutcomeV111.SelectByChooseIndex(
-                        choice.Decision,
-                        target.CandidateEnemyInstanceIds), choice.Next);
+                _ = NativeSemanticOutcomeV111.SelectByChooseIndex(
+                    choice.Decision, target.CandidateEnemyInstanceIds);
+                current = ResolveChanceOutcomeByIndex(
+                    current, target.EventId, choice.Decision.SelectedIndex,
+                    choice.Next);
                 continue;
             }
 
@@ -7333,11 +7469,11 @@ public static class SemanticPilotCombatEngineV111
             {
                 var choice = SemanticOtherChanceEngineV111
                     .ResolveGeneratedCard(generatedCardOwner, generatedCard);
-                current = ResolveGeneratedCard(
-                    current, current.Fingerprint, generatedCard.EventId,
-                    NativeSemanticOutcomeV111.SelectByChooseIndex(
-                        choice.Decision, generatedCard.CandidateCardIds),
-                    choice.Next);
+                _ = NativeSemanticOutcomeV111.SelectByChooseIndex(
+                    choice.Decision, generatedCard.CandidateCardIds);
+                current = ResolveChanceOutcomeByIndex(
+                    current, generatedCard.EventId,
+                    choice.Decision.SelectedIndex, choice.Next);
                 continue;
             }
 
@@ -7355,9 +7491,9 @@ public static class SemanticPilotCombatEngineV111
                     NativeSemanticOutcomeV111.SelectByBoundedOffset(
                         choice.Decision, 0,
                         drawInsertion.Request.SupportCount);
-                current = ResolveDrawInsertion(
-                    current, current.Fingerprint, drawInsertion.EventId,
-                    selectedPosition, choice.Next);
+                current = ResolveChanceOutcomeByIndex(
+                    current, drawInsertion.EventId, selectedPosition,
+                    choice.Next);
                 continue;
             }
 
@@ -7370,11 +7506,11 @@ public static class SemanticPilotCombatEngineV111
                 var choice = SemanticOtherChanceEngineV111
                     .ResolvePotionGeneration(
                         potionGenerationOwner, generatedPotion);
-                current = ResolvePotionGeneration(
-                    current, current.Fingerprint, generatedPotion.EventId,
-                    NativeSemanticOutcomeV111.SelectByChooseIndex(
-                        choice.Decision,
-                        generatedPotion.CandidatePotionIds), choice.Next);
+                _ = NativeSemanticOutcomeV111.SelectByChooseIndex(
+                    choice.Decision, generatedPotion.CandidatePotionIds);
+                current = ResolveChanceOutcomeByIndex(
+                    current, generatedPotion.EventId,
+                    choice.Decision.SelectedIndex, choice.Next);
                 continue;
             }
 
@@ -7386,11 +7522,11 @@ public static class SemanticPilotCombatEngineV111
             {
                 var choice = SemanticOtherChanceEngineV111
                     .ResolveCardTransform(cardTransformOwner, cardTransform);
-                current = ResolveCardTransform(
-                    current, current.Fingerprint, cardTransform.EventId,
-                    NativeSemanticOutcomeV111.SelectByChooseIndex(
-                        choice.Decision, cardTransform.CandidateCardIds),
-                    choice.Next);
+                _ = NativeSemanticOutcomeV111.SelectByChooseIndex(
+                    choice.Decision, cardTransform.CandidateCardIds);
+                current = ResolveChanceOutcomeByIndex(
+                    current, cardTransform.EventId,
+                    choice.Decision.SelectedIndex, choice.Next);
                 continue;
             }
 
@@ -7408,9 +7544,9 @@ public static class SemanticPilotCombatEngineV111
                     NativeSemanticOutcomeV111.SelectByBoundedOffset(
                         choice.Decision, 0,
                         poolShuffle.NextSwapIndex + 1);
-                current = ResolvePoolShuffle(
-                    current, current.Fingerprint, poolShuffle.EventId,
-                    selectedSwapIndex, choice.Next);
+                current = ResolveChanceOutcomeByIndex(
+                    current, poolShuffle.EventId, selectedSwapIndex,
+                    choice.Next);
                 continue;
             }
 
@@ -7424,11 +7560,12 @@ public static class SemanticPilotCombatEngineV111
             {
                 var choice = SemanticOtherChanceEngineV111
                     .ResolveCardShortlist(cardShortlistOwner, cardShortlist);
-                current = ResolveCardShortlist(
-                    current, current.Fingerprint, cardShortlist.EventId,
-                    NativeSemanticOutcomeV111.SelectByChooseIndex(
-                        choice.Decision,
-                        cardShortlist.CandidateCardInstanceIds), choice.Next);
+                _ = NativeSemanticOutcomeV111.SelectByChooseIndex(
+                    choice.Decision,
+                    cardShortlist.CandidateCardInstanceIds);
+                current = ResolveChanceOutcomeByIndex(
+                    current, cardShortlist.EventId,
+                    choice.Decision.SelectedIndex, choice.Next);
                 continue;
             }
 
@@ -7441,11 +7578,12 @@ public static class SemanticPilotCombatEngineV111
                 var choice = SemanticOtherChanceEngineV111
                     .ResolveRandomPileCard(
                         randomPileCardOwner, randomPileCard);
-                current = ResolveRandomPileCard(
-                    current, current.Fingerprint, randomPileCard.EventId,
-                    NativeSemanticOutcomeV111.SelectByChooseIndex(
-                        choice.Decision,
-                        randomPileCard.CandidateCardInstanceIds), choice.Next);
+                _ = NativeSemanticOutcomeV111.SelectByChooseIndex(
+                    choice.Decision,
+                    randomPileCard.CandidateCardInstanceIds);
+                current = ResolveChanceOutcomeByIndex(
+                    current, randomPileCard.EventId,
+                    choice.Decision.SelectedIndex, choice.Next);
                 continue;
             }
 
@@ -7459,13 +7597,11 @@ public static class SemanticPilotCombatEngineV111
             {
                 var choice = SemanticOtherChanceEngineV111
                     .ResolveHandCostTarget(handOwner, handCost);
-                var decision = SemanticHandCostSelectionChoiceV111.Select(
-                    handCost, handCost.EventId,
-                    NativeSemanticOutcomeV111.SelectByChooseIndex(
-                        choice.Decision,
-                        handCost.CandidateCardInstanceIds));
-                current = ResumeHandCostSelectionDecision(
-                    current, decision, choice.Next);
+                _ = NativeSemanticOutcomeV111.SelectByChooseIndex(
+                    choice.Decision, handCost.CandidateCardInstanceIds);
+                current = ResolveChanceOutcomeByIndex(
+                    current, handCost.EventId,
+                    choice.Decision.SelectedIndex, choice.Next);
                 continue;
             }
 
@@ -7488,13 +7624,13 @@ public static class SemanticPilotCombatEngineV111
             {
                 var choice = SemanticOtherChanceEngineV111
                     .ResolveNonNatureCost(costOwner, semanticCost);
-                var decision = SemanticCostChoiceV111.Select(
-                    semanticCost, semanticCost.EventId,
+                var selectedCostIndex =
                     NativeSemanticOutcomeV111.SelectByBoundedOffset(
                         choice.Decision, 0,
-                        semanticCost.CandidateCosts.Length));
-                current = ResumeCostDecision(
-                    current, decision, choice.Next);
+                        semanticCost.CandidateCosts.Length);
+                current = ResolveChanceOutcomeByIndex(
+                    current, semanticCost.EventId, selectedCostIndex,
+                    choice.Next);
                 continue;
             }
 
