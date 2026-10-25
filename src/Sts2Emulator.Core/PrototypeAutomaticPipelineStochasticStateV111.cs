@@ -286,6 +286,18 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
             mechanics, out requested, out remaining);
     }
 
+    /// <summary>
+    /// Matches a semantic draw facade against either active semantic
+    /// DrawPlayerHand progress or the zero-count BeforeHandDraw projection.
+    /// </summary>
+    public bool MatchesSemanticHandDrawProjection(
+        PrototypeAutomaticPipelineMechanicsStateV111 mechanics,
+        int expectedRequested, int expectedRemaining) =>
+        expectedRequested >= 0 && expectedRemaining >= 0 &&
+        TryGetSemanticHandDrawProjection(
+            mechanics, out int requested, out int remaining) &&
+        requested == expectedRequested && remaining == expectedRemaining;
+
     public bool IsAtSemanticBeforeHandDraw(
         PrototypeAutomaticPipelineMechanicsStateV111 mechanics)
     {

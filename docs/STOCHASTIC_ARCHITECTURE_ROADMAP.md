@@ -6016,3 +6016,11 @@ progress or the completed-stage receipt. Automatic Stratagem and `CardDrawn`
 resume paths share this interpretation instead of duplicating the fallback.
 Core Release build passed with zero warnings or errors; `git diff --check`
 passed. No tests were run.
+
+**S4 semantic pre-draw count projection reuse (2026-10-26):** The pipeline
+stochastic owner now matches a semantic frame against either its active
+requested/remaining pair or the zero-count `BeforeHandDraw` projection.
+Semantic draw-frame validation reuses this query for pre-draw hook, target,
+insertion, generated-card, and nested-choice boundaries. Core Release build
+passed with zero warnings or errors; `git diff --check` passed. No tests were
+run.

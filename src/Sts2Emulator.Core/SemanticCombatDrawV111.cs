@@ -351,6 +351,11 @@ public sealed record SemanticCombatDrawV111(
         bool semanticBeforeHandDrawProgress = pipelineCursor is not null &&
             pipelineCursor.Stochastic.IsAtSemanticBeforeHandDraw(
                 pipelineCursor.Mechanics);
+        bool semanticBeforeHandDrawCountsMatch =
+            semanticBeforeHandDrawProgress && pipelineCursor is not null &&
+            pipelineCursor.Stochastic.MatchesSemanticHandDrawProjection(
+                pipelineCursor.Mechanics, this.RequestedCount,
+                this.RemainingCount);
         var pendingChildEvents = SemanticCombatDrawEngineV111
             .DescribePendingEvents(this);
         var randomPileCardPending = pendingChildEvents.RandomPileCard;
@@ -403,9 +408,8 @@ public sealed record SemanticCombatDrawV111(
                   PendingKnowledgeDemonChoice: null,
                   SemanticDeck: { Pending: null } };
         bool automaticBeforeHandDrawRandomTarget =
-            this.AutomaticHandDraw && this.RequestedCount == 0 &&
-            this.RemainingCount == 0 &&
-            semanticBeforeHandDrawProgress &&
+            this.AutomaticHandDraw &&
+            semanticBeforeHandDrawCountsMatch &&
             automaticHandDrawChildKind ==
                 SemanticDrawHookChoiceEngineV111
                     .AutomaticHandDrawChildKindV111.RandomTarget;
@@ -639,10 +643,7 @@ public sealed record SemanticCombatDrawV111(
             if (randomPileCardPending is not null)
             {
                 bool beforeHandDrawChoice = pipelineCursor is not null &&
-                    pipelineCursor.Mechanics.IsAtStep(
-                        PrototypeAutomaticStepKind.DrawPlayerHand) &&
-                    semanticBeforeHandDrawProgress &&
-                    this.RequestedCount == 0 && this.RemainingCount == 0;
+                    semanticBeforeHandDrawCountsMatch;
                 bool activeHandDrawChoice = activeHandDrawCountsMatch;
                 if ((!beforeHandDrawChoice && !activeHandDrawChoice) ||
                     combat.PendingChoice is not
@@ -654,11 +655,7 @@ public sealed record SemanticCombatDrawV111(
             }
             else if (drawHookChoicePending?.BeforeHandDraw == true)
             {
-                if (pipelineCursor is null ||
-                    !pipelineCursor.Mechanics.IsAtStep(
-                        PrototypeAutomaticStepKind.DrawPlayerHand) ||
-                    !semanticBeforeHandDrawProgress ||
-                    this.RequestedCount != 0 || this.RemainingCount != 0 ||
+                if (!semanticBeforeHandDrawCountsMatch ||
                     combat.PendingChoice?.AutomaticSemanticDrawHookChoice != true ||
                     deck.Pending is not null || cost is not null)
                     throw new InvalidDataException(
@@ -666,11 +663,7 @@ public sealed record SemanticCombatDrawV111(
             }
             else if (automaticBeforeHandDrawEffectDrawPending)
             {
-                if (pipelineCursor is null ||
-                    !pipelineCursor.Mechanics.IsAtStep(
-                        PrototypeAutomaticStepKind.DrawPlayerHand) ||
-                    !semanticBeforeHandDrawProgress ||
-                    this.RequestedCount != 0 || this.RemainingCount != 0)
+                if (!semanticBeforeHandDrawCountsMatch)
                     throw new InvalidDataException(
                         "Semantic BeforeHandDraw effect-draw cursor is inconsistent.");
             }
@@ -678,11 +671,7 @@ public sealed record SemanticCombatDrawV111(
                      automaticBeforeHandDrawPoolShuffleChoice is
                          { } beforeHandDrawShuffleChoice)
             {
-                if (pipelineCursor is null ||
-                    !pipelineCursor.Mechanics.IsAtStep(
-                        PrototypeAutomaticStepKind.DrawPlayerHand) ||
-                    !semanticBeforeHandDrawProgress ||
-                    this.RequestedCount != 0 || this.RemainingCount != 0 ||
+                if (!semanticBeforeHandDrawCountsMatch ||
                     !beforeHandDrawShuffleChoice.AutomaticSemanticDrawHookChoice ||
                     deck.Pending is not null || cost is not null)
                     throw new InvalidDataException(
@@ -690,20 +679,14 @@ public sealed record SemanticCombatDrawV111(
             }
             else if (automaticBeforeHandDrawGeneratedSelection)
             {
-                if (pipelineCursor is null ||
-                    !pipelineCursor.Mechanics.IsAtStep(
-                        PrototypeAutomaticStepKind.DrawPlayerHand) ||
-                    !semanticBeforeHandDrawProgress ||
-                    this.RequestedCount != 0 || this.RemainingCount != 0 ||
+                if (!semanticBeforeHandDrawCountsMatch ||
                     deck.Pending is not null || cost is not null)
                     throw new InvalidDataException(
                         "Semantic BeforeHandDraw generated-selection cursor is inconsistent.");
             }
             else if (automaticBeforeHandDrawNestedChildPending)
             {
-                if (pipelineCursor is null ||
-                    !semanticBeforeHandDrawProgress ||
-                    this.RequestedCount != 0 || this.RemainingCount != 0 ||
+                if (!semanticBeforeHandDrawCountsMatch ||
                     deck.Pending is not null || cost is not null)
                     throw new InvalidDataException(
                         "Semantic BeforeHandDraw nested-choice cursor is inconsistent.");
@@ -718,10 +701,7 @@ public sealed record SemanticCombatDrawV111(
             }
             else if (automaticBeforeHandDrawRandomTarget)
             {
-                if (pipelineCursor is null ||
-                    !pipelineCursor.Mechanics.IsAtStep(
-                        PrototypeAutomaticStepKind.DrawPlayerHand) ||
-                    !semanticBeforeHandDrawProgress ||
+                if (!semanticBeforeHandDrawCountsMatch ||
                     deck.Pending is not null || cost is not null)
                     throw new InvalidDataException(
                         "Semantic BeforeHandDraw target cursor is inconsistent.");
@@ -810,10 +790,7 @@ public sealed record SemanticCombatDrawV111(
                 ? this.AutomaticHandDraw &&
                   combat.PendingChoice?.AutomaticSemanticDrawHookChoice == true &&
                   (hookChoice.BeforeHandDraw
-                      ? pipelineCursor?.Mechanics.IsAtStep(
-                            PrototypeAutomaticStepKind.DrawPlayerHand) == true &&
-                        semanticBeforeHandDrawProgress &&
-                        this.RequestedCount == 0 && this.RemainingCount == 0
+                      ? semanticBeforeHandDrawCountsMatch
                       : activeHandDrawCountsMatch)
                 : !this.AutomaticHandDraw &&
                   combat.PendingChoice?.StandaloneSemanticDrawHookChoice == true &&
