@@ -28,6 +28,14 @@ enumeration, and both JSONL session views reuse that projection; no snapshot
 schema changed. Static source review and `git diff --check` only; no tests or
 builds were run.
 
+**S4 controlled run-action boundary ownership (2026-10-25):** The active
+controlled run-action continuation now exposes one immutable descriptor for
+its request, ordered labels, action-boundary fingerprint, and Chance Law event
+ID. Law queries, selected-index resolution, and controlled/ReferenceNature
+JSONL pending views share it; specialized map and preparation session owners
+remain in place. Static source review and `git diff --check` only; no tests or
+builds were run.
+
 **S4 semantic ReferenceNature transcript ownership (2026-10-25):** The base
 semantic combat session now composes the shared initial/current cursor and
 typed transcript owner through `SimulationStateV111`. Each selected law

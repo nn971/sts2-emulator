@@ -791,7 +791,10 @@ checkpoint with stochastic state through `SimulationStateV111`. They reuse
 validation. Merchant, combat-reward, Native event-relic, Treasure, and Native
 Shovel sessions share the generic controlled-action stochastic-prefix owner;
 the run-action session keeps its typed Native combat-entry continuation in its
-specialized owner. Each session retains its typed law and replay validation.
+specialized owner. `ControlledRunActionPendingV111` projects the active typed
+request, ordered labels, action boundary fingerprint, and Chance Law event ID
+for the controlled run-action path; the law engine and both run-action JSONL
+views share it. Each session retains its typed law and replay validation.
 Existing flattened session fields and snapshot schemas remain intact, as do the
 run-action session's nested map/preparation/Ancient continuation owners.
 

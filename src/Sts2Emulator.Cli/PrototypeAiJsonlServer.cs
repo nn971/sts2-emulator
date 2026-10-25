@@ -780,6 +780,8 @@ internal static class PrototypeAiJsonlServer
         {
             var continuation =
                 session.Run.Stochastic.ControlledRunActionChoice;
+            var pendingBoundary = continuation is null ? null :
+                ControlledRunActionPendingV111.Describe(session.Run);
             var mapGeneration = session.MapGeneration;
             var laterActPreparation = session.LaterActPreparation;
             var ancientOffer = session.AncientOffer;
@@ -791,16 +793,14 @@ internal static class PrototypeAiJsonlServer
                 ? ancientOffer.Fingerprint
                 : mapGeneration is not null
                 ? mapGeneration.Fingerprint
-                : continuation is null ? null
-                : ChanceLawEngineV111.ControlledRunActionBoundaryFingerprint(
-                    session.Run);
+                : pendingBoundary?.BoundaryFingerprint;
             object? pendingRequest = laterActPreparation is not null
                 ? laterActPreparation.PendingRequest
                 : ancientOffer is not null
                 ? null
                 : mapGeneration is not null
                 ? mapGeneration.PendingRequest
-                : continuation?.PendingRequest;
+                : pendingBoundary?.Request;
             object? pending = chanceLaw is null ? null : new
             {
                 kind = laterActPreparation is not null
@@ -814,9 +814,9 @@ internal static class PrototypeAiJsonlServer
                     : "run_action_random_choice",
                 eventId = chanceLaw.EventId,
                 boundaryFingerprint,
-                actionId = continuation?.ActionId ?? session.Action.Kind,
+                actionId = pendingBoundary?.ActionId ?? session.Action.Kind,
                 request = pendingRequest,
-                candidateLabels = continuation?.PendingCandidateLabels,
+                candidateLabels = pendingBoundary?.CandidateLabels,
                 chanceLaw,
                 probabilityStatus = chanceLaw.ProbabilityStatus
             };
@@ -2691,8 +2691,8 @@ internal static class PrototypeAiJsonlServer
         {
             var continuation = state.Stochastic.ControlledRunActionChoice;
             var stateFingerprint = CanonicalJson.Sha256(state);
-            var boundaryFingerprint = continuation is null ? null :
-                ChanceLawEngineV111.ControlledRunActionBoundaryFingerprint(state);
+            var pendingBoundary = continuation is null ? null :
+                ControlledRunActionPendingV111.Describe(state);
             var chanceLaw = continuation is null
                 ? null : ChanceLawEngineV111.QueryControlledRunAction(state);
             var actions = continuation is null
@@ -2715,16 +2715,16 @@ internal static class PrototypeAiJsonlServer
                     { Length: > 0 } history
                     ? history[^1]
                     : null;
-            object? pending = continuation is null
+            object? pending = pendingBoundary is null
                 ? null
                 : new
                 {
                     kind = "run_action_random_choice",
                     eventId = chanceLaw!.EventId,
-                    boundaryFingerprint,
-                    actionId = continuation.ActionId,
-                    request = continuation.PendingRequest,
-                    candidateLabels = continuation.PendingCandidateLabels,
+                    boundaryFingerprint = pendingBoundary.BoundaryFingerprint,
+                    actionId = pendingBoundary.ActionId,
+                    request = pendingBoundary.Request,
+                    candidateLabels = pendingBoundary.CandidateLabels,
                     chanceLaw,
                     probabilityStatus = "UNVERIFIED"
                 };

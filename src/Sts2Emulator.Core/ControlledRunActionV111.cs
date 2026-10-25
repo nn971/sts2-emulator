@@ -3,6 +3,76 @@ using System.Globalization;
 namespace Sts2Emulator.Core;
 
 /// <summary>
+/// Immutable projection of a suspended controlled run action. It binds the
+/// request and ordered labels to the action boundary used by Chance Law and
+/// JSONL views.
+/// </summary>
+public sealed class ControlledRunActionPendingV111
+{
+    private readonly string[] _candidateLabels;
+
+    public string ActionId { get; }
+    public string? MapNodeId { get; }
+    public RandomIndexRequestV111 Request { get; }
+    public string[] CandidateLabels => (string[])_candidateLabels.Clone();
+    public string BoundaryFingerprint { get; }
+    public string ChanceEventId { get; }
+
+    private ControlledRunActionPendingV111(
+        string actionId, string? mapNodeId,
+        RandomIndexRequestV111 request, string[] candidateLabels,
+        string boundaryFingerprint, string chanceEventId)
+    {
+        ActionId = actionId;
+        MapNodeId = mapNodeId;
+        Request = request with
+        {
+            OrderedCandidates = request.OrderedCandidates
+        };
+        _candidateLabels = (string[])candidateLabels.Clone();
+        BoundaryFingerprint = boundaryFingerprint;
+        ChanceEventId = chanceEventId;
+    }
+
+    public static ControlledRunActionPendingV111 Describe(RunState run)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        var continuation = run.Stochastic.ControlledRunActionChoice ??
+            throw new InvalidOperationException(
+                "No controlled run-action chance is pending.");
+        continuation.Validate();
+        var request = continuation.PendingRequest;
+        var candidateLabels = continuation.PendingCandidateLabels;
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(candidateLabels);
+        var boundary = new
+        {
+            schemaId = ControlledRunActionEngineV111.SchemaId,
+            continuation.ActionId,
+            continuation.MapNodeId,
+            request,
+            candidateLabels
+        };
+        var boundaryFingerprint = continuation.RunAction is null
+            ? CanonicalJson.Sha256(boundary)
+            : CanonicalJson.Sha256(new
+            {
+                boundary,
+                actionFingerprint = PrototypeAiEnvironment.StableActionId(
+                    continuation.RunAction)
+            });
+        var chanceEventId = CanonicalJson.Sha256(new
+        {
+            schemaId = ControlledRunActionEngineV111.SchemaId,
+            boundaryFingerprint
+        });
+        return new ControlledRunActionPendingV111(
+            continuation.ActionId, continuation.MapNodeId,
+            request, candidateLabels, boundaryFingerprint, chanceEventId);
+    }
+}
+
+/// <summary>
 /// Outcome transcript for a supported controlled stochastic run action.
 /// Probability status remains unverified until source-law audit.
 /// </summary>
@@ -2276,9 +2346,9 @@ public static class ControlledRunActionEngineV111
     public static RunState Resolve(RunState source, int selectedIndex)
     {
         ArgumentNullException.ThrowIfNull(source);
-        if (source.Stochastic.ControlledRunActionChoice is null)
-            throw new InvalidOperationException(
-                "No controlled run-action outcome is pending.");
+        var pending = ControlledRunActionPendingV111.Describe(source);
+        if ((uint)selectedIndex >= (uint)pending.Request.SupportCount)
+            throw new ArgumentOutOfRangeException(nameof(selectedIndex));
         return Step(source, GameAction.Create(
             "choose_controlled_run_action_outcome",
             new ChooseControlledEventOutcomePayload(selectedIndex)));

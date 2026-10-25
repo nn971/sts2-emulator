@@ -8,17 +8,11 @@ public static partial class ChanceLawEngineV111
         var continuation = run.Stochastic.ControlledRunActionChoice ??
             throw new InvalidOperationException(
                 "No controlled run-action chance is pending.");
-        continuation.Validate();
-        var boundaryFingerprint = ControlledRunActionBoundaryFingerprint(run);
-        var eventId = CanonicalJson.Sha256(new
-        {
-            schemaId = ControlledRunActionEngineV111.SchemaId,
-            boundaryFingerprint
-        });
+        var pending = ControlledRunActionPendingV111.Describe(run);
         if (QueryControlledRunActionSemanticLaw(
-                run, continuation, eventId) is { } semanticLaw)
+                run, continuation, pending.ChanceEventId) is { } semanticLaw)
             return semanticLaw;
-        return QueryRandomIndex(eventId, continuation.PendingRequest);
+        return QueryRandomIndex(pending.ChanceEventId, pending.Request);
     }
 
     private static ChanceLawV111? QueryControlledRunActionSemanticLaw(
@@ -321,25 +315,7 @@ public static partial class ChanceLawEngineV111
     public static string ControlledRunActionBoundaryFingerprint(RunState run)
     {
         ArgumentNullException.ThrowIfNull(run);
-        var continuation = run.Stochastic.ControlledRunActionChoice ??
-            throw new InvalidOperationException(
-                "No controlled run-action chance is pending.");
-        continuation.Validate();
-        var boundary = new
-        {
-            schemaId = ControlledRunActionEngineV111.SchemaId,
-            continuation.ActionId,
-            continuation.MapNodeId,
-            request = continuation.PendingRequest,
-            candidateLabels = continuation.PendingCandidateLabels
-        };
-        return continuation.RunAction is null
-            ? CanonicalJson.Sha256(boundary)
-            : CanonicalJson.Sha256(new
-            {
-                boundary,
-                actionFingerprint = PrototypeAiEnvironment.StableActionId(
-                    continuation.RunAction)
-            });
+        return ControlledRunActionPendingV111.Describe(run)
+            .BoundaryFingerprint;
     }
 }
