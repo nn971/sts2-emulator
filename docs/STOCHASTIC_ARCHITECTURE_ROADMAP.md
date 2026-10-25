@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 controlled recycle checkpoint publication increment (2026-10-26):**
+After the committed recycle and post-shuffle hooks, the controlled automatic
+draw resume now publishes its updated combat through
+`PublishDrawMechanicsState` before the common saved-draw continuation clears
+the cursor and resumes. This keeps checkpoint mechanics publication with the
+shared draw owner. Core and CLI Release builds and `git diff --check` passed;
+no tests were run.
+
 **S4 controlled recycle draw publication increment (2026-10-26):** The
 resumed controlled legacy automatic hand draw now routes its post-recycle
 `DrawCards` segment through `ResumeAutomaticHandDrawSegment`, after publishing

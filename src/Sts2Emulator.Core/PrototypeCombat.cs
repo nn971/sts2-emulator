@@ -2098,9 +2098,9 @@ public sealed partial class PrototypeGameEngine
         state = state with
         {
             Stochastic = RunStochasticStateV111.WithPrototypeRng(
-                state.Stochastic, prototypeRng),
-            World = world with { Combat = combat }
+                state.Stochastic, prototypeRng)
         };
+        state = PublishDrawMechanicsState(state, state.Player, combat);
         if (ExpectedStratagemSelectionCount(combat) > 0)
             return BeginControlledRecycleStratagemSelection(
                 state, state.Player, combat,
