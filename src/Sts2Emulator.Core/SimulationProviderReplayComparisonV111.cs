@@ -430,13 +430,35 @@ public sealed record SimulationProviderReplayCaptureV111(
                 "Provider replay capture requires a committed scripted-run boundary.");
 
         var completedActions = session.CompletedActions;
+        var actionBoundaryStates = new List<RunState>(
+            completedActions.Length);
+        var replay = session.Origin;
+        using (RandomBoundaryJournalV111.Begin())
+        {
+            foreach (var completedAction in completedActions)
+            {
+                var replayedAction =
+                    ScriptedRunActionSessionV111.ReplayCompleted(
+                        replay, completedAction.Action,
+                        completedAction.Decisions);
+                replay = replayedAction.Run?.Fork() ??
+                    throw new InvalidDataException(
+                        "Completed scripted action replay has no run state.");
+                actionBoundaryStates.Add(replay);
+            }
+        }
+        if (CanonicalJson.Sha256(replay) !=
+            CanonicalJson.Sha256(session.Run))
+            throw new InvalidDataException(
+                "Scripted action-boundary replay differs from the saved run.");
         return FromScriptedDecisions(
             session.Origin,
             completedActions.Select(action => action.Action).ToArray(),
             completedActions.SelectMany(action => action.Decisions),
             session.Run,
             SimulationProviderReplayCaptureProvenanceV111
-                .ScriptedRunReplayValidated);
+                .ScriptedRunReplayValidated,
+            actionBoundaryStates);
     }
 
     /// <summary>Builds a capture from one completed scripted player action.</summary>
@@ -453,7 +475,8 @@ public sealed record SimulationProviderReplayCaptureV111(
         return FromScriptedDecisions(
             session.Origin, [session.Action], session.Decisions, session.Run,
             SimulationProviderReplayCaptureProvenanceV111
-                .ScriptedActionReplayValidated);
+                .ScriptedActionReplayValidated,
+            [session.Run]);
     }
 
     /// <summary>
@@ -494,14 +517,16 @@ public sealed record SimulationProviderReplayCaptureV111(
                 return FromScriptedDecisions(
                     session.Origin, [session.Action], transitionDecisions,
                     session.Run, SimulationProviderReplayCaptureProvenanceV111
-                        .ReferenceNatureRunActionReplayValidated);
+                        .ReferenceNatureRunActionReplayValidated,
+                    [session.Run]);
         }
         if (resultHistory.Length == originHistory.Length &&
             session.DecisionTranscript.Length == 0)
             return FromScriptedDecisions(
                 session.Origin, [session.Action], [], session.Run,
                 SimulationProviderReplayCaptureProvenanceV111
-                    .ReferenceNatureRunActionReplayValidated);
+                    .ReferenceNatureRunActionReplayValidated,
+                [session.Run]);
         if (resultHistory.Length != originHistory.Length + 1)
             throw new NotSupportedException(
                 "ReferenceNature action trace does not isolate one committed run action.");
@@ -538,7 +563,8 @@ public sealed record SimulationProviderReplayCaptureV111(
         return FromScriptedDecisions(
             session.Origin, [session.Action], decisions, session.Run,
             SimulationProviderReplayCaptureProvenanceV111
-                .ReferenceNatureRunActionReplayValidated);
+                .ReferenceNatureRunActionReplayValidated,
+            [session.Run]);
     }
 
     private static ControlledStochasticDecisionV111[]?
@@ -932,7 +958,8 @@ public sealed record SimulationProviderReplayCaptureV111(
             session.Origin, [session.Action], decisions,
             session.Run,
             SimulationProviderReplayCaptureProvenanceV111
-                .ReferenceNatureControlledActionReplayValidated);
+                .ReferenceNatureControlledActionReplayValidated,
+            [session.Run]);
     }
 
     /// <summary>
@@ -1226,7 +1253,8 @@ public sealed record SimulationProviderReplayCaptureV111(
     private static SimulationProviderReplayCaptureV111 FromScriptedDecisions(
         RunState origin, IReadOnlyList<GameAction> actions,
         IEnumerable<ControlledStochasticDecisionV111> decisions,
-        RunState result, string captureProvenance)
+        RunState result, string captureProvenance,
+        IEnumerable<RunState>? actionBoundaryStates = null)
     {
         using var journal = RandomBoundaryJournalV111.Begin();
         foreach (var decision in decisions)
@@ -1250,7 +1278,8 @@ public sealed record SimulationProviderReplayCaptureV111(
         }
 
         var boundaries = journal.OrderedTranscript;
-        var capture = Create(origin, actions, boundaries, result) with
+        var capture = Create(origin, actions, boundaries, result, null,
+            actionBoundaryStates) with
         {
             CaptureProvenance = captureProvenance
         };

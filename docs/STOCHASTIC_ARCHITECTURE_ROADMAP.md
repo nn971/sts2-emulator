@@ -13,6 +13,14 @@ caller-supplied captures without snapshots retain endpoint-only diagnostics.
 Core and CLI Release builds passed with zero warnings or errors; no tests were
 run.
 
+**S4 replay-boundary capture coverage increment (2026-10-25):** Scripted
+whole-run captures now replay each completed action to retain its mechanics
+checkpoint, and scripted single-action, ReferenceNature run-action, and
+ReferenceNature controlled-action captures include their validated result
+boundary. These paths can now participate in the v6 action-trajectory
+comparison alongside Native-policy and semantic combat captures. Core Release
+build passed with zero warnings or errors; no tests were run.
+
 **Core continuation integration and cursor lineage (2026-10-25):** Restored
 consistency across the composed controlled run-action, semantic draw, Native
 audit, and ReferenceNature continuation APIs. ReferenceNature now retains

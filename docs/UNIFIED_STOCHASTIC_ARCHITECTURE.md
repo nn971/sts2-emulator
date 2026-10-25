@@ -1089,11 +1089,13 @@ completeness. Native cursor equality is an optional additional boundary check.
 This is diagnostic evidence under the supplied captures, not proof of
 source-hook parity, complete Native coverage, or Chance Law fidelity.
 `SameMechanicsAtCapturedBoundariesForSameActions` reports equal projected
-origin and result mechanics when the captured player actions also match. It
+origin and result mechanics when the captured action sequences also match. It
 does not require matching intermediate stochastic outcomes. The semantic
-Native-policy and ReferenceNature combat factories additionally replay and
-capture each action's settled mechanics boundary. When both captures include
-these complete snapshots and the same action sequence, the comparison reports
+Native-policy and ReferenceNature combat factories, replay-validated
+scripted-run and scripted-action factories, and ReferenceNature run-action
+and controlled-action factories capture each action's settled mechanics
+boundary. When both captures include these complete snapshots and the same
+action sequence, the comparison reports
 the first differing action boundary and its mechanics paths;
 `SameMechanicsAtEveryActionBoundaryForSameActions` reports agreement across
 the trajectory. This comparison is unavailable for older or caller-supplied
@@ -1120,7 +1122,8 @@ reported as a matching empty trace. `SameSemanticOutcomes` and
 `FromScriptedRunActionSession` provide a stronger path for scripted replays:
 each session replays its completed action history from the origin, and the
 existing typed boundary journal materializes its saved outcomes into the
-capture. They accept only sessions at committed action boundaries.
+capture. The whole-run path retains each replayed action result as a mechanics
+checkpoint. They accept only sessions at committed action boundaries.
 `FromSemanticNativePolicySession` provides a corresponding path for a
 replay-validated Native-policy baseline. It reconstructs the initial player
 boundary from the seeded entry, verifies that the saved provider trace begins
