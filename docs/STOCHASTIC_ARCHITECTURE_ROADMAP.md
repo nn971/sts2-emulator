@@ -75,6 +75,14 @@ session, re-queries its law, and validates the semantic selection before it
 claims completeness. Core and CLI Release builds passed with zero warnings or
 errors; `git diff --check` passed. No tests were added or run.
 
+**S4 Infested Automaton semantic capture increment (2026-10-26):** JSONL
+provider replay now captures the completed ReferenceNature choice with its
+typed boundary and selected-card identity. The capture restores the saved
+session, re-queries the action-specific offer law, and preserves its current
+supported pool before claiming semantic completeness. Core and CLI Release
+builds passed with zero warnings or errors; `git diff --check` passed. No
+tests were added or run.
+
 **S4 whole-run six-primitive continuation increment (2026-10-25):** The
 ReferenceNature whole-run session now accepts caller-supplied, replay-validated
 transcript entries for all six typed random operations alongside its existing

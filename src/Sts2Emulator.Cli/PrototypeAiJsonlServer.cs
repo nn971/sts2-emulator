@@ -10677,7 +10677,7 @@ internal static class PrototypeAiJsonlServer
                                     return referenceNatureInfestedAutomatonStates
                                         .TryGetValue(handle, out var infestedAutomaton)
                                         ? SimulationProviderReplayCaptureV111
-                                            .FromReferenceNatureControlledActionSession(
+                                            .FromReferenceNatureInfestedAutomatonSession(
                                                 infestedAutomaton)
                                         : throw new InvalidOperationException(
                                             "Unknown ReferenceNature Infested Automaton handle: " +

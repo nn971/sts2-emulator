@@ -334,6 +334,8 @@ public static class SimulationProviderReplayCaptureProvenanceV111
         "reference-nature-trash-heap-semantic-identity-replay-validated-v1";
     public const string ReferenceNatureTabletOfTruthSemanticIdentityReplayValidated =
         "reference-nature-tablet-of-truth-semantic-identity-replay-validated-v1";
+    public const string ReferenceNatureInfestedAutomatonSemanticIdentityReplayValidated =
+        "reference-nature-infested-automaton-semantic-identity-replay-validated-v1";
     public const string ReferenceNatureEventChoiceReplayValidated =
         "reference-nature-event-choice-replay-validated-v1";
     public const string ReferenceNatureControlledActionReplayValidated =
@@ -366,6 +368,7 @@ public static class SimulationProviderReplayCaptureProvenanceV111
         ReferenceNatureTrialSemanticIdentityReplayValidated or
         ReferenceNatureTrashHeapSemanticIdentityReplayValidated or
         ReferenceNatureTabletOfTruthSemanticIdentityReplayValidated or
+        ReferenceNatureInfestedAutomatonSemanticIdentityReplayValidated or
         ReferenceNatureEventChoiceReplayValidated or
         ReferenceNatureControlledActionReplayValidated or
         ReferenceNatureNeowOfferReplayValidated or
@@ -399,6 +402,7 @@ public static class SimulationProviderReplayCaptureProvenanceV111
             ReferenceNatureTrialSemanticIdentityReplayValidated or
             ReferenceNatureTrashHeapSemanticIdentityReplayValidated or
             ReferenceNatureTabletOfTruthSemanticIdentityReplayValidated or
+            ReferenceNatureInfestedAutomatonSemanticIdentityReplayValidated or
             ReferenceNatureSemanticIdentityReplayValidated or
             ReferenceNatureCombatRewardSemanticIdentityReplayValidated;
 
@@ -1618,6 +1622,39 @@ public sealed record SimulationProviderReplayCaptureV111(
     }
 
     /// <summary>
+    /// Captures an Infested Automaton choice with its typed boundary and
+    /// replay-validated selected card identity.
+    /// </summary>
+    public static SimulationProviderReplayCaptureV111
+        FromReferenceNatureInfestedAutomatonSession(
+            ReferenceNatureInfestedAutomatonSessionV111 session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        ReferenceNatureInfestedAutomatonSessionV111 validated;
+        using (RandomBoundaryJournalV111.Begin())
+            validated = ReferenceNatureInfestedAutomatonSessionV111.Restore(
+                ReferenceNatureInfestedAutomatonSessionV111.Save(session));
+        if (!validated.Complete)
+            throw new InvalidOperationException(
+                "Provider replay capture requires a completed ReferenceNature Infested Automaton session.");
+
+        var providerDecisions = validated.ProviderDecisions;
+        var transcript = validated.DecisionTranscript.Select(selection =>
+            new SimulationProviderReplaySemanticSelectionV111(
+                selection.LawId, selection.EventId, selection.OutcomeId,
+                selection.OutcomeIndex)).ToArray();
+        return FromReferenceNatureSemanticAction(
+            validated.Origin, validated.Action, validated.Run,
+            providerDecisions, transcript,
+            _ => ChanceLawEngineV111.QueryNativeEventCardPick(
+                validated.Origin,
+                PrototypeNativeHiveEvents.InfestedAutomatonCardOfferSiteId,
+                0, actionId: validated.ChoiceId),
+            SimulationProviderReplayCaptureProvenanceV111
+                .ReferenceNatureInfestedAutomatonSemanticIdentityReplayValidated);
+    }
+
+    /// <summary>
     /// Captures a completed combat victory and its atomic ReferenceNature
     /// reward transcript as provider-independent semantic outcomes.
     /// </summary>
@@ -2197,6 +2234,8 @@ public sealed record SimulationProviderReplayCaptureV111(
                  SimulationProviderReplayCaptureProvenanceV111
                     .ReferenceNatureTabletOfTruthSemanticIdentityReplayValidated or
                  SimulationProviderReplayCaptureProvenanceV111
+                    .ReferenceNatureInfestedAutomatonSemanticIdentityReplayValidated or
+                 SimulationProviderReplayCaptureProvenanceV111
                     .SemanticNativePolicySemanticIdentityReplayValidated))
             throw new InvalidDataException(
                 "Legacy provider replay captures cannot claim provider-independent semantic identities.");
@@ -2221,6 +2260,8 @@ public sealed record SimulationProviderReplayCaptureV111(
                     .ReferenceNatureTrashHeapSemanticIdentityReplayValidated or
                  SimulationProviderReplayCaptureProvenanceV111
                     .ReferenceNatureTabletOfTruthSemanticIdentityReplayValidated or
+                 SimulationProviderReplayCaptureProvenanceV111
+                    .ReferenceNatureInfestedAutomatonSemanticIdentityReplayValidated or
                  SimulationProviderReplayCaptureProvenanceV111
                     .ReferenceNatureCombatRewardSemanticIdentityReplayValidated or
                  SimulationProviderReplayCaptureProvenanceV111
