@@ -25,6 +25,12 @@ the prior selected-index prefix and checks the exact bounded or ordered-index
 request. Core and CLI Release builds passed with zero warnings and errors;
 `git diff --check` passed. No tests were run.
 
+**S2 whole-run Native merchant law increment (2026-10-26):** Native-regional
+whole-run Shop entry and supported purchase actions now route registered
+merchant requests through the shared merchant law query with their replayed
+typed prefix and candidate labels. Core and CLI Release builds passed with
+zero warnings and errors; `git diff --check` passed. No tests were run.
+
 **S4 whole-run Stone of All Time ticket law increment (2026-10-26):** The
 ReferenceNature whole-run dispatcher now uses the existing degenerate
 `no_effect` law for Stone of All Time push/lift tickets. Replay validates the

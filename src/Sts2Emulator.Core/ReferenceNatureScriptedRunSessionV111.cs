@@ -520,6 +520,13 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
         ScriptedRunActionSessionV111 active,
         ControlledStochasticRequestV111 request)
     {
+        if (IsNativeMerchantActionBoundary(active) &&
+            StochasticSiteRegistryV111.NativeMerchantSessionSiteIds
+                .Contains(request.SiteId, StringComparer.Ordinal))
+            return ReferenceNatureMerchantSessionV111.QueryLawForCapture(
+                active.Origin, active.Action, request,
+                active.PendingCandidateLabels, active.Decisions);
+
         if (request.IndexRequest is { } indexRequest)
         {
             if (ChanceLawEngineV111.IsNativeMapGenerationRequestSite(
@@ -619,6 +626,28 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
                 gaussianRequest))
             return ChanceLawEngineV111.QueryNativeMapRequest(request);
         return null;
+    }
+
+    private static bool IsNativeMerchantActionBoundary(
+        ScriptedRunActionSessionV111 active)
+    {
+        var run = active.Origin;
+        if (run.World is not { } world ||
+            !PrototypeGameEngine.UsesNativeRegionalSystems(world))
+            return false;
+        if (run.Phase == RunPhase.MapChoice &&
+            active.Action.Kind == "choose_map_node")
+        {
+            var nodeId = active.Action
+                .ReadPayload<ChooseMapNodePayload>().NodeId;
+            return PrototypeNativeWingedBoots.AvailableNodes(
+                    world, run.Player)
+                .Any(node => node.NodeId == nodeId &&
+                    node.RoomType == PrototypeRoomType.Shop);
+        }
+        return run.Phase == RunPhase.Shop &&
+            ControlledRunActionEngineV111.IsShopPurchaseAction(
+                run, active.Action);
     }
 
     private static ChanceLawV111 QueryNativePunchOffFight(

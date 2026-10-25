@@ -424,6 +424,11 @@ existing prefix-conditioned laws when the run has its Native RNG owner. Replay
 rebuilds prior selected indices and checks the exact bounded or ordered-index
 request before resolving the HP offset, relic, or potion identity.
 
+Native-regional whole-run Shop entry and purchase requests also use the shared
+merchant law query for registered merchant sites. The route is admitted only
+for a legal Shop node entry or supported purchase action, and it replays the
+typed prefix with the current candidate labels.
+
 Whole-run ReferenceNature resolution now sends index, unit-float, and
 Gaussian-integer law outcomes through `ReferenceNatureChanceLawDecisionV111`.
 That shared adapter preserves candidate labels and converts mapped semantic
