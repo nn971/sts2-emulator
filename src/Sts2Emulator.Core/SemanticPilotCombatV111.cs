@@ -7380,7 +7380,7 @@ public static class SemanticPilotCombatEngineV111
             current, pending, selectedIndex, otherChance);
     }
 
-    internal static SemanticPilotCombatV111 ResolveChanceOutcomeByIndex(
+    private static SemanticPilotCombatV111 ResolveChanceOutcomeByIndex(
         SemanticPilotCombatV111 current,
         SemanticPendingIndexChanceEventV111 pending, int outcomeIndex,
         SemanticOtherChanceStateV111? otherChance = null)

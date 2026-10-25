@@ -10,6 +10,12 @@ Native decisions map to those semantic IDs before reaching the shared
 mechanics dispatcher. No public schema changed. Static source review and
 `git diff --check` only; no tests or builds were run.
 
+**S4 identity-only mechanics dispatcher boundary (2026-10-25):** The
+index-valued mechanics switch is now private behind the Chance Law and
+semantic outcome identity resolvers. Provider code cannot bypass active
+support identity checks through an index dispatcher. No public schema changed;
+static source review and `git diff --check` only; no tests or builds were run.
+
 **S4 Native semantic-resume bridge ownership (2026-10-25):** Supported
 engine-owned Native semantic choices now pass through one pilot transition
 that maps the typed primitive result to the active semantic index and invokes
