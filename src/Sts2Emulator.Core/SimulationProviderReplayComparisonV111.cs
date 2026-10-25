@@ -333,14 +333,17 @@ public sealed record SimulationProviderReplayCaptureV111(
     {
         if (siteId is not (
                 StochasticSiteRegistryV111.CombatAutoplayRandomCardSelectSiteId or
-                StochasticSiteRegistryV111.CombatRandomReplayCardSelectSiteId))
+                StochasticSiteRegistryV111.CombatRandomReplayCardSelectSiteId or
+                StochasticSiteRegistryV111.CombatGeneratedCardSelectSiteId or
+                StochasticSiteRegistryV111.CombatRandomDrawAttackCardModelSiteId))
             return ownerId;
         var poolMarker = ownerId.LastIndexOf(":pool:",
             StringComparison.Ordinal);
-        if (poolMarker <= 0 || poolMarker + ":pool:".Length >=
-                ownerId.Length)
+        if (poolMarker < 0)
+            return ownerId;
+        if (poolMarker == 0 || poolMarker + ":pool:".Length >= ownerId.Length)
             throw new InvalidDataException(
-                "Card-shortlist semantic owner has no support suffix.");
+                "Semantic owner has an invalid candidate-pool suffix.");
         return ownerId[..poolMarker];
     }
 
@@ -1351,10 +1354,7 @@ internal static class SimulationProviderReplayNativeSemanticOutcomeTraceV111
 
         foreach (var outcome in audit.CardEnergyCostOutcomes)
             if (!AddDecision(outcome.ProviderDecision, () =>
-                CreateChanceOutcome(outcome.Outcome.Event,
-                    outcome.Outcome.SelectedIndex,
-                    () => ChanceLawEngineV111.QueryCost(
-                        outcome.Outcome.Event))))
+                CreateCostOutcome(outcome)))
                 return null;
 
         foreach (var outcome in audit.DrawInsertionOutcomes)
@@ -1507,6 +1507,32 @@ internal static class SimulationProviderReplayNativeSemanticOutcomeTraceV111
     }
 
     private static SimulationProviderReplaySemanticOutcomeV111?
+        CreateCostOutcome(SemanticCardEnergyCostAuditV111 audit)
+    {
+        var costEvent = audit.Outcome.Event;
+        var outcome = CreateChanceOutcome(costEvent,
+            audit.Outcome.SelectedIndex,
+            () => ChanceLawEngineV111.QueryCost(costEvent));
+        if (outcome is null || costEvent.Request.SiteId !=
+                StochasticSiteRegistryV111
+                    .CombatRandomHandCardEnergyCostSiteId)
+            return outcome;
+        var targetCardInstanceId = costEvent.TargetCardInstanceId ??
+            throw new InvalidDataException(
+                "Native hand-cost outcome has no selected card identity.");
+        var selectedCardIndex = Array.IndexOf(
+            audit.OrderedEligibleCardInstanceIds, targetCardInstanceId);
+        if (selectedCardIndex < 0)
+            throw new InvalidDataException(
+                "Native hand-cost identity is outside its ordered hand support.");
+        var ownerId = "effect:" + PrototypeCombatEffectKind
+            .RandomizeHandCardEnergyCostsUntilTurnEndOrPlayed + ":hand:" +
+            CanonicalJson.Sha256(audit.OrderedEligibleCardInstanceIds) +
+            ":index:" + selectedCardIndex;
+        return outcome with { OwnerId = ownerId };
+    }
+
+    private static SimulationProviderReplaySemanticOutcomeV111?
         CreateIntentOutcome(SemanticIntentEventV111 intentEvent,
             string intentId, int selectedIndex)
     {
@@ -1572,7 +1598,9 @@ internal static class SimulationProviderReplayNativeSemanticOutcomeTraceV111
         {
             SiteId = chanceEvent.SiteId,
             OperationKind = chanceEvent.OperationKind,
-            OwnerId = chanceEvent.OwnerId,
+            OwnerId = SimulationProviderReplayCaptureV111
+                .NormalizeSemanticOwnerId(chanceEvent.SiteId,
+                    chanceEvent.OwnerId),
             Ordinal = chanceEvent.Ordinal,
             SupportFingerprint = CanonicalJson.Sha256(semanticSupportIds),
             SemanticOutcomeId = semanticSupportIds[selectedIndex]

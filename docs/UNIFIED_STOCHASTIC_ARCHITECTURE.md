@@ -1127,7 +1127,9 @@ card, potion generation, transform, energy cost, hand-card selection,
 card-shortlist, combat pool-shuffle, and ordinary draw-insertion families
 against earlier requests in that semantic family. Shortlist owner identity
 omits the candidate-pool digest because the support fingerprint already
-records the remaining ordered candidates at each pick.
+records the remaining ordered candidates at each pick. Generated-card owner
+identity likewise omits its pool digest, while random hand-cost owners retain
+the selected card's position in the ordered hand support.
 The JSONL operation accepts `<side>_semantic_native_policy_handle` for this
 capture path. `FromReferenceNatureSemanticCombatSession` replays a fully
 indexed mixed player-action/Nature history, reconstructs the exact player
