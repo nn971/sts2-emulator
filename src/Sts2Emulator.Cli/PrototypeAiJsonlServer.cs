@@ -10695,7 +10695,7 @@ internal static class PrototypeAiJsonlServer
                                     return referenceNatureNativeEventShuffleStates
                                         .TryGetValue(handle, out var nativeEventShuffle)
                                         ? SimulationProviderReplayCaptureV111
-                                            .FromReferenceNatureControlledActionSession(
+                                            .FromReferenceNatureNativeEventShuffleSession(
                                                 nativeEventShuffle)
                                         : throw new InvalidOperationException(
                                             "Unknown ReferenceNature Native event-shuffle handle: " +

@@ -1242,25 +1242,25 @@ outcomes and prior history, then materializes its typed requests through the
 same boundary journal. It retains each settled action boundary. JSONL accepts
 `<side>_reference_nature_event_choice_handle` for this path. It does not
 establish Native source-hook parity or law fidelity.
-`FromReferenceNatureControlledActionSession` uses one shared interface for
-completed Merchant, Treasure, Native Shovel, Native event-gold,
-Native event-shuffle, Endless Conveyor, and Punch Off fight and reward
-sessions. Each session first replays
-its own action and typed stochastic prefix; the capture then records that
-prefix through the same journal. Native event-gold reuses its validated typed
-prefix. Infested Automaton, Glory Reflections, Trial, Trash Heap, Tablet of
-Truth, Native event-shuffle, Endless Conveyor, and Punch Off derive typed
-decisions from their existing validated Chance Law decisions, exact requests,
-and ordered outcome supports.
+`FromReferenceNatureControlledActionSession` remains a typed-only fallback
+through one shared interface for the supported controlled-action sessions.
+Each session first replays its own action and typed stochastic prefix; the
+capture then records that prefix through the same journal. Sessions with a
+dedicated factory below use that factory from JSONL to retain their semantic
+outcomes. The other controlled sessions derive typed decisions from their
+existing validated Chance Law decisions, exact requests, and ordered outcome
+supports.
 JSONL accepts the matching
 `<side>_reference_nature_{merchant,treasure,native_shovel,native_event_relic,native_event_gold,infested_automaton,glory_reflections,trial,trash_heap,tablet_of_truth,native_event_shuffle,endless_conveyor,punch_off_fight,punch_off_reward}_handle`
-inputs. Native event-relic, Infested Automaton, Glory Reflections, Trial,
-Trash Heap, and Tablet of Truth handles use
+inputs. Native event-relic, Infested Automaton, Glory Reflections, Native
+event-shuffle, Trial, Trash Heap, and Tablet of Truth handles use
 dedicated semantic captures: each re-queries the session's saved law and
-attaches the validated relic, case, reward, or physical card identity beside
-the typed boundary. The Infested Automaton capture retains the session's
-choice-specific Silent card support. Glory Reflections replays its ordered
-prior-pick prefix for each conditioned card law. The Native event-relic input uses
+attaches the validated selected identity beside the typed boundary. The
+Infested Automaton capture retains the session's choice-specific Silent card
+support. Glory Reflections replays its ordered prior-pick prefix for each
+conditioned card law. Native event-shuffle capture preserves its ordered
+shuffle prefix and dynamic combat-end requests. The Native event-relic input
+uses
 `FromReferenceNatureNativeEventRelicSession`, which re-queries its saved
 rarity and relic identity laws against the action and preceding typed prefix
 before attaching provider-independent semantic outcomes. These paths add

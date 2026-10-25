@@ -1731,6 +1731,10 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
             decisions.ToArray(), nature, finalCapture);
     }
 
+    internal static ChanceLawV111 QueryCombatEndLawForCapture(
+        NativeEventShufflePlanV111 plan, RandomIndexRequestV111 request) =>
+        QueryCombatEndLaw(plan, request);
+
     private static ChanceLawV111 QueryCombatEndLaw(
         NativeEventShufflePlanV111 plan, RandomIndexRequestV111 request) =>
         plan.IsFishingRodUpgrade
@@ -1770,6 +1774,12 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
             throw new InvalidDataException(
                 "ReferenceNature combat-end index replay differs from its session envelope.");
     }
+
+    internal static ChanceLawV111 QueryBoundaryLawForCapture(
+        NativeEventShufflePlanV111 plan, RunState origin, int ordinal,
+        int[] priorIndices, string actionId, string[] plannedCandidateIds) =>
+        QueryBoundaryLaw(plan, origin, ordinal, priorIndices, actionId,
+            plannedCandidateIds);
 
     private static ChanceLawV111 QueryBoundaryLaw(
         NativeEventShufflePlanV111 plan, RunState origin, int ordinal,

@@ -90,6 +90,14 @@ each law with its ordered prior-pick prefix, preserving the conditioned
 downgrade/upgrade support. Core and CLI Release builds passed with zero
 warnings or errors; `git diff --check` passed. No tests were added or run.
 
+**S4 Native event-shuffle semantic capture increment (2026-10-26):** JSONL
+provider replay now captures each selected shuffle identity beside its typed
+boundary. The factory restores the session, re-queries every conditional
+shuffle law against its ordered prefix, and handles dynamically discovered
+combat-end index requests through their source laws. Core and CLI Release
+builds passed with zero warnings or errors; `git diff --check` passed. No
+tests were added or run.
+
 **S4 whole-run six-primitive continuation increment (2026-10-25):** The
 ReferenceNature whole-run session now accepts caller-supplied, replay-validated
 transcript entries for all six typed random operations alongside its existing

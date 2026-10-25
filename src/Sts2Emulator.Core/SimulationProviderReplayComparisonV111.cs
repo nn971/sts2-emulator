@@ -338,6 +338,8 @@ public static class SimulationProviderReplayCaptureProvenanceV111
         "reference-nature-infested-automaton-semantic-identity-replay-validated-v1";
     public const string ReferenceNatureGloryReflectionsSemanticIdentityReplayValidated =
         "reference-nature-glory-reflections-semantic-identity-replay-validated-v1";
+    public const string ReferenceNatureNativeEventShuffleSemanticIdentityReplayValidated =
+        "reference-nature-native-event-shuffle-semantic-identity-replay-validated-v1";
     public const string ReferenceNatureEventChoiceReplayValidated =
         "reference-nature-event-choice-replay-validated-v1";
     public const string ReferenceNatureControlledActionReplayValidated =
@@ -372,6 +374,7 @@ public static class SimulationProviderReplayCaptureProvenanceV111
         ReferenceNatureTabletOfTruthSemanticIdentityReplayValidated or
         ReferenceNatureInfestedAutomatonSemanticIdentityReplayValidated or
         ReferenceNatureGloryReflectionsSemanticIdentityReplayValidated or
+        ReferenceNatureNativeEventShuffleSemanticIdentityReplayValidated or
         ReferenceNatureEventChoiceReplayValidated or
         ReferenceNatureControlledActionReplayValidated or
         ReferenceNatureNeowOfferReplayValidated or
@@ -407,6 +410,7 @@ public static class SimulationProviderReplayCaptureProvenanceV111
             ReferenceNatureTabletOfTruthSemanticIdentityReplayValidated or
             ReferenceNatureInfestedAutomatonSemanticIdentityReplayValidated or
             ReferenceNatureGloryReflectionsSemanticIdentityReplayValidated or
+            ReferenceNatureNativeEventShuffleSemanticIdentityReplayValidated or
             ReferenceNatureSemanticIdentityReplayValidated or
             ReferenceNatureCombatRewardSemanticIdentityReplayValidated;
 
@@ -1701,6 +1705,56 @@ public sealed record SimulationProviderReplayCaptureV111(
     }
 
     /// <summary>
+    /// Captures a completed Native event-shuffle action with the semantic
+    /// identity of each outcome in its conditioned request prefix.
+    /// </summary>
+    public static SimulationProviderReplayCaptureV111
+        FromReferenceNatureNativeEventShuffleSession(
+            ReferenceNatureNativeEventShuffleSessionV111 session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        ReferenceNatureNativeEventShuffleSessionV111 validated;
+        using (RandomBoundaryJournalV111.Begin())
+            validated = ReferenceNatureNativeEventShuffleSessionV111.Restore(
+                ReferenceNatureNativeEventShuffleSessionV111.Save(session));
+        if (!validated.Complete)
+            throw new InvalidOperationException(
+                "Provider replay capture requires a completed ReferenceNature Native event-shuffle session.");
+
+        var providerDecisions = validated.ProviderDecisions;
+        var transcript = validated.DecisionTranscript.Select(selection =>
+            new SimulationProviderReplaySemanticSelectionV111(
+                selection.LawId, selection.EventId, selection.OutcomeId,
+                selection.OutcomeIndex)).ToArray();
+        var plan = NativeEventShufflePlanBuilderV111.Build(
+            validated.Origin, validated.SiteId, validated.ActionId,
+            validated.PlannedCandidateIds);
+        return FromReferenceNatureSemanticAction(
+            validated.Origin, validated.Action, validated.Run,
+            providerDecisions, transcript, index =>
+            {
+                var indexDecision = providerDecisions[index].IndexDecision ??
+                    throw new InvalidDataException(
+                        "ReferenceNature Native event-shuffle decision has no index outcome.");
+                if (plan.IsCombatEndIndex)
+                    return ReferenceNatureNativeEventShuffleSessionV111
+                        .QueryCombatEndLawForCapture(plan,
+                            indexDecision.Request);
+                var priorIndices = providerDecisions.Take(index).Select(
+                    decision => decision.IndexDecision?.SelectedIndex ??
+                        throw new InvalidDataException(
+                            "ReferenceNature Native event-shuffle prefix has no index outcome."))
+                    .ToArray();
+                return ReferenceNatureNativeEventShuffleSessionV111
+                    .QueryBoundaryLawForCapture(plan, validated.Origin,
+                        index, priorIndices, validated.ActionId,
+                        validated.PlannedCandidateIds);
+            },
+            SimulationProviderReplayCaptureProvenanceV111
+                .ReferenceNatureNativeEventShuffleSemanticIdentityReplayValidated);
+    }
+
+    /// <summary>
     /// Captures a completed combat victory and its atomic ReferenceNature
     /// reward transcript as provider-independent semantic outcomes.
     /// </summary>
@@ -2284,6 +2338,8 @@ public sealed record SimulationProviderReplayCaptureV111(
                  SimulationProviderReplayCaptureProvenanceV111
                     .ReferenceNatureGloryReflectionsSemanticIdentityReplayValidated or
                  SimulationProviderReplayCaptureProvenanceV111
+                    .ReferenceNatureNativeEventShuffleSemanticIdentityReplayValidated or
+                 SimulationProviderReplayCaptureProvenanceV111
                     .SemanticNativePolicySemanticIdentityReplayValidated))
             throw new InvalidDataException(
                 "Legacy provider replay captures cannot claim provider-independent semantic identities.");
@@ -2312,6 +2368,8 @@ public sealed record SimulationProviderReplayCaptureV111(
                     .ReferenceNatureInfestedAutomatonSemanticIdentityReplayValidated or
                  SimulationProviderReplayCaptureProvenanceV111
                     .ReferenceNatureGloryReflectionsSemanticIdentityReplayValidated or
+                 SimulationProviderReplayCaptureProvenanceV111
+                    .ReferenceNatureNativeEventShuffleSemanticIdentityReplayValidated or
                  SimulationProviderReplayCaptureProvenanceV111
                     .ReferenceNatureCombatRewardSemanticIdentityReplayValidated or
                  SimulationProviderReplayCaptureProvenanceV111
