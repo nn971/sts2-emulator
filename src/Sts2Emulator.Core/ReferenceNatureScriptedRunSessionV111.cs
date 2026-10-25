@@ -1005,12 +1005,9 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
         ChanceLawV111 law,
         ReferenceNatureSelectionV111 selection)
     {
-        if (request.IndexRequest is { } indexRequest &&
-            !ChanceLawEngineV111.IsNativeMapGenerationRequestSite(
-                indexRequest.SiteId))
-            return CreateOutcome(active, indexRequest, selection);
         var decision = ReferenceNatureChanceLawDecisionV111.FromSelection(
-            law, request, selection, active.Origin);
+            law, request, selection, active.Origin,
+            active.PendingCandidateLabels);
         return ScriptedRunActionOutcomeV111.FromDecision(
             decision, checked(active.Decisions.Length + 1));
     }
@@ -1219,28 +1216,6 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
                 "ReferenceNature action prefix does not end at a valid boundary.");
         finalNatureState = cursor;
         return replay;
-    }
-
-    private static ScriptedRunActionOutcomeV111 CreateOutcome(
-        ScriptedRunActionSessionV111 active,
-        RandomIndexRequestV111 request,
-        ReferenceNatureSelectionV111 selection)
-    {
-        var sequence = checked(active.Decisions.Length + 1);
-        var selectedValue = request.OperationKind == "bounded_integer"
-            ? selection.OutcomeIndex
-            : request.OrderedCandidates[selection.OutcomeIndex];
-        var boundary = new RandomBoundaryEventV111(
-            sequence, request with
-            {
-                OrderedCandidates = request.OrderedCandidates
-            }, selection.OutcomeIndex, selectedValue, "controlled-v111",
-            null, null);
-        var entry = new RandomBoundaryTranscriptEntryV111(
-            sequence, "index",
-            RandomBoundaryTranscriptEntryV111.SerializeEvent(boundary));
-        return new ScriptedRunActionOutcomeV111(
-            entry, active.PendingCandidateLabels);
     }
 
     private static string PendingEventId(

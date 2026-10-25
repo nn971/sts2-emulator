@@ -2,6 +2,15 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 whole-run shared Chance Law outcome mapping increment (2026-10-26):**
+ReferenceNature whole-run replay now maps index, unit-float, and
+Gaussian-integer outcomes through `ReferenceNatureChanceLawDecisionV111`,
+preserving candidate labels and translating semantic mapped results back to
+their exact typed source values. This lets Native event-gold mappings and
+named Trial cases resolve correctly. Core and CLI Release builds passed with
+zero warnings or errors; `git diff --check` passed. No tests were added or
+run.
+
 **S4 whole-run Glory Trial case law increment (2026-10-26):** ReferenceNature
 whole-run replay now uses the existing named Trial case law and maps its
 selected case identity back to the saved bounded request after boundary and
