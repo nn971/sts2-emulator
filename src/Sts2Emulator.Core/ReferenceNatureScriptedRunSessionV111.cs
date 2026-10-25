@@ -586,14 +586,17 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
                     .IsNativeEncounterFormationRequest(request) &&
                 ControlledRunActionEngineV111.IsNativeActOneCombatEntrySite(
                     active.Origin, active.Action, indexRequest.SiteId))
-                return QueryNativeEncounterFormation(active, indexRequest);
+                return ReferenceNatureRunActionSessionV111
+                    .QueryNativeEncounterFormationLaw(
+                        active.Origin, active.Action, indexRequest);
             if (active.Origin.Stochastic.NativeRunRng is not null &&
                 ControlledRunActionEngineV111
                     .IsNativeEncounterSelectionRequest(request) &&
                 ControlledRunActionEngineV111.IsNativeActOneCombatEntrySite(
                     active.Origin, active.Action, indexRequest.SiteId))
-                return QueryNativeEncounterPoolSelection(
-                    active, indexRequest);
+                return ReferenceNatureRunActionSessionV111
+                    .QueryNativeEncounterPoolSelectionLaw(
+                        active.Origin, active.Action, indexRequest);
             if (active.Origin.Stochastic.NativeRunRng is not null &&
                 indexRequest.SiteId is
                     NativeCombatRngEntryV111.InitialUniqueHpSiteId or
@@ -946,71 +949,6 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
         RequireIndexRequestMatchesLaw(
             request, conditionedLaw, "Native Ancient offer");
         return conditionedLaw;
-    }
-
-    private static ChanceLawV111 QueryNativeEncounterFormation(
-        ScriptedRunActionSessionV111 active,
-        RandomIndexRequestV111 request)
-    {
-        request.Validate();
-        if (active.Origin.Stochastic.NativeRunRng is null ||
-            !ControlledRunActionEngineV111
-                .IsNativeEncounterFormationRequest(
-                    ControlledStochasticRequestV111.FromIndex(request)) ||
-            !ControlledRunActionEngineV111.IsNativeActOneCombatEntrySite(
-                active.Origin, active.Action, request.SiteId) ||
-            !request.OrderedCandidates.SequenceEqual(
-                Enumerable.Range(0, request.SupportCount)))
-            throw new InvalidDataException(
-                "Native encounter-formation request is outside its configured Act 1 combat-entry boundary.");
-
-        const string ownerPrefix = "encounter:";
-        var floorMarker = request.OwnerId.LastIndexOf(":floor:",
-            StringComparison.Ordinal);
-        if (floorMarker <= ownerPrefix.Length ||
-            !int.TryParse(request.OwnerId.AsSpan(
-                    floorMarker + ":floor:".Length),
-                NumberStyles.None, CultureInfo.InvariantCulture,
-                out var floor) || floor < 0)
-            throw new InvalidDataException(
-                "Native encounter-formation owner does not identify an entry and floor.");
-        var entry = request.OwnerId[
-            ownerPrefix.Length..floorMarker];
-        var law = ChanceLawEngineV111.QueryNativeEncounterFormationIndex(
-            entry, floor, request.SupportCount, request.Ordinal);
-        var expectedRequest = new RandomIndexRequestV111(
-            law.SiteId,
-            NativeRngV111Contexts.EncounterFormationStreamId(entry, floor),
-            law.OwnerId, law.Ordinal,
-            Enumerable.Range(0, law.SupportCount).ToArray(),
-            OperationKind: law.OperationKind);
-        if (CanonicalJson.Sha256(expectedRequest) !=
-            CanonicalJson.Sha256(request))
-            throw new InvalidDataException(
-                "Native encounter-formation request differs from its source law.");
-        return law;
-    }
-
-    private static ChanceLawV111 QueryNativeEncounterPoolSelection(
-        ScriptedRunActionSessionV111 active,
-        RandomIndexRequestV111 request)
-    {
-        request.Validate();
-        if (active.Origin.Stochastic.NativeRunRng is null ||
-            !ControlledRunActionEngineV111.IsNativeEncounterSelectionRequest(
-                ControlledStochasticRequestV111.FromIndex(request)) ||
-            !ControlledRunActionEngineV111.IsNativeActOneCombatEntrySite(
-                active.Origin, active.Action, request.SiteId))
-            throw new InvalidDataException(
-                "Native encounter-pool request is outside its configured Act 1 combat-entry boundary.");
-
-        var eventId = CanonicalJson.Sha256(new
-        {
-            boundary = "native-act-one-combat-entry-index",
-            actionId = PrototypeAiEnvironment.StableActionId(active.Action),
-            request
-        });
-        return ChanceLawEngineV111.QueryRandomIndex(eventId, request);
     }
 
     private static ChanceLawV111 QueryNativeCreatureHp(

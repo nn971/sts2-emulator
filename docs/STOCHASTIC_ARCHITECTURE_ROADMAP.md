@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S2 shared Native combat-entry law owner increment (2026-10-26):** The
+ReferenceNature whole-run dispatcher and typed run-action session now reuse
+the same Native Act 1 formation and encounter-pool validators and law queries.
+The shared owner binds both routes to the selected legal map-node action and
+validates the exact source request. Core and CLI Release builds passed with
+zero warnings or errors; `git diff --check` passed. No tests were run.
+
 **S2 whole-run Native rest-heal law increment (2026-10-26):** Whole-run
 ReferenceNature replay now reuses the typed run-action law owner for Native
 rest-heal rarity, card-model, and upgrade requests. Saved provider floats

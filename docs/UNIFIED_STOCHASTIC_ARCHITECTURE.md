@@ -1290,7 +1290,9 @@ whole-run path also re-query the existing formation law after validating the
 selected combat map node, encounter entry, floor, Native context stream, and
 source-ordered index range. Overgrowth and Underdocks encounter-pool draws
 also use their action-bound index laws after validating the selected room and
-ordered request support.
+ordered request support. The whole-run dispatcher and the specialized typed
+run-action session share these formation and encounter-pool request validators
+and law queries.
 Native creature creation and Tough Egg hatch HP draws on `run.niche` also use
 their existing source laws, which validate each creature owner and the
 distinct HP support (including the ascension-selected hatch range).
