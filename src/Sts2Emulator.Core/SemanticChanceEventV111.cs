@@ -78,6 +78,17 @@ internal sealed record SemanticPendingIndexChanceEventV111(
             throw new ArgumentOutOfRangeException(nameof(index));
     }
 
+    public int SelectNativeOutcomeIndex(RandomIndexDecisionV111 decision)
+    {
+        Validate();
+        if (Event.OperationKind is not ("choose_index" or "bounded_integer"))
+            throw new NotSupportedException(
+                $"UNSUPPORTED_SEMANTIC_CHANCE site={Event.SiteId} " +
+                $"operation={Event.OperationKind}");
+        return NativeSemanticOutcomeV111.SelectIndex(
+            decision, Event.OperationKind, SupportCount);
+    }
+
     public void ValidateBoundary(string boundaryFingerprint)
     {
         Validate();

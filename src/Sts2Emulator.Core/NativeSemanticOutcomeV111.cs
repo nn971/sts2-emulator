@@ -12,6 +12,12 @@ internal static class NativeSemanticOutcomeV111
         SemanticIndexOutcomeV111.SelectByChooseIndex(
             decision, orderedOutcomes, "native-v111");
 
+    internal static int SelectIndex(
+        RandomIndexDecisionV111 decision, string operationKind,
+        int supportCount) =>
+        SemanticIndexOutcomeV111.SelectIndex(
+            decision, operationKind, supportCount, "native-v111");
+
     internal static int SelectByBoundedOffset(
         RandomIndexDecisionV111 decision, int firstOutcome,
         int supportCount)

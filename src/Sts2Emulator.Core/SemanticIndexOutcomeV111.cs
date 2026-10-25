@@ -12,18 +12,23 @@ internal static class SemanticIndexOutcomeV111
         string? expectedProviderMode = null)
     {
         ArgumentNullException.ThrowIfNull(orderedOutcomes);
-        ValidateDecision(decision, "choose_index", orderedOutcomes.Count,
-            expectedProviderMode);
-        return orderedOutcomes[decision.SelectedIndex];
+        return orderedOutcomes[SelectIndex(decision, "choose_index",
+            orderedOutcomes.Count, expectedProviderMode)];
     }
 
     internal static int SelectByBoundedOffset(
         RandomIndexDecisionV111 decision, int firstOutcome,
         int supportCount, string? expectedProviderMode = null)
+        => checked(firstOutcome + SelectIndex(decision, "bounded_integer",
+            supportCount, expectedProviderMode));
+
+    internal static int SelectIndex(
+        RandomIndexDecisionV111 decision, string expectedOperationKind,
+        int supportCount, string? expectedProviderMode = null)
     {
-        ValidateDecision(decision, "bounded_integer", supportCount,
+        ValidateDecision(decision, expectedOperationKind, supportCount,
             expectedProviderMode);
-        return checked(firstOutcome + decision.SelectedIndex);
+        return decision.SelectedIndex;
     }
 
     private static void ValidateDecision(

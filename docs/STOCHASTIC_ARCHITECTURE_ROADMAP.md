@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 Native semantic event mapping ownership (2026-10-25):** The transient
+pending semantic event now maps Native decisions through one checked
+operation/support projection before the shared mechanics dispatcher. Target,
+generation, cost, pile-card, transform, potion, hand-cost, shuffle, insertion,
+and shortlist branches no longer repeat the primitive outcome check. Their
+typed request owners still validate site and provenance. Static source review
+and `git diff --check` only; no tests or builds were run.
+
 **S4 active semantic law-dispatch ownership (2026-10-25):** Typed pending
 index events now resolve to their Chance Law through
 `SemanticChanceLawDispatchV111`. It verifies that the descriptor belongs to
