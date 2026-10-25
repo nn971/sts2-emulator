@@ -132,6 +132,12 @@ validation and `AtBoundary` reuse those projected events instead of describing
 them separately from the same draw frame. No schema changed. Static source
 review and `git diff --check` only; no tests or builds were run.
 
+**S4 end-turn index-dispatch frame reuse (2026-10-25):** The selected-index
+dispatcher captures its forked hand-draw frame once and passes it to pending
+event descriptions and active draw branches. Typed resolvers retain their
+choice-specific checks and resume ownership. No schema changed. Static source
+review and `git diff --check` only; no tests or builds were run.
+
 **S5 shared candidate-label binding validation (2026-10-25):** Controlled
 event-choice, run-action, and playable-combat Python facades now use one
 validator for non-empty labels and membership in the saved pending support.

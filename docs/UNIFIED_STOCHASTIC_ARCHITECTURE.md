@@ -1284,6 +1284,10 @@ reuses its projected hand-draw frame and delegates active nested-choice boundary
 checks to it, while retaining pipeline-choice checks outside active draw
 ownership. No schema changed.
 
+The selected-index end-turn dispatcher also captures its forked hand-draw
+frame once and passes it to event descriptions and active draw branches.
+Choice-specific resolvers retain their support checks and resume ownership.
+
 Supported random autoplay and replay-card shortlist children opened by a
 draw-hook action now use the existing card-shortlist event and decision owner
 and the draw-owned version 7 transcript. Their source support is checked after
