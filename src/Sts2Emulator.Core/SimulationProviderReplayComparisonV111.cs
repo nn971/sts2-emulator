@@ -2961,12 +2961,12 @@ public sealed record SimulationProviderReplayCaptureV111(
             Simulation.Mechanics.CombatEventHookTranscriptByAction is not null)
             throw new InvalidDataException(
                 "Legacy provider replay captures cannot contain v9 combat event/hook transcripts.");
-        if (SchemaId == CurrentSchemaId &&
+        if ((SchemaId is CurrentSchemaId or PreviousSchemaId) &&
             CaptureProvenance !=
                 SimulationProviderReplayCaptureProvenanceV111.CallerSupplied &&
             !Simulation.Mechanics.HasActionBoundaryStates)
             throw new InvalidDataException(
-                "Replay-validated provider captures require action-boundary mechanics snapshots.");
+                "Replay-validated v8 and v9 provider captures require action-boundary mechanics snapshots.");
         if (SchemaId == CurrentSchemaId &&
             CaptureProvenance !=
                 SimulationProviderReplayCaptureProvenanceV111.CallerSupplied &&

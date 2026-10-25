@@ -1214,34 +1214,35 @@ event-effect, and enemy-defeat continuation mechanics from their existing
 mechanics owners, including action identity, effect cursor, queued
 consequences, and the saved fatal follow-up, while omitting their random
 requests and decision payloads. The mechanics comparison schema advances to
-v19 for this expanded projection; the provider replay comparison is v8.
+v19 for this expanded projection; the provider replay comparison is v9.
 `SimulationMechanicsComparisonV111` copies the difference array on
 construction and replacement, then returns defensive copies to keep the
 diagnostic result immutable to callers.
 
 `SimulationProviderReplayCaptureV111` groups an origin run, player-action
 sequence, ordered typed random-boundary trace, semantic event-outcome trace,
-and result run in the existing `SimulationStateV111` envelope. Its v8 schema
+and result run in the existing `SimulationStateV111` envelope. Its v9 schema
 includes the initiating event-choice action in ReferenceNature event-choice
 intervals, carries one mechanics snapshot after each completed action for
 replay-validated captures, and records the ordered physical card identities
-drawn during each action. Native
+drawn during each action, plus the ordered combat event/hook transcript. Native
 committed-order draws and ReferenceNature deferred draw choices therefore
 compare through the same mechanics-owned trace without treating a Native draw
 as a separate RNG call. Earlier captures remain readable with their original
 interval meaning; v5 and v6 captures may include action-boundary trajectories
 but do not provide the draw trace. V7 remains readable with its original
-optional action-boundary trajectory, and replay-validated v7 captures still
-require their draw-identity trace. Caller-supplied v8 captures may omit both
+optional action-boundary trajectory, and replay-validated v7/v8 captures still
+require their draw-identity trace. Caller-supplied v8 and v9 captures may omit
 per-action traces and remain unverified; replay-validated v8 captures require
-the action-boundary mechanics and draw-identity trace for every action. Legacy
-schema IDs reject fields introduced after their version.
+the action-boundary mechanics and draw-identity trace, while replay-validated
+v9 captures also require the combat event/hook transcript for every action.
+Legacy schema IDs reject fields introduced after their version.
 `SimulationProviderReplayComparisonEngineV111` compares two such captures by
 fingerprinting their action sequences, comparing origin mechanics, comparing
 every supplied typed boundary in order, comparing complete semantic outcome
-traces and per-action drawn-card identities when both captures provide them,
-and comparing the resulting mechanics. The result returns each agreement and
-both capture provenance values separately. The
+traces, per-action drawn-card identities, and combat event/hook transcripts
+when both captures provide them, then compares the resulting mechanics. The
+result returns each agreement and both capture provenance values separately. The
 semantic trace records provider event and law identity, provider-independent
 site/operation/owner/ordinal, a fingerprint of ordered semantic outcome IDs,
 the selected semantic identity and index, and its transition position within
@@ -1659,7 +1660,7 @@ snapshot, next target index, and pending extra kill rounds, so earlier hits
 are not replayed after a hook choice. Pending event replay uses the same
 resumable dispatcher, and restore validates the defeated target against the
 saved follow-up and repeated-damage cursor. The mechanics comparison retains
-this progress under schema v19; provider replay comparison is v8.
+this progress under schema v19; provider replay comparison is v9.
 
 Toolbox's first-turn `BeforeHandDraw` generated offer now composes the
 existing full-pool shuffle and ChoicePool card-selection continuations. Exact
