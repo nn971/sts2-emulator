@@ -626,6 +626,19 @@ public sealed record PrototypeAutomaticPipelineContinuationState(
         { ControlledDrawCostRemaining = value };
     }
 
+    /// <summary>
+    /// Original requested count for a suspended legacy controlled hand draw.
+    /// Older snapshots omit this field and retain their remainder-only shape.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public int? ControlledDrawRequested
+    {
+        get => Stochastic.ControlledDrawRequested;
+        init => Stochastic = Stochastic with
+        { ControlledDrawRequested = value };
+    }
+
     public int? ControlledSemanticDrawRemaining
     {
         get => Stochastic.ControlledSemanticDrawRemaining;

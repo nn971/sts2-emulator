@@ -2034,12 +2034,17 @@ public sealed partial class PrototypeGameEngine
         var prototypeRng = state.Stochastic.PrototypeRng;
         var continuation = combat.AutomaticPipelineContinuation ??
             throw new InvalidOperationException("Missing draw continuation.");
-        if (!continuation.Stochastic.TryGetControlledHandDrawRemainder(
-                continuation.Mechanics, out int remainingHandDraw) ||
-            remainingHandDraw <= 0 ||
+        if (!continuation.Stochastic.TryGetActiveAutomaticHandDrawProgress(
+                continuation.Mechanics, out var handDrawProgress) ||
+            handDrawProgress.Kind is not (
+                PrototypeAutomaticHandDrawProgressKindV111.ControlledDraw or
+                PrototypeAutomaticHandDrawProgressKindV111.ControlledRecycleStratagem) ||
+            handDrawProgress.RemainingCount is not > 0 ||
             combat.DrawPile.Length != 0 ||
             combat.DiscardPile.Length == 0)
             throw new InvalidOperationException("Invalid suspended draw stage.");
+        int remainingHandDraw = handDrawProgress.RemainingCount.Value;
+        int? requestedHandDraw = handDrawProgress.RequestedCount;
         var eligible = combat.DiscardPile;
         if (selectedPreHookOrder is null ||
             selectedPreHookOrder.Length != eligible.Length ||
@@ -2098,7 +2103,7 @@ public sealed partial class PrototypeGameEngine
         if (ExpectedStratagemSelectionCount(combat) > 0)
             return BeginControlledRecycleStratagemSelection(
                 state, state.Player, combat,
-                remainingHandDraw);
+                remainingHandDraw, requestedHandDraw);
 
         var player = state.Player;
         var drawn = DrawCards(player, combat, remainingHandDraw,

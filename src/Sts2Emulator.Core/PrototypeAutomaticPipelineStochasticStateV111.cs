@@ -20,20 +20,21 @@ public sealed record PrototypeAutomaticHandDrawProgressV111(
     int? RemainingCount = null)
 {
     public static PrototypeAutomaticHandDrawProgressV111 ControlledDraw(
-        int remainingCount) => Create(
+        int remainingCount, int? requestedCount = null) => Create(
             PrototypeAutomaticHandDrawProgressKindV111.ControlledDraw,
-            requestedCount: null, remainingCount: remainingCount);
+            requestedCount, remainingCount);
 
     public static PrototypeAutomaticHandDrawProgressV111
-        ControlledDrawHookChoice(int remainingCount) => Create(
+        ControlledDrawHookChoice(int remainingCount,
+            int? requestedCount = null) => Create(
             PrototypeAutomaticHandDrawProgressKindV111
                 .ControlledDrawHookChoice,
-            requestedCount: null, remainingCount: remainingCount);
+            requestedCount, remainingCount);
 
     public static PrototypeAutomaticHandDrawProgressV111 ControlledDrawCost(
-        int remainingCount) => Create(
+        int remainingCount, int? requestedCount = null) => Create(
             PrototypeAutomaticHandDrawProgressKindV111.ControlledDrawCost,
-            requestedCount: null, remainingCount: remainingCount);
+            requestedCount, remainingCount);
 
     public static PrototypeAutomaticHandDrawProgressV111 SemanticBeforeHandDraw() =>
         Create(
@@ -52,9 +53,10 @@ public sealed record PrototypeAutomaticHandDrawProgressV111(
             requestedCount, remainingCount);
 
     public static PrototypeAutomaticHandDrawProgressV111
-        ControlledRecycleStratagem(int remainingCount) => Create(
+        ControlledRecycleStratagem(int remainingCount,
+            int? requestedCount = null) => Create(
             PrototypeAutomaticHandDrawProgressKindV111.ControlledRecycleStratagem,
-            requestedCount: null, remainingCount: remainingCount);
+            requestedCount, remainingCount);
 
     public void Validate()
     {
@@ -66,7 +68,10 @@ public sealed record PrototypeAutomaticHandDrawProgressV111(
             case PrototypeAutomaticHandDrawProgressKindV111.ControlledDraw:
             case PrototypeAutomaticHandDrawProgressKindV111.ControlledDrawHookChoice:
             case PrototypeAutomaticHandDrawProgressKindV111.ControlledDrawCost:
-                if (RequestedCount is not null || RemainingCount is not >= 0)
+                if ((RequestedCount is not null and not > 0) ||
+                    RemainingCount is not >= 0 ||
+                    RequestedCount is { } requestedCountValue &&
+                        RemainingCount > requestedCountValue)
                     throw new InvalidOperationException(
                         "Controlled automatic hand-draw progress is malformed.");
                 break;
@@ -82,7 +87,10 @@ public sealed record PrototypeAutomaticHandDrawProgressV111(
                         "Semantic automatic hand-draw progress is malformed.");
                 break;
             case PrototypeAutomaticHandDrawProgressKindV111.ControlledRecycleStratagem:
-                if (RequestedCount is not null || RemainingCount is not > 0)
+                if ((RequestedCount is not null and not > 0) ||
+                    RemainingCount is not > 0 ||
+                    RequestedCount is { } recycleRequestedCount &&
+                        RemainingCount > recycleRequestedCount)
                     throw new InvalidOperationException(
                         "Controlled recycle Stratagem progress is malformed.");
                 break;
@@ -114,6 +122,18 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
     ControlledTurnIntentsV111? ControlledTurnIntents = null,
     int? CompletedSemanticHandDrawRequested = null)
 {
+    public int? ControlledDrawRequested
+    {
+        get => HandDrawProgress?.Kind is
+                PrototypeAutomaticHandDrawProgressKindV111.ControlledDraw or
+                PrototypeAutomaticHandDrawProgressKindV111.ControlledDrawCost or
+                PrototypeAutomaticHandDrawProgressKindV111.ControlledRecycleStratagem or
+                PrototypeAutomaticHandDrawProgressKindV111.ControlledDrawHookChoice
+            ? HandDrawProgress.RequestedCount : null;
+        init => HandDrawProgress = SetControlledDrawRequested(
+            HandDrawProgress, value);
+    }
+
     public int? ControlledDrawRemaining
     {
         get => TryGetControlledHandDrawRemainder(out int remaining)
@@ -273,7 +293,7 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
         return HandDrawProgress is
             { Kind: PrototypeAutomaticHandDrawProgressKindV111
                 .ControlledDrawHookChoice,
-              RequestedCount: null,
+              RequestedCount: null or > 0,
               RemainingCount: >= 0 } &&
             mechanics.IsAtStep(
                 PrototypeAutomaticStepKind.DrawPlayerHand);
@@ -528,6 +548,36 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
     }
 
     private static PrototypeAutomaticHandDrawProgressV111?
+        SetControlledDrawRequested(
+            PrototypeAutomaticHandDrawProgressV111? progress, int? value)
+    {
+        if (value is null)
+        {
+            var cleared = progress?.Kind is
+                PrototypeAutomaticHandDrawProgressKindV111.ControlledDraw or
+                PrototypeAutomaticHandDrawProgressKindV111.ControlledDrawCost or
+                PrototypeAutomaticHandDrawProgressKindV111.ControlledRecycleStratagem or
+                PrototypeAutomaticHandDrawProgressKindV111.ControlledDrawHookChoice
+                    ? progress with { RequestedCount = null } : progress;
+            cleared?.Validate();
+            return cleared;
+        }
+        if (value <= 0)
+            throw new InvalidOperationException(
+                "Controlled automatic hand-draw request must be positive.");
+        var updated = progress?.Kind is
+                PrototypeAutomaticHandDrawProgressKindV111.ControlledDraw or
+                PrototypeAutomaticHandDrawProgressKindV111.ControlledDrawCost or
+                PrototypeAutomaticHandDrawProgressKindV111.ControlledRecycleStratagem or
+                PrototypeAutomaticHandDrawProgressKindV111.ControlledDrawHookChoice
+            ? progress with { RequestedCount = value }
+            : throw new InvalidOperationException(
+                "Controlled automatic hand-draw request has no active progress.");
+        updated.Validate();
+        return updated;
+    }
+
+    private static PrototypeAutomaticHandDrawProgressV111?
         SetControlledDrawHookChoicePending(
             PrototypeAutomaticHandDrawProgressV111? progress, bool value)
     {
@@ -578,7 +628,10 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
                 PrototypeAutomaticHandDrawProgressKindV111.ControlledDrawCost
                     ? null : progress;
         return new(PrototypeAutomaticHandDrawProgressKindV111.ControlledDrawCost,
-            RemainingCount: value);
+            progress?.Kind ==
+                PrototypeAutomaticHandDrawProgressKindV111.ControlledDrawCost
+                    ? progress.RequestedCount : null,
+            value);
     }
 
     private static PrototypeAutomaticHandDrawProgressV111?

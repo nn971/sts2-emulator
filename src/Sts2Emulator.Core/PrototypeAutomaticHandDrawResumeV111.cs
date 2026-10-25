@@ -368,10 +368,24 @@ public sealed partial class PrototypeGameEngine
                  PrototypeDrawCardsBoundaryKind.ShuffleSelection or
                  PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice)))
         {
+            int? controlledRequested = requestedCount > 0
+                ? requestedCount : null;
+            if (controlledRequested is null &&
+                combat.AutomaticPipelineContinuation is { } controlledCursor &&
+                controlledCursor.Stochastic
+                    .TryGetActiveAutomaticHandDrawProgress(
+                        controlledCursor.Mechanics, out var progress) &&
+                progress.Kind is (
+                    PrototypeAutomaticHandDrawProgressKindV111.ControlledDraw or
+                    PrototypeAutomaticHandDrawProgressKindV111.ControlledDrawCost or
+                    PrototypeAutomaticHandDrawProgressKindV111.ControlledRecycleStratagem or
+                    PrototypeAutomaticHandDrawProgressKindV111.ControlledDrawHookChoice))
+                controlledRequested = progress.RequestedCount;
             return combat.AutomaticPipelineContinuation is null
                 ? ContinueInitialControlledHandDrawBoundary(
-                    rngCheckpoint, drawn)
-                : ContinueControlledHandDraw(rngCheckpoint, drawn);
+                    rngCheckpoint, drawn, controlledRequested)
+                : ContinueControlledHandDraw(
+                    rngCheckpoint, drawn, controlledRequested);
         }
 
         return null;
@@ -491,6 +505,7 @@ public sealed partial class PrototypeGameEngine
         CombatState combat,
         int remaining,
         int? semanticRequested,
+        int? controlledRequested = null,
         bool createCheckpoint = false)
     {
         var cursor = combat.AutomaticPipelineContinuation;
@@ -558,11 +573,16 @@ public sealed partial class PrototypeGameEngine
                 choice!.AutomaticSemanticStratagemDrawSelection ||
                 choice.SemanticStratagemDrawSelection ||
                 cursor?.Stochastic.CompletedSemanticHandDrawRequested is not null ||
-                hasSemanticDrawProgress || isBeforeHandDraw)
+                hasSemanticDrawProgress || isBeforeHandDraw ||
+                (controlledRequested is { } controlledRequestInput &&
+                 priorProgress?.RequestedCount is { } savedRequested &&
+                 controlledRequestInput != savedRequested))
                 throw new InvalidDataException(
                     "Controlled automatic Stratagem cursor is inconsistent.");
             progress = PrototypeAutomaticHandDrawProgressV111
-                .ControlledRecycleStratagem(remaining);
+                .ControlledRecycleStratagem(
+                    remaining,
+                    controlledRequested ?? priorProgress?.RequestedCount);
         }
 
         var suspended = CommitAutomaticHandDrawProgress(
@@ -576,7 +596,8 @@ public sealed partial class PrototypeGameEngine
         PlayerState player,
         CombatState combat,
         int remaining,
-        int? semanticRequested)
+        int? semanticRequested,
+        int? controlledRequested = null)
     {
         var cursor = combat.AutomaticPipelineContinuation;
         bool isBeforeHandDraw =
@@ -624,19 +645,25 @@ public sealed partial class PrototypeGameEngine
         }
         else
         {
-            bool hasSemanticDrawProgress =
+            var priorProgress =
                 cursor.Stochastic.TryGetActiveAutomaticHandDrawProgress(
-                    cursor.Mechanics, out var priorProgress) &&
-                priorProgress.Kind ==
-                    PrototypeAutomaticHandDrawProgressKindV111.SemanticDraw;
+                    cursor.Mechanics, out var activeProgress)
+                    ? activeProgress : null;
+            bool hasSemanticDrawProgress = priorProgress?.Kind ==
+                PrototypeAutomaticHandDrawProgressKindV111.SemanticDraw;
             if (ControlledChanceGuardV111.EngineOwnedNativeProviderActive ||
                 combat.Stochastic.SemanticDeck is not null ||
                 cursor.Stochastic.CompletedSemanticHandDrawRequested is not null ||
-                hasSemanticDrawProgress)
+                hasSemanticDrawProgress ||
+                (controlledRequested is { } controlledRequestInput &&
+                 priorProgress?.RequestedCount is { } savedRequested &&
+                 controlledRequestInput != savedRequested))
                 throw new InvalidDataException(
                     "Controlled automatic CardDrawn choice cursor is inconsistent.");
             progress = PrototypeAutomaticHandDrawProgressV111
-                .ControlledDrawHookChoice(remaining);
+                .ControlledDrawHookChoice(
+                    remaining,
+                    controlledRequested ?? priorProgress?.RequestedCount);
         }
 
         var suspended = CommitAutomaticHandDrawProgress(
@@ -743,9 +770,6 @@ public sealed partial class PrototypeGameEngine
         if (semantic && requestedCount <= 0)
             throw new InvalidDataException(
                 "Semantic automatic draw resume lost its request.");
-        if (!semantic && resumed.Progress.RequestedCount is not null)
-            throw new InvalidDataException(
-                "Controlled automatic draw acquired semantic progress.");
         var progress = ResumeAutomaticHandDrawBoundary(
                 resumed.Progress.Run, drawn, requestedCount,
                 context: semantic
@@ -757,15 +781,15 @@ public sealed partial class PrototypeGameEngine
                     "unsupported_nested_stage") ??
             throw new InvalidDataException(
                 "Automatic hand-draw result lost its continuation owner.");
-        if (!semantic)
-            return progress;
         if (progress.RequestedCount is { } reportedRequested &&
             reportedRequested != requestedCount)
             throw new InvalidDataException(
-                "Semantic hand-draw resume changed its requested count.");
-        return PrototypeDrawCardsResumeResultV111.ForHandDraw(
-            progress.Run, requestedCount, progress.RemainingCount,
-            progress.PipelineBoundary);
+                "Automatic hand-draw resume changed its requested count.");
+        return semantic
+            ? PrototypeDrawCardsResumeResultV111.ForHandDraw(
+                progress.Run, requestedCount, progress.RemainingCount,
+                progress.PipelineBoundary)
+            : progress;
     }
 
     private static int? ValidateAutomaticHandDrawCostCheckpoint(
@@ -803,6 +827,6 @@ public sealed partial class PrototypeGameEngine
                 cursor.Mechanics, out _))
             throw new InvalidDataException(
                 "Controlled automatic draw-cost cursor is inconsistent.");
-        return null;
+        return progress.RequestedCount;
     }
 }

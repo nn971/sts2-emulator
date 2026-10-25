@@ -7,7 +7,8 @@ public sealed partial class PrototypeGameEngine
 {
     private static PrototypeDrawCardsResumeResultV111
         ContinueInitialControlledHandDrawBoundary(
-        RunState state, PrototypeDrawCardsResult drawn)
+        RunState state, PrototypeDrawCardsResult drawn,
+        int? requestedCount)
     {
         bool nestedHookChoice = drawn.BoundaryKind ==
             PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice &&
@@ -18,6 +19,7 @@ public sealed partial class PrototypeGameEngine
             drawn.Combat.Stochastic.SemanticDeck is null &&
             drawn.Combat.PendingChoice is null;
         if (!ControlledChanceGuardV111.Active ||
+            requestedCount is not > 0 ||
             (drawn.BoundaryKind is not (
                 PrototypeDrawCardsBoundaryKind.ControlledDrawCost or
                 PrototypeDrawCardsBoundaryKind.ControlledRecycle) &&
@@ -36,7 +38,8 @@ public sealed partial class PrototypeGameEngine
             createCheckpoint: true);
         var suspendedCombat = checkpoint.World!.Combat!;
         return ContinueControlledHandDraw(
-            checkpoint, drawn with { Combat = suspendedCombat });
+            checkpoint, drawn with { Combat = suspendedCombat },
+            requestedCount);
     }
 
     internal static RunState ResumeControlledAutomaticHandDrawHookChoice(
@@ -77,7 +80,8 @@ public sealed partial class PrototypeGameEngine
     }
 
     private static RunState BeginControlledRecycleStratagemSelection(
-        RunState state, PlayerState player, CombatState combat, int remaining)
+        RunState state, PlayerState player, CombatState combat, int remaining,
+        int? requestedCount)
     {
         if (combat.Stochastic.SemanticDeck is not null)
             throw new NotSupportedException(
@@ -110,7 +114,8 @@ public sealed partial class PrototypeGameEngine
         };
         return CommitAutomaticHandDrawStratagemSelection(
             state, prompt.Player, prompt.Combat, remaining,
-            semanticRequested: null);
+            semanticRequested: null,
+            controlledRequested: requestedCount);
     }
 
     internal static RunState ResumeControlledRecycleStratagemSelection(
@@ -149,18 +154,31 @@ public sealed partial class PrototypeGameEngine
 
     private static PrototypeDrawCardsResumeResultV111
         ContinueControlledHandDraw(
-        RunState state, PrototypeDrawCardsResult drawn)
+        RunState state, PrototypeDrawCardsResult drawn,
+        int? requestedCount = null)
     {
         var combat = drawn.Combat;
         var drawBoundary = drawn.BoundaryKind;
+        if (combat.AutomaticPipelineContinuation is { } cursor &&
+            cursor.Stochastic.TryGetActiveAutomaticHandDrawProgress(
+                cursor.Mechanics, out var activeProgress) &&
+            activeProgress.RequestedCount is { } savedRequested)
+        {
+            if (requestedCount is { } suppliedRequested &&
+                suppliedRequested != savedRequested)
+                throw new InvalidDataException(
+                    "Controlled hand-draw continuation changed its requested count.");
+            requestedCount = savedRequested;
+        }
 
         if (drawBoundary ==
             PrototypeDrawCardsBoundaryKind.ShuffleSelection)
         {
             return new PrototypeDrawCardsResumeResultV111(
                 BeginControlledRecycleStratagemSelection(
-                    state, drawn.Player, combat, drawn.RemainingCount),
-                drawn.RemainingCount);
+                    state, drawn.Player, combat, drawn.RemainingCount,
+                    requestedCount),
+                drawn.RemainingCount, requestedCount);
         }
 
         if (drawBoundary ==
@@ -170,8 +188,9 @@ public sealed partial class PrototypeGameEngine
                 CommitAutomaticHandDrawProgress(
                     state, drawn.Player, combat,
                     PrototypeAutomaticHandDrawProgressV111
-                        .ControlledDrawCost(drawn.RemainingCount)),
-                drawn.RemainingCount);
+                        .ControlledDrawCost(
+                            drawn.RemainingCount, requestedCount)),
+                drawn.RemainingCount, requestedCount);
         }
 
         if (drawBoundary ==
@@ -181,8 +200,9 @@ public sealed partial class PrototypeGameEngine
                 CommitAutomaticHandDrawProgress(
                     state, drawn.Player, combat,
                     PrototypeAutomaticHandDrawProgressV111
-                        .ControlledDraw(drawn.RemainingCount)),
-                drawn.RemainingCount);
+                        .ControlledDraw(
+                            drawn.RemainingCount, requestedCount)),
+                drawn.RemainingCount, requestedCount);
         }
 
         if (drawBoundary ==
@@ -191,8 +211,9 @@ public sealed partial class PrototypeGameEngine
             return new PrototypeDrawCardsResumeResultV111(
                 SuspendAutomaticHandDrawAtCardDrawnChoice(
                     state, drawn.Player, combat, drawn.RemainingCount,
-                    semanticRequested: null),
-                drawn.RemainingCount);
+                    semanticRequested: null,
+                    controlledRequested: requestedCount),
+                drawn.RemainingCount, requestedCount);
         }
 
         if (combat.PendingChoice is not null ||
@@ -207,7 +228,7 @@ public sealed partial class PrototypeGameEngine
         var pipelineResume = ResumeAutomaticPipelineContinuation(
             CompleteAutomaticHandDrawStage(advanced));
         return new PrototypeDrawCardsResumeResultV111(
-            pipelineResume.Run, 0,
+            pipelineResume.Run, 0, requestedCount,
             PipelineBoundary: pipelineResume.Boundary);
     }
 
