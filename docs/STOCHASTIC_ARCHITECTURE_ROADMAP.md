@@ -74,6 +74,13 @@ validate the resulting frame. Selected-index dispatch and restore replay keep
 their existing validation paths. No transcript or snapshot format changed.
 Static source review and `git diff --check` only; no tests or builds were run.
 
+**S4 nested semantic end-turn validation ownership (2026-10-25):** Typed
+pipeline-choice resolvers now rely on `ResumeNestedSemanticChoice` to publish
+and validate the resumed frame instead of repeating validation at each call
+site. The selected-index dispatcher retains its final validation. No transcript
+or snapshot format changed. Static source review and `git diff --check` only;
+no tests or builds were run.
+
 **S5 shared candidate-label binding validation (2026-10-25):** Controlled
 event-choice, run-action, and playable-combat Python facades now use one
 validator for non-empty labels and membership in the saved pending support.

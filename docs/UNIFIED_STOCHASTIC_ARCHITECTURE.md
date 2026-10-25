@@ -1648,6 +1648,10 @@ hand-draw continuation. It selects the existing typed end-turn resolver for
 cost, draw, transform, shortlist, card selection, generation, and pool-shuffle
 choices, then the pilot publishes the returned mechanics and provider state
 together. Standalone choices still use the typed choice-resume owner.
+`ResumeNestedSemanticChoice` owns nested pipeline-choice publication and frame
+validation; typed resolvers return its validated result without repeating the
+same frame check at each call site. The selected-index dispatcher retains its
+final validation after routing.
 End-turn target, draw-hook, and draw-insertion resume now return the typed
 decision selected from the pending event together with the resumed frame. The
 owning draw or end-turn stochastic state records and validates its transcript;

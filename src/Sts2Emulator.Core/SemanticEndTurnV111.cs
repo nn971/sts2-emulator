@@ -1206,9 +1206,7 @@ public static class SemanticEndTurnEngineV111
         var choice = new SemanticEndTurnNestedChoiceV111(
             "semantic_generated_card",
             GeneratedCardDecision: decision.Fork());
-        var next = ResumeNestedSemanticChoice(source, choice);
-        Validate(next);
-        return next;
+        return ResumeNestedSemanticChoice(source, choice);
     }
 
     public static SemanticEndTurnV111 ResolvePotionGeneration(
@@ -1242,9 +1240,7 @@ public static class SemanticEndTurnEngineV111
         var choice = new SemanticEndTurnNestedChoiceV111(
             "semantic_potion_generation",
             PotionGenerationDecision: decision.Fork());
-        var next = ResumeNestedSemanticChoice(source, choice);
-        Validate(next);
-        return next;
+        return ResumeNestedSemanticChoice(source, choice);
     }
 
     public static SemanticEndTurnV111 ResolveCardTransform(
@@ -1276,9 +1272,7 @@ public static class SemanticEndTurnEngineV111
         var choice = new SemanticEndTurnNestedChoiceV111(
             "semantic_card_transform",
             CardTransformDecision: decision.Fork());
-        var next = ResumeNestedSemanticChoice(source, choice);
-        Validate(next);
-        return next;
+        return ResumeNestedSemanticChoice(source, choice);
     }
 
     public static SemanticEndTurnV111 ResolveCardShortlist(
@@ -1309,9 +1303,7 @@ public static class SemanticEndTurnEngineV111
         var choice = new SemanticEndTurnNestedChoiceV111(
             "semantic_card_shortlist",
             CardShortlistDecision: decision.Fork());
-        var next = ResumeNestedSemanticChoice(source, choice);
-        Validate(next);
-        return next;
+        return ResumeNestedSemanticChoice(source, choice);
     }
 
     public static SemanticEndTurnV111 ResolveRandomHandCost(
@@ -1341,9 +1333,7 @@ public static class SemanticEndTurnEngineV111
         }
         var choice = new SemanticEndTurnNestedChoiceV111(
             "semantic_cost", CostDecision: decision.Fork());
-        var resumed = ResumeNestedSemanticChoice(source, choice);
-        Validate(resumed);
-        return resumed;
+        return ResumeNestedSemanticChoice(source, choice);
     }
 
     public static SemanticEndTurnV111 ResolveHandCostSelection(
@@ -1376,9 +1366,7 @@ public static class SemanticEndTurnEngineV111
         var choice = new SemanticEndTurnNestedChoiceV111(
             "semantic_hand_cost_selection",
             HandCostSelectionDecision: decision.Fork());
-        var resumed = ResumeNestedSemanticChoice(source, choice);
-        Validate(resumed);
-        return resumed;
+        return ResumeNestedSemanticChoice(source, choice);
     }
 
     public static SemanticEndTurnV111 ResolvePoolShuffle(
@@ -1409,9 +1397,7 @@ public static class SemanticEndTurnEngineV111
         var choice = new SemanticEndTurnNestedChoiceV111(
             "semantic_pool_shuffle",
             PoolShuffleDecision: decision.Fork());
-        var next = ResumeNestedSemanticChoice(source, choice);
-        Validate(next);
-        return next;
+        return ResumeNestedSemanticChoice(source, choice);
     }
 
     public static SemanticEndTurnV111 ResolveCardSelection(
@@ -1442,9 +1428,7 @@ public static class SemanticEndTurnEngineV111
         var choice = new SemanticEndTurnNestedChoiceV111(
             "semantic_card_selection",
             CardSelectionDecision: decision.Fork());
-        var next = ResumeNestedSemanticChoice(source, choice);
-        Validate(next);
-        return next;
+        return ResumeNestedSemanticChoice(source, choice);
     }
 
     internal static (SemanticEndTurnV111 EndTurn,
@@ -1544,7 +1528,6 @@ public static class SemanticEndTurnEngineV111
             "semantic_draw_insertion",
             DrawInsertionDecision: decision.Fork());
         var nested = ResumeNestedSemanticChoice(source, choice);
-        Validate(nested);
         return (nested, decision);
     }
 
@@ -1822,7 +1805,6 @@ public static class SemanticEndTurnEngineV111
                 "semantic_draw_hook_choice",
                 DrawHookChoiceDecision: decision.Fork());
             var nested = ResumeNestedSemanticChoice(source, choice);
-            Validate(nested);
             return (nested, decision);
         }
         if (source.HandDraw is not { } hand ||
@@ -1870,9 +1852,7 @@ public static class SemanticEndTurnEngineV111
         var choice = new SemanticEndTurnNestedChoiceV111(
             "knowledge_demon_choice",
             KnowledgeDemonChoiceDecision: decision.Fork());
-        var next = ResumeNestedSemanticChoice(source, choice);
-        Validate(next);
-        return next;
+        return ResumeNestedSemanticChoice(source, choice);
     }
 
     public static SemanticEndTurnV111 ResolveStratagemSelection(
