@@ -479,14 +479,10 @@ public sealed record SemanticCombatDrawV111(
         bool standaloneSemanticDrawPending = controlledSemanticDraw?
             .StandaloneSemanticDrawSegment == true ||
             combat.PendingChoice?.StandaloneSemanticDrawHookChoice == true;
-        bool hasPipelineSemanticDrawProgress =
-            PrototypeGameEngine.TryGetSemanticAutomaticHandDrawProgress(
-                combat, out int pipelineRequested,
-                out int pipelineRemaining);
-        bool activeHandDrawCountsMatch =
-            hasPipelineSemanticDrawProgress &&
-            pipelineRequested == this.RequestedCount &&
-            pipelineRemaining == this.RemainingCount;
+        bool activeHandDrawCountsMatch = pipelineCursor is not null &&
+            pipelineCursor.Stochastic.MatchesSemanticHandDrawProgress(
+                pipelineCursor.Mechanics, this.RequestedCount,
+                this.RemainingCount);
         bool IsActiveAutomaticChild(
             SemanticDrawHookChoiceEngineV111
                 .AutomaticHandDrawChildKindV111 kind) =>
@@ -647,9 +643,7 @@ public sealed record SemanticCombatDrawV111(
                         PrototypeAutomaticStepKind.DrawPlayerHand) &&
                     semanticBeforeHandDrawProgress &&
                     this.RequestedCount == 0 && this.RemainingCount == 0;
-                bool activeHandDrawChoice = hasPipelineSemanticDrawProgress &&
-                    pipelineRequested == this.RequestedCount &&
-                    pipelineRemaining == this.RemainingCount;
+                bool activeHandDrawChoice = activeHandDrawCountsMatch;
                 if ((!beforeHandDrawChoice && !activeHandDrawChoice) ||
                     combat.PendingChoice is not
                         { ChoiceId: "controlled_random_pile_card",
@@ -717,9 +711,7 @@ public sealed record SemanticCombatDrawV111(
             else if (automaticHandDrawNestedChildPending)
             {
                 if (pipelineCursor is null ||
-                    !hasPipelineSemanticDrawProgress ||
-                    pipelineRequested != this.RequestedCount ||
-                    pipelineRemaining != this.RemainingCount ||
+                    !activeHandDrawCountsMatch ||
                     deck.Pending is not null || cost is not null)
                     throw new InvalidDataException(
                         "Automatic hand-draw nested-choice cursor is inconsistent.");
@@ -737,9 +729,7 @@ public sealed record SemanticCombatDrawV111(
             else if (automaticSemanticHandDrawRandomTarget)
             {
                 if (pipelineCursor is null ||
-                    !hasPipelineSemanticDrawProgress ||
-                    pipelineRequested != this.RequestedCount ||
-                    pipelineRemaining != this.RemainingCount ||
+                    !activeHandDrawCountsMatch ||
                     deck.Pending is not null || cost is not null ||
                     combat.PendingChoice?.AutomaticSemanticDrawTargetChoice != true)
                     throw new InvalidDataException(
@@ -748,9 +738,7 @@ public sealed record SemanticCombatDrawV111(
             else if (pipelineCursor is null ||
                 semanticBeforeHandDrawProgress ||
                 (awaiting &&
-                 (!hasPipelineSemanticDrawProgress ||
-                  pipelineRemaining != this.RemainingCount ||
-                  pipelineRequested != this.RequestedCount)) ||
+                 !activeHandDrawCountsMatch) ||
                 (!awaiting &&
                  (this.RemainingCount != 0 ||
                   !pipelineCursor.Mechanics.IsImmediatelyAfterStep(
@@ -826,9 +814,7 @@ public sealed record SemanticCombatDrawV111(
                             PrototypeAutomaticStepKind.DrawPlayerHand) == true &&
                         semanticBeforeHandDrawProgress &&
                         this.RequestedCount == 0 && this.RemainingCount == 0
-                      : hasPipelineSemanticDrawProgress &&
-                        pipelineRemaining == this.RemainingCount &&
-                        pipelineRequested == this.RequestedCount)
+                      : activeHandDrawCountsMatch)
                 : !this.AutomaticHandDraw &&
                   combat.PendingChoice?.StandaloneSemanticDrawHookChoice == true &&
                   PrototypeGameEngine.TryGetStandaloneSemanticDrawOperation(
@@ -841,9 +827,7 @@ public sealed record SemanticCombatDrawV111(
         if (stratagemSelectionPending is { } selectionEvent)
         {
             bool cursorMatches = this.AutomaticHandDraw
-                ? hasPipelineSemanticDrawProgress &&
-                  pipelineRemaining == this.RemainingCount &&
-                  pipelineRequested == this.RequestedCount
+                ? activeHandDrawCountsMatch
                 : PrototypeGameEngine.TryGetStandaloneSemanticDrawOperation(
                       combat.PendingChoice!, out var draw) &&
                   draw.Amount == this.RemainingCount;
@@ -1237,11 +1221,12 @@ public static class SemanticCombatDrawEngineV111
             semanticDraw?.AutomaticSemanticHandDrawSegment == true;
         bool standaloneSegment = !state.AutomaticHandDraw &&
             semanticDraw?.StandaloneSemanticDrawSegment == true;
-        bool automaticProgressMatches = automaticSegment && combat is not null &&
-            PrototypeGameEngine.TryGetSemanticAutomaticHandDrawProgress(
-                combat, out int requested, out int remaining) &&
-            requested == state.RequestedCount &&
-            remaining == state.RemainingCount;
+        var automaticCursor = combat?.AutomaticPipelineContinuation;
+        bool automaticProgressMatches = automaticSegment &&
+            automaticCursor is not null &&
+            automaticCursor.Stochastic.MatchesSemanticHandDrawProgress(
+                automaticCursor.Mechanics, state.RequestedCount,
+                state.RemainingCount);
         if (run.Phase != RunPhase.Combat ||
             combat is not { IsPlayerTurn: true } ||
             pending is not { ChoiceId: "controlled_draw_insertion",

@@ -241,6 +241,18 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
     }
 
     /// <summary>
+    /// Checks whether the active semantic hand-draw cursor matches the
+    /// requested and remaining counts carried by a continuation facade.
+    /// </summary>
+    public bool MatchesSemanticHandDrawProgress(
+        PrototypeAutomaticPipelineMechanicsStateV111 mechanics,
+        int expectedRequested, int expectedRemaining) =>
+        expectedRequested > 0 && expectedRemaining >= 0 &&
+        TryGetSemanticHandDrawProgress(
+            mechanics, out int requested, out int remaining) &&
+        requested == expectedRequested && remaining == expectedRemaining;
+
+    /// <summary>
     /// Identifies either the active semantic DrawPlayerHand cursor or its
     /// saved BeforeHandDraw boundary, excluding completed-stage receipts.
     /// </summary>

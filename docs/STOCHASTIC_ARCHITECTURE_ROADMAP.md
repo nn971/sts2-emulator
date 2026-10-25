@@ -6001,3 +6001,11 @@ playable staging now uses the pipeline stochastic owner's validated progress
 position query and consumes its active progress projection, removing a second
 copy of the saved-cursor invariant. Core Release build passed with zero
 warnings or errors; `git diff --check` passed. No tests were run.
+
+**S4 semantic hand-draw facade parity ownership (2026-10-26):** The
+automatic-pipeline stochastic owner now matches the active semantic draw
+cursor's requested and remaining counts against facade state. Semantic combat
+frame validation reuses that result across child, target, hook, cost,
+Stratagem, and draw-insertion boundaries rather than repeating pairwise
+comparisons. Core Release build passed with zero warnings or errors;
+`git diff --check` passed. No tests were run.
