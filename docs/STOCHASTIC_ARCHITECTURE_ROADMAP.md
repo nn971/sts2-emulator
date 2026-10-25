@@ -81,6 +81,12 @@ site. The selected-index dispatcher retains its final validation. No transcript
 or snapshot format changed. Static source review and `git diff --check` only;
 no tests or builds were run.
 
+**S4 semantic draw-entry progress query ownership (2026-10-25):** The
+`BeginSemanticCombatDraw` facade now uses the shared checked automatic-hand-draw
+progress query when validating its requested count, instead of unpacking the
+pipeline cursor directly. Progress semantics and snapshots are unchanged.
+Static source review and `git diff --check` only; no tests or builds were run.
+
 **S5 shared candidate-label binding validation (2026-10-25):** Controlled
 event-choice, run-action, and playable-combat Python facades now use one
 validator for non-empty labels and membership in the saved pending support.

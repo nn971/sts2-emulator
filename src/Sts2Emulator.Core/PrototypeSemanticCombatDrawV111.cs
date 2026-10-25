@@ -27,20 +27,14 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidOperationException("No combat to draw from.");
         if (combat.Stochastic.SemanticDeck is null)
             throw new InvalidOperationException("Missing semantic deck provider.");
-        var automaticCursor = combat.AutomaticPipelineContinuation;
-        bool automatic = IsSemanticAutomaticHandDraw(combat);
-        int? automaticRequested = null;
-        int? automaticRemaining = null;
-        if (automatic && automaticCursor is not null &&
-            automaticCursor.Stochastic.TryGetSemanticHandDrawProgress(
-                automaticCursor.Mechanics, out int requested,
-                out int remaining))
-        {
-            automaticRequested = requested;
-            automaticRemaining = remaining;
-        }
+        bool hasAutomaticPipelineCursor =
+            combat.AutomaticPipelineContinuation is not null;
+        bool automatic = TryGetSemanticAutomaticHandDrawProgress(
+            combat, out int requested, out int remaining);
+        int? automaticRequested = automatic ? requested : null;
+        int? automaticRemaining = automatic ? remaining : null;
         if (combat.PendingChoice is not null ||
-            (automaticCursor is not null && !automatic) ||
+            (hasAutomaticPipelineCursor && !automatic) ||
             (automatic && (!fromHandDraw || automaticRemaining != count)))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.draw " +
