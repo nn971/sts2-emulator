@@ -10,6 +10,12 @@ candidate IDs and labels; engine-owned Native decisions map to those semantic
 IDs before reaching the shared mechanics dispatcher. No public schema changed.
 Static source review and `git diff --check` only; no tests or builds were run.
 
+**S4 semantic enumeration identity resolution (2026-10-25):** The generic
+semantic resolver now accepts an enumerated outcome ID for weighted intent
+and index-valued chance events, and the Python `SemanticCombat` wrapper
+exposes the same route. The selected-index entry remains compatible. Static
+source review and `git diff --check` only; no tests or builds were run.
+
 **S4 identity-only mechanics dispatcher boundary (2026-10-25):** The
 index-valued mechanics switch is now private behind the Chance Law and
 semantic outcome identity resolvers. Provider code cannot bypass active

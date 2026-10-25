@@ -6562,10 +6562,18 @@ internal static class PrototypeAiJsonlServer
                     {
                         var parentHandle = RequiredString(request, "semantic_handle");
                         var current = RequireSemantic(request);
-                        var next = SemanticPilotCombatEngineV111.Resolve(
-                            current, RequiredString(request, "fingerprint"),
-                            OptionalInt(request, "selected_index") ??
-                                throw new ArgumentException("Missing selected_index."));
+                        var fingerprint = RequiredString(request, "fingerprint");
+                        var selectedIndex = OptionalInt(
+                            request, "selected_index");
+                        var outcomeId = OptionalString(request, "outcome_id");
+                        if ((selectedIndex is null) == (outcomeId is null))
+                            throw new ArgumentException(
+                                "Provide exactly one of selected_index or outcome_id.");
+                        var next = selectedIndex is { } index
+                            ? SemanticPilotCombatEngineV111.Resolve(
+                                current, fingerprint, index)
+                            : SemanticPilotCombatEngineV111.ResolveByOutcomeId(
+                                current, fingerprint, outcomeId!);
                         var handle = StoreSemantic(next);
                         Write(new { requestId, ok = true,
                             result = SemanticResult(next, handle, parentHandle) });

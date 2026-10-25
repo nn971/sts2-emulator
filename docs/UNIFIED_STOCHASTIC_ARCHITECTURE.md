@@ -1214,6 +1214,9 @@ and event-kind projection; both IDs are checked against the same ordered
 support and live boundary before the shared mechanics resolver translates
 them. This preserves candidate labels and event kinds in enumeration and lets
 ReferenceNature resolve its law's outcome ID directly.
+The generic semantic resolver also accepts an enumerated `outcomeId` for
+weighted intents and index-valued events; the legacy selected-index form stays
+available for existing clients.
 The engine-owned Native path maps its primitive decision to the corresponding
 semantic enumeration ID before dispatch. Weighted intent enumeration retains
 its identity-based resolver.

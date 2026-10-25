@@ -7347,6 +7347,30 @@ public static class SemanticPilotCombatEngineV111
             otherChance);
     }
 
+    /// <summary>
+    /// Resolve one enumerated semantic outcome by its stable identity. The
+    /// older selected-index API remains available for compatibility.
+    /// </summary>
+    public static SemanticPilotCombatV111 ResolveByOutcomeId(
+        SemanticPilotCombatV111 current, string fingerprint,
+        string outcomeId)
+    {
+        ArgumentNullException.ThrowIfNull(current);
+        ArgumentException.ThrowIfNullOrWhiteSpace(outcomeId);
+        if (current.IntentPending is not null)
+            return ResolveIntent(current, fingerprint, outcomeId);
+
+        current.Validate();
+        if (!StringComparer.Ordinal.Equals(current.Fingerprint, fingerprint))
+            throw new InvalidOperationException(
+                "Stale semantic chance fingerprint.");
+        var pending = DescribePendingIndexChanceEvent(current) ??
+            throw new InvalidOperationException(
+                "No semantic chance outcome is pending.");
+        return ResolveChanceOutcomeBySemanticId(
+            current, pending, outcomeId);
+    }
+
     private static SemanticPilotCombatV111 ResolveChanceOutcomeByIdentity(
         SemanticPilotCombatV111 current,
         SemanticPendingIndexChanceEventV111 pending, string outcomeId,

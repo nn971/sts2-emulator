@@ -2958,6 +2958,17 @@ class SemanticCombat:
                 "semantic_resolve", semantic_handle=self.handle,
                 fingerprint=self.fingerprint, selected_index=selected_index))
 
+    def resolve_outcome_id(self, outcome_id: str):
+        """Resolve a pending chance outcome using its enumerated stable ID."""
+        if self.boundary != "nature" or not self.pending:
+            raise EmulatorError("Expected a pending semantic Nature event")
+        if not isinstance(outcome_id, str) or not outcome_id.strip():
+            raise ValueError("outcome_id must be a non-empty string")
+        return SemanticCombat.from_wire(
+            self.session, self.session.call(
+                "semantic_resolve", semantic_handle=self.handle,
+                fingerprint=self.fingerprint, outcome_id=outcome_id))
+
     def resolve_intent(self, intent_id: str):
         """Choose a filtered, weighted semantic enemy move by stable ID.
 

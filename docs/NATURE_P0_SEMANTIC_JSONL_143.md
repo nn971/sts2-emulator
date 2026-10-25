@@ -116,7 +116,7 @@ paths avoid that external setup chain:
 | `semantic_status` | `semantic_handle` | Current player / Nature / terminal boundary |
 | `semantic_observe` | `semantic_handle`, `policy_id=prototype-fair-v0` | Existing **player-only** observation and legal action IDs |
 | `semantic_step` | handle, fingerprint, legal `action_id` | Child player action / Nature / terminal |
-| `semantic_resolve` | handle, fingerprint, legal `selected_index` | Child Nature / player / terminal |
+| `semantic_resolve` | handle, fingerprint, exactly one of `selected_index` or pending `outcome_id` | Child Nature / player / terminal |
 | `semantic_resolve_enemy_action` | handle, fingerprint, pending `candidate_label` (or compatibility `selected_index`) | Child Nature / player / terminal |
 | `semantic_resolve_draw_card` | handle, fingerprint, pending `event_id`, legal `card_instance_id` | Child Nature / player / terminal |
 | `semantic_resolve_random_pile_card` | handle, fingerprint, pending `event_id`, legal `card_instance_id` | Child Nature / player / terminal |
@@ -154,6 +154,9 @@ dispatcher as ReferenceNature and Native, including automatic enemy-action
 choices; enemy-action candidate labels are returned as outcome IDs. The
 request fails if support is larger than the requested cap; the service
 supports caps through 256 and never returns a silently truncated list.
+Pass an enumerated `outcomeId` to `semantic_resolve` as `outcome_id`, or use
+`SemanticCombat.resolve_outcome_id(outcome_id)`, to resume that same semantic
+support by identity. The older `selected_index` selector remains supported.
 Player-owned `select_cards` actions are not chance events and are not
 enumerated by this method.
 
