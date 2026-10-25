@@ -2,6 +2,16 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 modeled draw-hook and selection census (2026-10-26):** A source scan of
+Core found three `CardDrawn` subscribers (Automation, Corrosive Wave, and
+Speedster), all deterministic, and found that each in-tree `ChooseCards`
+specification routes through the existing semantic card-selection owner. The
+Dual Wield `CopyToHand` operation was the only distinct selection form and is
+now admitted for validated automatic-pipeline autoplay as well as its existing
+manual and hand-draw-hook paths. This does not establish installed-game
+trigger completeness or Native stream attribution. `git diff --check` passed;
+no tests were run.
+
 **S4 automatic-pipeline Dual Wield selection (2026-10-26):** The existing
 semantic card-selection owner now admits Dual Wield's exact Attack/Power copy
 prompt during a validated automatic-pipeline autoplay, including Mayhem. It
