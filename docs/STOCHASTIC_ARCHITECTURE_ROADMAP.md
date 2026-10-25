@@ -2,6 +2,18 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 whole-run Nature semantic replay increment (2026-10-26):** Provider
+replay capture now projects each aligned whole-run Nature selection to a
+provider-independent identity after replaying its action prefix and
+re-querying the Chance Law. The new provenance claims semantic completeness
+only when every typed boundary has a saved Nature selection; caller-scripted
+boundaries preserve the complete typed trace and leave semantic comparison
+unavailable. Native semantic-family ordinals now start at the captured
+interval, matching the Nature projection. Core and CLI Release builds passed
+with zero warnings or errors; `git diff --check` passed. No tests were added
+or run. This comparison evidence does not establish hook-order parity or
+Chance Law fidelity.
+
 **S4 whole-run six-primitive continuation increment (2026-10-25):** The
 ReferenceNature whole-run session now accepts caller-supplied, replay-validated
 transcript entries for all six typed random operations alongside its existing

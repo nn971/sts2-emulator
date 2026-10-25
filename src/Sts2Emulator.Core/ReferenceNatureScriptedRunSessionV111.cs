@@ -516,7 +516,7 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
     // Non-index Nature laws are admitted only for registered map quota
     // Gaussians and the supported Native unit-float mappings below; other
     // typed primitives remain caller-scripted.
-    private static ChanceLawV111? QueryNatureLaw(
+    internal static ChanceLawV111? QueryNatureLaw(
         ScriptedRunActionSessionV111 active,
         ControlledStochasticRequestV111 request)
     {

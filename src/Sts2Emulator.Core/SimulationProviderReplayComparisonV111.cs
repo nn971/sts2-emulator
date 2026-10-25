@@ -313,6 +313,8 @@ public static class SimulationProviderReplayCaptureProvenanceV111
         "reference-nature-run-action-replay-validated-v1";
     public const string ReferenceNatureWholeRunReplayValidated =
         "reference-nature-whole-run-replay-validated-v1";
+    public const string ReferenceNatureWholeRunSemanticIdentityReplayValidated =
+        "reference-nature-whole-run-semantic-identity-replay-validated-v1";
     public const string ReferenceNatureEventChoiceReplayValidated =
         "reference-nature-event-choice-replay-validated-v1";
     public const string ReferenceNatureControlledActionReplayValidated =
@@ -336,6 +338,7 @@ public static class SimulationProviderReplayCaptureProvenanceV111
         SemanticNativePolicySemanticIdentityReplayValidated or
         ReferenceNatureRunActionReplayValidated or
         ReferenceNatureWholeRunReplayValidated or
+        ReferenceNatureWholeRunSemanticIdentityReplayValidated or
         ReferenceNatureEventChoiceReplayValidated or
         ReferenceNatureControlledActionReplayValidated or
         ReferenceNatureNeowOfferReplayValidated or
@@ -360,6 +363,7 @@ public static class SimulationProviderReplayCaptureProvenanceV111
     public static bool HasCompleteSemanticOutcomeTrace(string? provenance) =>
         provenance is SemanticNativePolicySemanticIdentityReplayValidated or
             ReferenceNatureSemanticCombatOutcomeReplayValidated or
+            ReferenceNatureWholeRunSemanticIdentityReplayValidated or
             ReferenceNatureSemanticIdentityReplayValidated or
             ReferenceNatureCombatRewardSemanticIdentityReplayValidated;
 
@@ -550,6 +554,7 @@ public sealed record SimulationProviderReplayCaptureV111(
         var nature = session.InitialNatureState.Fork();
         var actionBoundaries = new RunState[actions.Length];
         var drawnCardsByAction = new long[actions.Length][];
+        var actionStartStates = new RunState[actions.Length];
         using (RandomBoundaryJournalV111.Begin())
         {
             for (var index = 0; index < actions.Length; index++)
@@ -557,6 +562,7 @@ public sealed record SimulationProviderReplayCaptureV111(
                 using var drawJournal =
                     SemanticDrawIdentityJournalV111.Begin();
                 var action = actions[index];
+                actionStartStates[index] = replayRun.Fork();
                 var replayed = ScriptedRunActionSessionV111.ReplayCompleted(
                     replayRun, action.Action, action.Decisions);
                 replayRun = replayed.Run?.Fork() ??
@@ -576,12 +582,118 @@ public sealed record SimulationProviderReplayCaptureV111(
             throw new InvalidDataException(
                 "ReferenceNature whole-run capture replay differs from its saved result.");
 
-        return FromScriptedDecisions(
+        var semanticOutcomes = new List<
+            SimulationProviderReplaySemanticOutcomeV111>();
+        var semanticOrdinalCounts = new Dictionary<string, int>(
+            StringComparer.Ordinal);
+        var semanticTraceComplete = true;
+        var previousOutcomeCount = 0;
+        using (RandomBoundaryJournalV111.Begin())
+        using (SemanticDrawIdentityJournalV111.Begin())
+        {
+            for (var actionIndex = 0; actionIndex < actions.Length;
+                actionIndex++)
+            {
+                var action = actions[actionIndex];
+                var decisions = action.Decisions;
+                var natureDecisions = action.NatureDecisions;
+                var actionOutcomes = new List<
+                    SimulationProviderReplaySemanticOutcomeV111>();
+                var replayPrefix = ScriptedRunActionSessionV111.Begin(
+                    actionStartStates[actionIndex], action.Action);
+                for (var decisionIndex = 0;
+                    decisionIndex < decisions.Length; decisionIndex++)
+                {
+                    var decision = decisions[decisionIndex];
+                    var selection = natureDecisions[decisionIndex];
+                    if (selection is not null)
+                    {
+                        var request = replayPrefix.PendingRequest ??
+                            throw new InvalidDataException(
+                                "ReferenceNature selection has no replayed provider request.");
+                        var law = ReferenceNatureScriptedRunSessionV111
+                            .QueryNatureLaw(replayPrefix, request) ??
+                            throw new InvalidDataException(
+                                "ReferenceNature selection has no supported replayed Chance Law.");
+                        law.Validate();
+                        if (selection.EventId != law.EventId ||
+                            selection.LawId != law.LawId ||
+                            selection.OutcomeIndex >= law.SupportCount ||
+                            selection.OutcomeId != law.OutcomeIdAt(
+                                selection.OutcomeIndex))
+                            throw new InvalidDataException(
+                                "ReferenceNature whole-run outcome differs from its replayed Chance Law.");
+
+                        var semanticSupportIds =
+                            SimulationProviderReplaySemanticIdentityV111
+                                .SupportIds(law, decision.CandidateLabels);
+                        var semanticOrdinal = law.Ordinal;
+                        if (SimulationProviderReplayNativeSemanticOutcomeTraceV111
+                                .SemanticOrdinalGroup(law.SiteId) is
+                            { } ordinalGroup)
+                        {
+                            semanticOrdinal = semanticOrdinalCounts
+                                .GetValueOrDefault(ordinalGroup);
+                            semanticOrdinalCounts[ordinalGroup] =
+                                semanticOrdinal + 1;
+                        }
+                        actionOutcomes.Add(
+                            new SimulationProviderReplaySemanticOutcomeV111(
+                                actionIndex + previousOutcomeCount +
+                                    actionOutcomes.Count + 1,
+                                law.EventId, law.LawId,
+                                law.OutcomeIdAt(selection.OutcomeIndex),
+                                selection.OutcomeIndex)
+                            {
+                                SiteId = law.SiteId,
+                                OperationKind = law.OperationKind,
+                                OwnerId = NormalizeSemanticOwnerId(
+                                    law.SiteId, law.OwnerId),
+                                Ordinal = semanticOrdinal,
+                                SupportFingerprint = CanonicalJson.Sha256(
+                                    semanticSupportIds),
+                                SemanticOutcomeId = semanticSupportIds[
+                                    selection.OutcomeIndex]
+                            });
+                    }
+                    else
+                        semanticTraceComplete = false;
+
+                    replayPrefix = replayPrefix.ResolveNext(
+                        ScriptedRunActionOutcomeV111.FromDecision(
+                            decision, decisionIndex + 1));
+                }
+                if (!replayPrefix.Complete)
+                    throw new InvalidDataException(
+                        "ReferenceNature whole-run semantic replay did not settle its action.");
+                semanticOutcomes.AddRange(actionOutcomes);
+                previousOutcomeCount += actionOutcomes.Count;
+            }
+        }
+
+        var capture = FromScriptedDecisions(
             session.Origin, actions.Select(action => action.Action).ToArray(),
             actions.SelectMany(action => action.Decisions), session.Run,
             SimulationProviderReplayCaptureProvenanceV111
                 .ReferenceNatureWholeRunReplayValidated,
             actionBoundaries, drawnCardsByAction);
+        if (!semanticTraceComplete)
+            return capture;
+
+        capture = capture with
+        {
+            Simulation = capture.Simulation with
+            {
+                Stochastic = new SimulationProviderReplayStochasticCaptureV111(
+                    capture.Stochastic.Boundaries,
+                    semanticOutcomes.ToArray())
+            },
+            CaptureProvenance =
+                SimulationProviderReplayCaptureProvenanceV111
+                    .ReferenceNatureWholeRunSemanticIdentityReplayValidated
+        };
+        capture.Validate();
+        return capture;
     }
 
     /// <summary>Builds a capture from one completed scripted player action.</summary>
@@ -1674,12 +1786,16 @@ public sealed record SimulationProviderReplayCaptureV111(
                 (SimulationProviderReplayCaptureProvenanceV111
                     .ReferenceNatureSemanticIdentityReplayValidated or
                  SimulationProviderReplayCaptureProvenanceV111
+                    .ReferenceNatureWholeRunSemanticIdentityReplayValidated or
+                 SimulationProviderReplayCaptureProvenanceV111
                     .SemanticNativePolicySemanticIdentityReplayValidated))
             throw new InvalidDataException(
                 "Legacy provider replay captures cannot claim provider-independent semantic identities.");
         if (CaptureProvenance is
                 (SimulationProviderReplayCaptureProvenanceV111
                     .ReferenceNatureSemanticIdentityReplayValidated or
+                 SimulationProviderReplayCaptureProvenanceV111
+                    .ReferenceNatureWholeRunSemanticIdentityReplayValidated or
                  SimulationProviderReplayCaptureProvenanceV111
                     .ReferenceNatureCombatRewardSemanticIdentityReplayValidated or
                  SimulationProviderReplayCaptureProvenanceV111
@@ -1751,7 +1867,8 @@ internal static class SimulationProviderReplayNativeSemanticOutcomeTraceV111
                         unitBoundary.Sequence))
                     return null;
                 if (SemanticOrdinalGroup(unitBoundary.Request.SiteId) is
-                        { } unitOrdinalGroup)
+                        { } unitOrdinalGroup &&
+                    unitBoundary.Sequence > initialTraceCount)
                 {
                     var ordinal = semanticOrdinalCounts.GetValueOrDefault(
                         unitOrdinalGroup);
@@ -1764,7 +1881,8 @@ internal static class SimulationProviderReplayNativeSemanticOutcomeTraceV111
                 continue;
             var boundary = entry.DeserializeEvent<RandomBoundaryEventV111>();
             if (SemanticOrdinalGroup(boundary.Request.SiteId) is
-                    { } ordinalGroup)
+                    { } ordinalGroup &&
+                boundary.Sequence > initialTraceCount)
             {
                 var ordinal = semanticOrdinalCounts.GetValueOrDefault(
                     ordinalGroup);
@@ -2403,7 +2521,7 @@ internal static class SimulationProviderReplayNativeSemanticOutcomeTraceV111
         RandomIndexRequestV111 request, int selectedIndex) =>
         CanonicalJson.Sha256(new { request, selectedIndex });
 
-    private static string? SemanticOrdinalGroup(string siteId)
+    internal static string? SemanticOrdinalGroup(string siteId)
     {
         if (IsCombatRewardPoolShuffle(siteId) || siteId is
                 StochasticSiteRegistryV111.RewardPotionOddsUnitFloatSiteId or

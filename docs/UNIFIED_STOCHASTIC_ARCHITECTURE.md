@@ -1176,8 +1176,15 @@ checkpoint. They accept only sessions at committed action boundaries.
 ordinary actions with complete six-primitive typed traces. It replays each
 action prefix, materializes the saved outcomes through the same boundary
 journal, and retains completed action checkpoints and physical draw
-identities. Its typed boundary trace is complete; semantic outcome identity
-remains unavailable until a source-aware semantic projection is added.
+identities. When every boundary also has an aligned saved Nature selection,
+the factory replays each action prefix, re-queries its Chance Law at the
+pending request, and captures provider-independent support and outcome IDs.
+It marks that semantic trace complete only when the saved selections cover
+every typed boundary; caller-scripted or unsupported outcomes keep semantic
+comparison unavailable while the typed trace remains complete. Shared
+semantic-family ordinals are relative to the captured interval on both the
+Native-policy and Nature projections. These identities are comparison
+evidence and do not establish Native hook-order parity or Chance Law fidelity.
 `FromSemanticNativePolicySession` provides a corresponding path for a
 replay-validated Native-policy baseline. It reconstructs the initial player
 boundary from the seeded entry, verifies that the saved provider trace begins
