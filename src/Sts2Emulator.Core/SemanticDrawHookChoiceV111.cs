@@ -313,18 +313,8 @@ public static class SemanticDrawHookChoiceEngineV111
 
     private static bool HasTaggedAutomaticChildChoice(
         PendingCombatChoiceState choice) =>
-        choice.ControlledTarget is not null ||
-        choice.ControlledGeneration is not null ||
-        choice.ControlledPotionGeneration is not null ||
-        choice.ControlledDrawCost is not null ||
-        choice.ControlledSemanticDraw is not null ||
-        choice.ControlledDrawInsertion is not null ||
-        choice.ControlledPoolShuffle is not null ||
-        choice.ControlledCardTransform is not null ||
-        choice.ControlledCardShortlist is not null ||
+        choice.HasAnyControlledPayload ||
         choice.ChoiceId == "select_cards" ||
-        choice.ControlledRandomCost is not null ||
-        choice.ControlledRandomPileCard is not null ||
         choice.SemanticStratagemDrawSelection ||
         choice.AutomaticSemanticStratagemDrawSelection;
 

@@ -1563,7 +1563,10 @@ shortlist, random-hand-cost, and semantic draw/cost children. Each child still
 passes its own source and support checks, and automatic-pipeline-owned choices
 remain with their existing owner. Other child-choice kinds and unsupported
 selection specifications remain open; random attack pool fidelity and Native
-stream parity require reference-mod evidence.
+stream parity require reference-mod evidence. The pending-choice model's
+shared typed-payload mask also feeds child classification, so the field census
+used for payload shape validation also identifies controlled payloads as
+tagged and keeps them fail-closed until the draw owner classifies them.
 
 Engine-owned Native semantic choices map provider indices through
 `NativeSemanticOutcomeV111` before resuming mechanics. The mapper checks the

@@ -6,6 +6,8 @@
 
 **S4 hand-draw count state ownership increment (2026-10-26):** Requested-count reconciliation now lives on `PrototypeAutomaticPipelineStochasticStateV111`, beside its tagged progress queries and validation. The engine helper delegates to this owner, so controlled and semantic adapters share the same saved-count consistency rule. Core Release build and `git diff --check` passed; no tests were run.
 
+**S4 pending child-choice payload census increment (2026-10-26):** `PendingCombatChoiceState` now owns the typed controlled-payload mask used both by payload-shape validation and automatic draw-hook child classification. New payload fields therefore enter the tagged-child failure path through the same field census, while the draw owner still requires an explicit child-kind and resume policy before supporting them. Core Release build and `git diff --check` passed; no tests were run.
+
 **S4 modeled draw-hook and selection census (2026-10-26):** A source scan of
 Core found three `CardDrawn` subscribers (Automation, Corrosive Wave, and
 Speedster), all deterministic, and found that each in-tree `ChooseCards`

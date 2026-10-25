@@ -2605,6 +2605,21 @@ public sealed record PendingCombatChoiceState(
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     bool AutomaticSemanticDrawTargetChoice = false)
 {
+    private const int ControlledTargetPayloadMask = 1 << 0;
+    private const int ControlledGenerationPayloadMask = 1 << 1;
+    private const int ControlledPotionGenerationPayloadMask = 1 << 2;
+    private const int ControlledCardTransformPayloadMask = 1 << 3;
+    private const int ControlledDrawInsertionPayloadMask = 1 << 4;
+    private const int ControlledPoolShufflePayloadMask = 1 << 5;
+    private const int ControlledRandomCostPayloadMask = 1 << 6;
+    private const int ControlledDrawCostPayloadMask = 1 << 7;
+    private const int ControlledCardShortlistPayloadMask = 1 << 8;
+    private const int ControlledRandomPileCardPayloadMask = 1 << 9;
+    private const int ControlledSemanticDrawPayloadMask = 1 << 10;
+
+    internal bool HasAnyControlledPayload =>
+        GetControlledPayloadMask() != 0;
+
     /// <summary>
     /// Keeps the flattened, snapshot-compatible pending-choice payloads
     /// mutually exclusive while recognizing the one semantic draw-cost
@@ -2612,31 +2627,7 @@ public sealed record PendingCombatChoiceState(
     /// </summary>
     internal bool HasValidControlledPayloadShape()
     {
-        const int target = 1 << 0;
-        const int generation = 1 << 1;
-        const int potionGeneration = 1 << 2;
-        const int cardTransform = 1 << 3;
-        const int drawInsertion = 1 << 4;
-        const int poolShuffle = 1 << 5;
-        const int randomCost = 1 << 6;
-        const int drawCost = 1 << 7;
-        const int cardShortlist = 1 << 8;
-        const int randomPileCard = 1 << 9;
-        const int semanticDraw = 1 << 10;
-
-        int mask =
-            (this.ControlledTarget is not null ? target : 0) |
-            (this.ControlledGeneration is not null ? generation : 0) |
-            (this.ControlledPotionGeneration is not null
-                ? potionGeneration : 0) |
-            (this.ControlledCardTransform is not null ? cardTransform : 0) |
-            (this.ControlledDrawInsertion is not null ? drawInsertion : 0) |
-            (this.ControlledPoolShuffle is not null ? poolShuffle : 0) |
-            (this.ControlledRandomCost is not null ? randomCost : 0) |
-            (this.ControlledDrawCost is not null ? drawCost : 0) |
-            (this.ControlledCardShortlist is not null ? cardShortlist : 0) |
-            (this.ControlledRandomPileCard is not null ? randomPileCard : 0) |
-            (this.ControlledSemanticDraw is not null ? semanticDraw : 0);
+        int mask = GetControlledPayloadMask();
 
         int semanticDrawModes =
             (this.SemanticStratagemDrawSelection ? 1 << 0 : 0) |
@@ -2647,29 +2638,65 @@ public sealed record PendingCombatChoiceState(
             (mask != 0 && semanticDrawModes != 0) ||
             (this.AutomaticSemanticDrawTargetChoice &&
              (this.ChoiceId != "controlled_random_target" ||
-              mask != target)))
+              mask != ControlledTargetPayloadMask)))
             return false;
 
         return this.ChoiceId switch
         {
-            "controlled_random_target" => mask == target,
-            "controlled_generated_card" => mask == generation,
-            "controlled_potion_generation" => mask == potionGeneration,
-            "controlled_card_transform" => mask == cardTransform,
-            "controlled_draw_insertion" => mask == drawInsertion,
-            "controlled_pool_shuffle" => mask == poolShuffle,
-            "controlled_random_hand_cost" => mask == randomCost,
-            "controlled_draw_cost" => mask == drawCost ||
-                mask == (drawCost | semanticDraw),
-            "controlled_card_shortlist" => mask == cardShortlist,
-            "controlled_random_pile_card" => mask == randomPileCard,
-            "controlled_semantic_draw" => mask == semanticDraw,
+            "controlled_random_target" =>
+                mask == ControlledTargetPayloadMask,
+            "controlled_generated_card" =>
+                mask == ControlledGenerationPayloadMask,
+            "controlled_potion_generation" =>
+                mask == ControlledPotionGenerationPayloadMask,
+            "controlled_card_transform" =>
+                mask == ControlledCardTransformPayloadMask,
+            "controlled_draw_insertion" =>
+                mask == ControlledDrawInsertionPayloadMask,
+            "controlled_pool_shuffle" =>
+                mask == ControlledPoolShufflePayloadMask,
+            "controlled_random_hand_cost" =>
+                mask == ControlledRandomCostPayloadMask,
+            "controlled_draw_cost" =>
+                mask == ControlledDrawCostPayloadMask ||
+                mask == (ControlledDrawCostPayloadMask |
+                    ControlledSemanticDrawPayloadMask),
+            "controlled_card_shortlist" =>
+                mask == ControlledCardShortlistPayloadMask,
+            "controlled_random_pile_card" =>
+                mask == ControlledRandomPileCardPayloadMask,
+            "controlled_semantic_draw" =>
+                mask == ControlledSemanticDrawPayloadMask,
             _ => mask == 0 &&
                 this.ChoiceId is not null &&
                 !this.ChoiceId.StartsWith("controlled_",
                     StringComparison.Ordinal)
         };
     }
+
+    private int GetControlledPayloadMask() =>
+        (this.ControlledTarget is not null
+            ? ControlledTargetPayloadMask : 0) |
+        (this.ControlledGeneration is not null
+            ? ControlledGenerationPayloadMask : 0) |
+        (this.ControlledPotionGeneration is not null
+            ? ControlledPotionGenerationPayloadMask : 0) |
+        (this.ControlledCardTransform is not null
+            ? ControlledCardTransformPayloadMask : 0) |
+        (this.ControlledDrawInsertion is not null
+            ? ControlledDrawInsertionPayloadMask : 0) |
+        (this.ControlledPoolShuffle is not null
+            ? ControlledPoolShufflePayloadMask : 0) |
+        (this.ControlledRandomCost is not null
+            ? ControlledRandomCostPayloadMask : 0) |
+        (this.ControlledDrawCost is not null
+            ? ControlledDrawCostPayloadMask : 0) |
+        (this.ControlledCardShortlist is not null
+            ? ControlledCardShortlistPayloadMask : 0) |
+        (this.ControlledRandomPileCard is not null
+            ? ControlledRandomPileCardPayloadMask : 0) |
+        (this.ControlledSemanticDraw is not null
+            ? ControlledSemanticDrawPayloadMask : 0);
 
     public PendingCombatChoiceState Fork() => this with
     {
