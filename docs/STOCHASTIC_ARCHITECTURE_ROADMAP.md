@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 provider-independent run identity increment (2026-10-26):** The
+mechanics projection now omits both `RunSeed` and `RunId`; the run factories
+derive the latter from the former, so comparing it incorrectly distinguished
+equal mechanics reached through different provider seeds. The provider replay
+mechanics comparison schema advances to v21. Core and CLI Release builds and
+`git diff --check` passed; no tests were run.
+
 **S4 automatic-pipeline autoplay terminal-result handoff (2026-10-26):**
 Semantic draw-hook replay now accepts a validated reward or defeat result for
 the automatic-pipeline autoplay context and publishes it through the shared

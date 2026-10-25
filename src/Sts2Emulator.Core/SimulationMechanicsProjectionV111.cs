@@ -13,7 +13,7 @@ public sealed record SimulationMechanicsComparisonV111(
         CloneDifferences(Differences);
 
     public const string SchemaId =
-        "sts2-v111-simulation-mechanics-comparison-v20";
+        "sts2-v111-simulation-mechanics-comparison-v21";
 
     public SimulationMechanicsDifferenceV111[] Differences
     {
@@ -374,7 +374,10 @@ public static class SimulationMechanicsProjectionEngineV111
 
         var runMechanics = snapshot.Mechanics with
         {
-            // The seed selects provider realizations, not game mechanics.
+            // RunId is constructed from the run seed by both run factories;
+            // it identifies the session rather than committed mechanics.
+            // Neither it nor the seed belongs in a cross-provider comparison.
+            RunId = string.Empty,
             RunSeed = string.Empty,
             World = null
         };
