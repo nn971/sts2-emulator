@@ -360,7 +360,9 @@ for this shared typed run-action transcript.
 The Python binding exposes `State.begin_controlled_run_start()`,
 `State.begin_controlled_run_action(action_id)`,
 `State.begin_controlled_shovel_dig()`,
-`State.resume_controlled_run_action()` and `ControlledRunActionChoice.resolve()`.
+`State.resume_controlled_run_action()` and `ControlledRunActionChoice.resolve()`;
+`ControlledRunActionChoice.resolve_candidate_label()` is available when the
+pending support publishes candidate labels.
 Use a legacy random profile for run-start, map generation, ordinary legacy
 Event/Treasure entry, and Shovel flows. Native-regional Treasure fallback is
 available when `NativeRunRng` is absent. Shop purchase actions can also start from a

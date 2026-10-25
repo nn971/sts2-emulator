@@ -1122,6 +1122,18 @@ class ControlledEventChoice:
             selected_index=selected_index)
         return ControlledEventChoice.from_wire(self.session, result)
 
+    def resolve_candidate_label(self, candidate_label: str):
+        """Resolve the pending event choice by its saved candidate label."""
+        if not isinstance(candidate_label, str) or not candidate_label.strip():
+            raise ValueError("candidate_label must be a non-empty string")
+        labels = (self.pending or {}).get("candidateLabels")
+        if labels is None or candidate_label not in labels:
+            raise ValueError("candidate_label is not in the pending event support")
+        result = self.session.call(
+            "controlled_event_resolve", state_handle=self.handle,
+            candidate_label=candidate_label)
+        return ControlledEventChoice.from_wire(self.session, result)
+
     def enumerate_chance(self, max_outcomes: int = 32):
         """Resolve each outcome of one small pending event chance boundary."""
         if self.session.capabilities.get(
@@ -1175,6 +1187,19 @@ class ControlledRunActionChoice:
         result = self.session.call(
             "controlled_run_action_resolve", state_handle=self.handle,
             selected_index=selected_index)
+        return ControlledRunActionChoice.from_wire(self.session, result)
+
+    def resolve_candidate_label(self, candidate_label: str):
+        """Resolve the pending run action by its saved candidate label."""
+        if not isinstance(candidate_label, str) or not candidate_label.strip():
+            raise ValueError("candidate_label must be a non-empty string")
+        labels = (self.pending or {}).get("candidateLabels")
+        if labels is None or candidate_label not in labels:
+            raise ValueError(
+                "candidate_label is not in the pending run-action support")
+        result = self.session.call(
+            "controlled_run_action_resolve", state_handle=self.handle,
+            candidate_label=candidate_label)
         return ControlledRunActionChoice.from_wire(self.session, result)
 
     def save_snapshot(self):
@@ -2823,10 +2848,12 @@ class ControlledCombat:
     session: "Session"
     handle: str
     fingerprint: str
+    pending: dict | None = None
 
     @classmethod
     def from_wire(cls, session, payload):
-        return cls(session, payload["controlledHandle"], payload["fingerprint"])
+        return cls(session, payload["controlledHandle"], payload["fingerprint"],
+                   payload.get("pending"))
 
     def trace(self):
         return self.session.call("controlled_trace", controlled_handle=self.handle)
@@ -2841,6 +2868,10 @@ class ControlledCombat:
         """Resolve a controlled outcome by its saved semantic label."""
         if not isinstance(candidate_label, str) or not candidate_label.strip():
             raise ValueError("candidate_label must be a non-empty string")
+        labels = (self.pending or {}).get("candidateLabels")
+        if labels is None or candidate_label not in labels:
+            raise ValueError(
+                "candidate_label is not in the pending combat support")
         return ControlledCombat.from_wire(self.session,
             self.session.call("controlled_resolve",
                               controlled_handle=self.handle,

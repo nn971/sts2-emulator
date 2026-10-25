@@ -190,7 +190,9 @@ Python binding exposes `State.begin_controlled_event_choice()`,
 `State.resume_controlled_event_choice()` after snapshot restore,
 `State.advance_controlled_event_action()` (with
 `advance_controlled_event_reward()` retained as a compatibility alias) and
-`ControlledEventChoice.resolve()`.
+`ControlledEventChoice.resolve()` or
+`ControlledEventChoice.resolve_candidate_label()` when the pending support
+publishes candidate labels.
 The optional one-boundary enumerator is
 advertised as `sts2-v111-controlled-event-enumeration-v1`; its cap is 256
 outcomes. Each branch resolves only the current request, leaving any next
