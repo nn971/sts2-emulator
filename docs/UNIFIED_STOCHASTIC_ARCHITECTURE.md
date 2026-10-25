@@ -1295,12 +1295,13 @@ committed result to match the saved run before adding the Native provider
 decisions and cursor spans after the map decisions in the capture.
 JSONL accepts
 `<side>_reference_nature_run_action_handle` for this path.
-`FromReferenceNatureRunSetupSession` shares one capture path for completed
-Neow-offer and Ancient-offer setup sessions. Each session rebuilds its exact
-ordered request/support prefix from its validated outcomes, and the capture
-records the origin-to-result setup interval with no player actions. JSONL
-accepts `<side>_reference_nature_neow_offer_handle` and
-`<side>_reference_nature_ancient_offer_handle` for these setup intervals.
+`FromReferenceNatureRunSetupSession` remains the typed-only path for a
+completed no-action setup interval. The Neow and Ancient offer factories
+restore and replay their complete transcripts, re-query each conditional law
+from the preceding selected indices, then attach provider-independent outcome
+identities to that same setup interval. JSONL accepts
+`<side>_reference_nature_neow_offer_handle` and
+`<side>_reference_nature_ancient_offer_handle` for these semantic captures.
 The JSONL `provider_replay_compare` operation constructs a current capture for
 each side either from a completed scripted-run or scripted-action handle, or
 from a completed ReferenceNature whole-run handle, replay-validated semantic Native-policy, ReferenceNature semantic-combat,

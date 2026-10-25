@@ -114,6 +114,13 @@ selection prefix, including the relic-conditioned potion support. Core and CLI
 Release builds passed with zero warnings or errors; `git diff --check` passed.
 No tests were added or run.
 
+**S4 Neow and Ancient offer semantic capture increment (2026-10-26):** JSONL
+provider replay now captures run-setup outcomes with complete typed traces and
+provider-independent offer identities. Both factories restore their session,
+re-query each law against the selected prefix, and attach outcomes to the
+no-player-action setup interval. Core and CLI Release builds passed with zero
+warnings or errors; `git diff --check` passed. No tests were added or run.
+
 **S4 whole-run six-primitive continuation increment (2026-10-25):** The
 ReferenceNature whole-run session now accepts caller-supplied, replay-validated
 transcript entries for all six typed random operations alongside its existing
