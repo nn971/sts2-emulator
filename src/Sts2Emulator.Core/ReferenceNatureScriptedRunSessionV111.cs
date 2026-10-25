@@ -247,8 +247,9 @@ public sealed record ReferenceNatureScriptedRunSessionSnapshotV111(
 /// <summary>
 /// Whole-run ReferenceNature session for ordinary legal actions. Finite-index
 /// boundaries, registered Native map quota Gaussians, selected Native event
-/// gold, card-rarity, combat-potion odds and card-upgrade floats, PotionFactory
-/// rarity, and the inert merchant upgrade roll can be sampled by ReferenceNature;
+/// gold, card-rarity, combat-potion odds, card-upgrade, and Endless Conveyor
+/// floats, PotionFactory rarity, and the inert merchant upgrade roll can be
+/// sampled by ReferenceNature;
 /// any of the six typed boundaries can instead be resolved from a caller-supplied
 /// transcript.
 /// </summary>
@@ -529,6 +530,9 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
         }
         if (request.UnitFloatRequest is { } unitFloatRequest)
         {
+            if (unitFloatRequest.SiteId ==
+                PrototypeNativeEndlessConveyor.DishWeightedTicketSiteId)
+                return QueryEndlessConveyorDish(active, unitFloatRequest);
             if (QueryNativeCardRarity(active, unitFloatRequest) is
                 { } cardRarityLaw)
                 return cardRarityLaw;
@@ -559,6 +563,26 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
                 gaussianRequest))
             return ChanceLawEngineV111.QueryNativeMapRequest(request);
         return null;
+    }
+
+    private static ChanceLawV111 QueryEndlessConveyorDish(
+        ScriptedRunActionSessionV111 active,
+        RandomUnitFloatRequestV111 request)
+    {
+        var law = ChanceLawEngineV111.QueryNativeEndlessConveyorDishEntry(
+            active.Origin,
+            PrototypeAiEnvironment.StableActionId(active.Action),
+            request.Ordinal);
+        var streamId = active.Origin.World?.Event?.Stochastic.NativeRng?
+            .StreamId ?? throw new InvalidDataException(
+                "Endless Conveyor event boundary has no Native event stream.");
+        var expected = new RandomUnitFloatRequestV111(
+            PrototypeNativeEndlessConveyor.DishWeightedTicketSiteId,
+            streamId, law.OwnerId, law.Ordinal);
+        if (CanonicalJson.Sha256(expected) != CanonicalJson.Sha256(request))
+            throw new InvalidDataException(
+                "Endless Conveyor dish request differs from its event, stream, or owner.");
+        return law;
     }
 
     private static ChanceLawV111? QueryNativeCardRarity(
