@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 draw-kernel callsite audit (2026-10-26):** A static inventory of
+`DrawCards` references found no top-level invocation bypassing the shared
+`ExecuteDrawCardsSegment` or saved automatic-resume owner; queued effect draws
+remain inside `ResolveEffectDrawOperation`. The architecture note now locates
+the remaining resume work at boundary interpretation across automatic,
+nested-effect, opening, controlled, and semantic continuations. This audit
+does not close that broader work. `git diff --check` passed; no tests were run.
+
 **S4 optional semantic replay-law fallback (2026-10-26):** Scripted semantic
 identity capture now treats `InvalidOperationException` from a candidate law
 query as an unsupported optional mapping and keeps the replay-validated typed
