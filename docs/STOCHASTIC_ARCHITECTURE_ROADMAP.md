@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 semantic ReferenceNature history-index append ownership (2026-10-25):**
+The base semantic session's stochastic owner now appends a sampled law
+selection, its next cursor, and its mechanics-history index as one transition.
+The session facade no longer assembles the cursor transcript and index array
+itself. Snapshot fields and replay rules are unchanged. Static source review
+and `git diff --check` only; no tests or builds were run.
+
 **S4 semantic ReferenceNature law-replay ownership (2026-10-25):** The
 semantic combat session now records each Nature selection's position in its
 mixed player-action/mechanics history. Restore rebuilds the saved prefix,

@@ -217,6 +217,25 @@ public sealed record ReferenceNatureSessionStochasticStateV111
         DecisionHistoryIndices = DecisionHistoryIndices
     };
 
+    public ReferenceNatureSessionStochasticStateV111 Advance(
+        ReferenceNatureSelectionV111 selection, int historyIndex)
+    {
+        ArgumentNullException.ThrowIfNull(selection);
+        if (historyIndex < 0)
+            throw new ArgumentOutOfRangeException(nameof(historyIndex));
+        var existingHistoryIndices = DecisionHistoryIndices ??
+            Enumerable.Repeat<int?>(null, DecisionTranscript.Length).ToArray();
+        var next = this with
+        {
+            InitialHistoryLength = InitialHistoryLength ?? historyIndex,
+            Cursor = Cursor.Advance(selection.NextState, selection),
+            DecisionHistoryIndices =
+                [.. existingHistoryIndices, historyIndex]
+        };
+        next.Validate();
+        return next;
+    }
+
     public void Validate()
     {
         Cursor.Validate();
@@ -372,19 +391,8 @@ public sealed record ReferenceNatureSessionV111(
         if (resolvedCombat.History.Length <= decisionHistoryIndex)
             throw new InvalidDataException(
                 "ReferenceNature resolution did not append a mechanics history entry.");
-        var existingHistoryIndices = Stochastic.DecisionHistoryIndices ??
-            Enumerable.Repeat<int?>(null,
-                Stochastic.DecisionTranscript.Length).ToArray();
-        var initialHistoryLength = Stochastic.InitialHistoryLength ??
-            decisionHistoryIndex;
-        var nextStochastic = Stochastic with
-        {
-            InitialHistoryLength = initialHistoryLength,
-            Cursor = Stochastic.Cursor.Advance(
-                resolution.Selection.NextState, resolution.Selection),
-            DecisionHistoryIndices =
-                [.. existingHistoryIndices, decisionHistoryIndex]
-        };
+        var nextStochastic = Stochastic.Advance(
+            resolution.Selection, decisionHistoryIndex);
         var child = this with
         {
             Simulation = Simulation with

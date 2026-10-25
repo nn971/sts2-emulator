@@ -810,14 +810,14 @@ law replay and run-cursor checks.
 The base semantic `ReferenceNatureSessionV111` composes the
 `SemanticPilotCombatV111` checkpoint with the shared typed cursor/transcript
 owner through `SimulationStateV111`, while retaining the established `Combat`
-and `NatureState` snapshot members. Its transcript records each selected law
-outcome together with the next sampler cursor and its semantic-history
-position. Restore replays the mixed player/Nature history from that saved
-position, re-queries each law, and checks the sampled outcome, cursor, and
-mechanics continuation. Snapshots add optional initial-cursor, selection,
-history-offset, and decision-position members. Older snapshots without decision
-positions preserve their selection prefix as unindexed history and can resume
-with new decisions recorded and replay-validated.
+and `NatureState` snapshot members. Its stochastic owner atomically appends
+each selected law outcome, next sampler cursor, and semantic-history position.
+Restore replays the mixed player/Nature history from that saved position,
+re-queries each law, and checks the sampled outcome, cursor, and mechanics
+continuation. Snapshots add optional initial-cursor, selection, history-offset,
+and decision-position members. Older snapshots without decision positions
+preserve their selection prefix as unindexed history and can resume with new
+decisions recorded and replay-validated.
 Map-generation and later-act preparation sessions now compose their
 source-specific generator mechanics and stochastic prefix owners through
 `SimulationStateV111`. Their mechanics owners hold generator inputs and
