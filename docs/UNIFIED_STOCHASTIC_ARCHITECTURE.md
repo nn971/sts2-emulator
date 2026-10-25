@@ -409,6 +409,11 @@ The declared event branch and legal map-node action bind each law, while
 replay checks the exact stream, owner, ordinal, operation, and ordered index
 support, including captured Native-regional legacy requests.
 
+Whole-run event-choice actions also route registered Glory Reflections and
+Infested Automaton card-pick requests through their conditioned card-instance
+laws. Replay rebuilds the legal choice and prior selected-index prefix, then
+checks the request against the current ordered card support.
+
 Whole-run ReferenceNature resolution now sends index, unit-float, and
 Gaussian-integer law outcomes through `ReferenceNatureChanceLawDecisionV111`.
 That shared adapter preserves candidate labels and converts mapped semantic

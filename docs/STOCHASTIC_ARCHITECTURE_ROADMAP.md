@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S2 whole-run Native event-card pick law increment (2026-10-26):** Ordinary
+ReferenceNature event-choice actions now use the existing conditioned
+card-instance laws for registered Glory Reflections and Infested Automaton
+requests. The law is rebuilt from the legal event choice and replayed prior
+indices, and the complete ordered index request is checked against its card
+support. Core and CLI Release builds passed with zero warnings and errors;
+`git diff --check` passed. No tests were run.
+
 **S4 whole-run Stone of All Time ticket law increment (2026-10-26):** The
 ReferenceNature whole-run dispatcher now uses the existing degenerate
 `no_effect` law for Stone of All Time push/lift tickets. Replay validates the

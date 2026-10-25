@@ -540,6 +540,9 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
                 ChanceLawEngineV111.NativeStoneOfAllTimePotionSlotSiteId or
                 ChanceLawEngineV111.NativeFutureOfPotionsCardTypeSiteId)
                 return QueryNativeEventEntryIndex(active, indexRequest);
+            if (StochasticSiteRegistryV111.NativeEventCardPickSiteIds
+                .Contains(indexRequest.SiteId, StringComparer.Ordinal))
+                return QueryNativeEventCardPick(active, indexRequest);
             if (indexRequest.SiteId == StochasticSiteRegistryV111
                     .NativeGloryTrialDamageSiteId)
             {
@@ -601,6 +604,35 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
                 gaussianRequest))
             return ChanceLawEngineV111.QueryNativeMapRequest(request);
         return null;
+    }
+
+    private static ChanceLawV111 QueryNativeEventCardPick(
+        ScriptedRunActionSessionV111 active,
+        RandomIndexRequestV111 request)
+    {
+        request.Validate();
+        if (active.Action.Kind != "event_choice")
+            throw new InvalidDataException(
+                "Native event-card pick request is outside its event choice action.");
+        var actionId = active.Action
+            .ReadPayload<EventChoicePayload>().ChoiceId;
+        var priorIndices = active.Decisions
+            .Where(decision => decision.IndexDecision?.Request.SiteId ==
+                request.SiteId)
+            .Select(decision => decision.IndexDecision!.SelectedIndex)
+            .ToArray();
+        var law = ChanceLawEngineV111.QueryNativeEventCardPick(
+            active.Origin, request.SiteId, request.Ordinal, priorIndices,
+            actionId);
+        var expected = new RandomIndexRequestV111(
+            law.SiteId, request.StreamId, law.OwnerId, law.Ordinal,
+            Enumerable.Range(0, law.Outcomes.Length).ToArray(),
+            OperationKind: law.OperationKind);
+        if (CanonicalJson.Sha256(expected) !=
+            CanonicalJson.Sha256(request))
+            throw new InvalidDataException(
+                "Native event-card request differs from its conditioned pool law.");
+        return law;
     }
 
     private static ChanceLawV111 QueryNativeEventEntryIndex(
