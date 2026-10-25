@@ -4,6 +4,81 @@ using System.Threading;
 namespace Sts2Emulator.Core;
 
 /// <summary>
+/// Immutable projection of the one active controlled event-choice boundary.
+/// Event-effect and post-reward continuations share the same request shape,
+/// labels, and stable boundary fingerprint through this descriptor.
+/// </summary>
+public sealed class ControlledEventChoicePendingV111
+{
+    private readonly string[] _candidateLabels;
+
+    public string EventId { get; }
+    public string ChoiceId { get; }
+    public string Kind { get; }
+    public RandomIndexRequestV111 Request { get; }
+    public string[] CandidateLabels => (string[])_candidateLabels.Clone();
+    public string BoundaryFingerprint { get; }
+    public string ChanceEventId { get; }
+
+    private ControlledEventChoicePendingV111(
+        string eventId, string choiceId, string kind,
+        RandomIndexRequestV111 request, string[] candidateLabels,
+        string boundaryFingerprint, string chanceEventId)
+    {
+        EventId = eventId;
+        ChoiceId = choiceId;
+        Kind = kind;
+        Request = request with
+        {
+            OrderedCandidates = request.OrderedCandidates
+        };
+        _candidateLabels = (string[])candidateLabels.Clone();
+        BoundaryFingerprint = boundaryFingerprint;
+        ChanceEventId = chanceEventId;
+    }
+
+    public static ControlledEventChoicePendingV111 Describe(RunState run)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        var effect = run.World?.Event?.Stochastic.ControlledChoice;
+        var reward = run.Stochastic.ControlledEventRewardChoice;
+        if ((effect is null) == (reward is null))
+            throw new InvalidOperationException(
+                "A controlled event-choice boundary requires exactly one pending request.");
+        effect?.Validate();
+        reward?.Validate();
+        var eventId = effect?.EventId ?? reward!.EventId;
+        var choiceId = effect?.ChoiceId ?? reward!.ChoiceId;
+        var request = effect?.PendingRequest ?? reward!.PendingRequest;
+        var candidateLabels = effect?.PendingCandidateLabels ??
+            reward!.PendingCandidateLabels;
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(candidateLabels);
+        var kind = effect is null
+            ? "event_reward_random_choice" : "event_random_choice";
+        var boundaryFingerprint = CanonicalJson.Sha256(new
+        {
+            schemaId = ControlledEventChoiceEngineV111.SchemaId,
+            kind,
+            eventId,
+            choiceId,
+            nextEffectIndex = effect?.NextEffectIndex,
+            decisionPrefixLength = reward?.DecisionPrefixLength,
+            request,
+            candidateLabels
+        });
+        var chanceEventId = CanonicalJson.Sha256(new
+        {
+            schemaId = ControlledEventChoiceEngineV111.SchemaId,
+            boundaryFingerprint
+        });
+        return new ControlledEventChoicePendingV111(
+            eventId, choiceId, kind, request, candidateLabels,
+            boundaryFingerprint, chanceEventId);
+    }
+}
+
+/// <summary>
 /// Opt-in adapter for controlled stochastic event options. Ordinary engine
 /// steps retain the legacy random profile; callers use this adapter to begin
 /// or resume saved event-effect and event-reward continuations.
@@ -86,10 +161,9 @@ public static class ControlledEventChoiceEngineV111
     public static RunState Resolve(RunState source, int selectedIndex)
     {
         ArgumentNullException.ThrowIfNull(source);
-        if (source.World?.Event?.Stochastic.ControlledChoice is null
-            && source.Stochastic.ControlledEventRewardChoice is null)
-            throw new InvalidOperationException(
-                "No controlled event outcome is pending.");
+        var pending = ControlledEventChoicePendingV111.Describe(source);
+        if ((uint)selectedIndex >= (uint)pending.Request.SupportCount)
+            throw new ArgumentOutOfRangeException(nameof(selectedIndex));
         return Step(source, GameAction.Create(
             "choose_controlled_event_outcome",
             new ChooseControlledEventOutcomePayload(selectedIndex)));

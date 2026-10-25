@@ -67,16 +67,8 @@ public static class ControlledEventChoiceEnumeratorV111
                 CanonicalJson.Sha256(current), fingerprint))
             throw new InvalidOperationException(
                 "Stale controlled event-choice enumeration fingerprint.");
-        var eventContinuation = current.World?.Event?.Stochastic.ControlledChoice;
-        var rewardContinuation = current.Stochastic.ControlledEventRewardChoice;
-        if (eventContinuation is not null && rewardContinuation is not null)
-            throw new InvalidDataException(
-                "A state cannot suspend both an event effect and its reward.");
-        var request = eventContinuation?.PendingRequest
-            ?? rewardContinuation?.PendingRequest
-            ?? throw new InvalidOperationException(
-                "No controlled event outcome is pending to enumerate.");
-        var supportCount = request.SupportCount;
+        var pending = ControlledEventChoicePendingV111.Describe(current);
+        var supportCount = pending.Request.SupportCount;
         if (supportCount == 0)
             throw new InvalidDataException(
                 "A controlled event choice cannot have empty support.");
@@ -85,12 +77,7 @@ public static class ControlledEventChoiceEnumeratorV111
                 $"Pending support has {supportCount} outcomes, exceeding " +
                 $"the requested enumeration cap of {maximumOutcomes}.");
 
-        var labels = eventContinuation?.PendingCandidateLabels
-            ?? rewardContinuation?.PendingCandidateLabels
-            ?? throw new InvalidDataException(
-                "Pending controlled event choice has no candidate labels.");
-        var eventId = eventContinuation?.EventId ?? rewardContinuation!.EventId;
-        var choiceId = eventContinuation?.ChoiceId ?? rewardContinuation!.ChoiceId;
+        var labels = pending.CandidateLabels;
         var outcomes = Enumerable.Range(0, supportCount)
             .Select(index => new ControlledEventChoiceEnumeratedOutcomeV111(
                 index,
@@ -99,8 +86,8 @@ public static class ControlledEventChoiceEnumeratorV111
             .ToArray();
         return new ControlledEventChoiceEnumerationResultV111(
             SchemaId,
-            eventId,
-            choiceId,
+            pending.EventId,
+            pending.ChoiceId,
             outcomes);
     }
 }

@@ -832,6 +832,10 @@ shared cursor/transcript owner. The controlled event-choice session composes
 the shared run mechanics checkpoint with a stochastic owner for its cursors
 and ordered mixed player-action/Nature steps. Its Nature-decision transcript
 is projected from those steps, so the chronology has one stored history.
+`ControlledEventChoicePendingV111` owns the active event-effect or
+post-reward boundary projection; Chance Law queries, outcome resolution,
+enumeration, and JSONL pending views share its request, ordered labels, and
+boundary fingerprint.
 Transient Overgrowth, Underdocks, encounter-formation, and later-act Nature
 providers also use the shared cursor/transcript owner; `Advance` applies one
 sampled cursor and appends its decision as a single owner transition. Run

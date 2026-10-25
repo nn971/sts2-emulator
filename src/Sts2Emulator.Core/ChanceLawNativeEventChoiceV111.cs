@@ -996,15 +996,13 @@ public static partial class ChanceLawEngineV111
     public static ChanceLawV111 QueryControlledEventChoice(RunState run)
     {
         ArgumentNullException.ThrowIfNull(run);
-        var description = DescribeControlledEventChoice(run);
-        if (run.World?.Event?.EventId ==
-                PrototypeNativeStoneOfAllTime.EventId &&
-            run.World?.Event?.Stochastic.ControlledChoice?.ChoiceId is
-                "push" or "lift")
+        var pending = ControlledEventChoicePendingV111.Describe(run);
+        if (pending.EventId == PrototypeNativeStoneOfAllTime.EventId &&
+            pending.Kind == "event_random_choice" &&
+            pending.ChoiceId is "push" or "lift")
             return QueryControlledStoneOfAllTimeTicket(
-                run, description.Request,
-                description.BoundaryFingerprint);
-        return QueryRandomIndex(description.EventId, description.Request);
+                run, pending.Request, pending.BoundaryFingerprint);
+        return QueryRandomIndex(pending.ChanceEventId, pending.Request);
     }
 
     private static ChanceLawV111 QueryControlledStoneOfAllTimeTicket(
@@ -1088,43 +1086,7 @@ public static partial class ChanceLawEngineV111
     public static string ControlledEventChoiceBoundaryFingerprint(RunState run)
     {
         ArgumentNullException.ThrowIfNull(run);
-        return DescribeControlledEventChoice(run).BoundaryFingerprint;
-    }
-
-    private static (string EventId, string ChoiceId,
-        RandomIndexRequestV111 Request, string[] CandidateLabels,
-        string BoundaryFingerprint) DescribeControlledEventChoice(RunState run)
-    {
-        var effect = run.World?.Event?.Stochastic.ControlledChoice;
-        var reward = run.Stochastic.ControlledEventRewardChoice;
-        if ((effect is null) == (reward is null))
-            throw new InvalidOperationException(
-                "A controlled event-choice law requires exactly one pending request.");
-        effect?.Validate();
-        reward?.Validate();
-        var eventId = effect?.EventId ?? reward!.EventId;
-        var choiceId = effect?.ChoiceId ?? reward!.ChoiceId;
-        var request = effect?.PendingRequest ?? reward!.PendingRequest;
-        var candidateLabels = effect?.PendingCandidateLabels ??
-            reward!.PendingCandidateLabels;
-        var boundaryFingerprint = CanonicalJson.Sha256(new
-        {
-            schemaId = ControlledEventChoiceEngineV111.SchemaId,
-            kind = effect is null ? "event_reward_random_choice" :
-                "event_random_choice",
-            eventId,
-            choiceId,
-            nextEffectIndex = effect?.NextEffectIndex,
-            decisionPrefixLength = reward?.DecisionPrefixLength,
-            request,
-            candidateLabels
-        });
-        var chanceEventId = CanonicalJson.Sha256(new
-        {
-            schemaId = ControlledEventChoiceEngineV111.SchemaId,
-            boundaryFingerprint
-        });
-        return (chanceEventId, choiceId, request, candidateLabels,
-            boundaryFingerprint);
+        return ControlledEventChoicePendingV111.Describe(run)
+            .BoundaryFingerprint;
     }
 }

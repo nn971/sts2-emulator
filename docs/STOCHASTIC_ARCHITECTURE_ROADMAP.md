@@ -20,6 +20,14 @@ candidate labels as outcome IDs; weighted intent enumeration keeps its
 identity resolver. Static source review and `git diff --check` only; no tests
 or builds were run.
 
+**S4 controlled event-choice boundary ownership (2026-10-25):** Event-effect
+and post-reward continuations now expose one immutable pending-boundary
+descriptor for the source event, choice, request, ordered labels, boundary
+fingerprint, and Chance Law event identity. Chance Law, resolution,
+enumeration, and both JSONL session views reuse that projection; no snapshot
+schema changed. Static source review and `git diff --check` only; no tests or
+builds were run.
+
 **S4 semantic ReferenceNature transcript ownership (2026-10-25):** The base
 semantic combat session now composes the shared initial/current cursor and
 typed transcript owner through `SimulationStateV111`. Each selected law

@@ -845,31 +845,22 @@ internal static class PrototypeAiJsonlServer
             ReferenceNatureControlledEventChoiceSessionV111 session,
             string handle, string? parent = null)
         {
-            var effect =
-                session.Run.World?.Event?.Stochastic.ControlledChoice;
-            var reward =
-                session.Run.Stochastic.ControlledEventRewardChoice;
-            var chanceLaw = session.NaturePending
+            var pendingBoundary = session.NaturePending
+                ? ControlledEventChoicePendingV111.Describe(session.Run)
+                : null;
+            var chanceLaw = pendingBoundary is not null
                 ? ChanceLawEngineV111.QueryControlledEventChoice(session.Run)
                 : null;
-            var boundaryFingerprint = session.NaturePending
-                ? ChanceLawEngineV111.ControlledEventChoiceBoundaryFingerprint(
-                    session.Run)
-                : null;
-            var request = effect?.PendingRequest ?? reward?.PendingRequest;
-            var candidateLabels = effect?.PendingCandidateLabels ??
-                reward?.PendingCandidateLabels;
             var pendingProbabilityStatus = chanceLaw?.ProbabilityStatus ??
                 ChanceLawV111.UnverifiedStatus;
-            object? pending = session.NaturePending ? new
+            object? pending = pendingBoundary is null ? null : new
             {
-                kind = effect is null
-                    ? "event_reward_random_choice" : "event_random_choice",
+                kind = pendingBoundary.Kind,
                 eventId = chanceLaw!.EventId,
-                choiceId = session.ChoiceId,
-                boundaryFingerprint,
-                request,
-                candidateLabels,
+                choiceId = pendingBoundary.ChoiceId,
+                boundaryFingerprint = pendingBoundary.BoundaryFingerprint,
+                request = pendingBoundary.Request,
+                candidateLabels = pendingBoundary.CandidateLabels,
                 chanceLaw,
                 probabilityStatus = pendingProbabilityStatus
             } : null;
@@ -2598,6 +2589,9 @@ internal static class PrototypeAiJsonlServer
                     "A state cannot suspend both an event effect and its reward.");
             var isPending = continuation is not null
                 || rewardContinuation is not null;
+            var pendingBoundary = isPending
+                ? ControlledEventChoicePendingV111.Describe(state)
+                : null;
             var eventState = state.World?.Event;
             var isPlayerBoundary = state.Phase == RunPhase.Event
                 && eventState is
@@ -2661,52 +2655,22 @@ internal static class PrototypeAiJsonlServer
                 transcript = completedTrace;
             var pendingLaw = continuation is not null
                 ? ChanceLawEngineV111.QueryControlledEventChoice(state)
-                : rewardContinuation is not null
+                : pendingBoundary is not null
                     ? ChanceLawEngineV111.QueryRandomIndex(
-                        rewardContinuation.EventId,
-                        rewardContinuation.PendingRequest)
+                        pendingBoundary.EventId,
+                        pendingBoundary.Request)
                     : null;
-            object? pending = continuation is not null
-                ? (object)new
-                {
-                    kind = "event_random_choice",
-                    eventId = continuation.EventId,
-                    choiceId = continuation.ChoiceId,
-                    boundaryFingerprint = CanonicalJson.Sha256(new
-                    {
-                        schemaId = ControlledEventChoiceEngineV111.SchemaId,
-                        continuation.EventId,
-                        continuation.ChoiceId,
-                        continuation.NextEffectIndex,
-                        request = continuation.PendingRequest,
-                        candidateLabels = continuation.PendingCandidateLabels
-                    }),
-                    request = continuation.PendingRequest,
-                    candidateLabels = continuation.PendingCandidateLabels,
-                    chanceLaw = pendingLaw,
-                    probabilityStatus = pendingLaw!.ProbabilityStatus
-                }
-                : rewardContinuation is not null
-                    ? (object)new
-                    {
-                        kind = "event_reward_random_choice",
-                        eventId = rewardContinuation.EventId,
-                        choiceId = rewardContinuation.ChoiceId,
-                        boundaryFingerprint = CanonicalJson.Sha256(new
-                        {
-                            schemaId = ControlledEventChoiceEngineV111.SchemaId,
-                            rewardContinuation.EventId,
-                            rewardContinuation.ChoiceId,
-                            rewardContinuation.DecisionPrefixLength,
-                            request = rewardContinuation.PendingRequest,
-                            candidateLabels = rewardContinuation.PendingCandidateLabels
-                        }),
-                        request = rewardContinuation.PendingRequest,
-                        candidateLabels = rewardContinuation.PendingCandidateLabels,
-                        chanceLaw = pendingLaw,
-                        probabilityStatus = pendingLaw!.ProbabilityStatus
-                    }
-                    : null;
+            object? pending = pendingBoundary is null ? null : new
+            {
+                kind = pendingBoundary.Kind,
+                eventId = pendingBoundary.EventId,
+                choiceId = pendingBoundary.ChoiceId,
+                boundaryFingerprint = pendingBoundary.BoundaryFingerprint,
+                request = pendingBoundary.Request,
+                candidateLabels = pendingBoundary.CandidateLabels,
+                chanceLaw = pendingLaw,
+                probabilityStatus = pendingLaw!.ProbabilityStatus
+            };
             return new
             {
                 ok = true,
