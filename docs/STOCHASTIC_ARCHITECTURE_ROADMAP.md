@@ -6092,3 +6092,10 @@ dispatch use the shared query instead of combining the cursor check with
 receipt checks at call sites. Stage-completion validation retains the raw
 cursor check because it must reject the pre-draw position. No snapshot schema
 changed. Core Release build and `git diff --check` passed; no tests were run.
+
+**S4 semantic turn-intent prefix ownership increment (2026-10-26):** The
+semantic end-turn stochastic owner now receives the resolved intent ticket
+transcript, verifies it adds exactly one decision to its saved prefix, and
+validates the appended controlled-provider decision before publication. The
+resolver no longer rebuilds that prefix invariant. No snapshot schema
+changed. Core Release build and `git diff --check` passed; no tests were run.

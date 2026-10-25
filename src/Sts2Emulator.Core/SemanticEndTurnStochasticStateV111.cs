@@ -113,9 +113,20 @@ public sealed record SemanticEndTurnStochasticStateV111
     }
 
     internal SemanticEndTurnStochasticStateV111 AppendIntentDecision(
-        RandomIndexDecisionV111 decision)
+        IReadOnlyList<RandomIndexDecisionV111> resolvedTranscript)
     {
-        ArgumentNullException.ThrowIfNull(decision);
+        ArgumentNullException.ThrowIfNull(resolvedTranscript);
+        var priorTranscript = IntentTranscript;
+        var nextTranscript = resolvedTranscript.ToArray();
+        if (nextTranscript.Length != priorTranscript.Length + 1 ||
+            CanonicalJson.Sha256(nextTranscript
+                .Take(priorTranscript.Length).ToArray()) !=
+            CanonicalJson.Sha256(priorTranscript))
+            throw new InvalidDataException(
+                "Turn-intent resolution did not append one ticket to its saved prefix.");
+
+        var decision = nextTranscript[^1] ?? throw new InvalidDataException(
+            "Turn-intent resolution appended a null ticket.");
         decision.Validate();
         if (decision.ProviderMode != "controlled-v111" ||
             decision.NativeCursorBefore is not null ||

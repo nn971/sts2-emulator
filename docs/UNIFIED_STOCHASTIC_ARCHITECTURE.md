@@ -2127,6 +2127,12 @@ selection, while the controlled session expands the validated intervals into
 the ordered primitive-label vector. This keeps weighted candidate identity
 and ticket mapping in the semantic intent owner.
 
+Semantic end-turn intent publication also checks the newly resolved ticket
+transcript against its saved prefix inside `SemanticEndTurnStochasticStateV111`.
+The resolver supplies the advanced transcript and publishes it with the
+intents frame, keeping append ownership beside controlled-provider/site
+validation.
+
 The Native policy audit owner appends fixture-opening, source-route intent,
 and player-action journals through the same transition method, including each
 mixed provider trace and typed semantic outcome projections. Entry setup and

@@ -1262,20 +1262,11 @@ public static class SemanticEndTurnEngineV111
         {
             var next = ControlledTurnIntentEngineV111.Resolve(
                 pending, selectedIndex, state.Run.Stochastic.PrototypeRng);
-            var intentTranscript = next.Transcript;
-            var existingIntentTranscript = state.Stochastic.IntentTranscript;
-            var previousIntentCount = existingIntentTranscript.Length;
-            if (intentTranscript.Length != previousIntentCount + 1 ||
-                CanonicalJson.Sha256(intentTranscript
-                    .Take(previousIntentCount).ToArray()) !=
-                CanonicalJson.Sha256(existingIntentTranscript))
-                throw new InvalidDataException(
-                    "Turn-intent resolution did not append one ticket to its saved prefix.");
             state = state with
             {
                 Intents = next,
                 Stochastic = state.Stochastic.AppendIntentDecision(
-                    intentTranscript[^1])
+                    next.Transcript)
             };
             if (next.Complete)
                 state = CompleteIntents(state);
