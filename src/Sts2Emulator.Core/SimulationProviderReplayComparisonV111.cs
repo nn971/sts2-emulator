@@ -757,7 +757,17 @@ public sealed record SimulationProviderReplayCaptureV111(
                 .ReferenceNatureWholeRunReplayValidated,
             actionBoundaries, drawnCardsByAction);
         if (!semanticTraceComplete)
-            return capture;
+        {
+            var replayedSemanticOutcomes =
+                TryCaptureScriptedSemanticOutcomes(
+                    session.Origin,
+                    actions.Select(action =>
+                        (action.Action, action.Decisions)).ToArray(),
+                    actionStartStates);
+            if (replayedSemanticOutcomes is null)
+                return capture;
+            semanticOutcomes = replayedSemanticOutcomes.ToList();
+        }
 
         capture = capture with
         {
@@ -2602,20 +2612,28 @@ public sealed record SimulationProviderReplayCaptureV111(
         TryCaptureScriptedSemanticOutcomes(
             RunState origin,
             IReadOnlyList<(GameAction Action,
-                ControlledStochasticDecisionV111[] Decisions)> actionGroups)
+                ControlledStochasticDecisionV111[] Decisions)> actionGroups,
+            IReadOnlyList<RunState>? actionOrigins = null)
     {
         ArgumentNullException.ThrowIfNull(origin);
         ArgumentNullException.ThrowIfNull(actionGroups);
+        if (actionOrigins is not null &&
+            actionOrigins.Count != actionGroups.Count)
+            throw new ArgumentException(
+                "Scripted semantic action origins must align with their action groups.",
+                nameof(actionOrigins));
         var outcomes = new List<
             SimulationProviderReplaySemanticOutcomeV111>();
         var ordinalCounts = new Dictionary<string, int>(StringComparer.Ordinal);
         var replayRun = origin.Fork();
         using (RandomBoundaryJournalV111.Begin())
         {
-            foreach (var (action, decisions) in actionGroups)
+            for (var actionIndex = 0;
+                actionIndex < actionGroups.Count; actionIndex++)
             {
+                var (action, decisions) = actionGroups[actionIndex];
                 var replay = ScriptedRunActionSessionV111.Begin(
-                    replayRun, action);
+                    actionOrigins?[actionIndex] ?? replayRun, action);
                 var natureOutcomePrefix = new List<string?>();
                 for (var decisionIndex = 0;
                     decisionIndex < decisions.Length; decisionIndex++)
