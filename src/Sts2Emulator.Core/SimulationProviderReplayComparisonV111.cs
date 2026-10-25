@@ -340,6 +340,8 @@ public static class SimulationProviderReplayCaptureProvenanceV111
         "reference-nature-glory-reflections-semantic-identity-replay-validated-v1";
     public const string ReferenceNatureNativeEventShuffleSemanticIdentityReplayValidated =
         "reference-nature-native-event-shuffle-semantic-identity-replay-validated-v1";
+    public const string ReferenceNatureEndlessConveyorSemanticIdentityReplayValidated =
+        "reference-nature-endless-conveyor-semantic-identity-replay-validated-v1";
     public const string ReferenceNatureEventChoiceReplayValidated =
         "reference-nature-event-choice-replay-validated-v1";
     public const string ReferenceNatureControlledActionReplayValidated =
@@ -375,6 +377,7 @@ public static class SimulationProviderReplayCaptureProvenanceV111
         ReferenceNatureInfestedAutomatonSemanticIdentityReplayValidated or
         ReferenceNatureGloryReflectionsSemanticIdentityReplayValidated or
         ReferenceNatureNativeEventShuffleSemanticIdentityReplayValidated or
+        ReferenceNatureEndlessConveyorSemanticIdentityReplayValidated or
         ReferenceNatureEventChoiceReplayValidated or
         ReferenceNatureControlledActionReplayValidated or
         ReferenceNatureNeowOfferReplayValidated or
@@ -411,6 +414,7 @@ public static class SimulationProviderReplayCaptureProvenanceV111
             ReferenceNatureInfestedAutomatonSemanticIdentityReplayValidated or
             ReferenceNatureGloryReflectionsSemanticIdentityReplayValidated or
             ReferenceNatureNativeEventShuffleSemanticIdentityReplayValidated or
+            ReferenceNatureEndlessConveyorSemanticIdentityReplayValidated or
             ReferenceNatureSemanticIdentityReplayValidated or
             ReferenceNatureCombatRewardSemanticIdentityReplayValidated;
 
@@ -1755,6 +1759,42 @@ public sealed record SimulationProviderReplayCaptureV111(
     }
 
     /// <summary>
+    /// Captures an Endless Conveyor action with semantic outcomes for its
+    /// ordered dish, potion, and card boundaries.
+    /// </summary>
+    public static SimulationProviderReplayCaptureV111
+        FromReferenceNatureEndlessConveyorSession(
+            ReferenceNatureEndlessConveyorSessionV111 session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        ReferenceNatureEndlessConveyorSessionV111 validated;
+        using (RandomBoundaryJournalV111.Begin())
+            validated = ReferenceNatureEndlessConveyorSessionV111.Restore(
+                ReferenceNatureEndlessConveyorSessionV111.Save(session));
+        if (!validated.Complete)
+            throw new InvalidOperationException(
+                "Provider replay capture requires a completed ReferenceNature Endless Conveyor session.");
+
+        var providerDecisions = validated.ProviderDecisions;
+        var transcript = validated.DecisionTranscript.Select(selection =>
+            new SimulationProviderReplaySemanticSelectionV111(
+                selection.LawId, selection.EventId, selection.OutcomeId,
+                selection.OutcomeIndex)).ToArray();
+        return FromReferenceNatureSemanticAction(
+            validated.Origin, validated.Action, validated.Run,
+            providerDecisions, transcript, index =>
+            {
+                var request = providerDecisions[index].ToRequest();
+                return ReferenceNatureEndlessConveyorSessionV111
+                    .QueryLawForCapture(validated.Origin, validated.ActionId,
+                        request.SiteId, providerDecisions.Take(index).ToArray(),
+                        request.Ordinal);
+            },
+            SimulationProviderReplayCaptureProvenanceV111
+                .ReferenceNatureEndlessConveyorSemanticIdentityReplayValidated);
+    }
+
+    /// <summary>
     /// Captures a completed combat victory and its atomic ReferenceNature
     /// reward transcript as provider-independent semantic outcomes.
     /// </summary>
@@ -2340,6 +2380,8 @@ public sealed record SimulationProviderReplayCaptureV111(
                  SimulationProviderReplayCaptureProvenanceV111
                     .ReferenceNatureNativeEventShuffleSemanticIdentityReplayValidated or
                  SimulationProviderReplayCaptureProvenanceV111
+                    .ReferenceNatureEndlessConveyorSemanticIdentityReplayValidated or
+                 SimulationProviderReplayCaptureProvenanceV111
                     .SemanticNativePolicySemanticIdentityReplayValidated))
             throw new InvalidDataException(
                 "Legacy provider replay captures cannot claim provider-independent semantic identities.");
@@ -2370,6 +2412,8 @@ public sealed record SimulationProviderReplayCaptureV111(
                     .ReferenceNatureGloryReflectionsSemanticIdentityReplayValidated or
                  SimulationProviderReplayCaptureProvenanceV111
                     .ReferenceNatureNativeEventShuffleSemanticIdentityReplayValidated or
+                 SimulationProviderReplayCaptureProvenanceV111
+                    .ReferenceNatureEndlessConveyorSemanticIdentityReplayValidated or
                  SimulationProviderReplayCaptureProvenanceV111
                     .ReferenceNatureCombatRewardSemanticIdentityReplayValidated or
                  SimulationProviderReplayCaptureProvenanceV111

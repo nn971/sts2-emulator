@@ -98,6 +98,14 @@ combat-end index requests through their source laws. Core and CLI Release
 builds passed with zero warnings or errors; `git diff --check` passed. No
 tests were added or run.
 
+**S4 Endless Conveyor semantic capture increment (2026-10-26):** JSONL
+provider replay now captures dish, potion, and card outcomes as semantic
+identities across its mixed index and float prefix. The factory restores the
+completed session and re-queries each source law against the exact preceding
+typed decisions before claiming semantic completeness. Core and CLI Release
+builds passed with zero warnings or errors; `git diff --check` passed. No
+tests were added or run.
+
 **S4 whole-run six-primitive continuation increment (2026-10-25):** The
 ReferenceNature whole-run session now accepts caller-supplied, replay-validated
 transcript entries for all six typed random operations alongside its existing

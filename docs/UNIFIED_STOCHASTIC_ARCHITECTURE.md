@@ -1253,7 +1253,7 @@ supports.
 JSONL accepts the matching
 `<side>_reference_nature_{merchant,treasure,native_shovel,native_event_relic,native_event_gold,infested_automaton,glory_reflections,trial,trash_heap,tablet_of_truth,native_event_shuffle,endless_conveyor,punch_off_fight,punch_off_reward}_handle`
 inputs. Native event-relic, Infested Automaton, Glory Reflections, Native
-event-shuffle, Trial, Trash Heap, and Tablet of Truth handles use
+event-shuffle, Endless Conveyor, Trial, Trash Heap, and Tablet of Truth handles use
 dedicated semantic captures: each re-queries the session's saved law and
 attaches the validated selected identity beside the typed boundary. The
 Infested Automaton capture retains the session's choice-specific Silent card
@@ -1263,7 +1263,9 @@ shuffle prefix and dynamic combat-end requests. The Native event-relic input
 uses
 `FromReferenceNatureNativeEventRelicSession`, which re-queries its saved
 rarity and relic identity laws against the action and preceding typed prefix
-before attaching provider-independent semantic outcomes. These paths add
+before attaching provider-independent semantic outcomes. Endless Conveyor
+replays each dish, potion, and card law against the preceding mixed-primitive
+prefix before attaching its selected identity. These paths add
 replay-capture coverage without changing the action or provider owners.
 `FromReferenceNatureCombatRewardSession` separately captures
 the completed victory action and each replayed reward Chance Law outcome as

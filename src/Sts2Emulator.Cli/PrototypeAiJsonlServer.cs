@@ -10704,7 +10704,7 @@ internal static class PrototypeAiJsonlServer
                                     return referenceNatureEndlessConveyorStates
                                         .TryGetValue(handle, out var endlessConveyor)
                                         ? SimulationProviderReplayCaptureV111
-                                            .FromReferenceNatureControlledActionSession(
+                                            .FromReferenceNatureEndlessConveyorSession(
                                                 endlessConveyor)
                                         : throw new InvalidOperationException(
                                             "Unknown ReferenceNature Endless Conveyor handle: " +

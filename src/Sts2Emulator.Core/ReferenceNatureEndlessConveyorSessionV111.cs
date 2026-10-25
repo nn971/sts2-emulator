@@ -246,6 +246,11 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
         return QuerySite(origin, actionId, siteId, [], ordinal);
     }
 
+    internal static ChanceLawV111 QueryLawForCapture(
+        RunState origin, string actionId, string siteId,
+        ControlledStochasticDecisionV111[] prefix, int? ordinal = null) =>
+        QuerySite(origin, actionId, siteId, prefix, ordinal);
+
     public ReferenceNatureEndlessConveyorSessionV111 Fork()
     {
         Validate();
