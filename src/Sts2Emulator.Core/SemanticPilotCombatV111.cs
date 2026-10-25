@@ -7275,48 +7275,32 @@ public static class SemanticPilotCombatEngineV111
         if (current.IntentPending is not null)
             return null;
 
-        static SemanticPendingIndexChanceEventV111 Describe(
-            ISemanticChanceEventV111 chanceEvent, int supportCount)
-        {
-            var pending = new SemanticPendingIndexChanceEventV111(
-                chanceEvent, supportCount);
-            pending.Validate();
-            return pending;
-        }
-
         if (current.EnemyActionEventPending is { } enemyAction)
-            return Describe(enemyAction, enemyAction.Request.SupportCount);
+            return SemanticPendingIndexChanceEventV111.Create(enemyAction);
         if (current.TargetPending is { } target)
-            return Describe(target, target.CandidateEnemyInstanceIds.Length);
+            return SemanticPendingIndexChanceEventV111.Create(target);
         if (current.GeneratedCardPending is { } generatedCard)
-            return Describe(generatedCard,
-                generatedCard.CandidateCardIds.Length);
+            return SemanticPendingIndexChanceEventV111.Create(generatedCard);
         if (current.CostPending is { } cost)
-            return Describe(cost, cost.CandidateCosts.Length);
+            return SemanticPendingIndexChanceEventV111.Create(cost);
         if (current.RandomPileCardPending is { } randomPileCard)
-            return Describe(randomPileCard,
-                randomPileCard.CandidateCardInstanceIds.Length);
+            return SemanticPendingIndexChanceEventV111.Create(randomPileCard);
         if (current.CardTransformPending is { } cardTransform)
-            return Describe(cardTransform,
-                cardTransform.CandidateCardIds.Length);
+            return SemanticPendingIndexChanceEventV111.Create(cardTransform);
         if (current.PotionGenerationPending is { } potionGeneration)
-            return Describe(potionGeneration,
-                potionGeneration.CandidatePotionIds.Length);
+            return SemanticPendingIndexChanceEventV111.Create(potionGeneration);
         if (current.HandCostSelectionPending is { } handCost)
-            return Describe(handCost,
-                handCost.CandidateCardInstanceIds.Length);
+            return SemanticPendingIndexChanceEventV111.Create(handCost);
         if (current.PoolShufflePending is { } poolShuffle)
-            return Describe(poolShuffle, poolShuffle.Request.SupportCount);
+            return SemanticPendingIndexChanceEventV111.Create(poolShuffle);
         if (current.DrawInsertionPending is { } drawInsertion)
-            return Describe(drawInsertion,
-                drawInsertion.Request.SupportCount);
+            return SemanticPendingIndexChanceEventV111.Create(drawInsertion);
         if (current.CardShortlistPending is { } shortlist)
-            return Describe(shortlist,
-                shortlist.CandidateCardInstanceIds.Length);
+            return SemanticPendingIndexChanceEventV111.Create(shortlist);
         if (current.DrawPending is { } draw)
-            return Describe(draw, draw.CandidateCardInstanceIds.Length);
+            return SemanticPendingIndexChanceEventV111.Create(draw);
         if (current.DeckRevealPending is { } reveal)
-            return Describe(reveal, reveal.CandidateCardInstanceIds.Length);
+            return SemanticPendingIndexChanceEventV111.Create(reveal);
         return null;
     }
 

@@ -31,6 +31,44 @@ public interface ISemanticChanceEventV111
 internal sealed record SemanticPendingIndexChanceEventV111(
     ISemanticChanceEventV111 Event, int SupportCount)
 {
+    public static SemanticPendingIndexChanceEventV111 Create(
+        ISemanticChanceEventV111 chanceEvent)
+    {
+        ArgumentNullException.ThrowIfNull(chanceEvent);
+        var supportCount = chanceEvent switch
+        {
+            SemanticEndTurnIndexEventV111 endTurn =>
+                endTurn.Request.SupportCount,
+            SemanticTargetEventV111 target =>
+                target.CandidateEnemyInstanceIds.Length,
+            SemanticGeneratedCardEventV111 generatedCard =>
+                generatedCard.CandidateCardIds.Length,
+            SemanticCostEventV111 cost => cost.CandidateCosts.Length,
+            SemanticRandomPileCardEventV111 randomPileCard =>
+                randomPileCard.CandidateCardInstanceIds.Length,
+            SemanticCardTransformEventV111 cardTransform =>
+                cardTransform.CandidateCardIds.Length,
+            SemanticPotionGenerationEventV111 potionGeneration =>
+                potionGeneration.CandidatePotionIds.Length,
+            SemanticHandCostSelectionEventV111 handCost =>
+                handCost.CandidateCardInstanceIds.Length,
+            SemanticPoolShuffleEventV111 poolShuffle =>
+                poolShuffle.Request.SupportCount,
+            SemanticDrawInsertionEventV111 drawInsertion =>
+                drawInsertion.Request.SupportCount,
+            SemanticCardShortlistEventV111 shortlist =>
+                shortlist.CandidateCardInstanceIds.Length,
+            SemanticDeckEventV111 deck =>
+                deck.CandidateCardInstanceIds.Length,
+            _ => throw new NotSupportedException(
+                "Unsupported pending semantic chance event type.")
+        };
+        var pending = new SemanticPendingIndexChanceEventV111(
+            chanceEvent, supportCount);
+        pending.Validate();
+        return pending;
+    }
+
     public void Validate()
     {
         ArgumentNullException.ThrowIfNull(Event);

@@ -10,6 +10,12 @@ at the Native boundary; weighted intent and end-turn draw-cost routes retain
 their specialized handling. No snapshot schema changed. Static source review
 and `git diff --check` only; no tests or builds were run.
 
+**S4 typed semantic support projection ownership (2026-10-25):** The pending
+chance descriptor factory now derives ordered support size from its typed
+event variant and rejects empty or unrecognized supports. Event precedence
+stays with the semantic engine; no snapshot schema changed. Static source
+review and `git diff --check` only; no tests or builds were run.
+
 **S4 active semantic chance event ownership (2026-10-25):** The semantic
 engine now publishes one transient typed descriptor for the active
 index-valued chance event and its ordered support size. ReferenceNature uses

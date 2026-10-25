@@ -1151,10 +1151,11 @@ the semantic outcome.
 Provider-selected indices for the semantic pilot now converge through
 `SemanticPilotCombatEngineV111.ResolveChanceOutcomeByIndex`. ReferenceNature
 validates the sampled law first; the Native adapter validates provider mode
-and primitive support first. `DescribePendingIndexChanceEvent` owns the
-precedence and support-size projection for active index-valued semantic
-events; ReferenceNature queries the law for that typed event, and both the
-Native auto-resolver and shared dispatcher consume the same descriptor.
+and primitive support first. `DescribePendingIndexChanceEvent` owns event
+precedence, while `SemanticPendingIndexChanceEventV111.Create` derives the
+checked support size from the typed event. ReferenceNature queries the law for
+that event. The Native auto-resolver and shared dispatcher consume the same
+descriptor.
 Provider-specific law, primitive, eligibility, and provenance checks remain
 at their provider boundaries before the existing target, generation, cost,
 draw, reveal, shuffle, insertion, shortlist, or potion mechanics resolver is
