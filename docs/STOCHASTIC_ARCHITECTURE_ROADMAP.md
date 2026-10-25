@@ -23,6 +23,14 @@ those labels in its additive `candidateLabels` field, and JSONL/Python accept
 `candidate_label`; unlabeled supports retain index selection. Static source
 review and `git diff --check` only; no tests or builds were run.
 
+**S4 identity selectors across controlled wrappers (2026-10-25):** Python
+event-choice, run-action, and playable-combat wrappers now expose
+`resolve_candidate_label()` with pending-support validation. Controlled combat
+fork responses preserve the same pending metadata as step and restore, so a
+forked boundary retains its label selector. The index APIs and transcripts are
+unchanged. Static source review and `git diff --check` only; no tests or builds
+were run.
+
 **S4 identity-only mechanics dispatcher boundary (2026-10-25):** The
 index-valued mechanics switch is now private behind the Chance Law and
 semantic outcome identity resolvers. Provider code cannot bypass active
