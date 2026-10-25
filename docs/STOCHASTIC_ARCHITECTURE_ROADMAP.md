@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 provider-neutral index outcome mapper (2026-10-25):**
+`SemanticIndexOutcomeV111` now owns checked ordered-support and bounded-offset
+mapping; the Native adapter adds its provider-mode requirement on top. Native
+potion model pickers use the same ordered identity mapping before their audit
+is recorded. No snapshot schema changed. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S4 shared Native initial-HP outcome validation (2026-10-25):** The
 source-route initial-HP audit now validates its selected HP through
 `NativeSemanticOutcomeV111`, sharing operation, support, and bounds checks

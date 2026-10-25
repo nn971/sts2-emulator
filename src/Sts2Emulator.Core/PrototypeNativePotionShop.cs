@@ -222,9 +222,9 @@ public static class PrototypeNativePotionShop
         RngBundle rng, string streamId,
         string ownerId = "potion:weighted_offer")
     {
-        var roll = LegacyRandomChoiceV111.ChooseBoundedInteger(
-            rng, RarityRollSiteId, streamId, ownerId, 100)
-            .SelectedIndex;
+        var roll = SemanticIndexOutcomeV111.SelectByBoundedOffset(
+            LegacyRandomChoiceV111.ChooseBoundedInteger(
+                rng, RarityRollSiteId, streamId, ownerId, 100), 0, 100);
         return roll < 10
             ? PrototypeNativePotionRarity.Rare
             : roll < 35
@@ -247,13 +247,12 @@ public static class PrototypeNativePotionShop
                 $"No unexcluded {rarity} potions remain.");
         }
 
-        return candidates[LegacyRandomChoiceV111.ChooseIndexRange(
-            rng,
-            ModelWithinRaritySiteId,
-            streamId,
+        var decision = LegacyRandomChoiceV111.ChooseIndexRange(
+            rng, ModelWithinRaritySiteId, streamId,
             ownerId + ":rarity:" + rarity + ":pool:"
-                + CanonicalJson.Sha256(candidates),
-            candidates.Length).SelectedIndex];
+                + CanonicalJson.Sha256(candidates), candidates.Length);
+        return SemanticIndexOutcomeV111.SelectByChooseIndex(
+            decision, candidates);
     }
 
     /// <summary>
@@ -344,7 +343,8 @@ public static class PrototypeNativePotionShop
                 Enumerable.Range(0, candidates.Length).ToArray()), workingRng);
             decision.Validate();
             choices.Add(decision);
-            var potionId = candidates[decision.SelectedIndex];
+            var potionId = SemanticIndexOutcomeV111.SelectByChooseIndex(
+                decision, candidates);
             if (streamId == NativePlayerRngV111.RewardsStreamId &&
                 rarityDecision.ProviderMode == "native-v111" &&
                 decision.ProviderMode == "native-v111" &&
@@ -372,12 +372,12 @@ public static class PrototypeNativePotionShop
         RngBundle rng, string streamId,
         string ownerId = "potion:uniform_offer")
     {
-        return NativePotionPoolOrder[LegacyRandomChoiceV111.ChooseIndexRange(
-            rng,
-            UniformModelSiteId,
-            streamId,
+        var decision = LegacyRandomChoiceV111.ChooseIndexRange(
+            rng, UniformModelSiteId, streamId,
             ownerId + ":pool:" + CanonicalJson.Sha256(NativePotionPoolOrder),
-            NativePotionPoolOrder.Count).SelectedIndex];
+            NativePotionPoolOrder.Count);
+        return SemanticIndexOutcomeV111.SelectByChooseIndex(
+            decision, NativePotionPoolOrder);
     }
 
     /// <summary>
@@ -410,14 +410,15 @@ public static class PrototypeNativePotionShop
         string potionId, RngBundle rng,
         string ownerId = "shop:merchant:potion")
     {
-        var percent = 95 + LegacyRandomChoiceV111.ChooseIndexRange(
-            rng,
-            "shop.merchant.potion_price_modifier.index_draw",
-            "shop",
-            ownerId + ":" + potionId,
-            11).SelectedIndex;
+        var priceModifier = SemanticIndexOutcomeV111.SelectByChooseIndex(
+            LegacyRandomChoiceV111.ChooseIndexRange(
+                rng,
+                "shop.merchant.potion_price_modifier.index_draw",
+                "shop", ownerId + ":" + potionId, 11),
+            Enumerable.Range(95, 11).ToArray());
         return Math.Max(1,
-            (int)Math.Round(MerchantBaseCost(potionId) * percent / 100.0));
+            (int)Math.Round(
+                MerchantBaseCost(potionId) * priceModifier / 100.0));
     }
 
     public static int MerchantPriceNative(

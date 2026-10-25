@@ -1138,8 +1138,10 @@ stream parity remain open pending reference-mod evidence.
 
 Engine-owned Native semantic choices map provider indices through
 `NativeSemanticOutcomeV111` before resuming mechanics. The mapper checks the
-Native provider mode, operation kind, support size, and selected bounds for
-both `choose_index` identity supports and `bounded_integer` offset outcomes.
+provider-neutral `SemanticIndexOutcomeV111` against operation kind, ordered
+support size, and selected bounds, then requires Native provider mode for both
+`choose_index` identities and `bounded_integer` offset outcomes. PotionFactory
+uses the same ordered-support mapper in its source picker.
 Live continuations and Native target, generation, potion, PotionFactory,
 transform, shuffle, insertion, combat-gold, initial-HP, card-instance, and
 card-cost audit records share this mapping while retaining their source
