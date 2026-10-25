@@ -398,6 +398,11 @@ Whole-run Glory Trial actions use the existing named case law. Replay binds
 the `merchant`, `noble`, or `nondescript` identity to the exact pending event
 request before mapping it back to the source bounded index.
 
+Stone of All Time push and lift ticket requests also use the existing
+degenerate `no_effect` law. Since the source discards the bounded ticket,
+replay supplies a stable representative only to resume that typed request;
+the Nature outcome remains the single semantic `no_effect` result.
+
 Whole-run ReferenceNature resolution now sends index, unit-float, and
 Gaussian-integer law outcomes through `ReferenceNatureChanceLawDecisionV111`.
 That shared adapter preserves candidate labels and converts mapped semantic

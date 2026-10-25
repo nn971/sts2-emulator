@@ -528,6 +528,11 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
             if (indexRequest.SiteId == StochasticSiteRegistryV111
                     .NativeCombatGoldSiteId)
                 return QueryNativeCombatGold(active, indexRequest);
+            if (indexRequest.SiteId is
+                    ChanceLawEngineV111.NativeStoneOfAllTimePushTicketSiteId or
+                    ChanceLawEngineV111.NativeStoneOfAllTimeLiftTicketSiteId)
+                return QueryNativeStoneOfAllTimeTicket(
+                    active, indexRequest);
             if (indexRequest.SiteId == ChanceLawEngineV111
                     .NativeEventGoldIndexSiteId)
                 return QueryNativeEventGoldIndex(active, indexRequest);
@@ -622,6 +627,32 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
             CanonicalJson.Sha256(request))
             throw new InvalidDataException(
                 "Native combat-gold request differs from its source law.");
+        return law;
+    }
+
+    private static ChanceLawV111 QueryNativeStoneOfAllTimeTicket(
+        ScriptedRunActionSessionV111 active,
+        RandomIndexRequestV111 request)
+    {
+        request.Validate();
+        if (active.Action.Kind != "event_choice")
+            throw new InvalidDataException(
+                "Stone of All Time ticket request is outside its event choice action.");
+        var actionId = active.Action
+            .ReadPayload<EventChoicePayload>().ChoiceId;
+        var law = ChanceLawEngineV111
+            .QueryNativeStoneOfAllTimeNoEffectIndex(
+                active.Origin, request.SiteId, request.Ordinal, actionId);
+        var expectedStream = active.Origin.Stochastic.NativeRunRng is not null
+            ? NativeRngV111Contexts.EventStreamId(
+                PrototypeNativeStoneOfAllTime.NativeRngEventId)
+            : "event";
+        if (request.StreamId != expectedStream ||
+            request.OperationKind != "bounded_integer" ||
+            request.OwnerId != law.OwnerId ||
+            request.Ordinal != law.Ordinal || request.BoundedCount != 100)
+            throw new InvalidDataException(
+                "Stone of All Time ticket request differs from its event law.");
         return law;
     }
 

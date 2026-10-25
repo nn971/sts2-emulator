@@ -271,6 +271,58 @@ public static class ReferenceNatureChanceLawDecisionV111
                 controlledTrial.Validate();
                 return controlledTrial;
             }
+            if (law.OperationKind == "bounded_integer_no_effect")
+            {
+                if (candidateLabels is not null ||
+                    conditioningRun is null ||
+                    indexRequest.SiteId is not (
+                        ChanceLawEngineV111
+                            .NativeStoneOfAllTimePushTicketSiteId or
+                        ChanceLawEngineV111
+                            .NativeStoneOfAllTimeLiftTicketSiteId) ||
+                    indexRequest.OperationKind != "bounded_integer" ||
+                    indexRequest.BoundedCount != 100 ||
+                    outcome.OutcomeId != "no_effect")
+                    throw new InvalidDataException(
+                        "Stone of All Time no-effect law differs from its typed ticket request.");
+                var actionId = law.OwnerId switch
+                {
+                    "event:stone_of_all_time:push" => "push",
+                    "event:stone_of_all_time:lift" => "lift",
+                    _ => throw new InvalidDataException(
+                        "Stone of All Time no-effect law has an unknown action owner.")
+                };
+                var expectedLaw = ChanceLawEngineV111
+                    .QueryNativeStoneOfAllTimeNoEffectIndex(
+                        conditioningRun, indexRequest.SiteId,
+                        indexRequest.Ordinal, actionId);
+                var expectedStream =
+                    conditioningRun.Stochastic.NativeRunRng is not null
+                        ? NativeRngV111Contexts.EventStreamId(
+                            PrototypeNativeStoneOfAllTime.NativeRngEventId)
+                        : "event";
+                if (CanonicalJson.Sha256(law) !=
+                        CanonicalJson.Sha256(expectedLaw) ||
+                    indexRequest.StreamId != expectedStream ||
+                    indexRequest.OwnerId != law.OwnerId ||
+                    indexRequest.Ordinal != law.Ordinal)
+                    throw new InvalidDataException(
+                        "Stone of All Time no-effect law differs from its event boundary.");
+
+                // The source ticket is mechanically discarded. Use a stable
+                // representative to resume the bounded provider request.
+                var noEffectDecision = new RandomIndexDecisionV111(
+                    indexRequest with
+                    {
+                        OrderedCandidates = (int[])
+                            indexRequest.OrderedCandidates.Clone()
+                    }, 0, "controlled-v111");
+                noEffectDecision.Validate();
+                var controlledNoEffect = ControlledStochasticDecisionV111
+                    .FromIndex(noEffectDecision);
+                controlledNoEffect.Validate();
+                return controlledNoEffect;
+            }
             if (law.OperationKind != indexRequest.OperationKind ||
                 law.SupportCount != indexRequest.SupportCount ||
                 !OutcomeEndsInIndex(outcome.OutcomeId,

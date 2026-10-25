@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 whole-run Stone of All Time ticket law increment (2026-10-26):** The
+ReferenceNature whole-run dispatcher now uses the existing degenerate
+`no_effect` law for Stone of All Time push/lift tickets. Replay validates the
+event action and typed request, then uses a stable raw representative because
+the source discards the ticket. Core and CLI Release builds passed with zero
+warnings or errors; `git diff --check` passed. No tests were added or run.
+
 **S4 whole-run shared Chance Law outcome mapping increment (2026-10-26):**
 ReferenceNature whole-run replay now maps index, unit-float, and
 Gaussian-integer outcomes through `ReferenceNatureChanceLawDecisionV111`,
