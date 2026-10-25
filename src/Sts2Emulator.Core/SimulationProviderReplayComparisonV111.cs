@@ -901,10 +901,23 @@ public sealed record SimulationProviderReplayCaptureV111(
                 SimulationProviderReplayCaptureProvenanceV111
                     .ReferenceNatureRunActionReplayValidated);
 
+        SimulationProviderReplayCaptureV111 TypedOrSemanticCapture()
+        {
+            var capture = TypedCapture();
+            var semanticOutcomes = TryCaptureScriptedSemanticOutcomes(
+                session.Origin,
+                [(Action: session.Action, Decisions: providerDecisions)]);
+            return semanticOutcomes is null
+                ? capture
+                : AttachSemanticOutcomes(capture, semanticOutcomes,
+                    SimulationProviderReplayCaptureProvenanceV111
+                        .ReferenceNatureRunActionSemanticIdentityReplayValidated);
+        }
+
         var decisions = session.DecisionTranscript;
         if (providerDecisions.Length != decisions.Length ||
             decisions.Length == 0)
-            return TypedCapture();
+            return TypedOrSemanticCapture();
 
         var transcript = decisions.Select(selection =>
             new SimulationProviderReplaySemanticSelectionV111(
@@ -957,7 +970,7 @@ public sealed record SimulationProviderReplayCaptureV111(
             supported = false;
         }
         if (!supported)
-            return TypedCapture();
+            return TypedOrSemanticCapture();
 
         return FromReferenceNatureSemanticAction(
             session.Origin, session.Action, session.Run, providerDecisions,
