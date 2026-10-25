@@ -278,9 +278,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             draw.RemainingCount < 0 || draw.EventDepth < 0 ||
             !pending.HasValidControlledPayloadShape() ||
             cursor is null ||
-            !cursor.Stochastic.IsAtSemanticBeforeHandDraw(
+            !cursor.Stochastic.IsAtSemanticBeforeHandDrawContinuation(
                 cursor.Mechanics) ||
-            cursor.Stochastic.CompletedSemanticHandDrawRequested is not null ||
             sourceCardInstanceId is not { } sourceCardId ||
             !combat.Cards.Any(card =>
                 card.InstanceId == sourceCardId))
@@ -596,9 +595,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             continuation is null ||
             !pending.HasValidControlledPayloadShape() ||
             combat.AutomaticPipelineContinuation is not { } cursor ||
-            !cursor.Stochastic.IsAtSemanticBeforeHandDraw(
+            !cursor.Stochastic.IsAtSemanticBeforeHandDrawContinuation(
                 cursor.Mechanics) ||
-            cursor.Stochastic.CompletedSemanticHandDrawRequested is not null ||
             sourceCardInstanceId is not { } sourceCardId ||
             !combat.Cards.Any(card => card.InstanceId == sourceCardId) ||
             !ValidateControlledDrawInsertion(combat, insertion!))
@@ -624,7 +622,7 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         if (continuation?.Mechanics.OpeningStage is not null)
             return IsSupportedOpeningAutoplayTargetBoundary(combat);
         bool semanticBeforeHandDrawTarget = continuation is not null &&
-            continuation.Stochastic.IsAtSemanticBeforeHandDraw(
+            continuation.Stochastic.IsAtSemanticBeforeHandDrawContinuation(
                 continuation.Mechanics) &&
             combat.PendingChoice is { ControlledTarget: not null } targetChoice &&
             SemanticTargetChoiceV111.HasValidLiveSupport(

@@ -2113,6 +2113,13 @@ semantic draw frame retains the existing pre-draw cursor and insertion
 transcript. Resolving the insertion resumes the ordinary hand-draw step
 through its pipeline owner; no choice or snapshot fields were added.
 
+The automatic-pipeline stochastic owner exposes a semantic pre-draw
+continuation query that requires both the saved `DrawPlayerHand` cursor and
+the absence of a completed-stage request receipt. Semantic hook classification,
+target and child-boundary validation, and resume dispatch use this query so
+they interpret that checkpoint consistently. The raw cursor query remains
+available to stage-completion validation, which must reject a pre-draw cursor.
+
 Weighted intent ticket support now has one semantic projection for both
 Native outcome lookup and controlled replay labels. End-turn transcript
 validation uses the same selected-candidate and ticket-start check as intent

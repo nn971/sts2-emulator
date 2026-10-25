@@ -39,9 +39,8 @@ public sealed partial class PrototypeGameEngine
                 "Missing combat for semantic pre-draw resumption.");
         var cursor = combat.AutomaticPipelineContinuation;
         if (cursor is null ||
-            !cursor.Stochastic.IsAtSemanticBeforeHandDraw(
+            !cursor.Stochastic.IsAtSemanticBeforeHandDrawContinuation(
                 cursor.Mechanics) ||
-            cursor.Stochastic.CompletedSemanticHandDrawRequested is not null ||
             combat.PendingChoice is not null ||
             combat.PendingKnowledgeDemonChoice is not null ||
             combat.Stochastic.SemanticDeck is not
@@ -104,9 +103,8 @@ public sealed partial class PrototypeGameEngine
                 .EnsurePipelineBoundary();
         }
 
-        if (cursor.Stochastic.IsAtSemanticBeforeHandDraw(
-                cursor.Mechanics) &&
-            cursor.Stochastic.CompletedSemanticHandDrawRequested is null)
+        if (cursor.Stochastic.IsAtSemanticBeforeHandDrawContinuation(
+                cursor.Mechanics))
         {
             if (combat.PendingChoice is null &&
                 combat.PendingKnowledgeDemonChoice is null &&
@@ -201,7 +199,8 @@ public sealed partial class PrototypeGameEngine
         }
 
         if (after.AutomaticPipelineContinuation is { } beforeHandDraw &&
-            beforeHandDraw.Stochastic.IsAtSemanticBeforeHandDraw(
+            beforeHandDraw.Stochastic
+                .IsAtSemanticBeforeHandDrawContinuation(
                 beforeHandDraw.Mechanics) &&
             (after.PendingChoice?.ControlledRandomPileCard is not null ||
              after.PendingChoice?.AutomaticSemanticDrawHookChoice == true))
@@ -279,7 +278,7 @@ public sealed partial class PrototypeGameEngine
             cursor.Stochastic.TryGetSemanticHandDrawProgress(
                 cursor.Mechanics, out savedRequested, out savedRemaining);
         bool beforeHandDraw = cursor is not null &&
-            cursor.Stochastic.IsAtSemanticBeforeHandDraw(
+            cursor.Stochastic.IsAtSemanticBeforeHandDrawContinuation(
                 cursor.Mechanics);
         var currentEvent = SemanticRandomPileCardEngineV111
             .DescribePending(run);

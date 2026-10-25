@@ -349,7 +349,8 @@ public sealed record SemanticCombatDrawV111(
         var cursorCombat = this.Run.World?.Combat;
         var pipelineCursor = cursorCombat?.AutomaticPipelineContinuation;
         bool semanticBeforeHandDrawProgress = pipelineCursor is not null &&
-            pipelineCursor.Stochastic.IsAtSemanticBeforeHandDraw(
+            pipelineCursor.Stochastic
+                .IsAtSemanticBeforeHandDrawContinuation(
                 pipelineCursor.Mechanics);
         bool semanticBeforeHandDrawCountsMatch =
             semanticBeforeHandDrawProgress && pipelineCursor is not null &&
@@ -1467,7 +1468,8 @@ public static class SemanticCombatDrawEngineV111
                 SemanticDrawHookChoiceEngineV111
                     .AutomaticHandDrawChildKindV111.SemanticDraw &&
             combat.AutomaticPipelineContinuation is { } beforeHandDrawCursor &&
-            beforeHandDrawCursor.Stochastic.IsAtSemanticBeforeHandDraw(
+            beforeHandDrawCursor.Stochastic
+                .IsAtSemanticBeforeHandDrawContinuation(
                 beforeHandDrawCursor.Mechanics);
         if (combat.PendingChoice?.ControlledSemanticDraw?
                 .StandaloneSemanticDrawSegment == true ||

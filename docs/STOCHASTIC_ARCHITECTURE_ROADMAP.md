@@ -6083,3 +6083,12 @@ the saved requested count through
 the completed-stage receipt. They no longer read the receipt field directly;
 the pipeline stochastic owner remains authoritative. No snapshot schema
 changed. Core Release build and `git diff --check` passed; no tests were run.
+
+**S4 semantic pre-draw continuation projection reuse (2026-10-26):** The
+automatic-pipeline stochastic owner now exposes a `BeforeHandDraw`
+continuation query that excludes a completed-stage request receipt. Semantic
+draw-hook classification, target and child-boundary validation, and resume
+dispatch use the shared query instead of combining the cursor check with
+receipt checks at call sites. Stage-completion validation retains the raw
+cursor check because it must reject the pre-draw position. No snapshot schema
+changed. Core Release build and `git diff --check` passed; no tests were run.

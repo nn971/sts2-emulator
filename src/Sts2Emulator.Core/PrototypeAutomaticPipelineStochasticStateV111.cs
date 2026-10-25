@@ -263,7 +263,7 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
         return CompletedSemanticHandDrawRequested is null &&
             (TryGetSemanticHandDrawProgress(
                 mechanics, out _, out _) ||
-             IsAtSemanticBeforeHandDraw(mechanics));
+             IsAtSemanticBeforeHandDrawContinuation(mechanics));
     }
 
     /// <summary>
@@ -276,7 +276,7 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
         out int requested, out int remaining)
     {
         ArgumentNullException.ThrowIfNull(mechanics);
-        if (IsAtSemanticBeforeHandDraw(mechanics))
+        if (IsAtSemanticBeforeHandDrawContinuation(mechanics))
         {
             requested = 0;
             remaining = 0;
@@ -309,6 +309,18 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
               RemainingCount: null } &&
             mechanics.IsAtStep(
                 PrototypeAutomaticStepKind.DrawPlayerHand);
+    }
+
+    /// <summary>
+    /// Identifies the semantic BeforeHandDraw cursor only when it has not
+    /// already published a completed-stage request receipt.
+    /// </summary>
+    public bool IsAtSemanticBeforeHandDrawContinuation(
+        PrototypeAutomaticPipelineMechanicsStateV111 mechanics)
+    {
+        ArgumentNullException.ThrowIfNull(mechanics);
+        return CompletedSemanticHandDrawRequested is null &&
+            IsAtSemanticBeforeHandDraw(mechanics);
     }
 
     public bool IsAtControlledBeforeHandDraw(
@@ -355,7 +367,7 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
             mechanics, out var progress);
         activeProgress = hasActiveProgress ? progress : null!;
         bool isBeforeHandDraw =
-            IsAtSemanticBeforeHandDraw(mechanics) ||
+            IsAtSemanticBeforeHandDrawContinuation(mechanics) ||
             IsAtControlledBeforeHandDraw(mechanics);
         if (HasSavedHandDrawProgress() &&
             !hasActiveProgress && !isBeforeHandDraw)
@@ -480,8 +492,8 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
         ArgumentNullException.ThrowIfNull(mechanics);
 
         bool sourceWasBeforeHandDraw =
-            source.CompletedSemanticHandDrawRequested is null &&
-            source.IsAtSemanticBeforeHandDraw(sourceMechanics);
+            source.IsAtSemanticBeforeHandDrawContinuation(
+                sourceMechanics);
         int? expectedRequested;
         int? expectedRemaining = null;
         if (sourceWasBeforeHandDraw)
@@ -524,8 +536,7 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
             return;
         }
 
-        if (CompletedSemanticHandDrawRequested is null &&
-            IsAtSemanticBeforeHandDraw(mechanics))
+        if (IsAtSemanticBeforeHandDrawContinuation(mechanics))
         {
             if (!sourceWasBeforeHandDraw)
                 throw new InvalidDataException(

@@ -204,7 +204,7 @@ public sealed partial class PrototypeGameEngine
                 "Automatic hand-draw stage has no combat.");
         var cursor = combat.AutomaticPipelineContinuation;
         bool resumedAfterSemanticHook = cursor is not null &&
-            cursor.Stochastic.IsAtSemanticBeforeHandDraw(
+            cursor.Stochastic.IsAtSemanticBeforeHandDrawContinuation(
                 cursor.Mechanics);
         bool resumedAfterControlledHook = cursor is not null &&
             cursor.Stochastic.IsAtControlledBeforeHandDraw(
@@ -253,7 +253,7 @@ public sealed partial class PrototypeGameEngine
                 stopBeforeSemanticHandDraw: stopBeforeSemanticHandDraw);
         }
 
-        if (cursor.Stochastic.IsAtSemanticBeforeHandDraw(
+        if (cursor.Stochastic.IsAtSemanticBeforeHandDrawContinuation(
                 cursor.Mechanics))
         {
             if (!ControlledChanceGuardV111.Active)
@@ -292,7 +292,7 @@ public sealed partial class PrototypeGameEngine
         return (ControlledChanceGuardV111.Active &&
                 stochastic.TryGetAutomaticHandDrawRemainder(
                     mechanics, out _)) ||
-            stochastic.IsAtSemanticBeforeHandDraw(mechanics) ||
+            stochastic.IsAtSemanticBeforeHandDrawContinuation(mechanics) ||
             stochastic.IsAtControlledBeforeHandDraw(mechanics);
     }
 

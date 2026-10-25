@@ -236,7 +236,7 @@ public static class SemanticDrawHookChoiceEngineV111
             return new(AutomaticHandDrawChildKindV111.None, false);
         var cursor = combat.AutomaticPipelineContinuation;
         bool beforeHandDraw = cursor is not null &&
-            cursor.Stochastic.IsAtSemanticBeforeHandDraw(
+            cursor.Stochastic.IsAtSemanticBeforeHandDrawContinuation(
                 cursor.Mechanics);
         return ClassifyAutomaticHandDrawChildBoundary(
             combat, choice, beforeHandDraw);
@@ -327,7 +327,8 @@ public static class SemanticDrawHookChoiceEngineV111
         bool automatic = choice?.AutomaticSemanticDrawHookChoice == true;
         var automaticPipeline = combat?.AutomaticPipelineContinuation;
         bool beforeHandDraw = automatic && automaticPipeline is not null &&
-            automaticPipeline.Stochastic.IsAtSemanticBeforeHandDraw(
+            automaticPipeline.Stochastic
+                .IsAtSemanticBeforeHandDrawContinuation(
                 automaticPipeline.Mechanics);
         bool automaticPipelineAutoplay = choice is not null &&
             combat is not null &&

@@ -686,7 +686,7 @@ public sealed partial class PrototypeGameEngine
         bool hasSavedHandDrawProgress =
             continuation.Stochastic.HasSavedHandDrawProgress();
         bool semanticBeforeHandDrawPending =
-            continuation.Stochastic.IsAtSemanticBeforeHandDraw(
+            continuation.Stochastic.IsAtSemanticBeforeHandDrawContinuation(
                 continuation.Mechanics);
         if (!continuation.Mechanics.IsAtStep(
                 PrototypeAutomaticStepKind.DrawPlayerHand) ||
@@ -761,7 +761,7 @@ public sealed partial class PrototypeGameEngine
                   SemanticDeck: { Mode: SemanticDeckStateV111.NatureMode,
                       Pending: null } } ||
             cursor is null ||
-            !cursor.Stochastic.IsAtSemanticBeforeHandDraw(
+            !cursor.Stochastic.IsAtSemanticBeforeHandDrawContinuation(
                 cursor.Mechanics) ||
             pending is not
                 { ChoiceId: "select_cards",

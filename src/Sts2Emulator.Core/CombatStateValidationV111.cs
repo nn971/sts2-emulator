@@ -690,7 +690,8 @@ public sealed partial record CombatState
             {
                 var pipelineCursor = combat.AutomaticPipelineContinuation;
                 bool semanticBeforeHandDraw = pipelineCursor is not null &&
-                    pipelineCursor.Stochastic.IsAtSemanticBeforeHandDraw(
+                    pipelineCursor.Stochastic
+                        .IsAtSemanticBeforeHandDrawContinuation(
                         pipelineCursor.Mechanics);
                 if (!(PrototypeGameEngine
                           .HasSemanticAutomaticHandDrawProgress(combat) ||
