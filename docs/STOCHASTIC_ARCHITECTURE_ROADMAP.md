@@ -5381,3 +5381,10 @@ for semantic event families whose ordinal counts prior choices. Event-owned
 turn or source ordinals remain attached to their events. The architecture doc
 records the distinction. Core and CLI Release builds passed with zero warnings
 and errors; no tests were run.
+
+**S4 semantic pool and insertion owner normalization increment (2026-10-25):**
+Cross-provider semantic outcomes now use common owner IDs for registered combat
+pool-shuffle and draw-pile insertion sites. Their site, shared ordinal, ordered
+support identity, and selected result remain comparison fields, while the
+provider-specific request owners remain in the source traces. Core and CLI
+Release builds passed with zero warnings and errors; no tests were run.

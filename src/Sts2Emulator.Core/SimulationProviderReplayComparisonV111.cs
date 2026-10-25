@@ -334,6 +334,13 @@ public sealed record SimulationProviderReplayCaptureV111(
         if (StochasticSiteRegistryV111.CombatRandomTargetSiteIds.Contains(
                 siteId, StringComparer.Ordinal))
             return "combat_target";
+        if (StochasticSiteRegistryV111.CombatCardPoolShuffleSiteIds.Contains(
+                siteId, StringComparer.Ordinal) ||
+            siteId == ControlledRecycleShuffleEngineV111.SiteId)
+            return "combat_pool_shuffle";
+        if (StochasticSiteRegistryV111.ControlledDrawInsertionSiteIds.Contains(
+                siteId, StringComparer.Ordinal))
+            return "combat_draw_insertion";
         if (siteId is not (
                 StochasticSiteRegistryV111.CombatAutoplayRandomCardSelectSiteId or
                 StochasticSiteRegistryV111.CombatRandomReplayCardSelectSiteId or
