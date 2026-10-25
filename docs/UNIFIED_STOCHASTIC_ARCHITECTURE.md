@@ -804,9 +804,12 @@ directly with `PrototypeMechanicsContinuationStateV111` under the
 `ReferenceNatureRunSession` continuation kind; each retains its event-specific
 law replay and run-cursor checks.
 The base semantic `ReferenceNatureSessionV111` composes the
-`SemanticPilotCombatV111` checkpoint with its independent sampler cursor
-through `SimulationStateV111`, while retaining the established `Combat` and
-`NatureState` snapshot members.
+`SemanticPilotCombatV111` checkpoint with the shared typed cursor/transcript
+owner through `SimulationStateV111`, while retaining the established `Combat`
+and `NatureState` snapshot members. Its transcript records each selected law
+outcome together with the next sampler cursor and validates cursor continuity.
+Snapshots add optional initial-cursor and selection-transcript members; older
+snapshots resume with an empty transcript beginning at their saved cursor.
 Map-generation and later-act preparation sessions now compose their
 source-specific generator mechanics and stochastic prefix owners through
 `SimulationStateV111`. Their mechanics owners hold generator inputs and

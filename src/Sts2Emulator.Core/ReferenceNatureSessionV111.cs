@@ -124,23 +124,99 @@ public sealed record ReferenceNatureResolutionV111(
 
 public sealed record ReferenceNatureSessionSnapshotV111(
     string SchemaId, string CombatSnapshotJson,
-    ReferenceNatureStateV111 NatureState);
-
-/// <summary>
-/// The sampler cursor held by the atomic semantic ReferenceNature session.
-/// </summary>
-public sealed record ReferenceNatureSessionStochasticStateV111(
     ReferenceNatureStateV111 NatureState)
 {
+    // Added without changing the established flat snapshot members. Older
+    // snapshots begin their transcript at the saved current cursor.
+    public ReferenceNatureStateV111? InitialNatureState { get; init; }
+    public ReferenceNatureSelectionV111[]? DecisionTranscript { get; init; }
+}
+
+/// <summary>
+/// Shared typed cursor and selection transcript held by the atomic semantic
+/// ReferenceNature session.
+/// </summary>
+public sealed record ReferenceNatureSessionStochasticStateV111
+{
+    private ReferenceNatureStochasticStateV111<ReferenceNatureSelectionV111>
+        _cursor = null!;
+
+    public ReferenceNatureStochasticStateV111<ReferenceNatureSelectionV111>
+        Cursor
+    {
+        get => _cursor;
+        init => _cursor = value ?? throw new ArgumentNullException(nameof(Cursor));
+    }
+
+    public ReferenceNatureStateV111 InitialNatureState
+    {
+        get => Cursor.InitialNatureState;
+        init => Cursor = Cursor with { InitialNatureState = value };
+    }
+
+    public ReferenceNatureStateV111 NatureState
+    {
+        get => Cursor.NatureState;
+        init => Cursor = Cursor with { NatureState = value };
+    }
+
+    public ReferenceNatureSelectionV111[] DecisionTranscript
+    {
+        get => Cursor.DecisionTranscript;
+        init => Cursor = Cursor with { DecisionTranscript = value };
+    }
+
+    public ReferenceNatureSessionStochasticStateV111(
+        ReferenceNatureStateV111 natureState)
+        : this(new ReferenceNatureStochasticStateV111<
+            ReferenceNatureSelectionV111>(natureState, natureState, []))
+    {
+    }
+
+    public ReferenceNatureSessionStochasticStateV111(
+        ReferenceNatureStochasticStateV111<ReferenceNatureSelectionV111> cursor)
+    {
+        Cursor = cursor ?? throw new ArgumentNullException(nameof(cursor));
+    }
+
+    public void Deconstruct(out ReferenceNatureStateV111 NatureState) =>
+        NatureState = this.NatureState;
+
     public ReferenceNatureSessionStochasticStateV111 Fork() => this with
     {
-        NatureState = NatureState.Fork()
+        Cursor = Cursor.Fork()
     };
 
     public void Validate()
     {
-        ArgumentNullException.ThrowIfNull(NatureState);
-        NatureState.Validate();
+        Cursor.Validate();
+        var transcript = DecisionTranscript;
+        var expectedSampleCount = checked(
+            InitialNatureState.SampleCount + transcript.Length);
+        if (NatureState.SampleCount != expectedSampleCount)
+            throw new InvalidDataException(
+                "ReferenceNature semantic transcript does not match its sample count.");
+
+        var previous = InitialNatureState;
+        foreach (var selection in transcript)
+        {
+            if (selection is null ||
+                string.IsNullOrWhiteSpace(selection.LawId) ||
+                string.IsNullOrWhiteSpace(selection.EventId) ||
+                string.IsNullOrWhiteSpace(selection.OutcomeId) ||
+                selection.OutcomeIndex < 0 || selection.NextState is null)
+                throw new InvalidDataException(
+                    "ReferenceNature semantic transcript contains an invalid selection.");
+            selection.NextState.Validate();
+            if (selection.NextState.SampleCount != checked(previous.SampleCount + 1))
+                throw new InvalidDataException(
+                    "ReferenceNature semantic transcript cursor sequence is invalid.");
+            previous = selection.NextState;
+        }
+
+        if (!previous.SameCursor(NatureState))
+            throw new InvalidDataException(
+                "ReferenceNature semantic transcript does not end at its current cursor.");
     }
 }
 
@@ -246,7 +322,11 @@ public sealed record ReferenceNatureSessionV111(
         var child = this with
         {
             Combat = resolvedCombat,
-            NatureState = resolution.Selection.NextState
+            Stochastic = Stochastic with
+            {
+                Cursor = Stochastic.Cursor.Advance(
+                    resolution.Selection.NextState, resolution.Selection)
+            }
         };
         child.Validate();
         return child;
@@ -272,7 +352,11 @@ public sealed record ReferenceNatureSessionV111(
         var snapshot = new ReferenceNatureSessionSnapshotV111(
             CurrentSchemaId,
             SemanticPilotCombatEngineV111.Save(session.Combat),
-            session.NatureState);
+            session.NatureState)
+        {
+            InitialNatureState = session.Stochastic.InitialNatureState,
+            DecisionTranscript = session.Stochastic.DecisionTranscript
+        };
         return JsonSerializer.Serialize(snapshot);
     }
 
@@ -300,8 +384,17 @@ public sealed record ReferenceNatureSessionV111(
                     : null
             };
         }
+        var stochastic = new ReferenceNatureSessionStochasticStateV111(
+            new ReferenceNatureStochasticStateV111<
+                ReferenceNatureSelectionV111>(
+                    snapshot.InitialNatureState ?? snapshot.NatureState,
+                    snapshot.NatureState,
+                    snapshot.DecisionTranscript ?? []));
         var restored = new ReferenceNatureSessionV111(
-            CurrentSchemaId, combat, snapshot.NatureState);
+            CurrentSchemaId, combat, snapshot.NatureState)
+        {
+            Stochastic = stochastic
+        };
         restored.Validate();
         return restored;
     }
