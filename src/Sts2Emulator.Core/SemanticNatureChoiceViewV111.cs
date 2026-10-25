@@ -30,7 +30,11 @@ public sealed record SemanticNatureChoiceViewV111(
         new(JsonSerializerDefaults.Web);
 
     public static SemanticNatureChoiceViewV111 Create(
-        JsonElement pendingEvent)
+        JsonElement pendingEvent) => Create(pendingEvent, null);
+
+    public static SemanticNatureChoiceViewV111 Create(
+        JsonElement pendingEvent,
+        IReadOnlyList<string>? semanticOutcomeIds)
     {
         if (pendingEvent.ValueKind != JsonValueKind.Object ||
             !pendingEvent.TryGetProperty("chanceLaw", out var lawElement))
@@ -73,6 +77,10 @@ public sealed record SemanticNatureChoiceViewV111(
             if (sanitized is { } value)
                 metadata.Add(property.Name, value);
         }
+        if (semanticOutcomeIds is not null)
+            metadata["semanticOutcomeIds"] =
+                JsonSerializer.SerializeToElement(
+                    semanticOutcomeIds, WebJsonOptions);
 
         var result = new SemanticNatureChoiceViewV111(
             CurrentSchemaId, eventKind, eventId, siteId, operationKind,
@@ -112,6 +120,7 @@ public sealed record SemanticNatureChoiceViewV111(
             ConditioningFingerprint != ChanceLaw.ConditioningFingerprint ||
             EventMetadata.ValueKind != JsonValueKind.Object ||
             EventMetadata.TryGetProperty("chanceLaw", out _) ||
+            !HasValidSemanticOutcomeIds(EventMetadata, ChanceLaw.SupportCount) ||
             ContainsForbiddenMetadata(EventMetadata) ||
             OptionalString(EventMetadata, "kind") is { } metadataKind &&
                 metadataKind != EventKind ||
@@ -168,6 +177,23 @@ public sealed record SemanticNatureChoiceViewV111(
         }
 
         return value.Clone();
+    }
+
+    private static bool HasValidSemanticOutcomeIds(
+        JsonElement metadata, int supportCount)
+    {
+        if (!metadata.TryGetProperty("semanticOutcomeIds", out var ids))
+            return true;
+        if (ids.ValueKind != JsonValueKind.Array ||
+            ids.GetArrayLength() != supportCount)
+            return false;
+        var uniqueIds = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var id in ids.EnumerateArray())
+            if (id.ValueKind != JsonValueKind.String ||
+                string.IsNullOrWhiteSpace(id.GetString()) ||
+                !uniqueIds.Add(id.GetString()!))
+                return false;
+        return true;
     }
 
     private static bool ContainsForbiddenMetadata(JsonElement value)

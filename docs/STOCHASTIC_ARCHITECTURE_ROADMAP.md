@@ -5395,3 +5395,11 @@ instances and generated-card model. The semantic support fingerprint therefore
 captures the ordered pile's actual gaps instead of only its numeric positions;
 the primitive Chance Law still reports bounded position indices. Core and CLI
 Release builds passed with zero warnings and errors; no tests were run.
+
+**S4 semantic Nature-choice identity projection increment (2026-10-25):**
+Semantic-combat Nature-choice event metadata now exposes the ordered
+provider-neutral outcome IDs beside the Chance Law's unchanged IDs and weights.
+Core and Python validate that this optional list has the law's
+support size and contains unique nonempty strings. No view schema or law format
+changed. Core and CLI Release builds passed with zero warnings and errors; no
+tests were run.

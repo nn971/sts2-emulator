@@ -1779,6 +1779,12 @@ project payloads, hashes, and legal actions from the shared fair-observation
 envelope. Their existing response fields remain available; the versioned
 `fair_observe` operation returns the full envelope.
 
+Semantic-combat Nature-choice metadata also exposes the ordered
+`semanticOutcomeIds` for its active Chance Law support. These
+provider-neutral identities let clients inspect physical outcomes such as
+draw-pile insertion gaps, while the Chance Law keeps its existing outcome IDs
+and weights.
+
 ## Reading order
 
 1. This architecture contract.

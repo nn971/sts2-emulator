@@ -2251,21 +2251,25 @@ internal static class PrototypeAiJsonlServer
         }
 
         SemanticNatureChoiceViewV111? CreateNatureChoiceView(
-            object? pending)
+            object? pending,
+            IReadOnlyList<string>? semanticOutcomeIds = null)
         {
             if (pending is null) return null;
             var payload = JsonSerializer.SerializeToElement(
                 pending, pending.GetType(),
                 new JsonSerializerOptions(JsonSerializerDefaults.Web));
             if (!payload.TryGetProperty("chanceLaw", out _)) return null;
-            return SemanticNatureChoiceViewV111.Create(payload);
+            return SemanticNatureChoiceViewV111.Create(
+                payload, semanticOutcomeIds);
         }
 
         SemanticNatureChoiceViewV111? DescribeSemanticNatureChoice(
             SemanticPilotCombatV111 state) =>
             state.UsesNativePolicyBaseline
                 ? null
-                : CreateNatureChoiceView(DescribeSemanticPending(state));
+                : CreateNatureChoiceView(DescribeSemanticPending(state),
+                    SemanticPilotCombatEngineV111
+                        .DescribePendingSemanticOutcomeIds(state));
 
         (string Fingerprint, SemanticNatureChoiceViewV111? Choice)
             DescribeNatureChoiceStatus(string sessionKind, string handle)

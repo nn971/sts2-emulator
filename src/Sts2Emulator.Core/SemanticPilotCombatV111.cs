@@ -7334,6 +7334,21 @@ public static class SemanticPilotCombatEngineV111
     }
 
     /// <summary>
+    /// Returns the ordered provider-neutral identities for the active semantic
+    /// chance support. These identities select the same outcomes as the
+    /// Chance Law while remaining distinct from its outcome IDs.
+    /// </summary>
+    public static string[]? DescribePendingSemanticOutcomeIds(
+        SemanticPilotCombatV111 current)
+    {
+        ArgumentNullException.ThrowIfNull(current);
+        if (current.IntentPending is not null)
+            return DescribePendingIntentEvent(current).Support.Candidates
+                .Select(candidate => candidate.IntentId).ToArray();
+        return DescribePendingIndexChanceEvent(current)?.SemanticOutcomeIds;
+    }
+
+    /// <summary>
     /// Resolve one Chance Law outcome identity against the active semantic
     /// event before dispatching through the event's mechanics resolver.
     /// Providers retain their own law and provenance checks; this owner binds

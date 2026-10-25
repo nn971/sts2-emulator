@@ -4161,6 +4161,17 @@ class Session:
         metadata = choice.get("eventMetadata")
         if not isinstance(metadata, dict) or "chanceLaw" in metadata:
             raise EmulatorError("Nature-choice event metadata is invalid")
+        semantic_outcome_ids = metadata.get("semanticOutcomeIds")
+        if semantic_outcome_ids is not None:
+            if (not isinstance(semantic_outcome_ids, list)
+                    or len(semantic_outcome_ids) != law.get("supportCount")
+                    or any(not isinstance(outcome_id, str)
+                           or not outcome_id.strip()
+                           for outcome_id in semantic_outcome_ids)
+                    or len(set(semantic_outcome_ids)) !=
+                    len(semantic_outcome_ids)):
+                raise EmulatorError(
+                    "Nature-choice semantic outcome identities are invalid")
         for field, envelope_field in (
                 ("kind", "eventKind"), ("eventId", "eventId"),
                 ("siteId", "siteId"), ("operationKind", "operationKind"),
