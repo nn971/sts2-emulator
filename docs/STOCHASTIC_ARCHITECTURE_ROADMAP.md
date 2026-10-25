@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 optional semantic replay-law fallback (2026-10-26):** Scripted semantic
+identity capture now treats `InvalidOperationException` from a candidate law
+query as an unsupported optional mapping and keeps the replay-validated typed
+capture. This matches the fail-closed handling already used when mapping law
+outcomes back to typed decisions. Core Release build passed with zero warnings
+or errors; `git diff --check` passed. No tests were run.
+
 **S4 scripted semantic-outcome replay capture (2026-10-26):** Scripted
 single-action, whole-run, ReferenceNature run-action, and generic controlled-
 action captures now attach provider-independent semantic outcome traces when

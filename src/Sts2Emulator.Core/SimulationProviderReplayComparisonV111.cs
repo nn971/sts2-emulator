@@ -2677,7 +2677,8 @@ public sealed record SimulationProviderReplayCaptureV111(
                     }
                     catch (Exception exception) when (
                         exception is InvalidDataException or
-                        NotSupportedException)
+                        NotSupportedException or
+                        InvalidOperationException)
                     {
                         return null;
                     }
