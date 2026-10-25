@@ -11,6 +11,21 @@ without requiring provider-specific primitive traces or cursors to match.
 Comparison schema v8 adds this explicit cross-provider acceptance predicate.
 CLI Release build and `git diff --check` passed; no tests were run.
 
+**S4 Native enemy pile-insertion semantic capture (2026-10-26):** Native
+policy replay now includes its existing enemy draw/discard insertion audit in
+the provider-independent outcome trace. Capture re-queries the registered
+bounded-index law and uses the shared adjacent-card physical-gap labels. This
+lets those boundaries participate in same-semantic-outcome comparison while
+leaving eligibility and stream parity as separate evidence. CLI Release build
+and `git diff --check` passed; no tests were run.
+
+**S4 nested Dual Wield selection continuation (2026-10-26):** The semantic
+card-selection allowlist now admits the exact Dual Wield Attack/Power copy
+choice when nested under a validated automatic hand-draw hook. It retains the
+source-card, card-play-series, ordered candidate, and selection specification
+checks and uses the existing draw-owned card-selection chronology. CLI Release
+build and `git diff --check` passed; no tests were run.
+
 **S4 provider-independent run identity increment (2026-10-26):** The
 mechanics projection now omits both `RunSeed` and `RunId`; the run factories
 derive the latter from the former, so comparing it incorrectly distinguished

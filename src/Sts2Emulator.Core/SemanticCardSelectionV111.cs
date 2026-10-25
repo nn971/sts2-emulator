@@ -709,8 +709,10 @@ public static class SemanticCardSelectionEngineV111
                 PrototypeCardSelectionResolutionKind.MoveToDiscard or
                 PrototypeCardSelectionResolutionKind.MoveToExhaust) &&
             !spec.RemoveUnselectedFromSource;
-        var supportedDualWieldCopy =
-            IsSupportedDualWieldChoice(combat, choice);
+        var supportedDualWieldCopy = IsSupportedDualWieldChoice(
+            combat, choice,
+            allowAutomaticHandDrawHookContinuation:
+                automaticHandDrawHookChoice);
         var supportedGeneratedChoicePool =
             spec.SourceZone == PrototypeCardZone.ChoicePool &&
             spec.Resolution == PrototypeCardSelectionResolutionKind.MoveToHand &&
@@ -732,10 +734,12 @@ public static class SemanticCardSelectionEngineV111
     }
 
     private static bool IsSupportedDualWieldChoice(
-        CombatState combat, PendingCombatChoiceState choice)
+        CombatState combat, PendingCombatChoiceState choice,
+        bool allowAutomaticHandDrawHookContinuation)
     {
         if (!combat.IsPlayerTurn || choice.SourceCardInstanceId is not { } sourceId ||
-            choice.OuterChoiceContinuation is not null ||
+            (!allowAutomaticHandDrawHookContinuation &&
+             choice.OuterChoiceContinuation is not null) ||
             choice.EventDispatchContinuation is not null ||
             choice.Continuation.Length != 0 ||
             choice.SourceCardDestination != PrototypeCardZone.DiscardPile ||
