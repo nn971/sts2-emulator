@@ -2346,6 +2346,27 @@ public static class ControlledRunActionEngineV111
             new ChooseControlledEventOutcomePayload(selectedIndex)));
     }
 
+    /// <summary>
+    /// Resolve a controlled run-action outcome by its saved candidate label
+    /// while retaining the established index transcript.
+    /// </summary>
+    public static RunState ResolveByCandidateLabel(
+        RunState source, string candidateLabel)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentException.ThrowIfNullOrWhiteSpace(candidateLabel);
+        var pending = ControlledRunActionPendingV111.Describe(source);
+        var candidateLabels = pending.CandidateLabels;
+        if (candidateLabels.Length != pending.Request.SupportCount)
+            throw new InvalidOperationException(
+                "This controlled run-action support does not expose complete candidate labels.");
+        var selectedIndex = ControlledChanceContinuationExecutorV111
+            .IndexOfCandidateLabel(
+                candidateLabels, pending.Request.SupportCount,
+                candidateLabel);
+        return Resolve(source, selectedIndex);
+    }
+
     private static RunState Step(RunState source, GameAction action)
     {
         return ControlledChanceGuardV111.ExecuteGuarded(() =>

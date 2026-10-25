@@ -22,6 +22,12 @@ retaining the established selected-index request and transcript for existing
 clients and snapshots. JSONL accepts either selector additively. Static source
 review and `git diff --check` only; no tests or builds were run.
 
+**S4 controlled run-action identity resolution (2026-10-25):** The run-action
+owner now accepts a unique saved candidate label when the full support labels
+are materialized, while retaining index selection for compact and legacy
+clients. Both selectors preserve the established index transcript. Static
+source review and `git diff --check` only; no tests or builds were run.
+
 **S4 Native semantic-resume bridge ownership (2026-10-25):** Supported
 engine-owned Native semantic choices now pass through one pilot transition
 that maps the typed primitive result to the active semantic index and invokes

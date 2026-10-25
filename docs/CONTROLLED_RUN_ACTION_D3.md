@@ -145,7 +145,10 @@ observations hide its Nature actions; the explicit controller exposes only
 For supports larger than the advertised inline-action limit, the controller
 omits expanded action objects and candidate labels but retains the compact
 request bounds. The Chance Law still lists each legal request index, which
-clients resolve through `controlled_run_action_resolve`.
+clients resolve through `controlled_run_action_resolve`. When the complete
+candidate-label vector is present, clients may select one unique
+`candidate_label`; `selected_index` remains supported for every materialized
+or compact support.
 
 ## Probability provenance
 
@@ -174,7 +177,7 @@ appear in both region groups. The controller supports:
 | Operation | Inputs | Result |
 | --- | --- | --- |
 | `controlled_run_action_begin` | current `state_handle`, legal `action_id` | Pending request, labels and controlled outcome actions |
-| `controlled_run_action_resolve` | pending `state_handle`, `selected_index` | Child run handle with the selected run-start, configured boss, event-entry, Shop, legacy or fallback Treasure, rest-heal reward, Act 1 combat-entry or Shovel result |
+| `controlled_run_action_resolve` | pending `state_handle`, exactly one of `selected_index` or `candidate_label` | Child run handle with the selected run-start, configured boss, event-entry, Shop, legacy or fallback Treasure, rest-heal reward, Act 1 combat-entry or Shovel result |
 | `controlled_run_action_inspect` | pending `state_handle` | Restore the pending request and legal outcomes after snapshot load |
 
 The JSONL server also exposes an atomic ReferenceNature envelope for these
