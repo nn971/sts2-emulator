@@ -520,6 +520,36 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
         ScriptedRunActionSessionV111 active,
         ControlledStochasticRequestV111 request)
     {
+        if (IsNativeCombatRewardActionBoundary(active) &&
+            StochasticSiteRegistryV111.NativeCombatRewardSessionSiteIds
+                .Contains(request.SiteId, StringComparer.Ordinal))
+            return ReferenceNatureCombatRewardSessionV111
+                .QueryLawForCapture(
+                    active.Origin, active.Action, request,
+                    active.PendingCandidateLabels, active.Decisions);
+
+        if (IsNativeTreasureEntryBoundary(active) &&
+            StochasticSiteRegistryV111.NativeTreasureSessionSiteIds
+                .Contains(request.SiteId, StringComparer.Ordinal))
+            return ReferenceNatureTreasureSessionV111.QueryLawForCapture(
+                active.Origin, request, active.PendingCandidateLabels);
+
+        if (IsNativeShovelActionBoundary(active) &&
+            ReferenceNatureNativeShovelSessionV111.SessionSiteIds
+                .Contains(request.SiteId, StringComparer.Ordinal))
+            return ReferenceNatureNativeShovelSessionV111
+                .QueryLawForCapture(
+                    active.Origin, active.Action, request,
+                    active.PendingCandidateLabels, active.Decisions);
+
+        if (IsNativeEventRelicActionBoundary(active) &&
+            ReferenceNatureNativeEventRelicSessionV111.SessionSiteIds
+                .Contains(request.SiteId, StringComparer.Ordinal))
+            return ReferenceNatureNativeEventRelicSessionV111
+                .QueryLawForCapture(
+                    active.Origin, active.Action, request,
+                    active.PendingCandidateLabels, active.Decisions);
+
         if (IsNativeMerchantActionBoundary(active) &&
             StochasticSiteRegistryV111.NativeMerchantSessionSiteIds
                 .Contains(request.SiteId, StringComparer.Ordinal))
@@ -627,6 +657,47 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
             return ChanceLawEngineV111.QueryNativeMapRequest(request);
         return null;
     }
+
+    private static bool IsNativeCombatRewardActionBoundary(
+        ScriptedRunActionSessionV111 active) =>
+        active.Origin.Stochastic.NativeRunRng is not null &&
+        active.Origin.Phase == RunPhase.Combat &&
+        active.Origin.World is { ActiveRoom: PrototypeRoomType.Combat or
+            PrototypeRoomType.Elite or PrototypeRoomType.Boss } world &&
+        PrototypeGameEngine.UsesNativeRegionalSystems(world);
+
+    private static bool IsNativeTreasureEntryBoundary(
+        ScriptedRunActionSessionV111 active)
+    {
+        var run = active.Origin;
+        if (run.Stochastic.NativeRunRng is null ||
+            run.Phase != RunPhase.MapChoice ||
+            run.World is not { } world ||
+            !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
+            PrototypeGameEngine.WillSkipNextTreasure(run.Player) ||
+            active.Action.Kind != "choose_map_node")
+            return false;
+        var nodeId = active.Action.ReadPayload<ChooseMapNodePayload>().NodeId;
+        return PrototypeNativeWingedBoots.AvailableNodes(world, run.Player)
+            .Any(node => node.NodeId == nodeId &&
+                node.RoomType == PrototypeRoomType.Treasure);
+    }
+
+    private static bool IsNativeShovelActionBoundary(
+        ScriptedRunActionSessionV111 active) =>
+        active.Origin.Stochastic.NativeRunRng is not null &&
+        active.Origin.Phase == RunPhase.Rest &&
+        active.Origin.World is { } world &&
+        PrototypeGameEngine.UsesNativeRegionalSystems(world) &&
+        PrototypeNativeRestSiteRelics.CanDig(active.Origin.Player) &&
+        active.Action.Kind == PrototypeNativeRestSiteActionsV111.Dig;
+
+    private static bool IsNativeEventRelicActionBoundary(
+        ScriptedRunActionSessionV111 active) =>
+        active.Origin.Stochastic.NativeRunRng is not null &&
+        active.Origin.World is { } world &&
+        PrototypeGameEngine.UsesNativeRegionalSystems(world) &&
+        active.Origin.Phase is RunPhase.Event or RunPhase.Reward;
 
     private static bool IsNativeMerchantActionBoundary(
         ScriptedRunActionSessionV111 active)

@@ -429,6 +429,12 @@ merchant law query for registered merchant sites. The route is admitted only
 for a legal Shop node entry or supported purchase action, and it replays the
 typed prefix with the current candidate labels.
 
+Configured whole-run combat rewards, Treasure entry, Native Shovel digs, and
+event/reward relic acquisitions also delegate registered requests to their
+existing session law owners. Their saved action, current source pool, and
+ordered typed prefix therefore condition the same laws used by the dedicated
+sessions.
+
 Whole-run ReferenceNature resolution now sends index, unit-float, and
 Gaussian-integer law outcomes through `ReferenceNatureChanceLawDecisionV111`.
 That shared adapter preserves candidate labels and converts mapped semantic

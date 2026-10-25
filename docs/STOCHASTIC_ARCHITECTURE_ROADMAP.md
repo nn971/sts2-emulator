@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S2 whole-run Native relic and combat reward law increment (2026-10-26):**
+Configured whole-run combat rewards, Treasure entry, Native Shovel digs, and
+event/reward relic acquisitions now route registered requests through their
+existing session law owners with the current action and typed prefix. Core and
+CLI Release builds passed with zero warnings or errors; `git diff --check`
+passed. No tests were run.
+
 **S2 whole-run Native event-card pick law increment (2026-10-26):** Ordinary
 ReferenceNature event-choice actions now use the existing conditioned
 card-instance laws for registered Glory Reflections and Infested Automaton
