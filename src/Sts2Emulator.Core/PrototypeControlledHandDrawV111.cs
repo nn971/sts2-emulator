@@ -71,18 +71,12 @@ public sealed partial class PrototypeGameEngine
                 "Controlled automatic hand-draw hook cursor is inconsistent.");
 
         int remaining = progress.RemainingCount!.Value;
-        var prototypeRng = state.Stochastic.PrototypeRng;
-        var drawn = ResumeAutomaticHandDrawCards(
+        var (resumedRun, drawn) = ResumeAutomaticHandDrawSegment(
             state, remaining,
             PrototypeDrawCardsSuspensionPolicyV111
                 .ControlledLegacyAutomaticHandDraw(
-                    combat, cardDrawnChoice: true), prototypeRng);
-        state = state with
-        {
-            Stochastic = RunStochasticStateV111.WithPrototypeRng(
-                state.Stochastic, prototypeRng)
-        };
-        return ResumeSavedControlledAutomaticHandDraw(state, drawn);
+                    combat, cardDrawnChoice: true));
+        return ResumeSavedControlledAutomaticHandDraw(resumedRun, drawn);
     }
 
     private static RunState BeginControlledRecycleStratagemSelection(
@@ -150,17 +144,11 @@ public sealed partial class PrototypeGameEngine
                 "Saved recycle Stratagem selection is not source-reachable.");
 
         var remaining = progress.RemainingCount!.Value;
-        var prototypeRng = state.Stochastic.PrototypeRng;
-        var drawn = ResumeAutomaticHandDrawCards(
+        var (resumedRun, drawn) = ResumeAutomaticHandDrawSegment(
             state, remaining,
             PrototypeDrawCardsSuspensionPolicyV111
-                .ControlledLegacyAutomaticHandDraw(combat), prototypeRng);
-        state = state with
-        {
-            Stochastic = RunStochasticStateV111.WithPrototypeRng(
-                state.Stochastic, prototypeRng)
-        };
-        return ResumeSavedControlledAutomaticHandDraw(state, drawn);
+                .ControlledLegacyAutomaticHandDraw(combat));
+        return ResumeSavedControlledAutomaticHandDraw(resumedRun, drawn);
     }
 
     private static PrototypeDrawCardsResumeResultV111

@@ -722,15 +722,9 @@ public sealed partial class PrototypeGameEngine
             costCombat.PendingKnowledgeDemonChoice is not null)
             throw new NotSupportedException(unsupportedBoundaryMessage);
 
-        var prototypeRng = costProgress.Run.Stochastic.PrototypeRng;
-        var drawn = ResumeAutomaticHandDrawCards(
+        var (resumedRun, drawn) = ResumeAutomaticHandDrawSegment(
             costProgress.Run, cost.RemainingCount, suspensionPolicy,
-            prototypeRng, eventDepth: cost.EventDepth);
-        var resumedRun = costProgress.Run with
-        {
-            Stochastic = RunStochasticStateV111.WithPrototypeRng(
-                costProgress.Run.Stochastic, prototypeRng)
-        };
+            eventDepth: cost.EventDepth);
         return new PrototypeAutomaticHandDrawCostResumeV111(
             new PrototypeDrawCardsResumeResultV111(
                 resumedRun, drawn.RemainingCount, savedRequested),

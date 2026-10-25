@@ -41,18 +41,26 @@ public sealed partial class PrototypeGameEngine
                 "operation=nested_choice_or_automatic_pipeline");
         var suspensionPolicy =
             PrototypeDrawCardsSuspensionPolicyV111.SemanticDrawCards();
-        var prototypeRng = run.Stochastic.PrototypeRng;
-        var result = automatic
-            ? ResumeAutomaticHandDrawCards(
-                run, count, suspensionPolicy, prototypeRng)
-            : DrawCards(
+        PrototypeDrawCardsResult result;
+        if (automatic)
+        {
+            var resumed = ResumeAutomaticHandDrawSegment(
+                run, count, suspensionPolicy);
+            run = resumed.Run;
+            result = resumed.Drawn;
+        }
+        else
+        {
+            var prototypeRng = run.Stochastic.PrototypeRng;
+            result = DrawCards(
                 run.Player, combat, count, prototypeRng, fromHandDraw,
                 suspensionPolicy: suspensionPolicy);
-        run = run with
-        {
-            Stochastic = RunStochasticStateV111.WithPrototypeRng(
-                run.Stochastic, prototypeRng)
-        };
+            run = run with
+            {
+                Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                    run.Stochastic, prototypeRng)
+            };
+        }
         return ResumeSemanticCombatDrawResult(
             run, result, fromHandDraw, eventDepth: 0,
             automaticHandDrawRequested: automaticRequested,

@@ -557,22 +557,15 @@ public sealed partial class PrototypeGameEngine
             {
                 World = world with { Combat = combat }
             };
-            var automaticDrawPrototypeRng = drawRun.Stochastic.PrototypeRng;
-            var resumedDraw = ResumeAutomaticHandDrawCards(
+            var (resumedRun, resumedDraw) = ResumeAutomaticHandDrawSegment(
                 drawRun, handDrawRemaining,
                 PrototypeDrawCardsSuspensionPolicyV111
                     .ControlledLegacyAutomaticHandDraw(
                         combat,
                         cardDrawnChoice: !ControlledChanceGuardV111
-                            .EngineOwnedNativeProviderActive),
-                automaticDrawPrototypeRng);
-            drawRun = drawRun with
-            {
-                Stochastic = RunStochasticStateV111.WithPrototypeRng(
-                    drawRun.Stochastic, automaticDrawPrototypeRng)
-            };
+                            .EngineOwnedNativeProviderActive));
             return ResumeSavedControlledAutomaticHandDraw(
-                drawRun, resumedDraw)
+                resumedRun, resumedDraw)
                     .ToAutomaticPipelineResumeResult();
         }
 

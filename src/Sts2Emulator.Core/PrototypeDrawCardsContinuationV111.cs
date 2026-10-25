@@ -501,8 +501,8 @@ public sealed partial class PrototypeGameEngine
 
     /// <summary>
     /// Resume the remaining cards in a saved automatic hand-draw segment.
-    /// Provider adapters supply suspension policy and RNG; this owner checks
-    /// the shared cursor, clears its progress, and enters the draw kernel.
+    /// The shared cursor is checked and cleared before entering the draw
+    /// kernel with the caller's prototype RNG projection.
     /// </summary>
     private static PrototypeDrawCardsResult ResumeAutomaticHandDrawCards(
         RunState checkpoint,
@@ -543,5 +543,29 @@ public sealed partial class PrototypeGameEngine
             fromHandDraw: true, eventDepth: eventDepth,
             suspensionPolicy: suspensionPolicy,
             automaticHandDrawStage: true);
+    }
+
+    /// <summary>
+    /// Resume a saved automatic hand-draw segment and publish its advanced
+    /// prototype RNG with the source checkpoint. Adapters retain ownership of
+    /// the returned boundary interpretation and their typed transcripts.
+    /// </summary>
+    private static (RunState Run, PrototypeDrawCardsResult Drawn)
+        ResumeAutomaticHandDrawSegment(
+        RunState checkpoint,
+        int remaining,
+        PrototypeDrawCardsSuspensionPolicyV111 suspensionPolicy,
+        int eventDepth = 0)
+    {
+        var prototypeRng = checkpoint.Stochastic.PrototypeRng;
+        var drawn = ResumeAutomaticHandDrawCards(
+            checkpoint, remaining, suspensionPolicy, prototypeRng,
+            eventDepth);
+        var run = checkpoint with
+        {
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                checkpoint.Stochastic, prototypeRng)
+        };
+        return (run, drawn);
     }
 }

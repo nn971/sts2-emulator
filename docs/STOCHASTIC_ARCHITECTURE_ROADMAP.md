@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 shared automatic hand-draw RNG publication increment (2026-10-26):**
+Saved controlled and semantic automatic hand-draw resumes now use
+`ResumeAutomaticHandDrawSegment` to fork the prototype RNG, invoke the shared
+draw kernel, and publish its advanced RNG with the checkpoint. Adapters retain
+their suspension policies, boundary interpretation, and typed transcripts.
+Core and CLI Release builds and `git diff --check` passed; no tests were run.
+
 **S4 replay action-boundary capture increment (2026-10-26):** Provider replay
 capture v8 requires a mechanics snapshot after each completed action whenever
 the capture provenance is replay-validated, alongside its existing ordered
