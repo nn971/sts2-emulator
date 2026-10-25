@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Sts2Emulator.Core;
 
 public static class SemanticChanceEventContractV111
@@ -37,39 +39,14 @@ internal sealed record SemanticPendingIndexChanceEventV111(
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(boundaryFingerprint);
         ArgumentNullException.ThrowIfNull(chanceEvent);
-        var supportCount = chanceEvent switch
-        {
-            SemanticEndTurnIndexEventV111 endTurn =>
-                endTurn.Request.SupportCount,
-            SemanticTargetEventV111 target =>
-                target.CandidateEnemyInstanceIds.Length,
-            SemanticGeneratedCardEventV111 generatedCard =>
-                generatedCard.CandidateCardIds.Length,
-            SemanticCostEventV111 cost => cost.CandidateCosts.Length,
-            SemanticRandomPileCardEventV111 randomPileCard =>
-                randomPileCard.CandidateCardInstanceIds.Length,
-            SemanticCardTransformEventV111 cardTransform =>
-                cardTransform.CandidateCardIds.Length,
-            SemanticPotionGenerationEventV111 potionGeneration =>
-                potionGeneration.CandidatePotionIds.Length,
-            SemanticHandCostSelectionEventV111 handCost =>
-                handCost.CandidateCardInstanceIds.Length,
-            SemanticPoolShuffleEventV111 poolShuffle =>
-                poolShuffle.Request.SupportCount,
-            SemanticDrawInsertionEventV111 drawInsertion =>
-                drawInsertion.Request.SupportCount,
-            SemanticCardShortlistEventV111 shortlist =>
-                shortlist.CandidateCardInstanceIds.Length,
-            SemanticDeckEventV111 deck =>
-                deck.CandidateCardInstanceIds.Length,
-            _ => throw new NotSupportedException(
-                $"UNSUPPORTED_SEMANTIC_CHANCE site={chanceEvent.SiteId}")
-        };
+        var supportCount = CreateOrderedOutcomeIds(chanceEvent).Length;
         var pending = new SemanticPendingIndexChanceEventV111(
             chanceEvent, supportCount, boundaryFingerprint);
         pending.Validate();
         return pending;
     }
+
+    public string[] OrderedOutcomeIds => CreateOrderedOutcomeIds(Event);
 
     public void ValidateSelection(string boundaryFingerprint, int index)
     {
@@ -105,5 +82,58 @@ internal sealed record SemanticPendingIndexChanceEventV111(
             string.IsNullOrWhiteSpace(BoundaryFingerprint))
             throw new InvalidDataException(
                 "Invalid pending semantic index chance event.");
+        if (CreateOrderedOutcomeIds(Event).Length != SupportCount)
+            throw new InvalidDataException(
+                $"Pending semantic chance support changed " +
+                $"site={Event.SiteId}.");
     }
+
+    private static string[] CreateOrderedOutcomeIds(
+        ISemanticChanceEventV111 chanceEvent) => chanceEvent switch
+    {
+        SemanticEndTurnIndexEventV111 endTurn => IndexOutcomeIds(
+            "choice_index:", endTurn.Request.SupportCount),
+        SemanticTargetEventV111 target =>
+            target.CandidateEnemyInstanceIds.Select(instanceId =>
+                "enemy_instance:" + instanceId.ToString(
+                    CultureInfo.InvariantCulture)).ToArray(),
+        SemanticGeneratedCardEventV111 generatedCard =>
+            generatedCard.CandidateCardIds.Select(cardId =>
+                "card_model:" + cardId).ToArray(),
+        SemanticCostEventV111 cost =>
+            cost.CandidateCosts.Select(value =>
+                "cost:" + value.ToString(CultureInfo.InvariantCulture))
+                .ToArray(),
+        SemanticRandomPileCardEventV111 randomPileCard =>
+            randomPileCard.CandidateCardInstanceIds
+                .Select(CardInstanceOutcomeId).ToArray(),
+        SemanticCardTransformEventV111 transform =>
+            transform.CandidateCardIds.Select(cardId =>
+                "card_model:" + cardId).ToArray(),
+        SemanticPotionGenerationEventV111 potion =>
+            potion.CandidatePotionIds.Select(potionId =>
+                "potion_model:" + potionId).ToArray(),
+        SemanticHandCostSelectionEventV111 handCost =>
+            handCost.CandidateCardInstanceIds
+                .Select(CardInstanceOutcomeId).ToArray(),
+        SemanticPoolShuffleEventV111 poolShuffle => IndexOutcomeIds(
+            "swap_index:", poolShuffle.Request.SupportCount),
+        SemanticDrawInsertionEventV111 drawInsertion => IndexOutcomeIds(
+            "draw_position:", drawInsertion.Request.SupportCount),
+        SemanticCardShortlistEventV111 shortlist =>
+            shortlist.CandidateCardInstanceIds
+                .Select(CardInstanceOutcomeId).ToArray(),
+        SemanticDeckEventV111 deck =>
+            deck.CandidateCardInstanceIds
+                .Select(CardInstanceOutcomeId).ToArray(),
+        _ => throw new NotSupportedException(
+            $"UNSUPPORTED_SEMANTIC_CHANCE site={chanceEvent.SiteId}")
+    };
+
+    private static string[] IndexOutcomeIds(string prefix, int supportCount) =>
+        Enumerable.Range(0, supportCount).Select(index =>
+            prefix + index.ToString(CultureInfo.InvariantCulture)).ToArray();
+
+    private static string CardInstanceOutcomeId(long instanceId) =>
+        "card_instance:" + instanceId.ToString(CultureInfo.InvariantCulture);
 }

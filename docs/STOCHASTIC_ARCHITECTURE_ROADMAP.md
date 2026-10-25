@@ -10,6 +10,13 @@ and shortlist branches no longer repeat the primitive outcome check. Their
 typed request owners still validate site and provenance. Static source review
 and `git diff --check` only; no tests or builds were run.
 
+**S4 pending event support projection ownership (2026-10-25):** The pending
+semantic event now owns both its checked support count and ordered Chance Law
+outcome IDs. ReferenceNature law validation reuses that projection instead of
+maintaining a second event-variant mapping. Stale or unsupported supports fail
+before sampling. Static source review and `git diff --check` only; no tests or
+builds were run.
+
 **S4 active semantic law-dispatch ownership (2026-10-25):** Typed pending
 index events now resolve to their Chance Law through
 `SemanticChanceLawDispatchV111`. It verifies that the descriptor belongs to
