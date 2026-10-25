@@ -1140,6 +1140,16 @@ player observation.
 
 ## Current S4 continuation support
 
+`SemanticEndTurnPendingEventsV111` is a transient projection over the full
+end-turn boundary. It captures active hand-draw events through the draw
+owner's shared projection and captures the surrounding enemy-action, intent,
+target, nested action, generation, cost, insertion, and other typed choices
+through the end-turn owner. End-turn validation and selected-index dispatch
+reuse that captured view. The projection distinguishes an action-only
+`CardDrawn` hook owned by an active draw from one owned by the surrounding
+pipeline, so both retain their existing resume paths. It is not serialized;
+typed choice owners still validate their source support and apply mechanics.
+
 The semantic draw stochastic owner also records random free-attack model
 selections reached from an active `CardDrawn` or pre-draw hook. The selected
 model is followed by the existing draw-pile insertion-position choice; the

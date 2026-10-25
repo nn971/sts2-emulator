@@ -602,7 +602,9 @@ public sealed record SemanticEndTurnV111(
             PrototypeMechanicsContinuationKindV111.SemanticEndTurn);
         this.Stochastic.Validate();
         var handDraw = this.HandDraw;
-        var targetPending = this.DescribeTargetPending(handDraw);
+        var pendingEvents = SemanticEndTurnPendingEventsV111.Describe(this);
+        pendingEvents.Validate();
+        var targetPending = pendingEvents.Target;
         if (this.EnemyActionPending is not null)
         {
             if (this.Complete || this.Intents is not null ||
@@ -672,11 +674,6 @@ public sealed record SemanticEndTurnV111(
         {
             SemanticEndTurnEngineV111.ValidateOrigin(this.Origin);
         }
-        this.EnemyActionEventPending?.Validate();
-        this.IntentChoicePending?.Validate();
-        this.DescribeDrawInsertionPending(handDraw)?.Validate();
-        this.DescribeGeneratedCardPending(handDraw)?.Validate();
-        this.DescribeNestedDrawHookChoicePending(handDraw)?.Validate();
         if (string.IsNullOrWhiteSpace(this.NativeEncounterEntry) ||
             this.Stochastic.IntentTranscript is null ||
             this.Stochastic.EnemyActionTranscript is null ||
@@ -792,6 +789,103 @@ public sealed record SemanticEndTurnV111(
         PlayerActionSource = PlayerActionSource?.Fork(),
         Stochastic = Stochastic.Fork()
     };
+}
+
+/// <summary>
+/// One transient view of every supported semantic boundary owned by an
+/// end-turn continuation. Active hand-draw events are captured together by
+/// the draw owner; the remaining events are projected from the end-turn
+/// mechanics checkpoint. This is deliberately not part of the snapshot.
+/// </summary>
+internal sealed record SemanticEndTurnPendingEventsV111(
+    SemanticCombatDrawPendingEventsV111? HandDraw,
+    SemanticEndTurnIndexEventV111? EnemyAction,
+    SemanticIntentEventV111? Intent,
+    SemanticTargetEventV111? Target,
+    SemanticKnowledgeDemonChoiceEventV111? KnowledgeDemon,
+    SemanticDeckEventV111? Draw,
+    SemanticRandomPileCardEventV111? RandomPileCard,
+    RandomIndexRequestV111? Cost,
+    SemanticDrawHookChoiceEventV111? DrawHookChoice,
+    SemanticCardSelectionEventV111? CardSelection,
+    SemanticGeneratedCardEventV111? GeneratedCard,
+    SemanticPotionGenerationEventV111? PotionGeneration,
+    SemanticPoolShuffleEventV111? PoolShuffle,
+    SemanticCardTransformEventV111? CardTransform,
+    SemanticCardShortlistEventV111? CardShortlist,
+    SemanticCostEventV111? RandomHandCost,
+    SemanticHandCostSelectionEventV111? HandCostSelection,
+    SemanticDrawInsertionEventV111? DrawInsertion,
+    SemanticCardSelectionEventV111? StratagemSelection,
+    SemanticDrawHookChoiceEventV111? PipelineDrawHookChoice)
+{
+    public static SemanticEndTurnPendingEventsV111 Describe(
+        SemanticEndTurnV111 state)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        if (state.Complete)
+            return new(null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null,
+                null, null, null);
+
+        var handDraw = state.HandDraw;
+        var activeHandDraw = handDraw is { AtBoundary: false };
+        var draw = activeHandDraw
+            ? SemanticCombatDrawEngineV111.DescribePendingEvents(handDraw!)
+            : null;
+        return new(
+            draw,
+            state.EnemyActionEventPending,
+            state.IntentChoicePending,
+            draw?.Target ?? state.DescribeTargetPending(handDraw),
+            state.KnowledgeDemonChoicePending,
+            state.DescribeDrawPending(handDraw),
+            draw?.RandomPileCard ?? state.RandomPileCardPending,
+            draw?.Cost ?? state.CostPending,
+            draw?.DrawHookChoice ??
+                state.DescribeNestedDrawHookChoicePending(handDraw),
+            draw?.CardSelection ??
+                state.DescribeNestedCardSelectionPending(handDraw),
+            draw?.GeneratedCard ??
+                state.DescribeGeneratedCardPending(handDraw),
+            draw?.PotionGeneration ??
+                state.DescribePotionGenerationPending(handDraw),
+            draw?.PoolShuffle ?? state.DescribePoolShufflePending(handDraw),
+            draw?.CardTransform ??
+                state.DescribeCardTransformPending(handDraw),
+            draw?.CardShortlist ??
+                state.DescribeCardShortlistPending(handDraw),
+            draw?.RandomHandCost ?? state.DescribeNestedCostPending(handDraw),
+            draw?.HandCostSelection ??
+                state.DescribeNestedHandCostSelectionPending(handDraw),
+            draw?.DrawInsertion ?? state.DescribeDrawInsertionPending(handDraw),
+            draw?.StratagemSelection ?? state.StratagemSelectionPending,
+            activeHandDraw ? null :
+                state.DescribeNestedDrawHookChoicePending(handDraw));
+    }
+
+    public void Validate()
+    {
+        EnemyAction?.Validate();
+        Intent?.Validate();
+        Target?.Validate();
+        KnowledgeDemon?.Validate();
+        Draw?.Validate();
+        RandomPileCard?.Validate();
+        Cost?.Validate();
+        DrawHookChoice?.Validate();
+        CardSelection?.Validate();
+        GeneratedCard?.Validate();
+        PotionGeneration?.Validate();
+        PoolShuffle?.Validate();
+        CardTransform?.Validate();
+        CardShortlist?.Validate();
+        RandomHandCost?.Validate();
+        HandCostSelection?.Validate();
+        DrawInsertion?.Validate();
+        StratagemSelection?.Validate();
+        PipelineDrawHookChoice?.Validate();
+    }
 }
 
 public static class SemanticEndTurnEngineV111
@@ -938,15 +1032,13 @@ public static class SemanticEndTurnEngineV111
             throw new InvalidOperationException("End-turn Nature choices are complete.");
         var state = source.Fork();
         var handDraw = state.HandDraw;
-        var drawPendingEvents =
-            handDraw is { AtBoundary: false } activeDrawFrame
-                ? SemanticCombatDrawEngineV111
-                    .DescribePendingEvents(activeDrawFrame)
-                : null;
-        if (state.EnemyActionPending is { } enemyActionRequest)
+        var isActiveHandDraw = handDraw is { AtBoundary: false };
+        var pendingEvents = SemanticEndTurnPendingEventsV111.Describe(state);
+        var drawPendingEvents = pendingEvents.HandDraw;
+        if ((pendingEvents.EnemyAction?.Request ??
+             state.EnemyActionPending) is { } enemyActionRequest)
         {
-            var candidateLabels = state.EnemyActionEventPending?
-                .CandidateLabels;
+            var candidateLabels = pendingEvents.EnemyAction?.CandidateLabels;
             var (resumed, decision) =
                 ControlledChanceContinuationExecutorV111
                 .ResolveSelectedIndexValueWithDecision<SemanticEndTurnV111,
@@ -964,10 +1056,7 @@ public static class SemanticEndTurnEngineV111
                 state, resumed,
                 stochastic, "combat.enemy_action");
         }
-        else if ((drawPendingEvents?.Target ??
-                  (handDraw is not { AtBoundary: false }
-                      ? state.DescribeTargetPending(handDraw) : null))
-                 is { } target)
+        else if (pendingEvents.Target is { } target)
         {
             if (selectedIndex < 0 ||
                 selectedIndex >= target.CandidateEnemyInstanceIds.Length)
@@ -975,10 +1064,7 @@ public static class SemanticEndTurnEngineV111
             state = ResolveTarget(state, state.Fingerprint, target.EventId,
                 target.CandidateEnemyInstanceIds[selectedIndex]);
         }
-        else if ((drawPendingEvents?.CardSelection ??
-                  (handDraw is not { AtBoundary: false }
-                      ? state.DescribeNestedCardSelectionPending(handDraw)
-                      : null)) is { } cardSelection)
+        else if (pendingEvents.CardSelection is { } cardSelection)
         {
             if (selectedIndex < 0 ||
                 selectedIndex >= cardSelection.Candidates.Length)
@@ -987,7 +1073,7 @@ public static class SemanticEndTurnEngineV111
                 state, state.Fingerprint, cardSelection.EventId,
                 cardSelection.Candidates[selectedIndex].ActionId);
         }
-        else if (state.DescribeNestedDrawHookChoicePending(handDraw) is
+        else if (pendingEvents.PipelineDrawHookChoice is
                  { } drawHookChoice)
         {
             if (selectedIndex < 0 ||
@@ -1009,9 +1095,8 @@ public static class SemanticEndTurnEngineV111
                 generatedCardHandDrawEvent.CandidateCardIds[selectedIndex]);
             state = ContinueHandDraw(state, nextHand);
         }
-        else if (handDraw is not { AtBoundary: false } &&
-                 state.DescribeGeneratedCardPending(handDraw) is
-                    { } generatedCard)
+        else if (!isActiveHandDraw &&
+                 pendingEvents.GeneratedCard is { } generatedCard)
         {
             if (selectedIndex < 0 ||
                 selectedIndex >= generatedCard.CandidateCardIds.Length)
@@ -1046,9 +1131,8 @@ public static class SemanticEndTurnEngineV111
                 poolHandDraw, poolHandDraw.Fingerprint, selectedIndex);
             state = ContinueHandDraw(state, nextHand);
         }
-        else if (handDraw is not { AtBoundary: false } &&
-                 state.DescribePotionGenerationPending(handDraw) is
-                    { } generatedPotion)
+        else if (!isActiveHandDraw &&
+                 pendingEvents.PotionGeneration is { } generatedPotion)
         {
             if (selectedIndex < 0 ||
                 selectedIndex >= generatedPotion.CandidatePotionIds.Length)
@@ -1061,10 +1145,7 @@ public static class SemanticEndTurnEngineV111
                 PotionGenerationDecision: decision.Fork());
             state = ResumeNestedSemanticChoice(state, choice);
         }
-        else if ((drawPendingEvents?.CardTransform ??
-                  (handDraw is not { AtBoundary: false }
-                      ? state.DescribeCardTransformPending(handDraw) : null))
-                 is { } cardTransform)
+        else if (pendingEvents.CardTransform is { } cardTransform)
         {
             if (selectedIndex < 0 ||
                 selectedIndex >= cardTransform.CandidateCardIds.Length)
@@ -1073,10 +1154,7 @@ public static class SemanticEndTurnEngineV111
                 state, state.Fingerprint, cardTransform.EventId,
                 cardTransform.CandidateCardIds[selectedIndex]);
         }
-        else if ((drawPendingEvents?.CardShortlist ??
-                  (handDraw is not { AtBoundary: false }
-                      ? state.DescribeCardShortlistPending(handDraw) : null))
-                 is { } cardShortlist)
+        else if (pendingEvents.CardShortlist is { } cardShortlist)
         {
             if (selectedIndex < 0 ||
                 selectedIndex >= cardShortlist.CandidateCardInstanceIds.Length)
@@ -1085,9 +1163,8 @@ public static class SemanticEndTurnEngineV111
                 state, state.Fingerprint, cardShortlist.EventId,
                 cardShortlist.CandidateCardInstanceIds[selectedIndex]);
         }
-        else if (handDraw is not { AtBoundary: false } &&
-                 state.DescribePoolShufflePending(handDraw) is
-                    { } poolShuffle)
+        else if (!isActiveHandDraw &&
+                 pendingEvents.PoolShuffle is { } poolShuffle)
         {
             if (selectedIndex < 0 ||
                 selectedIndex > poolShuffle.NextSwapIndex)
@@ -1099,10 +1176,7 @@ public static class SemanticEndTurnEngineV111
                 PoolShuffleDecision: decision.Fork());
             state = ResumeNestedSemanticChoice(state, choice);
         }
-        else if ((drawPendingEvents?.RandomHandCost ??
-                  (handDraw is not { AtBoundary: false }
-                      ? state.DescribeNestedCostPending(handDraw) : null))
-                 is { } nestedCost)
+        else if (pendingEvents.RandomHandCost is { } nestedCost)
         {
             if (selectedIndex < 0 ||
                 selectedIndex >= nestedCost.CandidateCosts.Length)
@@ -1111,10 +1185,7 @@ public static class SemanticEndTurnEngineV111
                 state, state.Fingerprint, nestedCost.EventId,
                 nestedCost.CandidateCosts[selectedIndex]);
         }
-        else if ((drawPendingEvents?.HandCostSelection ??
-                  (handDraw is not { AtBoundary: false }
-                      ? state.DescribeNestedHandCostSelectionPending(handDraw)
-                      : null)) is { } handCostSelection)
+        else if (pendingEvents.HandCostSelection is { } handCostSelection)
         {
             if (selectedIndex < 0 ||
                 selectedIndex >= handCostSelection.CandidateCardInstanceIds.Length)
@@ -1124,14 +1195,14 @@ public static class SemanticEndTurnEngineV111
                 handCostSelection.CandidateCardInstanceIds[selectedIndex]);
         }
         else if (handDraw is { AtBoundary: false } costHandDraw &&
-                 drawPendingEvents?.Cost is not null)
+                 pendingEvents.Cost is not null)
         {
             var nextHand = SemanticCombatDrawEngineV111.Resolve(
                 costHandDraw, costHandDraw.Fingerprint, selectedIndex);
             state = ContinueHandDraw(state, nextHand);
         }
         else if (handDraw is { AtBoundary: false } activeHandDraw &&
-                 drawPendingEvents?.PendingDraw is { Purpose: "draw" } &&
+                 pendingEvents.Draw is { Purpose: "draw" } &&
                  activeHandDraw.Run.World?.Combat is { } activeCombat &&
                  (activeCombat.PendingChoice is null ||
                   activeCombat.PendingChoice is { } nestedEffectDraw &&
@@ -1148,7 +1219,7 @@ public static class SemanticEndTurnEngineV111
             state = ContinueHandDraw(state, nextHand);
         }
         else if (handDraw is { AtBoundary: false } pileCardHandDraw &&
-                 drawPendingEvents?.RandomPileCard is not null)
+                 pendingEvents.RandomPileCard is not null)
         {
             var nextHand = SemanticCombatDrawEngineV111.Resolve(
                 pileCardHandDraw, pileCardHandDraw.Fingerprint,
@@ -1156,16 +1227,15 @@ public static class SemanticEndTurnEngineV111
             state = ContinueHandDraw(state, nextHand);
         }
         else if (handDraw is { AtBoundary: false } insertionHandDraw &&
-                 drawPendingEvents?.DrawInsertion is not null)
+                 pendingEvents.DrawInsertion is not null)
         {
             var nextHand = SemanticCombatDrawEngineV111.Resolve(
                 insertionHandDraw, insertionHandDraw.Fingerprint,
                 selectedIndex);
             state = ContinueHandDraw(state, nextHand);
         }
-        else if (handDraw is not { AtBoundary: false } &&
-                 state.DescribeNestedDrawInsertionPending(handDraw) is
-                    { } nestedInsertion)
+        else if (!isActiveHandDraw &&
+                 pendingEvents.DrawInsertion is { } nestedInsertion)
         {
             var decision = SemanticDrawInsertionChoiceV111.Select(
                 nestedInsertion, nestedInsertion.EventId, selectedIndex);
@@ -1178,8 +1248,7 @@ public static class SemanticEndTurnEngineV111
                  PrototypeGameEngine
                     .HasPendingSupportedAutomaticPipelineSemanticDraw(
                         state.Run) &&
-                 state.DescribeDrawPending(handDraw) is
-                    { Purpose: "draw" } nestedDraw &&
+                 pendingEvents.Draw is { Purpose: "draw" } nestedDraw &&
                  state.Run.World?.Combat?.PendingChoice?.ControlledSemanticDraw
                     is not null)
         {
@@ -1213,13 +1282,10 @@ public static class SemanticEndTurnEngineV111
         }
         else if (handDraw is { AtBoundary: false } hand)
         {
-            var activePendingEvents = drawPendingEvents ??
-                throw new InvalidDataException(
-                    "Active end-turn hand draw has no pending-event projection.");
-            if (activePendingEvents.DrawHookChoice is not null)
+            if (drawPendingEvents?.DrawHookChoice is not null)
                 throw new InvalidOperationException(
                     "Resolve the pending CardDrawn hook action by action ID.");
-            if (activePendingEvents.StratagemSelection is not null)
+            if (pendingEvents.StratagemSelection is not null)
                 throw new InvalidOperationException(
                     "Resolve the pending source Stratagem selection by action ID.");
             var next = SemanticCombatDrawEngineV111.Resolve(

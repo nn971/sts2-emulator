@@ -145,6 +145,18 @@ Validation, `AtBoundary`, and end-turn selected-index dispatch consume this
 projection. No schema changed. Static source review and `git diff --check`
 only; no tests or builds were run.
 
+**S4 end-turn pending-event projection (2026-10-25):** End-turn validation and
+selected-index dispatch now capture one transient projection spanning active
+hand-draw events and the surrounding target, selection, cost, insertion,
+generation, shuffle, transform, shortlist, intent, and enemy-action events.
+Action-only draw-hook choices retain their pipeline-versus-active-draw owner
+distinction. Typed resolvers keep their support checks, transcripts, and resume
+behavior; the projection adds no snapshot fields. Static source review and
+the RNG callsite inventory guard plus `git diff --check` passed. A Core build
+was attempted and remains blocked by
+pre-existing compiler errors in untouched files (record members named
+`Clone` and an unresolved relic-bag plan type); no tests were run.
+
 **S5 shared candidate-label binding validation (2026-10-25):** Controlled
 event-choice, run-action, and playable-combat Python facades now use one
 validator for non-empty labels and membership in the saved pending support.
