@@ -307,17 +307,15 @@ public sealed record SemanticEndTurnStochasticStateV111
 
             var primitive = intentTranscript[entry.TranscriptIndex];
             var semanticEvent = entry.Decision.Event;
-            var selectedCandidate = semanticEvent.Support.Candidates
-                .SingleOrDefault(candidate =>
-                    candidate.IntentId == entry.Decision.IntentId);
-            if (selectedCandidate is null ||
+            if (!SemanticIntentChoiceV111.IsDecisionAtSourceTicket(
+                    semanticEvent, entry.Decision,
+                    primitive.SelectedIndex) ||
                 primitive.Request.SiteId != semanticEvent.SiteId ||
                 primitive.Request.StreamId != semanticEvent.StreamId ||
                 primitive.Request.OwnerId != semanticEvent.OwnerId ||
                 primitive.Request.Ordinal != semanticEvent.Ordinal ||
                 primitive.Request.SupportCount !=
-                    semanticEvent.Support.TotalRawWeight ||
-                primitive.SelectedIndex != selectedCandidate.TicketStart)
+                    semanticEvent.Support.TotalRawWeight)
                 throw new InvalidDataException(
                     "Semantic intent outcome differs from its retained primitive ticket.");
         }

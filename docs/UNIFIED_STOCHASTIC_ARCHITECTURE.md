@@ -1555,6 +1555,13 @@ semantic draw frame retains the existing pre-draw cursor and insertion
 transcript. Resolving the insertion resumes the ordinary hand-draw step
 through its pipeline owner; no choice or snapshot fields were added.
 
+Weighted intent ticket support now has one semantic projection for both
+Native outcome lookup and controlled replay labels. End-turn transcript
+validation uses the same selected-candidate and ticket-start check as intent
+selection, while the controlled session expands the validated intervals into
+the ordered primitive-label vector. This keeps weighted candidate identity
+and ticket mapping in the semantic intent owner.
+
 ## Reading order
 
 1. This architecture contract.

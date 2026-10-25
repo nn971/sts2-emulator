@@ -4923,3 +4923,9 @@ only the exact opening `AfterHandDraw` cursor, expected Stratagem pick count,
 current draw-pile support, and single saved hand-draw operation. Resolving the
 selection resumes that operation before opening advances. Static source review
 and `git diff --check` only; no tests or builds were run.
+
+**S2 weighted intent ticket projection increment (2026-10-25):** Native
+outcome lookup, controlled replay label expansion, and end-turn transcript
+validation now share the semantic intent support's candidate-to-ticket
+mapping. The primitive ticket transcript and intent law remain unchanged.
+Static source review and `git diff --check` only; no tests or builds were run.

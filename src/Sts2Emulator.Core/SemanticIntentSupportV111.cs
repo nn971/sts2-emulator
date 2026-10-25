@@ -228,6 +228,18 @@ public static class SemanticIntentChoiceV111
                 candidate.TicketStart + candidate.RawWeight));
     }
 
+    internal static string[] ExpandSourceTicketLabels(
+        SemanticIntentEventV111 pending)
+    {
+        ArgumentNullException.ThrowIfNull(pending);
+        pending.Validate();
+        var labels = new string[pending.Support.TotalRawWeight];
+        foreach (var candidate in pending.Support.Candidates)
+            Array.Fill(labels, candidate.IntentId, candidate.TicketStart,
+                candidate.RawWeight);
+        return labels;
+    }
+
     internal static SemanticIntentEventV111 CreateEvent(
         string boundaryFingerprint, RandomIndexRequestV111 request,
         SemanticIntentSupportV111 support)
@@ -275,16 +287,24 @@ public static class SemanticIntentChoiceV111
         SemanticIntentEventV111 pending,
         SemanticIntentDecisionV111 decision, int sourceTicket)
     {
+        if (!IsDecisionAtSourceTicket(pending, decision, sourceTicket))
+            throw new InvalidOperationException(
+                "Semantic intent event is stale or outside current support.");
+    }
+
+    internal static bool IsDecisionAtSourceTicket(
+        SemanticIntentEventV111 pending,
+        SemanticIntentDecisionV111 decision, int sourceTicket)
+    {
         ArgumentNullException.ThrowIfNull(pending);
         ArgumentNullException.ThrowIfNull(decision);
         pending.Validate();
         decision.Validate();
         var candidate = pending.Support.Candidates.SingleOrDefault(item =>
             item.IntentId == decision.IntentId);
-        if (candidate is null || sourceTicket != candidate.TicketStart ||
-            CanonicalJson.Sha256(pending) !=
-                CanonicalJson.Sha256(decision.Event))
-            throw new InvalidOperationException(
-                "Semantic intent event is stale or outside current support.");
+        return candidate is not null &&
+            sourceTicket == candidate.TicketStart &&
+            CanonicalJson.Sha256(pending) ==
+                CanonicalJson.Sha256(decision.Event);
     }
 }

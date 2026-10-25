@@ -983,23 +983,15 @@ public static class ControlledPlayableCombatEngineV111
             return null;
         if (state.TurnIntents?.Pending is { } intentRequest)
         {
-            var support = state.IntentChoicePending?.Support ??
+            var intentEvent = state.IntentChoicePending ??
                 throw new InvalidDataException(
                     "Pending turn-intent request has no semantic support.");
+            var support = intentEvent.Support;
             if (support.TotalRawWeight != intentRequest.SupportCount)
                 throw new InvalidDataException(
                     "Turn-intent labels disagree with the pending ticket bound.");
-            var labels = new string[support.TotalRawWeight];
-            foreach (var candidate in support.Candidates)
-            {
-                if (candidate.TicketStart < 0 || candidate.RawWeight <= 0 ||
-                    candidate.TicketStart + candidate.RawWeight > labels.Length)
-                    throw new InvalidDataException(
-                        "Turn-intent label interval is outside its pending ticket.");
-                Array.Fill(labels, candidate.IntentId, candidate.TicketStart,
-                    candidate.RawWeight);
-            }
-            return labels;
+            return SemanticIntentChoiceV111
+                .ExpandSourceTicketLabels(intentEvent);
         }
         return null;
     }
