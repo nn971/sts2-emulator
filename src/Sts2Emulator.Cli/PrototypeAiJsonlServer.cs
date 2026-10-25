@@ -10713,7 +10713,7 @@ internal static class PrototypeAiJsonlServer
                                     return referenceNaturePunchOffFightStates
                                         .TryGetValue(handle, out var punchOffFight)
                                         ? SimulationProviderReplayCaptureV111
-                                            .FromReferenceNatureControlledActionSession(
+                                            .FromReferenceNaturePunchOffFightSession(
                                                 punchOffFight)
                                         : throw new InvalidOperationException(
                                             "Unknown ReferenceNature Punch Off fight handle: " +
@@ -10722,7 +10722,7 @@ internal static class PrototypeAiJsonlServer
                                     return referenceNaturePunchOffRewardStates
                                         .TryGetValue(handle, out var punchOffReward)
                                         ? SimulationProviderReplayCaptureV111
-                                            .FromReferenceNatureControlledActionSession(
+                                            .FromReferenceNaturePunchOffRewardSession(
                                                 punchOffReward)
                                         : throw new InvalidOperationException(
                                             "Unknown ReferenceNature Punch Off reward handle: " +

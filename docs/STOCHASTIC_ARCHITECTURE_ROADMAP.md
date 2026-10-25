@@ -106,6 +106,14 @@ typed decisions before claiming semantic completeness. Core and CLI Release
 builds passed with zero warnings or errors; `git diff --check` passed. No
 tests were added or run.
 
+**S4 Punch Off semantic capture increment (2026-10-26):** JSONL provider
+replay now captures fight-entry HP offsets and conditional relic/potion
+reward identities beside their typed boundaries. The factories restore the
+completed sessions and re-query each law from the saved action and preceding
+selection prefix, including the relic-conditioned potion support. Core and CLI
+Release builds passed with zero warnings or errors; `git diff --check` passed.
+No tests were added or run.
+
 **S4 whole-run six-primitive continuation increment (2026-10-25):** The
 ReferenceNature whole-run session now accepts caller-supplied, replay-validated
 transcript entries for all six typed random operations alongside its existing

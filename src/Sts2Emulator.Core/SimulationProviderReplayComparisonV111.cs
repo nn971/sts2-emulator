@@ -342,6 +342,10 @@ public static class SimulationProviderReplayCaptureProvenanceV111
         "reference-nature-native-event-shuffle-semantic-identity-replay-validated-v1";
     public const string ReferenceNatureEndlessConveyorSemanticIdentityReplayValidated =
         "reference-nature-endless-conveyor-semantic-identity-replay-validated-v1";
+    public const string ReferenceNaturePunchOffFightSemanticIdentityReplayValidated =
+        "reference-nature-punch-off-fight-semantic-identity-replay-validated-v1";
+    public const string ReferenceNaturePunchOffRewardSemanticIdentityReplayValidated =
+        "reference-nature-punch-off-reward-semantic-identity-replay-validated-v1";
     public const string ReferenceNatureEventChoiceReplayValidated =
         "reference-nature-event-choice-replay-validated-v1";
     public const string ReferenceNatureControlledActionReplayValidated =
@@ -378,6 +382,8 @@ public static class SimulationProviderReplayCaptureProvenanceV111
         ReferenceNatureGloryReflectionsSemanticIdentityReplayValidated or
         ReferenceNatureNativeEventShuffleSemanticIdentityReplayValidated or
         ReferenceNatureEndlessConveyorSemanticIdentityReplayValidated or
+        ReferenceNaturePunchOffFightSemanticIdentityReplayValidated or
+        ReferenceNaturePunchOffRewardSemanticIdentityReplayValidated or
         ReferenceNatureEventChoiceReplayValidated or
         ReferenceNatureControlledActionReplayValidated or
         ReferenceNatureNeowOfferReplayValidated or
@@ -415,6 +421,8 @@ public static class SimulationProviderReplayCaptureProvenanceV111
             ReferenceNatureGloryReflectionsSemanticIdentityReplayValidated or
             ReferenceNatureNativeEventShuffleSemanticIdentityReplayValidated or
             ReferenceNatureEndlessConveyorSemanticIdentityReplayValidated or
+            ReferenceNaturePunchOffFightSemanticIdentityReplayValidated or
+            ReferenceNaturePunchOffRewardSemanticIdentityReplayValidated or
             ReferenceNatureSemanticIdentityReplayValidated or
             ReferenceNatureCombatRewardSemanticIdentityReplayValidated;
 
@@ -1795,6 +1803,90 @@ public sealed record SimulationProviderReplayCaptureV111(
     }
 
     /// <summary>
+    /// Captures Punch Off fight-entry HP offsets as semantic outcomes beside
+    /// their typed request boundaries.
+    /// </summary>
+    public static SimulationProviderReplayCaptureV111
+        FromReferenceNaturePunchOffFightSession(
+            ReferenceNaturePunchOffFightSessionV111 session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        ReferenceNaturePunchOffFightSessionV111 validated;
+        using (RandomBoundaryJournalV111.Begin())
+            validated = ReferenceNaturePunchOffFightSessionV111.Restore(
+                ReferenceNaturePunchOffFightSessionV111.Save(session));
+        if (!validated.Complete)
+            throw new InvalidOperationException(
+                "Provider replay capture requires a completed ReferenceNature Punch Off fight session.");
+
+        var providerDecisions = validated.ProviderDecisions;
+        var transcript = validated.DecisionTranscript.Select(selection =>
+            new SimulationProviderReplaySemanticSelectionV111(
+                selection.LawId, selection.EventId, selection.OutcomeId,
+                selection.OutcomeIndex)).ToArray();
+        return FromReferenceNatureSemanticAction(
+            validated.Origin, validated.Action, validated.Run,
+            providerDecisions, transcript, index =>
+            {
+                var request = providerDecisions[index].IndexDecision?.Request ??
+                    throw new InvalidDataException(
+                        "ReferenceNature Punch Off fight decision has no index request.");
+                var priorIndices = providerDecisions.Take(index).Select(
+                    decision => decision.IndexDecision?.SelectedIndex ??
+                        throw new InvalidDataException(
+                            "ReferenceNature Punch Off fight prefix has no index outcome."))
+                    .ToArray();
+                return ChanceLawEngineV111.QueryNativePunchOffFight(
+                    validated.Origin, request.SiteId, index, priorIndices,
+                    validated.ActionId);
+            },
+            SimulationProviderReplayCaptureProvenanceV111
+                .ReferenceNaturePunchOffFightSemanticIdentityReplayValidated);
+    }
+
+    /// <summary>
+    /// Captures Punch Off's conditional relic and potion reward identities
+    /// beside their typed request boundaries.
+    /// </summary>
+    public static SimulationProviderReplayCaptureV111
+        FromReferenceNaturePunchOffRewardSession(
+            ReferenceNaturePunchOffRewardSessionV111 session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        ReferenceNaturePunchOffRewardSessionV111 validated;
+        using (RandomBoundaryJournalV111.Begin())
+            validated = ReferenceNaturePunchOffRewardSessionV111.Restore(
+                ReferenceNaturePunchOffRewardSessionV111.Save(session));
+        if (!validated.Complete)
+            throw new InvalidOperationException(
+                "Provider replay capture requires a completed ReferenceNature Punch Off reward session.");
+
+        var providerDecisions = validated.ProviderDecisions;
+        var transcript = validated.DecisionTranscript.Select(selection =>
+            new SimulationProviderReplaySemanticSelectionV111(
+                selection.LawId, selection.EventId, selection.OutcomeId,
+                selection.OutcomeIndex)).ToArray();
+        return FromReferenceNatureSemanticAction(
+            validated.Origin, validated.Action, validated.Run,
+            providerDecisions, transcript, index =>
+            {
+                var request = providerDecisions[index].IndexDecision?.Request ??
+                    throw new InvalidDataException(
+                        "ReferenceNature Punch Off reward decision has no index request.");
+                var priorIndices = providerDecisions.Take(index).Select(
+                    decision => decision.IndexDecision?.SelectedIndex ??
+                        throw new InvalidDataException(
+                            "ReferenceNature Punch Off reward prefix has no index outcome."))
+                    .ToArray();
+                return ChanceLawEngineV111.QueryNativePunchOffReward(
+                    validated.Origin, request.SiteId, request.Ordinal,
+                    priorIndices, validated.ActionId);
+            },
+            SimulationProviderReplayCaptureProvenanceV111
+                .ReferenceNaturePunchOffRewardSemanticIdentityReplayValidated);
+    }
+
+    /// <summary>
     /// Captures a completed combat victory and its atomic ReferenceNature
     /// reward transcript as provider-independent semantic outcomes.
     /// </summary>
@@ -2382,6 +2474,10 @@ public sealed record SimulationProviderReplayCaptureV111(
                  SimulationProviderReplayCaptureProvenanceV111
                     .ReferenceNatureEndlessConveyorSemanticIdentityReplayValidated or
                  SimulationProviderReplayCaptureProvenanceV111
+                    .ReferenceNaturePunchOffFightSemanticIdentityReplayValidated or
+                 SimulationProviderReplayCaptureProvenanceV111
+                    .ReferenceNaturePunchOffRewardSemanticIdentityReplayValidated or
+                 SimulationProviderReplayCaptureProvenanceV111
                     .SemanticNativePolicySemanticIdentityReplayValidated))
             throw new InvalidDataException(
                 "Legacy provider replay captures cannot claim provider-independent semantic identities.");
@@ -2414,6 +2510,10 @@ public sealed record SimulationProviderReplayCaptureV111(
                     .ReferenceNatureNativeEventShuffleSemanticIdentityReplayValidated or
                  SimulationProviderReplayCaptureProvenanceV111
                     .ReferenceNatureEndlessConveyorSemanticIdentityReplayValidated or
+                 SimulationProviderReplayCaptureProvenanceV111
+                    .ReferenceNaturePunchOffFightSemanticIdentityReplayValidated or
+                 SimulationProviderReplayCaptureProvenanceV111
+                    .ReferenceNaturePunchOffRewardSemanticIdentityReplayValidated or
                  SimulationProviderReplayCaptureProvenanceV111
                     .ReferenceNatureCombatRewardSemanticIdentityReplayValidated or
                  SimulationProviderReplayCaptureProvenanceV111
