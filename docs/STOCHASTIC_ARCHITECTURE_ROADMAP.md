@@ -11,9 +11,11 @@ truncated-rounded-normal law and typed outcome mapper, and routes registered
 Native map bounded-index requests through the source-shaped map law dispatcher.
 Existing Native generated-event-gold, merchant no-effect upgrade-roll,
 PotionFactory rarity, combat-potion odds, card-rarity, and encounter-card
-upgrade laws and the Endless Conveyor weighted-dish law now resolve their
-typed unit-float requests automatically. The dish law is conditioned on the
-active event/action and validates the event stream and support owner.
+upgrade laws, Native merchant price laws, and the Endless Conveyor weighted-
+dish law now resolve their typed unit-float requests automatically. Merchant
+prices are conditioned on the current Shop, offer owner, and Native Shops
+stream; the dish law is conditioned on the active event/action and validates
+the event stream and support owner.
 Combat-potion odds use the saved combat boundary, current pity state, Elite
 status, and exact Native request; card-rarity and card-upgrade requests are
 checked against the saved encounter or Shop boundary and their source owner.

@@ -248,8 +248,8 @@ public sealed record ReferenceNatureScriptedRunSessionSnapshotV111(
 /// Whole-run ReferenceNature session for ordinary legal actions. Finite-index
 /// boundaries, registered Native map quota Gaussians, selected Native event
 /// gold, card-rarity, combat-potion odds, card-upgrade, and Endless Conveyor
-/// floats, PotionFactory rarity, and the inert merchant upgrade roll can be
-/// sampled by ReferenceNature;
+/// floats, PotionFactory rarity, Native merchant prices, and the inert
+/// merchant upgrade roll can be sampled by ReferenceNature;
 /// any of the six typed boundaries can instead be resolved from a caller-supplied
 /// transcript.
 /// </summary>
@@ -530,6 +530,9 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
         }
         if (request.UnitFloatRequest is { } unitFloatRequest)
         {
+            if (QueryNativeMerchantPrice(active, unitFloatRequest) is
+                { } merchantPriceLaw)
+                return merchantPriceLaw;
             if (unitFloatRequest.SiteId ==
                 PrototypeNativeEndlessConveyor.DishWeightedTicketSiteId)
                 return QueryEndlessConveyorDish(active, unitFloatRequest);
@@ -563,6 +566,93 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
                 gaussianRequest))
             return ChanceLawEngineV111.QueryNativeMapRequest(request);
         return null;
+    }
+
+    private static ChanceLawV111? QueryNativeMerchantPrice(
+        ScriptedRunActionSessionV111 active,
+        RandomUnitFloatRequestV111 request)
+    {
+        if (!StochasticSiteRegistryV111.IsNativeMerchantPriceSite(
+                request.SiteId) ||
+            request.StreamId != NativePlayerRngV111.ShopsStreamId)
+            return null;
+
+        var owner = request.OwnerId.Split(':');
+        if (owner.Length < 6 || owner[0] != "act" ||
+            !int.TryParse(owner[1], out var act) || owner[2] != "floor" ||
+            !int.TryParse(owner[3], out var floor))
+            throw new InvalidDataException(
+                "Native merchant price owner is malformed.");
+        var run = active.Origin;
+        if (run.World is not { } world || world.Act != act ||
+            world.Floor != floor)
+            throw new InvalidDataException(
+                "Native merchant price owner differs from its saved Shop boundary.");
+
+        int ordinal;
+        string? cardId = null;
+        string? potionId = null;
+        string? relicId = null;
+        var colorlessOffer = false;
+        var saleReprice = false;
+        if (owner[4] == "colorless_offer" && owner.Length >= 8 &&
+            owner[6] == "card" &&
+            int.TryParse(owner[5], out ordinal))
+        {
+            cardId = string.Join(":", owner[7..]);
+            colorlessOffer = true;
+        }
+        else if (owner[4] == "offer" && owner.Length >= 8 &&
+            int.TryParse(owner[5], out ordinal))
+        {
+            switch (owner[6])
+            {
+                case "card":
+                    cardId = string.Join(":", owner[7..]);
+                    break;
+                case "sale_reprice":
+                    cardId = string.Join(":", owner[7..]);
+                    saleReprice = true;
+                    break;
+                case "potion":
+                    potionId = RepeatedMerchantItem(owner, 7);
+                    break;
+                case "relic":
+                    relicId = RepeatedMerchantItem(owner, 7);
+                    break;
+                default:
+                    throw new InvalidDataException(
+                        "Native merchant price owner has an unsupported item kind.");
+            }
+        }
+        else
+            throw new InvalidDataException(
+                "Native merchant price owner has an unsupported offer boundary.");
+
+        var law = ChanceLawEngineV111.QueryNativeMerchantPrice(
+            run, request.SiteId, ordinal, cardId, potionId, relicId,
+            colorlessOffer, saleReprice);
+        var expected = new RandomUnitFloatRequestV111(
+            request.SiteId, NativePlayerRngV111.ShopsStreamId,
+            law.OwnerId, ordinal);
+        if (ordinal != request.Ordinal ||
+            CanonicalJson.Sha256(expected) != CanonicalJson.Sha256(request))
+            throw new InvalidDataException(
+                "Native merchant price request differs from its source law.");
+        return law;
+    }
+
+    private static string RepeatedMerchantItem(string[] owner, int start)
+    {
+        var suffix = string.Join(":", owner[start..]);
+        for (var index = 1; index < suffix.Length; index++)
+        {
+            if (suffix[index] == ':' &&
+                suffix[..index] == suffix[(index + 1)..])
+                return suffix[..index];
+        }
+        throw new InvalidDataException(
+            "Native merchant price owner does not repeat its item identity.");
     }
 
     private static ChanceLawV111 QueryEndlessConveyorDish(

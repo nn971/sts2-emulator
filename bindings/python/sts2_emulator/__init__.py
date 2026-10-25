@@ -1400,7 +1400,7 @@ class ReferenceNatureScriptedRunSession:
         return self.legal_actions
 
     def observe_nature_choice(self):
-        """Return the Nature-only view when an indexed chance is pending."""
+        """Return the Nature-only view when a Chance Law is pending."""
         return self.session.observe_nature_choice(
             "reference_nature_scripted_run", self.handle)
 
@@ -1427,7 +1427,7 @@ class ReferenceNatureScriptedRunSession:
                 str(self.unsupported_boundary))
         if self.boundary != "nature" or self.pending is None:
             raise EmulatorError(
-                "ReferenceNature run has no pending indexed chance")
+                "ReferenceNature run has no pending Chance Law")
         result = self.session.call(
             "reference_nature_scripted_run_resolve_next",
             reference_nature_scripted_run_handle=self.handle,
@@ -1439,10 +1439,10 @@ class ReferenceNatureScriptedRunSession:
                         candidate_labels: list[str] | None = None):
         """Resolve the pending typed request from a caller-supplied entry.
 
-        Use this for non-index primitives or when replaying a prescribed
-        indexed outcome. The entry uses the same shape as
-        ``scripted_run_resolve_next`` and is replay-validated against the
-        active request.
+        Use this when the pending typed request has no Nature Chance Law, or
+        to replay a prescribed outcome for any primitive. The entry uses the
+        same shape as ``scripted_run_resolve_next`` and is replay-validated
+        against the active request.
         """
         if self.boundary not in ("nature", "scripted") or self.pending is None:
             raise EmulatorError(

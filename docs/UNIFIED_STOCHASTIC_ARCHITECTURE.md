@@ -893,19 +893,26 @@ owner with one run-level ReferenceNature cursor and a typed Chance Law
 selection transcript. It chains ordinary legal actions across player
 boundaries, commits the cursor with each completed action, and replays the
 whole action history during validation and restore. Its `resolve_next` path
-samples finite index requests through `QueryRandomIndex`: canonical Native
-`NextInt` streams use the exact declared grid transform, while legacy and
-unknown streams retain the explicit unverified uniform-index model. Its
-`resolve_outcome` path accepts replay-validated caller-supplied outcomes for
-all six typed random primitives. Each action history aligns its typed
-decisions with optional Nature selections, so scripted outcomes do not
-advance or masquerade as Nature samples. The session preserves the last
-committed run boundary while an action is active, and its JSONL and
-standard-library Python interfaces expose both resolution paths, status,
-fork, save, load, release, and the separate Nature-choice projection. This
-closes the six-primitive whole-run continuation gap for ordinary legal
-actions; Chance Law sampling remains indexed, and specialized event
-controllers retain their existing owners
+queries Chance Laws for supported typed boundaries. Registered Native map
+bounded-index requests use the source-shaped map-law dispatcher; other finite
+index requests use `QueryRandomIndex`, with exact Native `NextInt` grid
+transforms on recognized streams and an explicit unverified uniform-index
+model on legacy or unknown streams. The four Native map quota Gaussian sites
+use their existing continuous truncated-rounded-normal approximation, which
+remains `UNVERIFIED`. Supported unit-float laws include Native generated-event
+gold, combat-potion odds, card rarity and upgrade, PotionFactory rarity,
+merchant prices and the inert merchant upgrade roll, plus the Endless
+Conveyor weighted dish ticket. Each sampled outcome maps back through the
+existing typed law-to-provider adapter and is replay-validated against its
+saved action, request, and conditioning boundary. Unsupported non-index
+requests remain available through `resolve_outcome` as replay-validated
+caller-supplied outcomes for all six typed random primitives. Each action
+history aligns its typed decisions with optional Nature selections, so
+scripted outcomes do not advance or masquerade as Nature samples. The session
+preserves the last committed run boundary while an action is active, and its
+JSONL and standard-library Python interfaces expose both resolution paths,
+status, fork, save, load, release, and the separate Nature-choice projection.
+Specialized event controllers retain their existing owners
 ([session contract](REFERENCE_NATURE_SCRIPTED_RUN_D3.md)).
 
 The **same game mechanics** issues semantic stochastic operations and applies their resolved outcomes regardless of provider:

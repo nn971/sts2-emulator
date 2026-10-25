@@ -1822,10 +1822,13 @@ internal static class PrototypeAiJsonlServer
             if (pendingLaw is not null && pendingRequest is not null)
                 pending = new
                 {
-                    kind = "scripted_run_index",
+                    kind = pendingRequest.IndexRequest is null
+                        ? "scripted_run_chance_law"
+                        : "scripted_run_index",
                     eventId = pendingLaw.EventId,
                     siteId = pendingLaw.SiteId,
                     operationKind = pendingLaw.OperationKind,
+                    typedOperationKind = session.PendingOperationKind,
                     supportFingerprint = pendingLaw.SupportFingerprint,
                     boundaryFingerprint = session.ActiveAction!.Fingerprint,
                     candidateLabels = session.PendingCandidateLabels,
