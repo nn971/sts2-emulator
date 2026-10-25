@@ -371,11 +371,12 @@ public sealed partial class PrototypeGameEngine
             }
             else
             {
-                if (chosenPosition is not { } chosen || chosen < 0 ||
-                    chosen >= choice.CandidateCardIds.Length)
+                if (chosenPosition is not { } selectedPosition ||
+                    selectedPosition < 0 ||
+                    selectedPosition >= choice.CandidateCardIds.Length)
                     throw new ArgumentOutOfRangeException(
                         nameof(chosenPosition));
-                selected = choice.CandidateCardIds[chosen];
+                selected = choice.CandidateCardIds[selectedPosition];
             }
             return PrototypeAutomaticPipelineResumeResultV111.FromRun(
                 state with

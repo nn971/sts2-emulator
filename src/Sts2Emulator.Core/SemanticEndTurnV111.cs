@@ -1850,7 +1850,7 @@ public static class SemanticEndTurnEngineV111
             source.Run.World?.Combat?.PendingChoice is
                 { ChoiceId: "controlled_draw_cost",
                   ControlledSemanticDraw: not null })
-            return ResolveSelectedIndex(
+            return Resolve(
                 source, source.Fingerprint,
                 effectDrawCost.SelectedIndex);
         if (choice is
@@ -1864,7 +1864,7 @@ public static class SemanticEndTurnEngineV111
                 CanonicalJson.Sha256(effectDraw.Event))
                 throw new InvalidDataException(
                     "Automatic hand-draw effect event changed during resume.");
-            return ResolveSelectedIndex(
+            return Resolve(
                 source, source.Fingerprint,
                 effectDraw.SelectedIndex);
         }
@@ -2320,23 +2320,25 @@ public static class SemanticEndTurnEngineV111
         }
         if (saved.HandDraw is { } savedHand)
         {
-            var replayedHand = SemanticCombatDrawEngineV111.Replay(savedHand);
+            var replayedHandAtCursor =
+                SemanticCombatDrawEngineV111.Replay(savedHand);
             var boundaryHand = reproduced.HandDraw ??
                 throw new InvalidDataException(
                     "Semantic end-turn replay lost its hand-draw boundary.");
             if (CanonicalJson.Sha256(boundaryHand.Origin) !=
-                CanonicalJson.Sha256(replayedHand.Origin))
+                CanonicalJson.Sha256(replayedHandAtCursor.Origin))
                 throw new InvalidDataException(
                     "Semantic end-turn hand-draw origin changed during replay.");
             if (reproduced.Complete)
             {
                 if (CanonicalJson.Sha256(boundaryHand) !=
-                    CanonicalJson.Sha256(replayedHand))
+                    CanonicalJson.Sha256(replayedHandAtCursor))
                     throw new InvalidDataException(
                         "Completed semantic end-turn hand draw diverged.");
             }
             else
-                reproduced = ContinueHandDraw(reproduced, replayedHand);
+                reproduced = ContinueHandDraw(
+                    reproduced, replayedHandAtCursor);
         }
         if (saved.Stochastic.BoundaryTranscript.Length > 0)
         {
@@ -2347,17 +2349,18 @@ public static class SemanticEndTurnEngineV111
                     "Semantic end-turn boundary transcript omitted a decision.");
         }
         var comparisonSnapshot = saved;
-        if (saved.HandDraw is { } savedHand &&
-            savedHand.BoundaryTranscript.Length == 0 &&
-            reproduced.HandDraw is { } replayedHand &&
-            replayedHand.BoundaryTranscript.Length > 0)
+        if (saved.HandDraw is { } savedHandForUpgrade &&
+            savedHandForUpgrade.BoundaryTranscript.Length == 0 &&
+            reproduced.HandDraw is { } replayedHandForUpgrade &&
+            replayedHandForUpgrade.BoundaryTranscript.Length > 0)
             comparisonSnapshot = saved with
             {
-                HandDraw = savedHand with
+                HandDraw = savedHandForUpgrade with
                 {
-                    BoundaryTranscript = replayedHand.BoundaryTranscript,
+                    BoundaryTranscript =
+                        replayedHandForUpgrade.BoundaryTranscript,
                     BoundaryTranscriptVersion =
-                        replayedHand.BoundaryTranscriptVersion
+                        replayedHandForUpgrade.BoundaryTranscriptVersion
                 }
             };
         if (saved.Stochastic.BoundaryTranscriptVersion == 0 &&

@@ -382,7 +382,7 @@ public sealed partial class PrototypeGameEngine
             {
                 var resumed = ResumeChoiceResolutionContinuation(
                     state.Player, combat, prototypeRng, continuation);
-                var updated = state with
+                var completedWithoutChoice = state with
                 {
                     Player = resumed.Player,
                     Stochastic = RunStochasticStateV111.WithPrototypeRng(
@@ -391,8 +391,9 @@ public sealed partial class PrototypeGameEngine
                 };
                 return deferSemanticHandDraw
                     ? PrototypeAutomaticPipelineResumeResultV111
-                        .FromDeferredSemanticHandDraw(updated)
-                    : ResumeAutomaticPipelineContinuation(updated);
+                        .FromDeferredSemanticHandDraw(completedWithoutChoice)
+                    : ResumeAutomaticPipelineContinuation(
+                        completedWithoutChoice);
             }
 
             var effective = selection with

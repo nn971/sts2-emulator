@@ -1947,22 +1947,12 @@ public sealed partial class PrototypeGameEngine
                 ControlledTurnIntents = null
             }
         };
-        var advancedCombat = advanced.World?.Combat ??
-            throw new InvalidDataException(
-                "AdvanceTurn completion removed active combat unexpectedly.");
         var updatedAdvancedCombat =
             AttachValidatedAutomaticPipelineContinuation(
-                advancedCombat, resumedCursor);
-        advanced = advanced with
-        {
-            World = advanced.World! with
-            {
-                Combat = updatedAdvancedCombat
-            }
-        };
+                advanced, resumedCursor);
         var resumed = state with
         {
-            World = world with { Combat = advanced }
+            World = world with { Combat = updatedAdvancedCombat }
         };
         return ResumeAutomaticPipelineContinuation(
             resumed, stopBeforeSemanticHandDraw:
@@ -2909,7 +2899,7 @@ public sealed partial class PrototypeGameEngine
             case PrototypeAutomaticStepKind.DrawPlayerHand:
             {
                 var prepared = PrepareAutomaticHandDrawStage(
-                    state, handDrawResultContext);
+                    state, prototypeRng, handDrawResultContext);
                 state = prepared.Run;
                 handDrawResultContext = prepared.ResultContext;
                 prototypeRng = state.Stochastic.PrototypeRng;
@@ -6106,12 +6096,12 @@ public sealed partial class PrototypeGameEngine
 
                 case PrototypeCombatEffectKind.DamageAllEnemiesRepeatPerKill:
                 {
-                    var effectContinuation = CreateEffectContinuation(
+                    var repeatKillContinuation = CreateEffectContinuation(
                         effectContinuationContext, operations);
                     var repeatedDamage = ResolveDamageAllEnemiesRepeatPerKill(
                         player, combat, operation, rng,
                         sourceCardInstanceId, eventDepth,
-                        effectContinuation);
+                        repeatKillContinuation);
                     player = repeatedDamage.Player;
                     combat = repeatedDamage.Combat;
                     if (combat.PendingChoice is not null)

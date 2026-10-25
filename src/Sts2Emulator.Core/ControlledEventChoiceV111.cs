@@ -782,7 +782,7 @@ public sealed record PrototypeControlledEventChoiceContinuationV111(
             !ControlledStochasticChanceReplayV111.CandidateLabelsMatch(
                 PendingCandidateLabels,
                 Enumerable.Range(0, 100).Select(index =>
-                    index.ToString(CultureInfo.InvariantCulture))))
+                    index.ToString(CultureInfo.InvariantCulture)).ToArray()))
             throw new InvalidDataException(
                 "Stone of All Time ticket continuation has malformed labels.");
         for (var index = 0; index < Decisions.Length; index++)

@@ -4453,7 +4453,7 @@ public sealed partial class PrototypeGameEngine
                 "start_run" => configuredNativeRunStart
                     ? ControlledRunActionEngineV111
                         .IsConfiguredNativeReferenceNatureRunStartRequest(
-                            partialState,
+                            state,
                             ControlledStochasticRequestV111.FromIndex(
                                 pendingChance.Request))
                     : ControlledEventChoiceReplayV111
@@ -4471,14 +4471,14 @@ public sealed partial class PrototypeGameEngine
                         .IsRunActionTreasureSite(pendingChance.Request.SiteId)
                     || ControlledRunActionEngineV111
                         .IsLegacyActOneCombatEntrySite(
-                            partialState,
+                            state,
                             selectedMapAction ?? throw new InvalidDataException(
                                 "Controlled map-node frame is missing its action."),
                             pendingChance.Request.SiteId)
                     || selectedMapAction is not null &&
                         ControlledRunActionEngineV111
                             .IsNativeActOneCombatEntrySite(
-                                partialState, selectedMapAction,
+                                state, selectedMapAction,
                                 pendingChance.Request.SiteId),
                 PrototypeNativeRestSiteActionsV111.Dig =>
                     ControlledEventChoiceReplayV111
@@ -4511,7 +4511,7 @@ public sealed partial class PrototypeGameEngine
                 throw new NotSupportedException(
                     "Controlled run action reached an unsupported chance request.");
 
-            var partialState = state with
+            var suspendedRunState = state with
             {
                 Stochastic = RunStochasticStateV111
                     .WithControlledRunActionChoice(
@@ -4519,7 +4519,7 @@ public sealed partial class PrototypeGameEngine
             };
             var nextContinuation =
                 new PrototypeControlledRunActionContinuationV111(
-                    partialState,
+                    suspendedRunState,
                     continuation.ActionId,
                     decisions,
                     decisionCandidateLabels,
@@ -4529,7 +4529,7 @@ public sealed partial class PrototypeGameEngine
                     continuation.RunAction);
             return RunStochasticStateV111
                 .SuspendControlledRunActionChoice(
-                    partialState, nextContinuation);
+                    suspendedRunState, nextContinuation);
         }
 
         var result = replay.Run ?? throw new InvalidDataException(

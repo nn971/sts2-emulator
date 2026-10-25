@@ -20,15 +20,12 @@ public sealed partial class PrototypeGameEngine
             PrototypeAutomaticPipelineResumeBoundaryKindV111.DrawPlayerHand)
             throw new InvalidOperationException(
                 "Expected an existing DrawPlayerHand pipeline checkpoint.");
-        var (result, requested, remaining) =
-            ResumeSemanticAutomaticHandDrawStep(
-                run,
-                combat.CounterState.CardsDrawnThisCombat,
-                "unsupported_nested_stage",
-                "Hand draw removed combat.",
-                missingCombatIsInvalidData: false);
-        return PrototypeDrawCardsResumeResultV111.ForHandDraw(
-            result, requested, remaining);
+        return ResumeSemanticAutomaticHandDrawStep(
+            run,
+            combat.CounterState.CardsDrawnThisCombat,
+            "unsupported_nested_stage",
+            "Hand draw removed combat.",
+            missingCombatIsInvalidData: false);
     }
 
     internal static PrototypeDrawCardsResumeResultV111
@@ -279,7 +276,7 @@ public sealed partial class PrototypeGameEngine
 
         var savedRequested = completed.Stochastic
             .CompletedSemanticHandDrawRequested;
-        var requested = savedRequested ??
+        var completedRequested = savedRequested ??
             GetCardsDrawnSince(after, cardsDrawnBefore);
         // The common stage owner already recorded semantic completions that
         // carried a saved request. Only source-committed draw-free completion
@@ -287,14 +284,14 @@ public sealed partial class PrototypeGameEngine
         if (savedRequested is null)
         {
             after = AttachCompletedSemanticHandDrawReceipt(
-                after, completed, requested);
+                after, completed, completedRequested);
             result = result with
             {
                 World = RequireWorld(result) with { Combat = after }
             };
         }
         return PrototypeDrawCardsResumeResultV111.ForHandDraw(
-            result, requested, 0);
+            result, completedRequested, 0);
     }
 
     internal static PrototypeDrawCardsResumeResultV111

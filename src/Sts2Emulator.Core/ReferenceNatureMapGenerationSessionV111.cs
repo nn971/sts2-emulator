@@ -424,7 +424,7 @@ public sealed record ReferenceNatureMapGenerationSessionV111(
             throw new InvalidOperationException(
                 "ReferenceNature map-generation session is already complete.");
         var checkpoint = new ReferenceNatureMapGenerationMechanicsStateV111(
-            Seed, Act, Ascension, Map: null);
+            Seed, Act, Ascension, map: null);
         var capturedPrefix = Capture(
             Seed, Act, Ascension, StochasticState.Decisions);
         var continuation = capturedPrefix.Continuation ??
@@ -570,7 +570,7 @@ public sealed record ReferenceNatureMapGenerationSessionV111(
         ControlledStochasticDecisionV111[] decisions)
         => ControlledChanceContinuationExecutorV111.CaptureTyped(
             new ReferenceNatureMapGenerationMechanicsStateV111(
-                seed, act, ascension, Map: null),
+                seed, act, ascension, map: null),
             ControlledStochasticContinuationStateV111.MixedPrimitiveSchemaId,
             decisions,
             checkpoint => GenerateNative(

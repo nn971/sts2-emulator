@@ -238,7 +238,7 @@ public static class NativeTanxEventV111
                 "Tanx offers do not match its native event shuffle.");
         if (NativeRngV111.ToSnapshot(stream)
             != NativeRngV111.ToSnapshot(
-                bundle.GetStream(initial.StreamId)))
+                bundle.GetStream(context.StreamId)))
             throw new InvalidOperationException("Tanx event RNG cursor does not match its completed offer shuffle.");
     }
 }

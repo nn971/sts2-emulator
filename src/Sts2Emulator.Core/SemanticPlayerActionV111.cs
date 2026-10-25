@@ -317,6 +317,7 @@ public static class SemanticPlayerActionEngineV111
                 "operation=" + action.Kind);
         var payload = action.Payload.Deserialize<PlayCardPayload>()
             ?? throw new InvalidDataException("Invalid play-card payload.");
+        var sourceAction = GameAction.Create(action.Kind, payload);
         var combat = source.World!.Combat!;
         var card = combat.Cards.SingleOrDefault(c =>
             c.InstanceId == payload.CardInstanceId);
@@ -339,8 +340,8 @@ public static class SemanticPlayerActionEngineV111
                 "operation=action_crossed_chance_or_turn_boundary");
         if (!SemanticDrawPileAdapterV111.IsUnchangedDrawPile(
                 combat, afterCombat) &&
-            !IsSupportedNostalgiaDrawReturn(source, run, action) &&
-            !IsSupportedReboundDrawReturn(source, run, action))
+            !IsSupportedNostalgiaDrawReturn(source, run, sourceAction) &&
+            !IsSupportedReboundDrawReturn(source, run, sourceAction))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
                 "operation=unmodeled_draw_pile_mutation");

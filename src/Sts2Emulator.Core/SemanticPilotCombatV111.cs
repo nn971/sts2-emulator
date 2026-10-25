@@ -2567,20 +2567,33 @@ public sealed record SemanticPilotCombatV111(
             bool randomShortlistShuffle = poolShufflePending.SourceOperationKind ==
                 nameof(PrototypeCombatEffectKind.ChooseCards);
             bool colorlessPotionShuffle =
-                IsColorlessPotionGeneratedChoiceShuffle(
-                    combat, combat?.PendingChoice, poolShufflePending);
-            bool anointedRareShuffle = IsAnointedRareToHandShuffle(
-                combat, combat?.PendingChoice, poolShufflePending);
-            bool seekerStrikeShuffle = IsSeekerStrikeDrawPileShortlistShuffle(
-                combat, combat?.PendingChoice, poolShufflePending);
-            bool discoveryShuffle = IsDiscoveryGeneratedChoiceShuffle(
-                combat, combat?.PendingChoice, poolShufflePending);
-            bool splashShuffle = IsSplashGeneratedChoiceShuffle(
-                combat, combat?.PendingChoice, poolShufflePending);
+                SemanticPilotCombatEngineV111
+                    .IsColorlessPotionGeneratedChoiceShuffle(
+                    combat, combat?.PendingChoice,
+                    combat?.PendingChoice?.ControlledPoolShuffle);
+            bool anointedRareShuffle =
+                SemanticPilotCombatEngineV111.IsAnointedRareToHandShuffle(
+                combat, combat?.PendingChoice,
+                combat?.PendingChoice?.ControlledPoolShuffle);
+            bool seekerStrikeShuffle = SemanticPilotCombatEngineV111
+                .IsSeekerStrikeDrawPileShortlistShuffle(
+                combat, combat?.PendingChoice,
+                combat?.PendingChoice?.ControlledPoolShuffle);
+            bool discoveryShuffle =
+                SemanticPilotCombatEngineV111.IsDiscoveryGeneratedChoiceShuffle(
+                combat, combat?.PendingChoice,
+                combat?.PendingChoice?.ControlledPoolShuffle);
+            bool splashShuffle =
+                SemanticPilotCombatEngineV111.IsSplashGeneratedChoiceShuffle(
+                combat, combat?.PendingChoice,
+                combat?.PendingChoice?.ControlledPoolShuffle);
             bool jackOfAllTradesShuffle =
-                IsJackOfAllTradesDistinctColorlessShuffle(
-                    combat, combat?.PendingChoice, poolShufflePending);
-            bool neowsAbundanceShuffle = IsNeowsAbundanceGeneratedChoiceShuffle(
+                SemanticPilotCombatEngineV111
+                    .IsJackOfAllTradesDistinctColorlessShuffle(
+                    combat, combat?.PendingChoice,
+                    combat?.PendingChoice?.ControlledPoolShuffle);
+            bool neowsAbundanceShuffle = SemanticPilotCombatEngineV111
+                .IsNeowsAbundanceGeneratedChoiceShuffle(
                 combat, combat?.PendingChoice,
                 combat?.PendingChoice?.ControlledPoolShuffle);
             var fixtureMatches = automaticPipelinePoolShuffle ||
@@ -4005,9 +4018,11 @@ public static class SemanticPilotCombatEngineV111
                 Combat = openingCombat
             }
         };
-        var (drawn, remaining) = ControlledChanceGuardV111.ExecuteGuarded(
+        var drawProgress = ControlledChanceGuardV111.ExecuteGuarded(
             () => PrototypeGameEngine.BeginSemanticCombatDraw(
                 prepared, dealt.Length, fromHandDraw: true));
+        var drawn = drawProgress.Run;
+        var remaining = drawProgress.RemainingCount;
         var result = drawn.World?.Combat;
         if (remaining != 0 || drawn.Phase != RunPhase.Combat ||
             result is null || result.PendingChoice is not null ||
@@ -5100,10 +5115,10 @@ public static class SemanticPilotCombatEngineV111
             ValidateNatureDeckContinuationBoundary(
                 resultCombat!, "stale_automatic_insertion_continuation",
                 StochasticSiteRegistryV111.DrawPileRandomInsertSiteId);
-            if (resultCombat!.PendingChoice is { } nextInsertionChoice &&
+            if (resultCombat!.PendingChoice is { } resumedInsertionChoice &&
                 PrototypeGameEngine
                     .IsAutomaticPipelineSemanticDrawInsertionContinuation(
-                        resultCombat, nextInsertionChoice) &&
+                        resultCombat, resumedInsertionChoice) &&
                 (resultCombat.NextCardInstanceId != insertedInstanceId + 1 ||
                  !resultCombat.DrawPile.SequenceEqual(expectedPile)))
                 throw new NotSupportedException(
@@ -6613,7 +6628,7 @@ public static class SemanticPilotCombatEngineV111
                 CanonicalJson.Sha256(expectedOperation);
     }
 
-    private static bool IsNeowsAbundanceGeneratedChoiceShuffle(
+    internal static bool IsNeowsAbundanceGeneratedChoiceShuffle(
         CombatState? combat, PendingCombatChoiceState? choice,
         PrototypeControlledPoolShuffleV111? shuffle)
     {
@@ -6638,7 +6653,7 @@ public static class SemanticPilotCombatEngineV111
                 card.CardId == "proto.native.neow.abundance");
     }
 
-    private static bool IsDiscoveryGeneratedChoiceShuffle(
+    internal static bool IsDiscoveryGeneratedChoiceShuffle(
         CombatState? combat, PendingCombatChoiceState? choice,
         PrototypeControlledPoolShuffleV111? shuffle)
     {
@@ -6681,7 +6696,7 @@ public static class SemanticPilotCombatEngineV111
                 card.CardId == "proto.colorless.discovery");
     }
 
-    private static bool IsSplashGeneratedChoiceShuffle(
+    internal static bool IsSplashGeneratedChoiceShuffle(
         CombatState? combat, PendingCombatChoiceState? choice,
         PrototypeControlledPoolShuffleV111? shuffle)
     {
@@ -6727,7 +6742,7 @@ public static class SemanticPilotCombatEngineV111
             continuation.EventDispatchContinuation is null;
     }
 
-    private static bool IsJackOfAllTradesDistinctColorlessShuffle(
+    internal static bool IsJackOfAllTradesDistinctColorlessShuffle(
         CombatState? combat, PendingCombatChoiceState? choice,
         PrototypeControlledPoolShuffleV111? shuffle)
     {
@@ -6768,7 +6783,7 @@ public static class SemanticPilotCombatEngineV111
             continuation.EventDispatchContinuation is null;
     }
 
-    private static bool IsColorlessPotionGeneratedChoiceShuffle(
+    internal static bool IsColorlessPotionGeneratedChoiceShuffle(
         CombatState? combat, PendingCombatChoiceState? choice,
         PrototypeControlledPoolShuffleV111? shuffle)
     {
@@ -6802,7 +6817,7 @@ public static class SemanticPilotCombatEngineV111
             continuation.EventDispatchContinuation is null;
     }
 
-    private static bool IsAnointedRareToHandShuffle(
+    internal static bool IsAnointedRareToHandShuffle(
         CombatState? combat, PendingCombatChoiceState? choice,
         PrototypeControlledPoolShuffleV111? shuffle)
     {
@@ -6843,7 +6858,7 @@ public static class SemanticPilotCombatEngineV111
                 card.CardId == "proto.colorless.anointed");
     }
 
-    private static bool IsSeekerStrikeDrawPileShortlistShuffle(
+    internal static bool IsSeekerStrikeDrawPileShortlistShuffle(
         CombatState? combat, PendingCombatChoiceState? choice,
         PrototypeControlledPoolShuffleV111? shuffle)
     {
@@ -7544,10 +7559,11 @@ public static class SemanticPilotCombatEngineV111
                     index = (int)(BitConverter.ToUInt32(hash, 0) %
                         (uint)bound);
                 }
-                var resolved = SemanticEndTurnEngineV111.Resolve(
+                var resolvedCostEndTurn = SemanticEndTurnEngineV111.Resolve(
                     endTurn, endTurn.Fingerprint, index);
                 current = PublishRunContinuation(
-                    current, resolved.Run, resolved,
+                    current, resolvedCostEndTurn.Run,
+                    resolvedCostEndTurn,
                     otherChance: nextOther);
                 continue;
             }

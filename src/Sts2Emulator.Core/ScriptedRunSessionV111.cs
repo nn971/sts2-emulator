@@ -13,7 +13,9 @@ public sealed record ScriptedRunActionRecordV111(
 
     public GameAction Action
     {
-        get => _action is null ? null! : CloneAction(_action);
+        get => CloneAction(_action) ??
+            throw new InvalidDataException(
+                "Scripted run-action record has no action.");
         init => _action = CloneAction(value);
     }
 

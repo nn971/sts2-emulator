@@ -260,14 +260,14 @@ public sealed record ReferenceNatureRunActionSessionV111(
             var replay = CaptureNativeRunAction(
                 origin, detachedAction, []);
             var providerDecisions = replay.Continuation?.Decisions ?? [];
-            var run = replay.Run is { } completed
+            var typedRun = replay.Run is { } completed
                 ? CommitNativeRunActionTrace(
                     ReferenceNatureRunCursorV111.Commit(
                         completed, initialNatureState), detachedAction,
                     providerDecisions)
                 : origin.Fork();
             var typedSession = new ReferenceNatureRunActionSessionV111(
-                CurrentSchemaId, origin, detachedAction, run,
+                CurrentSchemaId, origin, detachedAction, typedRun,
                 initialNatureState.Fork(), initialNatureState.Fork(), [])
             {
                 NativeCombatEntryContinuation =
@@ -355,7 +355,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
                 var mapGeneration = ReferenceNatureMapGenerationSessionV111
                     .Begin(Origin.RunSeed, 1, Origin.Ascension,
                         selection.NextState);
-                var next = this with
+                var overgrowthNext = this with
                 {
                     Run = resolvedRun,
                     Stochastic = Stochastic.Advance(
@@ -363,10 +363,11 @@ public sealed record ReferenceNatureRunActionSessionV111(
                     MapGeneration = mapGeneration
                 };
                 if (mapGeneration.Complete)
-                    next = next.ContinueAfterOvergrowthRunStartMap(
+                    overgrowthNext =
+                        overgrowthNext.ContinueAfterOvergrowthRunStartMap(
                         mapGeneration);
-                next.Validate();
-                return next;
+                overgrowthNext.Validate();
+                return overgrowthNext;
             }
             if (configuredExperimentalRunStart)
             {
@@ -375,7 +376,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
                     ReferenceNatureLaterActPreparationSessionV111.Begin(
                         resolvedRun.Stochastic.PrototypeRng, Origin.Ascension, profile,
                         selection.NextState);
-                var next = this with
+                var experimentalNext = this with
                 {
                     Run = resolvedRun,
                     Stochastic = Stochastic.Advance(
@@ -383,9 +384,10 @@ public sealed record ReferenceNatureRunActionSessionV111(
                     LaterActPreparation = laterActPreparation
                 };
                 if (laterActPreparation.Complete)
-                    next = next.CommitExperimentalThreeActRunStart();
-                next.Validate();
-                return next;
+                    experimentalNext =
+                        experimentalNext.CommitExperimentalThreeActRunStart();
+                experimentalNext.Validate();
+                return experimentalNext;
             }
             if (configuredNativeRunStart)
             {
@@ -1166,7 +1168,8 @@ public sealed record ReferenceNatureRunActionSessionV111(
             && ControlledRunActionEngineV111
                 .IsConfiguredNativeReferenceNatureOvergrowthRunStartSource(
                     Origin);
-        var configuredExperimentalRunStart = configuredNativeRunStart
+        var configuredExperimentalRunStart = Origin is not null &&
+            configuredNativeRunStart
             && Origin.Configuration?.UsesExperimentalSilentThreeActRoute == true;
         var configuredExperimentalActTransition = Origin is not null
             && Action is not null
@@ -1479,17 +1482,19 @@ public sealed record ReferenceNatureRunActionSessionV111(
         }
         else if (configuredExperimentalActTransition)
         {
-            var mapGeneration = ReferenceNatureMapGenerationSessionV111.Begin(
+            var experimentalMapGeneration =
+                ReferenceNatureMapGenerationSessionV111.Begin(
                 Origin.RunSeed, checked(Origin.World!.Act + 1),
                 Origin.Ascension, InitialNatureState);
             var transcriptIndex = 0;
-            while (!mapGeneration.Complete)
+            while (!experimentalMapGeneration.Complete)
             {
                 if (transcriptIndex >= DecisionTranscript.Length)
                     throw new InvalidDataException(
                         "Experimental act-transition transcript ended before its map.");
-                mapGeneration = mapGeneration.ResolveNext();
-                if (!mapGeneration.DecisionTranscript[^1].Equals(
+                experimentalMapGeneration =
+                    experimentalMapGeneration.ResolveNext();
+                if (!experimentalMapGeneration.DecisionTranscript[^1].Equals(
                         DecisionTranscript[transcriptIndex++]))
                     throw new InvalidDataException(
                         "Experimental act-transition map differs from its Nature transcript.");
@@ -1497,11 +1502,13 @@ public sealed record ReferenceNatureRunActionSessionV111(
             var engine = new PrototypeGameEngine();
             var transitionState = engine.BeginActTransitionWithMap(
                 Origin, Action,
-                mapGeneration.Map ?? throw new InvalidDataException(
+                experimentalMapGeneration.Map ??
+                    throw new InvalidDataException(
                     "Replayed act-transition map has no output."));
             var siteId = AssignedAncientOfferSite(transitionState);
             RunState transitioned;
-            var finalNatureState = mapGeneration.NatureState;
+            var finalNatureState =
+                experimentalMapGeneration.NatureState;
             ReferenceNatureAncientOfferSessionSnapshotV111?
                 ancientOfferAudit = null;
             if (siteId is null)
@@ -1514,7 +1521,8 @@ public sealed record ReferenceNatureRunActionSessionV111(
             else
             {
                 var offerOrigin = ReferenceNatureRunCursorV111.Commit(
-                    transitionState, mapGeneration.NatureState);
+                    transitionState,
+                    experimentalMapGeneration.NatureState);
                 var offer = ReferenceNatureAncientOfferSessionV111.Begin(
                     offerOrigin, siteId);
                 while (!offer.Complete)
@@ -1540,7 +1548,8 @@ public sealed record ReferenceNatureRunActionSessionV111(
             var expectedRun = engine.CompleteActTransitionStep(
                 Origin, transitioned);
             expectedRun = CommitExperimentalActTransitionState(
-                expectedRun, mapGeneration, NatureState, ancientOfferAudit);
+                expectedRun, experimentalMapGeneration, NatureState,
+                ancientOfferAudit);
             if (CanonicalJson.Sha256(expectedRun) !=
                 CanonicalJson.Sha256(Run))
                 throw new InvalidDataException(

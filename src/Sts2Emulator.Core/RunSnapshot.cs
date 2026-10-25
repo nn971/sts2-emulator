@@ -133,7 +133,7 @@ public static class RunSnapshot
             stochastic.ControlledEventRewardChoice,
             stochastic.ControlledRunActionHistory,
             stochastic.ControlledRunActionChoice,
-            stochastic.ReferenceNatureState)
+            stochastic.ReferenceNature)
         {
             Simulation = simulation
         };

@@ -379,10 +379,10 @@ public sealed record RunStochasticStateV111
         if (ReferenceNatureRunInitializationPending)
         {
             var history = ControlledRunActionHistory;
-            var world = owner.World;
-            var worldStochastic = world?.Stochastic;
+            var pendingWorld = owner.World;
+            var worldStochastic = pendingWorld?.Stochastic;
             if (owner.Configuration?.UsesExperimentalSilentThreeActRoute != true ||
-                world?.Act != 1 ||
+                pendingWorld?.Act != 1 ||
                 worldStochastic?.PreparedLaterActEncounterBags is not null ||
                 worldStochastic?.LaterActEncounterBag is not null ||
                 ReferenceNatureRunInitializationTranscript is not null ||
@@ -428,10 +428,10 @@ public sealed record RunStochasticStateV111
                  mapGeneration.Seed != owner.RunSeed ||
                  mapGeneration.Act != 1 ||
                  mapGeneration.Ascension != owner.Ascension ||
-                 owner.World is not { } world ||
-                 world.Act == 1 && world.Floor == 0 &&
-                    world.Map.CurrentNodeId is null &&
-                    CanonicalJson.Sha256(world.Map) !=
+                 owner.World is not { } committedWorld ||
+                 committedWorld.Act == 1 && committedWorld.Floor == 0 &&
+                    committedWorld.Map.CurrentNodeId is null &&
+                    CanonicalJson.Sha256(committedWorld.Map) !=
                         mapGeneration.MapFingerprint))
                 throw new InvalidDataException(
                     "Overgrowth map audit does not match the configured run boundary or committed map.");
@@ -483,8 +483,8 @@ public sealed record RunStochasticStateV111
         if (ReferenceNatureAncientOfferHistory is { Length: > 0 }
             ancientOfferHistory)
         {
-            var mapHistory = ReferenceNatureMapGenerationHistory;
-            if (ancientOfferHistory.Length > 2 || mapHistory is not
+            var ancientMapHistory = ReferenceNatureMapGenerationHistory;
+            if (ancientOfferHistory.Length > 2 || ancientMapHistory is not
                     { Length: > 0 } ||
                 owner.Configuration is not
                     { UsesExperimentalSilentThreeActRoute: true,
@@ -509,7 +509,7 @@ public sealed record RunStochasticStateV111
                     .AssignedAncientId;
                 var mappedSiteId = ReferenceNatureAncientOfferSessionV111
                     .SiteForAssignedAncientId(assignedAncientId);
-                var mapAudit = mapHistory.SingleOrDefault(
+                var mapAudit = ancientMapHistory.SingleOrDefault(
                     candidate => candidate.Act == act);
                 if (!session.Complete || act is < 2 or > 3 ||
                     act <= previousAct || act > currentWorld.Act ||
@@ -532,7 +532,7 @@ public sealed record RunStochasticStateV111
                     session.Run.World?.Event?.EventId != assignedAncientId)
                     throw new InvalidDataException(
                         "Ancient-offer audit differs from its configured map boundary or Nature cursor.");
-                var nextMapAudit = mapHistory.FirstOrDefault(
+                var nextMapAudit = ancientMapHistory.FirstOrDefault(
                     candidate => candidate.Act > act);
                 if (nextMapAudit is not null &&
                     (!StringComparer.Ordinal.Equals(
@@ -565,8 +565,8 @@ public sealed record RunStochasticStateV111
              PrototypeRngMutable.GetStream("reward").CallCount != reward.AfterCalls))
             throw new InvalidDataException(
                 "Invalid source-timed reward RNG audit.");
-        if (owner.World is { } world)
-            world.Stochastic.Validate(world, owner);
+        if (owner.World is { } validatedWorld)
+            validatedWorld.Stochastic.Validate(validatedWorld, owner);
     }
 
     private void ValidateControlledRunActionChoice(RunState owner)

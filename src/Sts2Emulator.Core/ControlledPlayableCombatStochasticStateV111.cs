@@ -155,7 +155,7 @@ public sealed record ControlledPlayableCombatStochasticStateV111
         if (kind == ControlledPlayableLiveDecisionKindV111.LiveOnly &&
             !PrototypeControlledEnemyActionContinuationV111.IsEnemyActionSite(
                 decision.Request.SiteId) &&
-            decision.Request.SiteId != ControlledRecycleShuffleV111.SiteId)
+            decision.Request.SiteId != ControlledRecycleShuffleEngineV111.SiteId)
             throw new InvalidDataException(
                 "Controlled playable live decision has no typed transcript owner.");
 
@@ -235,7 +235,7 @@ public sealed record ControlledPlayableCombatStochasticStateV111
     {
         ValidateControlledDecision(decision);
         if (NextShuffleIndex < 1 || nextShuffleIndex < 0 ||
-            decision.Request.SiteId != ControlledPlayableCombatV111.ShuffleSite ||
+            decision.Request.SiteId != ControlledPlayableCombatEngineV111.ShuffleSite ||
             decision.Request.StreamId != "run.shuffle" ||
             decision.Request.OwnerId != "player:0" ||
             decision.Request.OperationKind != "bounded_integer" ||
@@ -244,7 +244,7 @@ public sealed record ControlledPlayableCombatStochasticStateV111
             nextShuffleIndex != NextShuffleIndex - 1 ||
             (nextShuffleIndex < 1) != (nextPending is null) ||
             (nextPending is { } pending &&
-             (pending.SiteId != ControlledPlayableCombatV111.ShuffleSite ||
+             (pending.SiteId != ControlledPlayableCombatEngineV111.ShuffleSite ||
               pending.Ordinal != _shuffleTranscript.Length + 1 ||
               pending.SupportCount != nextShuffleIndex + 1)))
             throw new InvalidDataException(

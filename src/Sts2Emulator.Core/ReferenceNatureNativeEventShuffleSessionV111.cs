@@ -49,7 +49,7 @@ internal sealed record NativeEventShufflePlanV111(
             ? StochasticSiteRegistryV111.RandomPoolDistinctShuffleSiteId
             : SiteId;
         var requestOwnerId = LegacyRewardOrdinalBase is not null
-            ? PrototypeRooms.DistinctPoolShuffleOwnerId(
+            ? PrototypeGameEngine.DistinctPoolShuffleOwnerId(
                 "reward", 2, OrderedCandidateIds)
             : OwnerId;
         var request = new RandomIndexRequestV111(
@@ -89,11 +89,14 @@ internal sealed record NativeEventShufflePlanV111(
             legacyRequest.ValidateForLegacyProvider();
             return legacyRequest;
         }
+        var nativeCursorBefore = NativeCursorBefore ??
+            throw new InvalidDataException(
+                "Native Repy potion offer lost its cursor snapshot.");
         var request = new RandomIndexRequestV111(
             PrototypeNativeHiveEvents.WarHistorianRepyPotionOfferSiteId,
             NativePlayerRngV111.RewardsStreamId,
             $"event:war_historian_repy:potion_offer:{potionOrdinal}",
-            checked(NativeCursorBefore.Counter + SwapCount + potionOrdinal),
+            checked(nativeCursorBefore.Counter + SwapCount + potionOrdinal),
             Enumerable.Range(0, PrototypeContent.PotionPool.Length).ToArray(),
             OperationKind: "choose_index");
         request.ValidateForNativeProvider();
@@ -464,7 +467,7 @@ internal static class NativeEventShufflePlanBuilderV111
                     rewardRequests = journal.Entries.Where(entry =>
                         entry.Request.StreamId == "reward").ToArray();
                 }
-                var legacyOwner = PrototypeRooms.DistinctPoolShuffleOwnerId(
+                var legacyOwner = PrototypeGameEngine.DistinctPoolShuffleOwnerId(
                     "reward", 2, candidates);
                 if (candidates.Length < 2 ||
                     PrototypeContent.PotionPool.Length == 0 ||
@@ -1785,48 +1788,51 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
     {
         if (plan.LegacyRewardOrdinalBase is not null)
         {
-            var selected = decisions.Select(decision =>
+            var legacySelected = decisions.Select(decision =>
                 ControlledStochasticDecisionV111.FromIndex(decision)).ToArray();
-            var requests = selected.Select(decision => decision.ToRequest())
+            var legacyRequests = legacySelected.Select(decision =>
+                    decision.ToRequest())
                 .ToArray();
-            ControlledStochasticContinuationResultV111 replay;
+            ControlledStochasticContinuationResultV111 legacyReplay;
             RandomBoundaryEventV111[] entries;
             using (var journal = RandomBoundaryJournalV111.Begin())
             using (NativeEngineEventJournalV111.Begin())
             {
-                replay = ControlledChanceContinuationExecutorV111
+                legacyReplay = ControlledChanceContinuationExecutorV111
                     .CaptureStochastic(
                         origin,
                         ControlledStochasticContinuationStateV111
                             .CurrentSchemaId,
-                        selected,
+                        legacySelected,
                         run => new PrototypeGameEngine().Step(
                             run, plan.ReplayAction).State,
-                        request => requests.Any(selectedRequest =>
+                        request => legacyRequests.Any(selectedRequest =>
                             ControlledStochasticChanceReplayV111.RequestsMatch(
                                 request, selectedRequest)));
                 entries = journal.Entries.Where(entry =>
                     entry.Request.StreamId == "reward").ToArray();
             }
-            if (replay.Suspended || replay.Run is not { } resolved ||
-                entries.Length != requests.Length ||
+            if (legacyReplay.Suspended ||
+                legacyReplay.Run is not { } legacyResolved ||
+                entries.Length != legacyRequests.Length ||
                 entries.Where((entry, index) =>
-                    requests[index].IndexRequest is not { } expectedRequest ||
+                    legacyRequests[index].IndexRequest is not
+                        { } expectedRequest ||
                     !ControlledStochasticChanceReplayV111.RequestsMatch(
                         entry.Request, expectedRequest) ||
                     entry.ProviderMode != "controlled-v111" ||
                     entry.NativeCursorBefore is not null ||
                     entry.NativeCursorAfter is not null).Any() ||
                 NativeEventShufflePlanBuilderV111.GetLegacyRewardOrdinal(
-                    resolved) !=
+                    legacyResolved) !=
                     NativeEventShufflePlanBuilderV111.GetLegacyRewardOrdinal(
                         origin) ||
-                resolved.Stochastic.NativeRunRng is not null ||
+                legacyResolved.Stochastic.NativeRunRng is not null ||
                 !NativeEventShufflePlanBuilderV111
-                    .IsCompletedRepyChest(resolved))
+                    .IsCompletedRepyChest(legacyResolved))
                 throw new InvalidDataException(
                     "Native-regional Repy replay must consume only its selected reward request prefix without advancing the saved provider.");
-            return resolved;
+            return legacyResolved;
         }
         if (plan.LegacyEventOrdinalBase is null)
             return ReferenceNatureNativeEventIndexReplayV111.Replay(

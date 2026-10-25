@@ -434,7 +434,8 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
             IsCombatRewardRelicAcquisitionAction(Origin, Action)
                 ? Stochastic.ProviderDecisions.Count(decision =>
                     StochasticSiteRegistryV111.IsRunActionShopPurchaseSite(
-                        decision.Request.SiteId))
+                        decision.IndexDecision?.Request.SiteId ??
+                            string.Empty))
                 : 0;
         if ((replay.Continuation is null) != Complete ||
             !ControlledChanceContinuationExecutorV111.RequestsMatch(

@@ -150,7 +150,7 @@ public static class NativeNeowEventV111
         if (!offers.SequenceEqual(replay.OfferedChoiceIds,
                 StringComparer.Ordinal)
             || NativeRngV111.ToSnapshot(stream)
-                != NativeRngV111.ToSnapshot(replay.Stochastic.NativeRng))
+                != NativeRngV111.ToSnapshot(replay.NativeEventRng))
             throw new InvalidOperationException(
                 "Neow offers or event cursor disagree with their native context draws.");
     }

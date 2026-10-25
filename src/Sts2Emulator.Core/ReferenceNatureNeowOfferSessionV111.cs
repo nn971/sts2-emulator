@@ -42,7 +42,8 @@ internal static class NeowOfferDecisionPlanBuilderV111
             int? boundedCount = null,
             int requestOrdinal = 0)
         {
-            if (!NeowOfferSessionSiteIds.Contains(
+            if (!ReferenceNatureNeowOfferSessionV111
+                    .NeowOfferSessionSiteIds.Contains(
                     siteId, StringComparer.Ordinal))
                 throw new NotSupportedException(
                     $"Neow offer decision does not support site '{siteId}'.");
@@ -490,7 +491,7 @@ public sealed record ReferenceNatureNeowOfferSessionV111(
             NativeRngV111.ToSnapshot(eventStream) !=
                 NativeRngV111.ToSnapshot(expectedEventStream) ||
             NativeRngV111.ToSnapshot(eventStream) !=
-                NativeRngV111.ToSnapshot(replay.Audit.Stochastic.NativeRng))
+                NativeRngV111.ToSnapshot(replay.Audit.NativeEventRng))
             throw new InvalidDataException(
                 "Native Neow generation changed its audited event stream.");
         return replay.Run with

@@ -435,7 +435,7 @@ public static class ExperimentalSilentThreeActRouteV111
     }
 
     public static RunState ContinueAct(RunState state) =>
-        ContinueActCore(state, map: null,
+        ContinueActCore(state, suppliedMap: null,
             deferAssignedAncientOpening: false);
 
     internal static RunState ContinueActWithMap(
@@ -719,7 +719,8 @@ internal sealed class ReferenceNatureLaterActAssignmentIndexProviderV111
                      .AncientAssignmentSiteId)
         {
             var (act, includeDarv) = ParseAncientOwner(request.OwnerId);
-            var pool = AncientPool(act, includeDarv);
+            var pool = ExperimentalSilentThreeActRouteV111
+                .AncientPool(act, includeDarv);
             if (request.OperationKind != "choose_index" ||
                 request.SupportCount != pool.Length ||
                 !request.OrderedCandidates.SequenceEqual(
@@ -790,7 +791,8 @@ internal sealed class ReferenceNatureLaterActAssignmentIndexProviderV111
         foreach (var act in new[] { 2, 3 })
         foreach (var includeDarv in new[] { false, true })
         {
-            var pool = AncientPool(act, includeDarv);
+            var pool = ExperimentalSilentThreeActRouteV111
+                .AncientPool(act, includeDarv);
             var expected = $"act:{act}:include_darv:{includeDarv}:pool:"
                 + CanonicalJson.Sha256(pool);
             if (ownerId == expected)
@@ -933,7 +935,8 @@ public sealed record ReferenceNatureLaterActAssignmentsV111(
         void CheckAncient(int act, bool includeDarv, int drawOrdinal,
             int assignmentIndex)
         {
-            var pool = AncientPool(act, includeDarv);
+            var pool = ExperimentalSilentThreeActRouteV111
+                .AncientPool(act, includeDarv);
             var law = ChanceLawEngineV111.QueryLaterActAncientAssignment(
                 act, includeDarv, drawOrdinal);
             Check(law, pool.Select(id => "ancient_event:" + id).ToArray());
@@ -1170,7 +1173,7 @@ internal sealed class ReferenceNatureLaterActEncounterIndexProviderV111
             "ReferenceNature later-act boss request has an unknown ordered pool.");
     }
 
-    private static string ResolveFirstBoss(string ownerId)
+    private string ResolveFirstBoss(string ownerId)
     {
         const string prefix = "act:3:first_boss:";
         const string suffix = ":alternatives:";

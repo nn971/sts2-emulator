@@ -1345,11 +1345,12 @@ public static class SemanticCombatDrawEngineV111
                 Combat = semanticCombat
             }
         };
-        var (advanced, remaining) = ControlledChanceGuardV111.ExecuteGuarded(
+        var drawProgress = ControlledChanceGuardV111.ExecuteGuarded(
             () => PrototypeGameEngine.BeginSemanticCombatDraw(
                 attached, cardCount, fromHandDraw));
         var result = new SemanticCombatDrawV111(
-            baseRun, advanced, cardCount, remaining, fromHandDraw);
+            baseRun, drawProgress.Run, cardCount,
+            drawProgress.RemainingCount, fromHandDraw);
         Validate(result);
         return result;
     }
@@ -1444,10 +1445,11 @@ public static class SemanticCombatDrawEngineV111
         {
             var decision = SemanticRandomPileCardEngineV111.Resolve(
                 pileCardEvent, selectedIndex);
-            var (progress, _) = SemanticChoiceResumeV111.Resume(run, decision);
-            _ = progress.RequireRequestedCount();
+            var (pileCardProgress, _) =
+                SemanticChoiceResumeV111.Resume(run, decision);
+            _ = pileCardProgress.RequireRequestedCount();
             return PublishResolvedChoice(
-                state, progress, decision,
+                state, pileCardProgress, decision,
                 static (stochastic, selected) =>
                     stochastic.AppendRandomPileCard(selected));
         }
@@ -1468,7 +1470,7 @@ public static class SemanticCombatDrawEngineV111
                 costRequest, selectedIndex, "semantic-controlled-v1");
             decision.Validate();
             var resumedCost = ControlledChanceContinuationExecutorV111
-                .ResolveSelectedIndex<
+                .ResolveSelectedIndexValue<
                 SemanticCombatDrawV111,
                 PrototypeDrawCardsResumeResultV111>(
                 state, costRequest, selectedIndex, (checkpoint, replayedIndex) =>
@@ -1476,13 +1478,13 @@ public static class SemanticCombatDrawEngineV111
                     var checkpointCombat = checkpoint.Run.World?.Combat ??
                         throw new InvalidDataException(
                             "Semantic draw-cost checkpoint lost combat.");
-                    var progress = SemanticChoiceResumeV111
+                    var costProgress = SemanticChoiceResumeV111
                         .ResumeCombatDrawCost(
                             checkpoint.Run, replayedIndex,
                             checkpoint.RemainingCount,
                             checkpointCombat.CounterState
                                 .CardsDrawnThisCombat);
-                    return progress;
+                    return costProgress;
                 });
             return PublishResolvedChoice(
                 state, resumedCost, decision,
@@ -1527,7 +1529,7 @@ public static class SemanticCombatDrawEngineV111
                 drawProgress = PrototypeGameEngine
                     .ResumeSemanticAutomaticHandDrawAfterNestedChoice(
                         state.Run, resumedDraw,
-                        resumedEffectDraw.Boundary,
+                        resumedEffectDraw.PipelineBoundary,
                         "effect draw", state.RequestedCount,
                         state.RemainingCount);
             else
@@ -1538,7 +1540,7 @@ public static class SemanticCombatDrawEngineV111
                         combat.CounterState.CardsDrawnThisCombat);
                 drawProgress = new PrototypeDrawCardsResumeResultV111(
                     resumedDraw, remaining,
-                    PipelineBoundary: resumedEffectDraw.Boundary);
+                    PipelineBoundary: resumedEffectDraw.PipelineBoundary);
             }
             return PublishResumeTransition(
                 state, PublishDrawProgress(state, drawProgress));
@@ -1856,7 +1858,7 @@ public static class SemanticCombatDrawEngineV111
             SemanticChoiceResumeResultV111 resumed,
             string choiceKind) =>
         PrototypeGameEngine.ResumeSemanticAutomaticHandDrawAfterNestedChoice(
-            state.Run, resumed.Run, resumed.Boundary, choiceKind,
+            state.Run, resumed.Run, resumed.PipelineBoundary, choiceKind,
             state.RequestedCount, state.RemainingCount);
 
     public static SemanticCombatDrawV111 ResolveStratagemSelection(

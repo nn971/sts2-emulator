@@ -163,7 +163,7 @@ public sealed partial class PrototypeGameEngine
         if (evt.NativePageIndex == 0 && choice == "enjoy_tea")
         {
             const string relicId = PrototypeNativeGloryEvents.RoyalPoisonId;
-            var prototypeRng = state.Stochastic.PrototypeRng;
+            var teaPrototypeRng = state.Stochastic.PrototypeRng;
             var player = state.Player with
             {
                 Relics = state.Player.Relics.Append(
@@ -172,12 +172,16 @@ public sealed partial class PrototypeGameEngine
             };
             player = ApplyRelicRunEvent(player,
                 PrototypeRunEventKind.RelicAcquired,
-                acquiredRelicId: relicId, rng: prototypeRng);
+                acquiredRelicId: relicId, rng: teaPrototypeRng);
             player = player with { Hp = player.MaxHp };
-            var stochastic = RunStochasticStateV111.WithPrototypeRng(
-                state.Stochastic, prototypeRng);
+            var teaStochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, teaPrototypeRng);
             return PreserveNativeEventCompletionPage(
-                state with { Player = player, Stochastic = stochastic }, choice);
+                state with
+                {
+                    Player = player,
+                    Stochastic = teaStochastic
+                }, choice);
         }
 
         if (evt.NativePageIndex != 1 || choice != "continue_fight")

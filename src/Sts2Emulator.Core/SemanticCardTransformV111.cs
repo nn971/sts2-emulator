@@ -107,8 +107,8 @@ public sealed record SemanticCardTransformNativeAuditV111(
         var supportFingerprint = CanonicalJson.Sha256(candidates);
         var expectedProviderOwner = "card_instance:" +
             sourceCardInstanceId + ":pool:" + supportFingerprint;
-        if (request.SiteId != SiteId ||
-            request.StreamId != NativeStreamId ||
+        if (request.SiteId != SemanticCardTransformChoiceV111.SiteId ||
+            request.StreamId != SemanticCardTransformChoiceV111.NativeStreamId ||
             request.OwnerId != expectedProviderOwner ||
             !request.OrderedCandidates.SequenceEqual(
                 Enumerable.Range(0, candidates.Length)) ||
@@ -172,7 +172,8 @@ public sealed record SemanticCardTransformNativeAuditV111(
             semanticEvent.OriginalCardId, candidates, request.StreamId);
         if (SchemaId != CurrentSchemaId ||
             ProviderDecision.ProviderMode != "native-v111" ||
-            request.SiteId != SiteId || request.StreamId != NativeStreamId ||
+            request.SiteId != SemanticCardTransformChoiceV111.SiteId ||
+            request.StreamId != SemanticCardTransformChoiceV111.NativeStreamId ||
             request.OwnerId != expectedProviderOwner ||
             request.OperationKind != "choose_index" ||
             request.SupportCount != candidates.Length ||

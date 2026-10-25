@@ -487,7 +487,7 @@ public static class PrototypeNativeOvergrowthRunFactory
                 Event = new EventState(
                     PrototypeNativeOvergrowthEvents.NeowEventId,
                     OfferedChoiceIds: neowOffers.OfferedChoiceIds,
-                    NativeEventRng: neowOffers.Stochastic.NativeRng,
+                    NativeEventRng: neowOffers.NativeEventRng,
                     NativeEventRngProviderMode:
                         neowOffers.ProviderMode == "native-v111"
                             ? null : neowOffers.ProviderMode)

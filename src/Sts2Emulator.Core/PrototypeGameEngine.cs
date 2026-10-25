@@ -349,7 +349,7 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             requested <= 0 || remaining < 0 ||
             sourceCardInstanceId is not { } sourceCardId ||
             !combat.Cards.Any(card => card.InstanceId == sourceCardId) ||
-            !ValidateControlledDrawInsertion(combat, insertion))
+            !ValidateControlledDrawInsertion(combat, insertion!))
             return false;
 
         return true;
@@ -607,7 +607,7 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             cursor.Stochastic.CompletedSemanticHandDrawRequested is not null ||
             sourceCardInstanceId is not { } sourceCardId ||
             !combat.Cards.Any(card => card.InstanceId == sourceCardId) ||
-            !ValidateControlledDrawInsertion(combat, insertion))
+            !ValidateControlledDrawInsertion(combat, insertion!))
             return false;
 
         return true;

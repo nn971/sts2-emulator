@@ -274,7 +274,7 @@ public sealed partial record RunState
                     throw new InvalidOperationException("Shop phase has no shop state.");
                 }
 
-                ValidateShop(state.Player, world.Shop);
+                ValidateShop(state, state.Player, world.Shop);
                 break;
 
             case RunPhase.Event:
@@ -480,7 +480,8 @@ public sealed partial record RunState
         }
     }
 
-    private static void ValidateShop(PlayerState player, ShopState shop)
+    private static void ValidateShop(
+        RunState state, PlayerState player, ShopState shop)
     {
         var parasolHeld = player.Relics.Any(relic =>
             StringComparer.Ordinal.Equals(

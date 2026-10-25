@@ -167,7 +167,7 @@ public sealed partial class PrototypeGameEngine
     private static (RunState Run,
         AutomaticHandDrawSourceResultContextV111 ResultContext,
         bool DispatchBeforeHandDraw) PrepareAutomaticHandDrawStage(
-        RunState state,
+        RunState state, RngBundle prototypeRng,
         AutomaticHandDrawSourceResultContextV111 requestedResultContext)
     {
         ArgumentNullException.ThrowIfNull(state);
@@ -194,8 +194,13 @@ public sealed partial class PrototypeGameEngine
         if (!resumedAfterSemanticHook && !resumedAfterControlledHook)
             return (state, requestedResultContext, true);
 
+        var publishedRngState = state with
+        {
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, prototypeRng)
+        };
         var cleared = CommitAutomaticHandDrawProgress(
-            PublishPrototypeRng(state), state.Player, combat,
+            publishedRngState, publishedRngState.Player, combat,
             progress: null);
         return (cleared,
             resumedAfterSemanticHook
@@ -671,22 +676,22 @@ public sealed partial class PrototypeGameEngine
                 null);
 
         var world = RequireWorld(costProgress.Run);
-        var combat = world.Combat ?? throw new InvalidDataException(
+        var costCombat = world.Combat ?? throw new InvalidDataException(
             "Draw-cost resume removed combat.");
         if (costProgress.DrawnHookSuspended &&
-            combat.PendingChoice is not null &&
-            combat.PendingKnowledgeDemonChoice is null)
+            costCombat.PendingChoice is not null &&
+            costCombat.PendingKnowledgeDemonChoice is null)
             return new PrototypeAutomaticHandDrawCostResumeV111(
                 new PrototypeDrawCardsResumeResultV111(
                     costProgress.Run, cost.RemainingCount, savedRequested),
                 CreateDrawCardsResult(
-                    costProgress.Run.Player, combat, [],
+                    costProgress.Run.Player, costCombat, [],
                     PrototypeDrawCardsBoundaryV111.NestedCardDrawnChoice(
                         cost.RemainingCount),
                     automaticHandDrawStage: true));
         if (costProgress.DrawnHookSuspended ||
-            combat.PendingChoice is not null ||
-            combat.PendingKnowledgeDemonChoice is not null)
+            costCombat.PendingChoice is not null ||
+            costCombat.PendingKnowledgeDemonChoice is not null)
             throw new NotSupportedException(unsupportedBoundaryMessage);
 
         var prototypeRng = costProgress.Run.Stochastic.PrototypeRng;

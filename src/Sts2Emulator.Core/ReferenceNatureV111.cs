@@ -26,11 +26,12 @@ public static class ReferenceNatureV111
         {
             var intentEvent = SemanticPilotCombatEngineV111
                 .DescribePendingIntentEvent(combat);
-            var law = ChanceLawEngineV111.QueryIntent(intentEvent);
-            var selection = SampleValidated(law, state);
-            var child = SemanticPilotCombatEngineV111.ResolveIntent(
-                combat, combat.Fingerprint, selection.OutcomeId);
-            return new ReferenceNatureResolutionV111(child, law, selection);
+            var intentLaw = ChanceLawEngineV111.QueryIntent(intentEvent);
+            var intentSelection = SampleValidated(intentLaw, state);
+            var intentChild = SemanticPilotCombatEngineV111.ResolveIntent(
+                combat, combat.Fingerprint, intentSelection.OutcomeId);
+            return new ReferenceNatureResolutionV111(
+                intentChild, intentLaw, intentSelection);
         }
 
         var pending = SemanticPilotCombatEngineV111
@@ -86,7 +87,10 @@ public static class ReferenceNatureV111
                 nativeGrid.OutcomeIdAt(selectedIndex), selectedIndex,
                 new ReferenceNatureStateV111(
                     ReferenceNatureStateV111.CurrentSchemaId, randomState,
-                    checked(state.SampleCount + 1)));
+                    checked(state.SampleCount + 1))
+                {
+                    Seed = state.Seed
+                });
         }
 
         if (law.UniformIndexRange is { } range)
@@ -97,7 +101,10 @@ public static class ReferenceNatureV111
                 law.LawId, law.EventId, range.OutcomeIdAt(selectedOffset),
                 selectedOffset, new ReferenceNatureStateV111(
                     ReferenceNatureStateV111.CurrentSchemaId, randomState,
-                    checked(state.SampleCount + 1)));
+                    checked(state.SampleCount + 1))
+                {
+                    Seed = state.Seed
+                });
         }
 
         ulong ticket = NextBounded(ref randomState, (ulong)law.TotalWeight);
@@ -111,7 +118,10 @@ public static class ReferenceNatureV111
                     law.LawId, law.EventId, law.Outcomes[index].OutcomeId,
                     index, new ReferenceNatureStateV111(
                         ReferenceNatureStateV111.CurrentSchemaId,
-                        randomState, checked(state.SampleCount + 1)));
+                        randomState, checked(state.SampleCount + 1))
+                    {
+                        Seed = state.Seed
+                    });
             }
         }
 

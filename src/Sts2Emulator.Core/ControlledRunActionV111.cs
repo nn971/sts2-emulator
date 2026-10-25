@@ -290,12 +290,12 @@ public sealed record ControlledRunActionTraceV111(
                 || omittedLabels ||
                 ControlledStochasticChanceReplayV111.CandidateLabelsMatch(
                     labels, Enumerable.Range(0, labels.Length).Select(index =>
-                        index.ToString(CultureInfo.InvariantCulture)));
+                        index.ToString(CultureInfo.InvariantCulture)).ToArray());
             var numericUnderdocksBossLabels = !isUnderdocksBossDraw
                 || ControlledStochasticChanceReplayV111.CandidateLabelsMatch(
                     labels, Enumerable.Range(0, labels.Length)
                     .Select(index => index.ToString(
-                        CultureInfo.InvariantCulture)));
+                        CultureInfo.InvariantCulture)).ToArray());
             if (decision.ProviderMode != "controlled-v111"
                 || decision.NativeCursorBefore is not null
                 || decision.NativeCursorAfter is not null
@@ -338,6 +338,7 @@ public sealed record ControlledRunActionTraceV111(
             {
                 var request = ControlledStochasticRequestV111.FromIndex(
                     indexDecision.Request);
+                var indexRequest = indexDecision.Request;
                 var nativeEncounter =
                     mapNodeAction && ControlledRunActionEngineV111
                         .IsNativeActOneCombatEntryRequest(request);
@@ -347,12 +348,12 @@ public sealed record ControlledRunActionTraceV111(
                 var nativeRestModel = restHealAction && request.SiteId ==
                     "card_rarity.encounter_model.index_draw" &&
                     request.StreamId == NativePlayerRngV111.RewardsStreamId &&
-                    request.OperationKind == "choose_index" &&
-                    request.OrderedCandidates.SequenceEqual(
-                        Enumerable.Range(0, request.SupportCount));
+                    indexRequest.OperationKind == "choose_index" &&
+                    indexRequest.OrderedCandidates.SequenceEqual(
+                        Enumerable.Range(0, indexRequest.SupportCount));
                 var entropicBrewModel = entropicBrewAction &&
                     ControlledRunActionEngineV111
-                        .IsEntropicBrewFillRequestShape(request) &&
+                        .IsEntropicBrewFillRequestShape(indexRequest) &&
                     (request.StreamId ==
                             NativePlayerRngV111.RewardsStreamId
                         ? decision.CandidateLabels is null
@@ -368,9 +369,9 @@ public sealed record ControlledRunActionTraceV111(
                         entropicBrewModel) ||
                     (nativePotionModel || nativeRestModel) &&
                         (decision.CandidateLabels is not null ||
-                         request.OperationKind != "choose_index") ||
+                         indexRequest.OperationKind != "choose_index") ||
                     decision.CandidateLabels is { } labels &&
-                        labels.Length != request.SupportCount)
+                        labels.Length != indexRequest.SupportCount)
                     throw new InvalidDataException(
                         "Typed controlled run-action index decision is outside a supported run-action boundary.");
             }
@@ -739,10 +740,14 @@ public sealed record PrototypeControlledRunActionContinuationV111(
             {
                 var nativeFormationDraw =
                     ControlledRunActionEngineV111
-                        .IsNativeEncounterFormationRequest(PendingRequest);
+                        .IsNativeEncounterFormationRequest(
+                            ControlledStochasticRequestV111.FromIndex(
+                                PendingRequest));
                 var nativeActOneCombatRequest =
                     ControlledRunActionEngineV111
-                        .IsNativeActOneCombatEntryRequest(PendingRequest);
+                        .IsNativeActOneCombatEntryRequest(
+                            ControlledStochasticRequestV111.FromIndex(
+                                PendingRequest));
                 var nativeMapAction = MapNodeId is { } nativeNodeId
                     ? GameAction.Create("choose_map_node",
                         new ChooseMapNodePayload(nativeNodeId))
@@ -949,7 +954,7 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                     || !new PrototypeGameEngine().GetLegalActions(state)
                         .Any(action => PrototypeAiEnvironment.StableActionId(
                                 action) ==
-                            PrototypeAiEnvironment.StableActionId(RunAction)))
+                            PrototypeAiEnvironment.StableActionId(RunAction!)))
                     throw new InvalidDataException(
                         "Controlled reward-relic frame is outside its legal combat reward boundary.");
                 expectedSite = PendingRequest.SiteId;
@@ -1152,7 +1157,8 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                     ? isEventEntryDraw || isShopDraw || isTreasureDraw
                         || isCombatEntryDraw
                         || isNativeActOneCombatEntryDraw
-                    : IsRelicDeckTransformActionKind(ActionId)
+                    : ControlledRunActionEngineV111
+                        .IsRelicDeckTransformActionKind(ActionId)
                         ? isRelicDeckTransformDraw
                     : ControlledEventChoiceReplayV111
                         .IsRunActionShovelSite(request.SiteId);
@@ -1187,12 +1193,12 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                 || omittedLabels ||
                 ControlledStochasticChanceReplayV111.CandidateLabelsMatch(
                     labels, Enumerable.Range(0, labels.Length).Select(index =>
-                        index.ToString(CultureInfo.InvariantCulture)));
+                        index.ToString(CultureInfo.InvariantCulture)).ToArray());
             var numericUnderdocksBossLabels = !isUnderdocksBossDraw
                 || ControlledStochasticChanceReplayV111.CandidateLabelsMatch(
                     labels, Enumerable.Range(0, labels.Length)
                         .Select(index => index.ToString(
-                            CultureInfo.InvariantCulture)));
+                            CultureInfo.InvariantCulture)).ToArray());
             if (decision.ProviderMode != "controlled-v111"
                 || decision.NativeCursorBefore is not null
                 || decision.NativeCursorAfter is not null
@@ -1375,6 +1381,10 @@ public static class ControlledRunActionEngineV111
     public static bool IsShopPurchaseActionKind(string actionKind) =>
         actionKind is "buy_card" or "buy_potion" or
             "replace_shop_potion" or "remove_card" or "buy_relic";
+
+    internal static bool IsSupportedShopPurchaseStream(
+        RandomIndexRequestV111 request) =>
+        ControlledRunActionTraceV111.IsSupportedShopPurchaseStream(request);
 
     internal static bool IsRelicDeckTransformActionKind(string actionKind) =>
         actionKind is "choose_shop_relic_deck_card"

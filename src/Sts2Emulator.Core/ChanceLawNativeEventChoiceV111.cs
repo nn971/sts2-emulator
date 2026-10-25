@@ -934,9 +934,9 @@ public static partial class ChanceLawEngineV111
             var infestedPlan =
                 NativeEventInfestedAutomatonCardPickPlanBuilderV111.Build(
                     origin, siteId, ordinal, actionId);
-            var nativeIndexLaw = NativeRngV111.IsCanonicalStreamId(
+            var infestedNativeIndexLaw = NativeRngV111.IsCanonicalStreamId(
                 infestedPlan.Request.StreamId);
-            var infestedWeights = nativeIndexLaw
+            var infestedWeights = infestedNativeIndexLaw
                 ? NativeNextIntGridWeights(
                     infestedPlan.Request.SupportCount)
                 : Enumerable.Repeat(1L,
@@ -955,11 +955,11 @@ public static partial class ChanceLawEngineV111
                 infestedPlan.Request.Ordinal,
                 NativeEventCardPickConditioningPolicyId,
                 infestedPlan.ConditioningFingerprint,
-                nativeIndexLaw
+                infestedNativeIndexLaw
                     ? NativeBoundedIndexSourceVerifiedProvenance
                     : "uniform-saved-index-support-unverified",
                 infestedOutcomes,
-                nativeIndexLaw
+                infestedNativeIndexLaw
                     ? ChanceLawV111.SourceVerifiedStatus
                     : ChanceLawV111.UnverifiedStatus);
         }

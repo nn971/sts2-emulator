@@ -420,19 +420,22 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
             if (siteId == ChanceLawEngineV111
                     .NativeStoneOfAllTimePotionSlotSiteId)
             {
-                var law = ChanceLawEngineV111
+                var legacyPotionSlotLaw = ChanceLawEngineV111
                     .QueryNativeStoneOfAllTimePotionSlot(
                         origin, siteId, ordinal, actionId, eventId);
                 if (streamId != "event" ||
                     legacyIndexRequest.OperationKind != "choose_index" ||
-                    law.SiteId != siteId ||
-                    law.OperationKind != legacyIndexRequest.OperationKind ||
-                    law.OwnerId != ownerId || law.Ordinal != ordinal ||
+                    legacyPotionSlotLaw.SiteId != siteId ||
+                    legacyPotionSlotLaw.OperationKind !=
+                        legacyIndexRequest.OperationKind ||
+                    legacyPotionSlotLaw.OwnerId != ownerId ||
+                    legacyPotionSlotLaw.Ordinal != ordinal ||
                     !legacyIndexRequest.OrderedCandidates.SequenceEqual(
-                        Enumerable.Range(0, law.Outcomes.Length)))
+                        Enumerable.Range(
+                            0, legacyPotionSlotLaw.Outcomes.Length)))
                     throw new InvalidDataException(
                         "Legacy Stone of All Time entry request differs from its conditional Chance Law.");
-                return law;
+                return legacyPotionSlotLaw;
             }
             if (siteId == ChanceLawEngineV111
                     .NativeFutureOfPotionsCardTypeSiteId)

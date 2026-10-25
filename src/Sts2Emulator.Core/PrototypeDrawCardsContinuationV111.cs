@@ -435,8 +435,8 @@ public sealed partial class PrototypeGameEngine
             pending?.ControlledDrawInsertion?.SemanticDrawContinuation?
                 .RemainingCount ??
             pending?.ControlledDrawCost?.RemainingCount;
-        if (savedCount is { } remaining)
-            return remaining;
+        if (savedCount is { } pendingRemaining)
+            return pendingRemaining;
         if (TryGetSemanticAutomaticHandDrawProgress(
                 combat, out _, out int remaining))
             return remaining;

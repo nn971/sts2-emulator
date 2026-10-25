@@ -11,8 +11,17 @@ public sealed record ReferenceNatureStateV111(
 {
     public const string CurrentSchemaId = "sts2-v111-reference-nature-state-v1";
 
+    // Optional for snapshots written before seed lineage was retained. Keeping
+    // it separate from SamplerState lets later checkpoints prove they belong
+    // to the same ReferenceNature stream after the sampler has advanced.
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Seed { get; init; }
+
     public static ReferenceNatureStateV111 Create(ulong seed) =>
-        new(CurrentSchemaId, seed, 0);
+        new(CurrentSchemaId, seed, 0)
+        {
+            Seed = seed.ToString(CultureInfo.InvariantCulture)
+        };
 
     public ReferenceNatureStateV111 Fork() => this;
 
@@ -40,7 +49,9 @@ public sealed record ReferenceNatureStateV111(
 
     public void Validate()
     {
-        if (SchemaId != CurrentSchemaId || SampleCount < 0)
+        if (SchemaId != CurrentSchemaId || SampleCount < 0 ||
+            Seed is { } seed && !ulong.TryParse(seed,
+                NumberStyles.None, CultureInfo.InvariantCulture, out _))
             throw new InvalidDataException("Invalid ReferenceNature sample count.");
     }
 }
