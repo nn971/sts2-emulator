@@ -5,14 +5,16 @@
 **S4 whole-run six-primitive continuation increment (2026-10-25):** The
 ReferenceNature whole-run session now accepts caller-supplied, replay-validated
 transcript entries for all six typed random operations alongside its existing
-indexed Chance Law sampling. Aligned optional Nature selections distinguish
-sampled outcomes from controlled replay outcomes; scripted entries do not
-advance the Nature cursor. Session schema v2 restores v1 snapshots, JSONL and
-Python expose `reference_nature_scripted_run_resolve_outcome`, and provider
-replay captures retain the complete typed boundary trace. Core and CLI Release
-builds passed with zero warnings or errors; Python syntax validation and
-`git diff --check` passed. No tests were added or run. This closes ordinary
-whole-run primitive continuation, while automated non-index Nature laws,
+Chance Law sampling. That Nature path now also admits the four registered
+Native map quota `gaussian_int` requests through the existing unverified
+truncated-rounded-normal law and typed outcome mapper. Other non-index requests
+remain caller-scripted. Aligned optional Nature selections distinguish sampled
+outcomes from controlled replay outcomes; scripted entries do not advance the
+Nature cursor. Session schema v2 restores v1 snapshots, JSONL and Python expose
+`reference_nature_scripted_run_resolve_outcome`, and provider replay captures
+retain the complete typed boundary trace. Core and CLI Release builds passed
+with zero warnings or errors; Python syntax validation and `git diff --check`
+passed. No tests were added or run. Broader automated non-index Nature laws,
 specialized event controllers, and cross-provider equivalence remain open.
 
 **S4 nested automatic Stratagem continuation increment (2026-10-25):** A semantic `CardDrawn` hook action may now continue into the automatic hand draw's existing Stratagem card-selection event. One shared engine predicate validates the active semantic draw cursor and exact pick count for both child classification and event projection; frame validation, selection replay, and chronology reuse the existing Stratagem owners. No transcript schema changed. Core and CLI Release builds passed with zero warnings or errors; no tests were run.

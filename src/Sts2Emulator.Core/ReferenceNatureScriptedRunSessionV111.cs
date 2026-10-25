@@ -245,9 +245,10 @@ public sealed record ReferenceNatureScriptedRunSessionSnapshotV111(
 }
 
 /// <summary>
-/// Whole-run ReferenceNature session for ordinary legal actions. Finite index
-/// boundaries can be sampled by ReferenceNature; any of the six typed
-/// boundaries can instead be resolved from a caller-supplied transcript.
+/// Whole-run ReferenceNature session for ordinary legal actions. Finite-index
+/// boundaries and registered Native map quota Gaussians can be sampled by
+/// ReferenceNature; any of the six typed boundaries can instead be resolved
+/// from a caller-supplied transcript.
 /// </summary>
 public sealed record ReferenceNatureScriptedRunSessionV111(
     string SchemaId,
@@ -359,7 +360,7 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
 
     [JsonIgnore]
     public bool RequiresScriptedOutcome =>
-        ActiveAction?.PendingRequest is { IndexRequest: null };
+        ActiveAction?.PendingRequest is not null && PendingLaw is null;
 
     [JsonIgnore]
     public string? PendingOperationKind => ActiveAction?.PendingRequest is
@@ -374,10 +375,9 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
             : null;
 
     [JsonIgnore]
-    public ChanceLawV111? PendingLaw => ActiveAction?.PendingRequest is
-        { IndexRequest: { } request }
-            ? ChanceLawEngineV111.QueryRandomIndex(
-                PendingEventId(ActiveAction, request), request)
+    public ChanceLawV111? PendingLaw => ActiveAction is { } active &&
+        active.PendingRequest is { } request
+            ? QueryNatureLaw(active, request)
             : null;
 
     [JsonIgnore]
@@ -443,15 +443,13 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
             "No ReferenceNature whole-run action is active.");
         var request = active.PendingRequest ?? throw new InvalidOperationException(
             "No stochastic request is pending for the active action.");
-        if (request.IndexRequest is not { } indexRequest)
+        var law = QueryNatureLaw(active, request) ??
             throw new NotSupportedException(
                 $"Whole-run request {request.SiteId} " +
                 $"({PendingOperationKind}) requires a caller-supplied typed outcome.");
-        var law = ChanceLawEngineV111.QueryRandomIndex(
-            PendingEventId(active, indexRequest), indexRequest);
         var selection = ReferenceNatureV111.SampleValidated(
             law, NatureState);
-        var outcome = CreateOutcome(active, indexRequest, selection);
+        var outcome = CreateNatureOutcome(active, request, law, selection);
         return ResolveOutcomeCore(fingerprint, outcome, selection);
     }
 
@@ -477,10 +475,21 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
         outcome.Validate();
         var decision = outcome.ToDecision();
         if (CanonicalJson.Sha256(decision.ToRequest()) !=
-                CanonicalJson.Sha256(request) ||
-            natureSelection is not null && request.IndexRequest is null)
+                CanonicalJson.Sha256(request))
             throw new InvalidDataException(
-                "Whole-run typed outcome does not match the pending request or resolution owner.");
+                "Whole-run typed outcome does not match the pending request.");
+        if (natureSelection is not null)
+        {
+            var law = QueryNatureLaw(active, request) ??
+                throw new InvalidDataException(
+                    "Nature selection has no supported whole-run Chance Law.");
+            var expected = CreateNatureOutcome(
+                active, request, law, natureSelection).ToDecision();
+            if (CanonicalJson.Sha256(expected) !=
+                CanonicalJson.Sha256(decision))
+                throw new InvalidDataException(
+                    "Whole-run Nature outcome differs from its sampled Chance Law.");
+        }
         var resolved = active.ResolveNext(outcome);
         var natureDecisions = ActiveNatureDecisions
             .Append(natureSelection is null ? null :
@@ -499,6 +508,36 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
         };
         next.Validate();
         return next;
+    }
+
+    // Non-index Nature laws are admitted only for registered Native map
+    // quota Gaussians; other typed primitives remain caller-scripted.
+    private static ChanceLawV111? QueryNatureLaw(
+        ScriptedRunActionSessionV111 active,
+        ControlledStochasticRequestV111 request)
+    {
+        if (request.IndexRequest is { } indexRequest)
+            return ChanceLawEngineV111.QueryRandomIndex(
+                PendingEventId(active, indexRequest), indexRequest);
+        if (request.GaussianIntRequest is { } gaussianRequest &&
+            ChanceLawEngineV111.MatchesNativeMapGaussianIntRequest(
+                gaussianRequest))
+            return ChanceLawEngineV111.QueryNativeMapRequest(request);
+        return null;
+    }
+
+    private static ScriptedRunActionOutcomeV111 CreateNatureOutcome(
+        ScriptedRunActionSessionV111 active,
+        ControlledStochasticRequestV111 request,
+        ChanceLawV111 law,
+        ReferenceNatureSelectionV111 selection)
+    {
+        if (request.IndexRequest is { } indexRequest)
+            return CreateOutcome(active, indexRequest, selection);
+        var decision = ReferenceNatureChanceLawDecisionV111.FromSelection(
+            law, request, selection);
+        return ScriptedRunActionOutcomeV111.FromDecision(
+            decision, checked(active.Decisions.Length + 1));
     }
 
     public ReferenceNatureScriptedRunSessionV111 Fork()
@@ -678,20 +717,21 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
                         "Scripted provider decision differs from its saved action transcript.");
                 continue;
             }
-            if (request.IndexRequest is not { } indexRequest)
+            var law = QueryNatureLaw(replay, request) ??
                 throw new InvalidDataException(
-                    "Nature-sampled whole-run decisions require an indexed request.");
-            var law = ChanceLawEngineV111.QueryRandomIndex(
-                PendingEventId(replay, indexRequest), indexRequest);
+                    "Nature-sampled whole-run decision has no supported Chance Law.");
             var selection = ReferenceNatureV111.SampleValidated(law, cursor);
             if (CanonicalJson.Sha256(selection) !=
-                CanonicalJson.Sha256(natureDecisions[index]!) ||
-                !DecisionMatchesSelection(decisions[index], indexRequest,
-                    selection.OutcomeIndex))
+                CanonicalJson.Sha256(natureDecisions[index]!))
                 throw new InvalidDataException(
                     "ReferenceNature action transcript differs from its Chance Law replay.");
-            replay = replay.ResolveNext(CreateOutcome(
-                replay, indexRequest, selection));
+            var outcome = CreateNatureOutcome(
+                replay, request, law, selection);
+            if (CanonicalJson.Sha256(outcome.ToDecision()) !=
+                CanonicalJson.Sha256(decisions[index]))
+                throw new InvalidDataException(
+                    "ReferenceNature provider decision differs from its Chance Law outcome.");
+            replay = replay.ResolveNext(outcome);
             if (CanonicalJson.Sha256(replay.Decisions[index]) !=
                 CanonicalJson.Sha256(decisions[index]))
                 throw new InvalidDataException(
@@ -704,18 +744,6 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
                 "ReferenceNature action prefix does not end at a valid boundary.");
         finalNatureState = cursor;
         return replay;
-    }
-
-    private static bool DecisionMatchesSelection(
-        ControlledStochasticDecisionV111 decision,
-        RandomIndexRequestV111 request, int selectedIndex)
-    {
-        var index = decision.IndexDecision;
-        return index is not null &&
-            CanonicalJson.Sha256(index.Request) ==
-                CanonicalJson.Sha256(request) &&
-            index.SelectedIndex == selectedIndex &&
-            index.ProviderMode == "controlled-v111";
     }
 
     private static ScriptedRunActionOutcomeV111 CreateOutcome(
