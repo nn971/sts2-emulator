@@ -50,10 +50,15 @@ internal static class SemanticChanceLawDispatchV111
 
         law.Validate();
         if (law.EventId != chanceEvent.EventId ||
+            law.SiteId != chanceEvent.SiteId ||
+            law.OperationKind != chanceEvent.OperationKind ||
+            law.OwnerId != chanceEvent.OwnerId ||
+            law.Ordinal != chanceEvent.Ordinal ||
             law.SupportCount != pending.SupportCount)
             throw new InvalidDataException(
                 $"ReferenceNature law no longer matches semantic event " +
-                $"site={chanceEvent.SiteId}.");
+                $"site={chanceEvent.SiteId} owner={chanceEvent.OwnerId} " +
+                $"ordinal={chanceEvent.Ordinal}.");
         return law;
     }
 

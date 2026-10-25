@@ -860,12 +860,12 @@ A chance-law query takes a **pre-outcome** semantic operation, legal support/wei
 
 For the active semantic combat boundary, `SemanticChanceLawDispatchV111`
 maps the shared typed pending-event descriptor to its Chance Law and checks
-the law's event ID and support size against that descriptor before
-ReferenceNature samples it. It also rejects a descriptor whose boundary
-fingerprint no longer matches the live combat. ReferenceNature and the
-Native policy resolver then pass that same descriptor to the shared mechanics
-outcome dispatcher; provider-specific sampling and provenance checks remain
-with their respective providers.
+the law's event ID, site, operation, owner, ordinal, and support size against
+that descriptor before ReferenceNature samples it. It also rejects a
+descriptor whose boundary fingerprint no longer matches the live combat.
+ReferenceNature and the Native policy resolver then pass that same descriptor
+to the shared mechanics outcome dispatcher; provider-specific sampling and
+provenance checks remain with their respective providers.
 
 Probability status belongs to each Chance Law. `UNVERIFIED` means its mapping or
 sampling law has not been independently established. `SOURCE_VERIFIED` means
