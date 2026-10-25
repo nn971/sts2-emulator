@@ -355,6 +355,27 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
     }
 
     /// <summary>
+    /// Reads active count-bearing hand-draw progress only when its remaining
+    /// count matches the caller's saved continuation count.
+    /// </summary>
+    public bool TryGetActiveAutomaticHandDrawProgress(
+        PrototypeAutomaticPipelineMechanicsStateV111 mechanics,
+        int expectedRemaining,
+        out PrototypeAutomaticHandDrawProgressV111 progress)
+    {
+        if (expectedRemaining < 0 ||
+            !TryGetActiveAutomaticHandDrawProgress(
+                mechanics, out progress) ||
+            progress.RemainingCount != expectedRemaining)
+        {
+            progress = null!;
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
     /// Reconciles the caller's requested count with the active tagged
     /// DrawPlayerHand progress. A saved older payload may omit the count, so
     /// the caller's value remains authoritative in that case.

@@ -1944,12 +1944,14 @@ public static class SemanticCombatDrawEngineV111
             pending, eventId, enemyInstanceId);
         var resumedTarget = SemanticChoiceResumeV111.ResumeTarget(
             state.Run, decision);
+        var sourceCursor =
+            state.Run.World?.Combat?.AutomaticPipelineContinuation;
+        var resumedCursor =
+            resumedTarget.Run.World?.Combat?.AutomaticPipelineContinuation;
         if (resumedTarget.Run.World?.Combat is not
                 { PendingKnowledgeDemonChoice: null } resumedCombat ||
             !PrototypeGameEngine.TryGetSemanticAutomaticHandDrawProgress(
-                resumedCombat, out int requested, out int remaining) ||
-            requested != state.RequestedCount ||
-            remaining != state.RemainingCount)
+                resumedCombat, out _, out _))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.CardDrawn " +
                 "operation=unsupported_resumed_target_boundary");
@@ -1957,6 +1959,15 @@ public static class SemanticCombatDrawEngineV111
         if (resumedCombat.PendingChoice is
                 { ControlledTarget: not null } childTarget)
         {
+            if (sourceCursor is null || resumedCursor is null)
+                throw new NotSupportedException(
+                    "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.CardDrawn " +
+                    "operation=unsupported_resumed_target_boundary");
+            resumedCursor.Stochastic
+                .ValidateSemanticHandDrawProgressTransitionFrom(
+                    sourceCursor.Stochastic, sourceCursor.Mechanics,
+                    resumedCursor.Mechanics, state.RequestedCount,
+                    state.RemainingCount);
             var taggedCombat = resumedCombat with
             {
                 PendingChoice = childTarget with

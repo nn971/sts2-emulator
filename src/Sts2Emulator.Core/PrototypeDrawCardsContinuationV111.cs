@@ -581,8 +581,7 @@ public sealed partial class PrototypeGameEngine
         var cursor = combat.AutomaticPipelineContinuation;
         if (cursor is null ||
             !cursor.Stochastic.TryGetActiveAutomaticHandDrawProgress(
-                cursor.Mechanics, out var progress) ||
-            progress.RemainingCount != remaining)
+                cursor.Mechanics, remaining, out var progress))
             throw new InvalidDataException(
                 "Automatic hand-draw resume cursor is inconsistent.");
 

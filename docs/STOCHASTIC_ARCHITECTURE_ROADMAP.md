@@ -5978,3 +5978,12 @@ legal Event-node action plus exact stream, owner, ordinal, operation, and
 ordered support, including Native-regional legacy requests. Core Release build
 passed with zero warnings and errors; `git diff --check` passed. No tests were
 run.
+
+**S4 hand-draw progress parity ownership increment (2026-10-26):** The
+automatic-pipeline stochastic owner now matches expected remaining counts
+while reading active hand-draw progress for draw-kernel and automatic cost
+resumes. Semantic target resumes validate source-to-result requested and
+remaining progress through the same owner, then retain their active-boundary
+requirement. This removes duplicate count-parity checks from those adapters;
+choice support and boundary policy remain local. Core Release build passed
+with zero warnings and errors; `git diff --check` passed. No tests were run.

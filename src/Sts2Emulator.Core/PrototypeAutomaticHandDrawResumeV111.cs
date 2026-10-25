@@ -801,8 +801,7 @@ public sealed partial class PrototypeGameEngine
             combat.PendingKnowledgeDemonChoice is not null ||
             cursor is null ||
             !cursor.Stochastic.TryGetActiveAutomaticHandDrawProgress(
-                cursor.Mechanics, out var progress) ||
-            progress.RemainingCount != cost.RemainingCount)
+                cursor.Mechanics, cost.RemainingCount, out var progress))
             throw new InvalidDataException(
                 "Automatic draw-cost cursor does not match its saved count.");
 
