@@ -323,6 +323,10 @@ public static class ReferenceNatureChanceLawDecisionV111
                 controlledNoEffect.Validate();
                 return controlledNoEffect;
             }
+            if (law.OperationKind == "event_offer_index")
+                return FromAncientOfferSelection(
+                    law, indexRequest, selection, outcome,
+                    conditioningRun, candidateLabels);
             if (law.OperationKind != indexRequest.OperationKind ||
                 law.SupportCount != indexRequest.SupportCount ||
                 !OutcomeEndsInIndex(outcome.OutcomeId,
@@ -399,6 +403,81 @@ public static class ReferenceNatureChanceLawDecisionV111
             floatDecision);
         result.Validate();
         return result;
+    }
+
+    private static ControlledStochasticDecisionV111
+        FromAncientOfferSelection(
+            ChanceLawV111 law,
+            RandomIndexRequestV111 indexRequest,
+            ReferenceNatureSelectionV111 selection,
+            ChanceLawOutcomeV111 outcome,
+            RunState? conditioningRun,
+            string[]? candidateLabels)
+    {
+        if (conditioningRun is null ||
+            indexRequest.SiteId is not (
+                NativeOrobasEventV111.OfferSiteId or
+                NativePaelRewardsV111.OfferSiteId or
+                NativeAncientRewardsV111.TezcataraOfferSiteId))
+            throw new NotSupportedException(
+                "Ancient event-offer mapping requires a conditioned direct-offer boundary.");
+
+        var siteId = indexRequest.SiteId;
+        var ordinal = indexRequest.Ordinal;
+        var candidates = ReferenceNatureAncientOfferSessionV111
+            .CandidateChoiceIds(conditioningRun, siteId, ordinal);
+        var expectedLaw = ChanceLawEngineV111.QueryAncientOffer(
+            conditioningRun, siteId, ordinal);
+        var expectedRequest = new RandomIndexRequestV111(
+            siteId,
+            ReferenceNatureAncientOfferSessionV111.StreamId(siteId),
+            ReferenceNatureAncientOfferSessionV111.OwnerId(siteId),
+            ordinal,
+            Enumerable.Range(0, candidates.Length).ToArray());
+        if (law.OperationKind != "event_offer_index" ||
+            indexRequest.OperationKind != "choose_index" ||
+            CanonicalJson.Sha256(law) !=
+                CanonicalJson.Sha256(expectedLaw) ||
+            CanonicalJson.Sha256(indexRequest) !=
+                CanonicalJson.Sha256(expectedRequest) ||
+            candidates.Length == 0)
+            throw new InvalidDataException(
+                "Ancient event-offer law differs from its ordered source candidates.");
+
+        var semanticLabels = candidates.Select(choiceId =>
+            "event_choice:" + choiceId).ToArray();
+        if (candidateLabels is { Length: > 0 } labels &&
+            (labels.Length != candidates.Length ||
+             labels.Where((label, index) =>
+                 label != candidates[index] &&
+                 label != semanticLabels[index]).Any()))
+            throw new InvalidDataException(
+                "Ancient event-offer candidate labels differ from its source choice identities.");
+
+        const string outcomePrefix = "event_choice:";
+        if (!outcome.OutcomeId.StartsWith(
+                outcomePrefix, StringComparison.Ordinal))
+            throw new InvalidDataException(
+                "Ancient event-offer law returned a non-choice outcome.");
+        var choiceId = outcome.OutcomeId[outcomePrefix.Length..];
+        var selectedIndex = Array.IndexOf(candidates, choiceId);
+        if (selectedIndex < 0 ||
+            outcome.OutcomeId != semanticLabels[selectedIndex] ||
+            selection.OutcomeId != outcome.OutcomeId)
+            throw new InvalidDataException(
+                "Selected Ancient event-offer identity has no source candidate representative.");
+
+        var decision = new RandomIndexDecisionV111(
+            indexRequest with
+            {
+                OrderedCandidates = (int[])
+                    indexRequest.OrderedCandidates.Clone()
+            }, selectedIndex, "controlled-v111");
+        decision.Validate();
+        var controlled = ControlledStochasticDecisionV111.FromIndex(
+            decision, semanticLabels);
+        controlled.Validate();
+        return controlled;
     }
 
     private static ChanceLawOutcomeV111 ValidateSelection(

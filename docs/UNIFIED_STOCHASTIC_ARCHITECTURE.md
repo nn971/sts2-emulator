@@ -1266,6 +1266,14 @@ journal, and retains completed action checkpoints and physical draw
 identities. When every boundary also has an aligned saved Nature selection,
 the factory replays each action prefix, re-queries its Chance Law at the
 pending request, and captures provider-independent support and outcome IDs.
+That whole-run query also rebuilds Native Orobas, Pael, and Tezcatara direct
+offer laws against their ordered choices, then maps a semantic event-choice
+identity to a source index representative. Native Nonupeipe, Tanx, Vakuu, and
+Darv offer shuffles use their conditioned swap laws; Darv replay includes the
+selected offer variant before its relic-shuffle prefix. Complete stream,
+owner, ordinal, operation, and ordered support requests are checked against
+the source boundary. The dedicated atomic Ancient-offer setup session remains
+the owner for pre-event generation.
 It marks that semantic trace complete only when the saved selections cover
 every typed boundary; caller-scripted or unsupported outcomes keep semantic
 comparison unavailable while the typed trace remains complete. Shared

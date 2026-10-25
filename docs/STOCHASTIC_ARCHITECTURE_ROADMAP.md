@@ -2,6 +2,15 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S2 whole-run Native Ancient-offer law increment (2026-10-26):** Ordinary
+ReferenceNature actions now route Orobas, Pael, and Tezcatara direct offers
+through their source-conditioned event-choice laws and map semantic identities
+back to representative request indices. Nonupeipe, Tanx, Vakuu, and Darv
+shuffles use the conditioned swap laws, including Darv's preceding offer
+variant in the relic-shuffle prefix. Exact source requests and optional
+candidate labels are validated. Core and CLI Release builds passed with zero
+warnings or errors; `git diff --check` passed. No tests were run.
+
 **S2 whole-run Native relic and combat reward law increment (2026-10-26):**
 Configured whole-run combat rewards, Treasure entry, Native Shovel digs, and
 event/reward relic acquisitions now route registered requests through their

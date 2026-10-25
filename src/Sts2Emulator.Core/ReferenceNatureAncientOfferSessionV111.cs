@@ -516,7 +516,7 @@ public sealed record ReferenceNatureAncientOfferSessionV111(
         return scripted.ToArray();
     }
 
-    private static string[] CandidateChoiceIds(
+    internal static string[] CandidateChoiceIds(
         RunState run, string siteId, int ordinal)
     {
         if (siteId == NativeOrobasEventV111.OfferSiteId)
@@ -539,7 +539,7 @@ public sealed record ReferenceNatureAncientOfferSessionV111(
     private static bool IsSupportedSite(string siteId) =>
         ChanceLawEngineV111.IsSupportedAncientOfferSessionSite(siteId);
 
-    private static string StreamId(string siteId) => siteId switch
+    internal static string StreamId(string siteId) => siteId switch
     {
         NativeOrobasEventV111.OfferSiteId => "context.event.OROBAS.player_0",
         NativePaelRewardsV111.OfferSiteId => "context.event.PAEL.player_0",
@@ -549,7 +549,7 @@ public sealed record ReferenceNatureAncientOfferSessionV111(
             $"No event RNG stream is registered for '{siteId}'.")
     };
 
-    private static string OwnerId(string siteId) => siteId switch
+    internal static string OwnerId(string siteId) => siteId switch
     {
         NativeOrobasEventV111.OfferSiteId => "event:OROBAS:act:2:floor:0",
         NativePaelRewardsV111.OfferSiteId => "event:PAEL:act:2:floor:0",

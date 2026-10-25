@@ -595,6 +595,10 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
                 ReferenceNatureEndlessConveyorSessionV111.SessionSiteIds
                     .Contains(indexRequest.SiteId, StringComparer.Ordinal))
                 return QueryNativeEventContextIndex(active, indexRequest);
+            if (StochasticSiteRegistryV111.AncientOfferSessionSiteIds
+                    .Contains(indexRequest.SiteId, StringComparer.Ordinal) ||
+                indexRequest.SiteId == NativeDarvEventV111.RelicShuffleSiteId)
+                return QueryNativeAncientOffer(active, indexRequest);
             if (ReferenceNatureNativeEventShuffleSessionV111
                 .NativeEventShuffleSessionSiteIds
                 .Contains(indexRequest.SiteId, StringComparer.Ordinal) &&
@@ -808,6 +812,100 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
             throw new InvalidDataException(
                 "Native Event-context request differs from its conditioned source law.");
         return law;
+    }
+
+    private static ChanceLawV111 QueryNativeAncientOffer(
+        ScriptedRunActionSessionV111 active,
+        RandomIndexRequestV111 request)
+    {
+        request.Validate();
+        var origin = active.Origin;
+        var siteId = request.SiteId;
+        if (siteId is NativeOrobasEventV111.OfferSiteId or
+            NativePaelRewardsV111.OfferSiteId or
+            NativeAncientRewardsV111.TezcataraOfferSiteId)
+        {
+            var ordinal = active.Decisions.Count(decision =>
+                decision.IndexDecision?.Request.SiteId == siteId);
+            var candidates = ReferenceNatureAncientOfferSessionV111
+                .CandidateChoiceIds(origin, siteId, ordinal);
+            if (candidates.Length == 0)
+                throw new InvalidDataException(
+                    "Native Ancient offer has no source candidates.");
+            var expectedRequest = new RandomIndexRequestV111(
+                siteId,
+                ReferenceNatureAncientOfferSessionV111.StreamId(siteId),
+                ReferenceNatureAncientOfferSessionV111.OwnerId(siteId),
+                ordinal,
+                Enumerable.Range(0, candidates.Length).ToArray());
+            if (CanonicalJson.Sha256(expectedRequest) !=
+                CanonicalJson.Sha256(request))
+                throw new InvalidDataException(
+                    "Native Ancient event-offer request differs from its source candidate boundary.");
+            var law = ChanceLawEngineV111.QueryAncientOffer(
+                origin, siteId, ordinal);
+            if (law.OperationKind != "event_offer_index" ||
+                law.SiteId != siteId || law.Ordinal != ordinal ||
+                law.OwnerId != expectedRequest.OwnerId)
+                throw new InvalidDataException(
+                    "Native Ancient event-offer law differs from its source boundary.");
+            return law;
+        }
+
+        var priorIndices = active.Decisions
+            .Where(decision => decision.IndexDecision?.Request.SiteId == siteId)
+            .Select(decision => decision.IndexDecision!.SelectedIndex)
+            .ToArray();
+        var ordinalForSite = priorIndices.Length;
+        ChanceLawV111 conditionedLaw;
+        RandomIndexRequestV111 expectedShuffleRequest;
+        if (siteId == NativeDarvEventV111.OfferVariantSiteId)
+        {
+            expectedShuffleRequest = ChanceLawEngineV111
+                .DarvOfferVariantRequest(origin);
+            conditionedLaw = ChanceLawEngineV111.QueryAncientOffer(
+                origin, siteId, ordinalForSite);
+        }
+        else if (siteId == NativeDarvEventV111.RelicShuffleSiteId)
+        {
+            var variantIndices = active.Decisions
+                .Where(decision => decision.IndexDecision?.Request.SiteId ==
+                    NativeDarvEventV111.OfferVariantSiteId)
+                .Select(decision => decision.IndexDecision!.SelectedIndex)
+                .ToArray();
+            if (variantIndices.Length != 1)
+                throw new InvalidDataException(
+                    "Darv relic shuffle requires its preceding offer-variant selection.");
+            var requests = ChanceLawEngineV111.DarvOfferShuffleRequests(origin);
+            if (ordinalForSite >= requests.Length)
+                throw new InvalidDataException(
+                    "Darv relic shuffle exceeded its source swap sequence.");
+            expectedShuffleRequest = requests[ordinalForSite];
+            conditionedLaw = ChanceLawEngineV111.QueryAncientOffer(
+                origin, siteId, ordinalForSite, priorIndices,
+                variantIndices[0]);
+        }
+        else
+        {
+            var pools = ChanceLawEngineV111
+                .AncientOfferShuffleChoicePools(origin, siteId);
+            var requests = ChanceLawEngineV111
+                .AncientOfferShuffleRequests(siteId, pools);
+            if (ordinalForSite >= requests.Length)
+                throw new InvalidDataException(
+                    "Native Ancient offer shuffle exceeded its source swap sequence.");
+            expectedShuffleRequest = requests[ordinalForSite].Request;
+            conditionedLaw = ChanceLawEngineV111.QueryAncientOffer(
+                origin, siteId, ordinalForSite, priorIndices);
+        }
+
+        if (CanonicalJson.Sha256(expectedShuffleRequest) !=
+            CanonicalJson.Sha256(request))
+            throw new InvalidDataException(
+                "Native Ancient offer shuffle request differs from its source boundary.");
+        RequireIndexRequestMatchesLaw(
+            request, conditionedLaw, "Native Ancient offer");
+        return conditionedLaw;
     }
 
     private static ChanceLawV111? QueryNativeEventShuffle(
@@ -1393,6 +1491,8 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
             ChanceLawEngineV111.NativePunchOffRewardConditioningPolicyId or
             ChanceLawEngineV111.NativeEventShuffleConditioningPolicyId or
             ChanceLawEngineV111.NativeRepyChestOfferConditioningPolicyId or
+            ChanceLawEngineV111.AncientOfferShuffleConditioningPolicyId or
+            ChanceLawEngineV111.DarvOfferVariantConditioningPolicyId or
             ChanceLawEngineV111.NativeEndlessConveyorUpgradeConditioningPolicyId or
             ChanceLawEngineV111.NativeEndlessConveyorColorlessConditioningPolicyId ||
             indexRequest.SiteId == PrototypeNativePunchOff
