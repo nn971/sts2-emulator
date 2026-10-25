@@ -191,12 +191,6 @@ public sealed record ReferenceNatureSessionStochasticStateV111
     {
         Cursor.Validate();
         var transcript = DecisionTranscript;
-        var expectedSampleCount = checked(
-            InitialNatureState.SampleCount + transcript.Length);
-        if (NatureState.SampleCount != expectedSampleCount)
-            throw new InvalidDataException(
-                "ReferenceNature semantic transcript does not match its sample count.");
-
         var previous = InitialNatureState;
         foreach (var selection in transcript)
         {

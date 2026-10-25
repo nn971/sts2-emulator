@@ -78,6 +78,10 @@ public sealed record ReferenceNatureStochasticStateV111<TDecision>
                 "ReferenceNature stochastic transcript is missing.");
         InitialNatureState.Validate();
         NatureState.Validate();
+        if (NatureState.SampleCount != checked(
+                InitialNatureState.SampleCount + transcript.Length))
+            throw new InvalidDataException(
+                "ReferenceNature transcript does not match its sample count.");
         foreach (var decision in transcript)
             if (decision is null)
                 throw new InvalidDataException(

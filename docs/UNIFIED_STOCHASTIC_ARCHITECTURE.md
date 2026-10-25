@@ -797,7 +797,8 @@ run-action session's nested map/preparation/Ancient continuation owners.
 
 `ReferenceNatureStochasticStateV111<TDecision>` owns the initial/current
 sampler cursor and defensive typed transcript used by the run-action and
-controlled-action stochastic owners. Native event-gold, Glory Reflections,
+controlled-action stochastic owners. It validates that one typed decision is
+recorded for each committed sample. Native event-gold, Glory Reflections,
 Neow-offer, Tablet of Truth, Trial, Trash Heap, Infested Automaton, Endless
 Conveyor, Punch Off fight/reward, and Native event-shuffle sessions compose it
 directly with `PrototypeMechanicsContinuationStateV111` under the
