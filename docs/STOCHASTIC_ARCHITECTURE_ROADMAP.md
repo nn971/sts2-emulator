@@ -31,6 +31,13 @@ forked boundary retains its label selector. The index APIs and transcripts are
 unchanged. Static source review and `git diff --check` only; no tests or builds
 were run.
 
+**S4 semantic enemy-action identity wrapper (2026-10-25):** `SemanticCombat`
+now accepts the compatibility index for `enemy_action_chance` through its
+generic resolver and exposes `resolve_candidate_label()` through the existing
+label-aware JSONL operation. The Python helper checks the pending label support
+before submission; the semantic transcript remains index-based. Static source
+review and `git diff --check` only; no tests or builds were run.
+
 **S4 identity-only mechanics dispatcher boundary (2026-10-25):** The
 index-valued mechanics switch is now private behind the Chance Law and
 semantic outcome identity resolvers. Provider code cannot bypass active

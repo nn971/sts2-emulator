@@ -2992,12 +2992,32 @@ class SemanticCombat:
 
     def resolve(self, selected_index: int):
         if not self.pending or self.pending["kind"] not in (
-                "enemy_intent", "draw_card", "random_pile_card"):
+                "enemy_intent", "draw_card", "random_pile_card",
+                "enemy_action_chance"):
             raise EmulatorError("Expected a semantic Nature event")
         return SemanticCombat.from_wire(
             self.session, self.session.call(
                 "semantic_resolve", semantic_handle=self.handle,
                 fingerprint=self.fingerprint, selected_index=selected_index))
+
+    def resolve_candidate_label(self, candidate_label: str):
+        """Resolve a pending automatic enemy action by its saved label."""
+        if not self.pending or self.pending.get("kind") != (
+                "enemy_action_chance"):
+            raise EmulatorError(
+                "Expected a semantic enemy_action_chance event")
+        if not isinstance(candidate_label, str) or not candidate_label.strip():
+            raise ValueError("candidate_label must be a non-empty string")
+        labels = self.pending.get("candidateLabels")
+        if labels is None or candidate_label not in labels:
+            raise ValueError(
+                "candidate_label is not in the pending enemy-action support")
+        return SemanticCombat.from_wire(
+            self.session, self.session.call(
+                "semantic_resolve_enemy_action",
+                semantic_handle=self.handle,
+                fingerprint=self.fingerprint,
+                candidate_label=candidate_label))
 
     def resolve_outcome_id(self, outcome_id: str):
         """Resolve a pending chance outcome using its enumerated stable ID."""

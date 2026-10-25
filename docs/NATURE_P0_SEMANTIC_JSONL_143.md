@@ -157,6 +157,9 @@ supports caps through 256 and never returns a silently truncated list.
 Pass an enumerated `outcomeId` to `semantic_resolve` as `outcome_id`, or use
 `SemanticCombat.resolve_outcome_id(outcome_id)`, to resume that same semantic
 support by identity. The older `selected_index` selector remains supported.
+For automatic `enemy_action_chance` boundaries, Python also accepts the
+compatibility index through `SemanticCombat.resolve()` or a saved identity
+through `SemanticCombat.resolve_candidate_label()`.
 Player-owned `select_cards` actions are not chance events and are not
 enumerated by this method.
 
