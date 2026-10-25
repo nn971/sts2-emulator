@@ -605,7 +605,9 @@ public sealed record SemanticCombatDrawV111(
                 SemanticDrawHookChoiceEngineV111
                     .AutomaticHandDrawChildKindV111.CardShortlist or
                 SemanticDrawHookChoiceEngineV111
-                    .AutomaticHandDrawChildKindV111.RandomHandCost;
+                    .AutomaticHandDrawChildKindV111.RandomHandCost or
+                SemanticDrawHookChoiceEngineV111
+                    .AutomaticHandDrawChildKindV111.StratagemSelection;
         bool automaticHandDrawEffectDrawPending = IsActiveAutomaticChild(
             SemanticDrawHookChoiceEngineV111
                 .AutomaticHandDrawChildKindV111.SemanticDraw);

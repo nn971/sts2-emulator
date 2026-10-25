@@ -122,6 +122,7 @@ public static class SemanticDrawHookChoiceEngineV111
         CardTransform,
         CardShortlist,
         RandomHandCost,
+        StratagemSelection,
         SemanticDraw
     }
 
@@ -201,6 +202,10 @@ public static class SemanticDrawHookChoiceEngineV111
                     combat, choice))
             return new(
                 AutomaticHandDrawChildKindV111.RandomHandCost,
+                hasTaggedChildChoice);
+        if (IsAutomaticHandDrawStratagemSelection(combat, choice))
+            return new(
+                AutomaticHandDrawChildKindV111.StratagemSelection,
                 hasTaggedChildChoice);
         if (beforeHandDraw
                 ? PrototypeGameEngine
@@ -286,6 +291,12 @@ public static class SemanticDrawHookChoiceEngineV111
             case AutomaticHandDrawChildKindV111.RandomHandCost:
                 SemanticRandomHandCostChoiceV111.ValidateBoundary(run);
                 return;
+            case AutomaticHandDrawChildKindV111.StratagemSelection:
+                SemanticCardSelectionEngineV111.ValidatePendingBoundary(run);
+                if (requireSemanticEvent)
+                    _ = SemanticCardSelectionEngineV111.DescribePending(
+                        run, CanonicalJson.Sha256(run));
+                return;
             case AutomaticHandDrawChildKindV111.SemanticDraw:
                 if (run.World?.Combat?.PendingChoice?.ChoiceId ==
                     "controlled_draw_cost")
@@ -296,6 +307,31 @@ public static class SemanticDrawHookChoiceEngineV111
             default:
                 throw new ArgumentOutOfRangeException(nameof(childKind));
         }
+    }
+
+    private static bool IsAutomaticHandDrawStratagemSelection(
+        CombatState combat, PendingCombatChoiceState choice)
+    {
+        if (!combat.IsPlayerTurn ||
+            choice is not
+                { ChoiceId: "select_cards",
+                  SemanticStratagemDrawSelection: false,
+                  AutomaticSemanticStratagemDrawSelection: true,
+                  Selection.SourceZone: PrototypeCardZone.DrawPile } ||
+            !choice.HasValidControlledPayloadShape() ||
+            combat.Stochastic.SemanticDeck is not
+                { Mode: SemanticDeckStateV111.NatureMode, Pending: null } ||
+            combat.AutomaticPipelineContinuation is not { } cursor ||
+            !cursor.Stochastic.TryGetSemanticHandDrawProgress(
+                cursor.Mechanics, out int requested, out int remaining) ||
+            requested <= 0 || remaining <= 0)
+            return false;
+
+        int expectedSelections =
+            PrototypeGameEngine.ExpectedStratagemSelectionCount(combat);
+        return expectedSelections > 0 &&
+            choice.Selection.MinSelections == expectedSelections &&
+            choice.Selection.MaxSelections == expectedSelections;
     }
 
     private static bool HasTaggedAutomaticChildChoice(

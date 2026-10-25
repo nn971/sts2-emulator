@@ -1300,9 +1300,12 @@ card-shortlist decisions; version 5 snapshots without card-transform or
 card-shortlist decisions; version 6 snapshots without card-shortlist decisions; and version 7
 snapshots without random-hand-cost or hand-cost-selection decisions. End-turn
 forwards these pending choices to its active draw frame,
-and pilot history records each external choice once. Other child-choice kinds,
-unsupported selection specifications, random attack pool fidelity, and Native
-stream parity remain open pending reference-mod evidence.
+and pilot history records each external choice once. An automatic Stratagem
+selection opened while replaying a draw-hook action now uses the existing
+card-selection event, resolver, and draw-frame chronology after validating the
+active semantic hand-draw cursor and exact pick count. Other child-choice
+kinds and unsupported selection specifications remain open; random attack
+pool fidelity and Native stream parity require reference-mod evidence.
 
 Engine-owned Native semantic choices map provider indices through
 `NativeSemanticOutcomeV111` before resuming mechanics. The mapper checks the
