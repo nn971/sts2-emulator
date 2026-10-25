@@ -246,7 +246,8 @@ public sealed record ReferenceNatureScriptedRunSessionSnapshotV111(
 
 /// <summary>
 /// Whole-run ReferenceNature session for ordinary legal actions. Finite-index
-/// boundaries and registered Native map quota Gaussians can be sampled by
+/// boundaries, registered Native map quota Gaussians, selected Native event
+/// gold floats, and the inert merchant upgrade roll can be sampled by
 /// ReferenceNature; any of the six typed boundaries can instead be resolved
 /// from a caller-supplied transcript.
 /// </summary>
@@ -510,8 +511,9 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
         return next;
     }
 
-    // Non-index Nature laws are admitted only for registered Native map
-    // quota Gaussians; other typed primitives remain caller-scripted.
+    // Non-index Nature laws are admitted only for registered map quota
+    // Gaussians and the supported Native unit-float mappings below; other
+    // typed primitives remain caller-scripted.
     private static ChanceLawV111? QueryNatureLaw(
         ScriptedRunActionSessionV111 active,
         ControlledStochasticRequestV111 request)
@@ -524,11 +526,74 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
             return ChanceLawEngineV111.QueryRandomIndex(
                 PendingEventId(active, indexRequest), indexRequest);
         }
+        if (request.UnitFloatRequest is { } unitFloatRequest)
+        {
+            if (unitFloatRequest.SiteId ==
+                    ChanceLawEngineV111.NativeEventGoldUnitFloatSiteId &&
+                QueryNativeEventGold(active, unitFloatRequest) is { } eventGoldLaw)
+                return eventGoldLaw;
+            if (unitFloatRequest.SiteId ==
+                    "shop.merchant.card_upgrade_roll.unit_float" &&
+                unitFloatRequest.StreamId == NativePlayerRngV111.ShopsStreamId &&
+                active.Origin.Stochastic.NativeRunRng is not null)
+                return ChanceLawEngineV111
+                    .QueryNativeMerchantNoEffectUnitFloat(
+                        active.Origin, unitFloatRequest);
+        }
         if (request.GaussianIntRequest is { } gaussianRequest &&
             ChanceLawEngineV111.MatchesNativeMapGaussianIntRequest(
                 gaussianRequest))
             return ChanceLawEngineV111.QueryNativeMapRequest(request);
         return null;
+    }
+
+    private static ChanceLawV111? QueryNativeEventGold(
+        ScriptedRunActionSessionV111 active,
+        RandomUnitFloatRequestV111 request)
+    {
+        var eventId = NativeEventGoldEventId(request.OwnerId);
+        if (eventId is null)
+            return null;
+        var (nativeEventId, stage) = eventId switch
+        {
+            var id when id == PrototypeNativeHiveEvents.LostWispId &&
+                request.Ordinal == 0 =>
+                    (PrototypeNativeHiveEvents.LostWispNativeRngEventId,
+                        "primary"),
+            "proto.native.event.jungle_maze_adventure" when
+                request.Ordinal == 0 => ("JUNGLE_MAZE_ADVENTURE", "primary"),
+            "proto.native.event.jungle_maze_adventure" when
+                request.Ordinal == 1 => ("JUNGLE_MAZE_ADVENTURE", "secondary"),
+            _ => (null, null)
+        };
+        if (nativeEventId is null || stage is null)
+            return null;
+
+        var expected = new RandomUnitFloatRequestV111(
+            ChanceLawEngineV111.NativeEventGoldUnitFloatSiteId,
+            NativeRngV111Contexts.EventStreamId(nativeEventId),
+            $"event:{eventId}:gold:{stage}", request.Ordinal);
+        if (CanonicalJson.Sha256(expected) != CanonicalJson.Sha256(request))
+            throw new InvalidDataException(
+                "Native event-gold request differs from its event, stage, stream, or ordinal.");
+        return ChanceLawEngineV111.QueryNativeEventGoldUnitFloat(
+            active.Origin, request.SiteId, request.Ordinal,
+            PrototypeAiEnvironment.StableActionId(active.Action), eventId);
+    }
+
+    private static string? NativeEventGoldEventId(string ownerId)
+    {
+        const string prefix = "event:";
+        const string marker = ":gold:";
+        if (!ownerId.StartsWith(prefix, StringComparison.Ordinal))
+            return null;
+        var markerIndex = ownerId.LastIndexOf(marker,
+            StringComparison.Ordinal);
+        if (markerIndex <= prefix.Length ||
+            ownerId[(markerIndex + marker.Length)..] is not
+                ("primary" or "secondary"))
+            return null;
+        return ownerId[prefix.Length..markerIndex];
     }
 
     private static ScriptedRunActionOutcomeV111 CreateNatureOutcome(

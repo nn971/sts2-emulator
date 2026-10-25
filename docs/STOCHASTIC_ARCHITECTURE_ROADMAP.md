@@ -9,10 +9,13 @@ Chance Law sampling. That Nature path now also admits the four registered
 Native map quota `gaussian_int` requests through the existing unverified
 truncated-rounded-normal law and typed outcome mapper, and routes registered
 Native map bounded-index requests through the source-shaped map law dispatcher.
-Other non-index requests remain caller-scripted. Aligned optional Nature
-selections distinguish sampled outcomes from controlled replay outcomes;
-scripted entries do not advance the Nature cursor. Session schema v2 restores
-v1 snapshots, JSONL and Python expose
+The existing Native generated-event-gold laws and merchant no-effect
+upgrade-roll law also resolve their typed unit-float requests automatically,
+conditioned on the saved legal action and exact request. Other non-index
+requests remain caller-scripted. Aligned optional Nature selections distinguish
+sampled outcomes from controlled replay outcomes; scripted entries do not
+advance the Nature cursor. Session schema v2 restores v1 snapshots, JSONL and
+Python expose
 `reference_nature_scripted_run_resolve_outcome`, and provider replay captures
 retain the complete typed boundary trace. Core and CLI Release builds passed
 with zero warnings or errors; Python syntax validation and `git diff --check`
