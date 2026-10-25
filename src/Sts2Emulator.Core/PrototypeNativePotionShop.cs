@@ -247,6 +247,8 @@ public static class PrototypeNativePotionShop
                 $"No unexcluded {rarity} potions remain.");
         }
 
+        using var candidateLabels = ControlledEventChoiceReplayV111
+            .DescribeCandidates(candidates);
         var decision = LegacyRandomChoiceV111.ChooseIndexRange(
             rng, ModelWithinRaritySiteId, streamId,
             ownerId + ":rarity:" + rarity + ":pool:"
@@ -372,6 +374,8 @@ public static class PrototypeNativePotionShop
         RngBundle rng, string streamId,
         string ownerId = "potion:uniform_offer")
     {
+        using var candidateLabels = ControlledEventChoiceReplayV111
+            .DescribeCandidates(NativePotionPoolOrder.ToArray());
         var decision = LegacyRandomChoiceV111.ChooseIndexRange(
             rng, UniformModelSiteId, streamId,
             ownerId + ":pool:" + CanonicalJson.Sha256(NativePotionPoolOrder),

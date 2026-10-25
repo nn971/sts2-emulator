@@ -73,8 +73,12 @@ The generic legacy `event.reward.random_potion.model` site also has a direct
 pool query keyed by `event_id` and the selected choice `action_id`; it does not
 cover Wellspring or Whispering Hollow's separate Native-shaped routes. Their
 typed `potion.uniform_model`, `potion.rarity_roll.ticket`, and
-`potion.model_within_rarity` requests are now handled by the saved event-choice
-continuation below; their equal-index weights and source-pool behavior remain
+`potion.model_within_rarity` requests are handled by the saved event-choice
+continuation below. The uniform and rarity-conditioned model requests carry
+the event and choice in their owner IDs, and model candidates expose potion
+IDs as labels; the 100 rarity-ticket indices remain numeric. Direct typed
+queries can describe the uniform, rarity-ticket, and model requests.
+Equal-index weights, Native source-pool behavior, and source parity remain
 unverified.
 The legacy `event.reward.random_rare_card.model` site has the same direct
 query inputs and returns the current prototype Rare-card reward pool.

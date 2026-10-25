@@ -2456,11 +2456,17 @@ public sealed partial class PrototypeGameEngine
                             ? nativeOvergrowth && eventState.EventId
                                 == "proto.native.event.wellspring"
                                 ? PrototypeNativePotionShop.PickUniform(
-                                    prototypeRng, "reward")
+                                    prototypeRng, "reward",
+                                    "event:" + eventState.EventId
+                                        + ":choice:" + choice.Id
+                                        + ":uniform_potion")
                                 : nativeOvergrowth && eventState.EventId
                                     == "proto.native.event.whispering_hollow"
                                     ? PrototypeNativePotionShop.PickWeighted(
-                                        prototypeRng, "reward")
+                                        prototypeRng, "reward",
+                                        ownerId: "event:" + eventState.EventId
+                                            + ":choice:" + choice.Id
+                                            + ":weighted_potion")
                                     : PrototypeContent.PotionPool[
                                         ResolveLegacyRandomIndex(
                                             prototypeRng,
