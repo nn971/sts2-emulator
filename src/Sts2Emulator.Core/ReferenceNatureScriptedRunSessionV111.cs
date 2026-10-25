@@ -247,9 +247,10 @@ public sealed record ReferenceNatureScriptedRunSessionSnapshotV111(
 /// <summary>
 /// Whole-run ReferenceNature session for ordinary legal actions. Finite-index
 /// boundaries, registered Native map quota Gaussians, selected Native event
-/// gold and combat-potion odds floats, PotionFactory rarity, and the inert
-/// merchant upgrade roll can be sampled by ReferenceNature; any of the six
-/// typed boundaries can instead be resolved from a caller-supplied transcript.
+/// gold, card-rarity, combat-potion odds and card-upgrade floats, PotionFactory
+/// rarity, and the inert merchant upgrade roll can be sampled by ReferenceNature;
+/// any of the six typed boundaries can instead be resolved from a caller-supplied
+/// transcript.
 /// </summary>
 public sealed record ReferenceNatureScriptedRunSessionV111(
     string SchemaId,
@@ -528,6 +529,12 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
         }
         if (request.UnitFloatRequest is { } unitFloatRequest)
         {
+            if (QueryNativeCardRarity(active, unitFloatRequest) is
+                { } cardRarityLaw)
+                return cardRarityLaw;
+            if (QueryNativeEncounterCardUpgrade(active, unitFloatRequest) is
+                { } cardUpgradeLaw)
+                return cardUpgradeLaw;
             if (unitFloatRequest.SiteId ==
                 StochasticSiteRegistryV111.NativePotionFactoryRarityRollSiteId)
                 return ChanceLawEngineV111.QueryNativePotionFactoryRarity(
@@ -552,6 +559,106 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
                 gaussianRequest))
             return ChanceLawEngineV111.QueryNativeMapRequest(request);
         return null;
+    }
+
+    private static ChanceLawV111? QueryNativeCardRarity(
+        ScriptedRunActionSessionV111 active,
+        RandomUnitFloatRequestV111 request)
+    {
+        if (request.SiteId != StochasticSiteRegistryV111
+                .CardRarityRollUnitFloatSiteId ||
+            request.StreamId != NativePlayerRngV111.RewardsStreamId)
+            return null;
+
+        ChanceLawV111 law;
+        if (request.OwnerId.StartsWith("type:", StringComparison.Ordinal))
+        {
+            var owner = request.OwnerId.Split(':');
+            if (owner.Length != 6 || owner[2] != "offer" ||
+                !int.TryParse(owner[3], out var offerOrdinal) ||
+                owner[4] != "offset" ||
+                !int.TryParse(owner[5], out _) ||
+                offerOrdinal != request.Ordinal)
+                throw new InvalidDataException(
+                    "Native merchant card-rarity owner is malformed.");
+            law = ChanceLawEngineV111.QueryNativeMerchantOffer(
+                active.Origin, request.SiteId, offerOrdinal,
+                cardType: owner[1]);
+        }
+        else
+        {
+            var owner = request.OwnerId.Split(':');
+            if (owner.Length != 8 || owner[0] != "act" ||
+                !int.TryParse(owner[1], out var act) ||
+                owner[2] != "room" ||
+                !Enum.TryParse<PrototypeRoomType>(owner[3], out var room) ||
+                owner[4] != "pick" ||
+                !int.TryParse(owner[5], out _) || owner[6] != "offset" ||
+                !int.TryParse(owner[7], out var offset))
+                throw new InvalidDataException(
+                    "Native reward card-rarity owner is malformed.");
+            var run = active.Origin;
+            if (run.Phase != RunPhase.Combat ||
+                run.World is not { ActiveRoom: { } activeRoom } world ||
+                world.Act != act || activeRoom != room)
+                throw new InvalidDataException(
+                    "Native reward card-rarity request differs from its combat boundary.");
+            var source = room switch
+            {
+                PrototypeRoomType.Combat =>
+                    PrototypeNativeCardOddsSource.RegularEncounter,
+                PrototypeRoomType.Elite =>
+                    PrototypeNativeCardOddsSource.EliteEncounter,
+                PrototypeRoomType.Boss =>
+                    PrototypeNativeCardOddsSource.BossEncounter,
+                _ => throw new InvalidDataException(
+                    "Native reward card-rarity owner has an invalid room.")
+            };
+            law = ChanceLawEngineV111.QueryNativeCardRarity(
+                source, offset, run.Ascension, request.OwnerId,
+                request.Ordinal);
+        }
+
+        var expected = new RandomUnitFloatRequestV111(
+            request.SiteId, NativePlayerRngV111.RewardsStreamId,
+            law.OwnerId, request.Ordinal);
+        if (CanonicalJson.Sha256(expected) != CanonicalJson.Sha256(request))
+            throw new InvalidDataException(
+                "Native card-rarity request differs from its source law.");
+        return law;
+    }
+
+    private static ChanceLawV111? QueryNativeEncounterCardUpgrade(
+        ScriptedRunActionSessionV111 active,
+        RandomUnitFloatRequestV111 request)
+    {
+        if (request.SiteId !=
+                StochasticSiteRegistryV111.CardRarityUpgradeRollUnitFloatSiteId ||
+            request.StreamId != NativePlayerRngV111.RewardsStreamId)
+            return null;
+        var owner = request.OwnerId.Split(':');
+        if (owner.Length < 6 || owner[0] != "card" ||
+            !int.TryParse(owner[^3], out var act) || owner[^4] != "act" ||
+            owner[^2] != "ascension" ||
+            !int.TryParse(owner[^1], out var ascension))
+            throw new InvalidDataException(
+                "Native card-upgrade request owner is malformed.");
+        var cardId = string.Join(":", owner[1..^4]);
+        var run = active.Origin;
+        if (run.Phase != RunPhase.Combat ||
+            run.World is not { ActiveRoom: not null } world ||
+            act != world.Act || ascension != run.Ascension)
+            throw new InvalidDataException(
+                "Native card-upgrade request differs from its combat reward boundary.");
+        var law = ChanceLawEngineV111.QueryNativeEncounterCardUpgrade(
+            cardId, act, ascension, request.Ordinal);
+        var expected = new RandomUnitFloatRequestV111(
+            request.SiteId, NativePlayerRngV111.RewardsStreamId,
+            law.OwnerId, request.Ordinal);
+        if (CanonicalJson.Sha256(expected) != CanonicalJson.Sha256(request))
+            throw new InvalidDataException(
+                "Native card-upgrade request differs from its source law.");
+        return law;
     }
 
     private static ChanceLawV111? QueryNativeCombatPotionOdds(

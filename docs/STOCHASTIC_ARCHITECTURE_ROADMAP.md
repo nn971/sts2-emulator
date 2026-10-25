@@ -10,11 +10,13 @@ Native map quota `gaussian_int` requests through the existing unverified
 truncated-rounded-normal law and typed outcome mapper, and routes registered
 Native map bounded-index requests through the source-shaped map law dispatcher.
 Existing Native generated-event-gold, merchant no-effect upgrade-roll,
-PotionFactory rarity, and combat-potion odds laws now resolve their typed
-unit-float requests automatically. Combat-potion odds use the saved combat
-boundary, current pity state, Elite status, and exact Native request. Event gold
-and merchant requests are conditioned on the saved legal action and exact
-request; PotionFactory accepts only its registered source streams. Other
+PotionFactory rarity, combat-potion odds, card-rarity, and encounter-card
+upgrade laws now resolve their typed unit-float requests automatically.
+Combat-potion odds use the saved combat boundary, current pity state, Elite
+status, and exact Native request; card-rarity and card-upgrade requests are
+checked against the saved encounter or Shop boundary and their source owner.
+Event gold and merchant requests are conditioned on the saved legal action and
+exact request; PotionFactory accepts only its registered source streams. Other
 non-index requests remain caller-scripted. Aligned optional Nature selections
 distinguish sampled outcomes from controlled replay outcomes; scripted entries
 do not advance the Nature cursor. Session schema v2 restores v1 snapshots,
