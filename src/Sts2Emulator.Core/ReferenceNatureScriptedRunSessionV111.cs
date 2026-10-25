@@ -543,6 +543,13 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
             if (StochasticSiteRegistryV111.NativeEventCardPickSiteIds
                 .Contains(indexRequest.SiteId, StringComparer.Ordinal))
                 return QueryNativeEventCardPick(active, indexRequest);
+            if (StochasticSiteRegistryV111.TrashHeapSessionSiteIds
+                    .Contains(indexRequest.SiteId, StringComparer.Ordinal) ||
+                StochasticSiteRegistryV111.TabletOfTruthSessionSiteIds
+                    .Contains(indexRequest.SiteId, StringComparer.Ordinal) ||
+                ReferenceNatureEndlessConveyorSessionV111.SessionSiteIds
+                    .Contains(indexRequest.SiteId, StringComparer.Ordinal))
+                return QueryNativeEventContextIndex(active, indexRequest);
             if (indexRequest.SiteId == StochasticSiteRegistryV111
                     .NativeGloryTrialDamageSiteId)
             {
@@ -604,6 +611,36 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
                 gaussianRequest))
             return ChanceLawEngineV111.QueryNativeMapRequest(request);
         return null;
+    }
+
+    private static ChanceLawV111 QueryNativeEventContextIndex(
+        ScriptedRunActionSessionV111 active,
+        RandomIndexRequestV111 request)
+    {
+        request.Validate();
+        var actionId = PrototypeAiEnvironment.StableActionId(active.Action);
+        ChanceLawV111 law;
+        if (StochasticSiteRegistryV111.TrashHeapSessionSiteIds
+            .Contains(request.SiteId, StringComparer.Ordinal))
+            law = ChanceLawEngineV111.QueryTrashHeap(
+                active.Origin, request.SiteId);
+        else if (StochasticSiteRegistryV111.TabletOfTruthSessionSiteIds
+            .Contains(request.SiteId, StringComparer.Ordinal))
+            law = ChanceLawEngineV111.QueryTabletOfTruth(active.Origin);
+        else
+            law = ReferenceNatureEndlessConveyorSessionV111
+                .QueryLawForCapture(active.Origin, actionId,
+                    request.SiteId, active.Decisions, request.Ordinal);
+
+        var expected = new RandomIndexRequestV111(
+            law.SiteId, request.StreamId, law.OwnerId, law.Ordinal,
+            Enumerable.Range(0, law.Outcomes.Length).ToArray(),
+            OperationKind: law.OperationKind);
+        if (CanonicalJson.Sha256(expected) !=
+            CanonicalJson.Sha256(request))
+            throw new InvalidDataException(
+                "Native Event-context request differs from its conditioned source law.");
+        return law;
     }
 
     private static ChanceLawV111 QueryNativeEventCardPick(

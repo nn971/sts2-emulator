@@ -10,6 +10,14 @@ indices, and the complete ordered index request is checked against its card
 support. Core and CLI Release builds passed with zero warnings and errors;
 `git diff --check` passed. No tests were run.
 
+**S2 whole-run Native event-context law increment (2026-10-26):** Ordinary
+ReferenceNature actions now route registered Trash Heap, Tablet of Truth, and
+Endless Conveyor index requests through their existing conditioned laws.
+Replay rebuilds the current event reward/card support or validates the typed
+action prefix before matching the complete request. Core and CLI Release
+builds passed with zero warnings and errors; `git diff --check` passed. No
+tests were run.
+
 **S4 whole-run Stone of All Time ticket law increment (2026-10-26):** The
 ReferenceNature whole-run dispatcher now uses the existing degenerate
 `no_effect` law for Stone of All Time push/lift tickets. Replay validates the
