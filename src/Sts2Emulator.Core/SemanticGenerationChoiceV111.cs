@@ -123,6 +123,23 @@ public sealed record SemanticGeneratedCardNativeAuditV111(
             providerDecision, candidateCardIds,
             NativeCombatRewardOperation, null);
 
+    internal static SemanticGeneratedCardEventV111
+        CreateNativeRewardEvent(
+            RandomIndexRequestV111 request,
+            IReadOnlyList<string> candidateCardIds)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(candidateCardIds);
+        var candidates = candidateCardIds.ToArray();
+        if (!OwnerIdMatches(NativeCombatRewardOperation, null,
+                request, candidates))
+            throw new InvalidDataException(
+                "Native reward-card request differs from its ordered card pool.");
+        return SemanticGenerationChoiceV111.CreateNativeRewardEvent(
+            BoundaryFingerprintFor(request, NativeCombatRewardOperation,
+                null), request, candidates);
+    }
+
     private static SemanticGeneratedCardNativeAuditV111 CreateCore(
         RandomIndexDecisionV111 providerDecision,
         IReadOnlyList<string> candidateCardIds,

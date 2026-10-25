@@ -174,6 +174,45 @@ public sealed record SimulationProviderReplaySemanticOutcomeV111(
     }
 }
 
+internal static class SimulationProviderReplaySemanticIdentityV111
+{
+    public static string[] SupportIds(
+        ChanceLawV111 law, string[]? candidateLabels = null)
+    {
+        ArgumentNullException.ThrowIfNull(law);
+        if (candidateLabels is { Length: > 0 } labels)
+        {
+            if (labels.Length != law.SupportCount)
+                throw new InvalidDataException(
+                    "Provider-independent labels differ from their Chance Law support.");
+            return (string[])labels.Clone();
+        }
+        return law.Outcomes.Select(outcome => SemanticId(
+            outcome.OutcomeId)).ToArray();
+    }
+
+    private static string SemanticId(string outcomeId)
+    {
+        if (outcomeId.StartsWith("card_model:", StringComparison.Ordinal))
+            return outcomeId["card_model:".Length..];
+        if (outcomeId.StartsWith("potion_model:", StringComparison.Ordinal))
+        {
+            var modelId = outcomeId["potion_model:".Length..];
+            var indexMarker = modelId.IndexOf(":index:",
+                StringComparison.Ordinal);
+            return indexMarker < 0 ? modelId : modelId[..indexMarker];
+        }
+        if (outcomeId.StartsWith("relic_model:", StringComparison.Ordinal))
+        {
+            var relicId = outcomeId["relic_model:".Length..];
+            var indexMarker = relicId.IndexOf(":index:",
+                StringComparison.Ordinal);
+            return indexMarker < 0 ? relicId : relicId[..indexMarker];
+        }
+        return outcomeId;
+    }
+}
+
 /// <summary>
 /// Primitive provider boundaries and semantic event outcomes captured for
 /// the same replay interval. The two traces remain distinct: one records
@@ -286,6 +325,8 @@ public static class SimulationProviderReplayCaptureProvenanceV111
         "reference-nature-semantic-combat-outcome-replay-validated-v2";
     public const string ReferenceNatureSemanticIdentityReplayValidated =
         "reference-nature-semantic-identity-replay-validated-v3";
+    public const string ReferenceNatureCombatRewardSemanticIdentityReplayValidated =
+        "reference-nature-combat-reward-semantic-identity-replay-validated-v1";
 
     public static bool IsKnown(string? provenance) => provenance is
         CallerSupplied or ScriptedRunReplayValidated or
@@ -298,7 +339,8 @@ public static class SimulationProviderReplayCaptureProvenanceV111
         ReferenceNatureRunSetupReplayValidated or
         ReferenceNatureSemanticCombatReplayValidated or
         ReferenceNatureSemanticCombatOutcomeReplayValidated or
-        ReferenceNatureSemanticIdentityReplayValidated;
+        ReferenceNatureSemanticIdentityReplayValidated or
+        ReferenceNatureCombatRewardSemanticIdentityReplayValidated;
 
     /// <summary>
     /// Whether this capture represents every primitive provider boundary in
@@ -315,7 +357,8 @@ public static class SimulationProviderReplayCaptureProvenanceV111
     public static bool HasCompleteSemanticOutcomeTrace(string? provenance) =>
         provenance is SemanticNativePolicySemanticIdentityReplayValidated or
             ReferenceNatureSemanticCombatOutcomeReplayValidated or
-            ReferenceNatureSemanticIdentityReplayValidated;
+            ReferenceNatureSemanticIdentityReplayValidated or
+            ReferenceNatureCombatRewardSemanticIdentityReplayValidated;
 
     public static bool HasReplayValidatedDrawIdentityTrace(
         string? provenance) => IsKnown(provenance) &&
@@ -1011,6 +1054,91 @@ public sealed record SimulationProviderReplayCaptureV111(
     }
 
     /// <summary>
+    /// Captures a completed combat victory and its atomic ReferenceNature
+    /// reward transcript as provider-independent semantic outcomes.
+    /// </summary>
+    public static SimulationProviderReplayCaptureV111
+        FromReferenceNatureCombatRewardSession(
+            ReferenceNatureCombatRewardSessionV111 session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        using var validationJournal = RandomBoundaryJournalV111.Begin();
+        var validated = ReferenceNatureCombatRewardSessionV111.Restore(
+            ReferenceNatureCombatRewardSessionV111.Save(session));
+        if (!validated.Complete)
+            throw new InvalidOperationException(
+                "Provider replay capture requires a completed ReferenceNature combat reward session.");
+
+        var providerDecisions = validated.Stochastic.ProviderDecisions;
+        var transcript = validated.Stochastic.DecisionTranscript;
+        if (providerDecisions.Length != transcript.Length)
+            throw new InvalidDataException(
+                "ReferenceNature combat reward decisions and outcomes have different lengths.");
+
+        var semanticOutcomes = new SimulationProviderReplaySemanticOutcomeV111[
+            transcript.Length];
+        var rewardSemanticOrdinalCounts = new Dictionary<string, int>(
+            StringComparer.Ordinal);
+        for (var index = 0; index < transcript.Length; index++)
+        {
+            var decision = providerDecisions[index];
+            var request = decision.ToRequest();
+            var law = ReferenceNatureCombatRewardSessionV111
+                .QueryLawForCapture(validated.Origin, validated.Action,
+                    request, decision.CandidateLabels,
+                    providerDecisions.Take(index).ToArray());
+            var selection = transcript[index];
+            if (selection.LawId != law.LawId ||
+                selection.EventId != law.EventId ||
+                selection.OutcomeIndex >= law.SupportCount ||
+                selection.OutcomeId != law.OutcomeIdAt(
+                    selection.OutcomeIndex))
+                throw new InvalidDataException(
+                    "ReferenceNature combat reward outcome differs from its replayed Chance Law.");
+
+            var semanticSupportIds =
+                SimulationProviderReplaySemanticIdentityV111.SupportIds(
+                    law, decision.CandidateLabels);
+            var semanticOrdinal = rewardSemanticOrdinalCounts
+                .GetValueOrDefault(law.SiteId);
+            rewardSemanticOrdinalCounts[law.SiteId] = semanticOrdinal + 1;
+            semanticOutcomes[index] = new(
+                index + 1, law.EventId, law.LawId, selection.OutcomeId,
+                selection.OutcomeIndex)
+            {
+                SiteId = law.SiteId,
+                OperationKind = law.OperationKind,
+                OwnerId = SimulationProviderReplayCaptureV111
+                    .NormalizeSemanticOwnerId(law.SiteId, law.OwnerId),
+                Ordinal = semanticOrdinal,
+                SupportFingerprint = CanonicalJson.Sha256(
+                    semanticSupportIds),
+                SemanticOutcomeId = semanticSupportIds[
+                    selection.OutcomeIndex]
+            };
+        }
+
+        var typedCapture = FromReplayValidatedAction(
+            validated.Origin, validated.Action, providerDecisions,
+            validated.Run,
+            SimulationProviderReplayCaptureProvenanceV111
+                .ReferenceNatureControlledActionReplayValidated);
+        var capture = typedCapture with
+        {
+            Simulation = typedCapture.Simulation with
+            {
+                Stochastic = new SimulationProviderReplayStochasticCaptureV111(
+                    typedCapture.Stochastic.Boundaries, semanticOutcomes)
+            },
+            CaptureProvenance =
+                SimulationProviderReplayCaptureProvenanceV111
+                    .ReferenceNatureCombatRewardSemanticIdentityReplayValidated
+        };
+        capture.Validate();
+        return capture;
+    }
+
+    /// <summary>
     /// Builds a capture for the player-action interval of a validated Native
     /// policy baseline. The baseline's setup and initial-intent trace is used
     /// only to locate the beginning of the interval; it is excluded from the
@@ -1052,6 +1180,8 @@ public sealed record SimulationProviderReplayCaptureV111(
 
         var environment = new PrototypeAiEnvironment();
         var actions = new List<GameAction>(validated.History.Length);
+        var actionStartStates = new List<RunState>(
+            validated.History.Length);
         var actionBoundaryStates = new List<RunState>(
             validated.History.Length);
         var drawnCardsByAction = new List<long[]>(
@@ -1068,6 +1198,7 @@ public sealed record SimulationProviderReplayCaptureV111(
             var resolvedAction = environment.ResolvePlayerAction(
                 replay.Run, transition.ActionId);
             actions.Add(resolvedAction.Action);
+            actionStartStates.Add(replay.Run);
             var beforeAudit = replay.Stochastic.NativePolicyAudit ??
                 throw new InvalidDataException(
                     "Native policy replay lost its provider trace before an action.");
@@ -1113,7 +1244,8 @@ public sealed record SimulationProviderReplayCaptureV111(
         var semanticOutcomes =
             SimulationProviderReplayNativeSemanticOutcomeTraceV111.TryCapture(
                 finalAudit, completeTrace, initialTrace.Length,
-                actionTraceRanges, drawnCardsByAction);
+                actionTraceRanges, drawnCardsByAction,
+                actionStartStates);
         var capture = Create(initial.Run, actions, boundaries, validated.Run,
             semanticOutcomes ?? [], actionBoundaryStates,
             drawnCardsByAction) with
@@ -1490,6 +1622,8 @@ public sealed record SimulationProviderReplayCaptureV111(
                 (SimulationProviderReplayCaptureProvenanceV111
                     .ReferenceNatureSemanticIdentityReplayValidated or
                  SimulationProviderReplayCaptureProvenanceV111
+                    .ReferenceNatureCombatRewardSemanticIdentityReplayValidated or
+                 SimulationProviderReplayCaptureProvenanceV111
                     .SemanticNativePolicySemanticIdentityReplayValidated) &&
             Simulation.Stochastic.SemanticOutcomes.Any(outcome =>
                 !outcome.HasProviderIndependentIdentity))
@@ -1509,9 +1643,6 @@ internal static class SimulationProviderReplayNativeSemanticOutcomeTraceV111
     internal sealed record ActionRange(int ActionIndex,
         int TraceCountBefore, int TraceCountAfter, int? CardsDrawnDelta);
 
-    private sealed record Candidate(int ProviderSequence,
-        SimulationProviderReplaySemanticOutcomeV111 Outcome);
-
     public static int? GetCardsDrawnCount(RunState run) =>
         run.World?.Combat?.CounterState.CardsDrawnThisCombat;
 
@@ -1519,26 +1650,57 @@ internal static class SimulationProviderReplayNativeSemanticOutcomeTraceV111
         SemanticNativePolicyAuditV111 audit,
         RandomBoundaryTranscriptEntryV111[] providerTrace,
         int initialTraceCount, IReadOnlyList<ActionRange> actionRanges,
-        IReadOnlyList<long[]> drawnCardsByAction)
+        IReadOnlyList<long[]> drawnCardsByAction,
+        IReadOnlyList<RunState> actionStartStates)
     {
         ArgumentNullException.ThrowIfNull(audit);
         ArgumentNullException.ThrowIfNull(providerTrace);
         ArgumentNullException.ThrowIfNull(actionRanges);
         ArgumentNullException.ThrowIfNull(drawnCardsByAction);
+        ArgumentNullException.ThrowIfNull(actionStartStates);
         if (initialTraceCount < 0 || initialTraceCount > providerTrace.Length)
             return null;
-        if (drawnCardsByAction.Count != actionRanges.Count)
+        if (drawnCardsByAction.Count != actionRanges.Count ||
+            actionStartStates.Count != actionRanges.Count)
             return null;
 
         var sequenceByDecision = new Dictionary<string, int>(
             StringComparer.Ordinal);
+        var sequenceByUnitFloatDecision = new Dictionary<string, int>(
+            StringComparer.Ordinal);
         var sequencesByRequestAndIndex = new Dictionary<string, List<int>>(
             StringComparer.Ordinal);
         var ordinalBySequence = new Dictionary<int, int>();
+        var semanticRelicBagsByAction = new Dictionary<int,
+            PrototypeRelicBagState>();
+        var semanticRelicOrdinalByAction = new Dictionary<int, int>();
         var semanticOrdinalCounts = new Dictionary<string, int>(
             StringComparer.Ordinal);
         foreach (var entry in providerTrace)
         {
+            if (entry.OperationKind == "unit_float")
+            {
+                var unitBoundary = entry.DeserializeEvent<
+                    RandomUnitFloatBoundaryEventV111>();
+                var unitDecision = new RandomUnitFloatDecisionV111(
+                    unitBoundary.Request, unitBoundary.SelectedValue,
+                    unitBoundary.ProviderMode,
+                    unitBoundary.NativeCursorBefore,
+                    unitBoundary.NativeCursorAfter);
+                if (!sequenceByUnitFloatDecision.TryAdd(
+                        CanonicalJson.Sha256(unitDecision),
+                        unitBoundary.Sequence))
+                    return null;
+                if (SemanticOrdinalGroup(unitBoundary.Request.SiteId) is
+                        { } unitOrdinalGroup)
+                {
+                    var ordinal = semanticOrdinalCounts.GetValueOrDefault(
+                        unitOrdinalGroup);
+                    ordinalBySequence.Add(unitBoundary.Sequence, ordinal);
+                    semanticOrdinalCounts[unitOrdinalGroup] = ordinal + 1;
+                }
+                continue;
+            }
             if (entry.OperationKind != "index")
                 continue;
             var boundary = entry.DeserializeEvent<RandomBoundaryEventV111>();
@@ -1566,7 +1728,21 @@ internal static class SimulationProviderReplayNativeSemanticOutcomeTraceV111
             sequences.Add(boundary.Sequence);
         }
 
-        var candidates = new Dictionary<int, SimulationProviderReplaySemanticOutcomeV111>();
+        var candidates = new Dictionary<int,
+            List<SimulationProviderReplaySemanticOutcomeV111>>();
+        var coveredSequences = new HashSet<int>();
+        bool AddOutcome(int sequence,
+            SimulationProviderReplaySemanticOutcomeV111 outcome,
+            bool coversProviderBoundary)
+        {
+            if (coversProviderBoundary && !coveredSequences.Add(sequence))
+                return false;
+            if (!candidates.TryGetValue(sequence, out var outcomes))
+                candidates.Add(sequence, outcomes = []);
+            outcomes.Add(outcome);
+            return true;
+        }
+
         bool AddDecision(RandomIndexDecisionV111 decision,
             Func<SimulationProviderReplaySemanticOutcomeV111?> createOutcome)
         {
@@ -1582,7 +1758,174 @@ internal static class SimulationProviderReplayNativeSemanticOutcomeTraceV111
             if (ordinalBySequence.TryGetValue(sequence,
                     out var semanticOrdinal))
                 outcome = outcome with { Ordinal = semanticOrdinal };
-            return candidates.TryAdd(sequence, outcome);
+            return AddOutcome(sequence, outcome, coversProviderBoundary: true);
+        }
+
+        bool AddUnitFloatDecision(
+            RandomUnitFloatDecisionV111 decision,
+            Func<ChanceLawV111> queryLaw, string selectedOutcomeId)
+        {
+            if (!sequenceByUnitFloatDecision.TryGetValue(
+                    CanonicalJson.Sha256(decision), out var sequence))
+                return false;
+            if (sequence <= initialTraceCount)
+                return true;
+            ChanceLawV111 law;
+            try
+            {
+                law = queryLaw();
+            }
+            catch (NotSupportedException)
+            {
+                return false;
+            }
+            law.Validate();
+            var request = decision.Request;
+            if (law.SiteId != request.SiteId ||
+                law.OwnerId != request.OwnerId ||
+                law.Ordinal != request.Ordinal)
+                throw new InvalidDataException(
+                    "Native unit-float outcome law differs from its provider request.");
+            var selectedIndex = Array.FindIndex(law.Outcomes,
+                outcome => outcome.OutcomeId == selectedOutcomeId);
+            if (selectedIndex < 0)
+                return false;
+            var outcome = CreateLawOutcome(law, selectedIndex);
+            if (ordinalBySequence.TryGetValue(sequence,
+                    out var semanticOrdinal))
+                outcome = outcome with { Ordinal = semanticOrdinal };
+            return AddOutcome(sequence, outcome, coversProviderBoundary: true);
+        }
+
+        bool AddNativeRelicIdentityOutcome(
+            SemanticRelicRewardNativeAuditV111 relicOutcome)
+        {
+            if (relicOutcome.Merchant)
+                return false;
+            var rarityDecision = relicOutcome.ProviderDecision;
+            if (!sequenceByUnitFloatDecision.TryGetValue(
+                    CanonicalJson.Sha256(rarityDecision), out var sequence))
+                return false;
+            if (sequence <= initialTraceCount)
+                return true;
+            var actionIndex = orderedRangeIndex(sequence);
+            if (actionIndex < 0)
+                return false;
+            var source = actionStartStates[actionIndex];
+            if (source.World is not { } sourceWorld)
+                return false;
+            if (!semanticRelicBagsByAction.TryGetValue(actionIndex,
+                    out var bag))
+            {
+                var projected = ReferenceNatureRunProjectionV111
+                    .CreateNatureReplayOrigin(source,
+                        createRelicBagWhenMissing: true);
+                bag = projected.World?.Stochastic.RelicBag ??
+                    throw new InvalidDataException(
+                        "Native relic reward projection has no Nature bag.");
+                semanticRelicBagsByAction.Add(actionIndex, bag);
+            }
+            var plan = PrototypeNativeRelicGrabBag.PlanNaturePull(
+                bag, relicOutcome.RequestedRarity, merchant: false,
+                source.Player);
+            var auditSupport = relicOutcome.CandidateRelicIds
+                .OrderBy(id => id, StringComparer.Ordinal).ToArray();
+            if (plan.SelectedTier != relicOutcome.SelectedTier ||
+                !plan.CandidateIds.SequenceEqual(auditSupport,
+                    StringComparer.Ordinal))
+                return false;
+            if (relicOutcome.SelectedRelicId is null)
+                return plan.CandidateIds.Length == 0;
+
+            var selectedIndex = Array.IndexOf(plan.CandidateIds,
+                relicOutcome.SelectedRelicId);
+            if (selectedIndex < 0)
+                return false;
+            var modelOrdinal = semanticRelicOrdinalByAction
+                .GetValueOrDefault(actionIndex);
+            semanticRelicOrdinalByAction[actionIndex] = modelOrdinal + 1;
+            var semanticOutcome = CreateNativeRelicIdentityOutcome(
+                sourceWorld, relicOutcome, plan.CandidateIds,
+                selectedIndex, modelOrdinal);
+            if (!AddOutcome(sequence, semanticOutcome,
+                    coversProviderBoundary: false))
+                return false;
+            semanticRelicBagsByAction[actionIndex] =
+                PrototypeNativeRelicGrabBag.PullNatureSelected(
+                    bag, relicOutcome.RequestedRarity, plan.CandidateIds,
+                    selectedIndex, merchant: false, source.Player).Bag;
+            return true;
+        }
+
+        int orderedRangeIndex(int sequence)
+        {
+            for (var index = 0; index < actionRanges.Count; index++)
+                if (sequence > actionRanges[index].TraceCountBefore &&
+                    sequence <= actionRanges[index].TraceCountAfter)
+                    return actionRanges[index].ActionIndex;
+            return -1;
+        }
+
+        SimulationProviderReplaySemanticOutcomeV111 CreateLawOutcome(
+            ChanceLawV111 law, int selectedIndex,
+            string[]? semanticSupportIds = null)
+        {
+            law.Validate();
+            var supportIds = semanticSupportIds ??
+                SimulationProviderReplaySemanticIdentityV111.SupportIds(law);
+            if (selectedIndex < 0 || selectedIndex >= law.SupportCount ||
+                supportIds.Length != law.SupportCount)
+                throw new InvalidDataException(
+                    "Native semantic law outcome is outside its declared support.");
+            return new SimulationProviderReplaySemanticOutcomeV111(
+                0, law.EventId, law.LawId,
+                law.OutcomeIdAt(selectedIndex), selectedIndex)
+            {
+                SiteId = law.SiteId,
+                OperationKind = law.OperationKind,
+                OwnerId = SimulationProviderReplayCaptureV111
+                    .NormalizeSemanticOwnerId(law.SiteId, law.OwnerId),
+                Ordinal = law.Ordinal,
+                SupportFingerprint = CanonicalJson.Sha256(supportIds),
+                SemanticOutcomeId = supportIds[selectedIndex]
+            };
+        }
+
+        SimulationProviderReplaySemanticOutcomeV111
+            CreateNativeRelicIdentityOutcome(
+                RunWorldState sourceWorld,
+                SemanticRelicRewardNativeAuditV111 auditOutcome,
+                string[] supportIds, int selectedIndex, int ordinal)
+        {
+            if (selectedIndex < 0 || selectedIndex >= supportIds.Length ||
+                auditOutcome.SelectedRelicId != supportIds[selectedIndex])
+                throw new InvalidDataException(
+                    "Native relic identity is outside its canonical reward support.");
+            var siteId = PrototypeNativeRelicGrabBag
+                .NativeTreasureModelSiteId;
+            var ownerId = PrototypeNativeRelicGrabBag.TreasureModelOwnerId(
+                sourceWorld, auditOutcome.RequestedRarity, supportIds);
+            var supportFingerprint = CanonicalJson.Sha256(supportIds);
+            var eventId = CanonicalJson.Sha256(new
+            {
+                siteId,
+                ownerId,
+                ordinal,
+                supportFingerprint
+            });
+            return new SimulationProviderReplaySemanticOutcomeV111(
+                0, eventId,
+                "combat-reward-relic-identity-v1",
+                $"relic_model:{supportIds[selectedIndex]}:index:{selectedIndex}",
+                selectedIndex)
+            {
+                SiteId = siteId,
+                OperationKind = "choose_index",
+                OwnerId = ownerId,
+                Ordinal = ordinal,
+                SupportFingerprint = supportFingerprint,
+                SemanticOutcomeId = supportIds[selectedIndex]
+            };
         }
 
         bool AddPoolShuffle(SemanticPoolShuffleDecisionV111 decision)
@@ -1600,17 +1943,30 @@ internal static class SimulationProviderReplayNativeSemanticOutcomeTraceV111
             if (intervalSequences.Length != 1)
                 return false;
             var sequence = intervalSequences[0];
-            if (!IsCombatPoolShuffle(decision.Event.SiteId))
+            if (!IsCombatPoolShuffle(decision.Event.SiteId) &&
+                !IsCombatRewardPoolShuffle(decision.Event.SiteId))
                 return false;
-            var outcome = CreateChanceOutcome(decision.Event,
-                decision.SelectedSwapIndex,
-                () => ChanceLawEngineV111.QueryPoolShuffle(decision.Event));
+            var law = decision.Event.SiteId switch
+            {
+                StochasticSiteRegistryV111.RewardBossRelicOfferShuffleSiteId =>
+                    ChanceLawEngineV111.QueryNativeBossRelicOfferShuffleIndex(
+                        request.OwnerId, request.SupportCount,
+                        request.Ordinal),
+                StochasticSiteRegistryV111.RewardLavaRockRelicOfferShuffleSiteId =>
+                    ChanceLawEngineV111.QueryNativeLavaRockRelicOfferShuffleIndex(
+                        request.OwnerId, request.SupportCount,
+                        request.Ordinal),
+                _ => ChanceLawEngineV111.QueryPoolShuffle(decision.Event)
+            };
+            var outcome = CreateLawOutcome(law,
+                decision.SelectedSwapIndex);
             if (outcome is null)
                 return false;
             if (ordinalBySequence.TryGetValue(sequence,
                     out var semanticOrdinal))
                 outcome = outcome with { Ordinal = semanticOrdinal };
-            return candidates.TryAdd(sequence, outcome);
+            return AddOutcome(sequence, outcome,
+                coversProviderBoundary: true);
         }
 
         foreach (var outcome in audit.WeightedIntentOutcomes)
@@ -1654,13 +2010,10 @@ internal static class SimulationProviderReplayNativeSemanticOutcomeTraceV111
 
         foreach (var outcome in audit.GeneratedCardModelOutcomes)
             if (!AddDecision(outcome.ProviderDecision, () =>
-                outcome.Outcome.Event.SiteId ==
-                    StochasticSiteRegistryV111.NativeRewardCardModelSiteId
-                        ? null
-                        : CreateChanceOutcome(outcome.Outcome.Event,
-                            outcome.Outcome.SelectedIndex,
-                            () => ChanceLawEngineV111.QueryGeneratedCard(
-                                outcome.Outcome.Event))))
+                CreateChanceOutcome(outcome.Outcome.Event,
+                    outcome.Outcome.SelectedIndex,
+                    () => ChanceLawEngineV111.QueryGeneratedCard(
+                        outcome.Outcome.Event))))
                 return null;
 
         foreach (var outcome in audit.CardTransformOutcomes)
@@ -1687,6 +2040,105 @@ internal static class SimulationProviderReplayNativeSemanticOutcomeTraceV111
                         outcome.Outcome.Event))))
                 return null;
 
+        foreach (var outcome in audit.CardOddsOutcomes)
+        {
+            var request = outcome.ProviderDecision.Request;
+            ChanceLawV111 law;
+            string selectedOutcomeId;
+            if (outcome.OutcomeKind ==
+                SemanticCardOddsNativeAuditV111.RarityOperation)
+            {
+                if (outcome.Source is not { } source ||
+                    outcome.CurrentOffsetBasisPoints is not { } offset ||
+                    outcome.Ascension is not { } ascension ||
+                    outcome.RolledRarity is not { } rarity)
+                    return null;
+                law = ChanceLawEngineV111.QueryNativeCardRarity(
+                    source, offset, ascension, request.OwnerId,
+                    request.Ordinal);
+                selectedOutcomeId = "rarity:" +
+                    rarity.ToString().ToLowerInvariant();
+            }
+            else if (outcome.OutcomeKind ==
+                SemanticCardOddsNativeAuditV111.UpgradeOperation)
+            {
+                if (outcome.CardId is not { } cardId ||
+                    outcome.Act is not { } act ||
+                    outcome.Ascension is not { } ascension ||
+                    outcome.Upgraded is not { } upgraded)
+                    return null;
+                law = ChanceLawEngineV111.QueryNativeEncounterCardUpgrade(
+                    cardId, act, ascension, request.Ordinal);
+                selectedOutcomeId = upgraded
+                    ? "upgrade_check:passed"
+                    : "upgrade_check:not_passed";
+            }
+            else
+                return null;
+            if (!AddUnitFloatDecision(outcome.ProviderDecision,
+                    () => law, selectedOutcomeId))
+                return null;
+        }
+
+        foreach (var outcome in audit.PotionRewardOddsOutcomes)
+        {
+            var law = ChanceLawEngineV111.QueryNativePotionRewardOdds(
+                outcome.CurrentThousandths, outcome.Elite, forced: false,
+                outcome.ProviderDecision.Request.Ordinal);
+            if (!AddUnitFloatDecision(outcome.ProviderDecision,
+                    () => law, outcome.Offered
+                        ? "potion_reward:offered"
+                        : "potion_reward:not_offered"))
+                return null;
+        }
+
+        foreach (var outcome in audit.PotionFactoryOutcomes)
+        {
+            var rarityLaw = ChanceLawEngineV111
+                .QueryNativePotionFactoryRarity(
+                    outcome.RarityDecision.Request);
+            if (!AddUnitFloatDecision(outcome.RarityDecision,
+                    () => rarityLaw, "rarity:" +
+                        outcome.Rarity.ToString().ToLowerInvariant()))
+                return null;
+            if (outcome.ModelDecision.Request.Ordinal != 0)
+                return null;
+            var modelLaw = ChanceLawEngineV111
+                .QueryNativePotionFactoryModelIndex(
+                    outcome.ModelDecision.Request, outcome.Rarity, []);
+            if (!AddDecision(outcome.ModelDecision, () =>
+                    CreateLawOutcome(modelLaw,
+                        outcome.ModelDecision.SelectedIndex,
+                        outcome.CandidatePotionIds)))
+                return null;
+        }
+
+        foreach (var outcome in audit.CombatGoldOutcomes)
+        {
+            var law = ChanceLawEngineV111.QueryNativeCombatGold(
+                outcome.Room, outcome.Ascension,
+                outcome.Room == PrototypeRoomType.Combat
+                    ? outcome.GoldProportion : null,
+                outcome.ProviderDecision.Request.Ordinal);
+            if (!AddDecision(outcome.ProviderDecision, () =>
+                    CreateLawOutcome(law,
+                        outcome.ProviderDecision.SelectedIndex)))
+                return null;
+        }
+
+        foreach (var outcome in audit.RelicRewardOutcomes)
+        {
+            var law = ChanceLawEngineV111.QueryNativeRelicRarity(
+                outcome.ProviderDecision.Request);
+            if (!AddUnitFloatDecision(outcome.ProviderDecision,
+                    () => law, "rarity:" +
+                        outcome.RequestedRarity.ToString()
+                            .ToLowerInvariant()))
+                return null;
+            if (!AddNativeRelicIdentityOutcome(outcome))
+                return null;
+        }
+
         var orderedRanges = actionRanges.OrderBy(range => range.ActionIndex)
             .ToArray();
         var expectedTraceCount = initialTraceCount;
@@ -1704,11 +2156,11 @@ internal static class SimulationProviderReplayNativeSemanticOutcomeTraceV111
             expectedTraceCount = range.TraceCountAfter;
         }
         if (expectedTraceCount != providerTrace.Length ||
-            candidates.Count != providerTrace.Length - initialTraceCount)
+            coveredSequences.Count != providerTrace.Length - initialTraceCount)
             return null;
         for (var sequence = initialTraceCount + 1;
             sequence <= providerTrace.Length; sequence++)
-            if (!candidates.ContainsKey(sequence))
+            if (!coveredSequences.Contains(sequence))
                 return null;
 
         var captured = new List<SimulationProviderReplaySemanticOutcomeV111>(
@@ -1720,7 +2172,7 @@ internal static class SimulationProviderReplayNativeSemanticOutcomeTraceV111
                 .Where(pair => pair.Key > range.TraceCountBefore &&
                     pair.Key <= range.TraceCountAfter)
                 .OrderBy(pair => pair.Key)
-                .Select(pair => pair.Value)
+                .SelectMany(pair => pair.Value)
                 .ToArray();
             if (range.CardsDrawnDelta is { } cardsDrawn &&
                 (cardsDrawn < 0 || cardsDrawn !=
@@ -1894,6 +2346,18 @@ internal static class SimulationProviderReplayNativeSemanticOutcomeTraceV111
 
     private static string? SemanticOrdinalGroup(string siteId)
     {
+        if (IsCombatRewardPoolShuffle(siteId) || siteId is
+                StochasticSiteRegistryV111.RewardPotionOddsUnitFloatSiteId or
+                StochasticSiteRegistryV111.NativeCombatGoldSiteId or
+                StochasticSiteRegistryV111.NativePotionFactoryRarityRollSiteId or
+                StochasticSiteRegistryV111.NativePotionFactoryModelSiteId or
+                StochasticSiteRegistryV111.CardRarityRollUnitFloatSiteId or
+                StochasticSiteRegistryV111.CardRarityUpgradeRollUnitFloatSiteId or
+                StochasticSiteRegistryV111.NativeRewardCardModelSiteId or
+                StochasticSiteRegistryV111.RelicGrabBagRaritySiteId or
+                PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId or
+                "card_rarity.encounter_model.index_draw")
+            return "semantic_reward:" + siteId;
         if (StochasticSiteRegistryV111.CombatRandomTargetSiteIds.Contains(
                 siteId, StringComparer.Ordinal))
             return "semantic_target";
@@ -1927,6 +2391,10 @@ internal static class SimulationProviderReplayNativeSemanticOutcomeTraceV111
         StochasticSiteRegistryV111.CombatCardPoolShuffleSiteIds.Contains(
             siteId, StringComparer.Ordinal) ||
         siteId == ControlledRecycleShuffleEngineV111.SiteId;
+
+    private static bool IsCombatRewardPoolShuffle(string siteId) =>
+        siteId is StochasticSiteRegistryV111.RewardBossRelicOfferShuffleSiteId or
+            StochasticSiteRegistryV111.RewardLavaRockRelicOfferShuffleSiteId;
 }
 
 public sealed record SimulationProviderReplaySemanticOutcomeDiffV111(

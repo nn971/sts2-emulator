@@ -529,6 +529,20 @@ public sealed record ReferenceNatureCombatRewardSessionV111(
             return ChanceLawEngineV111.QueryNativePotionFactoryModelIndex(
                 indexRequest, rarity, []);
         }
+        if (indexRequest.SiteId ==
+            StochasticSiteRegistryV111.NativeRewardCardModelSiteId)
+        {
+            if (indexRequest.StreamId != NativePlayerRngV111.RewardsStreamId ||
+                indexRequest.OperationKind != "choose_index" ||
+                candidateLabels is not { Length: > 0 } labels ||
+                labels.Length != indexRequest.SupportCount)
+                throw new InvalidDataException(
+                    "Native combat-reward card request has no ordered semantic pool.");
+            var generatedCard =
+                SemanticGeneratedCardNativeAuditV111
+                    .CreateNativeRewardEvent(indexRequest, labels);
+            return ChanceLawEngineV111.QueryGeneratedCard(generatedCard);
+        }
         if (indexRequest.SiteId == "card_rarity.encounter_model.index_draw")
         {
             if (indexRequest.StreamId != NativePlayerRngV111.RewardsStreamId)
@@ -616,6 +630,13 @@ public sealed record ReferenceNatureCombatRewardSessionV111(
             $"ReferenceNature combat reward replay does not support stochastic site '{request.SiteId}'.");
     }
 
+    internal static ChanceLawV111 QueryLawForCapture(
+        RunState source, GameAction action,
+        ControlledStochasticRequestV111 request,
+        string[]? candidateLabels,
+        ControlledStochasticDecisionV111[] prefix) =>
+        QueryLaw(source, action, request, candidateLabels, prefix);
+
     private static ControlledStochasticContinuationResultV111 Replay(
         RunState source, GameAction action,
         ControlledStochasticDecisionV111[] decisions)
@@ -656,6 +677,7 @@ public sealed record ReferenceNatureCombatRewardSessionV111(
         "potion_factory.model_within_rarity.index_draw",
         "card_rarity.roll.unit_float",
         "card_rarity.encounter_model.index_draw",
+        StochasticSiteRegistryV111.NativeRewardCardModelSiteId,
         "card_rarity.upgrade_roll.unit_float",
         "relic_grab_bag.rarity.unit_float",
         PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId,

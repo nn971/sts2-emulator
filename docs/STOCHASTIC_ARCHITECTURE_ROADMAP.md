@@ -7,6 +7,16 @@
 replay comparison v7. CLI Release build passed with zero warnings or errors;
 no tests were run.
 
+**S4 terminal combat-reward semantic capture increment (2026-10-25):**
+ReferenceNature combat-reward sessions now capture their replayed Chance Law
+outcomes as provider-independent identities. Native-policy projection covers
+annotated reward odds, gold, PotionFactory, card-model, relic-rarity, relic
+identity, and boss/Lava Rock shuffle outcomes; the Native reward-card model is
+now admitted by the ReferenceNature reward session with its ordered card
+support. Unsupported Native boundaries still leave semantic comparison
+unavailable. Core and CLI Release builds passed with zero warnings or errors;
+no tests were run.
+
 **S4 per-action physical draw identity comparison increment (2026-10-25):**
 Replay-validated captures now retain the ordered physical card identities
 consumed by `DrawCards` within each player action. Native committed-order draws

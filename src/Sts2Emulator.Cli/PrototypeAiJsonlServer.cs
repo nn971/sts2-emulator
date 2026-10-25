@@ -10330,7 +10330,7 @@ internal static class PrototypeAiJsonlServer
                                     return referenceNatureCombatRewardStates
                                         .TryGetValue(handle, out var combatReward)
                                         ? SimulationProviderReplayCaptureV111
-                                            .FromReferenceNatureControlledActionSession(
+                                            .FromReferenceNatureCombatRewardSession(
                                                 combatReward)
                                         : throw new InvalidOperationException(
                                             "Unknown ReferenceNature combat-reward handle: " +

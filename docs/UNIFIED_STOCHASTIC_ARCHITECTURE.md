@@ -1148,12 +1148,14 @@ initial player boundary, so route setup and initial-intent decisions are
 excluded; its boundary trace contains only subsequent player-action outcomes.
 It also projects the audit's weighted intent, hand-cost and Jeweled Mask card
 instance, random replay/autoplay shortlist, cost, draw-insertion, combat
-pool-shuffle, generated-card, transform, target, and potion-generation
-annotations to common semantic identities when those
-annotations cover the entire interval. Ordinary physical draws are recorded
-separately per player action. Any unrecognized provider boundary prevents
-the semantic trace from being marked complete; the typed boundary trace
-remains available. The projection normalizes Native ordinals for target, generated
+pool-shuffle, generated-card, transform, target, potion-generation, and
+typed reward outcomes to common semantic identities when those annotations
+cover the entire interval. Native relic identities selected from committed
+queues are projected alongside their rarity boundary. Ordinary physical
+draws are recorded separately per player action. Any unrecognized provider
+boundary prevents the semantic trace from being marked complete; the typed
+boundary trace remains available. The projection normalizes Native ordinals
+for reward sites, target, generated
 card, potion generation, transform, energy cost, hand-card selection,
 card-shortlist, combat pool-shuffle, and ordinary draw-insertion families
 against earlier requests in that semantic family. Shortlist owner identity
@@ -1180,7 +1182,7 @@ same boundary journal. It retains each settled action boundary. JSONL accepts
 `<side>_reference_nature_event_choice_handle` for this path. It does not
 establish Native source-hook parity or law fidelity.
 `FromReferenceNatureControlledActionSession` uses one shared interface for
-completed Merchant, Treasure, combat-reward, Native Shovel, Native event-relic,
+completed Merchant, Treasure, Native Shovel, Native event-relic,
 Native event-gold, Infested Automaton, Glory Reflections, Trial, Trash Heap,
 Tablet of Truth, Native event-shuffle, Endless Conveyor, and Punch Off fight
 and reward sessions. Each session first replays
@@ -1191,9 +1193,13 @@ Truth, Native event-shuffle, Endless Conveyor, and Punch Off derive typed
 decisions from their existing validated Chance Law decisions, exact requests,
 and ordered outcome supports.
 JSONL accepts the matching
-`<side>_reference_nature_{merchant,treasure,combat_reward,native_shovel,native_event_relic,native_event_gold,infested_automaton,glory_reflections,trial,trash_heap,tablet_of_truth,native_event_shuffle,endless_conveyor,punch_off_fight,punch_off_reward}_handle`
+`<side>_reference_nature_{merchant,treasure,native_shovel,native_event_relic,native_event_gold,infested_automaton,glory_reflections,trial,trash_heap,tablet_of_truth,native_event_shuffle,endless_conveyor,punch_off_fight,punch_off_reward}_handle`
 inputs. This adds replay-capture coverage without changing the action or
-provider owners.
+provider owners. `FromReferenceNatureCombatRewardSession` separately captures
+the completed victory action and each replayed reward Chance Law outcome as
+provider-independent semantic identities. Its JSONL input remains
+`<side>_reference_nature_combat_reward_handle`; Native reward card-model
+requests retain their ordered card identities through the controlled prefix.
 `FromReferenceNatureRunActionSession` accepts a completed ReferenceNature
 run action when the appended controlled action trace identifies the exact
 saved action and covers every saved Nature decision. For configured run starts,
@@ -1242,6 +1248,16 @@ player observation.
 - Preserve the ongoing Silent four-Act work, reference mods and inspector PR stacks. Any implementation migration must identify its own tests and feature gates.
 
 ## Current S4 continuation support
+
+Terminal combat rewards now have semantic replay capture on both sides of
+the provider comparator. ReferenceNature reward captures retain each sampled
+Chance Law identity, while Native captures project supported reward odds,
+gold, PotionFactory, card-model, relic-rarity, and relic-identity results from
+the mixed audit. Native boss and Lava Rock offer shuffles are projected as
+their bounded index outcomes. The Native projection remains fail-closed when
+an action contains an unannotated provider boundary. This enables comparison
+of the captured reward outcomes and final mechanics state; source probability
+and Native cursor parity remain open.
 
 `SemanticEndTurnPendingEventsV111` is a transient projection over the full
 end-turn boundary. It captures active hand-draw events through the draw
