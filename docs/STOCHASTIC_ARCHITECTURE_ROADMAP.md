@@ -2,6 +2,15 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 semantic ReferenceNature transcript ownership (2026-10-25):** The base
+semantic combat session now composes the shared initial/current cursor and
+typed transcript owner through `SimulationStateV111`. Each selected law
+outcome advances the cursor and appends its selection atomically; validation
+checks one transcript decision per sample and the selection cursor chain.
+Snapshots keep their established members and add optional transcript fields;
+older v1 snapshots resume from their saved cursor with an empty transcript.
+Static source review and `git diff --check` only; no tests or builds were run.
+
 **S4 Native semantic event mapping ownership (2026-10-25):** The transient
 pending semantic event now maps Native decisions through one checked
 operation/support projection before the shared mechanics dispatcher. Target,
