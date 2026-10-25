@@ -1671,6 +1671,11 @@ The exact Dual Wield Attack/Power copy selection is also admitted when it is
 opened inside a validated automatic hand-draw hook. The nested path reuses the
 existing source-card, play-series, candidate-order, and selection-spec checks,
 then returns through the semantic draw frame's card-selection chronology.
+The same exact selection is now admitted for a card played by a validated
+automatic-pipeline autoplay, including Mayhem. Its source card must match the
+autoplay series and remain outside all card zones while the play is suspended;
+the existing owner still checks its discard destination, single play, ordered
+Attack/Power candidates, and upgrade-adjusted copy operation.
 
 Semantic draw-frame validation now delegates classified automatic hand-draw
 child boundary checks to the draw-hook choice owner, which shares that dispatch

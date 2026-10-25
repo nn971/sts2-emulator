@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 automatic-pipeline Dual Wield selection (2026-10-26):** The existing
+semantic card-selection owner now admits Dual Wield's exact Attack/Power copy
+prompt during a validated automatic-pipeline autoplay, including Mayhem. It
+requires the exact autoplay series, the suspended source card in limbo, the
+discard destination, and the existing ordered candidate and upgraded-copy
+checks. Core Release build passed with zero warnings or errors;
+`git diff --check` passed. No tests were run.
+
 **S4 draw-kernel callsite audit (2026-10-26):** A static inventory of
 `DrawCards` references found no top-level invocation bypassing the shared
 `ExecuteDrawCardsSegment` or saved automatic-resume owner; queued effect draws

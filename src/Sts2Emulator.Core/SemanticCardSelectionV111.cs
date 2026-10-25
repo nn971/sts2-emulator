@@ -692,6 +692,11 @@ public static class SemanticCardSelectionEngineV111
             PrototypeGameEngine
                 .IsAutomaticHandDrawHookCardSelectionContinuation(
                     combat, choice);
+        bool automaticPipelineAutoplayChoice =
+            choice.CardPlaySeries is { IsAutoPlay: true } &&
+            PrototypeGameEngine
+                .IsAutomaticPipelineSemanticCardSelectionContinuation(
+                    combat, choice);
         bool supportedAutomaticTransform =
             spec.SourceZone == PrototypeCardZone.Hand &&
             spec.Resolution ==
@@ -712,7 +717,9 @@ public static class SemanticCardSelectionEngineV111
         var supportedDualWieldCopy = IsSupportedDualWieldChoice(
             combat, choice,
             allowAutomaticHandDrawHookContinuation:
-                automaticHandDrawHookChoice);
+                automaticHandDrawHookChoice,
+            allowAutomaticPipelineAutoplay:
+                automaticPipelineAutoplayChoice);
         var supportedGeneratedChoicePool =
             spec.SourceZone == PrototypeCardZone.ChoicePool &&
             spec.Resolution == PrototypeCardSelectionResolutionKind.MoveToHand &&
@@ -735,11 +742,11 @@ public static class SemanticCardSelectionEngineV111
 
     private static bool IsSupportedDualWieldChoice(
         CombatState combat, PendingCombatChoiceState choice,
-        bool allowAutomaticHandDrawHookContinuation)
+        bool allowAutomaticHandDrawHookContinuation,
+        bool allowAutomaticPipelineAutoplay)
     {
-        if (!combat.IsPlayerTurn || choice.SourceCardInstanceId is not { } sourceId ||
-            (!allowAutomaticHandDrawHookContinuation &&
-             choice.OuterChoiceContinuation is not null) ||
+        if (!combat.IsPlayerTurn ||
+            choice.SourceCardInstanceId is not { } sourceId ||
             choice.EventDispatchContinuation is not null ||
             choice.Continuation.Length != 0 ||
             choice.SourceCardDestination != PrototypeCardZone.DiscardPile ||
@@ -749,15 +756,37 @@ public static class SemanticCardSelectionEngineV111
             choice.CardPlaySeries is not
                 { SourceCardDestination: PrototypeCardZone.DiscardPile,
                   PlayCount: 1, NextPlayIndex: 0,
-                  RemoveSourceCardOnCompletion: false, IsAutoPlay: false } series ||
+                  RemoveSourceCardOnCompletion: false } series ||
             series.SourceCardInstanceId != sourceId)
+            return false;
+
+        bool handDrawHookPlay =
+            allowAutomaticHandDrawHookContinuation &&
+            series is { IsAutoPlay: false } &&
+            choice.OuterChoiceContinuation is not null &&
+            combat.Hand.Contains(sourceId);
+        bool automaticPipelinePlay =
+            allowAutomaticPipelineAutoplay &&
+            series is { IsAutoPlay: true } &&
+            choice.OuterChoiceContinuation is null &&
+            !combat.Hand.Contains(sourceId) &&
+            !combat.DrawPile.Contains(sourceId) &&
+            !combat.PlayCardIds.Contains(sourceId) &&
+            !combat.DiscardPile.Contains(sourceId) &&
+            !combat.ExhaustPile.Contains(sourceId) &&
+            !combat.ChoiceCardIds.Contains(sourceId);
+        bool ordinaryHandPlay =
+            series is { IsAutoPlay: false } &&
+            choice.OuterChoiceContinuation is null &&
+            combat.Hand.Contains(sourceId);
+        if (!handDrawHookPlay && !automaticPipelinePlay &&
+            !ordinaryHandPlay)
             return false;
 
         var sourceCard = combat.Cards.SingleOrDefault(card =>
             card.InstanceId == sourceId);
         if (sourceCard?.CardId !=
-                PrototypeNativeUnderdocksTrashHeap.DualWieldCardId ||
-            !combat.Hand.Contains(sourceId))
+            PrototypeNativeUnderdocksTrashHeap.DualWieldCardId)
             return false;
 
         var effects = PrototypeContent.Card(sourceCard.CardId).Effects;
