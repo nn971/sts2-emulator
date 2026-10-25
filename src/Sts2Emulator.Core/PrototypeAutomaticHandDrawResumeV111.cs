@@ -355,12 +355,7 @@ public sealed partial class PrototypeGameEngine
         if (semanticChoiceBoundary || semanticDrawBoundary ||
             semanticSavedStage)
         {
-            var world = RequireWorld(rngCheckpoint);
-            var advanced = rngCheckpoint with
-            {
-                Player = drawn.Player,
-                World = world with { Combat = combat }
-            };
+            var advanced = PublishDrawCardsResult(segment);
             var drawFrame = semanticDraw ?? CreateSemanticDrawResultFrame(
                 drawn.RemainingCount, fromHandDraw: true,
                 eventDepth: 0, automatic: true);

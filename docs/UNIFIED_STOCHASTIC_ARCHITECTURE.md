@@ -252,10 +252,11 @@ Adapters still select the draw suspension policy and interpret the resulting
 boundary; the helper returns a transient `PrototypeDrawCardsSegmentV111`
 that keeps the provider-state commit paired with the tagged mechanics result.
 The common automatic-hand-draw boundary router consumes that segment for
-source-stage and saved controlled/semantic resumes. Direct semantic draws and
-nested semantic effect draws also pass the segment intact into their result
-owners; typed transcripts and provider-specific suspension policies remain
-with their adapters.
+source-stage and saved controlled/semantic resumes. It publishes the paired
+run and mechanics result through `PublishDrawCardsResult` before semantic
+boundary interpretation. Direct semantic draws and nested semantic effect
+draws also pass the segment intact into their result owners; typed transcripts
+and provider-specific suspension policies remain with their adapters.
 
 Draw continuations that resolve further operations around a draw now publish
 their final player/combat mechanics and local prototype RNG through
