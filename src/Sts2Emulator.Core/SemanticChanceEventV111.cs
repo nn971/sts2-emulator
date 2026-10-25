@@ -22,3 +22,20 @@ public interface ISemanticChanceEventV111
     string SupportFingerprint { get; }
     string ProbabilityStatus { get; }
 }
+
+/// <summary>
+/// The single active index-valued semantic event exposed to providers. The
+/// event remains owned by its typed mechanic; this envelope only fixes its
+/// dispatch precedence and checked support size.
+/// </summary>
+internal sealed record SemanticPendingIndexChanceEventV111(
+    ISemanticChanceEventV111 Event, int SupportCount)
+{
+    public void Validate()
+    {
+        ArgumentNullException.ThrowIfNull(Event);
+        if (string.IsNullOrWhiteSpace(Event.EventId) || SupportCount < 1)
+            throw new InvalidDataException(
+                "Invalid pending semantic index chance event.");
+    }
+}

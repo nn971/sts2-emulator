@@ -38,170 +38,77 @@ public static class ReferenceNatureV111
             return new ReferenceNatureResolutionV111(child, law, selection);
         }
 
-        if (combat.EnemyActionEventPending is { } enemyActionEvent)
-        {
-            var law = ChanceLawEngineV111.QueryEndTurnIndex(
-                enemyActionEvent);
-            var selection = SampleValidated(law, state);
-            if (selection.OutcomeId != "choice_index:" +
-                selection.OutcomeIndex.ToString(
-                    CultureInfo.InvariantCulture))
-                throw new InvalidDataException(
-                    "ReferenceNature law no longer matches the pending enemy-action index event.");
-            var child = SemanticPilotCombatEngineV111
-                .ResolveChanceOutcomeByIndex(
-                    combat, selection.EventId, selection.OutcomeIndex);
-            return new ReferenceNatureResolutionV111(child, law, selection);
-        }
+        var pending = SemanticPilotCombatEngineV111
+            .DescribePendingIndexChanceEvent(combat) ??
+            throw new NotSupportedException(
+                "UNSUPPORTED_REFERENCE_NATURE site=no_supported_pending_event");
+        var law = QueryPendingLaw(combat, pending.Event);
+        if (law.EventId != pending.Event.EventId ||
+            law.SupportCount != pending.SupportCount)
+            throw new InvalidDataException(
+                "ReferenceNature law no longer matches the active semantic event.");
+        var selection = SampleValidated(law, state);
+        if (selection.OutcomeIndex >= pending.SupportCount)
+            throw new InvalidDataException(
+                "ReferenceNature outcome is outside the active semantic support.");
 
-        if (combat.TargetPending is { } targetEvent)
-        {
-            var law = ChanceLawEngineV111.QueryTarget(targetEvent);
-            var selection = SampleValidated(law, state);
-            var child = SemanticPilotCombatEngineV111
-                .ResolveChanceOutcomeByIndex(
-                    combat, selection.EventId, selection.OutcomeIndex);
-            return new ReferenceNatureResolutionV111(child, law, selection);
-        }
+        if (pending.Event is SemanticEndTurnIndexEventV111 &&
+            selection.OutcomeId != "choice_index:" +
+                selection.OutcomeIndex.ToString(CultureInfo.InvariantCulture))
+            throw new InvalidDataException(
+                "ReferenceNature law no longer matches the pending enemy-action index event.");
+        if (pending.Event is SemanticDeckEventV111 deckEvent &&
+            selection.OutcomeId != "card_instance:" +
+                deckEvent.CandidateCardInstanceIds[selection.OutcomeIndex]
+                    .ToString(CultureInfo.InvariantCulture))
+            throw new InvalidDataException(
+                "ReferenceNature law no longer matches the pending deck event.");
 
-        if (combat.GeneratedCardPending is { } generatedCardEvent)
-        {
-            var law = ChanceLawEngineV111.QueryGeneratedCard(
-                generatedCardEvent);
-            var selection = SampleValidated(law, state);
-            var child = SemanticPilotCombatEngineV111
-                .ResolveChanceOutcomeByIndex(
-                    combat, selection.EventId, selection.OutcomeIndex);
-            return new ReferenceNatureResolutionV111(child, law, selection);
-        }
-
-        if (combat.CostPending is { } costEvent)
-        {
-            var law = ChanceLawEngineV111.QueryCost(costEvent);
-            var selection = SampleValidated(law, state);
-            var child = SemanticPilotCombatEngineV111
-                .ResolveChanceOutcomeByIndex(
-                    combat, selection.EventId, selection.OutcomeIndex);
-            return new ReferenceNatureResolutionV111(child, law, selection);
-        }
-
-        if (combat.RandomPileCardPending is { } randomPileCardEvent)
-        {
-            var law = ChanceLawEngineV111.QueryRandomPileCard(
-                randomPileCardEvent);
-            var selection = SampleValidated(law, state);
-            var child = SemanticPilotCombatEngineV111
-                .ResolveChanceOutcomeByIndex(
-                    combat, selection.EventId, selection.OutcomeIndex);
-            return new ReferenceNatureResolutionV111(child, law, selection);
-        }
-
-        if (combat.CardTransformPending is { } transformEvent)
-        {
-            var law = ChanceLawEngineV111.QueryCardTransform(transformEvent);
-            var selection = SampleValidated(law, state);
-            var child = SemanticPilotCombatEngineV111
-                .ResolveChanceOutcomeByIndex(
-                    combat, selection.EventId, selection.OutcomeIndex);
-            return new ReferenceNatureResolutionV111(child, law, selection);
-        }
-
-        if (combat.PotionGenerationPending is { } potionEvent)
-        {
-            var law = ChanceLawEngineV111.QueryPotionGeneration(potionEvent);
-            var selection = SampleValidated(law, state);
-            var child = SemanticPilotCombatEngineV111
-                .ResolveChanceOutcomeByIndex(
-                    combat, selection.EventId, selection.OutcomeIndex);
-            return new ReferenceNatureResolutionV111(child, law, selection);
-        }
-
-        if (combat.HandCostSelectionPending is { } handCostEvent)
-        {
-            var law = ChanceLawEngineV111.QueryHandCostSelection(
-                handCostEvent);
-            var selection = SampleValidated(law, state);
-            var child = SemanticPilotCombatEngineV111
-                .ResolveChanceOutcomeByIndex(
-                    combat, selection.EventId, selection.OutcomeIndex);
-            return new ReferenceNatureResolutionV111(child, law, selection);
-        }
-
-        if (combat.PoolShufflePending is { } poolShuffleEvent)
-        {
-            var law = ChanceLawEngineV111.QueryPoolShuffle(poolShuffleEvent);
-            var selection = SampleValidated(law, state);
-            var child = SemanticPilotCombatEngineV111
-                .ResolveChanceOutcomeByIndex(
-                    combat, selection.EventId, selection.OutcomeIndex);
-            return new ReferenceNatureResolutionV111(child, law, selection);
-        }
-
-        if (combat.DrawInsertionPending is { } insertionEvent)
-        {
-            var law = ChanceLawEngineV111.QueryDrawInsertion(insertionEvent);
-            var selection = SampleValidated(law, state);
-            var child = SemanticPilotCombatEngineV111
-                .ResolveChanceOutcomeByIndex(
-                    combat, selection.EventId, selection.OutcomeIndex);
-            return new ReferenceNatureResolutionV111(child, law, selection);
-        }
-
-        if (combat.CardShortlistPending is { } shortlistEvent)
-        {
-            var law = ChanceLawEngineV111.QueryCardShortlist(shortlistEvent);
-            var selection = SampleValidated(law, state);
-            var child = SemanticPilotCombatEngineV111
-                .ResolveChanceOutcomeByIndex(
-                    combat, selection.EventId, selection.OutcomeIndex);
-            return new ReferenceNatureResolutionV111(child, law, selection);
-        }
-
-        if (combat.DrawPending is { } drawEvent)
-        {
-            var deck = combat.Run.World?.Combat?.Stochastic.SemanticDeck ??
-                throw new InvalidDataException(
-                    "Pending semantic draw lost its provider-owned deck.");
-            var law = ChanceLawEngineV111.QueryDraw(deck);
-            var selection = SampleValidated(law, state);
-            if (selection.OutcomeIndex >=
-                    drawEvent.CandidateCardInstanceIds.Length ||
-                selection.OutcomeId != "card_instance:" +
-                    drawEvent.CandidateCardInstanceIds[
-                        selection.OutcomeIndex].ToString(
-                            CultureInfo.InvariantCulture))
-                throw new InvalidDataException(
-                    "ReferenceNature law no longer matches the pending draw event.");
-            var child = SemanticPilotCombatEngineV111
-                .ResolveChanceOutcomeByIndex(
-                    combat, selection.EventId, selection.OutcomeIndex);
-            return new ReferenceNatureResolutionV111(child, law, selection);
-        }
-
-        if (combat.DeckRevealPending is { } revealEvent)
-        {
-            var deck = combat.Run.World?.Combat?.Stochastic.SemanticDeck ??
-                throw new InvalidDataException(
-                    "Pending semantic reveal lost its provider-owned deck.");
-            var law = ChanceLawEngineV111.QueryDeckReveal(deck);
-            var selection = SampleValidated(law, state);
-            if (selection.OutcomeIndex >=
-                    revealEvent.CandidateCardInstanceIds.Length ||
-                selection.OutcomeId != "card_instance:" +
-                    revealEvent.CandidateCardInstanceIds[
-                        selection.OutcomeIndex].ToString(
-                            CultureInfo.InvariantCulture))
-                throw new InvalidDataException(
-                    "ReferenceNature law no longer matches the pending deck reveal.");
-            var child = SemanticPilotCombatEngineV111
-                .ResolveChanceOutcomeByIndex(
-                    combat, selection.EventId, selection.OutcomeIndex);
-            return new ReferenceNatureResolutionV111(child, law, selection);
-        }
-
-        throw new NotSupportedException(
-            "UNSUPPORTED_REFERENCE_NATURE site=no_supported_pending_event");
+        var child = SemanticPilotCombatEngineV111
+            .ResolveChanceOutcomeByIndex(
+                combat, selection.EventId, selection.OutcomeIndex);
+        return new ReferenceNatureResolutionV111(child, law, selection);
     }
+
+    private static ChanceLawV111 QueryPendingLaw(
+        SemanticPilotCombatV111 combat, ISemanticChanceEventV111 pending) =>
+        pending switch
+        {
+            SemanticEndTurnIndexEventV111 endTurn =>
+                ChanceLawEngineV111.QueryEndTurnIndex(endTurn),
+            SemanticTargetEventV111 target =>
+                ChanceLawEngineV111.QueryTarget(target),
+            SemanticGeneratedCardEventV111 generatedCard =>
+                ChanceLawEngineV111.QueryGeneratedCard(generatedCard),
+            SemanticCostEventV111 cost =>
+                ChanceLawEngineV111.QueryCost(cost),
+            SemanticRandomPileCardEventV111 randomPileCard =>
+                ChanceLawEngineV111.QueryRandomPileCard(randomPileCard),
+            SemanticCardTransformEventV111 transform =>
+                ChanceLawEngineV111.QueryCardTransform(transform),
+            SemanticPotionGenerationEventV111 potion =>
+                ChanceLawEngineV111.QueryPotionGeneration(potion),
+            SemanticHandCostSelectionEventV111 handCost =>
+                ChanceLawEngineV111.QueryHandCostSelection(handCost),
+            SemanticPoolShuffleEventV111 poolShuffle =>
+                ChanceLawEngineV111.QueryPoolShuffle(poolShuffle),
+            SemanticDrawInsertionEventV111 insertion =>
+                ChanceLawEngineV111.QueryDrawInsertion(insertion),
+            SemanticCardShortlistEventV111 shortlist =>
+                ChanceLawEngineV111.QueryCardShortlist(shortlist),
+            SemanticDeckEventV111 { Purpose: "draw" } =>
+                ChanceLawEngineV111.QueryDraw(GetSemanticDeck(combat)),
+            SemanticDeckEventV111 =>
+                ChanceLawEngineV111.QueryDeckReveal(GetSemanticDeck(combat)),
+            _ => throw new NotSupportedException(
+                "UNSUPPORTED_REFERENCE_NATURE site=unhandled_pending_event")
+        };
+
+    private static SemanticDeckStateV111 GetSemanticDeck(
+        SemanticPilotCombatV111 combat) =>
+        combat.Run.World?.Combat?.Stochastic.SemanticDeck ??
+        throw new InvalidDataException(
+            "Pending semantic deck event lost its provider-owned deck.");
 
     public static ReferenceNatureSelectionV111 SampleValidated(
         ChanceLawV111 law, ReferenceNatureStateV111 state)

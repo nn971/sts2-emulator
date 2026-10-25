@@ -31,7 +31,7 @@ public sealed record SemanticEndTurnBoundaryChoiceV111(
 public sealed record SemanticEndTurnIndexEventV111(
     string SchemaId, string EventId, string BoundaryFingerprint,
     RandomIndexRequestV111 Request, string SupportFingerprint,
-    string[]? CandidateLabels = null)
+    string[]? CandidateLabels = null) : ISemanticChanceEventV111
 {
     private string[]? _candidateLabels = CandidateLabels is null
         ? null : (string[])CandidateLabels.Clone();
@@ -46,6 +46,13 @@ public sealed record SemanticEndTurnIndexEventV111(
 
     public const string CurrentSchemaId =
         "sts2-v111-semantic-end-turn-index-event-v2";
+
+    public string SiteId => Request.SiteId;
+    public string OperationKind => Request.OperationKind;
+    public string StreamId => Request.StreamId;
+    public string OwnerId => Request.OwnerId;
+    public int Ordinal => Request.Ordinal;
+    public string ProbabilityStatus => "UNVERIFIED";
 
     public void Validate()
     {

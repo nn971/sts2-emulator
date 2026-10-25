@@ -1151,11 +1151,14 @@ the semantic outcome.
 Provider-selected indices for the semantic pilot now converge through
 `SemanticPilotCombatEngineV111.ResolveChanceOutcomeByIndex`. ReferenceNature
 validates the sampled law first; the Native adapter validates provider mode
-and primitive support first. The shared dispatcher then checks the live event
-identity and support bound before invoking the existing target, generation,
-cost, draw, reveal, shuffle, insertion, shortlist, or potion mechanics
-resolvers. Weighted intent IDs and low-level nonsemantic Native requests keep
-their specialized paths.
+and primitive support first. `DescribePendingIndexChanceEvent` owns the
+precedence and support-size projection for active index-valued semantic
+events; ReferenceNature queries the law for that typed event, and the shared
+dispatcher uses the same descriptor to validate the selection before
+invoking the existing target, generation, cost, draw, reveal, shuffle,
+insertion, shortlist, or potion mechanics resolver. Weighted intent IDs and
+low-level nonsemantic Native requests keep their specialized paths. This
+descriptor is transient and adds no snapshot field.
 
 `PrototypeAutomaticPipelineResumeResultV111` is the single owner for
 classifying an ephemeral run-resume boundary. Draw-progress and semantic-choice

@@ -7265,6 +7265,62 @@ public static class SemanticPilotCombatEngineV111
     }
 
     /// <summary>
+    /// Describe the next supported index-valued event using the same
+    /// precedence consumed by the provider-neutral resolver.
+    /// </summary>
+    internal static SemanticPendingIndexChanceEventV111?
+        DescribePendingIndexChanceEvent(SemanticPilotCombatV111 current)
+    {
+        ArgumentNullException.ThrowIfNull(current);
+        if (current.IntentPending is not null)
+            return null;
+
+        static SemanticPendingIndexChanceEventV111 Describe(
+            ISemanticChanceEventV111 chanceEvent, int supportCount)
+        {
+            var pending = new SemanticPendingIndexChanceEventV111(
+                chanceEvent, supportCount);
+            pending.Validate();
+            return pending;
+        }
+
+        if (current.EnemyActionEventPending is { } enemyAction)
+            return Describe(enemyAction, enemyAction.Request.SupportCount);
+        if (current.TargetPending is { } target)
+            return Describe(target, target.CandidateEnemyInstanceIds.Length);
+        if (current.GeneratedCardPending is { } generatedCard)
+            return Describe(generatedCard,
+                generatedCard.CandidateCardIds.Length);
+        if (current.CostPending is { } cost)
+            return Describe(cost, cost.CandidateCosts.Length);
+        if (current.RandomPileCardPending is { } randomPileCard)
+            return Describe(randomPileCard,
+                randomPileCard.CandidateCardInstanceIds.Length);
+        if (current.CardTransformPending is { } cardTransform)
+            return Describe(cardTransform,
+                cardTransform.CandidateCardIds.Length);
+        if (current.PotionGenerationPending is { } potionGeneration)
+            return Describe(potionGeneration,
+                potionGeneration.CandidatePotionIds.Length);
+        if (current.HandCostSelectionPending is { } handCost)
+            return Describe(handCost,
+                handCost.CandidateCardInstanceIds.Length);
+        if (current.PoolShufflePending is { } poolShuffle)
+            return Describe(poolShuffle, poolShuffle.Request.SupportCount);
+        if (current.DrawInsertionPending is { } drawInsertion)
+            return Describe(drawInsertion,
+                drawInsertion.Request.SupportCount);
+        if (current.CardShortlistPending is { } shortlist)
+            return Describe(shortlist,
+                shortlist.CandidateCardInstanceIds.Length);
+        if (current.DrawPending is { } draw)
+            return Describe(draw, draw.CandidateCardInstanceIds.Length);
+        if (current.DeckRevealPending is { } reveal)
+            return Describe(reveal, reveal.CandidateCardInstanceIds.Length);
+        return null;
+    }
+
+    /// <summary>
     /// Apply one provider-selected index to the active semantic event through
     /// the event's existing mechanics resolver. Providers retain their own
     /// law and provenance checks; this owner binds the selection to the live
@@ -7294,113 +7350,79 @@ public static class SemanticPilotCombatEngineV111
                     "Semantic chance selection is stale or outside current support.");
         }
 
-        var fingerprint = current.Fingerprint;
-        if (current.EnemyActionEventPending is { } enemyAction)
-        {
-            ValidateSelection(eventId, enemyAction.EventId, outcomeIndex,
-                enemyAction.Request.SupportCount);
-            return Resolve(current, fingerprint, outcomeIndex,
-                null, null, false, null, otherChance: otherChance);
-        }
-        if (current.TargetPending is { } target)
-        {
-            ValidateSelection(eventId, target.EventId, outcomeIndex,
-                target.CandidateEnemyInstanceIds.Length);
-            return ResolveRandomTarget(current, fingerprint, target.EventId,
-                target.CandidateEnemyInstanceIds[outcomeIndex], otherChance);
-        }
-        if (current.GeneratedCardPending is { } generatedCard)
-        {
-            ValidateSelection(eventId, generatedCard.EventId, outcomeIndex,
-                generatedCard.CandidateCardIds.Length);
-            return ResolveGeneratedCard(current, fingerprint,
-                generatedCard.EventId,
-                generatedCard.CandidateCardIds[outcomeIndex], otherChance);
-        }
-        if (current.CostPending is { } cost)
-        {
-            ValidateSelection(eventId, cost.EventId, outcomeIndex,
-                cost.CandidateCosts.Length);
-            var decision = SemanticCostChoiceV111.Select(
-                cost, cost.EventId, cost.CandidateCosts[outcomeIndex]);
-            return ResumeCostDecision(current, decision, otherChance);
-        }
-        if (current.RandomPileCardPending is { } randomPileCard)
-        {
-            ValidateSelection(eventId, randomPileCard.EventId, outcomeIndex,
-                randomPileCard.CandidateCardInstanceIds.Length);
-            return ResolveRandomPileCard(current, fingerprint,
-                randomPileCard.EventId,
-                randomPileCard.CandidateCardInstanceIds[outcomeIndex],
-                otherChance);
-        }
-        if (current.CardTransformPending is { } cardTransform)
-        {
-            ValidateSelection(eventId, cardTransform.EventId, outcomeIndex,
-                cardTransform.CandidateCardIds.Length);
-            return ResolveCardTransform(current, fingerprint,
-                cardTransform.EventId,
-                cardTransform.CandidateCardIds[outcomeIndex], otherChance);
-        }
-        if (current.PotionGenerationPending is { } potionGeneration)
-        {
-            ValidateSelection(eventId, potionGeneration.EventId,
-                outcomeIndex, potionGeneration.CandidatePotionIds.Length);
-            return ResolvePotionGeneration(current, fingerprint,
-                potionGeneration.EventId,
-                potionGeneration.CandidatePotionIds[outcomeIndex],
-                otherChance);
-        }
-        if (current.HandCostSelectionPending is { } handCost)
-        {
-            ValidateSelection(eventId, handCost.EventId, outcomeIndex,
-                handCost.CandidateCardInstanceIds.Length);
-            var decision = SemanticHandCostSelectionChoiceV111.Select(
-                handCost, handCost.EventId,
-                handCost.CandidateCardInstanceIds[outcomeIndex]);
-            return ResumeHandCostSelectionDecision(
-                current, decision, otherChance);
-        }
-        if (current.PoolShufflePending is { } poolShuffle)
-        {
-            ValidateSelection(eventId, poolShuffle.EventId, outcomeIndex,
-                poolShuffle.Request.SupportCount);
-            return ResolvePoolShuffle(current, fingerprint,
-                poolShuffle.EventId, outcomeIndex, otherChance);
-        }
-        if (current.DrawInsertionPending is { } drawInsertion)
-        {
-            ValidateSelection(eventId, drawInsertion.EventId, outcomeIndex,
-                drawInsertion.Request.SupportCount);
-            return ResolveDrawInsertion(current, fingerprint,
-                drawInsertion.EventId, outcomeIndex, otherChance);
-        }
-        if (current.CardShortlistPending is { } shortlist)
-        {
-            ValidateSelection(eventId, shortlist.EventId, outcomeIndex,
-                shortlist.CandidateCardInstanceIds.Length);
-            return ResolveCardShortlist(current, fingerprint,
-                shortlist.EventId,
-                shortlist.CandidateCardInstanceIds[outcomeIndex],
-                otherChance);
-        }
-        if (current.DrawPending is { } draw)
-        {
-            ValidateSelection(eventId, draw.EventId, outcomeIndex,
-                draw.CandidateCardInstanceIds.Length);
-            return ResolveDrawCard(current, fingerprint, draw.EventId,
-                draw.CandidateCardInstanceIds[outcomeIndex]);
-        }
-        if (current.DeckRevealPending is { } reveal)
-        {
-            ValidateSelection(eventId, reveal.EventId, outcomeIndex,
-                reveal.CandidateCardInstanceIds.Length);
-            return ResolveDeckReveal(current, fingerprint, reveal.EventId,
-                reveal.CandidateCardInstanceIds[outcomeIndex]);
-        }
+        var pending = DescribePendingIndexChanceEvent(current);
+        if (pending is null)
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_CHANCE site=no_matching_pending_event");
+        ValidateSelection(eventId, pending.Event.EventId, outcomeIndex,
+            pending.SupportCount);
 
-        throw new NotSupportedException(
-            "UNSUPPORTED_SEMANTIC_CHANCE site=no_matching_pending_event");
+        var fingerprint = current.Fingerprint;
+        switch (pending.Event)
+        {
+            case SemanticEndTurnIndexEventV111:
+                return Resolve(current, fingerprint, outcomeIndex,
+                    null, null, false, null, otherChance: otherChance);
+            case SemanticTargetEventV111 target:
+                return ResolveRandomTarget(current, fingerprint,
+                    target.EventId,
+                    target.CandidateEnemyInstanceIds[outcomeIndex], otherChance);
+            case SemanticGeneratedCardEventV111 generatedCard:
+                return ResolveGeneratedCard(current, fingerprint,
+                    generatedCard.EventId,
+                    generatedCard.CandidateCardIds[outcomeIndex], otherChance);
+            case SemanticCostEventV111 cost:
+            {
+                var costDecision = SemanticCostChoiceV111.Select(
+                    cost, cost.EventId, cost.CandidateCosts[outcomeIndex]);
+                return ResumeCostDecision(current, costDecision, otherChance);
+            }
+            case SemanticRandomPileCardEventV111 randomPileCard:
+                return ResolveRandomPileCard(current, fingerprint,
+                    randomPileCard.EventId,
+                    randomPileCard.CandidateCardInstanceIds[outcomeIndex],
+                    otherChance);
+            case SemanticCardTransformEventV111 cardTransform:
+                return ResolveCardTransform(current, fingerprint,
+                    cardTransform.EventId,
+                    cardTransform.CandidateCardIds[outcomeIndex], otherChance);
+            case SemanticPotionGenerationEventV111 potionGeneration:
+                return ResolvePotionGeneration(current, fingerprint,
+                    potionGeneration.EventId,
+                    potionGeneration.CandidatePotionIds[outcomeIndex],
+                    otherChance);
+            case SemanticHandCostSelectionEventV111 handCost:
+            {
+                var handCostDecision =
+                    SemanticHandCostSelectionChoiceV111.Select(
+                        handCost, handCost.EventId,
+                        handCost.CandidateCardInstanceIds[outcomeIndex]);
+                return ResumeHandCostSelectionDecision(
+                    current, handCostDecision, otherChance);
+            }
+            case SemanticPoolShuffleEventV111 poolShuffle:
+                return ResolvePoolShuffle(current, fingerprint,
+                    poolShuffle.EventId, outcomeIndex, otherChance);
+            case SemanticDrawInsertionEventV111 drawInsertion:
+                return ResolveDrawInsertion(current, fingerprint,
+                    drawInsertion.EventId, outcomeIndex, otherChance);
+            case SemanticCardShortlistEventV111 shortlist:
+                return ResolveCardShortlist(current, fingerprint,
+                    shortlist.EventId,
+                    shortlist.CandidateCardInstanceIds[outcomeIndex],
+                    otherChance);
+            case SemanticDeckEventV111 deckEvent when
+                deckEvent.Purpose == "draw":
+                return ResolveDrawCard(current, fingerprint, deckEvent.EventId,
+                    deckEvent.CandidateCardInstanceIds[outcomeIndex]);
+            case SemanticDeckEventV111 deckEvent:
+                return ResolveDeckReveal(current, fingerprint,
+                    deckEvent.EventId,
+                    deckEvent.CandidateCardInstanceIds[outcomeIndex]);
+            default:
+                throw new NotSupportedException(
+                    "UNSUPPORTED_SEMANTIC_CHANCE site=unhandled_pending_event");
+        }
     }
 
     /// <summary>

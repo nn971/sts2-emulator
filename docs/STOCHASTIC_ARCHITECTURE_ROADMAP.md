@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 active semantic chance event ownership (2026-10-25):** The semantic
+engine now publishes one transient typed descriptor for the active
+index-valued chance event and its ordered support size. ReferenceNature uses
+that descriptor to query the matching law, and the shared outcome dispatcher
+uses it to validate and resolve the same event. Weighted intent remains on its
+identity-based path; no snapshot schema changed. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S4 shared semantic chance outcome dispatch (2026-10-25):** ReferenceNature
 and the run-owned Native provider now route their selected indices through
 `SemanticPilotCombatEngineV111.ResolveChanceOutcomeByIndex` for the registered
