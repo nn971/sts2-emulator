@@ -189,9 +189,9 @@ internal sealed record SemanticPendingIndexChanceEventV111(
         SemanticHandCostSelectionEventV111 handCost =>
             handCost.CandidateCardInstanceIds.Select(id =>
                 id.ToString(CultureInfo.InvariantCulture)).ToArray(),
-        SemanticPoolShuffleEventV111 poolShuffle => Enumerable.Range(
-            0, poolShuffle.Request.SupportCount).Select(index =>
-            index.ToString(CultureInfo.InvariantCulture)).ToArray(),
+        SemanticPoolShuffleEventV111 poolShuffle => poolShuffle.CurrentCardIds
+            .Take(poolShuffle.Request.SupportCount)
+            .Select(identity => "pool_entry:" + identity).ToArray(),
         SemanticDrawInsertionEventV111 drawInsertion => Enumerable.Range(
             0, drawInsertion.Request.SupportCount).Select(index =>
             index.ToString(CultureInfo.InvariantCulture)).ToArray(),

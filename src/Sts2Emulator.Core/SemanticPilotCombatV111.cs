@@ -1,7 +1,8 @@
-using System.Text.Json;
-using System.Text.Json.Serialization;
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Sts2Emulator.Core;
 
@@ -7397,6 +7398,16 @@ public static class SemanticPilotCombatEngineV111
                     "Semantic chance outcome identity is ambiguous in its support.");
             selectedIndex = index;
         }
+        // Enumeration v1 exposed pool-shuffle outcomes as their numeric
+        // swap indexes. Continue accepting those IDs while v2 exposes the
+        // selected current pool entry as the semantic identity.
+        if (selectedIndex < 0 &&
+            pending.Event is SemanticPoolShuffleEventV111 poolShuffle &&
+            int.TryParse(outcomeId, NumberStyles.None,
+                CultureInfo.InvariantCulture, out var legacySwapIndex) &&
+            (uint)legacySwapIndex <
+                (uint)poolShuffle.Request.SupportCount)
+            selectedIndex = legacySwapIndex;
         if (selectedIndex < 0)
             throw new InvalidOperationException(
                 "Semantic chance outcome identity is outside the active support.");

@@ -41,7 +41,7 @@ public sealed record SemanticEnumerationResultV111(
 /// </summary>
 public static class SemanticNatureEnumeratorV111
 {
-    public const string SchemaId = "sts2-v111-semantic-enumeration-v1";
+    public const string SchemaId = "sts2-v111-semantic-enumeration-v2";
     public const int MaximumSupportedOutcomes = 256;
 
     public static SemanticEnumerationResultV111 Enumerate(

@@ -5324,3 +5324,11 @@ is available and whether endpoint mechanics match for the same actions and
 origin; the stricter trajectory-equivalence result still requires complete,
 matching typed boundaries. JSONL advertises the new handle. Static source
 review and `git diff --check` only; no tests or builds were run.
+
+**S4 semantic pool-shuffle outcome identity increment (2026-10-25):** Semantic
+enumeration v2 now identifies each Fisher–Yates swap outcome by the current
+pool entry selected for the swap, and the shared semantic resolver maps that
+identity back to the existing selected-index mechanics decision. Chance Law
+`swap_index` IDs and saved transcripts stay unchanged; numeric v1 enumeration
+IDs remain accepted as a compatibility alias. Static source review and
+`git diff --check` only; no tests or builds were run.

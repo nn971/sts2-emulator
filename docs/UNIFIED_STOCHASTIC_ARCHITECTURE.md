@@ -345,6 +345,17 @@ Ordinary semantic generated-card continuations and the model-selection stage of 
 
 Semantic potion-generation and card-transform continuations also consume selected model IDs, with the ordinary engine validating each ID against the saved source support. Card-shortlist and automatic random-pile-card continuations consume selected card instance IDs against their live supports. Controlled-playable resolution now also accepts generated-card, potion, transform, and target identities; it requires one unique match in the live source support, then uses the existing indexed decision and transcript path. Its weighted intent choice also accepts the stable intent ID and maps it to the first legal ticket in that candidate's weight interval. Enemy-action candidate-label lookup is shared by semantic end-turn and controlled-playable through the typed continuation executor. Existing snapshots and decision records remain unchanged. These changes leave the typed primitive journal intact while extending semantic identity through more mechanics boundaries; other indexed continuations are still migration work.
 
+Semantic enumeration v2 identifies a pool-shuffle outcome by the current
+pool entry that will be swapped into the active position
+(`pool_entry:<identity>`). The live ordered prefix is unique by the existing
+pool-shuffle event invariant, so the semantic resolver maps the identity back
+to its index only at the existing shuffle mechanics boundary. Chance Law
+outcomes and saved decisions remain `swap_index:<index>` and the established
+integer transcript; `semantic_resolve` continues to accept numeric v1
+`outcome_id` values as a compatibility alias for this event. Draw insertion
+positions remain integer outcomes because the selected position is itself the
+mechanics result.
+
 Ordinary draw, controlled card-effect draw, and deck-reveal commits now pass the selected card instance ID through the draw-pile adapter into the semantic deck owner. The owner derives the ordered transcript index from the saved support, preserving existing transcript and snapshot shapes while keeping the continuation contract identity-based. Semantic hand-cost selection likewise passes its selected card instance ID into the shared random-cost engine path; the low-level controlled decision retains its index ticket.
 
 Native-backed random hand-cost selection events now report
@@ -1242,6 +1253,9 @@ and event-kind projection; both IDs are checked against the same ordered
 support and live boundary before the shared mechanics resolver translates
 them. This preserves candidate labels and event kinds in enumeration and lets
 ReferenceNature resolve its law's outcome ID directly.
+Its v2 schema assigns full-pool shuffle semantic outcomes to stable current
+pool-entry identities while preserving the bounded `swap_index` Chance Law
+IDs and saved integer decisions.
 The generic semantic resolver also accepts an enumerated `outcomeId` for
 weighted intents and index-valued events; the legacy selected-index form stays
 available for existing clients.
