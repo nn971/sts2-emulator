@@ -1115,16 +1115,19 @@ with the same setup and committed-intent prefix, and replays the saved player
 actions to recover their exact mechanics actions. The capture starts at that
 initial player boundary, so route setup and initial-intent decisions are
 excluded; its boundary trace contains only subsequent player-action outcomes.
-It also projects the audit's weighted intent, supported card-instance, cost,
-draw-insertion, combat pool-shuffle, generated-card, transform, target, and
-potion-generation annotations to common semantic identities when those
+It also projects the audit's weighted intent, hand-cost and Jeweled Mask card
+instance, random replay/autoplay shortlist, cost, draw-insertion, combat
+pool-shuffle, generated-card, transform, target, and potion-generation
+annotations to common semantic identities when those
 annotations cover the entire interval. Ordinary draws without individual
 identity annotations and any unrecognized provider boundary prevent the
 semantic trace from being marked complete; the typed boundary trace remains
 available. The projection normalizes Native ordinals for target, generated
-card, potion generation, transform, energy cost, hand-card selection, combat
-pool-shuffle, and ordinary draw-insertion families against earlier requests
-in that semantic family.
+card, potion generation, transform, energy cost, hand-card selection,
+card-shortlist, combat pool-shuffle, and ordinary draw-insertion families
+against earlier requests in that semantic family. Shortlist owner identity
+omits the candidate-pool digest because the support fingerprint already
+records the remaining ordered candidates at each pick.
 The JSONL operation accepts `<side>_semantic_native_policy_handle` for this
 capture path. `FromReferenceNatureSemanticCombatSession` replays a fully
 indexed mixed player-action/Nature history, reconstructs the exact player

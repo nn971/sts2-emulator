@@ -5373,8 +5373,9 @@ This enables cross-provider outcome comparison for covered intervals. Core
 Release build passed with zero warnings and errors; no tests were run.
 
 **S4 Native semantic identity normalization increment (2026-10-25):** Native
-semantic traces now project shared hand-cost owner identity and normalize
-request ordinals for semantic event families whose ordinal counts prior
-choices. Event-owned turn or source ordinals remain attached to their events.
-The architecture doc records the distinction. Core Release build passed with
-zero warnings and errors; no tests were run.
+semantic traces now project shared hand-cost and random replay/autoplay
+shortlist owner identities, then normalize request ordinals for semantic
+event families whose ordinal counts prior choices. Event-owned turn or source
+ordinals remain attached to their events. The architecture doc records the
+distinction. Core Release build passed with zero warnings and errors; no tests
+were run.

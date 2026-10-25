@@ -328,6 +328,22 @@ public sealed record SimulationProviderReplayCaptureV111(
         return capture;
     }
 
+    internal static string NormalizeSemanticOwnerId(
+        string siteId, string ownerId)
+    {
+        if (siteId is not (
+                StochasticSiteRegistryV111.CombatAutoplayRandomCardSelectSiteId or
+                StochasticSiteRegistryV111.CombatRandomReplayCardSelectSiteId))
+            return ownerId;
+        var poolMarker = ownerId.LastIndexOf(":pool:",
+            StringComparison.Ordinal);
+        if (poolMarker <= 0 || poolMarker + ":pool:".Length >=
+                ownerId.Length)
+            throw new InvalidDataException(
+                "Card-shortlist semantic owner has no support suffix.");
+        return ownerId[..poolMarker];
+    }
+
     /// <summary>
     /// Builds a capture from a completed scripted run. Session validation
     /// replays its committed actions from the origin before the existing
@@ -1094,6 +1110,7 @@ public sealed record SimulationProviderReplayCaptureV111(
             semanticOutcomeId = pending.SemanticOutcomeIds[
                 selection.OutcomeIndex];
         }
+        ownerId = NormalizeSemanticOwnerId(siteId, ownerId);
 
         if (selection.EventId != law.EventId ||
             selection.LawId != law.LawId ||
@@ -1455,6 +1472,15 @@ internal static class SimulationProviderReplayNativeSemanticOutcomeTraceV111
                         ":hand:" + CanonicalJson.Sha256(
                             audit.OrderedCardInstanceIds)),
             StochasticSiteRegistryV111
+                .CombatRandomReplayCardSelectSiteId or
+            StochasticSiteRegistryV111
+                .CombatAutoplayRandomCardSelectSiteId =>
+                    (SemanticCardShortlistChoiceV111
+                            .OperationKindForSite(request.SiteId),
+                        SimulationProviderReplayCaptureV111
+                            .NormalizeSemanticOwnerId(request.SiteId,
+                                request.OwnerId)),
+            StochasticSiteRegistryV111
                 .CombatJeweledMaskRandomPowerDrawCardSiteId =>
                     ("choose_card_instance", "player:draw_pile"),
             _ => (null, null)
@@ -1562,6 +1588,10 @@ internal static class SimulationProviderReplayNativeSemanticOutcomeTraceV111
         if (StochasticSiteRegistryV111.CombatRandomTargetSiteIds.Contains(
                 siteId, StringComparer.Ordinal))
             return "semantic_target";
+        if (siteId is
+                StochasticSiteRegistryV111.CombatRandomReplayCardSelectSiteId or
+                StochasticSiteRegistryV111.CombatAutoplayRandomCardSelectSiteId)
+            return "semantic_card_shortlist";
         if (siteId is StochasticSiteRegistryV111.CombatGeneratedCardSelectSiteId
                 or StochasticSiteRegistryV111.CombatRandomDrawAttackCardModelSiteId)
             return "semantic_generated_card";
