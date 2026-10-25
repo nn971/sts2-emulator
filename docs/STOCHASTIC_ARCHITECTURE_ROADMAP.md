@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 Native semantic-resume bridge ownership (2026-10-25):** Supported
+engine-owned Native semantic choices now pass through one pilot transition
+that maps the typed primitive result to the active semantic index and invokes
+the shared mechanics dispatcher. Event-specific request admission and stream
+updates stay in their existing owners. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S4 shared controlled pending-boundary projection (2026-10-25):** Event-choice
 and run-action pending descriptors now reuse
 `ControlledChancePendingBoundaryV111` for defensive typed-request and label

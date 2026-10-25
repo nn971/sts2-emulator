@@ -1175,6 +1175,10 @@ For the active semantic pilot, `SemanticPendingIndexChanceEventV111` now owns
 the Native decision-to-index projection for the source primitive operation and
 support declared by its typed event owner. The semantic event's own operation
 label remains distinct from the primitive request kind.
+`SemanticPilotCombatEngineV111.ResolveNativeChanceDecision` joins that checked
+projection to the shared mechanics dispatcher for supported engine-owned
+Native choices; each event branch retains its own request admission and stream
+owner.
 The Native policy adapter passes that mapped index to the same mechanics
 dispatcher used by ReferenceNature, so event branches no longer repeat
 primitive support mapping beside the shared descriptor.
