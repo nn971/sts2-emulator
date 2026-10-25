@@ -2117,7 +2117,7 @@ public sealed partial class PrototypeGameEngine
             Stochastic = RunStochasticStateV111.WithPrototypeRng(
                 state.Stochastic, prototypeRng)
         };
-        return ResumeSavedControlledAutomaticHandDraw(state, drawn);
+        return ResumeSavedControlledAutomaticHandDraw(state, drawn).Run;
     }
 
     private static CombatState CompleteAdvanceTurnAfterCommittedIntents(
@@ -13409,8 +13409,14 @@ public sealed partial class PrototypeGameEngine
             handDrawProgress.Kind ==
                 PrototypeAutomaticHandDrawProgressKindV111
                     .ControlledRecycleStratagem)
-            return PrototypeAutomaticPipelineResumeResultV111.FromRun(
-                ResumeControlledRecycleStratagemSelection(state));
+        {
+            var progress =
+                ResumeControlledRecycleStratagemSelectionWithProgress(
+                    state).EnsurePipelineBoundary();
+            return PrototypeAutomaticPipelineResumeResultV111
+                .FromPipelineProgress(
+                    progress.Run, progress.PipelineBoundary);
+        }
 
         // These choices are nested inside the active hand-draw stage. Their
         // owning draw continuation must finish before the ordinary pipeline

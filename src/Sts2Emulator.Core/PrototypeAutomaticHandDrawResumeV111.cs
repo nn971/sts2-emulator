@@ -248,8 +248,14 @@ public sealed partial class PrototypeGameEngine
 
         if (cursor.Stochastic.IsAtControlledDrawHookChoice(
                 cursor.Mechanics))
-            return PrototypeAutomaticPipelineResumeResultV111.FromRun(
-                ResumeControlledAutomaticHandDrawHookChoice(state));
+        {
+            var progress =
+                ResumeControlledAutomaticHandDrawHookChoiceWithProgress(
+                    state).EnsurePipelineBoundary();
+            return PrototypeAutomaticPipelineResumeResultV111
+                .FromPipelineProgress(
+                    progress.Run, progress.PipelineBoundary);
+        }
 
         return null;
     }
@@ -486,13 +492,14 @@ public sealed partial class PrototypeGameEngine
     /// router. The controlled adapter remains the fallback for result kinds
     /// outside that router's legacy automatic contract.
     /// </summary>
-    private static RunState ResumeSavedControlledAutomaticHandDraw(
+    private static PrototypeDrawCardsResumeResultV111
+        ResumeSavedControlledAutomaticHandDraw(
         RunState state, PrototypeDrawCardsResult drawn)
     {
         var resumed = ResumeAutomaticHandDrawBoundary(
             state, drawn, requestedCount: 0,
             context: AutomaticHandDrawResumeContextV111.SavedControlledStage);
-        return resumed?.Run ?? ContinueControlledHandDraw(state, drawn).Run;
+        return resumed ?? ContinueControlledHandDraw(state, drawn);
     }
 
     private sealed record PrototypeAutomaticHandDrawCostResumeV111(

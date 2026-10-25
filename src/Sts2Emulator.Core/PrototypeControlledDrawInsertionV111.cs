@@ -573,9 +573,11 @@ public sealed partial class PrototypeGameEngine
                 Stochastic = RunStochasticStateV111.WithPrototypeRng(
                     drawRun.Stochastic, automaticDrawPrototypeRng)
             };
-            return PrototypeAutomaticPipelineResumeResultV111.FromRun(
-                ResumeSavedControlledAutomaticHandDraw(
-                    drawRun, resumedDraw));
+            var progress = ResumeSavedControlledAutomaticHandDraw(
+                drawRun, resumedDraw).EnsurePipelineBoundary();
+            return PrototypeAutomaticPipelineResumeResultV111
+                .FromPipelineProgress(
+                    progress.Run, progress.PipelineBoundary);
         }
 
         var resumePlayer = state.Player;

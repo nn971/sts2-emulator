@@ -43,6 +43,12 @@ public sealed partial class PrototypeGameEngine
     }
 
     internal static RunState ResumeControlledAutomaticHandDrawHookChoice(
+        RunState state) =>
+            ResumeControlledAutomaticHandDrawHookChoiceWithProgress(state)
+                .Run;
+
+    internal static PrototypeDrawCardsResumeResultV111
+        ResumeControlledAutomaticHandDrawHookChoiceWithProgress(
         RunState state)
     {
         if (!ControlledChanceGuardV111.Active ||
@@ -119,6 +125,11 @@ public sealed partial class PrototypeGameEngine
     }
 
     internal static RunState ResumeControlledRecycleStratagemSelection(
+        RunState state) =>
+            ResumeControlledRecycleStratagemSelectionWithProgress(state).Run;
+
+    internal static PrototypeDrawCardsResumeResultV111
+        ResumeControlledRecycleStratagemSelectionWithProgress(
         RunState state)
     {
         if (!ControlledChanceGuardV111.Active)
