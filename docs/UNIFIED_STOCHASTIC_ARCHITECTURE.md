@@ -2131,7 +2131,9 @@ Semantic end-turn intent publication also checks the newly resolved ticket
 transcript against its saved prefix inside `SemanticEndTurnStochasticStateV111`.
 The resolver supplies the advanced transcript and publishes it with the
 intents frame, keeping append ownership beside controlled-provider/site
-validation.
+validation. Weighted intent annotations are appended by the same owner only
+when the latest primitive ticket has matching request identity and selects
+the annotated semantic outcome.
 
 The Native policy audit owner appends fixture-opening, source-route intent,
 and player-action journals through the same transition method, including each

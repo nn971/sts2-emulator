@@ -1333,10 +1333,6 @@ public static class SemanticEndTurnEngineV111
         var transcriptIndex = source.Stochastic.IntentTranscript.Length;
         var advanced = Resolve(
             source, fingerprint, selection.SourceTicket);
-        if (advanced.Stochastic.IntentTranscript.Length !=
-            transcriptIndex + 1)
-            throw new InvalidDataException(
-                "Semantic intent resolution did not append one primitive ticket.");
         var next = advanced with
         {
             Stochastic = advanced.Stochastic.AppendSemanticIntent(

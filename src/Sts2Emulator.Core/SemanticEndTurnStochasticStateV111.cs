@@ -105,6 +105,22 @@ public sealed record SemanticEndTurnStochasticStateV111
     {
         ArgumentNullException.ThrowIfNull(entry);
         entry.Validate();
+        var intentTranscript = IntentTranscript;
+        if (entry.TranscriptIndex != intentTranscript.Length - 1)
+            throw new InvalidDataException(
+                "Semantic intent annotation does not target the latest primitive ticket.");
+        var primitive = intentTranscript[entry.TranscriptIndex];
+        var semanticEvent = entry.Decision.Event;
+        if (!SemanticIntentChoiceV111.IsDecisionAtSourceTicket(
+                semanticEvent, entry.Decision, primitive.SelectedIndex) ||
+            primitive.Request.SiteId != semanticEvent.SiteId ||
+            primitive.Request.StreamId != semanticEvent.StreamId ||
+            primitive.Request.OwnerId != semanticEvent.OwnerId ||
+            primitive.Request.Ordinal != semanticEvent.Ordinal ||
+            primitive.Request.SupportCount !=
+                semanticEvent.Support.TotalRawWeight)
+            throw new InvalidDataException(
+                "Semantic intent annotation differs from its retained primitive ticket.");
         return this with
         {
             SemanticIntentTranscript = SemanticIntentTranscript
