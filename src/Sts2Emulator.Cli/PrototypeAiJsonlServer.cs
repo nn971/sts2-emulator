@@ -9489,10 +9489,21 @@ internal static class PrototypeAiJsonlServer
                     {
                         var parentHandle = RequiredString(request, "controlled_handle");
                         var parent = RequireControlled(request);
-                        int selectedIndex = OptionalInt(request, "selected_index")
-                            ?? throw new ArgumentException("Missing selected_index.");
-                        var next = ControlledPlayableCombatEngineV111.Resolve(
-                            parent, RequiredString(request, "fingerprint"), selectedIndex);
+                        var fingerprint = RequiredString(request, "fingerprint");
+                        var selectedIndex = OptionalInt(
+                            request, "selected_index");
+                        var candidateLabel = OptionalString(
+                            request, "candidate_label");
+                        if ((selectedIndex is null) ==
+                            (candidateLabel is null))
+                            throw new ArgumentException(
+                                "Provide exactly one of selected_index or candidate_label.");
+                        var next = selectedIndex is { } index
+                            ? ControlledPlayableCombatEngineV111.Resolve(
+                                parent, fingerprint, index)
+                            : ControlledPlayableCombatEngineV111
+                                .ResolveByCandidateLabel(
+                                    parent, fingerprint, candidateLabel!);
                         var handle = StoreControlled(next);
                         var view = NatureBoundaryMetadataV111.Describe(next);
                         Write(new { requestId, ok = true,

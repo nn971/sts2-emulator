@@ -16,6 +16,13 @@ and index-valued chance events, and the Python `SemanticCombat` wrapper
 exposes the same route. The selected-index entry remains compatible. Static
 source review and `git diff --check` only; no tests or builds were run.
 
+**S4 controlled-playable identity resolution (2026-10-25):** Controlled
+playable resolution now routes weighted intent IDs and complete semantic
+candidate labels through one checked resolver. The Nature pending view exposes
+those labels in its additive `candidateLabels` field, and JSONL/Python accept
+`candidate_label`; unlabeled supports retain index selection. Static source
+review and `git diff --check` only; no tests or builds were run.
+
 **S4 identity-only mechanics dispatcher boundary (2026-10-25):** The
 index-valued mechanics switch is now private behind the Chance Law and
 semantic outcome identity resolvers. Provider code cannot bypass active

@@ -2837,6 +2837,16 @@ class ControlledCombat:
                               fingerprint=self.fingerprint,
                               selected_index=selected_index))
 
+    def resolve_candidate_label(self, candidate_label: str):
+        """Resolve a controlled outcome by its saved semantic label."""
+        if not isinstance(candidate_label, str) or not candidate_label.strip():
+            raise ValueError("candidate_label must be a non-empty string")
+        return ControlledCombat.from_wire(self.session,
+            self.session.call("controlled_resolve",
+                              controlled_handle=self.handle,
+                              fingerprint=self.fingerprint,
+                              candidate_label=candidate_label))
+
     def observe(self):
         if self.session._fair_observation_supported:
             return self.session.observe_fair(

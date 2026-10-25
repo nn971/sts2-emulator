@@ -771,6 +771,35 @@ public static class ControlledPlayableCombatEngineV111
     }
 
     /// <summary>
+    /// Resolve a supported controlled outcome by its saved candidate label.
+    /// Weighted intents use their stable semantic ID; the low-level
+    /// controlled transcript remains an index ticket.
+    /// </summary>
+    public static ControlledPlayableCombatV111 ResolveByCandidateLabel(
+        ControlledPlayableCombatV111 state, string fingerprint,
+        string candidateLabel)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(candidateLabel);
+        ValidatePendingResolveRequest(state, fingerprint);
+        if (state.IntentChoicePending is { } intent)
+        {
+            var selection = SemanticIntentChoiceV111.Select(
+                intent, candidateLabel);
+            return ResolveValidated(state, selection.SourceTicket);
+        }
+
+        var request = state.ActivePending ?? throw new InvalidOperationException(
+            "Controlled state is awaiting a player action, not Nature.");
+        var candidateLabels = PendingCandidateLabels(state) ??
+            throw new InvalidOperationException(
+                "This controlled request has no semantic candidate labels.");
+        var selectedIndex = ControlledChanceContinuationExecutorV111
+            .IndexOfCandidateLabel(
+                candidateLabels, request.SupportCount, candidateLabel);
+        return ResolveValidated(state, selectedIndex);
+    }
+
+    /// <summary>
     /// Resolve a generated-card outcome by its stable model ID. The saved
     /// controlled-playable transcript remains the source-compatible index
     /// ticket, translated through the live ordered support at resume.
@@ -780,13 +809,8 @@ public static class ControlledPlayableCombatEngineV111
         string cardId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(cardId);
-        ValidatePendingResolveRequest(state, fingerprint);
-        var candidates = state.Run.World?.Combat?.PendingChoice?
-            .ControlledGeneration?.CandidateCardIds ??
-            throw new InvalidOperationException(
-                "No controlled generated-card outcome is pending.");
-        return ResolveValidated(state, UniqueCandidateIndex(
-            candidates, cardId, "generated-card model"));
+        return ResolveByCandidateLabel(
+            state, fingerprint, "card_model:" + cardId);
     }
 
     /// <summary>
@@ -798,13 +822,8 @@ public static class ControlledPlayableCombatEngineV111
         string potionId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(potionId);
-        ValidatePendingResolveRequest(state, fingerprint);
-        var candidates = state.Run.World?.Combat?.PendingChoice?
-            .ControlledPotionGeneration?.CandidatePotionIds ??
-            throw new InvalidOperationException(
-                "No controlled potion-generation outcome is pending.");
-        return ResolveValidated(state, UniqueCandidateIndex(
-            candidates, potionId, "potion model"));
+        return ResolveByCandidateLabel(
+            state, fingerprint, "potion_model:" + potionId);
     }
 
     /// <summary>
@@ -816,13 +835,8 @@ public static class ControlledPlayableCombatEngineV111
         string cardId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(cardId);
-        ValidatePendingResolveRequest(state, fingerprint);
-        var candidates = state.Run.World?.Combat?.PendingChoice?
-            .ControlledCardTransform?.CandidateCardIds ??
-            throw new InvalidOperationException(
-                "No controlled card-transform outcome is pending.");
-        return ResolveValidated(state, UniqueCandidateIndex(
-            candidates, cardId, "card-transform model"));
+        return ResolveByCandidateLabel(
+            state, fingerprint, "card_model:" + cardId);
     }
 
     /// <summary>
@@ -834,13 +848,10 @@ public static class ControlledPlayableCombatEngineV111
             ControlledPlayableCombatV111 state, string fingerprint,
             int enemyInstanceId)
     {
-        ValidatePendingResolveRequest(state, fingerprint);
-        var candidates = state.Run.World?.Combat?.PendingChoice?
-            .ControlledTarget?.EligibleEnemyInstanceIds ??
-            throw new InvalidOperationException(
-                "No controlled target outcome is pending.");
-        return ResolveValidated(state, UniqueCandidateIndex(
-            candidates, enemyInstanceId, "enemy instance"));
+        return ResolveByCandidateLabel(
+            state, fingerprint, "enemy_instance:" +
+                enemyInstanceId.ToString(
+                    System.Globalization.CultureInfo.InvariantCulture));
     }
 
     /// <summary>
@@ -850,21 +861,8 @@ public static class ControlledPlayableCombatEngineV111
     public static ControlledPlayableCombatV111
         ResolveEnemyActionByCandidateLabel(
             ControlledPlayableCombatV111 state, string fingerprint,
-            string candidateLabel)
-    {
-        ValidatePendingResolveRequest(state, fingerprint);
-        var enemyAction =
-            state.Run.World?.Combat?.AutomaticPipelineContinuation
-                ?.Stochastic.ControlledEnemyAction ??
-            throw new InvalidOperationException(
-                "No controlled enemy-action outcome is pending.");
-        var selectedIndex = ControlledChanceContinuationExecutorV111
-            .IndexOfCandidateLabel(
-                enemyAction.PendingCandidateLabels,
-                enemyAction.PendingRequest.SupportCount,
-                candidateLabel);
-        return ResolveValidated(state, selectedIndex);
-    }
+            string candidateLabel) => ResolveByCandidateLabel(
+                state, fingerprint, candidateLabel);
 
     /// <summary>
     /// Resolve a weighted enemy intent by its stable semantic intent ID.
@@ -901,29 +899,6 @@ public static class ControlledPlayableCombatEngineV111
         state.Validate();
     }
 
-    private static int UniqueCandidateIndex<T>(
-        T[] candidates, T selected, string outcomeKind)
-    {
-        ArgumentNullException.ThrowIfNull(candidates);
-        var found = -1;
-        for (var index = 0; index < candidates.Length; index++)
-        {
-            if (!EqualityComparer<T>.Default.Equals(
-                    candidates[index], selected))
-                continue;
-            if (found >= 0)
-                throw new InvalidOperationException(
-                    "Selected " + outcomeKind +
-                    " is ambiguous in the pending source support.");
-            found = index;
-        }
-        return found >= 0
-            ? found
-            : throw new InvalidOperationException(
-                "Selected " + outcomeKind +
-                " is outside the pending source support.");
-    }
-
     private static ControlledPlayableCombatStochasticStateV111
         AppendLiveDecision(
             ControlledPlayableCombatV111 state,
@@ -932,7 +907,7 @@ public static class ControlledPlayableCombatEngineV111
         state.Stochastic.AppendLiveDecision(
             kind, decision, PendingCandidateLabels(state));
 
-    private static string[]? PendingCandidateLabels(
+    internal static string[]? PendingCandidateLabels(
         ControlledPlayableCombatV111 state)
     {
         if (state.DrawCostPending is not null)

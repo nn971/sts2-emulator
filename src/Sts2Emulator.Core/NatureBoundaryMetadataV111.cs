@@ -12,6 +12,7 @@ public sealed record NatureBoundaryEventV111(
 {
     private int[]? _orderedCandidates = Clone(OrderedCandidates);
     private string[]? _candidateCardIds = Clone(CandidateCardIds);
+    private string[]? _candidateLabels;
 
     public int[] OrderedCandidates
     {
@@ -25,10 +26,17 @@ public sealed record NatureBoundaryEventV111(
         init => _candidateCardIds = Clone(value);
     }
 
+    public string[]? CandidateLabels
+    {
+        get => Clone(_candidateLabels);
+        init => _candidateLabels = Clone(value);
+    }
+
     public NatureBoundaryEventV111 Fork() => this with
     {
         OrderedCandidates = _orderedCandidates!,
-        CandidateCardIds = _candidateCardIds
+        CandidateCardIds = _candidateCardIds,
+        CandidateLabels = _candidateLabels
     };
 
     private static int[]? Clone(int[]? values) => values is null
@@ -148,14 +156,23 @@ public static class NatureBoundaryMetadataV111
                 ? insertion.CandidateCardIds : generation?.CandidateCardIds ??
                     potionGeneration?.CandidatePotionIds ??
                     cardTransform?.CandidateCardIds);
-        return candidateModels is not null && view.Pending is { } pending
-            ? view with
+        if (view.Pending is not { } pending)
+            return view;
+        var candidateLabels = state.IntentChoicePending is { } intent
+            ? intent.Support.Candidates.Select(candidate =>
+                candidate.IntentId).ToArray()
+            : ControlledPlayableCombatEngineV111
+                .PendingCandidateLabels(state);
+        return view with
+        {
+            Pending = pending with
             {
-                Pending = pending with
-                {
-                    CandidateCardIds = (string[])candidateModels.Clone()
-                }
-            } : view;
+                CandidateCardIds = candidateModels is null
+                    ? pending.CandidateCardIds
+                    : (string[])candidateModels.Clone(),
+                CandidateLabels = candidateLabels
+            }
+        };
     }
 
     private static NatureBoundaryViewV111 Build(
