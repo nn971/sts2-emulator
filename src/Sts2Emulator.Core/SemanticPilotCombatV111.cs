@@ -4486,43 +4486,9 @@ public static class SemanticPilotCombatEngineV111
         var endTurn = current.PendingEndTurn ??
             throw new InvalidDataException(
                 "Draw-hook action lost its end-turn continuation.");
-        if (endTurn.NestedDrawHookChoicePending is not null)
-        {
-            var nestedDecision = SemanticDrawHookChoiceEngineV111.Select(
-                current.Run, pending, actionId);
-            var nestedChoice = new SemanticEndTurnNestedChoiceV111(
-                "semantic_draw_hook_choice",
-                DrawHookChoiceDecision: nestedDecision.Fork());
-            return ResolveEngineOwnedSemanticChoices(
-                ResumeAndPublishNestedChoice(
-                    current, nestedChoice,
-                    new SemanticPilotContinuationV111(
-                        "semantic_draw_hook_choice",
-                        DrawHookChoiceDecision: nestedDecision.Fork())));
-        }
-        var priorNestedChoiceCount =
-            endTurn.Stochastic.NestedChoiceTranscript.Length;
-        var priorHandDrawHookChoiceCount =
-            endTurn.HandDraw?.DrawHookChoiceTranscript.Length ?? 0;
-        var nextEndTurn = SemanticEndTurnEngineV111.ResolveDrawHookChoice(
-            endTurn, endTurn.Fingerprint, actionId);
-        var decision = nextEndTurn.Stochastic.NestedChoiceTranscript.Length >
-                priorNestedChoiceCount
-            ? nextEndTurn.Stochastic.NestedChoiceTranscript[^1]
-                .DrawHookChoiceDecision
-            : nextEndTurn.HandDraw is { } handDraw &&
-                handDraw.DrawHookChoiceTranscript.Length >
-                    priorHandDrawHookChoiceCount
-                ? handDraw.DrawHookChoiceTranscript[^1]
-                : null;
-        if (decision is null)
-            throw new InvalidDataException(
-                "Draw-hook action omitted its replay decision.");
-        if (CanonicalJson.Sha256(decision.Event) !=
-                CanonicalJson.Sha256(pending) ||
-            decision.ActionId != actionId)
-            throw new InvalidDataException(
-                "Draw-hook action transcript diverged from its event.");
+        var (nextEndTurn, decision) =
+            SemanticEndTurnEngineV111.ResolvePilotDrawHookChoice(
+                endTurn, endTurn.Fingerprint, pending, actionId);
         var next = PublishRunContinuation(
             current, nextEndTurn.Run, nextEndTurn,
             new SemanticPilotContinuationV111(
@@ -5022,25 +4988,9 @@ public static class SemanticPilotCombatEngineV111
                 "Draw-insertion event ID is stale or mismatched.");
         if (current.PendingEndTurn is { } endTurn)
         {
-            var priorHandInsertionCount =
-                endTurn.HandDraw?.DrawInsertionTranscript.Length ?? 0;
-            var priorNestedChoiceCount =
-                endTurn.Stochastic.NestedChoiceTranscript.Length;
-            var resolvedEndTurn = SemanticEndTurnEngineV111
-                .ResolveDrawInsertion(
+            var (resolvedEndTurn, endTurnDecision) =
+                SemanticEndTurnEngineV111.ResolvePilotDrawInsertion(
                     endTurn, endTurn.Fingerprint, eventId, position);
-            var endTurnDecision = resolvedEndTurn.HandDraw is { } resolvedHand &&
-                    resolvedHand.DrawInsertionTranscript.Length >
-                        priorHandInsertionCount
-                ? resolvedHand.DrawInsertionTranscript[^1]
-                : resolvedEndTurn.Stochastic.NestedChoiceTranscript.Length >
-                  priorNestedChoiceCount
-                    ? resolvedEndTurn.Stochastic.NestedChoiceTranscript[^1]
-                        .DrawInsertionDecision
-                    : null;
-            if (endTurnDecision is null)
-                throw new InvalidDataException(
-                    "End-turn draw insertion omitted its replay decision.");
             var resolvedSession = PublishRunContinuation(
                 current, resolvedEndTurn.Run, resolvedEndTurn,
                 otherChance is null

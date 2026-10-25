@@ -1576,6 +1576,10 @@ together. Standalone choices still use the typed choice-resume owner.
 End-turn target resume also returns the newly appended typed target decision
 from the frame that owns it, so the pilot no longer inspects draw or end-turn
 target transcripts directly.
+Draw-hook and draw-insertion resumes now return their newly recorded typed
+decisions from the same owner. The pilot publishes those decisions with the
+resumed frame without comparing transcript lengths or selecting transcript
+entries itself.
 
 Ordinary, controlled, semantic, and ReferenceNature `observe` operations now
 project payloads, hashes, and legal actions from the shared fair-observation
