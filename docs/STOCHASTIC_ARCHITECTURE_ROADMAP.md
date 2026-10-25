@@ -5409,5 +5409,5 @@ semantic-combat `pending` projection now exposes the same provider-neutral
 outcome IDs as the Nature-choice view. Python `resolve_outcome_id` checks a
 provided ID against that saved support before submission, while older servers
 without the additive field keep their existing route. Native-policy pending
-responses remain unchanged. Static source review and `git diff --check` only;
-the CLI Release build passed with zero warnings and errors; no tests were run.
+responses remain unchanged. Static source review and `git diff --check` passed;
+the CLI Release build passed with zero warnings and errors. No tests were run.

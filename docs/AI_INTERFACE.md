@@ -99,6 +99,10 @@ Semantic session results include a typed `chanceLaw` inside the Nature-only `pen
 supported enemy-intent, unresolved draw-card, and declared peek/scry reveal events. It carries stable outcome IDs, exact
 integer weights, support and conditioning fingerprints, and explicit provenance. The ordinary
 `semantic_observe` response remains the fair player projection and does not include this payload.
+Semantic combat `pending` payloads also include the ordered provider-neutral
+`semanticOutcomeIds`; the Nature-choice view exposes the same identities at
+`eventMetadata.semanticOutcomeIds`. `SemanticCombat.resolve_outcome_id()`
+checks selections against its saved pending support.
 Deck-reveal choices have their own `semanticDeckRevealChoiceSchemaId` and resolver. The semantic
 deck kernel and resolver support pending peek/scry state; source gameplay callsites that create
 those requests remain outside the current playable mechanics coverage.
