@@ -525,6 +525,17 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
         ReferenceNatureSelectionV111?[] naturePrefix)
     {
         ArgumentNullException.ThrowIfNull(naturePrefix);
+        return QueryNatureLaw(active, request,
+            naturePrefix.Select(selection => selection?.OutcomeId)
+                .ToArray());
+    }
+
+    internal static ChanceLawV111? QueryNatureLaw(
+        ScriptedRunActionSessionV111 active,
+        ControlledStochasticRequestV111 request,
+        string?[] natureOutcomePrefix)
+    {
+        ArgumentNullException.ThrowIfNull(natureOutcomePrefix);
         if (request.IndexRequest is { } entropicBrewRequest &&
             ControlledRunActionEngineV111.IsEntropicBrewRunAction(
                 active.Origin, active.Action) &&
@@ -539,8 +550,7 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
             return ReferenceNatureRunActionSessionV111
                 .QueryNativeRestHealRewardLaw(
                     active.Origin, active.Action, active.Decisions,
-                    naturePrefix.Select(selection =>
-                        selection?.OutcomeId).ToArray(), request);
+                    natureOutcomePrefix, request);
 
         if (IsNativeCombatRewardActionBoundary(active) &&
             StochasticSiteRegistryV111.NativeCombatRewardSessionSiteIds
@@ -1579,6 +1589,49 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
                 .ConstructHpOffsetSiteId ||
             indexRequest.SiteId == PrototypeNativePotionShop
                 .UniformModelSiteId;
+    }
+
+    internal static int? TryFindScriptedNatureOutcomeIndex(
+        ScriptedRunActionSessionV111 active,
+        ControlledStochasticDecisionV111 scriptedDecision,
+        ChanceLawV111 law)
+    {
+        ArgumentNullException.ThrowIfNull(active);
+        ArgumentNullException.ThrowIfNull(scriptedDecision);
+        ArgumentNullException.ThrowIfNull(law);
+        var request = active.PendingRequest ??
+            throw new InvalidDataException(
+                "Scripted Nature outcome matching has no pending request.");
+        int? matchedOutcomeIndex = null;
+        for (var outcomeIndex = 0; outcomeIndex < law.SupportCount;
+            outcomeIndex++)
+        {
+            var selection = new ReferenceNatureSelectionV111(
+                law.LawId, law.EventId, law.OutcomeIdAt(outcomeIndex),
+                outcomeIndex, ReferenceNatureStateV111.Create(0));
+            try
+            {
+                var expectedDecision = CreateNatureOutcome(
+                    active, request, law, selection).ToDecision() with
+                {
+                    CandidateLabels = scriptedDecision.CandidateLabels
+                };
+                if (CanonicalJson.Sha256(expectedDecision) !=
+                    CanonicalJson.Sha256(scriptedDecision))
+                    continue;
+            }
+            catch (Exception exception) when (
+                exception is InvalidDataException or
+                NotSupportedException or InvalidOperationException)
+            {
+                continue;
+            }
+
+            if (matchedOutcomeIndex is not null)
+                return null;
+            matchedOutcomeIndex = outcomeIndex;
+        }
+        return matchedOutcomeIndex;
     }
 
     public ReferenceNatureScriptedRunSessionV111 Fork()
