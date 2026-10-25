@@ -247,9 +247,9 @@ public sealed record ReferenceNatureScriptedRunSessionSnapshotV111(
 /// <summary>
 /// Whole-run ReferenceNature session for ordinary legal actions. Finite-index
 /// boundaries, registered Native map quota Gaussians, selected Native event
-/// gold floats, and the inert merchant upgrade roll can be sampled by
-/// ReferenceNature; any of the six typed boundaries can instead be resolved
-/// from a caller-supplied transcript.
+/// gold and combat-potion odds floats, PotionFactory rarity, and the inert
+/// merchant upgrade roll can be sampled by ReferenceNature; any of the six
+/// typed boundaries can instead be resolved from a caller-supplied transcript.
 /// </summary>
 public sealed record ReferenceNatureScriptedRunSessionV111(
     string SchemaId,
@@ -529,6 +529,13 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
         if (request.UnitFloatRequest is { } unitFloatRequest)
         {
             if (unitFloatRequest.SiteId ==
+                StochasticSiteRegistryV111.NativePotionFactoryRarityRollSiteId)
+                return ChanceLawEngineV111.QueryNativePotionFactoryRarity(
+                    unitFloatRequest);
+            if (QueryNativeCombatPotionOdds(active, unitFloatRequest) is
+                { } combatPotionOddsLaw)
+                return combatPotionOddsLaw;
+            if (unitFloatRequest.SiteId ==
                     ChanceLawEngineV111.NativeEventGoldUnitFloatSiteId &&
                 QueryNativeEventGold(active, unitFloatRequest) is { } eventGoldLaw)
                 return eventGoldLaw;
@@ -545,6 +552,26 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
                 gaussianRequest))
             return ChanceLawEngineV111.QueryNativeMapRequest(request);
         return null;
+    }
+
+    private static ChanceLawV111? QueryNativeCombatPotionOdds(
+        ScriptedRunActionSessionV111 active,
+        RandomUnitFloatRequestV111 request)
+    {
+        if (request.SiteId != "reward.potion_odds.unit_float" ||
+            request.StreamId != NativePlayerRngV111.RewardsStreamId ||
+            request.OwnerId != "run:potion_reward_odds")
+            return null;
+        var run = active.Origin;
+        if (run.Phase != RunPhase.Combat ||
+            run.World is not { ActiveRoom: { } room } world)
+            throw new InvalidDataException(
+                "Native combat-potion odds request is outside its combat action boundary.");
+        var forced = run.Player.ActiveRelics.Any(relic =>
+            PrototypeContent.Relic(relic.RelicId).ForceCombatPotionReward);
+        return ChanceLawEngineV111.QueryNativePotionRewardOdds(
+            world.PotionRewardOddsThousandths,
+            room == PrototypeRoomType.Elite, forced, request.Ordinal);
     }
 
     private static ChanceLawV111? QueryNativeEventGold(
@@ -607,7 +634,7 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
                 indexRequest.SiteId))
             return CreateOutcome(active, indexRequest, selection);
         var decision = ReferenceNatureChanceLawDecisionV111.FromSelection(
-            law, request, selection);
+            law, request, selection, active.Origin);
         return ScriptedRunActionOutcomeV111.FromDecision(
             decision, checked(active.Decisions.Length + 1));
     }
