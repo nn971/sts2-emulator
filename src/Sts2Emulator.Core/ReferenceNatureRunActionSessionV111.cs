@@ -712,11 +712,21 @@ public sealed record ReferenceNatureRunActionSessionV111(
         ReferenceNatureDecisionV111[] natureDecisions)
     {
         continuation.Validate();
-        var request = continuation.PendingRequest;
-        var typedDecisions = continuation.Decisions;
+        return QueryNativeRestHealRewardLaw(
+            source, action, continuation.Decisions,
+            natureDecisions.Select(decision => (string?)decision.OutcomeId)
+                .ToArray(), continuation.PendingRequest);
+    }
+
+    internal static ChanceLawV111 QueryNativeRestHealRewardLaw(
+        RunState source, GameAction action,
+        ControlledStochasticDecisionV111[] typedDecisions,
+        string?[] natureOutcomeIds,
+        ControlledStochasticRequestV111 request)
+    {
         if (!ControlledRunActionEngineV111.IsNativeRestHealRewardRequest(
                 source, action, request) ||
-            typedDecisions.Length != natureDecisions.Length ||
+            typedDecisions.Length != natureOutcomeIds.Length ||
             source.World is not { } world)
             throw new InvalidDataException(
                 "Native rest-heal reward request differs from its saved action prefix.");
@@ -726,7 +736,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
         {
             var (offset, priorRarityCount) =
                 NativeRestHealRarityPrefix(source, typedDecisions,
-                    natureDecisions);
+                    natureOutcomeIds);
             var pickIndex = NativeRestHealPickIndex(
                 source, priorRarityCount);
             var expectedOwner =
@@ -745,22 +755,33 @@ public sealed record ReferenceNatureRunActionSessionV111(
             if (typedDecisions.Length == 0 ||
                 typedDecisions[^1].UnitFloatDecision is not { } rarityDecision ||
                 rarityDecision.Request.SiteId !=
-                    "card_rarity.roll.unit_float" ||
-                natureDecisions[^1].OutcomeId is not (
-                    "rarity:common" or "rarity:uncommon" or "rarity:rare"))
+                    "card_rarity.roll.unit_float")
                 throw new InvalidDataException(
                     "Native rest-heal card model request lacks its preceding rarity outcome.");
-            var rarityCount = typedDecisions.Count(decision =>
-                decision.UnitFloatDecision?.Request.SiteId ==
-                    "card_rarity.roll.unit_float");
-            var pickIndex = NativeRestHealPickIndex(
-                source, rarityCount - 1);
+            var (offset, rarityCount) = NativeRestHealRarityPrefix(
+                source, typedDecisions[..^1], natureOutcomeIds[..^1]);
+            var pickIndex = NativeRestHealPickIndex(source, rarityCount);
+            var expectedRarityOwner =
+                $"act:{world.Act}:room:Combat:pick:{pickIndex}:offset:{offset}";
+            if (rarityDecision.Request.StreamId !=
+                    NativePlayerRngV111.RewardsStreamId ||
+                rarityDecision.Request.OwnerId != expectedRarityOwner)
+                throw new InvalidDataException(
+                    "Native rest-heal card model prefix changed its rarity owner.");
+            var rarity = PrototypeNativeCardRarityOdds.ResolveRarity(
+                rarityDecision.SelectedValue, offset,
+                PrototypeNativeCardOddsSource.RegularEncounter,
+                source.Ascension).ToString().ToLowerInvariant();
+            var rarityOutcomeId = $"rarity:{rarity}";
+            if (natureOutcomeIds[^1] is { } natureOutcomeId &&
+                natureOutcomeId != rarityOutcomeId)
+                throw new InvalidDataException(
+                    "Native rest-heal Nature rarity differs from its provider float.");
             var expectedOwnerPrefix =
-                $"act:{world.Act}:room:Combat:pick:{pickIndex}:rarity:";
+                $"act:{world.Act}:room:Combat:pick:{pickIndex}:rarity:{rarity}:pool:";
             if (!modelRequest.OwnerId.StartsWith(expectedOwnerPrefix,
                     StringComparison.Ordinal) ||
-                !modelRequest.OwnerId.Contains(":pool:",
-                    StringComparison.Ordinal))
+                modelRequest.StreamId != NativePlayerRngV111.RewardsStreamId)
                 throw new InvalidDataException(
                     "Native rest-heal card model owner differs from its rarity prefix.");
             return ChanceLawEngineV111.QueryNativeEncounterCardModelIndex(
@@ -802,10 +823,10 @@ public sealed record ReferenceNatureRunActionSessionV111(
         NativeRestHealRarityPrefix(
             RunState source,
             ControlledStochasticDecisionV111[] typedDecisions,
-            ReferenceNatureDecisionV111[] natureDecisions)
+            string?[] natureOutcomeIds)
     {
         if (source.World is not { } world ||
-            typedDecisions.Length != natureDecisions.Length)
+            typedDecisions.Length != natureOutcomeIds.Length)
             throw new InvalidDataException(
                 "Native rest-heal rarity prefix is missing its source world or Nature transcript.");
         var offset = world.CardRarityOffsetBasisPoints;
@@ -825,7 +846,16 @@ public sealed record ReferenceNatureRunActionSessionV111(
                 rarityDecision.Request.OwnerId != expectedOwner)
                 throw new InvalidDataException(
                     "Native rest-heal rarity transcript changed its offset owner.");
-            offset = natureDecisions[index].OutcomeId switch
+            var rarity = PrototypeNativeCardRarityOdds.ResolveRarity(
+                rarityDecision.SelectedValue, offset,
+                PrototypeNativeCardOddsSource.RegularEncounter,
+                source.Ascension).ToString().ToLowerInvariant();
+            var outcomeId = $"rarity:{rarity}";
+            if (natureOutcomeIds[index] is { } natureOutcomeId &&
+                natureOutcomeId != outcomeId)
+                throw new InvalidDataException(
+                    "Native rest-heal Nature rarity differs from its provider float.");
+            offset = outcomeId switch
             {
                 "rarity:rare" =>
                     PrototypeNativeCardRarityOdds.InitialOffsetBasisPoints,

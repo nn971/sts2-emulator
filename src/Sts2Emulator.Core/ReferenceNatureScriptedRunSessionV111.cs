@@ -381,7 +381,7 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
     [JsonIgnore]
     public ChanceLawV111? PendingLaw => ActiveAction is { } active &&
         active.PendingRequest is { } request
-            ? QueryNatureLaw(active, request)
+            ? QueryNatureLaw(active, request, ActiveNatureDecisions)
             : null;
 
     [JsonIgnore]
@@ -447,7 +447,8 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
             "No ReferenceNature whole-run action is active.");
         var request = active.PendingRequest ?? throw new InvalidOperationException(
             "No stochastic request is pending for the active action.");
-        var law = QueryNatureLaw(active, request) ??
+        var law = QueryNatureLaw(
+            active, request, ActiveNatureDecisions) ??
             throw new NotSupportedException(
                 $"Whole-run request {request.SiteId} " +
                 $"({PendingOperationKind}) requires a caller-supplied typed outcome.");
@@ -484,7 +485,8 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
                 "Whole-run typed outcome does not match the pending request.");
         if (natureSelection is not null)
         {
-            var law = QueryNatureLaw(active, request) ??
+            var law = QueryNatureLaw(
+                active, request, ActiveNatureDecisions) ??
                 throw new InvalidDataException(
                     "Nature selection has no supported whole-run Chance Law.");
             var expected = CreateNatureOutcome(
@@ -519,8 +521,17 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
     // typed primitives remain caller-scripted.
     internal static ChanceLawV111? QueryNatureLaw(
         ScriptedRunActionSessionV111 active,
-        ControlledStochasticRequestV111 request)
+        ControlledStochasticRequestV111 request,
+        ReferenceNatureSelectionV111?[]? naturePrefix = null)
     {
+        if (ControlledRunActionEngineV111.IsNativeRestHealRewardRequest(
+                active.Origin, active.Action, request))
+            return ReferenceNatureRunActionSessionV111
+                .QueryNativeRestHealRewardLaw(
+                    active.Origin, active.Action, active.Decisions,
+                    (naturePrefix ?? []).Select(selection =>
+                        selection?.OutcomeId).ToArray(), request);
+
         if (IsNativeCombatRewardActionBoundary(active) &&
             StochasticSiteRegistryV111.NativeCombatRewardSessionSiteIds
                 .Contains(request.SiteId, StringComparer.Ordinal))
@@ -1796,7 +1807,8 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
                         "Scripted provider decision differs from its saved action transcript.");
                 continue;
             }
-            var law = QueryNatureLaw(replay, request) ??
+            var law = QueryNatureLaw(
+                replay, request, natureDecisions[..index]) ??
                 throw new InvalidDataException(
                     "Nature-sampled whole-run decision has no supported Chance Law.");
             var selection = ReferenceNatureV111.SampleValidated(law, cursor);

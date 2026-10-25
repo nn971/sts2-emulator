@@ -383,6 +383,13 @@ the same provider-independent rarity identity already used by the specialized
 Treasure, Shovel, event-relic, merchant, and combat-reward sessions; other
 streams remain caller-scripted.
 
+Native rest-heal card rewards in whole-run sessions now reuse the typed
+run-action law owner for rarity, card-model, and upgrade requests. The owner
+rebuilds the reward pick and rarity-offset prefix from saved provider floats,
+checks any preceding Nature rarity against that raw outcome, and therefore
+continues to condition later Nature choices when earlier choices were supplied
+by a caller.
+
 Combat-ending whole-run actions also route the registered Native
 `reward.combat_gold.index_draw` bounded request through its source law. The
 dispatcher derives the room and Ascension from the action's combat origin and
