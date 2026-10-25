@@ -51,6 +51,14 @@ use that query directly; the duplicate forwarding helper was removed from
 `SemanticCombatDrawV111`. Saved progress and transcript formats are unchanged.
 Static source review and `git diff --check` only; no tests or builds were run.
 
+**S4 semantic draw resume publication ownership (2026-10-25):** Typed nested
+choices and ordinary semantic draw resumes now share one transition for
+progress publication, transcript chronology, and state validation. The
+choice-specific support checks, stochastic transcript append, and resume
+boundary checks remain with their existing owners. No saved transcript format
+changed. Static source review and `git diff --check` only; no tests or builds
+were run.
+
 **S4 identity-only mechanics dispatcher boundary (2026-10-25):** The
 index-valued mechanics switch is now private behind the Chance Law and
 semantic outcome identity resolvers. Provider code cannot bypass active

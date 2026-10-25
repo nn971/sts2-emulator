@@ -967,6 +967,31 @@ public static class SemanticCombatDrawEngineV111
         return next;
     }
 
+    private static SemanticCombatDrawV111 PublishResumeTransition(
+        SemanticCombatDrawV111 source, SemanticCombatDrawV111 resumed)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(resumed);
+        var next = RecordNewSemanticDrawChoices(source, resumed);
+        Validate(next);
+        return next;
+    }
+
+    private static SemanticCombatDrawV111 PublishResolvedChoice<TDecision>(
+        SemanticCombatDrawV111 source,
+        PrototypeDrawCardsResumeResultV111 progress,
+        TDecision decision,
+        Func<SemanticCombatDrawStochasticStateV111, TDecision,
+            SemanticCombatDrawStochasticStateV111> append)
+    {
+        ArgumentNullException.ThrowIfNull(append);
+        var next = PublishDrawProgress(source, progress) with
+        {
+            Stochastic = append(source.Stochastic, decision)
+        };
+        return PublishResumeTransition(source, next);
+    }
+
     private static SemanticCombatDrawV111 RecordNewSemanticDrawChoices(
         SemanticCombatDrawV111 source, SemanticCombatDrawV111 resumed)
     {
@@ -1384,14 +1409,10 @@ public static class SemanticCombatDrawEngineV111
                 pileCardEvent, selectedIndex);
             var (progress, _) = SemanticChoiceResumeV111.Resume(run, decision);
             _ = progress.RequireRequestedCount();
-            var nextPileChoice = PublishDrawProgress(state, progress) with
-            {
-                Stochastic = state.Stochastic.AppendRandomPileCard(decision)
-            };
-            nextPileChoice = RecordNewSemanticDrawChoices(
-                state, nextPileChoice);
-            Validate(nextPileChoice);
-            return nextPileChoice;
+            return PublishResolvedChoice(
+                state, progress, decision,
+                static (stochastic, selected) =>
+                    stochastic.AppendRandomPileCard(selected));
         }
 
         if (state.DrawInsertionPending is { } insertionEvent)
@@ -1426,14 +1447,10 @@ public static class SemanticCombatDrawEngineV111
                                 .CardsDrawnThisCombat);
                     return progress;
                 });
-            var costNext = PublishDrawProgress(state, resumedCost) with
-            {
-                Stochastic = state.Stochastic.AppendCost(decision)
-            };
-            var costNextWithChronology = RecordNewSemanticDrawChoices(
-                state, costNext);
-            Validate(costNextWithChronology);
-            return costNextWithChronology;
+            return PublishResolvedChoice(
+                state, resumedCost, decision,
+                static (stochastic, selected) =>
+                    stochastic.AppendCost(selected));
         }
 
         var automaticChildKind = SemanticDrawHookChoiceEngineV111
@@ -1464,12 +1481,8 @@ public static class SemanticCombatDrawEngineV111
                 var beforeProgress = ResumeNestedAutomaticHandDraw(
                     state, resumedEffectDraw,
                     "BeforeHandDraw effect-draw");
-                var beforeNext = PublishDrawProgress(
-                    state, beforeProgress);
-                beforeNext = RecordNewSemanticDrawChoices(
-                    state, beforeNext);
-                Validate(beforeNext);
-                return beforeNext;
+                return PublishResumeTransition(
+                    state, PublishDrawProgress(state, beforeProgress));
             }
             var resumedDraw = resumedEffectDraw.Run;
             PrototypeDrawCardsResumeResultV111 drawProgress;
@@ -1490,10 +1503,8 @@ public static class SemanticCombatDrawEngineV111
                     resumedDraw, remaining,
                     PipelineBoundary: resumedEffectDraw.Boundary);
             }
-            var drawNext = PublishDrawProgress(state, drawProgress);
-            drawNext = RecordNewSemanticDrawChoices(state, drawNext);
-            Validate(drawNext);
-            return drawNext;
+            return PublishResumeTransition(
+                state, PublishDrawProgress(state, drawProgress));
         }
 
         if (combat.Stochastic.SemanticDeck?.Pending is null ||
@@ -1507,10 +1518,8 @@ public static class SemanticCombatDrawEngineV111
             SemanticChoiceResumeV111.ResumeDrawSegment(
                 run, cardDecision, state.RemainingCount,
                 state.FromHandDraw);
-        var next = PublishDrawProgress(state, progress);
-        next = RecordNewSemanticDrawChoices(state, next);
-        Validate(next);
-        return next;
+        return PublishResumeTransition(
+            state, PublishDrawProgress(state, progress));
     }
 
     internal static (SemanticCostDecisionV111? CostDecision,
@@ -1594,12 +1603,10 @@ public static class SemanticCombatDrawEngineV111
                 resumed, insertionRemaining,
                 PipelineBoundary: resumedInsertion.PipelineBoundary);
         }
-        var next = PublishDrawProgress(state, insertionProgress) with
-        {
-            Stochastic = state.Stochastic.AppendDrawInsertion(decision)
-        };
-        next = RecordNewSemanticDrawChoices(state, next);
-        Validate(next);
+        var next = PublishResolvedChoice(
+            state, insertionProgress, decision,
+            static (stochastic, selected) =>
+                stochastic.AppendDrawInsertion(selected));
         return (next, decision.Fork());
     }
 
@@ -1638,13 +1645,10 @@ public static class SemanticCombatDrawEngineV111
             state, resumed, "Generated-card");
 
         progress = progress.EnsurePipelineBoundary();
-        var next = PublishDrawProgress(state, progress) with
-        {
-            Stochastic = state.Stochastic.AppendGeneratedCard(decision)
-        };
-        next = RecordNewSemanticDrawChoices(state, next);
-        Validate(next);
-        return next;
+        return PublishResolvedChoice(
+            state, progress, decision,
+            static (stochastic, selected) =>
+                stochastic.AppendGeneratedCard(selected));
     }
 
     public static SemanticCombatDrawV111 ResolvePotionGeneration(
@@ -1664,15 +1668,10 @@ public static class SemanticCombatDrawEngineV111
             .ResumePotionGenerationForHandDraw(state.Run, decision);
         var progress = ResumeNestedAutomaticHandDraw(
             state, resumed, "Potion-generation");
-
-        progress = progress.EnsurePipelineBoundary();
-        var next = PublishDrawProgress(state, progress) with
-        {
-            Stochastic = state.Stochastic.AppendPotionGeneration(decision)
-        };
-        next = RecordNewSemanticDrawChoices(state, next);
-        Validate(next);
-        return next;
+        return PublishResolvedChoice(
+            state, progress.EnsurePipelineBoundary(), decision,
+            static (stochastic, selected) =>
+                stochastic.AppendPotionGeneration(selected));
     }
 
     public static SemanticCombatDrawV111 ResolvePoolShuffle(
@@ -1691,13 +1690,10 @@ public static class SemanticCombatDrawEngineV111
             .ResumePoolShuffleForHandDraw(state.Run, decision);
         var progress = ResumeNestedAutomaticHandDraw(
             state, resumed, "Pool-shuffle");
-        var next = PublishDrawProgress(state, progress) with
-        {
-            Stochastic = state.Stochastic.AppendPoolShuffle(decision)
-        };
-        next = RecordNewSemanticDrawChoices(state, next);
-        Validate(next);
-        return next;
+        return PublishResolvedChoice(
+            state, progress, decision,
+            static (stochastic, selected) =>
+                stochastic.AppendPoolShuffle(selected));
     }
 
     public static SemanticCombatDrawV111 ResolveCardSelection(
@@ -1718,13 +1714,10 @@ public static class SemanticCombatDrawEngineV111
         var resumed = SemanticChoiceResumeV111.Resume(state.Run, decision);
         var progress = ResumeNestedAutomaticHandDraw(
             state, resumed, "Card-selection");
-        var next = PublishDrawProgress(state, progress) with
-        {
-            Stochastic = state.Stochastic.AppendCardSelection(decision)
-        };
-        next = RecordNewSemanticDrawChoices(state, next);
-        Validate(next);
-        return next;
+        return PublishResolvedChoice(
+            state, progress, decision,
+            static (stochastic, selected) =>
+                stochastic.AppendCardSelection(selected));
     }
 
     public static SemanticCombatDrawV111 ResolveCardTransform(
@@ -1745,13 +1738,10 @@ public static class SemanticCombatDrawEngineV111
         var resumed = SemanticChoiceResumeV111.Resume(state.Run, decision);
         var progress = ResumeNestedAutomaticHandDraw(
             state, resumed, "Card-transform");
-        var next = PublishDrawProgress(state, progress) with
-        {
-            Stochastic = state.Stochastic.AppendCardTransform(decision)
-        };
-        next = RecordNewSemanticDrawChoices(state, next);
-        Validate(next);
-        return next;
+        return PublishResolvedChoice(
+            state, progress, decision,
+            static (stochastic, selected) =>
+                stochastic.AppendCardTransform(selected));
     }
 
     public static SemanticCombatDrawV111 ResolveCardShortlist(
@@ -1771,13 +1761,10 @@ public static class SemanticCombatDrawEngineV111
         var resumed = SemanticChoiceResumeV111.Resume(state.Run, decision);
         var progress = ResumeNestedAutomaticHandDraw(
             state, resumed, "Card-shortlist");
-        var next = PublishDrawProgress(state, progress) with
-        {
-            Stochastic = state.Stochastic.AppendCardShortlist(decision)
-        };
-        next = RecordNewSemanticDrawChoices(state, next);
-        Validate(next);
-        return next;
+        return PublishResolvedChoice(
+            state, progress, decision,
+            static (stochastic, selected) =>
+                stochastic.AppendCardShortlist(selected));
     }
 
     public static SemanticCombatDrawV111 ResolveRandomHandCost(
@@ -1797,13 +1784,10 @@ public static class SemanticCombatDrawEngineV111
         var resumed = SemanticChoiceResumeV111.Resume(state.Run, decision);
         var progress = ResumeNestedAutomaticHandDraw(
             state, resumed, "Random-hand-cost");
-        var next = PublishDrawProgress(state, progress) with
-        {
-            Stochastic = state.Stochastic.AppendRandomHandCost(decision)
-        };
-        next = RecordNewSemanticDrawChoices(state, next);
-        Validate(next);
-        return next;
+        return PublishResolvedChoice(
+            state, progress, decision,
+            static (stochastic, selected) =>
+                stochastic.AppendRandomHandCost(selected));
     }
 
     public static SemanticCombatDrawV111 ResolveHandCostSelection(
@@ -1823,13 +1807,10 @@ public static class SemanticCombatDrawEngineV111
         var resumed = SemanticChoiceResumeV111.Resume(state.Run, decision);
         var progress = ResumeNestedAutomaticHandDraw(
             state, resumed, "Hand-cost selection");
-        var next = PublishDrawProgress(state, progress) with
-        {
-            Stochastic = state.Stochastic.AppendHandCostSelection(decision)
-        };
-        next = RecordNewSemanticDrawChoices(state, next);
-        Validate(next);
-        return next;
+        return PublishResolvedChoice(
+            state, progress, decision,
+            static (stochastic, selected) =>
+                stochastic.AppendHandCostSelection(selected));
     }
 
     private static PrototypeDrawCardsResumeResultV111
@@ -1859,14 +1840,10 @@ public static class SemanticCombatDrawEngineV111
                 state.Run, pending, actionId,
                 state.RemainingCount, state.AutomaticHandDraw,
                 drawnBefore);
-        var next = PublishDrawProgress(state, progress) with
-        {
-            Stochastic = state.Stochastic.AppendStratagemSelection(decision)
-        };
-        var nextWithChronology = RecordNewSemanticDrawChoices(
-            state, next);
-        Validate(nextWithChronology);
-        return nextWithChronology;
+        return PublishResolvedChoice(
+            state, progress, decision,
+            static (stochastic, selected) =>
+                stochastic.AppendStratagemSelection(selected));
     }
 
     public static SemanticCombatDrawV111 ResolveDrawHookChoice(
@@ -1893,14 +1870,11 @@ public static class SemanticCombatDrawEngineV111
                 state.Run, pending, actionId,
                 state.RequestedCount, state.RemainingCount, drawnBefore);
         _ = progress.RequireRequestedCount();
-        var next = PublishDrawProgress(state, progress) with
-        {
-            Stochastic = state.Stochastic.AppendDrawHookChoice(decision)
-        };
-        var nextWithChronology = RecordNewSemanticDrawChoices(
-            state, next);
-        Validate(nextWithChronology);
-        return (nextWithChronology, decision.Fork());
+        var next = PublishResolvedChoice(
+            state, progress, decision,
+            static (stochastic, selected) =>
+                stochastic.AppendDrawHookChoice(selected));
+        return (next, decision.Fork());
     }
 
     public static SemanticCombatDrawV111 ResolveTarget(
@@ -1959,8 +1933,7 @@ public static class SemanticCombatDrawEngineV111
                 Run = taggedRun,
                 Stochastic = state.Stochastic.AppendTarget(decision)
             };
-            chained = RecordNewSemanticDrawChoices(state, chained);
-            Validate(chained);
+            chained = PublishResumeTransition(state, chained);
             return (chained, decision.Fork());
         }
         if (resumedCombat.PendingChoice is not null)
@@ -1973,12 +1946,10 @@ public static class SemanticCombatDrawEngineV111
                 state.Run, resumedTarget.Run, resumedTarget.Boundary,
                 "random-target", state.RequestedCount,
                 state.RemainingCount);
-        var next = PublishDrawProgress(state, progress) with
-        {
-            Stochastic = state.Stochastic.AppendTarget(decision)
-        };
-        next = RecordNewSemanticDrawChoices(state, next);
-        Validate(next);
+        var next = PublishResolvedChoice(
+            state, progress, decision,
+            static (stochastic, selected) =>
+                stochastic.AppendTarget(selected));
         return (next, decision.Fork());
     }
 
