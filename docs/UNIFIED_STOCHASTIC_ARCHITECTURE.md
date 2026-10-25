@@ -1544,10 +1544,15 @@ forwards these pending choices to its active draw frame,
 and pilot history records each external choice once. An automatic Stratagem
 selection opened while replaying a draw-hook action now uses the existing
 card-selection event, resolver, and draw-frame chronology. The shared engine
-predicate owns its active semantic hand-draw cursor and exact pick-count
-validation for both child classification and event projection. Other child-choice
-kinds and unsupported selection specifications remain open; random attack
-pool fidelity and Native stream parity require reference-mod evidence.
+predicate recognizes both the active hand-draw cursor and the zero-count
+`BeforeHandDraw` boundary for child classification and event projection. At
+that pre-draw boundary the draw frame also admits its existing typed insertion,
+generation, potion-generation, pool-shuffle, card-selection, transform,
+shortlist, random-hand-cost, and semantic draw/cost children. Each child still
+passes its own source and support checks, and automatic-pipeline-owned choices
+remain with their existing owner. Other child-choice kinds and unsupported
+selection specifications remain open; random attack pool fidelity and Native
+stream parity require reference-mod evidence.
 
 Engine-owned Native semantic choices map provider indices through
 `NativeSemanticOutcomeV111` before resuming mechanics. The mapper checks the
@@ -1693,8 +1698,8 @@ child; replay records it in the same version 8 chronology, then resumes the
 saved pre-draw stage and continues into the hand draw. The requested count may
 advance from the zero-count pre-draw frame only when that saved cursor enters
 `DrawPlayerHand`; an already-active hand draw still requires its original
-requested count. No event or snapshot schema changed. Other pre-draw nested
-choice kinds remain fail-closed.
+requested count. No event or snapshot schema changed. Unclassified pre-draw
+children and unsupported source specifications remain fail-closed.
 
 The engine's semantic automatic-hand-draw owner now has one handoff for
 draw-hook results and nested draw or drawn-cost children. The hook and child
