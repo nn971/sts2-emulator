@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 semantic outcome-identity dispatch (2026-10-25):** The pending-event
+descriptor now owns separate, checked Chance Law and semantic enumeration ID
+projections over the same ordered support. ReferenceNature resolves law IDs;
+enumeration preserves its existing candidate IDs and labels; engine-owned
+Native decisions map to those semantic IDs before reaching the shared
+mechanics dispatcher. No public schema changed. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S4 Native semantic-resume bridge ownership (2026-10-25):** Supported
 engine-owned Native semantic choices now pass through one pilot transition
 that maps the typed primitive result to the active semantic index and invokes

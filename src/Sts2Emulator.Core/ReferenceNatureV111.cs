@@ -45,8 +45,8 @@ public static class ReferenceNatureV111
                 "ReferenceNature outcome is outside the active semantic support.");
 
         var child = SemanticPilotCombatEngineV111
-            .ResolveChanceOutcomeByIndex(
-                combat, pending, selection.OutcomeIndex);
+            .ResolveChanceOutcomeById(
+                combat, pending, selection.OutcomeId);
         return new ReferenceNatureResolutionV111(child, law, selection);
     }
 

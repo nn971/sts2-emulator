@@ -1,5 +1,3 @@
-using System.Globalization;
-
 namespace Sts2Emulator.Core;
 
 public sealed record SemanticEnumeratedOutcomeV111(
@@ -62,7 +60,7 @@ public static class SemanticNatureEnumeratorV111
         string eventKind;
         string eventId;
         string[] outcomeIds;
-        Func<int, SemanticPilotCombatV111> resolve;
+        Func<string, SemanticPilotCombatV111> resolve;
 
         if (current.IntentPending is not null)
         {
@@ -72,10 +70,9 @@ public static class SemanticNatureEnumeratorV111
             eventId = pending.EventId;
             outcomeIds = pending.Support.Candidates
                 .Select(candidate => candidate.IntentId).ToArray();
-            resolve = outcomeIndex =>
+            resolve = outcomeId =>
                 SemanticPilotCombatEngineV111.ResolveIntent(
-                    current, fingerprint,
-                    pending.Support.Candidates[outcomeIndex].IntentId);
+                    current, fingerprint, outcomeId);
         }
         else
         {
@@ -84,13 +81,14 @@ public static class SemanticNatureEnumeratorV111
                 throw new InvalidOperationException(
                     "No semantic Nature chance event is pending to enumerate.");
             eventId = pending.Event.EventId;
-            outcomeIds = DescribeOutcomeIds(pending.Event,
-                out eventKind);
+            outcomeIds = pending.SemanticOutcomeIds;
+            eventKind = DescribeEventKind(pending.Event);
             if (outcomeIds.Length != pending.SupportCount)
                 throw new InvalidDataException(
                     "Semantic enumeration support differs from the active chance event.");
-            resolve = outcomeIndex => SemanticPilotCombatEngineV111
-                .ResolveChanceOutcomeByIndex(current, pending, outcomeIndex);
+            resolve = outcomeId => SemanticPilotCombatEngineV111
+                .ResolveChanceOutcomeBySemanticId(
+                    current, pending, outcomeId);
         }
 
         if (outcomeIds.Length == 0)
@@ -100,76 +98,35 @@ public static class SemanticNatureEnumeratorV111
             throw new InvalidOperationException(
                 $"Pending support has {outcomeIds.Length} outcomes, exceeding " +
                 $"the requested enumeration cap of {maximumOutcomes}.");
-        var outcomes = outcomeIds.Select((outcomeId, outcomeIndex) =>
+        var outcomes = outcomeIds.Select(outcomeId =>
             new SemanticEnumeratedOutcomeV111(
-                outcomeId, resolve(outcomeIndex))).ToArray();
+                outcomeId, resolve(outcomeId))).ToArray();
         return new SemanticEnumerationResultV111(
             SchemaId, eventKind, eventId, outcomes);
     }
 
-    private static string[] DescribeOutcomeIds(
-        ISemanticChanceEventV111 chanceEvent, out string eventKind)
+    private static string DescribeEventKind(
+        ISemanticChanceEventV111 chanceEvent) => chanceEvent switch
     {
-        switch (chanceEvent)
-        {
-            case SemanticEndTurnIndexEventV111 endTurn:
-                eventKind = "enemy_action_chance";
-                return endTurn.CandidateLabels ?? Enumerable.Range(
-                    0, endTurn.Request.SupportCount).Select(index =>
-                    index.ToString(CultureInfo.InvariantCulture)).ToArray();
-            case SemanticTargetEventV111 target:
-                eventKind = "random_target";
-                return target.CandidateEnemyInstanceIds.Select(id =>
-                    id.ToString(CultureInfo.InvariantCulture)).ToArray();
-            case SemanticGeneratedCardEventV111 generated:
-                eventKind = generated.SiteId ==
-                    "combat.random_draw_attack.card_model"
-                    ? "random_draw_attack_card_model" : "generated_card";
-                return generated.CandidateCardIds;
-            case SemanticCostEventV111 cost:
-                eventKind = cost.TargetCardInstanceId is null
-                    ? "drawn_card_cost" : "random_hand_card_cost";
-                return cost.CandidateCosts.Select(value =>
-                    value.ToString(CultureInfo.InvariantCulture)).ToArray();
-            case SemanticRandomPileCardEventV111 randomPileCard:
-                eventKind = "random_pile_card";
-                return randomPileCard.CandidateCardInstanceIds.Select(id =>
-                    id.ToString(CultureInfo.InvariantCulture)).ToArray();
-            case SemanticCardTransformEventV111 transform:
-                eventKind = "random_card_transform";
-                return transform.CandidateCardIds;
-            case SemanticPotionGenerationEventV111 potion:
-                eventKind = "random_potion_generation";
-                return potion.CandidatePotionIds;
-            case SemanticHandCostSelectionEventV111 handCost:
-                eventKind = "random_hand_card_selection";
-                return handCost.CandidateCardInstanceIds.Select(id =>
-                    id.ToString(CultureInfo.InvariantCulture)).ToArray();
-            case SemanticPoolShuffleEventV111 poolShuffle:
-                eventKind = poolShuffle.SiteId ==
-                    StochasticSiteRegistryV111.CombatHandReturnShuffleSiteId
-                    ? "hand_return_shuffle"
-                    : "generated_card_pool_shuffle";
-                return Enumerable.Range(0,
-                    poolShuffle.Request.SupportCount).Select(index =>
-                    index.ToString(CultureInfo.InvariantCulture)).ToArray();
-            case SemanticDrawInsertionEventV111 drawInsertion:
-                eventKind = "generated_draw_pile_insertion";
-                return Enumerable.Range(0,
-                    drawInsertion.Request.SupportCount).Select(index =>
-                    index.ToString(CultureInfo.InvariantCulture)).ToArray();
-            case SemanticCardShortlistEventV111 shortlist:
-                eventKind = "random_pile_selection_shortlist";
-                return shortlist.CandidateCardInstanceIds.Select(id =>
-                    id.ToString(CultureInfo.InvariantCulture)).ToArray();
-            case SemanticDeckEventV111 deckEvent:
-                eventKind = deckEvent.Purpose == "draw"
-                    ? "draw_card" : "deck_reveal";
-                return deckEvent.CandidateCardInstanceIds.Select(id =>
-                    id.ToString(CultureInfo.InvariantCulture)).ToArray();
-            default:
-                throw new NotSupportedException(
-                    $"UNSUPPORTED_SEMANTIC_CHANCE site={chanceEvent.SiteId}");
-        }
-    }
+        SemanticEndTurnIndexEventV111 => "enemy_action_chance",
+        SemanticTargetEventV111 => "random_target",
+        SemanticGeneratedCardEventV111 generated => generated.SiteId ==
+            "combat.random_draw_attack.card_model"
+                ? "random_draw_attack_card_model" : "generated_card",
+        SemanticCostEventV111 cost => cost.TargetCardInstanceId is null
+            ? "drawn_card_cost" : "random_hand_card_cost",
+        SemanticRandomPileCardEventV111 => "random_pile_card",
+        SemanticCardTransformEventV111 => "random_card_transform",
+        SemanticPotionGenerationEventV111 => "random_potion_generation",
+        SemanticHandCostSelectionEventV111 => "random_hand_card_selection",
+        SemanticPoolShuffleEventV111 poolShuffle => poolShuffle.SiteId ==
+            StochasticSiteRegistryV111.CombatHandReturnShuffleSiteId
+                ? "hand_return_shuffle" : "generated_card_pool_shuffle",
+        SemanticDrawInsertionEventV111 => "generated_draw_pile_insertion",
+        SemanticCardShortlistEventV111 => "random_pile_selection_shortlist",
+        SemanticDeckEventV111 deckEvent => deckEvent.Purpose == "draw"
+            ? "draw_card" : "deck_reveal",
+        _ => throw new NotSupportedException(
+            $"UNSUPPORTED_SEMANTIC_CHANCE site={chanceEvent.SiteId}")
+    };
 }

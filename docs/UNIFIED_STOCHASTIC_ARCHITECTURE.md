@@ -1176,29 +1176,26 @@ the Native decision-to-index projection for the source primitive operation and
 support declared by its typed event owner. The semantic event's own operation
 label remains distinct from the primitive request kind.
 `SemanticPilotCombatEngineV111.ResolveNativeChanceDecision` joins that checked
-projection to the shared mechanics dispatcher for supported engine-owned
-Native choices; each event branch retains its own request admission and stream
-owner.
-The Native policy adapter passes that mapped index to the same mechanics
-dispatcher used by ReferenceNature, so event branches no longer repeat
-primitive support mapping beside the shared descriptor.
+projection to the active support's semantic outcome ID before calling the
+shared mechanics dispatcher for supported engine-owned Native choices; each
+event branch retains its own request admission and stream owner.
 Live continuations and Native target, generation, potion, PotionFactory,
 transform, shuffle, insertion, combat-gold, initial-HP, card-instance, and
 card-cost audit records share this mapping while retaining their source
 checks. The Native audit keeps the primitive index and cursor spans alongside
 the semantic outcome.
 
-Provider-selected indices for the semantic pilot now converge through
-`SemanticPilotCombatEngineV111.ResolveChanceOutcomeByIndex`. ReferenceNature
-validates the sampled law first; the Native adapter validates provider mode
-and primitive support first. `DescribePendingIndexChanceEvent` owns event
-precedence, while `SemanticPendingIndexChanceEventV111.Create` derives the
-checked support size and ordered outcome-ID projection from the typed event
-and binds both to the originating pilot boundary fingerprint. ReferenceNature
-queries the law for that event, and the same projection validates its complete
-ordered outcome mapping.
-The Native auto-resolver and shared dispatcher consume the same descriptor;
-the dispatcher rejects it if the pilot has advanced to another boundary.
+Provider-selected semantic choices now converge through checked outcome
+identity. ReferenceNature validates the sampled law first and resolves its
+Chance Law outcome ID; the Native adapter validates provider mode and primitive
+support first, then projects its selected index to the existing semantic
+outcome ID. `DescribePendingIndexChanceEvent` owns event precedence, while
+`SemanticPendingIndexChanceEventV111` derives both ordered ID projections over
+the same support and binds them to the originating pilot boundary fingerprint.
+Both identity resolvers validate the live boundary before entering the shared
+mechanics dispatcher, which translates the selected identity only where an
+existing mechanics resolver still requires an index. The Native auto-resolver
+and enumerator consume that descriptor; stale boundaries are rejected.
 Unrecognized event variants fail before sampling or mechanics mutation and
 include the event SiteId in the unsupported-operation error.
 Provider-specific law, primitive, eligibility, and provenance checks remain
@@ -1209,10 +1206,14 @@ their specialized paths. This descriptor is transient and adds no snapshot
 field.
 
 `SemanticNatureEnumeratorV111` uses the same descriptor precedence and shared
-outcome dispatcher for index-valued semantic events, so enumeration resolves
-the same active boundary as ReferenceNature and Native. It includes the
-automatic enemy-action event and preserves its candidate labels as outcome
-IDs; weighted intent enumeration retains its identity-based resolver.
+outcome dispatcher for index-valued semantic events. The descriptor keeps the
+Chance Law outcome IDs separate from the existing semantic enumeration IDs;
+both are checked against the same ordered support and live boundary before the
+shared mechanics resolver translates them. This preserves candidate labels in
+enumeration and lets ReferenceNature resolve its law's outcome ID directly.
+The engine-owned Native path maps its primitive decision to the corresponding
+semantic enumeration ID before dispatch. Weighted intent enumeration retains
+its identity-based resolver.
 
 `PrototypeAutomaticPipelineResumeResultV111` is the single owner for
 classifying an ephemeral run-resume boundary. Draw-progress and semantic-choice

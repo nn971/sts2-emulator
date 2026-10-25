@@ -47,6 +47,7 @@ internal sealed record SemanticPendingIndexChanceEventV111(
     }
 
     public string[] OrderedOutcomeIds => CreateOrderedOutcomeIds(Event);
+    public string[] SemanticOutcomeIds => CreateSemanticOutcomeIds(Event);
 
     public void ValidateSelection(string boundaryFingerprint, int index)
     {
@@ -101,7 +102,16 @@ internal sealed record SemanticPendingIndexChanceEventV111(
             string.IsNullOrWhiteSpace(BoundaryFingerprint))
             throw new InvalidDataException(
                 "Invalid pending semantic index chance event.");
-        if (CreateOrderedOutcomeIds(Event).Length != SupportCount)
+        var orderedOutcomeIds = CreateOrderedOutcomeIds(Event);
+        var semanticOutcomeIds = CreateSemanticOutcomeIds(Event);
+        if (orderedOutcomeIds.Length != SupportCount ||
+            orderedOutcomeIds.Any(string.IsNullOrWhiteSpace) ||
+            orderedOutcomeIds.Distinct(StringComparer.Ordinal).Count() !=
+                orderedOutcomeIds.Length ||
+            semanticOutcomeIds.Length != SupportCount ||
+            semanticOutcomeIds.Any(string.IsNullOrWhiteSpace) ||
+            semanticOutcomeIds.Distinct(StringComparer.Ordinal).Count() !=
+                semanticOutcomeIds.Length)
             throw new InvalidDataException(
                 $"Pending semantic chance support changed " +
                 $"site={Event.SiteId}.");
@@ -152,6 +162,46 @@ internal sealed record SemanticPendingIndexChanceEventV111(
     private static string[] IndexOutcomeIds(string prefix, int supportCount) =>
         Enumerable.Range(0, supportCount).Select(index =>
             prefix + index.ToString(CultureInfo.InvariantCulture)).ToArray();
+
+    private static string[] CreateSemanticOutcomeIds(
+        ISemanticChanceEventV111 chanceEvent) => chanceEvent switch
+    {
+        SemanticEndTurnIndexEventV111 endTurn =>
+            endTurn.CandidateLabels ?? Enumerable.Range(
+                0, endTurn.Request.SupportCount).Select(index =>
+                index.ToString(CultureInfo.InvariantCulture)).ToArray(),
+        SemanticTargetEventV111 target =>
+            target.CandidateEnemyInstanceIds.Select(id =>
+                id.ToString(CultureInfo.InvariantCulture)).ToArray(),
+        SemanticGeneratedCardEventV111 generatedCard =>
+            generatedCard.CandidateCardIds,
+        SemanticCostEventV111 cost => cost.CandidateCosts.Select(value =>
+            value.ToString(CultureInfo.InvariantCulture)).ToArray(),
+        SemanticRandomPileCardEventV111 randomPileCard =>
+            randomPileCard.CandidateCardInstanceIds.Select(id =>
+                id.ToString(CultureInfo.InvariantCulture)).ToArray(),
+        SemanticCardTransformEventV111 transform =>
+            transform.CandidateCardIds,
+        SemanticPotionGenerationEventV111 potion =>
+            potion.CandidatePotionIds,
+        SemanticHandCostSelectionEventV111 handCost =>
+            handCost.CandidateCardInstanceIds.Select(id =>
+                id.ToString(CultureInfo.InvariantCulture)).ToArray(),
+        SemanticPoolShuffleEventV111 poolShuffle => Enumerable.Range(
+            0, poolShuffle.Request.SupportCount).Select(index =>
+            index.ToString(CultureInfo.InvariantCulture)).ToArray(),
+        SemanticDrawInsertionEventV111 drawInsertion => Enumerable.Range(
+            0, drawInsertion.Request.SupportCount).Select(index =>
+            index.ToString(CultureInfo.InvariantCulture)).ToArray(),
+        SemanticCardShortlistEventV111 shortlist =>
+            shortlist.CandidateCardInstanceIds.Select(id =>
+                id.ToString(CultureInfo.InvariantCulture)).ToArray(),
+        SemanticDeckEventV111 deck => deck.CandidateCardInstanceIds
+            .Select(id => id.ToString(
+                CultureInfo.InvariantCulture)).ToArray(),
+        _ => throw new NotSupportedException(
+            $"UNSUPPORTED_SEMANTIC_CHANCE site={chanceEvent.SiteId}")
+    };
 
     private static string CardInstanceOutcomeId(long instanceId) =>
         "card_instance:" + instanceId.ToString(CultureInfo.InvariantCulture);

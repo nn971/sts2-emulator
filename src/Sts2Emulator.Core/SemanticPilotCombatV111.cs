@@ -7318,11 +7318,68 @@ public static class SemanticPilotCombatEngineV111
     }
 
     /// <summary>
-    /// Apply one provider-selected index to the active semantic event through
-    /// the event's existing mechanics resolver. Providers retain their own
-    /// law and provenance checks; this owner binds the selection to the live
-    /// event and publishes its mechanics continuation.
+    /// Resolve one Chance Law outcome identity against the active semantic
+    /// event before dispatching through the event's mechanics resolver.
+    /// Providers retain their own law and provenance checks; this owner binds
+    /// the selection to the live event and publishes its mechanics continuation.
     /// </summary>
+    internal static SemanticPilotCombatV111 ResolveChanceOutcomeById(
+        SemanticPilotCombatV111 current,
+        SemanticPendingIndexChanceEventV111 pending, string outcomeId,
+        SemanticOtherChanceStateV111? otherChance = null)
+    {
+        ArgumentNullException.ThrowIfNull(pending);
+        return ResolveChanceOutcomeByIdentity(
+            current, pending, outcomeId, pending.OrderedOutcomeIds,
+            otherChance);
+    }
+
+    internal static SemanticPilotCombatV111
+        ResolveChanceOutcomeBySemanticId(
+            SemanticPilotCombatV111 current,
+            SemanticPendingIndexChanceEventV111 pending,
+            string outcomeId,
+            SemanticOtherChanceStateV111? otherChance = null)
+    {
+        ArgumentNullException.ThrowIfNull(pending);
+        return ResolveChanceOutcomeByIdentity(
+            current, pending, outcomeId, pending.SemanticOutcomeIds,
+            otherChance);
+    }
+
+    private static SemanticPilotCombatV111 ResolveChanceOutcomeByIdentity(
+        SemanticPilotCombatV111 current,
+        SemanticPendingIndexChanceEventV111 pending, string outcomeId,
+        string[] supportedOutcomeIds,
+        SemanticOtherChanceStateV111? otherChance)
+    {
+        ArgumentNullException.ThrowIfNull(current);
+        ArgumentNullException.ThrowIfNull(pending);
+        ArgumentException.ThrowIfNullOrWhiteSpace(outcomeId);
+        current.Validate();
+        if (current.IntentPending is not null)
+            throw new InvalidOperationException(
+                "Weighted intent outcomes require their semantic identity resolver.");
+
+        pending.ValidateBoundary(current.Fingerprint);
+        var selectedIndex = -1;
+        for (var index = 0; index < supportedOutcomeIds.Length; index++)
+        {
+            if (!StringComparer.Ordinal.Equals(
+                    supportedOutcomeIds[index], outcomeId))
+                continue;
+            if (selectedIndex >= 0)
+                throw new InvalidDataException(
+                    "Semantic chance outcome identity is ambiguous in its support.");
+            selectedIndex = index;
+        }
+        if (selectedIndex < 0)
+            throw new InvalidOperationException(
+                "Semantic chance outcome identity is outside the active support.");
+        return ResolveChanceOutcomeByIndex(
+            current, pending, selectedIndex, otherChance);
+    }
+
     internal static SemanticPilotCombatV111 ResolveChanceOutcomeByIndex(
         SemanticPilotCombatV111 current,
         SemanticPendingIndexChanceEventV111 pending, int outcomeIndex,
@@ -7674,8 +7731,9 @@ public static class SemanticPilotCombatEngineV111
         ArgumentNullException.ThrowIfNull(decision);
         ArgumentNullException.ThrowIfNull(nextOtherChance);
         var outcomeIndex = pending.SelectNativeOutcomeIndex(decision);
-        return ResolveChanceOutcomeByIndex(
-            current, pending, outcomeIndex, nextOtherChance);
+        var outcomeId = pending.SemanticOutcomeIds[outcomeIndex];
+        return ResolveChanceOutcomeBySemanticId(
+            current, pending, outcomeId, nextOtherChance);
     }
 
     private static SemanticPilotCombatV111 ResumeNativeEnemyActionChoice(
