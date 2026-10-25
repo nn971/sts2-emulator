@@ -6044,3 +6044,17 @@ Semantic draw-frame validation reuses this query for pre-draw hook, target,
 insertion, generated-card, and nested-choice boundaries. Core Release build
 passed with zero warnings or errors; `git diff --check` passed. No tests were
 run.
+
+**S4 ordinary engine-action replay capture increment (2026-10-26):** The
+provider replay comparator can now build a capture from exact origin/action/
+result snapshots without a caller-authored boundary array. The capture
+factory resolves each saved action against the current legal menu, replays it
+through `PrototypeGameEngine.Step`, records ordered typed provider requests,
+per-action mechanics boundaries, physical draws, and event/hook transcripts,
+and rejects a final endpoint mismatch. JSONL keeps the existing supplied
+boundary path and uses this replay-validated path when the array is omitted.
+The capture has typed and physical-draw evidence but no provider-independent
+semantic identities; source-hook completeness, Native probability fidelity,
+and broad cross-provider acceptance remain open. Core and CLI Release builds
+passed with zero warnings or errors; `git diff --check` passed. No tests were
+run.

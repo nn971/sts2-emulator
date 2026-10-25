@@ -1505,10 +1505,20 @@ The JSONL `provider_replay_compare` operation constructs a current capture for
 each side either from a completed scripted-run or scripted-action handle, or
 from a completed ReferenceNature whole-run handle, replay-validated semantic Native-policy, ReferenceNature semantic-combat,
 event-choice, controlled-action or run-action handles, or from exact
-origin/result snapshots plus action and boundary arrays,
+origin/result snapshots plus actions and an optional boundary array,
 with optional Native cursor equality and a mechanics-difference bound.
-`hello` advertises its capture and result schemas, operation, and inputs. The
-standard-library Python binding exposes the same operation as
+When the boundary array is omitted, `FromPrototypeEngineReplayValidatedActions`
+requires each action to resolve to exactly one legal action, replays the
+sequence through `PrototypeGameEngine.Step`, records the ordered typed
+provider trace and each action's mechanics, draw-identity, and event/hook
+boundary traces, then checks the resulting run against the supplied endpoint.
+This provides replay-validated typed and physical-draw comparison for ordinary
+engine actions without caller-authored stochastic traces. It does not attach
+provider-independent semantic outcome IDs, and it does not validate source
+hook completeness or Native probability fidelity. Supplying a boundary array
+continues to create a caller-supplied capture. `hello` advertises the capture
+and result schemas, operation, inputs, and optional trace behavior. The
+standard-library Python binding exposes the operation as
 `Session.compare_provider_replays(**capture_inputs)` and validates both
 advertised schema IDs on the response. These provider traces are privileged
 diagnostic data and are not part of the fair player observation.

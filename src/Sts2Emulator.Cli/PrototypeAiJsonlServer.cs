@@ -3082,7 +3082,7 @@ internal static class PrototypeAiJsonlServer
                                 "<side>_reference_nature_endless_conveyor_handle",
                                 "<side>_reference_nature_punch_off_fight_handle",
                                 "<side>_reference_nature_punch_off_reward_handle",
-                                "<side>_origin_snapshot, <side>_actions, <side>_boundaries, and <side>_result_snapshot"
+                                "<side>_origin_snapshot, <side>_actions, and <side>_result_snapshot (optional <side>_boundaries; when omitted, the prototype engine replays the legal actions and verifies the endpoint)"
                             },
                             simulationProviderReplayComparisonScope =
                                 "privileged-provider-trace-semantic-outcome-physical-draw-identity-action-boundary-and-endpoint-mechanics-diagnostic; not a fair player observation",
@@ -10739,25 +10739,35 @@ internal static class PrototypeAiJsonlServer
 
                             var actionsElement = RequiredArray(
                                 request, actionsName);
-                            var boundariesElement = RequiredArray(
-                                request, boundariesName);
                             var actions = JsonSerializer.Deserialize<
                                 GameAction[]>(actionsElement.GetRawText(),
                                     StrictSnakeCaseJsonOptions)
                                 ?? throw new InvalidDataException(
                                     actionsName + " decoded to null.");
-                            var boundaries = JsonSerializer.Deserialize<
-                                RandomBoundaryTranscriptEntryV111[]>(
-                                    boundariesElement.GetRawText(),
-                                    StrictSnakeCaseJsonOptions)
-                                ?? throw new InvalidDataException(
-                                    boundariesName + " decoded to null.");
-                            return SimulationProviderReplayCaptureV111.Create(
-                                RunSnapshot.Load(RequiredString(
-                                    request, originName)),
-                                actions, boundaries,
-                                RunSnapshot.Load(RequiredString(
-                                    request, resultName)));
+                            var origin = RunSnapshot.Load(RequiredString(
+                                request, originName));
+                            var result = RunSnapshot.Load(RequiredString(
+                                request, resultName));
+                            if (request.TryGetProperty(boundariesName,
+                                    out var boundariesElement))
+                            {
+                                if (boundariesElement.ValueKind !=
+                                    JsonValueKind.Array)
+                                    throw new ArgumentException(
+                                        boundariesName +
+                                        " must be an array when supplied.");
+                                var boundaries = JsonSerializer.Deserialize<
+                                    RandomBoundaryTranscriptEntryV111[]>(
+                                        boundariesElement.GetRawText(),
+                                        StrictSnakeCaseJsonOptions)
+                                    ?? throw new InvalidDataException(
+                                        boundariesName + " decoded to null.");
+                                return SimulationProviderReplayCaptureV111.Create(
+                                    origin, actions, boundaries, result);
+                            }
+                            return SimulationProviderReplayCaptureV111
+                                .FromPrototypeEngineReplayValidatedActions(
+                                    origin, actions, result);
                         }
 
                         var left = ReadProviderReplayCapture("left");

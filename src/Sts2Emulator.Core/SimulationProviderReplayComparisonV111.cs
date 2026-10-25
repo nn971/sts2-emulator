@@ -443,6 +443,8 @@ public static class SimulationProviderReplayCaptureProvenanceV111
         "scripted-run-semantic-identity-replay-validated-v1";
     public const string ScriptedActionReplayValidated =
         "scripted-action-replay-validated-v1";
+    public const string PrototypeEngineActionReplayValidated =
+        "prototype-engine-action-replay-validated-v1";
     public const string ScriptedActionSemanticIdentityReplayValidated =
         "scripted-action-semantic-identity-replay-validated-v1";
     public const string SemanticNativePolicyReplayValidated =
@@ -538,7 +540,9 @@ public static class SimulationProviderReplayCaptureProvenanceV111
     public static bool IsKnown(string? provenance) =>
         HasProviderIndependentSemanticIdentity(provenance) || provenance is
         CallerSupplied or ScriptedRunReplayValidated or
-        ScriptedActionReplayValidated or SemanticNativePolicyReplayValidated or
+        ScriptedActionReplayValidated or
+        PrototypeEngineActionReplayValidated or
+        SemanticNativePolicyReplayValidated or
         ReferenceNatureRunActionReplayValidated or
         ReferenceNatureWholeRunReplayValidated or
         ReferenceNatureEventChoiceReplayValidated or
@@ -960,6 +964,86 @@ public sealed record SimulationProviderReplayCaptureV111(
         return AttachSemanticOutcomes(capture, semanticOutcomes,
             SimulationProviderReplayCaptureProvenanceV111
                 .ScriptedActionSemanticIdentityReplayValidated);
+    }
+
+    /// <summary>
+    /// Replays a sequence of legal actions through the prototype engine,
+    /// records its typed provider and per-action mechanics journals, and
+    /// verifies the final run against the supplied endpoint.
+    /// </summary>
+    public static SimulationProviderReplayCaptureV111
+        FromPrototypeEngineReplayValidatedActions(
+            RunState origin, IReadOnlyList<GameAction> actions,
+            RunState expectedResult)
+    {
+        ArgumentNullException.ThrowIfNull(origin);
+        ArgumentNullException.ThrowIfNull(actions);
+        ArgumentNullException.ThrowIfNull(expectedResult);
+        if (actions.Count == 0)
+            throw new ArgumentException(
+                "Prototype engine replay requires at least one action.",
+                nameof(actions));
+
+        RunConfiguration.ValidateState(origin);
+        RunConfiguration.ValidateState(expectedResult);
+        var engine = new PrototypeGameEngine();
+        var replay = origin.Fork();
+        var resolvedActions = new GameAction[actions.Count];
+        var actionBoundaries = new RunState[actions.Count];
+        var drawnCardIds = new long[actions.Count][];
+        var eventHookTranscripts =
+            new NativeEngineJournalEntryV111[actions.Count][];
+        RandomBoundaryTranscriptEntryV111[] boundaries;
+
+        using (var providerJournal = RandomBoundaryJournalV111.Begin())
+        {
+            for (var index = 0; index < actions.Count; index++)
+            {
+                var action = actions[index] ?? throw new ArgumentException(
+                    "Prototype engine replay contains a null action at " +
+                    index + ".", nameof(actions));
+                var actionId = PrototypeAiEnvironment.StableActionId(action);
+                GameAction[] matches;
+                using (RandomBoundaryJournalV111.Begin())
+                    matches = engine.GetLegalActions(replay)
+                        .Where(candidate =>
+                            PrototypeAiEnvironment.StableActionId(candidate) ==
+                            actionId)
+                        .ToArray();
+                if (matches.Length != 1)
+                    throw new InvalidDataException(
+                        "Prototype engine replay action " + index +
+                        " does not identify exactly one legal action.");
+
+                resolvedActions[index] = matches[0];
+                using var drawJournal =
+                    SemanticDrawIdentityJournalV111.Begin();
+                using var eventJournal = NativeEngineEventJournalV111.Begin();
+                replay = engine.Step(replay, matches[0]).State;
+                actionBoundaries[index] = replay.Fork();
+                drawnCardIds[index] = drawJournal.CardInstanceIds;
+                eventHookTranscripts[index] =
+                    eventJournal.Entries.ToArray();
+            }
+
+            boundaries = providerJournal.OrderedTranscript.ToArray();
+        }
+
+        if (CanonicalJson.Sha256(replay) !=
+            CanonicalJson.Sha256(expectedResult))
+            throw new InvalidDataException(
+                "Prototype engine action replay differs from the supplied result snapshot.");
+
+        var capture = Create(origin, resolvedActions, boundaries,
+            expectedResult, semanticOutcomes: null, actionBoundaries,
+            drawnCardIds, eventHookTranscripts) with
+        {
+            CaptureProvenance =
+                SimulationProviderReplayCaptureProvenanceV111
+                    .PrototypeEngineActionReplayValidated
+        };
+        capture.Validate();
+        return capture;
     }
 
     /// <summary>
