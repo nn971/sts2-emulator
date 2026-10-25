@@ -1496,6 +1496,14 @@ an action contains an unannotated provider boundary. This enables comparison
 of the captured reward outcomes and final mechanics state; source probability
 and Native cursor parity remain open.
 
+Native semantic-policy capture also projects audited enemy draw-pile and
+discard-pile insertion outcomes. It re-queries the registered Native bounded
+index law and represents each selected position by the adjacent physical card
+instances and generated card model, matching the controlled replay's stable
+gap labels across providers. This makes those insertion boundaries eligible
+for same-semantic-outcome comparison; enemy-effect eligibility and Native
+stream parity remain separate evidence.
+
 `SemanticEndTurnPendingEventsV111` is a transient projection over the full
 end-turn boundary. It captures active hand-draw events through the draw
 owner's shared projection and captures the surrounding enemy-action, intent,

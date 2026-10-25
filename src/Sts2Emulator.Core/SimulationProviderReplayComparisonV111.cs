@@ -542,6 +542,9 @@ public sealed record SimulationProviderReplayCaptureV111(
         if (StochasticSiteRegistryV111.ControlledDrawInsertionSiteIds.Contains(
                 siteId, StringComparer.Ordinal))
             return "combat_draw_insertion";
+        if (StochasticSiteRegistryV111.CombatEnemyPileInsertionSiteIds
+                .Contains(siteId, StringComparer.Ordinal))
+            return "combat_draw_insertion";
         if (siteId is not (
                 StochasticSiteRegistryV111.CombatAutoplayRandomCardSelectSiteId or
                 StochasticSiteRegistryV111.CombatRandomReplayCardSelectSiteId or
@@ -3069,6 +3072,39 @@ internal static class SimulationProviderReplayNativeSemanticOutcomeTraceV111
                         outcome.Outcome.Event))))
                 return null;
 
+        foreach (var outcome in audit.EnemyPileInsertionOutcomes)
+        {
+            if (!AddDecision(outcome.ProviderDecision, () =>
+                {
+                    outcome.Validate();
+                    var insertion = outcome.Outcome;
+                    var insertionEvent = insertion.Event;
+                    var request = insertionEvent.Request;
+                    var law = ChanceLawEngineV111
+                        .QueryNativeBoundedIntegerLawSite(
+                            request.SiteId, request.OwnerId,
+                            request.SupportCount, request.Ordinal);
+                    law.Validate();
+                    if (law.SiteId != request.SiteId ||
+                        law.OperationKind != request.OperationKind ||
+                        law.OwnerId != request.OwnerId ||
+                        law.Ordinal != request.Ordinal ||
+                        law.SupportCount != request.SupportCount)
+                        throw new InvalidDataException(
+                            "Native enemy pile-insertion law differs from its provider request.");
+                    var semanticSupportIds =
+                        SemanticDrawPileAdapterV111
+                            .DescribePhysicalPileInsertionGapLabels(
+                                insertionEvent.GeneratedCardModelId,
+                                insertionEvent.PileName,
+                                insertionEvent.ExistingPileInstanceIds);
+                    return CreateLawOutcome(
+                        law, insertion.SelectedPosition,
+                        semanticSupportIds);
+                }))
+                return null;
+        }
+
         foreach (var outcome in audit.PoolShuffleOutcomes)
             if (!AddPoolShuffle(outcome))
                 return null;
@@ -3449,6 +3485,9 @@ internal static class SimulationProviderReplayNativeSemanticOutcomeTraceV111
             return "semantic_pool_shuffle";
         if (siteId == StochasticSiteRegistryV111.DrawPileRandomInsertSiteId)
             return "semantic_draw_insertion";
+        if (StochasticSiteRegistryV111.CombatEnemyPileInsertionSiteIds
+                .Contains(siteId, StringComparer.Ordinal))
+            return "semantic_enemy_pile_insertion:" + siteId;
         return null;
     }
 
