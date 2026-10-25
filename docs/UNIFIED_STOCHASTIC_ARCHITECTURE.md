@@ -1274,6 +1274,11 @@ selected offer variant before its relic-shuffle prefix. Complete stream,
 owner, ordinal, operation, and ordered support requests are checked against
 the source boundary. The dedicated atomic Ancient-offer setup session remains
 the owner for pre-event generation.
+Configured experimental Act 1 Native combat-entry formation draws in this
+whole-run path also re-query the existing formation law after validating the
+selected combat map node, encounter entry, floor, Native context stream, and
+source-ordered index range. Encounter-pool draws retain their existing
+run-action law handling.
 It marks that semantic trace complete only when the saved selections cover
 every typed boundary; caller-scripted or unsupported outcomes keep semantic
 comparison unavailable while the typed trace remains complete. Shared

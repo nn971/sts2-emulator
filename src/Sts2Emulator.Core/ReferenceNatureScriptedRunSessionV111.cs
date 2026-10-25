@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -559,6 +560,12 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
 
         if (request.IndexRequest is { } indexRequest)
         {
+            if (active.Origin.Stochastic.NativeRunRng is not null &&
+                ControlledRunActionEngineV111
+                    .IsNativeEncounterFormationRequest(request) &&
+                ControlledRunActionEngineV111.IsNativeActOneCombatEntrySite(
+                    active.Origin, active.Action, indexRequest.SiteId))
+                return QueryNativeEncounterFormation(active, indexRequest);
             if (ChanceLawEngineV111.IsNativeMapGenerationRequestSite(
                     indexRequest.SiteId))
                 return ChanceLawEngineV111.QueryNativeMapRequest(request);
@@ -906,6 +913,49 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
         RequireIndexRequestMatchesLaw(
             request, conditionedLaw, "Native Ancient offer");
         return conditionedLaw;
+    }
+
+    private static ChanceLawV111 QueryNativeEncounterFormation(
+        ScriptedRunActionSessionV111 active,
+        RandomIndexRequestV111 request)
+    {
+        request.Validate();
+        if (active.Origin.Stochastic.NativeRunRng is null ||
+            !ControlledRunActionEngineV111
+                .IsNativeEncounterFormationRequest(
+                    ControlledStochasticRequestV111.FromIndex(request)) ||
+            !ControlledRunActionEngineV111.IsNativeActOneCombatEntrySite(
+                active.Origin, active.Action, request.SiteId) ||
+            !request.OrderedCandidates.SequenceEqual(
+                Enumerable.Range(0, request.SupportCount)))
+            throw new InvalidDataException(
+                "Native encounter-formation request is outside its configured Act 1 combat-entry boundary.");
+
+        const string ownerPrefix = "encounter:";
+        var floorMarker = request.OwnerId.LastIndexOf(":floor:",
+            StringComparison.Ordinal);
+        if (floorMarker <= ownerPrefix.Length ||
+            !int.TryParse(request.OwnerId.AsSpan(
+                    floorMarker + ":floor:".Length),
+                NumberStyles.None, CultureInfo.InvariantCulture,
+                out var floor) || floor < 0)
+            throw new InvalidDataException(
+                "Native encounter-formation owner does not identify an entry and floor.");
+        var entry = request.OwnerId[
+            ownerPrefix.Length..floorMarker];
+        var law = ChanceLawEngineV111.QueryNativeEncounterFormationIndex(
+            entry, floor, request.SupportCount, request.Ordinal);
+        var expectedRequest = new RandomIndexRequestV111(
+            law.SiteId,
+            NativeRngV111Contexts.EncounterFormationStreamId(entry, floor),
+            law.OwnerId, law.Ordinal,
+            Enumerable.Range(0, law.SupportCount).ToArray(),
+            OperationKind: law.OperationKind);
+        if (CanonicalJson.Sha256(expectedRequest) !=
+            CanonicalJson.Sha256(request))
+            throw new InvalidDataException(
+                "Native encounter-formation request differs from its source law.");
+        return law;
     }
 
     private static ChanceLawV111? QueryNativeEventShuffle(

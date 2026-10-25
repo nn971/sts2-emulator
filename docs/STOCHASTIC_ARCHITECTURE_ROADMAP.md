@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S2 whole-run Native encounter-formation law increment (2026-10-26):** The
+whole-run ReferenceNature dispatcher now re-queries configured experimental
+Act 1 Native formation draws through the existing formation law after checking
+the selected combat map node, encounter entry, floor, context stream, and
+ordered index range. Encounter-pool selection keeps its existing run-action
+law path. Core and CLI Release builds passed with zero warnings or errors;
+`git diff --check` passed. No tests were run.
+
 **S2 whole-run Native Ancient-offer law increment (2026-10-26):** Ordinary
 ReferenceNature actions now route Orobas, Pael, and Tezcatara direct offers
 through their source-conditioned event-choice laws and map semantic identities
