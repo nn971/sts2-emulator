@@ -365,7 +365,7 @@ public sealed partial class PrototypeGameEngine
                 drawn.RemainingCount, fromHandDraw: true,
                 eventDepth: 0, automatic: true);
             return ResolveControlledSemanticDrawResult(
-                advanced, drawn, drawFrame,
+                segment with { Run = advanced }, drawFrame,
                 continuation: null,
                 automaticHandDrawRequested: requestedCount,
                 recycleSite: recycleSite,

@@ -41,25 +41,21 @@ public sealed partial class PrototypeGameEngine
                 "operation=nested_choice_or_automatic_pipeline");
         var suspensionPolicy =
             PrototypeDrawCardsSuspensionPolicyV111.SemanticDrawCards();
-        PrototypeDrawCardsResult result;
+        PrototypeDrawCardsSegmentV111 segment;
         if (automatic)
         {
-            var resumed = ResumeAutomaticHandDrawSegment(
+            segment = ResumeAutomaticHandDrawSegment(
                 run, count, suspensionPolicy);
-            run = resumed.Run;
-            result = resumed.Drawn;
         }
         else
         {
-            var drawnSegment = ExecuteDrawCardsSegment(
+            segment = ExecuteDrawCardsSegment(
                 run, prototypeRng => DrawCards(
                     run.Player, combat, count, prototypeRng, fromHandDraw,
                     suspensionPolicy: suspensionPolicy));
-            run = drawnSegment.Run;
-            result = drawnSegment.Drawn;
         }
         return ResumeSemanticCombatDrawResult(
-            run, result, fromHandDraw, eventDepth: 0,
+            segment, fromHandDraw, eventDepth: 0,
             automaticHandDrawRequested: automaticRequested,
             recycleSite: "combat.draw",
             recycleOperation: "unsupported_nested_stage");
@@ -200,10 +196,8 @@ public sealed partial class PrototypeGameEngine
                 suspensionPolicy:
                     PrototypeDrawCardsSuspensionPolicyV111.SemanticDrawCards(
                         effectDraw: effectDraw)));
-        run = drawnSegment.Run;
-        var drawn = drawnSegment.Drawn;
         var continued = ResolveControlledSemanticDrawResult(
-            run, drawn, draw, continuation, null,
+            drawnSegment, draw, continuation, null,
             recycleSite, recycleOperation);
         PrototypeAutomaticPipelineResumeResultV111? pipelineResume =
             effectDraw
@@ -217,19 +211,19 @@ public sealed partial class PrototypeGameEngine
 
     private static PrototypeDrawCardsResumeResultV111
         ResumeSemanticCombatDrawResult(
-            RunState run,
-            PrototypeDrawCardsResult drawn,
+            PrototypeDrawCardsSegmentV111 segment,
             bool fromHandDraw,
             int eventDepth,
             int? automaticHandDrawRequested,
             string recycleSite,
             string recycleOperation)
     {
+        var drawn = segment.Drawn;
         var draw = CreateSemanticDrawResultFrame(
             drawn.RemainingCount, fromHandDraw, eventDepth,
             automaticHandDrawRequested is not null);
         return ResolveControlledSemanticDrawResult(
-            run, drawn, draw, continuation: null,
+            segment, draw, continuation: null,
             automaticHandDrawRequested, recycleSite, recycleOperation);
     }
 
@@ -274,14 +268,15 @@ public sealed partial class PrototypeGameEngine
 
     private static PrototypeDrawCardsResumeResultV111
         ResolveControlledSemanticDrawResult(
-            RunState run,
-            PrototypeDrawCardsResult drawn,
+            PrototypeDrawCardsSegmentV111 segment,
             PrototypeControlledSemanticDrawV111 draw,
             PrototypeChoiceResolutionContinuationState? continuation,
             int? automaticHandDrawRequested,
             string recycleSite,
             string recycleOperation)
     {
+        var run = segment.Run;
+        var drawn = segment.Drawn;
         var advanced = PublishDrawCardsResult(run, drawn);
         var boundary = drawn.BoundaryKind;
         bool automatic = automaticHandDrawRequested is not null;

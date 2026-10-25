@@ -298,7 +298,7 @@ public sealed partial class PrototypeGameEngine
                 drawn.RemainingCount == 0;
             if (!finalCardHook)
                 return ResolveControlledSemanticDrawResult(
-                    state, drawn, drawFrame, continuation,
+                    drawnSegment with { Run = state }, drawFrame, continuation,
                     automaticHandDrawRequested: null,
                     recycleSite: "combat.opening_draw",
                     recycleOperation:

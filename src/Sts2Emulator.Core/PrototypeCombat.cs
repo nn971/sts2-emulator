@@ -14548,17 +14548,17 @@ public sealed partial class PrototypeGameEngine
                     PrototypeDrawCardsSuspensionPolicyV111
                         .SemanticDrawCards(effectDraw: true)));
         var continued = ContinueControlledSemanticEffectDraw(
-            drawnSegment.Run, drawnSegment.Drawn, draw, continuation);
+            drawnSegment, draw, continuation);
         return ResumeAutomaticPipelineContinuation(continued);
     }
 
     private static RunState ContinueControlledSemanticEffectDraw(
-        RunState state, PrototypeDrawCardsResult drawn,
+        PrototypeDrawCardsSegmentV111 segment,
         PrototypeControlledSemanticDrawV111 draw,
         PrototypeChoiceResolutionContinuationState continuation)
     {
         var result = ResolveControlledSemanticDrawResult(
-            state, drawn, draw, continuation,
+            segment, draw, continuation,
             automaticHandDrawRequested: null,
             recycleSite: "combat.card_effect.draw",
             recycleOperation: "recycle_requires_composed_continuation");

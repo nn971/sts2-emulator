@@ -60,7 +60,7 @@ public sealed partial class PrototypeGameEngine
             World = state.World! with { Combat = combat }
         };
         var continued = ContinueControlledSemanticEffectDraw(
-            drawState, drawnSegment.Drawn, draw, continuation);
+            drawnSegment with { Run = drawState }, draw, continuation);
         return ResumeControlledInsertionPipeline(continued);
     }
 
