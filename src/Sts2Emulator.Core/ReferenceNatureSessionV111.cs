@@ -476,8 +476,7 @@ public sealed record ReferenceNatureSessionV111(
         }
         if (initialHistoryLength is { } historyLength &&
             (decisionHistoryIndices.Any(index => index is not null) ||
-             decisionHistoryIndices.Length == 0 &&
-                historyLength < combat.History.Length))
+             historyLength < combat.History.Length))
             ReplayAndValidateTranscript(combat, initialNatureState,
                 decisionTranscript, decisionHistoryIndices, historyLength);
         var stochastic = new ReferenceNatureSessionStochasticStateV111(
