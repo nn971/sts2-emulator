@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**Core continuation integration and cursor lineage (2026-10-25):** Restored
+consistency across the composed controlled run-action, semantic draw, Native
+audit, and ReferenceNature continuation APIs. ReferenceNature now retains
+optional seed lineage across sampling, allowing run-cursor commits to validate
+stream identity after advancement while loading older cursors without that
+field. `Sts2Emulator.Core` Release build passed with zero warnings and errors;
+no tests were run.
+
 **S4 semantic outcome-identity dispatch (2026-10-25):** The pending-event
 descriptor now owns separate, checked Chance Law and semantic enumeration ID
 projections and the enumeration event kind over the same ordered support.

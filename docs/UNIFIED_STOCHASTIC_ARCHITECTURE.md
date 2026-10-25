@@ -156,6 +156,12 @@ reward, and Nature cursor through the existing typed transcript.
 
 `ReferenceNatureRunCursorV111.Commit` publishes through `RunStochasticStateV111.CommitReferenceNatureCursor`; it rejects changing a committed seed, moving the sample count backward, or replacing the cursor at the same sample count. Session owners still validate the complete decision prefix before committing an advanced cursor.
 
+`ReferenceNatureStateV111` carries an optional serialized seed-lineage field
+beside the current sampler state and sample count. New cursors preserve it
+through each sampled outcome so run commits can verify the stream identity
+after advancement; snapshots created before the field existed continue with
+an absent lineage.
+
 The flattened `RunState.ReferenceNatureState` projection routes non-null writes through the same guarded owner transition. Explicit cursor clearing uses `RunStochasticStateV111.ClearReferenceNatureCursor`.
 
 `RunStochasticStateV111` validates and appends completed ReferenceNature map-generation audits and Ancient-offer snapshots, including when a legacy Native Ancient transition is replayed for validation.
