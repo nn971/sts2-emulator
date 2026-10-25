@@ -524,6 +524,15 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
         ControlledStochasticRequestV111 request,
         ReferenceNatureSelectionV111?[]? naturePrefix = null)
     {
+        if (request.IndexRequest is { } entropicBrewRequest &&
+            ControlledRunActionEngineV111.IsEntropicBrewRunAction(
+                active.Origin, active.Action) &&
+            ControlledRunActionEngineV111.IsEntropicBrewFillRequest(
+                active.Origin, active.Action, entropicBrewRequest))
+            return ReferenceNatureRunActionSessionV111
+                .QueryEntropicBrewFillLaw(
+                    active.Origin, active.Action, entropicBrewRequest);
+
         if (ControlledRunActionEngineV111.IsNativeRestHealRewardRequest(
                 active.Origin, active.Action, request))
             return ReferenceNatureRunActionSessionV111

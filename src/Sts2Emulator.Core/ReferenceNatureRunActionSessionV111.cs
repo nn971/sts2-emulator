@@ -616,24 +616,8 @@ public sealed record ReferenceNatureRunActionSessionV111(
         if (request.IndexRequest is { } potionFillRequest &&
             IsEntropicBrewFillRequest(
                 source, action, request))
-        {
-            if (potionFillRequest.StreamId ==
-                NativePlayerRngV111.RewardsStreamId)
-                return ChanceLawEngineV111
-                    .QueryNativeRunPotionFillSlotModel(potionFillRequest);
-            var slotPrefix = "player:potion_slot:";
-            var poolSuffix = ":pool:" + CanonicalJson.Sha256(
-                PrototypeContent.PotionPool);
-            var slotText = potionFillRequest.OwnerId[
-                slotPrefix.Length..^poolSuffix.Length];
-            if (!int.TryParse(slotText, NumberStyles.None,
-                    CultureInfo.InvariantCulture, out var slotIndex))
-                throw new InvalidDataException(
-                    "Legacy Entropic Brew slot owner is malformed.");
-            return ChanceLawEngineV111.QueryLegacyRunPotionFillSlotModel(
-                slotIndex, canAcquirePotion: true, slotIsEmpty: true,
-                ordinal: potionFillRequest.Ordinal);
-        }
+            return QueryEntropicBrewFillLaw(
+                source, action, potionFillRequest);
         if (!IsTypedRunActionRequest(source, action, request))
             throw new NotSupportedException(
                 $"ReferenceNature Native run action does not support stochastic site '{request.SiteId}'.");
@@ -704,6 +688,31 @@ public sealed record ReferenceNatureRunActionSessionV111(
 
         throw new NotSupportedException(
             $"ReferenceNature Native typed run action cannot query '{request.SiteId}'.");
+    }
+
+    internal static ChanceLawV111 QueryEntropicBrewFillLaw(
+        RunState source, GameAction action,
+        RandomIndexRequestV111 request)
+    {
+        if (!ControlledRunActionEngineV111.IsEntropicBrewFillRequest(
+                source, action, request))
+            throw new InvalidDataException(
+                "Entropic Brew request differs from its saved action boundary.");
+        if (request.StreamId == NativePlayerRngV111.RewardsStreamId)
+            return ChanceLawEngineV111
+                .QueryNativeRunPotionFillSlotModel(request);
+        var slotPrefix = "player:potion_slot:";
+        var poolSuffix = ":pool:" + CanonicalJson.Sha256(
+            PrototypeContent.PotionPool);
+        var slotText = request.OwnerId[
+            slotPrefix.Length..^poolSuffix.Length];
+        if (!int.TryParse(slotText, NumberStyles.None,
+                CultureInfo.InvariantCulture, out var slotIndex))
+            throw new InvalidDataException(
+                "Legacy Entropic Brew slot owner is malformed.");
+        return ChanceLawEngineV111.QueryLegacyRunPotionFillSlotModel(
+            slotIndex, canAcquirePotion: true, slotIsEmpty: true,
+            ordinal: request.Ordinal);
     }
 
     private static ChanceLawV111 QueryNativeRestHealRewardLaw(

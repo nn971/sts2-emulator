@@ -390,6 +390,10 @@ checks any preceding Nature rarity against that raw outcome, and therefore
 continues to condition later Nature choices when earlier choices were supplied
 by a caller.
 
+Entropic Brew whole-run actions also use the run-action refill law. The route
+validates the potion action, eligible empty slot, ordered potion pool, stream,
+and request owner before returning the existing Native or legacy refill law.
+
 Combat-ending whole-run actions also route the registered Native
 `reward.combat_gold.index_draw` bounded request through its source law. The
 dispatcher derives the room and Ascension from the action's combat origin and
