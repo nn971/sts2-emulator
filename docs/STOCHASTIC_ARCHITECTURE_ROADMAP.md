@@ -4974,3 +4974,10 @@ pilot resolution now validates the selected card against the committed
 semantic-deck event and returns that typed decision with its frame. Pilot
 history publication no longer performs the provider transcript lookup. Static
 source review and `git diff --check` only; no tests or builds were run.
+
+**S4 semantic request ordinal ownership increment (2026-10-25):** Semantic
+pilot event construction now uses one ordinal projection over completed
+semantic history and matching non-legacy provider decisions. This keeps
+request identity consistent across target, generation, cost, transform,
+shortlist, shuffle, and insertion boundaries. Static source review and
+`git diff --check` only; no tests or builds were run.

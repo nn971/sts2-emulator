@@ -5417,17 +5417,30 @@ public static class SemanticPilotCombatEngineV111
                 combat, choice, choice?.ControlledTarget))
             throw new InvalidDataException(
                 "Tingsha target is outside its supported discard continuation.");
-        var otherChance = current.Run.Stochastic.SemanticOtherChance;
-        var ordinal = current.History.Count(transition =>
-            transition.Kind == "semantic_target");
-        if (otherChance is not null && otherChance.ProviderId !=
-            SemanticOtherChanceEngineV111.LegacyProviderId)
-            ordinal += otherChance.Decisions.Count(decision =>
-                StochasticSiteRegistryV111.CombatRandomTargetSiteIds
-                    .Contains(decision.Request.SiteId,
-                        StringComparer.Ordinal));
+        var ordinal = NextSemanticRequestOrdinal(
+            current, "semantic_target",
+            StochasticSiteRegistryV111.CombatRandomTargetSiteIds);
         return DescribePendingTargetEvent(current.Run, current.Fingerprint,
             ordinal);
+    }
+
+    private static int NextSemanticRequestOrdinal(
+        SemanticPilotCombatV111 current, string historyKind,
+        params string[] siteIds)
+    {
+        ArgumentNullException.ThrowIfNull(current);
+        ArgumentException.ThrowIfNullOrWhiteSpace(historyKind);
+        ArgumentNullException.ThrowIfNull(siteIds);
+        var ordinal = current.History.Count(transition =>
+            transition.Kind == historyKind);
+        var otherChance = current.Run.Stochastic.SemanticOtherChance;
+        if (otherChance is not null && otherChance.ProviderId !=
+            SemanticOtherChanceEngineV111.LegacyProviderId &&
+            siteIds.Length > 0)
+            ordinal += otherChance.Decisions.Count(decision =>
+                siteIds.Contains(decision.Request.SiteId,
+                    StringComparer.Ordinal));
+        return ordinal;
     }
 
     private static bool IsVolleyRandomTargetChoice(
@@ -6191,13 +6204,8 @@ public static class SemanticPilotCombatEngineV111
             ? StochasticSiteRegistryV111.CombatGeneratedCardSelectSiteId
             : StochasticSiteRegistryV111
                 .CombatRandomDrawAttackCardModelSiteId;
-        var otherChance = current.Run.Stochastic.SemanticOtherChance;
-        var ordinal = current.History.Count(transition =>
-            transition.Kind == "semantic_generated_card");
-        if (otherChance is not null && otherChance.ProviderId !=
-            SemanticOtherChanceEngineV111.LegacyProviderId)
-            ordinal += otherChance.Decisions.Count(decision =>
-                decision.Request.SiteId == siteId);
+        var ordinal = NextSemanticRequestOrdinal(
+            current, "semantic_generated_card", siteId);
         if (generation is not null)
             return SemanticGenerationChoiceV111.DescribePending(
                 current.Run, current.Fingerprint, ordinal);
@@ -6227,14 +6235,9 @@ public static class SemanticPilotCombatEngineV111
         if (!IsAlchemizePotionGenerationChoice(combat, choice, generation))
             throw new InvalidDataException(
                 "Potion generation is outside the supported Alchemize source action.");
-        var ordinal = current.History.Count(transition =>
-            transition.Kind == "semantic_potion_generation");
-        if (current.Run.Stochastic.SemanticOtherChance is
-                { } otherChance && otherChance.ProviderId !=
-                SemanticOtherChanceEngineV111.LegacyProviderId)
-            ordinal += otherChance.Decisions.Count(decision =>
-                decision.Request.SiteId ==
-                    SemanticPotionGenerationChoiceV111.SiteId);
+        var ordinal = NextSemanticRequestOrdinal(
+            current, "semantic_potion_generation",
+            SemanticPotionGenerationChoiceV111.SiteId);
         return SemanticPotionGenerationChoiceV111.DescribePending(
             current.Run, current.Fingerprint, ordinal);
     }
@@ -6295,14 +6298,9 @@ public static class SemanticPilotCombatEngineV111
             current.UsesNativePolicyBaseline || current.CombatTerminal)
             throw new InvalidDataException(
                 "Card-transform choice conflicts with another semantic boundary.");
-        var ordinal = current.History.Count(transition =>
-            transition.Kind == "semantic_card_transform");
-        if (current.Run.Stochastic.SemanticOtherChance is
-                { } otherChance && otherChance.ProviderId !=
-                SemanticOtherChanceEngineV111.LegacyProviderId)
-            ordinal += otherChance.Decisions.Count(decision =>
-                decision.Request.SiteId ==
-                    SemanticCardTransformChoiceV111.SiteId);
+        var ordinal = NextSemanticRequestOrdinal(
+            current, "semantic_card_transform",
+            SemanticCardTransformChoiceV111.SiteId);
         return SemanticCardTransformChoiceV111.DescribePending(
             current.Run, current.Fingerprint, ordinal);
     }
@@ -6366,8 +6364,10 @@ public static class SemanticPilotCombatEngineV111
                     ":hand:" + CanonicalJson.Sha256(
                         randomCost.EligibleCardInstanceIds) +
                     ":index:" + randomCost.NextCardIndex,
-                current.History.Count(transition =>
-                    transition.Kind == "semantic_cost"), [],
+                NextSemanticRequestOrdinal(
+                    current, "semantic_cost",
+                    StochasticSiteRegistryV111
+                        .CombatRandomHandCardEnergyCostSiteId), [],
                 OperationKind: "bounded_integer",
                 BoundedCount: maxExclusive);
         }
@@ -6378,10 +6378,15 @@ public static class SemanticPilotCombatEngineV111
         {
             if (current.PendingEndTurn?.NestedCostPending is { } nestedCost)
                 return nestedCost;
+            var drawCost = current.Run.World!.Combat!.PendingChoice!
+                .ControlledDrawCost!;
+            var drawCostSite = drawCost.Stage == "relic"
+                ? StochasticSiteRegistryV111.CombatDrawRelicEnergyCostSiteId
+                : StochasticSiteRegistryV111.CombatDrawSlitherEnergyCostSiteId;
             return SemanticCostChoiceV111.DescribeEffectDrawEvent(
                 current.Run, current.Fingerprint,
-                current.History.Count(transition =>
-                    transition.Kind == "semantic_cost"));
+                NextSemanticRequestOrdinal(
+                    current, "semantic_cost", drawCostSite));
         }
         else
             return null;
@@ -6416,8 +6421,9 @@ public static class SemanticPilotCombatEngineV111
         var modelIds = randomCost.EligibleCardInstanceIds.Select(id =>
             combat!.Cards.Single(card =>
             card.InstanceId == id).CardId).ToArray();
-        var ordinal = current.History.Count(transition =>
-            transition.Kind == "semantic_hand_cost_selection");
+        var ordinal = NextSemanticRequestOrdinal(
+            current, "semantic_hand_cost_selection",
+            SemanticHandCostSelectionChoiceV111.SiteId);
         return SemanticHandCostSelectionChoiceV111.CreateEvent(
             current.Fingerprint, randomCost, modelIds, ordinal,
             combat!.Stochastic.NativeRng is not null
@@ -6432,17 +6438,10 @@ public static class SemanticPilotCombatEngineV111
         if (current.PendingEndTurn?.CardShortlistPending is
             { } endTurnEvent)
             return endTurnEvent;
-        var ordinal = current.History.Count(transition =>
-            transition.Kind == "semantic_card_shortlist");
-        if (current.Run.Stochastic.SemanticOtherChance is
-                { } otherChance && otherChance.ProviderId !=
-                SemanticOtherChanceEngineV111.LegacyProviderId)
-            ordinal += otherChance.Decisions.Count(decision =>
-                decision.Request.SiteId is
-                    StochasticSiteRegistryV111
-                        .CombatRandomReplayCardSelectSiteId or
-                    StochasticSiteRegistryV111
-                        .CombatAutoplayRandomCardSelectSiteId);
+        var ordinal = NextSemanticRequestOrdinal(
+            current, "semantic_card_shortlist",
+            StochasticSiteRegistryV111.CombatRandomReplayCardSelectSiteId,
+            StochasticSiteRegistryV111.CombatAutoplayRandomCardSelectSiteId);
         return SemanticCardShortlistChoiceV111.DescribePending(
             current.Run, current.Fingerprint, ordinal);
     }
@@ -6941,16 +6940,11 @@ public static class SemanticPilotCombatEngineV111
             current.UsesNativePolicyBaseline || current.CombatTerminal)
             throw new InvalidDataException(
                 "Full-pool shuffle conflicts with another semantic boundary.");
-        var ordinal = current.History.Count(transition =>
-            transition.Kind == "semantic_pool_shuffle");
         var siteId = SemanticPoolShuffleChoiceV111.SiteIdForOperation(
             shuffle.Operation.Kind.ToString()) ?? throw new InvalidDataException(
                 "Full-pool shuffle operation has no registered site.");
-        if (current.Run.Stochastic.SemanticOtherChance is
-                { } otherChance && otherChance.ProviderId !=
-                SemanticOtherChanceEngineV111.LegacyProviderId)
-            ordinal += otherChance.Decisions.Count(decision =>
-                decision.Request.SiteId == siteId);
+        var ordinal = NextSemanticRequestOrdinal(
+            current, "semantic_pool_shuffle", siteId);
         return SemanticPoolShuffleChoiceV111.DescribePending(
             current.Run, current.Fingerprint, ordinal);
     }
@@ -7007,14 +7001,9 @@ public static class SemanticPilotCombatEngineV111
                 "Draw insertion conflicts with another semantic boundary.");
         var requestOrdinal = afterShuffleRelicMatches || personalHiveInsertion
             ? insertion.RequestOrdinal
-            : current.History.Count(transition =>
-                transition.Kind == "semantic_draw_insertion");
-        if (!afterShuffleRelicMatches && !personalHiveInsertion &&
-            current.Run.Stochastic.SemanticOtherChance is
-                { } otherChance && otherChance.ProviderId !=
-                SemanticOtherChanceEngineV111.LegacyProviderId)
-            requestOrdinal += otherChance.Decisions.Count(decision =>
-                decision.Request.SiteId == insertion.RequestSiteId);
+            : NextSemanticRequestOrdinal(
+                current, "semantic_draw_insertion",
+                insertion.RequestSiteId);
         var nativeOwnerPrefix = afterShuffleRelicMatches || personalHiveInsertion
             ? insertion.RequestOwnerId
             : choice!.SourceCardInstanceId is { } sourceCardInstanceId

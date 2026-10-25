@@ -1585,6 +1585,10 @@ recorded by the active hand-draw frame; pilot replay checks compare the returned
 decisions without reading that frame's transcripts.
 It also validates the selected card against the committed semantic-deck event
 and returns that typed decision for pilot history publication.
+Semantic pilot request ordinals now use one projection over completed typed
+history and matching provider decisions, keeping legacy history-based ordinals
+and provider-backed request chronology aligned across target, generation,
+cost, transform, shortlist, shuffle, and insertion events.
 
 Ordinary, controlled, semantic, and ReferenceNature `observe` operations now
 project payloads, hashes, and legal actions from the shared fair-observation
