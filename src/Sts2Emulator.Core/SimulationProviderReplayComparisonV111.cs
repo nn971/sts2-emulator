@@ -1512,10 +1512,18 @@ public sealed record SimulationProviderReplayCaptureV111(
         if (!complete)
             throw new InvalidOperationException(
                 "Provider replay capture requires a completed ReferenceNature controlled action.");
-        return FromReplayValidatedAction(
+        var capture = FromReplayValidatedAction(
             session.Origin, session.Action, decisions, session.Run,
             SimulationProviderReplayCaptureProvenanceV111
                 .ReferenceNatureControlledActionReplayValidated);
+        var semanticOutcomes = TryCaptureScriptedSemanticOutcomes(
+            session.Origin,
+            [(Action: session.Action, Decisions: decisions)]);
+        return semanticOutcomes is null
+            ? capture
+            : AttachSemanticOutcomes(capture, semanticOutcomes,
+                SimulationProviderReplayCaptureProvenanceV111
+                    .ReferenceNatureSemanticIdentityReplayValidated);
     }
 
     private static SimulationProviderReplayCaptureV111
