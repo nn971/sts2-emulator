@@ -371,14 +371,11 @@ public static class SimulationProviderReplayCaptureProvenanceV111
     public const string ReferenceNatureCombatRewardSemanticIdentityReplayValidated =
         "reference-nature-combat-reward-semantic-identity-replay-validated-v1";
 
-    public static bool IsKnown(string? provenance) => provenance is
-        CallerSupplied or ScriptedRunReplayValidated or
-        ScriptedActionReplayValidated or SemanticNativePolicyReplayValidated or
+    public static bool HasProviderIndependentSemanticIdentity(
+        string? provenance) => provenance is
         SemanticNativePolicySemanticIdentityReplayValidated or
-        ReferenceNatureRunActionReplayValidated or
         ReferenceNatureRunActionSemanticIdentityReplayValidated or
         ReferenceNatureEventChoiceSemanticIdentityReplayValidated or
-        ReferenceNatureWholeRunReplayValidated or
         ReferenceNatureWholeRunSemanticIdentityReplayValidated or
         ReferenceNatureTreasureSemanticIdentityReplayValidated or
         ReferenceNatureNativeShovelSemanticIdentityReplayValidated or
@@ -396,14 +393,21 @@ public static class SimulationProviderReplayCaptureProvenanceV111
         ReferenceNaturePunchOffRewardSemanticIdentityReplayValidated or
         ReferenceNatureNeowOfferSemanticIdentityReplayValidated or
         ReferenceNatureAncientOfferSemanticIdentityReplayValidated or
+        ReferenceNatureSemanticIdentityReplayValidated or
+        ReferenceNatureCombatRewardSemanticIdentityReplayValidated;
+
+    public static bool IsKnown(string? provenance) =>
+        HasProviderIndependentSemanticIdentity(provenance) || provenance is
+        CallerSupplied or ScriptedRunReplayValidated or
+        ScriptedActionReplayValidated or SemanticNativePolicyReplayValidated or
+        ReferenceNatureRunActionReplayValidated or
+        ReferenceNatureWholeRunReplayValidated or
         ReferenceNatureEventChoiceReplayValidated or
         ReferenceNatureControlledActionReplayValidated or
         ReferenceNatureNeowOfferReplayValidated or
         ReferenceNatureRunSetupReplayValidated or
         ReferenceNatureSemanticCombatReplayValidated or
-        ReferenceNatureSemanticCombatOutcomeReplayValidated or
-        ReferenceNatureSemanticIdentityReplayValidated or
-        ReferenceNatureCombatRewardSemanticIdentityReplayValidated;
+        ReferenceNatureSemanticCombatOutcomeReplayValidated;
 
     /// <summary>
     /// Whether this capture represents every primitive provider boundary in
@@ -418,29 +422,8 @@ public static class SimulationProviderReplayCaptureProvenanceV111
              ReferenceNatureSemanticIdentityReplayValidated);
 
     public static bool HasCompleteSemanticOutcomeTrace(string? provenance) =>
-        provenance is SemanticNativePolicySemanticIdentityReplayValidated or
-            ReferenceNatureSemanticCombatOutcomeReplayValidated or
-            ReferenceNatureWholeRunSemanticIdentityReplayValidated or
-            ReferenceNatureRunActionSemanticIdentityReplayValidated or
-            ReferenceNatureEventChoiceSemanticIdentityReplayValidated or
-            ReferenceNatureTreasureSemanticIdentityReplayValidated or
-            ReferenceNatureNativeShovelSemanticIdentityReplayValidated or
-            ReferenceNatureNativeEventGoldSemanticIdentityReplayValidated or
-            ReferenceNatureMerchantSemanticIdentityReplayValidated or
-            ReferenceNatureNativeEventRelicSemanticIdentityReplayValidated or
-            ReferenceNatureTrialSemanticIdentityReplayValidated or
-            ReferenceNatureTrashHeapSemanticIdentityReplayValidated or
-            ReferenceNatureTabletOfTruthSemanticIdentityReplayValidated or
-            ReferenceNatureInfestedAutomatonSemanticIdentityReplayValidated or
-            ReferenceNatureGloryReflectionsSemanticIdentityReplayValidated or
-            ReferenceNatureNativeEventShuffleSemanticIdentityReplayValidated or
-            ReferenceNatureEndlessConveyorSemanticIdentityReplayValidated or
-            ReferenceNaturePunchOffFightSemanticIdentityReplayValidated or
-            ReferenceNaturePunchOffRewardSemanticIdentityReplayValidated or
-            ReferenceNatureNeowOfferSemanticIdentityReplayValidated or
-            ReferenceNatureAncientOfferSemanticIdentityReplayValidated or
-            ReferenceNatureSemanticIdentityReplayValidated or
-            ReferenceNatureCombatRewardSemanticIdentityReplayValidated;
+        provenance == ReferenceNatureSemanticCombatOutcomeReplayValidated ||
+        HasProviderIndependentSemanticIdentity(provenance);
 
     public static bool HasReplayValidatedDrawIdentityTrace(
         string? provenance) => IsKnown(provenance) &&
@@ -2688,96 +2671,12 @@ public sealed record SimulationProviderReplayCaptureV111(
                 "Legacy provider replay captures cannot contain semantic outcomes.");
         if ((SchemaId is OlderSchemaId or
                 PreviousPreviousPreviousPreviousSchemaId) &&
-            CaptureProvenance is
-                (SimulationProviderReplayCaptureProvenanceV111
-                    .ReferenceNatureSemanticIdentityReplayValidated or
-                 SimulationProviderReplayCaptureProvenanceV111
-                    .ReferenceNatureWholeRunSemanticIdentityReplayValidated or
-                 SimulationProviderReplayCaptureProvenanceV111
-                    .ReferenceNatureRunActionSemanticIdentityReplayValidated or
-                 SimulationProviderReplayCaptureProvenanceV111
-                    .ReferenceNatureEventChoiceSemanticIdentityReplayValidated or
-                 SimulationProviderReplayCaptureProvenanceV111
-                    .ReferenceNatureTreasureSemanticIdentityReplayValidated or
-                 SimulationProviderReplayCaptureProvenanceV111
-                    .ReferenceNatureNativeShovelSemanticIdentityReplayValidated or
-                 SimulationProviderReplayCaptureProvenanceV111
-                    .ReferenceNatureNativeEventGoldSemanticIdentityReplayValidated or
-                 SimulationProviderReplayCaptureProvenanceV111
-                    .ReferenceNatureMerchantSemanticIdentityReplayValidated or
-                 SimulationProviderReplayCaptureProvenanceV111
-                    .ReferenceNatureNativeEventRelicSemanticIdentityReplayValidated or
-                 SimulationProviderReplayCaptureProvenanceV111
-                    .ReferenceNatureTrialSemanticIdentityReplayValidated or
-                 SimulationProviderReplayCaptureProvenanceV111
-                    .ReferenceNatureTrashHeapSemanticIdentityReplayValidated or
-                 SimulationProviderReplayCaptureProvenanceV111
-                    .ReferenceNatureTabletOfTruthSemanticIdentityReplayValidated or
-                 SimulationProviderReplayCaptureProvenanceV111
-                    .ReferenceNatureInfestedAutomatonSemanticIdentityReplayValidated or
-                 SimulationProviderReplayCaptureProvenanceV111
-                    .ReferenceNatureGloryReflectionsSemanticIdentityReplayValidated or
-                 SimulationProviderReplayCaptureProvenanceV111
-                    .ReferenceNatureNativeEventShuffleSemanticIdentityReplayValidated or
-                 SimulationProviderReplayCaptureProvenanceV111
-                    .ReferenceNatureEndlessConveyorSemanticIdentityReplayValidated or
-                 SimulationProviderReplayCaptureProvenanceV111
-                    .ReferenceNaturePunchOffFightSemanticIdentityReplayValidated or
-                 SimulationProviderReplayCaptureProvenanceV111
-                    .ReferenceNaturePunchOffRewardSemanticIdentityReplayValidated or
-                 SimulationProviderReplayCaptureProvenanceV111
-                    .ReferenceNatureNeowOfferSemanticIdentityReplayValidated or
-                 SimulationProviderReplayCaptureProvenanceV111
-                    .ReferenceNatureAncientOfferSemanticIdentityReplayValidated or
-                 SimulationProviderReplayCaptureProvenanceV111
-                    .SemanticNativePolicySemanticIdentityReplayValidated))
+            SimulationProviderReplayCaptureProvenanceV111
+                .HasProviderIndependentSemanticIdentity(CaptureProvenance))
             throw new InvalidDataException(
                 "Legacy provider replay captures cannot claim provider-independent semantic identities.");
-        if (CaptureProvenance is
-                (SimulationProviderReplayCaptureProvenanceV111
-                    .ReferenceNatureSemanticIdentityReplayValidated or
-                 SimulationProviderReplayCaptureProvenanceV111
-                    .ReferenceNatureWholeRunSemanticIdentityReplayValidated or
-                 SimulationProviderReplayCaptureProvenanceV111
-                    .ReferenceNatureRunActionSemanticIdentityReplayValidated or
-                 SimulationProviderReplayCaptureProvenanceV111
-                    .ReferenceNatureEventChoiceSemanticIdentityReplayValidated or
-                 SimulationProviderReplayCaptureProvenanceV111
-                    .ReferenceNatureTreasureSemanticIdentityReplayValidated or
-                 SimulationProviderReplayCaptureProvenanceV111
-                    .ReferenceNatureNativeShovelSemanticIdentityReplayValidated or
-                 SimulationProviderReplayCaptureProvenanceV111
-                    .ReferenceNatureNativeEventGoldSemanticIdentityReplayValidated or
-                 SimulationProviderReplayCaptureProvenanceV111
-                    .ReferenceNatureMerchantSemanticIdentityReplayValidated or
-                 SimulationProviderReplayCaptureProvenanceV111
-                    .ReferenceNatureNativeEventRelicSemanticIdentityReplayValidated or
-                 SimulationProviderReplayCaptureProvenanceV111
-                    .ReferenceNatureTrialSemanticIdentityReplayValidated or
-                 SimulationProviderReplayCaptureProvenanceV111
-                    .ReferenceNatureTrashHeapSemanticIdentityReplayValidated or
-                 SimulationProviderReplayCaptureProvenanceV111
-                    .ReferenceNatureTabletOfTruthSemanticIdentityReplayValidated or
-                 SimulationProviderReplayCaptureProvenanceV111
-                    .ReferenceNatureInfestedAutomatonSemanticIdentityReplayValidated or
-                 SimulationProviderReplayCaptureProvenanceV111
-                    .ReferenceNatureGloryReflectionsSemanticIdentityReplayValidated or
-                 SimulationProviderReplayCaptureProvenanceV111
-                    .ReferenceNatureNativeEventShuffleSemanticIdentityReplayValidated or
-                 SimulationProviderReplayCaptureProvenanceV111
-                    .ReferenceNatureEndlessConveyorSemanticIdentityReplayValidated or
-                 SimulationProviderReplayCaptureProvenanceV111
-                    .ReferenceNaturePunchOffFightSemanticIdentityReplayValidated or
-                 SimulationProviderReplayCaptureProvenanceV111
-                    .ReferenceNaturePunchOffRewardSemanticIdentityReplayValidated or
-                 SimulationProviderReplayCaptureProvenanceV111
-                    .ReferenceNatureNeowOfferSemanticIdentityReplayValidated or
-                 SimulationProviderReplayCaptureProvenanceV111
-                    .ReferenceNatureAncientOfferSemanticIdentityReplayValidated or
-                 SimulationProviderReplayCaptureProvenanceV111
-                    .ReferenceNatureCombatRewardSemanticIdentityReplayValidated or
-                 SimulationProviderReplayCaptureProvenanceV111
-                    .SemanticNativePolicySemanticIdentityReplayValidated) &&
+        if (SimulationProviderReplayCaptureProvenanceV111
+                .HasProviderIndependentSemanticIdentity(CaptureProvenance) &&
             Simulation.Stochastic.SemanticOutcomes.Any(outcome =>
                 !outcome.HasProviderIndependentIdentity))
             throw new InvalidDataException(

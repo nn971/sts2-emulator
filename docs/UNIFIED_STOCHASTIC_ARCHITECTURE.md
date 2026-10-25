@@ -1212,7 +1212,11 @@ attached to their event. It does not rewrite Chance Law outcomes as primitive
 provider draws. Callers must provide
 captures covering the same interval and all typed boundaries in it;
 caller-supplied provenance remains an assertion and does not prove capture
-completeness. Native cursor equality is an optional additional boundary check.
+completeness. One provenance classifier owns the complete semantic identity
+capture set used for known-status, trace-availability, and schema validation;
+identity-bearing captures must supply the common identity on every outcome,
+and older schemas cannot claim that newer representation. Native cursor
+equality is an optional additional boundary check.
 This is diagnostic evidence under the supplied captures, not proof of
 source-hook parity, complete Native coverage, or Chance Law fidelity.
 `SameMechanicsAtCapturedBoundariesForSameActions` reports equal projected

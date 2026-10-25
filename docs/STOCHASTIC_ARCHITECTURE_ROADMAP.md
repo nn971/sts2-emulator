@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 semantic replay provenance ownership increment (2026-10-26):** The
+provider-independent semantic-identity provenance set now has one classifier
+shared by known-provenance checks, complete trace availability, and capture
+schema validation. Identity-bearing captures must supply the common identity
+for every outcome, and legacy schemas cannot claim the newer representation.
+Core and CLI Release builds passed with zero warnings or errors;
+`git diff --check` passed. No tests were run.
+
 **S2 shared Native combat-entry law owner increment (2026-10-26):** The
 ReferenceNature whole-run dispatcher and typed run-action session now reuse
 the same Native Act 1 formation and encounter-pool validators and law queries.
