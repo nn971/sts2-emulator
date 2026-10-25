@@ -36,6 +36,31 @@ public sealed partial class PrototypeGameEngine
             combat, out _, out _);
 
     /// <summary>
+    /// Reconcile the caller's request count with active pipeline-owned
+    /// hand-draw progress. Saved older snapshots may omit the requested count,
+    /// in which case the caller's value remains authoritative.
+    /// </summary>
+    private static int? ResolveAutomaticHandDrawRequestedCount(
+        CombatState combat, int? requestedCount)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        if (requestedCount is <= 0)
+            throw new ArgumentOutOfRangeException(nameof(requestedCount));
+        var cursor = combat.AutomaticPipelineContinuation;
+        if (cursor is null ||
+            !cursor.Stochastic.TryGetActiveAutomaticHandDrawProgress(
+                cursor.Mechanics, out var progress))
+            return requestedCount;
+
+        if (progress.RequestedCount is { } savedRequested &&
+            requestedCount is { } actualRequested &&
+            actualRequested != savedRequested)
+            throw new InvalidDataException(
+                "Automatic hand-draw continuation changed its requested count.");
+        return progress.RequestedCount ?? requestedCount;
+    }
+
+    /// <summary>
     /// Commit provider progress at the ordinary DrawPlayerHand checkpoint.
     /// This is the shared write boundary for legacy and semantic adapters:
     /// the selected progress and the latest player/combat mechanics become
@@ -367,19 +392,12 @@ public sealed partial class PrototypeGameEngine
                  PrototypeDrawCardsBoundaryKind.ShuffleSelection or
                  PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice)))
         {
+            // The saved controlled-stage adapter uses zero to mean that the
+            // original count is carried by progress rather than this boundary.
             int? controlledRequested = requestedCount > 0
                 ? requestedCount : null;
-            if (controlledRequested is null &&
-                combat.AutomaticPipelineContinuation is { } controlledCursor &&
-                controlledCursor.Stochastic
-                    .TryGetActiveAutomaticHandDrawProgress(
-                        controlledCursor.Mechanics, out var progress) &&
-                progress.Kind is (
-                    PrototypeAutomaticHandDrawProgressKindV111.ControlledDraw or
-                    PrototypeAutomaticHandDrawProgressKindV111.ControlledDrawCost or
-                    PrototypeAutomaticHandDrawProgressKindV111.ControlledRecycleStratagem or
-                    PrototypeAutomaticHandDrawProgressKindV111.ControlledDrawHookChoice))
-                controlledRequested = progress.RequestedCount;
+            controlledRequested = ResolveAutomaticHandDrawRequestedCount(
+                combat, controlledRequested);
             return combat.AutomaticPipelineContinuation is null
                 ? ContinueInitialControlledHandDrawBoundary(
                     rngCheckpoint, drawn, controlledRequested)

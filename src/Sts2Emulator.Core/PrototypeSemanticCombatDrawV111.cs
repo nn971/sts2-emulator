@@ -285,6 +285,15 @@ public sealed partial class PrototypeGameEngine
         var advanced = PublishDrawCardsResult(run, drawn);
         var boundary = drawn.BoundaryKind;
         bool automatic = automaticHandDrawRequested is not null;
+        if (automatic)
+        {
+            automaticHandDrawRequested =
+                ResolveAutomaticHandDrawRequestedCount(
+                    drawn.Combat, automaticHandDrawRequested);
+            if (automaticHandDrawRequested is not > 0)
+                throw new InvalidDataException(
+                    "Semantic automatic hand draw lost its requested count.");
+        }
         bool nestedEffect = continuation is not null;
         var outerContinuation = continuation ??
             EmptyDrawChoiceContinuation();

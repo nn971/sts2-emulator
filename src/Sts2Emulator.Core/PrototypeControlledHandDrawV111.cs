@@ -154,17 +154,8 @@ public sealed partial class PrototypeGameEngine
     {
         var combat = drawn.Combat;
         var drawBoundary = drawn.BoundaryKind;
-        if (combat.AutomaticPipelineContinuation is { } cursor &&
-            cursor.Stochastic.TryGetActiveAutomaticHandDrawProgress(
-                cursor.Mechanics, out var activeProgress) &&
-            activeProgress.RequestedCount is { } savedRequested)
-        {
-            if (requestedCount is { } suppliedRequested &&
-                suppliedRequested != savedRequested)
-                throw new InvalidDataException(
-                    "Controlled hand-draw continuation changed its requested count.");
-            requestedCount = savedRequested;
-        }
+        requestedCount = ResolveAutomaticHandDrawRequestedCount(
+            combat, requestedCount);
 
         if (drawBoundary ==
             PrototypeDrawCardsBoundaryKind.ShuffleSelection)
