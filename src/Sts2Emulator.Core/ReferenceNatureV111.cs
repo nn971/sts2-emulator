@@ -66,7 +66,7 @@ public static class ReferenceNatureV111
 
         var child = SemanticPilotCombatEngineV111
             .ResolveChanceOutcomeByIndex(
-                combat, selection.EventId, selection.OutcomeIndex);
+                combat, pending, selection.OutcomeIndex);
         return new ReferenceNatureResolutionV111(child, law, selection);
     }
 

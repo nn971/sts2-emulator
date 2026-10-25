@@ -7276,31 +7276,44 @@ public static class SemanticPilotCombatEngineV111
             return null;
 
         if (current.EnemyActionEventPending is { } enemyAction)
-            return SemanticPendingIndexChanceEventV111.Create(enemyAction);
+            return SemanticPendingIndexChanceEventV111.Create(
+                current.Fingerprint, enemyAction);
         if (current.TargetPending is { } target)
-            return SemanticPendingIndexChanceEventV111.Create(target);
+            return SemanticPendingIndexChanceEventV111.Create(
+                current.Fingerprint, target);
         if (current.GeneratedCardPending is { } generatedCard)
-            return SemanticPendingIndexChanceEventV111.Create(generatedCard);
+            return SemanticPendingIndexChanceEventV111.Create(
+                current.Fingerprint, generatedCard);
         if (current.CostPending is { } cost)
-            return SemanticPendingIndexChanceEventV111.Create(cost);
+            return SemanticPendingIndexChanceEventV111.Create(
+                current.Fingerprint, cost);
         if (current.RandomPileCardPending is { } randomPileCard)
-            return SemanticPendingIndexChanceEventV111.Create(randomPileCard);
+            return SemanticPendingIndexChanceEventV111.Create(
+                current.Fingerprint, randomPileCard);
         if (current.CardTransformPending is { } cardTransform)
-            return SemanticPendingIndexChanceEventV111.Create(cardTransform);
+            return SemanticPendingIndexChanceEventV111.Create(
+                current.Fingerprint, cardTransform);
         if (current.PotionGenerationPending is { } potionGeneration)
-            return SemanticPendingIndexChanceEventV111.Create(potionGeneration);
+            return SemanticPendingIndexChanceEventV111.Create(
+                current.Fingerprint, potionGeneration);
         if (current.HandCostSelectionPending is { } handCost)
-            return SemanticPendingIndexChanceEventV111.Create(handCost);
+            return SemanticPendingIndexChanceEventV111.Create(
+                current.Fingerprint, handCost);
         if (current.PoolShufflePending is { } poolShuffle)
-            return SemanticPendingIndexChanceEventV111.Create(poolShuffle);
+            return SemanticPendingIndexChanceEventV111.Create(
+                current.Fingerprint, poolShuffle);
         if (current.DrawInsertionPending is { } drawInsertion)
-            return SemanticPendingIndexChanceEventV111.Create(drawInsertion);
+            return SemanticPendingIndexChanceEventV111.Create(
+                current.Fingerprint, drawInsertion);
         if (current.CardShortlistPending is { } shortlist)
-            return SemanticPendingIndexChanceEventV111.Create(shortlist);
+            return SemanticPendingIndexChanceEventV111.Create(
+                current.Fingerprint, shortlist);
         if (current.DrawPending is { } draw)
-            return SemanticPendingIndexChanceEventV111.Create(draw);
+            return SemanticPendingIndexChanceEventV111.Create(
+                current.Fingerprint, draw);
         if (current.DeckRevealPending is { } reveal)
-            return SemanticPendingIndexChanceEventV111.Create(reveal);
+            return SemanticPendingIndexChanceEventV111.Create(
+                current.Fingerprint, reveal);
         return null;
     }
 
@@ -7311,37 +7324,19 @@ public static class SemanticPilotCombatEngineV111
     /// event and publishes its mechanics continuation.
     /// </summary>
     internal static SemanticPilotCombatV111 ResolveChanceOutcomeByIndex(
-        SemanticPilotCombatV111 current, string eventId, int outcomeIndex,
+        SemanticPilotCombatV111 current,
+        SemanticPendingIndexChanceEventV111 pending, int outcomeIndex,
         SemanticOtherChanceStateV111? otherChance = null)
     {
         ArgumentNullException.ThrowIfNull(current);
+        ArgumentNullException.ThrowIfNull(pending);
         current.Validate();
-        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
-        if (outcomeIndex < 0)
-            throw new ArgumentOutOfRangeException(nameof(outcomeIndex));
         if (current.IntentPending is not null)
             throw new InvalidOperationException(
                 "Weighted intent outcomes require their semantic identity resolver.");
 
-        static void ValidateSelection(
-            string selectedEventId, string pendingEventId, int index,
-            int supportCount)
-        {
-            if (!StringComparer.Ordinal.Equals(
-                    selectedEventId, pendingEventId) ||
-                supportCount < 1 || index >= supportCount)
-                throw new InvalidOperationException(
-                    "Semantic chance selection is stale or outside current support.");
-        }
-
-        var pending = DescribePendingIndexChanceEvent(current);
-        if (pending is null)
-            throw new NotSupportedException(
-                "UNSUPPORTED_SEMANTIC_CHANCE site=no_matching_pending_event");
-        ValidateSelection(eventId, pending.Event.EventId, outcomeIndex,
-            pending.SupportCount);
-
         var fingerprint = current.Fingerprint;
+        pending.ValidateSelection(fingerprint, outcomeIndex);
         switch (pending.Event)
         {
             case SemanticEndTurnIndexEventV111:
@@ -7526,7 +7521,7 @@ public static class SemanticPilotCombatEngineV111
                 _ = NativeSemanticOutcomeV111.SelectByChooseIndex(
                     choice.Decision, target.CandidateEnemyInstanceIds);
                 resolved = ResolveChanceOutcomeByIndex(
-                    current, target.EventId, choice.Decision.SelectedIndex,
+                    current, pending, choice.Decision.SelectedIndex,
                     choice.Next);
                 return true;
             }
@@ -7541,7 +7536,7 @@ public static class SemanticPilotCombatEngineV111
                 _ = NativeSemanticOutcomeV111.SelectByChooseIndex(
                     choice.Decision, generatedCard.CandidateCardIds);
                 resolved = ResolveChanceOutcomeByIndex(
-                    current, generatedCard.EventId,
+                    current, pending,
                     choice.Decision.SelectedIndex, choice.Next);
                 return true;
             }
@@ -7560,7 +7555,7 @@ public static class SemanticPilotCombatEngineV111
                         choice.Decision, 0,
                         drawInsertion.Request.SupportCount);
                 resolved = ResolveChanceOutcomeByIndex(
-                    current, drawInsertion.EventId, selectedPosition,
+                    current, pending, selectedPosition,
                     choice.Next);
                 return true;
             }
@@ -7576,7 +7571,7 @@ public static class SemanticPilotCombatEngineV111
                 _ = NativeSemanticOutcomeV111.SelectByChooseIndex(
                     choice.Decision, generatedPotion.CandidatePotionIds);
                 resolved = ResolveChanceOutcomeByIndex(
-                    current, generatedPotion.EventId,
+                    current, pending,
                     choice.Decision.SelectedIndex, choice.Next);
                 return true;
             }
@@ -7591,7 +7586,7 @@ public static class SemanticPilotCombatEngineV111
                 _ = NativeSemanticOutcomeV111.SelectByChooseIndex(
                     choice.Decision, cardTransform.CandidateCardIds);
                 resolved = ResolveChanceOutcomeByIndex(
-                    current, cardTransform.EventId,
+                    current, pending,
                     choice.Decision.SelectedIndex, choice.Next);
                 return true;
             }
@@ -7610,7 +7605,7 @@ public static class SemanticPilotCombatEngineV111
                         choice.Decision, 0,
                         poolShuffle.NextSwapIndex + 1);
                 resolved = ResolveChanceOutcomeByIndex(
-                    current, poolShuffle.EventId, selectedSwapIndex,
+                    current, pending, selectedSwapIndex,
                     choice.Next);
                 return true;
             }
@@ -7629,7 +7624,7 @@ public static class SemanticPilotCombatEngineV111
                     choice.Decision,
                     cardShortlist.CandidateCardInstanceIds);
                 resolved = ResolveChanceOutcomeByIndex(
-                    current, cardShortlist.EventId,
+                    current, pending,
                     choice.Decision.SelectedIndex, choice.Next);
                 return true;
             }
@@ -7646,7 +7641,7 @@ public static class SemanticPilotCombatEngineV111
                     choice.Decision,
                     randomPileCard.CandidateCardInstanceIds);
                 resolved = ResolveChanceOutcomeByIndex(
-                    current, randomPileCard.EventId,
+                    current, pending,
                     choice.Decision.SelectedIndex, choice.Next);
                 return true;
             }
@@ -7663,7 +7658,7 @@ public static class SemanticPilotCombatEngineV111
                 _ = NativeSemanticOutcomeV111.SelectByChooseIndex(
                     choice.Decision, handCost.CandidateCardInstanceIds);
                 resolved = ResolveChanceOutcomeByIndex(
-                    current, handCost.EventId,
+                    current, pending,
                     choice.Decision.SelectedIndex, choice.Next);
                 return true;
             }
@@ -7697,7 +7692,7 @@ public static class SemanticPilotCombatEngineV111
                         choice.Decision, 0,
                         semanticCost.CandidateCosts.Length);
                 resolved = ResolveChanceOutcomeByIndex(
-                    current, semanticCost.EventId, selectedCostIndex,
+                    current, pending, selectedCostIndex,
                     choice.Next);
                 return true;
             }

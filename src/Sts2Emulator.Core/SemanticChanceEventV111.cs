@@ -26,14 +26,16 @@ public interface ISemanticChanceEventV111
 /// <summary>
 /// The single active index-valued semantic event exposed to providers. The
 /// event remains owned by its typed mechanic; this envelope only fixes its
-/// dispatch precedence and checked support size.
+/// dispatch precedence, checked support size, and originating boundary.
 /// </summary>
 internal sealed record SemanticPendingIndexChanceEventV111(
-    ISemanticChanceEventV111 Event, int SupportCount)
+    ISemanticChanceEventV111 Event, int SupportCount,
+    string BoundaryFingerprint)
 {
     public static SemanticPendingIndexChanceEventV111 Create(
-        ISemanticChanceEventV111 chanceEvent)
+        string boundaryFingerprint, ISemanticChanceEventV111 chanceEvent)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(boundaryFingerprint);
         ArgumentNullException.ThrowIfNull(chanceEvent);
         var supportCount = chanceEvent switch
         {
@@ -64,15 +66,27 @@ internal sealed record SemanticPendingIndexChanceEventV111(
                 "Unsupported pending semantic chance event type.")
         };
         var pending = new SemanticPendingIndexChanceEventV111(
-            chanceEvent, supportCount);
+            chanceEvent, supportCount, boundaryFingerprint);
         pending.Validate();
         return pending;
+    }
+
+    public void ValidateSelection(string boundaryFingerprint, int index)
+    {
+        Validate();
+        if (!StringComparer.Ordinal.Equals(
+                BoundaryFingerprint, boundaryFingerprint))
+            throw new InvalidOperationException(
+                "Semantic chance descriptor is stale for the current boundary.");
+        if (index < 0 || index >= SupportCount)
+            throw new ArgumentOutOfRangeException(nameof(index));
     }
 
     public void Validate()
     {
         ArgumentNullException.ThrowIfNull(Event);
-        if (string.IsNullOrWhiteSpace(Event.EventId) || SupportCount < 1)
+        if (string.IsNullOrWhiteSpace(Event.EventId) || SupportCount < 1 ||
+            string.IsNullOrWhiteSpace(BoundaryFingerprint))
             throw new InvalidDataException(
                 "Invalid pending semantic index chance event.");
     }
