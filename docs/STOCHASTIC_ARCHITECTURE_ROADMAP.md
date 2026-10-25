@@ -9,6 +9,13 @@ The shared owner binds both routes to the selected legal map-node action and
 validates the exact source request. Core and CLI Release builds passed with
 zero warnings or errors; `git diff --check` passed. No tests were run.
 
+**S2 Native Tough Egg HP support validation increment (2026-10-26):** Native
+Tough Egg hatch support is now derived by one ascension-aware helper shared by
+the hatch, chance law, and whole-run request validator. The whole-run path
+checks the request against the source range instead of accepting the request's
+own candidate list as its expected support. Core and CLI Release builds passed
+with zero warnings or errors; `git diff --check` passed. No tests were run.
+
 **S2 whole-run Native rest-heal law increment (2026-10-26):** Whole-run
 ReferenceNature replay now reuses the typed run-action law owner for Native
 rest-heal rarity, card-model, and upgrade requests. Saved provider floats

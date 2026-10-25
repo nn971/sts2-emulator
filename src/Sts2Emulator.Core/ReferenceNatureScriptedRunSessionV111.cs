@@ -961,22 +961,25 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
             throw new InvalidDataException(
                 "Native creature HP request is outside the run.niche boundary.");
 
-        var law = request.SiteId switch
+        var callerHpSupport = (int[])request.OrderedCandidates.Clone();
+        var (law, sourceHpSupport) = request.SiteId switch
         {
-            NativeCombatRngEntryV111.InitialUniqueHpSiteId =>
+            NativeCombatRngEntryV111.InitialUniqueHpSiteId => (
                 ChanceLawEngineV111.QueryNativeInitialHpIndex(
-                    request.OwnerId, request.OrderedCandidates,
-                    request.Ordinal),
-            NativeCombatRngEntryV111.ToughEggHatchHpSiteId =>
+                    request.OwnerId, callerHpSupport, request.Ordinal),
+                callerHpSupport),
+            NativeCombatRngEntryV111.ToughEggHatchHpSiteId => (
                 ChanceLawEngineV111.QueryNativeToughEggHatchHpIndex(
                     request.OwnerId, active.Origin.Ascension,
                     request.Ordinal),
+                NativeCombatRngEntryV111.ToughEggHatchHpSupport(
+                    active.Origin.Ascension)),
             _ => throw new NotSupportedException(
                 $"Native creature HP query does not support '{request.SiteId}'.")
         };
         var expectedRequest = new RandomIndexRequestV111(
             law.SiteId, "run.niche", law.OwnerId, law.Ordinal,
-            (int[])request.OrderedCandidates.Clone(),
+            sourceHpSupport,
             OperationKind: law.OperationKind);
         if (CanonicalJson.Sha256(expectedRequest) !=
             CanonicalJson.Sha256(request))

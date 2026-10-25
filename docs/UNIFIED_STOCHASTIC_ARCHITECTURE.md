@@ -1294,8 +1294,11 @@ ordered request support. The whole-run dispatcher and the specialized typed
 run-action session share these formation and encounter-pool request validators
 and law queries.
 Native creature creation and Tough Egg hatch HP draws on `run.niche` also use
-their existing source laws, which validate each creature owner and the
-distinct HP support (including the ascension-selected hatch range).
+their existing source laws. Initial unique-monster HP retains its caller-owned
+eligible support, while Tough Egg's expected support is rebuilt from Ascension
+through the same helper used by the hatch and its law; the whole-run request
+cannot define its own expected hatch range. Both paths validate the creature
+owner and exact ordered support.
 It marks that semantic trace complete only when the saved selections cover
 every typed boundary; caller-scripted or unsupported outcomes keep semantic
 comparison unavailable while the typed trace remains complete. Shared

@@ -292,6 +292,15 @@ public static class NativeCombatRngEntryV111
         return available.Length > 0 ? available : all;
     }
 
+    /// <summary>Source-ordered HP support for ToughEgg.Hatch.</summary>
+    internal static int[] ToughEggHatchHpSupport(int ascension)
+    {
+        if (ascension < 0)
+            throw new ArgumentOutOfRangeException(nameof(ascension));
+        var minHp = ascension >= 8 ? 20 : 19;
+        return Enumerable.Range(minHp, 4).ToArray();
+    }
+
     /// <summary>
     /// Validate the separate ownership hierarchy and combat-formation
     /// binding. This can be called by the whole-run state invariant checker
@@ -434,10 +443,7 @@ public static class NativeCombatRngEntryV111
         // ToughEgg.Hatch direct NextInt is *not* the unique HP sampler:
         // no surrounding monster HP exclusions, exactly one niche draw.
         // Ascension 8+ uses [20,23] instead of [19,22].
-        var min = combat.Ascension >= 8 ? 20 : 19;
-        var max = combat.Ascension >= 8 ? 23 : 22;
-        var hatchHpCandidates = Enumerable.Range(
-            min, checked(max - min + 1)).ToArray();
+        var hatchHpCandidates = ToughEggHatchHpSupport(combat.Ascension);
         var monsterContext = native.Formation.MonsterContexts[index];
         var hatchHpChoice = StochasticProviderScopeV111.ResolveIndex(
             new NativeRandomIndexProviderV111(), new RandomIndexRequestV111(

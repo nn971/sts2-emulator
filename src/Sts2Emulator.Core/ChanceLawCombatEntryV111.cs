@@ -82,8 +82,8 @@ public static partial class ChanceLawEngineV111
                 nameof(ordinal),
                 "Tough Egg hatch HP is the creature's ordinal-zero draw.");
 
-        var minHp = ascension >= 8 ? 20 : 19;
-        var orderedHpSupport = Enumerable.Range(minHp, 4).ToArray();
+        var orderedHpSupport =
+            NativeCombatRngEntryV111.ToughEggHatchHpSupport(ascension);
         var request = new RandomIndexRequestV111(
             NativeCombatRngEntryV111.ToughEggHatchHpSiteId,
             "run.niche", ownerId, ordinal, orderedHpSupport);
