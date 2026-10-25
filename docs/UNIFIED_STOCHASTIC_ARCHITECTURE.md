@@ -1239,7 +1239,9 @@ outcome equivalence against another complete semantic trace. JSONL accepts
 initiating event choice plus its interleaved follow-up player-action/Nature
 chronology, checks the completed controlled-choice trace against its Nature
 outcomes and prior history, then materializes its typed requests through the
-same boundary journal. It retains each settled action boundary. JSONL accepts
+same boundary journal. It re-queries each Nature law at the saved chronology
+boundary and records its provider-independent selected identity. It retains
+each settled action boundary. JSONL accepts
 `<side>_reference_nature_event_choice_handle` for this path. It does not
 establish Native source-hook parity or law fidelity.
 `FromReferenceNatureControlledActionSession` remains a typed-only fallback

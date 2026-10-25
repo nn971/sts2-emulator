@@ -241,6 +241,11 @@ public sealed record ReferenceNatureControlledEventChoiceSessionV111(
             ReferenceNatureRunCursorV111.Begin(
                 source, null, "Event-choice"));
 
+    internal static ReferenceNatureControlledEventChoiceSessionV111
+        BeginForCapture(RunState source, string choiceId,
+            ReferenceNatureStateV111 initialNatureState) =>
+        Begin(source, choiceId, initialNatureState);
+
     private static ReferenceNatureControlledEventChoiceSessionV111 Begin(
         RunState source, string choiceId,
         ReferenceNatureStateV111 initialNatureState)

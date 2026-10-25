@@ -316,6 +316,8 @@ public static class SimulationProviderReplayCaptureProvenanceV111
         "reference-nature-run-action-replay-validated-v1";
     public const string ReferenceNatureRunActionSemanticIdentityReplayValidated =
         "reference-nature-run-action-semantic-identity-replay-validated-v1";
+    public const string ReferenceNatureEventChoiceSemanticIdentityReplayValidated =
+        "reference-nature-event-choice-semantic-identity-replay-validated-v1";
     public const string ReferenceNatureWholeRunReplayValidated =
         "reference-nature-whole-run-replay-validated-v1";
     public const string ReferenceNatureWholeRunSemanticIdentityReplayValidated =
@@ -375,6 +377,7 @@ public static class SimulationProviderReplayCaptureProvenanceV111
         SemanticNativePolicySemanticIdentityReplayValidated or
         ReferenceNatureRunActionReplayValidated or
         ReferenceNatureRunActionSemanticIdentityReplayValidated or
+        ReferenceNatureEventChoiceSemanticIdentityReplayValidated or
         ReferenceNatureWholeRunReplayValidated or
         ReferenceNatureWholeRunSemanticIdentityReplayValidated or
         ReferenceNatureTreasureSemanticIdentityReplayValidated or
@@ -419,6 +422,7 @@ public static class SimulationProviderReplayCaptureProvenanceV111
             ReferenceNatureSemanticCombatOutcomeReplayValidated or
             ReferenceNatureWholeRunSemanticIdentityReplayValidated or
             ReferenceNatureRunActionSemanticIdentityReplayValidated or
+            ReferenceNatureEventChoiceSemanticIdentityReplayValidated or
             ReferenceNatureTreasureSemanticIdentityReplayValidated or
             ReferenceNatureNativeShovelSemanticIdentityReplayValidated or
             ReferenceNatureNativeEventGoldSemanticIdentityReplayValidated or
@@ -1283,12 +1287,73 @@ public sealed record SimulationProviderReplayCaptureV111(
         var actionReplay = ReplayScriptedActionBoundaries(
             replay.Origin, actionValues, typedDecisionsByAction,
             replay.Run);
-        return FromScriptedDecisions(
+        var capture = FromScriptedDecisions(
             replay.Origin, actionValues, decisions, replay.Run,
             SimulationProviderReplayCaptureProvenanceV111
                 .ReferenceNatureEventChoiceReplayValidated,
             actionReplay.ActionBoundaryStates,
             actionReplay.DrawnCardInstanceIdsByAction);
+        if (natureSteps.Length == 0)
+            return capture;
+
+        var laws = new ChanceLawV111[natureSteps.Length];
+        var semanticTranscript = new SimulationProviderReplaySemanticSelectionV111[
+            natureSteps.Length];
+        using (RandomBoundaryJournalV111.Begin())
+        {
+            var prefix = ReferenceNatureControlledEventChoiceSessionV111
+                .BeginForCapture(replay.Origin, replay.ChoiceId,
+                    replay.InitialNatureState);
+            var natureIndex = 0;
+            foreach (var step in replay.Steps)
+            {
+                if (step.Kind == "nature")
+                {
+                    var law = ChanceLawEngineV111
+                        .QueryControlledEventChoice(prefix.Run);
+                    law.Validate();
+                    var selection = step.NatureDecision ??
+                        throw new InvalidDataException(
+                            "ReferenceNature event-choice Nature step has no selection.");
+                    if (selection.LawId != law.LawId ||
+                        selection.EventId != law.EventId ||
+                        selection.OutcomeIndex < 0 ||
+                        selection.OutcomeIndex >= law.SupportCount ||
+                        selection.OutcomeId != law.OutcomeIdAt(
+                            selection.OutcomeIndex))
+                        throw new InvalidDataException(
+                            "ReferenceNature event-choice outcome differs from its replayed Chance Law.");
+                    laws[natureIndex] = law;
+                    semanticTranscript[natureIndex] = new(
+                        selection.LawId, selection.EventId,
+                        selection.OutcomeId, selection.OutcomeIndex);
+                    prefix = prefix.ResolveNext();
+                    natureIndex++;
+                }
+                else
+                {
+                    prefix = prefix.AdvancePlayerAction(
+                        step.PlayerAction ?? throw new InvalidDataException(
+                            "ReferenceNature event-choice player step has no action."));
+                }
+            }
+            if (natureIndex != natureSteps.Length || !prefix.Complete ||
+                CanonicalJson.Sha256(prefix.Steps) !=
+                    CanonicalJson.Sha256(replay.Steps) ||
+                CanonicalJson.Sha256(prefix.Run) !=
+                    CanonicalJson.Sha256(replay.Run) ||
+                CanonicalJson.Sha256(prefix.NatureState) !=
+                    CanonicalJson.Sha256(replay.NatureState))
+                throw new InvalidDataException(
+                    "ReferenceNature event-choice semantic replay differs from its saved chronology.");
+        }
+
+        var semanticOutcomes = BuildReferenceNatureSemanticOutcomes(
+            decisions, semanticTranscript, index => laws[index]);
+        return AttachSemanticOutcomes(
+            capture, semanticOutcomes,
+            SimulationProviderReplayCaptureProvenanceV111
+                .ReferenceNatureEventChoiceSemanticIdentityReplayValidated);
     }
 
     /// <summary>
@@ -2630,6 +2695,8 @@ public sealed record SimulationProviderReplayCaptureV111(
                  SimulationProviderReplayCaptureProvenanceV111
                     .ReferenceNatureRunActionSemanticIdentityReplayValidated or
                  SimulationProviderReplayCaptureProvenanceV111
+                    .ReferenceNatureEventChoiceSemanticIdentityReplayValidated or
+                 SimulationProviderReplayCaptureProvenanceV111
                     .ReferenceNatureTreasureSemanticIdentityReplayValidated or
                  SimulationProviderReplayCaptureProvenanceV111
                     .ReferenceNatureNativeShovelSemanticIdentityReplayValidated or
@@ -2672,6 +2739,8 @@ public sealed record SimulationProviderReplayCaptureV111(
                     .ReferenceNatureWholeRunSemanticIdentityReplayValidated or
                  SimulationProviderReplayCaptureProvenanceV111
                     .ReferenceNatureRunActionSemanticIdentityReplayValidated or
+                 SimulationProviderReplayCaptureProvenanceV111
+                    .ReferenceNatureEventChoiceSemanticIdentityReplayValidated or
                  SimulationProviderReplayCaptureProvenanceV111
                     .ReferenceNatureTreasureSemanticIdentityReplayValidated or
                  SimulationProviderReplayCaptureProvenanceV111

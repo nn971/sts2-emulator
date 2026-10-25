@@ -129,6 +129,14 @@ and falls back to its complete typed trace when law coverage is incomplete.
 Core and CLI Release builds passed with zero warnings or errors;
 `git diff --check` passed. No tests were added or run.
 
+**S4 interleaved event-choice semantic capture increment (2026-10-26):**
+JSONL provider replay now records each Nature outcome as a provider-independent
+identity at its chronological event boundary, alongside typed decisions and
+settled mechanics checkpoints. The factory replays the event and player-action
+steps in order before attaching the semantic trace. Core and CLI Release builds
+passed with zero warnings or errors; `git diff --check` passed. No tests were
+added or run.
+
 **S4 whole-run six-primitive continuation increment (2026-10-25):** The
 ReferenceNature whole-run session now accepts caller-supplied, replay-validated
 transcript entries for all six typed random operations alongside its existing
