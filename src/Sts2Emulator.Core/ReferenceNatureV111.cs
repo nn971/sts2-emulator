@@ -1,8 +1,3 @@
-using System.Globalization;
-using System.Numerics;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-
 namespace Sts2Emulator.Core;
 
 /// <summary>
@@ -48,18 +43,6 @@ public static class ReferenceNatureV111
         if (selection.OutcomeIndex >= pending.SupportCount)
             throw new InvalidDataException(
                 "ReferenceNature outcome is outside the active semantic support.");
-
-        if (pending.Event is SemanticEndTurnIndexEventV111 &&
-            selection.OutcomeId != "choice_index:" +
-                selection.OutcomeIndex.ToString(CultureInfo.InvariantCulture))
-            throw new InvalidDataException(
-                "ReferenceNature law no longer matches the pending enemy-action index event.");
-        if (pending.Event is SemanticDeckEventV111 deckEvent &&
-            selection.OutcomeId != "card_instance:" +
-                deckEvent.CandidateCardInstanceIds[selection.OutcomeIndex]
-                    .ToString(CultureInfo.InvariantCulture))
-            throw new InvalidDataException(
-                "ReferenceNature law no longer matches the pending deck event.");
 
         var child = SemanticPilotCombatEngineV111
             .ResolveChanceOutcomeByIndex(
