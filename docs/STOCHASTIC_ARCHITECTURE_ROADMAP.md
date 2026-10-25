@@ -2,6 +2,17 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 per-action mechanics replay comparison increment (2026-10-25):** The
+replay-validated Native-policy and semantic ReferenceNature combat capture
+factories now retain a settled mechanics snapshot after each player action.
+Capture v5 validates that a supplied trajectory has one snapshot per action;
+provider replay comparison v6 reports the first action-boundary mechanics
+difference and folds an available trajectory comparison into
+`EquivalentUnderComparedActions`. Older and
+caller-supplied captures without snapshots retain endpoint-only diagnostics.
+Core and CLI Release builds passed with zero warnings or errors; no tests were
+run.
+
 **Core continuation integration and cursor lineage (2026-10-25):** Restored
 consistency across the composed controlled run-action, semantic draw, Native
 audit, and ReferenceNature continuation APIs. ReferenceNature now retains

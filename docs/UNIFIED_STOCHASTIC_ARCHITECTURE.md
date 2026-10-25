@@ -1057,16 +1057,17 @@ event-effect, and enemy-defeat continuation mechanics from their existing
 mechanics owners, including action identity, effect cursor, queued
 consequences, and the saved fatal follow-up, while omitting their random
 requests and decision payloads. The mechanics comparison schema advances to
-v19 for this expanded projection; the provider replay comparison is v5.
+v19 for this expanded projection; the provider replay comparison is v6.
 `SimulationMechanicsComparisonV111` copies the difference array on
 construction and replacement, then returns defensive copies to keep the
 diagnostic result immutable to callers.
 
 `SimulationProviderReplayCaptureV111` groups an origin run, player-action
 sequence, ordered typed random-boundary trace, semantic event-outcome trace,
-and result run in the existing `SimulationStateV111` envelope. Its v4 schema
-includes capture provenance; v2 and v3 captures remain readable with their
-original trace meaning. Explicit fields are marked caller-supplied and unverified, while
+and result run in the existing `SimulationStateV111` envelope. Its v5 schema
+can also carry one mechanics snapshot after each completed player action;
+older captures remain readable with their original trace meaning and without
+an action-boundary trajectory. Explicit fields are marked caller-supplied and unverified, while
 scripted and Native-policy factories mark the histories they replay-validate.
 `SimulationProviderReplayComparisonEngineV111` compares two such captures by
 fingerprinting their action sequences, comparing origin mechanics, comparing
@@ -1089,18 +1090,28 @@ This is diagnostic evidence under the supplied captures, not proof of
 source-hook parity, complete Native coverage, or Chance Law fidelity.
 `SameMechanicsAtCapturedBoundariesForSameActions` reports equal projected
 origin and result mechanics when the captured player actions also match. It
-does not require matching intermediate stochastic outcomes. The stricter
-`EquivalentUnderComparedActions` additionally requires equality of a complete
-stochastic trace: typed provider boundaries when both captures have those, or
-semantic event outcomes when both have a replay-validated semantic trace.
+does not require matching intermediate stochastic outcomes. The semantic
+Native-policy and ReferenceNature combat factories additionally replay and
+capture each action's settled mechanics boundary. When both captures include
+these complete snapshots and the same action sequence, the comparison reports
+the first differing action boundary and its mechanics paths;
+`SameMechanicsAtEveryActionBoundaryForSameActions` reports agreement across
+the trajectory. This comparison is unavailable for older or caller-supplied
+captures without the snapshots, and it does not include provider-private
+state in its projection. When both captures carry aligned action-boundary
+snapshots, `EquivalentUnderComparedActions` also requires their projected
+mechanics to match, along with equality of a complete stochastic trace: typed
+provider boundaries when both captures have those, or semantic event outcomes
+when both have a replay-validated semantic trace.
 ReferenceNature semantic combat captures provide complete semantic traces.
 Native-policy captures provide them only when every provider boundary in the
 action interval has one supported semantic annotation and every drawn card is
 individually identified; unsupported or unannotated boundaries leave semantic
 comparison unavailable. This permits cross-provider trajectory comparison
 for covered intervals without claiming completeness for other Native captures.
-Older v2 captures retain endpoint-only provenance, and v3 captures keep their
-original trace meaning. Neither is treated as a normalized semantic trace. The result
+Older v2 captures retain endpoint-only provenance, v3 captures keep their
+original trace meaning, and v4 captures retain semantic-identity trace support.
+None is treated as carrying an action-boundary trajectory. The result
 exposes `TypedRandomBoundaryComparisonAvailable` and
 `SemanticOutcomeComparisonAvailable` separately, so an absent trace is not
 reported as a matching empty trace. `SameSemanticOutcomes` and
@@ -1334,7 +1345,7 @@ snapshot, next target index, and pending extra kill rounds, so earlier hits
 are not replayed after a hook choice. Pending event replay uses the same
 resumable dispatcher, and restore validates the defeated target against the
 saved follow-up and repeated-damage cursor. The mechanics comparison retains
-this progress under schema v19; provider replay comparison remains v5.
+this progress under schema v19; provider replay comparison is v6.
 
 Toolbox's first-turn `BeforeHandDraw` generated offer now composes the
 existing full-pool shuffle and ChoicePool card-selection continuations. Exact

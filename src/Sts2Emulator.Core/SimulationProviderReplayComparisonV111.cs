@@ -9,6 +9,7 @@ public sealed record SimulationProviderReplayMechanicsCaptureV111
     private RunState _origin = null!;
     private GameAction[] _actions = [];
     private RunState _result = null!;
+    private RunState[]? _actionBoundaryStates;
 
     public RunState Origin
     {
@@ -28,19 +29,43 @@ public sealed record SimulationProviderReplayMechanicsCaptureV111
         init => _result = value?.Fork() ?? null!;
     }
 
+    /// <summary>
+    /// Mechanics snapshots after each player action has completed its
+    /// stochastic continuation. Null means this capture does not provide a
+    /// complete action-boundary trajectory.
+    /// </summary>
+    public RunState[]? ActionBoundaryStates
+    {
+        get => CloneStates(_actionBoundaryStates);
+        init => _actionBoundaryStates = CloneStates(value);
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool HasActionBoundaryStates => _actionBoundaryStates is not null;
+
     public SimulationProviderReplayMechanicsCaptureV111(
         RunState Origin, GameAction[] Actions, RunState Result)
+        : this(Origin, Actions, Result, null)
+    {
+    }
+
+    [System.Text.Json.Serialization.JsonConstructor]
+    public SimulationProviderReplayMechanicsCaptureV111(
+        RunState Origin, GameAction[] Actions, RunState Result,
+        RunState[]? ActionBoundaryStates)
     {
         this.Origin = Origin;
         this.Actions = Actions;
         this.Result = Result;
+        this.ActionBoundaryStates = ActionBoundaryStates;
     }
 
     public SimulationProviderReplayMechanicsCaptureV111 Fork() => this with
     {
         Origin = _origin.Fork(),
         Actions = CloneActions(_actions),
-        Result = _result.Fork()
+        Result = _result.Fork(),
+        ActionBoundaryStates = CloneStates(_actionBoundaryStates)
     };
 
     public void Validate()
@@ -50,6 +75,20 @@ public sealed record SimulationProviderReplayMechanicsCaptureV111
                 "Provider replay mechanics capture is incomplete.");
         RunConfiguration.ValidateState(_origin);
         RunConfiguration.ValidateState(_result);
+        if (_actionBoundaryStates is not null)
+        {
+            if (_actionBoundaryStates.Length != _actions.Length)
+                throw new InvalidDataException(
+                    "Provider replay action-boundary state count does not match its actions.");
+            for (var index = 0; index < _actionBoundaryStates.Length; index++)
+            {
+                if (_actionBoundaryStates[index] is null)
+                    throw new InvalidDataException(
+                        "Provider replay action-boundary state is null at " +
+                        index + ".");
+                RunConfiguration.ValidateState(_actionBoundaryStates[index]);
+            }
+        }
         for (var index = 0; index < _actions.Length; index++)
             if (_actions[index] is null ||
                 string.IsNullOrWhiteSpace(_actions[index].Kind) ||
@@ -67,6 +106,9 @@ public sealed record SimulationProviderReplayMechanicsCaptureV111
             Payload = action.Payload.Clone()
         }).ToArray();
     }
+
+    private static RunState[]? CloneStates(RunState[]? states) =>
+        states?.Select(state => state?.Fork() ?? null!).ToArray();
 }
 
 /// <summary>One replay-validated semantic outcome in a captured interval.</summary>
@@ -287,11 +329,13 @@ public sealed record SimulationProviderReplayCaptureV111(
         SimulationProviderReplayStochasticCaptureV111> Simulation)
 {
     public const string PreviousSchemaId =
+        "sts2-v111-simulation-provider-replay-capture-v4";
+    public const string PreviousPreviousSchemaId =
         "sts2-v111-simulation-provider-replay-capture-v3";
     public const string OlderSchemaId =
         "sts2-v111-simulation-provider-replay-capture-v2";
     public const string CurrentSchemaId =
-        "sts2-v111-simulation-provider-replay-capture-v4";
+        "sts2-v111-simulation-provider-replay-capture-v5";
 
     [System.Text.Json.Serialization.JsonInclude]
     public string CaptureProvenance { get; private init; } =
@@ -309,6 +353,16 @@ public sealed record SimulationProviderReplayCaptureV111(
         RunState result,
         IEnumerable<SimulationProviderReplaySemanticOutcomeV111>?
             semanticOutcomes = null)
+        => Create(origin, actions, boundaries, result, semanticOutcomes,
+            null);
+
+    public static SimulationProviderReplayCaptureV111 Create(
+        RunState origin, IReadOnlyList<GameAction> actions,
+        IEnumerable<RandomBoundaryTranscriptEntryV111> boundaries,
+        RunState result,
+        IEnumerable<SimulationProviderReplaySemanticOutcomeV111>?
+            semanticOutcomes,
+        IEnumerable<RunState>? actionBoundaryStates)
     {
         ArgumentNullException.ThrowIfNull(origin);
         ArgumentNullException.ThrowIfNull(actions);
@@ -320,7 +374,8 @@ public sealed record SimulationProviderReplayCaptureV111(
                 SimulationProviderReplayMechanicsCaptureV111,
                 SimulationProviderReplayStochasticCaptureV111>(
                     new SimulationProviderReplayMechanicsCaptureV111(
-                        origin, actions.ToArray(), result),
+                        origin, actions.ToArray(), result,
+                        actionBoundaryStates?.ToArray()),
                     new SimulationProviderReplayStochasticCaptureV111(
                         boundaries.ToArray(),
                         semanticOutcomes?.ToArray())));
@@ -922,6 +977,8 @@ public sealed record SimulationProviderReplayCaptureV111(
 
         var environment = new PrototypeAiEnvironment();
         var actions = new List<GameAction>(validated.History.Length);
+        var actionBoundaryStates = new List<RunState>(
+            validated.History.Length);
         var actionTraceRanges = new List<
             SimulationProviderReplayNativeSemanticOutcomeTraceV111.ActionRange>(
                 validated.History.Length);
@@ -944,6 +1001,10 @@ public sealed record SimulationProviderReplayCaptureV111(
                 .StepResolvedNativePolicyBaseline(
                     replay, replay.Fingerprint, transition.ActionId,
                     resolvedAction);
+            if (!IsCommittedSemanticCombatBoundary(replay))
+                throw new NotSupportedException(
+                    "Native policy capture requires every action replay to settle at a committed boundary.");
+            actionBoundaryStates.Add(replay.Run);
             var afterAudit = replay.Stochastic.NativePolicyAudit ??
                 throw new InvalidDataException(
                     "Native policy replay lost its provider trace after an action.");
@@ -974,7 +1035,7 @@ public sealed record SimulationProviderReplayCaptureV111(
                 finalAudit, completeTrace, initialTrace.Length,
                 actionTraceRanges);
         var capture = Create(initial.Run, actions, boundaries, validated.Run,
-            semanticOutcomes ?? []) with
+            semanticOutcomes ?? [], actionBoundaryStates) with
         {
             CaptureProvenance = semanticOutcomes is null
                 ? SimulationProviderReplayCaptureProvenanceV111
@@ -1027,6 +1088,8 @@ public sealed record SimulationProviderReplayCaptureV111(
         var semanticOutcomes = new List<SimulationProviderReplaySemanticOutcomeV111>(
             decisions.Length);
         var actions = new List<GameAction>(history.Length - initialHistoryLength);
+        var actionBoundaryStates = new List<RunState>(
+            history.Length - initialHistoryLength);
         var decisionIndex = 0;
         for (var historyIndex = initialHistoryLength;
             historyIndex < history.Length; historyIndex++)
@@ -1042,6 +1105,13 @@ public sealed record SimulationProviderReplayCaptureV111(
             var transition = history[historyIndex];
             if (transition.Kind == "player")
             {
+                if (actions.Count > actionBoundaryStates.Count)
+                {
+                    if (!IsCommittedSemanticCombatBoundary(replay))
+                        throw new NotSupportedException(
+                            "Semantic ReferenceNature capture requires each action continuation to settle at a committed boundary.");
+                    actionBoundaryStates.Add(replay.Run);
+                }
                 if (string.IsNullOrWhiteSpace(transition.ActionId))
                     throw new InvalidDataException(
                         "Semantic ReferenceNature player history is missing its action ID.");
@@ -1050,6 +1120,13 @@ public sealed record SimulationProviderReplayCaptureV111(
             }
             replay = SemanticPilotCombatEngineV111.ReplayHistoryTransition(
                 replay, transition);
+        }
+        if (actions.Count > actionBoundaryStates.Count)
+        {
+            if (!IsCommittedSemanticCombatBoundary(replay))
+                throw new NotSupportedException(
+                    "Semantic ReferenceNature capture requires each action continuation to settle at a committed boundary.");
+            actionBoundaryStates.Add(replay.Run);
         }
         if (decisionIndex != decisions.Length)
             throw new InvalidDataException(
@@ -1063,7 +1140,7 @@ public sealed record SimulationProviderReplayCaptureV111(
                 "Semantic ReferenceNature capture requires a committed result boundary.");
 
         var capture = Create(origin.Run, actions, [], validated.Combat.Run,
-            semanticOutcomes) with
+            semanticOutcomes, actionBoundaryStates) with
         {
             CaptureProvenance =
                 SimulationProviderReplayCaptureProvenanceV111
@@ -1197,7 +1274,7 @@ public sealed record SimulationProviderReplayCaptureV111(
     public void Validate()
     {
         if (SchemaId is not (CurrentSchemaId or PreviousSchemaId or
-                OlderSchemaId) ||
+                PreviousPreviousSchemaId or OlderSchemaId) ||
             !SimulationProviderReplayCaptureProvenanceV111
                 .IsKnown(CaptureProvenance) || Simulation is null ||
             Simulation.Mechanics is null || Simulation.Stochastic is null)
@@ -1205,11 +1282,15 @@ public sealed record SimulationProviderReplayCaptureV111(
                 "Provider replay capture envelope is invalid.");
         Simulation.Mechanics.Validate();
         Simulation.Stochastic.Validate();
+        if (SchemaId != CurrentSchemaId &&
+            Simulation.Mechanics.HasActionBoundaryStates)
+            throw new InvalidDataException(
+                "Legacy provider replay captures cannot contain action-boundary mechanics snapshots.");
         if (SchemaId == OlderSchemaId &&
             Simulation.Stochastic.SemanticOutcomes.Length != 0)
             throw new InvalidDataException(
                 "Legacy provider replay captures cannot contain semantic outcomes.");
-        if (SchemaId != CurrentSchemaId &&
+        if ((SchemaId is OlderSchemaId or PreviousPreviousSchemaId) &&
             CaptureProvenance is
                 (SimulationProviderReplayCaptureProvenanceV111
                     .ReferenceNatureSemanticIdentityReplayValidated or
@@ -1662,6 +1743,10 @@ public sealed record SimulationProviderReplaySemanticOutcomeDiffV111(
     string Status, int Compared, int? FirstMismatchIndex,
     string? MismatchField);
 
+public sealed record SimulationProviderReplayActionBoundaryMechanicsDiffV111(
+    string Status, int Compared, int? FirstMismatchActionIndex,
+    SimulationMechanicsComparisonV111? FirstMismatch);
+
 /// <summary>
 /// Composed evidence for comparing two provider trajectories under the same
 /// player actions: matching origin mechanics, one complete comparable
@@ -1678,7 +1763,7 @@ public sealed record SimulationProviderReplayComparisonV111(
     bool RequireNativeCursorEquality)
 {
     public const string CurrentSchemaId =
-        "sts2-v111-simulation-provider-replay-comparison-v5";
+        "sts2-v111-simulation-provider-replay-comparison-v6";
 
     public string LeftCaptureProvenance { get; init; } =
         SimulationProviderReplayCaptureProvenanceV111.CallerSupplied;
@@ -1687,6 +1772,9 @@ public sealed record SimulationProviderReplayComparisonV111(
     public SimulationProviderReplaySemanticOutcomeDiffV111 SemanticOutcomes
         { get; init; } = new(
             "SEMANTIC_OUTCOME_TRACE_UNAVAILABLE", 0, null, null);
+    public SimulationProviderReplayActionBoundaryMechanicsDiffV111
+        ActionBoundaryMechanics { get; init; } = new(
+            "ACTION_BOUNDARY_MECHANICS_UNAVAILABLE", 0, null, null);
 
     public bool SamePlayerActions => StringComparer.Ordinal.Equals(
         LeftActionFingerprint, RightActionFingerprint);
@@ -1730,12 +1818,26 @@ public sealed record SimulationProviderReplayComparisonV111(
         SchemaId == CurrentSchemaId && SamePlayerActions &&
         SameOriginMechanics && SameResultMechanics;
 
+    public bool ActionBoundaryMechanicsComparisonAvailable =>
+        ActionBoundaryMechanics.Status is
+            "ACTION_BOUNDARY_MECHANICS_CONSISTENT" or
+            "ACTION_BOUNDARY_MECHANICS_MISMATCH";
+
+    public bool SameMechanicsAtEveryActionBoundaryForSameActions =>
+        SchemaId == CurrentSchemaId && SamePlayerActions &&
+        SameOriginMechanics && SameResultMechanics &&
+        ActionBoundaryMechanicsComparisonAvailable &&
+        ActionBoundaryMechanics.Status ==
+            "ACTION_BOUNDARY_MECHANICS_CONSISTENT";
+
     public bool SameResultMechanics => ResultMechanics.Equivalent;
 
     public bool EquivalentUnderComparedActions =>
         SchemaId == CurrentSchemaId && SamePlayerActions &&
         SameOriginMechanics && SameStochasticOutcomes &&
-        SameResultMechanics;
+        SameResultMechanics &&
+        (!ActionBoundaryMechanicsComparisonAvailable ||
+            SameMechanicsAtEveryActionBoundaryForSameActions);
 }
 
 /// <summary>
@@ -1772,8 +1874,45 @@ public static class SimulationProviderReplayComparisonEngineV111
                 SimulationProviderReplayCaptureProvenanceV111
                     .HasCompleteSemanticOutcomeTrace(left.CaptureProvenance) &&
                 SimulationProviderReplayCaptureProvenanceV111
-                    .HasCompleteSemanticOutcomeTrace(right.CaptureProvenance))
+                    .HasCompleteSemanticOutcomeTrace(right.CaptureProvenance)),
+            ActionBoundaryMechanics = CompareActionBoundaryMechanics(
+                left, right, maximumMechanicsDifferences)
         };
+    }
+
+    private static SimulationProviderReplayActionBoundaryMechanicsDiffV111
+        CompareActionBoundaryMechanics(
+            SimulationProviderReplayCaptureV111 left,
+            SimulationProviderReplayCaptureV111 right,
+            int maximumMechanicsDifferences)
+    {
+        var leftStates = left.Mechanics.ActionBoundaryStates;
+        var rightStates = right.Mechanics.ActionBoundaryStates;
+        if (leftStates is null || rightStates is null)
+            return new("ACTION_BOUNDARY_MECHANICS_UNAVAILABLE", 0, null,
+                null);
+        if (!StringComparer.Ordinal.Equals(
+                FingerprintActions(left.Mechanics.Actions),
+                FingerprintActions(right.Mechanics.Actions)))
+            return new("ACTION_BOUNDARY_ACTIONS_DIFFER", 0, null, null);
+        if (leftStates.Length != rightStates.Length)
+            return new("ACTION_BOUNDARY_COUNT_MISMATCH",
+                Math.Min(leftStates.Length, rightStates.Length),
+                Math.Min(leftStates.Length, rightStates.Length), null);
+        if (leftStates.Length == 0)
+            return new("ACTION_BOUNDARY_MECHANICS_EMPTY", 0, null, null);
+
+        for (var index = 0; index < leftStates.Length; index++)
+        {
+            var comparison = SimulationMechanicsProjectionEngineV111.Compare(
+                leftStates[index], rightStates[index],
+                maximumMechanicsDifferences);
+            if (!comparison.Equivalent)
+                return new("ACTION_BOUNDARY_MECHANICS_MISMATCH", index + 1,
+                    index, comparison);
+        }
+        return new("ACTION_BOUNDARY_MECHANICS_CONSISTENT",
+            leftStates.Length, null, null);
     }
 
     private static SimulationProviderReplaySemanticOutcomeDiffV111
