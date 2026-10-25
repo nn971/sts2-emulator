@@ -1828,9 +1828,9 @@ public sealed record SimulationProviderReplayActionBoundaryMechanicsDiffV111(
 
 /// <summary>
 /// Composed evidence for comparing two provider trajectories under the same
-/// player actions: matching origin mechanics, one complete comparable
-/// stochastic trace, and final mechanics. It does not establish source-hook
-/// parity or law fidelity.
+/// player actions: matching origin and final mechanics, plus agreement from
+/// every complete comparable stochastic trace available on both captures. It
+/// does not establish source-hook parity or law fidelity.
 /// </summary>
 public sealed record SimulationProviderReplayComparisonV111(
     string SchemaId,
@@ -1885,8 +1885,11 @@ public sealed record SimulationProviderReplayComparisonV111(
         SemanticOutcomeComparisonAvailable;
 
     public bool SameStochasticOutcomes =>
-        (TypedRandomBoundaryComparisonAvailable &&
-            SameTypedRandomBoundaries) || SameSemanticOutcomes;
+        TypedRandomBoundaryComparisonAvailable &&
+            SemanticOutcomeComparisonAvailable
+            ? SameTypedRandomBoundaries && SameSemanticOutcomes
+            : (TypedRandomBoundaryComparisonAvailable &&
+                SameTypedRandomBoundaries) || SameSemanticOutcomes;
 
     /// <summary>
     /// Reports endpoint mechanics agreement for captures with the same player

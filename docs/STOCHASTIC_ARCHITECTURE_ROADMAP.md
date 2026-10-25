@@ -2,6 +2,13 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 complete-trace agreement increment (2026-10-25):** Provider replay
+comparison now requires typed-boundary and semantic-outcome equality together
+when both complete traces are available; when only one form is complete on
+both captures, that trace remains sufficient. This prevents agreement in one
+trace from masking a contradiction in the other. Core and CLI Release builds
+passed with zero warnings or errors; no tests were run.
+
 **S4 per-action mechanics replay comparison increment (2026-10-25):** The
 replay-validated Native-policy and semantic ReferenceNature combat capture
 factories now retain a settled mechanics snapshot after each player action.

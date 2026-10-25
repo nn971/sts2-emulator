@@ -1104,9 +1104,11 @@ the trajectory. This comparison is unavailable for older or caller-supplied
 captures without the snapshots, and it does not include provider-private
 state in its projection. When both captures carry aligned action-boundary
 snapshots, `EquivalentUnderComparedActions` also requires their projected
-mechanics to match, along with equality of a complete stochastic trace: typed
-provider boundaries when both captures have those, or semantic event outcomes
-when both have a replay-validated semantic trace.
+mechanics to match, along with equality of the available complete stochastic
+traces. If both captures have complete typed-boundary and replay-validated
+semantic traces, both forms must agree. If only one form is complete on both
+sides, equality of that form is sufficient. An absent trace is not treated as
+an empty matching trace.
 ReferenceNature semantic combat captures provide complete semantic traces.
 Native-policy captures provide them only when every provider boundary in the
 action interval has one supported semantic annotation and every drawn card is
@@ -1120,7 +1122,8 @@ action-boundary trajectory. The result
 exposes `TypedRandomBoundaryComparisonAvailable` and
 `SemanticOutcomeComparisonAvailable` separately, so an absent trace is not
 reported as a matching empty trace. `SameSemanticOutcomes` and
-`SameStochasticOutcomes` expose the corresponding equality results.
+`SameStochasticOutcomes` expose the corresponding equality results; the latter
+requires agreement from every complete trace available on both captures.
 `SimulationProviderReplayCaptureV111.FromScriptedRunSession` and
 `FromScriptedRunActionSession` provide a stronger path for scripted replays:
 each session replays its completed action history from the origin, and the
