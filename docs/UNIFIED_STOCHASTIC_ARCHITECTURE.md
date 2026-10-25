@@ -1212,7 +1212,7 @@ event-effect, and enemy-defeat continuation mechanics from their existing
 mechanics owners, including action identity, effect cursor, queued
 consequences, and the saved fatal follow-up, while omitting their random
 requests and decision payloads. The mechanics comparison schema advances to
-v19 for this expanded projection; the provider replay comparison is v7.
+v19 for this expanded projection; the provider replay comparison is v8.
 `SimulationMechanicsComparisonV111` copies the difference array on
 construction and replacement, then returns defensive copies to keep the
 diagnostic result immutable to callers.
@@ -1280,6 +1280,14 @@ of that trace is sufficient. An absent trace is not treated as an empty
 matching trace. The draw trace is compared separately because Native draws
 consume an already committed order while ReferenceNature draws may be deferred
 choices; the selected physical card identity is common evidence for both.
+The additive `SameMechanicsForSameSemanticOutcomes` predicate expresses the
+S4 cross-provider acceptance case directly: it requires the same player
+actions, origin mechanics, complete provider-independent semantic outcomes,
+result mechanics, and every captured action-boundary mechanics state. It also
+rejects a physical draw-identity mismatch when that trace is available,
+without requiring provider-specific primitive requests or cursors to match.
+Its schema is v8; comparisons with unavailable semantic or action-boundary
+traces do not claim this stronger equivalence.
 ReferenceNature semantic combat captures provide complete semantic traces.
 Native-policy semantic outcome traces are complete only when every provider
 boundary in the action interval has one supported semantic annotation;
@@ -1613,7 +1621,7 @@ snapshot, next target index, and pending extra kill rounds, so earlier hits
 are not replayed after a hook choice. Pending event replay uses the same
 resumable dispatcher, and restore validates the defeated target against the
 saved follow-up and repeated-damage cursor. The mechanics comparison retains
-this progress under schema v19; provider replay comparison is v7.
+this progress under schema v19; provider replay comparison is v8.
 
 Toolbox's first-turn `BeforeHandDraw` generated offer now composes the
 existing full-pool shuffle and ChoicePool card-selection continuations. Exact

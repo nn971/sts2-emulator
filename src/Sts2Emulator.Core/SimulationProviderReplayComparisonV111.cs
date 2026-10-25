@@ -3490,7 +3490,7 @@ public sealed record SimulationProviderReplayComparisonV111(
     bool RequireNativeCursorEquality)
 {
     public const string CurrentSchemaId =
-        "sts2-v111-simulation-provider-replay-comparison-v7";
+        "sts2-v111-simulation-provider-replay-comparison-v8";
 
     public string LeftCaptureProvenance { get; init; } =
         SimulationProviderReplayCaptureProvenanceV111.CallerSupplied;
@@ -3594,6 +3594,20 @@ public sealed record SimulationProviderReplayComparisonV111(
         ActionBoundaryMechanicsComparisonAvailable &&
         ActionBoundaryMechanics.Status ==
             "ACTION_BOUNDARY_MECHANICS_CONSISTENT";
+
+    /// <summary>
+    /// S4 acceptance predicate for two providers that resolved the same
+    /// provider-independent semantic outcomes. Provider-specific primitive
+    /// requests may differ; origin, result, and every captured action-boundary
+    /// mechanics projection must agree.
+    /// </summary>
+    public bool SameMechanicsForSameSemanticOutcomes =>
+        SchemaId == CurrentSchemaId && SamePlayerActions &&
+        SameOriginMechanics && SameSemanticOutcomes &&
+        SameResultMechanics &&
+        ActionBoundaryMechanicsComparisonAvailable &&
+        SameMechanicsAtEveryActionBoundaryForSameActions &&
+        (!DrawnCardIdentityComparisonAvailable || SameDrawnCardIdentities);
 
     public bool SameResultMechanics => ResultMechanics.Equivalent;
 

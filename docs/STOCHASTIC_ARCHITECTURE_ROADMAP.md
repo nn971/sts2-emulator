@@ -2,6 +2,15 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 semantic-outcome mechanics acceptance predicate (2026-10-26):** The
+provider replay comparison now exposes `SameMechanicsForSameSemanticOutcomes`,
+which requires matching player actions, origin mechanics, complete semantic
+outcomes, results, and every captured action-boundary mechanics projection.
+It also rejects a drawn-card identity mismatch when that trace is available,
+without requiring provider-specific primitive traces or cursors to match.
+Comparison schema v8 adds this explicit cross-provider acceptance predicate.
+CLI Release build and `git diff --check` passed; no tests were run.
+
 **S4 provider-independent run identity increment (2026-10-26):** The
 mechanics projection now omits both `RunSeed` and `RunId`; the run factories
 derive the latter from the former, so comparing it incorrectly distinguished
