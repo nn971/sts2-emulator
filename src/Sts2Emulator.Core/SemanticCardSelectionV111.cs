@@ -647,13 +647,8 @@ public static class SemanticCardSelectionEngineV111
                 PendingKnowledgeDemonChoice: null,
                 SemanticDeck: { Mode: SemanticDeckStateV111.NatureMode } } ||
             combat.AutomaticPipelineContinuation is not { } cursor ||
-            !(cursor.Stochastic.TryGetSemanticHandDrawProgress(
-                  cursor.Mechanics, out _, out _) ||
-              cursor.Stochastic.IsAtSemanticBeforeHandDraw(
-                  cursor.Mechanics)) ||
-            cursor.Stochastic.IsAtSemanticBeforeHandDraw(
-                cursor.Mechanics) &&
-                cursor.Stochastic.CompletedSemanticHandDrawRequested is not null)
+            !cursor.Stochastic.IsAtSemanticHandDrawContinuationBoundary(
+                cursor.Mechanics))
             throw new InvalidDataException(
                 "Automatic hand-draw child lost its semantic cursor.");
         PrototypeStateInvariants.Validate(run);

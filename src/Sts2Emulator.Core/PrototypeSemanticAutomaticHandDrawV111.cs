@@ -320,7 +320,9 @@ public sealed partial class PrototypeGameEngine
                 cursor.Mechanics);
         var currentEvent = SemanticRandomPileCardEngineV111
             .DescribePending(run);
-        if ((!beforeHandDraw && !activeHandDraw) ||
+        if (cursor is null ||
+            !cursor.Stochastic.IsAtSemanticHandDrawContinuationBoundary(
+                cursor.Mechanics) ||
             pending is null || pendingChoice?.ChoiceId !=
                 "controlled_random_pile_card" ||
             pendingChoice.OuterChoiceContinuation is not { } continuation ||
