@@ -2,6 +2,15 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 automatic-pipeline autoplay terminal-result handoff (2026-10-26):**
+Semantic draw-hook replay now accepts a validated reward or defeat result for
+the automatic-pipeline autoplay context and publishes it through the shared
+`RewardOrTerminal` boundary. The end-turn owner records the nested choice and
+clears its suspended frames through its existing completion transition;
+standalone and active hand-draw hooks retain their combat-cursor requirement.
+Core and CLI Release builds passed with zero warnings or errors;
+`git diff --check` passed. No tests were run.
+
 **S4 controlled insertion draw-resume ownership increment (2026-10-26):**
 `PrototypeGameEngine.ResumeSemanticDrawAfterControlledInsertion` now owns the
 post-insertion mechanics handoff for pending Stratagem selection, standalone

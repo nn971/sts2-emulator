@@ -492,6 +492,14 @@ public static class SemanticDrawHookChoiceEngineV111
         var advanced = ControlledChanceGuardV111.ExecuteGuarded(
             () => environment.Step(source.Fork(), action.ActionId).State,
             allowEngineOwnedPrototypeReward: true);
+        if (decision.Event.AutomaticPipelineAutoplay &&
+            PrototypeGameEngine.IsAtCombatRewardOrTerminalBoundary(advanced))
+        {
+            PrototypeStateInvariants.Validate(advanced);
+            return (
+                PrototypeAutomaticPipelineResumeResultV111.FromRun(advanced),
+                replayedDecision);
+        }
         if (advanced.Phase != RunPhase.Combat ||
             advanced.World?.Combat is not { } advancedCombat)
             throw new NotSupportedException(
