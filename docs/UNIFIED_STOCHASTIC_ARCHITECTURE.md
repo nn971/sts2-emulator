@@ -1175,6 +1175,11 @@ each session replays its completed action history from the origin, and the
 existing typed boundary journal materializes its saved outcomes into the
 capture. The whole-run path retains each replayed action result as a mechanics
 checkpoint. They accept only sessions at committed action boundaries.
+`FromReferenceNatureTreasureSession` also retains the completed action's
+replay-validated rarity and hidden-queue relic identities beside its complete
+typed provider trace. The identity projection re-queries the Treasure law,
+including the conditioned remaining queue support, before the capture claims
+semantic completeness.
 `FromReferenceNatureScriptedRunSession` adds the matching whole-run path for
 ordinary actions with complete six-primitive typed traces. It replays each
 action prefix, materializes the saved outcomes through the same boundary

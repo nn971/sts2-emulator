@@ -10605,7 +10605,7 @@ internal static class PrototypeAiJsonlServer
                                     return referenceNatureTreasureStates
                                         .TryGetValue(handle, out var treasure)
                                         ? SimulationProviderReplayCaptureV111
-                                            .FromReferenceNatureControlledActionSession(
+                                            .FromReferenceNatureTreasureSession(
                                                 treasure)
                                         : throw new InvalidOperationException(
                                             "Unknown ReferenceNature treasure handle: " +

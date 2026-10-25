@@ -24,6 +24,15 @@ ordinal, ordered support, and exclusions remain law-validated. Core and CLI
 Release builds passed with zero warnings or errors; `git diff --check` passed.
 No tests were added or run.
 
+**S4 Native Treasure semantic capture increment (2026-10-26):** The provider
+replay comparator now has a dedicated capture for the completed ReferenceNature
+Treasure session. It retains the action's typed boundaries and records the
+rarity and hidden-queue identity selections as provider-independent outcomes
+only after re-querying each source law and its conditioned support. JSONL
+`provider_replay_compare` uses this capture for Treasure handles. Core and CLI
+Release builds passed with zero warnings or errors; `git diff --check` passed.
+No tests were added or run.
+
 **S4 whole-run six-primitive continuation increment (2026-10-25):** The
 ReferenceNature whole-run session now accepts caller-supplied, replay-validated
 transcript entries for all six typed random operations alongside its existing

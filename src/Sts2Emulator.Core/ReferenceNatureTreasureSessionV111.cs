@@ -174,7 +174,8 @@ public sealed record ReferenceNatureTreasureSessionV111(
 
     [JsonIgnore]
     public ChanceLawV111? PendingLaw => Stochastic.PendingRequest is null ? null :
-        QueryLaw(Origin, Stochastic.PendingRequest, Stochastic.PendingCandidateLabels);
+        QueryLawForCapture(Origin, Stochastic.PendingRequest,
+            Stochastic.PendingCandidateLabels);
 
     public static ReferenceNatureTreasureSessionV111 Begin(
         RunState source, GameAction action, ulong seed) =>
@@ -230,7 +231,8 @@ public sealed record ReferenceNatureTreasureSessionV111(
             throw new InvalidOperationException(
                 "ReferenceNature treasure session is already complete.");
 
-        var law = QueryLaw(Origin, Stochastic.PendingRequest!, Stochastic.PendingCandidateLabels);
+        var law = QueryLawForCapture(Origin,
+            Stochastic.PendingRequest!, Stochastic.PendingCandidateLabels);
         var selection = ReferenceNatureV111.SampleValidated(law, Stochastic.NatureState);
         var providerDecision = ReferenceNatureChanceLawDecisionV111.FromSelection(
             law, Stochastic.PendingRequest!, selection, Origin, Stochastic.PendingCandidateLabels);
@@ -305,7 +307,7 @@ public sealed record ReferenceNatureTreasureSessionV111(
                 throw new InvalidDataException(
                     "ReferenceNature treasure provider transcript changed its request.");
 
-            var law = QueryLaw(Origin, request, labels);
+            var law = QueryLawForCapture(Origin, request, labels);
             var selection = ReferenceNatureV111.SampleValidated(
                 law, expectedNatureState);
             var expectedTranscript = new ReferenceNatureTreasureLawDecisionV111(
@@ -394,7 +396,7 @@ public sealed record ReferenceNatureTreasureSessionV111(
         return session;
     }
 
-    private static ChanceLawV111 QueryLaw(
+    internal static ChanceLawV111 QueryLawForCapture(
         RunState source, ControlledStochasticRequestV111 request,
         string[]? candidateLabels)
     {
