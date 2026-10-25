@@ -4,6 +4,8 @@
 
 **S4 common controlled and semantic hand-draw request progress increment (2026-10-25):** Suspended legacy controlled `DrawPlayerHand` continuations now retain the original requested count beside the remaining count through draw-cost, recycle-Stratagem, and nested `CardDrawn` hook resumes. The ordinary pipeline serializes this as the additive `ControlledDrawRequested` field; older snapshots without it continue to restore with remainder-only progress. The provider-neutral draw-resume result now carries the saved request through both adapter paths. Core and CLI Release builds passed with zero warnings or errors; no tests were run.
 
+**S4 requested-count mechanics comparison increment (2026-10-25):** The provider-independent mechanics projection now includes the original requested count with active automatic hand-draw progress, using the semantic or controlled pipeline value while omitting its provider tag. Remainder-only older snapshots retain a null request value. Mechanics comparison schema v20 advertises the changed projection. Core and CLI Release builds passed with zero warnings or errors; no tests were run.
+
 **S5 provider replay capability disclosure increment (2026-10-25):** JSONL
 `hello` now identifies physical draw identity as evidence returned by provider
 replay comparison v7. CLI Release build passed with zero warnings or errors;

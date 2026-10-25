@@ -13,7 +13,7 @@ public sealed record SimulationMechanicsComparisonV111(
         CloneDifferences(Differences);
 
     public const string SchemaId =
-        "sts2-v111-simulation-mechanics-comparison-v19";
+        "sts2-v111-simulation-mechanics-comparison-v20";
 
     public SimulationMechanicsDifferenceV111[] Differences
     {
@@ -114,11 +114,12 @@ public sealed record SimulationSemanticDrawProgressProjectionV111(
     bool StratagemSelectionPending,
     int? DrawEqualSelectionCount);
 
-/// <summary>Provider-independent remaining-card progress for an active
-/// automatic hand draw. Provider mode and semantic requested-count metadata
-/// are excluded; the active pipeline cursor supplies the stage.</summary>
+/// <summary>Provider-independent progress for an active automatic hand draw.
+/// Provider mode is omitted; the pipeline cursor supplies the stage and the
+/// optional request count remains absent for older remainder-only snapshots.
+/// </summary>
 public sealed record SimulationAutomaticHandDrawProgressProjectionV111(
-    int RemainingCount);
+    int RemainingCount, int? RequestedCount = null);
 
 /// <summary>Provider-independent enemy cursor for a suspended initial or
 /// next-turn intent pass. The selected intent tickets remain in combat
@@ -352,7 +353,7 @@ public static class SimulationMechanicsProjectionEngineV111
                     if (drawProgress.RemainingCount is { } remaining)
                         automaticHandDrawProgress =
                             new SimulationAutomaticHandDrawProgressProjectionV111(
-                                remaining);
+                                remaining, drawProgress.RequestedCount);
                 }
                 pipeline = pipeline with
                 {
