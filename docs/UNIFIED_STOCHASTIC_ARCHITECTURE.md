@@ -1573,13 +1573,11 @@ hand-draw continuation. It selects the existing typed end-turn resolver for
 cost, draw, transform, shortlist, card selection, generation, and pool-shuffle
 choices, then the pilot publishes the returned mechanics and provider state
 together. Standalone choices still use the typed choice-resume owner.
-End-turn target resume also returns the newly appended typed target decision
-from the frame that owns it, so the pilot no longer inspects draw or end-turn
-target transcripts directly.
-Draw-hook and draw-insertion resumes now return their newly recorded typed
-decisions from the same owner. The pilot publishes those decisions with the
-resumed frame without comparing transcript lengths or selecting transcript
-entries itself.
+End-turn target, draw-hook, and draw-insertion resume now return the typed
+decision selected from the pending event together with the resumed frame. The
+owning draw or end-turn stochastic state records and validates its transcript;
+pilot publication does not inspect transcript lengths or select appended
+entries.
 The same boundary returns semantic draw-cost and random-pile-card decisions
 recorded by the active hand-draw frame; pilot replay checks compare the returned
 decisions without reading that frame's transcripts.

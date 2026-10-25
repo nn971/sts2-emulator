@@ -1487,38 +1487,21 @@ public static class SemanticEndTurnEngineV111
         SemanticEndTurnV111 source, string fingerprint,
         string eventId, int enemyInstanceId)
     {
-        ArgumentNullException.ThrowIfNull(source);
-        int priorDrawTargetCount =
-            source.HandDraw?.TargetTranscript.Length ?? 0;
-        int priorEndTurnTargetCount = source.Stochastic
-            .TargetTranscript.Length;
-        bool drawOwnsTarget = source.HandDraw?.TargetPending is not null;
-        var resolved = ResolveTarget(
+        var (next, decision) = ResolveTargetWithDecision(
             source, fingerprint, eventId, enemyInstanceId);
-        SemanticTargetDecisionV111 decision;
-        if (drawOwnsTarget)
-        {
-            var transcript = resolved.HandDraw?.TargetTranscript;
-            if (transcript is null ||
-                transcript.Length <= priorDrawTargetCount)
-                throw new InvalidDataException(
-                    "Hand-draw target resolution omitted its selected identity.");
-            decision = transcript[^1];
-        }
-        else
-        {
-            var transcript = resolved.Stochastic.TargetTranscript;
-            if (transcript.Length <= priorEndTurnTargetCount)
-                throw new InvalidDataException(
-                    "End-turn target resolution omitted its selected identity.");
-            decision = transcript[^1];
-        }
-        return (resolved, decision.Fork());
+        return (next, decision.Fork());
     }
 
     public static SemanticEndTurnV111 ResolveTarget(
         SemanticEndTurnV111 source, string fingerprint,
         string eventId, int enemyInstanceId)
+        => ResolveTargetWithDecision(
+            source, fingerprint, eventId, enemyInstanceId).EndTurn;
+
+    private static (SemanticEndTurnV111 EndTurn,
+        SemanticTargetDecisionV111 Decision) ResolveTargetWithDecision(
+            SemanticEndTurnV111 source, string fingerprint,
+            string eventId, int enemyInstanceId)
     {
         Validate(source);
         if (!StringComparer.Ordinal.Equals(source.Fingerprint, fingerprint))
@@ -1530,12 +1513,17 @@ public static class SemanticEndTurnEngineV111
         if (source.HandDraw is { AtBoundary: false } activeHandDraw &&
             activeHandDraw.TargetPending is not null)
         {
-            var resumedHandDraw = SemanticCombatDrawEngineV111.ResolveTarget(
-                activeHandDraw, activeHandDraw.Fingerprint, eventId,
-                enemyInstanceId);
+            var (resumedHandDraw, handDecision) =
+                SemanticCombatDrawEngineV111.ResolveTargetWithDecision(
+                    activeHandDraw, activeHandDraw.Fingerprint, eventId,
+                    enemyInstanceId);
+            if (CanonicalJson.Sha256(handDecision.Event) !=
+                CanonicalJson.Sha256(pending))
+                throw new InvalidDataException(
+                    "Automatic hand-draw target event changed during resume.");
             var nextHandDraw = ContinueHandDraw(source, resumedHandDraw);
             Validate(nextHandDraw);
-            return nextHandDraw;
+            return (nextHandDraw, handDecision);
         }
         var decision = SemanticTargetChoiceV111.Select(
             pending, eventId, enemyInstanceId);
@@ -1546,12 +1534,20 @@ public static class SemanticEndTurnEngineV111
         var next = ContinueAutomaticPipelineBoundaryChoice(
             source, resumed, stochastic, pending.SiteId);
         Validate(next);
-        return next;
+        return (next, decision);
     }
 
     public static SemanticEndTurnV111 ResolveDrawInsertion(
         SemanticEndTurnV111 source, string fingerprint, string eventId,
         int position)
+        => ResolveDrawInsertionWithDecision(
+            source, fingerprint, eventId, position).EndTurn;
+
+    private static (SemanticEndTurnV111 EndTurn,
+        SemanticDrawInsertionDecisionV111 Decision)
+        ResolveDrawInsertionWithDecision(
+            SemanticEndTurnV111 source, string fingerprint, string eventId,
+            int position)
     {
         Validate(source);
         if (!StringComparer.Ordinal.Equals(source.Fingerprint, fingerprint))
@@ -1567,17 +1563,17 @@ public static class SemanticEndTurnEngineV111
         if (source.HandDraw is { AtBoundary: false } hand &&
             hand.DrawInsertionPending is not null)
         {
-            var nextHand = SemanticCombatDrawEngineV111.Resolve(
-                hand, hand.Fingerprint, decision.SelectedPosition);
-            var recorded = nextHand.DrawInsertionTranscript.LastOrDefault();
-            if (recorded is null ||
-                CanonicalJson.Sha256(recorded) !=
-                    CanonicalJson.Sha256(decision))
+            var (nextHand, recorded) =
+                SemanticCombatDrawEngineV111
+                    .ResolveDrawInsertionWithDecision(
+                        hand, hand.Fingerprint, eventId, position);
+            if (CanonicalJson.Sha256(recorded) !=
+                CanonicalJson.Sha256(decision))
                 throw new InvalidDataException(
-                    "Automatic hand-draw insertion transcript diverged.");
+                    "Automatic hand-draw insertion decision diverged.");
             var next = ContinueHandDraw(source, nextHand);
             Validate(next);
-            return next;
+            return (next, decision);
         }
 
         var choice = new SemanticEndTurnNestedChoiceV111(
@@ -1585,7 +1581,7 @@ public static class SemanticEndTurnEngineV111
             DrawInsertionDecision: decision.Fork());
         var nested = ResumeNestedSemanticChoice(source, choice);
         Validate(nested);
-        return nested;
+        return (nested, decision);
     }
 
     public static (SemanticEndTurnV111 EndTurn,
@@ -1594,29 +1590,12 @@ public static class SemanticEndTurnEngineV111
             SemanticEndTurnV111 source, string fingerprint, string eventId,
             int position)
     {
-        Validate(source);
-        var priorHandInsertionCount =
-            source.HandDraw?.DrawInsertionTranscript.Length ?? 0;
-        var priorNestedChoiceCount =
-            source.Stochastic.NestedChoiceTranscript.Length;
-        var next = ResolveDrawInsertion(
+        var (next, decision) = ResolveDrawInsertionWithDecision(
             source, fingerprint, eventId, position);
-        var decision = next.HandDraw is { } handDraw &&
-                handDraw.DrawInsertionTranscript.Length >
-                    priorHandInsertionCount
-            ? handDraw.DrawInsertionTranscript[^1]
-            : next.Stochastic.NestedChoiceTranscript.Length >
-              priorNestedChoiceCount
-                ? next.Stochastic.NestedChoiceTranscript[^1]
-                    .DrawInsertionDecision
-                : null;
-        if (decision is null)
-            throw new InvalidDataException(
-                "End-turn draw insertion omitted its replay decision.");
         if (decision.Event.EventId != eventId ||
             decision.SelectedPosition != position)
             throw new InvalidDataException(
-                "End-turn draw-insertion transcript diverged from its event.");
+                "End-turn draw insertion diverged from its event.");
         return (next, decision.Fork());
     }
 
@@ -1857,6 +1836,13 @@ public static class SemanticEndTurnEngineV111
 
     public static SemanticEndTurnV111 ResolveDrawHookChoice(
         SemanticEndTurnV111 source, string fingerprint, string actionId)
+        => ResolveDrawHookChoiceWithDecision(
+            source, fingerprint, actionId).EndTurn;
+
+    private static (SemanticEndTurnV111 EndTurn,
+        SemanticDrawHookChoiceDecisionV111 Decision)
+        ResolveDrawHookChoiceWithDecision(
+            SemanticEndTurnV111 source, string fingerprint, string actionId)
     {
         Validate(source);
         if (!StringComparer.Ordinal.Equals(source.Fingerprint, fingerprint))
@@ -1873,17 +1859,18 @@ public static class SemanticEndTurnEngineV111
                 DrawHookChoiceDecision: decision.Fork());
             var nested = ResumeNestedSemanticChoice(source, choice);
             Validate(nested);
-            return nested;
+            return (nested, decision);
         }
         if (source.HandDraw is not { } hand ||
             hand.DrawHookChoicePending is null)
             throw new InvalidOperationException(
                 "No automatic CardDrawn hook action is pending.");
-        var nextHand = SemanticCombatDrawEngineV111.ResolveDrawHookChoice(
-            hand, hand.Fingerprint, actionId);
+        var (nextHand, handDecision) =
+            SemanticCombatDrawEngineV111.ResolveDrawHookChoiceWithDecision(
+                hand, hand.Fingerprint, actionId);
         var state = ContinueHandDraw(source, nextHand);
         Validate(state);
-        return state;
+        return (state, handDecision);
     }
 
     public static (SemanticEndTurnV111 EndTurn,
@@ -1892,31 +1879,15 @@ public static class SemanticEndTurnEngineV111
             SemanticEndTurnV111 source, string fingerprint,
             SemanticDrawHookChoiceEventV111 pending, string actionId)
     {
-        Validate(source);
         ArgumentNullException.ThrowIfNull(pending);
         pending.Validate();
-        var priorNestedChoiceCount =
-            source.Stochastic.NestedChoiceTranscript.Length;
-        var priorHandDrawHookChoiceCount =
-            source.HandDraw?.DrawHookChoiceTranscript.Length ?? 0;
-        var next = ResolveDrawHookChoice(source, fingerprint, actionId);
-        var decision = next.Stochastic.NestedChoiceTranscript.Length >
-                priorNestedChoiceCount
-            ? next.Stochastic.NestedChoiceTranscript[^1]
-                .DrawHookChoiceDecision
-            : next.HandDraw is { } handDraw &&
-                handDraw.DrawHookChoiceTranscript.Length >
-                    priorHandDrawHookChoiceCount
-                ? handDraw.DrawHookChoiceTranscript[^1]
-                : null;
-        if (decision is null)
-            throw new InvalidDataException(
-                "Draw-hook action omitted its replay decision.");
+        var (next, decision) = ResolveDrawHookChoiceWithDecision(
+            source, fingerprint, actionId);
         if (CanonicalJson.Sha256(decision.Event) !=
                 CanonicalJson.Sha256(pending) ||
             decision.ActionId != actionId)
             throw new InvalidDataException(
-                "Draw-hook action transcript diverged from its event.");
+                "Draw-hook decision diverged from its event.");
         return (next, decision.Fork());
     }
 

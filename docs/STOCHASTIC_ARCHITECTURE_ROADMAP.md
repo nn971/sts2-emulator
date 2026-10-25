@@ -4951,17 +4951,17 @@ now derive payloads, hashes, and legal actions through the versioned shared
 fair-observation envelope while preserving their existing response fields.
 Static source review and `git diff --check` only; no tests or builds were run.
 
-**S4 target transcript publication increment (2026-10-25):** The end-turn
-owner now returns the typed target decision appended to either the active
-hand-draw transcript or the end-turn transcript. Pilot publication no longer
-reads those transcript owners directly. Static source review and
+**S4 target decision publication increment (2026-10-25):** The end-turn owner
+now selects and returns the typed target decision with the resumed frame,
+whether the active hand-draw or end-turn state records it. Pilot publication
+no longer reads those transcript owners. Static source review and
 `git diff --check` only; no tests or builds were run.
 
 **S4 pilot draw-hook and insertion publication increment (2026-10-25):** The
-end-turn owner now returns typed draw-hook and draw-insertion decisions from
-the continuation frame that recorded them. Pilot publication no longer reads
-those transcript owners or selects newly appended entries. Static source
-review and `git diff --check` only; no tests or builds were run.
+end-turn owner now selects and returns typed draw-hook and draw-insertion
+decisions with the resumed frame. Pilot publication no longer reads those
+transcript owners or selects newly appended entries. Static source review and
+`git diff --check` only; no tests or builds were run.
 
 **S4 semantic hand-draw decision publication increment (2026-10-25):** The
 end-turn owner now returns typed cost and random-pile-card decisions from the

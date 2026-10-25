@@ -1406,40 +1406,9 @@ public static class SemanticCombatDrawEngineV111
         }
 
         if (state.DrawInsertionPending is { } insertionEvent)
-        {
-            var decision = SemanticDrawInsertionChoiceV111.Select(
-                insertionEvent, insertionEvent.EventId, selectedIndex);
-            int drawnBefore = combat.CounterState.CardsDrawnThisCombat;
-            var resumedInsertion = SemanticChoiceResumeV111.Resume(
-                run, decision);
-            var resumed = resumedInsertion.Run;
-            PrototypeDrawCardsResumeResultV111 insertionProgress;
-            if (state.AutomaticHandDraw)
-                insertionProgress = PrototypeGameEngine
-                    .ResumeSemanticAutomaticHandDrawAfterNestedChoice(
-                        state.Run, resumed,
-                        resumedInsertion.PipelineBoundary,
-                        "draw insertion", state.RequestedCount,
-                        state.RemainingCount);
-            else
-            {
-                int insertionRemaining =
-                    PrototypeGameEngine.GetSemanticDrawRemainingCount(
-                        resumed, state.RemainingCount, drawnBefore);
-                insertionProgress = new PrototypeDrawCardsResumeResultV111(
-                    resumed, insertionRemaining,
-                    PipelineBoundary: resumedInsertion.PipelineBoundary);
-            }
-            var nextInsertion = PublishDrawProgress(
-                state, insertionProgress) with
-            {
-                Stochastic = state.Stochastic.AppendDrawInsertion(decision)
-            };
-            nextInsertion = RecordNewSemanticDrawChoices(
-                state, nextInsertion);
-            Validate(nextInsertion);
-            return nextInsertion;
-        }
+            return ResolveDrawInsertionWithDecision(
+                state, state.Fingerprint, insertionEvent.EventId,
+                selectedIndex).Draw;
 
         if (state.CostPending is { } costRequest)
         {
@@ -1553,6 +1522,51 @@ public static class SemanticCombatDrawEngineV111
         next = RecordNewSemanticDrawChoices(state, next);
         Validate(next);
         return next;
+    }
+
+    internal static (SemanticCombatDrawV111 Draw,
+        SemanticDrawInsertionDecisionV111 Decision)
+        ResolveDrawInsertionWithDecision(
+            SemanticCombatDrawV111 state, string fingerprint,
+            string eventId, int position)
+    {
+        Validate(state);
+        if (state.Fingerprint != fingerprint)
+            throw new InvalidOperationException(
+                "Stale semantic combat-draw insertion fingerprint.");
+        var pending = state.DrawInsertionPending ??
+            throw new InvalidOperationException(
+                "No automatic hand-draw insertion event is pending.");
+        var decision = SemanticDrawInsertionChoiceV111.Select(
+            pending, eventId, position);
+        int drawnBefore = state.Run.World!.Combat!
+            .CounterState.CardsDrawnThisCombat;
+        var resumedInsertion = SemanticChoiceResumeV111.Resume(
+            state.Run, decision);
+        var resumed = resumedInsertion.Run;
+        PrototypeDrawCardsResumeResultV111 insertionProgress;
+        if (state.AutomaticHandDraw)
+            insertionProgress = PrototypeGameEngine
+                .ResumeSemanticAutomaticHandDrawAfterNestedChoice(
+                    state.Run, resumed, resumedInsertion.PipelineBoundary,
+                    "draw insertion", state.RequestedCount,
+                    state.RemainingCount);
+        else
+        {
+            int insertionRemaining =
+                PrototypeGameEngine.GetSemanticDrawRemainingCount(
+                    resumed, state.RemainingCount, drawnBefore);
+            insertionProgress = new PrototypeDrawCardsResumeResultV111(
+                resumed, insertionRemaining,
+                PipelineBoundary: resumedInsertion.PipelineBoundary);
+        }
+        var next = PublishDrawProgress(state, insertionProgress) with
+        {
+            Stochastic = state.Stochastic.AppendDrawInsertion(decision)
+        };
+        next = RecordNewSemanticDrawChoices(state, next);
+        Validate(next);
+        return (next, decision.Fork());
     }
 
     public static SemanticCombatDrawV111 ResolveGeneratedCard(
@@ -1823,6 +1837,13 @@ public static class SemanticCombatDrawEngineV111
 
     public static SemanticCombatDrawV111 ResolveDrawHookChoice(
         SemanticCombatDrawV111 state, string fingerprint, string actionId)
+        => ResolveDrawHookChoiceWithDecision(
+            state, fingerprint, actionId).Draw;
+
+    internal static (SemanticCombatDrawV111 Draw,
+        SemanticDrawHookChoiceDecisionV111 Decision)
+        ResolveDrawHookChoiceWithDecision(
+            SemanticCombatDrawV111 state, string fingerprint, string actionId)
     {
         Validate(state);
         if (state.Fingerprint != fingerprint)
@@ -1845,12 +1866,19 @@ public static class SemanticCombatDrawEngineV111
         var nextWithChronology = RecordNewSemanticDrawChoices(
             state, next);
         Validate(nextWithChronology);
-        return nextWithChronology;
+        return (nextWithChronology, decision.Fork());
     }
 
     public static SemanticCombatDrawV111 ResolveTarget(
         SemanticCombatDrawV111 state, string fingerprint,
         string eventId, int enemyInstanceId)
+        => ResolveTargetWithDecision(
+            state, fingerprint, eventId, enemyInstanceId).Draw;
+
+    internal static (SemanticCombatDrawV111 Draw,
+        SemanticTargetDecisionV111 Decision) ResolveTargetWithDecision(
+            SemanticCombatDrawV111 state, string fingerprint,
+            string eventId, int enemyInstanceId)
     {
         Validate(state);
         if (state.Fingerprint != fingerprint)
@@ -1899,7 +1927,7 @@ public static class SemanticCombatDrawEngineV111
             };
             chained = RecordNewSemanticDrawChoices(state, chained);
             Validate(chained);
-            return chained;
+            return (chained, decision.Fork());
         }
         if (resumedCombat.PendingChoice is not null)
             throw new NotSupportedException(
@@ -1917,7 +1945,7 @@ public static class SemanticCombatDrawEngineV111
         };
         next = RecordNewSemanticDrawChoices(state, next);
         Validate(next);
-        return next;
+        return (next, decision.Fork());
     }
 
     public static string Save(SemanticCombatDrawV111 state)
