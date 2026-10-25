@@ -197,6 +197,69 @@ public static class SemanticDrawHookChoiceEngineV111
             combat, choice, beforeHandDraw);
     }
 
+    internal static void ValidateClassifiedChildBoundary(
+        RunState run, AutomaticHandDrawChildKindV111 childKind,
+        bool requireSemanticEvent = false)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        switch (childKind)
+        {
+            case AutomaticHandDrawChildKindV111.None:
+                return;
+            case AutomaticHandDrawChildKindV111.RandomTarget:
+                SemanticTargetChoiceV111.ValidateBoundary(run);
+                return;
+            case AutomaticHandDrawChildKindV111.RandomPileCard:
+                if (requireSemanticEvent)
+                    _ = SemanticRandomPileCardEngineV111.DescribePending(run) ??
+                        throw new InvalidDataException(
+                            "Nested draw-hook random pile-card choice has no semantic event.");
+                return;
+            case AutomaticHandDrawChildKindV111.DrawInsertion:
+                SemanticDrawInsertionChoiceV111.ValidateBoundary(run);
+                return;
+            case AutomaticHandDrawChildKindV111.GeneratedCard:
+                SemanticGenerationChoiceV111.ValidateBoundary(run);
+                return;
+            case AutomaticHandDrawChildKindV111.PotionGeneration:
+                SemanticPotionGenerationChoiceV111.ValidateBoundary(run);
+                return;
+            case AutomaticHandDrawChildKindV111.PoolShuffle:
+                SemanticPoolShuffleChoiceV111.ValidateBoundary(run);
+                return;
+            case AutomaticHandDrawChildKindV111.CardSelection:
+                SemanticCardSelectionEngineV111.ValidatePendingBoundary(run);
+                if (requireSemanticEvent)
+                    _ = SemanticCardSelectionEngineV111.DescribePending(
+                        run, CanonicalJson.Sha256(run));
+                return;
+            case AutomaticHandDrawChildKindV111.CardTransform:
+            {
+                var transform = run.World?.Combat?.PendingChoice?
+                    .ControlledCardTransform ?? throw new InvalidDataException(
+                        "Nested draw-hook transform choice has no pending transform.");
+                SemanticCardTransformChoiceV111.ValidateBoundary(
+                    run, transform);
+                return;
+            }
+            case AutomaticHandDrawChildKindV111.CardShortlist:
+                SemanticCardShortlistChoiceV111.ValidateBoundary(run);
+                return;
+            case AutomaticHandDrawChildKindV111.RandomHandCost:
+                SemanticRandomHandCostChoiceV111.ValidateBoundary(run);
+                return;
+            case AutomaticHandDrawChildKindV111.SemanticDraw:
+                if (run.World?.Combat?.PendingChoice?.ChoiceId ==
+                    "controlled_draw_cost")
+                    SemanticCostChoiceV111.ValidateDrawBoundary(run);
+                else
+                    SemanticDrawChoiceV111.ValidateBoundary(run);
+                return;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(childKind));
+        }
+    }
+
     private static bool HasTaggedAutomaticChildChoice(
         PendingCombatChoiceState choice) =>
         choice.ControlledTarget is not null ||
@@ -397,95 +460,44 @@ public static class SemanticDrawHookChoiceEngineV111
                     $"UNSUPPORTED_SEMANTIC_DECK site={site} " +
                     "operation=nested_controlled_choice");
 
-            switch (childKind)
+            if (childKind == AutomaticHandDrawChildKindV111.RandomTarget &&
+                !decision.Event.BeforeHandDraw)
             {
-                case AutomaticHandDrawChildKindV111.RandomTarget:
-                    if (decision.Event.BeforeHandDraw)
+                advancedCombat = advancedCombat with
+                {
+                    PendingChoice = nextChoice with
                     {
-                        SemanticTargetChoiceV111.ValidateBoundary(advanced);
+                        AutomaticSemanticDrawTargetChoice = true
                     }
-                    else
+                };
+                advanced = advanced with
+                {
+                    World = advanced.World! with
                     {
-                        advancedCombat = advancedCombat with
-                        {
-                            PendingChoice = nextChoice with
-                            {
-                                AutomaticSemanticDrawTargetChoice = true
-                            }
-                        };
-                        advanced = advanced with
-                        {
-                            World = advanced.World! with
-                            {
-                                Combat = advancedCombat
-                            }
-                        };
-                        SemanticTargetChoiceV111.ValidateBoundary(advanced);
+                        Combat = advancedCombat
                     }
-                    break;
-                case AutomaticHandDrawChildKindV111.RandomPileCard:
-                    _ = SemanticRandomPileCardEngineV111
-                        .DescribePending(advanced)
-                        ?? throw new InvalidDataException(
-                            "Nested draw-hook random pile-card choice has no semantic event.");
-                    break;
-                case AutomaticHandDrawChildKindV111.DrawInsertion:
-                    SemanticDrawInsertionChoiceV111.ValidateBoundary(
-                        advanced);
-                    break;
-                case AutomaticHandDrawChildKindV111.GeneratedCard:
-                    SemanticGenerationChoiceV111.ValidateBoundary(advanced);
-                    break;
-                case AutomaticHandDrawChildKindV111.PotionGeneration:
-                    SemanticPotionGenerationChoiceV111.ValidateBoundary(
-                        advanced);
-                    break;
-                case AutomaticHandDrawChildKindV111.PoolShuffle:
-                    SemanticPoolShuffleChoiceV111.ValidateBoundary(advanced);
-                    break;
-                case AutomaticHandDrawChildKindV111.CardSelection:
-                    SemanticCardSelectionEngineV111
-                        .ValidatePendingBoundary(advanced);
-                    _ = SemanticCardSelectionEngineV111.DescribePending(
-                        advanced, CanonicalJson.Sha256(advanced));
-                    break;
-                case AutomaticHandDrawChildKindV111.CardTransform:
-                    SemanticCardTransformChoiceV111.ValidateBoundary(
-                        advanced, nextChoice.ControlledCardTransform!);
-                    break;
-                case AutomaticHandDrawChildKindV111.CardShortlist:
-                    SemanticCardShortlistChoiceV111.ValidateBoundary(advanced);
-                    break;
-                case AutomaticHandDrawChildKindV111.RandomHandCost:
-                    SemanticRandomHandCostChoiceV111.ValidateBoundary(
-                        advanced);
-                    break;
-                case AutomaticHandDrawChildKindV111.SemanticDraw:
-                    if (nextChoice.ChoiceId == "controlled_draw_cost")
-                        SemanticCostChoiceV111.ValidateDrawBoundary(advanced);
-                    else
-                        SemanticDrawChoiceV111.ValidateBoundary(advanced);
-                    break;
-                case AutomaticHandDrawChildKindV111.None:
-                    if (!hasTaggedChildChoice)
-                    {
-                        advancedCombat = advancedCombat with
-                        {
-                            PendingChoice = nextChoice with
-                            {
-                                AutomaticSemanticDrawHookChoice = true
-                            }
-                        };
-                        advanced = advanced with
-                        {
-                            World = advanced.World! with
-                            {
-                                Combat = advancedCombat
-                            }
-                        };
-                    }
-                    break;
+                };
             }
+            else if (childKind == AutomaticHandDrawChildKindV111.None &&
+                     !hasTaggedChildChoice)
+            {
+                advancedCombat = advancedCombat with
+                {
+                    PendingChoice = nextChoice with
+                    {
+                        AutomaticSemanticDrawHookChoice = true
+                    }
+                };
+                advanced = advanced with
+                {
+                    World = advanced.World! with
+                    {
+                        Combat = advancedCombat
+                    }
+                };
+            }
+            ValidateClassifiedChildBoundary(
+                advanced, childKind, requireSemanticEvent: true);
         }
         else if (beforeHandDraw && advancedCombat.PendingChoice is not null)
             throw new NotSupportedException(

@@ -94,6 +94,13 @@ inspection wrapper was removed, and mechanics validation plus draw-choice
 facades call the shared owner. No snapshot or transcript format changed.
 Static source review and `git diff --check` only; no tests or builds were run.
 
+**S4 automatic hand-draw child validation dispatch ownership (2026-10-25):**
+`SemanticDrawHookChoiceEngineV111` now owns child-kind boundary validation for
+both semantic draw-frame validation and hook replay. Hook replay retains its
+context-specific target/hook retagging and replay-only event materialization;
+each choice owner retains support validation. No schema changed. Static source
+review and `git diff --check` only; no tests or builds were run.
+
 **S5 shared candidate-label binding validation (2026-10-25):** Controlled
 event-choice, run-action, and playable-combat Python facades now use one
 validator for non-empty labels and membership in the saved pending support.

@@ -1267,6 +1267,12 @@ Semantic end-turn now admits a source `CardDrawn` hook action reached inside an 
 
 Semantic draw-hook replay now returns its classified automatic-pipeline boundary alongside the run, and the end-turn nested-choice adapter carries it directly to boundary publication. The shared draw-hook resume validates that classification against the resulting run on standalone, pre-draw, and active hand-draw paths; resuming an active hand draw also retains and checks its requested count. A saved random pile-card child is classified as a semantic choice only at the validated pre-draw or active hand-draw cursor. The run-only compatibility facade remains available to existing callers. Active hand-draw target children use an additive optional target transcript and pending-choice marker; resolving one may open another supported target, which is retagged and replayed in the same draw frame and chronology. Potion-generation children now use the same draw-owned replay and continuation path, with chronology version 3 preserving version 1 and 2 snapshots that do not contain them. Supported pool-shuffle children now use the draw-owned transcript and replay path for distinct Common-card and Colorless generation, moving random Rare cards to hand, and returning the hand to a shuffled draw pile, with chronology version 4 preserving older snapshots that do not contain them. Supported `select_cards` children opened by a draw-hook action now use the existing semantic card-selection owner and draw-owned version 5 transcript; the source selection specification and outer continuation remain subject to the existing fail-closed allowlist. A supported TransformRandom selection child may continue into the existing card-transform owner, whose decisions are recorded in the draw-owned version 6 transcript and replayed against the live replacement pool. Existing pipeline-owned shuffle and card-selection choices keep their end-turn chronology. Other unsupported child-choice kinds remain open.
 
+Semantic draw-frame validation now delegates classified automatic hand-draw
+child boundary checks to the draw-hook choice owner, which shares that dispatch
+with hook replay. Replay-only semantic event materialization stays at the hook
+boundary, and each child choice retains its own support validator. No schema
+changed.
+
 Supported random autoplay and replay-card shortlist children opened by a
 draw-hook action now use the existing card-shortlist event and decision owner
 and the draw-owned version 7 transcript. Their source support is checked after

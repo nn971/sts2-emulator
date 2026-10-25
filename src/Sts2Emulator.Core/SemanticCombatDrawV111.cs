@@ -579,52 +579,9 @@ public sealed record SemanticCombatDrawV111(
         bool automaticHandDrawEffectDrawPending = IsActiveAutomaticChild(
             SemanticDrawHookChoiceEngineV111
                 .AutomaticHandDrawChildKindV111.SemanticDraw);
-        switch (automaticHandDrawValidationChildKind)
-        {
-            case SemanticDrawHookChoiceEngineV111
-                    .AutomaticHandDrawChildKindV111.DrawInsertion:
-                SemanticDrawInsertionChoiceV111.ValidateBoundary(this.Run);
-                break;
-            case SemanticDrawHookChoiceEngineV111
-                    .AutomaticHandDrawChildKindV111.GeneratedCard:
-                SemanticGenerationChoiceV111.ValidateBoundary(this.Run);
-                break;
-            case SemanticDrawHookChoiceEngineV111
-                    .AutomaticHandDrawChildKindV111.PotionGeneration:
-                SemanticPotionGenerationChoiceV111.ValidateBoundary(this.Run);
-                break;
-            case SemanticDrawHookChoiceEngineV111
-                    .AutomaticHandDrawChildKindV111.PoolShuffle:
-                SemanticPoolShuffleChoiceV111.ValidateBoundary(this.Run);
-                break;
-            case SemanticDrawHookChoiceEngineV111
-                    .AutomaticHandDrawChildKindV111.CardSelection:
-                SemanticCardSelectionEngineV111.ValidatePendingBoundary(
-                    this.Run);
-                break;
-            case SemanticDrawHookChoiceEngineV111
-                    .AutomaticHandDrawChildKindV111.CardTransform:
-                SemanticCardTransformChoiceV111.ValidateBoundary(
-                    this.Run,
-                    combat.PendingChoice!.ControlledCardTransform!);
-                break;
-            case SemanticDrawHookChoiceEngineV111
-                    .AutomaticHandDrawChildKindV111.CardShortlist:
-                SemanticCardShortlistChoiceV111.ValidateBoundary(this.Run);
-                break;
-            case SemanticDrawHookChoiceEngineV111
-                    .AutomaticHandDrawChildKindV111.RandomHandCost:
-                SemanticRandomHandCostChoiceV111.ValidateBoundary(this.Run);
-                break;
-            case SemanticDrawHookChoiceEngineV111
-                    .AutomaticHandDrawChildKindV111.SemanticDraw:
-                if (combat.PendingChoice?.ChoiceId ==
-                    "controlled_draw_cost")
-                    SemanticCostChoiceV111.ValidateDrawBoundary(this.Run);
-                else
-                    SemanticDrawChoiceV111.ValidateBoundary(this.Run);
-                break;
-        }
+        SemanticDrawHookChoiceEngineV111
+            .ValidateClassifiedChildBoundary(
+                this.Run, automaticHandDrawValidationChildKind);
         bool semanticDrawChoicePending = standaloneSemanticDrawPending ||
             automaticHandDrawEffectDrawPending ||
             automaticBeforeHandDrawEffectDrawPending;
@@ -745,7 +702,6 @@ public sealed record SemanticCombatDrawV111(
                     deck.Pending is not null || cost is not null)
                     throw new InvalidDataException(
                         "Semantic BeforeHandDraw target cursor is inconsistent.");
-                SemanticTargetChoiceV111.ValidateBoundary(this.Run);
             }
             else if (automaticSemanticHandDrawRandomTarget)
             {
@@ -757,7 +713,6 @@ public sealed record SemanticCombatDrawV111(
                     combat.PendingChoice?.AutomaticSemanticDrawTargetChoice != true)
                     throw new InvalidDataException(
                         "Automatic hand-draw target cursor is inconsistent.");
-                SemanticTargetChoiceV111.ValidateBoundary(this.Run);
             }
             else if (pipelineCursor is null ||
                 semanticBeforeHandDrawProgress ||
