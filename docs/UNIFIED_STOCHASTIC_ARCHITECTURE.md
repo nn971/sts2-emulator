@@ -1568,6 +1568,12 @@ mixed provider trace and typed semantic outcome projections. Entry setup and
 the action runner retain mechanics execution and boundary validation; neither
 rebuilds the audit's provider transcript fields.
 
+The end-turn engine now owns dispatch of pilot choices that resolve its saved
+hand-draw continuation. It selects the existing typed end-turn resolver for
+cost, draw, transform, shortlist, card selection, generation, and pool-shuffle
+choices, then the pilot publishes the returned mechanics and provider state
+together. Standalone choices still use the typed choice-resume owner.
+
 ## Reading order
 
 1. This architecture contract.

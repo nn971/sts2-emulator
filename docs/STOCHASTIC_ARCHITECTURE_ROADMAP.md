@@ -4936,3 +4936,11 @@ and player-action mixed provider journals, primitive index decisions, and
 typed semantic outcome projections through one transition method. Mechanics
 execution and player-boundary validation stay with the semantic pilot. Static
 source review and `git diff --check` only; no tests or builds were run.
+
+**S4 pilot end-turn resume dispatch increment (2026-10-25):** The end-turn
+owner now dispatches typed pilot choices through the existing end-turn
+resolvers when its saved hand-draw continuation owns the boundary. The pilot
+publishes the resulting run and end-turn frame together; standalone choices
+retain the typed choice-resume path. Cross-provider mechanical equivalence
+remains open. Static source review and `git diff --check` only; no tests or
+builds were run.

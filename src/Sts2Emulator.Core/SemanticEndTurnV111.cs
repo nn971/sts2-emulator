@@ -1597,6 +1597,106 @@ public static class SemanticEndTurnEngineV111
         return false;
     }
 
+    internal static SemanticEndTurnV111? ResumePilotNestedChoice(
+        SemanticEndTurnV111? source,
+        SemanticEndTurnNestedChoiceV111 choice)
+    {
+        if (source is null)
+            return null;
+        ArgumentNullException.ThrowIfNull(choice);
+
+        if (choice is
+                { Kind: "semantic_cost",
+                  CostDecision: { } randomHandCost } &&
+            source.HandDraw?.RandomHandCostPending is not null)
+            return ResolveRandomHandCost(
+                source, source.Fingerprint,
+                randomHandCost.Event.EventId,
+                randomHandCost.SelectedCost);
+        if (choice is
+                { Kind: "semantic_hand_cost_selection",
+                  HandCostSelectionDecision: { } handCostSelection } &&
+            source.HandDraw?.HandCostSelectionPending is not null)
+            return ResolveHandCostSelection(
+                source, source.Fingerprint,
+                handCostSelection.Event.EventId,
+                handCostSelection.SelectedCardInstanceId);
+        if (choice is
+                { Kind: "semantic_cost",
+                  CostDecision: { } effectDrawCost } &&
+            source.HandDraw?.CostPending is not null &&
+            source.Run.World?.Combat?.PendingChoice is
+                { ChoiceId: "controlled_draw_cost",
+                  ControlledSemanticDraw: not null })
+            return ResolveSelectedIndex(
+                source, source.Fingerprint,
+                effectDrawCost.SelectedIndex);
+        if (choice is
+                { Kind: "semantic_draw",
+                  DrawDecision: { } effectDraw } &&
+            source.HandDraw?.Pending is { } handDrawEvent &&
+            source.Run.World?.Combat?.PendingChoice?.ControlledSemanticDraw
+                is not null)
+        {
+            if (CanonicalJson.Sha256(handDrawEvent) !=
+                CanonicalJson.Sha256(effectDraw.Event))
+                throw new InvalidDataException(
+                    "Automatic hand-draw effect event changed during resume.");
+            return ResolveSelectedIndex(
+                source, source.Fingerprint,
+                effectDraw.SelectedIndex);
+        }
+        if (choice is
+                { Kind: "semantic_card_transform",
+                  CardTransformDecision: { } transformedCard } &&
+            source.HandDraw?.CardTransformPending is not null)
+            return ResolveCardTransform(
+                source, source.Fingerprint,
+                transformedCard.Event.EventId,
+                transformedCard.SelectedCardId);
+        if (choice is
+                { Kind: "semantic_card_shortlist",
+                  CardShortlistDecision: { } shortlistedCard } &&
+            source.HandDraw?.CardShortlistPending is not null)
+            return ResolveCardShortlist(
+                source, source.Fingerprint,
+                shortlistedCard.Event.EventId,
+                shortlistedCard.SelectedCardInstanceId);
+        if (choice is
+                { Kind: "semantic_card_selection",
+                  CardSelectionDecision: { } selectedCards } &&
+            source.HandDraw?.CardSelectionPending is not null)
+            return ResolveCardSelection(
+                source, source.Fingerprint,
+                selectedCards.Event.EventId, selectedCards.ActionId);
+        if (choice is
+                { Kind: "semantic_generated_card",
+                  GeneratedCardDecision: { } generatedCard } &&
+            source.HandDraw?.GeneratedCardPending is not null)
+            return ResolveGeneratedCard(
+                source, source.Fingerprint,
+                generatedCard.Event.EventId,
+                generatedCard.SelectedCardId);
+        if (choice is
+                { Kind: "semantic_potion_generation",
+                  PotionGenerationDecision: { } generatedPotion } &&
+            source.HandDraw?.PotionGenerationPending is not null)
+            return ResolvePotionGeneration(
+                source, source.Fingerprint,
+                generatedPotion.Event.EventId,
+                generatedPotion.SelectedPotionId);
+        if (choice is
+                { Kind: "semantic_pool_shuffle",
+                  PoolShuffleDecision: { } poolShuffle } &&
+            source.HandDraw?.PoolShufflePending is not null)
+            return ResolvePoolShuffle(
+                source, source.Fingerprint,
+                poolShuffle.Event.EventId,
+                poolShuffle.SelectedSwapIndex);
+
+        return ResumeNestedSemanticChoice(source, choice);
+    }
+
     internal static SemanticEndTurnV111 ResumeNestedSemanticChoice(
         SemanticEndTurnV111 source,
         SemanticEndTurnNestedChoiceV111 choice)
