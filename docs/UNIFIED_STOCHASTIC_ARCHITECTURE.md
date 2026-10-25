@@ -437,8 +437,10 @@ sessions.
 
 Registered whole-run Native event shuffles also use the event-shuffle plan and
 its saved swap or Repy offer prefix. Requests are matched against the rebuilt
-source law; Fake Merchant and Battleworn keep the generic bounded law when
-their ordered candidate identities are not available in the action frame.
+source law, including candidate identities reconstructed by the entry or
+victory probe where they are absent from the pending request. Ordered
+semantic-index laws map their selected identity back to the typed request
+index before the action resumes.
 
 Whole-run ReferenceNature resolution now sends index, unit-float, and
 Gaussian-integer law outcomes through `ReferenceNatureChanceLawDecisionV111`.

@@ -11,10 +11,11 @@ passed. No tests were run.
 
 **S2 whole-run Native event-shuffle law increment (2026-10-26):** Registered
 whole-run event shuffles now use the event-shuffle plan and replayed swap or
-Repy offer prefix, with exact request validation. Fake Merchant and Battleworn
-retain the generic bounded law if the action frame lacks their ordered
-candidate identities. Core and CLI Release builds passed with zero warnings or
-errors; `git diff --check` passed. No tests were run.
+Repy offer prefix, with exact request validation and source candidate probes
+for Fake Merchant and Battleworn. The shared whole-run outcome adapter maps
+ordered semantic-index laws back to their typed request index. Core and CLI
+Release builds passed with zero warnings or errors; `git diff --check` passed.
+No tests were run.
 
 **S2 whole-run Native event-card pick law increment (2026-10-26):** Ordinary
 ReferenceNature event-choice actions now use the existing conditioned

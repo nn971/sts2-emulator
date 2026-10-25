@@ -815,20 +815,11 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
         RandomIndexRequestV111 request)
     {
         request.Validate();
-        var requiresCandidateIds = request.SiteId == PrototypeNativeFakeMerchant
-                .RelicOfferShuffleSiteId ||
-            request.SiteId == PrototypeNativeGloryEvents
-                .BattlewornUpgradeShuffleSiteId;
-        var candidateIds = requiresCandidateIds
-            ? active.PendingCandidateLabels
-            : null;
-        if (requiresCandidateIds && candidateIds is not { Length: > 0 })
-            return null;
         var actionId = active.Action.Kind == "event_choice"
             ? active.Action.ReadPayload<EventChoicePayload>().ChoiceId
             : PrototypeAiEnvironment.StableActionId(active.Action);
         var plan = NativeEventShufflePlanBuilderV111.Build(
-            active.Origin, request.SiteId, actionId, candidateIds);
+            active.Origin, request.SiteId, actionId);
         if (plan.CandidateCount <= 0)
             return null;
         if (plan.IsCombatEndIndex)
@@ -1374,11 +1365,40 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
         ChanceLawV111 law,
         ReferenceNatureSelectionV111 selection)
     {
-        var decision = ReferenceNatureChanceLawDecisionV111.FromSelection(
-            law, request, selection, active.Origin,
-            active.PendingCandidateLabels);
+        var decision = UsesOrderedIndexOutcomeLaw(law, request)
+            ? ReferenceNatureChanceLawDecisionV111
+                .FromOrderedIndexSelection(
+                    law, request, selection,
+                    law.Outcomes.Select(outcome => outcome.OutcomeId)
+                        .ToArray())
+            : ReferenceNatureChanceLawDecisionV111.FromSelection(
+                law, request, selection, active.Origin,
+                active.PendingCandidateLabels);
         return ScriptedRunActionOutcomeV111.FromDecision(
             decision, checked(active.Decisions.Length + 1));
+    }
+
+    private static bool UsesOrderedIndexOutcomeLaw(
+        ChanceLawV111 law, ControlledStochasticRequestV111 request)
+    {
+        if (request.IndexRequest is not { } indexRequest ||
+            law.OperationKind != indexRequest.OperationKind ||
+            law.SupportCount != indexRequest.SupportCount ||
+            law.Outcomes.Length != indexRequest.SupportCount)
+            return false;
+        return law.ConditioningPolicyId is
+            ChanceLawEngineV111.NativeEventCardPickConditioningPolicyId or
+            ChanceLawEngineV111.TrashHeapConditioningPolicyId or
+            ChanceLawEngineV111.TabletOfTruthConditioningPolicyId or
+            ChanceLawEngineV111.NativePunchOffRewardConditioningPolicyId or
+            ChanceLawEngineV111.NativeEventShuffleConditioningPolicyId or
+            ChanceLawEngineV111.NativeRepyChestOfferConditioningPolicyId or
+            ChanceLawEngineV111.NativeEndlessConveyorUpgradeConditioningPolicyId or
+            ChanceLawEngineV111.NativeEndlessConveyorColorlessConditioningPolicyId ||
+            indexRequest.SiteId == PrototypeNativePunchOff
+                .ConstructHpOffsetSiteId ||
+            indexRequest.SiteId == PrototypeNativePotionShop
+                .UniformModelSiteId;
     }
 
     public ReferenceNatureScriptedRunSessionV111 Fork()
