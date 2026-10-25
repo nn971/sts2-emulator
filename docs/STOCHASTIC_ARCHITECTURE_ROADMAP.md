@@ -83,6 +83,13 @@ supported pool before claiming semantic completeness. Core and CLI Release
 builds passed with zero warnings or errors; `git diff --check` passed. No
 tests were added or run.
 
+**S4 Glory Reflections semantic capture increment (2026-10-26):** JSONL
+provider replay now captures each selected physical card identity alongside
+its typed boundary. The capture restores the completed session and re-queries
+each law with its ordered prior-pick prefix, preserving the conditioned
+downgrade/upgrade support. Core and CLI Release builds passed with zero
+warnings or errors; `git diff --check` passed. No tests were added or run.
+
 **S4 whole-run six-primitive continuation increment (2026-10-25):** The
 ReferenceNature whole-run session now accepts caller-supplied, replay-validated
 transcript entries for all six typed random operations alongside its existing

@@ -10686,7 +10686,7 @@ internal static class PrototypeAiJsonlServer
                                     return referenceNatureGloryReflectionsStates
                                         .TryGetValue(handle, out var gloryReflections)
                                         ? SimulationProviderReplayCaptureV111
-                                            .FromReferenceNatureControlledActionSession(
+                                            .FromReferenceNatureGloryReflectionsSession(
                                                 gloryReflections)
                                         : throw new InvalidOperationException(
                                             "Unknown ReferenceNature Glory Reflections handle: " +

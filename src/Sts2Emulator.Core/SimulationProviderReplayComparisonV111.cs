@@ -336,6 +336,8 @@ public static class SimulationProviderReplayCaptureProvenanceV111
         "reference-nature-tablet-of-truth-semantic-identity-replay-validated-v1";
     public const string ReferenceNatureInfestedAutomatonSemanticIdentityReplayValidated =
         "reference-nature-infested-automaton-semantic-identity-replay-validated-v1";
+    public const string ReferenceNatureGloryReflectionsSemanticIdentityReplayValidated =
+        "reference-nature-glory-reflections-semantic-identity-replay-validated-v1";
     public const string ReferenceNatureEventChoiceReplayValidated =
         "reference-nature-event-choice-replay-validated-v1";
     public const string ReferenceNatureControlledActionReplayValidated =
@@ -369,6 +371,7 @@ public static class SimulationProviderReplayCaptureProvenanceV111
         ReferenceNatureTrashHeapSemanticIdentityReplayValidated or
         ReferenceNatureTabletOfTruthSemanticIdentityReplayValidated or
         ReferenceNatureInfestedAutomatonSemanticIdentityReplayValidated or
+        ReferenceNatureGloryReflectionsSemanticIdentityReplayValidated or
         ReferenceNatureEventChoiceReplayValidated or
         ReferenceNatureControlledActionReplayValidated or
         ReferenceNatureNeowOfferReplayValidated or
@@ -403,6 +406,7 @@ public static class SimulationProviderReplayCaptureProvenanceV111
             ReferenceNatureTrashHeapSemanticIdentityReplayValidated or
             ReferenceNatureTabletOfTruthSemanticIdentityReplayValidated or
             ReferenceNatureInfestedAutomatonSemanticIdentityReplayValidated or
+            ReferenceNatureGloryReflectionsSemanticIdentityReplayValidated or
             ReferenceNatureSemanticIdentityReplayValidated or
             ReferenceNatureCombatRewardSemanticIdentityReplayValidated;
 
@@ -1655,6 +1659,48 @@ public sealed record SimulationProviderReplayCaptureV111(
     }
 
     /// <summary>
+    /// Captures completed Glory Reflections with each conditioned card
+    /// identity in its ordered downgrade/upgrade prefix.
+    /// </summary>
+    public static SimulationProviderReplayCaptureV111
+        FromReferenceNatureGloryReflectionsSession(
+            ReferenceNatureGloryReflectionsSessionV111 session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        ReferenceNatureGloryReflectionsSessionV111 validated;
+        using (RandomBoundaryJournalV111.Begin())
+            validated = ReferenceNatureGloryReflectionsSessionV111.Restore(
+                ReferenceNatureGloryReflectionsSessionV111.Save(session));
+        if (!validated.Complete)
+            throw new InvalidOperationException(
+                "Provider replay capture requires a completed ReferenceNature Glory Reflections session.");
+
+        var providerDecisions = validated.ProviderDecisions;
+        var transcript = validated.DecisionTranscript.Select(selection =>
+            new SimulationProviderReplaySemanticSelectionV111(
+                selection.LawId, selection.EventId, selection.OutcomeId,
+                selection.OutcomeIndex)).ToArray();
+        return FromReferenceNatureSemanticAction(
+            validated.Origin, validated.Action, validated.Run,
+            providerDecisions, transcript, index =>
+            {
+                var request = providerDecisions[index].IndexDecision?.Request ??
+                    throw new InvalidDataException(
+                        "ReferenceNature Glory Reflections decision has no index request.");
+                var priorIndices = providerDecisions.Take(index).Select(
+                    decision => decision.IndexDecision?.SelectedIndex ??
+                        throw new InvalidDataException(
+                            "ReferenceNature Glory Reflections prefix has no index outcome."))
+                    .ToArray();
+                return ChanceLawEngineV111.QueryNativeEventCardPick(
+                    validated.Origin, request.SiteId, index, priorIndices,
+                    "touch_mirror");
+            },
+            SimulationProviderReplayCaptureProvenanceV111
+                .ReferenceNatureGloryReflectionsSemanticIdentityReplayValidated);
+    }
+
+    /// <summary>
     /// Captures a completed combat victory and its atomic ReferenceNature
     /// reward transcript as provider-independent semantic outcomes.
     /// </summary>
@@ -2236,6 +2282,8 @@ public sealed record SimulationProviderReplayCaptureV111(
                  SimulationProviderReplayCaptureProvenanceV111
                     .ReferenceNatureInfestedAutomatonSemanticIdentityReplayValidated or
                  SimulationProviderReplayCaptureProvenanceV111
+                    .ReferenceNatureGloryReflectionsSemanticIdentityReplayValidated or
+                 SimulationProviderReplayCaptureProvenanceV111
                     .SemanticNativePolicySemanticIdentityReplayValidated))
             throw new InvalidDataException(
                 "Legacy provider replay captures cannot claim provider-independent semantic identities.");
@@ -2262,6 +2310,8 @@ public sealed record SimulationProviderReplayCaptureV111(
                     .ReferenceNatureTabletOfTruthSemanticIdentityReplayValidated or
                  SimulationProviderReplayCaptureProvenanceV111
                     .ReferenceNatureInfestedAutomatonSemanticIdentityReplayValidated or
+                 SimulationProviderReplayCaptureProvenanceV111
+                    .ReferenceNatureGloryReflectionsSemanticIdentityReplayValidated or
                  SimulationProviderReplayCaptureProvenanceV111
                     .ReferenceNatureCombatRewardSemanticIdentityReplayValidated or
                  SimulationProviderReplayCaptureProvenanceV111
