@@ -5254,8 +5254,10 @@ public static class SemanticPilotCombatEngineV111
             pending.EnemyActionPending is null)
             throw new InvalidOperationException(
                 "No semantic enemy intent, draw or cost choice is pending.");
-        var resolved = SemanticEndTurnEngineV111.Resolve(
-            pending, pending.Fingerprint, selectedIndex);
+        var (resolved, costDecision, randomPileCardDecision) =
+            SemanticEndTurnEngineV111.ResolvePilotChoice(
+                pending, pending.Fingerprint, selectedIndex, costEvent,
+                randomPileCardEvent);
         SemanticDrawDecisionV111? deckDecision = null;
         if (drawEvent is not null)
         {
@@ -5267,42 +5269,11 @@ public static class SemanticPilotCombatEngineV111
                 CanonicalJson.Sha256(deckDecision))
             throw new InvalidOperationException(
                 "Semantic card decision is stale or outside current support.");
-        SemanticCostDecisionV111? costDecision = null;
-        if (costEvent is not null)
-        {
-            var transcript = resolved.HandDraw?.CostTranscript ?? [];
-            var recorded = transcript.LastOrDefault(decision =>
-                ControlledStochasticChanceReplayV111.RequestsMatch(
-                    decision.Request, costEvent.Request)) ??
-                throw new InvalidDataException(
-                    "Semantic draw cost did not record its source event.");
-            if (recorded.SelectedIndex != selectedIndex)
-                throw new InvalidDataException(
-                    "Semantic draw cost selected a different bounded value.");
-            costDecision = new SemanticCostDecisionV111(
-                costEvent, recorded.SelectedIndex,
-                costEvent.CandidateCosts[recorded.SelectedIndex]);
-            costDecision.Validate();
-        }
         if (expectedCostDecision is not null &&
             CanonicalJson.Sha256(expectedCostDecision) !=
                 CanonicalJson.Sha256(costDecision))
             throw new InvalidOperationException(
                 "Semantic cost decision is stale or outside current support.");
-        SemanticRandomPileCardDecisionV111? randomPileCardDecision = null;
-        if (randomPileCardEvent is not null)
-        {
-            var transcript = resolved.HandDraw?.RandomPileCardTranscript ?? [];
-            randomPileCardDecision = transcript.LastOrDefault(decision =>
-                decision.Event.EventId == randomPileCardEvent.EventId) ??
-                throw new InvalidDataException(
-                    "Random pile-card selection did not record its event.");
-            if (CanonicalJson.Sha256(randomPileCardDecision.Event) !=
-                    CanonicalJson.Sha256(randomPileCardEvent) ||
-                randomPileCardDecision.SelectedIndex != selectedIndex)
-                throw new InvalidDataException(
-                    "Random pile-card selection diverged from its support.");
-        }
         if (expectedRandomPileCardDecision is not null &&
             CanonicalJson.Sha256(expectedRandomPileCardDecision) !=
                 CanonicalJson.Sha256(randomPileCardDecision))

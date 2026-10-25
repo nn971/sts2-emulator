@@ -1111,6 +1111,50 @@ public static class SemanticEndTurnEngineV111
         return state;
     }
 
+    public static (SemanticEndTurnV111 EndTurn,
+        SemanticCostDecisionV111? CostDecision,
+        SemanticRandomPileCardDecisionV111? RandomPileCardDecision)
+        ResolvePilotChoice(
+            SemanticEndTurnV111 source, string fingerprint, int selectedIndex,
+            SemanticCostEventV111? costEvent,
+            SemanticRandomPileCardEventV111? randomPileCardEvent)
+    {
+        Validate(source);
+        var next = Resolve(source, fingerprint, selectedIndex);
+        SemanticCostDecisionV111? costDecision = null;
+        if (costEvent is not null)
+        {
+            var transcript = next.HandDraw?.CostTranscript ?? [];
+            var recorded = transcript.LastOrDefault(decision =>
+                ControlledStochasticChanceReplayV111.RequestsMatch(
+                    decision.Request, costEvent.Request)) ??
+                throw new InvalidDataException(
+                    "Semantic draw cost did not record its source event.");
+            if (recorded.SelectedIndex != selectedIndex)
+                throw new InvalidDataException(
+                    "Semantic draw cost selected a different bounded value.");
+            costDecision = new SemanticCostDecisionV111(
+                costEvent, recorded.SelectedIndex,
+                costEvent.CandidateCosts[recorded.SelectedIndex]);
+            costDecision.Validate();
+        }
+        SemanticRandomPileCardDecisionV111? randomPileCardDecision = null;
+        if (randomPileCardEvent is not null)
+        {
+            var transcript = next.HandDraw?.RandomPileCardTranscript ?? [];
+            randomPileCardDecision = transcript.LastOrDefault(decision =>
+                decision.Event.EventId == randomPileCardEvent.EventId) ??
+                throw new InvalidDataException(
+                    "Random pile-card selection did not record its event.");
+            if (CanonicalJson.Sha256(randomPileCardDecision.Event) !=
+                    CanonicalJson.Sha256(randomPileCardEvent) ||
+                randomPileCardDecision.SelectedIndex != selectedIndex)
+                throw new InvalidDataException(
+                    "Random pile-card selection diverged from its support.");
+        }
+        return (next, costDecision, randomPileCardDecision);
+    }
+
     public static SemanticEndTurnV111 ResolveIntent(
         SemanticEndTurnV111 source, string fingerprint, string eventId,
         string intentId)

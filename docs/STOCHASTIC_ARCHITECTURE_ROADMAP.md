@@ -4962,3 +4962,9 @@ end-turn owner now returns typed draw-hook and draw-insertion decisions from
 the continuation frame that recorded them. Pilot publication no longer reads
 those transcript owners or selects newly appended entries. Static source
 review and `git diff --check` only; no tests or builds were run.
+
+**S4 semantic hand-draw decision publication increment (2026-10-25):** The
+end-turn owner now returns typed cost and random-pile-card decisions from the
+active hand-draw frame during pilot resolution. Pilot replay comparison no
+longer reads those hand-draw transcripts. Static source review and
+`git diff --check` only; no tests or builds were run.
