@@ -198,7 +198,7 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
 
     [JsonIgnore]
     public ChanceLawV111? PendingLaw => Stochastic.PendingRequest is null ? null :
-        QueryLaw(Origin, Action, Stochastic.PendingRequest, Stochastic.PendingCandidateLabels,
+        QueryLawForCapture(Origin, Action, Stochastic.PendingRequest, Stochastic.PendingCandidateLabels,
             Stochastic.ProviderDecisions);
 
     public static string[] SessionSiteIds =>
@@ -270,7 +270,7 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
             throw new InvalidOperationException(
                 "ReferenceNature Native event relic session is already complete.");
 
-        var law = QueryLaw(Origin, Action, Stochastic.PendingRequest!,
+        var law = QueryLawForCapture(Origin, Action, Stochastic.PendingRequest!,
             Stochastic.PendingCandidateLabels, Stochastic.ProviderDecisions);
         var selection = ReferenceNatureV111.SampleValidated(law, Stochastic.NatureState);
         var providerDecision = ReferenceNatureChanceLawDecisionV111.FromSelection(
@@ -365,7 +365,7 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
                 throw new InvalidDataException(
                     "Native event relic provider transcript changed its request.");
 
-            var law = QueryLaw(Origin, Action, request, labels, prefix);
+            var law = QueryLawForCapture(Origin, Action, request, labels, prefix);
             var selection = ReferenceNatureV111.SampleValidated(
                 law, expectedNatureState);
             var expectedTranscript = new ReferenceNatureNativeEventRelicDecisionV111(
@@ -562,7 +562,7 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
         return session;
     }
 
-    private static ChanceLawV111 QueryLaw(
+    internal static ChanceLawV111 QueryLawForCapture(
         RunState source, GameAction action,
         ControlledStochasticRequestV111 request, string[]? candidateLabels,
         ControlledStochasticDecisionV111[] prefix)

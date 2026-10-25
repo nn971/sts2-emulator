@@ -1243,8 +1243,8 @@ same boundary journal. It retains each settled action boundary. JSONL accepts
 `<side>_reference_nature_event_choice_handle` for this path. It does not
 establish Native source-hook parity or law fidelity.
 `FromReferenceNatureControlledActionSession` uses one shared interface for
-completed Merchant, Treasure, Native Shovel, Native event-relic,
-Native event-gold, Infested Automaton, Glory Reflections, Trial, Trash Heap,
+completed Merchant, Treasure, Native Shovel, Native event-gold,
+Infested Automaton, Glory Reflections, Trial, Trash Heap,
 Tablet of Truth, Native event-shuffle, Endless Conveyor, and Punch Off fight
 and reward sessions. Each session first replays
 its own action and typed stochastic prefix; the capture then records that
@@ -1255,8 +1255,12 @@ decisions from their existing validated Chance Law decisions, exact requests,
 and ordered outcome supports.
 JSONL accepts the matching
 `<side>_reference_nature_{merchant,treasure,native_shovel,native_event_relic,native_event_gold,infested_automaton,glory_reflections,trial,trash_heap,tablet_of_truth,native_event_shuffle,endless_conveyor,punch_off_fight,punch_off_reward}_handle`
-inputs. This adds replay-capture coverage without changing the action or
-provider owners. `FromReferenceNatureCombatRewardSession` separately captures
+inputs. The Native event-relic input now uses
+`FromReferenceNatureNativeEventRelicSession`, which re-queries its saved
+rarity and relic identity laws against the action and preceding typed prefix
+before attaching provider-independent semantic outcomes. These paths add
+replay-capture coverage without changing the action or provider owners.
+`FromReferenceNatureCombatRewardSession` separately captures
 the completed victory action and each replayed reward Chance Law outcome as
 provider-independent semantic identities. Its JSONL input remains
 `<side>_reference_nature_combat_reward_handle`; Native reward card-model

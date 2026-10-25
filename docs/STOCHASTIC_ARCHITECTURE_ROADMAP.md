@@ -59,6 +59,14 @@ action, ordered request support, and preceding purchase prefix before it
 claims semantic completeness. Core and CLI Release builds passed with zero
 warnings or errors; `git diff --check` passed. No tests were added or run.
 
+**S4 Native event-relic semantic capture increment (2026-10-26):** JSONL
+provider replay now captures completed Native event-relic actions with their
+typed boundaries and semantic identities for rarity and relic selections. The
+factory re-queries each law against the saved action, support, and preceding
+typed prefix before it claims semantic completeness. Core and CLI Release
+builds passed with zero warnings or errors; `git diff --check` passed. No
+tests were added or run.
+
 **S4 whole-run six-primitive continuation increment (2026-10-25):** The
 ReferenceNature whole-run session now accepts caller-supplied, replay-validated
 transcript entries for all six typed random operations alongside its existing

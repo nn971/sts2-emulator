@@ -10659,7 +10659,7 @@ internal static class PrototypeAiJsonlServer
                                     return referenceNatureNativeEventRelicStates
                                         .TryGetValue(handle, out var nativeEventRelic)
                                         ? SimulationProviderReplayCaptureV111
-                                            .FromReferenceNatureControlledActionSession(
+                                            .FromReferenceNatureNativeEventRelicSession(
                                                 nativeEventRelic)
                                         : throw new InvalidOperationException(
                                             "Unknown ReferenceNature Native event-relic handle: " +
