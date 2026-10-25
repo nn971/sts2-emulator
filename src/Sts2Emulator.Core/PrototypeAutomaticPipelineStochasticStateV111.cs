@@ -241,6 +241,20 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
     }
 
     /// <summary>
+    /// Identifies either the active semantic DrawPlayerHand cursor or its
+    /// saved BeforeHandDraw boundary, excluding completed-stage receipts.
+    /// </summary>
+    public bool IsAtSemanticHandDrawContinuationBoundary(
+        PrototypeAutomaticPipelineMechanicsStateV111 mechanics)
+    {
+        ArgumentNullException.ThrowIfNull(mechanics);
+        return CompletedSemanticHandDrawRequested is null &&
+            (TryGetSemanticHandDrawProgress(
+                mechanics, out _, out _) ||
+             IsAtSemanticBeforeHandDraw(mechanics));
+    }
+
+    /// <summary>
     /// Projects semantic automatic hand-draw progress for the semantic draw
     /// facade. BeforeHandDraw suspension is represented by a zero-count
     /// projection only with an empty count payload at the saved draw stage.

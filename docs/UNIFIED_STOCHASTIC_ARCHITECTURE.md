@@ -258,6 +258,14 @@ that same local RNG projection in the cursor update, keeping provider and
 progress publication in one transition. The draw result adapters continue to
 own typed transcripts, source support, and boundary interpretation.
 
+`PrototypeAutomaticPipelineStochasticStateV111.IsAtSemanticHandDrawContinuationBoundary`
+owns the common active-draw or pre-draw semantic cursor check, including the
+absence of a completed-stage receipt. Automatic generated-card,
+potion-generation, pool-shuffle, card-selection, card-transform, shortlist,
+random-cost and random-pile-card continuation validators, plus deferred draw
+resume classification, reuse this owner predicate; each still validates its
+own typed payload and source support.
+
 The draw stochastic owner also includes card-shortlist choices in its typed
 transcripts, mixed boundary chronology, and provenance replay. End-turn and
 pilot facades route a shortlist opened by an active or pre-draw hand-draw hook

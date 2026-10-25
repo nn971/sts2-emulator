@@ -44,12 +44,8 @@ internal readonly record struct PrototypeAutomaticPipelineResumeResultV111
             combat.AutomaticPipelineContinuation is not { } cursor)
             throw new InvalidDataException(
                 "Deferred semantic hand-draw resume lost its generated-card boundary.");
-        bool activeDraw = cursor.Stochastic.TryGetSemanticHandDrawProgress(
-            cursor.Mechanics, out _, out _);
-        bool beforeDraw = cursor.Stochastic.IsAtSemanticBeforeHandDraw(
-            cursor.Mechanics) &&
-            cursor.Stochastic.CompletedSemanticHandDrawRequested is null;
-        if (!activeDraw && !beforeDraw)
+        if (!cursor.Stochastic.IsAtSemanticHandDrawContinuationBoundary(
+                cursor.Mechanics))
             throw new InvalidDataException(
                 "Deferred semantic hand-draw resume lost its draw cursor.");
         // The draw owner immediately resumes this transient state. It can sit
@@ -189,12 +185,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                       OuterChoiceContinuation: not null } } combat)
             return false;
 
-        bool supportedCursor =
-            cursor.Stochastic.IsAtSemanticBeforeHandDraw(
-                cursor.Mechanics) ||
-            cursor.Stochastic.TryGetSemanticHandDrawProgress(
-                cursor.Mechanics, out _, out _);
-        return supportedCursor &&
+        return cursor.Stochastic.IsAtSemanticHandDrawContinuationBoundary(
+                cursor.Mechanics) &&
             SemanticRandomPileCardEngineV111.DescribePending(run) is not null;
     }
 
@@ -373,12 +365,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             combat.AutomaticPipelineContinuation is not { } cursor)
             return false;
 
-        return cursor.Stochastic.TryGetSemanticHandDrawProgress(
-                cursor.Mechanics, out int requested, out int remaining)
-            ? requested > 0 && remaining >= 0
-            : cursor.Stochastic.IsAtSemanticBeforeHandDraw(
-                  cursor.Mechanics) &&
-              cursor.Stochastic.CompletedSemanticHandDrawRequested is null;
+        return cursor.Stochastic.IsAtSemanticHandDrawContinuationBoundary(
+            cursor.Mechanics);
     }
 
     internal static bool IsAutomaticHandDrawPotionGenerationContinuation(
@@ -403,12 +391,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             combat.AutomaticPipelineContinuation is not { } cursor)
             return false;
 
-        return cursor.Stochastic.TryGetSemanticHandDrawProgress(
-                cursor.Mechanics, out int requested, out int remaining)
-            ? requested > 0 && remaining >= 0
-            : cursor.Stochastic.IsAtSemanticBeforeHandDraw(
-                  cursor.Mechanics) &&
-              cursor.Stochastic.CompletedSemanticHandDrawRequested is null;
+        return cursor.Stochastic.IsAtSemanticHandDrawContinuationBoundary(
+            cursor.Mechanics);
     }
 
     internal static bool IsAutomaticHandDrawPoolShuffleContinuation(
@@ -441,12 +425,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                 combat, pending))
             return false;
 
-        return cursor.Stochastic.TryGetSemanticHandDrawProgress(
-                cursor.Mechanics, out int requested, out int remaining)
-            ? requested > 0 && remaining >= 0
-            : cursor.Stochastic.IsAtSemanticBeforeHandDraw(
-                  cursor.Mechanics) &&
-              cursor.Stochastic.CompletedSemanticHandDrawRequested is null;
+        return cursor.Stochastic.IsAtSemanticHandDrawContinuationBoundary(
+            cursor.Mechanics);
     }
 
     internal static bool IsAutomaticHandDrawHookCardSelectionContinuation(
@@ -467,12 +447,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                 combat, pending))
             return false;
 
-        return cursor.Stochastic.TryGetSemanticHandDrawProgress(
-                cursor.Mechanics, out int requested, out int remaining)
-            ? requested > 0 && remaining >= 0
-            : cursor.Stochastic.IsAtSemanticBeforeHandDraw(
-                  cursor.Mechanics) &&
-              cursor.Stochastic.CompletedSemanticHandDrawRequested is null;
+        return cursor.Stochastic.IsAtSemanticHandDrawContinuationBoundary(
+            cursor.Mechanics);
     }
 
     internal static bool IsAutomaticHandDrawHookCardTransformContinuation(
@@ -494,12 +470,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                 combat, pending))
             return false;
 
-        return cursor.Stochastic.TryGetSemanticHandDrawProgress(
-                cursor.Mechanics, out int requested, out int remaining)
-            ? requested > 0 && remaining >= 0
-            : cursor.Stochastic.IsAtSemanticBeforeHandDraw(
-                  cursor.Mechanics) &&
-              cursor.Stochastic.CompletedSemanticHandDrawRequested is null;
+        return cursor.Stochastic.IsAtSemanticHandDrawContinuationBoundary(
+            cursor.Mechanics);
     }
 
     internal static bool IsAutomaticHandDrawHookCardShortlistContinuation(
@@ -524,12 +496,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                 combat, pending))
             return false;
 
-        return cursor.Stochastic.TryGetSemanticHandDrawProgress(
-                cursor.Mechanics, out int requested, out int remaining)
-            ? requested > 0 && remaining >= 0
-            : cursor.Stochastic.IsAtSemanticBeforeHandDraw(
-                  cursor.Mechanics) &&
-              cursor.Stochastic.CompletedSemanticHandDrawRequested is null;
+        return cursor.Stochastic.IsAtSemanticHandDrawContinuationBoundary(
+            cursor.Mechanics);
     }
 
     internal static bool IsAutomaticHandDrawHookRandomHandCostContinuation(
@@ -556,12 +524,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                 combat, pending))
             return false;
 
-        return cursor.Stochastic.TryGetSemanticHandDrawProgress(
-                cursor.Mechanics, out int requested, out int remaining)
-            ? requested > 0 && remaining >= 0
-            : cursor.Stochastic.IsAtSemanticBeforeHandDraw(
-                  cursor.Mechanics) &&
-              cursor.Stochastic.CompletedSemanticHandDrawRequested is null;
+        return cursor.Stochastic.IsAtSemanticHandDrawContinuationBoundary(
+            cursor.Mechanics);
     }
 
     internal static bool IsAutomaticHandDrawStratagemSelectionContinuation(

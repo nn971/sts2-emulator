@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 automatic semantic hand-draw boundary ownership increment (2026-10-26):**
+`PrototypeAutomaticPipelineStochasticStateV111` now owns the shared predicate
+for an active semantic hand draw or its pre-draw hook boundary, including the
+completed-receipt exclusion. Generated-card, potion-generation, pool-shuffle,
+selection, transform, shortlist, random-cost, random-pile-card, and deferred
+resume validation reuse it instead of reimplementing cursor/count checks.
+Core and CLI Release builds and `git diff --check` passed; no tests were run.
+
 **S4 draw mechanics/provider publication increment (2026-10-26):** Draw
 continuation adapters now pair prototype RNG publication with the shared
 draw-mechanics publisher. Automatic hand-draw progress commits can include
