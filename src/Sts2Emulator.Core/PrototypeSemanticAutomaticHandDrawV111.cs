@@ -95,8 +95,7 @@ public sealed partial class PrototypeGameEngine
             expectedRequested = 0;
             expectedRemaining = 0;
         }
-        else if (SemanticCombatDrawV111
-                     .TryGetAutomaticSemanticHandDrawProgress(
+        else if (TryGetSemanticAutomaticHandDrawProgress(
                          sourceCombat, out int sourceRequested,
                          out int sourceRemaining))
         {
@@ -120,7 +119,7 @@ public sealed partial class PrototypeGameEngine
         var combat = resumed.World?.Combat ??
             throw new InvalidDataException(
                 $"Semantic {choiceKind.ToLowerInvariant()} choice removed combat.");
-        if (SemanticCombatDrawV111.TryGetAutomaticSemanticHandDrawProgress(
+        if (TryGetSemanticAutomaticHandDrawProgress(
                 combat, out int requested, out int remaining))
         {
             if (!sourceWasBeforeHandDraw &&

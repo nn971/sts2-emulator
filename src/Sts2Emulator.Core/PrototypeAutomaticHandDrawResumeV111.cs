@@ -12,6 +12,23 @@ public sealed partial class PrototypeGameEngine
             step => step.Kind == PrototypeAutomaticStepKind.DrawPlayerHand);
 
     /// <summary>
+    /// Project tagged semantic progress from the owner of the active
+    /// DrawPlayerHand cursor. Draw facades use this shared query instead of
+    /// re-reading the continuation fields themselves.
+    /// </summary>
+    internal static bool TryGetSemanticAutomaticHandDrawProgress(
+        CombatState combat, out int requested, out int remaining)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        requested = 0;
+        remaining = 0;
+        var cursor = combat.AutomaticPipelineContinuation;
+        return cursor is not null &&
+            cursor.Stochastic.TryGetSemanticHandDrawProgress(
+                cursor.Mechanics, out requested, out remaining);
+    }
+
+    /// <summary>
     /// Commit provider progress at the ordinary DrawPlayerHand checkpoint.
     /// This is the shared write boundary for legacy and semantic adapters:
     /// the selected progress and the latest player/combat mechanics become

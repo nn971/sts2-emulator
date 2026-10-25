@@ -44,6 +44,13 @@ saved `semanticCandidates` before calling the existing identity resolver.
 Weighted ticket realization and transcript behavior are unchanged. Static
 source review and `git diff --check` only; no tests or builds were run.
 
+**S4 automatic hand-draw progress query ownership increment (2026-10-25):**
+The shared automatic-hand-draw owner now exposes the checked semantic
+requested/remaining projection. Semantic draw facades and nested-choice resume
+use that query directly; the duplicate forwarding helper was removed from
+`SemanticCombatDrawV111`. Saved progress and transcript formats are unchanged.
+Static source review and `git diff --check` only; no tests or builds were run.
+
 **S4 identity-only mechanics dispatcher boundary (2026-10-25):** The
 index-valued mechanics switch is now private behind the Chance Law and
 semantic outcome identity resolvers. Provider code cannot bypass active

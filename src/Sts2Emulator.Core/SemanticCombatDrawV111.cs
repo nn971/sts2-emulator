@@ -450,7 +450,7 @@ public sealed record SemanticCombatDrawV111(
             combat.PendingChoice?.StandaloneSemanticDrawHookChoice == true;
         var stratagemSelectionPending = this.StratagemSelectionPending;
         bool hasPipelineSemanticDrawProgress =
-            TryGetAutomaticSemanticHandDrawProgress(
+            PrototypeGameEngine.TryGetSemanticAutomaticHandDrawProgress(
                 combat, out int pipelineRequested,
                 out int pipelineRemaining);
         bool activeHandDrawCountsMatch =
@@ -948,17 +948,6 @@ public sealed record SemanticCombatDrawV111(
         Origin = Origin.Fork(), Run = Run.Fork(),
         Stochastic = Stochastic.Fork()
     };
-
-    internal static bool TryGetAutomaticSemanticHandDrawProgress(
-        CombatState combat, out int requested, out int remaining)
-    {
-        requested = 0;
-        remaining = 0;
-        var cursor = combat.AutomaticPipelineContinuation;
-        return cursor is not null &&
-            cursor.Stochastic.TryGetSemanticHandDrawProgress(
-                cursor.Mechanics, out requested, out remaining);
-    }
 }
 
 public static class SemanticCombatDrawEngineV111
@@ -1185,7 +1174,7 @@ public static class SemanticCombatDrawEngineV111
         bool standaloneSegment = !state.AutomaticHandDraw &&
             semanticDraw?.StandaloneSemanticDrawSegment == true;
         bool automaticProgressMatches = automaticSegment && combat is not null &&
-            SemanticCombatDrawV111.TryGetAutomaticSemanticHandDrawProgress(
+            PrototypeGameEngine.TryGetSemanticAutomaticHandDrawProgress(
                 combat, out int requested, out int remaining) &&
             requested == state.RequestedCount &&
             remaining == state.RemainingCount;
@@ -1232,7 +1221,7 @@ public static class SemanticCombatDrawEngineV111
         int expectedSelections =
             PrototypeGameEngine.ExpectedStratagemSelectionCount(combat);
         bool automaticProgressMatches = automaticSelection &&
-            SemanticCombatDrawV111.TryGetAutomaticSemanticHandDrawProgress(
+            PrototypeGameEngine.TryGetSemanticAutomaticHandDrawProgress(
                 combat, out int requested, out int remaining) &&
             requested == state.RequestedCount &&
             remaining == state.RemainingCount;
@@ -1938,7 +1927,7 @@ public static class SemanticCombatDrawEngineV111
             state.Run, decision);
         if (resumedTarget.Run.World?.Combat is not
                 { PendingKnowledgeDemonChoice: null } resumedCombat ||
-            !TryGetAutomaticSemanticHandDrawProgress(
+            !PrototypeGameEngine.TryGetSemanticAutomaticHandDrawProgress(
                 resumedCombat, out int requested, out int remaining) ||
             requested != state.RequestedCount ||
             remaining != state.RemainingCount)
