@@ -1573,6 +1573,9 @@ hand-draw continuation. It selects the existing typed end-turn resolver for
 cost, draw, transform, shortlist, card selection, generation, and pool-shuffle
 choices, then the pilot publishes the returned mechanics and provider state
 together. Standalone choices still use the typed choice-resume owner.
+End-turn target resume also returns the newly appended typed target decision
+from the frame that owns it, so the pilot no longer inspects draw or end-turn
+target transcripts directly.
 
 Ordinary, controlled, semantic, and ReferenceNature `observe` operations now
 project payloads, hashes, and legal actions from the shared fair-observation

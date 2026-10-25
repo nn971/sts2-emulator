@@ -4950,3 +4950,9 @@ ordinary, controlled, semantic, and ReferenceNature observation operations
 now derive payloads, hashes, and legal actions through the versioned shared
 fair-observation envelope while preserving their existing response fields.
 Static source review and `git diff --check` only; no tests or builds were run.
+
+**S4 target transcript publication increment (2026-10-25):** The end-turn
+owner now returns the typed target decision appended to either the active
+hand-draw transcript or the end-turn transcript. Pilot publication no longer
+reads those transcript owners directly. Static source review and
+`git diff --check` only; no tests or builds were run.

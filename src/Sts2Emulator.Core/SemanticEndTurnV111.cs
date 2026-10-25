@@ -1432,6 +1432,40 @@ public static class SemanticEndTurnEngineV111
         return next;
     }
 
+    internal static (SemanticEndTurnV111 EndTurn,
+        SemanticTargetDecisionV111 Decision) ResolvePilotTarget(
+        SemanticEndTurnV111 source, string fingerprint,
+        string eventId, int enemyInstanceId)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        int priorDrawTargetCount =
+            source.HandDraw?.TargetTranscript.Length ?? 0;
+        int priorEndTurnTargetCount = source.Stochastic
+            .TargetTranscript.Length;
+        bool drawOwnsTarget = source.HandDraw?.TargetPending is not null;
+        var resolved = ResolveTarget(
+            source, fingerprint, eventId, enemyInstanceId);
+        SemanticTargetDecisionV111 decision;
+        if (drawOwnsTarget)
+        {
+            var transcript = resolved.HandDraw?.TargetTranscript;
+            if (transcript is null ||
+                transcript.Length <= priorDrawTargetCount)
+                throw new InvalidDataException(
+                    "Hand-draw target resolution omitted its selected identity.");
+            decision = transcript[^1];
+        }
+        else
+        {
+            var transcript = resolved.Stochastic.TargetTranscript;
+            if (transcript.Length <= priorEndTurnTargetCount)
+                throw new InvalidDataException(
+                    "End-turn target resolution omitted its selected identity.");
+            decision = transcript[^1];
+        }
+        return (resolved, decision.Fork());
+    }
+
     public static SemanticEndTurnV111 ResolveTarget(
         SemanticEndTurnV111 source, string fingerprint,
         string eventId, int enemyInstanceId)
