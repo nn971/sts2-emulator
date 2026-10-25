@@ -4929,3 +4929,10 @@ outcome lookup, controlled replay label expansion, and end-turn transcript
 validation now share the semantic intent support's candidate-to-ticket
 mapping. The primitive ticket transcript and intent law remain unchanged.
 Static source review and `git diff --check` only; no tests or builds were run.
+
+**S2 Native policy audit append ownership increment (2026-10-25):** The
+Native policy audit owner now appends fixture-opening, source-route intent,
+and player-action mixed provider journals, primitive index decisions, and
+typed semantic outcome projections through one transition method. Mechanics
+execution and player-boundary validation stay with the semantic pilot. Static
+source review and `git diff --check` only; no tests or builds were run.

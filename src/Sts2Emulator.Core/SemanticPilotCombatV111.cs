@@ -451,6 +451,90 @@ public sealed record SemanticNativePolicyAuditV111(
             _encounterFormationOutcomes)!
     };
 
+    internal static SemanticNativePolicyAuditV111
+        CreateForNativePolicySession() => new(
+            NativeProviderId, [])
+        {
+            WeightedIntentAuditSchema = WeightedIntentAuditSchemaV1,
+            CardInstanceIndexAuditSchema = CardInstanceIndexAuditSchemaV2,
+            CardEnergyCostAuditSchema = CardEnergyCostAuditSchemaV2,
+            DrawInsertionAuditSchema = DrawInsertionAuditSchemaV1,
+            EnemyPileInsertionAuditSchema =
+                EnemyPileInsertionAuditSchemaV1,
+            PoolShuffleAuditSchema = PoolShuffleAuditSchemaV4,
+            GeneratedCardModelAuditSchema =
+                GeneratedCardModelAuditSchemaV2,
+            CardOddsAuditSchema = CardOddsAuditSchemaV1,
+            PotionRewardOddsAuditSchema = PotionRewardOddsAuditSchemaV1,
+            PotionFactoryAuditSchema = PotionFactoryAuditSchemaV1,
+            CombatGoldAuditSchema = CombatGoldAuditSchemaV1,
+            RelicRewardAuditSchema = RelicRewardAuditSchemaV1,
+            CardTransformAuditSchema = CardTransformAuditSchemaV1,
+            RandomTargetAuditSchema = RandomTargetAuditSchemaV1,
+            PotionGenerationAuditSchema = PotionGenerationAuditSchemaV1,
+            ProviderTraceSchema = ProviderTraceSchemaV1
+        };
+
+    internal SemanticNativePolicyAuditV111 AppendTransition(
+        RandomBoundaryJournalV111 journal)
+    {
+        ArgumentNullException.ThrowIfNull(journal);
+        const string nativeMode = "native-v111";
+        var decisions = Decisions;
+        var appendedDecisions = journal.Entries
+            .Where(decision => decision.ProviderMode == nativeMode)
+            .Select((decision, index) => decision with
+            {
+                Sequence = decisions.Length + index + 1,
+                Request = decision.Request with
+                {
+                    OrderedCandidates = (int[])decision.Request
+                        .OrderedCandidates.Clone()
+                }
+            }).ToArray();
+        var providerTrace = RandomBoundaryJournalV111.ConcatOrdered(
+            ProviderTrace, journal.EntriesForProvider(nativeMode));
+        return this with
+        {
+            Decisions = decisions.Concat(appendedDecisions).ToArray(),
+            ProviderTrace = providerTrace,
+            ProviderTraceFingerprint = ProviderTraceSchema ==
+                    ProviderTraceSchemaV1
+                ? CanonicalJson.Sha256(providerTrace)
+                : ProviderTraceFingerprint,
+            WeightedIntentOutcomes = WeightedIntentOutcomes.Concat(
+                journal.WeightedIntentOutcomes).ToArray(),
+            CardInstanceIndexOutcomes = CardInstanceIndexOutcomes.Concat(
+                journal.CardInstanceIndexOutcomes).ToArray(),
+            CardEnergyCostOutcomes = CardEnergyCostOutcomes.Concat(
+                journal.CardEnergyCostOutcomes).ToArray(),
+            DrawInsertionOutcomes = DrawInsertionOutcomes.Concat(
+                journal.DrawInsertionOutcomes).ToArray(),
+            EnemyPileInsertionOutcomes = EnemyPileInsertionOutcomes.Concat(
+                journal.EnemyPileInsertionOutcomes).ToArray(),
+            PoolShuffleOutcomes = PoolShuffleOutcomes.Concat(
+                journal.PoolShuffleOutcomes).ToArray(),
+            GeneratedCardModelOutcomes = GeneratedCardModelOutcomes.Concat(
+                journal.GeneratedCardModelOutcomes).ToArray(),
+            CardTransformOutcomes = CardTransformOutcomes.Concat(
+                journal.CardTransformOutcomes).ToArray(),
+            RandomTargetOutcomes = RandomTargetOutcomes.Concat(
+                journal.RandomTargetOutcomes).ToArray(),
+            PotionGenerationOutcomes = PotionGenerationOutcomes.Concat(
+                journal.PotionGenerationOutcomes).ToArray(),
+            CardOddsOutcomes = CardOddsOutcomes.Concat(
+                journal.CardOddsOutcomes).ToArray(),
+            PotionRewardOddsOutcomes = PotionRewardOddsOutcomes.Concat(
+                journal.PotionRewardOddsOutcomes).ToArray(),
+            PotionFactoryOutcomes = PotionFactoryOutcomes.Concat(
+                journal.PotionFactoryOutcomes).ToArray(),
+            CombatGoldOutcomes = CombatGoldOutcomes.Concat(
+                journal.CombatGoldOutcomes).ToArray(),
+            RelicRewardOutcomes = RelicRewardOutcomes.Concat(
+                journal.RelicRewardOutcomes).ToArray()
+        };
+    }
+
     private static RandomBoundaryEventV111[]? CloneEvents(
         RandomBoundaryEventV111[]? values) => values?.Select(value =>
             value is null ? null! : value.Fork()).ToArray();
@@ -2950,24 +3034,7 @@ public static class SemanticPilotCombatEngineV111
             state = ReapplyCommittedOpeningThroughDrawCards(state);
         if (entry.NativePolicyBaseline)
             state = AttachNativePolicyBaseline(state, rng,
-                opening.Origin.Formation,
-                setupJournal.Entries.Where(decision =>
-                    decision.ProviderMode == "native-v111").ToArray(),
-                setupJournal.EntriesForProvider("native-v111"),
-                setupJournal.CardInstanceIndexOutcomes.ToArray(),
-                setupJournal.CardEnergyCostOutcomes.ToArray(),
-                setupJournal.DrawInsertionOutcomes.ToArray(),
-                setupJournal.EnemyPileInsertionOutcomes.ToArray(),
-                setupJournal.PoolShuffleOutcomes.ToArray(),
-                setupJournal.GeneratedCardModelOutcomes.ToArray(),
-                setupJournal.CardTransformOutcomes.ToArray(),
-                setupJournal.RandomTargetOutcomes.ToArray(),
-                setupJournal.PotionGenerationOutcomes.ToArray(),
-                setupJournal.CardOddsOutcomes.ToArray(),
-                setupJournal.PotionRewardOddsOutcomes.ToArray(),
-                setupJournal.PotionFactoryOutcomes.ToArray(),
-                setupJournal.CombatGoldOutcomes.ToArray(),
-                setupJournal.RelicRewardOutcomes.ToArray());
+                opening.Origin.Formation, setupJournal);
         if (entry.FixtureDrawCostRelicId is { } relicId)
         {
             if (relicId != "proto.relic.snecko_eye")
@@ -3692,35 +3759,6 @@ public static class SemanticPilotCombatEngineV111
                         providerDecision.SelectedValue, providerDecision);
                 }).ToArray()
         };
-        var nativePolicyTrace = setupJournal.EntriesForProvider("native-v111");
-        var nativeCardInstanceOutcomes =
-            setupJournal.CardInstanceIndexOutcomes.ToArray();
-        var nativeCardEnergyCostOutcomes =
-            setupJournal.CardEnergyCostOutcomes.ToArray();
-        var nativeDrawInsertionOutcomes =
-            setupJournal.DrawInsertionOutcomes.ToArray();
-        var nativeEnemyPileInsertionOutcomes =
-            setupJournal.EnemyPileInsertionOutcomes.ToArray();
-        var nativePoolShuffleOutcomes =
-            setupJournal.PoolShuffleOutcomes.ToArray();
-        var nativeGeneratedCardModelOutcomes =
-            setupJournal.GeneratedCardModelOutcomes.ToArray();
-        var nativeCardTransformOutcomes =
-            setupJournal.CardTransformOutcomes.ToArray();
-        var nativeRandomTargetOutcomes =
-            setupJournal.RandomTargetOutcomes.ToArray();
-        var nativePotionGenerationOutcomes =
-            setupJournal.PotionGenerationOutcomes.ToArray();
-        var nativeCardOddsOutcomes =
-            setupJournal.CardOddsOutcomes.ToArray();
-        var nativePotionRewardOddsOutcomes =
-            setupJournal.PotionRewardOddsOutcomes.ToArray();
-        var nativePotionFactoryOutcomes =
-            setupJournal.PotionFactoryOutcomes.ToArray();
-        var nativeCombatGoldOutcomes =
-            setupJournal.CombatGoldOutcomes.ToArray();
-        var nativeRelicRewardOutcomes =
-            setupJournal.RelicRewardOutcomes.ToArray();
         var routeAudit = new SemanticSourceRouteAuditV111(
             SemanticSourceRouteAuditV111.SourceRouteProviderId,
             entry.RouteActOneRegion, actions.ToArray(), actualNodeId,
@@ -3769,12 +3807,9 @@ public static class SemanticPilotCombatEngineV111
         CombatState semanticCombat;
         RunState semanticRun;
         ControlledTurnIntentsV111? pendingInitialIntents = null;
-        RandomBoundaryEventV111[] nativePolicyDecisions = nativeDecisions;
-        SemanticIntentAuditEntryV111[] nativeIntentOutcomes = [];
+        SemanticNativePolicyAuditV111? nativePolicyAudit = null;
         if (entry.NativePolicyBaseline)
         {
-            RandomBoundaryEventV111[] committedIntentDecisions;
-            RandomBoundaryTranscriptEntryV111[] committedIntentTrace;
             using (var intentJournal = RandomBoundaryJournalV111.Begin())
             {
                 var committed = ControlledChanceGuardV111.ExecuteGuarded(
@@ -3783,32 +3818,23 @@ public static class SemanticPilotCombatEngineV111
                         NativeCombatRngEntryV111.CommittedIntentSiteId),
                     allowEngineOwnedPrototypeReward: true,
                     allowEngineOwnedNativeProvider: true);
-                nativeIntentOutcomes = committed.WeightedOutcomes;
                 run = ControlledChanceGuardV111.ExecuteGuarded(
                     () => PrototypeGameEngine
                         .ResumeSemanticInitialCombatEntry(
                             run, committed.Combat),
                     allowEngineOwnedPrototypeReward: true,
                     allowEngineOwnedNativeProvider: true);
-                committedIntentDecisions = intentJournal.Entries
-                    .Where(decision => decision.ProviderMode == "native-v111")
-                    .ToArray();
-                committedIntentTrace = intentJournal
-                    .EntriesForProvider("native-v111");
-            }
-            nativePolicyDecisions = nativeDecisions
-                .Concat(committedIntentDecisions)
-                .Select((decision, index) => decision with
+                nativePolicyAudit = SemanticNativePolicyAuditV111
+                    .CreateForNativePolicySession()
+                    .AppendTransition(setupJournal)
+                    .AppendTransition(intentJournal) with
                 {
-                    Sequence = index + 1,
-                    Request = decision.Request with
-                    {
-                        OrderedCandidates = (int[])decision.Request
-                            .OrderedCandidates.Clone()
-                    }
-                }).ToArray();
-            nativePolicyTrace = RandomBoundaryJournalV111.ConcatOrdered(
-                nativePolicyTrace, committedIntentTrace);
+                    EncounterFormationOutcomes = [nativeFormationAudit],
+                    EncounterFormationAuditSchema =
+                        SemanticNativePolicyAuditV111
+                            .EncounterFormationAuditSchemaV2
+                };
+            }
             var completedWorld = run.World ?? throw new InvalidDataException(
                 "Native source route lost its world after intent resolution.");
             var completedCombat = completedWorld.Combat ??
@@ -3867,90 +3893,7 @@ public static class SemanticPilotCombatEngineV111
             PendingInitialIntents = pendingInitialIntents is { Complete: false }
                 ? pendingInitialIntents
                 : null,
-            NativePolicyAudit = entry.NativePolicyBaseline
-                ? new SemanticNativePolicyAuditV111(
-                    SemanticNativePolicyAuditV111.NativeProviderId,
-                    nativePolicyDecisions)
-                {
-                    ProviderTrace = nativePolicyTrace,
-                    WeightedIntentOutcomes = nativeIntentOutcomes,
-                    CardInstanceIndexOutcomes =
-                        nativeCardInstanceOutcomes,
-                    CardEnergyCostOutcomes =
-                        nativeCardEnergyCostOutcomes,
-                    DrawInsertionOutcomes =
-                        nativeDrawInsertionOutcomes,
-                    EnemyPileInsertionOutcomes =
-                        nativeEnemyPileInsertionOutcomes,
-                    PoolShuffleOutcomes = nativePoolShuffleOutcomes,
-                    GeneratedCardModelOutcomes =
-                        nativeGeneratedCardModelOutcomes,
-                    CardTransformOutcomes = nativeCardTransformOutcomes,
-                    RandomTargetOutcomes = nativeRandomTargetOutcomes,
-                    PotionGenerationOutcomes =
-                        nativePotionGenerationOutcomes,
-                    CardOddsOutcomes = nativeCardOddsOutcomes,
-                    PotionRewardOddsOutcomes =
-                        nativePotionRewardOddsOutcomes,
-                    PotionFactoryOutcomes = nativePotionFactoryOutcomes,
-                    CombatGoldOutcomes = nativeCombatGoldOutcomes,
-                    RelicRewardOutcomes = nativeRelicRewardOutcomes,
-                    EncounterFormationOutcomes = [nativeFormationAudit],
-                    WeightedIntentAuditSchema =
-                        SemanticNativePolicyAuditV111
-                            .WeightedIntentAuditSchemaV1,
-                    CardInstanceIndexAuditSchema =
-                        SemanticNativePolicyAuditV111
-                            .CardInstanceIndexAuditSchemaV2,
-                    CardEnergyCostAuditSchema =
-                        SemanticNativePolicyAuditV111
-                            .CardEnergyCostAuditSchemaV2,
-                    DrawInsertionAuditSchema =
-                        SemanticNativePolicyAuditV111
-                            .DrawInsertionAuditSchemaV1,
-                    EnemyPileInsertionAuditSchema =
-                        SemanticNativePolicyAuditV111
-                            .EnemyPileInsertionAuditSchemaV1,
-                    PoolShuffleAuditSchema =
-                        SemanticNativePolicyAuditV111
-                            .PoolShuffleAuditSchemaV4,
-                    GeneratedCardModelAuditSchema =
-                        SemanticNativePolicyAuditV111
-                            .GeneratedCardModelAuditSchemaV2,
-                    CardOddsAuditSchema =
-                        SemanticNativePolicyAuditV111
-                            .CardOddsAuditSchemaV1,
-                    PotionRewardOddsAuditSchema =
-                        SemanticNativePolicyAuditV111
-                            .PotionRewardOddsAuditSchemaV1,
-                    PotionFactoryAuditSchema =
-                        SemanticNativePolicyAuditV111
-                            .PotionFactoryAuditSchemaV1,
-                    CombatGoldAuditSchema =
-                        SemanticNativePolicyAuditV111
-                            .CombatGoldAuditSchemaV1,
-                    RelicRewardAuditSchema =
-                        SemanticNativePolicyAuditV111
-                            .RelicRewardAuditSchemaV1,
-                    EncounterFormationAuditSchema =
-                        SemanticNativePolicyAuditV111
-                            .EncounterFormationAuditSchemaV2,
-                    CardTransformAuditSchema =
-                        SemanticNativePolicyAuditV111
-                            .CardTransformAuditSchemaV1,
-                    RandomTargetAuditSchema =
-                        SemanticNativePolicyAuditV111
-                            .RandomTargetAuditSchemaV1,
-                    PotionGenerationAuditSchema =
-                        SemanticNativePolicyAuditV111
-                            .PotionGenerationAuditSchemaV1,
-                    ProviderTraceSchema =
-                        SemanticNativePolicyAuditV111
-                            .ProviderTraceSchemaV1,
-                    ProviderTraceFingerprint =
-                        CanonicalJson.Sha256(nativePolicyTrace)
-                }
-                : null
+            NativePolicyAudit = nativePolicyAudit
         };
         state.Validate();
         return state;
@@ -3959,30 +3902,11 @@ public static class SemanticPilotCombatEngineV111
     private static SemanticPilotCombatV111 AttachNativePolicyBaseline(
         SemanticPilotCombatV111 state, RngBundle nativeStreams,
         NativeEncounterFormationV111 formation,
-        RandomBoundaryEventV111[] setupDecisions,
-        RandomBoundaryTranscriptEntryV111[] setupTrace,
-        SemanticCardInstanceIndexAuditV111[] setupCardInstanceOutcomes,
-        SemanticCardEnergyCostAuditV111[] setupCardEnergyCostOutcomes,
-        SemanticDrawInsertionNativeAuditV111[] setupDrawInsertionOutcomes,
-        SemanticEnemyPileInsertionNativeAuditV111[]
-            setupEnemyPileInsertionOutcomes,
-        SemanticPoolShuffleDecisionV111[] setupPoolShuffleOutcomes,
-        SemanticGeneratedCardNativeAuditV111[]
-            setupGeneratedCardModelOutcomes,
-        SemanticCardTransformNativeAuditV111[]
-            setupCardTransformOutcomes,
-        SemanticTargetNativeAuditV111[] setupRandomTargetOutcomes,
-        SemanticPotionGenerationNativeAuditV111[]
-            setupPotionGenerationOutcomes,
-        SemanticCardOddsNativeAuditV111[] setupCardOddsOutcomes,
-        SemanticPotionRewardOddsNativeAuditV111[]
-            setupPotionRewardOddsOutcomes,
-        SemanticPotionFactoryNativeAuditV111[] setupPotionFactoryOutcomes,
-        SemanticCombatGoldNativeAuditV111[] setupCombatGoldOutcomes,
-        SemanticRelicRewardNativeAuditV111[] setupRelicRewardOutcomes)
+        RandomBoundaryJournalV111 setupJournal)
     {
         ArgumentNullException.ThrowIfNull(nativeStreams);
         ArgumentNullException.ThrowIfNull(formation);
+        ArgumentNullException.ThrowIfNull(setupJournal);
         var run = state.Run;
         var world = run.World ?? throw new InvalidDataException(
             "Native policy entry is missing its run world.");
@@ -4013,89 +3937,13 @@ public static class SemanticPilotCombatEngineV111
             World = world with { Combat = nativeCombat }
         };
         NativeRunRngV111.Validate(nativeRun);
+        var nativePolicyAudit =
+            SemanticNativePolicyAuditV111.CreateForNativePolicySession()
+                .AppendTransition(setupJournal);
         return state with
         {
             Run = nativeRun,
-            NativePolicyAudit = new SemanticNativePolicyAuditV111(
-                SemanticNativePolicyAuditV111.NativeProviderId,
-                setupDecisions.Select((decision, index) => decision with
-                {
-                    Sequence = index + 1,
-                    Request = decision.Request with
-                    {
-                        OrderedCandidates = (int[])decision.Request
-                            .OrderedCandidates.Clone()
-                    }
-                }).ToArray())
-            {
-                ProviderTrace = setupTrace,
-                CardInstanceIndexOutcomes = setupCardInstanceOutcomes,
-                CardEnergyCostOutcomes = setupCardEnergyCostOutcomes,
-                DrawInsertionOutcomes = setupDrawInsertionOutcomes,
-                EnemyPileInsertionOutcomes =
-                    setupEnemyPileInsertionOutcomes,
-                PoolShuffleOutcomes = setupPoolShuffleOutcomes,
-                GeneratedCardModelOutcomes =
-                    setupGeneratedCardModelOutcomes,
-                CardTransformOutcomes = setupCardTransformOutcomes,
-                RandomTargetOutcomes = setupRandomTargetOutcomes,
-                PotionGenerationOutcomes = setupPotionGenerationOutcomes,
-                CardOddsOutcomes = setupCardOddsOutcomes,
-                PotionRewardOddsOutcomes =
-                    setupPotionRewardOddsOutcomes,
-                PotionFactoryOutcomes = setupPotionFactoryOutcomes,
-                CombatGoldOutcomes = setupCombatGoldOutcomes,
-                RelicRewardOutcomes = setupRelicRewardOutcomes,
-                WeightedIntentAuditSchema =
-                    SemanticNativePolicyAuditV111
-                        .WeightedIntentAuditSchemaV1,
-                CardInstanceIndexAuditSchema =
-                    SemanticNativePolicyAuditV111
-                        .CardInstanceIndexAuditSchemaV2,
-                CardEnergyCostAuditSchema =
-                    SemanticNativePolicyAuditV111
-                        .CardEnergyCostAuditSchemaV2,
-                DrawInsertionAuditSchema =
-                    SemanticNativePolicyAuditV111
-                        .DrawInsertionAuditSchemaV1,
-                EnemyPileInsertionAuditSchema =
-                    SemanticNativePolicyAuditV111
-                        .EnemyPileInsertionAuditSchemaV1,
-                PoolShuffleAuditSchema =
-                    SemanticNativePolicyAuditV111
-                        .PoolShuffleAuditSchemaV4,
-                GeneratedCardModelAuditSchema =
-                    SemanticNativePolicyAuditV111
-                        .GeneratedCardModelAuditSchemaV2,
-                CardOddsAuditSchema =
-                    SemanticNativePolicyAuditV111
-                        .CardOddsAuditSchemaV1,
-                PotionRewardOddsAuditSchema =
-                    SemanticNativePolicyAuditV111
-                        .PotionRewardOddsAuditSchemaV1,
-                PotionFactoryAuditSchema =
-                    SemanticNativePolicyAuditV111
-                        .PotionFactoryAuditSchemaV1,
-                CombatGoldAuditSchema =
-                    SemanticNativePolicyAuditV111
-                        .CombatGoldAuditSchemaV1,
-                RelicRewardAuditSchema =
-                    SemanticNativePolicyAuditV111
-                        .RelicRewardAuditSchemaV1,
-                CardTransformAuditSchema =
-                    SemanticNativePolicyAuditV111
-                        .CardTransformAuditSchemaV1,
-                RandomTargetAuditSchema =
-                    SemanticNativePolicyAuditV111
-                        .RandomTargetAuditSchemaV1,
-                PotionGenerationAuditSchema =
-                    SemanticNativePolicyAuditV111
-                        .PotionGenerationAuditSchemaV1,
-                ProviderTraceSchema =
-                    SemanticNativePolicyAuditV111
-                        .ProviderTraceSchemaV1,
-                ProviderTraceFingerprint = CanonicalJson.Sha256(setupTrace)
-            }
+            NativePolicyAudit = nativePolicyAudit
         };
     }
 
@@ -5029,47 +4877,6 @@ public static class SemanticPilotCombatEngineV111
         var audit = current.Stochastic.NativePolicyAudit ??
             throw new InvalidDataException(
                 "Native policy baseline is missing provider provenance.");
-        int offset = audit.Decisions.Length;
-        var recorded = boundaries.Entries
-            .Where(entry => entry.ProviderMode == "native-v111")
-            .Select((entry, index) => entry with
-        {
-            Sequence = offset + index + 1,
-            Request = entry.Request with
-            {
-                OrderedCandidates = (int[])entry.Request.OrderedCandidates.Clone()
-            }
-            }).ToArray();
-        var recordedTrace = boundaries.EntriesForProvider("native-v111");
-        var combinedTrace = RandomBoundaryJournalV111.ConcatOrdered(
-            audit.ProviderTrace, recordedTrace);
-        var weightedIntentOutcomes = boundaries.WeightedIntentOutcomes
-            .ToArray();
-        var cardInstanceIndexOutcomes = boundaries
-            .CardInstanceIndexOutcomes.ToArray();
-        var cardEnergyCostOutcomes = boundaries
-            .CardEnergyCostOutcomes.ToArray();
-        var drawInsertionOutcomes = boundaries
-            .DrawInsertionOutcomes.ToArray();
-        var enemyPileInsertionOutcomes = boundaries
-            .EnemyPileInsertionOutcomes.ToArray();
-        var poolShuffleOutcomes = boundaries
-            .PoolShuffleOutcomes.ToArray();
-        var generatedCardModelOutcomes = boundaries
-            .GeneratedCardModelOutcomes.ToArray();
-        var cardTransformOutcomes = boundaries
-            .CardTransformOutcomes.ToArray();
-        var randomTargetOutcomes = boundaries
-            .RandomTargetOutcomes.ToArray();
-        var potionGenerationOutcomes = boundaries
-            .PotionGenerationOutcomes.ToArray();
-        var cardOddsOutcomes = boundaries.CardOddsOutcomes.ToArray();
-        var potionRewardOddsOutcomes = boundaries
-            .PotionRewardOddsOutcomes.ToArray();
-        var potionFactoryOutcomes = boundaries.PotionFactoryOutcomes.ToArray();
-        var combatGoldOutcomes = boundaries.CombatGoldOutcomes.ToArray();
-        var relicRewardOutcomes = boundaries.RelicRewardOutcomes.ToArray();
-
         if (result.Phase == RunPhase.Combat)
             ValidateNativePolicyBoundary(result);
         else if (!PrototypeGameEngine.IsAtCombatActionResultBoundary(result))
@@ -5081,52 +4888,7 @@ public static class SemanticPilotCombatEngineV111
             current, result, null,
             new SemanticPilotContinuationV111("player", actionId)) with
         {
-            NativePolicyAudit = audit with
-            {
-                Decisions = audit.Decisions.Concat(recorded).ToArray(),
-                ProviderTrace = combinedTrace,
-                ProviderTraceFingerprint =
-                    audit.ProviderTraceSchema ==
-                        SemanticNativePolicyAuditV111.ProviderTraceSchemaV1
-                        ? CanonicalJson.Sha256(combinedTrace)
-                        : audit.ProviderTraceFingerprint,
-                WeightedIntentOutcomes = audit.WeightedIntentOutcomes
-                    .Concat(weightedIntentOutcomes).ToArray(),
-                CardInstanceIndexOutcomes =
-                    audit.CardInstanceIndexOutcomes
-                        .Concat(cardInstanceIndexOutcomes).ToArray(),
-                CardEnergyCostOutcomes =
-                    audit.CardEnergyCostOutcomes
-                        .Concat(cardEnergyCostOutcomes).ToArray(),
-                DrawInsertionOutcomes = audit.DrawInsertionOutcomes
-                    .Concat(drawInsertionOutcomes).ToArray(),
-                EnemyPileInsertionOutcomes =
-                    audit.EnemyPileInsertionOutcomes
-                        .Concat(enemyPileInsertionOutcomes).ToArray(),
-                PoolShuffleOutcomes = audit.PoolShuffleOutcomes
-                    .Concat(poolShuffleOutcomes).ToArray(),
-                GeneratedCardModelOutcomes =
-                    audit.GeneratedCardModelOutcomes
-                        .Concat(generatedCardModelOutcomes).ToArray(),
-                CardTransformOutcomes = audit.CardTransformOutcomes
-                    .Concat(cardTransformOutcomes).ToArray(),
-                RandomTargetOutcomes = audit.RandomTargetOutcomes
-                    .Concat(randomTargetOutcomes).ToArray(),
-                PotionGenerationOutcomes =
-                    audit.PotionGenerationOutcomes
-                        .Concat(potionGenerationOutcomes).ToArray(),
-                CardOddsOutcomes = audit.CardOddsOutcomes
-                    .Concat(cardOddsOutcomes).ToArray(),
-                PotionRewardOddsOutcomes =
-                    audit.PotionRewardOddsOutcomes
-                        .Concat(potionRewardOddsOutcomes).ToArray(),
-                PotionFactoryOutcomes = audit.PotionFactoryOutcomes
-                    .Concat(potionFactoryOutcomes).ToArray(),
-                CombatGoldOutcomes = audit.CombatGoldOutcomes
-                    .Concat(combatGoldOutcomes).ToArray(),
-                RelicRewardOutcomes = audit.RelicRewardOutcomes
-                    .Concat(relicRewardOutcomes).ToArray()
-            }
+            NativePolicyAudit = audit.AppendTransition(boundaries)
         };
         Validate(next);
         return next;

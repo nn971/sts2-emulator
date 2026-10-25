@@ -1562,6 +1562,12 @@ selection, while the controlled session expands the validated intervals into
 the ordered primitive-label vector. This keeps weighted candidate identity
 and ticket mapping in the semantic intent owner.
 
+The Native policy audit owner appends fixture-opening, source-route intent,
+and player-action journals through the same transition method, including each
+mixed provider trace and typed semantic outcome projections. Entry setup and
+the action runner retain mechanics execution and boundary validation; neither
+rebuilds the audit's provider transcript fields.
+
 ## Reading order
 
 1. This architecture contract.
