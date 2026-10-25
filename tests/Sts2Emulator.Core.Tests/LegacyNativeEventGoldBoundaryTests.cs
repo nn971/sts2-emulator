@@ -30,7 +30,7 @@ public sealed class LegacyNativeEventGoldBoundaryTests
         Assert.Equal("bounded_integer", draw.Request.OperationKind);
         Assert.Equal(count, draw.Request.BoundedCount);
         Assert.Empty(draw.Request.OrderedCandidates);
-        Assert.Equal("prototype-v111", draw.ProviderMode);
+        Assert.Equal("legacy-prototype-v0", draw.ProviderMode);
         Assert.Equal(minimum + draw.SelectedIndex, gold);
         Assert.InRange(gold, minimum, minimum + count - 1);
     }
