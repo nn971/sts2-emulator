@@ -13409,14 +13409,8 @@ public sealed partial class PrototypeGameEngine
             handDrawProgress.Kind ==
                 PrototypeAutomaticHandDrawProgressKindV111
                     .ControlledRecycleStratagem)
-        {
-            var progress =
-                ResumeControlledRecycleStratagemSelectionWithProgress(
-                    state).EnsurePipelineBoundary();
-            return PrototypeAutomaticPipelineResumeResultV111
-                .FromPipelineProgress(
-                    progress.Run, progress.PipelineBoundary);
-        }
+            return ResumeControlledRecycleStratagemSelectionWithProgress(
+                state).ToAutomaticPipelineResumeResult();
 
         // These choices are nested inside the active hand-draw stage. Their
         // owning draw continuation must finish before the ordinary pipeline

@@ -520,10 +520,8 @@ public sealed partial class PrototypeGameEngine
                         state, drawRun, null, "controlled draw insertion",
                         expectedSourceRemaining:
                             semanticDraw.RemainingCount);
-                return PrototypeAutomaticPipelineResumeResultV111
-                    .FromPipelineProgress(
-                        resumedHandDraw.Run,
-                        resumedHandDraw.PipelineBoundary);
+                return resumedHandDraw
+                    .ToAutomaticPipelineResumeResult();
             }
 
             var effectDrawPrototypeRng = state.Stochastic.PrototypeRng;
@@ -573,11 +571,9 @@ public sealed partial class PrototypeGameEngine
                 Stochastic = RunStochasticStateV111.WithPrototypeRng(
                     drawRun.Stochastic, automaticDrawPrototypeRng)
             };
-            var progress = ResumeSavedControlledAutomaticHandDraw(
-                drawRun, resumedDraw).EnsurePipelineBoundary();
-            return PrototypeAutomaticPipelineResumeResultV111
-                .FromPipelineProgress(
-                    progress.Run, progress.PipelineBoundary);
+            return ResumeSavedControlledAutomaticHandDraw(
+                drawRun, resumedDraw)
+                    .ToAutomaticPipelineResumeResult();
         }
 
         var resumePlayer = state.Player;

@@ -248,14 +248,8 @@ public sealed partial class PrototypeGameEngine
 
         if (cursor.Stochastic.IsAtControlledDrawHookChoice(
                 cursor.Mechanics))
-        {
-            var progress =
-                ResumeControlledAutomaticHandDrawHookChoiceWithProgress(
-                    state).EnsurePipelineBoundary();
-            return PrototypeAutomaticPipelineResumeResultV111
-                .FromPipelineProgress(
-                    progress.Run, progress.PipelineBoundary);
-        }
+            return ResumeControlledAutomaticHandDrawHookChoiceWithProgress(
+                state).ToAutomaticPipelineResumeResult();
 
         return null;
     }

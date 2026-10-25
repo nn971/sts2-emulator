@@ -57,6 +57,14 @@ internal readonly record struct PrototypeDrawCardsResumeResultV111
                 Run, RemainingCount, RequestedCount, resume.Boundary);
     }
 
+    internal PrototypeAutomaticPipelineResumeResultV111
+        ToAutomaticPipelineResumeResult()
+    {
+        Validate();
+        return PrototypeAutomaticPipelineResumeResultV111
+            .FromPipelineProgress(Run, PipelineBoundary);
+    }
+
     internal int RequireRequestedCount()
     {
         Validate();
