@@ -522,8 +522,9 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
     internal static ChanceLawV111? QueryNatureLaw(
         ScriptedRunActionSessionV111 active,
         ControlledStochasticRequestV111 request,
-        ReferenceNatureSelectionV111?[]? naturePrefix = null)
+        ReferenceNatureSelectionV111?[] naturePrefix)
     {
+        ArgumentNullException.ThrowIfNull(naturePrefix);
         if (request.IndexRequest is { } entropicBrewRequest &&
             ControlledRunActionEngineV111.IsEntropicBrewRunAction(
                 active.Origin, active.Action) &&
@@ -538,7 +539,7 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
             return ReferenceNatureRunActionSessionV111
                 .QueryNativeRestHealRewardLaw(
                     active.Origin, active.Action, active.Decisions,
-                    (naturePrefix ?? []).Select(selection =>
+                    naturePrefix.Select(selection =>
                         selection?.OutcomeId).ToArray(), request);
 
         if (IsNativeCombatRewardActionBoundary(active) &&

@@ -687,7 +687,8 @@ public sealed record SimulationProviderReplayCaptureV111(
                             throw new InvalidDataException(
                                 "ReferenceNature selection has no replayed provider request.");
                         var law = ReferenceNatureScriptedRunSessionV111
-                            .QueryNatureLaw(replayPrefix, request) ??
+                            .QueryNatureLaw(replayPrefix, request,
+                                natureDecisions[..decisionIndex]) ??
                             throw new InvalidDataException(
                                 "ReferenceNature selection has no supported replayed Chance Law.");
                         law.Validate();

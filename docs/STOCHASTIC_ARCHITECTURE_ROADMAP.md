@@ -2,6 +2,21 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S2 whole-run Native rest-heal law increment (2026-10-26):** Whole-run
+ReferenceNature replay now reuses the typed run-action law owner for Native
+rest-heal rarity, card-model, and upgrade requests. Saved provider floats
+reconstruct the rarity offset even after caller-scripted choices, and any
+saved Nature rarity is checked against that raw float. Core and CLI Release
+builds passed with zero warnings or errors; `git diff --check` passed. No
+tests were run.
+
+**S2 whole-run Entropic Brew law increment (2026-10-26):** Whole-run
+ReferenceNature replay now routes supported Entropic Brew refill requests
+through the existing run-action law, validating action, potion slot, ordered
+pool, stream, and owner for Native and legacy providers. Core and CLI Release
+builds passed with zero warnings or errors; `git diff --check` passed. No
+tests were run.
+
 **S2 whole-run Native encounter-pool law increment (2026-10-26):** Whole-run
 ReferenceNature replay now binds configured Native Act 1 Overgrowth and
 Underdocks encounter-pool index laws to the selected map-node action after
