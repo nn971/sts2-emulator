@@ -8,8 +8,10 @@ consumed by `DrawCards` within each player action. Native committed-order draws
 and ReferenceNature deferred draw choices therefore compare the same physical
 outcomes without treating a Native draw as a separate RNG boundary. The v7
 capture schema preserves v2–v6 readers; comparison v7 requires agreement from
-the draw identity trace whenever both captures provide one. Core and CLI
-Release builds passed with zero warnings or errors; no tests were run.
+the draw identity trace whenever both captures provide one. V7 rejects a
+replay-validated capture that omits its trace, and legacy schema IDs reject
+that field. Core and CLI Release builds passed with zero warnings or errors;
+no tests were run.
 
 **S4 complete-trace agreement increment (2026-10-25):** Provider replay
 comparison now requires typed-boundary and semantic-outcome equality together

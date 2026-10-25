@@ -1467,6 +1467,12 @@ public sealed record SimulationProviderReplayCaptureV111(
             Simulation.Mechanics.DrawnCardInstanceIdsByAction is not null)
             throw new InvalidDataException(
                 "Legacy provider replay captures cannot contain drawn-card identity traces.");
+        if (SchemaId == CurrentSchemaId &&
+            CaptureProvenance !=
+                SimulationProviderReplayCaptureProvenanceV111.CallerSupplied &&
+            Simulation.Mechanics.DrawnCardInstanceIdsByAction is null)
+            throw new InvalidDataException(
+                "Replay-validated provider captures require drawn-card identity traces.");
         if (SchemaId == OlderSchemaId &&
             Simulation.Stochastic.SemanticOutcomes.Length != 0)
             throw new InvalidDataException(

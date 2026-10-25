@@ -1074,7 +1074,8 @@ as a separate RNG call. Earlier captures remain readable with their original
 interval meaning; v5 and v6 captures may include action-boundary trajectories
 but do not provide the new draw trace. Explicit fields are marked
 caller-supplied and unverified, while scripted and Native-policy factories
-mark the histories they replay-validate.
+mark the histories they replay-validate. A v7 replay-validated capture must
+include its per-action draw trace; legacy schema IDs reject that field.
 `SimulationProviderReplayComparisonEngineV111` compares two such captures by
 fingerprinting their action sequences, comparing origin mechanics, comparing
 every supplied typed boundary in order, comparing complete semantic outcome
