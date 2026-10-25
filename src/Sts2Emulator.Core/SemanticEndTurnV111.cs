@@ -1201,9 +1201,7 @@ public static class SemanticEndTurnEngineV111
             var nextHand = SemanticCombatDrawEngineV111.ResolveGeneratedCard(
                 handDraw, handDraw.Fingerprint,
                 decision.SelectedCardId);
-            var next = ContinueHandDraw(source, nextHand);
-            Validate(next);
-            return next;
+            return ContinueHandDrawAndValidate(source, nextHand);
         }
         var choice = new SemanticEndTurnNestedChoiceV111(
             "semantic_generated_card",
@@ -1239,9 +1237,7 @@ public static class SemanticEndTurnEngineV111
                 .ResolvePotionGeneration(
                     handDraw, handDraw.Fingerprint,
                     decision.SelectedPotionId);
-            var next = ContinueHandDraw(source, nextHand);
-            Validate(next);
-            return next;
+            return ContinueHandDrawAndValidate(source, nextHand);
         }
         var choice = new SemanticEndTurnNestedChoiceV111(
             "semantic_potion_generation",
@@ -1275,9 +1271,7 @@ public static class SemanticEndTurnEngineV111
                     "Automatic draw card-transform event changed during resume.");
             var nextHand = SemanticCombatDrawEngineV111.ResolveCardTransform(
                 handDraw, handDraw.Fingerprint, eventId, cardId);
-            var nextHandDraw = ContinueHandDraw(source, nextHand);
-            Validate(nextHandDraw);
-            return nextHandDraw;
+            return ContinueHandDrawAndValidate(source, nextHand);
         }
         var choice = new SemanticEndTurnNestedChoiceV111(
             "semantic_card_transform",
@@ -1310,9 +1304,7 @@ public static class SemanticEndTurnEngineV111
                     "Automatic draw card-shortlist event changed during resume.");
             var nextHand = SemanticCombatDrawEngineV111.ResolveCardShortlist(
                 handDraw, handDraw.Fingerprint, eventId, cardInstanceId);
-            var next = ContinueHandDraw(source, nextHand);
-            Validate(next);
-            return next;
+            return ContinueHandDrawAndValidate(source, nextHand);
         }
         var choice = new SemanticEndTurnNestedChoiceV111(
             "semantic_card_shortlist",
@@ -1345,9 +1337,7 @@ public static class SemanticEndTurnEngineV111
                     "Automatic draw random-hand-cost event changed during resume.");
             var nextHand = SemanticCombatDrawEngineV111.ResolveRandomHandCost(
                 handDraw, handDraw.Fingerprint, eventId, selectedCost);
-            var next = ContinueHandDraw(source, nextHand);
-            Validate(next);
-            return next;
+            return ContinueHandDrawAndValidate(source, nextHand);
         }
         var choice = new SemanticEndTurnNestedChoiceV111(
             "semantic_cost", CostDecision: decision.Fork());
@@ -1381,9 +1371,7 @@ public static class SemanticEndTurnEngineV111
                 .ResolveHandCostSelection(
                     handDraw, handDraw.Fingerprint, eventId,
                     cardInstanceId);
-            var next = ContinueHandDraw(source, nextHand);
-            Validate(next);
-            return next;
+            return ContinueHandDrawAndValidate(source, nextHand);
         }
         var choice = new SemanticEndTurnNestedChoiceV111(
             "semantic_hand_cost_selection",
@@ -1416,9 +1404,7 @@ public static class SemanticEndTurnEngineV111
                     "Automatic draw pool-shuffle event changed during resume.");
             var nextHand = SemanticCombatDrawEngineV111.ResolvePoolShuffle(
                 handDraw, handDraw.Fingerprint, swapIndex);
-            var next = ContinueHandDraw(source, nextHand);
-            Validate(next);
-            return next;
+            return ContinueHandDrawAndValidate(source, nextHand);
         }
         var choice = new SemanticEndTurnNestedChoiceV111(
             "semantic_pool_shuffle",
@@ -1451,9 +1437,7 @@ public static class SemanticEndTurnEngineV111
                     "Automatic draw card-selection event changed during resume.");
             var nextHand = SemanticCombatDrawEngineV111.ResolveCardSelection(
                 handDraw, handDraw.Fingerprint, eventId, actionId);
-            var nextHandDraw = ContinueHandDraw(source, nextHand);
-            Validate(nextHandDraw);
-            return nextHandDraw;
+            return ContinueHandDrawAndValidate(source, nextHand);
         }
         var choice = new SemanticEndTurnNestedChoiceV111(
             "semantic_card_selection",
@@ -1502,8 +1486,8 @@ public static class SemanticEndTurnEngineV111
                 CanonicalJson.Sha256(pending))
                 throw new InvalidDataException(
                     "Automatic hand-draw target event changed during resume.");
-            var nextHandDraw = ContinueHandDraw(source, resumedHandDraw);
-            Validate(nextHandDraw);
+            var nextHandDraw = ContinueHandDrawAndValidate(
+                source, resumedHandDraw);
             return (nextHandDraw, handDecision);
         }
         var decision = SemanticTargetChoiceV111.Select(
@@ -1552,8 +1536,7 @@ public static class SemanticEndTurnEngineV111
                 CanonicalJson.Sha256(decision))
                 throw new InvalidDataException(
                     "Automatic hand-draw insertion decision diverged.");
-            var next = ContinueHandDraw(source, nextHand);
-            Validate(next);
+            var next = ContinueHandDrawAndValidate(source, nextHand);
             return (next, decision);
         }
 
@@ -1849,8 +1832,7 @@ public static class SemanticEndTurnEngineV111
         var (nextHand, handDecision) =
             SemanticCombatDrawEngineV111.ResolveDrawHookChoiceWithDecision(
                 hand, hand.Fingerprint, actionId);
-        var state = ContinueHandDraw(source, nextHand);
-        Validate(state);
+        var state = ContinueHandDrawAndValidate(source, nextHand);
         return (state, handDecision);
     }
 
@@ -1906,9 +1888,7 @@ public static class SemanticEndTurnEngineV111
                 "No automatic Stratagem selection is pending.");
         var nextHand = SemanticCombatDrawEngineV111.ResolveStratagemSelection(
             hand, hand.Fingerprint, actionId);
-        var state = ContinueHandDraw(source, nextHand);
-        Validate(state);
-        return state;
+        return ContinueHandDrawAndValidate(source, nextHand);
     }
 
     private static SemanticEndTurnV111 CompleteIntents(SemanticEndTurnV111 state)
@@ -1933,6 +1913,14 @@ public static class SemanticEndTurnEngineV111
             HandDraw = handDraw
         };
         return handDraw.AtBoundary ? CompleteHandDraw(next) : next;
+    }
+
+    private static SemanticEndTurnV111 ContinueHandDrawAndValidate(
+        SemanticEndTurnV111 source, SemanticCombatDrawV111 handDraw)
+    {
+        var next = ContinueHandDraw(source, handDraw);
+        Validate(next);
+        return next;
     }
 
     private static SemanticEndTurnV111 CompleteHandDraw(SemanticEndTurnV111 state)

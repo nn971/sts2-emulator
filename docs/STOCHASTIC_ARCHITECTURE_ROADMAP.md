@@ -67,6 +67,13 @@ cursor validation through the existing engine owner. No transcript or snapshot
 format changed. Static source review and `git diff --check` only; no tests or
 builds were run.
 
+**S4 semantic end-turn hand-draw publication validation (2026-10-25):** Typed
+end-turn resumes for generation, cost, selection, target, insertion, draw-hook,
+and Stratagem choices now use one helper to continue the active hand draw and
+validate the resulting frame. Selected-index dispatch and restore replay keep
+their existing validation paths. No transcript or snapshot format changed.
+Static source review and `git diff --check` only; no tests or builds were run.
+
 **S5 shared candidate-label binding validation (2026-10-25):** Controlled
 event-choice, run-action, and playable-combat Python facades now use one
 validator for non-empty labels and membership in the saved pending support.

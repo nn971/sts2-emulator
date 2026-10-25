@@ -1653,6 +1653,9 @@ decision selected from the pending event together with the resumed frame. The
 owning draw or end-turn stochastic state records and validates its transcript;
 pilot publication does not inspect transcript lengths or select appended
 entries.
+Typed end-turn resumes that advance a hand draw now use one helper to publish
+the continued frame and validate it. Selected-index dispatch and restore replay
+retain their existing validation paths.
 The draw owner validates and returns semantic draw-cost and random-pile-card
 decisions recorded by the active hand-draw frame; end-turn passes them through
 for pilot publication, so the pilot does not read those transcripts.
