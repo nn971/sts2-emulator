@@ -258,6 +258,13 @@ that same local RNG projection in the cursor update, keeping provider and
 progress publication in one transition. The draw result adapters continue to
 own typed transcripts, source support, and boundary interpretation.
 
+`ResumeSemanticDrawAfterControlledInsertion` owns the mechanics handoff after
+a controlled draw-pile insertion. It resumes a pending Stratagem, standalone
+semantic draw, automatic hand draw, or ordinary effect draw through the same
+draw-segment and pipeline-boundary owners. The insertion adapter retains the
+selected insertion, provider transcript, and source continuation; it no
+longer dispatches among those draw-resume modes itself.
+
 `PrototypeAutomaticPipelineStochasticStateV111.IsAtSemanticHandDrawContinuationBoundary`
 owns the common active-draw or pre-draw semantic cursor check, including the
 absence of a completed-stage receipt. Automatic generated-card,
@@ -916,7 +923,7 @@ identity requests for one legal configured Native Rest `dig` action, validates
 the selected support against the canonical bag, and commits the Reward with its
 Nature cursor after replay completes.
 
-`SemanticDrawPileAdapterV111.ApplyNewDrawPileInsertion` now publishes a newly created `CombatCardInstance`, its draw-pile membership, the next instance ID, and the provider constraint in one committed transition. `ApplyNewCardZoneInsertion` commits the corresponding card record, next identity, and membership for Hand, DiscardPile, PlayPile, ExhaustPile, and ChoicePool. Enemy, Personal Hive, generated-card, controlled insertion, Tea of Discourtesy, and generated-choice paths now use these owners. Draw-pile and non-draw zone deltas reject identities without registered card records. Transform replacement commits the old-card removal and replacement-card record with its zone and provider update; declared source-selection deletions also remove card records in the same transition. Existing-card moves now enter the same boundary, which validates the source, preserves the requested destination order, and synchronizes the provider for DrawPile changes. The tagged `DrawCards` result, boundary constructors, and mechanical result validation are co-located in `PrototypeDrawCardsBoundaryV111.cs`; provider adapters consume that validated value and retain their own resume policies. Broader draw-resume consolidation and cross-provider equivalence remain open.
+`SemanticDrawPileAdapterV111.ApplyNewDrawPileInsertion` now publishes a newly created `CombatCardInstance`, its draw-pile membership, the next instance ID, and the provider constraint in one committed transition. `ApplyNewCardZoneInsertion` commits the corresponding card record, next identity, and membership for Hand, DiscardPile, PlayPile, ExhaustPile, and ChoicePool. Enemy, Personal Hive, generated-card, controlled insertion, Tea of Discourtesy, and generated-choice paths now use these owners. Draw-pile and non-draw zone deltas reject identities without registered card records. Transform replacement commits the old-card removal and replacement-card record with its zone and provider update; declared source-selection deletions also remove card records in the same transition. Existing-card moves now enter the same boundary, which validates the source, preserves the requested destination order, and synchronizes the provider for DrawPile changes. The tagged `DrawCards` result, boundary constructors, and mechanical result validation are co-located in `PrototypeDrawCardsBoundaryV111.cs`; provider adapters consume that validated value and retain their own resume policies. Controlled insertion now hands draw progress to the provider-neutral continuation owner. Broader draw-resume consolidation and cross-provider equivalence remain open.
 
 ## Semantic lifecycle and provider interchangeability
 

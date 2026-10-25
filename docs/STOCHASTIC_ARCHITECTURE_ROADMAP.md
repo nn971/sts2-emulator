@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 controlled insertion draw-resume ownership increment (2026-10-26):**
+`PrototypeGameEngine.ResumeSemanticDrawAfterControlledInsertion` now owns the
+post-insertion mechanics handoff for pending Stratagem selection, standalone
+semantic draws, automatic hand draws, and ordinary effect draws. The insertion
+adapter keeps its choice and provider history while delegating all draw modes
+to the shared continuation owner. Core and CLI Release builds passed with zero
+warnings or errors; `git diff --check` passed. No tests were run.
+
 **S4 automatic semantic hand-draw boundary ownership increment (2026-10-26):**
 `PrototypeAutomaticPipelineStochasticStateV111` now owns the shared predicate
 for an active semantic hand draw or its pre-draw hook boundary, including the

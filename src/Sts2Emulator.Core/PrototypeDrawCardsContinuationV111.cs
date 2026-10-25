@@ -7,6 +7,63 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public sealed partial class PrototypeGameEngine
 {
+    internal static PrototypeAutomaticPipelineResumeResultV111
+        ResumeSemanticDrawAfterControlledInsertion(
+            RunState state, CombatState combat,
+            PrototypeControlledSemanticDrawV111 draw,
+            PrototypeChoiceResolutionContinuationState continuation)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(draw);
+        ArgumentNullException.ThrowIfNull(continuation);
+        if (draw.RemainingCount <= 0 || draw.EventDepth < 0)
+            throw new InvalidDataException(
+                "Controlled insertion saved an invalid semantic draw cursor.");
+
+        if (draw.StratagemSelectionPending)
+        {
+            var stratagemRun = ResumeControlledStratagemSelection(
+                state, combat, draw, continuation);
+            return draw.StandaloneSemanticDrawSegment
+                ? PrototypeAutomaticPipelineResumeResultV111.FromRun(
+                    stratagemRun)
+                : ResumeControlledInsertionPipeline(stratagemRun);
+        }
+
+        var drawRun = state with
+        {
+            World = state.World! with { Combat = combat }
+        };
+        if (draw.StandaloneSemanticDrawSegment)
+            return PrototypeAutomaticPipelineResumeResultV111.FromRun(
+                BeginSemanticCombatDraw(
+                    drawRun, draw.RemainingCount,
+                    draw.FromHandDraw).Run);
+
+        if (draw.AutomaticSemanticHandDrawSegment)
+            return ResumeSemanticAutomaticHandDrawAfterNestedChoice(
+                state, drawRun, null, "controlled draw insertion",
+                expectedSourceRemaining: draw.RemainingCount)
+                    .ToAutomaticPipelineResumeResult();
+
+        var drawnSegment = ExecuteDrawCardsSegment(
+            state, prototypeRng => DrawCards(
+                state.Player, combat, draw.RemainingCount,
+                prototypeRng, draw.FromHandDraw,
+                eventDepth: draw.EventDepth,
+                suspensionPolicy:
+                    PrototypeDrawCardsSuspensionPolicyV111
+                        .SemanticDrawCards(effectDraw: true)));
+        var drawState = drawnSegment.Run with
+        {
+            World = state.World! with { Combat = combat }
+        };
+        var continued = ContinueControlledSemanticEffectDraw(
+            drawState, drawnSegment.Drawn, draw, continuation);
+        return ResumeControlledInsertionPipeline(continued);
+    }
+
     private static PrototypeQueuedOperation CreateDrawResumeOperation(
         PrototypeControlledSemanticDrawV111 draw)
     {

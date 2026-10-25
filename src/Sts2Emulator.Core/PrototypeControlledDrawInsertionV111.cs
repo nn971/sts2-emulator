@@ -486,61 +486,8 @@ public sealed partial class PrototypeGameEngine
         }
 
         if (choice.SemanticDrawContinuation is { } semanticDraw)
-        {
-            if (semanticDraw.StratagemSelectionPending)
-            {
-                var stratagemRun = ResumeControlledStratagemSelection(
-                    state, combat, semanticDraw, continuation);
-                return semanticDraw.StandaloneSemanticDrawSegment
-                    ? PrototypeAutomaticPipelineResumeResultV111.FromRun(
-                        stratagemRun)
-                    : ResumeControlledInsertionPipeline(stratagemRun);
-            }
-
-            if (semanticDraw.StandaloneSemanticDrawSegment)
-            {
-                var drawRun = state with
-                {
-                    World = world with { Combat = combat }
-                };
-                return PrototypeAutomaticPipelineResumeResultV111.FromRun(
-                    BeginSemanticCombatDraw(
-                        drawRun, semanticDraw.RemainingCount,
-                        semanticDraw.FromHandDraw).Run);
-            }
-
-            if (semanticDraw.AutomaticSemanticHandDrawSegment)
-            {
-                var drawRun = state with
-                {
-                    World = world with { Combat = combat }
-                };
-                var resumedHandDraw =
-                    ResumeSemanticAutomaticHandDrawAfterNestedChoice(
-                        state, drawRun, null, "controlled draw insertion",
-                        expectedSourceRemaining:
-                            semanticDraw.RemainingCount);
-                return resumedHandDraw
-                    .ToAutomaticPipelineResumeResult();
-            }
-
-            var drawnSegment = ExecuteDrawCardsSegment(
-                state, prototypeRng => DrawCards(
-                    state.Player, combat, semanticDraw.RemainingCount,
-                    prototypeRng, semanticDraw.FromHandDraw,
-                    eventDepth: semanticDraw.EventDepth,
-                    suspensionPolicy:
-                        PrototypeDrawCardsSuspensionPolicyV111
-                            .SemanticDrawCards(effectDraw: true)));
-            var drawState = drawnSegment.Run with
-            {
-                World = world with { Combat = combat }
-            };
-            return ResumeControlledInsertionPipeline(
-                ContinueControlledSemanticEffectDraw(
-                    drawState, drawnSegment.Drawn, semanticDraw,
-                    continuation));
-        }
+            return ResumeSemanticDrawAfterControlledInsertion(
+                state, combat, semanticDraw, continuation);
 
         if (choice.AutomaticHandDrawRemaining is { } handDrawRemaining)
         {
