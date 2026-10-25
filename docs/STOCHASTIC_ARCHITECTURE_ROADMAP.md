@@ -5158,6 +5158,8 @@ audit note now points to this continuation; source pool fidelity and
 
 **S4 modeled playable status action increment (2026-10-24):** Beckon now uses the deterministic semantic player-action boundary; its held damage and ordinary card movement remain with source mechanics. A static census separates it, Toxic, and Frantic Escape from the modeled unplayable Burn, Dazed, Wound, Infection, and Wither cards. No chance owner or snapshot schema was added. Static source review and `git diff --check` only; no tests or builds were run.
 
+**S4 modeled event-card action increment (2026-10-26):** Spore Mind now enters through the semantic player-action gate. Its no-effect play, energy cost, and exhaust movement use the ordinary combat action path; any unrelated stochastic exhaust hook remains subject to the existing fail-closed boundary. No chance owner or snapshot schema was added. Static source review and `git diff --check` only; no tests or builds were run.
+
 **S4 tagged hand-draw resume query increment (2026-10-24):** The ordinary
 pipeline hand-draw handoff, controlled hook and recycle resumes, semantic
 automatic resume, and target-boundary guard now inspect

@@ -139,6 +139,7 @@ public static class SemanticPlayerActionEngineV111
             "proto.native.event.byrd_swoop",
             "proto.native.event.peck",
             "proto.native.event.toric_toughness",
+            "proto.native.event.spore_mind",
             NativeGloryAncientsV111.ApparitionCardId,
             NativeGloryAncientsV111.ApotheosisCardId,
             NativeGloryAncientsV111.EnthralledCardId,
