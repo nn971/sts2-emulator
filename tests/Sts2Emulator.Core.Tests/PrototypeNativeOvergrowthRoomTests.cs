@@ -5,6 +5,28 @@ namespace Sts2Emulator.Core.Tests;
 public sealed class PrototypeNativeOvergrowthRoomTests
 {
     [Fact]
+    public void LegacyEventGoldUsesBoundedIntegerRequestAndKeepsGoldRange()
+    {
+        // This used to produce OperationKind=choose_index for a registered
+        // bounded-integer site and fail when an A10 route entered an event.
+        var resolve = typeof(PrototypeGameEngine).GetMethod(
+            "ResolveLegacyEventGold",
+            System.Reflection.BindingFlags.NonPublic |
+            System.Reflection.BindingFlags.Static);
+        Assert.NotNull(resolve);
+        var initial = PrototypeNativeOvergrowthRunFactory.Create(
+            "h6-event-gold-bounded-regression", ascension: 10);
+        for (var index = 0; index < 8; index++)
+        {
+            var result = resolve.Invoke(null, [
+                initial.Rng, "proto.native.event.synthetic", "primary", 41, 28,
+            ]);
+            Assert.IsType<int>(result);
+            Assert.InRange((int)result!, 41, 68);
+        }
+    }
+
+    [Fact]
     public void FixedTreasureRowGrantsRelicThenResumesFloorTenRouting()
     {
         var engine = new PrototypeGameEngine();
