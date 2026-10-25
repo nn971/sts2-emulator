@@ -2106,8 +2106,7 @@ public sealed partial class PrototypeGameEngine
             state, remainingHandDraw,
             PrototypeDrawCardsSuspensionPolicyV111
                 .ControlledLegacyAutomaticHandDraw(combat));
-        return ResumeSavedControlledAutomaticHandDraw(
-            resumedSegment.Run, resumedSegment.Drawn).Run;
+        return ResumeSavedControlledAutomaticHandDraw(resumedSegment).Run;
     }
 
     private static CombatState CompleteAdvanceTurnAfterCommittedIntents(
@@ -3006,7 +3005,7 @@ public sealed partial class PrototypeGameEngine
                                 .AutomaticHandDraw(combat),
                         automaticHandDrawStage: true));
                 return ResumeAutomaticHandDrawSourceResult(
-                    drawnSegment.Run, drawnSegment.Drawn,
+                    drawnSegment,
                     requestedHandDraw,
                     handDrawResultContext);
             }

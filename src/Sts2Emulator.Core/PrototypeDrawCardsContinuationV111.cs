@@ -606,7 +606,7 @@ public sealed partial class PrototypeGameEngine
     /// prototype RNG with the source checkpoint. Adapters retain ownership of
     /// the returned boundary interpretation and their typed transcripts.
     /// </summary>
-    private static (RunState Run, PrototypeDrawCardsResult Drawn)
+    private static PrototypeDrawCardsSegmentV111
         ResumeAutomaticHandDrawSegment(
         RunState checkpoint,
         int remaining,
@@ -624,7 +624,7 @@ public sealed partial class PrototypeGameEngine
     /// publish the advanced provider state with its source checkpoint.
     /// Callers continue to own mechanics and boundary interpretation.
     /// </summary>
-    private static (RunState Run, PrototypeDrawCardsResult Drawn)
+    private static PrototypeDrawCardsSegmentV111
         ExecuteDrawCardsSegment(
         RunState checkpoint,
         Func<RngBundle, PrototypeDrawCardsResult> drawSegment)
@@ -639,7 +639,7 @@ public sealed partial class PrototypeGameEngine
     /// Use a caller-owned local projection when earlier operations in the same
     /// source transition have already advanced the prototype provider.
     /// </summary>
-    private static (RunState Run, PrototypeDrawCardsResult Drawn)
+    private static PrototypeDrawCardsSegmentV111
         ExecuteDrawCardsSegment(
         RunState checkpoint,
         RngBundle prototypeRng,
@@ -654,6 +654,6 @@ public sealed partial class PrototypeGameEngine
             Stochastic = RunStochasticStateV111.WithPrototypeRng(
                 checkpoint.Stochastic, prototypeRng)
         };
-        return (run, drawn);
+        return new PrototypeDrawCardsSegmentV111(run, drawn);
     }
 }

@@ -312,13 +312,15 @@ public sealed partial class PrototypeGameEngine
     /// </summary>
     private static PrototypeDrawCardsResumeResultV111?
         ResumeAutomaticHandDrawBoundary(
-        RunState rngCheckpoint, PrototypeDrawCardsResult drawn,
-        int requestedCount,
-        AutomaticHandDrawResumeContextV111 context,
-        PrototypeControlledSemanticDrawV111? semanticDraw = null,
-        string recycleSite = "combat.DrawPlayerHand",
-        string recycleOperation = "unsupported_nested_stage")
+            PrototypeDrawCardsSegmentV111 segment,
+            int requestedCount,
+            AutomaticHandDrawResumeContextV111 context,
+            PrototypeControlledSemanticDrawV111? semanticDraw = null,
+            string recycleSite = "combat.DrawPlayerHand",
+            string recycleOperation = "unsupported_nested_stage")
     {
+        var rngCheckpoint = segment.Run;
+        var drawn = segment.Drawn;
         ArgumentNullException.ThrowIfNull(rngCheckpoint);
         ArgumentNullException.ThrowIfNull(drawn);
         if (requestedCount < 0)
@@ -400,11 +402,12 @@ public sealed partial class PrototypeGameEngine
     /// completion, and post-draw power timing.
     /// </summary>
     private static RunState ResumeAutomaticHandDrawSourceResult(
-        RunState checkpoint,
-        PrototypeDrawCardsResult drawn,
+        PrototypeDrawCardsSegmentV111 segment,
         int requestedCount,
         AutomaticHandDrawSourceResultContextV111 context)
     {
+        var checkpoint = segment.Run;
+        var drawn = segment.Drawn;
         ArgumentNullException.ThrowIfNull(checkpoint);
         ArgumentNullException.ThrowIfNull(drawn);
         if (requestedCount < 0)
@@ -419,7 +422,7 @@ public sealed partial class PrototypeGameEngine
                 "Semantic hand-draw result context has no active provider.");
 
         var providerResume = ResumeAutomaticHandDrawBoundary(
-            checkpoint, drawn, requestedCount,
+            segment, requestedCount,
             AutomaticHandDrawResumeContextV111.SourceStageBoundary);
         if (providerResume is { } resumed)
             return resumed.Run;
@@ -480,17 +483,18 @@ public sealed partial class PrototypeGameEngine
     /// </summary>
     private static PrototypeDrawCardsResumeResultV111
         ResumeSavedControlledAutomaticHandDraw(
-        RunState state, PrototypeDrawCardsResult drawn)
+        PrototypeDrawCardsSegmentV111 segment)
     {
         var resumed = ResumeAutomaticHandDrawBoundary(
-            state, drawn, requestedCount: 0,
+            segment, requestedCount: 0,
             context: AutomaticHandDrawResumeContextV111.SavedControlledStage);
-        return resumed ?? ContinueControlledHandDraw(state, drawn);
+        return resumed ?? ContinueControlledHandDraw(
+            segment.Run, segment.Drawn);
     }
 
     private sealed record PrototypeAutomaticHandDrawCostResumeV111(
         PrototypeDrawCardsResumeResultV111 Progress,
-        PrototypeDrawCardsResult? Drawn);
+        PrototypeDrawCardsSegmentV111? Segment);
 
     private static RunState CommitAutomaticHandDrawStratagemSelection(
         RunState state,
@@ -699,26 +703,28 @@ public sealed partial class PrototypeGameEngine
         if (costProgress.DrawnHookSuspended &&
             costCombat.PendingChoice is not null &&
             costCombat.PendingKnowledgeDemonChoice is null)
-            return new PrototypeAutomaticHandDrawCostResumeV111(
-                new PrototypeDrawCardsResumeResultV111(
-                    costProgress.Run, cost.RemainingCount, savedRequested),
+        {
+            var suspendedSegment = new PrototypeDrawCardsSegmentV111(
+                costProgress.Run,
                 CreateDrawCardsResult(
                     costProgress.Run.Player, costCombat, [],
                     PrototypeDrawCardsBoundaryV111.NestedCardDrawnChoice(
                         cost.RemainingCount),
                     automaticHandDrawStage: true));
+            return new PrototypeAutomaticHandDrawCostResumeV111(
+                suspendedSegment.ToResumeProgress(savedRequested),
+                suspendedSegment);
+        }
         if (costProgress.DrawnHookSuspended ||
             costCombat.PendingChoice is not null ||
             costCombat.PendingKnowledgeDemonChoice is not null)
             throw new NotSupportedException(unsupportedBoundaryMessage);
 
-        var (resumedRun, drawn) = ResumeAutomaticHandDrawSegment(
+        var segment = ResumeAutomaticHandDrawSegment(
             costProgress.Run, cost.RemainingCount, suspensionPolicy,
             eventDepth: cost.EventDepth);
         return new PrototypeAutomaticHandDrawCostResumeV111(
-            new PrototypeDrawCardsResumeResultV111(
-                resumedRun, drawn.RemainingCount, savedRequested),
-            drawn);
+            segment.ToResumeProgress(savedRequested), segment);
     }
 
     /// <summary>
@@ -748,7 +754,7 @@ public sealed partial class PrototypeGameEngine
             checkpoint, cost, selectedCost, suspensionPolicy,
             allowHookSuspension, unsupportedBoundaryMessage, semantic);
         resumed.Progress.Validate();
-        if (resumed.Drawn is not { } drawn)
+        if (resumed.Segment is not { } segment)
             return resumed.Progress;
 
         int requestedCount = resumed.Progress.RequestedCount ?? 0;
@@ -756,7 +762,7 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidDataException(
                 "Semantic automatic draw resume lost its request.");
         var progress = ResumeAutomaticHandDrawBoundary(
-                resumed.Progress.Run, drawn, requestedCount,
+                segment, requestedCount,
                 context: semantic
                     ? AutomaticHandDrawResumeContextV111.SavedSemanticStage
                     : AutomaticHandDrawResumeContextV111.SavedControlledStage,

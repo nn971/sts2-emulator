@@ -249,8 +249,11 @@ owner after `PublishDrawMechanicsState` commits the completed recycle and
 post-shuffle hooks. When earlier source operations in the same transition have
 already advanced the projection, the caller supplies it to the same helper.
 Adapters still select the draw suspension policy and interpret the resulting
-boundary; the helper pairs the draw kernel call with its provider-state
-commit.
+boundary; the helper returns a transient `PrototypeDrawCardsSegmentV111`
+that keeps the provider-state commit paired with the tagged mechanics result.
+The common automatic-hand-draw boundary router consumes that segment for
+source-stage and saved controlled/semantic resumes, while typed transcripts
+and provider-specific suspension policies remain with their adapters.
 
 Draw continuations that resolve further operations around a draw now publish
 their final player/combat mechanics and local prototype RNG through

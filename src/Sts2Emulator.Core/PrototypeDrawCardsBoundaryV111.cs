@@ -105,6 +105,20 @@ public sealed partial class PrototypeGameEngine
                 Boundary.AfterShuffleInsertions;
     }
 
+    /// <summary>
+    /// Couples the provider checkpoint advanced by one DrawCards kernel
+    /// segment with the mechanics result produced from that checkpoint.
+    /// Keeping the pair together prevents resume routers from accidentally
+    /// publishing a result with a different RNG checkpoint.
+    /// </summary>
+    private readonly record struct PrototypeDrawCardsSegmentV111(
+        RunState Run, PrototypeDrawCardsResult Drawn)
+    {
+        public PrototypeDrawCardsResumeResultV111 ToResumeProgress(
+            int? requestedCount = null) =>
+            new(Run, Drawn.RemainingCount, requestedCount);
+    }
+
     private static void ValidateDrawCardsResult(
         PrototypeDrawCardsResult drawn, bool automaticHandDraw)
     {
