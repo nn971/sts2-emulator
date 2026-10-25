@@ -5375,8 +5375,9 @@ Release build passed with zero warnings and errors; no tests were run.
 **S4 Native semantic identity normalization increment (2026-10-25):** Native
 semantic traces now project shared hand-cost and random replay/autoplay
 shortlist owner identities, normalize generated-card pool owners, and rebuild
-random hand-cost owners with the shared selected-card index. Request ordinals
-are normalized for semantic event families whose ordinal counts prior
-choices. Event-owned turn or source ordinals remain attached to their events.
-The architecture doc records the distinction. Core and CLI Release builds
-passed with zero warnings and errors; no tests were run.
+random hand-cost owners with the shared selected-card index. Target outcomes
+use a common owner with their site and ordinal. Request ordinals are normalized
+for semantic event families whose ordinal counts prior choices. Event-owned
+turn or source ordinals remain attached to their events. The architecture doc
+records the distinction. Core and CLI Release builds passed with zero warnings
+and errors; no tests were run.

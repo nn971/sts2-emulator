@@ -331,6 +331,9 @@ public sealed record SimulationProviderReplayCaptureV111(
     internal static string NormalizeSemanticOwnerId(
         string siteId, string ownerId)
     {
+        if (StochasticSiteRegistryV111.CombatRandomTargetSiteIds.Contains(
+                siteId, StringComparer.Ordinal))
+            return "combat_target";
         if (siteId is not (
                 StochasticSiteRegistryV111.CombatAutoplayRandomCardSelectSiteId or
                 StochasticSiteRegistryV111.CombatRandomReplayCardSelectSiteId or
