@@ -177,7 +177,7 @@ public sealed record ReferenceNatureMerchantSessionV111(
     [JsonIgnore]
     public ChanceLawV111? PendingLaw =>
         Stochastic.PendingRequest is null ? null :
-            QueryLaw(Origin, Action, Stochastic.PendingRequest,
+            QueryLawForCapture(Origin, Action, Stochastic.PendingRequest,
                 Stochastic.PendingCandidateLabels,
                 Stochastic.ProviderDecisions);
 
@@ -237,7 +237,7 @@ public sealed record ReferenceNatureMerchantSessionV111(
             throw new InvalidOperationException(
                 "ReferenceNature merchant session is already complete.");
 
-        var law = QueryLaw(Origin, Action, Stochastic.PendingRequest!,
+        var law = QueryLawForCapture(Origin, Action, Stochastic.PendingRequest!,
             Stochastic.PendingCandidateLabels,
             Stochastic.ProviderDecisions);
         var selection = ReferenceNatureV111.SampleValidated(law, Stochastic.NatureState);
@@ -328,7 +328,7 @@ public sealed record ReferenceNatureMerchantSessionV111(
                 throw new InvalidDataException(
                     "ReferenceNature merchant provider transcript changed its request.");
 
-            var law = QueryLaw(Origin, Action, request, labels, prefix);
+            var law = QueryLawForCapture(Origin, Action, request, labels, prefix);
             var selection = ReferenceNatureV111.SampleValidated(
                 law, expectedNatureState);
             var expectedTranscript = new ReferenceNatureMerchantLawDecisionV111(
@@ -485,7 +485,7 @@ public sealed record ReferenceNatureMerchantSessionV111(
         return session;
     }
 
-    private static ChanceLawV111 QueryLaw(
+    internal static ChanceLawV111 QueryLawForCapture(
         RunState source, GameAction action,
         ControlledStochasticRequestV111 request,
         string[]? candidateLabels, ControlledStochasticDecisionV111[] prefix)

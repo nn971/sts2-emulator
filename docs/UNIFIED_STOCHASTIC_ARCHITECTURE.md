@@ -1184,6 +1184,9 @@ its ordered rarity and relic identity pulls, replaying the saved bag prefix
 before annotating each selected relic.
 The Native Event-entry capture re-queries each saved law for generated gold,
 potion-slot, and event-offer outcomes before publishing its semantic trace.
+The Merchant capture also replays each conditional offer and purchase law,
+including rarity-conditioned model pools, before annotating its selected
+semantic identities.
 `FromReferenceNatureScriptedRunSession` adds the matching whole-run path for
 ordinary actions with complete six-primitive typed traces. It replays each
 action prefix, materializes the saved outcomes through the same boundary

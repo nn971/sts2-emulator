@@ -51,6 +51,14 @@ action and request before publishing semantic completeness. JSONL
 Core and CLI Release builds passed with zero warnings or errors;
 `git diff --check` passed. No tests were added or run.
 
+**S4 Native Merchant semantic capture increment (2026-10-26):** JSONL
+provider replay now captures completed ReferenceNature Merchant actions with
+their typed boundaries and semantic identities for conditional offers and
+purchases. The factory re-queries every source law against the saved
+action, ordered request support, and preceding purchase prefix before it
+claims semantic completeness. Core and CLI Release builds passed with zero
+warnings or errors; `git diff --check` passed. No tests were added or run.
+
 **S4 whole-run six-primitive continuation increment (2026-10-25):** The
 ReferenceNature whole-run session now accepts caller-supplied, replay-validated
 transcript entries for all six typed random operations alongside its existing

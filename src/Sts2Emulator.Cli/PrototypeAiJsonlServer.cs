@@ -10596,7 +10596,7 @@ internal static class PrototypeAiJsonlServer
                                     return referenceNatureMerchantStates
                                         .TryGetValue(handle, out var merchant)
                                         ? SimulationProviderReplayCaptureV111
-                                            .FromReferenceNatureControlledActionSession(
+                                            .FromReferenceNatureMerchantSession(
                                                 merchant)
                                         : throw new InvalidOperationException(
                                             "Unknown ReferenceNature merchant handle: " +

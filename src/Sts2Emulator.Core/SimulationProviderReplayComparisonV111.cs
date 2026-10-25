@@ -321,6 +321,8 @@ public static class SimulationProviderReplayCaptureProvenanceV111
         "reference-nature-native-shovel-semantic-identity-replay-validated-v1";
     public const string ReferenceNatureNativeEventGoldSemanticIdentityReplayValidated =
         "reference-nature-native-event-gold-semantic-identity-replay-validated-v1";
+    public const string ReferenceNatureMerchantSemanticIdentityReplayValidated =
+        "reference-nature-merchant-semantic-identity-replay-validated-v1";
     public const string ReferenceNatureEventChoiceReplayValidated =
         "reference-nature-event-choice-replay-validated-v1";
     public const string ReferenceNatureControlledActionReplayValidated =
@@ -348,6 +350,7 @@ public static class SimulationProviderReplayCaptureProvenanceV111
         ReferenceNatureTreasureSemanticIdentityReplayValidated or
         ReferenceNatureNativeShovelSemanticIdentityReplayValidated or
         ReferenceNatureNativeEventGoldSemanticIdentityReplayValidated or
+        ReferenceNatureMerchantSemanticIdentityReplayValidated or
         ReferenceNatureEventChoiceReplayValidated or
         ReferenceNatureControlledActionReplayValidated or
         ReferenceNatureNeowOfferReplayValidated or
@@ -376,6 +379,7 @@ public static class SimulationProviderReplayCaptureProvenanceV111
             ReferenceNatureTreasureSemanticIdentityReplayValidated or
             ReferenceNatureNativeShovelSemanticIdentityReplayValidated or
             ReferenceNatureNativeEventGoldSemanticIdentityReplayValidated or
+            ReferenceNatureMerchantSemanticIdentityReplayValidated or
             ReferenceNatureSemanticIdentityReplayValidated or
             ReferenceNatureCombatRewardSemanticIdentityReplayValidated;
 
@@ -1514,6 +1518,99 @@ public sealed record SimulationProviderReplayCaptureV111(
     }
 
     /// <summary>
+    /// Captures a completed ReferenceNature Merchant action with semantic
+    /// identities for its replay-validated offer and purchase decisions.
+    /// </summary>
+    public static SimulationProviderReplayCaptureV111
+        FromReferenceNatureMerchantSession(
+            ReferenceNatureMerchantSessionV111 session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        ReferenceNatureMerchantSessionV111 validated;
+        using (RandomBoundaryJournalV111.Begin())
+            validated = ReferenceNatureMerchantSessionV111.Restore(
+                ReferenceNatureMerchantSessionV111.Save(session));
+        if (!validated.Complete)
+            throw new InvalidOperationException(
+                "Provider replay capture requires a completed ReferenceNature Merchant session.");
+
+        var providerDecisions = validated.ProviderDecisions;
+        var transcript = validated.DecisionTranscript;
+        if (providerDecisions.Length != transcript.Length)
+            throw new InvalidDataException(
+                "ReferenceNature Merchant decisions and outcomes have different lengths.");
+
+        var semanticOutcomes = new SimulationProviderReplaySemanticOutcomeV111[
+            transcript.Length];
+        var ordinalCounts = new Dictionary<string, int>(
+            StringComparer.Ordinal);
+        for (var index = 0; index < transcript.Length; index++)
+        {
+            var decision = providerDecisions[index];
+            var law = ReferenceNatureMerchantSessionV111.QueryLawForCapture(
+                validated.Origin, validated.Action, decision.ToRequest(),
+                decision.CandidateLabels,
+                providerDecisions.Take(index).ToArray());
+            var selection = transcript[index];
+            if (selection.LawId != law.LawId ||
+                selection.EventId != law.EventId ||
+                selection.OutcomeIndex < 0 ||
+                selection.OutcomeIndex >= law.SupportCount ||
+                selection.OutcomeId != law.OutcomeIdAt(
+                    selection.OutcomeIndex))
+                throw new InvalidDataException(
+                    "ReferenceNature Merchant outcome differs from its replayed Chance Law.");
+
+            var semanticSupportIds =
+                SimulationProviderReplaySemanticIdentityV111.SupportIds(
+                    law, decision.CandidateLabels);
+            var semanticOrdinal = law.Ordinal;
+            if (SimulationProviderReplayNativeSemanticOutcomeTraceV111
+                    .SemanticOrdinalGroup(law.SiteId) is
+                { } ordinalGroup)
+            {
+                semanticOrdinal = ordinalCounts.GetValueOrDefault(
+                    ordinalGroup);
+                ordinalCounts[ordinalGroup] = semanticOrdinal + 1;
+            }
+            semanticOutcomes[index] = new(
+                index + 1, law.EventId, law.LawId,
+                law.OutcomeIdAt(selection.OutcomeIndex),
+                selection.OutcomeIndex)
+            {
+                SiteId = law.SiteId,
+                OperationKind = law.OperationKind,
+                OwnerId = NormalizeSemanticOwnerId(law.SiteId,
+                    law.OwnerId),
+                Ordinal = semanticOrdinal,
+                SupportFingerprint = CanonicalJson.Sha256(
+                    semanticSupportIds),
+                SemanticOutcomeId = semanticSupportIds[
+                    selection.OutcomeIndex]
+            };
+        }
+
+        var capture = FromReplayValidatedAction(
+            validated.Origin, validated.Action, providerDecisions,
+            validated.Run,
+            SimulationProviderReplayCaptureProvenanceV111
+                .ReferenceNatureControlledActionReplayValidated);
+        capture = capture with
+        {
+            Simulation = capture.Simulation with
+            {
+                Stochastic = new SimulationProviderReplayStochasticCaptureV111(
+                    capture.Stochastic.Boundaries, semanticOutcomes)
+            },
+            CaptureProvenance =
+                SimulationProviderReplayCaptureProvenanceV111
+                    .ReferenceNatureMerchantSemanticIdentityReplayValidated
+        };
+        capture.Validate();
+        return capture;
+    }
+
+    /// <summary>
     /// Captures a completed combat victory and its atomic ReferenceNature
     /// reward transcript as provider-independent semantic outcomes.
     /// </summary>
@@ -2083,6 +2180,8 @@ public sealed record SimulationProviderReplayCaptureV111(
                  SimulationProviderReplayCaptureProvenanceV111
                     .ReferenceNatureNativeEventGoldSemanticIdentityReplayValidated or
                  SimulationProviderReplayCaptureProvenanceV111
+                    .ReferenceNatureMerchantSemanticIdentityReplayValidated or
+                 SimulationProviderReplayCaptureProvenanceV111
                     .SemanticNativePolicySemanticIdentityReplayValidated))
             throw new InvalidDataException(
                 "Legacy provider replay captures cannot claim provider-independent semantic identities.");
@@ -2097,6 +2196,8 @@ public sealed record SimulationProviderReplayCaptureV111(
                     .ReferenceNatureNativeShovelSemanticIdentityReplayValidated or
                  SimulationProviderReplayCaptureProvenanceV111
                     .ReferenceNatureNativeEventGoldSemanticIdentityReplayValidated or
+                 SimulationProviderReplayCaptureProvenanceV111
+                    .ReferenceNatureMerchantSemanticIdentityReplayValidated or
                  SimulationProviderReplayCaptureProvenanceV111
                     .ReferenceNatureCombatRewardSemanticIdentityReplayValidated or
                  SimulationProviderReplayCaptureProvenanceV111
