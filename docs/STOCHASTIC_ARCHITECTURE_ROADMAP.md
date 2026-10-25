@@ -18,6 +18,13 @@ action prefix before matching the complete request. Core and CLI Release
 builds passed with zero warnings and errors; `git diff --check` passed. No
 tests were run.
 
+**S2 whole-run Native Punch Off law increment (2026-10-26):** Native-backed
+whole-run actions now route Punch Off construct HP-offset and immediate-win
+relic/potion requests through their prefix-conditioned laws. Replay reconstructs
+the prior selected-index prefix and checks the exact bounded or ordered-index
+request. Core and CLI Release builds passed with zero warnings and errors;
+`git diff --check` passed. No tests were run.
+
 **S4 whole-run Stone of All Time ticket law increment (2026-10-26):** The
 ReferenceNature whole-run dispatcher now uses the existing degenerate
 `no_effect` law for Stone of All Time push/lift tickets. Replay validates the

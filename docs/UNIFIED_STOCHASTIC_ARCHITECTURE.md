@@ -419,6 +419,11 @@ indexed outcomes also use their existing event-context laws. These routes
 rebuild the current reward/card support or replay the action prefix before
 checking the exact typed request.
 
+Whole-run Punch Off encounter and immediate-victory reward requests use the
+existing prefix-conditioned laws when the run has its Native RNG owner. Replay
+rebuilds prior selected indices and checks the exact bounded or ordered-index
+request before resolving the HP offset, relic, or potion identity.
+
 Whole-run ReferenceNature resolution now sends index, unit-float, and
 Gaussian-integer law outcomes through `ReferenceNatureChanceLawDecisionV111`.
 That shared adapter preserves candidate labels and converts mapped semantic

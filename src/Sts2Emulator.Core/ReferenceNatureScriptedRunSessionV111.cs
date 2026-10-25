@@ -533,6 +533,14 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
                     ChanceLawEngineV111.NativeStoneOfAllTimeLiftTicketSiteId)
                 return QueryNativeStoneOfAllTimeTicket(
                     active, indexRequest);
+            if (active.Origin.Stochastic.NativeRunRng is not null &&
+                indexRequest.SiteId ==
+                    PrototypeNativePunchOff.ConstructHpOffsetSiteId)
+                return QueryNativePunchOffFight(active, indexRequest);
+            if (active.Origin.Stochastic.NativeRunRng is not null &&
+                StochasticSiteRegistryV111.NativePunchOffRewardSiteIds
+                    .Contains(indexRequest.SiteId, StringComparer.Ordinal))
+                return QueryNativePunchOffReward(active, indexRequest);
             if (indexRequest.SiteId == ChanceLawEngineV111
                     .NativeEventGoldIndexSiteId)
                 return QueryNativeEventGoldIndex(active, indexRequest);
@@ -611,6 +619,59 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
                 gaussianRequest))
             return ChanceLawEngineV111.QueryNativeMapRequest(request);
         return null;
+    }
+
+    private static ChanceLawV111 QueryNativePunchOffFight(
+        ScriptedRunActionSessionV111 active,
+        RandomIndexRequestV111 request)
+    {
+        var priorIndices = active.Decisions
+            .Where(decision => decision.IndexDecision?.Request.SiteId ==
+                request.SiteId)
+            .Select(decision => decision.IndexDecision!.SelectedIndex)
+            .ToArray();
+        var law = ChanceLawEngineV111.QueryNativePunchOffFight(
+            active.Origin, request.SiteId, request.Ordinal, priorIndices,
+            PrototypeAiEnvironment.StableActionId(active.Action));
+        RequireIndexRequestMatchesLaw(request, law,
+            "Punch Off fight");
+        return law;
+    }
+
+    private static ChanceLawV111 QueryNativePunchOffReward(
+        ScriptedRunActionSessionV111 active,
+        RandomIndexRequestV111 request)
+    {
+        var priorIndices = active.Decisions
+            .Where(decision => decision.IndexDecision?.Request.SiteId ==
+                PrototypeNativePunchOff.RelicRewardSiteId ||
+                decision.IndexDecision?.Request.SiteId ==
+                PrototypeNativePunchOff.PotionRewardSiteId)
+            .Select(decision => decision.IndexDecision!.SelectedIndex)
+            .ToArray();
+        var law = ChanceLawEngineV111.QueryNativePunchOffReward(
+            active.Origin, request.SiteId, request.Ordinal, priorIndices,
+            PrototypeAiEnvironment.StableActionId(active.Action));
+        RequireIndexRequestMatchesLaw(request, law,
+            "Punch Off reward");
+        return law;
+    }
+
+    private static void RequireIndexRequestMatchesLaw(
+        RandomIndexRequestV111 request, ChanceLawV111 law,
+        string boundary)
+    {
+        request.Validate();
+        var bounded = law.OperationKind == "bounded_integer";
+        var expected = new RandomIndexRequestV111(
+            law.SiteId, request.StreamId, law.OwnerId, law.Ordinal,
+            bounded ? [] : Enumerable.Range(0, law.Outcomes.Length).ToArray(),
+            OperationKind: law.OperationKind,
+            BoundedCount: bounded ? law.Outcomes.Length : null);
+        if (CanonicalJson.Sha256(expected) !=
+            CanonicalJson.Sha256(request))
+            throw new InvalidDataException(
+                $"{boundary} request differs from its conditioned source law.");
     }
 
     private static ChanceLawV111 QueryNativeEventContextIndex(
