@@ -59,6 +59,14 @@ boundary checks remain with their existing owners. No saved transcript format
 changed. Static source review and `git diff --check` only; no tests or builds
 were run.
 
+**S4 nested semantic hand-draw progress handoff (2026-10-25):** Draw-hook,
+Stratagem, and standalone effect-draw cost choices now share the semantic
+choice owner's projection from their resumed run to hand-draw progress. The
+helper preserves each path's requested-count contract and passes automatic
+cursor validation through the existing engine owner. No transcript or snapshot
+format changed. Static source review and `git diff --check` only; no tests or
+builds were run.
+
 **S5 shared candidate-label binding validation (2026-10-25):** Controlled
 event-choice, run-action, and playable-combat Python facades now use one
 validator for non-empty labels and membership in the saved pending support.

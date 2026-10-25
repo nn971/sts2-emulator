@@ -18,6 +18,38 @@ internal readonly record struct SemanticChoiceResumeResultV111(
 /// </summary>
 internal static class SemanticChoiceResumeV111
 {
+    private static PrototypeDrawCardsResumeResultV111
+        ResumeHandDrawChoiceProgress(
+            RunState checkpoint, RunState resumed,
+            PrototypeAutomaticPipelineResumeBoundaryKindV111? boundary,
+            string choiceKind, bool automaticHandDraw,
+            int? requestedCount, int remainingCount, int drawnBefore,
+            bool publishStandaloneRequestedCount)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        ArgumentNullException.ThrowIfNull(resumed);
+        ArgumentException.ThrowIfNullOrWhiteSpace(choiceKind);
+        if (remainingCount < 0 || drawnBefore < 0 ||
+            requestedCount is < 0)
+            throw new InvalidDataException(
+                "Semantic hand-draw choice progress is invalid.");
+
+        if (automaticHandDraw)
+            return PrototypeGameEngine
+                .ResumeSemanticAutomaticHandDrawAfterNestedChoice(
+                    checkpoint, resumed, boundary, choiceKind,
+                    requestedCount, remainingCount)
+                .EnsurePipelineBoundary();
+
+        var progress = new PrototypeDrawCardsResumeResultV111(
+            resumed,
+            PrototypeGameEngine.GetSemanticDrawRemainingCount(
+                resumed, remainingCount, drawnBefore),
+            publishStandaloneRequestedCount ? requestedCount : null,
+            boundary);
+        return progress.EnsurePipelineBoundary();
+    }
+
     internal static PrototypeAutomaticPipelineResumeResultV111
         ResumeTarget(
             RunState checkpoint, SemanticTargetDecisionV111 decision)
@@ -111,20 +143,11 @@ internal static class SemanticChoiceResumeV111
             checkpoint, pending, actionId);
         var resumed = Resume(checkpoint, decision)
             .EnsurePipelineBoundary();
-        var run = resumed.Run;
-        var pipelineBoundary = resumed.Boundary;
-        if (!pending.AutomaticHandDraw)
-            return (PrototypeDrawCardsResumeResultV111.ForHandDraw(
-                    run, requested,
-                    PrototypeGameEngine.GetSemanticDrawRemainingCount(
-                        run, remaining, drawnBefore), pipelineBoundary)
-                .EnsurePipelineBoundary(),
-                decision);
-
-        return (PrototypeGameEngine
-            .ResumeSemanticAutomaticHandDrawAfterNestedChoice(
-                checkpoint, run, pipelineBoundary, "draw-hook",
-                requested, remaining), decision);
+        return (ResumeHandDrawChoiceProgress(
+                checkpoint, resumed.Run, resumed.Boundary, "draw-hook",
+                pending.AutomaticHandDraw, requested, remaining,
+                drawnBefore, publishStandaloneRequestedCount: true),
+            decision);
     }
 
     internal static (
@@ -148,21 +171,12 @@ internal static class SemanticChoiceResumeV111
         var decision = SemanticCardSelectionEngineV111.Select(
             pending, pending.EventId, actionId);
         var selected = Resume(checkpoint, decision);
-        var selectedRun = selected.Run;
-
-        if (!automaticHandDraw)
-            return (new PrototypeDrawCardsResumeResultV111(
-                    selectedRun,
-                    PrototypeGameEngine.GetSemanticDrawRemainingCount(
-                        selectedRun, remaining, drawnBefore),
-                    PipelineBoundary: selected.PipelineBoundary)
-                .EnsurePipelineBoundary(), decision);
-
-        var resumed = PrototypeGameEngine
-            .ResumeSemanticAutomaticHandDrawAfterNestedChoice(
-                checkpoint, selectedRun, selected.PipelineBoundary,
-                "Stratagem selection", expectedSourceRemaining: remaining);
-        return (resumed.EnsurePipelineBoundary(), decision);
+        return (ResumeHandDrawChoiceProgress(
+                checkpoint, selected.Run, selected.PipelineBoundary,
+                "Stratagem selection", automaticHandDraw,
+                requestedCount: null, remainingCount: remaining,
+                drawnBefore: drawnBefore,
+                publishStandaloneRequestedCount: false), decision);
     }
 
     internal static RunState ResumeDeckReveal(
@@ -215,11 +229,12 @@ internal static class SemanticChoiceResumeV111
                 .ResumeEffectDrawCostWithBoundary(
                     run, selectedCost,
                     allowEngineOwnedPrototypeReward: false);
-            return new PrototypeDrawCardsResumeResultV111(
-                resumed.Run,
-                PrototypeGameEngine.GetSemanticDrawRemainingCount(
-                    resumed.Run, remainingCount, cardsDrawnBefore),
-                PipelineBoundary: resumed.Boundary);
+            return ResumeHandDrawChoiceProgress(
+                run, resumed.Run, resumed.Boundary, "effect-draw cost",
+                automaticHandDraw: false, requestedCount: null,
+                remainingCount: remainingCount,
+                drawnBefore: cardsDrawnBefore,
+                publishStandaloneRequestedCount: false);
         }
 
         return ControlledChanceGuardV111.ExecuteGuarded(
