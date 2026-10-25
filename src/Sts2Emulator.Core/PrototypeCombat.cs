@@ -2106,18 +2106,16 @@ public sealed partial class PrototypeGameEngine
                 remainingHandDraw, requestedHandDraw);
 
         var player = state.Player;
-        var drawn = DrawCards(player, combat, remainingHandDraw,
-            prototypeRng, fromHandDraw: true,
-            suspensionPolicy:
-                PrototypeDrawCardsSuspensionPolicyV111
-                    .ControlledLegacyAutomaticHandDraw(combat),
-            automaticHandDrawStage: true);
-        state = state with
-        {
-            Stochastic = RunStochasticStateV111.WithPrototypeRng(
-                state.Stochastic, prototypeRng)
-        };
-        return ResumeSavedControlledAutomaticHandDraw(state, drawn).Run;
+        var drawnSegment = ExecuteDrawCardsSegment(
+            state, prototypeRng, rng => DrawCards(
+                player, combat, remainingHandDraw, rng,
+                fromHandDraw: true,
+                suspensionPolicy:
+                    PrototypeDrawCardsSuspensionPolicyV111
+                        .ControlledLegacyAutomaticHandDraw(combat),
+                automaticHandDrawStage: true));
+        return ResumeSavedControlledAutomaticHandDraw(
+            drawnSegment.Run, drawnSegment.Drawn).Run;
     }
 
     private static CombatState CompleteAdvanceTurnAfterCommittedIntents(

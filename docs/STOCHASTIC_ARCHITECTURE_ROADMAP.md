@@ -2,6 +2,15 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 controlled recycle draw publication increment (2026-10-26):** The
+resumed controlled legacy automatic hand draw now routes its post-recycle
+`DrawCards` segment through `ExecuteDrawCardsSegment`, carrying the caller's
+RNG projection already advanced by the shuffle and post-shuffle relic hooks.
+The shared helper publishes the draw's final RNG checkpoint; recycle,
+insertion, Stratagem, and boundary handling remain with their existing
+owners. Core and CLI Release builds and `git diff --check` passed; no tests
+were run.
+
 **S4 shared draw-segment RNG publication increment (2026-10-26):** Direct
 semantic draw segments, opening-hand draws, the automatic pipeline's
 `DrawPlayerHand` stage, saved semantic effect draws, and saved

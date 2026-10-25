@@ -241,11 +241,12 @@ The specialized `SemanticCombatDrawV111.Simulation` pairs `SemanticCombatDrawMec
 `ExecuteDrawCardsSegment` owns the local prototype RNG projection and
 publication for direct semantic draw segments, opening-hand draws, the
 automatic pipeline's `DrawPlayerHand` stage, saved semantic effect draws, and
-saved automatic hand-draw resumes. When earlier source operations in the
-same transition have already advanced the projection, the caller supplies it
-to the same helper. Adapters still select the draw suspension policy and
-interpret the resulting boundary; the helper pairs the draw kernel call with
-its provider-state commit.
+saved automatic hand-draw resumes, including the resumed controlled legacy
+draw after a recycle. When earlier source operations in the same transition
+have already advanced the projection, the caller supplies it to the same
+helper. Adapters still select the draw suspension policy and interpret the
+resulting boundary; the helper pairs the draw kernel call with its
+provider-state commit.
 
 The draw stochastic owner also includes card-shortlist choices in its typed
 transcripts, mixed boundary chronology, and provenance replay. End-turn and
