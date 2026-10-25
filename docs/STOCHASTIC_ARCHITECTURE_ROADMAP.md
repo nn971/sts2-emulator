@@ -2,6 +2,11 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S5 provider replay capability disclosure increment (2026-10-25):** JSONL
+`hello` now identifies physical draw identity as evidence returned by provider
+replay comparison v7. CLI Release build passed with zero warnings or errors;
+no tests were run.
+
 **S4 per-action physical draw identity comparison increment (2026-10-25):**
 Replay-validated captures now retain the ordered physical card identities
 consumed by `DrawCards` within each player action. Native committed-order draws

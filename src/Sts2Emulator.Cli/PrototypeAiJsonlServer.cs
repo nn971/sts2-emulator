@@ -2970,7 +2970,7 @@ internal static class PrototypeAiJsonlServer
                                 "<side>_origin_snapshot, <side>_actions, <side>_boundaries, and <side>_result_snapshot"
                             },
                             simulationProviderReplayComparisonScope =
-                                "privileged-provider-trace-and-semantic-outcome-action-boundary-and-endpoint-mechanics-diagnostic; not a fair player observation",
+                                "privileged-provider-trace-semantic-outcome-physical-draw-identity-action-boundary-and-endpoint-mechanics-diagnostic; not a fair player observation",
                             semanticNatureChoiceViewSessionKinds =
                                 stochasticCapabilities
                                     .SemanticNatureChoiceViewSessionKinds,
