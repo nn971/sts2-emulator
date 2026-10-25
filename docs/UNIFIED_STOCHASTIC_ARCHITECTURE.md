@@ -1277,7 +1277,10 @@ presence in that same classification, preserving fail-closed handling of
 unsupported tagged choices. Standalone descriptor calls retain their
 self-classifying behavior. The draw frame's transient pending-child projection
 provides the same classified child events to `Validate` and `AtBoundary`; the
-serialized frame still owns the existing typed transcripts. No schema changed.
+serialized frame still owns the existing typed transcripts. End-turn validation
+reuses its projected hand-draw frame and delegates active nested-choice boundary
+checks to it, while retaining pipeline-choice checks outside active draw
+ownership. No schema changed.
 
 Supported random autoplay and replay-card shortlist children opened by a
 draw-hook action now use the existing card-shortlist event and decision owner

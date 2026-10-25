@@ -120,6 +120,12 @@ individual event properties remain available as compatibility projections.
 No schema changed. Static source review and `git diff --check` only; no tests
 or builds were run.
 
+**S4 end-turn nested draw validation ownership (2026-10-25):** End-turn
+validation reuses one projected hand-draw frame and delegates active nested
+choice boundary checks to that frame. End-turn retains its pipeline-choice
+validators at boundaries not owned by an active draw frame. No schema changed.
+Static source review and `git diff --check` only; no tests or builds were run.
+
 **S5 shared candidate-label binding validation (2026-10-25):** Controlled
 event-choice, run-action, and playable-combat Python facades now use one
 validator for non-empty labels and membership in the saved pending support.

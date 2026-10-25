@@ -269,10 +269,14 @@ public sealed record SemanticEndTurnV111(
     }
     [JsonIgnore] public string Fingerprint => CanonicalJson.Sha256(this);
     [JsonIgnore] public SemanticTargetEventV111? TargetPending =>
+        Complete ? null : DescribeTargetPending(HandDraw);
+
+    private SemanticTargetEventV111? DescribeTargetPending(
+        SemanticCombatDrawV111? handDraw) =>
         Complete
             ? null
-            : HandDraw is { AtBoundary: false } handDraw
-                ? handDraw.TargetPending
+            : handDraw is { AtBoundary: false } activeDraw
+                ? activeDraw.TargetPending
                 : SemanticPilotCombatEngineV111.DescribePendingTargetEvent(
                     Run, Fingerprint, TargetTranscript.Length);
     [JsonIgnore] public SemanticEndTurnIndexEventV111?
@@ -336,16 +340,22 @@ public sealed record SemanticEndTurnV111(
         get
         {
             if (Complete) return null;
-            if (HandDraw is { AtBoundary: false } handDraw)
-                return handDraw.GeneratedCardPending;
-            return PrototypeGameEngine
-                    .HasPendingSupportedAutomaticPipelineSemanticGeneration(Run)
-                ? SemanticGenerationChoiceV111.DescribePending(
-                    Run, Fingerprint,
-                    NestedChoiceTranscript.Count(choice =>
-                        choice.Kind == "semantic_generated_card"))
-                : null;
+            return DescribeGeneratedCardPending(HandDraw);
         }
+    }
+    private SemanticGeneratedCardEventV111? DescribeGeneratedCardPending(
+        SemanticCombatDrawV111? handDraw)
+    {
+        if (Complete) return null;
+        if (handDraw is { AtBoundary: false } activeDraw)
+            return activeDraw.GeneratedCardPending;
+        return PrototypeGameEngine
+                .HasPendingSupportedAutomaticPipelineSemanticGeneration(Run)
+            ? SemanticGenerationChoiceV111.DescribePending(
+                Run, Fingerprint,
+                NestedChoiceTranscript.Count(choice =>
+                    choice.Kind == "semantic_generated_card"))
+            : null;
     }
     [JsonIgnore] public SemanticPotionGenerationEventV111?
         PotionGenerationPending
@@ -465,10 +475,14 @@ public sealed record SemanticEndTurnV111(
     }
     [JsonIgnore] public SemanticDrawHookChoiceEventV111?
         NestedDrawHookChoicePending =>
-            !Complete && HandDraw is not { AtBoundary: false } &&
-            PrototypeGameEngine
-                .HasPendingSupportedAutomaticPipelineSemanticDrawHookChoice(
-                    Run)
+            Complete ? null :
+                DescribeNestedDrawHookChoicePending(HandDraw);
+    private SemanticDrawHookChoiceEventV111?
+        DescribeNestedDrawHookChoicePending(
+            SemanticCombatDrawV111? handDraw) =>
+        !Complete && handDraw is not { AtBoundary: false } &&
+        PrototypeGameEngine
+            .HasPendingSupportedAutomaticPipelineSemanticDrawHookChoice(Run)
             ? SemanticDrawHookChoiceEngineV111.DescribePending(Run)
             : null;
     [JsonIgnore] public SemanticHandCostSelectionEventV111?
@@ -477,40 +491,59 @@ public sealed record SemanticEndTurnV111(
         get
         {
             if (Complete) return null;
-            if (HandDraw is { AtBoundary: false } handDraw)
-                return handDraw.HandCostSelectionPending;
-            if (!PrototypeGameEngine
-                    .HasPendingSupportedAutomaticPipelineSemanticRandomHandCost(
-                        Run) ||
-                Run.World?.Combat?.PendingChoice?.ControlledRandomCost is not
-                    { Operation.Kind: PrototypeCombatEffectKind
-                        .SetRandomHandCardEnergyCostUntilTurnEndOrPlayed } randomCost)
-                return null;
-            var combat = Run.World!.Combat!;
-            var models = randomCost.EligibleCardInstanceIds.Select(id =>
-                combat.Cards.Single(card => card.InstanceId == id).CardId)
-                .ToArray();
-            return SemanticHandCostSelectionChoiceV111.CreateEvent(
-                Fingerprint, randomCost, models,
-                NestedChoiceTranscript.Count(choice =>
-                    choice.Kind == "semantic_hand_cost_selection"));
+            return DescribeNestedHandCostSelectionPending(HandDraw);
         }
+    }
+    private SemanticHandCostSelectionEventV111?
+        DescribeNestedHandCostSelectionPending(
+            SemanticCombatDrawV111? handDraw)
+    {
+        if (Complete) return null;
+        if (handDraw is { AtBoundary: false } activeDraw)
+            return activeDraw.HandCostSelectionPending;
+        if (!PrototypeGameEngine
+                .HasPendingSupportedAutomaticPipelineSemanticRandomHandCost(
+                    Run) ||
+            Run.World?.Combat?.PendingChoice?.ControlledRandomCost is not
+                { Operation.Kind: PrototypeCombatEffectKind
+                    .SetRandomHandCardEnergyCostUntilTurnEndOrPlayed } randomCost)
+            return null;
+        var combat = Run.World!.Combat!;
+        var models = randomCost.EligibleCardInstanceIds.Select(id =>
+            combat.Cards.Single(card => card.InstanceId == id).CardId)
+            .ToArray();
+        return SemanticHandCostSelectionChoiceV111.CreateEvent(
+            Fingerprint, randomCost, models,
+            NestedChoiceTranscript.Count(choice =>
+                choice.Kind == "semantic_hand_cost_selection"));
     }
     [JsonIgnore] public SemanticDrawInsertionEventV111?
         NestedDrawInsertionPending =>
-            !Complete && HandDraw is not { AtBoundary: false } &&
-            PrototypeGameEngine
-                .HasPendingSupportedAutomaticPipelineSemanticDraw(Run)
-                ? SemanticDrawInsertionChoiceV111
-                    .DescribeAutomaticSemanticDrawContinuation(Run, Fingerprint)
-                : null;
+            Complete ? null : DescribeNestedDrawInsertionPending(HandDraw);
+    private SemanticDrawInsertionEventV111?
+        DescribeNestedDrawInsertionPending(
+            SemanticCombatDrawV111? handDraw) =>
+        !Complete && handDraw is not { AtBoundary: false } &&
+        PrototypeGameEngine
+            .HasPendingSupportedAutomaticPipelineSemanticDraw(Run)
+            ? SemanticDrawInsertionChoiceV111
+                .DescribeAutomaticSemanticDrawContinuation(Run, Fingerprint)
+            : null;
     [JsonIgnore] public SemanticRandomPileCardEventV111?
         RandomPileCardPending =>
             Complete ? null : HandDraw?.RandomPileCardPending;
     [JsonIgnore] public SemanticDrawInsertionEventV111?
         DrawInsertionPending =>
-            Complete ? null : HandDraw?.DrawInsertionPending ??
-                NestedDrawInsertionPending;
+            Complete ? null : DescribeDrawInsertionPending(HandDraw);
+    private SemanticDrawInsertionEventV111? DescribeDrawInsertionPending(
+        SemanticCombatDrawV111? handDraw)
+    {
+        if (Complete) return null;
+        if (handDraw is { AtBoundary: false } activeDraw)
+            return activeDraw.DrawInsertionPending;
+        return handDraw?.DrawInsertionPending ??
+            DescribeNestedDrawInsertionPending(handDraw);
+    }
     [JsonIgnore] public SemanticCardSelectionEventV111?
         StratagemSelectionPending =>
             Complete ? null : HandDraw?.StratagemSelectionPending;
@@ -529,10 +562,12 @@ public sealed record SemanticEndTurnV111(
         this.Mechanics.Continuation.Validate(
             PrototypeMechanicsContinuationKindV111.SemanticEndTurn);
         this.Stochastic.Validate();
+        var handDraw = this.HandDraw;
+        var targetPending = this.DescribeTargetPending(handDraw);
         if (this.EnemyActionPending is not null)
         {
             if (this.Complete || this.Intents is not null ||
-                this.HandDraw is not null ||
+                handDraw is not null ||
                 this.PlayerActionSource is not { } playerSource ||
                 !PrototypeGameEngine
                     .IsAtCombatPlayerDecisionBoundary(playerSource))
@@ -552,14 +587,12 @@ public sealed record SemanticEndTurnV111(
                 throw new InvalidDataException(
                     "Semantic enemy-action transcript differs from its replay frame.");
         }
-        else if (this.TargetPending is { } target)
+        else if (targetPending is { } target)
         {
             target.Validate();
-            bool handDrawOwnsTarget =
-                this.HandDraw is { AtBoundary: false } handDraw &&
-                handDraw.TargetPending is not null;
+            bool handDrawOwnsTarget = handDraw is { AtBoundary: false };
             if (this.Complete || this.Intents is not null ||
-                (this.HandDraw is { AtBoundary: false } &&
+                (handDraw is { AtBoundary: false } &&
                  !handDrawOwnsTarget) ||
                 this.Run.World?.Combat?.PendingChoice?
                     .ControlledTarget is null ||
@@ -577,7 +610,7 @@ public sealed record SemanticEndTurnV111(
             else
                 SemanticEndTurnEngineV111.ValidateOrigin(this.Origin);
             if (target.Ordinal != (handDrawOwnsTarget
-                    ? this.HandDraw!.TargetTranscript.Length
+                    ? handDraw!.TargetTranscript.Length
                     : this.Stochastic.TargetTranscript.Length))
                 throw new InvalidDataException(
                     "Automatic-pipeline target ordinal differs from its transcript.");
@@ -586,7 +619,7 @@ public sealed record SemanticEndTurnV111(
         {
             knowledgeDemon.Validate();
             if (this.Complete || this.Intents is not null ||
-                this.HandDraw is not null ||
+                handDraw is not null ||
                 this.Run.World?.Combat?.PendingKnowledgeDemonChoice is null ||
                 this.PlayerActionSource is not { } playerSource ||
                 !PrototypeGameEngine
@@ -602,9 +635,9 @@ public sealed record SemanticEndTurnV111(
         }
         this.EnemyActionEventPending?.Validate();
         this.IntentChoicePending?.Validate();
-        this.DrawInsertionPending?.Validate();
-        this.GeneratedCardPending?.Validate();
-        this.NestedDrawHookChoicePending?.Validate();
+        this.DescribeDrawInsertionPending(handDraw)?.Validate();
+        this.DescribeGeneratedCardPending(handDraw)?.Validate();
+        this.DescribeNestedDrawHookChoicePending(handDraw)?.Validate();
         if (string.IsNullOrWhiteSpace(this.NativeEncounterEntry) ||
             this.Stochastic.IntentTranscript is null ||
             this.Stochastic.EnemyActionTranscript is null ||
@@ -614,20 +647,20 @@ public sealed record SemanticEndTurnV111(
             (this.Complete && (this.Intents is not null ||
                 (PrototypeGameEngine
                     .IsAtCombatRewardOrTerminalBoundary(this.Run)
-                    ? this.HandDraw is { AtBoundary: false }
-                    : this.HandDraw is not { AtBoundary: true }))) ||
+                    ? handDraw is { AtBoundary: false }
+                    : handDraw is not { AtBoundary: true }))) ||
             (!this.Complete && this.Intents is null &&
-             this.HandDraw is null && this.EnemyActionPending is null &&
-             this.TargetPending is null &&
+             handDraw is null && this.EnemyActionPending is null &&
+             targetPending is null &&
              this.KnowledgeDemonChoicePending is null &&
              !PrototypeGameEngine
                 .HasPendingSupportedAutomaticPipelineSemanticChoice(
                     this.Run)) ||
-            (!this.Complete && this.HandDraw is { AtBoundary: true } &&
-             this.TargetPending is null &&
+            (!this.Complete && handDraw is { AtBoundary: true } &&
+             targetPending is null &&
              !PrototypeGameEngine
                 .HasPendingSupportedAutomaticPipelineSemanticChoice(this.Run)) ||
-            (this.Intents is not null && this.HandDraw is not null))
+            (this.Intents is not null && handDraw is not null))
             throw new InvalidDataException("Invalid semantic end-turn stages.");
         if (this.Intents is { } intents)
         {
@@ -638,7 +671,7 @@ public sealed record SemanticEndTurnV111(
                 CanonicalJson.Sha256(this.Origin))
                 throw new InvalidDataException("Invalid pending intent stage.");
         }
-        if (this.HandDraw is { } hand)
+        if (handDraw is { } hand)
         {
             hand.Validate();
             if (!this.Complete &&
@@ -662,50 +695,55 @@ public sealed record SemanticEndTurnV111(
                 throw new InvalidDataException(
                     "Terminal end-turn retained an incomplete hand draw.");
         }
-        if (PrototypeGameEngine
-            .HasPendingSupportedAutomaticPipelineSemanticDraw(this.Run))
+        if (handDraw is not { AtBoundary: false })
         {
-            var choice = this.Run.World!.Combat!.PendingChoice!;
-            if (choice.ChoiceId == "controlled_semantic_draw")
-                SemanticDrawChoiceV111.ValidateBoundary(this.Run);
-            else if (choice.ChoiceId == "controlled_draw_cost")
-                SemanticCostChoiceV111.ValidateDrawBoundary(this.Run);
-            else if (choice.ChoiceId == "controlled_draw_insertion")
-                SemanticDrawInsertionChoiceV111.ValidateBoundary(this.Run);
-        }
-        if (PrototypeGameEngine
-            .HasPendingSupportedAutomaticPipelineSemanticGeneration(this.Run))
-            SemanticGenerationChoiceV111.ValidateBoundary(this.Run);
-        if (PrototypeGameEngine
-            .HasPendingSupportedAutomaticPipelineSemanticPotionGeneration(
-                this.Run))
-            SemanticPotionGenerationChoiceV111.ValidateBoundary(this.Run);
-        if (PrototypeGameEngine
-            .HasPendingSupportedAutomaticPipelineSemanticCardTransform(
-                this.Run))
-            SemanticCardTransformChoiceV111.ValidateBoundary(this.Run,
-                this.Run.World!.Combat!.PendingChoice!
-                    .ControlledCardTransform!);
-        if (PrototypeGameEngine
-            .HasPendingSupportedAutomaticPipelineSemanticCardShortlist(
-                this.Run))
-            SemanticCardShortlistChoiceV111.ValidateBoundary(this.Run);
-        if (PrototypeGameEngine
-            .HasPendingSupportedAutomaticPipelineSemanticPoolShuffle(
-                this.Run))
-            SemanticPoolShuffleChoiceV111.ValidateBoundary(this.Run);
-        if (PrototypeGameEngine
-            .HasPendingSupportedAutomaticPipelineSemanticRandomHandCost(
-                this.Run))
-        {
-            SemanticRandomHandCostChoiceV111.ValidateBoundary(this.Run);
-            if (this.NestedHandCostSelectionPending is not null)
+            if (PrototypeGameEngine
+                .HasPendingSupportedAutomaticPipelineSemanticDraw(this.Run))
+            {
+                var choice = this.Run.World!.Combat!.PendingChoice!;
+                if (choice.ChoiceId == "controlled_semantic_draw")
+                    SemanticDrawChoiceV111.ValidateBoundary(this.Run);
+                else if (choice.ChoiceId == "controlled_draw_cost")
+                    SemanticCostChoiceV111.ValidateDrawBoundary(this.Run);
+                else if (choice.ChoiceId == "controlled_draw_insertion")
+                    SemanticDrawInsertionChoiceV111.ValidateBoundary(this.Run);
+            }
+            if (PrototypeGameEngine
+                .HasPendingSupportedAutomaticPipelineSemanticGeneration(
+                    this.Run))
+                SemanticGenerationChoiceV111.ValidateBoundary(this.Run);
+            if (PrototypeGameEngine
+                .HasPendingSupportedAutomaticPipelineSemanticPotionGeneration(
+                    this.Run))
+                SemanticPotionGenerationChoiceV111.ValidateBoundary(
+                    this.Run);
+            if (PrototypeGameEngine
+                .HasPendingSupportedAutomaticPipelineSemanticCardTransform(
+                    this.Run))
+                SemanticCardTransformChoiceV111.ValidateBoundary(this.Run,
+                    this.Run.World!.Combat!.PendingChoice!
+                        .ControlledCardTransform!);
+            if (PrototypeGameEngine
+                .HasPendingSupportedAutomaticPipelineSemanticCardShortlist(
+                    this.Run))
+                SemanticCardShortlistChoiceV111.ValidateBoundary(this.Run);
+            if (PrototypeGameEngine
+                .HasPendingSupportedAutomaticPipelineSemanticPoolShuffle(
+                    this.Run))
+                SemanticPoolShuffleChoiceV111.ValidateBoundary(this.Run);
+            if (PrototypeGameEngine
+                .HasPendingSupportedAutomaticPipelineSemanticRandomHandCost(
+                    this.Run))
+            {
                 SemanticRandomHandCostChoiceV111.ValidateBoundary(this.Run);
+                this.DescribeNestedHandCostSelectionPending(handDraw)?.Validate();
+            }
+            if (PrototypeGameEngine
+                .HasPendingSupportedAutomaticPipelineSemanticCardSelection(
+                    this.Run))
+                SemanticCardSelectionEngineV111.ValidatePendingBoundary(
+                    this.Run);
         }
-        if (PrototypeGameEngine
-            .HasPendingSupportedAutomaticPipelineSemanticCardSelection(
-                this.Run))
-            SemanticCardSelectionEngineV111.ValidatePendingBoundary(this.Run);
     }
 
     public SemanticEndTurnV111 Fork() => this with
