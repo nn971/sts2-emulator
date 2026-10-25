@@ -38,6 +38,12 @@ label-aware JSONL operation. The Python helper checks the pending label support
 before submission; the semantic transcript remains index-based. Static source
 review and `git diff --check` only; no tests or builds were run.
 
+**S4 semantic intent wrapper support validation (2026-10-25):** Python
+`SemanticCombat.resolve_intent()` now checks the stable intent ID against the
+saved `semanticCandidates` before calling the existing identity resolver.
+Weighted ticket realization and transcript behavior are unchanged. Static
+source review and `git diff --check` only; no tests or builds were run.
+
 **S4 identity-only mechanics dispatcher boundary (2026-10-25):** The
 index-valued mechanics switch is now private behind the Chance Law and
 semantic outcome identity resolvers. Provider code cannot bypass active

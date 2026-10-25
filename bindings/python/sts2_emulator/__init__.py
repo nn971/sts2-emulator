@@ -3038,6 +3038,12 @@ class SemanticCombat:
         """
         if not self.pending or self.pending["kind"] != "enemy_intent":
             raise EmulatorError("Expected an enemy_intent Nature event")
+        if not isinstance(intent_id, str) or not intent_id.strip():
+            raise ValueError("intent_id must be a non-empty string")
+        candidates = self.pending.get("semanticCandidates")
+        if candidates is None or intent_id not in {
+                candidate.get("intentId") for candidate in candidates}:
+            raise ValueError("intent_id is outside the pending intent support")
         return SemanticCombat.from_wire(
             self.session, self.session.call(
                 "semantic_resolve_intent", semantic_handle=self.handle,

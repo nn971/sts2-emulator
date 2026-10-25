@@ -353,7 +353,8 @@ The source-shaped selector uses that branch's first ticket internally as a
 deterministic realization; this ticket is not recorded as a second Nature
 event. Snapshot replay preserves the semantic decision identity separately
 from native bounded-ticket transcripts. Python:
-`combat.resolve_intent(event["semanticCandidates"][i]["intentId"])`.
+`combat.resolve_intent(event["semanticCandidates"][i]["intentId"])` validates
+the ID against the saved candidate list before submitting it.
 Old `semantic_resolve` with an integer source ticket remains compatible,
 including replay/fork/save. A stale fingerprint or forged candidate ID fails
 before publishing a new handle.
