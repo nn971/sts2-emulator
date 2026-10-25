@@ -589,25 +589,16 @@ public sealed partial class PrototypeGameEngine
 
             if (resumeCombat.PendingChoice is not null)
             {
-                var suspendedRun = state with
-                {
-                    Player = resumePlayer,
-                    Stochastic = RunStochasticStateV111.WithPrototypeRng(
-                        state.Stochastic, prototypeRng),
-                    World = world with { Combat = resumeCombat }
-                };
+                var suspendedRun =
+                    PublishDrawMechanicsAndPrototypeRng(
+                        state, resumePlayer, resumeCombat, prototypeRng);
                 return ResumeAutomaticPipelineContinuation(suspendedRun);
             }
         }
         var resolved = ResumeChoiceResolutionContinuation(
             resumePlayer, resumeCombat, prototypeRng, resumeContinuation);
-        var updated = state with
-        {
-            Player = resolved.Player,
-            Stochastic = RunStochasticStateV111.WithPrototypeRng(
-                state.Stochastic, prototypeRng),
-            World = world with { Combat = resolved.Combat }
-        };
+        var updated = PublishDrawMechanicsAndPrototypeRng(
+            state, resolved.Player, resolved.Combat, prototypeRng);
         return ResumeAutomaticPipelineContinuation(updated);
     }
 
@@ -654,13 +645,8 @@ public sealed partial class PrototypeGameEngine
         var prototypeRng = state.Stochastic.PrototypeRng;
         var resolved = ResumeChoiceResolutionContinuation(
             state.Player, combat, prototypeRng, resumedContinuation);
-        return state with
-        {
-            Player = resolved.Player,
-            Stochastic = RunStochasticStateV111.WithPrototypeRng(
-                state.Stochastic, prototypeRng),
-            World = state.World! with { Combat = resolved.Combat }
-        };
+        return PublishDrawMechanicsAndPrototypeRng(
+            state, resolved.Player, resolved.Combat, prototypeRng);
     }
 
     private static PrototypeAutomaticPipelineResumeResultV111
@@ -692,12 +678,7 @@ public sealed partial class PrototypeGameEngine
         var resolved = ResolveOperations(state.Player, combat,
             new Queue<PrototypeQueuedOperation>([operation]), prototypeRng,
             moveSourceCardOnCompletion: false);
-        return state with
-        {
-            Player = resolved.Player,
-            Stochastic = RunStochasticStateV111.WithPrototypeRng(
-                state.Stochastic, prototypeRng),
-            World = world with { Combat = resolved.Combat }
-        };
+        return PublishDrawMechanicsAndPrototypeRng(
+            state, resolved.Player, resolved.Combat, prototypeRng);
     }
 }

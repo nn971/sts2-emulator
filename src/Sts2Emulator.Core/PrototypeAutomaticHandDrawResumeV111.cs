@@ -46,7 +46,8 @@ public sealed partial class PrototypeGameEngine
         PlayerState player,
         CombatState combat,
         PrototypeAutomaticHandDrawProgressV111? progress,
-        bool createCheckpoint = false)
+        bool createCheckpoint = false,
+        RngBundle? prototypeRng = null)
     {
         if (!ControlledChanceGuardV111.Active)
             throw new InvalidOperationException(
@@ -75,7 +76,10 @@ public sealed partial class PrototypeGameEngine
 
         var updatedCombat = AttachValidatedAutomaticPipelineContinuation(
             combat, cursor.WithHandDrawProgress(progress));
-        return PublishDrawMechanicsState(state, player, updatedCombat);
+        return prototypeRng is null
+            ? PublishDrawMechanicsState(state, player, updatedCombat)
+            : PublishDrawMechanicsAndPrototypeRng(
+                state, player, updatedCombat, prototypeRng);
     }
 
     /// <summary>
@@ -194,14 +198,9 @@ public sealed partial class PrototypeGameEngine
         if (!resumedAfterSemanticHook && !resumedAfterControlledHook)
             return (state, requestedResultContext, true);
 
-        var publishedRngState = state with
-        {
-            Stochastic = RunStochasticStateV111.WithPrototypeRng(
-                state.Stochastic, prototypeRng)
-        };
         var cleared = CommitAutomaticHandDrawProgress(
-            publishedRngState, publishedRngState.Player, combat,
-            progress: null);
+            state, state.Player, combat, progress: null,
+            prototypeRng: prototypeRng);
         return (cleared,
             resumedAfterSemanticHook
                 ? AutomaticHandDrawSourceResultContextV111
@@ -435,13 +434,8 @@ public sealed partial class PrototypeGameEngine
             var continued = ResolveOperations(
                 result.Player, combat, pendingDraw, prototypeRng,
                 moveSourceCardOnCompletion: false);
-            result = PublishDrawMechanicsState(
-                result, continued.Player, continued.Combat);
-            result = result with
-            {
-                Stochastic = RunStochasticStateV111.WithPrototypeRng(
-                    result.Stochastic, prototypeRng)
-            };
+            result = PublishDrawMechanicsAndPrototypeRng(
+                result, continued.Player, continued.Combat, prototypeRng);
         }
 
         var resultWorld = RequireWorld(result);
@@ -501,7 +495,8 @@ public sealed partial class PrototypeGameEngine
         int remaining,
         int? semanticRequested,
         int? controlledRequested = null,
-        bool createCheckpoint = false)
+        bool createCheckpoint = false,
+        RngBundle? prototypeRng = null)
     {
         var cursor = combat.AutomaticPipelineContinuation;
         var choice = combat.PendingChoice;
@@ -581,7 +576,8 @@ public sealed partial class PrototypeGameEngine
         }
 
         var suspended = CommitAutomaticHandDrawProgress(
-            state, player, combat, progress, createCheckpoint);
+            state, player, combat, progress, createCheckpoint,
+            prototypeRng);
         PrototypeStateInvariants.Validate(suspended);
         return suspended;
     }

@@ -250,6 +250,14 @@ Adapters still select the draw suspension policy and interpret the resulting
 boundary; the helper pairs the draw kernel call with its provider-state
 commit.
 
+Draw continuations that resolve further operations around a draw now publish
+their final player/combat mechanics and local prototype RNG through
+`PublishDrawMechanicsAndPrototypeRng`, which composes with the existing
+`PublishDrawMechanicsState` owner. `CommitAutomaticHandDrawProgress` can carry
+that same local RNG projection in the cursor update, keeping provider and
+progress publication in one transition. The draw result adapters continue to
+own typed transcripts, source support, and boundary interpretation.
+
 The draw stochastic owner also includes card-shortlist choices in its typed
 transcripts, mixed boundary chronology, and provenance replay. End-turn and
 pilot facades route a shortlist opened by an active or pre-draw hand-draw hook

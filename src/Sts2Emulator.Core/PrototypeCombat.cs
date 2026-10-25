@@ -2095,12 +2095,8 @@ public sealed partial class PrototypeGameEngine
             return suspended;
         }
         combat = ApplyRelicAfterShuffleCards(combat, prototypeRng);
-        state = state with
-        {
-            Stochastic = RunStochasticStateV111.WithPrototypeRng(
-                state.Stochastic, prototypeRng)
-        };
-        state = PublishDrawMechanicsState(state, state.Player, combat);
+        state = PublishDrawMechanicsAndPrototypeRng(
+            state, state.Player, combat, prototypeRng);
         if (ExpectedStratagemSelectionCount(combat) > 0)
             return BeginControlledRecycleStratagemSelection(
                 state, state.Player, combat,

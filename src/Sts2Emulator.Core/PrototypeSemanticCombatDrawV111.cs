@@ -369,14 +369,9 @@ public sealed partial class PrototypeGameEngine
             var prototypeRng = run.Stochastic.PrototypeRng;
             var resumed = ResumeChoiceResolutionContinuation(
                 drawn.Player, combat, prototypeRng, outerContinuation);
-            var resumedRun = run with
-            {
-                Stochastic = RunStochasticStateV111.WithPrototypeRng(
-                    run.Stochastic, prototypeRng)
-            };
             return new PrototypeDrawCardsResumeResultV111(
-                PublishDrawMechanicsState(
-                    resumedRun, resumed.Player, resumed.Combat),
+                PublishDrawMechanicsAndPrototypeRng(
+                    run, resumed.Player, resumed.Combat, prototypeRng),
                 0);
         }
 

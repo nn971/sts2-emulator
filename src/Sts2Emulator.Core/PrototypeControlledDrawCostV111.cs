@@ -117,13 +117,8 @@ public sealed partial class PrototypeGameEngine
             run.Player, combat, cost.CardInstanceId, cost.FromHandDraw,
             prototypeRng, cost.EventDepth,
             allowSuspension: allowHookSuspension);
-        var nextRun = run with
-        {
-            Player = dispatched.Player,
-            Stochastic = RunStochasticStateV111.WithPrototypeRng(
-                run.Stochastic, prototypeRng),
-            World = world with { Combat = dispatched.Combat }
-        };
+        var nextRun = PublishDrawMechanicsAndPrototypeRng(
+            run, dispatched.Player, dispatched.Combat, prototypeRng);
         return new PrototypeDrawCostProgressV111(
             nextRun, CostStagePending: false,
             DrawnHookSuspended:

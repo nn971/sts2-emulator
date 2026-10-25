@@ -385,13 +385,8 @@ public sealed partial class PrototypeGameEngine
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=" + choiceSite +
                 " operation=nested_choice_after_random_pile_card");
-        var afterHook = run with
-        {
-            Player = resumedEvent.Player,
-            Stochastic = RunStochasticStateV111.WithPrototypeRng(
-                run.Stochastic, prototypeRng),
-            World = world with { Combat = resumedEvent.Combat }
-        };
+        var afterHook = PublishDrawMechanicsAndPrototypeRng(
+            run, resumedEvent.Player, resumedEvent.Combat, prototypeRng);
         return ResumeSemanticAutomaticHandDrawAfterNestedChoice(
             run, afterHook, null, "random pile-card",
             activeHandDraw ? savedRequested : null,

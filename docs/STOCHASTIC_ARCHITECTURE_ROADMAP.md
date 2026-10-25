@@ -2,6 +2,15 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 draw mechanics/provider publication increment (2026-10-26):** Draw
+continuation adapters now pair prototype RNG publication with the shared
+draw-mechanics publisher. Automatic hand-draw progress commits can include
+the caller's advanced RNG in the same cursor update; controlled and semantic
+draw-cost, Stratagem, insertion, recycle, and nested-choice resumes use the
+common owner. Typed transcripts and provider-specific boundary interpretation
+remain with their adapters. Core and CLI Release builds and `git diff --check`
+passed; no tests were run.
+
 **S4 controlled recycle checkpoint publication increment (2026-10-26):**
 After the committed recycle and post-shuffle hooks, the controlled automatic
 draw resume now publishes its updated combat through

@@ -107,15 +107,11 @@ public sealed partial class PrototypeGameEngine
             selection)
             throw new InvalidDataException(
                 "Stratagem did not create its expected draw-pile selection.");
-        state = state with
-        {
-            Stochastic = RunStochasticStateV111.WithPrototypeRng(
-                state.Stochastic, prototypeRng)
-        };
         return CommitAutomaticHandDrawStratagemSelection(
             state, prompt.Player, prompt.Combat, remaining,
             semanticRequested: null,
-            controlledRequested: requestedCount);
+            controlledRequested: requestedCount,
+            prototypeRng: prototypeRng);
     }
 
     internal static RunState ResumeControlledRecycleStratagemSelection(

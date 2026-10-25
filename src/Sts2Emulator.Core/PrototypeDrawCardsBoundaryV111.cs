@@ -187,6 +187,26 @@ public sealed partial class PrototypeGameEngine
     }
 
     /// <summary>
+    /// Publish the coupled mechanics and prototype-provider result of a draw
+    /// continuation whose operations kernel advanced the caller's RNG.
+    /// </summary>
+    private static RunState PublishDrawMechanicsAndPrototypeRng(
+        RunState checkpoint,
+        PlayerState player,
+        CombatState combat,
+        RngBundle prototypeRng)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        ArgumentNullException.ThrowIfNull(player);
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(prototypeRng);
+        var stochastic = RunStochasticStateV111.WithPrototypeRng(
+            checkpoint.Stochastic, prototypeRng);
+        return PublishDrawMechanicsState(
+            checkpoint with { Stochastic = stochastic }, player, combat);
+    }
+
+    /// <summary>
     /// Publish the coupled player/combat mechanics from ordinary, nested,
     /// opening, or automatic hand-draw resolution.
     /// </summary>
