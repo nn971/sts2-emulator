@@ -74,6 +74,20 @@ public sealed record SimulationProviderReplaySemanticOutcomeV111(
     int TransitionIndex, string EventId, string LawId, string OutcomeId,
     int OutcomeIndex)
 {
+    public string? SiteId { get; init; }
+    public string? OperationKind { get; init; }
+    public string? OwnerId { get; init; }
+    public int? Ordinal { get; init; }
+    public string? SupportFingerprint { get; init; }
+    public string? SemanticOutcomeId { get; init; }
+
+    public bool HasProviderIndependentIdentity =>
+        !string.IsNullOrWhiteSpace(SiteId) &&
+        !string.IsNullOrWhiteSpace(OperationKind) &&
+        !string.IsNullOrWhiteSpace(OwnerId) && Ordinal is >= 0 &&
+        !string.IsNullOrWhiteSpace(SupportFingerprint) &&
+        !string.IsNullOrWhiteSpace(SemanticOutcomeId);
+
     public void Validate()
     {
         if (TransitionIndex < 0 || string.IsNullOrWhiteSpace(EventId) ||
@@ -81,6 +95,14 @@ public sealed record SimulationProviderReplaySemanticOutcomeV111(
             string.IsNullOrWhiteSpace(OutcomeId) || OutcomeIndex < 0)
             throw new InvalidDataException(
                 "Provider replay semantic outcome is invalid.");
+        var hasAnyProviderIndependentIdentity = SiteId is not null ||
+            OperationKind is not null || OwnerId is not null ||
+            Ordinal is not null || SupportFingerprint is not null ||
+            SemanticOutcomeId is not null;
+        if (hasAnyProviderIndependentIdentity &&
+            !HasProviderIndependentIdentity)
+            throw new InvalidDataException(
+                "Provider replay semantic outcome identity is incomplete.");
     }
 }
 
@@ -192,6 +214,8 @@ public static class SimulationProviderReplayCaptureProvenanceV111
         "reference-nature-semantic-combat-replay-validated-v1";
     public const string ReferenceNatureSemanticCombatOutcomeReplayValidated =
         "reference-nature-semantic-combat-outcome-replay-validated-v2";
+    public const string ReferenceNatureSemanticIdentityReplayValidated =
+        "reference-nature-semantic-identity-replay-validated-v3";
 
     public static bool IsKnown(string? provenance) => provenance is
         CallerSupplied or ScriptedRunReplayValidated or
@@ -202,7 +226,8 @@ public static class SimulationProviderReplayCaptureProvenanceV111
         ReferenceNatureNeowOfferReplayValidated or
         ReferenceNatureRunSetupReplayValidated or
         ReferenceNatureSemanticCombatReplayValidated or
-        ReferenceNatureSemanticCombatOutcomeReplayValidated;
+        ReferenceNatureSemanticCombatOutcomeReplayValidated or
+        ReferenceNatureSemanticIdentityReplayValidated;
 
     /// <summary>
     /// Whether this capture represents every primitive provider boundary in
@@ -213,10 +238,12 @@ public static class SimulationProviderReplayCaptureProvenanceV111
     public static bool HasCompleteTypedBoundaryTrace(string? provenance) =>
         IsKnown(provenance) && provenance is not
             (ReferenceNatureSemanticCombatReplayValidated or
-             ReferenceNatureSemanticCombatOutcomeReplayValidated);
+             ReferenceNatureSemanticCombatOutcomeReplayValidated or
+             ReferenceNatureSemanticIdentityReplayValidated);
 
     public static bool HasCompleteSemanticOutcomeTrace(string? provenance) =>
-        provenance == ReferenceNatureSemanticCombatOutcomeReplayValidated;
+        provenance is ReferenceNatureSemanticCombatOutcomeReplayValidated or
+            ReferenceNatureSemanticIdentityReplayValidated;
 }
 
 /// <summary>
@@ -256,9 +283,11 @@ public sealed record SimulationProviderReplayCaptureV111(
         SimulationProviderReplayStochasticCaptureV111> Simulation)
 {
     public const string PreviousSchemaId =
+        "sts2-v111-simulation-provider-replay-capture-v3";
+    public const string OlderSchemaId =
         "sts2-v111-simulation-provider-replay-capture-v2";
     public const string CurrentSchemaId =
-        "sts2-v111-simulation-provider-replay-capture-v3";
+        "sts2-v111-simulation-provider-replay-capture-v4";
 
     [System.Text.Json.Serialization.JsonInclude]
     public string CaptureProvenance { get; private init; } =
@@ -930,10 +959,22 @@ public sealed record SimulationProviderReplayCaptureV111(
         var replay = origin;
         var environment = new PrototypeAiEnvironment();
         var history = validated.Combat.History;
+        var decisions = validated.Stochastic.DecisionTranscript;
+        var semanticOutcomes = new List<SimulationProviderReplaySemanticOutcomeV111>(
+            decisions.Length);
         var actions = new List<GameAction>(history.Length - initialHistoryLength);
+        var decisionIndex = 0;
         for (var historyIndex = initialHistoryLength;
             historyIndex < history.Length; historyIndex++)
         {
+            if (decisionIndex < decisions.Length &&
+                historyIndices[decisionIndex] == historyIndex)
+            {
+                semanticOutcomes.Add(CaptureReferenceNatureOutcome(
+                    replay, decisions[decisionIndex],
+                    historyIndex - initialHistoryLength));
+                decisionIndex++;
+            }
             var transition = history[historyIndex];
             if (transition.Kind == "player")
             {
@@ -946,6 +987,9 @@ public sealed record SimulationProviderReplayCaptureV111(
             replay = SemanticPilotCombatEngineV111.ReplayHistoryTransition(
                 replay, transition);
         }
+        if (decisionIndex != decisions.Length)
+            throw new InvalidDataException(
+                "Semantic ReferenceNature capture did not consume its indexed outcome transcript.");
         if (CanonicalJson.Sha256(replay) !=
             CanonicalJson.Sha256(validated.Combat))
             throw new InvalidDataException(
@@ -954,24 +998,12 @@ public sealed record SimulationProviderReplayCaptureV111(
             throw new NotSupportedException(
                 "Semantic ReferenceNature capture requires a committed result boundary.");
 
-        var semanticOutcomes = validated.Stochastic.DecisionTranscript
-            .Select((selection, index) =>
-            {
-                var historyIndex = historyIndices[index]!.Value;
-                if (historyIndex < initialHistoryLength)
-                    throw new InvalidDataException(
-                        "Semantic ReferenceNature outcome precedes the captured history interval.");
-                return new SimulationProviderReplaySemanticOutcomeV111(
-                    historyIndex - initialHistoryLength,
-                    selection.EventId, selection.LawId, selection.OutcomeId,
-                    selection.OutcomeIndex);
-            }).ToArray();
         var capture = Create(origin.Run, actions, [], validated.Combat.Run,
             semanticOutcomes) with
         {
             CaptureProvenance =
                 SimulationProviderReplayCaptureProvenanceV111
-                    .ReferenceNatureSemanticCombatOutcomeReplayValidated
+                    .ReferenceNatureSemanticIdentityReplayValidated
         };
         capture.Validate();
         return capture;
@@ -980,6 +1012,73 @@ public sealed record SimulationProviderReplayCaptureV111(
     private static bool IsCommittedSemanticCombatBoundary(
         SemanticPilotCombatV111 combat) => combat.AtPlayerBoundary ||
         combat.AtPlayerChoiceBoundary || combat.CombatTerminal;
+
+    private static SimulationProviderReplaySemanticOutcomeV111
+        CaptureReferenceNatureOutcome(
+            SemanticPilotCombatV111 combat,
+            ReferenceNatureSelectionV111 selection,
+            int transitionIndex)
+    {
+        ChanceLawV111 law;
+        string siteId;
+        string operationKind;
+        string ownerId;
+        int ordinal;
+        string supportFingerprint;
+        string semanticOutcomeId;
+        if (combat.IntentPending is not null)
+        {
+            var intentEvent = SemanticPilotCombatEngineV111
+                .DescribePendingIntentEvent(combat);
+            law = ChanceLawEngineV111.QueryIntent(intentEvent);
+            siteId = intentEvent.SiteId;
+            operationKind = intentEvent.OperationKind;
+            ownerId = intentEvent.OwnerId;
+            ordinal = intentEvent.Ordinal;
+            supportFingerprint = intentEvent.SupportFingerprint;
+            semanticOutcomeId = selection.OutcomeId;
+        }
+        else
+        {
+            var pending = SemanticPilotCombatEngineV111
+                .DescribePendingIndexChanceEvent(combat) ??
+                throw new InvalidDataException(
+                    "Indexed ReferenceNature outcome has no pending semantic event.");
+            law = SemanticChanceLawDispatchV111.QueryPendingIndexLaw(
+                combat, pending);
+            siteId = pending.Event.SiteId;
+            operationKind = pending.Event.OperationKind;
+            ownerId = pending.Event.OwnerId;
+            ordinal = pending.Event.Ordinal;
+            supportFingerprint = pending.Event.SupportFingerprint;
+            if (selection.OutcomeIndex < 0 ||
+                selection.OutcomeIndex >= pending.SemanticOutcomeIds.Length)
+                throw new InvalidDataException(
+                    "ReferenceNature outcome index is outside the semantic event support.");
+            semanticOutcomeId = pending.SemanticOutcomeIds[
+                selection.OutcomeIndex];
+        }
+
+        if (selection.EventId != law.EventId ||
+            selection.LawId != law.LawId ||
+            selection.OutcomeIndex < 0 ||
+            selection.OutcomeIndex >= law.SupportCount ||
+            selection.OutcomeId != law.OutcomeIdAt(selection.OutcomeIndex))
+            throw new InvalidDataException(
+                "ReferenceNature outcome differs from its replayed Chance Law.");
+
+        return new SimulationProviderReplaySemanticOutcomeV111(
+            transitionIndex, selection.EventId, selection.LawId,
+            selection.OutcomeId, selection.OutcomeIndex)
+        {
+            SiteId = siteId,
+            OperationKind = operationKind,
+            OwnerId = ownerId,
+            Ordinal = ordinal,
+            SupportFingerprint = supportFingerprint,
+            SemanticOutcomeId = semanticOutcomeId
+        };
+    }
 
     private static SimulationProviderReplayCaptureV111 FromScriptedDecisions(
         RunState origin, IReadOnlyList<GameAction> actions,
@@ -1031,7 +1130,8 @@ public sealed record SimulationProviderReplayCaptureV111(
 
     public void Validate()
     {
-        if (SchemaId is not (CurrentSchemaId or PreviousSchemaId) ||
+        if (SchemaId is not (CurrentSchemaId or PreviousSchemaId or
+                OlderSchemaId) ||
             !SimulationProviderReplayCaptureProvenanceV111
                 .IsKnown(CaptureProvenance) || Simulation is null ||
             Simulation.Mechanics is null || Simulation.Stochastic is null)
@@ -1039,10 +1139,21 @@ public sealed record SimulationProviderReplayCaptureV111(
                 "Provider replay capture envelope is invalid.");
         Simulation.Mechanics.Validate();
         Simulation.Stochastic.Validate();
-        if (SchemaId == PreviousSchemaId &&
+        if (SchemaId == OlderSchemaId &&
             Simulation.Stochastic.SemanticOutcomes.Length != 0)
             throw new InvalidDataException(
                 "Legacy provider replay captures cannot contain semantic outcomes.");
+        if (SchemaId != CurrentSchemaId &&
+            CaptureProvenance == SimulationProviderReplayCaptureProvenanceV111
+                .ReferenceNatureSemanticIdentityReplayValidated)
+            throw new InvalidDataException(
+                "Legacy provider replay captures cannot claim provider-independent semantic identities.");
+        if (CaptureProvenance == SimulationProviderReplayCaptureProvenanceV111
+                .ReferenceNatureSemanticIdentityReplayValidated &&
+            Simulation.Stochastic.SemanticOutcomes.Any(outcome =>
+                !outcome.HasProviderIndependentIdentity))
+            throw new InvalidDataException(
+                "Provider-independent semantic capture contains an outcome without its common identity.");
     }
 }
 
@@ -1066,7 +1177,7 @@ public sealed record SimulationProviderReplayComparisonV111(
     bool RequireNativeCursorEquality)
 {
     public const string CurrentSchemaId =
-        "sts2-v111-simulation-provider-replay-comparison-v4";
+        "sts2-v111-simulation-provider-replay-comparison-v5";
 
     public string LeftCaptureProvenance { get; init; } =
         SimulationProviderReplayCaptureProvenanceV111.CallerSupplied;
@@ -1177,13 +1288,10 @@ public static class SimulationProviderReplayComparisonEngineV111
         {
             var expected = left[index];
             var actual = right[index];
-            var mismatchField = expected.TransitionIndex !=
-                actual.TransitionIndex ? "transition_index" :
-                expected.EventId != actual.EventId ? "event_id" :
-                expected.LawId != actual.LawId ? "law_id" :
-                expected.OutcomeId != actual.OutcomeId ? "outcome_id" :
-                expected.OutcomeIndex != actual.OutcomeIndex
-                    ? "outcome_index" : null;
+            var mismatchField = expected.HasProviderIndependentIdentity &&
+                actual.HasProviderIndependentIdentity
+                ? CompareProviderIndependentIdentity(expected, actual)
+                : CompareLegacyIdentity(expected, actual);
             if (mismatchField is not null)
                 return new("SEMANTIC_OUTCOME_MISMATCH", index, index,
                     mismatchField);
@@ -1193,6 +1301,34 @@ public static class SimulationProviderReplayComparisonEngineV111
                 "outcome_count");
         return new("SEMANTIC_OUTCOMES_CONSISTENT", shared, null, null);
     }
+
+    private static string? CompareProviderIndependentIdentity(
+        SimulationProviderReplaySemanticOutcomeV111 expected,
+        SimulationProviderReplaySemanticOutcomeV111 actual) =>
+        expected.TransitionIndex != actual.TransitionIndex
+            ? "transition_index"
+            : expected.SiteId != actual.SiteId ? "site_id"
+            : expected.OperationKind != actual.OperationKind
+                ? "operation_kind"
+            : expected.OwnerId != actual.OwnerId ? "owner_id"
+            : expected.Ordinal != actual.Ordinal ? "ordinal"
+            : expected.SupportFingerprint != actual.SupportFingerprint
+                ? "support_fingerprint"
+            : expected.SemanticOutcomeId != actual.SemanticOutcomeId
+                ? "semantic_outcome_id"
+            : expected.OutcomeIndex != actual.OutcomeIndex
+                ? "outcome_index" : null;
+
+    private static string? CompareLegacyIdentity(
+        SimulationProviderReplaySemanticOutcomeV111 expected,
+        SimulationProviderReplaySemanticOutcomeV111 actual) =>
+        expected.TransitionIndex != actual.TransitionIndex
+            ? "transition_index"
+            : expected.EventId != actual.EventId ? "event_id"
+            : expected.LawId != actual.LawId ? "law_id"
+            : expected.OutcomeId != actual.OutcomeId ? "outcome_id"
+            : expected.OutcomeIndex != actual.OutcomeIndex
+                ? "outcome_index" : null;
 
     public static SimulationProviderReplayComparisonV111 Compare(
         RunState leftOrigin,

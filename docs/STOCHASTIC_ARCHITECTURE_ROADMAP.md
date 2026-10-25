@@ -5352,3 +5352,11 @@ identity back to the existing selected-index mechanics decision. Chance Law
 `swap_index` IDs and saved transcripts stay unchanged; numeric v1 enumeration
 IDs remain accepted as a compatibility alias. Static source review and
 `git diff --check` only; no tests or builds were run.
+
+**S4 provider-independent semantic comparison key increment (2026-10-25):**
+Replay-validated Nature outcomes now also retain site, operation, owner,
+ordinal, semantic support fingerprint, and the event's provider-neutral
+outcome identity. Semantic comparison uses that key and the history position;
+provider-specific event and law IDs remain diagnostic fields. Capture v2 and
+v3 readers retain their prior meaning. Cross-provider Native outcome trace
+capture remains open. Release Core and CLI builds passed; no tests were run.

@@ -1087,10 +1087,15 @@ stochastic trace: typed provider boundaries when both captures have those, or
 semantic event outcomes when both have a replay-validated semantic trace.
 Currently `FromReferenceNatureSemanticCombatSession` is the semantic trace
 factory, so this second route compares complete ReferenceNature semantic
-combat captures with each other. New captures use outcome-replay provenance;
-older v2 captures retain their endpoint-only provenance and do not claim a
-complete empty semantic trace. A normalized Native semantic trace remains
-open. The result exposes `TypedRandomBoundaryComparisonAvailable` and
+combat captures with each other. New captures retain both the provider's
+`EventId`/`LawId` evidence and a provider-independent key made from site,
+operation, owner, ordinal, semantic support fingerprint, and selected semantic
+outcome identity. Equality uses that common key and its history position;
+event and law IDs remain diagnostic because they can include provider-specific
+boundary evidence. Older v2 captures retain endpoint-only provenance, and v3
+captures keep their original trace meaning. Neither is treated as a normalized
+semantic trace. A normalized Native semantic trace remains open. The result
+exposes `TypedRandomBoundaryComparisonAvailable` and
 `SemanticOutcomeComparisonAvailable` separately, so an absent trace is not
 reported as a matching empty trace. `SameSemanticOutcomes` and
 `SameStochasticOutcomes` expose the corresponding equality results.
