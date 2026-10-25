@@ -394,6 +394,10 @@ for configured Native and Native-regional legacy requests. The declared event
 branch and stage bind the mapped gold outcome, and Native requests are checked
 against their event context stream and bounded support.
 
+Whole-run Glory Trial actions use the existing named case law. Replay binds
+the `merchant`, `noble`, or `nondescript` identity to the exact pending event
+request before mapping it back to the source bounded index.
+
 The existing index-only `ControlledChanceContinuationStateV111` is now a compatibility projection over `ControlledStochasticContinuationStateV111`. Its mechanics-facing index and candidate-label properties preserve the flattened continuation accessors, while the typed stochastic envelope owns the actual provider prefix and pending request. This lets existing controlled event, run-action, and enemy-action frames share the mixed replay state model without changing their snapshot fields. Scripted sessions use their v2 schema marker for six-primitive transcripts and migrate earlier v1 snapshots through the same mixed continuation owner.
 
 Controlled run-action restoration and pending-frame source validation now pass saved per-decision candidate labels through the existing event/run-action replay owner. Each labeled prefix decision is matched against the live ordered support before its selected index is reused; this protects map entry, combat entry, Shop, reward, rest, and act-transition continuations from same-sized support reordering. Prefixes from older callers that have no label transcript retain their prior request/index matching.

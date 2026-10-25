@@ -2,6 +2,12 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 whole-run Glory Trial case law increment (2026-10-26):** ReferenceNature
+whole-run replay now uses the existing named Trial case law and maps its
+selected case identity back to the saved bounded request after boundary and
+law replay validation. Core and CLI Release builds passed with zero warnings
+or errors; `git diff --check` passed. No tests were added or run.
+
 **S4 whole-run generated Event gold law increment (2026-10-26):**
 ReferenceNature whole-run replay now routes registered Native and
 Native-regional legacy generated-gold index requests through the existing

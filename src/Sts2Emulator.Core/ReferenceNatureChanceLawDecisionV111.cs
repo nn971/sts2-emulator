@@ -239,6 +239,38 @@ public static class ReferenceNatureChanceLawDecisionV111
                 controlledGold.Validate();
                 return controlledGold;
             }
+            if (indexRequest.SiteId == StochasticSiteRegistryV111
+                    .NativeGloryTrialDamageSiteId)
+            {
+                if (candidateLabels is not null ||
+                    conditioningRun is null)
+                    throw new InvalidDataException(
+                        "Glory Trial case mapping requires its saved event boundary without candidate labels.");
+                var plan = TrialCaseChoicePlanBuilderV111.Build(
+                    conditioningRun);
+                var expectedLaw = ChanceLawEngineV111.QueryTrial(
+                    conditioningRun);
+                if (!ControlledStochasticChanceReplayV111.RequestsMatch(
+                        plan.Request, indexRequest) ||
+                    CanonicalJson.Sha256(law) !=
+                        CanonicalJson.Sha256(expectedLaw) ||
+                    selection.OutcomeIndex >= plan.OutcomeIds.Length ||
+                    outcome.OutcomeId !=
+                        plan.OutcomeIds[selection.OutcomeIndex])
+                    throw new InvalidDataException(
+                        "Glory Trial Chance Law differs from its named case support.");
+                var trialDecision = new RandomIndexDecisionV111(
+                    indexRequest with
+                    {
+                        OrderedCandidates = (int[])
+                            indexRequest.OrderedCandidates.Clone()
+                    }, selection.OutcomeIndex, "controlled-v111");
+                trialDecision.Validate();
+                var controlledTrial = ControlledStochasticDecisionV111
+                    .FromIndex(trialDecision);
+                controlledTrial.Validate();
+                return controlledTrial;
+            }
             if (law.OperationKind != indexRequest.OperationKind ||
                 law.SupportCount != indexRequest.SupportCount ||
                 !OutcomeEndsInIndex(outcome.OutcomeId,

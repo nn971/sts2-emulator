@@ -532,6 +532,17 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
                     .NativeEventGoldIndexSiteId)
                 return QueryNativeEventGoldIndex(active, indexRequest);
             if (indexRequest.SiteId == StochasticSiteRegistryV111
+                    .NativeGloryTrialDamageSiteId)
+            {
+                var plan = TrialCaseChoicePlanBuilderV111.Build(
+                    active.Origin);
+                if (!ControlledStochasticChanceReplayV111.RequestsMatch(
+                        plan.Request, indexRequest))
+                    throw new InvalidDataException(
+                        "Glory Trial request differs from its saved case-choice boundary.");
+                return ChanceLawEngineV111.QueryTrial(active.Origin);
+            }
+            if (indexRequest.SiteId == StochasticSiteRegistryV111
                     .NativePotionFactoryModelSiteId)
                 return QueryNativePotionFactoryModel(active, indexRequest);
             return ChanceLawEngineV111.QueryRandomIndex(
