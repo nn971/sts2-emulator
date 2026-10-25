@@ -13,8 +13,10 @@ draw. `controlled-v111` validates an external index at a single request
 site, also without consuming native RNG. Scripted and controlled providers
 started as D1 components. Isolated **serializable D3 HP → intent continuations**
 and an opt-in D4 JSONL/Python adapter now exist. Restricted semantic rollouts
-can reach supported combat terminals, but there is **not yet** a general
-whole-run controlled continuation or a trained Nature-policy API.
+can reach supported combat terminals. A compositional whole-run ReferenceNature
+session now samples finite index boundaries across ordinary legal actions;
+all-operation whole-run continuation and a trained Nature-policy API remain
+open.
 Narrow saved event-effect and run-action frames now cover selected stochastic
 event choices (including Native Stone of All Time push and lift), the legacy
 run-start boss draw, Shovel action, seven random indices in legacy Shop-node

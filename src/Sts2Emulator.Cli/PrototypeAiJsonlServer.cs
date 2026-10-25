@@ -190,6 +190,12 @@ internal static class PrototypeAiJsonlServer
         var scriptedRunStateHandles =
             new Dictionary<string, string>(StringComparer.Ordinal);
         long nextScriptedRunHandle = 1;
+        var referenceNatureScriptedRunStates =
+            new Dictionary<string, ReferenceNatureScriptedRunSessionV111>(
+                StringComparer.Ordinal);
+        var referenceNatureScriptedRunStateHandles =
+            new Dictionary<string, string>(StringComparer.Ordinal);
+        long nextReferenceNatureScriptedRunHandle = 1;
 
         string StoreSemantic(SemanticPilotCombatV111 state)
         {
@@ -736,6 +742,28 @@ internal static class PrototypeAiJsonlServer
                 ? session
                 : throw new InvalidOperationException(
                     "Unknown scripted run session handle: " + handle);
+        }
+
+        string StoreReferenceNatureScriptedRun(
+            ReferenceNatureScriptedRunSessionV111 session)
+        {
+            var handle = "v" + nextReferenceNatureScriptedRunHandle++;
+            referenceNatureScriptedRunStates.Add(handle, session.Fork());
+            referenceNatureScriptedRunStateHandles.Add(handle,
+                Store(session.Run.Fork()));
+            return handle;
+        }
+
+        ReferenceNatureScriptedRunSessionV111
+            RequireReferenceNatureScriptedRun(JsonElement request)
+        {
+            var handle = RequiredString(request,
+                "reference_nature_scripted_run_handle");
+            return referenceNatureScriptedRunStates.TryGetValue(handle,
+                    out var session)
+                ? session
+                : throw new InvalidOperationException(
+                    "Unknown ReferenceNature whole-run session handle: " + handle);
         }
 
         object ReferenceNatureResult(
@@ -1782,6 +1810,70 @@ internal static class PrototypeAiJsonlServer
             };
         }
 
+        object ReferenceNatureScriptedRunResult(
+            ReferenceNatureScriptedRunSessionV111 session, string handle,
+            string? parent = null)
+        {
+            referenceNatureScriptedRunStateHandles.TryGetValue(handle,
+                out var runStateHandle);
+            var pendingLaw = session.PendingLaw;
+            var pendingRequest = session.PendingRequest;
+            object? pending = pendingLaw is null || pendingRequest is null
+                ? null
+                : new
+                {
+                    kind = "scripted_run_index",
+                    eventId = pendingLaw.EventId,
+                    siteId = pendingLaw.SiteId,
+                    operationKind = pendingLaw.OperationKind,
+                    supportFingerprint = pendingLaw.SupportFingerprint,
+                    boundaryFingerprint = session.ActiveAction!.Fingerprint,
+                    candidateLabels = session.PendingCandidateLabels,
+                    chanceLaw = pendingLaw,
+                    probabilityStatus = pendingLaw.ProbabilityStatus
+                };
+            return new
+            {
+                ok = true,
+                schemaId = ReferenceNatureScriptedRunSessionV111.CurrentSchemaId,
+                referenceNatureScriptedRunHandle = handle,
+                parent,
+                fingerprint = session.Fingerprint,
+                boundary = session.Complete ? "terminal" :
+                    session.ActiveAction is null ? "player" :
+                    session.UnsupportedBoundary is null ? "nature" :
+                    "unsupported",
+                completedActionCount = session.CompletedActions.Length,
+                activeActionId = session.ActiveAction is null ? null :
+                    PrototypeAiEnvironment.StableActionId(
+                        session.ActiveAction.Action),
+                nextSequence = session.ActiveAction is null ? (int?)null :
+                    session.ActiveAction.Decisions.Length + 1,
+                pending,
+                unsupportedBoundary = session.UnsupportedBoundary,
+                decisionTranscript = session.ActiveNatureDecisions.Select(
+                    decision => new
+                    {
+                        decision.LawId,
+                        decision.EventId,
+                        decision.OutcomeId,
+                        decision.OutcomeIndex
+                    }).ToArray(),
+                legalActions = session.LegalActions.Select(action =>
+                    new
+                    {
+                        actionId = PrototypeAiEnvironment.StableActionId(action),
+                        kind = action.Kind,
+                        payload = action.Payload
+                    }).ToArray(),
+                runStateHandle,
+                runFingerprint = CanonicalJson.Sha256(session.Run),
+                natureProvider = ReferenceNatureV111.ProviderId,
+                natureSampleCount = session.NatureState.SampleCount,
+                probabilityStatus = ChanceLawV111.UnverifiedStatus
+            };
+        }
+
         object? DescribeSemanticPending(SemanticPilotCombatV111 state)
         {
             if (state.DrawHookChoicePending is { } hookChoice)
@@ -2383,6 +2475,11 @@ internal static class PrototypeAiJsonlServer
                 "controlled_run_action" when states.TryGetValue(
                     handle, out var actionRun) =>
                     ControlledRunActionResult(actionRun, handle, null),
+                "reference_nature_scripted_run" when
+                    referenceNatureScriptedRunStates.TryGetValue(
+                        handle, out var wholeRunSession) =>
+                    ReferenceNatureScriptedRunResult(wholeRunSession,
+                        handle),
                 _ when StochasticCapabilitiesV111
                     .IsSemanticNatureChoiceViewSessionKind(sessionKind) =>
                     throw new InvalidOperationException(
@@ -2945,6 +3042,7 @@ internal static class PrototypeAiJsonlServer
                             {
                                 "each side accepts one of:",
                                 "<side>_scripted_run_handle",
+                                "<side>_reference_nature_scripted_run_handle",
                                 "<side>_scripted_run_action_handle",
                                 "<side>_semantic_native_policy_handle",
                                 "<side>_reference_nature_semantic_combat_handle",
@@ -3001,6 +3099,13 @@ internal static class PrototypeAiJsonlServer
                                 ScriptedRunSessionV111.Operations,
                             scriptedRunSessionScope =
                                 "whole-run-ordinary-legal-actions-with-typed-random-boundary-transcripts",
+                            referenceNatureScriptedRunSessionSchemaId =
+                                ReferenceNatureScriptedRunSessionV111
+                                    .CurrentSchemaId,
+                            referenceNatureScriptedRunSessionOperations =
+                                ReferenceNatureScriptedRunSessionV111.Operations,
+                            referenceNatureScriptedRunSessionScope =
+                                "whole-run-ordinary-actions-with-finite-index-chance-laws-and-reference-nature-sampling",
                             referenceNatureEventChoiceSessionSchemaId =
                                 ReferenceNatureControlledEventChoiceSessionV111
                                     .CurrentSchemaId,
@@ -7238,6 +7343,119 @@ internal static class PrototypeAiJsonlServer
                         break;
                     }
 
+                    case "reference_nature_scripted_run_begin":
+                    {
+                        var session = ReferenceNatureScriptedRunSessionV111.Begin(
+                            RequireState(request),
+                            OptionalULong(request, "nature_seed"));
+                        var handle = StoreReferenceNatureScriptedRun(session);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureScriptedRunResult(session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_scripted_run_status":
+                    {
+                        var handle = RequiredString(request,
+                            "reference_nature_scripted_run_handle");
+                        var session = RequireReferenceNatureScriptedRun(request);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureScriptedRunResult(session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_scripted_run_begin_action":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "reference_nature_scripted_run_handle");
+                        var session = RequireReferenceNatureScriptedRun(request);
+                        var fingerprint = RequiredString(request, "fingerprint");
+                        var actionId = RequiredString(request, "action_id");
+                        var action = session.LegalActions.SingleOrDefault(
+                            candidate => StringComparer.Ordinal.Equals(
+                                PrototypeAiEnvironment.StableActionId(candidate),
+                                actionId))
+                            ?? throw new InvalidOperationException(
+                                "ReferenceNature run action must be currently legal.");
+                        var next = session.BeginAction(fingerprint, action);
+                        var handle = StoreReferenceNatureScriptedRun(next);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureScriptedRunResult(next, handle,
+                                parentHandle) });
+                        break;
+                    }
+
+                    case "reference_nature_scripted_run_resolve_next":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "reference_nature_scripted_run_handle");
+                        var session = RequireReferenceNatureScriptedRun(request);
+                        var next = session.ResolveNext(
+                            RequiredString(request, "fingerprint"));
+                        var handle = StoreReferenceNatureScriptedRun(next);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureScriptedRunResult(next, handle,
+                                parentHandle) });
+                        break;
+                    }
+
+                    case "reference_nature_scripted_run_fork":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "reference_nature_scripted_run_handle");
+                        var next = RequireReferenceNatureScriptedRun(request).Fork();
+                        var handle = StoreReferenceNatureScriptedRun(next);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureScriptedRunResult(next, handle,
+                                parentHandle) });
+                        break;
+                    }
+
+                    case "reference_nature_scripted_run_save":
+                    {
+                        var session = RequireReferenceNatureScriptedRun(request);
+                        Write(new { requestId, ok = true,
+                            schemaId = ReferenceNatureScriptedRunSessionV111
+                                .CurrentSchemaId,
+                            snapshot = ReferenceNatureScriptedRunSessionV111
+                                .Save(session) });
+                        break;
+                    }
+
+                    case "reference_nature_scripted_run_load":
+                    {
+                        var session = ReferenceNatureScriptedRunSessionV111.Restore(
+                            RequiredString(request, "snapshot"));
+                        var handle = StoreReferenceNatureScriptedRun(session);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureScriptedRunResult(session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_scripted_run_release_many":
+                    {
+                        if (!request.TryGetProperty(
+                                "reference_nature_scripted_run_handles",
+                                out var handles) ||
+                            handles.ValueKind != JsonValueKind.Array)
+                            throw new ArgumentException(
+                                "reference_nature_scripted_run_handles must be an array.");
+                        var released = 0;
+                        foreach (var element in handles.EnumerateArray())
+                        {
+                            if (element.ValueKind != JsonValueKind.String ||
+                                string.IsNullOrWhiteSpace(element.GetString()))
+                                throw new ArgumentException(
+                                    "Invalid ReferenceNature whole-run handle.");
+                            var handle = element.GetString()!;
+                            if (referenceNatureScriptedRunStates.Remove(handle))
+                                released++;
+                            referenceNatureScriptedRunStateHandles.Remove(handle);
+                        }
+                        Write(new { requestId, ok = true, released });
+                        break;
+                    }
+
                     case "reference_nature_event_choice_begin":
                     {
                         var source = RequireState(request);
@@ -9968,6 +10186,8 @@ internal static class PrototypeAiJsonlServer
                         {
                             var scriptedHandleName =
                                 side + "_scripted_run_handle";
+                            var referenceNatureScriptedRunHandleName =
+                                side + "_reference_nature_scripted_run_handle";
                             var scriptedActionHandleName =
                                 side + "_scripted_run_action_handle";
                             var semanticNativeHandleName =
@@ -10019,6 +10239,10 @@ internal static class PrototypeAiJsonlServer
                             bool hasScriptedRunHandle =
                                 request.TryGetProperty(scriptedHandleName,
                                     out var scriptedHandleElement);
+                            bool hasReferenceNatureScriptedRunHandle =
+                                request.TryGetProperty(
+                                    referenceNatureScriptedRunHandleName,
+                                    out var referenceNatureScriptedRunHandleElement);
                             bool hasScriptedActionHandle =
                                 request.TryGetProperty(
                                     scriptedActionHandleName,
@@ -10108,6 +10332,7 @@ internal static class PrototypeAiJsonlServer
                                     referenceNaturePunchOffRewardHandleName,
                                     out var referenceNaturePunchOffRewardHandleElement);
                             if (hasScriptedRunHandle ||
+                                hasReferenceNatureScriptedRunHandle ||
                                 hasScriptedActionHandle ||
                                 hasSemanticNativeHandle ||
                                 hasReferenceNatureSemanticCombatHandle ||
@@ -10132,6 +10357,7 @@ internal static class PrototypeAiJsonlServer
                                 hasReferenceNaturePunchOffRewardHandle)
                             {
                                 if ((hasScriptedRunHandle ? 1 : 0) +
+                                    (hasReferenceNatureScriptedRunHandle ? 1 : 0) +
                                     (hasScriptedActionHandle ? 1 : 0) +
                                     (hasSemanticNativeHandle ? 1 : 0) +
                                     (hasReferenceNatureSemanticCombatHandle ? 1 : 0) +
@@ -10162,6 +10388,10 @@ internal static class PrototypeAiJsonlServer
                                 if (hasScriptedRunHandle)
                                     (handleElement, handleName) =
                                         (scriptedHandleElement, scriptedHandleName);
+                                else if (hasReferenceNatureScriptedRunHandle)
+                                    (handleElement, handleName) =
+                                        (referenceNatureScriptedRunHandleElement,
+                                            referenceNatureScriptedRunHandleName);
                                 else if (hasScriptedActionHandle)
                                     (handleElement, handleName) =
                                         (scriptedActionHandleElement, scriptedActionHandleName);
@@ -10251,6 +10481,16 @@ internal static class PrototypeAiJsonlServer
                                                 scriptedRun)
                                         : throw new InvalidOperationException(
                                             "Unknown scripted run handle: " +
+                                            handle);
+                                if (hasReferenceNatureScriptedRunHandle)
+                                    return referenceNatureScriptedRunStates
+                                        .TryGetValue(handle,
+                                            out var referenceNatureScriptedRun)
+                                        ? SimulationProviderReplayCaptureV111
+                                            .FromReferenceNatureScriptedRunSession(
+                                                referenceNatureScriptedRun)
+                                        : throw new InvalidOperationException(
+                                            "Unknown ReferenceNature whole-run handle: " +
                                             handle);
                                 if (hasScriptedActionHandle)
                                     return scriptedRunActionStates.TryGetValue(

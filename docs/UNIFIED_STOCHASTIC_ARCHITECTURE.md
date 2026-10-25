@@ -888,6 +888,22 @@ checkpoint with completed-action history and the active action. Both sessions
 retain their flat snapshot members and JSON schemas; replay validation remains
 with the session facades.
 
+`ReferenceNatureScriptedRunSessionV111` composes the scripted action replay
+owner with one run-level ReferenceNature cursor and a typed Chance Law
+selection transcript. It chains ordinary legal actions across player
+boundaries, commits the cursor with each completed action, and replays the
+whole action history during validation and restore. Its current resolver
+supports finite index requests through `QueryRandomIndex`: canonical Native
+`NextInt` streams use the exact declared grid transform, while legacy and
+unknown streams retain the explicit unverified uniform-index model. A
+non-index request remains pending and is reported as unsupported. The
+session preserves the last committed run boundary while an action is active,
+and its JSONL and standard-library Python interfaces expose begin,
+action-begin, sampled resolve, status, fork, save, load, release, and the
+separate Nature-choice projection. This is whole-run composition over indexed
+boundaries, not complete coverage of every stochastic operation or every
+specialized event controller ([session contract](REFERENCE_NATURE_SCRIPTED_RUN_D3.md)).
+
 The **same game mechanics** issues semantic stochastic operations and applies their resolved outcomes regardless of provider:
 
 1. **Commit / initialize** a source-triggered shuffle, offer, or intent decision. Native may immediately record a complete hidden result; Nature may record an unresolved object with constraints.
@@ -1145,6 +1161,12 @@ each session replays its completed action history from the origin, and the
 existing typed boundary journal materializes its saved outcomes into the
 capture. The whole-run path retains each replayed action result as a mechanics
 checkpoint. They accept only sessions at committed action boundaries.
+`FromReferenceNatureScriptedRunSession` adds the matching whole-run path for
+finite index boundaries. It replays each indexed action prefix, materializes
+the saved outcomes through the same boundary journal, and retains completed
+action checkpoints and physical draw identities. Its typed boundary trace is
+complete; semantic outcome identity remains unavailable until a
+source-aware semantic projection is added.
 `FromSemanticNativePolicySession` provides a corresponding path for a
 replay-validated Native-policy baseline. It reconstructs the initial player
 boundary from the seeded entry, verifies that the saved provider trace begins
@@ -1235,7 +1257,7 @@ accepts `<side>_reference_nature_neow_offer_handle` and
 `<side>_reference_nature_ancient_offer_handle` for these setup intervals.
 The JSONL `provider_replay_compare` operation constructs a current capture for
 each side either from a completed scripted-run or scripted-action handle, or
-from replay-validated semantic Native-policy, ReferenceNature semantic-combat,
+from a completed ReferenceNature whole-run handle, replay-validated semantic Native-policy, ReferenceNature semantic-combat,
 event-choice, controlled-action or run-action handles, or from exact
 origin/result snapshots plus action and boundary arrays,
 with optional Native cursor equality and a mechanics-difference bound.

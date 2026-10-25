@@ -516,6 +516,33 @@ class State:
             "scripted_run_begin", state_handle=self.handle)
         return ScriptedRunSession.from_wire(self.session, result["result"])
 
+    def begin_reference_nature_scripted_run(
+            self, nature_seed: int | None = None):
+        """Begin whole-run ReferenceNature sampling at indexed boundaries."""
+        if self.session.capabilities.get(
+                "referenceNatureScriptedRunSessionSchemaId") != (
+                "sts2-v111-reference-nature-scripted-run-session-v1"):
+            raise EmulatorError(
+                "Emulator does not expose whole-run ReferenceNature sessions")
+        operations = self.session.capabilities.get(
+            "referenceNatureScriptedRunSessionOperations", [])
+        if (not isinstance(operations, list) or
+                "reference_nature_scripted_run_begin" not in operations):
+            raise EmulatorError(
+                "Whole-run ReferenceNature begin is not advertised")
+        if (nature_seed is not None and
+                (not isinstance(nature_seed, int) or
+                 isinstance(nature_seed, bool) or nature_seed < 0 or
+                 nature_seed > 0xFFFFFFFFFFFFFFFF)):
+            raise ValueError("nature_seed must be an unsigned 64-bit integer")
+        payload = {"state_handle": self.handle}
+        if nature_seed is not None:
+            payload["nature_seed"] = nature_seed
+        result = self.session.call(
+            "reference_nature_scripted_run_begin", **payload)
+        return ReferenceNatureScriptedRunSession.from_wire(
+            self.session, result["result"])
+
     def begin_reference_nature_run_action(self, nature_seed: int | None = None, *,
                                           action_id: str | None = None):
         """Begin or continue atomic ReferenceNature sampling for a run action.
@@ -1313,6 +1340,114 @@ class ScriptedRunSession:
 
     def release(self):
         return self.session.release_scripted_run_many([self])
+
+
+@dataclass(frozen=True)
+class ReferenceNatureScriptedRunSession:
+    """Whole-run ReferenceNature sampling over finite index requests."""
+    session: "Session"
+    handle: str
+    fingerprint: str
+    state_handle: str
+    boundary: str
+    completed_action_count: int
+    active_action_id: str | None
+    next_sequence: int | None
+    pending: dict | None
+    unsupported_boundary: str | None
+    decision_transcript: list
+    legal_actions: list
+    nature_sample_count: int
+
+    @classmethod
+    def from_wire(cls, session, payload):
+        if payload.get("schemaId") != (
+                "sts2-v111-reference-nature-scripted-run-session-v1"):
+            raise EmulatorError(
+                "Unsupported whole-run ReferenceNature session schema")
+        state_handle = payload.get("runStateHandle")
+        if not isinstance(state_handle, str) or not state_handle:
+            raise EmulatorError(
+                "ReferenceNature run response omitted its committed state")
+        return cls(
+            session, payload["referenceNatureScriptedRunHandle"],
+            payload["fingerprint"], state_handle, payload["boundary"],
+            payload["completedActionCount"],
+            payload.get("activeActionId"), payload.get("nextSequence"),
+            payload.get("pending"), payload.get("unsupportedBoundary"),
+            payload.get("decisionTranscript", []),
+            payload.get("legalActions", []),
+            payload["natureSampleCount"])
+
+    @property
+    def complete(self):
+        return self.boundary == "terminal"
+
+    @property
+    def state(self):
+        """Last committed run boundary, even while an action is suspended."""
+        return State(self.session, self.state_handle)
+
+    def actions(self):
+        return self.legal_actions
+
+    def observe_nature_choice(self):
+        """Return the separate Nature-only view at an indexed chance."""
+        return self.session.observe_nature_choice(
+            "reference_nature_scripted_run", self.handle)
+
+    def begin_action(self, action_id: str):
+        if self.boundary != "player":
+            raise EmulatorError(
+                "ReferenceNature run is not at a player action boundary")
+        if not isinstance(action_id, str) or not action_id:
+            raise ValueError("action_id must be a nonempty string")
+        if not any(action.get("actionId") == action_id
+                   for action in self.legal_actions):
+            raise ValueError("action_id is not currently legal")
+        result = self.session.call(
+            "reference_nature_scripted_run_begin_action",
+            reference_nature_scripted_run_handle=self.handle,
+            fingerprint=self.fingerprint, action_id=action_id)
+        return ReferenceNatureScriptedRunSession.from_wire(
+            self.session, result["result"])
+
+    def resolve_next(self):
+        if self.boundary == "unsupported":
+            raise EmulatorError(
+                "Whole-run ReferenceNature does not support " +
+                str(self.unsupported_boundary))
+        if self.boundary != "nature" or self.pending is None:
+            raise EmulatorError(
+                "ReferenceNature run has no pending indexed chance")
+        result = self.session.call(
+            "reference_nature_scripted_run_resolve_next",
+            reference_nature_scripted_run_handle=self.handle,
+            fingerprint=self.fingerprint)
+        return ReferenceNatureScriptedRunSession.from_wire(
+            self.session, result["result"])
+
+    def status(self):
+        result = self.session.call(
+            "reference_nature_scripted_run_status",
+            reference_nature_scripted_run_handle=self.handle)
+        return ReferenceNatureScriptedRunSession.from_wire(
+            self.session, result["result"])
+
+    def fork(self):
+        result = self.session.call(
+            "reference_nature_scripted_run_fork",
+            reference_nature_scripted_run_handle=self.handle)
+        return ReferenceNatureScriptedRunSession.from_wire(
+            self.session, result["result"])
+
+    def save_snapshot(self):
+        return self.session.call(
+            "reference_nature_scripted_run_save",
+            reference_nature_scripted_run_handle=self.handle)["snapshot"]
+
+    def release(self):
+        return self.session.release_reference_nature_scripted_run_many([self])
 
 
 @dataclass(frozen=True)
@@ -3628,6 +3763,8 @@ class Session:
             "semanticNatureChoiceViewSchemaId",
             "semanticNatureChoiceViewOperations",
             "semanticNatureChoiceViewSessionKinds",
+            "referenceNatureScriptedRunSessionSchemaId",
+            "referenceNatureScriptedRunSessionOperations",
         )
         if manifest is None:
             if any(field in self.capabilities for field in stochastic_fields):
@@ -3639,7 +3776,8 @@ class Session:
         capability_schema = manifest.get("schemaId")
         if (capability_schema not in (
                 "sts2-v111-stochastic-capabilities-v3",
-                "sts2-v111-stochastic-capabilities-v4")
+                "sts2-v111-stochastic-capabilities-v4",
+                "sts2-v111-stochastic-capabilities-v5")
                 or manifest.get("chanceLawSchemaId") !=
                 "sts2-v111-chance-law-v1"
                 or manifest.get("playerObservationSchemaId") !=
@@ -3660,7 +3798,9 @@ class Session:
             string_list(manifest.get("chanceLawSchemaIds"),
                         "chanceLawSchemaIds")
             if capability_schema ==
-            "sts2-v111-stochastic-capabilities-v4"
+            "sts2-v111-stochastic-capabilities-v4" or
+            capability_schema ==
+            "sts2-v111-stochastic-capabilities-v5"
             else [manifest["chanceLawSchemaId"]])
         if (manifest["chanceLawSchemaId"] not in chance_law_schema_ids
                 or not set(chance_law_schema_ids).issubset({
@@ -3676,6 +3816,20 @@ class Session:
                       "scriptedRunActionOperations",
                       "scriptedRunSessionOperations"):
             string_list(manifest.get(field), field)
+        if capability_schema == "sts2-v111-stochastic-capabilities-v5":
+            whole_run_schema = manifest.get(
+                "referenceNatureScriptedRunSessionSchemaId")
+            whole_run_operations = string_list(
+                manifest.get("referenceNatureScriptedRunSessionOperations"),
+                "referenceNatureScriptedRunSessionOperations")
+            if (whole_run_schema != self.capabilities.get(
+                    "referenceNatureScriptedRunSessionSchemaId") or
+                    whole_run_schema !=
+                    "sts2-v111-reference-nature-scripted-run-session-v1" or
+                    whole_run_operations != self.capabilities.get(
+                        "referenceNatureScriptedRunSessionOperations")):
+                raise EmulatorError(
+                    "Whole-run ReferenceNature schema or operations differ from the stochastic manifest")
         reference_nature_operations = set(string_list(
             manifest.get("referenceNatureOperations"),
             "referenceNatureOperations"))
@@ -3732,6 +3886,10 @@ class Session:
                     "semanticNatureChoiceViewOperations", [])):
             raise EmulatorError(
                 "Nature-choice observation is missing from its manifest")
+        if (capability_schema == "sts2-v111-stochastic-capabilities-v5" and
+                "reference_nature_scripted_run" not in view_session_kinds):
+            raise EmulatorError(
+                "Whole-run ReferenceNature Nature-choice view is not advertised")
 
         coverage = self.capabilities.get("stochasticSessionCoverage")
         if (not isinstance(coverage, dict)
@@ -4328,6 +4486,33 @@ class Session:
         return self.call(
             "scripted_run_release_many",
             scripted_run_handles=[item.handle for item in sessions])["released"]
+
+    def load_reference_nature_scripted_run_snapshot(self, snapshot: str):
+        if self.capabilities.get(
+                "referenceNatureScriptedRunSessionSchemaId") != (
+                "sts2-v111-reference-nature-scripted-run-session-v1"):
+            raise EmulatorError(
+                "Emulator does not expose whole-run ReferenceNature sessions")
+        operations = self.capabilities.get(
+            "referenceNatureScriptedRunSessionOperations", [])
+        if (not isinstance(operations, list) or
+                "reference_nature_scripted_run_load" not in operations):
+            raise EmulatorError(
+                "Whole-run ReferenceNature load is not advertised")
+        result = self.call(
+            "reference_nature_scripted_run_load", snapshot=snapshot)
+        return ReferenceNatureScriptedRunSession.from_wire(
+            self, result["result"])
+
+    def release_reference_nature_scripted_run_many(self, sessions):
+        sessions = list(sessions)
+        if any(item.session is not self for item in sessions):
+            raise ValueError(
+                "ReferenceNature whole-run handle belongs to another session")
+        return self.call(
+            "reference_nature_scripted_run_release_many",
+            reference_nature_scripted_run_handles=[
+                item.handle for item in sessions])["released"]
 
     def step_batch(self, steps, *, parallelism=1):
         payload = []

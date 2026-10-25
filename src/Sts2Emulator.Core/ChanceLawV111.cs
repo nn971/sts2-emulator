@@ -146,6 +146,15 @@ public sealed record StochasticCapabilityManifestV111(
         get => Copy(_scriptedRunSessionOperations)!;
         init => _scriptedRunSessionOperations = Copy(value);
     }
+    public string ReferenceNatureScriptedRunSessionSchemaId { get; init; } =
+        ReferenceNatureScriptedRunSessionV111.CurrentSchemaId;
+    private string[]? _referenceNatureScriptedRunSessionOperations =
+        Copy(ReferenceNatureScriptedRunSessionV111.Operations);
+    public string[] ReferenceNatureScriptedRunSessionOperations
+    {
+        get => Copy(_referenceNatureScriptedRunSessionOperations)!;
+        init => _referenceNatureScriptedRunSessionOperations = Copy(value);
+    }
     public string SemanticNatureChoiceViewSchemaId { get; init; } =
         SemanticNatureChoiceViewV111.CurrentSchemaId;
     public string[] SemanticNatureChoiceViewOperations
@@ -170,7 +179,7 @@ public sealed record StochasticCapabilityManifestV111(
 
 public static class StochasticCapabilitiesV111
 {
-    public const string SchemaId = "sts2-v111-stochastic-capabilities-v4";
+    public const string SchemaId = "sts2-v111-stochastic-capabilities-v5";
     public const string ExternalSelectionProviderId =
         "external-semantic-selection-v1";
 
@@ -189,7 +198,8 @@ public static class StochasticCapabilitiesV111
         "native_event_relic", "native_shovel", "endless_conveyor",
         "merchant", "treasure", "combat_reward", "glory_reflections",
         "infested_automaton", "punch_off_reward", "punch_off_fight",
-        "map_generation", "controlled_event_choice", "controlled_run_action"
+        "map_generation", "controlled_event_choice", "controlled_run_action",
+        "reference_nature_scripted_run"
     ];
 
     public static string[] SemanticNatureChoiceViewSessionKinds =>
@@ -237,6 +247,7 @@ public static class StochasticCapabilitiesV111
             "reference_nature_run_action_save",
             "reference_nature_run_action_load",
             "reference_nature_run_action_release_many",
+            .. ReferenceNatureScriptedRunSessionV111.Operations,
             "reference_nature_event_choice_begin",
             "reference_nature_event_choice_status",
             "reference_nature_event_choice_resolve_next",

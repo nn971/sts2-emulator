@@ -311,6 +311,8 @@ public static class SimulationProviderReplayCaptureProvenanceV111
         "semantic-native-policy-semantic-identity-replay-validated-v2";
     public const string ReferenceNatureRunActionReplayValidated =
         "reference-nature-run-action-replay-validated-v1";
+    public const string ReferenceNatureWholeRunReplayValidated =
+        "reference-nature-whole-run-replay-validated-v1";
     public const string ReferenceNatureEventChoiceReplayValidated =
         "reference-nature-event-choice-replay-validated-v1";
     public const string ReferenceNatureControlledActionReplayValidated =
@@ -333,6 +335,7 @@ public static class SimulationProviderReplayCaptureProvenanceV111
         ScriptedActionReplayValidated or SemanticNativePolicyReplayValidated or
         SemanticNativePolicySemanticIdentityReplayValidated or
         ReferenceNatureRunActionReplayValidated or
+        ReferenceNatureWholeRunReplayValidated or
         ReferenceNatureEventChoiceReplayValidated or
         ReferenceNatureControlledActionReplayValidated or
         ReferenceNatureNeowOfferReplayValidated or
@@ -523,6 +526,60 @@ public sealed record SimulationProviderReplayCaptureV111(
                 .ScriptedRunReplayValidated,
             replay.ActionBoundaryStates,
             replay.DrawnCardInstanceIdsByAction);
+    }
+
+    /// <summary>
+    /// Builds a capture from a completed whole-run ReferenceNature session.
+    /// The provider-boundary trace contains its indexed controlled decisions;
+    /// the separate Nature transcript remains in the replay-validated session.
+    /// </summary>
+    public static SimulationProviderReplayCaptureV111
+        FromReferenceNatureScriptedRunSession(
+            ReferenceNatureScriptedRunSessionV111 session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        using (RandomBoundaryJournalV111.Begin())
+            session.Validate();
+        if (session.ActiveAction is not null)
+            throw new InvalidOperationException(
+                "Provider replay capture requires a committed ReferenceNature whole-run boundary.");
+
+        var actions = session.CompletedActions;
+        var replayRun = session.Origin.Fork();
+        var nature = session.InitialNatureState.Fork();
+        var actionBoundaries = new RunState[actions.Length];
+        var drawnCardsByAction = new long[actions.Length][];
+        using (RandomBoundaryJournalV111.Begin())
+        {
+            for (var index = 0; index < actions.Length; index++)
+            {
+                using var drawJournal =
+                    SemanticDrawIdentityJournalV111.Begin();
+                var action = actions[index];
+                var replayed = ScriptedRunActionSessionV111.ReplayCompleted(
+                    replayRun, action.Action, action.Decisions);
+                replayRun = replayed.Run?.Fork() ??
+                    throw new InvalidDataException(
+                        "ReferenceNature whole-run action replay has no result.");
+                if (action.NatureDecisions.Length != 0)
+                    nature = action.NatureDecisions[^1].NextState.Fork();
+                replayRun = ReferenceNatureRunCursorV111.Commit(
+                    replayRun, nature);
+                actionBoundaries[index] = replayRun.Fork();
+                drawnCardsByAction[index] = drawJournal.CardInstanceIds;
+            }
+        }
+        if (CanonicalJson.Sha256(replayRun) !=
+            CanonicalJson.Sha256(session.Run))
+            throw new InvalidDataException(
+                "ReferenceNature whole-run capture replay differs from its saved result.");
+
+        return FromScriptedDecisions(
+            session.Origin, actions.Select(action => action.Action).ToArray(),
+            actions.SelectMany(action => action.Decisions), session.Run,
+            SimulationProviderReplayCaptureProvenanceV111
+                .ReferenceNatureWholeRunReplayValidated,
+            actionBoundaries, drawnCardsByAction);
     }
 
     /// <summary>Builds a capture from one completed scripted player action.</summary>
