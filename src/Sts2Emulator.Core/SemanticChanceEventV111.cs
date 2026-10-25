@@ -73,13 +73,18 @@ internal sealed record SemanticPendingIndexChanceEventV111(
 
     public void ValidateSelection(string boundaryFingerprint, int index)
     {
+        ValidateBoundary(boundaryFingerprint);
+        if (index < 0 || index >= SupportCount)
+            throw new ArgumentOutOfRangeException(nameof(index));
+    }
+
+    public void ValidateBoundary(string boundaryFingerprint)
+    {
         Validate();
         if (!StringComparer.Ordinal.Equals(
                 BoundaryFingerprint, boundaryFingerprint))
             throw new InvalidOperationException(
                 "Semantic chance descriptor is stale for the current boundary.");
-        if (index < 0 || index >= SupportCount)
-            throw new ArgumentOutOfRangeException(nameof(index));
     }
 
     public void Validate()

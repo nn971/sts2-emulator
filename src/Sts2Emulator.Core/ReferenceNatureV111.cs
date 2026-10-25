@@ -42,11 +42,8 @@ public static class ReferenceNatureV111
             .DescribePendingIndexChanceEvent(combat) ??
             throw new NotSupportedException(
                 "UNSUPPORTED_REFERENCE_NATURE site=no_supported_pending_event");
-        var law = QueryPendingLaw(combat, pending.Event);
-        if (law.EventId != pending.Event.EventId ||
-            law.SupportCount != pending.SupportCount)
-            throw new InvalidDataException(
-                "ReferenceNature law no longer matches the active semantic event.");
+        var law = SemanticChanceLawDispatchV111
+            .QueryPendingIndexLaw(combat, pending);
         var selection = SampleValidated(law, state);
         if (selection.OutcomeIndex >= pending.SupportCount)
             throw new InvalidDataException(
@@ -69,46 +66,6 @@ public static class ReferenceNatureV111
                 combat, pending, selection.OutcomeIndex);
         return new ReferenceNatureResolutionV111(child, law, selection);
     }
-
-    private static ChanceLawV111 QueryPendingLaw(
-        SemanticPilotCombatV111 combat, ISemanticChanceEventV111 pending) =>
-        pending switch
-        {
-            SemanticEndTurnIndexEventV111 endTurn =>
-                ChanceLawEngineV111.QueryEndTurnIndex(endTurn),
-            SemanticTargetEventV111 target =>
-                ChanceLawEngineV111.QueryTarget(target),
-            SemanticGeneratedCardEventV111 generatedCard =>
-                ChanceLawEngineV111.QueryGeneratedCard(generatedCard),
-            SemanticCostEventV111 cost =>
-                ChanceLawEngineV111.QueryCost(cost),
-            SemanticRandomPileCardEventV111 randomPileCard =>
-                ChanceLawEngineV111.QueryRandomPileCard(randomPileCard),
-            SemanticCardTransformEventV111 transform =>
-                ChanceLawEngineV111.QueryCardTransform(transform),
-            SemanticPotionGenerationEventV111 potion =>
-                ChanceLawEngineV111.QueryPotionGeneration(potion),
-            SemanticHandCostSelectionEventV111 handCost =>
-                ChanceLawEngineV111.QueryHandCostSelection(handCost),
-            SemanticPoolShuffleEventV111 poolShuffle =>
-                ChanceLawEngineV111.QueryPoolShuffle(poolShuffle),
-            SemanticDrawInsertionEventV111 insertion =>
-                ChanceLawEngineV111.QueryDrawInsertion(insertion),
-            SemanticCardShortlistEventV111 shortlist =>
-                ChanceLawEngineV111.QueryCardShortlist(shortlist),
-            SemanticDeckEventV111 { Purpose: "draw" } =>
-                ChanceLawEngineV111.QueryDraw(GetSemanticDeck(combat)),
-            SemanticDeckEventV111 =>
-                ChanceLawEngineV111.QueryDeckReveal(GetSemanticDeck(combat)),
-            _ => throw new NotSupportedException(
-                $"UNSUPPORTED_REFERENCE_NATURE site={pending.SiteId}")
-        };
-
-    private static SemanticDeckStateV111 GetSemanticDeck(
-        SemanticPilotCombatV111 combat) =>
-        combat.Run.World?.Combat?.Stochastic.SemanticDeck ??
-        throw new InvalidDataException(
-            "Pending semantic deck event lost its provider-owned deck.");
 
     public static ReferenceNatureSelectionV111 SampleValidated(
         ChanceLawV111 law, ReferenceNatureStateV111 state)

@@ -858,6 +858,15 @@ A native Fisher–Yates shuffle and Nature's later `draw_card` events can expres
 
 A chance-law query takes a **pre-outcome** semantic operation, legal support/weights from mechanics, and a declared information/constraint state. It returns a versioned conditional distribution `p` with ordered stable outcome IDs, exact/compact weights or probabilities, support/constraint fingerprints, conditioning policy and probability **provenance** (e.g., `UNVERIFIED` or source-verified).
 
+For the active semantic combat boundary, `SemanticChanceLawDispatchV111`
+maps the shared typed pending-event descriptor to its Chance Law and checks
+the law's event ID and support size against that descriptor before
+ReferenceNature samples it. It also rejects a descriptor whose boundary
+fingerprint no longer matches the live combat. ReferenceNature and the
+Native policy resolver then pass that same descriptor to the shared mechanics
+outcome dispatcher; provider-specific sampling and provenance checks remain
+with their respective providers.
+
 Probability status belongs to each Chance Law. `UNVERIFIED` means its mapping or
 sampling law has not been independently established. `SOURCE_VERIFIED` means
 the pinned source's sampling transform has been audited mathematically under

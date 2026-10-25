@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 active semantic law-dispatch ownership (2026-10-25):** Typed pending
+index events now resolve to their Chance Law through
+`SemanticChanceLawDispatchV111`. It verifies that the descriptor belongs to
+the live combat boundary and that law identity and support size match before
+ReferenceNature samples. Provider policy and the shared mechanics dispatcher
+continue to consume the same descriptor; no snapshot schema changed. Static
+source review and `git diff --check` only; no tests or builds were run.
+
 **S4 Native semantic event dispatch ownership (2026-10-25):** The run-owned
 Native auto-resolver now consumes the same active typed chance-event
 descriptor and precedence as ReferenceNature and the mechanics dispatcher.
