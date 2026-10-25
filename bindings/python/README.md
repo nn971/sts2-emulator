@@ -107,6 +107,28 @@ if comparison["sameMechanicsForSameSemanticOutcomes"]:
     print("The compared trajectories agree under their semantic outcomes.")
 ```
 
+For an ordinary engine action, pass exact origin and result snapshots with the
+legal action payload. Omit `<side>_boundaries` to have the engine replay the
+actions, capture its typed provider trace, and verify the endpoint:
+
+```python
+origin = state
+action = next(item for item in origin.actions()
+              if item["kind"] == "end_turn")
+result = origin.step(action["action_id"])
+
+comparison = emulator.compare_provider_replays(
+    left_origin_snapshot=origin.save_snapshot(),
+    left_actions=[{"kind": action["kind"], "payload": action["payload"]}],
+    left_result_snapshot=result.save_snapshot(),
+    right_reference_nature_semantic_combat_handle=nature_state.handle,
+)
+```
+
+The replay capture adds semantic outcome IDs only when every typed boundary
+has a unique supported Chance Law mapping. Supplying `<side>_boundaries`
+keeps the caller-supplied capture path and does not replay-validate that trace.
+
 This result is a privileged diagnostic. It does not appear in fair player
 observations and does not establish Native stream parity or source-law fidelity.
 
