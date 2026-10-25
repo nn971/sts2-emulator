@@ -1574,6 +1574,11 @@ cost, draw, transform, shortlist, card selection, generation, and pool-shuffle
 choices, then the pilot publishes the returned mechanics and provider state
 together. Standalone choices still use the typed choice-resume owner.
 
+Ordinary, controlled, semantic, and ReferenceNature `observe` operations now
+project payloads, hashes, and legal actions from the shared fair-observation
+envelope. Their existing response fields remain available; the versioned
+`fair_observe` operation returns the full envelope.
+
 ## Reading order
 
 1. This architecture contract.

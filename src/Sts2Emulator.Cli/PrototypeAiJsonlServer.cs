@@ -6525,14 +6525,19 @@ internal static class PrototypeAiJsonlServer
                             !current.AtPlayerChoiceBoundary)
                             throw new InvalidOperationException(
                                 "Semantic observation is available only at a player boundary.");
-                        var frame = environment.Observe(current.Run);
+                        var fairFrame = FairObservation(
+                            current.UsesNativePolicyBaseline
+                                ? "semantic_native_policy"
+                                : "semantic_combat",
+                            RequiredString(request, "semantic_handle"),
+                            current.Run, terminal: false);
                         Write(new { requestId, ok = true,
                             schemaId = SemanticChanceSchemaId,
                             policyId = FairPolicyId,
-                            payloadJson = CanonicalJson.Serialize(frame.Observation),
-                            observationHash = frame.ObservationHash,
-                            actions = frame.LegalActions.Select(ActionWire).ToArray(),
-                            terminal = false });
+                            payloadJson = fairFrame.PayloadJson,
+                            observationHash = fairFrame.ObservationHash,
+                            actions = fairFrame.Actions,
+                            terminal = fairFrame.Terminal });
                         break;
                     }
 
@@ -9367,14 +9372,18 @@ internal static class PrototypeAiJsonlServer
                             !session.Combat.AtPlayerChoiceBoundary)
                             throw new InvalidOperationException(
                                 "ReferenceNature observation is available only at a player boundary.");
-                        var frame = environment.Observe(session.Combat.Run);
+                        var fairFrame = FairObservation(
+                            "semantic_reference",
+                            RequiredString(request,
+                                "reference_nature_handle"),
+                            session.Combat.Run, terminal: false);
                         Write(new { requestId, ok = true,
                             schemaId = SemanticChanceSchemaId,
                             policyId = FairPolicyId,
-                            payloadJson = CanonicalJson.Serialize(frame.Observation),
-                            observationHash = frame.ObservationHash,
-                            actions = frame.LegalActions.Select(ActionWire).ToArray(),
-                            terminal = false });
+                            payloadJson = fairFrame.PayloadJson,
+                            observationHash = fairFrame.ObservationHash,
+                            actions = fairFrame.Actions,
+                            terminal = fairFrame.Terminal });
                         break;
                     }
 
@@ -9547,13 +9556,18 @@ internal static class PrototypeAiJsonlServer
                         if (!current.AtPlayerBoundary)
                             throw new InvalidOperationException(
                                 "Nature shuffle is pending; player observation unavailable.");
-                        var frame = environment.Observe(current.Run);
+                        var fairFrame = FairObservation(
+                            "controlled_combat",
+                            RequiredString(request, "controlled_handle"),
+                            current.Run,
+                            current.Run.Phase == RunPhase.Terminal);
                         Write(new { requestId, ok = true,
-                            policyId = policy, schemaId = frame.SchemaId,
-                            payloadJson = CanonicalJson.Serialize(frame.Observation),
-                            observationHash = frame.ObservationHash,
-                            actions = frame.LegalActions.Select(ActionWire).ToArray(),
-                            terminal = current.Run.Phase == RunPhase.Terminal });
+                            policyId = policy,
+                            schemaId = fairFrame.ObservationSchemaId,
+                            payloadJson = fairFrame.PayloadJson,
+                            observationHash = fairFrame.ObservationHash,
+                            actions = fairFrame.Actions,
+                            terminal = fairFrame.Terminal });
                         break;
                     }
 
@@ -10711,15 +10725,18 @@ internal static class PrototypeAiJsonlServer
                                 $"Prototype JSONL bridge supports only information policy '{FairPolicyId}'.");
                         }
 
-                        var frame = environment.Observe(state);
+                        var fairFrame = FairObservation(
+                            "run_state",
+                            RequiredString(request, "state_handle"),
+                            state, state.Phase == RunPhase.Terminal);
                         Write(new
                         {
                             requestId,
                             ok = true,
                             policyId,
-                            payloadJson = CanonicalJson.Serialize(frame.Observation),
-                            observationHash = frame.ObservationHash,
-                            schemaId = frame.SchemaId
+                            payloadJson = fairFrame.PayloadJson,
+                            observationHash = fairFrame.ObservationHash,
+                            schemaId = fairFrame.ObservationSchemaId
                         });
                         break;
                     }

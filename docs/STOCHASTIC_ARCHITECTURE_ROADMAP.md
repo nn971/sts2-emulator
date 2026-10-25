@@ -4944,3 +4944,9 @@ publishes the resulting run and end-turn frame together; standalone choices
 retain the typed choice-resume path. Cross-provider mechanical equivalence
 remains open. Static source review and `git diff --check` only; no tests or
 builds were run.
+
+**S5 shared fair-observation projection increment (2026-10-25):** Legacy
+ordinary, controlled, semantic, and ReferenceNature observation operations
+now derive payloads, hashes, and legal actions through the versioned shared
+fair-observation envelope while preserving their existing response fields.
+Static source review and `git diff --check` only; no tests or builds were run.
