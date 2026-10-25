@@ -9590,8 +9590,14 @@ internal static class PrototypeAiJsonlServer
                         var current = RequireControlled(request);
                         var next = current.Fork();
                         var handle = StoreControlled(next);
+                        var view = NatureBoundaryMetadataV111.Describe(next);
                         Write(new { requestId, ok = true, parent = parentHandle,
-                            controlledHandle = handle, fingerprint = next.Fingerprint });
+                            schemaId = ControlledChanceSchemaId,
+                            controlledHandle = handle,
+                            fingerprint = next.Fingerprint,
+                            phase = view.Kind, pending = view.Pending,
+                            transcript = view.Transcript,
+                            terminal = next.Run.Phase == RunPhase.Terminal });
                         break;
                     }
 
