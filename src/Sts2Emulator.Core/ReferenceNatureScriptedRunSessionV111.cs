@@ -567,6 +567,13 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
                     active.Origin, active.Action, indexRequest.SiteId))
                 return QueryNativeEncounterFormation(active, indexRequest);
             if (active.Origin.Stochastic.NativeRunRng is not null &&
+                ControlledRunActionEngineV111
+                    .IsNativeEncounterSelectionRequest(request) &&
+                ControlledRunActionEngineV111.IsNativeActOneCombatEntrySite(
+                    active.Origin, active.Action, indexRequest.SiteId))
+                return QueryNativeEncounterPoolSelection(
+                    active, indexRequest);
+            if (active.Origin.Stochastic.NativeRunRng is not null &&
                 indexRequest.SiteId is
                     NativeCombatRngEntryV111.InitialUniqueHpSiteId or
                     NativeCombatRngEntryV111.ToughEggHatchHpSiteId)
@@ -961,6 +968,28 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
             throw new InvalidDataException(
                 "Native encounter-formation request differs from its source law.");
         return law;
+    }
+
+    private static ChanceLawV111 QueryNativeEncounterPoolSelection(
+        ScriptedRunActionSessionV111 active,
+        RandomIndexRequestV111 request)
+    {
+        request.Validate();
+        if (active.Origin.Stochastic.NativeRunRng is null ||
+            !ControlledRunActionEngineV111.IsNativeEncounterSelectionRequest(
+                ControlledStochasticRequestV111.FromIndex(request)) ||
+            !ControlledRunActionEngineV111.IsNativeActOneCombatEntrySite(
+                active.Origin, active.Action, request.SiteId))
+            throw new InvalidDataException(
+                "Native encounter-pool request is outside its configured Act 1 combat-entry boundary.");
+
+        var eventId = CanonicalJson.Sha256(new
+        {
+            boundary = "native-act-one-combat-entry-index",
+            actionId = PrototypeAiEnvironment.StableActionId(active.Action),
+            request
+        });
+        return ChanceLawEngineV111.QueryRandomIndex(eventId, request);
     }
 
     private static ChanceLawV111 QueryNativeCreatureHp(

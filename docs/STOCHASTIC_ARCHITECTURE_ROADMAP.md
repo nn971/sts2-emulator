@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S2 whole-run Native encounter-pool law increment (2026-10-26):** Whole-run
+ReferenceNature replay now binds configured Native Act 1 Overgrowth and
+Underdocks encounter-pool index laws to the selected map-node action after
+checking the room, stream, site, and ordered support. Their equal-index law
+weights retain their existing `UNVERIFIED` status. Core and CLI Release builds
+passed with zero warnings or errors; `git diff --check` passed. No tests were
+run.
+
 **S2 whole-run Native creature HP law increment (2026-10-26):** Whole-run
 ReferenceNature replay now routes Native initial unique-monster HP and Tough
 Egg hatch HP requests through their source laws. The `run.niche` stream,

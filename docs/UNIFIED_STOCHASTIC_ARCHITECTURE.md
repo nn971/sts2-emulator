@@ -1277,8 +1277,9 @@ the owner for pre-event generation.
 Configured experimental Act 1 Native combat-entry formation draws in this
 whole-run path also re-query the existing formation law after validating the
 selected combat map node, encounter entry, floor, Native context stream, and
-source-ordered index range. Encounter-pool draws retain their existing
-run-action law handling.
+source-ordered index range. Overgrowth and Underdocks encounter-pool draws
+also use their action-bound index laws after validating the selected room and
+ordered request support.
 Native creature creation and Tough Egg hatch HP draws on `run.niche` also use
 their existing source laws, which validate each creature owner and the
 distinct HP support (including the ascension-selected hatch range).
