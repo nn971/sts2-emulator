@@ -1061,26 +1061,39 @@ construction and replacement, then returns defensive copies to keep the
 diagnostic result immutable to callers.
 
 `SimulationProviderReplayCaptureV111` groups an origin run, player-action
-sequence, ordered typed random-boundary trace, and result run in the existing
-`SimulationStateV111` envelope. Its v2 schema includes capture provenance:
-explicit fields are marked caller-supplied and unverified, while scripted and
-Native-policy factories mark the histories they replay-validate.
+sequence, ordered typed random-boundary trace, semantic event-outcome trace,
+and result run in the existing `SimulationStateV111` envelope. Its v3 schema
+includes capture provenance; v2 captures remain readable with no semantic
+trace. Explicit fields are marked caller-supplied and unverified, while
+scripted and Native-policy factories mark the histories they replay-validate.
 `SimulationProviderReplayComparisonEngineV111` compares two such captures by
 fingerprinting their action sequences, comparing origin mechanics, comparing
-every supplied typed boundary in order, and comparing the resulting mechanics,
-returning each agreement and both capture provenance values separately.
-Callers must provide captures covering the same interval and all typed
-boundaries in it; caller-supplied provenance remains an assertion and does not
-prove capture completeness. Native cursor equality is an optional additional
-boundary check. This is diagnostic evidence under the supplied captures, not
-proof of source-hook parity, complete Native coverage, or Chance Law fidelity.
+every supplied typed boundary in order, comparing complete semantic outcome
+traces when both captures provide them, and comparing the resulting mechanics,
+returning each agreement and both capture provenance values separately. The
+semantic trace records event and law identity, selected outcome identity and
+index, and its transition position within the captured history. It does not
+rewrite Chance Law outcomes as primitive provider draws. Callers must provide
+captures covering the same interval and all typed boundaries in it;
+caller-supplied provenance remains an assertion and does not prove capture
+completeness. Native cursor equality is an optional additional boundary check.
+This is diagnostic evidence under the supplied captures, not proof of
+source-hook parity, complete Native coverage, or Chance Law fidelity.
 `SameMechanicsAtCapturedBoundariesForSameActions` reports equal projected
 origin and result mechanics when the captured player actions also match. It
 does not require matching intermediate stochastic outcomes. The stricter
-`EquivalentUnderComparedActions` additionally requires complete typed-boundary
-comparison and equality at every captured boundary. The result exposes
-`TypedRandomBoundaryComparisonAvailable` so an absent primitive trace is not
-reported as a matching empty trace.
+`EquivalentUnderComparedActions` additionally requires equality of a complete
+stochastic trace: typed provider boundaries when both captures have those, or
+semantic event outcomes when both have a replay-validated semantic trace.
+Currently `FromReferenceNatureSemanticCombatSession` is the semantic trace
+factory, so this second route compares complete ReferenceNature semantic
+combat captures with each other. New captures use outcome-replay provenance;
+older v2 captures retain their endpoint-only provenance and do not claim a
+complete empty semantic trace. A normalized Native semantic trace remains
+open. The result exposes `TypedRandomBoundaryComparisonAvailable` and
+`SemanticOutcomeComparisonAvailable` separately, so an absent trace is not
+reported as a matching empty trace. `SameSemanticOutcomes` and
+`SameStochasticOutcomes` expose the corresponding equality results.
 `SimulationProviderReplayCaptureV111.FromScriptedRunSession` and
 `FromScriptedRunActionSession` provide a stronger path for scripted replays:
 each session replays its completed action history from the origin, and the

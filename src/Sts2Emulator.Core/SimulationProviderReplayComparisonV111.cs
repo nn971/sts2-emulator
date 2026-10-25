@@ -69,10 +69,31 @@ public sealed record SimulationProviderReplayMechanicsCaptureV111
     }
 }
 
-/// <summary>Typed random-boundary evidence for the same captured interval.</summary>
+/// <summary>One replay-validated semantic outcome in a captured interval.</summary>
+public sealed record SimulationProviderReplaySemanticOutcomeV111(
+    int TransitionIndex, string EventId, string LawId, string OutcomeId,
+    int OutcomeIndex)
+{
+    public void Validate()
+    {
+        if (TransitionIndex < 0 || string.IsNullOrWhiteSpace(EventId) ||
+            string.IsNullOrWhiteSpace(LawId) ||
+            string.IsNullOrWhiteSpace(OutcomeId) || OutcomeIndex < 0)
+            throw new InvalidDataException(
+                "Provider replay semantic outcome is invalid.");
+    }
+}
+
+/// <summary>
+/// Primitive provider boundaries and semantic event outcomes captured for
+/// the same replay interval. The two traces remain distinct: one records
+/// provider calls, while the other records resolved event identities.
+/// </summary>
 public sealed record SimulationProviderReplayStochasticCaptureV111
 {
     private RandomBoundaryTranscriptEntryV111[] _boundaries = [];
+    private SimulationProviderReplaySemanticOutcomeV111[] _semanticOutcomes =
+        [];
 
     public RandomBoundaryTranscriptEntryV111[] Boundaries
     {
@@ -80,13 +101,25 @@ public sealed record SimulationProviderReplayStochasticCaptureV111
         init => _boundaries = CloneBoundaries(value);
     }
 
+    public SimulationProviderReplaySemanticOutcomeV111[] SemanticOutcomes
+    {
+        get => (SimulationProviderReplaySemanticOutcomeV111[])
+            _semanticOutcomes.Clone();
+        init => _semanticOutcomes = CloneSemanticOutcomes(value);
+    }
+
     public SimulationProviderReplayStochasticCaptureV111(
-        RandomBoundaryTranscriptEntryV111[] Boundaries) =>
+        RandomBoundaryTranscriptEntryV111[] Boundaries,
+        SimulationProviderReplaySemanticOutcomeV111[]? SemanticOutcomes = null)
+    {
         this.Boundaries = Boundaries;
+        this.SemanticOutcomes = SemanticOutcomes ?? [];
+    }
 
     public SimulationProviderReplayStochasticCaptureV111 Fork() => this with
     {
-        Boundaries = CloneBoundaries(_boundaries)
+        Boundaries = CloneBoundaries(_boundaries),
+        SemanticOutcomes = CloneSemanticOutcomes(_semanticOutcomes)
     };
 
     public void Validate()
@@ -103,6 +136,19 @@ public sealed record SimulationProviderReplayStochasticCaptureV111
                     index + ".");
             boundary.Validate();
         }
+        if (_semanticOutcomes is null)
+            throw new InvalidDataException(
+                "Provider replay semantic outcome capture is incomplete.");
+        var previousTransitionIndex = -1;
+        foreach (var outcome in _semanticOutcomes)
+        {
+            if (outcome is null ||
+                outcome.TransitionIndex <= previousTransitionIndex)
+                throw new InvalidDataException(
+                    "Provider replay semantic outcome order is invalid.");
+            outcome.Validate();
+            previousTransitionIndex = outcome.TransitionIndex;
+        }
     }
 
     private static RandomBoundaryTranscriptEntryV111[] CloneBoundaries(
@@ -112,6 +158,14 @@ public sealed record SimulationProviderReplayStochasticCaptureV111
         return boundaries.Select(boundary => boundary is null
             ? null!
             : boundary.Fork()).ToArray();
+    }
+
+    private static SimulationProviderReplaySemanticOutcomeV111[]
+        CloneSemanticOutcomes(
+            SimulationProviderReplaySemanticOutcomeV111[] outcomes)
+    {
+        ArgumentNullException.ThrowIfNull(outcomes);
+        return (SimulationProviderReplaySemanticOutcomeV111[])outcomes.Clone();
     }
 }
 
@@ -136,6 +190,8 @@ public static class SimulationProviderReplayCaptureProvenanceV111
         "reference-nature-run-setup-replay-validated-v1";
     public const string ReferenceNatureSemanticCombatReplayValidated =
         "reference-nature-semantic-combat-replay-validated-v1";
+    public const string ReferenceNatureSemanticCombatOutcomeReplayValidated =
+        "reference-nature-semantic-combat-outcome-replay-validated-v2";
 
     public static bool IsKnown(string? provenance) => provenance is
         CallerSupplied or ScriptedRunReplayValidated or
@@ -145,7 +201,8 @@ public static class SimulationProviderReplayCaptureProvenanceV111
         ReferenceNatureControlledActionReplayValidated or
         ReferenceNatureNeowOfferReplayValidated or
         ReferenceNatureRunSetupReplayValidated or
-        ReferenceNatureSemanticCombatReplayValidated;
+        ReferenceNatureSemanticCombatReplayValidated or
+        ReferenceNatureSemanticCombatOutcomeReplayValidated;
 
     /// <summary>
     /// Whether this capture represents every primitive provider boundary in
@@ -154,8 +211,12 @@ public static class SimulationProviderReplayCaptureProvenanceV111
     /// Caller-supplied provenance remains an assertion by the caller.
     /// </summary>
     public static bool HasCompleteTypedBoundaryTrace(string? provenance) =>
-        IsKnown(provenance) && provenance !=
-            ReferenceNatureSemanticCombatReplayValidated;
+        IsKnown(provenance) && provenance is not
+            (ReferenceNatureSemanticCombatReplayValidated or
+             ReferenceNatureSemanticCombatOutcomeReplayValidated);
+
+    public static bool HasCompleteSemanticOutcomeTrace(string? provenance) =>
+        provenance == ReferenceNatureSemanticCombatOutcomeReplayValidated;
 }
 
 /// <summary>
@@ -194,8 +255,10 @@ public sealed record SimulationProviderReplayCaptureV111(
     SimulationStateV111<SimulationProviderReplayMechanicsCaptureV111,
         SimulationProviderReplayStochasticCaptureV111> Simulation)
 {
-    public const string CurrentSchemaId =
+    public const string PreviousSchemaId =
         "sts2-v111-simulation-provider-replay-capture-v2";
+    public const string CurrentSchemaId =
+        "sts2-v111-simulation-provider-replay-capture-v3";
 
     [System.Text.Json.Serialization.JsonInclude]
     public string CaptureProvenance { get; private init; } =
@@ -210,7 +273,9 @@ public sealed record SimulationProviderReplayCaptureV111(
     public static SimulationProviderReplayCaptureV111 Create(
         RunState origin, IReadOnlyList<GameAction> actions,
         IEnumerable<RandomBoundaryTranscriptEntryV111> boundaries,
-        RunState result)
+        RunState result,
+        IEnumerable<SimulationProviderReplaySemanticOutcomeV111>?
+            semanticOutcomes = null)
     {
         ArgumentNullException.ThrowIfNull(origin);
         ArgumentNullException.ThrowIfNull(actions);
@@ -224,7 +289,8 @@ public sealed record SimulationProviderReplayCaptureV111(
                     new SimulationProviderReplayMechanicsCaptureV111(
                         origin, actions.ToArray(), result),
                     new SimulationProviderReplayStochasticCaptureV111(
-                        boundaries.ToArray())));
+                        boundaries.ToArray(),
+                        semanticOutcomes?.ToArray())));
         capture.Validate();
         return capture;
     }
@@ -888,11 +954,24 @@ public sealed record SimulationProviderReplayCaptureV111(
             throw new NotSupportedException(
                 "Semantic ReferenceNature capture requires a committed result boundary.");
 
-        var capture = Create(origin.Run, actions, [], validated.Combat.Run) with
+        var semanticOutcomes = validated.Stochastic.DecisionTranscript
+            .Select((selection, index) =>
+            {
+                var historyIndex = historyIndices[index]!.Value;
+                if (historyIndex < initialHistoryLength)
+                    throw new InvalidDataException(
+                        "Semantic ReferenceNature outcome precedes the captured history interval.");
+                return new SimulationProviderReplaySemanticOutcomeV111(
+                    historyIndex - initialHistoryLength,
+                    selection.EventId, selection.LawId, selection.OutcomeId,
+                    selection.OutcomeIndex);
+            }).ToArray();
+        var capture = Create(origin.Run, actions, [], validated.Combat.Run,
+            semanticOutcomes) with
         {
             CaptureProvenance =
                 SimulationProviderReplayCaptureProvenanceV111
-                    .ReferenceNatureSemanticCombatReplayValidated
+                    .ReferenceNatureSemanticCombatOutcomeReplayValidated
         };
         capture.Validate();
         return capture;
@@ -952,7 +1031,7 @@ public sealed record SimulationProviderReplayCaptureV111(
 
     public void Validate()
     {
-        if (SchemaId != CurrentSchemaId ||
+        if (SchemaId is not (CurrentSchemaId or PreviousSchemaId) ||
             !SimulationProviderReplayCaptureProvenanceV111
                 .IsKnown(CaptureProvenance) || Simulation is null ||
             Simulation.Mechanics is null || Simulation.Stochastic is null)
@@ -960,14 +1039,22 @@ public sealed record SimulationProviderReplayCaptureV111(
                 "Provider replay capture envelope is invalid.");
         Simulation.Mechanics.Validate();
         Simulation.Stochastic.Validate();
+        if (SchemaId == PreviousSchemaId &&
+            Simulation.Stochastic.SemanticOutcomes.Length != 0)
+            throw new InvalidDataException(
+                "Legacy provider replay captures cannot contain semantic outcomes.");
     }
 }
 
+public sealed record SimulationProviderReplaySemanticOutcomeDiffV111(
+    string Status, int Compared, int? FirstMismatchIndex,
+    string? MismatchField);
+
 /// <summary>
 /// Composed evidence for comparing two provider trajectories under the same
-/// player actions: matching origin mechanics, ordered typed random outcomes,
-/// and final mechanics. It does not establish source-hook parity or law
-/// fidelity.
+/// player actions: matching origin mechanics, one complete comparable
+/// stochastic trace, and final mechanics. It does not establish source-hook
+/// parity or law fidelity.
 /// </summary>
 public sealed record SimulationProviderReplayComparisonV111(
     string SchemaId,
@@ -979,12 +1066,15 @@ public sealed record SimulationProviderReplayComparisonV111(
     bool RequireNativeCursorEquality)
 {
     public const string CurrentSchemaId =
-        "sts2-v111-simulation-provider-replay-comparison-v3";
+        "sts2-v111-simulation-provider-replay-comparison-v4";
 
     public string LeftCaptureProvenance { get; init; } =
         SimulationProviderReplayCaptureProvenanceV111.CallerSupplied;
     public string RightCaptureProvenance { get; init; } =
         SimulationProviderReplayCaptureProvenanceV111.CallerSupplied;
+    public SimulationProviderReplaySemanticOutcomeDiffV111 SemanticOutcomes
+        { get; init; } = new(
+            "SEMANTIC_OUTCOME_TRACE_UNAVAILABLE", 0, null, null);
 
     public bool SamePlayerActions => StringComparer.Ordinal.Equals(
         LeftActionFingerprint, RightActionFingerprint);
@@ -1001,6 +1091,24 @@ public sealed record SimulationProviderReplayComparisonV111(
         SimulationProviderReplayCaptureProvenanceV111
             .HasCompleteTypedBoundaryTrace(RightCaptureProvenance);
 
+    public bool SemanticOutcomeComparisonAvailable =>
+        SimulationProviderReplayCaptureProvenanceV111
+            .HasCompleteSemanticOutcomeTrace(LeftCaptureProvenance) &&
+        SimulationProviderReplayCaptureProvenanceV111
+            .HasCompleteSemanticOutcomeTrace(RightCaptureProvenance);
+
+    public bool SameSemanticOutcomes =>
+        SemanticOutcomeComparisonAvailable &&
+        SemanticOutcomes.Status == "SEMANTIC_OUTCOMES_CONSISTENT";
+
+    public bool StochasticOutcomeComparisonAvailable =>
+        TypedRandomBoundaryComparisonAvailable ||
+        SemanticOutcomeComparisonAvailable;
+
+    public bool SameStochasticOutcomes =>
+        (TypedRandomBoundaryComparisonAvailable &&
+            SameTypedRandomBoundaries) || SameSemanticOutcomes;
+
     /// <summary>
     /// Reports endpoint mechanics agreement for captures with the same player
     /// actions and origin. This does not require matching typed random traces
@@ -1014,15 +1122,15 @@ public sealed record SimulationProviderReplayComparisonV111(
 
     public bool EquivalentUnderComparedActions =>
         SchemaId == CurrentSchemaId && SamePlayerActions &&
-        SameOriginMechanics && SameTypedRandomBoundaries &&
+        SameOriginMechanics && SameStochasticOutcomes &&
         SameResultMechanics;
 }
 
 /// <summary>
-/// Composes the existing typed provider-trace and mechanics-projection
-/// comparators. Inputs must cover the same action interval and capture every
-/// typed random boundary in that interval. The result is diagnostic evidence,
-/// not a native-fidelity or probability-law claim.
+/// Composes the existing typed provider-trace, semantic outcome, and
+/// mechanics-projection comparators. Inputs must cover the same action
+/// interval and each complete trace it claims to provide. The result is
+/// diagnostic evidence, not a native-fidelity or probability-law claim.
 /// </summary>
 public static class SimulationProviderReplayComparisonEngineV111
 {
@@ -1045,8 +1153,45 @@ public static class SimulationProviderReplayComparisonEngineV111
         return comparison with
         {
             LeftCaptureProvenance = left.CaptureProvenance,
-            RightCaptureProvenance = right.CaptureProvenance
+            RightCaptureProvenance = right.CaptureProvenance,
+            SemanticOutcomes = CompareSemanticOutcomes(
+                left.Stochastic.SemanticOutcomes,
+                right.Stochastic.SemanticOutcomes,
+                SimulationProviderReplayCaptureProvenanceV111
+                    .HasCompleteSemanticOutcomeTrace(left.CaptureProvenance) &&
+                SimulationProviderReplayCaptureProvenanceV111
+                    .HasCompleteSemanticOutcomeTrace(right.CaptureProvenance))
         };
+    }
+
+    private static SimulationProviderReplaySemanticOutcomeDiffV111
+        CompareSemanticOutcomes(
+            SimulationProviderReplaySemanticOutcomeV111[] left,
+            SimulationProviderReplaySemanticOutcomeV111[] right,
+            bool available)
+    {
+        if (!available)
+            return new("SEMANTIC_OUTCOME_TRACE_UNAVAILABLE", 0, null, null);
+        var shared = Math.Min(left.Length, right.Length);
+        for (var index = 0; index < shared; index++)
+        {
+            var expected = left[index];
+            var actual = right[index];
+            var mismatchField = expected.TransitionIndex !=
+                actual.TransitionIndex ? "transition_index" :
+                expected.EventId != actual.EventId ? "event_id" :
+                expected.LawId != actual.LawId ? "law_id" :
+                expected.OutcomeId != actual.OutcomeId ? "outcome_id" :
+                expected.OutcomeIndex != actual.OutcomeIndex
+                    ? "outcome_index" : null;
+            if (mismatchField is not null)
+                return new("SEMANTIC_OUTCOME_MISMATCH", index, index,
+                    mismatchField);
+        }
+        if (left.Length != right.Length)
+            return new("SEMANTIC_OUTCOME_LENGTH_MISMATCH", shared, shared,
+                "outcome_count");
+        return new("SEMANTIC_OUTCOMES_CONSISTENT", shared, null, null);
     }
 
     public static SimulationProviderReplayComparisonV111 Compare(

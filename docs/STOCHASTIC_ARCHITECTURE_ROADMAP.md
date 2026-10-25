@@ -5330,8 +5330,20 @@ Chance Law outcomes remain semantic decisions and are not mislabeled as
 primitive provider draws. Comparison reports whether typed-boundary comparison
 is available and whether endpoint mechanics match for the same actions and
 origin; the stricter trajectory-equivalence result still requires complete,
-matching typed boundaries. JSONL advertises the new handle. Static source
+matching stochastic evidence. JSONL advertises the new handle. Static source
 review and `git diff --check` only; no tests or builds were run.
+
+**S4 semantic outcome replay comparison increment (2026-10-25):** Provider
+replay captures now retain the indexed Nature event, law, and selected outcome
+identities from fully replay-validated semantic combat histories. Comparison
+reports semantic outcome availability and equality separately from typed
+primitive boundaries; complete semantic equality can establish trajectory
+equivalence for two semantic ReferenceNature captures. Capture v2 remains
+readable with endpoint-only provenance and no semantic trace. A normalized
+Native semantic trace and cross-provider semantic outcome equality remain
+open. Release builds for Core and CLI passed with zero warnings and errors;
+the CLI build also exposed and fixed existing JSONL response and handle-lookup
+compile errors. No tests were run.
 
 **S4 semantic pool-shuffle outcome identity increment (2026-10-25):** Semantic
 enumeration v2 now identifies each Fisher–Yates swap outcome by the current

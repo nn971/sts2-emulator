@@ -863,7 +863,7 @@ internal static class PrototypeAiJsonlServer
                 candidateLabels = pendingBoundary.CandidateLabels,
                 chanceLaw,
                 probabilityStatus = pendingProbabilityStatus
-            } : null;
+            };
             var actions = session.CanAdvancePlayer
                 ? environment.Observe(session.Run).LegalActions
                 : Array.Empty<PrototypeAiAction>();
@@ -10317,7 +10317,7 @@ internal static class PrototypeAiJsonlServer
                                             "Unknown ReferenceNature Native Shovel handle: " +
                                             handle);
                                 if (hasReferenceNatureTrialHandle)
-                                    return referenceNatureTrialRunStateHandles
+                                    return referenceNatureTrialStates
                                         .TryGetValue(handle, out var trial)
                                         ? SimulationProviderReplayCaptureV111
                                             .FromReferenceNatureControlledActionSession(
@@ -10326,7 +10326,7 @@ internal static class PrototypeAiJsonlServer
                                             "Unknown ReferenceNature Trial handle: " +
                                             handle);
                                 if (hasReferenceNatureTrashHeapHandle)
-                                    return referenceNatureTrashHeapRunStateHandles
+                                    return referenceNatureTrashHeapStates
                                         .TryGetValue(handle, out var trashHeap)
                                         ? SimulationProviderReplayCaptureV111
                                             .FromReferenceNatureControlledActionSession(
@@ -10335,7 +10335,7 @@ internal static class PrototypeAiJsonlServer
                                             "Unknown ReferenceNature Trash Heap handle: " +
                                             handle);
                                 if (hasReferenceNatureTabletOfTruthHandle)
-                                    return referenceNatureTabletOfTruthRunStateHandles
+                                    return referenceNatureTabletOfTruthStates
                                         .TryGetValue(handle, out var tabletOfTruth)
                                         ? SimulationProviderReplayCaptureV111
                                             .FromReferenceNatureControlledActionSession(
@@ -10344,7 +10344,7 @@ internal static class PrototypeAiJsonlServer
                                             "Unknown ReferenceNature Tablet of Truth handle: " +
                                             handle);
                                 if (hasReferenceNatureNativeEventRelicHandle)
-                                    return referenceNatureNativeEventRelicRunStateHandles
+                                    return referenceNatureNativeEventRelicStates
                                         .TryGetValue(handle, out var nativeEventRelic)
                                         ? SimulationProviderReplayCaptureV111
                                             .FromReferenceNatureControlledActionSession(
@@ -10353,7 +10353,7 @@ internal static class PrototypeAiJsonlServer
                                             "Unknown ReferenceNature Native event-relic handle: " +
                                             handle);
                                 if (hasReferenceNatureNativeEventGoldHandle)
-                                    return referenceNatureNativeEventGoldRunStateHandles
+                                    return referenceNatureNativeEventGoldStates
                                         .TryGetValue(handle, out var nativeEventGold)
                                         ? SimulationProviderReplayCaptureV111
                                             .FromReferenceNatureControlledActionSession(
@@ -10362,7 +10362,7 @@ internal static class PrototypeAiJsonlServer
                                             "Unknown ReferenceNature Native event-gold handle: " +
                                             handle);
                                 if (hasReferenceNatureInfestedAutomatonHandle)
-                                    return referenceNatureInfestedAutomatonRunStateHandles
+                                    return referenceNatureInfestedAutomatonStates
                                         .TryGetValue(handle, out var infestedAutomaton)
                                         ? SimulationProviderReplayCaptureV111
                                             .FromReferenceNatureControlledActionSession(
@@ -10371,7 +10371,7 @@ internal static class PrototypeAiJsonlServer
                                             "Unknown ReferenceNature Infested Automaton handle: " +
                                             handle);
                                 if (hasReferenceNatureGloryReflectionsHandle)
-                                    return referenceNatureGloryReflectionsRunStateHandles
+                                    return referenceNatureGloryReflectionsStates
                                         .TryGetValue(handle, out var gloryReflections)
                                         ? SimulationProviderReplayCaptureV111
                                             .FromReferenceNatureControlledActionSession(
@@ -10380,7 +10380,7 @@ internal static class PrototypeAiJsonlServer
                                             "Unknown ReferenceNature Glory Reflections handle: " +
                                             handle);
                                 if (hasReferenceNatureNativeEventShuffleHandle)
-                                    return referenceNatureNativeEventShuffleRunStateHandles
+                                    return referenceNatureNativeEventShuffleStates
                                         .TryGetValue(handle, out var nativeEventShuffle)
                                         ? SimulationProviderReplayCaptureV111
                                             .FromReferenceNatureControlledActionSession(
@@ -10389,7 +10389,7 @@ internal static class PrototypeAiJsonlServer
                                             "Unknown ReferenceNature Native event-shuffle handle: " +
                                             handle);
                                 if (hasReferenceNatureEndlessConveyorHandle)
-                                    return referenceNatureEndlessConveyorRunStateHandles
+                                    return referenceNatureEndlessConveyorStates
                                         .TryGetValue(handle, out var endlessConveyor)
                                         ? SimulationProviderReplayCaptureV111
                                             .FromReferenceNatureControlledActionSession(
@@ -10398,7 +10398,7 @@ internal static class PrototypeAiJsonlServer
                                             "Unknown ReferenceNature Endless Conveyor handle: " +
                                             handle);
                                 if (hasReferenceNaturePunchOffFightHandle)
-                                    return referenceNaturePunchOffFightRunStateHandles
+                                    return referenceNaturePunchOffFightStates
                                         .TryGetValue(handle, out var punchOffFight)
                                         ? SimulationProviderReplayCaptureV111
                                             .FromReferenceNatureControlledActionSession(
@@ -10407,7 +10407,7 @@ internal static class PrototypeAiJsonlServer
                                             "Unknown ReferenceNature Punch Off fight handle: " +
                                             handle);
                                 if (hasReferenceNaturePunchOffRewardHandle)
-                                    return referenceNaturePunchOffRewardRunStateHandles
+                                    return referenceNaturePunchOffRewardStates
                                         .TryGetValue(handle, out var punchOffReward)
                                         ? SimulationProviderReplayCaptureV111
                                             .FromReferenceNatureControlledActionSession(
