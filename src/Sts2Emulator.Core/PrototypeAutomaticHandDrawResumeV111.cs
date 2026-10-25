@@ -355,12 +355,11 @@ public sealed partial class PrototypeGameEngine
         if (semanticChoiceBoundary || semanticDrawBoundary ||
             semanticSavedStage)
         {
-            var advanced = PublishDrawCardsResult(segment);
             var drawFrame = semanticDraw ?? CreateSemanticDrawResultFrame(
                 drawn.RemainingCount, fromHandDraw: true,
                 eventDepth: 0, automatic: true);
             return ResolveControlledSemanticDrawResult(
-                segment with { Run = advanced }, drawFrame,
+                segment, drawFrame,
                 continuation: null,
                 automaticHandDrawRequested: requestedCount,
                 recycleSite: recycleSite,

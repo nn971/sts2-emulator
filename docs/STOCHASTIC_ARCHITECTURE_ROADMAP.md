@@ -6069,9 +6069,9 @@ fidelity or source-hook completeness. Core and CLI Release builds passed with
 zero warnings or errors; `git diff --check` passed. No tests were run.
 
 **S4 paired hand-draw router publication reuse (2026-10-26):** The shared
-automatic hand-draw boundary router now publishes the paired segment through
-`PublishDrawCardsResult` before passing a semantic suspension to its result
-owner. This removes a direct `RunState` reconstruction from the router and
-keeps the segment as the unit of provider/mechanics publication through
-boundary interpretation. No snapshot or transcript schema changed. Core
-Release build and `git diff --check` passed; no tests were run.
+automatic hand-draw boundary router now passes the paired segment intact to
+the semantic result owner. That owner publishes mechanics once through
+`PublishDrawCardsResult` before interpreting the draw boundary, removing the
+router's temporary `RunState` reconstruction and duplicate publication. No
+snapshot or transcript schema changed. Core Release build and
+`git diff --check` passed; no tests were run.
