@@ -1057,7 +1057,7 @@ event-effect, and enemy-defeat continuation mechanics from their existing
 mechanics owners, including action identity, effect cursor, queued
 consequences, and the saved fatal follow-up, while omitting their random
 requests and decision payloads. The mechanics comparison schema advances to
-v19 for this expanded projection; the provider replay comparison is v6.
+v19 for this expanded projection; the provider replay comparison is v7.
 `SimulationMechanicsComparisonV111` copies the difference array on
 construction and replacement, then returns defensive copies to keep the
 diagnostic result immutable to callers.
@@ -1364,7 +1364,7 @@ snapshot, next target index, and pending extra kill rounds, so earlier hits
 are not replayed after a hook choice. Pending event replay uses the same
 resumable dispatcher, and restore validates the defeated target against the
 saved follow-up and repeated-damage cursor. The mechanics comparison retains
-this progress under schema v19; provider replay comparison is v6.
+this progress under schema v19; provider replay comparison is v7.
 
 Toolbox's first-turn `BeforeHandDraw` generated offer now composes the
 existing full-pool shuffle and ChoicePool card-selection continuations. Exact
