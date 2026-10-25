@@ -1183,18 +1183,21 @@ diagnostic result immutable to callers.
 
 `SimulationProviderReplayCaptureV111` groups an origin run, player-action
 sequence, ordered typed random-boundary trace, semantic event-outcome trace,
-and result run in the existing `SimulationStateV111` envelope. Its v7 schema
+and result run in the existing `SimulationStateV111` envelope. Its v8 schema
 includes the initiating event-choice action in ReferenceNature event-choice
-intervals, can carry one mechanics snapshot after each completed action, and
-records the ordered physical card identities drawn during each action. Native
+intervals, carries one mechanics snapshot after each completed action for
+replay-validated captures, and records the ordered physical card identities
+drawn during each action. Native
 committed-order draws and ReferenceNature deferred draw choices therefore
 compare through the same mechanics-owned trace without treating a Native draw
 as a separate RNG call. Earlier captures remain readable with their original
 interval meaning; v5 and v6 captures may include action-boundary trajectories
-but do not provide the new draw trace. Explicit fields are marked
-caller-supplied and unverified, while scripted and Native-policy factories
-mark the histories they replay-validate. A v7 replay-validated capture must
-include its per-action draw trace; legacy schema IDs reject that field.
+but do not provide the draw trace. V7 remains readable with its original
+optional action-boundary trajectory, and replay-validated v7 captures still
+require their draw-identity trace. Caller-supplied v8 captures may omit both
+per-action traces and remain unverified; replay-validated v8 captures require
+the action-boundary mechanics and draw-identity trace for every action. Legacy
+schema IDs reject fields introduced after their version.
 `SimulationProviderReplayComparisonEngineV111` compares two such captures by
 fingerprinting their action sequences, comparing origin mechanics, comparing
 every supplied typed boundary in order, comparing complete semantic outcome

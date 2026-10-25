@@ -467,17 +467,19 @@ public sealed record SimulationProviderReplayCaptureV111(
         SimulationProviderReplayStochasticCaptureV111> Simulation)
 {
     public const string PreviousSchemaId =
-        "sts2-v111-simulation-provider-replay-capture-v6";
+        "sts2-v111-simulation-provider-replay-capture-v7";
     public const string PreviousPreviousSchemaId =
-        "sts2-v111-simulation-provider-replay-capture-v5";
+        "sts2-v111-simulation-provider-replay-capture-v6";
     public const string PreviousPreviousPreviousSchemaId =
-        "sts2-v111-simulation-provider-replay-capture-v4";
+        "sts2-v111-simulation-provider-replay-capture-v5";
     public const string PreviousPreviousPreviousPreviousSchemaId =
+        "sts2-v111-simulation-provider-replay-capture-v4";
+    public const string PreviousPreviousPreviousPreviousPreviousSchemaId =
         "sts2-v111-simulation-provider-replay-capture-v3";
     public const string OlderSchemaId =
         "sts2-v111-simulation-provider-replay-capture-v2";
     public const string CurrentSchemaId =
-        "sts2-v111-simulation-provider-replay-capture-v7";
+        "sts2-v111-simulation-provider-replay-capture-v8";
 
     [System.Text.Json.Serialization.JsonInclude]
     public string CaptureProvenance { get; private init; } =
@@ -2642,7 +2644,9 @@ public sealed record SimulationProviderReplayCaptureV111(
         if (SchemaId is not (CurrentSchemaId or PreviousSchemaId or
                 PreviousPreviousSchemaId or
                 PreviousPreviousPreviousSchemaId or
-                PreviousPreviousPreviousPreviousSchemaId or OlderSchemaId) ||
+                PreviousPreviousPreviousPreviousSchemaId or
+                PreviousPreviousPreviousPreviousPreviousSchemaId or
+                OlderSchemaId) ||
             !SimulationProviderReplayCaptureProvenanceV111
                 .IsKnown(CaptureProvenance) || Simulation is null ||
             Simulation.Mechanics is null || Simulation.Stochastic is null)
@@ -2651,20 +2655,27 @@ public sealed record SimulationProviderReplayCaptureV111(
         Simulation.Mechanics.Validate();
         Simulation.Stochastic.Validate();
         if (SchemaId is not (CurrentSchemaId or PreviousSchemaId or
-                PreviousPreviousSchemaId) &&
+                PreviousPreviousSchemaId or
+                PreviousPreviousPreviousSchemaId) &&
             Simulation.Mechanics.HasActionBoundaryStates)
             throw new InvalidDataException(
                 "Legacy provider replay captures cannot contain action-boundary mechanics snapshots.");
-        if (SchemaId != CurrentSchemaId &&
+        if (SchemaId is not (CurrentSchemaId or PreviousSchemaId) &&
             Simulation.Mechanics.DrawnCardInstanceIdsByAction is not null)
             throw new InvalidDataException(
                 "Legacy provider replay captures cannot contain drawn-card identity traces.");
-        if (SchemaId == CurrentSchemaId &&
+        if ((SchemaId is CurrentSchemaId or PreviousSchemaId) &&
             CaptureProvenance !=
                 SimulationProviderReplayCaptureProvenanceV111.CallerSupplied &&
             Simulation.Mechanics.DrawnCardInstanceIdsByAction is null)
             throw new InvalidDataException(
-                "Replay-validated provider captures require drawn-card identity traces.");
+                "Replay-validated v7 and v8 provider captures require drawn-card identity traces.");
+        if (SchemaId == CurrentSchemaId &&
+            CaptureProvenance !=
+                SimulationProviderReplayCaptureProvenanceV111.CallerSupplied &&
+            !Simulation.Mechanics.HasActionBoundaryStates)
+            throw new InvalidDataException(
+                "Replay-validated provider captures require action-boundary mechanics snapshots.");
         if (SchemaId == OlderSchemaId &&
             Simulation.Stochastic.SemanticOutcomes.Length != 0)
             throw new InvalidDataException(

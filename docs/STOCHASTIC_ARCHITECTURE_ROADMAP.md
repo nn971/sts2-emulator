@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 replay action-boundary capture increment (2026-10-26):** Provider replay
+capture v8 requires a mechanics snapshot after each completed action whenever
+the capture provenance is replay-validated, alongside its existing ordered
+draw-identity trace. Caller-supplied captures remain explicitly unverified
+and may omit those trajectories; v7 and earlier captures remain readable.
+Core and CLI Release builds passed with zero warnings or errors;
+`git diff --check` passed. No tests were run.
+
 **S4 semantic replay provenance ownership increment (2026-10-26):** The
 provider-independent semantic-identity provenance set now has one classifier
 shared by known-provenance checks, complete trace availability, and capture
