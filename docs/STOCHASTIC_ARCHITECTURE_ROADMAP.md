@@ -21,6 +21,14 @@ boundary. These paths can now participate in the v6 action-trajectory
 comparison alongside Native-policy and semantic combat captures. Core Release
 build passed with zero warnings or errors; no tests were run.
 
+**S4 ReferenceNature event-choice interval capture increment (2026-10-25):**
+Provider replay capture v6 now includes the initiating `event_choice` action
+that was previously implicit in a completed ReferenceNature event-choice
+session, then groups each interleaved Nature decision with its action and
+replays those groups to retain settled mechanics checkpoints. Capture schemas
+v2–v5 keep their prior interval semantics. Core and CLI Release builds passed
+with zero warnings or errors; no tests were run.
+
 **Core continuation integration and cursor lineage (2026-10-25):** Restored
 consistency across the composed controlled run-action, semantic draw, Native
 audit, and ReferenceNature continuation APIs. ReferenceNature now retains

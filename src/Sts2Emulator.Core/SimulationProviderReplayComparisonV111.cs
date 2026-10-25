@@ -329,13 +329,15 @@ public sealed record SimulationProviderReplayCaptureV111(
         SimulationProviderReplayStochasticCaptureV111> Simulation)
 {
     public const string PreviousSchemaId =
-        "sts2-v111-simulation-provider-replay-capture-v4";
+        "sts2-v111-simulation-provider-replay-capture-v5";
     public const string PreviousPreviousSchemaId =
+        "sts2-v111-simulation-provider-replay-capture-v4";
+    public const string PreviousPreviousPreviousSchemaId =
         "sts2-v111-simulation-provider-replay-capture-v3";
     public const string OlderSchemaId =
         "sts2-v111-simulation-provider-replay-capture-v2";
     public const string CurrentSchemaId =
-        "sts2-v111-simulation-provider-replay-capture-v5";
+        "sts2-v111-simulation-provider-replay-capture-v6";
 
     [System.Text.Json.Serialization.JsonInclude]
     public string CaptureProvenance { get; private init; } =
@@ -430,30 +432,14 @@ public sealed record SimulationProviderReplayCaptureV111(
                 "Provider replay capture requires a committed scripted-run boundary.");
 
         var completedActions = session.CompletedActions;
-        var actionBoundaryStates = new List<RunState>(
-            completedActions.Length);
-        var replay = session.Origin;
-        using (RandomBoundaryJournalV111.Begin())
-        {
-            foreach (var completedAction in completedActions)
-            {
-                var replayedAction =
-                    ScriptedRunActionSessionV111.ReplayCompleted(
-                        replay, completedAction.Action,
-                        completedAction.Decisions);
-                replay = replayedAction.Run?.Fork() ??
-                    throw new InvalidDataException(
-                        "Completed scripted action replay has no run state.");
-                actionBoundaryStates.Add(replay);
-            }
-        }
-        if (CanonicalJson.Sha256(replay) !=
-            CanonicalJson.Sha256(session.Run))
-            throw new InvalidDataException(
-                "Scripted action-boundary replay differs from the saved run.");
+        var actions = completedActions
+            .Select(action => action.Action).ToArray();
+        var actionBoundaryStates = ReplayScriptedActionBoundaries(
+            session.Origin, actions,
+            completedActions.Select(action => action.Decisions).ToArray(),
+            session.Run);
         return FromScriptedDecisions(
-            session.Origin,
-            completedActions.Select(action => action.Action).ToArray(),
+            session.Origin, actions,
             completedActions.SelectMany(action => action.Decisions),
             session.Run,
             SimulationProviderReplayCaptureProvenanceV111
@@ -810,8 +796,9 @@ public sealed record SimulationProviderReplayCaptureV111(
 
     /// <summary>
     /// Builds a capture from a completed ReferenceNature event-choice
-    /// session. Restore replays the mixed player-action and Nature chronology;
-    /// the completed controlled trace supplies the typed stochastic requests.
+    /// session. The initiating event choice and subsequent player actions are
+    /// replayed with their interleaved Nature decisions to retain each settled
+    /// mechanics boundary.
     /// </summary>
     public static SimulationProviderReplayCaptureV111
         FromReferenceNatureEventChoiceSession(
@@ -875,15 +862,45 @@ public sealed record SimulationProviderReplayCaptureV111(
                     decision, trace.CandidateLabels[index])).ToArray();
         }
 
-        var actions = replay.Steps
-            .Where(step => step.Kind == "player_action")
-            .Select(step => step.PlayerAction ?? throw new InvalidDataException(
-                "ReferenceNature event-choice step has no player action."))
-            .ToArray();
+        var actions = new List<GameAction>
+        {
+            GameAction.Create("event_choice",
+                new EventChoicePayload(replay.ChoiceId))
+        };
+        var decisionsByAction = new List<
+            List<ControlledStochasticDecisionV111>> { new() };
+        var decisionCursor = 0;
+        foreach (var step in replay.Steps)
+        {
+            if (step.Kind == "nature")
+            {
+                if (decisionCursor >= decisions.Length)
+                    throw new InvalidDataException(
+                        "ReferenceNature event-choice chronology exceeds its typed decision trace.");
+                decisionsByAction[^1].Add(decisions[decisionCursor++]);
+                continue;
+            }
+
+            var playerAction = step.PlayerAction ??
+                throw new InvalidDataException(
+                    "ReferenceNature event-choice step has no player action.");
+            actions.Add(playerAction);
+            decisionsByAction.Add([]);
+        }
+        if (decisionCursor != decisions.Length)
+            throw new InvalidDataException(
+                "ReferenceNature event-choice typed decision trace exceeds its chronology.");
+        var actionValues = actions.ToArray();
+        var typedDecisionsByAction = decisionsByAction
+            .Select(action => action.ToArray()).ToArray();
+        var actionBoundaryStates = ReplayScriptedActionBoundaries(
+            replay.Origin, actionValues, typedDecisionsByAction,
+            replay.Run);
         return FromScriptedDecisions(
-            replay.Origin, actions, decisions, replay.Run,
+            replay.Origin, actionValues, decisions, replay.Run,
             SimulationProviderReplayCaptureProvenanceV111
-                .ReferenceNatureEventChoiceReplayValidated);
+                .ReferenceNatureEventChoiceReplayValidated,
+            actionBoundaryStates);
     }
 
     /// <summary>
@@ -1287,6 +1304,37 @@ public sealed record SimulationProviderReplayCaptureV111(
         return capture;
     }
 
+    private static RunState[] ReplayScriptedActionBoundaries(
+        RunState origin, IReadOnlyList<GameAction> actions,
+        IReadOnlyList<ControlledStochasticDecisionV111[]> decisionsByAction,
+        RunState expectedResult)
+    {
+        if (actions.Count != decisionsByAction.Count)
+            throw new InvalidDataException(
+                "Provider replay action and decision group counts differ.");
+
+        var boundaries = new RunState[actions.Count];
+        var replay = origin.Fork();
+        using (RandomBoundaryJournalV111.Begin())
+        {
+            for (var index = 0; index < actions.Count; index++)
+            {
+                var replayedAction =
+                    ScriptedRunActionSessionV111.ReplayCompleted(
+                        replay, actions[index], decisionsByAction[index]);
+                replay = replayedAction.Run?.Fork() ??
+                    throw new InvalidDataException(
+                        "Completed scripted action replay has no run state.");
+                boundaries[index] = replay;
+            }
+        }
+        if (CanonicalJson.Sha256(replay) !=
+            CanonicalJson.Sha256(expectedResult))
+            throw new InvalidDataException(
+                "Provider replay action-boundary replay differs from the saved result.");
+        return boundaries;
+    }
+
     public SimulationProviderReplayCaptureV111 Fork()
     {
         Validate();
@@ -1303,7 +1351,8 @@ public sealed record SimulationProviderReplayCaptureV111(
     public void Validate()
     {
         if (SchemaId is not (CurrentSchemaId or PreviousSchemaId or
-                PreviousPreviousSchemaId or OlderSchemaId) ||
+                PreviousPreviousSchemaId or
+                PreviousPreviousPreviousSchemaId or OlderSchemaId) ||
             !SimulationProviderReplayCaptureProvenanceV111
                 .IsKnown(CaptureProvenance) || Simulation is null ||
             Simulation.Mechanics is null || Simulation.Stochastic is null)
@@ -1311,7 +1360,7 @@ public sealed record SimulationProviderReplayCaptureV111(
                 "Provider replay capture envelope is invalid.");
         Simulation.Mechanics.Validate();
         Simulation.Stochastic.Validate();
-        if (SchemaId != CurrentSchemaId &&
+        if (SchemaId is not (CurrentSchemaId or PreviousSchemaId) &&
             Simulation.Mechanics.HasActionBoundaryStates)
             throw new InvalidDataException(
                 "Legacy provider replay captures cannot contain action-boundary mechanics snapshots.");
@@ -1319,7 +1368,8 @@ public sealed record SimulationProviderReplayCaptureV111(
             Simulation.Stochastic.SemanticOutcomes.Length != 0)
             throw new InvalidDataException(
                 "Legacy provider replay captures cannot contain semantic outcomes.");
-        if ((SchemaId is OlderSchemaId or PreviousPreviousSchemaId) &&
+        if ((SchemaId is OlderSchemaId or
+                PreviousPreviousPreviousSchemaId) &&
             CaptureProvenance is
                 (SimulationProviderReplayCaptureProvenanceV111
                     .ReferenceNatureSemanticIdentityReplayValidated or

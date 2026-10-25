@@ -1064,10 +1064,12 @@ diagnostic result immutable to callers.
 
 `SimulationProviderReplayCaptureV111` groups an origin run, player-action
 sequence, ordered typed random-boundary trace, semantic event-outcome trace,
-and result run in the existing `SimulationStateV111` envelope. Its v5 schema
-can also carry one mechanics snapshot after each completed player action;
-older captures remain readable with their original trace meaning and without
-an action-boundary trajectory. Explicit fields are marked caller-supplied and unverified, while
+and result run in the existing `SimulationStateV111` envelope. Its v6 schema
+includes the initiating event-choice action in ReferenceNature event-choice
+intervals and can carry one mechanics snapshot after each completed action.
+Earlier captures remain readable with their original interval meaning; v5
+captures may include action-boundary trajectories for the replay paths that
+already supplied them. Explicit fields are marked caller-supplied and unverified, while
 scripted and Native-policy factories mark the histories they replay-validate.
 `SimulationProviderReplayComparisonEngineV111` compares two such captures by
 fingerprinting their action sequences, comparing origin mechanics, comparing
@@ -1112,8 +1114,9 @@ individually identified; unsupported or unannotated boundaries leave semantic
 comparison unavailable. This permits cross-provider trajectory comparison
 for covered intervals without claiming completeness for other Native captures.
 Older v2 captures retain endpoint-only provenance, v3 captures keep their
-original trace meaning, and v4 captures retain semantic-identity trace support.
-None is treated as carrying an action-boundary trajectory. The result
+original trace meaning, v4 captures retain semantic-identity trace support,
+and v5 captures retain their original action intervals and any supplied
+action-boundary trajectory. The result
 exposes `TypedRandomBoundaryComparisonAvailable` and
 `SemanticOutcomeComparisonAvailable` separately, so an absent trace is not
 reported as a matching empty trace. `SameSemanticOutcomes` and
@@ -1157,10 +1160,11 @@ into primitive provider draws, so this provenance explicitly has no complete
 typed-boundary trace. Its indexed semantic trace can establish intermediate
 outcome equivalence against another complete semantic trace. JSONL accepts
 `<side>_reference_nature_semantic_combat_handle` for this path.
-`FromReferenceNatureEventChoiceSession` restores and replays the
-session's interleaved player-action/Nature chronology, checks the completed
-controlled-choice trace against its Nature outcomes and prior history, then
-materializes its typed requests through the same boundary journal. JSONL accepts
+`FromReferenceNatureEventChoiceSession` restores and replays the session's
+initiating event choice plus its interleaved follow-up player-action/Nature
+chronology, checks the completed controlled-choice trace against its Nature
+outcomes and prior history, then materializes its typed requests through the
+same boundary journal. It retains each settled action boundary. JSONL accepts
 `<side>_reference_nature_event_choice_handle` for this path. It does not
 establish Native source-hook parity or law fidelity.
 `FromReferenceNatureControlledActionSession` uses one shared interface for
