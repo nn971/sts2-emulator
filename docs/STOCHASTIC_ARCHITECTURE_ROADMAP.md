@@ -2,6 +2,16 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 semantic ReferenceNature law-replay ownership (2026-10-25):** The
+semantic combat session now records each Nature selection's position in its
+mixed player-action/mechanics history. Restore rebuilds the saved prefix,
+re-queries and re-samples each indexed law from the initial cursor, and checks
+the resulting selection and mechanics history. The SemanticPilot history
+replayer now exposes its shared prefix/transition owners for this path. Older
+snapshots without decision positions retain an unindexed prefix and can append
+replay-validated decisions after restore. Static source review and
+`git diff --check` only; no tests or builds were run.
+
 **S4 semantic ReferenceNature transcript ownership (2026-10-25):** The base
 semantic combat session now composes the shared initial/current cursor and
 typed transcript owner through `SimulationStateV111`. Each selected law

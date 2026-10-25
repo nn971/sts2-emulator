@@ -130,6 +130,8 @@ public sealed record ReferenceNatureSessionSnapshotV111(
     // snapshots begin their transcript at the saved current cursor.
     public ReferenceNatureStateV111? InitialNatureState { get; init; }
     public ReferenceNatureSelectionV111[]? DecisionTranscript { get; init; }
+    public int? InitialHistoryLength { get; init; }
+    public int?[]? DecisionHistoryIndices { get; init; }
 }
 
 /// <summary>
@@ -140,6 +142,7 @@ public sealed record ReferenceNatureSessionStochasticStateV111
 {
     private ReferenceNatureStochasticStateV111<ReferenceNatureSelectionV111>
         _cursor = null!;
+    private int?[]? _decisionHistoryIndices = [];
 
     public ReferenceNatureStochasticStateV111<ReferenceNatureSelectionV111>
         Cursor
@@ -166,17 +169,43 @@ public sealed record ReferenceNatureSessionStochasticStateV111
         init => Cursor = Cursor with { DecisionTranscript = value };
     }
 
+    /// <summary>
+    /// History boundary before this session's Nature decisions. Null marks a
+    /// legacy snapshot that predates replayable session-transcript offsets.
+    /// </summary>
+    public int? InitialHistoryLength { get; init; }
+
+    /// <summary>
+    /// History position for each ReferenceNature decision. Null entries form
+    /// a legacy prefix whose positions were not serialized.
+    /// </summary>
+    public int?[]? DecisionHistoryIndices
+    {
+        get => _decisionHistoryIndices is null ? null :
+            (int?[])_decisionHistoryIndices.Clone();
+        init => _decisionHistoryIndices = value is null ? null :
+            (int?[])value.Clone();
+    }
+
     public ReferenceNatureSessionStochasticStateV111(
-        ReferenceNatureStateV111 natureState)
+        ReferenceNatureStateV111 natureState,
+        int? initialHistoryLength = null,
+        int?[]? decisionHistoryIndices = null)
         : this(new ReferenceNatureStochasticStateV111<
-            ReferenceNatureSelectionV111>(natureState, natureState, []))
+            ReferenceNatureSelectionV111>(natureState, natureState, []),
+            initialHistoryLength, decisionHistoryIndices)
     {
     }
 
     public ReferenceNatureSessionStochasticStateV111(
-        ReferenceNatureStochasticStateV111<ReferenceNatureSelectionV111> cursor)
+        ReferenceNatureStochasticStateV111<ReferenceNatureSelectionV111> cursor,
+        int? initialHistoryLength = null,
+        int?[]? decisionHistoryIndices = null)
     {
         Cursor = cursor ?? throw new ArgumentNullException(nameof(cursor));
+        InitialHistoryLength = initialHistoryLength;
+        DecisionHistoryIndices = decisionHistoryIndices ??
+            (cursor.DecisionTranscript.Length == 0 ? [] : null);
     }
 
     public void Deconstruct(out ReferenceNatureStateV111 NatureState) =>
@@ -184,13 +213,44 @@ public sealed record ReferenceNatureSessionStochasticStateV111
 
     public ReferenceNatureSessionStochasticStateV111 Fork() => this with
     {
-        Cursor = Cursor.Fork()
+        Cursor = Cursor.Fork(),
+        DecisionHistoryIndices = DecisionHistoryIndices
     };
 
     public void Validate()
     {
         Cursor.Validate();
+        if (InitialHistoryLength is < 0)
+            throw new InvalidDataException(
+                "ReferenceNature semantic session history offset is invalid.");
         var transcript = DecisionTranscript;
+        var historyIndices = DecisionHistoryIndices;
+        if (historyIndices is not null &&
+            historyIndices.Length != transcript.Length)
+            throw new InvalidDataException(
+                "ReferenceNature semantic transcript history indexes are inconsistent.");
+        var indexedDecisionSeen = false;
+        var previousHistoryIndex = -1;
+        if (historyIndices is not null)
+        {
+            foreach (var historyIndex in historyIndices)
+            {
+                if (historyIndex is null)
+                {
+                    if (indexedDecisionSeen)
+                        throw new InvalidDataException(
+                            "Legacy ReferenceNature transcript indexes must form a prefix.");
+                    continue;
+                }
+                if (InitialHistoryLength is not { } initialHistoryLength ||
+                    historyIndex.Value < initialHistoryLength ||
+                    historyIndex.Value <= previousHistoryIndex)
+                    throw new InvalidDataException(
+                        "ReferenceNature transcript history indexes are invalid.");
+                indexedDecisionSeen = true;
+                previousHistoryIndex = historyIndex.Value;
+            }
+        }
         var previous = InitialNatureState;
         foreach (var selection in transcript)
         {
@@ -227,12 +287,18 @@ public sealed record ReferenceNatureSessionV111(
     [JsonIgnore]
     public SimulationStateV111<SemanticPilotCombatV111,
         ReferenceNatureSessionStochasticStateV111> Simulation { get; init; } =
-        new(Combat, new ReferenceNatureSessionStochasticStateV111(NatureState));
+        new(Combat, new ReferenceNatureSessionStochasticStateV111(
+            NatureState, Combat is null ? 0 : Combat.History.Length));
 
     public SemanticPilotCombatV111 Combat
     {
         get => Simulation.Mechanics;
-        init => Simulation = Simulation with { Mechanics = value };
+        init
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            var published = CommitNatureCursorIfTerminal(value, NatureState);
+            Simulation = Simulation with { Mechanics = published };
+        }
     }
 
     [JsonIgnore]
@@ -300,26 +366,31 @@ public sealed record ReferenceNatureSessionV111(
     {
         Validate();
         var resolution = ReferenceNatureV111.ResolvePending(Combat, NatureState);
-        var resolvedCombat = resolution.Combat;
-        if (resolvedCombat.CombatTerminal)
+        var decisionHistoryIndex = Combat.History.Length;
+        var resolvedCombat = CommitNatureCursorIfTerminal(
+            resolution.Combat, resolution.Selection.NextState);
+        if (resolvedCombat.History.Length <= decisionHistoryIndex)
+            throw new InvalidDataException(
+                "ReferenceNature resolution did not append a mechanics history entry.");
+        var existingHistoryIndices = Stochastic.DecisionHistoryIndices ??
+            Enumerable.Repeat<int?>(null,
+                Stochastic.DecisionTranscript.Length).ToArray();
+        var initialHistoryLength = Stochastic.InitialHistoryLength ??
+            decisionHistoryIndex;
+        var nextStochastic = Stochastic with
         {
-            var committedRun = ReferenceNatureRunCursorV111.Commit(
-                resolvedCombat.Run, resolution.Selection.NextState);
-            resolvedCombat = resolvedCombat with
-            {
-                Run = committedRun,
-                PendingEndTurn = resolvedCombat.PendingEndTurn is { } endTurn
-                    ? endTurn with { Run = committedRun }
-                    : null
-            };
-        }
+            InitialHistoryLength = initialHistoryLength,
+            Cursor = Stochastic.Cursor.Advance(
+                resolution.Selection.NextState, resolution.Selection),
+            DecisionHistoryIndices =
+                [.. existingHistoryIndices, decisionHistoryIndex]
+        };
         var child = this with
         {
-            Combat = resolvedCombat,
-            Stochastic = Stochastic with
+            Simulation = Simulation with
             {
-                Cursor = Stochastic.Cursor.Advance(
-                    resolution.Selection.NextState, resolution.Selection)
+                Mechanics = resolvedCombat,
+                Stochastic = nextStochastic
             }
         };
         child.Validate();
@@ -332,6 +403,10 @@ public sealed record ReferenceNatureSessionV111(
             throw new InvalidDataException("Invalid ReferenceNature session envelope.");
         Combat.Validate();
         Stochastic.Validate();
+        if (Stochastic.InitialHistoryLength is { } initialHistoryLength &&
+            initialHistoryLength > Combat.History.Length)
+            throw new InvalidDataException(
+                "ReferenceNature semantic session history offset exceeds combat history.");
         if (Combat.CombatTerminal &&
             !NatureState.SameCursor(
                 Combat.Run.Stochastic.ReferenceNature))
@@ -349,7 +424,10 @@ public sealed record ReferenceNatureSessionV111(
             session.NatureState)
         {
             InitialNatureState = session.Stochastic.InitialNatureState,
-            DecisionTranscript = session.Stochastic.DecisionTranscript
+            DecisionTranscript = session.Stochastic.DecisionTranscript,
+            InitialHistoryLength = session.Stochastic.InitialHistoryLength,
+            DecisionHistoryIndices =
+                session.Stochastic.DecisionHistoryIndices
         };
         return JsonSerializer.Serialize(snapshot);
     }
@@ -357,6 +435,10 @@ public sealed record ReferenceNatureSessionV111(
     public static ReferenceNatureSessionV111 Restore(string json)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(json);
+        // Restore validates mechanics and law transcripts by replaying saved
+        // decisions. Keep those audit-only provider calls out of any caller's
+        // active source-boundary journal.
+        using var replayJournal = RandomBoundaryJournalV111.Begin();
         var snapshot = JsonSerializer.Deserialize<ReferenceNatureSessionSnapshotV111>(json)
             ?? throw new InvalidDataException("Null ReferenceNature snapshot.");
         if (snapshot.SchemaId != CurrentSchemaId ||
@@ -378,12 +460,34 @@ public sealed record ReferenceNatureSessionV111(
                     : null
             };
         }
+        var initialNatureState =
+            snapshot.InitialNatureState ?? snapshot.NatureState;
+        var decisionTranscript = snapshot.DecisionTranscript ?? [];
+        var initialHistoryLength = snapshot.InitialHistoryLength;
+        var decisionHistoryIndices = snapshot.DecisionHistoryIndices;
+        if (decisionHistoryIndices is null)
+        {
+            // The previous flat snapshot carried selections but no chronology
+            // indexes. Preserve that transcript as an unindexed prefix and
+            // start verifiable replay at the restored mechanics boundary.
+            initialHistoryLength = combat.History.Length;
+            decisionHistoryIndices = Enumerable.Repeat<int?>(null,
+                decisionTranscript.Length).ToArray();
+        }
+        if (initialHistoryLength is { } historyLength &&
+            (decisionHistoryIndices.Any(index => index is not null) ||
+             decisionHistoryIndices.Length == 0 &&
+                historyLength < combat.History.Length))
+            ReplayAndValidateTranscript(combat, initialNatureState,
+                decisionTranscript, decisionHistoryIndices, historyLength);
         var stochastic = new ReferenceNatureSessionStochasticStateV111(
             new ReferenceNatureStochasticStateV111<
                 ReferenceNatureSelectionV111>(
-                    snapshot.InitialNatureState ?? snapshot.NatureState,
+                    initialNatureState,
                     snapshot.NatureState,
-                    snapshot.DecisionTranscript ?? []));
+                    decisionTranscript),
+            initialHistoryLength,
+            decisionHistoryIndices);
         var restored = new ReferenceNatureSessionV111(
             CurrentSchemaId, combat, snapshot.NatureState)
         {
@@ -391,6 +495,112 @@ public sealed record ReferenceNatureSessionV111(
         };
         restored.Validate();
         return restored;
+    }
+
+    private static void ReplayAndValidateTranscript(
+        SemanticPilotCombatV111 savedCombat,
+        ReferenceNatureStateV111 initialNatureState,
+        ReferenceNatureSelectionV111[] decisions,
+        int?[] historyIndices,
+        int initialHistoryLength)
+    {
+        ArgumentNullException.ThrowIfNull(savedCombat);
+        ArgumentNullException.ThrowIfNull(initialNatureState);
+        ArgumentNullException.ThrowIfNull(decisions);
+        ArgumentNullException.ThrowIfNull(historyIndices);
+        if (initialHistoryLength < 0 ||
+            initialHistoryLength > savedCombat.History.Length ||
+            historyIndices.Length != decisions.Length)
+            throw new InvalidDataException(
+                "ReferenceNature semantic session history offset is invalid.");
+
+        var replay = SemanticPilotCombatEngineV111.ReplayHistoryPrefix(
+            savedCombat, initialHistoryLength);
+        var firstIndexedDecision = 0;
+        while (firstIndexedDecision < historyIndices.Length &&
+            historyIndices[firstIndexedDecision] is null)
+            firstIndexedDecision++;
+        var cursor = firstIndexedDecision == 0
+            ? initialNatureState
+            : decisions[firstIndexedDecision - 1].NextState;
+        replay = CommitNatureCursorIfTerminal(replay, cursor);
+        var savedHistory = savedCombat.History;
+        var historyIndex = initialHistoryLength;
+        var decisionIndex = firstIndexedDecision;
+        while (historyIndex < savedHistory.Length)
+        {
+            if (decisionIndex < decisions.Length &&
+                historyIndices[decisionIndex] == historyIndex)
+            {
+                var resolution = ReferenceNatureV111.ResolvePending(
+                    replay, cursor);
+                if (CanonicalJson.Sha256(resolution.Selection) !=
+                    CanonicalJson.Sha256(decisions[decisionIndex]))
+                    throw new InvalidDataException(
+                        "ReferenceNature semantic selection differs from law replay.");
+                cursor = resolution.Selection.NextState;
+                replay = CommitNatureCursorIfTerminal(
+                    resolution.Combat, cursor);
+                historyIndex = ValidateReplayedHistorySuffix(
+                    replay, savedHistory, historyIndex);
+                decisionIndex++;
+                continue;
+            }
+
+            if (decisionIndex < historyIndices.Length &&
+                historyIndices[decisionIndex] is { } missedIndex &&
+                missedIndex < historyIndex)
+                throw new InvalidDataException(
+                    "ReferenceNature transcript history index was skipped.");
+
+            var replayed = SemanticPilotCombatEngineV111
+                .ReplayHistoryTransition(replay, savedHistory[historyIndex]);
+            replayed = CommitNatureCursorIfTerminal(replayed, cursor);
+            historyIndex = ValidateReplayedHistorySuffix(
+                replayed, savedHistory, historyIndex);
+            replay = replayed;
+        }
+
+        if (decisionIndex != decisions.Length ||
+            CanonicalJson.Sha256(replay) != CanonicalJson.Sha256(savedCombat))
+            throw new InvalidDataException(
+                "ReferenceNature semantic session differs from transcript replay.");
+    }
+
+    private static int ValidateReplayedHistorySuffix(
+        SemanticPilotCombatV111 replay,
+        SemanticPilotContinuationV111[] expectedHistory,
+        int firstNewHistoryIndex)
+    {
+        var replayedHistory = replay.History;
+        if (replayedHistory.Length <= firstNewHistoryIndex ||
+            replayedHistory.Length > expectedHistory.Length)
+            throw new InvalidDataException(
+                "Semantic session replay changed the history length unexpectedly.");
+        for (var index = firstNewHistoryIndex;
+            index < replayedHistory.Length; index++)
+            if (CanonicalJson.Sha256(replayedHistory[index]) !=
+                CanonicalJson.Sha256(expectedHistory[index]))
+                throw new InvalidDataException(
+                    "Semantic session replay differs from its saved action history.");
+        return replayedHistory.Length;
+    }
+
+    private static SemanticPilotCombatV111 CommitNatureCursorIfTerminal(
+        SemanticPilotCombatV111 combat, ReferenceNatureStateV111 cursor)
+    {
+        if (!combat.CombatTerminal ||
+            cursor.SameCursor(combat.Run.Stochastic.ReferenceNature))
+            return combat;
+        var committedRun = ReferenceNatureRunCursorV111.Commit(
+            combat.Run, cursor);
+        return combat with
+        {
+            Run = committedRun,
+            PendingEndTurn = combat.PendingEndTurn is { } endTurn
+                ? endTurn with { Run = committedRun }
+                : null
+        };
     }
 }
 

@@ -7754,92 +7754,117 @@ public static class SemanticPilotCombatEngineV111
         var saved = JsonSerializer.Deserialize<SemanticPilotCombatV111>(json)
             ?? throw new InvalidDataException("Null semantic playable snapshot.");
         Validate(saved);
-        var replay = saved.Stochastic.SeededEntry is { } entry
-            ? BeginSeeded(entry)
-            : Begin(saved.OpeningSource);
-        foreach (var transition in saved.History)
-        {
-            replay = transition.Kind switch
-            {
-                "player" when transition.ActionId is not null =>
-                    Step(replay, replay.Fingerprint, transition.ActionId),
-                "semantic_intent" when transition.IntentDecision is not null =>
-                    ResolveIntent(replay, replay.Fingerprint,
-                        transition.IntentDecision.IntentId),
-                "semantic_draw" when transition.DrawDecision is not null =>
-                    ResolveDrawCard(replay, replay.Fingerprint,
-                        transition.DrawDecision.Event.EventId,
-                        transition.DrawDecision.SelectedCardInstanceId),
-                "semantic_deck_reveal" when
-                    transition.DeckRevealDecision is not null =>
-                    ResolveDeckReveal(replay, replay.Fingerprint,
-                        transition.DeckRevealDecision.Event.EventId,
-                        transition.DeckRevealDecision.SelectedCardInstanceId),
-                "semantic_random_pile_card" when
-                    transition.RandomPileCardDecision is not null =>
-                    ResolveRandomPileCard(replay, replay.Fingerprint,
-                        transition.RandomPileCardDecision.Event.EventId,
-                        transition.RandomPileCardDecision.SelectedCardInstanceId),
-                "semantic_draw_hook_choice" when
-                    transition.DrawHookChoiceDecision is not null =>
-                    Step(replay, replay.Fingerprint,
-                        transition.DrawHookChoiceDecision.ActionId),
-                "semantic_knowledge_demon_choice" when
-                    transition.KnowledgeDemonChoiceDecision is not null =>
-                    Step(replay, replay.Fingerprint,
-                        transition.KnowledgeDemonChoiceDecision.ActionId),
-                "semantic_target" when transition.TargetDecision is not null =>
-                    ResolveRandomTarget(replay, replay.Fingerprint,
-                        transition.TargetDecision.Event.EventId,
-                        transition.TargetDecision.SelectedEnemyInstanceId),
-                "semantic_generated_card" when
-                    transition.GeneratedCardDecision is not null =>
-                    ResumeGeneratedCardDecision(
-                        replay, transition.GeneratedCardDecision),
-                "semantic_potion_generation" when
-                    transition.PotionGenerationDecision is not null =>
-                    ResumePotionGenerationDecision(
-                        replay, transition.PotionGenerationDecision),
-                "semantic_card_transform" when
-                    transition.CardTransformDecision is not null =>
-                    ResumeCardTransformDecision(
-                        replay, transition.CardTransformDecision),
-                "semantic_card_selection" when
-                    transition.CardSelectionDecision is not null =>
-                    Step(replay, replay.Fingerprint,
-                        transition.CardSelectionDecision.ActionId),
-                "semantic_cost" when transition.CostDecision is not null =>
-                    ResumeCostDecision(replay, transition.CostDecision),
-                "semantic_hand_cost_selection" when
-                    transition.HandCostSelectionDecision is not null =>
-                    ResumeHandCostSelectionDecision(
-                        replay, transition.HandCostSelectionDecision),
-                "semantic_card_shortlist" when
-                    transition.CardShortlistDecision is not null =>
-                    ResumeCardShortlistDecision(
-                        replay, transition.CardShortlistDecision),
-                "semantic_pool_shuffle" when
-                    transition.PoolShuffleDecision is not null =>
-                    ResolvePoolShuffle(replay, replay.Fingerprint,
-                        transition.PoolShuffleDecision.Event.EventId,
-                        transition.PoolShuffleDecision.SelectedSwapIndex),
-                "semantic_draw_insertion" when
-                    transition.DrawInsertionDecision is not null =>
-                    ResolveDrawInsertion(replay, replay.Fingerprint,
-                        transition.DrawInsertionDecision.Event.EventId,
-                        transition.DrawInsertionDecision.SelectedPosition),
-                "nature" when transition.SelectedIndex is not null =>
-                    Resolve(replay, replay.Fingerprint,
-                        transition.SelectedIndex.Value),
-                _ => throw new InvalidDataException(
-                    "Unknown semantic playable transcript stage.")
-            };
-        }
+        var replay = ReplayHistoryPrefixCore(saved, saved.History.Length);
         if (CanonicalJson.Sha256(replay) != CanonicalJson.Sha256(saved))
             throw new InvalidDataException(
                 "Semantic playable snapshot disagrees with action/Nature replay.");
         return replay;
     }
+
+    /// <summary>
+    /// Rebuilds a committed prefix from the session's replayable opening.
+    /// Stochastic session owners use this to recover the mechanics boundary
+    /// from which their private transcripts began.
+    /// </summary>
+    internal static SemanticPilotCombatV111 ReplayHistoryPrefix(
+        SemanticPilotCombatV111 saved, int historyLength)
+    {
+        ArgumentNullException.ThrowIfNull(saved);
+        Validate(saved);
+        if (historyLength < 0 || historyLength > saved.History.Length)
+            throw new ArgumentOutOfRangeException(nameof(historyLength));
+        return ReplayHistoryPrefixCore(saved, historyLength);
+    }
+
+    private static SemanticPilotCombatV111 ReplayHistoryPrefixCore(
+        SemanticPilotCombatV111 saved, int historyLength)
+    {
+        var replay = saved.Stochastic.SeededEntry is { } entry
+            ? BeginSeeded(entry)
+            : Begin(saved.OpeningSource);
+        var history = saved.History;
+        for (var index = 0; index < historyLength; index++)
+            replay = ReplayHistoryTransition(replay, history[index]);
+        return replay;
+    }
+
+    internal static SemanticPilotCombatV111 ReplayHistoryTransition(
+        SemanticPilotCombatV111 replay,
+        SemanticPilotContinuationV111 transition) => transition.Kind switch
+    {
+        "player" when transition.ActionId is not null =>
+            Step(replay, replay.Fingerprint, transition.ActionId),
+        "semantic_intent" when transition.IntentDecision is not null =>
+            ResolveIntent(replay, replay.Fingerprint,
+                transition.IntentDecision.IntentId),
+        "semantic_draw" when transition.DrawDecision is not null =>
+            ResolveDrawCard(replay, replay.Fingerprint,
+                transition.DrawDecision.Event.EventId,
+                transition.DrawDecision.SelectedCardInstanceId),
+        "semantic_deck_reveal" when
+            transition.DeckRevealDecision is not null =>
+            ResolveDeckReveal(replay, replay.Fingerprint,
+                transition.DeckRevealDecision.Event.EventId,
+                transition.DeckRevealDecision.SelectedCardInstanceId),
+        "semantic_random_pile_card" when
+            transition.RandomPileCardDecision is not null =>
+            ResolveRandomPileCard(replay, replay.Fingerprint,
+                transition.RandomPileCardDecision.Event.EventId,
+                transition.RandomPileCardDecision.SelectedCardInstanceId),
+        "semantic_draw_hook_choice" when
+            transition.DrawHookChoiceDecision is not null =>
+            Step(replay, replay.Fingerprint,
+                transition.DrawHookChoiceDecision.ActionId),
+        "semantic_knowledge_demon_choice" when
+            transition.KnowledgeDemonChoiceDecision is not null =>
+            Step(replay, replay.Fingerprint,
+                transition.KnowledgeDemonChoiceDecision.ActionId),
+        "semantic_target" when transition.TargetDecision is not null =>
+            ResolveRandomTarget(replay, replay.Fingerprint,
+                transition.TargetDecision.Event.EventId,
+                transition.TargetDecision.SelectedEnemyInstanceId),
+        "semantic_generated_card" when
+            transition.GeneratedCardDecision is not null =>
+            ResumeGeneratedCardDecision(
+                replay, transition.GeneratedCardDecision),
+        "semantic_potion_generation" when
+            transition.PotionGenerationDecision is not null =>
+            ResumePotionGenerationDecision(
+                replay, transition.PotionGenerationDecision),
+        "semantic_card_transform" when
+            transition.CardTransformDecision is not null =>
+            ResumeCardTransformDecision(
+                replay, transition.CardTransformDecision),
+        "semantic_card_selection" when
+            transition.CardSelectionDecision is not null =>
+            Step(replay, replay.Fingerprint,
+                transition.CardSelectionDecision.ActionId),
+        "semantic_cost" when transition.CostDecision is not null =>
+            ResumeCostDecision(replay, transition.CostDecision),
+        "semantic_hand_cost_selection" when
+            transition.HandCostSelectionDecision is not null =>
+            ResumeHandCostSelectionDecision(
+                replay, transition.HandCostSelectionDecision),
+        "semantic_card_shortlist" when
+            transition.CardShortlistDecision is not null =>
+            ResumeCardShortlistDecision(
+                replay, transition.CardShortlistDecision),
+        "semantic_pool_shuffle" when
+            transition.PoolShuffleDecision is not null =>
+            ResolvePoolShuffle(replay, replay.Fingerprint,
+                transition.PoolShuffleDecision.Event.EventId,
+                transition.PoolShuffleDecision.SelectedSwapIndex),
+        "semantic_draw_insertion" when
+            transition.DrawInsertionDecision is not null =>
+            ResolveDrawInsertion(replay, replay.Fingerprint,
+                transition.DrawInsertionDecision.Event.EventId,
+                transition.DrawInsertionDecision.SelectedPosition),
+        "nature" when transition.SelectedIndex is not null =>
+            Resolve(replay, replay.Fingerprint,
+                transition.SelectedIndex.Value),
+        _ => throw new InvalidDataException(
+            "Unknown semantic playable transcript stage.")
+    };
 
     internal static void ValidateNativePolicyBoundary(RunState run)
     {
