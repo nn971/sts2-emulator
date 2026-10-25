@@ -531,11 +531,9 @@ public sealed partial class PrototypeGameEngine
             bool hasSavedSemanticDrawProgress = false;
             if (cursor is not null)
             {
-                savedSemanticRequested =
-                    cursor.Stochastic.TryGetSemanticHandDrawProgress(
-                        cursor.Mechanics, out int savedRequested, out _)
-                        ? savedRequested
-                        : cursor.Stochastic.CompletedSemanticHandDrawRequested;
+                savedSemanticRequested = cursor.Stochastic
+                    .GetSavedSemanticHandDrawRequestedCount(
+                        cursor.Mechanics);
                 hasSavedProgress =
                     cursor.Stochastic.HasSavedHandDrawProgress();
                 hasSavedSemanticDrawProgress =
@@ -609,11 +607,9 @@ public sealed partial class PrototypeGameEngine
         PrototypeAutomaticHandDrawProgressV111 progress;
         if (semanticRequested is { } requested)
         {
-            int? savedSemanticRequested =
-                cursor.Stochastic.TryGetSemanticHandDrawProgress(
-                    cursor.Mechanics, out int savedRequested, out _)
-                    ? savedRequested
-                    : cursor.Stochastic.CompletedSemanticHandDrawRequested;
+            int? savedSemanticRequested = cursor.Stochastic
+                .GetSavedSemanticHandDrawRequestedCount(
+                    cursor.Mechanics);
             bool hasControlledProgress =
                 cursor.Stochastic.TryGetActiveAutomaticHandDrawProgress(
                     cursor.Mechanics, out var priorProgress) &&

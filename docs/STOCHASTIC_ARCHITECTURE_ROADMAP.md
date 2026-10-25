@@ -6009,3 +6009,10 @@ frame validation reuses that result across child, target, hook, cost,
 Stratagem, and draw-insertion boundaries rather than repeating pairwise
 comparisons. Core Release build passed with zero warnings or errors;
 `git diff --check` passed. No tests were run.
+
+**S4 semantic hand-draw receipt projection (2026-10-26):** The automatic
+pipeline stochastic owner now projects the saved semantic request from active
+progress or the completed-stage receipt. Automatic Stratagem and `CardDrawn`
+resume paths share this interpretation instead of duplicating the fallback.
+Core Release build passed with zero warnings or errors; `git diff --check`
+passed. No tests were run.

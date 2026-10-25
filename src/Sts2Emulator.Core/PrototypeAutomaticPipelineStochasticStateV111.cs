@@ -439,6 +439,20 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
     }
 
     /// <summary>
+    /// Returns the semantic hand-draw request carried by active progress or
+    /// by the completed-stage receipt at this pipeline checkpoint.
+    /// </summary>
+    public int? GetSavedSemanticHandDrawRequestedCount(
+        PrototypeAutomaticPipelineMechanicsStateV111 mechanics)
+    {
+        ArgumentNullException.ThrowIfNull(mechanics);
+        return TryGetSemanticHandDrawProgress(
+                mechanics, out int requested, out _)
+            ? requested
+            : CompletedSemanticHandDrawRequested;
+    }
+
+    /// <summary>
     /// Validates a semantic hand-draw continuation transition against its
     /// source progress and any count projection carried by the facade.
     /// </summary>
