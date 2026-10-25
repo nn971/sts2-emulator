@@ -1154,7 +1154,9 @@ support size, and selected bounds, then requires Native provider mode for both
 `choose_index` identities and `bounded_integer` offset outcomes. PotionFactory
 uses the same ordered-support mapper in its source picker.
 For the active semantic pilot, `SemanticPendingIndexChanceEventV111` now owns
-the Native decision-to-index projection for its declared operation and support.
+the Native decision-to-index projection for the source primitive operation and
+support declared by its typed event owner. The semantic event's own operation
+label remains distinct from the primitive request kind.
 The Native policy adapter passes that mapped index to the same mechanics
 dispatcher used by ReferenceNature, so event branches no longer repeat
 primitive support mapping beside the shared descriptor.

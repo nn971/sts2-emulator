@@ -58,12 +58,31 @@ internal sealed record SemanticPendingIndexChanceEventV111(
     public int SelectNativeOutcomeIndex(RandomIndexDecisionV111 decision)
     {
         Validate();
-        if (Event.OperationKind is not ("choose_index" or "bounded_integer"))
+        var primitiveOperationKind = Event switch
+        {
+            SemanticEndTurnIndexEventV111 endTurn =>
+                endTurn.Request.OperationKind,
+            SemanticCostEventV111 cost => cost.Request.OperationKind,
+            SemanticPoolShuffleEventV111 poolShuffle =>
+                poolShuffle.Request.OperationKind,
+            SemanticDrawInsertionEventV111 drawInsertion =>
+                drawInsertion.Request.OperationKind,
+            SemanticTargetEventV111 or SemanticGeneratedCardEventV111 or
+                SemanticRandomPileCardEventV111 or
+                SemanticCardTransformEventV111 or
+                SemanticPotionGenerationEventV111 or
+                SemanticHandCostSelectionEventV111 or
+                SemanticCardShortlistEventV111 or SemanticDeckEventV111 =>
+                    "choose_index",
+            _ => throw new NotSupportedException(
+                $"UNSUPPORTED_SEMANTIC_CHANCE site={Event.SiteId}")
+        };
+        if (primitiveOperationKind is not ("choose_index" or "bounded_integer"))
             throw new NotSupportedException(
                 $"UNSUPPORTED_SEMANTIC_CHANCE site={Event.SiteId} " +
-                $"operation={Event.OperationKind}");
+                $"operation={primitiveOperationKind}");
         return NativeSemanticOutcomeV111.SelectIndex(
-            decision, Event.OperationKind, SupportCount);
+            decision, primitiveOperationKind, SupportCount);
     }
 
     public void ValidateBoundary(string boundaryFingerprint)
