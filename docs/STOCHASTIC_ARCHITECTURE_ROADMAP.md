@@ -126,6 +126,12 @@ choice boundary checks to that frame. End-turn retains its pipeline-choice
 validators at boundaries not owned by an active draw frame. No schema changed.
 Static source review and `git diff --check` only; no tests or builds were run.
 
+**S4 complete draw pending-child projection (2026-10-25):** The shared draw
+projection now also carries draw-hook, Stratagem, and target events. Frame
+validation and `AtBoundary` reuse those projected events instead of describing
+them separately from the same draw frame. No schema changed. Static source
+review and `git diff --check` only; no tests or builds were run.
+
 **S5 shared candidate-label binding validation (2026-10-25):** Controlled
 event-choice, run-action, and playable-combat Python facades now use one
 validator for non-empty labels and membership in the saved pending support.

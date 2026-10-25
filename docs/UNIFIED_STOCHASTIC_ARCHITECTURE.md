@@ -1277,7 +1277,9 @@ presence in that same classification, preserving fail-closed handling of
 unsupported tagged choices. Standalone descriptor calls retain their
 self-classifying behavior. The draw frame's transient pending-child projection
 provides the same classified child events to `Validate` and `AtBoundary`; the
-serialized frame still owns the existing typed transcripts. End-turn validation
+serialized frame still owns the existing typed transcripts. The projection
+also carries draw-hook, Stratagem, and target events, so validation and
+boundary checks reuse those events from the same frame. End-turn validation
 reuses its projected hand-draw frame and delegates active nested-choice boundary
 checks to it, while retaining pipeline-choice checks outside active draw
 ownership. No schema changed.

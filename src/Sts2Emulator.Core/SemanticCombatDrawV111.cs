@@ -5,6 +5,9 @@ namespace Sts2Emulator.Core;
 
 internal sealed record SemanticCombatDrawPendingChildEventsV111(
     SemanticDrawHookChoiceEngineV111.AutomaticHandDrawChildKindV111 ChildKind,
+    SemanticDrawHookChoiceEventV111? DrawHookChoice,
+    SemanticCardSelectionEventV111? StratagemSelection,
+    SemanticTargetEventV111? Target,
     SemanticDrawInsertionEventV111? DrawInsertion,
     SemanticGeneratedCardEventV111? GeneratedCard,
     SemanticPotionGenerationEventV111? PotionGeneration,
@@ -191,8 +194,9 @@ public sealed record SemanticCombatDrawV111(
                 childEvents.CardShortlist is null &&
                 childEvents.RandomHandCost is null &&
                 childEvents.HandCostSelection is null &&
-                StratagemSelectionPending is null &&
-                DrawHookChoicePending is null && TargetPending is null &&
+                childEvents.StratagemSelection is null &&
+                childEvents.DrawHookChoice is null &&
+                childEvents.Target is null &&
                 CostPending is null && RemainingCount == 0;
         }
     }
@@ -361,8 +365,11 @@ public sealed record SemanticCombatDrawV111(
         var cardShortlistPending = pendingChildEvents.CardShortlist;
         var randomHandCostPending = pendingChildEvents.RandomHandCost;
         var handCostSelectionPending = pendingChildEvents.HandCostSelection;
+        var drawHookChoicePending = pendingChildEvents.DrawHookChoice;
+        var stratagemSelectionPending =
+            pendingChildEvents.StratagemSelection;
+        var targetPending = pendingChildEvents.Target;
         var completedHookCursor = pipelineCursor;
-        var drawHookChoicePending = this.DrawHookChoicePending;
         PendingCombatChoiceState? automaticBeforeHandDrawPoolShuffleChoice =
             this.AutomaticHandDraw &&
             this.Run.World?.Combat is { } poolShuffleCombat &&
@@ -468,7 +475,6 @@ public sealed record SemanticCombatDrawV111(
         bool standaloneSemanticDrawPending = controlledSemanticDraw?
             .StandaloneSemanticDrawSegment == true ||
             combat.PendingChoice?.StandaloneSemanticDrawHookChoice == true;
-        var stratagemSelectionPending = this.StratagemSelectionPending;
         bool hasPipelineSemanticDrawProgress =
             PrototypeGameEngine.TryGetSemanticAutomaticHandDrawProgress(
                 combat, out int pipelineRequested,
@@ -605,7 +611,6 @@ public sealed record SemanticCombatDrawV111(
         bool semanticDrawChoicePending = standaloneSemanticDrawPending ||
             automaticHandDrawEffectDrawPending ||
             automaticBeforeHandDrawEffectDrawPending;
-        var targetPending = this.TargetPending;
         bool automaticSemanticHandDrawRandomTarget =
             targetPending is not null;
         if (this.AutomaticHandDraw)
@@ -989,6 +994,9 @@ public static class SemanticCombatDrawEngineV111
             .ClassifyAutomaticHandDrawChild(state.Run);
         return new SemanticCombatDrawPendingChildEventsV111(
             childKind,
+            SemanticDrawHookChoiceEngineV111.DescribePending(state.Run),
+            DescribePendingStratagemSelection(state),
+            state.TargetPending,
             DescribePendingDrawInsertion(state, childKind),
             DescribePendingGeneratedCard(state, childKind),
             DescribePendingPotionGeneration(state, childKind),
