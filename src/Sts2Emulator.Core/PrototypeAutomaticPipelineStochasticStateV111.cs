@@ -320,10 +320,16 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
     /// </summary>
     public bool ValidateHandDrawProgressPosition(
         PrototypeAutomaticPipelineMechanicsStateV111 mechanics)
+        => ValidateHandDrawProgressPosition(mechanics, out _);
+
+    public bool ValidateHandDrawProgressPosition(
+        PrototypeAutomaticPipelineMechanicsStateV111 mechanics,
+        out PrototypeAutomaticHandDrawProgressV111 activeProgress)
     {
         ArgumentNullException.ThrowIfNull(mechanics);
-        bool hasActiveProgress =
-            TryGetActiveAutomaticHandDrawProgress(mechanics, out _);
+        bool hasActiveProgress = TryGetActiveAutomaticHandDrawProgress(
+            mechanics, out var progress);
+        activeProgress = hasActiveProgress ? progress : null!;
         bool isBeforeHandDraw =
             IsAtSemanticBeforeHandDraw(mechanics) ||
             IsAtControlledBeforeHandDraw(mechanics);

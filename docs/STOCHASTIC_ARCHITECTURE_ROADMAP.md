@@ -5995,3 +5995,9 @@ the pre-draw classification used by Stratagem and draw-hook continuation
 owners. The resume adapter no longer reconstructs this cursor invariant.
 Core Release build passed with zero warnings and errors; `git diff --check`
 passed. No tests were run.
+
+**S4 controlled-playable hand-draw position reuse (2026-10-26):** Controlled
+playable staging now uses the pipeline stochastic owner's validated progress
+position query and consumes its active progress projection, removing a second
+copy of the saved-cursor invariant. Core Release build passed with zero
+warnings or errors; `git diff --check` passed. No tests were run.
