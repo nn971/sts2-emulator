@@ -1214,35 +1214,39 @@ event-effect, and enemy-defeat continuation mechanics from their existing
 mechanics owners, including action identity, effect cursor, queued
 consequences, and the saved fatal follow-up, while omitting their random
 requests and decision payloads. The mechanics comparison schema advances to
-v19 for this expanded projection; the provider replay comparison is v9.
+v19 for this expanded projection; the provider replay comparison is v10.
 `SimulationMechanicsComparisonV111` copies the difference array on
 construction and replacement, then returns defensive copies to keep the
 diagnostic result immutable to callers.
 
 `SimulationProviderReplayCaptureV111` groups an origin run, player-action
 sequence, ordered typed random-boundary trace, semantic event-outcome trace,
-and result run in the existing `SimulationStateV111` envelope. Its v9 schema
+and result run in the existing `SimulationStateV111` envelope. Its v10 schema
 includes the initiating event-choice action in ReferenceNature event-choice
 intervals, carries one mechanics snapshot after each completed action for
 replay-validated captures, and records the ordered physical card identities
-drawn during each action, plus the ordered combat event/hook transcript. Native
+drawn during each action, the ordered combat event/hook transcript, and
+player-facing observation and legal-action menu fingerprints at the origin
+and each action boundary. Native
 committed-order draws and ReferenceNature deferred draw choices therefore
 compare through the same mechanics-owned trace without treating a Native draw
 as a separate RNG call. Earlier captures remain readable with their original
 interval meaning; v5 and v6 captures may include action-boundary trajectories
 but do not provide the draw trace. V7 remains readable with its original
-optional action-boundary trajectory, and replay-validated v7/v8 captures still
-require their draw-identity trace. Caller-supplied v8 and v9 captures may omit
-per-action traces and remain unverified; replay-validated v8 captures require
-the action-boundary mechanics and draw-identity trace, while replay-validated
-v9 captures also require the combat event/hook transcript for every action.
+optional action-boundary trajectory, and replay-validated v7 through v9
+captures still require their draw-identity trace. Caller-supplied v8 through
+v10 captures may omit per-action traces and remain unverified. Replay-validated
+v8 captures require action-boundary mechanics and draw identities; v9 adds the
+combat event/hook transcript, and v10 adds player-facing boundary views to
+those requirements.
 Legacy schema IDs reject fields introduced after their version.
 `SimulationProviderReplayComparisonEngineV111` compares two such captures by
 fingerprinting their action sequences, comparing origin mechanics, comparing
 every supplied typed boundary in order, comparing complete semantic outcome
-traces, per-action drawn-card identities, and combat event/hook transcripts
-when both captures provide them, then compares the resulting mechanics. The
-result returns each agreement and both capture provenance values separately. The
+traces, per-action drawn-card identities, combat event/hook transcripts, and
+player-facing boundary views when both captures provide them, then compares
+the resulting mechanics. The result returns each agreement and both capture
+provenance values separately. The
 semantic trace records provider event and law identity, provider-independent
 site/operation/owner/ordinal, a fingerprint of ordered semantic outcome IDs,
 the selected semantic identity and index, and its transition position within
@@ -1278,9 +1282,11 @@ snapshots, `EquivalentUnderComparedActions` also requires their projected
 mechanics to match, along with equality of every complete stochastic trace
 available on both captures. This includes typed provider boundaries,
 provider-independent semantic outcomes, and per-action physical draw
-identities. If only one complete trace is available on both sides, equality
-of that trace is sufficient. An absent trace is not treated as an empty
-matching trace. The draw trace is compared separately because Native draws
+identities. It also checks combat event/hook transcripts and player-facing
+boundary views when both captures provide them. If only one complete trace is
+available on both sides, equality of that trace is sufficient. An absent
+trace is not treated as an empty matching trace. The draw trace is compared
+separately because Native draws
 consume an already committed order while ReferenceNature draws may be deferred
 choices; the selected physical card identity is common evidence for both.
 The additive `SameMechanicsForSameSemanticOutcomes` predicate expresses the
@@ -1288,10 +1294,12 @@ S4 cross-provider acceptance case directly: it requires the same player
 actions, origin mechanics, complete provider-independent semantic outcomes,
 result mechanics, and every captured action-boundary mechanics state. It also
 rejects a physical draw-identity mismatch when that trace is available,
-and requires matching ordered combat event/hook transcripts, without requiring
-provider-specific primitive requests or cursors to match. Its schema is v9;
-comparisons with unavailable semantic, action-boundary, or combat event/hook
-traces do not claim this stronger equivalence.
+and requires matching ordered combat event/hook transcripts and player-facing
+observations and legal-action menus at the origin and every action boundary,
+without requiring provider-specific primitive requests or cursors to match.
+Its schema is v10; comparisons with unavailable semantic, action-boundary,
+combat event/hook, or player-view traces do not claim this stronger
+equivalence.
 ReferenceNature semantic combat captures provide complete semantic traces.
 Native-policy semantic outcome traces are complete only when every provider
 boundary in the action interval has one supported semantic annotation;
@@ -1300,7 +1308,8 @@ Their physical draws are validated and compared through the separate
 per-action draw trace. Older v2 captures retain endpoint-only provenance, v3
 captures keep their original trace meaning, v4 captures retain
 semantic-identity trace support, and v5 and v6 captures retain their original
-action intervals and any supplied action-boundary trajectory. The result
+action intervals and any supplied action-boundary trajectory. V9 adds combat
+event/hook transcripts, and v10 adds player-facing boundary views. The result
 exposes `TypedRandomBoundaryComparisonAvailable` and
 `SemanticOutcomeComparisonAvailable` separately, so an absent trace is not
 reported as a matching empty trace. `SameSemanticOutcomes` and
@@ -1319,8 +1328,10 @@ triggered subscriber identity, and hook start/completion order, including
 nested event dispatches and resumed hooks. The provider comparator reports the
 first differing action and journal entry; ordinary combat execution does not
 allocate these transcript details, and the journal is not part of run snapshots.
-This field is additive in provider replay capture schema v9; older capture
-schemas remain loadable without a combat event/hook trace.
+The transcript field was added in provider replay capture schema v9; v10 adds
+hashes of the fair observation and ordered legal-action menu at the origin and
+each action boundary. Older capture schemas remain loadable without these
+traces.
 `FromReferenceNatureTreasureSession` also retains the completed action's
 replay-validated rarity and hidden-queue relic identities beside its complete
 typed provider trace. The identity projection re-queries the Treasure law,
@@ -1660,7 +1671,7 @@ snapshot, next target index, and pending extra kill rounds, so earlier hits
 are not replayed after a hook choice. Pending event replay uses the same
 resumable dispatcher, and restore validates the defeated target against the
 saved follow-up and repeated-damage cursor. The mechanics comparison retains
-this progress under schema v19; provider replay comparison is v9.
+this progress under schema v19; provider replay comparison is v10.
 
 Toolbox's first-turn `BeforeHandDraw` generated offer now composes the
 existing full-pool shuffle and ChoicePool card-selection continuations. Exact
@@ -1995,7 +2006,9 @@ run-action and event-choice continuations, and the Native-policy action path
 use this runner; their source validation, result policies, and provider
 journals remain with their existing owners.
 Replay-validated combat captures now compare their ordered event dispatch and
-triggered-hook transcript as part of the same-semantic-outcomes predicate.
+triggered-hook transcript, plus the public observation and ordered legal-action
+menu at every captured boundary, as part of the same-semantic-outcomes
+predicate.
 Cross-provider equivalence outside the semantic traces and action families
 captured by this comparator remains open.
 

@@ -80,6 +80,15 @@ transcripts; old capture schemas remain readable without this evidence.
 Capture and comparison schemas are v9. Core Release build and
 `git diff --check` passed; no tests were run.
 
+**S4 public boundary view comparison (2026-10-26):** Replay captures with
+action-boundary mechanics now retain the existing fair observation schema and
+hashes of its player observation and ordered legal-action menu at the origin
+and every action boundary. The comparator reports the first mismatching
+boundary and whether the observation schema, observation, or legal menu
+differs. `SameMechanicsForSameSemanticOutcomes` requires matching public views.
+Capture and comparison schemas are v10. Core Release build and
+`git diff --check` passed; no tests were run.
+
 **S4 Native enemy pile-insertion semantic capture (2026-10-26):** Native
 policy replay now includes its existing enemy draw/discard insertion audit in
 the provider-independent outcome trace. Capture re-queries the registered
