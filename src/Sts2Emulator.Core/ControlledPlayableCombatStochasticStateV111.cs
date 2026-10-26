@@ -34,6 +34,7 @@ public sealed record ControlledPlayableCombatStochasticStateV111
     private RandomIndexDecisionV111[] _potionGenerationTranscript = [];
     private RandomIndexDecisionV111[] _cardTransformTranscript = [];
     private string[]?[]? _liveTranscriptCandidateLabels;
+    private string[]?[]? _shuffleTranscriptCandidateLabels;
     private RandomIndexRequestV111? _pending;
     private ControlledRecycleShuffleV111? _recycle;
 
@@ -42,6 +43,12 @@ public sealed record ControlledPlayableCombatStochasticStateV111
     {
         get => DeepCopy(_shuffleTranscript)!;
         init => _shuffleTranscript = DeepCopy(value)!;
+    }
+    public string[]?[]? ShuffleTranscriptCandidateLabels
+    {
+        get => CloneCandidateLabels(_shuffleTranscriptCandidateLabels);
+        init => _shuffleTranscriptCandidateLabels =
+            CloneCandidateLabels(value);
     }
     public RandomIndexRequestV111? Pending
     {
@@ -122,6 +129,8 @@ public sealed record ControlledPlayableCombatStochasticStateV111
     public ControlledPlayableCombatStochasticStateV111 Fork() => this with
     {
         ShuffleTranscript = DeepCopy(_shuffleTranscript)!,
+        ShuffleTranscriptCandidateLabels =
+            CloneCandidateLabels(_shuffleTranscriptCandidateLabels),
         Pending = CloneRequest(_pending),
         TurnTranscript = DeepCopy(_turnTranscript)!,
         Recycle = _recycle?.Fork(),
@@ -231,9 +240,13 @@ public sealed record ControlledPlayableCombatStochasticStateV111
 
     internal ControlledPlayableCombatStochasticStateV111 AdvanceOpeningShuffle(
         RandomIndexDecisionV111 decision, int nextShuffleIndex,
-        RandomIndexRequestV111? nextPending)
+        RandomIndexRequestV111? nextPending,
+        string[]? candidateLabels = null)
     {
         ValidateControlledDecision(decision);
+        if (candidateLabels is not null)
+            ControlledStochasticDecisionV111.FromIndex(
+                decision, candidateLabels).Validate();
         if (NextShuffleIndex < 1 || nextShuffleIndex < 0 ||
             decision.Request.SiteId != ControlledPlayableCombatEngineV111.ShuffleSite ||
             decision.Request.StreamId != "run.shuffle" ||
@@ -249,10 +262,14 @@ public sealed record ControlledPlayableCombatStochasticStateV111
               pending.SupportCount != nextShuffleIndex + 1)))
             throw new InvalidDataException(
                 "Opening shuffle decision does not advance its saved cursor.");
+        var candidateLabelHistory = AppendCandidateLabels(
+            _shuffleTranscriptCandidateLabels, _shuffleTranscript.Length,
+            candidateLabels, "Opening shuffle");
         return this with
         {
             NextShuffleIndex = nextShuffleIndex,
             ShuffleTranscript = AppendDecision(_shuffleTranscript, decision),
+            ShuffleTranscriptCandidateLabels = candidateLabelHistory,
             Pending = nextPending
         };
     }
@@ -289,11 +306,11 @@ public sealed record ControlledPlayableCombatStochasticStateV111
 
     private static string[]?[]? AppendCandidateLabels(
         string[]?[]? labels, int existingDecisionCount,
-        string[]? candidateLabels)
+        string[]? candidateLabels, string transcriptName = "Live")
     {
         if (labels is not null && labels.Length != existingDecisionCount)
             throw new InvalidDataException(
-                "Live transcript labels do not align with prior decisions.");
+                transcriptName + " transcript labels do not align with prior decisions.");
         if (labels is null && candidateLabels is null)
             return null;
         var prefix = labels is null

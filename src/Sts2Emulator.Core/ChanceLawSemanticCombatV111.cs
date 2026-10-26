@@ -236,10 +236,11 @@ public static partial class ChanceLawEngineV111
         cost.Validate();
         var indexWeights = NativeNextIntGridWeights(
             cost.CandidateCosts.Length);
-        var outcomes = cost.CandidateCosts
-            .Select((value, index) => new ChanceLawOutcomeV111(
-                "cost:" + value.ToString(CultureInfo.InvariantCulture),
-                indexWeights[index]))
+        var candidateLabels = SemanticCostEventV111.CreateCandidateLabels(
+            cost.CandidateCosts);
+        var outcomes = candidateLabels
+            .Select((candidateLabel, index) => new ChanceLawOutcomeV111(
+                candidateLabel, indexWeights[index]))
             .ToArray();
         var conditioningFingerprint = CanonicalJson.Sha256(new
         {

@@ -32,6 +32,19 @@ public sealed record SemanticCostEventV111(
         CandidateCosts = _candidateCosts!
     };
 
+    internal static string[] CreateCandidateLabels(int[] candidateCosts)
+    {
+        ArgumentNullException.ThrowIfNull(candidateCosts);
+        if (candidateCosts.Length == 0 ||
+            !candidateCosts.SequenceEqual(
+                Enumerable.Range(0, candidateCosts.Length)))
+            throw new InvalidDataException(
+                "Semantic cost outcomes must be the contiguous bounded support.");
+        return candidateCosts.Select(value =>
+            "cost:" + value.ToString(
+                System.Globalization.CultureInfo.InvariantCulture)).ToArray();
+    }
+
     public void Validate()
     {
         Request.Validate();
