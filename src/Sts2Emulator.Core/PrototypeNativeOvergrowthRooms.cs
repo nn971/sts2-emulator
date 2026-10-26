@@ -32,37 +32,27 @@ public sealed partial class PrototypeGameEngine
 
         var odds = world.UnknownRoomOdds
             ?? new PrototypeUnknownRoomOddsState();
-        var roll = LegacyRandomChoiceV111.ChooseBoundedInteger(
-            rng,
-            "event.unknown_room.odds.ticket",
-            "event",
-            $"act:{world.Act}:floor:{world.Floor}:unknown_room",
-            PrototypeUnknownRoomOddsState.Scale).SelectedIndex;
+        var ticketLabels = ControlledStochasticCandidateLabelsV111.IsActive
+            ? Enumerable.Range(0, PrototypeUnknownRoomOddsState.Scale)
+                .Select(index => index.ToString(
+                    System.Globalization.CultureInfo.InvariantCulture)).ToArray()
+            : [];
+        int roll;
+        using (ControlledStochasticCandidateLabelsV111.Describe(ticketLabels))
+        {
+            roll = LegacyRandomChoiceV111.ChooseBoundedInteger(
+                rng,
+                "event.unknown_room.odds.ticket",
+                "event",
+                $"act:{world.Act}:floor:{world.Floor}:unknown_room",
+                PrototypeUnknownRoomOddsState.Scale).SelectedIndex;
+        }
 
-        // UnknownMapPointOdds.Roll consumes NextFloat even when a map
+        // UnknownMapPointOdds.Roll consumes the same ticket even when a map
         // modifier permits only Event. Disallowed non-event odds do not grow.
+        var selected = odds.SelectRoom(roll, eventOnly);
         if (eventOnly)
-            return PrototypeRoomType.Event;
-
-        PrototypeRoomType selected;
-        if (roll < odds.MonsterWeight)
-        {
-            selected = PrototypeRoomType.Combat;
-        }
-        else if (roll < odds.MonsterWeight + odds.TreasureWeight)
-        {
-            selected = PrototypeRoomType.Treasure;
-        }
-        else if (roll < odds.MonsterWeight + odds.TreasureWeight
-                 + odds.ShopWeight)
-        {
-            selected = PrototypeRoomType.Shop;
-        }
-        else
-        {
-            selected = PrototypeRoomType.Event;
-        }
-
+            return selected;
         world = world with { UnknownRoomOdds = odds.After(selected) };
         return selected;
     }

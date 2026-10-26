@@ -868,111 +868,27 @@ public sealed partial class PrototypeGameEngine
     private static RunState StartEvent(RunState state)
     {
         var world = RequireWorld(state);
-        var nativeOvergrowth = world.Act == 1
-            && PrototypeNativeOvergrowthMap.IsGenerationProfile(
-                world.Map.GenerationProfileId);
-        var nativeUnderdocks = world.Act == 1
-            && world.Map.GenerationProfileId
-                == PrototypeNativeUnderdocks.GenerationProfileId;
-        var laterRoute = world.Act is 2 or 3
-            && state.Configuration?.UsesExperimentalSilentThreeActRoute == true;
-        var eligible = PrototypeContent.Events.Values
-            .Where(evt =>
-                (laterRoute
-                    ? ExperimentalSilentThreeActRouteV111.ContainsEvent(
-                        evt.Id, world.Act)
-                    : nativeUnderdocks
-                        ? PrototypeNativeUnderdocksEvents.IsSupported(evt.Id)
-                        : nativeOvergrowth
-                            ? PrototypeNativeOvergrowthEvents
-                                  .IsNativeRegionEvent(evt.Id)
-                                || PrototypeNativeSharedEvents.IsSupported(
-                                    evt.Id)
-                            : !PrototypeNativeOvergrowthEvents
-                                  .IsNativeRegionEvent(evt.Id)
-                                && !PrototypeNativeUnderdocksEvents
-                                    .IsNativeRegionEvent(evt.Id))
-                && (!nativeOvergrowth
-                    || PrototypeNativeOvergrowthEvents.IsEligible(
-                        evt, state.Player))
-                && (!nativeUnderdocks
-                    || PrototypeNativeUnderdocksEvents.IsEligible(
-                        evt, state.Player)
-                    && PrototypeNativeUnderdocksEvents.IsFloorEligible(
-                        evt, world))
-                && (!laterRoute || world.Act != 2
-                    || PrototypeNativeHiveEvents.IsEligible(evt, state.Player))
-                && (!laterRoute || world.Act != 3
-                    || PrototypeNativeGloryEvents.IsEligible(evt, state.Player))
-                && world.Act >= evt.MinAct
-                && world.Act <= evt.MaxAct
-                && (evt.Id != PrototypeNativeFakeMerchant.EventId
-                    || PrototypeNativeFakeMerchant.IsEligible(state.Player))
-                && (evt.Id != PrototypeNativeFutureOfPotions.EventId
-                    || laterRoute
-                    && PrototypeNativeFutureOfPotions.IsEligible(state.Player))
-                && (laterRoute || evt.Weight > 0)
-                && (!evt.OncePerRun
-                    || !world.EventIds.Contains(evt.Id, StringComparer.Ordinal)))
-            .ToArray();
-
-        if (eligible.Length == 0)
-        {
-            throw new InvalidOperationException(
-                $"No prototype event is eligible in act {world.Act}.");
-        }
-
-        if (laterRoute)
-        {
-            // Without replacement where possible; one-off native events
-            // stay excluded by OncePerRun. Pool exhaustion is deliberately
-            // provisional until the source event-bag rolls are audited.
-            var unseen = eligible.Where(evt =>
-                !world.EventIds.Contains(evt.Id, StringComparer.Ordinal))
-                .ToArray();
-            if (unseen.Length > 0)
-                eligible = unseen;
-        }
-        var previousEvent = world.EventIds.LastOrDefault();
-        if (previousEvent is not null && eligible.Length > 1)
-        {
-            var withoutImmediateRepeat = eligible
-                .Where(evt =>
-                    !StringComparer.Ordinal.Equals(evt.Id, previousEvent))
-                .ToArray();
-            if (withoutImmediateRepeat.Length > 0)
-                eligible = withoutImmediateRepeat;
-        }
-
-        // Gated later-act fixture registrations deliberately have Weight=0
-        // so legacy prototype runs cannot sample them. Only this explicit
-        // regional route opts in, using uniform provisional weights.
         var prototypeRng = state.Stochastic.PrototypeRng;
         var usesNativeRunRng = state.Stochastic.NativeRunRng is not null;
-        var totalWeight = eligible.Sum(evt => laterRoute ? 1 : evt.Weight);
-        var weightedSupport = eligible.Select(evt => new
+        var eventSupport = PrototypeEventSelectionSupportV111.Describe(state);
+        var ticketLabels = ControlledStochasticCandidateLabelsV111.IsActive &&
+            eventSupport.TotalTicketCount <=
+                ControlledRunActionEngineV111.MaximumInlineOutcomeActions
+            ? eventSupport.TicketOutcomeIds()
+            : [];
+        int roll;
+        using (ControlledStochasticCandidateLabelsV111.Describe(
+            ticketLabels))
         {
-            evt.Id,
-            Weight = laterRoute ? 1 : evt.Weight
-        }).ToArray();
-        var roll = ResolveLegacyBoundedInteger(
-            prototypeRng,
-            "event.selection.weighted_ticket",
-            $"act:{world.Act}:floor:{world.Floor}:pool:"
-                + CanonicalJson.Sha256(weightedSupport),
-            totalWeight,
-            streamId: "event");
-        var selected = eligible[^1];
-        foreach (var evt in eligible)
-        {
-            var weight = laterRoute ? 1 : evt.Weight;
-            if (roll < weight)
-            {
-                selected = evt;
-                break;
-            }
-            roll -= weight;
+            roll = ResolveLegacyBoundedInteger(
+                prototypeRng,
+                "event.selection.weighted_ticket",
+                eventSupport.RequestOwnerId,
+                eventSupport.TotalTicketCount,
+                streamId: "event");
         }
+        var selected = PrototypeContent.Event(
+            eventSupport.EventIdAtTicket(roll));
 
         world = world.AppendEventId(selected.Id) with
         {

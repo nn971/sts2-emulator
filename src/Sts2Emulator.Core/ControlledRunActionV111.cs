@@ -288,6 +288,19 @@ public sealed record ControlledRunActionTraceV111(
                 ActOneEncounterSelectionSupportV111
                     .MatchesTraceIdentityLabels(
                         request.SiteId, request.OwnerId, labels);
+            var eventSelectionIdentityLabels = false;
+            if (isEventEntryDraw && request.SiteId ==
+                "event.selection.weighted_ticket" &&
+                request.OperationKind == "bounded_integer" &&
+                request.StreamId == "event")
+            {
+                eventSelectionIdentityLabels =
+                    PrototypeEventSelectionSupportV111
+                        .IsTicketOutcomeSequence(labels,
+                            request.SupportCount,
+                            ControlledRunActionEngineV111
+                                .MaximumInlineOutcomeActions);
+            }
             var numericLabels = !(isMapDraw || isEventEntryDraw || isShopDraw
                 || isTreasureDraw || isNativeShovelFallbackDraw
                 || isCombatDraw || isCombatPotionDraw
@@ -295,6 +308,7 @@ public sealed record ControlledRunActionTraceV111(
                 || isRelicDeckTransformDraw)
                 || nativeRelicBagLabels
                 || actOneEncounterIdentityLabels
+                || eventSelectionIdentityLabels
                 || omittedLabels ||
                 ControlledStochasticChanceReplayV111.CandidateLabelsMatch(
                     labels, Enumerable.Range(0, labels.Length).Select(index =>
@@ -313,6 +327,9 @@ public sealed record ControlledRunActionTraceV111(
                 || request.OwnerId != prefixOwner
                 || !request.OrderedCandidates.SequenceEqual(prefixCandidates)
                 || (labels.Length != request.SupportCount && !omittedLabels)
+                || (isEventEntryDraw && request.SiteId ==
+                    "event.selection.weighted_ticket" &&
+                    !eventSelectionIdentityLabels)
                 || !numericLabels
                 || !validBossLabels
                 || labels.Any(string.IsNullOrWhiteSpace))
@@ -810,6 +827,10 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                     .IsRunActionCombatSite(PendingRequest.SiteId);
                 var unknownRoomSite = PendingRequest.SiteId ==
                     "event.unknown_room.odds.ticket";
+                var unknownEventSelection = PendingRequest.SiteId ==
+                        "event.selection.weighted_ticket" &&
+                    ControlledRunActionEngineV111
+                        .IsPendingLegacyUnknownEventSelection(this, state);
                 var combatPotionSite = ControlledEventChoiceReplayV111
                     .IsRunActionCombatEntryPotionSite(
                         PendingRequest.SiteId);
@@ -866,6 +887,7 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                     throw new InvalidDataException(
                         "Controlled map-node frame does not reference an available supported node.");
                 if (!(node.RoomType == PrototypeRoomType.Event && eventEntrySite)
+                    && !(unknownEventSelection && eventEntrySite)
                     && !(legacyShopNode && shopSite)
                     && !(supportedTreasureNode && treasureSite)
                     && !(legacyUnknownRoomNode && unknownRoomSite)
@@ -912,6 +934,29 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                     : Enumerable.Range(0, PendingRequest.SupportCount)
                         .Select(index => index.ToString(
                             CultureInfo.InvariantCulture)).ToArray();
+                if (PendingRequest.SiteId ==
+                    "event.selection.weighted_ticket")
+                {
+                    var eventSupport =
+                        PrototypeEventSelectionSupportV111.Describe(state);
+                    if ((node.RoomType != PrototypeRoomType.Event &&
+                            !unknownEventSelection) ||
+                        state.Stochastic.NativeRunRng is not null ||
+                        PendingRequest.OperationKind != "bounded_integer" ||
+                        PendingRequest.StreamId != "event" ||
+                        PendingRequest.BoundedCount !=
+                            eventSupport.TotalTicketCount ||
+                        PendingRequest.OrderedCandidates.Length != 0 ||
+                        PendingRequest.OwnerId !=
+                            eventSupport.RequestOwnerId)
+                        throw new InvalidDataException(
+                            "Controlled event-selection request differs from its Event-node weighted support.");
+                    expectedOwner = eventSupport.RequestOwnerId;
+                    expectedLabels = eventSupport.TotalTicketCount <=
+                            ControlledRunActionEngineV111
+                                .MaximumInlineOutcomeActions
+                        ? eventSupport.TicketOutcomeIds() : [];
+                }
                 if (treasureSite && legacyNativeTreasureNode)
                 {
                     var request = ResolveLegacyNativeRelicBagRequest(
@@ -2282,6 +2327,57 @@ public static class ControlledRunActionEngineV111
         return PrototypeNativeWingedBoots.AvailableNodes(world, source.Player)
             .Any(node => node.NodeId == nodeId
                 && node.RoomType == PrototypeRoomType.Unknown);
+    }
+
+    internal static bool IsPendingLegacyUnknownEventSelection(
+        PrototypeControlledRunActionContinuationV111 continuation,
+        RunState source)
+    {
+        ArgumentNullException.ThrowIfNull(continuation);
+        ArgumentNullException.ThrowIfNull(source);
+        if (continuation.ActionId != "choose_map_node" ||
+            continuation.PendingRequest.SiteId !=
+                "event.selection.weighted_ticket" ||
+            continuation.MapNodeId is not { } nodeId ||
+            source.Phase != RunPhase.MapChoice ||
+            source.Configuration is not null ||
+            source.Stochastic.NativeRunRng is not null ||
+            source.World is not { } world ||
+            !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
+            !PrototypeNativeWingedBoots.AvailableNodes(world, source.Player)
+                .Any(node => node.NodeId == nodeId &&
+                    node.RoomType == PrototypeRoomType.Unknown) ||
+            continuation.Decisions.Length != 1 ||
+            continuation.DecisionCandidateLabels.Length != 1)
+            return false;
+
+        var oddsDecision = continuation.Decisions[0];
+        oddsDecision.Validate();
+        var oddsRequest = oddsDecision.Request;
+        var expectedOwner =
+            $"act:{world.Act}:floor:{world.Floor}:unknown_room";
+        var expectedLabels = Enumerable.Range(
+                0, PrototypeUnknownRoomOddsState.Scale)
+            .Select(index => index.ToString(CultureInfo.InvariantCulture))
+            .ToArray();
+        if (oddsRequest.SiteId != "event.unknown_room.odds.ticket" ||
+            oddsRequest.StreamId != "event" ||
+            oddsRequest.OperationKind != "bounded_integer" ||
+            oddsRequest.OwnerId != expectedOwner ||
+            oddsRequest.BoundedCount != PrototypeUnknownRoomOddsState.Scale ||
+            oddsRequest.OrderedCandidates.Length != 0 ||
+            oddsDecision.SelectedIndex < 0 ||
+            oddsDecision.SelectedIndex >= PrototypeUnknownRoomOddsState.Scale ||
+            !continuation.DecisionCandidateLabels[0].SequenceEqual(
+                expectedLabels, StringComparer.Ordinal))
+            return false;
+
+        var odds = world.UnknownRoomOdds ??
+            new PrototypeUnknownRoomOddsState();
+        var eventOnly = PrototypeGoldenPathMapV111.IsActive(
+            source.Player, world.Act);
+        return odds.SelectRoom(oddsDecision.SelectedIndex, eventOnly) ==
+            PrototypeRoomType.Event;
     }
 
     internal static bool IsLegacyNativeTreasureEntryAction(

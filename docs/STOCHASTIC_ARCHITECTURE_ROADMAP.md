@@ -2,6 +2,19 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S5 legacy event-selection support and identity-law increment (2026-10-26):**
+`PrototypeEventSelectionSupportV111` now owns the emulator's ordered event
+eligibility, history filters, weights, and raw-ticket mapping shared by
+`StartEvent`, controlled replay, and the run-action Chance Law. The law
+validates the current weighted support and exposes stable
+`event:<id>:ticket:<local-index>` outcomes; saved run-action labels validate
+those identities, including when a regional Unknown-room ticket continues
+into Event entry. Legacy modulo calibration and Native event-pool and stream
+parity remain open, so the law stays `UNVERIFIED`. Core/CLI Release build
+passed with zero warnings or errors, the full static RNG inventory passed
+(185/185 registry-to-matrix rows and all 185 S0 evidence-pointer rows), and
+`git diff --check` passed; no tests were run.
+
 **S5 controlled run-action Chance Law outcome resolution increment
 (2026-10-26):** Controlled run-action choices now resolve explicit or compact
 Chance Law outcome IDs through a shared `ChanceLawV111` support-to-index

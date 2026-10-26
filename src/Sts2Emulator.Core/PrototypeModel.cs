@@ -4262,6 +4262,21 @@ public sealed record PrototypeUnknownRoomOddsState(
 {
     public const int Scale = 1000;
 
+    public PrototypeRoomType SelectRoom(int ticket, bool eventOnly = false)
+    {
+        if ((uint)ticket >= Scale)
+            throw new ArgumentOutOfRangeException(nameof(ticket));
+        if (eventOnly)
+            return PrototypeRoomType.Event;
+        if (ticket < MonsterWeight)
+            return PrototypeRoomType.Combat;
+        if (ticket < MonsterWeight + TreasureWeight)
+            return PrototypeRoomType.Treasure;
+        if (ticket < MonsterWeight + TreasureWeight + ShopWeight)
+            return PrototypeRoomType.Shop;
+        return PrototypeRoomType.Event;
+    }
+
     public PrototypeUnknownRoomOddsState After(PrototypeRoomType rolled) =>
         this with
         {

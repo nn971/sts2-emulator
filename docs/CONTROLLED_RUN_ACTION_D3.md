@@ -259,12 +259,18 @@ act transitions use the composed ReferenceNature map-generation session
 described above. Ordinary Native map regeneration remains outside these continuations.
 Event-entry continuation covers legacy
 `event.selection.weighted_ticket` and listed legacy event initialization draws
-when a map Event node is selected. The separate
+when a map Event node is selected. The event-selection law shares its ordered
+eligibility and weighted-ticket support with ordinary event entry, exposes
+stable event-and-ticket outcome IDs, and validates those labels on saved
+continuations. It also accepts a regional Unknown node when the saved
+`event.unknown_room.odds.ticket` decision maps to Event. The separate
 `event.unknown_room.odds.ticket` request is supported only when an unconfigured
 legacy run with no `NativeRunRng` enters an available Unknown node in a regional
 map profile; its 1000 equal request indices remain `UNVERIFIED` because they
-approximate the source unit-float mapping. Other configured Native run streams
-and source cursor parity remain outside this boundary, apart from the
+approximate the source unit-float mapping. The event-selection ticket law also
+remains `UNVERIFIED`: native event-pool parity and legacy modulo calibration
+are unaudited. Other configured Native run streams and source cursor parity
+remain outside this boundary, apart from the
 configured run-start and Act 1 encounter continuations described above.
 
 The supported legacy event-entry initialization sites are:

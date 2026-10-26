@@ -55,6 +55,10 @@ public static partial class ChanceLawEngineV111
             return law with { EventId = pending.ChanceEventId };
         }
         if (continuation.ActionId == "choose_map_node" &&
+            pending.Request.SiteId == "event.selection.weighted_ticket")
+            return QueryControlledRunActionEventSelection(
+                run, continuation, pending.ChanceEventId);
+        if (continuation.ActionId == "choose_map_node" &&
             continuation.MapNodeId is { } mapNodeId &&
             PrototypeGameEngine.DescribeActOneEncounterSelection(
                 run,
@@ -72,6 +76,74 @@ public static partial class ChanceLawEngineV111
                 run, continuation, pending.ChanceEventId) is { } semanticLaw)
             return semanticLaw;
         return QueryRandomIndex(pending.ChanceEventId, pending.Request);
+    }
+
+    private static ChanceLawV111 QueryControlledRunActionEventSelection(
+        RunState run,
+        PrototypeControlledRunActionContinuationV111 continuation,
+        string eventId)
+    {
+        var request = continuation.PendingRequest;
+        var directEventNode = continuation.MapNodeId is { } directEventNodeId &&
+            run.World is { } directEventWorld &&
+            PrototypeNativeWingedBoots.AvailableNodes(
+                    directEventWorld, run.Player)
+                .Any(node => node.NodeId == directEventNodeId &&
+                    node.RoomType == PrototypeRoomType.Event);
+        var unknownNodeResolvedToEvent =
+            ControlledRunActionEngineV111
+                .IsPendingLegacyUnknownEventSelection(continuation, run);
+        if (run.Phase != RunPhase.MapChoice ||
+            run.Stochastic.NativeRunRng is not null ||
+            run.World is null ||
+            !directEventNode && !unknownNodeResolvedToEvent)
+            throw new InvalidDataException(
+                "Controlled event-selection law is outside its legacy Event-node boundary.");
+
+        var support = PrototypeEventSelectionSupportV111.Describe(run);
+        if (request.SiteId != "event.selection.weighted_ticket" ||
+            request.StreamId != "event" ||
+            request.OperationKind != "bounded_integer" ||
+            request.OwnerId != support.RequestOwnerId ||
+            request.BoundedCount != support.TotalTicketCount ||
+            request.OrderedCandidates.Length != 0)
+            throw new InvalidDataException(
+                "Controlled event-selection request differs from its eligible weighted support.");
+
+        if (support.TotalTicketCount > ChanceLawV111.MaximumExplicitOutcomeCount)
+            return QueryRandomIndex(eventId, request);
+
+        var outcomeIds = support.TicketOutcomeIds();
+        var expectedLabels = support.TotalTicketCount <=
+                ControlledRunActionEngineV111.MaximumInlineOutcomeActions
+            ? outcomeIds : [];
+        if (!continuation.PendingCandidateLabels.SequenceEqual(
+                expectedLabels, StringComparer.Ordinal))
+            throw new InvalidDataException(
+                "Controlled event-selection labels differ from its ordered weighted tickets.");
+
+        var outcomes = outcomeIds.Select(outcomeId =>
+            new ChanceLawOutcomeV111(outcomeId, 1L)).ToArray();
+        var law = CreateLegacyCategoricalLaw(
+            request.SiteId, request.StreamId, request.OwnerId,
+            request.Ordinal,
+            "legacy-event-selection-weighted-ticket-identities-v1",
+            new
+            {
+                request,
+                support.Act,
+                support.Floor,
+                support.UsesProvisionalUniformWeights,
+                orderedEvents = support.Candidates,
+                orderedTicketOutcomeIds = outcomeIds
+            },
+            "Equal mass per legacy bounded ticket, with each outcome bound " +
+            "to its source-ordered event and local ticket position. The " +
+            "emulator eligibility, event weights, and event-to-ticket mapping " +
+            "are captured; Native event-pool parity and legacy modulo " +
+            "calibration remain unverified.",
+            outcomes);
+        return law with { EventId = eventId };
     }
 
     internal static ChanceLawV111 QueryActOneEncounterSelection(
