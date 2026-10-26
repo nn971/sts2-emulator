@@ -756,6 +756,10 @@ public static class ControlledPlayableCombatEngineV111
             World = run.World! with
             {
                 ActiveRoom = PrototypeRoomType.Combat,
+                // This is an isolated seeded encounter, not a map traversal.
+                // Keep its world floor consistent with the Native formation
+                // context used to select the encounter and its legal range.
+                Floor = verified.Formation.TotalFloor,
                 Combat = combat
             }
         };
