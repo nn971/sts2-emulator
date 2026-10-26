@@ -10,15 +10,15 @@ requests. It preserves the existing index weights and binds the label mapping
 into the conditioning fingerprint; missing, duplicate, numeric-range, or
 oversized supports keep their generic index identities. The same helper serves
 the generic run-action and event-choice fallbacks. Specialized site laws and
-continuation schemas are unchanged.
+continuation schemas are unchanged. The internal
+`SemanticHandDrawStepIndex` compatibility projection forwards to the existing
+cursor owner so older fixture references continue to compile.
 The Core/CLI Release build passed with zero warnings or errors. Static
 inventory checks passed: 155 direct RNG calls, 185/185 registered rows and
 S0 evidence links, zero ambient-entropy findings, zero Native Chance Law
 references, and zero query-guard violations. `git diff --check` passed; no
-tests were run. A full solution build reaches all production projects but
-fails compiling the test project because four references to
-`PrototypeGameEngine.SemanticHandDrawStepIndex` do not resolve in
-`SemanticAutomaticHandDrawV111Tests.cs`.
+tests were run. The full solution Release build passed with zero warnings or
+errors.
 
 **S5 legacy weighted-encounter support and identity-law increment (2026-10-26):**
 `PrototypeWeightedEncounterSupportV111` now owns the ordinary prototype

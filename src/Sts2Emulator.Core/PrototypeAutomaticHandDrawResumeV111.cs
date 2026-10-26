@@ -11,6 +11,9 @@ public sealed partial class PrototypeGameEngine
         Array.FindIndex(PrototypeContent.Rules.EndTurnPipeline,
             step => step.Kind == PrototypeAutomaticStepKind.DrawPlayerHand);
 
+    internal static int SemanticHandDrawStepIndex =>
+        AutomaticHandDrawStepIndex;
+
     /// <summary>
     /// Project tagged semantic progress from the owner of the active
     /// DrawPlayerHand cursor. Draw facades use this shared query instead of
