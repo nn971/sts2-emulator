@@ -200,11 +200,7 @@ public sealed record ScriptedRunSessionV111(
 
         var actionSession = ScriptedRunActionSessionV111.Begin(
             Run, CloneAction(action));
-        var next = actionSession.Complete
-            ? CommitAction(this, actionSession)
-            : this with { ActiveAction = actionSession };
-        next.Validate();
-        return next;
+        return PublishActionSession(actionSession);
     }
 
     public ScriptedRunSessionV111 ResolveNext(
@@ -217,6 +213,12 @@ public sealed record ScriptedRunSessionV111(
                 "No scripted random request is pending for the run.");
 
         var actionSession = Stochastic.ActiveAction.ResolveNext(outcome);
+        return PublishActionSession(actionSession);
+    }
+
+    private ScriptedRunSessionV111 PublishActionSession(
+        ScriptedRunActionSessionV111 actionSession)
+    {
         var next = actionSession.Complete
             ? CommitAction(this, actionSession)
             : this with { ActiveAction = actionSession };
@@ -237,11 +239,7 @@ public sealed record ScriptedRunSessionV111(
                 "No scripted random request is pending for the run.");
         var actionSession = activeAction.ResolveByCandidateLabel(
             candidateLabel);
-        var next = actionSession.Complete
-            ? CommitAction(this, actionSession)
-            : this with { ActiveAction = actionSession };
-        next.Validate();
-        return next;
+        return PublishActionSession(actionSession);
     }
 
     public ScriptedRunSessionV111 Fork()

@@ -1059,7 +1059,10 @@ with the session facades. Their labeled-index resolver uses the shared
 candidate-label validator, accepts only a unique label in the saved support,
 and records the selected index through the existing typed transcript. JSONL
 and the Python whole-run binding accept `candidate_label` in place of a raw
-index transcript entry at those boundaries.
+index transcript entry at those boundaries. Beginning an action and resolving
+it through either input form share the same whole-run publication transition,
+so commit, pending-action replacement, and replay validation stay in one
+owner path.
 
 `ReferenceNatureScriptedRunSessionV111` composes the scripted action replay
 owner with one run-level ReferenceNature cursor and a typed Chance Law

@@ -6355,3 +6355,10 @@ existing typed index transcript. JSONL resolve operations and the standard
 Python whole-run wrapper accept `candidate_label` directly. Other typed
 primitives continue to require their transcript entry. Release build, static
 RNG audit, and `git diff --check` passed; no tests were added or run.
+
+**S4 scripted whole-run action publication consolidation (2026-10-26):**
+Starting an action and resolving it through either a typed transcript entry or
+a candidate label now share one whole-run publication path for pending-action
+replacement, completed-action commit, and replay validation. The additive
+refactor changes no snapshot shape. CLI Release build and `git diff --check`
+passed; no tests were added or run.
