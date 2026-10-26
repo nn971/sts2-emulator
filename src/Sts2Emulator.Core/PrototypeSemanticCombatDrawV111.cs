@@ -346,20 +346,12 @@ public sealed partial class PrototypeGameEngine
             var deferredKeywordIds =
                 nextDraw.DeferredKeywordCardInstanceIds ?? [];
             var combat = drawn.Combat;
-            if (boundary ==
-                PrototypeDrawCardsBoundaryKind.ControlledDrawCost)
+            if (boundary is
+                PrototypeDrawCardsBoundaryKind.ControlledDrawCost or
+                PrototypeDrawCardsBoundaryKind.SemanticDraw)
             {
-                combat = AttachControlledSemanticDrawCost(
-                    combat, nextDraw, outerContinuation);
-                return new PrototypeDrawCardsResumeResultV111(
-                    PublishDrawMechanicsState(
-                        advanced, advanced.Player, combat),
-                    drawn.RemainingCount);
-            }
-            if (boundary == PrototypeDrawCardsBoundaryKind.SemanticDraw)
-            {
-                combat = MakeControlledSemanticDrawChoice(
-                    combat, nextDraw, outerContinuation);
+                combat = AttachControlledDrawResumeBoundary(
+                    combat, boundary, nextDraw, outerContinuation);
                 return new PrototypeDrawCardsResumeResultV111(
                     PublishDrawMechanicsState(
                         advanced, advanced.Player, combat),
@@ -460,9 +452,10 @@ public sealed partial class PrototypeGameEngine
             insertionCombat = advanced.World!.Combat!;
         }
 
-        var combat = MakeControlledAfterShuffleInsertionChoice(
-            insertionCombat, insertions[0], insertions.Skip(1).ToArray(),
-            [], semanticDraw, continuation, 0);
+        var combat = AttachControlledDrawResumeBoundary(
+            insertionCombat,
+            PrototypeDrawCardsBoundaryKind.AfterShuffleInsertions,
+            semanticDraw, continuation, insertions);
         return new PrototypeDrawCardsResumeResultV111(
             PublishDrawMechanicsState(
                 advanced, advanced.Player, combat),
@@ -568,8 +561,11 @@ public sealed partial class PrototypeGameEngine
         var resumedDraw = AdvanceControlledSemanticDrawFrame(
             draw, remaining, drawnCardInstanceIds,
             accumulateDrawnCardIds);
-        combat = AttachDrawCardsAtCardDrawnChoice(
-            combat, resumedDraw, continuation, markStandaloneHookChoice);
+        combat = AttachControlledDrawResumeBoundary(
+            combat,
+            PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice,
+            resumedDraw, continuation,
+            markStandaloneHookChoice: markStandaloneHookChoice);
         return PublishDrawMechanicsState(run, player, combat);
     }
 

@@ -6384,3 +6384,10 @@ predicate used by `SemanticCombatDrawV111.AtBoundary`. The completion gate
 therefore follows the same typed event projection as end-turn validation and
 choice dispatch. Core Release build and `git diff --check` passed; no tests
 were added or run.
+
+**S4 controlled effect-draw boundary attachment increment (2026-10-26):**
+Legacy and semantic effect-draw result adapters now attach nested `CardDrawn`,
+semantic draw, drawn-cost, and after-shuffle insertion continuations through
+`AttachControlledDrawResumeBoundary`. The adapters retain provider-specific
+frame advancement, recycle and Stratagem handling, and validation. Core
+Release build and `git diff --check` passed; no tests were added or run.

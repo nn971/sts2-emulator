@@ -277,6 +277,13 @@ checkpoint and remaining count to that owner. This keeps the resumed
 DrawPlayerHand segment construction paired with the same tagged-boundary router
 without merging provider-specific validation.
 
+`AttachControlledDrawResumeBoundary` owns attachment of saved effect-draw
+continuations for nested `CardDrawn` choices, semantic draw tickets, drawn-card
+costs, and after-shuffle insertions. Legacy and semantic effect-draw result
+adapters pass the already-advanced draw frame and source continuation through
+this common mapping. Recycle and Stratagem handling, frame advancement, and
+provider-specific validation remain with their existing owners.
+
 `SemanticChoiceResumeV111.ResumeHandDrawChoiceProgress` now owns the
 standalone-versus-automatic count interpretation and boundary publication
 shared by draw-hook, Stratagem, effect-draw, effect-draw-cost, and

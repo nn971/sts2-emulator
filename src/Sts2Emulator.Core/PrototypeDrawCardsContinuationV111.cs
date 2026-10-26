@@ -238,6 +238,53 @@ public sealed partial class PrototypeGameEngine
         return combat;
     }
 
+    private static CombatState AttachControlledDrawResumeBoundary(
+        CombatState combat,
+        PrototypeDrawCardsBoundaryKind boundary,
+        PrototypeControlledSemanticDrawV111 draw,
+        PrototypeChoiceResolutionContinuationState continuation,
+        PrototypeAfterShuffleRelicInsertionV111[]? insertions = null,
+        int insertionOrdinal = 0,
+        bool markStandaloneHookChoice = false)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(draw);
+        ArgumentNullException.ThrowIfNull(continuation);
+        return boundary switch
+        {
+            PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice =>
+                AttachDrawCardsAtCardDrawnChoice(
+                    combat, draw, continuation, markStandaloneHookChoice),
+            PrototypeDrawCardsBoundaryKind.SemanticDraw =>
+                MakeControlledSemanticDrawChoice(
+                    combat, draw, continuation),
+            PrototypeDrawCardsBoundaryKind.ControlledDrawCost =>
+                AttachControlledSemanticDrawCost(
+                    combat, draw, continuation),
+            PrototypeDrawCardsBoundaryKind.AfterShuffleInsertions =>
+                AttachAfterShuffleInsertionBoundary(
+                    combat, draw, continuation, insertions,
+                    insertionOrdinal),
+            _ => throw new InvalidDataException(
+                "Draw boundary has no saved controlled resume choice.")
+        };
+    }
+
+    private static CombatState AttachAfterShuffleInsertionBoundary(
+        CombatState combat,
+        PrototypeControlledSemanticDrawV111 draw,
+        PrototypeChoiceResolutionContinuationState continuation,
+        PrototypeAfterShuffleRelicInsertionV111[]? insertions,
+        int insertionOrdinal)
+    {
+        if (insertions is not { Length: > 0 })
+            throw new InvalidDataException(
+                "After-shuffle draw resume lost its insertion sequence.");
+        return MakeControlledAfterShuffleInsertionChoice(
+            combat, insertions[0], insertions.Skip(1).ToArray(), [], draw,
+            continuation, insertionOrdinal);
+    }
+
     private readonly record struct PrototypeEffectDrawResumeResultV111(
         PlayerState Player,
         CombatState Combat,
@@ -331,8 +378,8 @@ public sealed partial class PrototypeGameEngine
                 drawn.DrawnCardInstanceIds);
             var continuation = CreateEffectContinuation(
                 continuationContext, remainingOperations);
-            combat = AttachDrawCardsAtCardDrawnChoice(
-                combat, suspendedDraw, continuation,
+            combat = AttachControlledDrawResumeBoundary(
+                combat, boundary, suspendedDraw, continuation,
                 markStandaloneHookChoice:
                     operation.StandaloneSemanticDrawSegment);
             return new PrototypeEffectDrawResumeResultV111(
@@ -354,28 +401,11 @@ public sealed partial class PrototypeGameEngine
                     boundary ==
                         PrototypeDrawCardsBoundaryKind.AfterShuffleInsertions &&
                     ExpectedStratagemSelectionCount(combat) > 0);
-            if (boundary ==
-                PrototypeDrawCardsBoundaryKind.AfterShuffleInsertions)
-                return new PrototypeEffectDrawResumeResultV111(
-                    player,
-                    MakeControlledAfterShuffleInsertionChoice(
-                        combat,
-                        drawn.ControlledAfterShuffleInsertions![0],
-                        drawn.ControlledAfterShuffleInsertions.Skip(1).ToArray(),
-                        [], suspendedDraw, continuation, 0),
-                    remainingOperations,
-                    ReturnFromOperations: true);
-            if (boundary == PrototypeDrawCardsBoundaryKind.SemanticDraw)
-                return new PrototypeEffectDrawResumeResultV111(
-                    player,
-                    MakeControlledSemanticDrawChoice(
-                        combat, suspendedDraw, continuation),
-                    remainingOperations,
-                    ReturnFromOperations: true);
             return new PrototypeEffectDrawResumeResultV111(
                 player,
-                AttachControlledSemanticDrawCost(
-                    combat, suspendedDraw, continuation),
+                AttachControlledDrawResumeBoundary(
+                    combat, boundary, suspendedDraw, continuation,
+                    drawn.ControlledAfterShuffleInsertions),
                 remainingOperations,
                 ReturnFromOperations: true);
         }
