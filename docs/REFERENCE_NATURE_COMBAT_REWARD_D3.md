@@ -60,7 +60,10 @@ legacy reward-stream index requests:
 
 These retained requests use equal-index `UNVERIFIED` laws bound to the typed
 request, candidate labels, active action, and ordered replay prefix. They do
-not establish the legacy stream's probability mapping or Native parity. Other
+not establish the legacy stream's probability mapping or Native parity. When
+the replay-validated label vector is complete and unique, its labels become
+the ordered Chance Law outcome IDs without changing those weights; absent,
+duplicate, numeric-range, and oversized vectors retain index outcomes. Other
 stochastic requests retain their existing providers and are not controlled by
 this session. In a Native regional run with no `NativeRunRng`, the session
 canonicalizes the relic bag and controls the retained rarity ticket and

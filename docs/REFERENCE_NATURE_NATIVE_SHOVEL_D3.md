@@ -28,7 +28,9 @@ Its 50/33/17 transform is `SOURCE_VERIFIED` for the declared request. The
 identity request uses the exact Native bounded-index transform on the current
 sorted fallback support. The session recomputes that support from the origin
 and prior selected identities, then validates the rarity, fallback tier,
-support, and request owner before accepting the choice.
+support, and request owner before accepting the choice. Its Chance Law uses
+those validated relic IDs as ordered outcome IDs and preserves the exact
+bounded-index weights.
 
 Each `ResolveNext()` samples one request and replays the full ordinary Rest
 action from its saved origin with the typed decision prefix. Save/restore

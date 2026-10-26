@@ -89,12 +89,26 @@ public static partial class ChanceLawEngineV111
             continuation.PendingCandidateLabels);
     }
 
-    private static ChanceLawV111 QueryRandomIndexWithCandidateOutcomeIds(
+    internal static ChanceLawV111 QueryRandomIndexWithCandidateOutcomeIds(
         string eventId,
         RandomIndexRequestV111 request,
         string[]? candidateLabels)
     {
         var indexLaw = QueryRandomIndex(eventId, request);
+        return WithCandidateOutcomeIds(indexLaw, request, candidateLabels);
+    }
+
+    internal static ChanceLawV111 WithCandidateOutcomeIds(
+        ChanceLawV111 indexLaw,
+        RandomIndexRequestV111 request,
+        string[]? candidateLabels)
+    {
+        if (indexLaw.SiteId != request.SiteId ||
+            indexLaw.OperationKind != request.OperationKind ||
+            indexLaw.OwnerId != request.OwnerId ||
+            indexLaw.Ordinal != request.Ordinal)
+            throw new InvalidDataException(
+                "Candidate outcome labels do not match their index law.");
         if (candidateLabels is null ||
             request.SupportCount > ChanceLawV111.MaximumExplicitOutcomeCount ||
             candidateLabels.Length != request.SupportCount ||
@@ -117,7 +131,7 @@ public static partial class ChanceLawEngineV111
             policy = indexLaw.ConditioningPolicyId,
             orderedCandidateOutcomeIds = candidateLabels
         });
-        return Create(eventId, request.SiteId, request.OperationKind,
+        return Create(indexLaw.EventId, request.SiteId, request.OperationKind,
             request.OwnerId, request.Ordinal,
             indexLaw.ConditioningPolicyId, conditioningFingerprint,
             indexLaw.ProbabilityProvenance, outcomes,

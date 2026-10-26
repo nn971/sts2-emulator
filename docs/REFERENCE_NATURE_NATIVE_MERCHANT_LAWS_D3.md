@@ -105,9 +105,13 @@ The generic typed-index law fingerprints the provider-independent mechanics
 boundary, action identity, exact request, ordered labels, and prior decision
 prefix. Canonical Native streams receive exact bounded-index masses;
 noncanonical streams retain `UNVERIFIED` uniform-index weights. The registry
-is the sole site list. This adds a serialized resolution path for registered
-purchase indices without certifying the source trigger, candidate pool, or
-stream assignment.
+is the sole site list. When a validated request has a complete, unique label
+vector within the explicit-law bound, those labels are exposed as outcome IDs
+and included in the conditioning fingerprint while preserving the law's
+weights. This also applies to labeled Native player-model requests and generic
+legacy merchant fallback indices. This adds a serialized resolution path for
+registered purchase indices without certifying the source trigger, candidate
+pool, or stream assignment.
 
 ## Conditioned support by site
 
@@ -168,6 +172,8 @@ twice. The fallback includes the sale slot, card rarity/model and upgrade
 ticket, Colorless-card models, weighted potion rarity/models, relic rarity and
 Nature-only hidden relic identity, and the three integer-percent price
 requests. Those legacy request-index laws remain `UNVERIFIED`.
+Complete unique saved labels identify their explicit Chance Law outcomes
+where available; the mapping does not change equal-index weights.
 
 The declared Native bounded-index and float-grid transforms are
 `SOURCE_VERIFIED` for their listed supports. That status does not establish

@@ -423,8 +423,8 @@ public sealed record ReferenceNatureCombatRewardSessionV111(
                 candidateLabels,
                 prefixFingerprint = CanonicalJson.Sha256(prefix)
             });
-            return ChanceLawEngineV111.QueryRandomIndex(
-                boundaryId, legacyRequest);
+            return ChanceLawEngineV111.QueryRandomIndexWithCandidateOutcomeIds(
+                boundaryId, legacyRequest, candidateLabels);
         }
 
         if (request.UnitFloatRequest is { } floatRequest)

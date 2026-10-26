@@ -508,10 +508,12 @@ public sealed record ReferenceNatureMerchantSessionV111(
                 candidateLabels.Length != playerModelRequest.SupportCount)
                 throw new InvalidDataException(
                     "Native player model request lost its ordered candidate labels.");
-            return ChanceLawEngineV111.QueryNativePlayerModelIndex(
+            var law = ChanceLawEngineV111.QueryNativePlayerModelIndex(
                 siteId, playerModelRequest.OwnerId,
                 playerModelRequest.SupportCount,
                 playerModelRequest.Ordinal);
+            return ChanceLawEngineV111.WithCandidateOutcomeIds(
+                law, playerModelRequest, candidateLabels);
         }
         if (siteId == "shop.merchant.sale_slot.index_draw")
             return ChanceLawEngineV111.QueryNativeMerchantOffer(
@@ -683,8 +685,8 @@ public sealed record ReferenceNatureMerchantSessionV111(
                 PriorPrefix = prefix.Select(decision =>
                     CanonicalJson.Sha256(decision)).ToArray()
             });
-            return ChanceLawEngineV111.QueryRandomIndex(
-                eventId, purchaseIndexRequest);
+            return ChanceLawEngineV111.QueryRandomIndexWithCandidateOutcomeIds(
+                eventId, purchaseIndexRequest, purchaseCandidateLabels);
         }
 
         throw new NotSupportedException(
@@ -708,9 +710,9 @@ public sealed record ReferenceNatureMerchantSessionV111(
         {
             _ = ValidateLegacyPotionFactoryRequest(
                 source, action, indexRequest, candidateLabels, prefix);
-            return ChanceLawEngineV111.QueryRandomIndex(
+            return ChanceLawEngineV111.QueryRandomIndexWithCandidateOutcomeIds(
                 MerchantRequestEventId(source, action, request,
-                    candidateLabels, prefix), indexRequest);
+                    candidateLabels, prefix), indexRequest, candidateLabels);
         }
         if (indexRequest.SiteId ==
             PrototypeNativePotionShop.ModelWithinRaritySiteId)
@@ -731,9 +733,10 @@ public sealed record ReferenceNatureMerchantSessionV111(
         if (IsToyBoxPurchase(source, action))
         {
             if (indexRequest.SiteId == "relic_grab_bag.rarity.ticket")
-                return ChanceLawEngineV111.QueryRandomIndex(
+                return ChanceLawEngineV111.QueryRandomIndexWithCandidateOutcomeIds(
                     MerchantRequestEventId(source, action, request,
-                        candidateLabels, prefix), indexRequest);
+                        candidateLabels, prefix), indexRequest,
+                    candidateLabels);
 
             if (indexRequest.SiteId == PrototypeNativeRelicGrabBag
                     .NativeTreasureModelSiteId)
@@ -757,9 +760,9 @@ public sealed record ReferenceNatureMerchantSessionV111(
                 indexRequest.SiteId, indexRequest.OwnerId,
                 indexRequest.Ordinal, indexRequest.SupportCount);
 
-        return ChanceLawEngineV111.QueryRandomIndex(
+        return ChanceLawEngineV111.QueryRandomIndexWithCandidateOutcomeIds(
             MerchantRequestEventId(source, action, request,
-                candidateLabels, prefix), indexRequest);
+                candidateLabels, prefix), indexRequest, candidateLabels);
     }
 
     private static void ValidateLegacyNativeMerchantRequest(

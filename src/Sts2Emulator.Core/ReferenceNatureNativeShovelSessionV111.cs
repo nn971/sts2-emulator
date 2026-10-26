@@ -456,8 +456,8 @@ public sealed record ReferenceNatureNativeShovelSessionV111(
                 actionId = PrototypeAiEnvironment.StableActionId(action),
                 request = indexRequest
             });
-            return ChanceLawEngineV111.QueryRandomIndex(
-                lawEventId, indexRequest);
+            return ChanceLawEngineV111.QueryRandomIndexWithCandidateOutcomeIds(
+                lawEventId, indexRequest, candidateLabels);
         }
 
         throw new NotSupportedException(
