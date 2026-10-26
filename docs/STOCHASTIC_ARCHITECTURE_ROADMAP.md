@@ -6265,3 +6265,11 @@ conditioning the second draw. Native bounded-index masses remain exact on the
 declared supports; legacy equal-index weights, installed-game pool fidelity,
 and cursor parity remain open. Static source review, Core Release build, the
 static RNG audit, and `git diff --check` passed; no tests were added or run.
+
+**S4 Forgotten Soul exhaust-target continuation increment (2026-10-26):** The
+semantic combat pilot now admits the existing random-target owner for
+Forgotten Soul's `CardExhausted` trigger during a semantic player action. The
+saved continuation must match the live relic subscriber, exhausted physical
+card, event payload, source random-enemy damage effect, and its retargeted
+queued operation. No chance owner or snapshot schema changed. Core Release
+build passed with zero warnings and errors; no tests were run.

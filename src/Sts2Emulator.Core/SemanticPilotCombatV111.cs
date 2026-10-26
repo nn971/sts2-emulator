@@ -5539,6 +5539,11 @@ public static class SemanticPilotCombatEngineV111
                 combat, choice, choice?.ControlledTarget))
             throw new InvalidDataException(
                 "Tingsha target is outside its supported discard continuation.");
+        if (IsForgottenSoulTargetChoice(combat, choice) &&
+            !IsForgottenSoulSupportedExhaustTargetChoice(
+                combat, choice, choice?.ControlledTarget))
+            throw new InvalidDataException(
+                "Forgotten Soul target is outside its supported exhaust continuation.");
         var ordinal = NextSemanticRequestOrdinal(
             current, "semantic_target",
             StochasticSiteRegistryV111.CombatRandomTargetSiteIds);
@@ -5699,6 +5704,93 @@ public static class SemanticPilotCombatEngineV111
                   RelicStateIndex: { } relicIndex } &&
             (uint)relicIndex < (uint)combat.RelicStates.Length &&
             combat.RelicStates[relicIndex].RelicId == "proto.relic.tingsha";
+    }
+
+    private static bool IsForgottenSoulTargetChoice(
+        CombatState? combat, PendingCombatChoiceState? choice)
+    {
+        var subscriber = choice?.OuterChoiceContinuation?
+            .EventDispatchContinuation?.CurrentSubscriber;
+        return combat is not null &&
+            subscriber is
+                { SourceKind: PrototypeEffectSourceKind.Relic,
+                  RelicStateIndex: { } relicIndex } &&
+            (uint)relicIndex < (uint)combat.RelicStates.Length &&
+            combat.RelicStates[relicIndex].RelicId ==
+                PrototypeNativeGloryEvents.ForgottenSoulId;
+    }
+
+    private static bool IsForgottenSoulSupportedExhaustTargetChoice(
+        CombatState? combat, PendingCombatChoiceState? choice,
+        PrototypeControlledTargetChoiceV111? target)
+    {
+        if (combat is null || target is not
+                { Kind: "effect_random_enemy",
+                  SlyCardInstanceId: null,
+                  AutoPlayCardInstanceId: null } ||
+            choice is not
+                { ChoiceId: "controlled_random_target",
+                  CompletionEvents: [],
+                  OuterChoiceContinuation: { } continuation } ||
+            continuation.EventDispatchContinuation is not
+                { } eventDispatch ||
+            eventDispatch.CombatEvent is not
+                { Kind: PrototypeCombatEventKind.CardExhausted,
+                  SourceCardInstanceId: { } exhaustedCardInstanceId,
+                  CardId: { } exhaustedCardId,
+                  TargetEnemyId: null,
+                  Amount: 0,
+                  PowerApplicationOrderCeiling: null,
+                  FromHandDraw: false,
+                  IsPoweredAttack: false } ||
+            !combat.ExhaustPile.Contains(exhaustedCardInstanceId) ||
+            combat.Cards.SingleOrDefault(card =>
+                card.InstanceId == exhaustedCardInstanceId)?.CardId !=
+                    exhaustedCardId ||
+            continuation.Operations is not [{ } targetOperation] ||
+            CanonicalJson.Sha256(targetOperation) != CanonicalJson.Sha256(
+                new PrototypeQueuedOperation(
+                    PrototypeCombatEffectKind.DamageEnemy, 1,
+                    TargetMode: PrototypeEffectTarget.ActionTargetEnemy,
+                    SourceKind: PrototypeEffectSourceKind.Relic)))
+            return false;
+
+        if (eventDispatch.CurrentSubscriber is not
+                { SourceKind: PrototypeEffectSourceKind.Relic,
+                  SourcePowerApplicationOrder: null,
+                  SourcePowerEnemyId: null,
+                  RelicStateIndex: { } relicIndex,
+                  RelicTriggerIndex: 0 } subscriber ||
+            (uint)relicIndex >= (uint)combat.RelicStates.Length ||
+            combat.RelicStates[relicIndex] is not
+                { RelicId: PrototypeNativeGloryEvents.ForgottenSoulId,
+                  IsMelted: false } relic ||
+            relic.PersistentIndex != relicIndex ||
+            eventDispatch.EventDepth < 0)
+            return false;
+
+        var triggers = PrototypeContent.Relic(relic.RelicId).Triggers ?? [];
+        var expectedTrigger = new PrototypeRelicTriggerSpec(
+            PrototypeCombatEventKind.CardExhausted,
+            [new PrototypeCombatEffectSpec(
+                PrototypeCombatEffectKind.DamageEnemy, 1,
+                Target: PrototypeEffectTarget.RandomEnemy)]);
+        if (triggers.Length != 1 ||
+            CanonicalJson.Sha256(triggers[0]) !=
+                CanonicalJson.Sha256(expectedTrigger) ||
+            subscriber.ApplicationOrder != relic.ApplicationOrder ||
+            CanonicalJson.Sha256(subscriber) != CanonicalJson.Sha256(
+                new PrototypeEventSubscriberState(
+                    relic.ApplicationOrder, triggers[0].Effects, 0,
+                    PrototypeEffectSourceKind.Relic,
+                    RelicStateIndex: relicIndex,
+                    RelicTriggerIndex: 0,
+                    EveryNth: triggers[0].EveryNth,
+                    MaxTriggersPerCounterWindow:
+                        triggers[0].MaxTriggersPerCounterWindow)))
+            return false;
+
+        return true;
     }
 
     private static bool IsTingshaSupportedDiscardTargetChoice(
