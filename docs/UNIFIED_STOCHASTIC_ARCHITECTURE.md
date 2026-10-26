@@ -2202,6 +2202,16 @@ and weights. The semantic-combat `pending` projection exposes the same ordered
 IDs, and the Python `resolve_outcome_id` helper checks membership against that
 saved support before submission.
 
+Controlled event-effect choices that create `OfferThreeCardsAndPotion` or
+`OfferFiveClassCards` now reuse the existing legacy reward-card rarity-ticket
+and model Chance Laws while the offer is generated. The query derives the
+current Act and reward-group owner from the saved request, verifies the active
+event effect, and rebuilds without-replacement prefixes from earlier selected
+card labels in that effect. Rarity-ticket labels remain numeric and card-model
+labels remain card IDs. This adds no event continuation or snapshot schema;
+reward-pool fidelity, equal-index calibration, and Native cursor parity remain
+open.
+
 ## Reading order
 
 1. This architecture contract.

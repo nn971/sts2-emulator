@@ -1085,6 +1085,13 @@ public static partial class ChanceLawEngineV111
                         pending.EventId, request.Ordinal)
                     : throw new InvalidDataException(
                         "Legacy event modifier-curse law is outside an event-reward continuation."),
+            "reward.card_rarity.ticket" or
+                "reward.card_model.index_draw"
+                => effect is not null
+                    ? QueryControlledLegacyEventRewardCardLaw(
+                        source, effect, request)
+                    : throw new InvalidDataException(
+                        "Legacy event reward-card law is outside an event-effect continuation."),
             "relic.acquisition.random_rare_card.model"
                 when effect is null => throw new InvalidDataException(
                     "Legacy Rare-card acquisition law is outside an event-effect continuation."),
@@ -1110,11 +1117,15 @@ public static partial class ChanceLawEngineV111
         {
             "event.reward.random_rare_card.model" or
                 "relic.acquisition.random_rare_card.model" or
+                "reward.card_rarity.ticket" or
+                "reward.card_model.index_draw" or
                 "event.reward.offer_potion.model.index_draw" or
                 "event.reward.random_modifier_curse.index_draw" => "reward",
             _ => "event"
         };
         string[] expectedLabels;
+        var numericSupportLabels = request.SiteId ==
+            "reward.card_rarity.ticket";
         if (request.SiteId == "event.random_upgrade.card_instance")
         {
             const string outcomePrefix = "card_instance:";
@@ -1136,12 +1147,19 @@ public static partial class ChanceLawEngineV111
                     CultureInfo.InvariantCulture);
             }).ToArray();
         }
+        else if (numericSupportLabels)
+        {
+            expectedLabels = Enumerable.Range(0, law.SupportCount)
+                .Select(index => index.ToString(CultureInfo.InvariantCulture))
+                .ToArray();
+        }
         else
         {
             var outcomePrefix = request.SiteId is
                 "event.reward.random_rare_card.model" or
                 "event.reward.random_modifier_curse.index_draw" or
-                "relic.acquisition.random_rare_card.model"
+                "relic.acquisition.random_rare_card.model" or
+                "reward.card_model.index_draw"
                     ? "card:" : "potion:";
             expectedLabels = law.Outcomes.Select(outcome =>
             {
@@ -1152,20 +1170,151 @@ public static partial class ChanceLawEngineV111
                 return outcome.OutcomeId[outcomePrefix.Length..];
             }).ToArray();
         }
+        var orderedSupportMatches = numericSupportLabels
+            ? request.OperationKind == "bounded_integer" &&
+                request.BoundedCount == law.SupportCount &&
+                request.OrderedCandidates.Length == 0
+            : request.OrderedCandidates.SequenceEqual(
+                Enumerable.Range(0, law.SupportCount));
         if (request.SiteId != law.SiteId ||
             request.StreamId != expectedStream ||
             request.OperationKind != law.OperationKind ||
             request.OwnerId != law.OwnerId ||
             request.Ordinal != law.Ordinal ||
             request.SupportCount != law.SupportCount ||
-            !request.OrderedCandidates.SequenceEqual(
-                Enumerable.Range(0, law.SupportCount)) ||
+            !orderedSupportMatches ||
             !pending.CandidateLabels.SequenceEqual(
                 expectedLabels, StringComparer.Ordinal))
             throw new InvalidDataException(
                 "Controlled event law differs from its saved semantic support.");
 
         return law with { EventId = pending.ChanceEventId };
+    }
+
+    private static ChanceLawV111 QueryControlledLegacyEventRewardCardLaw(
+        RunState source,
+        PrototypeControlledEventChoiceContinuationV111 continuation,
+        RandomIndexRequestV111 request)
+    {
+        if (source.Phase != RunPhase.Event || source.World is not { } world ||
+            world.Event?.EventId != continuation.EventId)
+            throw new InvalidDataException(
+                "Legacy event reward-card law is outside its saved event boundary.");
+
+        var choice = PrototypeContent.Event(continuation.EventId).Choices
+            .SingleOrDefault(candidate =>
+                candidate.Id == continuation.ChoiceId) ??
+            throw new InvalidDataException(
+                "Legacy event reward-card law references an unknown choice.");
+        if ((uint)continuation.NextEffectIndex >=
+                (uint)choice.Effects.Length)
+            throw new InvalidDataException(
+                "Legacy event reward-card law is outside a supported card-offer effect.");
+        var rewardCardCount = choice.Effects[continuation.NextEffectIndex].Kind
+            switch
+            {
+                PrototypeRunEffectKind.OfferThreeCardsAndPotion => 3,
+                PrototypeRunEffectKind.OfferFiveClassCards => 5,
+                _ => 0
+            };
+        if (rewardCardCount == 0)
+            throw new InvalidDataException(
+                "Legacy event reward-card law is outside a supported card-offer effect.");
+
+        var groupOwnerId = $"act:{world.Act}:reward_group:external";
+        var ownerPrefix = groupOwnerId + ":card:";
+        if (!request.OwnerId.StartsWith(ownerPrefix,
+                StringComparison.Ordinal))
+            throw new InvalidDataException(
+                "Legacy event reward-card request has an invalid reward-group owner.");
+
+        var suffix = request.OwnerId[ownerPrefix.Length..];
+        string[] priorCardIds;
+        if (request.SiteId == "reward.card_rarity.ticket")
+        {
+            const string weightsMarker = ":weights:";
+            var weightsOffset = suffix.IndexOf(weightsMarker,
+                StringComparison.Ordinal);
+            if (weightsOffset < 0 ||
+                !int.TryParse(suffix[..weightsOffset], NumberStyles.None,
+                    CultureInfo.InvariantCulture, out var priorPickCount) ||
+                priorPickCount < 0 || priorPickCount >= rewardCardCount)
+                throw new InvalidDataException(
+                    "Legacy event reward-card rarity request has an invalid pick count.");
+            priorCardIds = ControlledEventRewardPriorCardIds(
+                continuation, groupOwnerId, priorPickCount);
+            return QueryLegacyRewardCardRarityTicketIndices(
+                world.Act, groupOwnerId, priorCardIds, request.Ordinal);
+        }
+
+        const string rarityMarker = ":rarity:";
+        const string poolMarker = ":pool:";
+        var rarityOffset = suffix.IndexOf(rarityMarker,
+            StringComparison.Ordinal);
+        var poolSearchOffset = rarityOffset + rarityMarker.Length;
+        var poolOffset = rarityOffset < 0 ||
+            poolSearchOffset > suffix.Length ? -1 : suffix.IndexOf(
+                poolMarker, poolSearchOffset, StringComparison.Ordinal);
+        if (rarityOffset < 0 || poolOffset < 0 ||
+            !int.TryParse(suffix[..rarityOffset], NumberStyles.None,
+                CultureInfo.InvariantCulture, out var modelPriorPickCount) ||
+            modelPriorPickCount < 0 || modelPriorPickCount >= rewardCardCount ||
+            !Enum.TryParse<PrototypeCardRarity>(
+                suffix[(rarityOffset + rarityMarker.Length)..poolOffset],
+                ignoreCase: true, out var rarity) || !Enum.IsDefined(rarity))
+            throw new InvalidDataException(
+                "Legacy event reward-card model request has an invalid owner.");
+
+        priorCardIds = ControlledEventRewardPriorCardIds(
+            continuation, groupOwnerId, modelPriorPickCount);
+        return QueryLegacyRewardCardModel(
+            world.Act, groupOwnerId, rarity, priorCardIds, request.Ordinal);
+    }
+
+    private static string[] ControlledEventRewardPriorCardIds(
+        PrototypeControlledEventChoiceContinuationV111 continuation,
+        string groupOwnerId,
+        int priorPickCount)
+    {
+        var cardIds = new List<string>(priorPickCount);
+        var decisionCandidateLabels = continuation.DecisionCandidateLabels ??
+            throw new InvalidDataException(
+                "Legacy event reward-card continuation has no saved candidate labels.");
+        for (var pickIndex = priorPickCount - 1;
+             pickIndex >= 0; pickIndex--)
+        {
+            var ownerPrefix = groupOwnerId + ":card:" +
+                pickIndex.ToString(CultureInfo.InvariantCulture) + ":rarity:";
+            var decisionIndex = -1;
+            for (var index = continuation.Decisions.Length - 1;
+                 index >= continuation.EffectDecisionStartIndex; index--)
+            {
+                var decision = continuation.Decisions[index];
+                if (decision.Request.SiteId ==
+                        "reward.card_model.index_draw" &&
+                    decision.Request.OwnerId.StartsWith(ownerPrefix,
+                        StringComparison.Ordinal))
+                {
+                    decisionIndex = index;
+                    break;
+                }
+            }
+
+            if (decisionIndex < 0)
+                throw new InvalidDataException(
+                    "Legacy event reward-card request is missing a prior card pick.");
+            var labels = decisionCandidateLabels[decisionIndex];
+            var selectedIndex = continuation.Decisions[decisionIndex]
+                .SelectedIndex;
+            if ((uint)selectedIndex >= (uint)labels.Length ||
+                string.IsNullOrWhiteSpace(labels[selectedIndex]))
+                throw new InvalidDataException(
+                    "Legacy event reward-card prefix has an invalid selected card identity.");
+            cardIds.Add(labels[selectedIndex]);
+        }
+
+        cardIds.Reverse();
+        return cardIds.ToArray();
     }
 
     private static ChanceLawV111 QueryLegacyControlledEventFillPotionSlot(

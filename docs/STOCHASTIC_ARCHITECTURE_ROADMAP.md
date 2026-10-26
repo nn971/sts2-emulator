@@ -2,6 +2,16 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S6 controlled event reward-card law reuse increment (2026-10-26):** The
+controlled event-effect query now routes card rarity tickets and card-model
+draws from `OfferThreeCardsAndPotion` and `OfferFiveClassCards` through the
+existing legacy reward-card laws. It validates the saved effect, Act, request
+owner, operation support, and semantic labels, and reconstructs without-replacement
+prefixes from selected card labels in that effect. No new continuation or
+snapshot schema was added. Pool fidelity, equal-index calibration, and Native
+cursor parity remain open. Core Release build and `git diff --check` passed;
+no tests were run.
+
 **S6 event relic-acquisition law reuse increment (2026-10-26):** The
 controlled event-choice query now routes legacy event-gained relic Rare-card
 and potion model requests through the existing relic-acquisition Chance Laws

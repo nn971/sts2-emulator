@@ -16,6 +16,14 @@ continues in source order. If the option reaches another supported random
 site, it suspends again with that next request. The option commits after all
 effects finish; earlier effects are not replayed.
 
+For `OfferThreeCardsAndPotion` and `OfferFiveClassCards`, the effect-frame
+query routes `reward.card_rarity.ticket` and `reward.card_model.index_draw`
+through the existing legacy reward-card laws. It derives the Act and reward
+group from the saved request boundary, and rebuilds each later pick from the
+selected card labels earlier in the same effect. The rarity-ticket indices
+remain numeric; model choices retain their ordered card-ID labels. Source
+pool fidelity, equal-index calibration, and Native cursor parity remain open.
+
 Stone of All Time uses the custom-action exception. Lift saves the untouched
 pre-choice run, so potion removal and Max HP wait until Nature resolves its
 ticket; resume replays the lift action once and commits the terminal page.
