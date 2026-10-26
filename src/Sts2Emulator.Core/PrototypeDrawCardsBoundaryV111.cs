@@ -145,7 +145,10 @@ public sealed partial class PrototypeGameEngine
         if (drawn.RemainingCount < 0)
             throw new InvalidDataException(
                 "DrawCards result has a negative remaining count.");
-        if (automaticHandDraw &&
+        // Ordinary end-turn execution has no saved pipeline cursor. Only a
+        // controlled/Nature suspension is required to retain DrawPlayerHand
+        // while the provider resolves an intermediate stochastic boundary.
+        if (automaticHandDraw && ControlledChanceGuardV111.Active &&
             (combat.AutomaticPipelineContinuation is not { } cursor ||
              !cursor.Mechanics.IsAtStep(
                  PrototypeAutomaticStepKind.DrawPlayerHand)))
