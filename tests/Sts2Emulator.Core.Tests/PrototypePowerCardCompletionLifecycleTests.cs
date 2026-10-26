@@ -62,8 +62,8 @@ public sealed class PrototypePowerCardCompletionLifecycleTests
                 combat, null, null, null, null));
 
         var engine = new PrototypeGameEngine();
-        var play = Assert.Single(engine.GetLegalActions(state)
-            .Where(action => action.Kind == "play_card"));
+        var play = Assert.Single(engine.GetLegalActions(state),
+            action => action.Kind == "play_card");
         Assert.Equal(combatCardId,
             play.ReadPayload<PlayCardPayload>().CardInstanceId);
         state = engine.Step(state, play).State;
