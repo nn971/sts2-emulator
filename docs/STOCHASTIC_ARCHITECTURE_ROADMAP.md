@@ -6273,3 +6273,10 @@ saved continuation must match the live relic subscriber, exhausted physical
 card, event payload, source random-enemy damage effect, and its retargeted
 queued operation. No chance owner or snapshot schema changed. Core Release
 build passed with zero warnings and errors; no tests were run.
+
+**S4 Serpent Form target-source validation increment (2026-10-26):** Semantic
+target validation now checks Serpent Form's `CardPlayed` hook against the live
+player-power instance and its stack-scaled random-damage trigger, played
+physical card, and retargeted queued operation before using the existing target
+owner. No schema changed. Core Release build passed with zero warnings and
+errors; no tests were run.

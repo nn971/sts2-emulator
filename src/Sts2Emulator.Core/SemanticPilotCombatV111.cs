@@ -5544,6 +5544,11 @@ public static class SemanticPilotCombatEngineV111
                 combat, choice, choice?.ControlledTarget))
             throw new InvalidDataException(
                 "Forgotten Soul target is outside its supported exhaust continuation.");
+        if (IsSerpentFormTargetChoice(combat, choice) &&
+            !IsSerpentFormSupportedCardPlayedTargetChoice(
+                combat, choice, choice?.ControlledTarget))
+            throw new InvalidDataException(
+                "Serpent Form target is outside its supported CardPlayed continuation.");
         var ordinal = NextSemanticRequestOrdinal(
             current, "semantic_target",
             StochasticSiteRegistryV111.CombatRandomTargetSiteIds);
@@ -5791,6 +5796,90 @@ public static class SemanticPilotCombatEngineV111
             return false;
 
         return true;
+    }
+
+    private static bool IsSerpentFormTargetChoice(
+        CombatState? combat, PendingCombatChoiceState? choice)
+    {
+        var subscriber = choice?.OuterChoiceContinuation?
+            .EventDispatchContinuation?.CurrentSubscriber;
+        return combat is not null &&
+            subscriber is
+                { SourceKind: PrototypeEffectSourceKind.Power,
+                  SourcePowerApplicationOrder: { } applicationOrder } &&
+            combat.PlayerPowers.Any(power =>
+                power.ApplicationOrder == applicationOrder &&
+                power.PowerId == "proto.power.serpent_form");
+    }
+
+    private static bool IsSerpentFormSupportedCardPlayedTargetChoice(
+        CombatState? combat, PendingCombatChoiceState? choice,
+        PrototypeControlledTargetChoiceV111? target)
+    {
+        if (combat is null || target is not
+                { Kind: "effect_random_enemy",
+                  SlyCardInstanceId: null,
+                  AutoPlayCardInstanceId: null } ||
+            choice is not
+                { ChoiceId: "controlled_random_target",
+                  CompletionEvents: [],
+                  OuterChoiceContinuation: { } continuation } ||
+            continuation.EventDispatchContinuation is not
+                { } eventDispatch ||
+            eventDispatch.CombatEvent is not
+                { Kind: PrototypeCombatEventKind.CardPlayed,
+                  SourceCardInstanceId: { } sourceCardInstanceId,
+                  CardId: { } sourceCardId } ||
+            combat.Cards.SingleOrDefault(card =>
+                card.InstanceId == sourceCardInstanceId)?.CardId !=
+                    sourceCardId ||
+            continuation.Operations is not [{ } targetOperation] ||
+            eventDispatch.CurrentSubscriber is not
+                { SourceKind: PrototypeEffectSourceKind.Power,
+                  SourcePowerApplicationOrder: { } applicationOrder,
+                  SourcePowerEnemyId: null,
+                  PowerTriggerIndex: 0 } subscriber)
+            return false;
+
+        var power = combat.PlayerPowers.SingleOrDefault(candidate =>
+            candidate.ApplicationOrder == applicationOrder);
+        if (power is not
+                { PowerId: "proto.power.serpent_form",
+                  Stacks: > 0 } ||
+            eventDispatch.EventDepth < 0)
+            return false;
+
+        var triggers = PrototypeContent.Power(power.PowerId).Triggers;
+        var expectedTrigger = new PrototypePowerTriggerSpec(
+            PrototypeCombatEventKind.CardPlayed,
+            [new PrototypeCombatEffectSpec(
+                PrototypeCombatEffectKind.DamageEnemy, 0,
+                Target: PrototypeEffectTarget.RandomEnemy,
+                AmountPerPowerStack: 1)]);
+        if (triggers.Length != 1 ||
+            CanonicalJson.Sha256(triggers[0]) !=
+                CanonicalJson.Sha256(expectedTrigger) ||
+            subscriber.ApplicationOrder != power.ApplicationOrder ||
+            CanonicalJson.Sha256(subscriber) != CanonicalJson.Sha256(
+                new PrototypeEventSubscriberState(
+                    power.ApplicationOrder, triggers[0].Effects,
+                    power.Stacks, PrototypeEffectSourceKind.Power,
+                    SourcePowerApplicationOrder: power.ApplicationOrder,
+                    PowerCardPayload: power.CardPayload?.Fork(),
+                    RemoveSourcePowerAfterTrigger:
+                        triggers[0].RemoveSourcePowerAfterTrigger,
+                    PowerTriggerIndex: 0,
+                    CountdownBeforeTrigger:
+                        triggers[0].CountdownBeforeTrigger,
+                    SourcePowerStoredValue: power.StoredValue)))
+            return false;
+
+        return CanonicalJson.Sha256(targetOperation) ==
+            CanonicalJson.Sha256(new PrototypeQueuedOperation(
+                PrototypeCombatEffectKind.DamageEnemy, power.Stacks,
+                TargetMode: PrototypeEffectTarget.ActionTargetEnemy,
+                SourceKind: PrototypeEffectSourceKind.Power,
+                SourcePowerApplicationOrder: power.ApplicationOrder));
     }
 
     private static bool IsTingshaSupportedDiscardTargetChoice(
