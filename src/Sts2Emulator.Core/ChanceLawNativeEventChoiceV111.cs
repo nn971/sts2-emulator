@@ -1122,27 +1122,21 @@ public static partial class ChanceLawEngineV111
             NativeGloryAncientsV111.DistinguishedCapeCurseSiteId => null,
             "relic.acquisition.random_rare_card.model"
                 when effect is null => throw new InvalidDataException(
-                    "Legacy Rare-card acquisition law is outside an event-effect continuation."),
+                    "Rare-card acquisition law is outside an event-effect continuation."),
             "relic.acquisition.random_rare_card.model"
-                when request.StreamId == NativePlayerRngV111.RewardsStreamId =>
-                    QueryControlledEventNativeRelicAcquisitionModel(
+                when request.StreamId is "reward" or
+                    NativePlayerRngV111.RewardsStreamId =>
+                    QueryControlledEventRelicAcquisitionModel(
                         source, effect!, pending),
-            "relic.acquisition.random_rare_card.model"
-                when request.StreamId == "reward" =>
-                    QueryLegacyRelicAcquisitionRareCardModel(
-                        request.Ordinal),
             "relic.acquisition.random_rare_card.model" => null,
             "relic.acquisition.random_potion.model"
                 when effect is null => throw new InvalidDataException(
-                    "Legacy potion acquisition law is outside an event-effect continuation."),
+                    "Potion acquisition law is outside an event-effect continuation."),
             "relic.acquisition.random_potion.model"
-                when request.StreamId == NativePlayerRngV111.RewardsStreamId =>
-                    QueryControlledEventNativeRelicAcquisitionModel(
+                when request.StreamId is "event" or
+                    NativePlayerRngV111.RewardsStreamId =>
+                    QueryControlledEventRelicAcquisitionModel(
                         source, effect!, pending),
-            "relic.acquisition.random_potion.model"
-                when request.StreamId == "event" =>
-                    QueryLegacyRelicAcquisitionPotionModel(
-                        ControlledPotionSlotIndex(request), request.Ordinal),
             "relic.acquisition.random_potion.model" => null,
             _ => null
         };
@@ -1425,7 +1419,7 @@ public static partial class ChanceLawEngineV111
     }
 
     private static ChanceLawV111
-        QueryControlledEventNativeRelicAcquisitionModel(
+        QueryControlledEventRelicAcquisitionModel(
             RunState source,
             PrototypeControlledEventChoiceContinuationV111 continuation,
             ControlledEventChoicePendingV111 pending)
@@ -1434,26 +1428,34 @@ public static partial class ChanceLawEngineV111
         if (source.Phase != RunPhase.Event || source.World is not { } world ||
             world.Event?.EventId != continuation.EventId)
             throw new InvalidDataException(
-                "Native relic-acquisition law is outside its saved event boundary.");
-        if (source.Stochastic.NativeRunRng is null ||
-            request.StreamId != NativePlayerRngV111.RewardsStreamId ||
+                "Relic-acquisition law is outside its saved event boundary.");
+        var nativeRequest = request.StreamId ==
+            NativePlayerRngV111.RewardsStreamId;
+        var legacyStream = request.SiteId switch
+        {
+            "relic.acquisition.random_rare_card.model" => "reward",
+            "relic.acquisition.random_potion.model" => "event",
+            _ => string.Empty
+        };
+        if (nativeRequest != (source.Stochastic.NativeRunRng is not null) ||
+            (!nativeRequest && request.StreamId != legacyStream) ||
             request.OperationKind != "choose_index")
             throw new InvalidDataException(
-                "Native relic-acquisition law requires its saved player-rewards index request.");
+                "Relic-acquisition law differs from its saved Native or legacy index route.");
 
         var choice = PrototypeContent.Event(continuation.EventId).Choices
             .SingleOrDefault(candidate => candidate.Id == continuation.ChoiceId) ??
             throw new InvalidDataException(
-                "Native relic-acquisition law references an unknown event choice.");
+                "Relic-acquisition law references an unknown event choice.");
         if ((uint)continuation.NextEffectIndex >=
                 (uint)choice.Effects.Length)
             throw new InvalidDataException(
-                "Native relic-acquisition law is outside its saved effect boundary.");
+                "Relic-acquisition law is outside its saved effect boundary.");
         var eventEffect = choice.Effects[continuation.NextEffectIndex];
         if (eventEffect.Kind != PrototypeRunEffectKind.GainRelic ||
             string.IsNullOrWhiteSpace(eventEffect.RelicId))
             throw new InvalidDataException(
-                "Native relic-acquisition request is outside a saved GainRelic event effect.");
+                "Relic-acquisition request is outside a saved GainRelic event effect.");
 
         var relic = PrototypeContent.Relic(eventEffect.RelicId);
         var acquisitionEffects = (relic.RunTriggers ?? [])
@@ -1475,7 +1477,7 @@ public static partial class ChanceLawEngineV111
                 acquisitionEffects[0].Kind !=
                     PrototypeRunEffectKind.GainRandomRareCard)
                 throw new InvalidDataException(
-                    "Native Rare-card request is not produced by the acquired relic's saved trigger.");
+                    "Rare-card request is not produced by the acquired relic's saved trigger.");
             orderedPool = PrototypeContent.RewardCardPool
                 .Where(cardId => PrototypeContent.Card(cardId).Rarity ==
                     PrototypeCardRarity.Rare)
@@ -1497,14 +1499,12 @@ public static partial class ChanceLawEngineV111
                 acquisitionEffects[2].Kind !=
                     PrototypeRunEffectKind.GainRandomPotion)
                 throw new InvalidDataException(
-                    "Native potion request is not produced by the acquired relic's saved trigger.");
+                    "Potion request is not produced by the acquired relic's saved trigger.");
             orderedPool = PrototypeContent.PotionPool;
-            if (source.Player.ActiveRelics.Any(instance =>
-                    PrototypeContent.Relic(instance.RelicId)
-                        .PreventPotionAcquisition) ||
+            if (!PrototypeGameEngine.CanAcquirePotion(source.Player) ||
                 relic.PreventPotionAcquisition)
                 throw new InvalidDataException(
-                    "Native potion-acquisition trigger is disabled by the saved relic support.");
+                    "Potion-acquisition trigger is disabled by the saved relic support.");
 
             var slots = source.Player.PotionSlots.ToList();
             var priorPotionDecisions = continuation.Decisions
@@ -1514,10 +1514,10 @@ public static partial class ChanceLawEngineV111
                 .ToArray();
             var labels = continuation.DecisionCandidateLabels ??
                 throw new InvalidDataException(
-                    "Native potion-acquisition continuation has no saved candidate labels.");
+                    "Potion-acquisition continuation has no saved candidate labels.");
             if (labels.Length != continuation.Decisions.Length)
                 throw new InvalidDataException(
-                    "Native potion-acquisition continuation has a malformed candidate-label prefix.");
+                    "Potion-acquisition continuation has a malformed candidate-label prefix.");
 
             var potionDecisionIndex = 0;
             foreach (var acquisitionEffect in acquisitionEffects)
@@ -1527,7 +1527,7 @@ public static partial class ChanceLawEngineV111
                 {
                     if (acquisitionEffect.Amount <= 0)
                         throw new InvalidDataException(
-                            "Native potion-acquisition trigger has an invalid slot increase.");
+                        "Potion-acquisition trigger has an invalid slot increase.");
                     slots.AddRange(Enumerable.Repeat<PotionInstance?>(
                         null, acquisitionEffect.Amount));
                     continue;
@@ -1540,7 +1540,7 @@ public static partial class ChanceLawEngineV111
                 var slotIndex = slots.FindIndex(potion => potion is null);
                 if (slotIndex < 0)
                     throw new InvalidDataException(
-                        "Native potion-acquisition trigger has no open slot for its saved request.");
+                        "Potion-acquisition trigger has no open slot for its saved request.");
                 const string ownerPrefix = "player:potion_slot:";
                 const string poolMarker = ":pool:";
                 var slotOwner = ownerPrefix + slotIndex.ToString(
@@ -1551,9 +1551,11 @@ public static partial class ChanceLawEngineV111
                     var prior = priorPotionDecisions[potionDecisionIndex++];
                     var priorRequest = prior.decision.Request;
                     var expectedCandidateLabels = Enumerable.Range(0,
-                            orderedPool.Length)
-                        .Select(index => index.ToString(
-                            CultureInfo.InvariantCulture)).ToArray();
+                            orderedPool.Length).Select(index =>
+                                nativeRequest
+                                    ? index.ToString(
+                                        CultureInfo.InvariantCulture)
+                                    : orderedPool[index]).ToArray();
                     if (priorRequest.SiteId != request.SiteId ||
                         priorRequest.StreamId != request.StreamId ||
                         priorRequest.OperationKind != "choose_index" ||
@@ -1567,7 +1569,7 @@ public static partial class ChanceLawEngineV111
                         (uint)prior.decision.SelectedIndex >=
                             (uint)orderedPool.Length)
                         throw new InvalidDataException(
-                            "Native potion-acquisition prefix differs from its saved ordered slot and pool.");
+                            "Potion-acquisition prefix differs from its saved ordered slot and pool.");
                     slots[slotIndex] = new PotionInstance(
                         orderedPool[prior.decision.SelectedIndex],
                         PrototypeJson.EmptyObject());
@@ -1581,12 +1583,12 @@ public static partial class ChanceLawEngineV111
             if (potionDecisionIndex != priorPotionDecisions.Length ||
                 potionSlot is null)
                 throw new InvalidDataException(
-                    "Native potion-acquisition request is outside the saved relic trigger prefix.");
+                    "Potion-acquisition request is outside the saved relic trigger prefix.");
         }
         else
         {
             throw new InvalidDataException(
-                "Native relic-acquisition law has an unsupported SiteId.");
+                "Relic-acquisition law has an unsupported SiteId.");
         }
 
         if (orderedPool.Length == 0 || request.OwnerId != expectedOwnerId ||
@@ -1594,9 +1596,21 @@ public static partial class ChanceLawEngineV111
             !request.OrderedCandidates.SequenceEqual(
                 Enumerable.Range(0, orderedPool.Length)))
             throw new InvalidDataException(
-                "Native relic-acquisition request differs from its saved ordered model pool.");
+                "Relic-acquisition request differs from its saved ordered model pool.");
 
-        var indexLaw = QueryRandomIndex(pending.ChanceEventId, request);
+        var indexLaw = nativeRequest
+            ? QueryRandomIndex(pending.ChanceEventId, request)
+            : request.SiteId switch
+            {
+                "relic.acquisition.random_rare_card.model" =>
+                    QueryLegacyRelicAcquisitionRareCardModel(
+                        request.Ordinal),
+                "relic.acquisition.random_potion.model" =>
+                    QueryLegacyRelicAcquisitionPotionModel(
+                        potionSlot!.Value, request.Ordinal),
+                _ => throw new InvalidDataException(
+                    "Legacy relic-acquisition law has an unsupported SiteId.")
+            };
         var outcomePrefix = request.SiteId ==
                 "relic.acquisition.random_rare_card.model"
             ? "card:" : "potion:";

@@ -136,9 +136,9 @@ The supported event-choice sites are:
 - `relic.acquisition.random_rare_card.model`,
   `relic.acquisition.random_potion.model` and
   `run.potion.fill_empty_slots.model` for random effects triggered by an
-  event-gained relic; Native Arcane Scroll and Phial Holster requests map the
-  validated `player.rewards` index to card or potion identity, with Phial's
-  earlier potion slot and selection replayed from the saved prefix
+  event-gained relic; Arcane Scroll and Phial Holster requests map the
+  validated legacy or `player.rewards` index to card or potion identity, with
+  Phial's earlier potion slot and selection replayed from the saved prefix
 - `run.relic.beautiful_bracelet.deck_shuffle.swap_index` for an
   event-gained Beautiful Bracelet's conditional shuffle over eligible
   physical deck cards; each swap carries the current ordered instance-ID labels
