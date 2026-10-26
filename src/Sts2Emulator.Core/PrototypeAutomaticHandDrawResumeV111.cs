@@ -346,7 +346,29 @@ public sealed partial class PrototypeGameEngine
                     semanticDeck.Mode == SemanticDeckStateV111.NatureMode);
         bool semanticSavedStage = context ==
             AutomaticHandDrawResumeContextV111.SavedSemanticStage;
-        if (semanticBoundary || semanticSavedStage)
+        bool semanticResume = semanticBoundary || semanticSavedStage;
+        bool controlledBoundary = ControlledChanceGuardV111.Active &&
+            combat.Stochastic.SemanticDeck is null &&
+            (resumeSavedStage || boundary is
+                (PrototypeDrawCardsBoundaryKind.ControlledDrawCost or
+                 PrototypeDrawCardsBoundaryKind.ControlledRecycle or
+                 PrototypeDrawCardsBoundaryKind.ShuffleSelection or
+                 PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice));
+        if (semanticResume || controlledBoundary)
+        {
+            var cursor = combat.AutomaticPipelineContinuation;
+            if (cursor is not null)
+            {
+                int? requestedProgress = requestedCount > 0
+                    ? requestedCount : null;
+                cursor.Stochastic.ValidateAutomaticHandDrawSuspensionProgress(
+                    cursor.Mechanics,
+                    semanticProvider: semanticResume,
+                    requestedCount: requestedProgress);
+            }
+        }
+
+        if (semanticResume)
         {
             var drawFrame = semanticDraw ?? CreateSemanticDrawResultFrame(
                 drawn.RemainingCount, fromHandDraw: true,
@@ -359,13 +381,7 @@ public sealed partial class PrototypeGameEngine
                 recycleOperation: recycleOperation);
         }
 
-        if (ControlledChanceGuardV111.Active &&
-            combat.Stochastic.SemanticDeck is null &&
-            (resumeSavedStage || boundary is
-                (PrototypeDrawCardsBoundaryKind.ControlledDrawCost or
-                 PrototypeDrawCardsBoundaryKind.ControlledRecycle or
-                 PrototypeDrawCardsBoundaryKind.ShuffleSelection or
-                 PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice)))
+        if (controlledBoundary)
         {
             // The saved controlled-stage adapter uses zero to mean that the
             // original count is carried by progress rather than this boundary.

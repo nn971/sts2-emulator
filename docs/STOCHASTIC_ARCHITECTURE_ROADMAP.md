@@ -6398,3 +6398,10 @@ interpretation, legacy Stratagem resume, and final provider/mechanics
 publication. `DrawOpeningHand` retains the source request and opening-count
 calculation, and the final-card hook still saves no empty draw operation. Core
 Release build and `git diff --check` passed; no tests were added or run.
+
+**S4 automatic hand-draw progress validation increment (2026-10-26):**
+`ResumeAutomaticHandDrawBoundary` now validates provider-specific progress
+and request-count compatibility against an active DrawPlayerHand cursor before
+routing supported source-stage and saved-stage boundaries to their adapters. The provider adapters retain
+their distinct boundary behavior and pipeline handoff. Core Release build and
+`git diff --check` passed; no tests were added or run.
