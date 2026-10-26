@@ -99,8 +99,7 @@ public sealed partial class PrototypeGameEngine
                 return handDraw.EnsurePipelineBoundary();
             }
             return PrototypeDrawCardsResumeResultV111.ForHandDraw(
-                resumed, requested, remaining, boundary)
-                .EnsurePipelineBoundary();
+                resumed, requested, remaining, boundary);
         }
 
         if (cursor.Stochastic.IsAtSemanticBeforeHandDrawContinuation(
@@ -113,15 +112,14 @@ public sealed partial class PrototypeGameEngine
                     () => ResumeSemanticBeforeHandDrawActionChoice(resumed))
                     .EnsurePipelineBoundary();
             return PrototypeDrawCardsResumeResultV111.ForHandDraw(
-                resumed, 0, 0, boundary).EnsurePipelineBoundary();
+                resumed, 0, 0, boundary);
         }
 
         if (cursor.Stochastic.TryGetCompletedSemanticHandDrawReceipt(
                 cursor.Mechanics, out int completedRequested))
         {
             return PrototypeDrawCardsResumeResultV111.ForHandDraw(
-                resumed, completedRequested, 0, boundary)
-                .EnsurePipelineBoundary();
+                resumed, completedRequested, 0, boundary);
         }
 
         throw new InvalidDataException(

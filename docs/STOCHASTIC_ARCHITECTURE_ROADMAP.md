@@ -6604,3 +6604,11 @@ the shared choice-resume layer to classify their boundary. Snapshot fields and
 typed transcript ownership are unchanged. Core and CLI Release builds, static
 RNG inventory checks, and `git diff --check` passed; no tests were added or
 run.
+
+**S4 hand-draw result boundary owner increment (2026-10-26):** The
+provider-neutral `ForHandDraw` factory now validates and attaches the
+engine-classified automatic-pipeline boundary whenever it creates a draw
+progress result. Semantic automatic draw producers no longer repeat boundary
+classification after constructing the shared run/count pair. Snapshot and
+transcript shapes are unchanged. Core and CLI Release builds and
+`git diff --check` passed; no tests were added or run.

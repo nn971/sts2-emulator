@@ -35,7 +35,8 @@ internal readonly record struct PrototypeDrawCardsResumeResultV111
         PrototypeAutomaticPipelineResumeBoundaryKindV111?
             pipelineBoundary = null) =>
         new PrototypeDrawCardsResumeResultV111(
-            run, remainingCount, requestedCount, pipelineBoundary);
+            run, remainingCount, requestedCount, pipelineBoundary)
+            .EnsurePipelineBoundary();
 
     internal PrototypeDrawCardsResumeResultV111 Validate()
     {
