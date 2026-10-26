@@ -119,6 +119,32 @@ public sealed partial class PrototypeGameEngine
             moveSourceCardOnCompletion: false);
     }
 
+    /// <summary>
+    /// Resume the legacy Stratagem selection opened by either an opening or
+    /// automatic hand draw, and publish its resulting mechanics and provider
+    /// state together.
+    /// </summary>
+    private static RunState ResolveLegacyHandDrawStratagemResult(
+        PrototypeDrawCardsSegmentV111 segment)
+    {
+        var checkpoint = segment.Run;
+        var drawn = segment.Drawn;
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        ArgumentNullException.ThrowIfNull(drawn);
+        if (drawn.BoundaryKind !=
+                PrototypeDrawCardsBoundaryKind.ShuffleSelection ||
+            drawn.Combat.Stochastic.SemanticDeck is
+                { Mode: SemanticDeckStateV111.NatureMode })
+            throw new InvalidDataException(
+                "Legacy Stratagem resume has an incompatible draw boundary.");
+
+        var prototypeRng = checkpoint.Stochastic.PrototypeRng;
+        var resolved = ResumeLegacyHandDrawAfterStratagemSelection(
+            drawn.Player, drawn.Combat, drawn.RemainingCount, prototypeRng);
+        return PublishDrawMechanicsAndPrototypeRng(
+            checkpoint, resolved.Player, resolved.Combat, prototypeRng);
+    }
+
     private static CombatState AttachDrawResumeContinuation(
         CombatState combat,
         PrototypeQueuedOperation drawOperation,
@@ -616,10 +642,7 @@ public sealed partial class PrototypeGameEngine
             combat.Stochastic.SemanticDeck is not
                 { Mode: SemanticDeckStateV111.NatureMode })
         {
-            var resolved = ResumeLegacyHandDrawAfterStratagemSelection(
-                player, combat, drawn.RemainingCount, prototypeRng);
-            player = resolved.Player;
-            combat = resolved.Combat;
+            return ResolveLegacyHandDrawStratagemResult(segment);
         }
         else if (IsSemanticDrawResumeBoundary(
                      drawn.BoundaryKind,
@@ -659,12 +682,8 @@ public sealed partial class PrototypeGameEngine
                 drawn.BoundaryKind);
         }
 
-        state = state with
-        {
-            Stochastic = RunStochasticStateV111.WithPrototypeRng(
-                state.Stochastic, prototypeRng)
-        };
-        return PublishDrawMechanicsState(state, player, combat);
+        return PublishDrawMechanicsAndPrototypeRng(
+            state, player, combat, prototypeRng);
     }
 
     /// <summary>

@@ -431,19 +431,10 @@ public sealed partial class PrototypeGameEngine
         if (providerResume is { } resumed)
             return resumed.Run;
 
-        var result = PublishDrawCardsResult(segment);
-        if (drawn.BoundaryKind ==
-            PrototypeDrawCardsBoundaryKind.ShuffleSelection)
-        {
-            var world = RequireWorld(result);
-            var combat = world.Combat ?? throw new InvalidDataException(
-                "Automatic Stratagem resume removed combat.");
-            var prototypeRng = result.Stochastic.PrototypeRng;
-            var continued = ResumeLegacyHandDrawAfterStratagemSelection(
-                result.Player, combat, drawn.RemainingCount, prototypeRng);
-            result = PublishDrawMechanicsAndPrototypeRng(
-                result, continued.Player, continued.Combat, prototypeRng);
-        }
+        var result = drawn.BoundaryKind ==
+                PrototypeDrawCardsBoundaryKind.ShuffleSelection
+            ? ResolveLegacyHandDrawStratagemResult(segment)
+            : PublishDrawCardsResult(segment);
 
         var resultWorld = RequireWorld(result);
         var resultCombat = resultWorld.Combat ?? throw new InvalidDataException(

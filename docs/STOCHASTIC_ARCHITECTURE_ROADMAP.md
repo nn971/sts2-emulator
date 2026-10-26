@@ -2,6 +2,8 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S4 shared legacy hand-draw Stratagem resume increment (2026-10-26):** Opening and ordinary automatic hand draws now route the legacy `ShuffleSelection` result through one continuation owner. It resumes the same Stratagem-plus-remaining-draw operation suffix and publishes the resulting player/combat mechanics with the advanced prototype RNG in one transition. Nature draw choices retain their typed continuation route. Core Release build and `git diff --check` passed; no tests were run.
+
 **S5 saved-session candidate identity increment (2026-10-26):** The shared
 index-law mapper now reuses complete, unique saved candidate labels as ordered
 outcome IDs across validated ReferenceNature Native Shovel and event-relic,
