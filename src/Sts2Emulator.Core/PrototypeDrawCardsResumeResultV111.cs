@@ -34,6 +34,13 @@ internal readonly record struct PrototypeDrawCardsResumeResultV111
         RunState run, int requestedCount, int remainingCount,
         PrototypeAutomaticPipelineResumeBoundaryKindV111?
             pipelineBoundary = null) =>
+        ForAutomaticHandDraw(
+            run, requestedCount, remainingCount, pipelineBoundary);
+
+    internal static PrototypeDrawCardsResumeResultV111 ForAutomaticHandDraw(
+        RunState run, int? requestedCount, int remainingCount,
+        PrototypeAutomaticPipelineResumeBoundaryKindV111?
+            pipelineBoundary = null) =>
         new PrototypeDrawCardsResumeResultV111(
             run, remainingCount, requestedCount, pipelineBoundary)
             .EnsurePipelineBoundary();

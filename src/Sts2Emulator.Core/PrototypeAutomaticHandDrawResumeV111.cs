@@ -659,8 +659,8 @@ public sealed partial class PrototypeGameEngine
             checkpoint, cost, selectedCost, allowHookSuspension);
         if (costProgress.CostStagePending)
             return new PrototypeAutomaticHandDrawCostResumeV111(
-                new PrototypeDrawCardsResumeResultV111(
-                    costProgress.Run, cost.RemainingCount, savedRequested),
+                PrototypeDrawCardsResumeResultV111.ForAutomaticHandDraw(
+                    costProgress.Run, savedRequested, cost.RemainingCount),
                 null);
 
         var world = RequireWorld(costProgress.Run);

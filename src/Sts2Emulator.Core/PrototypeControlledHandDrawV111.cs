@@ -165,46 +165,46 @@ public sealed partial class PrototypeGameEngine
         if (drawBoundary ==
             PrototypeDrawCardsBoundaryKind.ShuffleSelection)
         {
-            return new PrototypeDrawCardsResumeResultV111(
+            return PrototypeDrawCardsResumeResultV111.ForAutomaticHandDraw(
                 BeginControlledRecycleStratagemSelection(
                     state, drawn.Player, combat, drawn.RemainingCount,
                     requestedCount),
-                drawn.RemainingCount, requestedCount);
+                requestedCount, drawn.RemainingCount);
         }
 
         if (drawBoundary ==
             PrototypeDrawCardsBoundaryKind.ControlledDrawCost)
         {
-            return new PrototypeDrawCardsResumeResultV111(
+            return PrototypeDrawCardsResumeResultV111.ForAutomaticHandDraw(
                 CommitAutomaticHandDrawProgress(
                     state, drawn.Player, combat,
                     PrototypeAutomaticHandDrawProgressV111
                         .ControlledDrawCost(
                             drawn.RemainingCount, requestedCount)),
-                drawn.RemainingCount, requestedCount);
+                requestedCount, drawn.RemainingCount);
         }
 
         if (drawBoundary ==
             PrototypeDrawCardsBoundaryKind.ControlledRecycle)
         {
-            return new PrototypeDrawCardsResumeResultV111(
+            return PrototypeDrawCardsResumeResultV111.ForAutomaticHandDraw(
                 CommitAutomaticHandDrawProgress(
                     state, drawn.Player, combat,
                     PrototypeAutomaticHandDrawProgressV111
                         .ControlledDraw(
                             drawn.RemainingCount, requestedCount)),
-                drawn.RemainingCount, requestedCount);
+                requestedCount, drawn.RemainingCount);
         }
 
         if (drawBoundary ==
             PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice)
         {
-            return new PrototypeDrawCardsResumeResultV111(
+            return PrototypeDrawCardsResumeResultV111.ForAutomaticHandDraw(
                 SuspendAutomaticHandDrawAtCardDrawnChoice(
                     state, drawn.Player, combat, drawn.RemainingCount,
                     semanticRequested: null,
                     controlledRequested: requestedCount),
-                drawn.RemainingCount, requestedCount);
+                requestedCount, drawn.RemainingCount);
         }
 
         if (combat.PendingChoice is not null ||
@@ -218,9 +218,9 @@ public sealed partial class PrototypeGameEngine
         var advanced = PublishDrawCardsResult(segment);
         var pipelineResume = ResumeAutomaticPipelineContinuation(
             CompleteAutomaticHandDrawStage(advanced));
-        return new PrototypeDrawCardsResumeResultV111(
-            pipelineResume.Run, 0, requestedCount,
-            PipelineBoundary: pipelineResume.Boundary);
+        return PrototypeDrawCardsResumeResultV111.ForAutomaticHandDraw(
+            pipelineResume.Run, requestedCount, 0,
+            pipelineBoundary: pipelineResume.Boundary);
     }
 
 }

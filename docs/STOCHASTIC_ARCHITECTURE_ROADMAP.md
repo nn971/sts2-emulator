@@ -6630,3 +6630,12 @@ progress result. Semantic automatic draw producers no longer repeat boundary
 classification after constructing the shared run/count pair. Snapshot and
 transcript shapes are unchanged. Core and CLI Release builds and
 `git diff --check` passed; no tests were added or run.
+
+**S4 controlled hand-draw boundary result ownership increment (2026-10-26):**
+The provider-neutral `ForAutomaticHandDraw` factory now validates and attaches
+the classified pipeline boundary for legacy controlled hand-draw progress,
+including cost, recycle-Stratagem, nested `CardDrawn`, and completion results.
+Semantic results retain `ForHandDraw` as a required-request convenience over
+the same factory. No snapshot or transcript schema changed. Core and CLI
+Release builds, static RNG inventory checks, and `git diff --check` passed; no
+tests were added or run.
