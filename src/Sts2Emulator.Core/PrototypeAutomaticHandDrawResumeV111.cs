@@ -376,12 +376,16 @@ public sealed partial class PrototypeGameEngine
             var drawFrame = semanticDraw ?? CreateSemanticDrawResultFrame(
                 drawn.RemainingCount, fromHandDraw: true,
                 eventDepth: 0, automatic: true);
-            return ResolveControlledSemanticDrawResult(
+            var progress = ResolveControlledSemanticDrawResult(
                 segment, drawFrame,
                 continuation: null,
                 automaticHandDrawRequested: requestedCount,
                 recycleSite: recycleSite,
                 recycleOperation: recycleOperation);
+            return PrototypeDrawCardsResumeResultV111
+                .ForAutomaticHandDraw(
+                    progress.Run, requestedCount,
+                    progress.RemainingCount, progress.PipelineBoundary);
         }
 
         if (controlledBoundary)
@@ -742,11 +746,7 @@ public sealed partial class PrototypeGameEngine
             reportedRequested != requestedCount)
             throw new InvalidDataException(
                 "Automatic hand-draw resume changed its requested count.");
-        return semantic
-            ? PrototypeDrawCardsResumeResultV111.ForHandDraw(
-                progress.Run, requestedCount, progress.RemainingCount,
-                progress.PipelineBoundary)
-            : progress;
+        return progress;
     }
 
     private static int? ValidateAutomaticHandDrawCostCheckpoint(

@@ -6639,3 +6639,11 @@ Semantic results retain `ForHandDraw` as a required-request convenience over
 the same factory. No snapshot or transcript schema changed. Core and CLI
 Release builds, static RNG inventory checks, and `git diff --check` passed; no
 tests were added or run.
+
+**S4 shared automatic draw boundary result increment (2026-10-26):** The
+common `ResumeAutomaticHandDrawBoundary` now returns semantic tagged results
+through `ForAutomaticHandDraw`, matching the controlled adapter's
+run/count/boundary handoff. Saved draw-cost resumes consume that validated
+result directly instead of reclassifying it. No snapshot or transcript schema
+changed. Core and CLI Release builds, static RNG inventory checks, and
+`git diff --check` passed; no tests were added or run.
