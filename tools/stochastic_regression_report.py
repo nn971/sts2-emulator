@@ -26,7 +26,11 @@ def load(paths):
                     method.get("className", "") + "." + method.get("name", "")
                 )
         for node in root.findall(".//t:UnitTestResult", ns):
-            key = definitions.get(node.get("testId"), node.get("testName", ""))
+            method_key = definitions.get(node.get("testId"), "")
+            display_name = node.get("testName", "")
+            # xUnit theory invocations share TestMethod identity but differ in
+            # display name (parameters). Preserve per-case verdicts.
+            key = (method_key + "::" + display_name) if method_key else display_name
             if not key:
                 raise ValueError("TRX result without an identifiable test")
             status = node.get("outcome", "Unknown")
