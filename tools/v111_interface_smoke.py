@@ -23,7 +23,9 @@ def main():
         # public JSONL/Python binding without changing the default fidelity.
         experimental = session.reset("three-act-wire", fidelity_id=
             "v111-experimental-silent-three-act-route-v1")
-        assert json.loads(experimental.save_snapshot())["state"]["configuration"][
+        snapshot = json.loads(experimental.save_snapshot())
+        assert snapshot["schema"] == "sts2-exact-snapshot-v4-simulation-envelope"
+        assert snapshot["state"]["mechanics"]["configuration"][
             "fidelity_id"] == "v111-experimental-silent-three-act-route-v1"
         experimental_started = experimental.step(experimental.actions()[0]["actionId"])
         assert experimental_started.actions()
@@ -61,23 +63,54 @@ def main():
         # transport, then exercise the actual CLI reader and failure exit code.
         state = session.reset("canonical-replay", first_act="Underdocks")
         initial = json.loads(state.save_snapshot())["state"]
-        header = {"type": "header", "trace_schema": "0.1", "game_build": initial["game_build"],
+        initial_mechanics = initial["mechanics"]
+        header = {"type": "header", "trace_schema": "0.1", "game_build": initial_mechanics["game_build"],
                   "bridge_version": "synthetic-jsonl-integration", "emulator_version": "test",
-                  "run_id": initial["run_id"], "run_seed": initial["run_seed"],
+                  "run_id": initial_mechanics["run_id"], "run_seed": initial_mechanics["run_seed"],
                   "captured_at_utc": "1970-01-01T00:00:00Z"}
         transitions = []
         def normalized(actions):
             return [{"kind": action["kind"], "payload": json.loads(action["payloadJson"])} for action in actions]
+        def trace_state(snapshot):
+            mechanics = snapshot["state"]["mechanics"]
+            stochastic = snapshot["state"]["stochastic"]
+            state = dict(mechanics)
+            state.update({
+                "rng": stochastic["prototype_rng"],
+                "native_run_rng": stochastic["native_run_rng"],
+                "reference_nature_state": stochastic["reference_nature"],
+                "reference_nature_run_initialization_transcript":
+                    stochastic["reference_nature_run_initialization_transcript"],
+                "reference_nature_run_initialization_pending":
+                    stochastic["reference_nature_run_initialization_pending"],
+                "reference_nature_map_generation_history":
+                    stochastic["reference_nature_map_generation_history"],
+                "reference_nature_ancient_offer_history":
+                    stochastic["reference_nature_ancient_offer_history"],
+                "controlled_event_choice_history":
+                    stochastic["controlled_event_choice_history"],
+                "controlled_event_reward_choice":
+                    stochastic["controlled_event_reward_choice"],
+                "controlled_run_action_history":
+                    stochastic["controlled_run_action_history"],
+                "controlled_run_action_choice":
+                    stochastic["controlled_run_action_choice"],
+            })
+            return state
+
         for _ in range(8):
             before = json.loads(state.save_snapshot())
             actions = state.actions()
             after_state = state.step(actions[0]["actionId"])
             after = json.loads(after_state.save_snapshot())
-            transitions.append({"type": "transition", "decision_index": after["state"]["decision_index"],
-                "phase": before["state"]["phase"], "action": normalized(actions)[0],
-                "before": {"hash": before["state_hash"], "state": before["state"]},
-                "after": {"hash": after["state_hash"], "state": after["state"]},
-                "rng_before": before["state"]["rng"], "rng_after": after["state"]["rng"],
+            before_mechanics = before["state"]["mechanics"]
+            after_mechanics = after["state"]["mechanics"]
+            transitions.append({"type": "transition", "decision_index": after_mechanics["decision_index"],
+                "phase": before_mechanics["phase"], "action": normalized(actions)[0],
+                "before": {"hash": state.exact_hash(), "state": trace_state(before)},
+                "after": {"hash": after_state.exact_hash(), "state": trace_state(after)},
+                "rng_before": before["state"]["stochastic"]["prototype_rng"],
+                "rng_after": after["state"]["stochastic"]["prototype_rng"],
                 "diagnostics": [], "legal_actions_before": normalized(actions),
                 "legal_actions_after": normalized(after_state.actions())})
             state = after_state

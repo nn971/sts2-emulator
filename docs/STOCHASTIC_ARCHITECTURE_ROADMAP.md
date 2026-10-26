@@ -6,13 +6,15 @@
 dedicated CI workflow that emits registry/matrix and contract-declaration
 artifacts, runs focused provider and mechanics checks, replays seeded JSONL and
 source-route combats, and compares complete test identities against frozen
-main. The site ledger is explicit that runtime continuation acceptance and
-source-callsite completeness remain open. Local validation passed the full
-1,841-test suite; the frozen-main comparison found zero regressions across
-1,625 shared test identities and repaired 323 shared failures. The seeded
-15-worker smoke, matched 15-process Nature/control replay, and five documented
-source-route victory pairs passed. These remain source-independent emulator
-evidence, not native-game parity or learned-policy training evidence.
+main. The site ledger declares focused mechanics regressions for 152 sites and
+lists 33 remaining gaps; runtime continuation acceptance and source-callsite
+completeness remain open. Local validation passed the full 1,843-test suite;
+the frozen-main comparison found zero regressions across 1,625 shared test
+identities, repaired 323 shared failures, and passed all 218 candidate-only
+tests. The seeded 15-worker smoke, matched 15-process Nature/control replay,
+five documented source-route victory pairs, and Python snapshot/canonical
+replay smoke passed. These remain source-independent emulator evidence, not
+native-game parity or learned-policy training evidence.
 
 **S1 constrained-deck and duplicate-model acceptance increment (2026-10-27):**
 Independent permutation tests now compare `EnumeratePossibleOrders` across
@@ -25,6 +27,17 @@ deferred queries, stale reveal fingerprints fail, and fair public deck views
 do not vary with private Native ordering. These checks validate the declared
 uniform-pool model and observation boundary only; probability status remains
 `UNVERIFIED`.
+
+**S4 legacy Shop-entry continuation increment (2026-10-27):** The guarded
+legacy Fisher–Yates adapter now routes registered Shop offer swaps through the
+active saved run-action provider during replay. This fixes a failure where the
+run-action continuation had captured a shuffle swap but the replay guard
+rejected the shuffle before consulting that provider. The Shop acceptance test
+resolves all seven card, potion, and relic offer sites, restores the saved
+session midstream, validates the final mechanics state, and confirms the
+prototype RNG is unchanged. The full local suite passed 1,843 tests and the
+frozen-main comparison reported zero regressions; remote CI for this latest
+increment remains pending. Equal-index laws remain `UNVERIFIED`.
 
 **S5 scripted-route identity capture increment (2026-10-26):** Replay capture
 v11 now stores the exact Act 1 source-route action IDs and reached map node,

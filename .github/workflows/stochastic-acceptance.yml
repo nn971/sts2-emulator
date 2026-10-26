@@ -13,6 +13,7 @@ on:
       - 'tests/Sts2Emulator.Core.Tests/**'
       - 'tests/test_stochastic_regression_report.py'
       - 'tests/test_jsonl_privacy_assertions.py'
+      - 'tests/test_stochastic_site_acceptance.py'
       - 'tools/rng_callsite_inventory.py'
       - 'tools/stochastic_coverage_gate.py'
       - 'tools/stochastic_site_acceptance.py'
@@ -32,6 +33,7 @@ on:
       - 'tests/Sts2Emulator.Core.Tests/**'
       - 'tests/test_stochastic_regression_report.py'
       - 'tests/test_jsonl_privacy_assertions.py'
+      - 'tests/test_stochastic_site_acceptance.py'
       - 'tools/rng_callsite_inventory.py'
       - 'tools/stochastic_coverage_gate.py'
       - 'tools/stochastic_site_acceptance.py'
@@ -75,6 +77,8 @@ jobs:
             -p 'test_stochastic_regression_report.py' -v
           python -m unittest discover -s tests \
             -p 'test_jsonl_privacy_assertions.py' -v
+          python -m unittest discover -s tests \
+            -p 'test_stochastic_site_acceptance.py' -v
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -95,7 +99,7 @@ jobs:
         run: |
           dotnet test tests/Sts2Emulator.Core.Tests/Sts2Emulator.Core.Tests.csproj \
             -c Release --no-build \
-            --filter 'FullyQualifiedName~SemanticDeckStateV111Tests|FullyQualifiedName~RandomBoundaryJournalV111Tests|FullyQualifiedName~StochasticProviderDifferentialAcceptanceTests|FullyQualifiedName~StochasticAcceptanceFixtureTests|FullyQualifiedName~StochasticMechanicsProjectionAcceptanceTests|FullyQualifiedName~ChanceLawV111Tests.DrawLawMatchesIndependentEnumerationOfConstrainedPhysicalPermutations|FullyQualifiedName~ChanceLawV111Tests.ReferenceNatureSamplingMatchesWeightsAndReplaysFromForkedState|FullyQualifiedName~PrototypeColorlessPowerBatchTests.BombCountdownExplodesAfterThreePlayerTurns|FullyQualifiedName~PrototypeUnderdocksCultistsAndFossilTests.SuckOnlyCountsUnblockedAttackHits' \
+            --filter 'FullyQualifiedName~SemanticDeckStateV111Tests|FullyQualifiedName~RandomBoundaryJournalV111Tests|FullyQualifiedName~StochasticProviderDifferentialAcceptanceTests|FullyQualifiedName~StochasticAcceptanceFixtureTests|FullyQualifiedName~StochasticMechanicsProjectionAcceptanceTests|FullyQualifiedName~StochasticRunActionAcceptanceTests|FullyQualifiedName~ChanceLawV111Tests.DrawLawMatchesIndependentEnumerationOfConstrainedPhysicalPermutations|FullyQualifiedName~ChanceLawV111Tests.ReferenceNatureSamplingMatchesWeightsAndReplaysFromForkedState|FullyQualifiedName~PrototypeColorlessPowerBatchTests.BombCountdownExplodesAfterThreePlayerTurns|FullyQualifiedName~PrototypeUnderdocksCultistsAndFossilTests.SuckOnlyCountsUnblockedAttackHits' \
             --logger 'trx;LogFileName=provider-mechanics.trx' \
             --results-directory /tmp/stochastic-acceptance
       - uses: actions/upload-artifact@v4

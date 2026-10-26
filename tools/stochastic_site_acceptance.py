@@ -28,6 +28,8 @@ def build_report(inventory: dict, rows: list[dict]) -> dict:
         controlled = row["controlled_implemented"]
         mechanics = row["controlled_mechanics"]
         explicitly_unsupported = controlled.strip().lower().startswith("no")
+        focused_mechanics_test_declared = not mechanics.strip().lower().startswith(
+            "no:")
         sites.append({
             "site_id": row["site_id"],
             "engine_owner": row["owner"],
@@ -36,6 +38,10 @@ def build_report(inventory: dict, rows: list[dict]) -> dict:
             "native_provider_implementation": row["native_implemented"],
             "nature_or_controlled_implementation": controlled,
             "controlled_mechanics_declaration": mechanics,
+            "focused_mechanics_test_status": (
+                "DECLARED" if focused_mechanics_test_declared
+                else "NOT_ESTABLISHED"
+            ),
             "native_parity_declaration": row["native_parity"],
             "contract_facets_located": contract["evidence_presence"],
             "missing_contract_facets": contract["missing_facets"],
@@ -43,7 +49,8 @@ def build_report(inventory: dict, rows: list[dict]) -> dict:
             "deliberately_not_accepted": (
                 "unsupported site, requires explicit fail-closed runtime test"
                 if explicitly_unsupported else
-                "missing independent per-site execution/continuation test evidence"
+                "full mechanics-entry, legal-support, provider, law, "
+                "save/restore, and fail-closed acceptance is not established"
             ),
             "runtime_continuation_accepted": False,
             "source_law_calibration_accepted": law_status == "calibrated",
@@ -69,6 +76,13 @@ def build_report(inventory: dict, rows: list[dict]) -> dict:
         "unsupported_site_count": sum(s["nature_or_controlled_implementation"]
                                        .strip().lower().startswith("no")
                                        for s in sites),
+        "focused_mechanics_test_declared_count": sum(
+            s["focused_mechanics_test_status"] == "DECLARED" for s in sites
+        ),
+        "focused_mechanics_test_not_established_count": sum(
+            s["focused_mechanics_test_status"] == "NOT_ESTABLISHED"
+            for s in sites
+        ),
         "executably_accepted_site_count": 0,
         "acceptance_status": "DECLARATIONS_ONLY__RUNTIME_ACCEPTANCE_OPEN",
         "important_limit": (

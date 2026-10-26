@@ -407,6 +407,11 @@ public static class LegacyRandomChoiceV111
                 return StochasticProviderScopeV111.ResolveIndex(
                     new LegacyPrototypeRandomIndexProviderV111(),
                     request, streams);
+            if (ControlledEventChoiceReplayV111.IsRunActionShopSite(siteId) &&
+                StochasticProviderScopeV111.HasProviderOverride)
+                return StochasticProviderScopeV111.ResolveIndex(
+                    new LegacyPrototypeRandomIndexProviderV111(),
+                    request, streams);
             throw new NotSupportedException(
                 $"UNSUPPORTED_CONTROLLED_CHANCE site={siteId} " +
                 $"operation={operationKind} requires a saved continuation.");
@@ -445,9 +450,14 @@ public static class LegacyFisherYatesV111
             && !ControlledChanceGuardV111.EngineOwnedNativeProviderActive
             && ControlledEventChoiceReplayV111.IsActive
             && ControlledEventChoiceReplayV111.IsEventChoiceSite(siteId);
+        var controlledRunActionShopReplay =
+            ControlledChanceGuardV111.Active
+            && !ControlledChanceGuardV111.EngineOwnedNativeProviderActive
+            && StochasticProviderScopeV111.HasProviderOverride
+            && ControlledEventChoiceReplayV111.IsRunActionShopSite(siteId);
         if (ControlledChanceGuardV111.Active
             && !ControlledChanceGuardV111.EngineOwnedNativeProviderActive
-            && !controlledEventChoice)
+            && !controlledEventChoice && !controlledRunActionShopReplay)
             throw new NotSupportedException(
                 $"UNSUPPORTED_CONTROLLED_CHANCE site={siteId} " +
                 "operation=shuffle requires a saved continuation.");
