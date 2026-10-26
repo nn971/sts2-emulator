@@ -6246,3 +6246,12 @@ query on the already-advanced cursor, and derives a fallback count only when
 that receipt is absent. It no longer treats the active-or-completed count
 projection as a completion predicate. No snapshot schema changed. Core Release
 build and `git diff --check` passed; no tests were added or run.
+
+**S0 Distinguished Cape semantic curse outcome increment (2026-10-26):** The
+controlled event-choice Chance Law now validates the saved Cape `GainRelic`
+effect, replays its shrinking ordered curse support from prior saved picks, and
+exposes each selected curse as a semantic card outcome. Native `run.niche`
+requests retain exact bounded-index grid masses; legacy `event` weighting,
+source-pool completeness, stream attribution, and cursor parity remain open.
+Static source review, Core Release build, the static RNG audit, and
+`git diff --check` passed; no tests were added or run.

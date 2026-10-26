@@ -142,7 +142,8 @@ The supported event-choice sites are:
   physical deck cards; each swap carries the current ordered instance-ID labels
 - `run.relic.distinguished_cape.modifier_curse.index_draw` for an
   event-gained Distinguished Cape's two ordered, without-replacement curse
-  picks; each request carries the remaining curse IDs
+  picks; each request carries the remaining curse IDs, and its conditional
+  Chance Law exposes the selected curse as a semantic `card:<curse-id>` outcome
 - `run.relic.fur_coat.map_node_shuffle.swap_index` for an event-gained Fur
   Coat's conditional shuffle over current-act Combat and Elite node IDs; each
   swap carries the current ordered node-ID labels

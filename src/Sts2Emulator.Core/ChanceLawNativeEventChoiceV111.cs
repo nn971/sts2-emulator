@@ -1115,6 +1115,11 @@ public static partial class ChanceLawEngineV111
                     QueryControlledEventPaelsLegionSkin(
                         source, effect, request),
             NativePaelRewardsV111.LegionSkinSiteId => null,
+            NativeGloryAncientsV111.DistinguishedCapeCurseSiteId
+                when effect is not null =>
+                    QueryControlledEventDistinguishedCapeCurse(
+                        source, effect, pending),
+            NativeGloryAncientsV111.DistinguishedCapeCurseSiteId => null,
             "relic.acquisition.random_rare_card.model"
                 when effect is null => throw new InvalidDataException(
                     "Legacy Rare-card acquisition law is outside an event-effect continuation."),
@@ -1149,6 +1154,8 @@ public static partial class ChanceLawEngineV111
                 "event.reward.offer_potion.model.index_draw" or
                 "event.reward.random_modifier_curse.index_draw" => "reward",
             "relic.unowned_random_selection.index_draw" => request.StreamId,
+            NativeGloryAncientsV111.DistinguishedCapeCurseSiteId =>
+                request.StreamId,
             _ => "event"
         };
         string[] expectedLabels;
@@ -1202,6 +1209,7 @@ public static partial class ChanceLawEngineV111
                 StochasticSiteRegistryV111.EventRewardCardBundleShuffleSiteId or
                 "event.reward.random_rare_card.model" or
                 "event.reward.random_modifier_curse.index_draw" or
+                NativeGloryAncientsV111.DistinguishedCapeCurseSiteId or
                 "relic.acquisition.random_rare_card.model" or
                 "reward.card_model.index_draw" or
                 "reward.card_transform.replacement.index_draw";
@@ -1400,6 +1408,131 @@ public static partial class ChanceLawEngineV111
                 "Pael's Legion skin request differs from its saved acquisition slot.");
 
         return QueryPaelsLegionSkin(expectedOwnerId, ordinal: 0);
+    }
+
+    private static ChanceLawV111 QueryControlledEventDistinguishedCapeCurse(
+        RunState source,
+        PrototypeControlledEventChoiceContinuationV111 continuation,
+        ControlledEventChoicePendingV111 pending)
+    {
+        var request = pending.Request;
+        if (source.Phase != RunPhase.Event || source.World is not { } world ||
+            world.Event?.EventId != continuation.EventId)
+            throw new InvalidDataException(
+                "Distinguished Cape curse law is outside its saved event boundary.");
+
+        var choice = PrototypeContent.Event(continuation.EventId).Choices
+            .SingleOrDefault(candidate => candidate.Id == continuation.ChoiceId) ??
+            throw new InvalidDataException(
+                "Distinguished Cape curse law references an unknown event choice.");
+        if ((uint)continuation.NextEffectIndex >=
+                (uint)choice.Effects.Length)
+            throw new InvalidDataException(
+                "Distinguished Cape curse law is outside its saved effect boundary.");
+        var effect = choice.Effects[continuation.NextEffectIndex];
+        if (effect.Kind != PrototypeRunEffectKind.GainRelic ||
+            effect.RelicId != NativeGloryAncientsV111.DistinguishedCapeId)
+            throw new InvalidDataException(
+                "Distinguished Cape curse request differs from its saved relic-acquisition effect.");
+
+        const string expectedOwnerId =
+            "relic:distinguished_cape:acquisition";
+        var expectedStreamId = source.Stochastic.NativeRunRng is null
+            ? "event" : "run.niche";
+        if (request.SiteId !=
+                NativeGloryAncientsV111.DistinguishedCapeCurseSiteId ||
+            request.OwnerId != expectedOwnerId ||
+            request.StreamId != expectedStreamId ||
+            request.OperationKind != "choose_index" || request.Ordinal != 0 ||
+            request.OrderedCandidates.Length != request.SupportCount)
+            throw new InvalidDataException(
+                "Distinguished Cape curse request differs from its saved acquisition owner.");
+
+        var remainingCurseIds = NativeGloryAncientsV111
+            .ModifierGeneratedCurseIds.ToList();
+        if (remainingCurseIds.Count < 2 ||
+            remainingCurseIds.Any(string.IsNullOrWhiteSpace) ||
+            remainingCurseIds.Distinct(StringComparer.Ordinal).Count() !=
+                remainingCurseIds.Count)
+            throw new InvalidDataException(
+                "Distinguished Cape has an invalid ordered curse source pool.");
+
+        var labels = continuation.DecisionCandidateLabels ??
+            throw new InvalidDataException(
+                "Distinguished Cape continuation has no saved candidate labels.");
+        if (labels.Length != continuation.Decisions.Length)
+            throw new InvalidDataException(
+                "Distinguished Cape continuation has a malformed candidate-label prefix.");
+        for (var index = continuation.EffectDecisionStartIndex;
+             index < continuation.Decisions.Length; index++)
+        {
+            var decision = continuation.Decisions[index];
+            decision.Validate();
+            var priorRequest = decision.Request;
+            if (priorRequest.SiteId != request.SiteId ||
+                priorRequest.OwnerId != request.OwnerId)
+                continue;
+
+            var priorSupport = remainingCurseIds.ToArray();
+            if (priorRequest.StreamId != request.StreamId ||
+                priorRequest.OperationKind != "choose_index" ||
+                priorRequest.Ordinal != 0 ||
+                !priorRequest.OrderedCandidates.SequenceEqual(
+                    Enumerable.Range(0, priorSupport.Length)) ||
+                !ControlledEventLabelsMatch(
+                    request.SiteId, labels[index], priorSupport,
+                    boundedIndexSupport: false))
+                throw new InvalidDataException(
+                    "Distinguished Cape curse prefix differs from its shrinking ordered support.");
+
+            var selectedIndex = decision.SelectedIndex;
+            if ((uint)selectedIndex >= (uint)priorSupport.Length)
+                throw new InvalidDataException(
+                    "Distinguished Cape curse prefix has an invalid selected index.");
+            remainingCurseIds.RemoveAt(selectedIndex);
+        }
+
+        var currentSupport = remainingCurseIds.ToArray();
+        if (currentSupport.Length < 1 ||
+            request.SupportCount != currentSupport.Length ||
+            !request.OrderedCandidates.SequenceEqual(
+                Enumerable.Range(0, currentSupport.Length)) ||
+            !ControlledEventLabelsMatch(
+                request.SiteId, pending.CandidateLabels, currentSupport,
+                boundedIndexSupport: false))
+            throw new InvalidDataException(
+                "Distinguished Cape curse request differs from its saved shrinking support.");
+
+        var indexLaw = QueryRandomIndex(pending.ChanceEventId, request);
+        var outcomes = currentSupport.Select((curseId, index) =>
+            new ChanceLawOutcomeV111(
+                "card:" + curseId, indexLaw.OutcomeWeightAt(index)))
+            .ToArray();
+        var conditioningFingerprint = CanonicalJson.Sha256(new
+        {
+            sourceLawId = indexLaw.LawId,
+            sourceConditioningFingerprint =
+                indexLaw.ConditioningFingerprint,
+            eventId = continuation.EventId,
+            choiceId = continuation.ChoiceId,
+            effectIndex = continuation.NextEffectIndex,
+            orderedRemainingCurseIds = currentSupport
+        });
+        var eventId = CanonicalJson.Sha256(new
+        {
+            boundary = "controlled-event-distinguished-cape-curse",
+            indexLaw.LawId,
+            continuation.EventId,
+            continuation.ChoiceId,
+            continuation.NextEffectIndex,
+            orderedRemainingCurseIds = currentSupport
+        });
+        return Create(
+            eventId, indexLaw.SiteId, indexLaw.OperationKind,
+            indexLaw.OwnerId, indexLaw.Ordinal,
+            indexLaw.ConditioningPolicyId + "-semantic-curse-v1",
+            conditioningFingerprint, indexLaw.ProbabilityProvenance,
+            outcomes, indexLaw.ProbabilityStatus);
     }
 
     private static ChanceLawV111? QueryControlledEventPoolShuffle(

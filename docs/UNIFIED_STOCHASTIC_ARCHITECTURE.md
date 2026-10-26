@@ -2242,6 +2242,14 @@ from the pre-effect player checkpoint, and reuses the dedicated four-skin
 Chance Law on isolated `reward` ordinal zero. The emulator's skin-seed
 derivation and equal-index weighting remain `UNVERIFIED`.
 
+When a controlled event effect grants Distinguished Cape, the event query now
+validates the saved `GainRelic` effect and rebuilds the remaining ordered
+modifier-curse support from the saved picks in that effect. Each conditional
+index law exposes `card:<curse-id>` outcomes; canonical Native `run.niche`
+requests retain exact `NextInt` grid masses, while legacy `event` requests keep
+equal-index `UNVERIFIED` weights. Source-pool completeness, stream attribution,
+and cursor parity remain open.
+
 ## Reading order
 
 1. This architecture contract.
