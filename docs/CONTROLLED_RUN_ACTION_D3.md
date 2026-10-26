@@ -17,9 +17,11 @@ run RNG. Ordinary legacy Treasure generation uses that same route. Native-
 regional Treasure and Shovel fallbacks require `NativeRunRng` to be absent and
 retain the legacy reward rarity-ticket and conditional relic-index requests.
 The convergence `map.legacy.convergence.order_key` request is bounded by
-`Int32.MaxValue`; the current explicit-outcome Chance Law refuses to
-materialize that support. Its typed request remains recordable and replayable,
-but ReferenceNature resolution requires a compact law over map-order outcomes.
+`Int32.MaxValue`. Its Chance Law uses the shared compact uniform-index range,
+with `choice_index:<value>` IDs, so the support and weights are available
+without materializing billions of outcomes. Clients can resolve the selected
+key through `controlled_run_action_resolve` using `outcome_id`; its legacy
+uniform-index probability model remains `UNVERIFIED`.
 The same saved action frame also supports legal `take_reward_relic` and
 `take_reward_extra_relic` actions from ordinary Combat, Elite, or Boss rewards
 when `NativeRunRng` is absent, if their acquisition hook reaches one of the

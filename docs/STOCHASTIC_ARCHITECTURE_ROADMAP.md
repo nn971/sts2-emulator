@@ -7,8 +7,11 @@
 Chance Law outcome IDs through a shared `ChanceLawV111` support-to-index
 resolver. JSONL and Python expose `outcome_id`; existing selected-index and
 candidate-label inputs remain available, and every route records the same
-typed index transcript. Core and CLI Release builds, the static RNG audit,
-and `git diff --check` passed; no tests were run.
+typed index transcript. This also makes the existing compact uniform-index
+law usable for the `Int32.MaxValue` legacy convergence order-key support
+without materializing it. Its probability model remains `UNVERIFIED`. Core
+and CLI Release builds, the static RNG audit, and `git diff --check` passed;
+no tests were run.
 
 **S5 controlled event Chance Law outcome resolution increment (2026-10-26):**
 The controlled-event resolver now accepts a stable outcome ID from the
