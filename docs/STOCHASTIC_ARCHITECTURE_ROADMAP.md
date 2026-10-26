@@ -6303,3 +6303,11 @@ source-card series and destination, normalized current hit, remaining random
 hit queue, and single saved `CardPlayed` completion before using the existing
 target owner. No schema changed. Static source review and Core Release build
 passed; no tests were run.
+
+**S4 Distilled Chaos autoplay target-source validation increment (2026-10-26):**
+The common live-target support owner now admits a no-source, no-pipeline
+autoplay target only when its root matches Distilled Chaos's exact top-three
+effect and `PotionUsed` completion, and its remaining physical autoplay queue
+and current playable enemy-targeted card match the saved target. Other
+no-source, no-pipeline autoplay roots fail closed. No schema changed. Static
+source review and Core Release build passed; no tests were run.

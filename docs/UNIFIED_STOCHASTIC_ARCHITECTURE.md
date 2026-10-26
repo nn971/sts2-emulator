@@ -1905,6 +1905,10 @@ owners or fail closed.
 Manual Distilled Chaos also admits Tingsha targets nested in its top-three
 autoplay when the saved root has the exact `PotionUsed` completion and only
 the remaining potion-sourced autoplay operations for live play-pile cards.
+Its autoplay random-target boundary now validates the same exact potion
+effect, current target card identity, remaining physical autoplay queue, and
+current playable enemy-targeting card definition through the shared
+target-support owner.
 This route requires an idle Nature deck and no automatic pipeline. A source
 census of the modeled potion effects finds Gambler's Brew and Distilled Chaos
 as the only potion origins for card-discard events; both use the existing

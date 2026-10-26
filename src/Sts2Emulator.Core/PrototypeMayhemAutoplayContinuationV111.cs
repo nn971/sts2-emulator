@@ -2271,6 +2271,100 @@ public sealed partial class PrototypeGameEngine
             CanonicalJson.Sha256(new[] { expectedPotionEffect });
     }
 
+    internal static bool IsSupportedDistilledChaosAutoplayTargetBoundary(
+        CombatState combat,
+        PendingCombatChoiceState choice,
+        PrototypeControlledTargetChoiceV111 target)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(choice);
+        ArgumentNullException.ThrowIfNull(target);
+
+        if (target.Kind != "autoplay_random_enemy" ||
+            choice.SourceCardInstanceId is not null ||
+            combat.AutomaticPipelineContinuation is not null ||
+            choice.OuterChoiceContinuation is not { } continuation)
+            return true;
+
+        if (combat is not
+                { IsPlayerTurn: true,
+                  IsPlayerSideActive: true,
+                  PendingKnowledgeDemonChoice: null,
+                  AutomaticPipelineContinuation: null,
+                  SemanticDeck:
+                    { Mode: SemanticDeckStateV111.NatureMode,
+                      Pending: null } } ||
+            choice is not
+                { ChoiceId: "controlled_random_target",
+                  SourceCardInstanceId: null,
+                  SourceCardDestination: PrototypeCardZone.DiscardPile,
+                  CompletionEvents: [] } ||
+            target is not
+                { Kind: "autoplay_random_enemy",
+                  SlyCardInstanceId: null,
+                  AutoPlayCardInstanceId: { } currentAutoPlayCardId } ||
+            continuation is not
+                { SourceCardInstanceId: null,
+                  SourceCardDestination: PrototypeCardZone.DiscardPile,
+                  Operations: { Length: > 0 and <= 3 } operations,
+                  PendingDiscardEvents: [],
+                  PendingSlyCardInstanceIds: [],
+                  CompletionEvents: [{ Kind: PrototypeCombatEventKind.PotionUsed }],
+                  CardPlaySeries: null,
+                  MoveSourceCardOnCompletion: true,
+                  RemoveSourceCardOnCompletion: false,
+                  SourceCardAlreadyMoved: false,
+                  EventDispatchContinuation: null,
+                  Parent: null,
+                  CompletePlayerHandCleanup: false } ||
+            operations[0] is not
+                { Kind: PrototypeCombatEffectKind.AutoPlayCombatCard,
+                  Amount: 0,
+                  TargetEnemyId: null,
+                  SourceKind: PrototypeEffectSourceKind.Potion,
+                  CardInstanceId: { } firstAutoPlayCardId } ||
+            firstAutoPlayCardId != currentAutoPlayCardId ||
+            CanonicalJson.Sha256(
+                PrototypeContent.Potion("proto.potion.distilled_chaos").Effects) !=
+            CanonicalJson.Sha256(new[]
+            {
+                new PrototypeCombatEffectSpec(
+                    PrototypeCombatEffectKind.AutoPlayTopDrawCards, 3)
+            }))
+            return false;
+
+        var seenAutoPlayCards = new HashSet<long>();
+        for (var index = 0; index < operations.Length; index++)
+        {
+            var operation = operations[index];
+            if (operation.CardInstanceId is not { } autoPlayCardId ||
+                !seenAutoPlayCards.Add(autoPlayCardId) ||
+                !combat.PlayCardIds.Contains(autoPlayCardId) ||
+                CanonicalJson.Sha256(operation) !=
+                    CanonicalJson.Sha256(new PrototypeQueuedOperation(
+                        PrototypeCombatEffectKind.AutoPlayCombatCard, 0,
+                        SourceKind: PrototypeEffectSourceKind.Potion,
+                        CardInstanceId: autoPlayCardId)))
+                return false;
+
+            var autoPlayCard = combat.Cards.SingleOrDefault(card =>
+                card.InstanceId == autoPlayCardId);
+            if (autoPlayCard is null)
+                return false;
+            var definition = RuntimeCardDefinition(autoPlayCard);
+            if (!definition.Unplayable && !definition.MechanicsImplemented)
+                return false;
+            if (index == 0 &&
+                (definition.Unplayable ||
+                 NormalityPreventsCardPlay(combat) ||
+                 EffectiveCardTarget(combat, definition) !=
+                    PrototypeCardTarget.Enemy))
+                return false;
+        }
+
+        return true;
+    }
+
     internal static bool IsGamblingChipOpeningTingshaTargetBoundary(
         CombatState combat)
     {
