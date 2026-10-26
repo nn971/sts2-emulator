@@ -6332,3 +6332,11 @@ index-only transcript entries replay with the same saved value. Full bag
 equality remains checked at the initial Act 1 boundary, before the prepared
 queues are consumed. Core Release build, static RNG audit, and
 `git diff --check` passed; no tests were added or run.
+
+**S0 later-act prepared-bag identity replay increment (2026-10-26):** The
+completed preparation validator now reattaches optional encounter labels when
+rebuilding queue laws and scripted index requests, checks decisions through the
+shared legacy-index migration rule, and resolves encounter IDs from the labeled
+support. This closes a stale numeric-outcome read in the prepared-bag audit.
+Core Release build, static RNG audit, and `git diff --check` passed; no tests
+were added or run.

@@ -1353,11 +1353,10 @@ public sealed record ReferenceNatureLaterActEncounterPreparationV111(
                     "ReferenceNature later-act Chance Law differs from its source query.");
             var selection = ReferenceNatureV111.SampleValidated(
                 law, expectedState);
-            var expectedDecision = new ReferenceNatureDecisionV111(
-                law.LawId, law.EventId, selection.OutcomeId,
-                selection.OutcomeIndex);
-            if (CanonicalJson.Sha256(expectedDecision) !=
-                CanonicalJson.Sha256(decision))
+            var expectedDecision = ReferenceNatureDecisionV111.FromSelection(
+                law, selection);
+            if (!ReferenceNatureDecisionV111.MatchesReplay(
+                    decision, expectedDecision))
                 throw new InvalidDataException(
                     "ReferenceNature later-act transcript does not replay.");
             script[index] = new RandomIndexDecisionV111(
@@ -1430,9 +1429,9 @@ public sealed record ReferenceNatureLaterActEncounterPreparationV111(
     private string EncounterOutcomeAt(int index)
     {
         var law = ChanceLaws[index];
-        var outcome = law.Outcomes[
-            Stochastic.DecisionTranscript[index].OutcomeIndex]
-            .OutcomeId;
+        var outcomeIndex = Stochastic.DecisionTranscript[index].OutcomeIndex;
+        var outcome = law.OutcomeLabelAt(outcomeIndex) ??
+            law.Outcomes[outcomeIndex].OutcomeId;
         return outcome.StartsWith("encounter:", StringComparison.Ordinal)
             ? outcome["encounter:".Length..]
             : throw new InvalidDataException(
@@ -1443,7 +1442,10 @@ public sealed record ReferenceNatureLaterActEncounterPreparationV111(
         ChanceLawV111 law) => new(
             law.SiteId, "combat", law.OwnerId, law.Ordinal,
             Enumerable.Range(0, law.Outcomes.Length).ToArray(),
-            OperationKind: law.OperationKind);
+            OperationKind: law.OperationKind)
+        {
+            CandidateLabels = law.OutcomeLabels
+        };
 
     private static ChanceLawV111 QueryExpectedLaw(
         RandomIndexRequestV111 request, int ascension)
@@ -1452,9 +1454,14 @@ public sealed record ReferenceNatureLaterActEncounterPreparationV111(
             "combat.encounter.later_act.weak.index_draw" or
             "combat.encounter.later_act.normal.index_draw" or
             "combat.encounter.later_act.elite.index_draw")
-            return ChanceLawEngineV111.QueryLegacyCallerBoundIndex(
+        {
+            var law = ChanceLawEngineV111.QueryLegacyCallerBoundIndex(
                 request.SiteId, request.OwnerId, request.Ordinal,
                 request.SupportCount);
+            return request.CandidateLabels is { } labels
+                ? law with { OutcomeLabels = labels }
+                : law;
+        }
         if (request.SiteId == ExperimentalSilentThreeActRouteV111
                 .BossIndexSiteId)
         {
