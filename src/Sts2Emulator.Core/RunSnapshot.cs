@@ -195,8 +195,8 @@ public static class RunSnapshot
                 throw new InvalidDataException(
                     "Experimental run-start preparation ended before its transcript.");
             preparation = preparation.ResolveNext();
-            if (CanonicalJson.Sha256(preparation.DecisionTranscript[^1]) !=
-                CanonicalJson.Sha256(expected))
+            if (!ReferenceNatureDecisionV111.MatchesReplay(
+                    expected, preparation.DecisionTranscript[^1]))
                 throw new InvalidDataException(
                     "Experimental run-start preparation differs from its generator replay.");
 

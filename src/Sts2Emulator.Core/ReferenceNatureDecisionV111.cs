@@ -8,6 +8,44 @@ namespace Sts2Emulator.Core;
 public sealed record ReferenceNatureDecisionV111(
     string LawId, string EventId, string OutcomeId, int OutcomeIndex)
 {
+    internal static ReferenceNatureDecisionV111 FromSelection(
+        ChanceLawV111 law, ReferenceNatureSelectionV111 selection)
+    {
+        ArgumentNullException.ThrowIfNull(law);
+        ArgumentNullException.ThrowIfNull(selection);
+        if (selection.LawId != law.LawId ||
+            selection.EventId != law.EventId ||
+            selection.OutcomeIndex < 0 ||
+            selection.OutcomeIndex >= law.SupportCount ||
+            selection.OutcomeId != law.OutcomeIdAt(selection.OutcomeIndex))
+            throw new InvalidDataException(
+                "ReferenceNature selection differs from its Chance Law.");
+        return new ReferenceNatureDecisionV111(
+            law.LawId, law.EventId,
+            law.OutcomeLabelAt(selection.OutcomeIndex) ?? selection.OutcomeId,
+            selection.OutcomeIndex);
+    }
+
+    internal static bool MatchesReplay(
+        ReferenceNatureDecisionV111 saved,
+        ReferenceNatureDecisionV111 replayed)
+    {
+        ArgumentNullException.ThrowIfNull(saved);
+        ArgumentNullException.ThrowIfNull(replayed);
+        if (CanonicalJson.Sha256(saved) == CanonicalJson.Sha256(replayed))
+            return true;
+
+        var indexText = replayed.OutcomeIndex.ToString(
+            CultureInfo.InvariantCulture);
+        return saved.LawId == replayed.LawId &&
+            saved.EventId == replayed.EventId &&
+            saved.OutcomeIndex == replayed.OutcomeIndex &&
+            saved.OutcomeId == "choice_index:" + indexText &&
+            replayed.OutcomeId.StartsWith("encounter:",
+                StringComparison.Ordinal) &&
+            replayed.OutcomeId.Length > "encounter:".Length;
+    }
+
     public void Validate()
     {
         var indexText = OutcomeIndex.ToString(CultureInfo.InvariantCulture);

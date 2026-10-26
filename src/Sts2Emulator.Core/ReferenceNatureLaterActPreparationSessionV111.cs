@@ -349,9 +349,8 @@ public sealed record ReferenceNatureLaterActPreparationSessionV111(
             "Incomplete later-act preparation has no pending Chance Law.");
         var selection = ReferenceNatureV111.SampleValidated(
             law, Stochastic.NatureState);
-        var decision = new ReferenceNatureDecisionV111(
-            law.LawId, law.EventId, selection.OutcomeId,
-            selection.OutcomeIndex);
+        var decision = ReferenceNatureDecisionV111.FromSelection(
+            law, selection);
         var next = Rebuild(InitialPrototypeRng, Ascension, Profile,
             Stochastic.InitialNatureState,
             Stochastic.DecisionTranscript.Append(decision).ToArray());

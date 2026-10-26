@@ -86,9 +86,8 @@ public sealed record ReferenceNatureRunInitializationTranscriptV111(
             law.Validate();
             decision.Validate();
             var selection = ReferenceNatureV111.SampleValidated(law, cursor);
-            var expected = new ReferenceNatureDecisionV111(
-                law.LawId, law.EventId, selection.OutcomeId,
-                selection.OutcomeIndex);
+            var expected = ReferenceNatureDecisionV111.FromSelection(
+                law, selection);
             if (CanonicalJson.Sha256(expected) !=
                 CanonicalJson.Sha256(decision))
                 throw new InvalidDataException(

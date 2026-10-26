@@ -1097,17 +1097,20 @@ internal sealed class ReferenceNatureLaterActEncounterIndexProviderV111
 
         var selection = ReferenceNatureV111.SampleValidated(
             law, _stochastic.NatureState);
-        var natureDecision = new ReferenceNatureDecisionV111(
-            law.LawId, law.EventId, selection.OutcomeId,
-            selection.OutcomeIndex);
-        if (_expectedPrefix is not null &&
-            (decisionCount >= _expectedPrefix.Length ||
-             CanonicalJson.Sha256(natureDecision) != CanonicalJson.Sha256(
-                 _expectedPrefix[decisionCount])))
-            throw new InvalidDataException(
-                "ReferenceNature later-act encounter replay differs from its saved prefix.");
+        var natureDecision = ReferenceNatureDecisionV111.FromSelection(
+            law, selection);
+        ReferenceNatureDecisionV111 transcriptDecision = natureDecision;
+        if (_expectedPrefix is not null)
+        {
+            if (decisionCount >= _expectedPrefix.Length ||
+                !ReferenceNatureDecisionV111.MatchesReplay(
+                    _expectedPrefix[decisionCount], natureDecision))
+                throw new InvalidDataException(
+                    "ReferenceNature later-act encounter replay differs from its saved prefix.");
+            transcriptDecision = _expectedPrefix[decisionCount];
+        }
         _stochastic = _stochastic.Advance(selection.NextState,
-            natureDecision);
+            transcriptDecision);
         _chanceLaws.Add(law.Fork());
         if (request.SiteId == ExperimentalSilentThreeActRouteV111
                 .BossIndexSiteId ||
