@@ -2250,6 +2250,14 @@ requests retain exact `NextInt` grid masses, while legacy `event` requests keep
 equal-index `UNVERIFIED` weights. Source-pool completeness, stream attribution,
 and cursor parity remain open.
 
+Controlled event effects that grant Native Neow's Arcane Scroll or Phial
+Holster now map their `player.rewards` acquisition indices to ordered card or
+potion identities. The query validates the acquired relic's `RelicAcquired`
+trigger, source pool, and request owner; Phial Holster also replays its saved
+potion-slot prefix before binding the next pick. Native index masses remain
+`SOURCE_VERIFIED` for each declared support, while game-pool fidelity and
+cursor parity remain open.
+
 ## Reading order
 
 1. This architecture contract.

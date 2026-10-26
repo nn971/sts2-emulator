@@ -6255,3 +6255,13 @@ requests retain exact bounded-index grid masses; legacy `event` weighting,
 source-pool completeness, stream attribution, and cursor parity remain open.
 Static source review, Core Release build, the static RNG audit, and
 `git diff --check` passed; no tests were added or run.
+
+**S6 Native event relic-acquisition outcome increment (2026-10-26):** The
+controlled event-choice law now maps Native Arcane Scroll and Phial Holster
+`player.rewards` requests to ordered card and potion identities. It validates
+the saved `GainRelic` effect, the matching acquisition trigger and pool, and
+replays Phial Holster's prior potion choice against the next open slot before
+conditioning the second draw. Native bounded-index masses remain exact on the
+declared supports; installed-game pool fidelity and cursor parity remain open.
+Static source review, Core Release build, the static RNG audit, and
+`git diff --check` passed; no tests were added or run.
