@@ -664,13 +664,8 @@ public sealed record ReferenceNatureRunActionSessionV111(
             throw new InvalidDataException(
                 "Native encounter-pool request is outside its configured Act 1 combat-entry boundary.");
 
-        var eventId = CanonicalJson.Sha256(new
-        {
-            boundary = "native-act-one-combat-entry-index",
-            actionId = PrototypeAiEnvironment.StableActionId(action),
-            request
-        });
-        return ChanceLawEngineV111.QueryRandomIndex(eventId, request);
+        return ChanceLawEngineV111.QueryActOneEncounterSelection(
+            source, action, request);
     }
 
     private static ChanceLawV111 QueryNativeRunActionLaw(

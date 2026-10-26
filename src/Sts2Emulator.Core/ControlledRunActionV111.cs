@@ -282,12 +282,19 @@ public sealed record ControlledRunActionTraceV111(
                 && labels.Length == 0;
             var nativeRelicBagLabels = IsLegacyNativeRelicBagLabelSupport(
                 request, labels);
+            var actOneEncounterIdentityLabels =
+                request.StreamId == "combat" &&
+                request.OperationKind == "choose_index" &&
+                ActOneEncounterSelectionSupportV111
+                    .MatchesTraceIdentityLabels(
+                        request.SiteId, request.OwnerId, labels);
             var numericLabels = !(isMapDraw || isEventEntryDraw || isShopDraw
                 || isTreasureDraw || isNativeShovelFallbackDraw
                 || isCombatDraw || isCombatPotionDraw
                 || isShopPurchaseDraw || isRestHealRewardDraw
                 || isRelicDeckTransformDraw)
                 || nativeRelicBagLabels
+                || actOneEncounterIdentityLabels
                 || omittedLabels ||
                 ControlledStochasticChanceReplayV111.CandidateLabelsMatch(
                     labels, Enumerable.Range(0, labels.Length).Select(index =>
@@ -650,6 +657,8 @@ public sealed record PrototypeControlledRunActionContinuationV111(
         var relicDeckTransformRequest = false;
         var restHealRewardRequest = false;
         var legacyTreasureRelicModelRequest = false;
+        ActOneEncounterSelectionSupportV111?
+            actOneEncounterSelectionSupport = null;
         switch (ActionId)
         {
             case "start_run":
@@ -929,6 +938,26 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                         ? []
                         : (string[])availableRelics.Clone();
                 }
+                if (nativeMapAction is not null)
+                {
+                    actOneEncounterSelectionSupport =
+                        PrototypeGameEngine
+                            .DescribeActOneEncounterSelection(
+                                state, nativeMapAction,
+                                PendingRequest.SiteId);
+                    if (actOneEncounterSelectionSupport is
+                        { } pendingEncounterSupport)
+                    {
+                        expectedSite = pendingEncounterSupport.SiteId;
+                        expectedStream = "combat";
+                        expectedOwner = pendingEncounterSupport.OwnerId;
+                        expectedCandidates = Enumerable.Range(
+                            0, pendingEncounterSupport.EncounterIds.Length)
+                            .ToArray();
+                        expectedLabels = (string[])pendingEncounterSupport
+                            .EncounterIds.Clone();
+                    }
+                }
                 mapNodeRequest = true;
                 break;
             }
@@ -1060,6 +1089,10 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                 .CandidateLabelsMatch(PendingCandidateLabels,
                     Enumerable.Range(0, expectedLabels.Length).Select(index =>
                         index.ToString(CultureInfo.InvariantCulture)).ToArray());
+        if (!pendingLabelsMatch &&
+            actOneEncounterSelectionSupport is { } encounterSupport)
+            pendingLabelsMatch = encounterSupport.MatchesLabels(
+                PendingCandidateLabels);
         if (!pendingLabelsMatch && configuredUnderdocksStart
             && PendingRequest.SiteId == PrototypeNativeUnderdocks
                 .BossEncounterIndexSiteId)
@@ -1236,11 +1269,19 @@ public sealed record PrototypeControlledRunActionContinuationV111(
             var nativeRelicBagLabels =
                 ControlledRunActionTraceV111
                     .IsLegacyNativeRelicBagLabelSupport(request, labels);
+            var encounterSelectionSupport = mapAction is null
+                ? null
+                : PrototypeGameEngine.DescribeActOneEncounterSelection(
+                    state, mapAction, request.SiteId);
+            var actOneEncounterIdentityLabels =
+                encounterSelectionSupport is { } decisionEncounterSupport &&
+                decisionEncounterSupport.MatchesLabels(labels);
             var numericLabels = !(isMapDraw || isEventEntryDraw || isShopDraw
                 || isTreasureDraw || isNativeShovelFallbackDraw
                 || isCombatDraw || isCombatPotionDraw
                 || isRelicDeckTransformDraw)
                 || nativeRelicBagLabels
+                || actOneEncounterIdentityLabels
                 || omittedLabels ||
                 stableTreasureRelicLabels ||
                 ControlledStochasticChanceReplayV111.CandidateLabelsMatch(

@@ -54,10 +54,84 @@ public static partial class ChanceLawEngineV111
                     "Act 1 boss Chance Law differs from its controlled run-start support.");
             return law with { EventId = pending.ChanceEventId };
         }
+        if (continuation.ActionId == "choose_map_node" &&
+            continuation.MapNodeId is { } mapNodeId &&
+            PrototypeGameEngine.DescribeActOneEncounterSelection(
+                run,
+                GameAction.Create("choose_map_node",
+                    new ChooseMapNodePayload(mapNodeId)),
+                pending.Request.SiteId) is { } encounterSupport)
+            return QueryActOneEncounterSelection(
+                run,
+                GameAction.Create("choose_map_node",
+                    new ChooseMapNodePayload(mapNodeId)),
+                pending.Request,
+                pending.CandidateLabels,
+                encounterSupport) with { EventId = pending.ChanceEventId };
         if (QueryControlledRunActionSemanticLaw(
                 run, continuation, pending.ChanceEventId) is { } semanticLaw)
             return semanticLaw;
         return QueryRandomIndex(pending.ChanceEventId, pending.Request);
+    }
+
+    internal static ChanceLawV111 QueryActOneEncounterSelection(
+        RunState source,
+        GameAction action,
+        RandomIndexRequestV111 request,
+        string[]? candidateLabels = null,
+        ActOneEncounterSelectionSupportV111? knownSupport = null)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(action);
+        ArgumentNullException.ThrowIfNull(request);
+        request.Validate();
+        var support = knownSupport ??
+            PrototypeGameEngine.DescribeActOneEncounterSelection(
+                source, action, request.SiteId);
+        var expectedCandidates = support is null
+            ? []
+            : Enumerable.Range(0, support.EncounterIds.Length).ToArray();
+        var numericLabels = candidateLabels is not null && support is not null &&
+            candidateLabels.SequenceEqual(
+                Enumerable.Range(0, support.EncounterIds.Length).Select(index =>
+                    index.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+                StringComparer.Ordinal);
+        if (support is null || request.StreamId != "combat" ||
+            request.SiteId != support.SiteId ||
+            request.OwnerId != support.OwnerId ||
+            request.OperationKind != "choose_index" ||
+            request.OrderedCandidates.Length != support.EncounterIds.Length ||
+            !request.OrderedCandidates.SequenceEqual(expectedCandidates) ||
+            candidateLabels is not null &&
+                !numericLabels &&
+                !candidateLabels.SequenceEqual(
+                    support.EncounterIds, StringComparer.Ordinal))
+            throw new InvalidDataException(
+                "Act 1 encounter-pool Chance Law differs from its source selection support.");
+
+        var conditioning = new
+        {
+            request.SiteId,
+            request.StreamId,
+            request.OwnerId,
+            request.Ordinal,
+            support.EncounterIds
+        };
+        var outcomes = support.EncounterIds.Select(encounterId =>
+            new ChanceLawOutcomeV111("encounter:" + encounterId, 1L))
+            .ToArray();
+        return CreateLegacyCategoricalLaw(
+            request.SiteId,
+            request.StreamId,
+            request.OwnerId,
+            request.Ordinal,
+            "act-one-encounter-pool-identity-v1",
+            conditioning,
+            "Equal mass per ordered encounter-pool index, with outcomes " +
+            "resolved to source encounter identities; seed-to-index parity " +
+            "is unverified.",
+            outcomes,
+            operationKind: request.OperationKind);
     }
 
     private static ChanceLawV111? QueryControlledRunActionSemanticLaw(

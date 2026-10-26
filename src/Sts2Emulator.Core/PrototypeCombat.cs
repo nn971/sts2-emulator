@@ -614,31 +614,18 @@ public sealed partial class PrototypeGameEngine
                 .Clone();
         }
 
-        var previous = world.EncounterIds
-            .Reverse()
-            .FirstOrDefault(id =>
-                PrototypeContent.OvergrowthEliteEncounterPool.Contains(
-                    id,
-                    StringComparer.Ordinal));
-        var eligible = previous is null
-            ? remaining
-            : remaining
-                .Where(id =>
-                    !StringComparer.Ordinal.Equals(
-                        id,
-                        previous))
-                .ToArray();
-        if (eligible.Length == 0)
-        {
-            eligible = remaining;
-        }
+        var support = DescribeActOneEncounterSelection(
+            world, world.Floor, roomType) ??
+            throw new InvalidOperationException(
+                "Overgrowth elite encounter selection support is missing.");
+        var eligible = support.EncounterIds;
 
         var selectedIndex = ResolveLegacyRandomIndex(
             prototypeRng,
-            "combat.encounter.overgrowth_elite.index_draw",
-            "act:1:floor:" + world.Floor + ":pool:"
-                + CanonicalJson.Sha256(eligible),
-            Enumerable.Range(0, eligible.Length));
+            support.SiteId,
+            support.OwnerId,
+            Enumerable.Range(0, eligible.Length),
+            controlledCandidateLabels: eligible);
         var selectedId = eligible[selectedIndex];
         var encounter = PrototypeContent.Encounter(
             selectedId);
@@ -693,14 +680,18 @@ public sealed partial class PrototypeGameEngine
                 "Overgrowth weak encounter pool exhausted before three ordinary combats.");
         }
 
+        var support = DescribeActOneEncounterSelection(
+            world, world.Floor, roomType) ??
+            throw new InvalidOperationException(
+                "Overgrowth weak encounter selection support is missing.");
         var selectedIndex = ResolveLegacyRandomIndex(
             prototypeRng,
-            "combat.encounter.overgrowth_weak.index_draw",
-            "act:1:floor:" + world.Floor + ":pool:"
-                + CanonicalJson.Sha256(pool.RemainingWeakEncounterIds),
-            Enumerable.Range(0, pool.RemainingWeakEncounterIds.Length));
+            support.SiteId,
+            support.OwnerId,
+            Enumerable.Range(0, support.EncounterIds.Length),
+            controlledCandidateLabels: support.EncounterIds);
         var selectedId =
-            pool.RemainingWeakEncounterIds[selectedIndex];
+            support.EncounterIds[selectedIndex];
         var encounter = PrototypeContent.Encounter(
             selectedId);
 
@@ -759,26 +750,18 @@ public sealed partial class PrototypeGameEngine
                 "Overgrowth normal encounter bag is exhausted.");
         }
 
-        var previous = world.EncounterIds.LastOrDefault();
-        var eligible = previous is null
-            ? remaining
-            : remaining
-                .Where(candidate =>
-                    CanFollowOvergrowthEncounter(
-                        previous,
-                        candidate))
-                .ToArray();
-        if (eligible.Length == 0)
-        {
-            eligible = remaining;
-        }
+        var support = DescribeActOneEncounterSelection(
+            world, world.Floor, roomType) ??
+            throw new InvalidOperationException(
+                "Overgrowth normal encounter selection support is missing.");
+        var eligible = support.EncounterIds;
 
         var selectedIndex = ResolveLegacyRandomIndex(
             prototypeRng,
-            "combat.encounter.overgrowth_normal.index_draw",
-            "act:1:floor:" + world.Floor + ":pool:"
-                + CanonicalJson.Sha256(eligible),
-            Enumerable.Range(0, eligible.Length));
+            support.SiteId,
+            support.OwnerId,
+            Enumerable.Range(0, eligible.Length),
+            controlledCandidateLabels: eligible);
         var selectedId = eligible[selectedIndex];
         var encounter = PrototypeContent.Encounter(
             selectedId);

@@ -56,22 +56,17 @@ public sealed partial class PrototypeGameEngine
                 ? (string[])PrototypeNativeUnderdocks
                     .SupportedEliteEncounterIds.Clone()
                 : elites;
-            var previousElite = world.EncounterIds.Reverse()
-                .FirstOrDefault(id => PrototypeNativeUnderdocks
-                    .SupportedEliteEncounterIds.Contains(
-                        id, StringComparer.Ordinal));
-            var eligibleElites = previousElite is null
-                ? availableElites
-                : availableElites.Where(id => !StringComparer.Ordinal.Equals(
-                    id, previousElite)).ToArray();
-            if (eligibleElites.Length == 0)
-                eligibleElites = availableElites;
-            var index = LegacyRandomChoiceV111.ChooseIndexRange(
+            var eliteSupport = DescribeActOneEncounterSelection(
+                world, world.Floor, roomType) ??
+                throw new InvalidOperationException(
+                    "Underdocks elite encounter selection support is missing.");
+            var eligibleElites = eliteSupport.EncounterIds;
+            var index = ResolveLegacyRandomIndex(
                 prototypeRng,
-                "combat.encounter.underdocks.elite.index_draw",
-                "combat",
-                "act:1:elite:pool:" + CanonicalJson.Sha256(eligibleElites),
-                eligibleElites.Length).SelectedIndex;
+                eliteSupport.SiteId,
+                eliteSupport.OwnerId,
+                Enumerable.Range(0, eligibleElites.Length),
+                controlledCandidateLabels: eligibleElites);
             var selectedElite = eligibleElites[index];
             return (
                 PrototypeContent.Encounter(selectedElite),
@@ -123,25 +118,18 @@ public sealed partial class PrototypeGameEngine
             ? (string[])PrototypeNativeUnderdocks
                 .SupportedNormalEncounterIds.Clone()
             : remaining;
-        var previous = world.EncounterIds.Reverse().FirstOrDefault(id =>
-            PrototypeNativeUnderdocks.SupportedWeakEncounterIds.Contains(
-                id, StringComparer.Ordinal)
-            || PrototypeNativeUnderdocks.SupportedNormalEncounterIds.Contains(
-                id, StringComparer.Ordinal));
-        var eligible = previous is null
-            ? available
-            : available.Where(id => !StringComparer.Ordinal.Equals(
-                id, previous)).ToArray();
-        if (eligible.Length == 0)
-            eligible = available;
-
         var kind = isWeak ? "weak" : "normal";
-        var selected = LegacyRandomChoiceV111.ChooseIndexRange(
+        var ordinarySupport = DescribeActOneEncounterSelection(
+            world, world.Floor, roomType) ??
+            throw new InvalidOperationException(
+                $"Underdocks {kind} encounter selection support is missing.");
+        var eligible = ordinarySupport.EncounterIds;
+        var selected = ResolveLegacyRandomIndex(
             prototypeRng,
-            "combat.encounter.underdocks." + kind + ".index_draw",
-            "combat",
-            $"act:1:{kind}:pool:{CanonicalJson.Sha256(eligible)}",
-            eligible.Length).SelectedIndex;
+            ordinarySupport.SiteId,
+            ordinarySupport.OwnerId,
+            Enumerable.Range(0, eligible.Length),
+            controlledCandidateLabels: eligible);
         var encounterId = eligible[selected];
         var nextRemaining = available
             .Where(id => !StringComparer.Ordinal.Equals(id, encounterId))

@@ -4425,6 +4425,20 @@ public sealed partial class PrototypeGameEngine
                         (string[])bossPool.Clone();
             }
         }
+        if (selectedMapAction is not null)
+        {
+            for (var index = 0; index < decisions.Length; index++)
+            {
+                var request = decisions[index].Request;
+                var support = PrototypeGameEngine
+                    .DescribeActOneEncounterSelection(
+                        partialState, selectedMapAction, request.SiteId);
+                if (support is not null && support.MatchesLabels(
+                        decisionCandidateLabels[index]))
+                    decisionCandidateLabels[index] =
+                        (string[])support.EncounterIds.Clone();
+            }
+        }
         Func<ControlledStochasticRequestV111, bool>? requestFilter =
             configuredNativeRunStart
                 ? request => ControlledRunActionEngineV111
