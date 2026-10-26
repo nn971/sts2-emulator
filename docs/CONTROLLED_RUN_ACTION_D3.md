@@ -160,17 +160,21 @@ materialized or compact support.
 ## Probability provenance
 
 Each pending response now includes a read-only `chanceLaw`, its
-`boundaryFingerprint`, and an `eventId`. Generic legacy laws assign equal
-weight to each request index (`choice_index:n`); canonical Native `NextInt`
-requests use the exact source grid law. The legacy Rest Heal rarity and map
-edge-extension ticket laws retain one outcome per raw ticket and annotate the
-rarity or edge-extension branch. Candidate labels do not change the
-request-index law. Explicit laws reject supports above 65,536 outcomes and
-require a compact law representation. Probability and stream-parity status
-remain specific to each law. The law fingerprints only the typed request and
-declared support; the pending boundary fingerprint binds action/request context
-without including private RNG state. The top-level `fingerprint` is the
-exact-state stale-request guard.
+`boundaryFingerprint`, and an `eventId`. Generic laws preserve the request
+index weights: legacy requests assign equal weight to each index, and
+canonical Native `NextInt` requests use the exact source grid law. When the
+saved candidate-label vector is complete and unique and the support fits the
+explicit-law limit, the generic law uses those labels as ordered outcome IDs;
+otherwise it uses `choice_index:n`.
+Labels affect outcome identity and the conditioning fingerprint, not the
+weights. The legacy Rest Heal rarity and map edge-extension ticket laws retain
+one outcome per raw ticket and annotate the rarity or edge-extension branch.
+Explicit laws reject supports above 65,536 outcomes and require a compact law
+representation. Probability and stream-parity status remain specific to each
+law. The law fingerprints the typed request and any explicit candidate outcome
+mapping; the pending boundary fingerprint binds action/request context without
+including private RNG state. The top-level `fingerprint` is the exact-state
+stale-request guard.
 
 The JSONL server advertises `controlledRunActionSchemaId`. Its `hello`
 response exposes `controlledRunActionSiteGroups`, with registry-owned arrays

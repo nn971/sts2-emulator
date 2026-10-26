@@ -84,7 +84,44 @@ public static partial class ChanceLawEngineV111
         if (QueryControlledRunActionSemanticLaw(
                 run, continuation, pending.ChanceEventId) is { } semanticLaw)
             return semanticLaw;
-        return QueryRandomIndex(pending.ChanceEventId, pending.Request);
+        return QueryRunActionIndexWithCandidateOutcomeIds(
+            pending.ChanceEventId, pending.Request,
+            continuation.PendingCandidateLabels);
+    }
+
+    private static ChanceLawV111 QueryRunActionIndexWithCandidateOutcomeIds(
+        string eventId,
+        RandomIndexRequestV111 request,
+        string[] candidateLabels)
+    {
+        ArgumentNullException.ThrowIfNull(candidateLabels);
+        var indexLaw = QueryRandomIndex(eventId, request);
+        if (request.SupportCount > ChanceLawV111.MaximumExplicitOutcomeCount ||
+            candidateLabels.Length != request.SupportCount ||
+            candidateLabels.Any(string.IsNullOrWhiteSpace) ||
+            ControlledStochasticCandidateLabelsV111.IsNumericRange(
+                candidateLabels, request.SupportCount) ||
+            candidateLabels.Distinct(StringComparer.Ordinal).Count() !=
+                candidateLabels.Length)
+            return indexLaw;
+
+        var indexOutcomes = indexLaw.Outcomes;
+        if (indexOutcomes.Length != candidateLabels.Length)
+            return indexLaw;
+        var outcomes = candidateLabels.Select((outcomeId, index) =>
+            new ChanceLawOutcomeV111(
+                outcomeId, indexOutcomes[index].Weight)).ToArray();
+        var conditioningFingerprint = CanonicalJson.Sha256(new
+        {
+            RequestFingerprint = CanonicalJson.Sha256(request),
+            policy = indexLaw.ConditioningPolicyId,
+            orderedCandidateOutcomeIds = candidateLabels
+        });
+        return Create(eventId, request.SiteId, request.OperationKind,
+            request.OwnerId, request.Ordinal,
+            indexLaw.ConditioningPolicyId, conditioningFingerprint,
+            indexLaw.ProbabilityProvenance, outcomes,
+            indexLaw.ProbabilityStatus);
     }
 
     private static ChanceLawV111 QueryControlledRunActionEventSelection(

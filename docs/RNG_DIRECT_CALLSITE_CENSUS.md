@@ -31,7 +31,7 @@ Direct `NativeRandomChoiceV111` callsites outside its `NativePlayerRngV111` wrap
 Potential ad hoc entropy API/type references in runtime C# sources (`src/`, `native/`): **0**. The scan covers direct System.Random typed or target-typed construction, declarations, aliases, shared-instance use and RandomNumberGenerator APIs; it cannot prove the absence of dynamically injected or otherwise indirect entropy sources.
 
 Direct Chance Law symbol references in Native RNG provider/adapter and native mod C# sources: **0**. The scan cannot establish the absence of indirect dependencies.
-Chance Law transitive outcome-blind query guard: **163** query methods, **213** reachable methods in **225** indexed ChanceLawEngine methods, **0** duplicate identical method signatures, **0** query bodies without parsed code, **0** forbidden sampling, cursor, or replay references. Signatures use exact masked source syntax; calls are matched by method name, and overload resolution, other types, delegates, and reflection are outside this source check.
+Chance Law transitive outcome-blind query guard: **164** query methods, **214** reachable methods in **226** indexed ChanceLawEngine methods, **0** duplicate identical method signatures, **0** query bodies without parsed code, **0** forbidden sampling, cursor, or replay references. Signatures use exact masked source syntax; calls are matched by method name, and overload resolution, other types, delegates, and reflection are outside this source check.
 
 Explicit typed random-request constructions: **127**; site IDs resolved to registry: **113**; forwarded or otherwise unresolved IDs: **14**; static IDs absent from registry: **0**.
 

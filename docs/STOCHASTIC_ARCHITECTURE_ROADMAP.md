@@ -20,6 +20,16 @@ mapped to rows, 185/185 S0 evidence pointers, zero ambient-entropy findings,
 zero Native Chance Law references, and zero forbidden query dependencies.
 `git diff --check` passed; no tests were run.
 
+**S5 controlled run-action outcome identity increment (2026-10-26):** The
+generic controlled run-action Chance Law now reuses a complete, unique,
+saved candidate-label vector as its ordered outcome IDs when the support
+fits the explicit-law limit. It preserves the original request-index weights
+and fingerprints the identity mapping;
+missing, duplicate, and numeric-range labels continue to use `choice_index:n`,
+and compact supports remain compact. No continuation or Chance Law schema
+changed. Core/CLI Release build and the static RNG audit passed, and
+`git diff --check` passed; no tests were run.
+
 **S5 legacy event-selection support and identity-law increment (2026-10-26):**
 `PrototypeEventSelectionSupportV111` now owns the emulator's ordered event
 eligibility, history filters, weights, and raw-ticket mapping shared by
