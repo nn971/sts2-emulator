@@ -98,13 +98,14 @@ public sealed partial class PrototypeGameEngine
                 .ToArray();
             relicId = available.Length == 0
                 ? null
-                : available[LegacyRandomChoiceV111.ChooseIndexRange(
+                : available[ResolveLegacyRandomIndex(
                     prototypeRng,
                     "treasure.relic_model.index_draw",
-                    "reward",
                     $"act:{world.Act}:floor:{world.Floor}:pool:"
                         + CanonicalJson.Sha256(available),
-                    available.Length).SelectedIndex];
+                    Enumerable.Range(0, available.Length),
+                    streamId: "reward",
+                    controlledCandidateLabels: (string[])available.Clone())];
         }
 
         var stochastic = RunStochasticStateV111.WithPrototypeRng(

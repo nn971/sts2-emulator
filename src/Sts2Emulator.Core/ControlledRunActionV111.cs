@@ -618,6 +618,7 @@ public sealed record PrototypeControlledRunActionContinuationV111(
         var rewardRelicRequest = false;
         var relicDeckTransformRequest = false;
         var restHealRewardRequest = false;
+        var legacyTreasureRelicModelRequest = false;
         switch (ActionId)
         {
             case "start_run":
@@ -894,6 +895,7 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                 }
                 else if (treasureSite)
                 {
+                    legacyTreasureRelicModelRequest = true;
                     expectedSite = "treasure.relic_model.index_draw";
                     expectedStream = "reward";
                     expectedOwner = $"act:{world.Act}:floor:{world.Floor}:pool:"
@@ -903,9 +905,7 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                     expectedLabels = availableRelics.Length >
                         ControlledRunActionEngineV111.MaximumInlineOutcomeActions
                         ? []
-                        : Enumerable.Range(0, availableRelics.Length)
-                            .Select(index => index.ToString(
-                                CultureInfo.InvariantCulture)).ToArray();
+                        : (string[])availableRelics.Clone();
                 }
                 mapNodeRequest = true;
                 break;
@@ -1031,6 +1031,13 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                 throw new InvalidDataException(
                     "Controlled run-action frame uses an unsupported action.");
         }
+        var pendingLabelsMatch = ControlledStochasticChanceReplayV111
+            .CandidateLabelsMatch(PendingCandidateLabels, expectedLabels);
+        if (!pendingLabelsMatch && legacyTreasureRelicModelRequest)
+            pendingLabelsMatch = ControlledStochasticChanceReplayV111
+                .CandidateLabelsMatch(PendingCandidateLabels,
+                    Enumerable.Range(0, expectedLabels.Length).Select(index =>
+                        index.ToString(CultureInfo.InvariantCulture)).ToArray());
         if ((!mapNodeRequest && MapNodeId is not null)
             || (!(shopPurchaseRequest || rewardRelicRequest ||
                     relicDeckTransformRequest || restHealRewardRequest)
@@ -1040,8 +1047,7 @@ public sealed record PrototypeControlledRunActionContinuationV111(
             || PendingRequest.OwnerId != expectedOwner
             || !PendingRequest.OrderedCandidates.SequenceEqual(expectedCandidates)
             || PendingCandidateLabels.Length != expectedLabels.Length
-            || !ControlledStochasticChanceReplayV111.CandidateLabelsMatch(
-                PendingCandidateLabels, expectedLabels))
+            || !pendingLabelsMatch)
             throw new InvalidDataException(
                 "Controlled run-action candidates do not match their source pool.");
 
@@ -1094,6 +1100,18 @@ public sealed record PrototypeControlledRunActionContinuationV111(
             var isTreasureDraw = ActionId == "choose_map_node"
                 && ControlledEventChoiceReplayV111
                     .IsRunActionTreasureSite(request.SiteId);
+            var isLegacyTreasureRelicModelDraw = isTreasureDraw &&
+                request.SiteId == "treasure.relic_model.index_draw";
+            var legacyTreasureRelicLabels = isLegacyTreasureRelicModelDraw
+                ? PrototypeContent.RelicPool.Where(id =>
+                    !state.Player.Relics.Any(relic =>
+                        StringComparer.Ordinal.Equals(relic.RelicId, id)))
+                    .ToArray()
+                : [];
+            var stableTreasureRelicLabels =
+                isLegacyTreasureRelicModelDraw &&
+                labels.SequenceEqual(
+                    legacyTreasureRelicLabels, StringComparer.Ordinal);
             var isNativeShovelFallbackDraw = ActionId ==
                     PrototypeNativeRestSiteActionsV111.Dig
                 && (request.SiteId is "relic_grab_bag.rarity.ticket"
@@ -1191,6 +1209,7 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                 || isRelicDeckTransformDraw)
                 || nativeRelicBagLabels
                 || omittedLabels ||
+                stableTreasureRelicLabels ||
                 ControlledStochasticChanceReplayV111.CandidateLabelsMatch(
                     labels, Enumerable.Range(0, labels.Length).Select(index =>
                         index.ToString(CultureInfo.InvariantCulture)).ToArray());

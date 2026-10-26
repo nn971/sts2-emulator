@@ -91,8 +91,7 @@ public static partial class ChanceLawEngineV111
         };
         var outcomes = law.Outcomes;
         var numericSupportLabels = request.SiteId ==
-            "treasure.relic_model.index_draw" || request.SiteId ==
-                "reward.card_rarity.ticket" || request.SiteId ==
+            "reward.card_rarity.ticket" || request.SiteId ==
                 "map.legacy.edge_extra_chance.ticket";
         var supportsOmittedLabels = numericSupportLabels ||
             request.SiteId == "reward.card_model.index_draw";
@@ -100,6 +99,13 @@ public static partial class ChanceLawEngineV111
             continuation.PendingCandidateLabels.Length == 0 &&
             outcomes.Length >
                 ControlledRunActionEngineV111.MaximumInlineOutcomeActions;
+        var legacyNumericTreasureLabels = request.SiteId ==
+                "treasure.relic_model.index_draw" &&
+            continuation.PendingCandidateLabels.SequenceEqual(
+                Enumerable.Range(0, outcomes.Length).Select(index =>
+                    index.ToString(
+                        System.Globalization.CultureInfo.InvariantCulture)),
+                StringComparer.Ordinal);
         var labelsMatch = numericSupportLabels
             ? omittedLabels ||
                 continuation.PendingCandidateLabels.SequenceEqual(
@@ -108,10 +114,11 @@ public static partial class ChanceLawEngineV111
                             System.Globalization.CultureInfo.InvariantCulture)),
                     StringComparer.Ordinal)
             : omittedLabels ||
+                legacyNumericTreasureLabels ||
                 continuation.PendingCandidateLabels.Length == outcomes.Length &&
-                outcomes.Select(outcome => outcome.OutcomeId)
-                    .SequenceEqual(continuation.PendingCandidateLabels.Select(
-                        label => outcomePrefix + label), StringComparer.Ordinal);
+                    outcomes.Select(outcome => outcome.OutcomeId)
+                        .SequenceEqual(continuation.PendingCandidateLabels.Select(
+                            label => outcomePrefix + label), StringComparer.Ordinal);
         var boundedTicketSemanticSupport = request.SiteId is
             "reward.card_rarity.ticket" or
             "map.legacy.edge_extra_chance.ticket";
