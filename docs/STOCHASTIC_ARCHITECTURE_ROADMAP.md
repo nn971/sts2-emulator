@@ -6647,3 +6647,12 @@ run/count/boundary handoff. Saved draw-cost resumes consume that validated
 result directly instead of reclassifying it. No snapshot or transcript schema
 changed. Core and CLI Release builds, static RNG inventory checks, and
 `git diff --check` passed; no tests were added or run.
+
+**S4 automatic draw owner audit (2026-10-26):** The architecture status now
+records the shared mechanics that are in place across controlled and semantic
+automatic draws: segment execution and provider publication, tagged boundary
+classification, requested/remaining progress, stage cleanup, and pipeline
+handoff. Typed choice selection and transcript replay remain with their
+specialized owners. Cross-provider mechanical equivalence and uncaptured
+Native source choices remain open pending comparable reference evidence. No
+snapshot or transcript schema changed. No tests were added or run.
