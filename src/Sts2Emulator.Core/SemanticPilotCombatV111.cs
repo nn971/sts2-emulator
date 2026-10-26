@@ -5534,6 +5534,17 @@ public static class SemanticPilotCombatEngineV111
                 combat, choice, choice.ControlledTarget))
             throw new InvalidDataException(
                 "Rip and Tear target is outside its supported card-play continuation.");
+        if (choice?.SourceCardInstanceId is { } repeatedTargetSourceCardId &&
+            combat?.Cards.SingleOrDefault(card =>
+                card.InstanceId == repeatedTargetSourceCardId)?.CardId is
+                { } repeatedTargetCardId &&
+            repeatedTargetCardId is
+                ("proto.silent.bouncing_flask" or "proto.silent.ricochet") &&
+            !IsSilentRepeatedCardRandomTargetChoice(
+                combat, choice, choice.ControlledTarget,
+                repeatedTargetCardId))
+            throw new InvalidDataException(
+                "Repeated-card target is outside its supported card-play continuation.");
         if (IsTingshaDiscardTargetChoice(combat, choice) &&
             !IsTingshaSupportedDiscardTargetChoice(
                 combat, choice, choice?.ControlledTarget))
@@ -5696,6 +5707,122 @@ public static class SemanticPilotCombatEngineV111
                 PrototypeNativeUnderdocksTrashHeap.RipAndTearCardId &&
             !completion.IsAutoPlay &&
             completion.SourceCardInstanceId == sourceCardInstanceId;
+    }
+
+    private static bool IsSilentRepeatedCardRandomTargetChoice(
+        CombatState? combat, PendingCombatChoiceState? choice,
+        PrototypeControlledTargetChoiceV111? target, string cardId)
+    {
+        if (combat is null || target is not
+                { Kind: "effect_random_enemy",
+                  SlyCardInstanceId: null,
+                  AutoPlayCardInstanceId: null } ||
+            choice is not
+                { ChoiceId: "controlled_random_target",
+                  SourceCardInstanceId: { } sourceCardInstanceId,
+                  SourceCardDestination: var sourceCardDestination,
+                  CompletionEvents: [],
+                  OuterChoiceContinuation: { } continuation } ||
+            continuation is not
+                { SourceCardDestination: var continuationSourceCardDestination,
+                  PendingDiscardEvents: [],
+                  PendingSlyCardInstanceIds: [],
+                  CompletionEvents: [{ } completion],
+                  EventDispatchContinuation: null,
+                  Parent: null,
+                  RemoveSourceCardOnCompletion: false,
+                  SourceCardAlreadyMoved: false,
+                  CardPlaySeries: { } series } ||
+            choice.SourceCardDestination !=
+                continuation.SourceCardDestination ||
+            sourceCardDestination is not
+                (PrototypeCardZone.DiscardPile or PrototypeCardZone.DrawPile) ||
+            continuationSourceCardDestination != sourceCardDestination ||
+            continuation.SourceCardInstanceId != sourceCardInstanceId ||
+            continuation.MoveSourceCardOnCompletion !=
+                !series.HasRemainingExecutions ||
+            series is not
+                { SourceCardDestination: var seriesSourceCardDestination,
+                  TargetEnemyId: null,
+                  IsAutoPlay: false,
+                  PlayCount: > 0 } ||
+            seriesSourceCardDestination != sourceCardDestination ||
+            series.SourceCardInstanceId != sourceCardInstanceId ||
+            series.NextPlayIndex <= 0 ||
+            series.NextPlayIndex > series.PlayCount)
+            return false;
+
+        var sourceCard = combat.Cards.SingleOrDefault(card =>
+            card.InstanceId == sourceCardInstanceId &&
+            card.CardId == cardId);
+        if (sourceCard is null || sourceCard.Enchantment is not null)
+            return false;
+
+        var expectedEffect = cardId switch
+        {
+            "proto.silent.bouncing_flask" =>
+                new PrototypeCombatEffectSpec(
+                    PrototypeCombatEffectKind.ApplyEnemyStatus, 3,
+                    StatusId: "proto.status.poison",
+                    Target: PrototypeEffectTarget.RandomEnemy,
+                    Repetitions: 3, RepetitionUpgradeDelta: 1),
+            "proto.silent.ricochet" =>
+                new PrototypeCombatEffectSpec(
+                    PrototypeCombatEffectKind.DamageEnemy, 3,
+                    Target: PrototypeEffectTarget.RandomEnemy,
+                    Repetitions: 4, RepetitionUpgradeDelta: 1),
+            _ => null
+        };
+        if (expectedEffect is null)
+            return false;
+
+        var definition = PrototypeContent.Card(cardId);
+        var expectedType = cardId == "proto.silent.ricochet"
+            ? PrototypeCardType.Attack
+            : PrototypeCardType.Skill;
+        if (definition.Target != PrototypeCardTarget.None ||
+            definition.Type != expectedType || definition.ExhaustOnUse ||
+            CanonicalJson.Sha256(definition.Effects) !=
+                CanonicalJson.Sha256(new[] { expectedEffect }))
+            return false;
+
+        var repetitions = expectedEffect.RepetitionsAt(
+            sourceCard.UpgradeLevel, series.EnergySpent);
+        if (repetitions <= 0 || continuation.Operations.Length != repetitions)
+            return false;
+
+        var poweredAttack = expectedType == PrototypeCardType.Attack &&
+            expectedEffect.Kind is
+                PrototypeCombatEffectKind.DamageEnemy or
+                PrototypeCombatEffectKind.DamageAllEnemiesRepeatPerKill;
+        var expectedOperation = new PrototypeQueuedOperation(
+            expectedEffect.Kind,
+            expectedEffect.AmountAt(sourceCard.UpgradeLevel,
+                series.EnergySpent),
+            StatusId: expectedEffect.StatusId,
+            TargetMode: PrototypeEffectTarget.RandomEnemy,
+            SourceKind: PrototypeEffectSourceKind.Card,
+            IsPoweredAttack: poweredAttack);
+        var expectedOperations = Enumerable.Range(0, repetitions)
+            .Select(index => expectedOperation with
+            {
+                TargetMode = index == 0
+                    ? PrototypeEffectTarget.ActionTargetEnemy
+                    : PrototypeEffectTarget.RandomEnemy
+            }).ToArray();
+        return CanonicalJson.Sha256(continuation.Operations) ==
+                CanonicalJson.Sha256(expectedOperations) &&
+            completion is
+                { Kind: PrototypeCombatEventKind.CardPlayed,
+                  TargetEnemyId: null,
+                  Amount: 0,
+                  FromHandDraw: false,
+                  IsAutoPlay: false } &&
+            completion.SourceCardInstanceId == sourceCardInstanceId &&
+            completion.CardId == cardId &&
+            completion.IsPoweredAttack == poweredAttack &&
+            completion.PowerApplicationOrderCeiling is { } ceiling &&
+            ceiling <= combat.NextPowerApplicationOrder - 1;
     }
 
     private static bool IsTingshaDiscardTargetChoice(

@@ -6280,3 +6280,11 @@ player-power instance and its stack-scaled random-damage trigger, played
 physical card, and retargeted queued operation before using the existing target
 owner. No schema changed. Core Release build passed with zero warnings and
 errors; no tests were run.
+
+**S4 repeated Silent-card target-source validation increment (2026-10-26):**
+Bouncing Flask and Ricochet pending targets now match the exact modeled card
+effect, physical play series, retargeted first operation, remaining random
+operation suffix, and `CardPlayed` completion before using the existing target
+owner. Enchanted copies remain outside this narrow check. No schema changed.
+Static source review, Core Release build, and `git diff --check` passed; no
+tests were run.

@@ -1852,8 +1852,12 @@ hand discard, then resumes its queued Shiv creation. Bouncing Flask enters the
 semantic pilot from its physical source card and resolves each repeated Poison
 target through the existing saved random-target owner. Ricochet now enters from
 its physical source card as well, resolving its four or five repeated hits
-through that same owner according to its upgrade level. These paths add no new
-provider or event schema; Native target-pool and stream parity remain open.
+through that same owner according to its upgrade level. Their pending targets
+also validate the exact modeled card effect, physical play series, first
+retargeted operation, remaining random-target operation sequence, and
+`CardPlayed` completion before accepting the saved target. Enchanted copies
+remain outside this narrow source check. These paths add no new provider or
+event schema; Native target-pool and stream parity remain open.
 Concentrate uses the same selection owner for its three-card hand discard and
 then resumes the queued energy gain.
 Tingsha now reuses the random-target event when a manual Storm of Steel,
