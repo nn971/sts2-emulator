@@ -6152,3 +6152,10 @@ receipt only after `DrawPlayerHand` has advanced and active progress is clear.
 The semantic automatic-hand-draw facade consumes that cursor-validated query
 instead of rebuilding the receipt condition. No snapshot schema changed. Core
 Release build and `git diff --check` passed; no tests were added or run.
+
+**S4 controlled hand-draw request reconciliation increment (2026-10-26):**
+The automatic boundary router now forwards its optional requested count to
+the controlled hand-draw owner. `ContinueControlledHandDraw` alone reconciles
+that value with saved progress for resumed stages; the initial no-cursor path
+keeps its positive-count admission rule. No snapshot schema changed. Core
+Release build and `git diff --check` passed; no tests were added or run.

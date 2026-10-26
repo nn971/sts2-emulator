@@ -378,8 +378,6 @@ public sealed partial class PrototypeGameEngine
             // original count is carried by progress rather than this boundary.
             int? controlledRequested = requestedCount > 0
                 ? requestedCount : null;
-            controlledRequested = ResolveAutomaticHandDrawRequestedCount(
-                combat, controlledRequested);
             return combat.AutomaticPipelineContinuation is null
                 ? ContinueInitialControlledHandDrawBoundary(
                     segment, controlledRequested)
