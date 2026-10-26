@@ -21,10 +21,19 @@ public sealed record StochasticChanceLawQueryCoverageV111(
     {
         if (SchemaId != CurrentSchemaId ||
             QueryOperation != "chance_law_query" || SiteIds is null ||
-            SiteIds.Any(string.IsNullOrWhiteSpace) ||
-            SiteIds.Distinct(StringComparer.Ordinal).Count() != SiteIds.Length)
+            SiteIds.Any(string.IsNullOrWhiteSpace))
             throw new InvalidDataException(
                 "Invalid stochastic Chance Law query coverage.");
+        var duplicateSiteIds = SiteIds.GroupBy(siteId => siteId,
+                StringComparer.Ordinal)
+            .Where(group => group.Count() > 1)
+            .Select(group => group.Key)
+            .OrderBy(siteId => siteId, StringComparer.Ordinal)
+            .ToArray();
+        if (duplicateSiteIds.Length != 0)
+            throw new InvalidDataException(
+                "Duplicate stochastic Chance Law query coverage sites: " +
+                string.Join(", ", duplicateSiteIds));
     }
 
     private static string[]? Copy(string[]? values) =>
@@ -1270,7 +1279,8 @@ public static class StochasticSiteRegistryV111
     private static class ChanceLawQueryRegistration
     {
         internal static readonly string[] SiteIds =
-            BuildChanceLawQuerySites();
+            BuildChanceLawQuerySites()
+                .Distinct(StringComparer.Ordinal).ToArray();
         internal static readonly HashSet<string> SiteSet =
             new(SiteIds, StringComparer.Ordinal);
     }

@@ -6559,3 +6559,11 @@ source census finds eight invocations: six in shared segments and one at each
 direct owner boundary, with one wrapped saved-kernel resume and no violations.
 This syntactic guard does not establish runtime reachability or Native source
 parity. `git diff --check` passed; no tests were run.
+
+**S0 Chance Law query-coverage union repair (2026-10-26):**
+The query-site registry now de-duplicates its combined site families before
+validating the advertised coverage, while validation reports duplicate IDs
+explicitly. The JSONL `hello` response previously failed because Glory Tinker
+Improvement and Pael's Tooth card-return sites entered the union twice. After
+the repair, `hello` succeeds and advertises 156 unique query sites. The CLI
+Release build passed with zero warnings or errors; no tests were run.
