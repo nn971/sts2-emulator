@@ -6137,3 +6137,11 @@ and tagged provider progress for both Stratagem and nested `CardDrawn`
 suspensions. Their adapters retain provider deck, choice-marker, cursor, and
 Native-policy checks. No snapshot schema changed. Core Release build and
 `git diff --check` passed; no tests were added or run.
+
+**S4 opening and automatic legacy Stratagem handoff increment (2026-10-26):**
+Opening and ordinary automatic hand draws now resume the legacy Stratagem
+selection and remaining draw through one operation helper. Opening semantic
+draws also use the shared empty-frame constructor with their non-standalone
+context preserved. Caller-specific pipeline publication and provider policy
+remain unchanged. Core Release build and `git diff --check` passed; no tests
+were added or run.

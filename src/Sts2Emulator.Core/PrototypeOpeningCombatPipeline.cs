@@ -262,11 +262,8 @@ public sealed partial class PrototypeGameEngine
             combat.Stochastic.SemanticDeck is not
                 { Mode: SemanticDeckStateV111.NatureMode })
         {
-            var operations = CreateHandDrawStratagemResumeOperations(
-                combat, drawn.RemainingCount);
-            var resolved = ResolveOperations(
-                player, combat, operations, prototypeRng,
-                moveSourceCardOnCompletion: false);
+            var resolved = ResumeLegacyHandDrawAfterStratagemSelection(
+                player, combat, drawn.RemainingCount, prototypeRng);
             player = resolved.Player;
             combat = resolved.Combat;
         }
@@ -285,13 +282,9 @@ public sealed partial class PrototypeGameEngine
                     "site=combat.opening_draw operation=" +
                     drawn.BoundaryKind);
 
-            var drawFrame = new PrototypeControlledSemanticDrawV111(
-                drawn.RemainingCount, FromHandDraw: true, EventDepth: 0,
-                DrawnCardKeyword: null,
-                DeferredKeywordCardInstanceIds: [],
-                StratagemSelectionPending: false,
-                StandaloneSemanticDrawSegment: false,
-                AutomaticSemanticHandDrawSegment: false);
+            var drawFrame = CreateSemanticDrawResultFrame(
+                drawn.RemainingCount, fromHandDraw: true, eventDepth: 0,
+                automatic: false, standalone: false);
             var continuation = EmptyDrawChoiceContinuation();
             bool finalCardHook = drawn.BoundaryKind ==
                     PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice &&

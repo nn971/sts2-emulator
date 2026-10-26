@@ -428,13 +428,9 @@ public sealed partial class PrototypeGameEngine
             var world = RequireWorld(result);
             var combat = world.Combat ?? throw new InvalidDataException(
                 "Automatic Stratagem resume removed combat.");
-            var pendingDraw =
-                CreateHandDrawStratagemResumeOperations(
-                    combat, drawn.RemainingCount);
             var prototypeRng = result.Stochastic.PrototypeRng;
-            var continued = ResolveOperations(
-                result.Player, combat, pendingDraw, prototypeRng,
-                moveSourceCardOnCompletion: false);
+            var continued = ResumeLegacyHandDrawAfterStratagemSelection(
+                result.Player, combat, drawn.RemainingCount, prototypeRng);
             result = PublishDrawMechanicsAndPrototypeRng(
                 result, continued.Player, continued.Combat, prototypeRng);
         }

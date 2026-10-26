@@ -255,14 +255,14 @@ public sealed partial class PrototypeGameEngine
     private static PrototypeControlledSemanticDrawV111
         CreateSemanticDrawResultFrame(
             int remainingCount, bool fromHandDraw, int eventDepth,
-            bool automatic)
+            bool automatic, bool? standalone = null)
     {
         return new PrototypeControlledSemanticDrawV111(
             remainingCount, fromHandDraw, eventDepth,
             DrawnCardKeyword: null,
             DeferredKeywordCardInstanceIds: [],
             StratagemSelectionPending: false,
-            StandaloneSemanticDrawSegment: !automatic,
+            StandaloneSemanticDrawSegment: standalone ?? !automatic,
             AutomaticSemanticHandDrawSegment: automatic);
     }
 

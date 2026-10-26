@@ -104,6 +104,21 @@ public sealed partial class PrototypeGameEngine
         ]);
     }
 
+    private static (PlayerState Player, CombatState Combat)
+        ResumeLegacyHandDrawAfterStratagemSelection(
+            PlayerState player, CombatState combat, int remainingCount,
+            RngBundle prototypeRng)
+    {
+        ArgumentNullException.ThrowIfNull(player);
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(prototypeRng);
+        var operations = CreateHandDrawStratagemResumeOperations(
+            combat, remainingCount);
+        return ResolveOperations(
+            player, combat, operations, prototypeRng,
+            moveSourceCardOnCompletion: false);
+    }
+
     private static CombatState AttachDrawResumeContinuation(
         CombatState combat,
         PrototypeQueuedOperation drawOperation,
