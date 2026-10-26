@@ -132,6 +132,10 @@ public sealed class PrototypeNativeOvergrowthStarterTests
             {
                 Event = oldWorld.Event! with
                 {
+                    NativeEventRngProviderMode = "scripted-v111",
+                    NativeEventRng = NativeRngV111Contexts.ForEvent(
+                        state.RunSeed,
+                        PrototypeNativeOvergrowthEvents.NeowRngEventEntry),
                     OfferedChoiceIds =
                     [
                         "take_" + neow,
@@ -148,6 +152,7 @@ public sealed class PrototypeNativeOvergrowthStarterTests
             && action.ReadPayload<EventChoicePayload>().ChoiceId
                 == "take_" + neow);
         state = engine.Step(state, chooseNeow).State;
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.Equal(56, state.Player.Hp);
         Assert.Contains(state.Player.Relics, relic =>
@@ -201,6 +206,10 @@ public sealed class PrototypeNativeOvergrowthStarterTests
             {
                 Event = state.World.Event! with
                 {
+                    NativeEventRngProviderMode = "scripted-v111",
+                    NativeEventRng = NativeRngV111Contexts.ForEvent(
+                        state.RunSeed,
+                        PrototypeNativeOvergrowthEvents.NeowRngEventEntry),
                     OfferedChoiceIds =
                     [
                         "take_" + PrototypeNativeOvergrowthEvents.NeowRelicId(
@@ -218,6 +227,7 @@ public sealed class PrototypeNativeOvergrowthStarterTests
                 "take_" + PrototypeNativeOvergrowthEvents.NeowRelicId(
                     "GoldenPearl"));
         state = engine.Step(state, opening).State;
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         var first = engine.GetLegalActions(state)[0];
         state = engine.Step(state, first).State;

@@ -30,10 +30,14 @@ public sealed class ControlledRandomTargetV111Tests
     {
         var combat = state.Run.World!.Combat!;
         long first = combat.Hand[0];
+        long? replacedPersistentId = combat.Cards.Single(card =>
+            card.InstanceId == first).PersistentCardInstanceId;
         var cards = combat.Cards.Select(card =>
             card.InstanceId == first ? card with
             {
                 CardId = cardId,
+                PersistentCardInstanceId = null,
+                IsTemporary = true,
                 KeywordOverrides = sly
                     ? [new PrototypeCardKeywordOverride(
                         PrototypeCardKeyword.Sly, true,
@@ -46,7 +50,15 @@ public sealed class ControlledRandomTargetV111Tests
             {
                 World = state.Run.World with
                 {
-                    Combat = combat with { Cards = cards }
+                    Combat = combat with
+                    {
+                        Cards = cards,
+                        TransformedPersistentCardIds =
+                            replacedPersistentId is { } persistentId
+                                ? (combat.TransformedPersistentCardIds ?? [])
+                                    .Append(persistentId).Distinct().ToArray()
+                                : combat.TransformedPersistentCardIds
+                    }
                 }
             }
         };
@@ -71,8 +83,8 @@ public sealed class ControlledRandomTargetV111Tests
         Assert.True(view.Pending.SupportCount > 1);
         Assert.Equal(state.Run.DecisionIndex + 1, pending.Run.DecisionIndex);
         Assert.Equal(root, state.Fingerprint);
-        Assert.Null(view.Pending.ReferenceLawId);
-        Assert.Equal("UNVERIFIED", view.Pending.ProbabilityStatus);
+        Assert.NotNull(view.Pending.ReferenceLawId);
+        Assert.Equal("SOURCE_VERIFIED", view.Pending.ProbabilityStatus);
         Assert.Throws<InvalidOperationException>(() =>
             ControlledPlayableCombatEngineV111.Resolve(pending, "stale", 0));
         Assert.Throws<ArgumentException>(() =>
@@ -100,6 +112,8 @@ public sealed class ControlledRandomTargetV111Tests
             Prepared("target-sly"), "proto.silent.storm_of_steel");
         var combat = source.Run.World!.Combat!;
         long cardId = combat.Hand[1];
+        long? replacedPersistentId = combat.Cards.Single(card =>
+            card.InstanceId == cardId).PersistentCardInstanceId;
         source = source with
         {
             Run = source.Run with
@@ -112,11 +126,18 @@ public sealed class ControlledRandomTargetV111Tests
                             card.InstanceId == cardId ? card with
                             {
                                 CardId = "proto.silent.strike",
+                                PersistentCardInstanceId = null,
+                                IsTemporary = true,
                                 KeywordOverrides = [
                                     new PrototypeCardKeywordOverride(
                                         PrototypeCardKeyword.Sly, true,
                                         PrototypeCardKeywordOverrideExpiry.None)]
-                            } : card).ToArray()
+                            } : card).ToArray(),
+                        TransformedPersistentCardIds =
+                            replacedPersistentId is { } persistentId
+                                ? (combat.TransformedPersistentCardIds ?? [])
+                                    .Append(persistentId).Distinct().ToArray()
+                                : combat.TransformedPersistentCardIds
                     }
                 }
             }

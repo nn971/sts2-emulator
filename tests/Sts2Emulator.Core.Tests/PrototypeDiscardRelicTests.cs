@@ -77,7 +77,7 @@ public sealed class PrototypeDiscardRelicTests
     }
 
     [Fact]
-    public void NormalEndTurnCleanupDoesNotCountAsDiscard()
+    public void NormalEndTurnCleanupTriggersTingshaWithoutCountingManualDiscards()
     {
         var state = CombatStateWith(
             relicIds: ["proto.relic.tingsha"],
@@ -94,7 +94,7 @@ public sealed class PrototypeDiscardRelicTests
 
         var combat = state.World!.Combat!;
         Assert.Equal(
-            0,
+            1,
             Assert.Single(combat.RelicStates)
                 .TriggerCounts[0]);
         Assert.Equal(

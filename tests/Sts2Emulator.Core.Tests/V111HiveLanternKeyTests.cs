@@ -36,13 +36,16 @@ public sealed class V111HiveLanternKeyTests
         var state = Fixture();
         var initial = CanonicalJson.Sha256(state);
         var result = Select(state, "return_key");
+        result = PrototypeEventPageTestHelperV111.ContinueIfFinished(result);
         Assert.Equal(RunPhase.MapChoice, result.Phase);
         Assert.Null(result.World!.Event);
         Assert.Equal(state.Player.Gold + 100, result.Player.Gold);
         Assert.Equal(state.Player.Deck.Length, result.Player.Deck.Length);
         Assert.Equal(initial, CanonicalJson.Sha256(state));
         Assert.Equal(CanonicalJson.Sha256(result),
-            CanonicalJson.Sha256(Select(state.Fork(), "return_key")));
+            CanonicalJson.Sha256(
+                PrototypeEventPageTestHelperV111.ContinueIfFinished(
+                    Select(state.Fork(), "return_key"))));
     }
 
     [Fact]

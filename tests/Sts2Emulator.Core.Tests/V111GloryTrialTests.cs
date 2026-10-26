@@ -88,6 +88,7 @@ public sealed class V111GloryTrialTests
         };
         var before = state.Player.Relics.Length;
         var result = Choose(state, "merchant_guilty");
+        result = PrototypeEventPageTestHelperV111.ContinueIfFinished(result);
         Assert.Equal(RunPhase.MapChoice, result.Phase);
         Assert.Equal(before + 2, result.Player.Relics.Length);
         Assert.Equal(2, result.Player.Relics.Skip(before)
@@ -95,7 +96,9 @@ public sealed class V111GloryTrialTests
         Assert.Single(result.Player.Deck, c =>
             c.CardId == PrototypeNativeGloryEvents.RegretId);
         Assert.Equal(CanonicalJson.Sha256(result),
-            CanonicalJson.Sha256(Choose(state.Fork(), "merchant_guilty")));
+            CanonicalJson.Sha256(
+                PrototypeEventPageTestHelperV111.ContinueIfFinished(
+                    Choose(state.Fork(), "merchant_guilty"))));
         PrototypeStateInvariants.Validate(result);
     }
 
@@ -120,6 +123,7 @@ public sealed class V111GloryTrialTests
         Assert.DoesNotContain(id1, nextPrompt.CandidateCardInstanceIds);
         var id2 = nextPrompt.CandidateCardInstanceIds[0];
         var result = Select(stage2, id2);
+        result = PrototypeEventPageTestHelperV111.ContinueIfFinished(result);
         Assert.Equal(RunPhase.MapChoice, result.Phase);
         foreach (var id in new[] { id1, id2 })
             Assert.Equal(sourceDeck.Single(c => c.InstanceId == id).UpgradeLevel + 1,
@@ -137,12 +141,14 @@ public sealed class V111GloryTrialTests
         };
         var healed = Choose(start, "noble_guilty");
         Assert.Equal(start.Player.Hp + 10, healed.Player.Hp);
+        healed = PrototypeEventPageTestHelperV111.ContinueIfFinished(healed);
         Assert.Equal(RunPhase.MapChoice, healed.Phase);
         var innocent = AtPage("noble-innocent", 3);
         var paid = Choose(innocent, "noble_innocent");
         Assert.Equal(innocent.Player.Gold + 300, paid.Player.Gold);
         Assert.Single(paid.Player.Deck, c =>
             c.CardId == PrototypeNativeGloryEvents.RegretId);
+        paid = PrototypeEventPageTestHelperV111.ContinueIfFinished(paid);
         Assert.Equal(RunPhase.MapChoice, paid.Phase);
         PrototypeStateInvariants.Validate(healed);
         PrototypeStateInvariants.Validate(paid);
@@ -173,14 +179,17 @@ public sealed class V111GloryTrialTests
         Assert.Equal(new[] { "leave_reward" },
             Engine.GetLegalActions(second).Select(a => a.Kind));
         var completed = Step(second, GameAction.Empty("leave_reward"));
+        completed = PrototypeEventPageTestHelperV111.ContinueIfFinished(completed);
         Assert.Equal(RunPhase.MapChoice, completed.Phase);
         Assert.Equal(before + 2, completed.Player.Deck.Length);
         Assert.Equal(CanonicalJson.Sha256(completed),
-            CanonicalJson.Sha256(Step(Step(Step(result.Fork(),
-                GameAction.Create("take_reward_card",
-                    new ChooseCardPayload(0))),
-                GameAction.Empty("skip_reward_card")),
-                GameAction.Empty("leave_reward"))));
+            CanonicalJson.Sha256(
+                PrototypeEventPageTestHelperV111.ContinueIfFinished(
+                    Step(Step(Step(result.Fork(),
+                        GameAction.Create("take_reward_card",
+                            new ChooseCardPayload(0))),
+                        GameAction.Empty("skip_reward_card")),
+                        GameAction.Empty("leave_reward")))));
         PrototypeStateInvariants.Validate(completed);
     }
 
@@ -193,7 +202,8 @@ public sealed class V111GloryTrialTests
         Assert.Single(prompted.Player.Deck,
             c => c.CardId == PrototypeNativeGloryEvents.DoubtId);
         var ids = new List<long>();
-        while (prompted.Phase == RunPhase.Event)
+        while (prompted.Phase == RunPhase.Event
+               && prompted.World!.Event!.PendingDeckChoice is not null)
         {
             var pending = Assert.IsType<PrototypePendingEventDeckChoiceState>(
                 prompted.World!.Event!.PendingDeckChoice);
@@ -203,6 +213,8 @@ public sealed class V111GloryTrialTests
             ids.Add(id);
             prompted = Select(prompted, id);
         }
+        prompted = PrototypeEventPageTestHelperV111.ContinueIfFinished(
+            prompted);
         Assert.Equal(RunPhase.MapChoice, prompted.Phase);
         Assert.Equal(2, ids.Count);
         Assert.Equal(2, ids.Distinct().Count());

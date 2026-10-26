@@ -107,6 +107,6 @@ public sealed class NativeRngV111Tests
         Assert.Throws<InvalidDataException>(() => NativeRngV111.FromSnapshot("test", new(0, 0, 0, 0, 0)));
         Assert.Throws<InvalidDataException>(() => NativeRngV111.ToSnapshot(PrototypeRng.CreateBundle("legacy").Streams[0]));
         var stream = NativeRngV111.CreateStream("test", 1);
-        Assert.Throws<InvalidDataException>(() => NativeRngV111.NextUInt64(new([stream, stream.Fork()]), "test"));
+        Assert.Throws<ArgumentException>(() => NativeRngV111.NextUInt64(new([stream, stream.Fork()]), "test"));
     }
 }

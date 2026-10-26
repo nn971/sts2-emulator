@@ -207,10 +207,12 @@ public sealed class SemanticCardSelectionV111Tests
         var splitDeck = SemanticDeckEngineV111.InsertKnown(
             originalDeck, poolPositions[poolPositions.Length / 2],
             selectedAnchor);
+        combat = SemanticDrawPileAdapterV111.ApplyCardZoneMove(
+            combat, PrototypeCardZone.Hand, PrototypeCardZone.DrawPile,
+            [selectedAnchor], destinationIndex: combat.DrawPile.Length,
+            publiclyKnown: false);
         combat = combat with
         {
-            Hand = combat.Hand.Skip(1).ToArray(),
-            DrawPile = combat.DrawPile.Append(selectedAnchor).ToArray(),
             SemanticDeck = splitDeck
         };
         run = run with

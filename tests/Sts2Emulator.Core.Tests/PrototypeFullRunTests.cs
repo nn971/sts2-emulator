@@ -48,7 +48,13 @@ public sealed class PrototypeFullRunTests
         for (var seedIndex = 0; seedIndex < 500; seedIndex++)
         {
             var engine = new PrototypeGameEngine();
-            var state = PrototypeGameFactory.Create($"sweep-{seedIndex}");
+            var configuration = RunConfiguration.Create() with
+            {
+                FidelityId = V111Build.ExperimentalSilentThreeActRouteFidelityId
+            };
+            var state = engine.Step(
+                V111RunFactory.Create($"sweep-{seedIndex}", configuration),
+                GameAction.Empty("start_run")).State;
             PrototypeStateInvariants.Validate(state);
 
             for (var step = 0; step < 5_000 && state.Phase != RunPhase.Terminal; step++)

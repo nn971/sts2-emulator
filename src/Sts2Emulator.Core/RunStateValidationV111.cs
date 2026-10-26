@@ -205,22 +205,30 @@ public sealed partial record RunState
             throw new InvalidOperationException("Glass Eye custom rewards have no return continuation.");
         if (world.CustomRewardReturn is { } customReturn)
         {
+            var sourceRoom = world.Reward?.SourceRoom;
+            var isEventReward = sourceRoom is not null
+                && sourceRoom.StartsWith("Event:", StringComparison.Ordinal)
+                && world.Event is not null
+                && sourceRoom == "Event:" + world.Event.EventId
+                && customReturn.Phase is RunPhase.Event or RunPhase.Reward;
             if (state.Phase != RunPhase.Reward
-                || world.Reward?.SourceRoom is not ("Relic:ToyBox" or "Relic:GlassEye"))
+                || sourceRoom is not ("Relic:ToyBox" or "Relic:GlassEye")
+                    && !isEventReward)
                 throw new InvalidOperationException("Custom relic rewards require an active reward continuation.");
-            if (world.Reward.SourceRoom == "Relic:ToyBox")
+            if (sourceRoom == "Relic:ToyBox")
             {
                 if (!state.Player.Relics.Any(relic => relic.RelicId == NativeAncientRewardsV111.ToyBoxId)
-                    || world.Reward.ExtraRelicRewardIds?.Length != 5
+                    || world.Reward!.ExtraRelicRewardIds?.Length != 5
                     || world.Reward.ExtraRelicWaxFlags is not { Length: 5 } waxFlags
                     || waxFlags.Any(flag => !flag) || world.Reward.EndsAct)
                     throw new InvalidOperationException("Toy Box custom rewards require five reserved wax relics.");
             }
-            else if (!state.Player.Relics.Any(relic => relic.RelicId == PrototypeNativeOrobasRelics.GlassEyeId)
-                || !world.Reward.IndependentSelection
-                || world.Reward.CardOptionsForGroup(0).Length != 3
-                || world.Reward.ExtraCardOptions is not { Length: 4 }
-                || world.Reward.EndsAct)
+            else if (sourceRoom == "Relic:GlassEye"
+                && (!state.Player.Relics.Any(relic => relic.RelicId == PrototypeNativeOrobasRelics.GlassEyeId)
+                    || !world.Reward!.IndependentSelection
+                    || world.Reward.CardOptionsForGroup(0).Length != 3
+                    || world.Reward.ExtraCardOptions is not { Length: 4 }
+                    || world.Reward.EndsAct))
             {
                 throw new InvalidOperationException("Glass Eye custom rewards require five independent card groups.");
             }
@@ -719,7 +727,7 @@ public sealed partial record RunState
         var encounterId = world.EncounterIds.LastOrDefault();
         if (encounterId is null)
         {
-            if (world.Map.Nodes.Length > 0)
+            if (world.Map.CurrentNodeId is not null)
             {
                 throw new InvalidOperationException(
                     "Map-generated active combat room has no encounter-history entry.");
@@ -999,7 +1007,10 @@ public sealed partial record RunState
 
         foreach (var cardId in reward.CardOptions)
         {
-            if (!PrototypeContent.RewardCardPool.Contains(cardId, StringComparer.Ordinal))
+            if (!PrototypeContent.RewardCardPool.Contains(
+                    cardId, StringComparer.Ordinal)
+                && !PrototypeColorlessCards.ImplementedRewardPool.Contains(
+                    cardId, StringComparer.Ordinal))
             {
                 throw new InvalidOperationException(
                     $"Reward contains card '{cardId}' outside the reward pool.");

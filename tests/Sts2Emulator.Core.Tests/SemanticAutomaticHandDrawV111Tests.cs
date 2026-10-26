@@ -30,31 +30,68 @@ public sealed class SemanticAutomaticHandDrawV111Tests
             ? combat.DrawPile : combat.DrawPile.Take(reducedDraw.Value).ToArray();
         var rest = reducedDraw is null ? combat.DiscardPile
             : combat.DrawPile.Skip(reducedDraw.Value).ToArray();
+        var player = run.Player;
+        if (snecko)
+        {
+            const string sneckoEyeId = "proto.relic.snecko_eye";
+            var nextOrder = combat.RelicStates
+                .Select(relic => relic.ApplicationOrder)
+                .Concat(combat.PlayerPowers.Select(power => power.ApplicationOrder))
+                .Concat(combat.Enemies.SelectMany(enemy => enemy.PowerStates)
+                    .Select(power => power.ApplicationOrder))
+                .DefaultIfEmpty(0).Max() + 1;
+            var definition = PrototypeContent.Relic(sneckoEyeId);
+            player = player with
+            {
+                Relics = player.Relics.Append(new RelicInstance(
+                    sneckoEyeId, PrototypeJson.EmptyObject())).ToArray()
+            };
+            combat = combat with
+            {
+                Relics = combat.RelicStates.Append(new CombatRelicState(
+                    combat.RelicStates.Length, sneckoEyeId, nextOrder,
+                    new int[(definition.Triggers ?? []).Length])).ToArray(),
+                NextPowerApplicationOrder = Math.Max(
+                    combat.NextPowerApplicationOrder, nextOrder + 1)
+            };
+        }
+        if (slither)
+        {
+            player = player with
+            {
+                Deck = player.Deck.Select(card =>
+                    card.InstanceId == slitherCard
+                        ? card with
+                        {
+                            Enchantment = new PrototypeCardEnchantment(
+                                PrototypeCardEnchantmentKind.Slither)
+                        }
+                        : card).ToArray()
+            };
+        }
+        combat = combat with
+        {
+            DrawPile = pile,
+            DiscardPile = rest,
+            Cards = combat.Cards.Select(c =>
+                slither && c.InstanceId == slitherCard
+                    ? c with
+                    {
+                        Enchantment = new PrototypeCardEnchantment(
+                            PrototypeCardEnchantmentKind.Slither)
+                    } : c).ToArray(),
+            AutomaticPipelineContinuation =
+                new PrototypeAutomaticPipelineContinuationState(
+                    PrototypeGameEngine.SemanticHandDrawStepIndex)
+        };
+        combat = SemanticDrawPileAdapterV111.InitializeSemanticDrawPile(
+            combat, SemanticDeckEngineV111.BeginNature(pile));
         return run with
         {
-            Player = snecko ? run.Player with
-            {
-                Relics = run.Player.Relics.Append(
-                    new RelicInstance("proto.relic.snecko_eye",
-                        PrototypeJson.EmptyObject())).ToArray()
-            } : run.Player,
+            Player = player,
             World = world with
             {
-                Combat = combat with
-                {
-                    DrawPile = pile,
-                    DiscardPile = rest,
-                    Cards = combat.Cards.Select(c =>
-                        slither && c.InstanceId == slitherCard
-                            ? c with
-                            {
-                                Enchantment = new PrototypeCardEnchantment(
-                                    PrototypeCardEnchantmentKind.Slither)
-                            } : c).ToArray(),
-                    AutomaticPipelineContinuation =
-                        new PrototypeAutomaticPipelineContinuationState(
-                            PrototypeGameEngine.SemanticHandDrawStepIndex)
-                }
+                Combat = combat
             }
         };
     }

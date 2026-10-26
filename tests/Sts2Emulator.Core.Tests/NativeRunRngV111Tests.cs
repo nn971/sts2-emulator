@@ -61,21 +61,24 @@ public sealed class NativeRunRngV111Tests
         Assert.All(factory.NativeRunRng.Streams,
             stream => Assert.Equal(0,
                 NativeRngV111.ToSnapshot(stream).Counter));
-        var before = CanonicalJson.Sha256(factory.NativeRunRng);
         var engine = new PrototypeGameEngine();
         var map = engine.Step(factory, GameAction.Empty("start_run")).State;
+        var afterInitialization = CanonicalJson.Sha256(map.NativeRunRng);
         for (var decision = 0;
              decision < 30 && map.Phase is RunPhase.Event or RunPhase.Reward;
              decision++)
             map = engine.Step(map, engine.GetLegalActions(map)[0]).State;
         Assert.Equal(RunPhase.MapChoice, map.Phase);
-        Assert.Equal(before, CanonicalJson.Sha256(map.NativeRunRng));
-        Assert.Equal(before, CanonicalJson.Sha256(factory.NativeRunRng));
+        Assert.Equal(afterInitialization,
+            CanonicalJson.Sha256(map.NativeRunRng));
+        Assert.NotEqual(afterInitialization,
+            CanonicalJson.Sha256(factory.NativeRunRng));
         PrototypeStateInvariants.Validate(map);
         var action = engine.GetLegalActions(map).First(a =>
             a.Kind == "choose_map_node");
         var combat = engine.Step(map, action).State;
-        Assert.Equal(before, CanonicalJson.Sha256(combat.NativeRunRng));
+        Assert.Equal(afterInitialization,
+            CanonicalJson.Sha256(combat.NativeRunRng));
         Assert.Equal(RunPhase.Combat, combat.Phase);
         Assert.Null(combat.World!.Combat!.NativeRng);
         NativeRunRngV111.Validate(combat);
@@ -214,9 +217,13 @@ public sealed class NativeRunRngV111Tests
         Assert.Throws<InvalidOperationException>(() =>
             NativeRunRngV111.Validate(
                 state with { NativeRunRng = null }));
-        var corrupted = state.Fork();
-        _ = NativeRngV111.NextInt(
-            corrupted.NativeRunRng!, "run.niche", 7);
+        var changedStreams = state.NativeRunRng!.Fork();
+        _ = NativeRngV111.NextInt(changedStreams, "run.niche", 7);
+        var corrupted = state with
+        {
+            Stochastic = RunStochasticStateV111.WithNativeRunRng(
+                state.Stochastic, changedStreams)
+        };
         Assert.Throws<InvalidOperationException>(() =>
             NativeRunRngV111.Validate(corrupted));
         Assert.Throws<InvalidOperationException>(() =>

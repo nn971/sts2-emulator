@@ -31,7 +31,19 @@ internal sealed class SemanticInitialIntentCaptureV111 : IDisposable
         if (active.State is not null)
             throw new InvalidOperationException(
                 "The semantic route captured more than one initial intent boundary.");
-        active.State = state.Fork();
+        var checkpoint = state.Fork();
+        if (checkpoint.World?.Combat is { } combat)
+        {
+            // Initial intent commitment precedes the opening player side.
+            checkpoint = checkpoint with
+            {
+                World = checkpoint.World with
+                {
+                    Combat = combat with { IsPlayerTurn = false }
+                }
+            };
+        }
+        active.State = checkpoint;
         throw new SemanticInitialIntentBoundaryException();
     }
 

@@ -41,6 +41,18 @@ public sealed class SemanticEndTurnV111Tests
             {
                 Combat = combat with
                 {
+                    Relics = snecko
+                        ? (combat.Relics ?? []).Append(new CombatRelicState(
+                            (combat.Relics ?? []).Length,
+                            "proto.relic.snecko_eye",
+                            combat.NextPowerApplicationOrder,
+                            new int[(PrototypeContent.Relic(
+                                "proto.relic.snecko_eye").Triggers ?? []).Length],
+                            false)).ToArray()
+                        : combat.Relics,
+                    NextPowerApplicationOrder = snecko
+                        ? combat.NextPowerApplicationOrder + 1
+                        : combat.NextPowerApplicationOrder,
                     DrawPile = [],
                     DiscardPile = combat.DiscardPile.Concat(
                         combat.DrawPile).ToArray()

@@ -24,6 +24,10 @@ public sealed class PrototypeNativeWhiteBeastStatueTests
             {
                 Event = state.World.Event! with
                 {
+                    NativeEventRngProviderMode = "scripted-v111",
+                    NativeEventRng = NativeRngV111Contexts.ForEvent(
+                        state.RunSeed,
+                        PrototypeNativeOvergrowthEvents.NeowRngEventEntry),
                     OfferedChoiceIds =
                     [
                         "take_" + neowId,
@@ -40,6 +44,7 @@ public sealed class PrototypeNativeWhiteBeastStatueTests
             && action.ReadPayload<EventChoicePayload>().ChoiceId ==
                 "take_" + neowId);
         state = engine.Step(state, neow).State;
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
 
         var player = state.Player;

@@ -133,8 +133,16 @@ public sealed class SemanticDeckStateV111Tests
     public void NativeModeKeepsCommittedExactOrderAndNeverEmitsNatureTickets()
     {
         var state = SemanticDeckEngineV111.BeginNative([6, 4, 8]);
+        var differentPrivateOrder = SemanticDeckEngineV111.BeginNative(
+            [8, 6, 4]);
         Assert.Equal(SemanticDeckStateV111.NativeMode, state.Mode);
         Assert.Empty(SemanticDeckEngineV111.Observe(state).RevealedPositions);
+        var publicView = SemanticDeckEngineV111.Observe(state);
+        var otherPublicView = SemanticDeckEngineV111.Observe(
+            differentPrivateOrder);
+        Assert.Equal(publicView.Count, otherPublicView.Count);
+        Assert.Equal(publicView.RevealedPositions,
+            otherPublicView.RevealedPositions);
         state = SemanticDeckEngineV111.Require(state, 1, "peek");
         Assert.Null(state.Pending);
         Assert.Empty(state.Transcript!);

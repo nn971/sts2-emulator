@@ -64,10 +64,12 @@ public sealed class PrototypeUnderdocksFullRosterIntegrationTests
             elites.OrderBy(id => id, StringComparer.Ordinal));
         Assert.Empty(state.World!.ActOneEncounterPool!
             .RemainingEliteEncounterIds!);
-        var hash = CanonicalJson.Sha256(state);
-        Assert.Throws<NotSupportedException>(() =>
-            StartRoom(engine, state, PrototypeRoomType.Elite, 15));
-        Assert.Equal(hash, CanonicalJson.Sha256(state));
+        var nextElite = StartRoom(
+            engine, state, PrototypeRoomType.Elite, 15);
+        Assert.Contains(nextElite.World!.EncounterIds[^1],
+            PrototypeNativeUnderdocks.SupportedEliteEncounterIds);
+        Assert.Equal(2, nextElite.World.ActOneEncounterPool!
+            .RemainingEliteEncounterIds!.Length);
     }
 
     [Theory]

@@ -36,6 +36,7 @@ public sealed class PrototypeUnderdocksAbyssalBathsTests
             CanonicalJson.Sha256(third.Fork()));
 
         var exit = Select(engine, third, "exit");
+        exit = PrototypeEventPageTestHelperV111.ContinueIfFinished(exit);
         Assert.Equal(RunPhase.MapChoice, exit.Phase);
         Assert.Null(exit.World!.Event);
         Assert.Single(exit.World.CompletedRooms);
@@ -57,6 +58,7 @@ public sealed class PrototypeUnderdocksAbyssalBathsTests
         };
 
         var result = Select(engine, wounded, "abstain");
+        result = PrototypeEventPageTestHelperV111.ContinueIfFinished(result);
         Assert.Equal(RunPhase.MapChoice, result.Phase);
         Assert.Equal(wounded.Player.Hp + 10, result.Player.Hp);
         Assert.Equal(wounded.Player.MaxHp, result.Player.MaxHp);

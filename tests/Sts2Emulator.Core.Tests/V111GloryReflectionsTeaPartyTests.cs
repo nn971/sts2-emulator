@@ -53,6 +53,7 @@ public sealed class V111GloryReflectionsTeaPartyTests
         };
         var initialHash = CanonicalJson.Sha256(start);
         var result = Choose(start, "touch_mirror");
+        result = PrototypeEventPageTestHelperV111.ContinueIfFinished(result);
         Assert.Equal(RunPhase.MapChoice, result.Phase);
         Assert.Equal(deck.Length, result.Player.Deck.Length);
         Assert.Equal(4, result.Player.Deck.Count(c => c.UpgradeLevel == 1));
@@ -60,7 +61,9 @@ public sealed class V111GloryReflectionsTeaPartyTests
             modified.Select(c => c.InstanceId));
         Assert.Equal(initialHash, CanonicalJson.Sha256(start));
         Assert.Equal(CanonicalJson.Sha256(result),
-            CanonicalJson.Sha256(Choose(start.Fork(), "touch_mirror")));
+            CanonicalJson.Sha256(
+                PrototypeEventPageTestHelperV111.ContinueIfFinished(
+                    Choose(start.Fork(), "touch_mirror"))));
         PrototypeStateInvariants.Validate(result);
     }
 
@@ -115,6 +118,7 @@ public sealed class V111GloryReflectionsTeaPartyTests
         var initialHash = CanonicalJson.Sha256(start);
         var next = start.World!.NextCardInstanceId;
         var result = Choose(start, "shatter");
+        result = PrototypeEventPageTestHelperV111.ContinueIfFinished(result);
         Assert.Equal(RunPhase.MapChoice, result.Phase);
         Assert.Equal(2 * before.Length + 1, result.Player.Deck.Length);
         Assert.Equal(next + before.Length + 1,
@@ -139,7 +143,9 @@ public sealed class V111GloryReflectionsTeaPartyTests
             result.Player.Deck[^1].CardId);
         Assert.Equal(initialHash, CanonicalJson.Sha256(start));
         Assert.Equal(CanonicalJson.Sha256(result),
-            CanonicalJson.Sha256(Choose(start.Fork(), "shatter")));
+            CanonicalJson.Sha256(
+                PrototypeEventPageTestHelperV111.ContinueIfFinished(
+                    Choose(start.Fork(), "shatter"))));
         PrototypeStateInvariants.Validate(result);
     }
 
@@ -195,6 +201,7 @@ public sealed class V111GloryReflectionsTeaPartyTests
             }
         };
         var result = Choose(start, "enjoy_tea");
+        result = PrototypeEventPageTestHelperV111.ContinueIfFinished(result);
         Assert.Equal(RunPhase.MapChoice, result.Phase);
         Assert.Equal(result.Player.MaxHp, result.Player.Hp);
         Assert.Single(result.Player.Relics, r => r.RelicId
@@ -227,6 +234,7 @@ public sealed class V111GloryReflectionsTeaPartyTests
         PrototypeStateInvariants.Validate(first);
 
         var result = Choose(first, "continue_fight");
+        result = PrototypeEventPageTestHelperV111.ContinueIfFinished(result);
         Assert.Equal(RunPhase.MapChoice, result.Phase);
         Assert.Equal(start.Player.Hp - 11, result.Player.Hp);
         Assert.Single(result.Player.Relics.Except(start.Player.Relics));
@@ -234,7 +242,9 @@ public sealed class V111GloryReflectionsTeaPartyTests
             PrototypeNativeGloryEvents.ReflectionsId,
             result.World!.EventIds);
         Assert.Equal(CanonicalJson.Sha256(result),
-            CanonicalJson.Sha256(Choose(first.Fork(), "continue_fight")));
+            CanonicalJson.Sha256(
+                PrototypeEventPageTestHelperV111.ContinueIfFinished(
+                    Choose(first.Fork(), "continue_fight"))));
         PrototypeStateInvariants.Validate(result);
     }
 

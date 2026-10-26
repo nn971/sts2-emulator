@@ -71,11 +71,18 @@ public sealed class PrototypeUnderdocksTrashHeapTests
         {
             var entered = FindTrashHeap(engine, "trash-grab-" + seedIndex);
             var rngPrediction = entered.Fork();
+            var predictedRng = rngPrediction.Stochastic.PrototypeRng;
             var expectedIndex = PrototypeRng.NextInt(
-                rngPrediction.Rng, "event",
+                predictedRng, "event",
                 PrototypeNativeUnderdocksTrashHeap.CardIds.Length);
+            rngPrediction = rngPrediction with
+            {
+                Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                    rngPrediction.Stochastic, predictedRng)
+            };
             var chosen = PrototypeNativeUnderdocksTrashHeap.CardIds[expectedIndex];
             var resolved = Choose(engine, entered, "grab");
+            resolved = PrototypeEventPageTestHelperV111.ContinueIfFinished(resolved);
             Assert.Equal(RunPhase.MapChoice, resolved.Phase);
             Assert.Equal(entered.Player.Gold + 100, resolved.Player.Gold);
             Assert.Equal(entered.Player.Hp, resolved.Player.Hp);
@@ -100,11 +107,18 @@ public sealed class PrototypeUnderdocksTrashHeapTests
         {
             var entered = FindTrashHeap(engine, "trash-dive-" + seedIndex);
             var rngPrediction = entered.Fork();
+            var predictedRng = rngPrediction.Stochastic.PrototypeRng;
             var expectedIndex = PrototypeRng.NextInt(
-                rngPrediction.Rng, "event",
+                predictedRng, "event",
                 PrototypeNativeUnderdocksTrashHeap.RelicIds.Length);
+            rngPrediction = rngPrediction with
+            {
+                Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                    rngPrediction.Stochastic, predictedRng)
+            };
             var chosen = PrototypeNativeUnderdocksTrashHeap.RelicIds[expectedIndex];
             var resolved = Choose(engine, entered, "dive");
+            resolved = PrototypeEventPageTestHelperV111.ContinueIfFinished(resolved);
             Assert.Equal(RunPhase.MapChoice, resolved.Phase);
             Assert.Equal(entered.Player.Hp - 8, resolved.Player.Hp);
             Assert.Equal(entered.Player.Gold, resolved.Player.Gold);
@@ -157,7 +171,13 @@ public sealed class PrototypeUnderdocksTrashHeapTests
         {
             var candidate = FindTrashHeap(engine, "trash-duplicate-" + seed);
             var fork = candidate.Fork();
-            var index = PrototypeRng.NextInt(fork.Rng, "event", 5);
+            var predictedRng = fork.Stochastic.PrototypeRng;
+            var index = PrototypeRng.NextInt(predictedRng, "event", 5);
+            fork = fork with
+            {
+                Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                    fork.Stochastic, predictedRng)
+            };
             if (index != relicIndex) continue;
             entered = candidate with { Player = candidate.Player with {
                 Relics = [new(chosen, System.Text.Json.JsonSerializer.SerializeToElement(new { Purchased = true }))] } };
@@ -167,6 +187,7 @@ public sealed class PrototypeUnderdocksTrashHeapTests
         Assert.NotNull(entered);
         var parentHash = CanonicalJson.Sha256(entered);
         var resolved = Choose(engine, RunSnapshot.Load(RunSnapshot.Save(entered)), "dive");
+        resolved = PrototypeEventPageTestHelperV111.ContinueIfFinished(resolved);
         Assert.Equal(RunPhase.MapChoice, resolved.Phase);
         Assert.Equal(entered.Player.Hp - 8, resolved.Player.Hp);
         Assert.Equal(new[] { chosen, chosen }, resolved.Player.Relics.Select(relic => relic.RelicId));

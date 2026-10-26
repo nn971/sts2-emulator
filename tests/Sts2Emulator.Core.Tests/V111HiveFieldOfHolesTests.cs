@@ -55,6 +55,7 @@ public sealed class V111HiveFieldOfHolesTests
             c.CardId == PrototypeNativeHiveEvents.NormalityId);
 
         state = ChooseCard(state, second);
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.Equal(startCount - 1, state.Player.Deck.Length);
         Assert.DoesNotContain(state.Player.Deck, c =>
@@ -82,6 +83,7 @@ public sealed class V111HiveFieldOfHolesTests
                 .CardInstanceId == selected.InstanceId);
 
         state = ChooseCard(state, selected.InstanceId);
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.Equal(PrototypeCardEnchantmentKind.PerfectFit,
             state.Player.Deck.Single(c =>

@@ -83,6 +83,7 @@ public sealed class V111GloryGraveForgottenSoulTests
         PrototypeStateInvariants.Validate(choosing);
 
         var completed = Select(choosing, sourceId);
+        completed = PrototypeEventPageTestHelperV111.ContinueIfFinished(completed);
         Assert.Equal(RunPhase.MapChoice, completed.Phase);
         var enchanted = completed.Player.Deck.Single(c =>
             c.InstanceId == sourceId);
@@ -92,8 +93,9 @@ public sealed class V111GloryGraveForgottenSoulTests
         Assert.Equal(1, completed.Player.Deck.Count(c => c.CardId == Decay));
         Assert.Equal(originalHash, CanonicalJson.Sha256(state));
         Assert.Equal(CanonicalJson.Sha256(completed),
-            CanonicalJson.Sha256(Select(Choice(state.Fork(),
-                "confront"), sourceId)));
+            CanonicalJson.Sha256(
+                PrototypeEventPageTestHelperV111.ContinueIfFinished(
+                    Select(Choice(state.Fork(), "confront"), sourceId))));
         PrototypeStateInvariants.Validate(completed);
     }
 
@@ -128,13 +130,16 @@ public sealed class V111GloryGraveForgottenSoulTests
         var state = Glory("grave-accept");
         var previous = CanonicalJson.Sha256(state);
         var result = Choice(state, "accept");
+        result = PrototypeEventPageTestHelperV111.ContinueIfFinished(result);
         Assert.Equal(RunPhase.MapChoice, result.Phase);
         Assert.Single(result.Player.Relics, relic =>
             relic.RelicId == Soul);
         Assert.Null(result.World!.Event);
         Assert.Equal(previous, CanonicalJson.Sha256(state));
         Assert.Equal(CanonicalJson.Sha256(result),
-            CanonicalJson.Sha256(Choice(state.Fork(), "accept")));
+            CanonicalJson.Sha256(
+                PrototypeEventPageTestHelperV111.ContinueIfFinished(
+                    Choice(state.Fork(), "accept"))));
         PrototypeStateInvariants.Validate(result);
     }
 

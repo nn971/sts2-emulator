@@ -3469,15 +3469,15 @@ internal static class SimulationProviderReplayNativeSemanticOutcomeTraceV111
                     unitBoundary.NativeCursorAfter);
                 if (!sequenceByUnitFloatDecision.TryAdd(
                         CanonicalJson.Sha256(unitDecision),
-                        unitBoundary.Sequence))
+                        entry.Sequence))
                     return null;
                 if (SemanticOrdinalGroup(unitBoundary.Request.SiteId) is
                         { } unitOrdinalGroup &&
-                    unitBoundary.Sequence > initialTraceCount)
+                    entry.Sequence > initialTraceCount)
                 {
                     var ordinal = semanticOrdinalCounts.GetValueOrDefault(
                         unitOrdinalGroup);
-                    ordinalBySequence.Add(unitBoundary.Sequence, ordinal);
+                    ordinalBySequence.Add(entry.Sequence, ordinal);
                     semanticOrdinalCounts[unitOrdinalGroup] = ordinal + 1;
                 }
                 continue;
@@ -3487,11 +3487,11 @@ internal static class SimulationProviderReplayNativeSemanticOutcomeTraceV111
             var boundary = entry.DeserializeEvent<RandomBoundaryEventV111>();
             if (SemanticOrdinalGroup(boundary.Request.SiteId) is
                     { } ordinalGroup &&
-                boundary.Sequence > initialTraceCount)
+                entry.Sequence > initialTraceCount)
             {
                 var ordinal = semanticOrdinalCounts.GetValueOrDefault(
                     ordinalGroup);
-                ordinalBySequence.Add(boundary.Sequence, ordinal);
+                ordinalBySequence.Add(entry.Sequence, ordinal);
                 semanticOrdinalCounts[ordinalGroup] = ordinal + 1;
             }
             var decision = new RandomIndexDecisionV111(
@@ -3500,14 +3500,14 @@ internal static class SimulationProviderReplayNativeSemanticOutcomeTraceV111
                 boundary.NativeCursorAfter);
             var decisionFingerprint = CanonicalJson.Sha256(decision);
             if (!sequenceByDecision.TryAdd(decisionFingerprint,
-                    boundary.Sequence))
+                    entry.Sequence))
                 return null;
             var requestKey = RequestAndIndexFingerprint(
                 boundary.Request, boundary.SelectedIndex);
             if (!sequencesByRequestAndIndex.TryGetValue(requestKey,
                     out var sequences))
                 sequencesByRequestAndIndex.Add(requestKey, sequences = []);
-            sequences.Add(boundary.Sequence);
+            sequences.Add(entry.Sequence);
         }
 
         var candidates = new Dictionary<int,

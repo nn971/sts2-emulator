@@ -11,22 +11,19 @@ public sealed class PrototypeNativeNeowAdditionalTests
     {
         var state = PrototypeNativeOvergrowthRunFactory.Create(seed);
         var eventState = state.World!.Event!;
-        var otherPositive = name == "ArcaneScroll"
-            ? "BoomingConch" : "ArcaneScroll";
-        var otherCurse = name == "CursedPearl"
-            ? "DowsingRod" : "CursedPearl";
         return state with
         {
             World = state.World with
             {
                 Event = eventState with
                 {
+                    NativeEventRngProviderMode = "scripted-v111",
+                    NativeEventRng = NativeRngV111Contexts.ForEvent(
+                        state.RunSeed,
+                        PrototypeNativeOvergrowthEvents.NeowRngEventEntry),
                     OfferedChoiceIds =
-                    [
-                        OptionId(name),
-                        OptionId(otherPositive),
-                        OptionId(otherCurse)
-                    ]
+                        PrototypeEventPageTestHelperV111
+                            .ScriptedNeowOffers(name)
                 }
             }
         };
@@ -38,6 +35,18 @@ public sealed class PrototypeNativeNeowAdditionalTests
         var action = engine.GetLegalActions(state).Single(choice =>
             choice.Kind == "event_choice"
             && choice.ReadPayload<EventChoicePayload>().ChoiceId == OptionId(name));
+        return engine.Step(state, action).State;
+    }
+
+    private static RunState EnterFirstCombat(RunState state)
+    {
+        var engine = new PrototypeGameEngine();
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
+        var node = state.World!.Map.AvailableNodes().First(item =>
+            item.RoomType == PrototypeRoomType.Combat);
+        var action = engine.GetLegalActions(state).Single(item =>
+            item.Kind == "choose_map_node"
+            && item.ReadPayload<ChooseMapNodePayload>().NodeId == node.NodeId);
         return engine.Step(state, action).State;
     }
 
@@ -53,6 +62,7 @@ public sealed class PrototypeNativeNeowAdditionalTests
         var deck = state.Player.Deck;
         state = Pick(state, name);
 
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.Equal(14, state.Player.Deck.Length);
         Assert.Equal(deck.Select(c => c.InstanceId),
@@ -105,6 +115,7 @@ public sealed class PrototypeNativeNeowAdditionalTests
             PrototypeStateInvariants.Validate(state);
         }
 
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.Equal(11, state.Player.Deck.Length);
         Assert.Equal(before.Skip(2).Select(c => c.InstanceId),
@@ -120,6 +131,7 @@ public sealed class PrototypeNativeNeowAdditionalTests
         var before = state.Player.Deck;
         state = Pick(state, "LeafyPoultice");
 
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.Equal(58, state.Player.MaxHp);
         Assert.Equal(58, state.Player.Hp);
@@ -148,7 +160,7 @@ public sealed class PrototypeNativeNeowAdditionalTests
         var engine = new PrototypeGameEngine();
         var state = Pick(Offer("NeowsTorment", "neow-fury-hand-cap"),
             "NeowsTorment");
-        state = engine.Step(state, engine.GetLegalActions(state)[0]).State;
+        state = EnterFirstCombat(state);
 
         var combat = state.World!.Combat!;
         var fury = Assert.Single(combat.Cards, card =>
@@ -198,7 +210,7 @@ public sealed class PrototypeNativeNeowAdditionalTests
         var engine = new PrototypeGameEngine();
         var state = Pick(Offer("NeowsTorment",
             "neow-fury-combat-" + upgraded), "NeowsTorment");
-        state = engine.Step(state, engine.GetLegalActions(state)[0]).State;
+        state = EnterFirstCombat(state);
         Assert.Equal(RunPhase.Combat, state.Phase);
         var combat = state.World!.Combat!;
         var fury = Assert.Single(combat.Cards,

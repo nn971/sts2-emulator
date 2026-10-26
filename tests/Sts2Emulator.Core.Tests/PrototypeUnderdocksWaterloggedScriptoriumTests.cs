@@ -37,7 +37,7 @@ public sealed class PrototypeUnderdocksWaterloggedScriptoriumTests
             {
                 "bloody_ink", "tentacle_quill", "prickly_sponge"
             }, ChoiceIds(engine, rich));
-        Assert.Equal(10,
+        Assert.Equal(13,
             PrototypeNativeUnderdocksEvents.SupportedRegionEventIds.Length);
     }
 
@@ -56,6 +56,7 @@ public sealed class PrototypeUnderdocksWaterloggedScriptoriumTests
         };
         var rngBefore = CanonicalJson.Sha256(wounded.Rng);
         var result = Choose(engine, wounded, "bloody_ink");
+        result = PrototypeEventPageTestHelperV111.ContinueIfFinished(result);
         Assert.Equal(RunPhase.MapChoice, result.Phase);
         Assert.Equal(31, result.Player.Hp);
         Assert.Equal(wounded.Player.MaxHp + 6, result.Player.MaxHp);
@@ -84,6 +85,7 @@ public sealed class PrototypeUnderdocksWaterloggedScriptoriumTests
 
         var selected = pending.CandidateCardInstanceIds[0];
         var finished = SelectCard(engine, started, selected);
+        finished = PrototypeEventPageTestHelperV111.ContinueIfFinished(finished);
         Assert.Equal(RunPhase.MapChoice, finished.Phase);
         Assert.Equal(rngBefore, CanonicalJson.Sha256(finished.Rng));
         Assert.Equal(1, finished.Player.Deck.Count(card =>
@@ -118,6 +120,7 @@ public sealed class PrototypeUnderdocksWaterloggedScriptoriumTests
         Assert.DoesNotContain(first, secondChoice.CandidateCardInstanceIds);
         var second = secondChoice.CandidateCardInstanceIds[0];
         var finished = SelectCard(engine, afterFirst, second);
+        finished = PrototypeEventPageTestHelperV111.ContinueIfFinished(finished);
         Assert.Equal(RunPhase.MapChoice, finished.Phase);
         Assert.Equal(0, finished.Player.Gold);
         Assert.Equal(2, finished.Player.Deck.Count(card =>
@@ -145,6 +148,7 @@ public sealed class PrototypeUnderdocksWaterloggedScriptoriumTests
         Assert.Contains("tentacle_quill", ChoiceIds(engine, allEnchanted));
         Assert.Contains("prickly_sponge", ChoiceIds(engine, allEnchanted));
         var quill = Choose(engine, allEnchanted, "tentacle_quill");
+        quill = PrototypeEventPageTestHelperV111.ContinueIfFinished(quill);
         Assert.Equal(RunPhase.MapChoice, quill.Phase);
         Assert.Equal(initial.Player.Gold - 55, quill.Player.Gold);
         Assert.All(quill.Player.Deck, card =>
@@ -167,6 +171,7 @@ public sealed class PrototypeUnderdocksWaterloggedScriptoriumTests
         Assert.Single(only.CandidateCardInstanceIds);
         Assert.Equal(1, only.RemainingSelections);
         var finished = SelectCard(engine, sponge, only.CandidateCardInstanceIds[0]);
+        finished = PrototypeEventPageTestHelperV111.ContinueIfFinished(finished);
         Assert.Equal(RunPhase.MapChoice, finished.Phase);
         Assert.Single(finished.Player.Deck, card =>
             card.Enchantment?.Kind == PrototypeCardEnchantmentKind.Steady);
@@ -181,6 +186,9 @@ public sealed class PrototypeUnderdocksWaterloggedScriptoriumTests
         var selected = started.World!.Event!.PendingDeckChoice!
             .CandidateCardInstanceIds[0];
         var finished = SelectCard(engine, started, selected);
+        finished = PrototypeEventPageTestHelperV111.ContinueIfFinished(
+            finished);
+        Assert.Equal(RunPhase.MapChoice, finished.Phase);
 
         var node = new MapNodeState(
             "steady-combat", 1, 1, PrototypeRoomType.Combat, ["after"]);
@@ -193,6 +201,9 @@ public sealed class PrototypeUnderdocksWaterloggedScriptoriumTests
             {
                 Floor = 0,
                 ActiveRoom = null,
+                Event = null,
+                Reward = null,
+                Shop = null,
                 Map = new MapState(
                     [node, after], CurrentNodeId: null,
                     EntryNodeIds: [node.NodeId],

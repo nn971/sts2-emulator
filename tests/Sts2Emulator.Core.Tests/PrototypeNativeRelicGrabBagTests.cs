@@ -54,11 +54,11 @@ public sealed class PrototypeNativeRelicGrabBagTests
             "native-relic-catalog");
         var bag = PrototypeNativeRelicGrabBag.Create(
             initial.Player, initial.Rng.Fork());
-        Assert.Equal(10, bag.Common.Length);
-        Assert.Equal(11, bag.Uncommon.Length);
-        Assert.Equal(16, bag.Rare.Length);
-        Assert.Equal(4, bag.Shop.Length);
-        Assert.Equal(41, bag.Remaining.Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(12, bag.Common.Length);
+        Assert.Equal(12, bag.Uncommon.Length);
+        Assert.Equal(21, bag.Rare.Length);
+        Assert.Equal(5, bag.Shop.Length);
+        Assert.Equal(50, bag.Remaining.Distinct(StringComparer.Ordinal).Count());
         Assert.Contains("proto.relic.white_beast_statue", bag.Rare);
         Assert.DoesNotContain("proto.relic.darkstone_periapt", bag.Remaining);
         Assert.DoesNotContain("proto.relic.forgotten_soul", bag.Remaining);
@@ -131,7 +131,7 @@ public sealed class PrototypeNativeRelicGrabBagTests
     public void NativeShopReservesItsRelicsAtGenerationAndForksDeeply()
     {
         var engine = new PrototypeGameEngine();
-        var initial = PrototypeNativeOvergrowthRunFactory.Create(
+        var initial = PrototypeContentTestSupport.ConfiguredNativeRun(
             "native-relic-shop-integration");
         var map = initial.World!.Map;
         var node = map.Nodes.First(item =>

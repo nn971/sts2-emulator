@@ -170,19 +170,13 @@ public sealed class SemanticPersistentPlayerActionV111Tests
         // existing physical hand card into the draw pile. The separate
         // action must still have a playable basic card in hand.
         long known = combat.Hand[^1];
-        var deck = SemanticDeckEngineV111.PlaceTop(
-            combat.SemanticDeck!, known);
+        var insertedCombat = SemanticDrawPileAdapterV111.ApplyCardZoneMove(
+            combat, PrototypeCardZone.Hand, PrototypeCardZone.DrawPile,
+            [known], destinationIndex: combat.DrawPile.Length,
+            publiclyKnown: true);
         run = run with
         {
-            World = world with
-            {
-                Combat = combat with
-                {
-                    SemanticDeck = deck,
-                    DrawPile = combat.DrawPile.Append(known).ToArray(),
-                    Hand = combat.Hand.SkipLast(1).ToArray()
-                }
-            }
+            World = world with { Combat = insertedCombat }
         };
         SemanticPlayerActionEngineV111.ValidateBoundary(run);
         var action = SemanticPlayerActionEngineV111.Step(
@@ -224,23 +218,19 @@ public sealed class SemanticPersistentPlayerActionV111Tests
                 run, new PrototypeAiEnvironment().Observe(run)
                     .LegalActions.Single(a => a.Kind == "end_turn").ActionId));
         Assert.Equal(old, CanonicalJson.Sha256(run));
-        var tampered = run.Fork();
-        var tamperedWorld = tampered.World!;
-        var tamperedCombat = tamperedWorld.Combat!;
-        var tamperedDrawPile = tamperedCombat.DrawPile;
-        tamperedDrawPile[0] = -1000;
-        tampered = tampered with
-        {
-            World = tamperedWorld with
+        Assert.Throws<InvalidOperationException>(() =>
+            _ = run with
             {
-                Combat = tamperedCombat with
+                World = run.World! with
                 {
-                    DrawPile = tamperedDrawPile
+                    Combat = run.World.Combat! with
+                    {
+                        DrawPile = run.World.Combat.DrawPile
+                            .Append(-1000).ToArray()
+                    }
                 }
-            }
-        };
-        Assert.Throws<InvalidDataException>(() =>
-            SemanticPlayerActionEngineV111.ValidateBoundary(tampered));
+            });
+        Assert.Equal(old, CanonicalJson.Sha256(run));
         var modified = SemanticPlayerActionEngineV111.Step(run, actionId);
         var forged = modified.Fork();
         var forgedRun = forged.Run;

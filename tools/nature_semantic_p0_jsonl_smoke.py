@@ -11,6 +11,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 DLL = ROOT / "src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll"
+from jsonl_privacy_assertions import assert_public_stochastic_view
 sys.path.insert(0, str(ROOT / "bindings/python"))
 from sts2_emulator import Session, EmulatorError
 
@@ -48,8 +49,7 @@ def main():
         assert not combat.terminal
         visible = combat.observe()
         assert visible["combat"]["hand"]
-        assert "rng" not in json.dumps(visible).lower()
-        assert "semanticDeck" not in json.dumps(visible)
+        assert_public_stochastic_view(visible)
         before = combat.fingerprint
         saved = combat.save_snapshot()
         restored = session.load_semantic_snapshot(saved)
@@ -115,7 +115,7 @@ def main():
         assert n_intents > 0
         if advanced.boundary == "player":
             assert advanced.actions()
-            assert "rng" not in json.dumps(advanced.observe()).lower()
+            assert_public_stochastic_view(advanced.observe())
         assert advanced.status()["chanceSites"] == ["enemy_intent", "draw_card"]
         assert session.release_semantic_many(
             [combat, restored, duplicate, advanced]) == 4

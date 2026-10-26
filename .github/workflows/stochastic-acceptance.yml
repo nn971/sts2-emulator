@@ -1,0 +1,165 @@
+name: stochastic-source-independent-acceptance
+
+on:
+  push:
+    paths:
+      - '.github/workflows/stochastic-acceptance.yml'
+      - 'src/Sts2Emulator.Core/**'
+      - 'src/Sts2Emulator.Cli/**'
+      - 'bindings/python/**'
+      - 'docs/RNG_DIRECT_CALLSITE_CENSUS.md'
+      - 'docs/UNIFIED_STOCHASTIC_ARCHITECTURE.md'
+      - 'docs/STOCHASTIC_ACCEPTANCE_EVIDENCE.md'
+      - 'tests/Sts2Emulator.Core.Tests/**'
+      - 'tests/test_stochastic_regression_report.py'
+      - 'tests/test_jsonl_privacy_assertions.py'
+      - 'tools/rng_callsite_inventory.py'
+      - 'tools/stochastic_coverage_gate.py'
+      - 'tools/stochastic_site_acceptance.py'
+      - 'tools/stochastic_regression_report.py'
+      - 'tools/nature_semantic_*_smoke.py'
+      - 'tools/nature_semantic_ab_experiment.py'
+      - 'tools/jsonl_privacy_assertions.py'
+  pull_request:
+    paths:
+      - '.github/workflows/stochastic-acceptance.yml'
+      - 'src/Sts2Emulator.Core/**'
+      - 'src/Sts2Emulator.Cli/**'
+      - 'bindings/python/**'
+      - 'docs/RNG_DIRECT_CALLSITE_CENSUS.md'
+      - 'docs/UNIFIED_STOCHASTIC_ARCHITECTURE.md'
+      - 'docs/STOCHASTIC_ACCEPTANCE_EVIDENCE.md'
+      - 'tests/Sts2Emulator.Core.Tests/**'
+      - 'tests/test_stochastic_regression_report.py'
+      - 'tests/test_jsonl_privacy_assertions.py'
+      - 'tools/rng_callsite_inventory.py'
+      - 'tools/stochastic_coverage_gate.py'
+      - 'tools/stochastic_site_acceptance.py'
+      - 'tools/stochastic_regression_report.py'
+      - 'tools/nature_semantic_*_smoke.py'
+      - 'tools/nature_semantic_ab_experiment.py'
+      - 'tools/jsonl_privacy_assertions.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  site-contracts:
+    name: Site inventory and declaration ledger
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run source ownership and information-boundary checks
+        run: |
+          mkdir -p /tmp/stochastic-acceptance
+          python tools/rng_callsite_inventory.py \
+            --check-site-matrix \
+            --check-s0-contract-links \
+            --check-no-ambient-entropy \
+            --check-no-native-chance-law-dependency \
+            --check-chance-law-outcome-blind \
+            --check-draw-kernel-callsite-ownership \
+            --format json > /tmp/stochastic-acceptance/site-coverage.json
+      - name: Require complete declarations without claiming runtime acceptance
+        run: |
+          python tools/stochastic_coverage_gate.py \
+            --out /tmp/stochastic-acceptance/coverage-gate.json
+          python tools/stochastic_site_acceptance.py \
+            --inventory /tmp/stochastic-acceptance/site-coverage.json \
+            --output /tmp/stochastic-acceptance/site-declarations.json \
+            --strict
+      - name: Check regression and public-view audit helpers
+        run: |
+          python -m unittest discover -s tests \
+            -p 'test_stochastic_regression_report.py' -v
+          python -m unittest discover -s tests \
+            -p 'test_jsonl_privacy_assertions.py' -v
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stochastic-site-acceptance-declarations
+          path: /tmp/stochastic-acceptance/
+
+  provider-and-mechanics:
+    name: Provider boundary and shared mechanics acceptance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - run: dotnet restore Sts2Emulator.sln
+      - run: dotnet build Sts2Emulator.sln -c Release --no-restore
+      - name: Independent provider, deck, fixture, and mechanics projection checks
+        run: |
+          dotnet test tests/Sts2Emulator.Core.Tests/Sts2Emulator.Core.Tests.csproj \
+            -c Release --no-build \
+            --filter 'FullyQualifiedName~SemanticDeckStateV111Tests|FullyQualifiedName~RandomBoundaryJournalV111Tests|FullyQualifiedName~StochasticProviderDifferentialAcceptanceTests|FullyQualifiedName~StochasticAcceptanceFixtureTests|FullyQualifiedName~StochasticMechanicsProjectionAcceptanceTests|FullyQualifiedName~ChanceLawV111Tests.DrawLawMatchesIndependentEnumerationOfConstrainedPhysicalPermutations|FullyQualifiedName~ChanceLawV111Tests.ReferenceNatureSamplingMatchesWeightsAndReplaysFromForkedState|FullyQualifiedName~PrototypeColorlessPowerBatchTests.BombCountdownExplodesAfterThreePlayerTurns|FullyQualifiedName~PrototypeUnderdocksCultistsAndFossilTests.SuckOnlyCountsUnblockedAttackHits' \
+            --logger 'trx;LogFileName=provider-mechanics.trx' \
+            --results-directory /tmp/stochastic-acceptance
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stochastic-provider-mechanics-evidence
+          path: /tmp/stochastic-acceptance/
+
+  independent-workers:
+    name: Independent JSONL processes and source-route replays
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - run: dotnet restore Sts2Emulator.sln
+      - run: dotnet build Sts2Emulator.sln -c Release --no-restore
+      - name: Seeded semantic combat, restore, and 15 independent workers
+        run: python tools/nature_semantic_seeded_jsonl_smoke.py
+      - name: Matched two-site Nature and engine-owned 15-process replay
+        run: python tools/nature_semantic_ab_experiment.py --repeats 15 --workers 15
+      - name: Five documented source-route victory pairs
+        run: python tools/nature_semantic_victory_jsonl_smoke.py --worker-repeats 0
+
+  regression-audit:
+    name: Frozen main comparison by test identity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: candidate
+      - uses: actions/checkout@v4
+        with:
+          ref: 3ce2ded034e8be94cafcb8ff08cd3040bfad7922
+          path: baseline
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - name: Build frozen main and candidate
+        run: |
+          dotnet build baseline/Sts2Emulator.sln -c Release
+          dotnet build candidate/Sts2Emulator.sln -c Release
+      - name: Capture both complete test suites
+        shell: bash
+        run: |
+          mkdir -p reports
+          dotnet test baseline/tests/Sts2Emulator.Core.Tests/Sts2Emulator.Core.Tests.csproj \
+            -c Release --no-build \
+            --logger 'trx;LogFileName=baseline.trx' \
+            --results-directory "$GITHUB_WORKSPACE/reports" || true
+          dotnet test candidate/tests/Sts2Emulator.Core.Tests/Sts2Emulator.Core.Tests.csproj \
+            -c Release --no-build \
+            --logger 'trx;LogFileName=candidate.trx' \
+            --results-directory "$GITHUB_WORKSPACE/reports" || true
+      - name: Fail on previously passing test identities that now fail
+        run: |
+          python candidate/tools/stochastic_regression_report.py \
+            --baseline reports/baseline.trx \
+            --candidate reports/candidate.trx \
+            --json reports/stochastic-regressions.json \
+            --strict
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stochastic-regression-classification
+          path: reports/

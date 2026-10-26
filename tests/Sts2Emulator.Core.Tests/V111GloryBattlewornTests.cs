@@ -59,14 +59,16 @@ public sealed class V111GloryBattlewornTests
             p => p.PowerId == PrototypeNativeGloryEvents.BattlewornTimeLimitId
             && p.Stacks == 1);
         var completed = Step(second, GameAction.Empty("end_turn"));
+        completed = PrototypeEventPageTestHelperV111.ContinueIfFinished(completed);
         Assert.Equal(RunPhase.MapChoice, completed.Phase);
         Assert.Null(completed.World!.Reward);
         Assert.Null(completed.World.Event);
         Assert.Single(completed.World.CompletedRooms);
         Assert.Equal(start.Player.Relics.Length, completed.Player.Relics.Length);
         Assert.Equal(CanonicalJson.Sha256(completed),
-            CanonicalJson.Sha256(Step(second.Fork(),
-                GameAction.Empty("end_turn"))));
+            CanonicalJson.Sha256(
+                PrototypeEventPageTestHelperV111.ContinueIfFinished(
+                    Step(second.Fork(), GameAction.Empty("end_turn")))));
         PrototypeStateInvariants.Validate(completed);
     }
 
@@ -109,6 +111,7 @@ public sealed class V111GloryBattlewornTests
         var won = Step(start, action);
         if (setting == "setting_2")
         {
+            won = PrototypeEventPageTestHelperV111.ContinueIfFinished(won);
             Assert.Equal(RunPhase.MapChoice, won.Phase);
             Assert.Null(won.World!.Reward);
             Assert.Equal(start.Player.Deck.Length, won.Player.Deck.Length);

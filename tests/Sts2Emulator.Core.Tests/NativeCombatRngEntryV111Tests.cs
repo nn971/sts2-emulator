@@ -201,10 +201,9 @@ public sealed class NativeCombatRngEntryV111Tests
                 combat, 987654, 2, out _));
 
         var malformed = combat.Fork();
-        malformed.NativeRng!.RunStreams.ReplaceStreamAt(0,
-            malformed.NativeRng.RunStreams.Streams[1].Fork());
-        Assert.Throws<InvalidOperationException>(() =>
-            NativeCombatRngEntryV111.Validate(malformed));
+        Assert.Throws<ArgumentException>(() =>
+            malformed.NativeRng!.RunStreams.ReplaceStreamAt(0,
+                malformed.NativeRng.RunStreams.Streams[1].Fork()));
 
         var wrongFormation = combat.Fork();
         var wrongFormationEnemies = wrongFormation.Enemies;

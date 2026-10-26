@@ -17,6 +17,10 @@ public sealed class PrototypeNativeEventOrderingTests
             {
                 Event = opening with
                 {
+                    NativeEventRngProviderMode = "scripted-v111",
+                    NativeEventRng = NativeRngV111Contexts.ForEvent(
+                        state.RunSeed,
+                        PrototypeNativeOvergrowthEvents.NeowRngEventEntry),
                     OfferedChoiceIds =
                     [
                         "take_" + PrototypeNativeOvergrowthEvents.NeowRelicId(
@@ -35,6 +39,7 @@ public sealed class PrototypeNativeEventOrderingTests
                 == "take_" + PrototypeNativeOvergrowthEvents.NeowRelicId(
                     "GoldenPearl"));
         state = engine.Step(state, takeGold).State;
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
 
         var map = state.World!.Map;
@@ -118,6 +123,7 @@ public sealed class PrototypeNativeEventOrderingTests
         var takeSecond = second.Single(action => action.Kind == "take_event_potion");
         state = engine.Step(state, takeSecond).State;
 
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.Equal(2, state.Player.PotionSlots.Count(p => p is not null));
         Assert.All(state.Player.PotionSlots.Where(p => p is not null),
@@ -154,6 +160,7 @@ public sealed class PrototypeNativeEventOrderingTests
             && action.ReadPayload<ChooseEventDeckCardPayload>()
                 .CardInstanceId == before[0].InstanceId);
         state = engine.Step(state, remove).State;
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.Null(state.World!.Event);
         Assert.Equal(13, state.Player.Deck.Length);
@@ -188,6 +195,7 @@ public sealed class PrototypeNativeEventOrderingTests
             && a.ReadPayload<ChooseEventDeckCardPayload>().CardInstanceId
                 == before.InstanceId);
         state = engine.Step(state, transform).State;
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.Equal(61, state.Player.Hp);
         Assert.Equal(70, state.Player.MaxHp);
@@ -210,6 +218,7 @@ public sealed class PrototypeNativeEventOrderingTests
             CanonicalJson.Sha256(state.Fork()));
 
         state = Take(state, "dive");
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.Equal(goldBefore + reward, state.Player.Gold);
         Assert.Equal(hpBefore - 7, state.Player.Hp);
@@ -254,6 +263,7 @@ public sealed class PrototypeNativeEventOrderingTests
             CanonicalJson.Sha256(state.Fork()));
         state = Take(state, "tribute");
 
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.Equal(0, state.Player.Gold);
         Assert.Equal(relicCount + 1, state.Player.Relics.Length);
@@ -291,6 +301,7 @@ public sealed class PrototypeNativeEventOrderingTests
         var count = state.Player.Relics.Length;
         state = Take(state, "grab");
 
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.Equal(count + 1, state.Player.Relics.Length);
         Assert.Single(state.Player.Relics,
@@ -324,6 +335,7 @@ public sealed class PrototypeNativeEventOrderingTests
             && action.ReadPayload<EventChoicePayload>().ChoiceId
                 == "grab");
         var result = Take(state, "grab");
+        result = PrototypeEventPageTestHelperV111.ContinueIfFinished(result);
         Assert.Equal(RunPhase.MapChoice, result.Phase);
         var swords = result.Player.Relics
             .Where(relic => relic.RelicId == swordId).ToArray();
@@ -355,6 +367,7 @@ public sealed class PrototypeNativeEventOrderingTests
             CanonicalJson.Sha256(state.Fork()));
 
         state = Take(state, choice);
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.Equal(beforeGold + expectedGold, state.Player.Gold);
         Assert.Equal(beforeHp - expectedHpLoss, state.Player.Hp);
@@ -495,6 +508,7 @@ public sealed class PrototypeNativeEventOrderingTests
         Assert.Equal(CanonicalJson.Sha256(state), CanonicalJson.Sha256(fork));
         state = engine.Step(
             state, GameAction.Empty("skip_event_potion")).State;
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.All(state.Player.PotionSlots, potion => Assert.Null(potion));
         Assert.Null(state.World!.Event);
@@ -527,6 +541,7 @@ public sealed class PrototypeNativeEventOrderingTests
             action.Kind == "replace_event_potion"
             && action.ReadPayload<ReplaceEventPotionPayload>().Slot == 0);
         state = engine.Step(state, chosen).State;
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.Equal(offeredId, state.Player.PotionSlots[0]!.PotionId);
         Assert.Equal(oldPotion, state.Player.PotionSlots[1]!.PotionId);
@@ -551,6 +566,7 @@ public sealed class PrototypeNativeEventOrderingTests
         var next = engine.GetLegalActions(state)
             .Single(action => action.Kind == "take_event_potion");
         state = engine.Step(state, next).State;
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.Single(state.Player.PotionSlots, p => p is not null);
         Assert.Null(state.World!.Event);
@@ -611,6 +627,7 @@ public sealed class PrototypeNativeEventOrderingTests
             && action.ReadPayload<ChooseEventDeckCardPayload>()
                 .CardInstanceId == originalDeck[1].InstanceId);
         state = engine.Step(state, second).State;
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.Equal(12, state.Player.Deck.Length);
         Assert.DoesNotContain(state.Player.Deck,
@@ -651,6 +668,7 @@ public sealed class PrototypeNativeEventOrderingTests
                 && action.ReadPayload<EventChoicePayload>().ChoiceId == choice);
 
         state = Take(state, choice);
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.Equal(initialHp - hpLoss, state.Player.Hp);
         if (expectedCard is null)

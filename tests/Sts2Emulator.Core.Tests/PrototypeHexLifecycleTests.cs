@@ -401,9 +401,8 @@ public sealed class PrototypeHexLifecycleTests
     private static void WithHexSourceDefinition(
         Action action)
     {
-        var enemies = Assert.IsType<
-            Dictionary<string, PrototypeEnemyDefinition>>(
-                PrototypeContent.Enemies);
+        var enemies = PrototypeContentTestSupport
+            .MutableEnemyDefinitions();
 
         enemies.Add(
             HexSourceEnemyId,

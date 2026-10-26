@@ -17,14 +17,13 @@ public sealed class PrototypeNativeNeowCustomRewardsTests
             {
                 Event = world.Event! with
                 {
+                    NativeEventRngProviderMode = "scripted-v111",
+                    NativeEventRng = NativeRngV111Contexts.ForEvent(
+                        state.RunSeed,
+                        PrototypeNativeOvergrowthEvents.NeowRngEventEntry),
                     OfferedChoiceIds =
-                    [
-                        OptionId(name == "ArcaneScroll"
-                            ? "BoomingConch" : "ArcaneScroll"),
-                        OptionId(name == "GoldenPearl"
-                            ? "PreciseScissors" : "GoldenPearl"),
-                        OptionId(name)
-                    ]
+                        PrototypeEventPageTestHelperV111
+                            .ScriptedNeowOffers(name)
                 }
             }
         };
@@ -62,6 +61,7 @@ public sealed class PrototypeNativeNeowCustomRewardsTests
             PrototypeStateInvariants.Validate(state);
         }
 
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.Null(state.World!.Event);
         Assert.Null(state.World.Reward);

@@ -26,6 +26,10 @@ public sealed class PrototypeNativeRewardPopulationOrderTests
             {
                 Event = state.World.Event! with
                 {
+                    NativeEventRngProviderMode = "scripted-v111",
+                    NativeEventRng = NativeRngV111Contexts.ForEvent(
+                        state.RunSeed,
+                        PrototypeNativeOvergrowthEvents.NeowRngEventEntry),
                     OfferedChoiceIds =
                     [
                         "take_" + neowId,
@@ -42,6 +46,7 @@ public sealed class PrototypeNativeRewardPopulationOrderTests
             && action.ReadPayload<EventChoicePayload>().ChoiceId
                 == "take_" + neowId);
         state = engine.Step(state, neow).State;
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         state = engine.Step(state, engine.GetLegalActions(state)[0]).State;
         Assert.Equal(RunPhase.Combat, state.Phase);

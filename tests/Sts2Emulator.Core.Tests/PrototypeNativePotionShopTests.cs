@@ -48,9 +48,10 @@ public sealed class PrototypeNativePotionShopTests
         var right = left.Fork();
         var fromHelper = PrototypeNativePotionShop.PickUniform(
             left, "reward");
-        var expected = PrototypeContent.PotionPool[
+        var expected = PrototypeNativePotionShop.NativePotionPoolOrder[
             PrototypeRng.NextInt(
-                right, "reward", PrototypeContent.PotionPool.Length)];
+                right, "reward",
+                PrototypeNativePotionShop.NativePotionPoolOrder.Count)];
         Assert.Equal(expected, fromHelper);
     }
 
@@ -100,8 +101,9 @@ public sealed class PrototypeNativePotionShopTests
     [Fact]
     public void EverySupportedShopPotionHasExactlyOneNativeRarity()
     {
-        Assert.Equal(32, PrototypeContent.PotionPool.Length);
-        Assert.All(PrototypeContent.PotionPool, id =>
+        Assert.Equal(48,
+            PrototypeNativePotionShop.NativePotionPoolOrder.Count);
+        Assert.All(PrototypeNativePotionShop.NativePotionPoolOrder, id =>
         {
             Assert.True(PrototypeNativePotionShop.TryGetRarity(id, out _),
                 $"Potion {id} missing native rarity.");

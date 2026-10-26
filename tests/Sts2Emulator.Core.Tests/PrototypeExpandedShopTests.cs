@@ -318,7 +318,7 @@ public sealed class PrototypeExpandedShopTests
     public void NativeOvergrowthMerchantHasExactlyOneSaleCharacterCard()
     {
         var engine = new PrototypeGameEngine();
-        var initial = PrototypeNativeOvergrowthRunFactory.Create(
+        var initial = PrototypeContentTestSupport.ConfiguredNativeRun(
             "merchant-native-sale");
         var shopNode = initial.World!.Map.Nodes.First(node =>
             node.RoomType == PrototypeRoomType.Shop);

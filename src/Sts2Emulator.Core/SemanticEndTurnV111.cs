@@ -702,9 +702,7 @@ public sealed record SemanticEndTurnV111(
         {
             intents.Validate();
             if (CanonicalJson.Sha256(intents.Transcript) !=
-                CanonicalJson.Sha256(this.Stochastic.IntentTranscript) ||
-                CanonicalJson.Sha256(this.Run) !=
-                CanonicalJson.Sha256(this.Origin))
+                CanonicalJson.Sha256(this.Stochastic.IntentTranscript))
                 throw new InvalidDataException("Invalid pending intent stage.");
         }
         if (handDraw is { } hand)
@@ -789,6 +787,7 @@ public sealed record SemanticEndTurnV111(
         PlayerActionSource = PlayerActionSource?.Fork(),
         Stochastic = Stochastic.Fork()
     };
+
 }
 
 /// <summary>

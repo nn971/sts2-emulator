@@ -165,7 +165,15 @@ public sealed class V111FoundationsTests
         var state = new PrototypeGameEngine().Step(PrototypeGameFactory.Create("snapshot"), GameAction.Empty("start_run")).State;
         var encoded = RunSnapshot.Save(state);
         var restored = RunSnapshot.Load(encoded);
-        restored.Rng.Streams[0].StateBytes[0] ^= 0xff;
+        var originalHash = CanonicalJson.Sha256(state);
+        var detachedRng = restored.Rng;
+        var detachedStream = detachedRng.Streams[0];
+        var detachedBytes = detachedStream.StateBytes;
+        detachedBytes[0] ^= 0xff;
+        detachedRng.ReplaceStreamAt(0,
+            detachedStream with { StateBytes = detachedBytes });
+        Assert.Equal(originalHash, CanonicalJson.Sha256(restored));
+        restored = restored with { Rng = detachedRng };
         Assert.NotEqual(CanonicalJson.Sha256(state), CanonicalJson.Sha256(restored));
         var changed = JsonNode.Parse(encoded)!.AsObject();
         changed["state"]!["mechanics"]!["player"]!["gold"] = 1234;

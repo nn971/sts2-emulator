@@ -491,7 +491,10 @@ public sealed partial class PrototypeGameEngine
         {
             Stochastic = RunStochasticStateV111.WithNativeRunRng(
                 source.Stochastic, nativeStreams),
-            World = world with { Combat = combat.Fork() }
+            World = world with
+            {
+                Combat = combat with { IsPlayerTurn = true }
+            }
         };
         if (nativeStreams is not null && combatNativeRng is not null)
             NativeRunRngV111.Validate(advanced);
@@ -1553,6 +1556,9 @@ public sealed partial class PrototypeGameEngine
         {
             var automaticStep =
                 PrototypeContent.Rules.EndTurnPipeline[index];
+            if (automaticStep.Kind ==
+                PrototypeAutomaticStepKind.DrawPlayerHand)
+                state = SetAutomaticPipelineStepCheckpoint(state, index);
             // Opt-in semantic hand-draw handoff. Everything before this
             // source stage has already executed in the original engine.
             // The hand stage itself runs later via the genuine
@@ -1826,8 +1832,13 @@ public sealed partial class PrototypeGameEngine
                 ControlledTurnIntents = intents?.Fork()
             }
         };
+        // The pure intent selector has already committed the resolved enemy
+        // prefix in its combat snapshot. Publish that same checkpoint into the
+        // run before attaching the continuation so both views agree while the
+        // next enemy ticket is suspended.
+        var checkpointCombat = intents?.Combat.Fork() ?? combat;
         var updatedCombat = AttachValidatedAutomaticPipelineContinuation(
-            combat, updatedPipeline);
+            checkpointCombat, updatedPipeline);
         return state with
         {
             World = world! with
@@ -2071,6 +2082,29 @@ public sealed partial class PrototypeGameEngine
             {
                 Combat = updatedCombat
             }
+        };
+    }
+
+    private static RunState SetAutomaticPipelineStepCheckpoint(
+        RunState state, int stepIndex)
+    {
+        var world = RequireWorld(state);
+        var combat = world.Combat
+            ?? throw new InvalidOperationException(
+                "Combat unexpectedly disappeared.");
+        var cursor = combat.AutomaticPipelineContinuation;
+        var checkpoint = cursor is null
+            ? new PrototypeAutomaticPipelineContinuationState(stepIndex)
+            : cursor with
+            {
+                Mechanics = new PrototypeAutomaticPipelineMechanicsStateV111(
+                    stepIndex)
+            };
+        var updatedCombat = AttachValidatedAutomaticPipelineContinuation(
+            combat, checkpoint);
+        return state with
+        {
+            World = world with { Combat = updatedCombat }
         };
     }
 
@@ -9357,7 +9391,7 @@ public sealed partial class PrototypeGameEngine
                 resolved = ApplyVigorousAfterCardPlayed(
                     resolved.Player,
                     resolved.Combat,
-                    series.SourceCardInstanceId);
+                    card);
             }
             return resolved;
         }
@@ -9372,7 +9406,7 @@ public sealed partial class PrototypeGameEngine
             return ApplyVigorousAfterCardPlayed(
                 finalized.Player,
                 finalized.Combat,
-                series.SourceCardInstanceId);
+                card);
         }
 
         return ResolveCardPlaySeries(
@@ -9386,10 +9420,20 @@ public sealed partial class PrototypeGameEngine
         ApplyVigorousAfterCardPlayed(
             PlayerState player,
             CombatState combat,
-            long sourceCardInstanceId)
+            long sourceCardInstanceId) =>
+        ApplyVigorousAfterCardPlayed(
+            player, combat,
+            combat.Cards.FirstOrDefault(card =>
+                card.InstanceId == sourceCardInstanceId));
+
+    private static (PlayerState Player, CombatState Combat)
+        ApplyVigorousAfterCardPlayed(
+            PlayerState player,
+            CombatState combat,
+            CombatCardInstance? card)
     {
-        var card = RequireCombatCard(combat, sourceCardInstanceId);
-        if (card.PersistentCardInstanceId is not { } persistentId
+        if (card is null
+            || card.PersistentCardInstanceId is not { } persistentId
             || card.Enchantment is not
                 {
                     Kind: PrototypeCardEnchantmentKind.Vigorous,
@@ -9418,7 +9462,7 @@ public sealed partial class PrototypeGameEngine
         combat = combat with
         {
             Cards = combat.Cards.Select(combatCard =>
-                combatCard.InstanceId == sourceCardInstanceId
+                combatCard.InstanceId == card.InstanceId
                     ? combatCard with
                     {
                         Enchantment = vigorous with { Disabled = true }

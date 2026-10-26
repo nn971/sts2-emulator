@@ -210,7 +210,8 @@ public sealed class PrototypeTrashHeapRelicMechanicsTests
         string seed, PrototypeRoomType[] rooms,
         RelicInstance[] relics)
     {
-        var initial = PrototypeNativeUnderdocksRunFactory.Create(seed);
+        var initial = PrototypeContentTestSupport.ConfiguredNativeRun(
+            seed, ActIdentity.Underdocks);
         var map = initial.World!.Map;
         var first = map.Nodes.Single(node => node.NodeId == map.EntryNodeIds![0]);
         var second = map.Nodes.Single(node => node.NodeId == first.NextNodeIds![0]);

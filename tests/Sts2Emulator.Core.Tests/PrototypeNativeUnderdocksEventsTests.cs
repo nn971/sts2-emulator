@@ -7,15 +7,18 @@ public sealed class PrototypeNativeUnderdocksEventsTests
     [Fact]
     public void NativeRosterIsDistinctAndSupportedSubsetUsesRealEffects()
     {
-        Assert.Equal(10, PrototypeNativeUnderdocksEvents.NativeRegionEventIds.Length);
-        Assert.Equal(10, PrototypeNativeUnderdocksEvents.NativeRegionEventIds
+        Assert.Equal(13, PrototypeNativeUnderdocksEvents.NativeRegionEventIds.Length);
+        Assert.Equal(13, PrototypeNativeUnderdocksEvents.NativeRegionEventIds
             .Distinct(StringComparer.Ordinal).Count());
-        Assert.Equal(10, PrototypeNativeUnderdocksEvents.SupportedRegionEventIds.Length);
+        Assert.Equal(13, PrototypeNativeUnderdocksEvents.SupportedRegionEventIds.Length);
         Assert.All(PrototypeNativeUnderdocksEvents.SupportedRegionEventIds, id =>
         {
             Assert.Contains(id, PrototypeNativeUnderdocksEvents.NativeRegionEventIds);
             Assert.NotEmpty(PrototypeContent.Event(id).Choices);
-            Assert.DoesNotContain(id, PrototypeNativeOvergrowthEvents.RegionEventIds);
+            if (id is not (PrototypeNativeBrainLeech.EventId or
+                PrototypeNativeSelfHelpBook.EventId))
+                Assert.DoesNotContain(id,
+                    PrototypeNativeOvergrowthEvents.RegionEventIds);
         });
 
         var doors = PrototypeContent.Event(

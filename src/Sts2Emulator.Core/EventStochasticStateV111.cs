@@ -147,7 +147,7 @@ public sealed record EventStochasticStateV111(
                 "proto.native.event.luminous_choir" =>
                     outcomes.NativeEventGold is >= 100 and <= 149,
                 "proto.native.event.jungle_maze_adventure" =>
-                    outcomes.NativeEventGold is >= 135 and <= 165,
+                    outcomes.NativeEventGold is >= 135 and < 165,
                 "proto.native.underdocks.sunken_statue" =>
                     outcomes.NativeEventGold is >= 101 and <= 121,
                 "proto.native.underdocks.sunken_treasury" =>
@@ -169,7 +169,7 @@ public sealed record EventStochasticStateV111(
             && !(owner.EventId switch
             {
                 "proto.native.event.jungle_maze_adventure" =>
-                    outcomes.NativeEventSecondaryGold is >= 35 and <= 65,
+                    outcomes.NativeEventSecondaryGold is >= 35 and < 65,
                 "proto.native.underdocks.sunken_treasury" =>
                     outcomes.NativeEventSecondaryGold is >= 303 and <= 363,
                 _ => false

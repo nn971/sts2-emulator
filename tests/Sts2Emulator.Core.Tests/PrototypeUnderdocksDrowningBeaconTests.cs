@@ -32,6 +32,7 @@ public sealed class PrototypeUnderdocksDrowningBeaconTests
 
         var skip = engine.Step(offered, engine.GetLegalActions(offered)
             .Single(action => action.Kind == "skip_event_potion")).State;
+        skip = PrototypeEventPageTestHelperV111.ContinueIfFinished(skip);
         Assert.Equal(RunPhase.MapChoice, skip.Phase);
         Assert.Null(skip.World!.Event);
         Assert.DoesNotContain(skip.Player.PotionSlots, potion =>
@@ -40,6 +41,7 @@ public sealed class PrototypeUnderdocksDrowningBeaconTests
         var take = engine.GetLegalActions(offered).Single(action =>
             action.Kind == "take_event_potion");
         var accepted = engine.Step(offered, take).State;
+        accepted = PrototypeEventPageTestHelperV111.ContinueIfFinished(accepted);
         Assert.Equal(RunPhase.MapChoice, accepted.Phase);
         Assert.Contains(accepted.Player.PotionSlots, potion =>
             potion?.PotionId == PotionId);
@@ -71,6 +73,7 @@ public sealed class PrototypeUnderdocksDrowningBeaconTests
         var replace = engine.GetLegalActions(pending).First(action =>
             action.Kind == "replace_event_potion");
         var result = engine.Step(pending, replace).State;
+        result = PrototypeEventPageTestHelperV111.ContinueIfFinished(result);
         Assert.Equal(RunPhase.MapChoice, result.Phase);
         Assert.Single(result.Player.PotionSlots,
             potion => potion?.PotionId == PotionId);
@@ -87,6 +90,7 @@ public sealed class PrototypeUnderdocksDrowningBeaconTests
         };
         var rngHash = CanonicalJson.Sha256(wounded.Rng);
         var result = Select(engine, wounded, "climb");
+        result = PrototypeEventPageTestHelperV111.ContinueIfFinished(result);
         Assert.Equal(RunPhase.MapChoice, result.Phase);
         Assert.Equal(wounded.Player.MaxHp - 13, result.Player.MaxHp);
         Assert.Equal(Math.Min(wounded.Player.Hp, result.Player.MaxHp),
@@ -188,6 +192,7 @@ public sealed class PrototypeUnderdocksDrowningBeaconTests
         var take = engine.GetLegalActions(pending).Single(action =>
             action.Kind == "take_event_potion");
         var accepted = engine.Step(pending, take).State;
+        accepted = PrototypeEventPageTestHelperV111.ContinueIfFinished(accepted);
         Assert.Equal(RunPhase.MapChoice, accepted.Phase);
         var combatNode = new MapNodeState(
             "test-beacon-combat", 1, 1, PrototypeRoomType.Combat,

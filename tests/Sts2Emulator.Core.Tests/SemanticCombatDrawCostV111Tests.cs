@@ -37,13 +37,41 @@ public sealed class SemanticCombatDrawCostV111Tests
                     Enchantment = new PrototypeCardEnchantment(
                         PrototypeCardEnchantmentKind.Slither)
                 } : card).ToArray();
+        var deck = run.Player.Deck.Select(card =>
+            slither && card.InstanceId == firstId
+                ? card with
+                {
+                    Enchantment = new PrototypeCardEnchantment(
+                        PrototypeCardEnchantmentKind.Slither)
+                } : card).ToArray();
+        var player = run.Player;
+        if (relic)
+        {
+            const string relicId = "proto.relic.snecko_eye";
+            var nextOrder = combat.RelicStates
+                .Select(item => item.ApplicationOrder)
+                .Concat(combat.PlayerPowers.Select(power => power.ApplicationOrder))
+                .Concat(combat.Enemies.SelectMany(enemy => enemy.PowerStates)
+                    .Select(power => power.ApplicationOrder))
+                .DefaultIfEmpty(0).Max() + 1;
+            var definition = PrototypeContent.Relic(relicId);
+            player = player with
+            {
+                Relics = player.Relics.Append(new RelicInstance(
+                    relicId, PrototypeJson.EmptyObject())).ToArray()
+            };
+            combat = combat with
+            {
+                Relics = combat.RelicStates.Append(new CombatRelicState(
+                    combat.RelicStates.Length, relicId, nextOrder,
+                    new int[(definition.Triggers ?? []).Length])).ToArray(),
+                NextPowerApplicationOrder = Math.Max(
+                    combat.NextPowerApplicationOrder, nextOrder + 1)
+            };
+        }
         run = run with
         {
-            Player = relic ? run.Player with
-            {
-                Relics = run.Player.Relics.Append(new RelicInstance(
-                    "proto.relic.snecko_eye", PrototypeJson.EmptyObject())).ToArray()
-            } : run.Player,
+            Player = player with { Deck = deck },
             World = world with { Combat = combat with { Cards = cards } }
         };
         return SemanticCombatDrawEngineV111.Begin(run, count, fromHandDraw);

@@ -144,7 +144,14 @@ public sealed class NativeDynamicWeakFormationRngV111Tests
             var fork = a.Fork();
             Assert.Equal(CanonicalJson.Sha256(a),
                 CanonicalJson.Sha256(fork));
-            fork.EncounterRng.StateBytes[0] ^= 1;
+            var encounter = fork.EncounterRng;
+            var changedBytes = encounter.StateBytes;
+            changedBytes[0] ^= 1;
+            fork = fork with
+            {
+                EncounterRng = encounter with
+                { StateBytes = changedBytes }
+            };
             Assert.NotEqual(CanonicalJson.Sha256(a),
                 CanonicalJson.Sha256(fork));
             Assert.Equal(1, Cursor(a).Counter);

@@ -29,11 +29,14 @@ public sealed class PrototypeConditionedCombatEntryTests
         var state = mapState.Fork();
         var synthetic = PrototypeRng.CreateBundle(
             $"local-combat-condition-v1:{independentSeed}:{trial}");
-        var combat = synthetic.Streams.Single(stream => stream.StreamId == "combat");
-        var index = Array.FindIndex(
-            state.Rng.Streams, stream => stream.StreamId == "combat");
-        Assert.True(index >= 0);
-        state.Rng.ReplaceStreamAt(index, combat);
+        var combat = synthetic.GetStream("combat");
+        var rng = state.Stochastic.PrototypeRng;
+        rng.ReplaceStream("combat", combat);
+        state = state with
+        {
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, rng)
+        };
         return environment.Step(state, actionId).State;
     }
 

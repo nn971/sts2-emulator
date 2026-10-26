@@ -132,6 +132,7 @@ public sealed class PrototypeNativeNeowGenerationTests
                 action.ReadPayload<EventChoicePayload>().ChoiceId
                     == OptionId("NeowsTalisman"))).State;
 
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.Contains(state.Player.Relics, relic =>
             relic.RelicId == PrototypeNativeOvergrowthEvents
@@ -161,6 +162,7 @@ public sealed class PrototypeNativeNeowGenerationTests
                 action.ReadPayload<EventChoicePayload>().ChoiceId
                     == OptionId("NutritiousOyster"))).State;
 
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.Equal(oldMax + 11, state.Player.MaxHp);
         Assert.Equal(oldMax + 11, state.Player.Hp);
@@ -181,6 +183,7 @@ public sealed class PrototypeNativeNeowGenerationTests
                 action.ReadPayload<EventChoicePayload>().ChoiceId
                     == OptionId("GoldenPearl"))).State;
 
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.Equal(initialGold + 150, state.Player.Gold);
         PrototypeStateInvariants.Validate(state);
@@ -214,6 +217,7 @@ public sealed class PrototypeNativeNeowGenerationTests
                     .CardInstanceId == 1);
         state = engine.Step(state, action).State;
 
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.Equal(1,
             state.Player.Deck.Single(card => card.InstanceId == 1).UpgradeLevel);
@@ -233,6 +237,7 @@ public sealed class PrototypeNativeNeowGenerationTests
                 action.ReadPayload<EventChoicePayload>().ChoiceId
                     == OptionId("CursedPearl"))).State;
 
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.Equal(initialGold + 333, state.Player.Gold);
         Assert.Equal(14, state.Player.Deck.Length);
@@ -271,6 +276,7 @@ public sealed class PrototypeNativeNeowGenerationTests
                 && action.ReadPayload<ChooseEventDeckCardPayload>()
                     .CardInstanceId == 1)).State;
 
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.Equal(12, state.Player.Deck.Length);
         Assert.Equal(before.Skip(1).Select(card => card.InstanceId),
@@ -301,6 +307,7 @@ public sealed class PrototypeNativeNeowGenerationTests
                 && action.ReadPayload<ChooseEventDeckCardPayload>()
                     .CardInstanceId == 1)).State;
 
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.Equal(13, state.Player.Deck.Length);
         Assert.Equal(before.Select(card => card.InstanceId),
@@ -325,6 +332,7 @@ public sealed class PrototypeNativeNeowGenerationTests
             action => action.ReadPayload<EventChoicePayload>().ChoiceId
                 == OptionId("SilkenTress"))).State;
 
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.Equal(0, state.Player.Gold);
         Assert.Contains(state.Player.Relics, relic =>
@@ -343,6 +351,7 @@ public sealed class PrototypeNativeNeowGenerationTests
             action => action.ReadPayload<EventChoicePayload>().ChoiceId
                 == OptionId("ArcaneScroll"))).State;
 
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.Equal(initial.Length + 1, state.Player.Deck.Length);
         Assert.Equal(initial.Select(card => card.InstanceId),
@@ -437,26 +446,19 @@ public sealed class PrototypeNativeNeowGenerationTests
             "neow-pickup-" + seed);
         var world = state.World!;
         var eventState = world.Event!;
-        var offer = OptionId(name);
-        var other = OptionId("ArcaneScroll");
-        if (StringComparer.Ordinal.Equals(other, offer))
-        {
-            other = OptionId("BoomingConch");
-        }
-
         return state with
         {
             World = world with
             {
                 Event = eventState with
                 {
+                    NativeEventRngProviderMode = "scripted-v111",
+                    NativeEventRng = NativeRngV111Contexts.ForEvent(
+                        state.RunSeed,
+                        PrototypeNativeOvergrowthEvents.NeowRngEventEntry),
                     OfferedChoiceIds =
-                    [
-                        offer,
-                        other,
-                        OptionId(name == "GoldenPearl"
-                            ? "DowsingRod" : "CursedPearl")
-                    ]
+                        PrototypeEventPageTestHelperV111
+                            .ScriptedNeowOffers(name)
                 }
             }
         };

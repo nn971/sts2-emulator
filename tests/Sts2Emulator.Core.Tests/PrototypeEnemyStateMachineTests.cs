@@ -130,11 +130,8 @@ public sealed class PrototypeEnemyStateMachineTests
         PrototypeEnemyDefinition definition,
         Action action)
     {
-        var enemies = Assert.IsType<
-            Dictionary<
-                string,
-                PrototypeEnemyDefinition>>(
-            PrototypeContent.Enemies);
+        var enemies = PrototypeContentTestSupport
+            .MutableEnemyDefinitions();
         enemies.Add(
             definition.Id,
             definition);

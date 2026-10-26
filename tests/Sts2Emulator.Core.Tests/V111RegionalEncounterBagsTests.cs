@@ -5,8 +5,8 @@ namespace Sts2Emulator.Core.Tests;
 public sealed class V111RegionalEncounterBagsTests
 {
     [Theory]
-    [InlineData(2, 4, 10, 3, 3, 9)]
-    [InlineData(3, 3, 9, 3, 3, 7)]
+    [InlineData(2, 4, 10, 3, 3, 16)]
+    [InlineData(3, 3, 9, 3, 3, 13)]
     public void RegionalPoolsCoverEveryCataloguedEncounterWithoutEventCombats(
         int act, int weakCount, int normalCount, int eliteCount,
         int bossCount, int eventCount)
@@ -43,8 +43,7 @@ public sealed class V111RegionalEncounterBagsTests
         {
             var definition = PrototypeContent.Event(id);
             Assert.True(ExperimentalSilentThreeActRouteV111.ContainsEvent(id, act));
-            Assert.Equal(act, definition.MinAct);
-            Assert.Equal(act, definition.MaxAct);
+            Assert.InRange(act, definition.MinAct, definition.MaxAct);
         }
         Assert.All(all, id =>
             Assert.DoesNotContain("event_encounter", id, StringComparison.Ordinal));
@@ -121,7 +120,10 @@ public sealed class V111RegionalEncounterBagsTests
             world with { LaterActEncounterBag = bag },
             PrototypeRoomType.Boss, rng);
         Assert.Equal(initial.BossEncounterId, boss.Encounter.Id);
-        Assert.Same(bag, boss.Bag);
+        Assert.NotSame(bag, boss.Bag);
+        Assert.Equal(bag.RemainingWeak, boss.Bag.RemainingWeak);
+        Assert.Equal(bag.RemainingNormal, boss.Bag.RemainingNormal);
+        Assert.Equal(bag.RemainingElite, boss.Bag.RemainingElite);
     }
 
     [Theory]
@@ -146,7 +148,7 @@ public sealed class V111RegionalEncounterBagsTests
         Assert.Equal(10, PrototypeNativeUnderdocks.SupportedNormalEncounterIds.Length);
         Assert.Equal(3, PrototypeNativeUnderdocks.SupportedEliteEncounterIds.Length);
         Assert.Equal(3, PrototypeNativeUnderdocks.SupportedBossEncounterIds.Length);
-        Assert.Equal(10, PrototypeNativeUnderdocksEvents.SupportedRegionEventIds.Length);
+        Assert.Equal(13, PrototypeNativeUnderdocksEvents.SupportedRegionEventIds.Length);
         Assert.Equal(
             PrototypeNativeUnderdocks.NativeWeakEncounterIds.OrderBy(x => x),
             PrototypeNativeUnderdocks.SupportedWeakEncounterIds.OrderBy(x => x));

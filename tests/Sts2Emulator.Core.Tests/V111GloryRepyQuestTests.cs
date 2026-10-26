@@ -73,7 +73,11 @@ public sealed class V111GloryRepyQuestTests
         var start = EnterRoom(Fixture(1));
         var initialHash = CanonicalJson.Sha256(start);
         var reward1 = Choose(start, "unlock_chest");
-        Assert.Equal(RunPhase.Reward, reward1.Phase);
+        Assert.True(reward1.Phase == RunPhase.Reward,
+            $"phase={reward1.Phase}; event={reward1.World?.Event?.EventId}; " +
+            $"page={reward1.World?.Event?.NativePageIndex}; " +
+            $"potions={reward1.World?.Event?.RepyChestPotionIds?.Length}; " +
+            $"relics={reward1.World?.Event?.RepyChestRelicIds?.Length}");
         Assert.Equal(2, reward1.World!.Event!.NativePageIndex);
         Assert.DoesNotContain(reward1.Player.Deck, x => x.CardId == Key);
         Assert.Equal(1, reward1.World.Event.RepyChestGroupsResolved);
@@ -95,15 +99,11 @@ public sealed class V111GloryRepyQuestTests
 
         // Leaving each offer is legal. Second offer is independent
         // of the choices made on the first reward screen.
-        var reward2 = Act(reward1, "leave_reward");
-        Assert.Equal(RunPhase.Reward, reward2.Phase);
-        Assert.Equal(2, reward2.World!.Event!.RepyChestGroupsResolved);
-        Assert.Equal(storedPotions[1], reward2.World.Reward!.PotionOption);
-        Assert.Equal(storedRelics[1], reward2.World.Reward.RelicOption);
-        Assert.Equal(storedPotions, reward2.World.Event.RepyChestPotionIds);
-        Assert.Equal(storedRelics, reward2.World.Event.RepyChestRelicIds);
-
-        var end = Act(reward2, "leave_reward");
+        Assert.Contains(firstActions,
+            action => action.Kind == "take_reward_extra_potion");
+        Assert.Contains(firstActions,
+            action => action.Kind == "take_reward_extra_relic");
+        var end = Act(reward1, "leave_reward");
         Assert.Equal(RunPhase.MapChoice, end.Phase);
         Assert.False(end.World!.FreedRepy);
         Assert.DoesNotContain(end.Player.Relics,
@@ -119,15 +119,18 @@ public sealed class V111GloryRepyQuestTests
     public void ChestAllowsClaimingBothPotionsAndRelics()
     {
         var reward = Choose(EnterRoom(Fixture(1)), "unlock_chest");
-        var acquiredRelics = new List<string>();
-        for (var i = 0; i < 2; i++)
+        var offered = reward.World!.Reward!;
+        var acquiredRelics = new[]
         {
-            var offered = reward.World!.Reward!;
-            acquiredRelics.Add(offered.RelicOption!);
-            reward = Act(reward, "take_reward_potion");
-            reward = Act(reward, "take_reward_relic");
-            reward = Act(reward, "leave_reward");
-        }
+            offered.RelicOption!, offered.ExtraRelicRewardIds![0]
+        };
+        reward = Act(reward, "take_reward_potion");
+        reward = Act(reward, "take_reward_extra_potion");
+        reward = Act(reward, "take_reward_relic");
+        reward = ResolveRelicDeckChoice(reward);
+        reward = Act(reward, "take_reward_relic");
+        reward = ResolveRelicDeckChoice(reward);
+        reward = Act(reward, "leave_reward");
         Assert.Equal(RunPhase.MapChoice, reward.Phase);
         Assert.Equal(2, reward.Player.PotionSlots.Count(x => x is not null));
         Assert.All(acquiredRelics, id => Assert.Contains(
@@ -146,7 +149,7 @@ public sealed class V111GloryRepyQuestTests
         if (!cageFirst)
         {
             Assert.Equal(RunPhase.Reward, state.Phase);
-            state = Act(Act(state, "leave_reward"), "leave_reward");
+            state = Act(state, "leave_reward");
         }
         Assert.Equal(RunPhase.Event, state.Phase);
         Assert.Equal(1, state.World!.Event!.NativePageIndex);
@@ -159,7 +162,7 @@ public sealed class V111GloryRepyQuestTests
         if (cageFirst)
         {
             Assert.Equal(RunPhase.Reward, state.Phase);
-            state = Act(Act(state, "leave_reward"), "leave_reward");
+            state = Act(state, "leave_reward");
         }
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.DoesNotContain(state.Player.Deck, x => x.CardId == Key);
@@ -175,7 +178,7 @@ public sealed class V111GloryRepyQuestTests
         var afterFirst = Choose(start, "unlock_cage");
         Assert.Equal(2, afterFirst.Player.Deck.Count(x => x.CardId == Key));
         var afterSecond = Choose(afterFirst, "unlock_chest");
-        afterSecond = Act(Act(afterSecond, "leave_reward"), "leave_reward");
+        afterSecond = Act(afterSecond, "leave_reward");
         Assert.Equal(RunPhase.MapChoice, afterSecond.Phase);
         Assert.DoesNotContain(afterSecond.Player.Deck, x => x.CardId == Key);
     }
@@ -260,4 +263,14 @@ public sealed class V111GloryRepyQuestTests
     private static RunState Act(RunState state, string kind) =>
         Engine.Step(state,
             Engine.GetLegalActions(state).Single(a => a.Kind == kind)).State;
+
+    private static RunState ResolveRelicDeckChoice(RunState state)
+    {
+        while (Engine.GetLegalActions(state).FirstOrDefault(action =>
+            action.Kind == "choose_relic_deck_card") is { } choice)
+        {
+            state = Engine.Step(state, choice).State;
+        }
+        return state;
+    }
 }

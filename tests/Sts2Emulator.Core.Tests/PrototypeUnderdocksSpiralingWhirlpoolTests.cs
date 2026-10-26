@@ -45,6 +45,7 @@ public sealed class PrototypeUnderdocksSpiralingWhirlpoolTests
             item.Payload.GetProperty("CardInstanceId").GetInt64() == selectedId);
         var resolved = engine.Step(awaitingSelection, action).State;
 
+        resolved = PrototypeEventPageTestHelperV111.ContinueIfFinished(resolved);
         Assert.Equal(RunPhase.MapChoice, resolved.Phase);
         Assert.Null(resolved.World!.Event);
         var enchanted = resolved.Player.Deck.Single(card =>
@@ -76,6 +77,7 @@ public sealed class PrototypeUnderdocksSpiralingWhirlpoolTests
         };
         var rngHash = CanonicalJson.Sha256(wounded.Rng);
         var result = Choose(engine, wounded, "drink");
+        result = PrototypeEventPageTestHelperV111.ContinueIfFinished(result);
         Assert.Equal(RunPhase.MapChoice, result.Phase);
         Assert.Equal(28, result.Player.Hp);
         Assert.Equal(55, result.Player.MaxHp);

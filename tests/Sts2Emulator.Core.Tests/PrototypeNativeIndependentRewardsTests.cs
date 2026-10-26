@@ -20,6 +20,10 @@ public sealed class PrototypeNativeIndependentRewardsTests
             {
                 Event = state.World.Event! with
                 {
+                    NativeEventRngProviderMode = "scripted-v111",
+                    NativeEventRng = NativeRngV111Contexts.ForEvent(
+                        state.RunSeed,
+                        PrototypeNativeOvergrowthEvents.NeowRngEventEntry),
                     OfferedChoiceIds =
                     [
                         "take_" + pearl,
@@ -35,6 +39,7 @@ public sealed class PrototypeNativeIndependentRewardsTests
             action => action.Kind == "event_choice"
                 && action.ReadPayload<EventChoicePayload>().ChoiceId
                     == "take_" + pearl)).State;
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         if (forcePotion || prayerWheel)
         {
@@ -362,6 +367,7 @@ public sealed class PrototypeNativeIndependentRewardsTests
         var state = WinFirstCombat(
             "native-independent-card-groups", prayerWheel: true);
         var reward = state.World!.Reward!;
+        var generators = reward.CardRewardGenerators!;
         var original = reward.ExtraCardOptions![0];
         var second = (string[])reward.CardOptions.Clone();
         var oldFlags = reward.ExtraCardOptionUpgradeFlags![0];
@@ -371,7 +377,10 @@ public sealed class PrototypeNativeIndependentRewardsTests
             ExtraCardOptionUpgradeFlags =
                 [(bool[])oldFlags.Clone(), [true, false, false]],
             ExtraCardOptionsUpgraded = [false, false],
-            ExtraCardGroupsResolved = [false, false]
+            ExtraCardGroupsResolved = [false, false],
+            CardRewardGenerators = generators
+                .Concat([generators[^1]])
+                .ToArray()
         };
         state = state with
         {

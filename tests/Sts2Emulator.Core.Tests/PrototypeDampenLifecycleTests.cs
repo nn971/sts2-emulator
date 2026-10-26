@@ -396,9 +396,8 @@ public sealed class PrototypeDampenLifecycleTests
     private static void WithDampenSourceDefinition(
         Action action)
     {
-        var enemies = Assert.IsType<
-            Dictionary<string, PrototypeEnemyDefinition>>(
-                PrototypeContent.Enemies);
+        var enemies = PrototypeContentTestSupport
+            .MutableEnemyDefinitions();
 
         enemies.Add(
             DampenSourceEnemyId,

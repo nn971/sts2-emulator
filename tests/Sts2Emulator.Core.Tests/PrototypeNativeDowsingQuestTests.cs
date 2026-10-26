@@ -12,6 +12,10 @@ public sealed class PrototypeNativeDowsingQuestTests
         var world = state.World!;
         var options = world.Event! with
         {
+            NativeEventRngProviderMode = "scripted-v111",
+            NativeEventRng = NativeRngV111Contexts.ForEvent(
+                state.RunSeed,
+                PrototypeNativeOvergrowthEvents.NeowRngEventEntry),
             OfferedChoiceIds =
             [
                 "take_" + PrototypeNativeOvergrowthEvents.NeowRelicId("ArcaneScroll"),
@@ -26,6 +30,7 @@ public sealed class PrototypeNativeDowsingQuestTests
                 == "take_" + PrototypeNativeOvergrowthEvents.NeowRelicId(
                     "DowsingRod"));
         state = engine.Step(state, action).State;
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         return state;
     }

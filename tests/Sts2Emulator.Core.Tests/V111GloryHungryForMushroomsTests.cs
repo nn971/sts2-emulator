@@ -31,6 +31,7 @@ public sealed class V111GloryHungryForMushroomsTests
         var initial = Fixture("v111-glory-big");
         var initialHash = CanonicalJson.Sha256(initial);
         var result = Choose(initial, "big_mushroom");
+        result = PrototypeEventPageTestHelperV111.ContinueIfFinished(result);
         Assert.Equal(RunPhase.MapChoice, result.Phase);
         Assert.Equal(initial.Player.MaxHp + 20, result.Player.MaxHp);
         Assert.Equal(initial.Player.Hp + 20, result.Player.Hp);
@@ -38,8 +39,9 @@ public sealed class V111GloryHungryForMushroomsTests
         Assert.Null(result.World!.Event);
         Assert.Equal(initialHash, CanonicalJson.Sha256(initial));
         Assert.Equal(CanonicalJson.Sha256(result),
-            CanonicalJson.Sha256(Choose(initial.Fork(),
-                "big_mushroom")));
+            CanonicalJson.Sha256(
+                PrototypeEventPageTestHelperV111.ContinueIfFinished(
+                    Choose(initial.Fork(), "big_mushroom"))));
         PrototypeStateInvariants.Validate(result);
     }
 
@@ -55,6 +57,7 @@ public sealed class V111GloryHungryForMushroomsTests
         var startHash = CanonicalJson.Sha256(initial);
 
         var result = Choose(initial, "fragrant_mushroom");
+        result = PrototypeEventPageTestHelperV111.ContinueIfFinished(result);
         Assert.Equal(RunPhase.MapChoice, result.Phase);
         Assert.Equal(initial.Player.Hp - 15, result.Player.Hp);
         Assert.Equal(initial.Player.MaxHp, result.Player.MaxHp);
@@ -67,8 +70,9 @@ public sealed class V111GloryHungryForMushroomsTests
         Assert.All(changed, card => Assert.Equal(1, card.UpgradeLevel));
         Assert.Equal(startHash, CanonicalJson.Sha256(initial));
         Assert.Equal(CanonicalJson.Sha256(result),
-            CanonicalJson.Sha256(Choose(initial.Fork(),
-                "fragrant_mushroom")));
+            CanonicalJson.Sha256(
+                PrototypeEventPageTestHelperV111.ContinueIfFinished(
+                    Choose(initial.Fork(), "fragrant_mushroom"))));
         PrototypeStateInvariants.Validate(result);
     }
 

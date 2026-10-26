@@ -11,9 +11,8 @@ public sealed class PrototypeNestedEventSuspensionTests
     [Fact]
     public void CardPlayedHookCanSuspendInsideReplayAndResumeOuterFrames()
     {
-        var powers = Assert.IsType<
-            Dictionary<string, PrototypePowerDefinition>>(
-                PrototypeContent.Powers);
+        var powers = PrototypeContentTestSupport
+            .MutablePowerDefinitions();
 
         powers.Add(
             ChoicePowerId,
@@ -185,9 +184,8 @@ public sealed class PrototypeNestedEventSuspensionTests
     [Fact]
     public void PowerCardRemovalWaitsForSuspendedCardPlayedHook()
     {
-        var powers = Assert.IsType<
-            Dictionary<string, PrototypePowerDefinition>>(
-                PrototypeContent.Powers);
+        var powers = PrototypeContentTestSupport
+            .MutablePowerDefinitions();
 
         powers.Add(
             ChoicePowerId,

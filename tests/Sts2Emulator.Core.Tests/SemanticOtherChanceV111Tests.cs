@@ -50,7 +50,7 @@ public sealed class SemanticOtherChanceV111Tests
         var state = SemanticOtherChanceEngineV111.Begin(
             NativeRngV111.CreateBundle("semantic-cost-unsupported"));
         var hash = CanonicalJson.Sha256(state);
-        Assert.Throws<NotSupportedException>(() =>
+        Assert.Throws<ArgumentException>(() =>
             SemanticOtherChanceEngineV111.ResolveDrawCost(state,
                 Cost("combat.random_target")));
         Assert.Throws<NotSupportedException>(() =>

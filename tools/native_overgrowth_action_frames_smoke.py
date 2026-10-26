@@ -7,6 +7,7 @@ import tempfile
 from pathlib import Path
 
 from native_overgrowth_action_frames import action_frames
+from jsonl_privacy_assertions import assert_public_stochastic_view
 
 
 def state(hand_ids=(1, 2), hp=50, energy=3):
@@ -118,7 +119,7 @@ def main():
         assert first["at_start_callback"]["player"]["powers"] == [
             {"id": "DEXTERITY_POWER", "amount": 2}
         ]
-        assert "run_rng" not in json.dumps(extracted)
+        assert_public_stochastic_view(extracted)
         assert ending["kind"] == "end_turn_marker"
 
         # Old v4 remains readable with a clear loss of identity evidence.

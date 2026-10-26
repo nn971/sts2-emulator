@@ -153,10 +153,18 @@ public sealed class ChanceLawV111Tests
         var second = ChanceLawEngineV111.QueryIntent(
             IntentEvent("intent-event-b", "private-boundary-b"));
 
-        Assert.Equal(6, first.TotalWeight);
-        Assert.Equal("UNVERIFIED", first.ProbabilityStatus);
-        Assert.Equal("source-shaped-unverified", first.ProbabilityProvenance);
-        Assert.Equal(new long[] { 2, 3, 1 },
+        Assert.Equal(ChanceLawV111.NativeSourceGridSize, first.TotalWeight);
+        Assert.Equal(ChanceLawV111.SourceVerifiedStatus,
+            first.ProbabilityStatus);
+        Assert.Equal(ChanceLawEngineV111.NativeBoundedIndexSourceVerifiedProvenance,
+            first.ProbabilityProvenance);
+        var indexWeights = ChanceLawEngineV111.NativeNextIntGridWeights(6);
+        Assert.Equal(new[]
+            {
+                indexWeights[0] + indexWeights[1],
+                indexWeights[2] + indexWeights[3] + indexWeights[4],
+                indexWeights[5]
+            },
             first.Outcomes.Select(outcome => outcome.Weight));
         Assert.Equal(first.LawId, second.LawId);
         Assert.Equal(first.ConditioningFingerprint,
@@ -274,16 +282,117 @@ public sealed class ChanceLawV111Tests
     }
 
     [Fact]
+    public void ExactDeckEnumerationCoversConstrainedDeckOperations()
+    {
+        var original = SemanticDeckEngineV111.BeginNature(
+            [11, 22, 33, 44]);
+        var middleInserted = SemanticDeckEngineV111.InsertKnown(
+            original, 3, 90);
+        var anchored = SemanticDeckEngineV111.PlaceBottom(
+            SemanticDeckEngineV111.PlaceTop(middleInserted, 91), 92);
+        var oneAnchor = SemanticDeckEngineV111.PlaceTop(original, 90);
+        var moved = SemanticDeckEngineV111.MoveKnownToOffset(
+            anchored, 90, 3);
+
+        var states = new[]
+        {
+            original,
+            middleInserted,
+            anchored,
+            SemanticDeckEngineV111.RemoveKnown(anchored, 90),
+            SemanticDeckEngineV111.RemoveCardInstance(original, 33),
+            SemanticDeckEngineV111.RemoveCardInstances(
+                oneAnchor, [90, 33]),
+            SemanticDeckEngineV111.MoveKnownToTop(anchored, 90),
+            SemanticDeckEngineV111.MoveKnownToBottom(anchored, 91),
+            moved,
+            SemanticDeckEngineV111.CommitControlledNatureShuffle(
+                anchored,
+                SemanticDeckEngineV111.AllCardInstanceIds(anchored)
+                    .Reverse().ToArray()),
+            SemanticDeckEngineV111.FromCommittedOpening([6, 5, 4, 3, 2, 1]),
+            SemanticDeckEngineV111.ReshuffleNature(anchored),
+            SemanticDeckEngineV111.RecycleNature(
+                SemanticDeckEngineV111.BeginNature([]),
+                [11, 22, 33, 44, 55, 66], [22, 55])
+        };
+
+        foreach (var state in states)
+            AssertEnumeratorMatchesIndependentCompletions(state);
+    }
+
+    [Fact]
+    public void DeckDrawAndRevealLawsPreserveDuplicateModelPhysicalIdentities()
+    {
+        var modelByCardInstance = new Dictionary<long, string>
+        {
+            [11] = "strike",
+            [22] = "strike",
+            [33] = "defend",
+            [44] = "defend",
+            [55] = "bash"
+        };
+        var state = SemanticDeckEngineV111.InsertKnown(
+            SemanticDeckEngineV111.BeginNature(
+                modelByCardInstance.Keys.ToArray()), 2, 99);
+
+        AssertRevealLawMatchesIndependentCompletions(
+            state, topOffset: 0, purpose: "draw", modelByCardInstance);
+        AssertRevealLawMatchesIndependentCompletions(
+            state, topOffset: 1, purpose: "peek", modelByCardInstance);
+        AssertRevealLawMatchesIndependentCompletions(
+            state, topOffset: 1, purpose: "scry", modelByCardInstance);
+
+        var drawPending = SemanticDeckEngineV111.Require(
+            state, 0, "draw");
+        var drawLaw = ChanceLawEngineV111.QueryDraw(drawPending);
+        var byModel = drawLaw.Outcomes.GroupBy(outcome =>
+                modelByCardInstance[ParseCardId(outcome.OutcomeId)])
+            .ToDictionary(group => group.Key,
+                group => group.Sum(outcome => outcome.Weight),
+                StringComparer.Ordinal);
+        Assert.Equal(2L, byModel["strike"]);
+        Assert.Equal(2L, byModel["defend"]);
+        Assert.Equal(1L, byModel["bash"]);
+        Assert.Equal(5L, drawLaw.TotalWeight);
+        Assert.Equal("UNVERIFIED", drawLaw.ProbabilityStatus);
+    }
+
+    [Fact]
     public void DrawLawRejectsCommittedAndKnownCardsInsteadOfRerandomizingThem()
     {
         var native = SemanticDeckEngineV111.BeginNative([1, 2]);
         Assert.Throws<InvalidOperationException>(() =>
             ChanceLawEngineV111.QueryDraw(native));
+        Assert.Throws<InvalidOperationException>(() =>
+            ChanceLawEngineV111.QueryDeckReveal(native));
 
         var nature = SemanticDeckEngineV111.PlaceTop(
             SemanticDeckEngineV111.BeginNature([1, 2]), 9);
         Assert.Throws<InvalidOperationException>(() =>
             ChanceLawEngineV111.QueryDraw(nature));
+        Assert.Throws<InvalidOperationException>(() =>
+            ChanceLawEngineV111.QueryDeckReveal(nature));
+
+        var peek = SemanticDeckEngineV111.Require(
+            SemanticDeckEngineV111.BeginNature([1, 2]), 0, "peek");
+        var scry = SemanticDeckEngineV111.Require(
+            SemanticDeckEngineV111.BeginNature([1, 2]), 0, "scry");
+        Assert.Throws<InvalidOperationException>(() =>
+            ChanceLawEngineV111.QueryDraw(peek));
+        var peekLaw = ChanceLawEngineV111.QueryDeckReveal(peek);
+        var scryLaw = ChanceLawEngineV111.QueryDeckReveal(scry);
+        Assert.Equal(peekLaw.Outcomes.Select(outcome => outcome.OutcomeId),
+            scryLaw.Outcomes.Select(outcome => outcome.OutcomeId));
+        Assert.NotEqual(peekLaw.LawId, scryLaw.LawId);
+        Assert.NotEqual(peekLaw.ConditioningFingerprint,
+            scryLaw.ConditioningFingerprint);
+        Assert.Throws<InvalidOperationException>(() =>
+            SemanticDeckEngineV111.Resolve(scry, peek.Fingerprint, 0));
+        var resolved = SemanticDeckEngineV111.Resolve(
+            scry, scry.Fingerprint, 0);
+        Assert.Throws<InvalidOperationException>(() =>
+            ChanceLawEngineV111.QueryDeckReveal(resolved));
     }
 
     [Fact]
@@ -442,6 +551,95 @@ public sealed class ChanceLawV111Tests
         AssignPool(0);
         return results;
     }
+
+    private static void AssertEnumeratorMatchesIndependentCompletions(
+        SemanticDeckStateV111 state)
+    {
+        var fingerprint = state.Fingerprint;
+        var expected = IndependentCompletions(state)
+            .Select(OrderKey).Order(StringComparer.Ordinal).ToArray();
+        var enumeration = SemanticDeckEngineV111.EnumeratePossibleOrders(
+            state, SemanticDeckEngineV111.MaximumEnumeratedDeckOrders);
+        var actual = enumeration.Outcomes.Select(outcome =>
+                OrderKey(outcome.CardInstanceIds))
+            .Order(StringComparer.Ordinal).ToArray();
+
+        Assert.Equal(fingerprint, state.Fingerprint);
+        Assert.Equal(expected, actual);
+        Assert.Equal(expected.Length.ToString(CultureInfo.InvariantCulture),
+            enumeration.CompletionCount);
+        Assert.Equal("UNVERIFIED", enumeration.ProbabilityStatus);
+    }
+
+    private static void AssertRevealLawMatchesIndependentCompletions(
+        SemanticDeckStateV111 state, int topOffset, string purpose,
+        IReadOnlyDictionary<long, string> modelByCardInstance)
+    {
+        var pending = SemanticDeckEngineV111.Require(
+            state, topOffset, purpose);
+        Assert.NotNull(pending.Pending);
+        var beforeQuery = pending.Fingerprint;
+        var law = purpose == "draw"
+            ? ChanceLawEngineV111.QueryDraw(pending)
+            : ChanceLawEngineV111.QueryDeckReveal(pending);
+        law.Validate();
+        Assert.Equal(beforeQuery, pending.Fingerprint);
+        Assert.Equal(beforeQuery, law.ConditioningFingerprint);
+        Assert.Equal("player:draw_pile", law.OwnerId);
+        Assert.Equal(purpose == "draw"
+                ? "combat.draw_pile.draw_card"
+                : "combat.draw_pile.reveal_card",
+            law.SiteId);
+        Assert.Equal("choose_card_instance", law.OperationKind);
+
+        var fullOrders = IndependentCompletions(pending).ToArray();
+        var exactCounts = fullOrders
+            .GroupBy(order => order[topOffset])
+            .ToDictionary(group => group.Key, group => group.Count());
+        Assert.Equal(exactCounts.Keys.Order(), law.Outcomes
+            .Select(outcome => ParseCardId(outcome.OutcomeId)).Order());
+        foreach (var outcome in law.Outcomes)
+        {
+            var selected = ParseCardId(outcome.OutcomeId);
+            var selectedOrders = fullOrders
+                .Where(order => order[topOffset] == selected).ToArray();
+            Assert.Equal((long)exactCounts[selected] * law.TotalWeight,
+                outcome.Weight * fullOrders.Length);
+
+            var resolved = SemanticDeckEngineV111.Resolve(
+                pending, pending.Fingerprint, selected);
+            var resolvedOrders = IndependentCompletions(resolved).ToArray();
+            if (purpose == "draw")
+            {
+                var (remaining, drawn) =
+                    SemanticDeckEngineV111.DrawKnown(resolved);
+                Assert.Equal(selected, drawn);
+                resolvedOrders = IndependentCompletions(remaining)
+                    .Select(suffix => new[] { selected }.Concat(suffix)
+                        .ToArray()).ToArray();
+            }
+            Assert.Equal(
+                selectedOrders.Select(OrderKey).Order(StringComparer.Ordinal),
+                resolvedOrders.Select(OrderKey).Order(StringComparer.Ordinal));
+        }
+
+        var modelWeights = law.Outcomes.GroupBy(outcome =>
+                modelByCardInstance[ParseCardId(outcome.OutcomeId)])
+            .ToDictionary(group => group.Key,
+                group => group.Sum(outcome => outcome.Weight),
+                StringComparer.Ordinal);
+        foreach (var (model, weight) in modelWeights)
+        {
+            var matchingOrders = fullOrders.Count(order =>
+                modelByCardInstance[order[topOffset]] == model);
+            Assert.Equal((long)matchingOrders * law.TotalWeight,
+                weight * fullOrders.Length);
+        }
+    }
+
+    private static string OrderKey(IEnumerable<long> cardInstanceIds) =>
+        string.Join(",", cardInstanceIds.Select(id =>
+            id.ToString(CultureInfo.InvariantCulture)));
 
     private static IEnumerable<long[]> Permutations(long[] values)
     {

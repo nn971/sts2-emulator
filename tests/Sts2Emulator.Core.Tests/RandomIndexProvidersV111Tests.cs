@@ -176,7 +176,7 @@ public sealed class RandomIndexProvidersV111Tests
             "site", "run.niche", "owner", 0, []), streams));
         Assert.Throws<ArgumentException>(() => provider.Resolve(new(
             "site", "run.niche", "owner", -1, [1]), streams));
-        Assert.Throws<InvalidOperationException>(() => provider.Resolve(new(
+        Assert.Throws<NotSupportedException>(() => provider.Resolve(new(
             "site", "run.invalid", "owner", 0, [1]), streams));
         Assert.Equal(before, CanonicalJson.Sha256(streams));
     }

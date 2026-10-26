@@ -22,9 +22,9 @@ public sealed class PrototypeUnderdocksRemainingEventsTests
             punchOff, world with { Floor = 5 }));
         Assert.True(PrototypeNativeUnderdocksEvents.IsFloorEligible(
             punchOff, world with { Floor = 6 }));
-        Assert.Equal(10,
+        Assert.Equal(13,
             PrototypeNativeUnderdocksEvents.SupportedRegionEventIds.Length);
-        Assert.Equal(10,
+        Assert.Equal(13,
             PrototypeNativeUnderdocksEvents.NativeRegionEventIds.Length);
     }
 
@@ -79,11 +79,12 @@ public sealed class PrototypeUnderdocksRemainingEventsTests
         Assert.Equal(1, entered.World!.Event!.NativeDishCount);
         var rngBefore = CanonicalJson.Sha256(entered.Rng);
         var upgraded = Choose(engine, entered, "observe");
+        upgraded = PrototypeEventPageTestHelperV111.ContinueIfFinished(upgraded);
         Assert.Equal(RunPhase.MapChoice, upgraded.Phase);
         Assert.Equal(entered.Player.Gold, upgraded.Player.Gold);
         Assert.Equal(1, upgraded.Player.Deck.Count(card =>
             card.UpgradeLevel == 1));
-        Assert.NotEqual(rngBefore, CanonicalJson.Sha256(upgraded.Rng));
+        Assert.Equal(rngBefore, CanonicalJson.Sha256(upgraded.Rng));
     }
 
     [Fact]
@@ -134,6 +135,7 @@ public sealed class PrototypeUnderdocksRemainingEventsTests
             PrototypeContent.RewardCardPool);
 
         var left = Choose(engine, eaten, "leave");
+        left = PrototypeEventPageTestHelperV111.ContinueIfFinished(left);
         Assert.Equal(RunPhase.MapChoice, left.Phase);
         Assert.Null(left.World!.Event);
     }
@@ -150,8 +152,7 @@ public sealed class PrototypeUnderdocksRemainingEventsTests
             Player = current.Player with { Gold = 39 }
         };
         Assert.Equal(new[] { "observe" }, ChoiceIds(engine, current));
-        Assert.Equal(RunPhase.MapChoice,
-            Choose(engine, current, "observe").Phase);
+            Assert.Equal(RunPhase.MapChoice, PrototypeEventPageTestHelperV111.ContinueIfFinished(Choose(engine, current, "observe")).Phase);
     }
 
     [Fact]
@@ -384,6 +385,7 @@ public sealed class PrototypeUnderdocksRemainingEventsTests
         var before = CanonicalJson.Sha256(state);
         Assert.Contains("sword", ChoiceIds(engine, state));
         var chosen = Choose(engine, state, "sword");
+        chosen = PrototypeEventPageTestHelperV111.ContinueIfFinished(chosen);
         Assert.Equal(RunPhase.MapChoice, chosen.Phase);
         var swords = chosen.Player.Relics
             .Where(relic => relic.RelicId == swordId).ToArray();
@@ -415,6 +417,7 @@ public sealed class PrototypeUnderdocksRemainingEventsTests
         };
         Assert.Contains("climb", ChoiceIds(engine, state));
         var after = Choose(engine, state, "climb");
+        after = PrototypeEventPageTestHelperV111.ContinueIfFinished(after);
         Assert.Equal(RunPhase.MapChoice, after.Phase);
         Assert.Equal(state.Player.MaxHp - 13, after.Player.MaxHp);
         var lenses = after.Player.Relics.Where(relic =>
@@ -465,6 +468,7 @@ public sealed class PrototypeUnderdocksRemainingEventsTests
             null, null, false));
         var hash = CanonicalJson.Sha256(state);
         var done = Choose(engine, state, "light");
+        done = PrototypeEventPageTestHelperV111.ContinueIfFinished(done);
         Assert.Equal(RunPhase.MapChoice, done.Phase);
         Assert.All(upgradeable, id =>
             Assert.Equal(1, done.Player.Deck.Single(card =>
@@ -512,7 +516,8 @@ public sealed class PrototypeUnderdocksRemainingEventsTests
     private static RunState StartEvent(
         PrototypeGameEngine engine, string seed, int floor, int gold)
     {
-        var state = PrototypeNativeUnderdocksRunFactory.Create(seed);
+        var state = PrototypeContentTestSupport.ConfiguredNativeRun(
+            seed, ActIdentity.Underdocks);
         var node = new MapNodeState(
             "underdocks-final-event", 1, floor,
             PrototypeRoomType.Event, ["next-room"]);

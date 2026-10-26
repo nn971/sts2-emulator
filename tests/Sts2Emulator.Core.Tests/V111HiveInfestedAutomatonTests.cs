@@ -44,6 +44,7 @@ public sealed class V111HiveInfestedAutomatonTests
                 a.ReadPayload<EventChoicePayload>().ChoiceId == choice);
 
             var result = engine.Step(state, action).State;
+            result = PrototypeEventPageTestHelperV111.ContinueIfFinished(result);
             Assert.Equal(RunPhase.MapChoice, result.Phase);
             Assert.Equal(state.Player.Deck.Length + 1,
                 result.Player.Deck.Length);
@@ -70,6 +71,7 @@ public sealed class V111HiveInfestedAutomatonTests
                 CanonicalJson.Sha256(result.Fork()));
 
             var same = engine.Step(state.Fork(), action).State;
+            same = PrototypeEventPageTestHelperV111.ContinueIfFinished(same);
             Assert.Equal(CanonicalJson.Sha256(result),
                 CanonicalJson.Sha256(same));
         }

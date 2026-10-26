@@ -52,7 +52,7 @@ public sealed class PrototypeNativeOvergrowthRoomTests
     public void UnknownMapNodePreservesVisibleIdentityButRecordsResolvedRoom()
     {
         var engine = new PrototypeGameEngine();
-        var initial = PrototypeNativeOvergrowthRunFactory.Create(
+        var initial = PrototypeContentTestSupport.ConfiguredNativeRun(
             "native-question-room");
         var node = initial.World!.Map.Nodes.First(item =>
             item.RoomType == PrototypeRoomType.Unknown);

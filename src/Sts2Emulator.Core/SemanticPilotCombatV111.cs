@@ -2070,7 +2070,7 @@ public sealed record SemanticPilotCombatV111(
     RunState Run, SemanticEndTurnV111? PendingEndTurn,
     SemanticPilotContinuationV111[] History,
     string NativeEncounterEntry,
-    string Mode = "sts2-v111-semantic-playable-p0-v1")
+    string Mode = "sts2-v111-semantic-playable-p0-v1") : IJsonOnDeserialized
 {
     public const string SchemaId = "sts2-v111-semantic-playable-p0-v1";
     /// <summary>
@@ -2079,7 +2079,7 @@ public sealed record SemanticPilotCombatV111(
     /// </summary>
     [JsonIgnore]
     public SimulationStateV111<SemanticPilotMechanicsStateV111,
-        SemanticPilotStochasticStateV111> Simulation { get; init; } = new(
+        SemanticPilotStochasticStateV111> Simulation { get; private set; } = new(
             new SemanticPilotMechanicsStateV111(
                 OpeningSource, Run, History, NativeEncounterEntry, Mode)
             {
@@ -2955,6 +2955,20 @@ public sealed record SemanticPilotCombatV111(
         PendingEndTurn = PendingEndTurn?.Fork(),
         Stochastic = Stochastic.Fork()
     };
+
+    void IJsonOnDeserialized.OnDeserialized()
+    {
+        if (Mechanics.PendingEndTurn?.ControlledTurnIntents is
+            { } turnIntents)
+        {
+            var run = PrototypeGameEngine
+                .SetControlledTurnIntentContinuation(Run, turnIntents);
+            Simulation = Simulation with
+            {
+                Mechanics = Mechanics with { Run = run }
+            };
+        }
+    }
 }
 
 public static class SemanticPilotCombatEngineV111
@@ -3123,11 +3137,64 @@ public static class SemanticPilotCombatEngineV111
             var pending = intents.Pending!;
             var decision = StochasticProviderScopeV111.ResolveIndex(
                 nativeProvider, pending, rng);
+            if (entry.NativePolicyBaseline)
+            {
+                var auditState = new ControlledTurnIntentsV111(
+                    intents.BaselineCombat.Fork(), intents.Combat.Fork(),
+                    intents.Formation.NativeEncounterEntry,
+                    intents.NextEnemyIndex, intents.Transcript, pending,
+                    NativeCombatRngEntryV111.CommittedIntentSiteId);
+                var support = ControlledTurnIntentEngineV111
+                    .DescribePendingSemanticIntent(auditState) ??
+                    throw new InvalidDataException(
+                        "Native seeded intent has no weighted source support.");
+                var boundaryFingerprint = CanonicalJson.Sha256(new
+                {
+                    BaselineCombat = intents.BaselineCombat,
+                    Combat = intents.Combat,
+                    Formation = intents.Formation,
+                    NextEnemyIndex = intents.NextEnemyIndex,
+                    Transcript = intents.Transcript
+                });
+                var semanticEvent = SemanticIntentChoiceV111.CreateEvent(
+                    boundaryFingerprint, pending, support);
+                var selected = SemanticIntentChoiceV111.SelectBySourceTicket(
+                    semanticEvent, decision.SelectedIndex);
+                var auditEntry = new SemanticIntentAuditEntryV111(
+                    new SemanticIntentOutcomeV111(
+                        semanticEvent, selected.IntentId,
+                        decision.SelectedIndex), decision);
+                auditEntry.Validate();
+                RandomBoundaryJournalV111.RecordWeightedIntentOutcome(
+                    auditEntry);
+            }
             intents = ControlledIntentsV111.Resolve(
                 intents, intents.Fingerprint, decision.SelectedIndex);
         }
         var opening = ControlledPlayableCombatEngineV111.Begin(
             intents, entry.Seed, entry.EncounterId);
+        string[]? originalOpeningIdentities = null;
+        Dictionary<long, CombatCardInstance>? openingCardsById = null;
+        if (entry.NativePolicyBaseline)
+        {
+            var initialCombat = opening.Run.World?.Combat ??
+                throw new InvalidDataException(
+                    "Native seeded opening lost its initial combat.");
+            openingCardsById = initialCombat.Cards.ToDictionary(
+                card => card.InstanceId);
+            string[] Identities(IEnumerable<long> instanceIds) =>
+                instanceIds.Select(instanceId =>
+                {
+                    if (!openingCardsById.TryGetValue(
+                            instanceId, out var card))
+                        throw new InvalidDataException(
+                            "Native seeded opening shuffle contains an unknown card.");
+                    return "card-instance:" + instanceId.ToString(
+                        System.Globalization.CultureInfo.InvariantCulture) +
+                        ":" + card.CardId;
+                }).ToArray();
+            originalOpeningIdentities = Identities(initialCombat.DrawPile);
+        }
         while (!opening.AtPlayerBoundary)
         {
             var pending = opening.Pending ??
@@ -3141,6 +3208,31 @@ public static class SemanticPilotCombatEngineV111
                 {
                     SiteId = NativeFisherYatesV111.SiteId
                 }, rng);
+            if (originalOpeningIdentities is not null)
+            {
+                var currentCombat = opening.Run.World?.Combat ??
+                    throw new InvalidDataException(
+                        "Native seeded opening lost its active combat.");
+                var currentIdentities = currentCombat.DrawPile.Select(
+                    instanceId =>
+                    {
+                        if (!openingCardsById!.TryGetValue(
+                                instanceId, out var card))
+                            throw new InvalidDataException(
+                                "Native seeded opening shuffle contains an unknown card.");
+                        return "card-instance:" + instanceId.ToString(
+                            System.Globalization.CultureInfo.InvariantCulture) +
+                            ":" + card.CardId;
+                    }).ToArray();
+                var outcome = SemanticPoolShuffleChoiceV111.CreateNativeAudit(
+                    decision, originalOpeningIdentities, currentIdentities,
+                    originalOpeningIdentities.Length,
+                    SemanticPoolShuffleChoiceV111
+                        .NativeCombatEntryShuffleOperation,
+                    sourceCardInstanceId: null);
+                RandomBoundaryJournalV111.RecordPoolShuffleOutcomes(
+                    [outcome], [decision]);
+            }
             opening = ControlledPlayableCombatEngineV111.Resolve(
                 opening, opening.Fingerprint, decision.SelectedIndex);
         }
@@ -3177,6 +3269,7 @@ public static class SemanticPilotCombatEngineV111
                 throw new InvalidOperationException("Fixture relic already owned.");
             var definition = PrototypeContent.Relic(relicId);
             int index = (combat.Relics ?? []).Length;
+            long applicationOrder = combat.NextPowerApplicationOrder;
             var player = state.Run.Player with
             {
                 Relics = state.Run.Player.Relics.Append(
@@ -3186,9 +3279,10 @@ public static class SemanticPilotCombatEngineV111
             var updated = combat with
             {
                 Relics = (combat.Relics ?? []).Append(
-                    new CombatRelicState(index, relicId, index + 1L,
+                    new CombatRelicState(index, relicId, applicationOrder,
                         new int[(definition.Triggers ?? []).Length], false))
-                    .ToArray()
+                    .ToArray(),
+                NextPowerApplicationOrder = applicationOrder + 1
             };
             state = state with
             {
@@ -5950,7 +6044,8 @@ public static class SemanticPilotCombatEngineV111
 
         var repetitions = expectedEffect.RepetitionsAt(
             sourceCard.UpgradeLevel, series.EnergySpent);
-        if (repetitions <= 0 || continuation.Operations.Length != repetitions)
+        if (repetitions <= 0 || continuation.Operations.Length <= 0 ||
+            continuation.Operations.Length > repetitions)
             return false;
 
         var poweredAttack = expectedType == PrototypeCardType.Attack &&
@@ -5965,7 +6060,8 @@ public static class SemanticPilotCombatEngineV111
             TargetMode: PrototypeEffectTarget.RandomEnemy,
             SourceKind: PrototypeEffectSourceKind.Card,
             IsPoweredAttack: poweredAttack);
-        var expectedOperations = Enumerable.Range(0, repetitions)
+        var expectedOperations = Enumerable.Range(
+                0, continuation.Operations.Length)
             .Select(index => expectedOperation with
             {
                 TargetMode = index == 0
@@ -6895,9 +6991,11 @@ public static class SemanticPilotCombatEngineV111
         if (generation?.Operation.Kind ==
                 PrototypeCombatEffectKind.CreateRandomCharacterSkillCardsInHand &&
             !IsTrashHeapDistractionGenerationChoice(
-                combat, choice, generation))
+                combat, choice, generation) &&
+            !IsOrobicAcidSkillGenerationChoice(
+                choice, generation))
             throw new InvalidDataException(
-                "Generated Skill-card choice is outside Distraction.");
+                "Generated Skill-card choice is outside a supported source action.");
         if (isDrawInsertionModelChoice)
         {
             if (current.Stochastic.SeededEntry?.FixtureRandomFreeAttackDrawInsertion != true &&
@@ -7314,6 +7412,41 @@ public static class SemanticPilotCombatEngineV111
             completion.SourceCardInstanceId == sourceCardInstanceId &&
             CanonicalJson.Sha256(generation.Operation) ==
                 CanonicalJson.Sha256(expectedOperation);
+    }
+
+    private static bool IsOrobicAcidSkillGenerationChoice(
+        PendingCombatChoiceState? choice,
+        PrototypeControlledGeneratedCardV111? generation)
+    {
+        if (choice is not
+            { ChoiceId: "controlled_generated_card",
+              SourceCardInstanceId: null,
+              CompletionEvents: [],
+              OuterChoiceContinuation: { } continuation } ||
+            generation is null)
+            return false;
+
+        var expectedSkill = new PrototypeQueuedOperation(
+            PrototypeCombatEffectKind.CreateRandomCharacterSkillCardsInHand,
+            1, SourceKind: PrototypeEffectSourceKind.Potion,
+            GeneratedCharacterCardsFreeThisTurn: true);
+        var expectedPower = new PrototypeQueuedOperation(
+            PrototypeCombatEffectKind.CreateRandomCharacterPowerCardsInHand,
+            1, SourceKind: PrototypeEffectSourceKind.Potion,
+            GeneratedCharacterCardsFreeThisTurn: true);
+        return CanonicalJson.Sha256(generation.Operation) ==
+                CanonicalJson.Sha256(expectedSkill) &&
+            continuation.SourceCardInstanceId is null &&
+            continuation.Operations is [{ } remaining] &&
+            CanonicalJson.Sha256(remaining) ==
+                CanonicalJson.Sha256(expectedPower) &&
+            continuation.CompletionEvents is
+                [{ Kind: PrototypeCombatEventKind.PotionUsed }] &&
+            continuation.PendingDiscardEvents.Length == 0 &&
+            continuation.PendingSlyCardInstanceIds.Length == 0 &&
+            continuation.CardPlaySeries is null &&
+            continuation.Parent is null &&
+            continuation.EventDispatchContinuation is null;
     }
 
     internal static bool IsNeowsAbundanceGeneratedChoiceShuffle(

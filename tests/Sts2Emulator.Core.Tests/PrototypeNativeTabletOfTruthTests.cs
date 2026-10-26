@@ -15,6 +15,10 @@ public sealed class PrototypeNativeTabletOfTruthTests
             {
                 Event = world.Event! with
                 {
+                    NativeEventRngProviderMode = "scripted-v111",
+                    NativeEventRng = NativeRngV111Contexts.ForEvent(
+                        state.RunSeed,
+                        PrototypeNativeOvergrowthEvents.NeowRngEventEntry),
                     OfferedChoiceIds =
                     [
                         "take_" + PrototypeNativeOvergrowthEvents.NeowRelicId(
@@ -33,6 +37,7 @@ public sealed class PrototypeNativeTabletOfTruthTests
                 == "take_" + PrototypeNativeOvergrowthEvents.NeowRelicId(
                     "GoldenPearl"));
         state = engine.Step(state, neow).State;
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
 
         var map = state.World!.Map;
@@ -131,6 +136,7 @@ public sealed class PrototypeNativeTabletOfTruthTests
             }
         }
 
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.Null(state.World!.Event);
         Assert.Equal(13, state.Player.Deck.Count(card =>
@@ -157,6 +163,7 @@ public sealed class PrototypeNativeTabletOfTruthTests
 
         var before = state.Player.Deck.ToArray();
         state = Choose(engine, state, "give_up");
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.Null(state.World!.Event);
         Assert.Equal(expectedMaxHp, state.Player.MaxHp);
@@ -177,6 +184,7 @@ public sealed class PrototypeNativeTabletOfTruthTests
         var engine = new PrototypeGameEngine();
         var originalDeck = state.Player.Deck;
         state = Choose(engine, state, "smash");
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.Equal(32, state.Player.Hp);
         Assert.Equal(70, state.Player.MaxHp);

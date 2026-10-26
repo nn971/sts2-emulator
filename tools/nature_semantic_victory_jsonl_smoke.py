@@ -5,11 +5,13 @@ Protocol/semantic mechanics acceptance, not a model training benchmark.
 All processes have separate emulator handles, RNG copies and observations.
 """
 from concurrent.futures import ThreadPoolExecutor
+import argparse
 from pathlib import Path
 import json
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
+from jsonl_privacy_assertions import assert_public_stochastic_view
 sys.path.insert(0, str(ROOT / "bindings/python"))
 from sts2_emulator import Session
 
@@ -27,8 +29,7 @@ def begin_combat(session, *, seed=SEED, region="Overgrowth",
 
 def choose_action(combat):
     obs = combat.observe()
-    assert "semanticDeck" not in json.dumps(obs)
-    assert "rng" not in json.dumps(obs).lower()
+    assert_public_stochastic_view(obs)
     card_ids = {c["instance_id"]: c["card_id"]
                 for c in obs["combat"]["hand"]}
     actions = combat.actions()
@@ -211,6 +212,14 @@ def play_comparison_pair(seed=SEED, region="Overgrowth"):
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--worker-repeats", type=int, default=15,
+        help="independent paired reruns per route seed (default: 15; 0 disables)")
+    args = parser.parse_args()
+    if args.worker_repeats < 0:
+        parser.error("--worker-repeats must be zero or greater")
+
     route_cases = [
         ("canonical Overgrowth", SEED, "Overgrowth"),
         ("Overgrowth/Shrinker Beetle", "route-audit-01", "Overgrowth"),
@@ -220,12 +229,12 @@ def main():
     ]
     # Check deterministic paired replay at every included route seed, not
     # just the canonical encounter.
-    with ThreadPoolExecutor(max_workers=15) as pool:
+    with ThreadPoolExecutor(max_workers=max(1, args.worker_repeats)) as pool:
         for label, seed, region in route_cases:
             baseline = play_comparison_pair(seed=seed, region=region)
             parallel = list(pool.map(
                 lambda _: play_comparison_pair(seed=seed, region=region),
-                range(15)))
+                range(args.worker_repeats)))
             assert all(result == baseline for result in parallel), (
                 f"Native/Nature paired replay diverged for {label} "
                 "across independent processes")
@@ -236,7 +245,7 @@ def main():
                   f"weighted intent events={nature[9]} "
                   f"(candidates={nature[10]}); "
                   f"native decisions={native[8]}, shuffles={native[9]}; "
-                  "complete 1-vs-15 independent process replay")
+                  f"independent paired reruns={args.worker_repeats}")
     print("Source conditional laws remain UNVERIFIED")
 
 

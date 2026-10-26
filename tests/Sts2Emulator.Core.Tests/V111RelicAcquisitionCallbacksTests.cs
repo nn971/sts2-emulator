@@ -139,6 +139,6 @@ public sealed class V111RelicAcquisitionCallbacksTests
                 BindingFlags.Static);
         Assert.NotNull(method);
         return (PlayerState)method!.Invoke(null,
-            [player, kind, null, acquired, null, null])!;
+            [player, kind, null, acquired, null, null, null, null])!;
     }
 }

@@ -362,17 +362,12 @@ public sealed class V111EventObservabilityAndRelicInstanceTests
 
     private static void ValidateEvent(RunState state)
     {
-        var method = typeof(PrototypeStateInvariants).GetMethod(
-            "ValidateEvent", BindingFlags.NonPublic | BindingFlags.Static);
-        Assert.NotNull(method);
-        method!.Invoke(null, [state.Player, state.World!.Event!]);
+        state.World!.Event!.Validate(state.Player);
     }
 
     private static void AssertInvalidEvent(RunState state)
     {
-        var exception = Assert.Throws<TargetInvocationException>(
-            () => ValidateEvent(state));
-        Assert.IsType<InvalidOperationException>(exception.InnerException);
+        Assert.Throws<InvalidOperationException>(() => ValidateEvent(state));
     }
 
     private static RunState AtEvent(
@@ -402,10 +397,18 @@ public sealed class V111EventObservabilityAndRelicInstanceTests
     private static PlayerState ApplyPersistent(
         PlayerState player, PrototypeRoomType room, RngBundle rng)
     {
+        var state = PrototypeNativeUnderdocksRunFactory.Create(
+            "persistent-combat-end-test") with
+        {
+            Player = player,
+            Rng = rng
+        };
         var method = typeof(PrototypeGameEngine).GetMethod(
             "ApplyNativePersistentCombatEnd",
             BindingFlags.NonPublic | BindingFlags.Static);
         Assert.NotNull(method);
-        return (PlayerState)method!.Invoke(null, [player, room, rng])!;
+        var result = Assert.IsType<RunState>(
+            method!.Invoke(null, [state, room]));
+        return result.Player;
     }
 }

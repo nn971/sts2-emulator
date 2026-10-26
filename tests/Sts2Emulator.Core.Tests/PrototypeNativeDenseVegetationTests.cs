@@ -16,6 +16,10 @@ public sealed class PrototypeNativeDenseVegetationTests
             {
                 Event = state.World.Event! with
                 {
+                    NativeEventRngProviderMode = "scripted-v111",
+                    NativeEventRng = NativeRngV111Contexts.ForEvent(
+                        state.RunSeed,
+                        PrototypeNativeOvergrowthEvents.NeowRngEventEntry),
                     OfferedChoiceIds =
                     [
                         "take_" + PrototypeNativeOvergrowthEvents.NeowRelicId(
@@ -34,6 +38,7 @@ public sealed class PrototypeNativeDenseVegetationTests
                 == "take_" + PrototypeNativeOvergrowthEvents.NeowRelicId(
                     "GoldenPearl"));
         state = engine.Step(state, goldenPearl).State;
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
 
         var map = state.World!.Map;
@@ -85,6 +90,7 @@ public sealed class PrototypeNativeDenseVegetationTests
             && a.ReadPayload<EventChoicePayload>().ChoiceId == "trudge");
         state = engine.Step(state, action).State;
 
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.Equal(22, state.Player.Hp);
         Assert.Equal(gold + 80, state.Player.Gold);

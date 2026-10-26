@@ -105,7 +105,8 @@ public sealed class ControlledLiveRecycleV111Tests
         var pending = ToRecycle("nature-recycle-forks");
         var view = NatureBoundaryMetadataV111.Describe(pending);
         Assert.Equal("draw_recycle", view.Kind);
-        Assert.Equal("UNVERIFIED", view.Pending!.ProbabilityStatus);
+        Assert.Equal(ChanceLawV111.SourceVerifiedStatus,
+            view.Pending!.ProbabilityStatus);
         Assert.True(view.Pending.SupportCount > 1);
         var left = ControlledPlayableCombatEngineV111.Resolve(
             pending, pending.Fingerprint, 0);

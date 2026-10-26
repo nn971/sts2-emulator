@@ -834,7 +834,11 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
                     outcome.Event.Request, providerDecision.Request) ||
                 outcome.SelectedSwapIndex != providerDecision.SelectedIndex)
                 throw new InvalidDataException(
-                    "Native pool-shuffle annotation differs from its ordered primitive transcript.");
+                    "Native pool-shuffle annotation differs from its ordered primitive transcript " +
+                    $"(provider={providerDecision.Request.SiteId}/" +
+                    $"{providerDecision.Request.Ordinal}, " +
+                    $"journal={journalDecision.Request.SiteId}/" +
+                    $"{journalDecision.Request.Ordinal}).");
             current._poolShuffleOutcomes.Add(outcome.Fork());
         }
     }

@@ -6,7 +6,7 @@ namespace Sts2Emulator.Core.Tests;
 public sealed class SemanticPilotCombatV111Tests
 {
     [Fact]
-    public void NativePolicyGuardAllowsOnlyDeclaredProviderStreams()
+    public void NativePolicyGuardRejectsUnownedNativePrimitiveDraws()
     {
         var native = NativeRngV111.CreateBundle(
             "semantic-native-policy-guard");
@@ -15,14 +15,14 @@ public sealed class SemanticPilotCombatV111Tests
         using (ControlledChanceGuardV111.Enter())
         using (ControlledChanceGuardV111.AllowEngineOwnedNativeProvider())
         {
-            Assert.InRange(NativeRngV111.NextInt(
-                native, "run.monster_ai", 2), 0, 1);
-            Assert.InRange(NativeRngV111.NextInt(
-                native, "run.shuffle", 2), 0, 1);
-            Assert.InRange(NativeRngV111.NextInt(
-                native, "run.combat_energy_costs", 4), 0, 3);
-            Assert.InRange(NativeRngV111.NextInt(
-                native, "run.combat_targets", 2), 0, 1);
+            Assert.Throws<NotSupportedException>(() =>
+                NativeRngV111.NextInt(native, "run.monster_ai", 2));
+            Assert.Throws<NotSupportedException>(() =>
+                NativeRngV111.NextInt(native, "run.shuffle", 2));
+            Assert.Throws<NotSupportedException>(() =>
+                NativeRngV111.NextInt(native, "run.combat_energy_costs", 4));
+            Assert.Throws<NotSupportedException>(() =>
+                NativeRngV111.NextInt(native, "run.combat_targets", 2));
             Assert.Throws<NotSupportedException>(() =>
                 NativeRngV111.NextInt(native, "run.combat_orbs", 2));
             Assert.Throws<NotSupportedException>(() =>
@@ -45,6 +45,35 @@ public sealed class SemanticPilotCombatV111Tests
                 var decision = LegacyRandomChoiceV111.ChooseBoundedInteger(
                     streams, "reward.card_rarity.ticket", "reward", "cards", 3);
                 Assert.InRange(decision.SelectedIndex, 0, 2);
+                var potionOdds = LegacyRandomChoiceV111.ChooseBoundedInteger(
+                    streams, "reward.potion_odds.ticket", "reward",
+                    "run:potion_reward_odds", 1000);
+                Assert.InRange(potionOdds.SelectedIndex, 0, 999);
+                var gold = LegacyRandomChoiceV111.ChooseBoundedInteger(
+                    streams, StochasticSiteRegistryV111.NativeCombatGoldSiteId,
+                    "reward", "room:Combat:ascension:0:bounds:10:20", 11);
+                Assert.InRange(gold.SelectedIndex, 0, 10);
+                var potionRarity = LegacyRandomChoiceV111
+                    .ChooseBoundedInteger(streams,
+                        PrototypeNativePotionShop.RarityRollSiteId,
+                        "reward", "room:potion", 100);
+                Assert.InRange(potionRarity.SelectedIndex, 0, 99);
+                var potionModel = LegacyRandomChoiceV111.ChooseIndexRange(
+                    streams, PrototypeNativePotionShop.ModelWithinRaritySiteId,
+                    "reward", "room:potion:pool", 3);
+                Assert.InRange(potionModel.SelectedIndex, 0, 2);
+                var cardRarity = LegacyRandomChoiceV111.ChooseBoundedInteger(
+                    streams, "card_rarity.roll.ticket", "reward",
+                    "room:card_rarity", 10000);
+                Assert.InRange(cardRarity.SelectedIndex, 0, 9999);
+                var rewardCard = LegacyRandomChoiceV111.ChooseIndexRange(
+                    streams, StochasticSiteRegistryV111.NativeRewardCardModelSiteId,
+                    "reward", "room:reward_card", 5);
+                Assert.InRange(rewardCard.SelectedIndex, 0, 4);
+                var cardUpgrade = LegacyRandomChoiceV111.ChooseBoundedInteger(
+                    streams, "card_rarity.upgrade_roll.ticket", "reward",
+                    "room:card_upgrade", 10000);
+                Assert.InRange(cardUpgrade.SelectedIndex, 0, 9999);
                 Assert.Throws<NotSupportedException>(() =>
                     LegacyRandomChoiceV111.ChooseBoundedInteger(
                         streams, "reward.potion.rarity_roll.ticket",
@@ -139,9 +168,9 @@ public sealed class SemanticPilotCombatV111Tests
             else
                 throw new InvalidOperationException(
                     "Unsupported source event lacked a semantic chance boundary.");
+            var saved = SemanticPilotCombatEngineV111.Save(state);
             Assert.Equal(state.Fingerprint,
-                SemanticPilotCombatEngineV111.Restore(
-                    SemanticPilotCombatEngineV111.Save(state)).Fingerprint);
+                SemanticPilotCombatEngineV111.Restore(saved).Fingerprint);
         }
         Assert.True(intents > 0);
         Assert.True(state.Run.World!.Combat!.IsPlayerTurn);
@@ -430,6 +459,28 @@ public sealed class SemanticPilotCombatV111Tests
     }
 
     [Fact]
+    public void SeededNativePolicyAuditAnnotatesInitialWeightedIntents()
+    {
+        var entry = Seeded("semantic-native-policy-initial-intent-audit") with
+        {
+            NativePolicyBaseline = true
+        };
+
+        var state = SemanticPilotCombatEngineV111.BeginSeeded(entry);
+        var audit = Assert.IsType<SemanticNativePolicyAuditV111>(
+            state.NativePolicyAudit);
+        var intentDecisions = audit.Decisions.Where(decision =>
+            decision.Request.SiteId ==
+                NativeCombatRngEntryV111.CommittedIntentSiteId).ToArray();
+
+        Assert.NotEmpty(intentDecisions);
+        Assert.Equal(intentDecisions.Length, audit.WeightedIntentOutcomes.Length);
+        Assert.All(audit.WeightedIntentOutcomes, outcome => outcome.Validate());
+        Assert.Equal(SemanticNativePolicyAuditV111.WeightedIntentAuditSchemaV1,
+            audit.WeightedIntentAuditSchema);
+    }
+
+    [Fact]
     public void SeededOpeningProvenanceRejectsTamperedReplayAndMatchesFifteenWorkers()
     {
         var entry = Seeded("semantic-p0-seeded-multiworker");
@@ -520,6 +571,27 @@ public sealed class SemanticPilotCombatV111Tests
         Assert.Equal(state.Fingerprint,
             SemanticPilotCombatEngineV111.Restore(
                 SemanticPilotCombatEngineV111.Save(state)).Fingerprint);
+    }
+
+    [Fact]
+    public void SourceRouteWeakVictorySeedReachesSemanticCombatBoundary()
+    {
+        var state = SemanticPilotCombatEngineV111.BeginSeeded(
+            new SemanticSeededEntryV111(
+                "nature-p0-weak-real-victory", 1,
+                "@source-route", "@source-route", 1, 0, 1, null, null,
+                SourceRouteEntry: true,
+                RouteActOneRegion: ActIdentity.Overgrowth));
+
+        while (state.IntentPending is not null)
+        {
+            var support = ControlledTurnIntentEngineV111
+                .DescribePendingSemanticIntent(
+                    state.PendingInitialIntents!)!;
+            state = SemanticPilotCombatEngineV111.ResolveIntent(
+                state, state.Fingerprint, support.Candidates[0].IntentId);
+        }
+        Assert.True(state.AtPlayerBoundary);
     }
 
     [Fact]

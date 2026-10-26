@@ -16,7 +16,8 @@ public sealed record ControlledPlayableCombatV111(
     RandomIndexDecisionV111[] ShuffleTranscript,
     string[] PlayerActions,
     RandomIndexRequestV111? Pending,
-    string Mode = "controlled-v111-playable-fixture-v1")
+    string Mode = "controlled-v111-playable-fixture-v1",
+    string? FixtureEncounterId = null)
 {
     /// <summary>
     /// Atomic mechanics/provider envelope for the playable combat fixture.
@@ -27,7 +28,7 @@ public sealed record ControlledPlayableCombatV111(
         ControlledPlayableCombatStochasticStateV111> Simulation { get; init; } =
         new(
             new ControlledPlayableCombatMechanicsStateV111(
-                Seed, Origin, Run, PlayerActions, Mode),
+                Seed, Origin, Run, PlayerActions, Mode, FixtureEncounterId),
             new ControlledPlayableCombatStochasticStateV111
             {
                 NextShuffleIndex = NextShuffleIndex,
@@ -81,6 +82,14 @@ public sealed record ControlledPlayableCombatV111(
     {
         get => Mechanics.Mode;
         init => Mechanics = Mechanics with { Mode = value };
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? FixtureEncounterId
+    {
+        get => Mechanics.FixtureEncounterId;
+        init => Mechanics = Mechanics with { FixtureEncounterId = value };
     }
 
     public int NextShuffleIndex
@@ -441,7 +450,13 @@ public sealed record ControlledPlayableCombatV111(
         (Run.Phase switch
         {
             RunPhase.Combat =>
-                PrototypeGameEngine.IsAtCombatPlayerDecisionBoundary(Run),
+                PrototypeGameEngine.IsAtCombatPlayerDecisionBoundary(Run) ||
+                Run.World?.Combat is
+                {
+                    IsPlayerTurn: true,
+                    PendingChoice: { ChoiceId: "select_cards" },
+                    PendingKnowledgeDemonChoice: null
+                },
             RunPhase.Reward or RunPhase.Terminal => true,
             _ => false
         });
@@ -718,10 +733,28 @@ public static class ControlledPlayableCombatEngineV111
         var cards = player.Deck.Select((c, i) => new CombatCardInstance(
             i + 1L, c.InstanceId, c.CardId, c.UpgradeLevel, false,
             c.PersistentState.Clone(), Enchantment: c.Enchantment)).ToArray();
+        long nextApplicationOrder = 1;
+        var playerPowers = verified.Combat.PlayerPowers
+            .OrderBy(power => power.ApplicationOrder)
+            .Select(power => power with
+            {
+                ApplicationOrder = nextApplicationOrder++
+            }).ToArray();
+        var enemies = verified.Combat.Enemies.Select(enemy => enemy with
+        {
+            Powers = enemy.PowerStates
+                .OrderBy(power => power.ApplicationOrder)
+                .Select(power => power with
+                {
+                    ApplicationOrder = nextApplicationOrder++
+                }).ToArray()
+        }).ToArray();
         var relics = player.Relics.Select((r, i) =>
         {
             var d = PrototypeContent.Relic(r.RelicId);
-            return new CombatRelicState(i, r.RelicId, i + 1L,
+            return new CombatRelicState(
+                i, r.RelicId,
+                checked(nextApplicationOrder + i),
                 new int[(d.Triggers ?? []).Length], r.IsMelted);
         }).ToArray();
         var potions = player.PotionSlots.Select((p, i) =>
@@ -732,7 +765,11 @@ public static class ControlledPlayableCombatEngineV111
         {
             Cards = cards,
             NextCardInstanceId = cards.Length + 1L,
+            PlayerPowers = playerPowers,
+            Enemies = enemies,
             Relics = relics,
+            NextPowerApplicationOrder = checked(
+                nextApplicationOrder + relics.Length),
             Potions = potions,
             CurrentMapNodeId = run.World!.Map.CurrentNodeId,
             IsPlayerTurn = true
@@ -768,15 +805,40 @@ public static class ControlledPlayableCombatEngineV111
                     "Fixed playable encounter is ineligible for its run entry.");
             var world = run.World ?? throw new InvalidDataException(
                 "Playable combat fixture lost its run world.");
+            int fixtureFloor = Math.Max(world.Floor, encounter.MinFloor);
+            if (fixtureFloor > encounter.MaxFloor)
+                throw new InvalidDataException(
+                    "Fixed playable encounter is ineligible for its fixture floor.");
+            var fixtureNode = world.Map.Nodes.FirstOrDefault(node =>
+                node.Floor == fixtureFloor &&
+                node.RoomType is PrototypeRoomType.Combat or
+                    PrototypeRoomType.Unknown);
+            if (fixtureNode is null)
+                throw new InvalidDataException(
+                    "Fixed playable encounter has no eligible fixture map node.");
+            var activeCombat = world.Combat ?? throw new InvalidDataException(
+                "Playable combat fixture lost its active combat.");
             run = run with
             {
-                World = world.AppendEncounterId(encounterId)
+                World = world.AppendEncounterId(encounterId) with
+                {
+                    Floor = fixtureFloor,
+                    Map = world.Map with
+                    {
+                        CurrentNodeId = fixtureNode.NodeId
+                    },
+                    Combat = activeCombat with
+                    {
+                        CurrentMapNodeId = fixtureNode.NodeId
+                    }
+                }
             };
         }
         int nextIndex = combat.DrawPile.Length - 1;
         var state = new ControlledPlayableCombatV111(
             seed, verified, run, nextIndex, [], [],
-            MakePending(nextIndex, 0));
+            MakePending(nextIndex, 0),
+            FixtureEncounterId: encounterId);
         return state;
     }
 
@@ -1482,7 +1544,8 @@ public static class ControlledPlayableCombatEngineV111
         stored.Validate();
         // Full provenance replay, from source-verified controlled HP+intent
         // completion through the entire ordered shuffle and player transcript.
-        var current = Begin(stored.Origin, stored.Seed);
+        var current = Begin(
+            stored.Origin, stored.Seed, stored.FixtureEncounterId);
         for (int shuffleIndex = 0;
             shuffleIndex < stored.Stochastic.ShuffleTranscript.Length;
             shuffleIndex++)
@@ -1621,8 +1684,19 @@ public static class ControlledPlayableCombatEngineV111
         return current;
     }
 
-    internal static void VerifyStage(ControlledPlayableCombatV111 state) =>
-        state.Validate();
+    internal static void VerifyStage(ControlledPlayableCombatV111 state)
+    {
+        try
+        {
+            state.Validate();
+        }
+        catch (InvalidOperationException exception)
+        {
+            throw new InvalidDataException(
+                "Controlled playable snapshot is structurally invalid.",
+                exception);
+        }
+    }
 
     internal static RandomIndexRequestV111? MakePending(int index, int ordinal) =>
         index < 1 ? null : new RandomIndexRequestV111(

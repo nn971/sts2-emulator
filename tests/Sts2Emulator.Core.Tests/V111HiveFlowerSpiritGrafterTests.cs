@@ -55,6 +55,7 @@ public sealed class V111HiveFlowerSpiritGrafterTests
         var resultingHp = 70 - (digs >= 1 ? 5 : 0)
             - (digs >= 2 ? 6 : 0);
         var selected = Select(state, "extract");
+        selected = PrototypeEventPageTestHelperV111.ContinueIfFinished(selected);
         Assert.Equal(RunPhase.MapChoice, selected.Phase);
         Assert.Equal(resultingHp, selected.Player.Hp);
         Assert.Equal(40 + payout, selected.Player.Gold);
@@ -81,6 +82,7 @@ public sealed class V111HiveFlowerSpiritGrafterTests
         Assert.Equal(8, payout.Player.Hp);
 
         var relic = Select(state, "relic");
+        relic = PrototypeEventPageTestHelperV111.ContinueIfFinished(relic);
         Assert.Equal(RunPhase.MapChoice, relic.Phase);
         Assert.Equal(1, relic.Player.Hp);
         Assert.Equal(100, relic.Player.Gold);
@@ -89,7 +91,9 @@ public sealed class V111HiveFlowerSpiritGrafterTests
         Assert.Equal(CanonicalJson.Sha256(original),
             CanonicalJson.Sha256(original.Fork()));
         Assert.Equal(CanonicalJson.Sha256(relic),
-            CanonicalJson.Sha256(Select(state.Fork(), "relic")));
+            CanonicalJson.Sha256(
+                PrototypeEventPageTestHelperV111.ContinueIfFinished(
+                    Select(state.Fork(), "relic"))));
     }
 
     [Fact]
@@ -99,6 +103,7 @@ public sealed class V111HiveFlowerSpiritGrafterTests
             hp: 60, gold: 0);
         var id = state.World!.NextCardInstanceId;
         var result = Select(state, "let_it_in");
+        result = PrototypeEventPageTestHelperV111.ContinueIfFinished(result);
         Assert.Equal(RunPhase.MapChoice, result.Phase);
         Assert.Equal(70, result.Player.Hp);
         Assert.Equal(0, result.Player.Gold);
@@ -126,6 +131,7 @@ public sealed class V111HiveFlowerSpiritGrafterTests
         var original = state.Player.Deck.Single(c =>
             c.InstanceId == cardId).UpgradeLevel;
         var result = Engine.Step(selected, choice).State;
+        result = PrototypeEventPageTestHelperV111.ContinueIfFinished(result);
         Assert.Equal(RunPhase.MapChoice, result.Phase);
         Assert.Equal(20, result.Player.Hp);
         Assert.Equal(original + 1,
@@ -165,7 +171,9 @@ public sealed class V111HiveFlowerSpiritGrafterTests
         });
         Assert.Equal(initialHash, CanonicalJson.Sha256(state));
         Assert.Equal(CanonicalJson.Sha256(result),
-            CanonicalJson.Sha256(Engine.Step(state.Fork(), play).State));
+            CanonicalJson.Sha256(
+                PrototypeEventPageTestHelperV111.ContinueIfFinished(
+                    Engine.Step(state.Fork(), play).State)));
     }
 
     [Fact]

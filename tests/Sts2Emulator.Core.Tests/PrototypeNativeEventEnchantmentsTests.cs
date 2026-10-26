@@ -14,6 +14,10 @@ public sealed class PrototypeNativeEventEnchantmentsTests
             {
                 Event = state.World.Event! with
                 {
+                    NativeEventRngProviderMode = "scripted-v111",
+                    NativeEventRng = NativeRngV111Contexts.ForEvent(
+                        state.RunSeed,
+                        PrototypeNativeOvergrowthEvents.NeowRngEventEntry),
                     OfferedChoiceIds =
                     [
                         "take_" + PrototypeNativeOvergrowthEvents.NeowRelicId(
@@ -31,6 +35,7 @@ public sealed class PrototypeNativeEventEnchantmentsTests
                 "take_" + PrototypeNativeOvergrowthEvents.NeowRelicId(
                     "GoldenPearl"));
         state = engine.Step(state, neow).State;
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
 
         var map = state.World!.Map;
@@ -86,6 +91,7 @@ public sealed class PrototypeNativeEventEnchantmentsTests
             && a.ReadPayload<ChooseEventDeckCardPayload>().CardInstanceId
                 == cardInstanceId);
         state = engine.Step(state, select).State;
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.Null(state.World!.Event);
         PrototypeStateInvariants.Validate(state);
@@ -167,6 +173,7 @@ public sealed class PrototypeNativeEventEnchantmentsTests
         var select = engine.GetLegalActions(state).Single(a =>
             a.ReadPayload<ChooseEventDeckCardPayload>().CardInstanceId == 1L);
         state = engine.Step(state, select).State;
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.Equal(expectedCardId, state.Player.Deck[0].CardId);
         Assert.Equal(1L, state.Player.Deck[0].InstanceId);

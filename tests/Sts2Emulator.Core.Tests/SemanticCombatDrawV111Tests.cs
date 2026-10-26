@@ -140,26 +140,12 @@ public sealed class SemanticCombatDrawV111Tests
         Assert.Throws<InvalidDataException>(() =>
             SemanticCombatDrawEngineV111.Restore(JsonSerializer.Serialize(tampered)));
         var changed = original.Fork();
-        var changedRun = changed.Run;
-        var changedWorld = changedRun.World!;
-        var changedCombat = changedWorld.Combat!;
+        var changedCombat = changed.Run.World!.Combat!;
         var changedDrawPile = changedCombat.DrawPile;
         changedDrawPile[0] = -100;
-        changed = changed with
-        {
-            Run = changedRun with
-            {
-                World = changedWorld with
-                {
-                    Combat = changedCombat with
-                    {
-                        DrawPile = changedDrawPile
-                    }
-                }
-            }
-        };
-        Assert.Throws<InvalidDataException>(() =>
-            SemanticCombatDrawEngineV111.Validate(changed));
+        Assert.Throws<InvalidOperationException>(() =>
+            _ = changedCombat with { DrawPile = changedDrawPile });
+        Assert.Equal(original.Fingerprint, changed.Fingerprint);
         var child = SemanticCombatDrawEngineV111.Resolve(
             original, original.Fingerprint, 0);
         var modified = child with
@@ -308,8 +294,17 @@ public sealed class SemanticCombatDrawV111Tests
         var combat = source.World!.Combat!;
         var original = combat.DrawPile;
         var perfectId = original[3];
+        var deck = source.Player.Deck.Select(card =>
+            card.InstanceId == perfectId
+                ? card with
+                {
+                    Enchantment = new PrototypeCardEnchantment(
+                        PrototypeCardEnchantmentKind.PerfectFit)
+                }
+                : card).ToArray();
         source = source with
         {
+            Player = source.Player with { Deck = deck },
             World = source.World with
             {
                 Combat = combat with
@@ -394,7 +389,7 @@ public sealed class SemanticCombatDrawV111Tests
     }
 
     [Fact]
-    public void SemanticRecycleRejectsStratagemBeforeAnyDiscardMutation()
+    public void SemanticRecycleSuspendsAtStratagemWithoutMutatingSource()
     {
         var source = SourceCombat("semantic-recycle-stratagem");
         var combat = source.World!.Combat!;
@@ -413,8 +408,9 @@ public sealed class SemanticCombatDrawV111Tests
             }
         };
         var fingerprint = CanonicalJson.Sha256(source);
-        Assert.Throws<NotSupportedException>(() =>
-            SemanticCombatDrawEngineV111.Begin(source, 1));
+        var pending = SemanticCombatDrawEngineV111.Begin(source, 1);
+        Assert.NotNull(pending.StratagemSelectionPending);
+        Assert.Null(pending.Pending);
         Assert.Equal(fingerprint, CanonicalJson.Sha256(source));
     }
 
@@ -423,14 +419,31 @@ public sealed class SemanticCombatDrawV111Tests
     {
         var source = SourceCombat("semantic-real-snecko-cost");
         var combat = source.World!.Combat!;
+        const string relicId = "proto.relic.snecko_eye";
+        var nextOrder = combat.RelicStates
+            .Select(relic => relic.ApplicationOrder)
+            .Concat(combat.PlayerPowers.Select(power => power.ApplicationOrder))
+            .Concat(combat.Enemies.SelectMany(enemy => enemy.PowerStates)
+                .Select(power => power.ApplicationOrder))
+            .DefaultIfEmpty(0).Max() + 1;
+        var definition = PrototypeContent.Relic(relicId);
+        combat = combat with
+        {
+            Relics = combat.RelicStates.Append(new CombatRelicState(
+                combat.RelicStates.Length, relicId, nextOrder,
+                new int[(definition.Triggers ?? []).Length])).ToArray(),
+            NextPowerApplicationOrder = Math.Max(
+                combat.NextPowerApplicationOrder, nextOrder + 1)
+        };
         source = source with
         {
             Player = source.Player with
             {
                 Relics = source.Player.Relics.Append(
-                    new RelicInstance("proto.relic.snecko_eye",
+                    new RelicInstance(relicId,
                         PrototypeJson.EmptyObject())).ToArray()
-            }
+            },
+            World = source.World with { Combat = combat }
         };
         var nativeBefore = CanonicalJson.Sha256(source.Rng);
         var state = SemanticCombatDrawEngineV111.Begin(source, 2);

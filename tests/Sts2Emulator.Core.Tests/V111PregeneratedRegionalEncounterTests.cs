@@ -136,17 +136,16 @@ public sealed class V111PregeneratedRegionalEncounterTests
         Assert.Equal(original.RemainingNormal, copy.RemainingNormal);
         Assert.Equal(original.RemainingElite, copy.RemainingElite);
 
-        var broken = state with
-        {
-            World = state.World with
-            {
-                LaterActEncounterBag = original with
-                {
-                    OrdinaryCombatsStarted = 1
-                }
-            }
-        };
         Assert.Throws<InvalidOperationException>(() =>
-            PrototypeStateInvariants.Validate(broken));
+            _ = state with
+            {
+                World = state.World with
+                {
+                    LaterActEncounterBag = original with
+                    {
+                        OrdinaryCombatsStarted = 1
+                    }
+                }
+            });
     }
 }

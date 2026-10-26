@@ -135,7 +135,7 @@ public sealed class ControlledPlayableCombatV111Tests
                 }
             }
         };
-        Assert.Throws<InvalidDataException>(() =>
+        Assert.Throws<InvalidOperationException>(() =>
             ControlledPlayableCombatEngineV111.Restore(JsonSerializer.Serialize(altered)));
         Assert.Equal(original, start.Fingerprint);
         var a = ControlledPlayableCombatEngineV111.Resolve(

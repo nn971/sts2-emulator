@@ -64,6 +64,7 @@ public sealed class PrototypeNativeOvergrowthMapTests
         Assert.Equal(3, neowChoices.Count(action =>
             action.Kind == "event_choice"));
         state = engine.Step(state, neowChoices[0]).State;
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         var legal = engine.GetLegalActions(state);
         Assert.All(legal, action =>

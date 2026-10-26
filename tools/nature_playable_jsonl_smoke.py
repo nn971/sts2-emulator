@@ -7,6 +7,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 DLL = ROOT / "src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll"
+from jsonl_privacy_assertions import assert_public_stochastic_view
 sys.path.insert(0, str(ROOT / "bindings/python"))
 from sts2_emulator import Session, EmulatorError
 
@@ -60,7 +61,7 @@ def main():
         assert player["combat"]["hand"]
         actions = entry.actions()
         assert actions and any(a["kind"] == "end_turn" for a in actions)
-        assert "rng" not in json.dumps(player).lower()
+        assert_public_stochastic_view(player)
         assert entry.fingerprint == session.load_controlled_snapshot(
             entry.save_snapshot()).fingerprint
         assert session.release_controlled_many([fork, restored, entry]) == 3

@@ -61,6 +61,7 @@ public sealed class V111HiveAmalgamatorTests
             });
             state = Engine.Step(state, actions[0]).State;
         }
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.Equal(initialDeck.Length - 1, state.Player.Deck.Length);
         Assert.Equal(expectedCard, state.Player.Deck.Last().CardId);

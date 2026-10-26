@@ -92,13 +92,13 @@ public sealed class NativeEngineFidelityV111Tests
     }
 
     [Fact]
-    public void FidelityJournalScopeDoesNotLeakToItsParent()
+    public void NestedFidelityJournalAlsoRecordsInItsParentScope()
     {
         using var parent = NativeEngineEventJournalV111.Begin();
         var result = NativeEngineFidelityV111.Compare(Fixture());
         Assert.NotNull(result.EmulatorEventJournal);
         Assert.NotEmpty(result.EmulatorEventJournal!);
-        Assert.Empty(parent.Entries);
+        Assert.NotEmpty(parent.Entries);
     }
 
     [Fact]

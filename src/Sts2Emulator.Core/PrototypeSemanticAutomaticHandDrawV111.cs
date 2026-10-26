@@ -132,8 +132,22 @@ public sealed partial class PrototypeGameEngine
         var world = RequireWorld(run);
         var combat = world.Combat ??
             throw new InvalidOperationException("Missing semantic hand draw.");
-        if (!TryGetSemanticAutomaticHandDrawProgress(
-                combat, out int semanticRequested, out _) ||
+        bool hasProgress = TryGetSemanticAutomaticHandDrawProgress(
+            combat, out int semanticRequested, out _);
+        var cursor = combat.AutomaticPipelineContinuation;
+        if (!hasProgress && cursor is not null
+            && cursor.Stochastic.TryGetCompletedSemanticHandDrawReceipt(
+                cursor.Mechanics, out _))
+        {
+            if (hasPending || remaining != 0 ||
+                combat.Stochastic.SemanticDeck?.Pending is not null ||
+                combat.PendingChoice is not null ||
+                combat.PendingKnowledgeDemonChoice is not null)
+                throw new InvalidDataException(
+                    "Completed semantic hand draw retained a pending stage.");
+            return new PrototypeDrawCardsResumeResultV111(run, 0);
+        }
+        if (!hasProgress ||
             (combat.Stochastic.SemanticDeck?.Pending is not null &&
              combat.PendingChoice?.ControlledDrawCost is not null) ||
             remaining < 0)

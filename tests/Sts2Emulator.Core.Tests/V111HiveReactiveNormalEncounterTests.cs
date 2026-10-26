@@ -213,8 +213,10 @@ public sealed class V111HiveReactiveNormalEncounterTests
         Assert.Equal(0, Assert.Single(blocked.Enemies).PlannedMoveIndex);
 
         var awakened = Hit(original.World!.Combat!, 20);
+        awakened = Hit(awakened, 1);
+        awakened = Hit(awakened, 1);
         var awake = Assert.Single(awakened.Enemies);
-        Assert.Equal(81, awake.Hp);
+        Assert.Equal(79, awake.Hp);
         Assert.Equal(0, awake.Block);
         Assert.DoesNotContain(awake.PowerStates, p =>
             p.PowerId == Slumber || p.PowerId == "proto.power.plating");

@@ -387,6 +387,21 @@ public sealed partial class PrototypeGameEngine
                     segment with { Run = advanced },
                     automaticHandDrawRequested!.Value),
                 drawn.RemainingCount);
+        if (automatic && !pending &&
+            !HasSemanticAutomaticHandDrawProgress(drawn.Combat))
+        {
+            var cursor = drawn.Combat.AutomaticPipelineContinuation;
+            if (cursor is null || !cursor.Stochastic
+                    .TryGetCompletedSemanticHandDrawReceipt(
+                        cursor.Mechanics, out _))
+            {
+                advanced = CompleteAutomaticHandDrawStage(
+                    advanced, automaticHandDrawRequested
+                        ?? throw new InvalidDataException(
+                            "Completed semantic hand draw lost its request count."));
+            }
+            return new PrototypeDrawCardsResumeResultV111(advanced, 0);
+        }
         return automatic
             ? CommitSemanticAutomaticHandDrawProgress(
                 advanced, drawn.RemainingCount, pending)

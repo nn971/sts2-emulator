@@ -40,6 +40,14 @@ public sealed class ControlledDrawCostV111Tests
                         PrototypeCardEnchantmentKind.Slither)
                 }
                 : card).ToArray();
+        var deck = run.Player.Deck.Select(card =>
+            card.InstanceId == firstDrawn && slither
+                ? card with
+                {
+                    Enchantment = new PrototypeCardEnchantment(
+                        PrototypeCardEnchantmentKind.Slither)
+                }
+                : card).ToArray();
         var player = snecko
             ? run.Player with
             {
@@ -47,11 +55,30 @@ public sealed class ControlledDrawCostV111Tests
                     "proto.relic.snecko_eye", PrototypeJson.EmptyObject())).ToArray()
             }
             : run.Player;
+        if (snecko)
+        {
+            const string relicId = "proto.relic.snecko_eye";
+            var nextOrder = combat.RelicStates
+                .Select(relic => relic.ApplicationOrder)
+                .Concat(combat.PlayerPowers.Select(power => power.ApplicationOrder))
+                .Concat(combat.Enemies.SelectMany(enemy => enemy.PowerStates)
+                    .Select(power => power.ApplicationOrder))
+                .DefaultIfEmpty(0).Max() + 1;
+            var definition = PrototypeContent.Relic(relicId);
+            combat = combat with
+            {
+                Relics = combat.RelicStates.Append(new CombatRelicState(
+                    combat.RelicStates.Length, relicId, nextOrder,
+                    new int[(definition.Triggers ?? []).Length])).ToArray(),
+                NextPowerApplicationOrder = Math.Max(
+                    combat.NextPowerApplicationOrder, nextOrder + 1)
+            };
+        }
         var state = original with
         {
             Run = run with
             {
-                Player = player,
+                Player = player with { Deck = deck },
                 World = world with { Combat = combat with { Cards = cards } }
             }
         };

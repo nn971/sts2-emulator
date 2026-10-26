@@ -229,9 +229,11 @@ public static class NativeAncientRewardsV111
             NativeNonupeipeEventV111.ValidateEventContext(state);
             return;
         }
-        if (evt.EventId != TezcataraId
-            || stream.StreamId != "context.event.TEZCATARA.player_0")
-            throw new InvalidOperationException("Tezcatara event context must retain its three completed offer draws.");
+        if (evt.EventId != TezcataraId)
+            return;
+        if (stream.StreamId != "context.event.TEZCATARA.player_0")
+            throw new InvalidOperationException(
+                "Tezcatara event context has the wrong native RNG stream.");
         var pools = TezcataraPools(state.Player);
         if (evt.OfferedChoiceIds is not { Length: 3 } offers
             || offers.Any(id => !id.StartsWith("take_", StringComparison.Ordinal)))
@@ -254,7 +256,8 @@ public static class NativeAncientRewardsV111
             return;
         }
         if (NativeRngV111.ToSnapshot(stream).Counter != 3)
-            throw new InvalidOperationException("Tezcatara event context must retain its three completed offer draws.");
+            throw new InvalidOperationException(
+                "Tezcatara event context must retain its three completed offer draws.");
         var initial = NativeRngV111Contexts.ForEvent(state.RunSeed, "TEZCATARA");
         var expected = new RngBundle([initial]);
         var replayProvider = new NativeRandomIndexProviderV111(

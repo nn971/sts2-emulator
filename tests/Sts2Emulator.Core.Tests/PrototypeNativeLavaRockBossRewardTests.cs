@@ -15,6 +15,10 @@ public sealed class PrototypeNativeLavaRockBossRewardTests
             {
                 Event = world.Event! with
                 {
+                    NativeEventRngProviderMode = "scripted-v111",
+                    NativeEventRng = NativeRngV111Contexts.ForEvent(
+                        state.RunSeed,
+                        PrototypeNativeOvergrowthEvents.NeowRngEventEntry),
                     OfferedChoiceIds =
                     [
                         "take_" + PrototypeNativeOvergrowthEvents.NeowRelicId(
@@ -34,6 +38,7 @@ public sealed class PrototypeNativeLavaRockBossRewardTests
                 == "take_" + PrototypeNativeOvergrowthEvents.NeowRelicId(
                     "LavaRock"));
         state = engine.Step(state, take).State;
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         PrototypeStateInvariants.Validate(state);
         return state;

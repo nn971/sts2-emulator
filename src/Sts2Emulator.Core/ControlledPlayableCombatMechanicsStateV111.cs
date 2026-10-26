@@ -11,6 +11,9 @@ public sealed record ControlledPlayableCombatMechanicsStateV111
     private string[] _playerActions = [];
 
     public string Seed { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? FixtureEncounterId { get; init; }
     public ControlledIntentStateV111 Origin
     {
         get => _origin.Fork();
@@ -57,9 +60,11 @@ public sealed record ControlledPlayableCombatMechanicsStateV111
         ControlledIntentStateV111 Origin,
         RunState Run,
         string[] PlayerActions,
-        string Mode)
+        string Mode,
+        string? FixtureEncounterId = null)
     {
         this.Seed = Seed;
+        this.FixtureEncounterId = FixtureEncounterId;
         this.Origin = Origin;
         Continuation = new PrototypeMechanicsContinuationStateV111(
             PrototypeMechanicsContinuationKindV111.ControlledPlayableCombat,

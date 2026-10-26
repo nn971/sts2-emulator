@@ -27,8 +27,9 @@ public sealed class NatureBoundaryMetadataV111Tests
         Assert.Equal("run.niche", view.Pending.StreamId);
         Assert.Equal("choose_index", view.Pending.OperationKind);
         Assert.Equal("v0.111.0", view.Pending.SourceVersion);
-        Assert.Equal("UNVERIFIED", view.Pending.ProbabilityStatus);
-        Assert.Null(view.Pending.ReferenceLawId);
+        Assert.Equal(ChanceLawV111.SourceVerifiedStatus,
+            view.Pending.ProbabilityStatus);
+        Assert.NotNull(view.Pending.ReferenceLawId);
         Assert.Equal(view.Pending.OrderedCandidates.Length, view.Pending.SupportCount);
         Assert.Empty(view.Transcript);
 
@@ -54,7 +55,8 @@ public sealed class NatureBoundaryMetadataV111Tests
         Assert.Single(nextView.Transcript);
         Assert.Equal(initial.Pending.EventId, nextView.Transcript[0].EventId);
         Assert.Equal(0, nextView.Transcript[0].SelectedIndex);
-        Assert.Equal("UNVERIFIED", nextView.Transcript[0].ProbabilityStatus);
+        Assert.Equal(ChanceLawV111.SourceVerifiedStatus,
+            nextView.Transcript[0].ProbabilityStatus);
         Assert.NotEqual(initial.Pending.EventId, nextView.Pending!.EventId);
         Assert.Equal(nextView.Pending.EventId,
             NatureBoundaryMetadataV111.Describe(ControlledInitialHpV111.Restore(

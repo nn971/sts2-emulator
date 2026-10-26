@@ -358,8 +358,17 @@ public static class StochasticSiteRegistryV111
         {
             ["reward.card_rarity.ticket"] = "bounded_integer",
             ["reward.card_model.index_draw"] = "choose_index",
+            ["card_rarity.roll.ticket"] = "bounded_integer",
+            [NativeRewardCardModelSiteId] = "choose_index",
+            ["card_rarity.upgrade_roll.ticket"] = "bounded_integer",
+            ["reward.potion_odds.ticket"] = "bounded_integer",
             ["reward.random_potion.drop.ticket"] = "bounded_integer",
             ["reward.random_potion.model"] = "choose_index",
+            [NativeCombatGoldSiteId] = "bounded_integer",
+            [PrototypeNativePotionShop.RarityRollSiteId] =
+                "bounded_integer",
+            [PrototypeNativePotionShop.ModelWithinRaritySiteId] =
+                "choose_index",
             [PrototypeGameEngine.PaelsToothCardReturnSiteId] =
                 "choose_index"
         };

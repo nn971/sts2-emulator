@@ -7,17 +7,16 @@ public sealed class PrototypeNativeOvergrowthEventCatalogTests
     [Fact]
     public void CatalogContainsEveryPinnedOvergrowthRegionEventOnce()
     {
-        Assert.Equal(13, PrototypeNativeOvergrowthEvents.RegionEventIds.Length);
+        Assert.Equal(15, PrototypeNativeOvergrowthEvents.RegionEventIds.Length);
         Assert.Equal(13, PrototypeNativeOvergrowthEvents.Definitions.Length);
-        Assert.Equal(13, PrototypeNativeOvergrowthEvents.RegionEventIds
+        Assert.Equal(15, PrototypeNativeOvergrowthEvents.RegionEventIds
             .Distinct(StringComparer.Ordinal).Count());
 
         foreach (var id in PrototypeNativeOvergrowthEvents.RegionEventIds)
         {
             var definition = PrototypeContent.Event(id);
             Assert.True(PrototypeNativeOvergrowthEvents.IsNativeRegionEvent(id));
-            Assert.Equal(1, definition.MinAct);
-            Assert.Equal(1, definition.MaxAct);
+            Assert.InRange(1, definition.MinAct, definition.MaxAct);
             Assert.NotEmpty(definition.Choices);
             Assert.True(definition.OncePerRun);
         }
@@ -60,7 +59,7 @@ public sealed class PrototypeNativeOvergrowthEventCatalogTests
         var found = 0;
         for (var seed = 0; seed < 20; seed++)
         {
-            var initial = PrototypeNativeOvergrowthRunFactory.Create(
+            var initial = PrototypeContentTestSupport.ConfiguredNativeRun(
                 $"native-event-selection-{seed}");
             var map = initial.World!.Map;
             var unknown = map.Nodes.First(node =>
@@ -88,8 +87,9 @@ public sealed class PrototypeNativeOvergrowthEventCatalogTests
 
             found++;
             var eventId = entered.World!.Event!.EventId;
-            Assert.Contains(eventId,
-                PrototypeNativeOvergrowthEvents.RegionEventIds);
+            Assert.True(
+                PrototypeNativeOvergrowthEvents.IsNativeRegionEvent(eventId)
+                || PrototypeNativeSharedEvents.IsSupported(eventId));
             Assert.DoesNotContain(eventId,
                 new[] { "proto.event.cache", "proto.event.fountain" });
         }

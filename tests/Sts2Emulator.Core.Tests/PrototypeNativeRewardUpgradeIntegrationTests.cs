@@ -15,6 +15,10 @@ public sealed class PrototypeNativeRewardUpgradeIntegrationTests
             {
                 Event = world.Event! with
                 {
+                    NativeEventRngProviderMode = "scripted-v111",
+                    NativeEventRng = NativeRngV111Contexts.ForEvent(
+                        state.RunSeed,
+                        PrototypeNativeOvergrowthEvents.NeowRngEventEntry),
                     OfferedChoiceIds =
                     [
                         "take_" + PrototypeNativeOvergrowthEvents.NeowRelicId("GoldenPearl"),
@@ -29,6 +33,7 @@ public sealed class PrototypeNativeRewardUpgradeIntegrationTests
             action.ReadPayload<EventChoicePayload>().ChoiceId ==
                 "take_" + PrototypeNativeOvergrowthEvents.NeowRelicId("GoldenPearl"));
         state = engine.Step(state, neow).State;
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         state = engine.Step(state, engine.GetLegalActions(state)[0]).State;
         Assert.Equal(RunPhase.Combat, state.Phase);
@@ -117,12 +122,16 @@ public sealed class PrototypeNativeRewardUpgradeIntegrationTests
     {
         var state = WinFirstOvergrowthCombat("native-extra-upgrade");
         var reward = state.World!.Reward!;
+        var generators = reward.CardRewardGenerators!;
         reward = reward with
         {
             ExtraCardOptions = [(string[])reward.CardOptions.Clone()],
             ExtraCardOptionsUpgraded = [false],
             ExtraCardOptionUpgradeFlags = [[true, false, false]],
-            ExtraCardGroupsResolved = [false]
+            ExtraCardGroupsResolved = [false],
+            CardRewardGenerators = generators
+                .Concat([generators[0]])
+                .ToArray()
         };
         state = state with { World = state.World with { Reward = reward } };
         PrototypeStateInvariants.Validate(state);

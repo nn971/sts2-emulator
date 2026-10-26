@@ -66,11 +66,8 @@ public sealed class PrototypeConditionalEnemyAiTests
     [Fact]
     public void ConditionalStateCanMatchExactSlotName()
     {
-        var enemies = Assert.IsType<
-            Dictionary<
-                string,
-                PrototypeEnemyDefinition>>(
-            PrototypeContent.Enemies);
+        var enemies = PrototypeContentTestSupport
+            .MutableEnemyDefinitions();
         const string slotEnemyId =
             "proto.test.slot_conditional_enemy_ai";
         enemies.Add(
@@ -195,11 +192,8 @@ public sealed class PrototypeConditionalEnemyAiTests
 
     private static void WithDefinition(Action action)
     {
-        var enemies = Assert.IsType<
-            Dictionary<
-                string,
-                PrototypeEnemyDefinition>>(
-            PrototypeContent.Enemies);
+        var enemies = PrototypeContentTestSupport
+            .MutableEnemyDefinitions();
         enemies.Add(
             EnemyId,
             BuildDefinition());

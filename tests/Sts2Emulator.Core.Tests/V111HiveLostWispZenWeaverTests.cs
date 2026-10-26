@@ -33,6 +33,7 @@ public sealed class V111HiveLostWispZenWeaverTests
             eventGold: 71);
         var sourceHash = CanonicalJson.Sha256(state);
         var claim = Select(engine, state, "claim");
+        claim = PrototypeEventPageTestHelperV111.ContinueIfFinished(claim);
         Assert.Equal(RunPhase.MapChoice, claim.Phase);
         Assert.Equal(300, claim.Player.Gold);
         Assert.Equal(state.Player.Deck.Length + 1, claim.Player.Deck.Length);
@@ -42,6 +43,7 @@ public sealed class V111HiveLostWispZenWeaverTests
             r.RelicId == PrototypeNativeHiveEvents.LostWispRelicId);
 
         var search = Select(engine, state, "search");
+        search = PrototypeEventPageTestHelperV111.ContinueIfFinished(search);
         Assert.Equal(RunPhase.MapChoice, search.Phase);
         Assert.Equal(371, search.Player.Gold);
         Assert.Equal(state.Player.Deck.Length, search.Player.Deck.Length);
@@ -49,7 +51,9 @@ public sealed class V111HiveLostWispZenWeaverTests
             r.RelicId == PrototypeNativeHiveEvents.LostWispRelicId);
         Assert.Equal(sourceHash, CanonicalJson.Sha256(state));
         Assert.Equal(CanonicalJson.Sha256(search),
-            CanonicalJson.Sha256(Select(engine, state.Fork(), "search")));
+            CanonicalJson.Sha256(
+                PrototypeEventPageTestHelperV111.ContinueIfFinished(
+                    Select(engine, state.Fork(), "search"))));
     }
 
     [Fact]
@@ -71,6 +75,7 @@ public sealed class V111HiveLostWispZenWeaverTests
         var state = EventRun(PrototypeNativeHiveEvents.ZenWeaverId, 125);
         var nextId = state.World!.NextCardInstanceId;
         var result = Select(engine, state, "breathing");
+        result = PrototypeEventPageTestHelperV111.ContinueIfFinished(result);
         Assert.Equal(RunPhase.MapChoice, result.Phase);
         Assert.Equal(75, result.Player.Gold);
         Assert.Equal(state.Player.Deck.Length + 2, result.Player.Deck.Length);
@@ -111,6 +116,7 @@ public sealed class V111HiveLostWispZenWeaverTests
             }
         }
 
+        current = PrototypeEventPageTestHelperV111.ContinueIfFinished(current);
         Assert.Equal(RunPhase.MapChoice, current.Phase);
         Assert.Equal(300 - price, current.Player.Gold);
         Assert.Equal(originalIds.Length - count, current.Player.Deck.Length);

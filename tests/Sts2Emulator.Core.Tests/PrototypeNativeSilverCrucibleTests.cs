@@ -15,6 +15,10 @@ public sealed class PrototypeNativeSilverCrucibleTests
             {
                 Event = world.Event! with
                 {
+                    NativeEventRngProviderMode = "scripted-v111",
+                    NativeEventRng = NativeRngV111Contexts.ForEvent(
+                        state.RunSeed,
+                        PrototypeNativeOvergrowthEvents.NeowRngEventEntry),
                     OfferedChoiceIds =
                     [
                         "take_" + PrototypeNativeOvergrowthEvents.NeowRelicId(
@@ -34,6 +38,7 @@ public sealed class PrototypeNativeSilverCrucibleTests
                 == "take_" + PrototypeNativeOvergrowthEvents.NeowRelicId(
                     "SilverCrucible"));
         state = engine.Step(state, choice).State;
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         PrototypeStateInvariants.Validate(state);
         return state;

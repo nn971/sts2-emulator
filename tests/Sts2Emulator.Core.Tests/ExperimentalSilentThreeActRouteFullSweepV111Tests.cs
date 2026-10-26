@@ -42,7 +42,7 @@ public sealed class ExperimentalSilentThreeActRouteFullSweepV111Tests
             0, true, PrototypeJson.EmptyObject());
         var updated = combat with
         {
-            Energy = Math.Max(3, combat.Energy),
+            Energy = Math.Max(9, combat.Energy),
             Enemies = combat.Enemies.Select(enemy =>
                 enemy.Hp <= 0 ? enemy with { } : enemy with
                 {
@@ -63,12 +63,26 @@ public sealed class ExperimentalSilentThreeActRouteFullSweepV111Tests
             && option.ReadPayload<PlayCardPayload>().CardInstanceId
                 == instanceId);
         if (action is null)
+        {
+            // An assigned Ancient can add Enthralled, which blocks other
+            // manual plays while it remains in hand. Spend that card first;
+            // the next synthetic finish step can use Exterminate normally.
+            action = allActions.FirstOrDefault(option =>
+                option.Kind == "play_card" && combat.Cards.Single(card =>
+                    card.InstanceId == option.ReadPayload<PlayCardPayload>()
+                        .CardInstanceId).CardId is var cardId &&
+                PrototypeContent.Card(cardId)
+                    .PreventsOtherManualCardPlaysWhileInHand);
+            if (action is not null)
+                return Engine.Step(prepared, action).State;
+        }
+        if (action is null)
             throw new InvalidOperationException(
                 $"Synthetic finisher unavailable on act {prepared.World!.Act} " +
                 $"floor {prepared.World.Floor}, turn {updated.Turn}, " +
                 $"energy {updated.Energy}, hand {updated.Hand.Length}; " +
-                $"available: {string.Join(",", allActions.Select(a => a.Kind))}; " +
-                $"powers: {string.Join(",", updated.PlayerPowers.Select(p => p.PowerId))}.");
+                $"energy {updated.Energy}, hand {updated.Hand.Length}; " +
+                $"available: {string.Join(",", allActions.Select(a => a.Kind))}.");
         return Engine.Step(prepared, action).State;
     }
 

@@ -130,8 +130,12 @@ public sealed class PrototypeUnderdocksOpeningTests
         }.Distinct(StringComparer.Ordinal).Count());
         Assert.Empty(finalElite.World.ActOneEncounterPool!
             .RemainingEliteEncounterIds!);
-        Assert.Throws<NotSupportedException>(() =>
-            StartRoom(engine, finalElite, PrototypeRoomType.Elite, 8));
+        var refilledElite = StartRoom(
+            engine, finalElite, PrototypeRoomType.Elite, 8);
+        Assert.Contains(refilledElite.World!.EncounterIds[^1],
+            PrototypeNativeUnderdocks.SupportedEliteEncounterIds);
+        Assert.Equal(2, refilledElite.World.ActOneEncounterPool!
+            .RemainingEliteEncounterIds!.Length);
         var selectedBoss = StartRoom(
             engine, state, PrototypeRoomType.Boss, 16);
         Assert.Contains(selectedBoss.World!.EncounterIds[^1],
@@ -269,10 +273,12 @@ public sealed class PrototypeUnderdocksOpeningTests
         Assert.Empty(state.World!.ActOneEncounterPool!
             .RemainingNormalEncounterIds!);
         Assert.Single(state.World.ActOneEncounterPool.RemainingWeakEncounterIds);
-        var finalHash = CanonicalJson.Sha256(state);
-        Assert.Throws<NotSupportedException>(() =>
-            StartRoom(engine, state, PrototypeRoomType.Combat, 14));
-        Assert.Equal(finalHash, CanonicalJson.Sha256(state));
+        var refilled = StartRoom(
+            engine, state, PrototypeRoomType.Combat, 14);
+        Assert.Contains(refilled.World!.EncounterIds[^1],
+            PrototypeNativeUnderdocks.SupportedNormalEncounterIds);
+        Assert.Equal(9, refilled.World.ActOneEncounterPool!
+            .RemainingNormalEncounterIds!.Length);
     }
 
     [Fact]

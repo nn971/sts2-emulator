@@ -16,6 +16,10 @@ public sealed class PrototypeNativeNeowsBonesTests
             {
                 Event = world.Event! with
                 {
+                    NativeEventRngProviderMode = "scripted-v111",
+                    NativeEventRng = NativeRngV111Contexts.ForEvent(
+                        state.RunSeed,
+                        PrototypeNativeOvergrowthEvents.NeowRngEventEntry),
                     OfferedChoiceIds =
                     [
                         "take_" + PrototypeNativeOvergrowthEvents.NeowRelicId(
@@ -92,6 +96,7 @@ public sealed class PrototypeNativeNeowsBonesTests
         var leave = engine.GetLegalActions(state).Single();
         Assert.Equal("leave_reward", leave.Kind);
         state = engine.Step(state, leave).State;
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.Equal(1, state.Player.Deck.Single(card =>
             card.InstanceId == 1L).UpgradeLevel);
@@ -157,18 +162,26 @@ public sealed class PrototypeNativeNeowsBonesTests
             var action = legal.FirstOrDefault(a =>
                 a.Kind == "choose_relic_deck_card")
                 ?? legal.FirstOrDefault(a =>
-                    a.Kind == "take_reward_relic")
+                    a.Kind is "take_reward_relic"
+                        or "take_reward_extra_relic")
+                ?? legal.FirstOrDefault(a =>
+                    a.Kind is "take_reward_bundle"
+                        or "take_reward_card"
+                        or "take_reward_card_group")
+                ?? legal.FirstOrDefault(a =>
+                    a.Kind is "take_reward_potion"
+                        or "take_reward_extra_potion")
+                ?? legal.FirstOrDefault(a =>
+                    a.Kind is "skip_reward_card"
+                        or "skip_reward_card_group"
+                        or "skip_reward_potion"
+                        or "skip_reward_extra_potion")
                 ?? legal.Single(a => a.Kind == "leave_reward");
             state = engine.Step(state, action).State;
             PrototypeStateInvariants.Validate(state);
-            if (state.Phase == RunPhase.Reward)
-            {
-                Assert.DoesNotContain(state.Player.Deck, c =>
-                    NativeGloryAncientsV111.ModifierGeneratedCurseIds
-                        .Contains(c.CardId, StringComparer.Ordinal));
-            }
         }
 
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.Null(state.World!.Event);
         Assert.Null(state.World.Reward);
@@ -176,10 +189,20 @@ public sealed class PrototypeNativeNeowsBonesTests
         Assert.Empty(state.World.CompletedRooms);
         Assert.All(ids, id => Assert.Contains(state.Player.Relics,
             relic => relic.RelicId == id));
-        Assert.Equal(4, state.Player.Relics.Length);
-        Assert.Single(state.Player.Deck, c =>
+        var acquisitionRewardRelics = ids.Sum(id => id switch
+        {
+            var value when value ==
+                PrototypeNativeOvergrowthEvents.NeowRelicId("SmallCapsule") => 1,
+            var value when value ==
+                PrototypeNativeOvergrowthEvents.NeowRelicId("LargeCapsule") => 2,
+            _ => 0
+        });
+        Assert.Equal(4 + acquisitionRewardRelics, state.Player.Relics.Length);
+        var expectedModifierCurseCount = 1 + ids.Count(id => id ==
+            PrototypeNativeOvergrowthEvents.NeowRelicId("HeftyTablet"));
+        Assert.Equal(expectedModifierCurseCount, state.Player.Deck.Count(c =>
             NativeGloryAncientsV111.ModifierGeneratedCurseIds
-                .Contains(c.CardId, StringComparer.Ordinal));
+                .Contains(c.CardId, StringComparer.Ordinal)));
         Assert.Contains(state.Player.Deck[^1].CardId,
             NativeGloryAncientsV111.ModifierGeneratedCurseIds);
         PrototypeStateInvariants.Validate(state);

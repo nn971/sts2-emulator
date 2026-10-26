@@ -167,10 +167,15 @@ public sealed record SemanticCombatDrawV111(
     {
         get
         {
-            var cost = Run.World?.Combat?.PendingChoice?.ControlledDrawCost;
+            var combat = Run.World?.Combat;
+            var cost = combat?.PendingChoice?.ControlledDrawCost;
             if (cost is null) return null;
-            var card = Run.World!.Combat!.Cards.Single(x =>
-                x.InstanceId == cost.CardInstanceId);
+            var cards = combat!.Cards.Where(x =>
+                x.InstanceId == cost.CardInstanceId).ToArray();
+            if (cards.Length != 1)
+                throw new InvalidDataException(
+                    "Pending drawn-card cost has no unique card instance.");
+            var card = cards[0];
             var relic = cost.Stage == "relic";
             return new RandomIndexRequestV111(
                 relic ? StochasticSiteRegistryV111.CombatDrawRelicEnergyCostSiteId
@@ -415,12 +420,27 @@ public sealed record SemanticCombatDrawV111(
             automaticHandDrawChildKind ==
                 SemanticDrawHookChoiceEngineV111
                     .AutomaticHandDrawChildKindV111.SemanticDraw;
+        var currentPipeline = this.Run.World?.Combat?
+            .AutomaticPipelineContinuation;
+        int savedRequested = 0;
+        int savedRemaining = 0;
+        bool currentProgressProjectionMatches =
+            currentPipeline is not null &&
+            currentPipeline.Stochastic
+                .TryGetSemanticHandDrawProjection(
+                    currentPipeline.Mechanics,
+                    out savedRequested, out savedRemaining);
+        bool automaticPipelineCountsAreValid =
+            !this.Mechanics.HasAutomaticPipelineDrawProgress ||
+            this.Mechanics.RequestedCount == 0 &&
+                this.Mechanics.RemainingCount == 0 ||
+            currentProgressProjectionMatches &&
+                this.Mechanics.RequestedCount == savedRequested &&
+                this.Mechanics.RemainingCount == savedRemaining;
         if (this.RequestedCount < 0 ||
             this.RemainingCount < 0 ||
             this.RemainingCount > this.RequestedCount ||
-            (this.Mechanics.HasAutomaticPipelineDrawProgress &&
-             (this.Mechanics.RequestedCount != 0 ||
-              this.Mechanics.RemainingCount != 0)) ||
+            !automaticPipelineCountsAreValid ||
             (this.RequestedCount == 0 && randomPileCardPending is null &&
              drawInsertionPending is null &&
              generatedCardPending is null &&
@@ -1371,8 +1391,15 @@ public static class SemanticCombatDrawEngineV111
         var run = handDraw.Run;
         int requested = handDraw.RequireRequestedCount();
         int remaining = handDraw.RemainingCount;
+        var cursor = run.World?.Combat?.AutomaticPipelineContinuation;
+        var drawProgressIsSavedInPipeline = cursor is not null
+            && cursor.Stochastic.TryGetSemanticHandDrawProjection(
+                cursor.Mechanics, out _, out _);
         var result = new SemanticCombatDrawV111(
-            origin, run, requested, remaining, true, AutomaticHandDraw: true);
+            origin, run,
+            drawProgressIsSavedInPipeline ? 0 : requested,
+            drawProgressIsSavedInPipeline ? 0 : remaining,
+            true, AutomaticHandDraw: true);
         Validate(result);
         return result;
     }

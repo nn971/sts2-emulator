@@ -19,14 +19,13 @@ public sealed class PrototypeNativeNeowItemsAndCombatCompletionTests
             {
                 Event = world.Event! with
                 {
+                    NativeEventRngProviderMode = "scripted-v111",
+                    NativeEventRng = NativeRngV111Contexts.ForEvent(
+                        state.RunSeed,
+                        PrototypeNativeOvergrowthEvents.NeowRngEventEntry),
                     OfferedChoiceIds =
-                    [
-                        OptionId(name),
-                        OptionId(name == "GoldenPearl"
-                            ? "ArcaneScroll" : "GoldenPearl"),
-                        OptionId(name == "CursedPearl"
-                            ? "DowsingRod" : "CursedPearl")
-                    ]
+                        PrototypeEventPageTestHelperV111
+                            .ScriptedNeowOffers(name)
                 }
             }
         };
@@ -44,6 +43,7 @@ public sealed class PrototypeNativeNeowItemsAndCombatCompletionTests
     public void PhialHolsterGainsOneSlotAndTwoRandomPotions()
     {
         var state = Pick("PhialHolster");
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.Equal(4, state.Player.PotionSlots.Length);
         Assert.Equal(2, state.Player.PotionSlots.Count(p => p is not null));
@@ -59,6 +59,7 @@ public sealed class PrototypeNativeNeowItemsAndCombatCompletionTests
     public void LargeCapsuleAddsTwoUnownedRelicsAndStarterCards()
     {
         var state = Pick("LargeCapsule");
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         // Silent already owns its Ring of the Snake starter relic.
         Assert.Equal(4, state.Player.Relics.Length);
@@ -78,6 +79,7 @@ public sealed class PrototypeNativeNeowItemsAndCombatCompletionTests
     public void NeowsSacrificeGrantsAmbergrisAndGuilty()
     {
         var state = Pick("NeowsSacrifice");
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         Assert.Equal(RunPhase.MapChoice, state.Phase);
         Assert.Equal(14, state.Player.Deck.Length);
         Assert.Equal("proto.native.event.guilty",
@@ -238,6 +240,7 @@ public sealed class PrototypeNativeNeowItemsAndCombatCompletionTests
     private static RunState EnterEliteCombat(RunState state)
     {
         var engine = new PrototypeGameEngine();
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         var world = state.World!;
         var map = world.Map;
         var elite = map.Nodes.First(node =>
@@ -279,6 +282,7 @@ public sealed class PrototypeNativeNeowItemsAndCombatCompletionTests
     private static RunState EnterFirstCombat(RunState state)
     {
         var engine = new PrototypeGameEngine();
+        state = PrototypeEventPageTestHelperV111.ContinueIfFinished(state);
         var world = state.World!;
         var node = world.Map.AvailableNodes().First(item =>
             item.RoomType == PrototypeRoomType.Combat);

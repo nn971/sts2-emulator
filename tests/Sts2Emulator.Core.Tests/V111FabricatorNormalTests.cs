@@ -27,7 +27,8 @@ public sealed class V111FabricatorNormalTests
         });
         Assert.All(normals.Where(item =>
             PrototypeContent.Encounter(item.EngineIds[0]).MinAct >= 2),
-            item => Assert.Equal("missing", item.Integration));
+            item => Assert.Equal(item.NativeId == "TUNNELER_NORMAL"
+                ? "missing" : "integrated", item.Integration));
     }
 
     [Theory]

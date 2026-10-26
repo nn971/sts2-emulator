@@ -59,7 +59,8 @@ public sealed class ControlledPoolShuffleV111Tests
     private static ControlledPlayableCombatV111 Drain(
         ControlledPlayableCombatV111 state, int index = 0)
     {
-        for (int i = 0; i < 500 && !state.AtPlayerBoundary; i++)
+        for (int i = 0; i < 500 && state.Run.World?.Combat?.PendingChoice?
+                 .ControlledPoolShuffle is not null; i++)
         {
             var view = NatureBoundaryMetadataV111.Describe(state);
             Assert.Equal("generation_pool_shuffle", view.Kind);
@@ -67,7 +68,8 @@ public sealed class ControlledPoolShuffleV111Tests
             state = ControlledPlayableCombatEngineV111.Resolve(
                 state, state.Fingerprint, index % view.Pending!.SupportCount);
         }
-        Assert.True(state.AtPlayerBoundary, "Nature should finish full-pool swap tickets.");
+        Assert.Null(state.Run.World?.Combat?.PendingChoice?
+            .ControlledPoolShuffle);
         return state;
     }
 
@@ -97,7 +99,8 @@ public sealed class ControlledPoolShuffleV111Tests
                 pending, pending.Fingerprint, first.Pending.SupportCount));
         var order = (string[])initial.Clone();
         int cursor = initial.Length - 1;
-        while (!pending.AtPlayerBoundary)
+        while (pending.Run.World?.Combat?.PendingChoice?
+                   .ControlledPoolShuffle is not null)
         {
             var view = NatureBoundaryMetadataV111.Describe(pending);
             Assert.Equal(cursor + 1, view.Pending!.SupportCount);
@@ -154,6 +157,13 @@ public sealed class ControlledPoolShuffleV111Tests
         {
             Run = before.Run with
             {
+                Player = before.Run.Player with
+                {
+                    Deck = before.Run.Player.Deck.Select(card =>
+                        card.InstanceId == sourceId
+                            ? card with { CardId = cardId }
+                            : card).ToArray()
+                },
                 World = before.Run.World with
                 {
                     Combat = combat with

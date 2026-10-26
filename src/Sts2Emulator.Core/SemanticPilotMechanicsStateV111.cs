@@ -88,7 +88,8 @@ internal sealed record SemanticPilotEndTurnMechanicsProjectionV111(
     SemanticEndTurnHandDrawProjectionV111? HandDraw,
     bool Complete,
     RunState? PlayerActionSource,
-    string? PlayerActionId)
+    string? PlayerActionId,
+    ControlledTurnIntentsV111? ControlledTurnIntents)
 {
     public static SemanticPilotEndTurnMechanicsProjectionV111 Capture(
         SemanticEndTurnV111 state) => new(
@@ -101,15 +102,21 @@ internal sealed record SemanticPilotEndTurnMechanicsProjectionV111(
             }
             : null,
         state.Complete, state.PlayerActionSource?.Fork(),
-        state.PlayerActionId);
+        state.PlayerActionId, state.Intents?.Fork());
 
     public SemanticEndTurnV111 Project(
         RunState currentRun,
         SemanticEndTurnStochasticStateV111 stochastic)
     {
+        var intents = ControlledTurnIntents?.Fork() ?? currentRun.World?.Combat?
+            .AutomaticPipelineContinuation?.ControlledTurnIntents;
+        var run = intents is null
+            ? currentRun
+            : PrototypeGameEngine.SetControlledTurnIntentContinuation(
+                currentRun, intents);
         var handDraw = HandDraw is { } hand
             ? new SemanticCombatDrawV111(
-                hand.Origin, hand.ProjectedRun ?? currentRun,
+                hand.Origin, hand.ProjectedRun ?? run,
                 hand.RequestedCount, hand.RemainingCount,
                 hand.FromHandDraw, hand.AutomaticHandDraw)
             {
@@ -117,10 +124,8 @@ internal sealed record SemanticPilotEndTurnMechanicsProjectionV111(
                     new SemanticCombatDrawStochasticStateV111()
             }
             : null;
-        var intents = currentRun.World?.Combat?
-            .AutomaticPipelineContinuation?.Stochastic.ControlledTurnIntents;
         return new SemanticEndTurnV111(
-            Origin, currentRun, NativeEncounterEntry, intents,
+            Origin, run, NativeEncounterEntry, intents,
             handDraw, [], Complete)
         {
             PlayerActionSource = PlayerActionSource,

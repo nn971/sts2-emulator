@@ -12,6 +12,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 DLL = ROOT / "src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll"
+from jsonl_privacy_assertions import assert_public_stochastic_view
 sys.path.insert(0, str(ROOT / "bindings/python"))
 from sts2_emulator import Session
 
@@ -37,8 +38,7 @@ def rollout():
             "engine-owned-seeded-source-shaped-draw-hooks-unverified-v1")
         assert combat.pending is None
         public = combat.observe()
-        assert "semanticDeck" not in json.dumps(public)
-        assert "rng" not in json.dumps(public).lower()
+        assert_public_stochastic_view(public)
         initial = combat.fingerprint
         assert session.load_semantic_snapshot(
             combat.save_snapshot()).fingerprint == initial
@@ -193,7 +193,7 @@ def engine_cost_rollout():
             replay_opening_draw_hooks=True)
         assert combat.status()["otherChanceProvider"] == provider
         assert combat.status()["otherChanceDecisionCount"] == 0
-        assert "semanticDeck" not in json.dumps(combat.observe())
+        assert_public_stochastic_view(combat.observe())
         action = next(a for a in combat.actions() if a["kind"] == "end_turn")
         combat = combat.step(action["actionId"])
         trace = []
