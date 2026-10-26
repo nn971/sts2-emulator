@@ -116,11 +116,8 @@ public sealed partial class PrototypeGameEngine
                 resumed, 0, 0, boundary).EnsurePipelineBoundary();
         }
 
-        if (cursor.Mechanics.IsImmediatelyAfterStep(
-                PrototypeAutomaticStepKind.DrawPlayerHand) &&
-            !cursor.Stochastic.HasSavedHandDrawProgress() &&
-            cursor.Stochastic.CompletedSemanticHandDrawRequested is
-                { } completedRequested)
+        if (cursor.Stochastic.TryGetCompletedSemanticHandDrawReceipt(
+                cursor.Mechanics, out int completedRequested))
         {
             return PrototypeDrawCardsResumeResultV111.ForHandDraw(
                 resumed, completedRequested, 0, boundary)

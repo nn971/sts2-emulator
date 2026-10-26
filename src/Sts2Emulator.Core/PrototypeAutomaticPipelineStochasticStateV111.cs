@@ -519,6 +519,26 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
     }
 
     /// <summary>
+    /// Reads a completed semantic hand-draw receipt only after the pipeline
+    /// has advanced past DrawPlayerHand and cleared active draw progress.
+    /// </summary>
+    public bool TryGetCompletedSemanticHandDrawReceipt(
+        PrototypeAutomaticPipelineMechanicsStateV111 mechanics,
+        out int requested)
+    {
+        ArgumentNullException.ThrowIfNull(mechanics);
+        requested = 0;
+        if (HandDrawProgress is not null ||
+            !mechanics.IsImmediatelyAfterStep(
+                PrototypeAutomaticStepKind.DrawPlayerHand) ||
+            CompletedSemanticHandDrawRequested is not > 0)
+            return false;
+
+        requested = CompletedSemanticHandDrawRequested.Value;
+        return true;
+    }
+
+    /// <summary>
     /// Validates a semantic hand-draw continuation transition against its
     /// source progress and any count projection carried by the facade.
     /// </summary>

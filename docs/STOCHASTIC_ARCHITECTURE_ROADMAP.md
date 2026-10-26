@@ -6145,3 +6145,10 @@ draws also use the shared empty-frame constructor with their non-standalone
 context preserved. Caller-specific pipeline publication and provider policy
 remain unchanged. Core Release build and `git diff --check` passed; no tests
 were added or run.
+
+**S4 completed semantic hand-draw receipt query increment (2026-10-26):** The
+automatic-pipeline stochastic owner now recognizes a completed semantic draw
+receipt only after `DrawPlayerHand` has advanced and active progress is clear.
+The semantic automatic-hand-draw facade consumes that cursor-validated query
+instead of rebuilding the receipt condition. No snapshot schema changed. Core
+Release build and `git diff --check` passed; no tests were added or run.
