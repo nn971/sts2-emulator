@@ -601,6 +601,72 @@ public sealed partial class PrototypeGameEngine
                     combat.Hand.Length)));
     }
 
+    private static RunState ResolveOpeningHandDrawResult(
+        PrototypeDrawCardsSegmentV111 segment)
+    {
+        var state = segment.Run;
+        var drawn = segment.Drawn;
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(drawn);
+        var prototypeRng = state.Stochastic.PrototypeRng;
+        var player = drawn.Player;
+        var combat = drawn.Combat;
+        if (drawn.BoundaryKind ==
+                PrototypeDrawCardsBoundaryKind.ShuffleSelection &&
+            combat.Stochastic.SemanticDeck is not
+                { Mode: SemanticDeckStateV111.NatureMode })
+        {
+            var resolved = ResumeLegacyHandDrawAfterStratagemSelection(
+                player, combat, drawn.RemainingCount, prototypeRng);
+            player = resolved.Player;
+            combat = resolved.Combat;
+        }
+        else if (IsSemanticDrawResumeBoundary(
+                     drawn.BoundaryKind,
+                     includeSemanticDrawChoiceBoundaries: true))
+        {
+            if (!ControlledChanceGuardV111.Active ||
+                combat.Stochastic.SemanticDeck is not
+                    { Mode: SemanticDeckStateV111.NatureMode })
+                throw new NotSupportedException(
+                    "UNSUPPORTED_OPENING_DRAW " +
+                    "site=combat.opening_draw operation=" +
+                    drawn.BoundaryKind);
+
+            var drawFrame = CreateSemanticDrawResultFrame(
+                drawn.RemainingCount, fromHandDraw: true, eventDepth: 0,
+                automatic: false, standalone: false);
+            bool finalCardHook = drawn.BoundaryKind ==
+                    PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice &&
+                drawn.RemainingCount == 0;
+            if (!finalCardHook)
+                return ResolveControlledSemanticDrawResult(
+                    segment, drawFrame, EmptyDrawChoiceContinuation(),
+                    automaticHandDrawRequested: null,
+                    recycleSite: "combat.opening_draw",
+                    recycleOperation:
+                        drawn.BoundaryKind ==
+                            PrototypeDrawCardsBoundaryKind.AfterShuffleInsertions
+                            ? "after_shuffle_insertion"
+                            : "opening_draw_resume").Run;
+        }
+        else if (drawn.BoundaryKind !=
+            PrototypeDrawCardsBoundaryKind.Complete)
+        {
+            throw new NotSupportedException(
+                "UNSUPPORTED_OPENING_DRAW " +
+                "site=combat.opening_draw operation=" +
+                drawn.BoundaryKind);
+        }
+
+        state = state with
+        {
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, prototypeRng)
+        };
+        return PublishDrawMechanicsState(state, player, combat);
+    }
+
     /// <summary>
     /// Resume the remaining cards in a saved automatic hand-draw segment.
     /// The shared cursor is checked and cleared before entering the draw

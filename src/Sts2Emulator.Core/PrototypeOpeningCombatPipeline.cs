@@ -252,64 +252,6 @@ public sealed partial class PrototypeGameEngine
                 Math.Max(0, target - innateAlreadyDealt), prototypeRng,
                 fromHandDraw: true,
                 suspensionPolicy: suspensionPolicy));
-        state = drawnSegment.Run;
-        var prototypeRng = state.Stochastic.PrototypeRng;
-        var drawn = drawnSegment.Drawn;
-        player = drawn.Player;
-        combat = drawn.Combat;
-        if (drawn.BoundaryKind ==
-                PrototypeDrawCardsBoundaryKind.ShuffleSelection &&
-            combat.Stochastic.SemanticDeck is not
-                { Mode: SemanticDeckStateV111.NatureMode })
-        {
-            var resolved = ResumeLegacyHandDrawAfterStratagemSelection(
-                player, combat, drawn.RemainingCount, prototypeRng);
-            player = resolved.Player;
-            combat = resolved.Combat;
-        }
-        else if (IsSemanticDrawResumeBoundary(
-                     drawn.BoundaryKind,
-                     includeSemanticDrawChoiceBoundaries: true))
-        {
-            if (!ControlledChanceGuardV111.Active ||
-                combat.Stochastic.SemanticDeck is not
-                    { Mode: SemanticDeckStateV111.NatureMode })
-                throw new NotSupportedException(
-                    "UNSUPPORTED_OPENING_DRAW " +
-                    "site=combat.opening_draw operation=" +
-                    drawn.BoundaryKind);
-
-            var drawFrame = CreateSemanticDrawResultFrame(
-                drawn.RemainingCount, fromHandDraw: true, eventDepth: 0,
-                automatic: false, standalone: false);
-            var continuation = EmptyDrawChoiceContinuation();
-            bool finalCardHook = drawn.BoundaryKind ==
-                    PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice &&
-                drawn.RemainingCount == 0;
-            if (!finalCardHook)
-                return ResolveControlledSemanticDrawResult(
-                    drawnSegment with { Run = state }, drawFrame, continuation,
-                    automaticHandDrawRequested: null,
-                    recycleSite: "combat.opening_draw",
-                    recycleOperation:
-                        drawn.BoundaryKind ==
-                            PrototypeDrawCardsBoundaryKind.AfterShuffleInsertions
-                            ? "after_shuffle_insertion"
-                            : "opening_draw_resume").Run;
-        }
-        else if (drawn.BoundaryKind !=
-            PrototypeDrawCardsBoundaryKind.Complete)
-        {
-            throw new NotSupportedException(
-                "UNSUPPORTED_OPENING_DRAW " +
-                "site=combat.opening_draw operation=" +
-                drawn.BoundaryKind);
-        }
-        state = state with
-        {
-            Stochastic = RunStochasticStateV111.WithPrototypeRng(
-                state.Stochastic, prototypeRng)
-        };
-        return PublishDrawMechanicsState(state, player, combat);
+        return ResolveOpeningHandDrawResult(drawnSegment);
     }
 }

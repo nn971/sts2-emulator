@@ -6391,3 +6391,10 @@ semantic draw, drawn-cost, and after-shuffle insertion continuations through
 `AttachControlledDrawResumeBoundary`. The adapters retain provider-specific
 frame advancement, recycle and Stratagem handling, and validation. Core
 Release build and `git diff --check` passed; no tests were added or run.
+
+**S4 opening-hand draw result ownership increment (2026-10-26):**
+`ResolveOpeningHandDrawResult` now owns the opening draw's tagged-boundary
+interpretation, legacy Stratagem resume, and final provider/mechanics
+publication. `DrawOpeningHand` retains the source request and opening-count
+calculation, and the final-card hook still saves no empty draw operation. Core
+Release build and `git diff --check` passed; no tests were added or run.

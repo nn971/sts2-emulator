@@ -596,7 +596,10 @@ Source-route `DrawOpeningHand` now sends semantic draw, draw-cost, nested
 `CardDrawn`, and after-shuffle insertion boundaries through
 `ResolveControlledSemanticDrawResult` with its opening draw frame. The final
 card hook remains a direct pending hook because it has no draw remainder to
-save. This keeps opening boundary attachment with the common draw dispatcher.
+save. `ResolveOpeningHandDrawResult` owns this tagged-result interpretation,
+including the legacy Stratagem resume and final provider/mechanics
+publication, while `DrawOpeningHand` retains opening-count calculation and
+the source draw call.
 
 When a Nature-owned opening draw recycles into a live Stratagem selection,
 the tagged `ShuffleSelection` boundary also uses that dispatcher. Its existing
