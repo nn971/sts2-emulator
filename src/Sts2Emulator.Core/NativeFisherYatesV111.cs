@@ -52,16 +52,27 @@ public static class NativeFisherYatesV111
         string ownerId,
         string siteId,
         int ordinalOffset = 0,
-        Func<T, string>? controlledCandidateLabel = null)
+        Func<T, string>? controlledCandidateLabel = null,
+        bool allowRegisteredLegacyShuffle = false)
     {
         ArgumentNullException.ThrowIfNull(values);
         ArgumentNullException.ThrowIfNull(streams);
         ArgumentNullException.ThrowIfNull(provider);
         ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
         ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
-        ValidateSiteId(siteId,
-            StochasticSiteRegistryV111.NativeFisherYatesSiteIds,
-            "shuffle");
+        // The shared Fisher-Yates mechanics also serve legacy prototype
+        // shuffles. Keep their caller-bound sites separate from the Native
+        // allowlist: authorization here is only for the legacy wrapper.
+        var registeredLegacyShuffle = allowRegisteredLegacyShuffle
+            && siteId.EndsWith(".shuffle_swap_index", StringComparison.Ordinal)
+            && StochasticSiteRegistryV111.TryGetLegacyCallerBoundIndexQuerySite(
+                siteId, out var legacySite)
+            && legacySite.StreamId == streamId
+            && legacySite.OperationKind == "bounded_integer";
+        if (!registeredLegacyShuffle)
+            ValidateSiteId(siteId,
+                StochasticSiteRegistryV111.NativeFisherYatesSiteIds,
+                "shuffle");
         if (ordinalOffset < 0)
             throw new ArgumentOutOfRangeException(nameof(ordinalOffset));
         var decisions = new List<RandomIndexDecisionV111>();
