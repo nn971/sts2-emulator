@@ -7764,6 +7764,11 @@ public static class SemanticPilotCombatEngineV111
             SemanticDrawInsertionChoiceV111.ValidateBoundary(run);
             return;
         }
+        if (choice?.ControlledPoolShuffle is not null)
+        {
+            SemanticPoolShuffleChoiceV111.ValidateBoundary(run);
+            return;
+        }
         if (choice?.ControlledRandomCost is not null)
         {
             SemanticRandomHandCostChoiceV111.ValidateBoundary(run);
