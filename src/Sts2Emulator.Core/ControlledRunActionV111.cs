@@ -2453,7 +2453,8 @@ public static class ControlledRunActionEngineV111
 
     /// <summary>
     /// Resolve a controlled run-action outcome by its saved candidate label
-    /// while retaining the established index transcript.
+    /// or supported Chance Law outcome ID while retaining the established
+    /// index transcript.
     /// </summary>
     public static RunState ResolveByCandidateLabel(
         RunState source, string candidateLabel)
@@ -2462,23 +2463,41 @@ public static class ControlledRunActionEngineV111
         ArgumentException.ThrowIfNullOrWhiteSpace(candidateLabel);
         var pending = ControlledRunActionPendingV111.Describe(source);
         var candidateLabels = pending.CandidateLabels;
-        if (candidateLabels.Length != pending.Request.SupportCount)
-            throw new InvalidOperationException(
-                "This controlled run-action support does not expose complete candidate labels.");
-        var selectedIndex = Array.FindIndex(candidateLabels, label =>
-            StringComparer.Ordinal.Equals(label, candidateLabel));
-        if (selectedIndex < 0)
+        int? selectedIndex = null;
+        try
+        {
+            selectedIndex = ControlledChanceContinuationExecutorV111
+                .IndexOfCandidateLabel(candidateLabels,
+                    pending.Request.SupportCount, candidateLabel);
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            // A Chance Law outcome ID may be a second stable label for this
+            // same ordered support.
+        }
+        if (selectedIndex is null)
         {
             var law = ChanceLawEngineV111.QueryControlledRunAction(source);
             if (law.Outcomes.Length == pending.Request.SupportCount)
-                selectedIndex = Array.FindIndex(law.Outcomes, outcome =>
-                    StringComparer.Ordinal.Equals(
-                        outcome.OutcomeId, candidateLabel));
+            {
+                try
+                {
+                    selectedIndex = ControlledChanceContinuationExecutorV111
+                        .IndexOfCandidateLabel(
+                            law.Outcomes.Select(outcome => outcome.OutcomeId)
+                                .ToArray(), pending.Request.SupportCount,
+                            candidateLabel);
+                }
+                catch (ArgumentOutOfRangeException)
+                {
+                    // The requested label is outside both supported label sets.
+                }
+            }
         }
-        if (selectedIndex < 0)
+        if (selectedIndex is null)
             throw new InvalidOperationException(
                 "The requested candidate label is not in the pending run-action support or Chance Law outcomes.");
-        return Resolve(source, selectedIndex);
+        return Resolve(source, selectedIndex.Value);
     }
 
     private static RunState Step(RunState source, GameAction action)

@@ -6362,3 +6362,10 @@ a candidate label now share one whole-run publication path for pending-action
 replacement, completed-action commit, and replay validation. The additive
 refactor changes no snapshot shape. CLI Release build and `git diff --check`
 passed; no tests were added or run.
+
+**S4 controlled run-action label validation consolidation (2026-10-26):**
+The controlled run-action resolver now checks both saved candidate labels and
+support-aligned Chance Law outcome IDs through the shared unique-label
+validator before mapping to its existing index action. Duplicate or malformed
+label vectors fail closed. No snapshot shape changed. Core Release build and
+`git diff --check` passed; no tests were added or run.
