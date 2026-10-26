@@ -1092,6 +1092,11 @@ public static partial class ChanceLawEngineV111
                         source, effect, request)
                     : throw new InvalidDataException(
                         "Legacy event reward-card law is outside an event-effect continuation."),
+            "reward.card_transform.replacement.index_draw"
+                when effect is not null =>
+                    QueryControlledLegacyEventCardTransform(
+                        source, effect, request),
+            "reward.card_transform.replacement.index_draw" => null,
             "relic.acquisition.random_rare_card.model"
                 when effect is null => throw new InvalidDataException(
                     "Legacy Rare-card acquisition law is outside an event-effect continuation."),
@@ -1119,6 +1124,7 @@ public static partial class ChanceLawEngineV111
                 "relic.acquisition.random_rare_card.model" or
                 "reward.card_rarity.ticket" or
                 "reward.card_model.index_draw" or
+                "reward.card_transform.replacement.index_draw" or
                 "event.reward.offer_potion.model.index_draw" or
                 "event.reward.random_modifier_curse.index_draw" => "reward",
             _ => "event"
@@ -1159,7 +1165,8 @@ public static partial class ChanceLawEngineV111
                 "event.reward.random_rare_card.model" or
                 "event.reward.random_modifier_curse.index_draw" or
                 "relic.acquisition.random_rare_card.model" or
-                "reward.card_model.index_draw"
+                "reward.card_model.index_draw" or
+                "reward.card_transform.replacement.index_draw"
                     ? "card:" : "potion:";
             expectedLabels = law.Outcomes.Select(outcome =>
             {
@@ -1315,6 +1322,63 @@ public static partial class ChanceLawEngineV111
 
         cardIds.Reverse();
         return cardIds.ToArray();
+    }
+
+    private static ChanceLawV111? QueryControlledLegacyEventCardTransform(
+        RunState source,
+        PrototypeControlledEventChoiceContinuationV111 continuation,
+        RandomIndexRequestV111 request)
+    {
+        if (source.Phase != RunPhase.Event || source.World is not { } world ||
+            world.Event?.EventId != continuation.EventId)
+            throw new InvalidDataException(
+                "Legacy event card-transform law is outside its saved event boundary.");
+
+        var choice = PrototypeContent.Event(continuation.EventId).Choices
+            .SingleOrDefault(candidate => candidate.Id == continuation.ChoiceId) ??
+            throw new InvalidDataException(
+                "Legacy event card-transform law references an unknown choice.");
+        if ((uint)continuation.NextEffectIndex >=
+                (uint)choice.Effects.Length)
+            throw new InvalidDataException(
+                "Legacy event card-transform law is outside its saved effect boundary.");
+        var effect = choice.Effects[continuation.NextEffectIndex];
+        if (effect.Kind != PrototypeRunEffectKind.TransformFirstCardOfId ||
+            effect.CardId is null)
+            return null;
+
+        const string ownerPrefix = "card_instance:";
+        const string originalMarker = ":original:";
+        const string poolMarker = ":pool:";
+        var owner = request.OwnerId;
+        var originalOffset = owner.IndexOf(originalMarker,
+            StringComparison.Ordinal);
+        var poolSearchOffset = originalOffset + originalMarker.Length;
+        var poolOffset = originalOffset < 0 ||
+            poolSearchOffset > owner.Length ? -1 : owner.IndexOf(
+                poolMarker, poolSearchOffset, StringComparison.Ordinal);
+        if (!owner.StartsWith(ownerPrefix, StringComparison.Ordinal) ||
+            originalOffset <= ownerPrefix.Length || poolOffset < 0 ||
+            !long.TryParse(owner.AsSpan(ownerPrefix.Length,
+                    originalOffset - ownerPrefix.Length), NumberStyles.None,
+                CultureInfo.InvariantCulture, out var cardInstanceId) ||
+            cardInstanceId < 0)
+            throw new InvalidDataException(
+                "Legacy event card-transform request has an invalid owner.");
+
+        var originalCardId = owner[(originalOffset + originalMarker.Length)..
+            poolOffset];
+        var card = source.Player.Deck.SingleOrDefault(candidate =>
+            candidate.InstanceId == cardInstanceId);
+        if (string.IsNullOrWhiteSpace(originalCardId) || card is null ||
+            card.CardId != originalCardId || effect.CardId != originalCardId ||
+            source.Player.Deck.FirstOrDefault(candidate =>
+                candidate.CardId == effect.CardId)?.InstanceId != cardInstanceId)
+            throw new InvalidDataException(
+                "Legacy event card-transform request differs from its saved physical card and effect.");
+
+        return QueryLegacyRewardCardTransform(
+            cardInstanceId, originalCardId, request.Ordinal);
     }
 
     private static ChanceLawV111 QueryLegacyControlledEventFillPotionSlot(

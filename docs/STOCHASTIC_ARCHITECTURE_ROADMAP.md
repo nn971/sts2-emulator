@@ -12,6 +12,17 @@ snapshot schema was added. Pool fidelity, equal-index calibration, and Native
 cursor parity remain open. Core Release build and `git diff --check` passed;
 no tests were run.
 
+**S6 controlled event card-transform law reuse increment (2026-10-26):** The
+controlled event-effect query now routes direct `TransformFirstCardOfId`
+requests through the existing legacy reward-pool transform law. It validates
+the saved event effect, first matching physical card instance, original model,
+request owner and ordered card-ID support; relic-trigger transforms and other
+event-reward continuations retain their prior law path. No continuation or
+snapshot schema changed.
+Pool fidelity and equal-index calibration remain `UNVERIFIED`; Native cursor
+parity remains open. Core Release build and `git diff --check` passed; no
+tests were run.
+
 **S6 event relic-acquisition law reuse increment (2026-10-26):** The
 controlled event-choice query now routes legacy event-gained relic Rare-card
 and potion model requests through the existing relic-acquisition Chance Laws

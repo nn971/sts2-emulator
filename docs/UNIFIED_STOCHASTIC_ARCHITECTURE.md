@@ -2212,6 +2212,13 @@ labels remain card IDs. This adds no event continuation or snapshot schema;
 reward-pool fidelity, equal-index calibration, and Native cursor parity remain
 open.
 
+Direct controlled event `TransformFirstCardOfId` effects also reuse the
+existing legacy reward-pool transform law. The query binds the current event
+effect to its first matching physical deck-card instance and original model,
+then verifies the saved ordered card-ID support. No new event continuation or
+snapshot field is required; transformed-pool fidelity and equal-index
+calibration remain open.
+
 ## Reading order
 
 1. This architecture contract.

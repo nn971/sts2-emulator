@@ -151,7 +151,9 @@ The supported event-choice sites are:
   cards; each swap carries the current ordered instance-ID labels
 - `reward.card_transform.replacement.index_draw` for a direct persistent-card
   transform effect or an event-gained relic that transforms persistent cards
-  on acquisition
+  on acquisition; direct `TransformFirstCardOfId` requests reuse the existing
+  typed reward-pool transform law after validating the saved physical card
+  and effect
 - `relic.unowned_random_selection.index_draw` for eligible event options
 
 Any other random site reached by the event option or reward action continues
