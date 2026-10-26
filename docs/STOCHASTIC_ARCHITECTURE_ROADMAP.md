@@ -2,6 +2,16 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S5 controlled event Chance Law outcome resolution increment (2026-10-26):**
+The controlled-event resolver now accepts a stable outcome ID from the
+current Chance Law and maps it to the existing typed index transcript,
+including compact index supports. The JSONL resolver and Python wrapper expose
+`outcome_id`; pending event-effect and modifier-curse views use the same law
+query as resolution, while other post-reward requests retain their generic
+index law. Index and candidate-label inputs remain available. Core and CLI
+Release builds, the static RNG audit, and
+`git diff --check` passed; no tests were run.
+
 **S6 controlled event reward-card law reuse increment (2026-10-26):** The
 controlled event-effect query now routes card rarity tickets and card-model
 draws from `OfferThreeCardsAndPotion` and `OfferFiveClassCards` through the

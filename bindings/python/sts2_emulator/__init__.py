@@ -1180,6 +1180,18 @@ class ControlledEventChoice:
             candidate_label=candidate_label)
         return ControlledEventChoice.from_wire(self.session, result)
 
+    def resolve_outcome_id(self, outcome_id: str):
+        """Resolve the pending event choice by its Chance Law outcome ID."""
+        if not self.pending or not self.pending.get("chanceLaw"):
+            raise EmulatorError(
+                "Expected a pending controlled event Chance Law")
+        if not isinstance(outcome_id, str) or not outcome_id.strip():
+            raise ValueError("outcome_id must be a non-empty string")
+        result = self.session.call(
+            "controlled_event_resolve", state_handle=self.handle,
+            outcome_id=outcome_id)
+        return ControlledEventChoice.from_wire(self.session, result)
+
     def enumerate_chance(self, max_outcomes: int = 32):
         """Resolve each outcome of one small pending event chance boundary."""
         if self.session.capabilities.get(

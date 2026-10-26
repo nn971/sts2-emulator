@@ -2795,13 +2795,9 @@ internal static class PrototypeAiJsonlServer
                 };
             if (!isPending)
                 transcript = completedTrace;
-            var pendingLaw = continuation is not null
-                ? ChanceLawEngineV111.QueryControlledEventChoice(state)
-                : pendingBoundary is not null
-                    ? ChanceLawEngineV111.QueryRandomIndex(
-                        pendingBoundary.EventId,
-                        pendingBoundary.Request)
-                    : null;
+            var pendingLaw = pendingBoundary is not null
+                ? ControlledEventChoiceEngineV111.QueryChanceLaw(state)
+                : null;
             object? pending = pendingBoundary is null ? null : new
             {
                 kind = pendingBoundary.Kind,
@@ -10035,16 +10031,21 @@ internal static class PrototypeAiJsonlServer
                             request, "selected_index");
                         var candidateLabel = OptionalString(
                             request, "candidate_label");
-                        if ((selectedIndex is null) ==
-                            (candidateLabel is null))
+                        var outcomeId = OptionalString(request, "outcome_id");
+                        var selectorCount = (selectedIndex is null ? 0 : 1) +
+                            (candidateLabel is null ? 0 : 1) +
+                            (outcomeId is null ? 0 : 1);
+                        if (selectorCount != 1)
                             throw new ArgumentException(
-                                "Provide exactly one of selected_index or candidate_label.");
+                                "Provide exactly one of selected_index, candidate_label, or outcome_id.");
                         var next = selectedIndex is { } index
                             ? ControlledEventChoiceEngineV111.Resolve(
                                 source, index)
-                            : ControlledEventChoiceEngineV111
-                                .ResolveByCandidateLabel(
-                                    source, candidateLabel!);
+                            : candidateLabel is { } label
+                                ? ControlledEventChoiceEngineV111
+                                    .ResolveByCandidateLabel(source, label)
+                                : ControlledEventChoiceEngineV111
+                                    .ResolveByOutcomeId(source, outcomeId!);
                         var handle = Store(next, parentHandle);
                         Write(ControlledEventChoiceResult(
                             next, handle, parentHandle));

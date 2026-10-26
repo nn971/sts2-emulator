@@ -1048,8 +1048,12 @@ is projected from those steps, so the chronology has one stored history.
 `ControlledEventChoicePendingV111` owns the active event-effect or
 post-reward boundary projection; Chance Law queries, outcome resolution,
 enumeration, and JSONL pending views share its request, ordered labels, and
-boundary fingerprint. Controlled event-choice resolution accepts a unique
-candidate label and retains the index transcript as its compatibility journal.
+boundary fingerprint. Controlled event-choice resolution accepts either a
+unique candidate label or the active Chance Law outcome ID, translating it to
+the existing index transcript as its compatibility journal. Event-effect
+boundaries and the post-reward modifier-curse boundary use the same Chance Law
+query for pending views and resolution, including compact index outcome
+support; other post-reward requests retain their generic index law.
 The controlled Chance Law query routes the legacy physical-card random
 upgrade, Rare-card and potion grants, empty potion-slot fills, custom potion
 offers, post-reward modifier curses, and event-gained relic Rare-card and

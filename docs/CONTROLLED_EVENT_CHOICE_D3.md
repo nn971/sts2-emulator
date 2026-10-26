@@ -217,13 +217,17 @@ ordinary run `state_handle`:
 | --- | --- | --- |
 | `controlled_event_begin` | `state_handle`, `choice_id` | Child run handle, pending request and labels, transcript, legal actions |
 | `controlled_event_advance` | controlled event-choice `state_handle`, legal player `action_id` | Apply one supported player action under the controlled guard, including Stone's deck-card choice or a supported reward action |
-| `controlled_event_resolve` | pending `state_handle`, exactly one of `selected_index` or `candidate_label` | Child run handle with the next request or committed option |
+| `controlled_event_resolve` | pending `state_handle`, exactly one of `selected_index`, `candidate_label`, or `outcome_id` | Child run handle with the next request or committed option |
 | `controlled_event_inspect` | pending `state_handle` | Restore the Nature-facing request and legal outcome actions after loading a snapshot |
 | `controlled_event_enumerate` | pending `state_handle`, current `fingerprint`, optional `maximum_outcomes` | Independent child run handle for each outcome of this one request |
 
 `candidate_label` selects a unique saved label from the active ordered support;
-the existing `selected_index` form remains supported. Both forms retain the
-controlled index transcript.
+`outcome_id` selects the matching outcome in the current Chance Law, including
+compact index supports; the existing `selected_index` form remains supported.
+All forms retain the controlled index transcript. Event-effect boundaries and
+the post-reward modifier-curse boundary use the same semantic Chance Law query
+for pending inspection and outcome resolution; other post-reward requests
+retain their generic index law.
 
 The exact event-effect or event-reward continuation frame is part of the
 ordinary run snapshot. A pending continuation exposes only
@@ -237,7 +241,8 @@ Python binding exposes `State.begin_controlled_event_choice()`,
 `advance_controlled_event_reward()` retained as a compatibility alias) and
 `ControlledEventChoice.resolve()` or
 `ControlledEventChoice.resolve_candidate_label()` when the pending support
-publishes candidate labels.
+publishes candidate labels. `ControlledEventChoice.resolve_outcome_id()`
+selects a stable Chance Law outcome directly.
 The optional one-boundary enumerator is
 advertised as `sts2-v111-controlled-event-enumeration-v1`; its cap is 256
 outcomes. Each branch resolves only the current request, leaving any next

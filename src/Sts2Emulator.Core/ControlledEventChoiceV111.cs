@@ -127,6 +127,18 @@ public static class ControlledEventChoiceEngineV111
         return result;
     }
 
+    public static ChanceLawV111 QueryChanceLaw(RunState source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        var pending = ControlledEventChoicePendingV111.Describe(source);
+        if (pending.Kind == "event_random_choice" ||
+            pending.Request.SiteId ==
+                "event.reward.random_modifier_curse.index_draw")
+            return ChanceLawEngineV111.QueryControlledEventChoice(source);
+        return ChanceLawEngineV111.QueryRandomIndex(
+            pending.ChanceEventId, pending.Request);
+    }
+
     internal static bool IsStonePushDeckChoiceBoundary(RunState run)
     {
         var eventState = run.World?.Event;
@@ -175,6 +187,35 @@ public static class ControlledEventChoiceEngineV111
             .IndexOfCandidateLabel(
                 pending.CandidateLabels, pending.Request.SupportCount,
                 candidateLabel);
+        return Resolve(source, selectedIndex);
+    }
+
+    /// <summary>
+    /// Resolve a controlled event outcome by the stable identity exposed by
+    /// its current Chance Law. Compact index laws are handled through their
+    /// support projection, so callers do not need to translate outcome IDs to
+    /// request indices themselves.
+    /// </summary>
+    public static RunState ResolveByOutcomeId(
+        RunState source, string outcomeId)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentException.ThrowIfNullOrWhiteSpace(outcomeId);
+        var pending = ControlledEventChoicePendingV111.Describe(source);
+        var law = QueryChanceLaw(source);
+        law.Validate();
+        if (law.EventId != pending.ChanceEventId ||
+            law.SiteId != pending.Request.SiteId ||
+            law.OperationKind != pending.Request.OperationKind ||
+            law.OwnerId != pending.Request.OwnerId ||
+            law.Ordinal != pending.Request.Ordinal ||
+            law.SupportCount != pending.Request.SupportCount)
+            throw new InvalidDataException(
+                "Controlled event Chance Law no longer matches its pending request.");
+
+        if (!law.TryGetOutcomeIndex(outcomeId, out var selectedIndex))
+            throw new InvalidOperationException(
+                "Controlled event outcome identity is outside the active Chance Law support.");
         return Resolve(source, selectedIndex);
     }
 

@@ -518,6 +518,53 @@ public sealed record ChanceLawV111(
                 ? range.OutcomeIdAt(supportOffset)
                 : Outcomes[supportOffset].OutcomeId;
 
+    /// <summary>Map an explicit or compact law outcome identity to its
+    /// ordered support offset.</summary>
+    public bool TryGetOutcomeIndex(string outcomeId, out int supportOffset)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(outcomeId);
+        supportOffset = -1;
+        if (NativeBoundedIndexGrid is { } nativeRange)
+            return TryGetCompactOutcomeIndex(
+                outcomeId, nativeRange.OutcomeIdPrefix, 0,
+                nativeRange.BoundExclusive, out supportOffset);
+        if (UniformIndexRange is { } uniformRange)
+            return TryGetCompactOutcomeIndex(
+                outcomeId, uniformRange.OutcomeIdPrefix,
+                uniformRange.StartInclusive, uniformRange.Count,
+                out supportOffset);
+
+        var outcomes = Outcomes;
+        for (var index = 0; index < outcomes.Length; index++)
+        {
+            if (!StringComparer.Ordinal.Equals(
+                    outcomes[index].OutcomeId, outcomeId))
+                continue;
+            if (supportOffset >= 0)
+                throw new InvalidDataException(
+                    "Chance Law outcome identity is ambiguous in its support.");
+            supportOffset = index;
+        }
+        return supportOffset >= 0;
+    }
+
+    private static bool TryGetCompactOutcomeIndex(
+        string outcomeId, string prefix, int startInclusive, int count,
+        out int supportOffset)
+    {
+        supportOffset = -1;
+        if (!outcomeId.StartsWith(prefix, StringComparison.Ordinal) ||
+            !int.TryParse(
+                outcomeId.AsSpan(prefix.Length), NumberStyles.None,
+                CultureInfo.InvariantCulture, out var value))
+            return false;
+        var offset = (long)value - startInclusive;
+        if (offset < 0 || offset >= count)
+            return false;
+        supportOffset = (int)offset;
+        return true;
+    }
+
     public string? OutcomeLabelAt(int supportOffset)
     {
         if ((uint)supportOffset >= (uint)SupportCount)

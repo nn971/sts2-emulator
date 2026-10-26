@@ -69,7 +69,10 @@ the partially updated player/world state and current effect index at a
 supported legacy chance site, then resumes after an external outcome without
 replaying earlier effects. The D4 JSONL/Python adapter exposes this through
 `controlled_event_begin` and `controlled_event_resolve`; candidate labels and
-the completed controlled transcript are serialized with the run. This slice
+the completed controlled transcript are serialized with the run. The pending
+view derives stable Chance Law outcome IDs from the current boundary, and
+resolution accepts an index, candidate label, or current law outcome ID while
+retaining the typed index transcript. This slice
 covers random upgrades, supported random card/potion/relic event rewards,
 selected multi-draw custom card and relic offers, empty-slot potion filling,
 the legacy event-acquired Toy Box wax relic offer, and the post-reward
