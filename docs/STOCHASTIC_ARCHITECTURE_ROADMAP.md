@@ -20,6 +20,16 @@ mapped to rows, 185/185 S0 evidence pointers, zero ambient-entropy findings,
 zero Native Chance Law references, and zero forbidden query dependencies.
 `git diff --check` passed; no tests were run.
 
+**S5 controlled event-choice outcome identity increment (2026-10-26):** The
+generic controlled event-choice Chance Law now uses the shared candidate-ID
+mapper, so a complete and unique saved label vector supplies ordered outcome
+IDs whenever the support fits the explicit-law limit. It preserves each
+request index's existing weight and fingerprints the identity mapping;
+missing, duplicate, or numeric-range labels keep `choice_index:n`, and compact
+supports remain compact. Site-specific event laws keep their existing support
+builders and checks. Core/CLI Release build and static RNG audit passed;
+`git diff --check` passed; no tests were run.
+
 **S5 controlled run-action outcome identity increment (2026-10-26):** The
 generic controlled run-action Chance Law now reuses a complete, unique,
 saved candidate-label vector as its ordered outcome IDs when the support

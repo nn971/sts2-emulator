@@ -84,19 +84,19 @@ public static partial class ChanceLawEngineV111
         if (QueryControlledRunActionSemanticLaw(
                 run, continuation, pending.ChanceEventId) is { } semanticLaw)
             return semanticLaw;
-        return QueryRunActionIndexWithCandidateOutcomeIds(
+        return QueryRandomIndexWithCandidateOutcomeIds(
             pending.ChanceEventId, pending.Request,
             continuation.PendingCandidateLabels);
     }
 
-    private static ChanceLawV111 QueryRunActionIndexWithCandidateOutcomeIds(
+    private static ChanceLawV111 QueryRandomIndexWithCandidateOutcomeIds(
         string eventId,
         RandomIndexRequestV111 request,
-        string[] candidateLabels)
+        string[]? candidateLabels)
     {
-        ArgumentNullException.ThrowIfNull(candidateLabels);
         var indexLaw = QueryRandomIndex(eventId, request);
-        if (request.SupportCount > ChanceLawV111.MaximumExplicitOutcomeCount ||
+        if (candidateLabels is null ||
+            request.SupportCount > ChanceLawV111.MaximumExplicitOutcomeCount ||
             candidateLabels.Length != request.SupportCount ||
             candidateLabels.Any(string.IsNullOrWhiteSpace) ||
             ControlledStochasticCandidateLabelsV111.IsNumericRange(

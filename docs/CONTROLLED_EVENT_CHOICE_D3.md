@@ -66,14 +66,16 @@ prefix validator for current-act Combat and Elite map nodes and exposes
 weights and validate each saved per-swap identity label before mapping it.
 
 Pending event-effect and post-reward modifier-curse responses also include a
-read-only `chanceLaw` and `boundaryFingerprint`. For generic requests on
-recognized Native `run.*` and `player.*` streams or context streams created by
-`NativeRngV111Contexts`, the law assigns exact Native `NextInt` 53-bit grid
-masses to each legal request index (`choice_index:n`); legacy and unknown
-streams retain equal index weights.
-Candidate labels describe the mechanical result associated with an index but
-do not change those index masses. Stone push and lift each collapse all 100
-bounded indices to a single `no_effect` outcome under a `SOURCE_VERIFIED` law.
+read-only `chanceLaw` and `boundaryFingerprint`. Generic requests on recognized
+Native `run.*` and `player.*` streams or context streams created by
+`NativeRngV111Contexts` retain exact Native `NextInt` 53-bit grid masses per
+request index; legacy and unknown streams retain equal index weights. When a
+complete, unique saved candidate-label vector fits the explicit-law limit,
+the law uses those labels as ordered outcome IDs. Missing, duplicate, numeric
+range, or compact supports keep their `choice_index:n` or range outcomes.
+Labels describe the mechanical result associated with an index and do not
+change its weight. Stone push and lift each collapse all 100 bounded indices
+to a single `no_effect` outcome under a `SOURCE_VERIFIED` law.
 Source-pool completeness, stream parity and original-game probabilities
 remain separate.
 The pending boundary fingerprint binds the event/choice/request context and

@@ -1005,7 +1005,9 @@ public static partial class ChanceLawEngineV111
         if (QueryControlledEventChoiceSemanticLaw(run, pending) is
             { } semanticLaw)
             return semanticLaw;
-        return QueryRandomIndex(pending.ChanceEventId, pending.Request);
+        return QueryRandomIndexWithCandidateOutcomeIds(
+            pending.ChanceEventId, pending.Request,
+            pending.CandidateLabels);
     }
 
     private static ChanceLawV111? QueryControlledEventChoiceSemanticLaw(
