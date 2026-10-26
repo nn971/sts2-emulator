@@ -2465,10 +2465,19 @@ public static class ControlledRunActionEngineV111
         if (candidateLabels.Length != pending.Request.SupportCount)
             throw new InvalidOperationException(
                 "This controlled run-action support does not expose complete candidate labels.");
-        var selectedIndex = ControlledChanceContinuationExecutorV111
-            .IndexOfCandidateLabel(
-                candidateLabels, pending.Request.SupportCount,
-                candidateLabel);
+        var selectedIndex = Array.FindIndex(candidateLabels, label =>
+            StringComparer.Ordinal.Equals(label, candidateLabel));
+        if (selectedIndex < 0)
+        {
+            var law = ChanceLawEngineV111.QueryControlledRunAction(source);
+            if (law.Outcomes.Length == pending.Request.SupportCount)
+                selectedIndex = Array.FindIndex(law.Outcomes, outcome =>
+                    StringComparer.Ordinal.Equals(
+                        outcome.OutcomeId, candidateLabel));
+        }
+        if (selectedIndex < 0)
+            throw new InvalidOperationException(
+                "The requested candidate label is not in the pending run-action support or Chance Law outcomes.");
         return Resolve(source, selectedIndex);
     }
 
