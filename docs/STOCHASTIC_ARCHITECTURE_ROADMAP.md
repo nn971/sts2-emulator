@@ -6130,3 +6130,10 @@ callsite coverage. The updated inventory still maps all 185 registered sites
 to the matrix, with no static IDs absent from the registry. The five static
 boundary checks passed; this refresh does not close row-level or source
 completeness review. No tests were added or run.
+
+**S4 automatic hand-draw suspension reconciliation increment (2026-10-26):**
+The automatic-pipeline stochastic owner now reconciles saved request counts
+and tagged provider progress for both Stratagem and nested `CardDrawn`
+suspensions. Their adapters retain provider deck, choice-marker, cursor, and
+Native-policy checks. No snapshot schema changed. Core Release build and
+`git diff --check` passed; no tests were added or run.

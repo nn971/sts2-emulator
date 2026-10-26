@@ -439,6 +439,48 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
     }
 
     /// <summary>
+    /// Reconcile a new automatic hand-draw suspension with any tagged
+    /// progress already saved at the active DrawPlayerHand cursor. Provider
+    /// adapters retain deck and choice policy; this owner checks count and
+    /// progress-mode compatibility.
+    /// </summary>
+    public PrototypeAutomaticHandDrawProgressV111?
+        ValidateAutomaticHandDrawSuspensionProgress(
+            PrototypeAutomaticPipelineMechanicsStateV111 mechanics,
+            bool semanticProvider, int? requestedCount)
+    {
+        ArgumentNullException.ThrowIfNull(mechanics);
+        bool hasActiveProgress = TryGetActiveAutomaticHandDrawProgress(
+            mechanics, out var progress);
+        if (semanticProvider)
+        {
+            if (requestedCount is not > 0)
+                throw new InvalidDataException(
+                    "Semantic automatic hand-draw suspension has no request count.");
+            var savedRequested = GetSavedSemanticHandDrawRequestedCount(
+                mechanics);
+            if ((savedRequested is { } semanticRequest &&
+                 semanticRequest != requestedCount) ||
+                (HasSavedHandDrawProgress() &&
+                 (!hasActiveProgress || progress.Kind !=
+                    PrototypeAutomaticHandDrawProgressKindV111.SemanticDraw)))
+                throw new InvalidDataException(
+                    "Semantic automatic hand-draw progress changed provider or request.");
+            return hasActiveProgress ? progress : null;
+        }
+
+        if (CompletedSemanticHandDrawRequested is not null ||
+            (hasActiveProgress && progress.Kind ==
+                PrototypeAutomaticHandDrawProgressKindV111.SemanticDraw) ||
+            (requestedCount is { } controlledRequest &&
+             hasActiveProgress && progress.RequestedCount is { } savedRequest &&
+             controlledRequest != savedRequest))
+            throw new InvalidDataException(
+                "Controlled automatic hand-draw progress changed provider or request.");
+        return hasActiveProgress ? progress : null;
+    }
+
+    /// <summary>
     /// Reconciles the caller's requested count with the active tagged
     /// DrawPlayerHand progress. A saved older payload may omit the count, so
     /// the caller's value remains authoritative in that case.
