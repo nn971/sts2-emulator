@@ -1,0 +1,121 @@
+name: stochastic-source-independent-acceptance
+
+on:
+  push:
+    branches:
+      - audit/unified-stochastic-acceptance-20261026
+  pull_request:
+    paths:
+      - 'src/Sts2Emulator.Core/**'
+      - 'src/Sts2Emulator.Cli/**'
+      - 'bindings/python/**'
+      - 'tools/rng_callsite_inventory.py'
+      - 'tools/stochastic_regression_report.py'
+      - 'tests/Sts2Emulator.Core.Tests/**'
+      - '.github/workflows/stochastic-acceptance.yml'
+
+jobs:
+  source-contracts:
+    name: S0/S1/S6 static contract checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Registry, law-purity and stochastic-boundary audit
+        run: |
+          mkdir -p /tmp/stochastic-acceptance
+          python tools/rng_callsite_inventory.py \
+            --check-site-matrix \
+            --check-s0-contract-links \
+            --check-no-ambient-entropy \
+            --check-no-native-chance-law-dependency \
+            --check-chance-law-outcome-blind \
+            --check-draw-kernel-callsite-ownership \
+            --format json > /tmp/stochastic-acceptance/site-coverage.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stochastic-site-coverage
+          path: /tmp/stochastic-acceptance/
+
+  kernel-acceptance:
+    name: S1/S3 and limited native-scripted boundary equivalence
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - run: dotnet restore Sts2Emulator.sln
+      - run: dotnet build Sts2Emulator.sln -c Release --no-restore
+      - name: Independent physical-deck, seeded-reference, provider-boundary and worker-isolation tests
+        run: |
+          mkdir -p /tmp/stochastic-acceptance
+          dotnet test tests/Sts2Emulator.Core.Tests/Sts2Emulator.Core.Tests.csproj \
+            -c Release --no-build \
+            --filter 'FullyQualifiedName~SemanticDeckStateV111Tests|FullyQualifiedName~RandomBoundaryJournalV111Tests|FullyQualifiedName~ChanceLawV111Tests.DrawLawMatchesIndependentEnumerationOfConstrainedPhysicalPermutations|FullyQualifiedName~ChanceLawV111Tests.ReferenceNatureSamplingMatchesWeightsAndReplaysFromForkedState' \
+            --logger 'trx;LogFileName=kernel-acceptance.trx' \
+            --results-directory /tmp/stochastic-acceptance
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stochastic-kernel-acceptance
+          path: /tmp/stochastic-acceptance/
+
+  independent-worker-acceptance:
+    name: S2/S5 real JSONL combat and 15 isolated worker processes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - run: dotnet restore Sts2Emulator.sln
+      - run: dotnet build Sts2Emulator.sln -c Release --no-restore
+      - name: Complete supported semantic combats across Nature and ordinary RNG
+        run: python tools/nature_semantic_seeded_jsonl_smoke.py
+
+  regression-audit:
+    name: Frozen main vs source-independent branch — identical test identities
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: candidate
+      - uses: actions/checkout@v4
+        with:
+          ref: 3ce2ded034e8be94cafcb8ff08cd3040bfad7922
+          path: baseline
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - name: Build baseline
+        run: dotnet build baseline/Sts2Emulator.sln -c Release
+      - name: Build feature
+        run: dotnet build candidate/Sts2Emulator.sln -c Release
+      - name: Execute frozen baseline test suite
+        shell: bash
+        run: |
+          mkdir -p reports
+          dotnet test baseline/tests/Sts2Emulator.Core.Tests/Sts2Emulator.Core.Tests.csproj \
+            -c Release --no-build \
+            --logger 'trx;LogFileName=baseline.trx' \
+            --results-directory "$GITHUB_WORKSPACE/reports" || true
+      - name: Execute candidate test suite
+        shell: bash
+        run: |
+          dotnet test candidate/tests/Sts2Emulator.Core.Tests/Sts2Emulator.Core.Tests.csproj \
+            -c Release --no-build \
+            --logger 'trx;LogFileName=candidate.trx' \
+            --results-directory "$GITHUB_WORKSPACE/reports" || true
+      - name: Compare equivalent test cases
+        run: |
+          python candidate/tools/stochastic_regression_report.py \
+            --baseline reports/baseline.trx \
+            --candidate reports/candidate.trx \
+            --json reports/stochastic-regressions.json \
+            --strict
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stochastic-main-vs-feature-regressions
+          path: reports/
