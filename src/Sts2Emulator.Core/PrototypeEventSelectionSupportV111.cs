@@ -191,20 +191,8 @@ public sealed class PrototypeEventSelectionSupportV111
             return outcomeIds.Length == 0;
         return outcomeIds.SequenceEqual(TicketOutcomeIds(),
                    StringComparer.Ordinal)
-            || IsLegacyNumericTicketSequence(
+            || ControlledStochasticCandidateLabelsV111.IsLegacyNumericRange(
                 outcomeIds, TotalTicketCount, maximumInlineCount);
-    }
-
-    public static bool IsLegacyNumericTicketSequence(
-        string[] labels, int totalTicketCount, int maximumInlineCount)
-    {
-        ArgumentNullException.ThrowIfNull(labels);
-        if (totalTicketCount <= 0 || maximumInlineCount <= 0)
-            return false;
-        if (totalTicketCount > maximumInlineCount)
-            return labels.Length == 0;
-        return ControlledStochasticCandidateLabelsV111.IsNumericRange(
-            labels, totalTicketCount);
     }
 
     public static bool IsTicketOutcomeSequence(
@@ -215,7 +203,7 @@ public sealed class PrototypeEventSelectionSupportV111
             return false;
         if (totalTicketCount > maximumInlineCount)
             return outcomeIds.Length == 0;
-        if (IsLegacyNumericTicketSequence(
+        if (ControlledStochasticCandidateLabelsV111.IsLegacyNumericRange(
                 outcomeIds, totalTicketCount, maximumInlineCount))
             return true;
         if (outcomeIds.Length != totalTicketCount)

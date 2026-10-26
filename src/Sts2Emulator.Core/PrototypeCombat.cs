@@ -28,94 +28,51 @@ public sealed partial class PrototypeGameEngine
         }
         else
         {
-        var overgrowthBoss =
-            TryPickOvergrowthBossEncounter(
-                world,
-                roomType);
-        if (overgrowthBoss is not null)
-        {
-            encounter = overgrowthBoss;
-        }
-        else
-        {
-            var overgrowthElite =
-                TryPickOvergrowthEliteEncounter(
-                    world,
-                    roomType,
-                    prototypeRng);
-            if (overgrowthElite is not null)
+            var overgrowthBoss =
+                TryPickOvergrowthBossEncounter(world, roomType);
+            if (overgrowthBoss is not null)
             {
-                encounter = overgrowthElite.Value.Encounter;
-                world = overgrowthElite.Value.World;
+                encounter = overgrowthBoss;
             }
             else
             {
-                var overgrowthWeak =
-                TryPickOvergrowthWeakEncounter(
-                    world,
-                    roomType,
-                    prototypeRng);
-            if (overgrowthWeak is not null)
-            {
-                encounter =
-                    overgrowthWeak.Value.Encounter;
-                world = overgrowthWeak.Value.World;
-            }
-            else
-            {
-                var overgrowthNormal =
-                    TryPickOvergrowthNormalEncounter(
-                        world,
-                        roomType,
-                        prototypeRng);
-            if (overgrowthNormal is not null)
-            {
-                encounter =
-                    overgrowthNormal.Value.Encounter;
-                world = overgrowthNormal.Value.World;
-            }
-            else
-            {
-                var encounters = PrototypeContent.Encounters
-                .Where(candidate =>
-                    candidate.RoomType == roomType
-                    && world.Act >= candidate.MinAct
-                    && world.Act <= candidate.MaxAct
-                    && world.Floor >= candidate.MinFloor
-                    && world.Floor <= candidate.MaxFloor
-                    && candidate.Weight > 0)
-                .ToArray();
-
-            if (encounters.Length == 0)
-            {
-                throw new InvalidOperationException(
-                    $"No prototype encounter is eligible for {roomType} " +
-                    $"at act {world.Act}, floor {world.Floor}.");
-            }
-
-            var previousEncounter = world.EncounterIds.LastOrDefault();
-            if (previousEncounter is not null && encounters.Length > 1)
-            {
-                var withoutImmediateRepeat = encounters
-                    .Where(candidate =>
-                        !StringComparer.Ordinal.Equals(
-                            candidate.Id,
-                            previousEncounter))
-                    .ToArray();
-                if (withoutImmediateRepeat.Length > 0)
+                var overgrowthElite = TryPickOvergrowthEliteEncounter(
+                    world, roomType, prototypeRng);
+                if (overgrowthElite is not null)
                 {
-                    encounters = withoutImmediateRepeat;
+                    encounter = overgrowthElite.Value.Encounter;
+                    world = overgrowthElite.Value.World;
+                }
+                else
+                {
+                    var overgrowthWeak = TryPickOvergrowthWeakEncounter(
+                        world, roomType, prototypeRng);
+                    if (overgrowthWeak is not null)
+                    {
+                        encounter = overgrowthWeak.Value.Encounter;
+                        world = overgrowthWeak.Value.World;
+                    }
+                    else
+                    {
+                        var overgrowthNormal =
+                            TryPickOvergrowthNormalEncounter(
+                                world, roomType, prototypeRng);
+                        if (overgrowthNormal is not null)
+                        {
+                            encounter = overgrowthNormal.Value.Encounter;
+                            world = overgrowthNormal.Value.World;
+                        }
+                        else
+                        {
+                            var encounterSupport =
+                                PrototypeWeightedEncounterSupportV111
+                                    .Describe(world, roomType);
+                            encounter = PickWeightedEncounter(
+                                encounterSupport, prototypeRng);
+                        }
+                    }
                 }
             }
-
-                    encounter = PickWeightedEncounter(
-                        encounters,
-                        prototypeRng);
-                }
-            }
-        }
-        }
-
         }
 
         state = ApplyBeforeCombatStartRelics(
@@ -858,32 +815,26 @@ public sealed partial class PrototypeGameEngine
     }
 
     private static PrototypeEncounterDefinition PickWeightedEncounter(
-        PrototypeEncounterDefinition[] encounters,
+        PrototypeWeightedEncounterSupportV111 support,
         RngBundle rng)
     {
-        var totalWeight = encounters.Sum(encounter => encounter.Weight);
-        if (totalWeight <= 0)
+        var candidateLabels = ControlledStochasticCandidateLabelsV111.IsActive
+            && support.TotalTicketCount <=
+                ControlledRunActionEngineV111.MaximumInlineOutcomeActions
+            ? support.TicketOutcomeIds()
+            : [];
+        int ticket;
+        using (ControlledStochasticCandidateLabelsV111.Describe(
+            candidateLabels))
         {
-            throw new InvalidOperationException("Eligible encounter pool has no positive weight.");
+            ticket = ResolveLegacyBoundedInteger(
+                rng,
+                "combat.encounter.weighted_selection.ticket",
+                support.RequestOwnerId,
+                support.TotalTicketCount,
+                streamId: "combat");
         }
-
-        var roll = ResolveLegacyBoundedInteger(
-            rng,
-            "combat.encounter.weighted_selection.ticket",
-            "pool:" + CanonicalJson.Sha256(encounters.Select(encounter =>
-                new { encounter.Id, encounter.Weight }).ToArray()),
-            totalWeight);
-        foreach (var encounter in encounters)
-        {
-            if (roll < encounter.Weight)
-            {
-                return encounter;
-            }
-
-            roll -= encounter.Weight;
-        }
-
-        throw new InvalidOperationException("Weighted encounter selection fell through.");
+        return support.EncounterAtTicket(ticket);
     }
 
     // Native RampartPower.AfterSideTurnStart fires once at the start

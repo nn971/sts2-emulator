@@ -11,7 +11,7 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public sealed partial class PrototypeGameEngine
 {
-    private static bool ShouldForceWarHistorianRepy(
+    internal static bool ShouldForceWarHistorianRepy(
         RunWorldState world, PlayerState player) =>
         world.Act == 3
         && player.Deck.Any(card =>

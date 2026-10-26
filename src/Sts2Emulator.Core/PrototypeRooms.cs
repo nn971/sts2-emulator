@@ -55,24 +55,8 @@ public sealed partial class PrototypeGameEngine
                 : ResolveUnknownMapRoom(ref world, prototypeRng)
             : node.RoomType;
 
-        world = world with
-        {
-            Floor = node.Floor,
-            ActiveRoom = room,
-            Map = world.Map with { CurrentNodeId = node.NodeId },
-            Combat = null,
-            Reward = null,
-            Shop = null,
-            Event = null
-        };
-        state = state with
-        {
-            Stochastic = RunStochasticStateV111.WithPrototypeRng(
-                state.Stochastic, prototypeRng),
-            World = world,
-            Player = ApplyRelicRoomEntryGold(
-                ApplyPersistentCardRoomEntry(playerAfterTravel, node))
-        };
+        state = ApplyMapNodeEntryContext(
+            state, world, node, room, playerAfterTravel, prototypeRng);
 
         return room switch
         {
@@ -91,6 +75,74 @@ public sealed partial class PrototypeGameEngine
             PrototypeRoomType.Rest => state with { Phase = RunPhase.Rest },
             PrototypeRoomType.Treasure => StartTreasureRoom(state),
             _ => throw new ArgumentOutOfRangeException()
+        };
+    }
+
+    internal static RunState ProjectMapNodeEntryContext(
+        RunState source,
+        string nodeId,
+        PrototypeRoomType? resolvedUnknownRoom = null)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        var world = RequireWorld(source);
+        var node = PrototypeNativeWingedBoots.AvailableNodes(
+                world, source.Player)
+            .SingleOrDefault(candidate => candidate.NodeId == nodeId)
+            ?? throw new InvalidDataException(
+                "Map-entry projection does not reference an available node.");
+        var playerAfterTravel = PrototypeNativeWingedBoots
+            .ConsumeIfSkippingEdge(source.Player, world.Map, node.NodeId);
+        var room = node.RoomType;
+        if (room == PrototypeRoomType.Unknown)
+        {
+            if (PrototypeGoldenPathMapV111.IsActive(
+                    source.Player, world.Act) ||
+                ShouldForceWarHistorianRepy(world, source.Player))
+            {
+                room = PrototypeRoomType.Event;
+            }
+            else
+            {
+                room = resolvedUnknownRoom ?? throw new InvalidDataException(
+                    "Unknown-room map entry requires its saved room outcome.");
+                var odds = world.UnknownRoomOdds ??
+                    new PrototypeUnknownRoomOddsState();
+                world = world with
+                {
+                    UnknownRoomOdds = odds.After(room)
+                };
+            }
+        }
+        return ApplyMapNodeEntryContext(
+            source, world, node, room, playerAfterTravel,
+            source.Stochastic.PrototypeRng);
+    }
+
+    private static RunState ApplyMapNodeEntryContext(
+        RunState state,
+        RunWorldState world,
+        MapNodeState node,
+        PrototypeRoomType room,
+        PlayerState playerAfterTravel,
+        RngBundle prototypeRng)
+    {
+        world = world with
+        {
+            Floor = node.Floor,
+            ActiveRoom = room,
+            Map = world.Map with { CurrentNodeId = node.NodeId },
+            Combat = null,
+            Reward = null,
+            Shop = null,
+            Event = null
+        };
+        return state with
+        {
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, prototypeRng),
+            World = world,
+            Player = ApplyRelicRoomEntryGold(
+                ApplyPersistentCardRoomEntry(playerAfterTravel, node))
         };
     }
 

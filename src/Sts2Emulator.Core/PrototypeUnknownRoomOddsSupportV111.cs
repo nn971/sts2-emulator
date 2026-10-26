@@ -72,7 +72,7 @@ public sealed class PrototypeUnknownRoomOddsSupportV111
         if (TotalTicketCount > maximumInlineCount)
             return labels.Length == 0;
         return labels.SequenceEqual(TicketOutcomeIds(), StringComparer.Ordinal)
-            || IsLegacyNumericTicketSequence(
+            || ControlledStochasticCandidateLabelsV111.IsLegacyNumericRange(
                 labels, TotalTicketCount, maximumInlineCount);
     }
 
@@ -84,7 +84,7 @@ public sealed class PrototypeUnknownRoomOddsSupportV111
             return false;
         if (totalTicketCount > maximumInlineCount)
             return labels.Length == 0;
-        if (IsLegacyNumericTicketSequence(
+        if (ControlledStochasticCandidateLabelsV111.IsLegacyNumericRange(
                 labels, totalTicketCount, maximumInlineCount))
             return true;
         if (labels.Length != totalTicketCount)
@@ -115,17 +115,6 @@ public sealed class PrototypeUnknownRoomOddsSupportV111
                 return false;
         }
         return true;
-    }
-
-    private static bool IsLegacyNumericTicketSequence(
-        string[] labels, int totalTicketCount, int maximumInlineCount)
-    {
-        if (totalTicketCount <= 0 || maximumInlineCount <= 0)
-            return false;
-        if (totalTicketCount > maximumInlineCount)
-            return labels.Length == 0;
-        return ControlledStochasticCandidateLabelsV111.IsNumericRange(
-            labels, totalTicketCount);
     }
 
     private static string RoomId(PrototypeRoomType roomType) => roomType switch

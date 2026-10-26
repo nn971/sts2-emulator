@@ -63,6 +63,11 @@ public static partial class ChanceLawEngineV111
             return QueryControlledRunActionEventSelection(
                 run, continuation, pending.ChanceEventId);
         if (continuation.ActionId == "choose_map_node" &&
+            pending.Request.SiteId ==
+                "combat.encounter.weighted_selection.ticket")
+            return QueryControlledRunActionWeightedEncounterSelection(
+                run, continuation, pending.ChanceEventId);
+        if (continuation.ActionId == "choose_map_node" &&
             continuation.MapNodeId is { } mapNodeId &&
             PrototypeGameEngine.DescribeActOneEncounterSelection(
                 run,
@@ -104,7 +109,17 @@ public static partial class ChanceLawEngineV111
             throw new InvalidDataException(
                 "Controlled event-selection law is outside its legacy Event-node boundary.");
 
-        var support = PrototypeEventSelectionSupportV111.Describe(run);
+        if (run.World is { } entryWorld &&
+            PrototypeGameEngine.ShouldForceWarHistorianRepy(
+                entryWorld, run.Player))
+            throw new InvalidDataException(
+                "Controlled event-selection law is outside the forced Repy room boundary.");
+        var entryState = PrototypeGameEngine.ProjectMapNodeEntryContext(
+            run,
+            continuation.MapNodeId ?? throw new InvalidDataException(
+                "Controlled event-selection request is missing its map node."),
+            unknownNodeResolvedToEvent ? PrototypeRoomType.Event : null);
+        var support = PrototypeEventSelectionSupportV111.Describe(entryState);
         if (request.SiteId != "event.selection.weighted_ticket" ||
             request.StreamId != "event" ||
             request.OperationKind != "bounded_integer" ||
@@ -204,6 +219,80 @@ public static partial class ChanceLawEngineV111
             "ticket-to-room mapping is captured; the source NextFloat grid, " +
             "legacy modulo calibration, and Native stream parity remain " +
             "unverified.",
+            outcomes);
+        return law with { EventId = eventId };
+    }
+
+    private static ChanceLawV111
+        QueryControlledRunActionWeightedEncounterSelection(
+            RunState run,
+            PrototypeControlledRunActionContinuationV111 continuation,
+            string eventId)
+    {
+        var request = continuation.PendingRequest;
+        var world = run.World;
+        var selectedNode = world is not null &&
+            continuation.MapNodeId is { } nodeId
+            ? PrototypeNativeWingedBoots.AvailableNodes(world, run.Player)
+                .SingleOrDefault(node => node.NodeId == nodeId)
+            : null;
+        if (run.Phase != RunPhase.MapChoice ||
+            run.Configuration is not null ||
+            run.Stochastic.NativeRunRng is not null ||
+            world is null ||
+            world.ActOneRegion is not null ||
+            world.ActOneEncounterPool is not null ||
+            PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
+            selectedNode?.RoomType is not (PrototypeRoomType.Combat or
+                PrototypeRoomType.Elite or PrototypeRoomType.Boss) ||
+            continuation.Decisions.Length != 0)
+            throw new InvalidDataException(
+                "Controlled weighted-encounter law is outside the legacy prototype combat-entry boundary.");
+
+        var encounterEntryState = PrototypeGameEngine
+            .ProjectMapNodeEntryContext(run,
+                continuation.MapNodeId ?? throw new InvalidDataException(
+                    "Controlled weighted-encounter request is missing its map node."));
+        var support = PrototypeWeightedEncounterSupportV111.Describe(
+            encounterEntryState.World!, selectedNode.RoomType);
+        if (request.SiteId !=
+                "combat.encounter.weighted_selection.ticket" ||
+            request.StreamId != "combat" ||
+            request.OperationKind != "bounded_integer" ||
+            request.OwnerId != support.RequestOwnerId ||
+            request.BoundedCount != support.TotalTicketCount ||
+            request.OrderedCandidates.Length != 0 ||
+            !support.MatchesTicketOutcomeLabels(
+                continuation.PendingCandidateLabels,
+                ControlledRunActionEngineV111.MaximumInlineOutcomeActions))
+            throw new InvalidDataException(
+                "Controlled weighted-encounter request differs from its current ordered support.");
+
+        if (support.TotalTicketCount > ChanceLawV111.MaximumExplicitOutcomeCount)
+            return QueryRandomIndex(eventId, request);
+
+        var outcomeIds = support.TicketOutcomeIds();
+        var outcomes = outcomeIds.Select(outcomeId =>
+            new ChanceLawOutcomeV111(outcomeId, 1L)).ToArray();
+        var law = CreateLegacyCategoricalLaw(
+            request.SiteId, request.StreamId, request.OwnerId,
+            request.Ordinal,
+            "legacy-weighted-encounter-ticket-identities-v1",
+            new
+            {
+                request,
+                support.Act,
+                support.Floor,
+                support.RoomType,
+                orderedEncounterIds = support.EncounterIds,
+                orderedTicketWeights = support.TicketWeights,
+                orderedTicketOutcomeIds = outcomeIds
+            },
+            "Equal mass per legacy bounded ticket, with each outcome bound " +
+            "to its emulator encounter and local ticket position. The " +
+            "current encounter eligibility, no-immediate-repeat filter, " +
+            "weights, and ticket mapping are captured; Native pool parity " +
+            "and legacy modulo calibration remain unverified.",
             outcomes);
         return law with { EventId = eventId };
     }

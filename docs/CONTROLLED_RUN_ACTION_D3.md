@@ -12,8 +12,13 @@ node entry, and legacy Shovel dig at its unowned-relic draw. Combat entry contro
 registered `combat`-stream requests and the two legacy
 potion-factory index sites used by pre-combat relic hooks through ordinary
 room initialization; other requests and streams retain their existing
-providers. Shop generation requires non-native regional systems and a legacy
-run RNG. Ordinary legacy Treasure generation uses that same route. Native-
+providers. In addition to the regional Act 1 routes, an unconfigured default
+prototype run can suspend on a direct Combat, Elite, or Boss node when its
+region and regional encounter-pool state are absent. This route shares the
+ordinary weighted encounter support and records ticket outcomes as
+`encounter:<id>:ticket:<local-index>`; saved continuations and traces continue
+to accept legacy numeric labels. Shop generation requires non-native regional
+systems and a legacy run RNG. Ordinary legacy Treasure generation uses that same route. Native-
 regional Treasure and Shovel fallbacks require `NativeRunRng` to be absent and
 retain the legacy reward rarity-ticket and conditional relic-index requests.
 The convergence `map.legacy.convergence.order_key` request is bounded by
@@ -301,13 +306,19 @@ The Native-regional Treasure and Shovel fallbacks accept
 eligible relics. Both use sorted Nature relic support and equal-index
 `UNVERIFIED` legacy request weights.
 
+The unconfigured default prototype combat route captures the registered
+combat-entry request set for direct Combat, Elite, and Boss nodes. Its weighted
+encounter request derives support from `PrototypeWeightedEncounterSupportV111`,
+the same owner used by ordinary selection. This route excludes Native regional
+profiles, saved regional encounter pools, configured runs, and `NativeRunRng`.
+Equal ticket mass and Native encounter-pool parity remain `UNVERIFIED`.
+
 The supported legacy Overgrowth combat-entry sites are:
 
 - `combat.encounter.overgrowth_elite.index_draw`
 - `combat.encounter.overgrowth_weak.index_draw`
 - `combat.encounter.overgrowth_normal.index_draw`
 - `combat.encounter.formation.index_draw`
-- `combat.encounter.weighted_selection.ticket`
 - `combat.initial_unique_hp`
 - `combat.committed_intent.index_draw`
 - `combat.draw_pile.shuffle.swap`

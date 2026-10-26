@@ -35,6 +35,17 @@ internal static class ControlledStochasticCandidateLabelsV111
             StringComparer.Ordinal);
     }
 
+    public static bool IsLegacyNumericRange(
+        string[] labels, int supportCount, int maximumInlineCount)
+    {
+        ArgumentNullException.ThrowIfNull(labels);
+        if (supportCount <= 0 || maximumInlineCount <= 0)
+            return false;
+        return supportCount > maximumInlineCount
+            ? labels.Length == 0
+            : IsNumericRange(labels, supportCount);
+    }
+
     public static IDisposable Describe(string[]? candidateLabels)
     {
         var leases = new List<IDisposable>(2);

@@ -2,6 +2,24 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S5 legacy weighted-encounter support and identity-law increment (2026-10-26):**
+`PrototypeWeightedEncounterSupportV111` now owns the ordinary prototype
+encounter eligibility, room/act/floor filters, positive weights,
+immediate-repeat exclusion, and raw-ticket mapping used by `StartCombat`,
+controlled replay, and the run-action Chance Law. Unconfigured default
+Combat, Elite, and Boss map-node entry can suspend on the registered combat
+request and resolve outcomes as `encounter:<id>:ticket:<local-index>`; old
+numeric labels remain accepted on restored continuations and traces. The law
+binds the current ordered support and exposes equal mass per raw ticket, while
+Native encounter-pool parity, legacy modulo calibration, and stream/cursor
+parity remain `UNVERIFIED`. The map-entry state projection is shared with
+ordinary map traversal so floor and player entry effects are applied before
+support derivation. Core/CLI Release build passed with zero warnings or errors.
+The v61 static census reports 155 direct API calls, 185/185 registered IDs
+mapped to rows, 185/185 S0 evidence pointers, zero ambient-entropy findings,
+zero Native Chance Law references, and zero forbidden query dependencies.
+`git diff --check` passed; no tests were run.
+
 **S5 legacy event-selection support and identity-law increment (2026-10-26):**
 `PrototypeEventSelectionSupportV111` now owns the emulator's ordered event
 eligibility, history filters, weights, and raw-ticket mapping shared by

@@ -292,6 +292,16 @@ public sealed record ControlledRunActionTraceV111(
                 ActOneEncounterSelectionSupportV111
                     .MatchesTraceIdentityLabels(
                         request.SiteId, request.OwnerId, labels);
+            var weightedEncounterOutcomeLabels = isCombatDraw &&
+                request.SiteId ==
+                    "combat.encounter.weighted_selection.ticket" &&
+                request.OperationKind == "bounded_integer" &&
+                request.StreamId == "combat" &&
+                PrototypeWeightedEncounterSupportV111
+                    .IsTicketOutcomeSequence(labels,
+                        request.SupportCount,
+                        ControlledRunActionEngineV111
+                            .MaximumInlineOutcomeActions);
             var eventSelectionIdentityLabels = false;
             if (isEventSelectionDraw &&
                 request.OperationKind == "bounded_integer" &&
@@ -319,6 +329,7 @@ public sealed record ControlledRunActionTraceV111(
                 || isRelicDeckTransformDraw)
                 || nativeRelicBagLabels
                 || actOneEncounterIdentityLabels
+                || weightedEncounterOutcomeLabels
                 || eventSelectionIdentityLabels
                 || unknownRoomIdentityLabels
                 || omittedLabels ||
@@ -341,6 +352,9 @@ public sealed record ControlledRunActionTraceV111(
                 || (labels.Length != request.SupportCount && !omittedLabels)
                 || (isEventSelectionDraw && !eventSelectionIdentityLabels)
                 || (isUnknownRoomOddsDraw && !unknownRoomIdentityLabels)
+                || (isCombatDraw && request.SiteId ==
+                    "combat.encounter.weighted_selection.ticket" &&
+                    !weightedEncounterOutcomeLabels)
                 || !numericLabels
                 || !validBossLabels
                 || labels.Any(string.IsNullOrWhiteSpace))
@@ -685,8 +699,11 @@ public sealed record PrototypeControlledRunActionContinuationV111(
         var relicDeckTransformRequest = false;
         var restHealRewardRequest = false;
         var legacyTreasureRelicModelRequest = false;
+        PrototypeEventSelectionSupportV111? eventSelectionSupport = null;
         ActOneEncounterSelectionSupportV111?
             actOneEncounterSelectionSupport = null;
+        PrototypeWeightedEncounterSupportV111?
+            weightedEncounterSelectionSupport = null;
         switch (ActionId)
         {
             case "start_run":
@@ -884,6 +901,9 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                 var legacyUnderdocksCombatNode = node is not null
                     && ControlledRunActionEngineV111
                         .IsLegacyUnderdocksCombatRoom(state, node.RoomType);
+                var legacyPrototypeCombatNode = node is not null
+                    && ControlledRunActionEngineV111
+                        .IsLegacyPrototypeCombatRoom(state, node.RoomType);
                 var nativeActOneCombatNode = node is not null &&
                     nativeActOneCombatEntry &&
                     node.RoomType is PrototypeRoomType.Combat or
@@ -894,6 +914,7 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                         && !legacyUnknownRoomNode
                         && !legacyOvergrowthCombatNode
                         && !legacyUnderdocksCombatNode
+                        && !legacyPrototypeCombatNode
                         && !nativeActOneCombatNode))
                     throw new InvalidDataException(
                         "Controlled map-node frame does not reference an available supported node.");
@@ -906,6 +927,8 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                         && overgrowthCombatEntrySite)
                     && !(legacyUnderdocksCombatNode
                         && underdocksCombatEntrySite)
+                    && !(legacyPrototypeCombatNode
+                        && (combatSite || combatPotionSite))
                     && !(nativeActOneCombatNode
                         && nativeActOneCombatRequest
                         && nativeMapAction is not null
@@ -950,8 +973,19 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                 if (PendingRequest.SiteId ==
                     "event.selection.weighted_ticket")
                 {
+                    if (PrototypeGameEngine.ShouldForceWarHistorianRepy(
+                            world, state.Player))
+                        throw new InvalidDataException(
+                            "Controlled event-selection request is outside the forced Repy room boundary.");
+                    var eventEntryState = PrototypeGameEngine
+                        .ProjectMapNodeEntryContext(
+                            state, node.NodeId,
+                            unknownEventSelection
+                                ? PrototypeRoomType.Event : null);
                     var eventSupport =
-                        PrototypeEventSelectionSupportV111.Describe(state);
+                        PrototypeEventSelectionSupportV111
+                            .Describe(eventEntryState);
+                    eventSelectionSupport = eventSupport;
                     if ((node.RoomType != PrototypeRoomType.Event &&
                             !unknownEventSelection) ||
                         state.Stochastic.NativeRunRng is not null ||
@@ -969,6 +1003,36 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                             ControlledRunActionEngineV111
                                 .MaximumInlineOutcomeActions
                         ? eventSupport.TicketOutcomeIds() : [];
+                }
+                if (PendingRequest.SiteId ==
+                    "combat.encounter.weighted_selection.ticket")
+                {
+                    if (!legacyPrototypeCombatNode ||
+                        PendingRequest.OperationKind != "bounded_integer" ||
+                        PendingRequest.StreamId != "combat")
+                        throw new InvalidDataException(
+                            "Controlled weighted encounter request is outside the legacy prototype combat boundary.");
+                    var encounterEntryState = PrototypeGameEngine
+                        .ProjectMapNodeEntryContext(state, node.NodeId);
+                    var weightedEncounterSupport =
+                        PrototypeWeightedEncounterSupportV111.Describe(
+                            encounterEntryState.World!, node.RoomType);
+                    weightedEncounterSelectionSupport =
+                        weightedEncounterSupport;
+                    if (PendingRequest.BoundedCount !=
+                            weightedEncounterSupport.TotalTicketCount ||
+                        PendingRequest.OrderedCandidates.Length != 0 ||
+                        PendingRequest.OwnerId !=
+                            weightedEncounterSupport.RequestOwnerId)
+                        throw new InvalidDataException(
+                            "Controlled weighted encounter request differs from its eligible ticket support.");
+                    expectedOwner =
+                        weightedEncounterSupport.RequestOwnerId;
+                    expectedLabels =
+                        weightedEncounterSupport.TotalTicketCount <=
+                            ControlledRunActionEngineV111
+                                .MaximumInlineOutcomeActions
+                        ? weightedEncounterSupport.TicketOutcomeIds() : [];
                 }
                 if (treasureSite && legacyNativeTreasureNode)
                 {
@@ -1151,6 +1215,11 @@ public sealed record PrototypeControlledRunActionContinuationV111(
             actOneEncounterSelectionSupport is { } encounterSupport)
             pendingLabelsMatch = encounterSupport.MatchesLabels(
                 PendingCandidateLabels);
+        if (!pendingLabelsMatch &&
+            weightedEncounterSelectionSupport is { } weightedSupport)
+            pendingLabelsMatch = weightedSupport.MatchesTicketOutcomeLabels(
+                PendingCandidateLabels,
+                ControlledRunActionEngineV111.MaximumInlineOutcomeActions);
         if (!pendingLabelsMatch && configuredUnderdocksStart
             && PendingRequest.SiteId == PrototypeNativeUnderdocks
                 .BossEncounterIndexSiteId)
@@ -1163,10 +1232,11 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                 .MatchesOvergrowthBossCandidateLabels(PendingCandidateLabels);
         if (!pendingLabelsMatch && PendingRequest.SiteId ==
             "event.selection.weighted_ticket")
-            pendingLabelsMatch = PrototypeEventSelectionSupportV111
-                .Describe(state).MatchesTicketOutcomeLabels(
+            pendingLabelsMatch = eventSelectionSupport?
+                .MatchesTicketOutcomeLabels(
                     PendingCandidateLabels,
-                    ControlledRunActionEngineV111.MaximumInlineOutcomeActions);
+                    ControlledRunActionEngineV111.MaximumInlineOutcomeActions)
+                == true;
         if (!pendingLabelsMatch && PendingRequest.SiteId ==
             "event.unknown_room.odds.ticket")
             pendingLabelsMatch = PrototypeUnknownRoomOddsSupportV111
@@ -1272,7 +1342,11 @@ public sealed record PrototypeControlledRunActionContinuationV111(
             var isCombatEntryDraw = mapAction is not null
                 && ControlledRunActionEngineV111
                     .IsLegacyActOneCombatEntrySite(
-                        state, mapAction, request.SiteId);
+                        state, mapAction, request.SiteId)
+                || mapAction is not null
+                    && ControlledRunActionEngineV111
+                        .IsLegacyPrototypeCombatEntrySite(
+                            state, mapAction, request.SiteId);
             var isNativeFormationDraw = mapAction is not null &&
                 ControlledRunActionEngineV111
                     .IsNativeActOneCombatEntrySite(
@@ -2089,6 +2163,8 @@ public static class ControlledRunActionEngineV111
                         || IsLegacyOvergrowthCombatRoom(
                             source, node.RoomType)
                         || IsLegacyUnderdocksCombatRoom(
+                            source, node.RoomType)
+                        || IsLegacyPrototypeCombatRoom(
                             source, node.RoomType)));
         supportedMapNodeAction |=
             IsLegacyUnknownRoomEntryAction(source, action);
@@ -2103,6 +2179,9 @@ public static class ControlledRunActionEngineV111
             IsLegacyUnderdocksCombatEntryAction(source, action);
         var legacyActOneCombatEntryAction = overgrowthCombatEntryAction
             || underdocksCombatEntryAction;
+        var legacyPrototypeCombatEntryAction =
+            IsLegacyPrototypeCombatEntryAction(source, action);
+        supportedMapNodeAction |= legacyPrototypeCombatEntryAction;
         var configuredNativeRunStartAction =
             V111RunFactory.ControlledReferenceNatureRunStartActive
             && IsConfiguredNativeReferenceNatureRunStartAction(
@@ -2159,7 +2238,9 @@ public static class ControlledRunActionEngineV111
                     : nativeActOneCombatEntryAction
                         ? IsNativeActOneCombatEntryRequest
                         : legacyActOneCombatEntryAction
-                            ? IsLegacyActOneCombatEntryRequest : null;
+                            ? IsLegacyActOneCombatEntryRequest
+                    : legacyPrototypeCombatEntryAction
+                        ? IsLegacyActOneCombatEntryRequest : null;
             var replay = ControlledChanceContinuationExecutorV111.Resume(
                 replaySource, [], checkpoint => engine.Step(checkpoint, action).State,
                 requestFilter: requestFilter);
@@ -2207,6 +2288,8 @@ public static class ControlledRunActionEngineV111
                         || ControlledEventChoiceReplayV111
                             .IsRunActionTreasureSite(pendingChance.Request.SiteId)
                         || IsLegacyActOneCombatEntrySite(
+                            source, action, pendingChance.Request.SiteId)
+                        || IsLegacyPrototypeCombatEntrySite(
                             source, action, pendingChance.Request.SiteId)
                         || IsNativeActOneCombatEntrySite(
                             source, action, pendingChance.Request.SiteId));
@@ -2263,6 +2346,7 @@ public static class ControlledRunActionEngineV111
                 outsideCombatPotionAction || relicDeckTransformAction ||
                 supportedLegacyActTransitionAction ||
                 legacyActOneCombatEntryAction ||
+                legacyPrototypeCombatEntryAction ||
                 nativeActOneCombatEntryAction)
             {
                 PrototypeStateInvariants.Validate(result);
@@ -2307,6 +2391,38 @@ public static class ControlledRunActionEngineV111
                 PrototypeNativeUnderdocks.GenerationProfileId
         }
         && roomType is PrototypeRoomType.Combat or PrototypeRoomType.Elite;
+
+    internal static bool IsLegacyPrototypeCombatRoom(
+        RunState state, PrototypeRoomType roomType) =>
+        state.Phase == RunPhase.MapChoice
+        && state.Configuration is null
+        && state.Stochastic.NativeRunRng is null
+        && state.World is { } world
+        && world.ActOneRegion is null
+        && world.ActOneEncounterPool is null
+        && !PrototypeGameEngine.UsesNativeRegionalSystems(world)
+        && roomType is PrototypeRoomType.Combat or PrototypeRoomType.Elite
+            or PrototypeRoomType.Boss;
+
+    internal static bool IsLegacyPrototypeCombatEntryAction(
+        RunState source, GameAction action)
+    {
+        if (action.Kind != "choose_map_node" ||
+            source.World is not { } world ||
+            !IsLegacyPrototypeCombatRoom(source, PrototypeRoomType.Combat))
+            return false;
+        var nodeId = action.ReadPayload<ChooseMapNodePayload>().NodeId;
+        return PrototypeNativeWingedBoots.AvailableNodes(world, source.Player)
+            .Any(node => node.NodeId == nodeId &&
+                IsLegacyPrototypeCombatRoom(source, node.RoomType));
+    }
+
+    internal static bool IsLegacyPrototypeCombatEntrySite(
+        RunState source, GameAction action, string siteId) =>
+        IsLegacyPrototypeCombatEntryAction(source, action)
+        && (ControlledEventChoiceReplayV111.IsRunActionCombatSite(siteId)
+            || ControlledEventChoiceReplayV111
+                .IsRunActionCombatEntryPotionSite(siteId));
 
     internal static bool IsLegacyOvergrowthCombatEntryAction(
         RunState source, GameAction action)
@@ -2369,6 +2485,8 @@ public static class ControlledRunActionEngineV111
             source.Stochastic.NativeRunRng is not null ||
             source.World is not { } world ||
             !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
+            PrototypeGameEngine.ShouldForceWarHistorianRepy(
+                world, source.Player) ||
             !PrototypeNativeWingedBoots.AvailableNodes(world, source.Player)
                 .Any(node => node.NodeId == nodeId &&
                     node.RoomType == PrototypeRoomType.Unknown) ||
