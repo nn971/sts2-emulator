@@ -2,6 +2,15 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S6 event random-upgrade identity law increment (2026-10-26):** The
+controlled event-choice query now routes `event.random_upgrade.card_instance`
+through a typed legacy law over the saved checkpoint's ordered eligible
+physical card instances. The law verifies model-plus-instance labels and
+keeps the source-shaped equal-index weights `UNVERIFIED`; Native eligibility
+and cursor parity remain open. The site ownership row and architecture
+contract now reference this law. Core Release build and `git diff --check`
+passed; no tests were added or run.
+
 **S6 controlled legacy event-law routing increment (2026-10-26):** The
 controlled event-choice query now selects the existing typed laws for event
 Rare-card grants, random-potion grants, empty potion-slot fills, custom

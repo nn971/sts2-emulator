@@ -1045,6 +1045,13 @@ public static partial class ChanceLawEngineV111
 
         ChanceLawV111? law = request.SiteId switch
         {
+            "event.random_upgrade.card_instance"
+                => effect is not null
+                    ? QueryLegacyEventRandomUpgradeCardInstance(
+                        source, pending.EventId, pending.ChoiceId,
+                        request.Ordinal)
+                    : throw new InvalidDataException(
+                        "Legacy event random-upgrade law is outside an event-effect continuation."),
             "event.reward.random_rare_card.model"
                 => effect is not null
                     ? QueryLegacyEventRewardRareCardModel(
@@ -1090,18 +1097,43 @@ public static partial class ChanceLawEngineV111
                 "event.reward.random_modifier_curse.index_draw" => "reward",
             _ => "event"
         };
-        var outcomePrefix = request.SiteId is
-            "event.reward.random_rare_card.model" or
-            "event.reward.random_modifier_curse.index_draw"
-                ? "card:" : "potion:";
-        var expectedLabels = law.Outcomes.Select(outcome =>
+        string[] expectedLabels;
+        if (request.SiteId == "event.random_upgrade.card_instance")
         {
-            if (!outcome.OutcomeId.StartsWith(
-                    outcomePrefix, StringComparison.Ordinal))
-                throw new InvalidDataException(
-                    "Controlled event law has an unexpected semantic outcome identity.");
-            return outcome.OutcomeId[outcomePrefix.Length..];
-        }).ToArray();
+            const string outcomePrefix = "card_instance:";
+            expectedLabels = law.Outcomes.Select(outcome =>
+            {
+                if (!outcome.OutcomeId.StartsWith(
+                        outcomePrefix, StringComparison.Ordinal) ||
+                    !long.TryParse(
+                        outcome.OutcomeId[outcomePrefix.Length..],
+                        NumberStyles.None, CultureInfo.InvariantCulture,
+                        out var instanceId))
+                    throw new InvalidDataException(
+                        "Controlled event random-upgrade law has an invalid physical card identity.");
+                var card = source.Player.Deck.SingleOrDefault(candidate =>
+                    candidate.InstanceId == instanceId) ??
+                    throw new InvalidDataException(
+                        "Controlled event random-upgrade law names a card outside its saved deck.");
+                return card.CardId + "#" + instanceId.ToString(
+                    CultureInfo.InvariantCulture);
+            }).ToArray();
+        }
+        else
+        {
+            var outcomePrefix = request.SiteId is
+                "event.reward.random_rare_card.model" or
+                "event.reward.random_modifier_curse.index_draw"
+                    ? "card:" : "potion:";
+            expectedLabels = law.Outcomes.Select(outcome =>
+            {
+                if (!outcome.OutcomeId.StartsWith(
+                        outcomePrefix, StringComparison.Ordinal))
+                    throw new InvalidDataException(
+                        "Controlled event law has an unexpected semantic outcome identity.");
+                return outcome.OutcomeId[outcomePrefix.Length..];
+            }).ToArray();
+        }
         if (request.SiteId != law.SiteId ||
             request.StreamId != expectedStream ||
             request.OperationKind != law.OperationKind ||
