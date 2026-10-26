@@ -1001,6 +1001,13 @@ post-reward boundary projection; Chance Law queries, outcome resolution,
 enumeration, and JSONL pending views share its request, ordered labels, and
 boundary fingerprint. Controlled event-choice resolution accepts a unique
 candidate label and retains the index transcript as its compatibility journal.
+The controlled Chance Law query routes legacy event Rare-card, potion, empty
+potion-slot, custom potion-offer, and post-reward modifier-curse requests
+through their existing typed laws. It validates each request owner, stream,
+ordinal, ordered index support, and saved semantic labels against the law;
+potion-slot eligibility is derived from the saved event checkpoint. These
+equal-index legacy models remain `UNVERIFIED`, and Native source-pool fidelity
+and cursor parity remain open.
 Event-choice and run-action projections reuse
 `ControlledChancePendingBoundaryV111` for defensive request/label ownership
 and Chance Law event-ID derivation; each context retains its own boundary

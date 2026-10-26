@@ -1861,7 +1861,7 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                 PrototypeContent.Relic(relic.RelicId)
                     .ExtraNormalCombatCardRewardGroups));
 
-    private static bool CanAcquirePotion(PlayerState player) =>
+    internal static bool CanAcquirePotion(PlayerState player) =>
         !player.ActiveRelics.Any(relic =>
             PrototypeContent.Relic(relic.RelicId)
                 .PreventPotionAcquisition);

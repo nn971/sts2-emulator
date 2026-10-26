@@ -1002,7 +1002,134 @@ public static partial class ChanceLawEngineV111
             pending.ChoiceId is "push" or "lift")
             return QueryControlledStoneOfAllTimeTicket(
                 run, pending.Request, pending.BoundaryFingerprint);
+        if (QueryControlledEventChoiceSemanticLaw(run, pending) is
+            { } semanticLaw)
+            return semanticLaw;
         return QueryRandomIndex(pending.ChanceEventId, pending.Request);
+    }
+
+    private static ChanceLawV111? QueryControlledEventChoiceSemanticLaw(
+        RunState run, ControlledEventChoicePendingV111 pending)
+    {
+        var request = pending.Request;
+        PrototypeControlledEventChoiceContinuationV111? effect = null;
+        PrototypeControlledEventRewardChoiceContinuationV111? reward = null;
+        RunState source;
+        if (pending.Kind == "event_random_choice")
+        {
+            effect = run.World?.Event?.Stochastic.ControlledChoice ??
+                throw new InvalidDataException(
+                    "Controlled event-effect law has no saved continuation.");
+            if (effect.EventId != pending.EventId ||
+                effect.ChoiceId != pending.ChoiceId)
+                throw new InvalidDataException(
+                    "Controlled event-effect law differs from its pending identity.");
+            source = effect.PartialState;
+        }
+        else if (pending.Kind == "event_reward_random_choice")
+        {
+            reward = run.Stochastic.ControlledEventRewardChoice ??
+                throw new InvalidDataException(
+                    "Controlled event-reward law has no saved continuation.");
+            if (reward.EventId != pending.EventId ||
+                reward.ChoiceId != pending.ChoiceId)
+                throw new InvalidDataException(
+                    "Controlled event-reward law differs from its pending identity.");
+            source = reward.PartialState;
+        }
+        else
+        {
+            throw new InvalidDataException(
+                "Controlled event-choice law has an unknown continuation kind.");
+        }
+
+        ChanceLawV111? law = request.SiteId switch
+        {
+            "event.reward.random_rare_card.model"
+                => effect is not null
+                    ? QueryLegacyEventRewardRareCardModel(
+                        pending.EventId, pending.ChoiceId, request.Ordinal)
+                    : throw new InvalidDataException(
+                        "Legacy event Rare-card law is outside an event-effect continuation."),
+            "event.reward.random_potion.model"
+                => effect is not null
+                    ? QueryLegacyEventRewardPotionModel(
+                        pending.EventId, pending.ChoiceId, request.Ordinal)
+                    : throw new InvalidDataException(
+                        "Legacy event potion law is outside an event-effect continuation."),
+            "event.potion.fill_empty_slots.model"
+                => effect is not null
+                    ? QueryLegacyControlledEventFillPotionSlot(
+                        source, request)
+                    : throw new InvalidDataException(
+                        "Legacy event potion-fill law is outside an event-effect continuation."),
+            "event.reward.offer_potion.model.index_draw"
+                => effect is not null
+                    ? QueryLegacyEventOfferPotionModel(
+                        "Event:" + pending.EventId + ":choice:" +
+                            pending.ChoiceId,
+                        PrototypeGameEngine.CanAcquirePotion(source.Player),
+                        request.Ordinal)
+                    : throw new InvalidDataException(
+                        "Legacy event potion-offer law is outside an event-effect continuation."),
+            "event.reward.random_modifier_curse.index_draw"
+                => reward is not null
+                    ? QueryLegacyEventModifierCurseModel(
+                        pending.EventId, request.Ordinal)
+                    : throw new InvalidDataException(
+                        "Legacy event modifier-curse law is outside an event-reward continuation."),
+            _ => null
+        };
+        if (law is null)
+            return null;
+
+        var expectedStream = request.SiteId switch
+        {
+            "event.reward.random_rare_card.model" or
+                "event.reward.offer_potion.model.index_draw" or
+                "event.reward.random_modifier_curse.index_draw" => "reward",
+            _ => "event"
+        };
+        var outcomePrefix = request.SiteId is
+            "event.reward.random_rare_card.model" or
+            "event.reward.random_modifier_curse.index_draw"
+                ? "card:" : "potion:";
+        var expectedLabels = law.Outcomes.Select(outcome =>
+        {
+            if (!outcome.OutcomeId.StartsWith(
+                    outcomePrefix, StringComparison.Ordinal))
+                throw new InvalidDataException(
+                    "Controlled event law has an unexpected semantic outcome identity.");
+            return outcome.OutcomeId[outcomePrefix.Length..];
+        }).ToArray();
+        if (request.SiteId != law.SiteId ||
+            request.StreamId != expectedStream ||
+            request.OperationKind != law.OperationKind ||
+            request.OwnerId != law.OwnerId ||
+            request.Ordinal != law.Ordinal ||
+            request.SupportCount != law.SupportCount ||
+            !request.OrderedCandidates.SequenceEqual(
+                Enumerable.Range(0, law.SupportCount)) ||
+            !pending.CandidateLabels.SequenceEqual(
+                expectedLabels, StringComparer.Ordinal))
+            throw new InvalidDataException(
+                "Controlled event law differs from its saved semantic support.");
+
+        return law with { EventId = pending.ChanceEventId };
+    }
+
+    private static ChanceLawV111 QueryLegacyControlledEventFillPotionSlot(
+        RunState source, RandomIndexRequestV111 request)
+    {
+        var slotIndex = ControlledPotionSlotIndex(request);
+        var slots = source.Player.PotionSlots;
+        var slotIsEmpty = (uint)slotIndex < (uint)slots.Length &&
+            slots[slotIndex] is null;
+        return QueryLegacyEventFillPotionSlot(
+            slotIndex,
+            PrototypeGameEngine.CanAcquirePotion(source.Player),
+            slotIsEmpty,
+            request.Ordinal);
     }
 
     private static ChanceLawV111 QueryControlledStoneOfAllTimeTicket(

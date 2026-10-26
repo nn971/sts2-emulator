@@ -286,7 +286,7 @@ public static partial class ChanceLawEngineV111
         return priorCardIds.ToArray();
     }
 
-    private static int ControlledPotionSlotIndex(
+    internal static int ControlledPotionSlotIndex(
         RandomIndexRequestV111 request)
     {
         const string ownerPrefix = "player:potion_slot:";
