@@ -2,6 +2,15 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S5 scripted-route identity capture increment (2026-10-26):** Replay capture
+v11 now stores the exact Act 1 source-route action IDs and reached map node,
+encounter, and Native entry for Native-policy captures. Completed scripted
+and ReferenceNature whole-run captures derive the matching prefix from their
+replayed action boundaries. The comparator reports route identity separately
+from stochastic trace coverage, so it does not imply route RNG annotation or
+Native parity. Older capture versions remain readable. Core Release build
+passed with zero warnings or errors; no tests were run.
+
 **S4 shared legacy hand-draw Stratagem resume increment (2026-10-26):** Opening and ordinary automatic hand draws now route the legacy `ShuffleSelection` result through one continuation owner. It resumes the same Stratagem-plus-remaining-draw operation suffix and publishes the resulting player/combat mechanics with the advanced prototype RNG in one transition. Nature draw choices retain their typed continuation route. Core Release build and `git diff --check` passed; no tests were run.
 
 **S5 saved-session candidate identity increment (2026-10-26):** The shared

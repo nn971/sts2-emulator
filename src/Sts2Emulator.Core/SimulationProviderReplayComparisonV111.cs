@@ -11,6 +11,50 @@ public sealed record SimulationProviderReplayPublicBoundaryViewV111(
     int LegalActionCount);
 
 /// <summary>
+/// Provider-independent identity for a replayed Act 1 route into its first
+/// combat. It carries only the action path and reached encounter identity;
+/// route setup RNG coverage remains a separate capture claim.
+/// </summary>
+public sealed record SimulationProviderReplayRouteIdentityV111(
+    RunPhase StartPhase,
+    ActIdentity ActOneRegion,
+    string[] ActionIds,
+    string MapNodeId,
+    string EncounterId,
+    string NativeEncounterEntry)
+{
+    private string[]? _actionIds = CloneActionIds(ActionIds);
+
+    public string[] ActionIds
+    {
+        get => CloneActionIds(_actionIds)!;
+        init => _actionIds = CloneActionIds(value);
+    }
+
+    public SimulationProviderReplayRouteIdentityV111 Fork() => this with
+    {
+        ActionIds = CloneActionIds(_actionIds)!
+    };
+
+    public void Validate()
+    {
+        if (StartPhase is not (RunPhase.RunStart or RunPhase.MapChoice) ||
+            ActOneRegion is not (ActIdentity.Overgrowth or
+                ActIdentity.Underdocks) ||
+            _actionIds is null || _actionIds.Length == 0 ||
+            _actionIds.Any(string.IsNullOrWhiteSpace) ||
+            string.IsNullOrWhiteSpace(MapNodeId) ||
+            string.IsNullOrWhiteSpace(EncounterId) ||
+            string.IsNullOrWhiteSpace(NativeEncounterEntry))
+            throw new InvalidDataException(
+                "Provider replay route identity is invalid.");
+    }
+
+    private static string[]? CloneActionIds(string[]? values) =>
+        values is null ? null : (string[])values.Clone();
+}
+
+/// <summary>
 /// Mechanics captured for one provider replay interval. The action list is
 /// detached from the caller so its fingerprint cannot change after capture.
 /// </summary>
@@ -25,6 +69,7 @@ public sealed record SimulationProviderReplayMechanicsCaptureV111
         _combatEventHookTranscriptByAction;
     private SimulationProviderReplayPublicBoundaryViewV111[]?
         _playerBoundaryViews;
+    private SimulationProviderReplayRouteIdentityV111? _sourceRouteIdentity;
 
     public RunState Origin
     {
@@ -90,6 +135,16 @@ public sealed record SimulationProviderReplayMechanicsCaptureV111
         init => _playerBoundaryViews = ClonePlayerBoundaryViews(value);
     }
 
+    /// <summary>
+    /// Exact Act 1 action and entry identity when this capture includes a
+    /// replayed first-combat route. Null means route identity is unavailable.
+    /// </summary>
+    public SimulationProviderReplayRouteIdentityV111? SourceRouteIdentity
+    {
+        get => _sourceRouteIdentity?.Fork();
+        init => _sourceRouteIdentity = value?.Fork();
+    }
+
     [System.Text.Json.Serialization.JsonIgnore]
     public bool HasActionBoundaryStates => _actionBoundaryStates is not null;
 
@@ -107,7 +162,8 @@ public sealed record SimulationProviderReplayMechanicsCaptureV111
         NativeEngineJournalEntryV111[][]?
             CombatEventHookTranscriptByAction = null,
         SimulationProviderReplayPublicBoundaryViewV111[]?
-            PlayerBoundaryViews = null)
+            PlayerBoundaryViews = null,
+        SimulationProviderReplayRouteIdentityV111? SourceRouteIdentity = null)
     {
         this.Origin = Origin;
         this.Actions = Actions;
@@ -117,6 +173,7 @@ public sealed record SimulationProviderReplayMechanicsCaptureV111
         this.CombatEventHookTranscriptByAction =
             CombatEventHookTranscriptByAction;
         this.PlayerBoundaryViews = PlayerBoundaryViews;
+        this.SourceRouteIdentity = SourceRouteIdentity;
     }
 
     public SimulationProviderReplayMechanicsCaptureV111 Fork() => this with
@@ -130,7 +187,8 @@ public sealed record SimulationProviderReplayMechanicsCaptureV111
         CombatEventHookTranscriptByAction =
             CloneCombatEventHookTranscripts(
                 _combatEventHookTranscriptByAction),
-        PlayerBoundaryViews = ClonePlayerBoundaryViews(_playerBoundaryViews)
+        PlayerBoundaryViews = ClonePlayerBoundaryViews(_playerBoundaryViews),
+        SourceRouteIdentity = _sourceRouteIdentity?.Fork()
     };
 
     public void Validate()
@@ -138,6 +196,7 @@ public sealed record SimulationProviderReplayMechanicsCaptureV111
         if (_origin is null || _actions is null || _result is null)
             throw new InvalidDataException(
                 "Provider replay mechanics capture is incomplete.");
+        _sourceRouteIdentity?.Validate();
         RunConfiguration.ValidateState(_origin);
         RunConfiguration.ValidateState(_result);
         if (_actionBoundaryStates is not null)
@@ -633,23 +692,25 @@ public sealed record SimulationProviderReplayCaptureV111(
         SimulationProviderReplayStochasticCaptureV111> Simulation)
 {
     public const string PreviousSchemaId =
-        "sts2-v111-simulation-provider-replay-capture-v9";
+        "sts2-v111-simulation-provider-replay-capture-v10";
     public const string PreviousPreviousSchemaId =
-        "sts2-v111-simulation-provider-replay-capture-v8";
+        "sts2-v111-simulation-provider-replay-capture-v9";
     public const string PreviousPreviousPreviousSchemaId =
-        "sts2-v111-simulation-provider-replay-capture-v7";
+        "sts2-v111-simulation-provider-replay-capture-v8";
     public const string PreviousPreviousPreviousPreviousSchemaId =
-        "sts2-v111-simulation-provider-replay-capture-v6";
+        "sts2-v111-simulation-provider-replay-capture-v7";
     public const string PreviousPreviousPreviousPreviousPreviousSchemaId =
-        "sts2-v111-simulation-provider-replay-capture-v5";
+        "sts2-v111-simulation-provider-replay-capture-v6";
     public const string PreviousPreviousPreviousPreviousPreviousPreviousSchemaId =
-        "sts2-v111-simulation-provider-replay-capture-v4";
+        "sts2-v111-simulation-provider-replay-capture-v5";
     public const string PreviousPreviousPreviousPreviousPreviousPreviousPreviousSchemaId =
+        "sts2-v111-simulation-provider-replay-capture-v4";
+    public const string PreviousPreviousPreviousPreviousPreviousPreviousPreviousPreviousSchemaId =
         "sts2-v111-simulation-provider-replay-capture-v3";
     public const string OlderSchemaId =
         "sts2-v111-simulation-provider-replay-capture-v2";
     public const string CurrentSchemaId =
-        "sts2-v111-simulation-provider-replay-capture-v10";
+        "sts2-v111-simulation-provider-replay-capture-v11";
 
     [System.Text.Json.Serialization.JsonInclude]
     public string CaptureProvenance { get; private init; } =
@@ -679,7 +740,8 @@ public sealed record SimulationProviderReplayCaptureV111(
         IEnumerable<RunState>? actionBoundaryStates,
         IEnumerable<long[]>? drawnCardInstanceIdsByAction = null,
         IEnumerable<NativeEngineJournalEntryV111[]>?
-            combatEventHookTranscriptByAction = null)
+            combatEventHookTranscriptByAction = null,
+        SimulationProviderReplayRouteIdentityV111? sourceRouteIdentity = null)
     {
         ArgumentNullException.ThrowIfNull(origin);
         ArgumentNullException.ThrowIfNull(actions);
@@ -698,7 +760,8 @@ public sealed record SimulationProviderReplayCaptureV111(
                         combatEventHookTranscriptByAction?.ToArray(),
                         SimulationProviderReplayMechanicsCaptureV111
                             .CapturePlayerBoundaryViews(
-                                origin, actionBoundaries)),
+                                origin, actionBoundaries),
+                        sourceRouteIdentity),
                     new SimulationProviderReplayStochasticCaptureV111(
                         boundaries.ToArray(),
                         semanticOutcomes?.ToArray())));
@@ -738,6 +801,92 @@ public sealed record SimulationProviderReplayCaptureV111(
         return ownerId[..poolMarker];
     }
 
+    private static SimulationProviderReplayRouteIdentityV111
+        CreateSourceRouteIdentity(
+            SemanticSeededEntryV111 entry,
+            SemanticSourceRouteAuditV111 route)
+    {
+        var startPhase = route.ProviderId switch
+        {
+            SemanticSourceRouteAuditV111.SourceRouteProviderId =>
+                RunPhase.RunStart,
+            SemanticSourceRouteAuditV111.SourceRunMapChoiceProviderId =>
+                RunPhase.MapChoice,
+            _ => throw new InvalidDataException(
+                "Native source route has an unknown route provider ID.")
+        };
+        var identity = new SimulationProviderReplayRouteIdentityV111(
+            startPhase, route.ActOneRegion, route.ActionIds,
+            route.MapNodeId, route.EncounterId,
+            route.NativeEncounterEntry);
+        identity.Validate();
+        if (entry.Act != 1 || !entry.SourceRouteEntry)
+            throw new InvalidDataException(
+                "Native source route identity has no matching Act 1 entry.");
+        return identity;
+    }
+
+    private static SimulationProviderReplayRouteIdentityV111?
+        TryCaptureScriptedRouteIdentity(
+            RunState origin, IReadOnlyList<GameAction> actions,
+            IReadOnlyList<RunState>? actionBoundaryStates)
+    {
+        if (origin.Phase is not (RunPhase.RunStart or RunPhase.MapChoice) ||
+            actionBoundaryStates is null ||
+            actionBoundaryStates.Count != actions.Count)
+            return null;
+        var region = origin.World?.ActIdentity ??
+            origin.Configuration?.Acts.FirstOrDefault();
+        if (region is not (ActIdentity.Overgrowth or
+                ActIdentity.Underdocks))
+            return null;
+
+        for (var actionIndex = 0; actionIndex < actions.Count; actionIndex++)
+        {
+            var run = actionBoundaryStates[actionIndex];
+            if (run.Phase != RunPhase.Combat || run.World is not { } world ||
+                world.ActiveRoom is not (PrototypeRoomType.Combat or
+                    PrototypeRoomType.Elite) || world.Combat is not { } combat)
+                continue;
+            var mapNodeId = world.Map.CurrentNodeId;
+            var encounterId = (world.EncounterHistory ?? []).LastOrDefault();
+            var nativeEntry = combat.Stochastic.NativeRng?.Formation
+                .NativeEncounterEntry;
+            if (string.IsNullOrWhiteSpace(mapNodeId) ||
+                string.IsNullOrWhiteSpace(encounterId) ||
+                string.IsNullOrWhiteSpace(nativeEntry))
+                return null;
+            var identity = new SimulationProviderReplayRouteIdentityV111(
+                origin.Phase, region.Value,
+                actions.Take(actionIndex + 1).Select(
+                    PrototypeAiEnvironment.StableActionId).ToArray(),
+                mapNodeId, encounterId, nativeEntry);
+            identity.Validate();
+            return identity;
+        }
+        return null;
+    }
+
+    private static SimulationProviderReplayCaptureV111
+        AttachSourceRouteIdentity(
+            SimulationProviderReplayCaptureV111 capture,
+            SimulationProviderReplayRouteIdentityV111 routeIdentity)
+    {
+        ArgumentNullException.ThrowIfNull(capture);
+        ArgumentNullException.ThrowIfNull(routeIdentity);
+        routeIdentity.Validate();
+        return capture with
+        {
+            Simulation = new SimulationStateV111<
+                SimulationProviderReplayMechanicsCaptureV111,
+                SimulationProviderReplayStochasticCaptureV111>(
+                capture.Mechanics with
+                {
+                    SourceRouteIdentity = routeIdentity.Fork()
+                }, capture.Stochastic.Fork())
+        };
+    }
+
     /// <summary>
     /// Builds a capture from a completed scripted run. Session validation
     /// replays its committed actions from the origin before the existing
@@ -771,6 +920,9 @@ public sealed record SimulationProviderReplayCaptureV111(
             replay.ActionBoundaryStates,
             replay.DrawnCardInstanceIdsByAction,
             replay.CombatEventHookTranscriptByAction);
+        if (TryCaptureScriptedRouteIdentity(session.Origin, actions,
+                replay.ActionBoundaryStates) is { } routeIdentity)
+            capture = AttachSourceRouteIdentity(capture, routeIdentity);
         if (TryCaptureScriptedSemanticOutcomes(
                 session.Origin,
                 completedActions.Select(action =>
@@ -935,6 +1087,10 @@ public sealed record SimulationProviderReplayCaptureV111(
                 .ReferenceNatureWholeRunReplayValidated,
             actionBoundaries, drawnCardsByAction,
             combatEventHookTranscripts);
+        if (TryCaptureScriptedRouteIdentity(session.Origin,
+                actions.Select(action => action.Action).ToArray(),
+                actionBoundaries) is { } routeIdentity)
+            capture = AttachSourceRouteIdentity(capture, routeIdentity);
         if (!semanticTraceComplete)
         {
             var replayedSemanticOutcomes =
@@ -2680,7 +2836,10 @@ public sealed record SimulationProviderReplayCaptureV111(
                 actionStartStates);
         var capture = Create(initial.Run, actions, boundaries, validated.Run,
             semanticOutcomes ?? [], actionBoundaryStates,
-            drawnCardsByAction, combatEventHookTranscripts) with
+            drawnCardsByAction, combatEventHookTranscripts,
+            validated.Stochastic.SourceRouteAudit is { } sourceRoute
+                ? CreateSourceRouteIdentity(entry, sourceRoute)
+                : null) with
         {
             CaptureProvenance = semanticOutcomes is null
                 ? SimulationProviderReplayCaptureProvenanceV111
@@ -3168,6 +3327,7 @@ public sealed record SimulationProviderReplayCaptureV111(
                 PreviousPreviousPreviousPreviousPreviousSchemaId or
                 PreviousPreviousPreviousPreviousPreviousPreviousSchemaId or
                 PreviousPreviousPreviousPreviousPreviousPreviousPreviousSchemaId or
+                PreviousPreviousPreviousPreviousPreviousPreviousPreviousPreviousSchemaId or
                 OlderSchemaId) ||
             !SimulationProviderReplayCaptureProvenanceV111
                 .IsKnown(CaptureProvenance) || Simulation is null ||
@@ -3176,32 +3336,40 @@ public sealed record SimulationProviderReplayCaptureV111(
                 "Provider replay capture envelope is invalid.");
         Simulation.Mechanics.Validate();
         Simulation.Stochastic.Validate();
+        if (SchemaId != CurrentSchemaId &&
+            Simulation.Mechanics.SourceRouteIdentity is not null)
+            throw new InvalidDataException(
+                "Legacy provider replay captures cannot contain source-route identities.");
         if (SchemaId is not (CurrentSchemaId or PreviousSchemaId or
                 PreviousPreviousSchemaId or PreviousPreviousPreviousSchemaId or
                 PreviousPreviousPreviousPreviousSchemaId or
-                PreviousPreviousPreviousPreviousPreviousSchemaId) &&
+                PreviousPreviousPreviousPreviousPreviousSchemaId or
+                PreviousPreviousPreviousPreviousPreviousPreviousSchemaId) &&
             Simulation.Mechanics.HasActionBoundaryStates)
             throw new InvalidDataException(
                 "Legacy provider replay captures cannot contain action-boundary mechanics snapshots.");
         if (SchemaId is not (CurrentSchemaId or PreviousSchemaId or
                 PreviousPreviousSchemaId or
-                PreviousPreviousPreviousSchemaId) &&
+                PreviousPreviousPreviousSchemaId or
+                PreviousPreviousPreviousPreviousSchemaId) &&
             Simulation.Mechanics.DrawnCardInstanceIdsByAction is not null)
             throw new InvalidDataException(
                 "Legacy provider replay captures cannot contain drawn-card identity traces.");
         if ((SchemaId is CurrentSchemaId or PreviousSchemaId or
                 PreviousPreviousSchemaId or
-                PreviousPreviousPreviousSchemaId) &&
+                PreviousPreviousPreviousSchemaId or
+                PreviousPreviousPreviousPreviousSchemaId) &&
             CaptureProvenance !=
                 SimulationProviderReplayCaptureProvenanceV111.CallerSupplied &&
             Simulation.Mechanics.DrawnCardInstanceIdsByAction is null)
             throw new InvalidDataException(
-                "Replay-validated v7 through v10 provider captures require drawn-card identity traces.");
-        if (SchemaId is not (CurrentSchemaId or PreviousSchemaId) &&
+                "Replay-validated v7 through v11 provider captures require drawn-card identity traces.");
+        if (SchemaId is not (CurrentSchemaId or PreviousSchemaId or
+                PreviousPreviousSchemaId) &&
             Simulation.Mechanics.CombatEventHookTranscriptByAction is not null)
             throw new InvalidDataException(
                 "Legacy provider replay captures cannot contain v9 combat event/hook transcripts.");
-        if (SchemaId != CurrentSchemaId &&
+        if (SchemaId is not (CurrentSchemaId or PreviousSchemaId) &&
             Simulation.Mechanics.PlayerBoundaryViews is not null)
             throw new InvalidDataException(
                 "Legacy provider replay captures cannot contain v10 public boundary views.");
@@ -3211,25 +3379,26 @@ public sealed record SimulationProviderReplayCaptureV111(
                 SimulationProviderReplayCaptureProvenanceV111.CallerSupplied &&
             !Simulation.Mechanics.HasActionBoundaryStates)
             throw new InvalidDataException(
-                "Replay-validated v8 through v10 provider captures require action-boundary mechanics snapshots.");
-        if ((SchemaId is CurrentSchemaId or PreviousSchemaId) &&
+                "Replay-validated v8 through v11 provider captures require action-boundary mechanics snapshots.");
+        if ((SchemaId is CurrentSchemaId or PreviousSchemaId or
+                PreviousPreviousSchemaId) &&
             CaptureProvenance !=
                 SimulationProviderReplayCaptureProvenanceV111.CallerSupplied &&
             Simulation.Mechanics.CombatEventHookTranscriptByAction is null)
             throw new InvalidDataException(
-                "Replay-validated v9 and v10 provider captures require combat event/hook transcripts.");
-        if (SchemaId == CurrentSchemaId &&
+                "Replay-validated v9 through v11 provider captures require combat event/hook transcripts.");
+        if ((SchemaId is CurrentSchemaId or PreviousSchemaId) &&
             CaptureProvenance !=
                 SimulationProviderReplayCaptureProvenanceV111.CallerSupplied &&
             Simulation.Mechanics.PlayerBoundaryViews is null)
             throw new InvalidDataException(
-                "Replay-validated v10 provider captures require public boundary views.");
+                "Replay-validated v10 and v11 provider captures require public boundary views.");
         if (SchemaId == OlderSchemaId &&
             Simulation.Stochastic.SemanticOutcomes.Length != 0)
             throw new InvalidDataException(
                 "Legacy provider replay captures cannot contain semantic outcomes.");
         if ((SchemaId is OlderSchemaId or
-                PreviousPreviousPreviousPreviousPreviousPreviousSchemaId) &&
+                PreviousPreviousPreviousPreviousPreviousPreviousPreviousSchemaId) &&
             SimulationProviderReplayCaptureProvenanceV111
                 .HasProviderIndependentSemanticIdentity(CaptureProvenance))
             throw new InvalidDataException(
@@ -4080,6 +4249,10 @@ public sealed record SimulationProviderReplayPublicBoundaryViewDiffV111(
     string Status, int ComparedBoundaryCount,
     int? FirstMismatchBoundaryIndex, string? MismatchField);
 
+public sealed record SimulationProviderReplayRouteIdentityDiffV111(
+    string Status, int ComparedActionCount,
+    int? FirstMismatchActionIndex, string? MismatchField);
+
 /// <summary>
 /// Composed evidence for comparing two provider trajectories under the same
 /// player actions: matching origin and final mechanics, plus agreement from
@@ -4096,7 +4269,7 @@ public sealed record SimulationProviderReplayComparisonV111(
     bool RequireNativeCursorEquality)
 {
     public const string CurrentSchemaId =
-        "sts2-v111-simulation-provider-replay-comparison-v10";
+        "sts2-v111-simulation-provider-replay-comparison-v11";
 
     public string LeftCaptureProvenance { get; init; } =
         SimulationProviderReplayCaptureProvenanceV111.CallerSupplied;
@@ -4117,6 +4290,9 @@ public sealed record SimulationProviderReplayComparisonV111(
     public SimulationProviderReplayPublicBoundaryViewDiffV111
         PlayerBoundaryViews { get; init; } = new(
             "PLAYER_BOUNDARY_VIEWS_UNAVAILABLE", 0, null, null);
+    public SimulationProviderReplayRouteIdentityDiffV111
+        SourceRouteIdentity { get; init; } = new(
+            "SOURCE_ROUTE_IDENTITY_UNAVAILABLE", 0, null, null);
 
     public bool SamePlayerActions => StringComparer.Ordinal.Equals(
         LeftActionFingerprint, RightActionFingerprint);
@@ -4182,6 +4358,15 @@ public sealed record SimulationProviderReplayComparisonV111(
         PlayerBoundaryViewComparisonAvailable &&
         PlayerBoundaryViews.Status == "PLAYER_BOUNDARY_VIEWS_CONSISTENT";
 
+    public bool SourceRouteIdentityComparisonAvailable =>
+        SourceRouteIdentity.Status is
+            "SOURCE_ROUTE_IDENTITY_CONSISTENT" or
+            "SOURCE_ROUTE_IDENTITY_MISMATCH";
+
+    public bool SameSourceRouteIdentity =>
+        SourceRouteIdentityComparisonAvailable &&
+        SourceRouteIdentity.Status == "SOURCE_ROUTE_IDENTITY_CONSISTENT";
+
     public bool SameStochasticOutcomes
     {
         get
@@ -4246,6 +4431,8 @@ public sealed record SimulationProviderReplayComparisonV111(
         SameCombatEventHookTranscript &&
         PlayerBoundaryViewComparisonAvailable &&
         SamePlayerBoundaryViews &&
+        (!SourceRouteIdentityComparisonAvailable ||
+            SameSourceRouteIdentity) &&
         (!DrawnCardIdentityComparisonAvailable || SameDrawnCardIdentities);
 
     public bool SameResultMechanics => ResultMechanics.Equivalent;
@@ -4258,7 +4445,9 @@ public sealed record SimulationProviderReplayComparisonV111(
             SameMechanicsAtEveryActionBoundaryForSameActions) &&
         (!CombatEventHookTranscriptComparisonAvailable ||
             SameCombatEventHookTranscript) &&
-        (!PlayerBoundaryViewComparisonAvailable || SamePlayerBoundaryViews);
+        (!PlayerBoundaryViewComparisonAvailable || SamePlayerBoundaryViews) &&
+        (!SourceRouteIdentityComparisonAvailable ||
+            SameSourceRouteIdentity);
 }
 
 /// <summary>
@@ -4301,8 +4490,52 @@ public static class SimulationProviderReplayComparisonEngineV111
             DrawnCardIdentities = CompareDrawnCardIdentities(left, right),
             CombatEventHookTranscript =
                 CompareCombatEventHookTranscripts(left, right),
-            PlayerBoundaryViews = ComparePlayerBoundaryViews(left, right)
+            PlayerBoundaryViews = ComparePlayerBoundaryViews(left, right),
+            SourceRouteIdentity = CompareSourceRouteIdentities(
+                left.Mechanics.SourceRouteIdentity,
+                right.Mechanics.SourceRouteIdentity)
         };
+    }
+
+    private static SimulationProviderReplayRouteIdentityDiffV111
+        CompareSourceRouteIdentities(
+            SimulationProviderReplayRouteIdentityV111? left,
+            SimulationProviderReplayRouteIdentityV111? right)
+    {
+        if (left is null || right is null)
+            return new("SOURCE_ROUTE_IDENTITY_UNAVAILABLE", 0, null, null);
+        left.Validate();
+        right.Validate();
+        if (left.StartPhase != right.StartPhase)
+            return new("SOURCE_ROUTE_IDENTITY_MISMATCH", 0, null,
+                "start_phase");
+        if (left.ActOneRegion != right.ActOneRegion)
+            return new("SOURCE_ROUTE_IDENTITY_MISMATCH", 0, null,
+                "act_one_region");
+        if (!StringComparer.Ordinal.Equals(left.MapNodeId, right.MapNodeId))
+            return new("SOURCE_ROUTE_IDENTITY_MISMATCH", 0, null,
+                "map_node_id");
+        if (!StringComparer.Ordinal.Equals(left.EncounterId,
+                right.EncounterId))
+            return new("SOURCE_ROUTE_IDENTITY_MISMATCH", 0, null,
+                "encounter_id");
+        if (!StringComparer.Ordinal.Equals(left.NativeEncounterEntry,
+                right.NativeEncounterEntry))
+            return new("SOURCE_ROUTE_IDENTITY_MISMATCH", 0, null,
+                "native_encounter_entry");
+
+        var leftActions = left.ActionIds;
+        var rightActions = right.ActionIds;
+        var compared = Math.Min(leftActions.Length, rightActions.Length);
+        for (var index = 0; index < compared; index++)
+            if (!StringComparer.Ordinal.Equals(leftActions[index],
+                    rightActions[index]))
+                return new("SOURCE_ROUTE_IDENTITY_MISMATCH", compared,
+                    index, "action_id");
+        if (leftActions.Length != rightActions.Length)
+            return new("SOURCE_ROUTE_IDENTITY_MISMATCH", compared,
+                compared, "action_count");
+        return new("SOURCE_ROUTE_IDENTITY_CONSISTENT", compared, null, null);
     }
 
     private static SimulationProviderReplayPublicBoundaryViewDiffV111
