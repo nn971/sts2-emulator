@@ -8687,11 +8687,6 @@ public sealed partial class PrototypeGameEngine
 
             if (removeSourceCardOnCompletion)
             {
-                // A played Power leaves the combat card registry after its
-                // effects and CardPlayed hooks resolve. Finish persistent
-                // Vigorous bookkeeping while the source is still present.
-                (player, combat) = ApplyVigorousAfterCardPlayed(
-                    player, combat, sourceCardInstanceId.Value);
                 combat = combat with
                 {
                     Cards = combat.Cards
