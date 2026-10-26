@@ -33,6 +33,32 @@ public sealed record SemanticDrawInsertionEventV111(
         EligibleDrawPileInstanceIds = _eligibleDrawPileInstanceIds!
     };
 
+    internal static string[] CreateSemanticOutcomeIds(
+        string generatedCardModelId, long[] eligibleDrawPileInstanceIds)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(generatedCardModelId);
+        ArgumentNullException.ThrowIfNull(eligibleDrawPileInstanceIds);
+        if (eligibleDrawPileInstanceIds.Distinct().Count() !=
+            eligibleDrawPileInstanceIds.Length)
+            throw new InvalidDataException(
+                "Draw-insertion semantic support contains duplicate identities.");
+        return Enumerable.Range(0, eligibleDrawPileInstanceIds.Length + 1)
+            .Select(position =>
+            {
+                long? below = position == 0
+                    ? null : eligibleDrawPileInstanceIds[position - 1];
+                long? above = position == eligibleDrawPileInstanceIds.Length
+                    ? null : eligibleDrawPileInstanceIds[position];
+                var gapIdentity = CanonicalJson.Sha256(new
+                {
+                    GeneratedCardModelId = generatedCardModelId,
+                    BelowCardInstanceId = below,
+                    AboveCardInstanceId = above
+                });
+                return "draw_gap:" + gapIdentity;
+            }).ToArray();
+    }
+
     internal static RandomIndexRequestV111 CreateRequest(
         string siteId, bool nativeStreamAvailable,
         string legacyOwnerId, string nativeOwnerId, int ordinal,

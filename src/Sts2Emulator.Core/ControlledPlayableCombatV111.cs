@@ -933,15 +933,28 @@ public static class ControlledPlayableCombatEngineV111
         if (state.CardTransformPending is not null)
             return cardTransform?.CandidateCardIds.Select(cardId =>
                 "card_model:" + cardId).ToArray();
-        if (state.PoolShufflePending is not null)
-            return null;
+        if (state.PoolShufflePending is { } poolRequest)
+        {
+            var poolShuffle = state.Run.World?.Combat?.PendingChoice?
+                .ControlledPoolShuffle ?? throw new InvalidDataException(
+                    "Pending pool-shuffle request lost its live source.");
+            return SemanticPoolShuffleEventV111.CreateSemanticOutcomeIds(
+                poolShuffle.CurrentCardIds, poolRequest.SupportCount);
+        }
         var drawInsertion = state.Run.World?.Combat?.PendingChoice?
             .ControlledDrawInsertion;
         if (state.DrawInsertionPending is not null)
-            return drawInsertion?.Stage == "card_model"
-                ? drawInsertion.CandidateCardIds.Select(cardId =>
-                    "card_model:" + cardId).ToArray()
-                : null;
+        {
+            if (drawInsertion is { Stage: "card_model" })
+                return drawInsertion.CandidateCardIds.Select(cardId =>
+                    "card_model:" + cardId).ToArray();
+            if (drawInsertion is
+                { Stage: "position", SelectedCardId: { } selectedCardId })
+                return SemanticDrawInsertionEventV111
+                    .CreateSemanticOutcomeIds(selectedCardId,
+                        drawInsertion.EligibleDrawPile);
+            return null;
+        }
         if (state.EnemyActionPending is not null)
             return state.Run.World?.Combat?.AutomaticPipelineContinuation?
                 .Stochastic.ControlledEnemyAction?.PendingCandidateLabels;

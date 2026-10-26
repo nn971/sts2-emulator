@@ -46,6 +46,20 @@ public sealed record SemanticPoolShuffleEventV111(
         CurrentCardIds = _currentCardIds!
     };
 
+    internal static string[] CreateSemanticOutcomeIds(
+        string[] currentCardIds, int supportCount)
+    {
+        ArgumentNullException.ThrowIfNull(currentCardIds);
+        if (supportCount <= 0 || supportCount > currentCardIds.Length ||
+            currentCardIds.Any(string.IsNullOrWhiteSpace) ||
+            currentCardIds.Distinct(StringComparer.Ordinal).Count() !=
+                currentCardIds.Length)
+            throw new InvalidDataException(
+                "Full-pool shuffle semantic support is invalid.");
+        return currentCardIds.Take(supportCount)
+            .Select(identity => "pool_entry:" + identity).ToArray();
+    }
+
     public void Validate()
     {
         Request.Validate();
