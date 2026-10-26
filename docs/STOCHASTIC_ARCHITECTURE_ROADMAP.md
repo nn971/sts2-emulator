@@ -6369,3 +6369,11 @@ support-aligned Chance Law outcome IDs through the shared unique-label
 validator before mapping to its existing index action. Duplicate or malformed
 label vectors fail closed. No snapshot shape changed. Core Release build and
 `git diff --check` passed; no tests were added or run.
+
+**S4 controlled automatic draw-resume handoff increment (2026-10-26):**
+Controlled recycle, CardDrawn-hook, Stratagem, and after-shuffle insertion
+resumes now construct their remaining DrawPlayerHand segment and route its
+tagged result through one shared owner. Each adapter retains validation of its
+saved progress and selection of the controlled suspension policy. Core Release
+build, static RNG audit, and `git diff --check` passed; no tests were added or
+run.

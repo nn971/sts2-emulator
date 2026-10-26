@@ -2085,11 +2085,10 @@ public sealed partial class PrototypeGameEngine
                 state, state.Player, combat,
                 remainingHandDraw, requestedHandDraw);
 
-        var resumedSegment = ResumeAutomaticHandDrawSegment(
+        return ResumeSavedControlledAutomaticHandDraw(
             state, remainingHandDraw,
             PrototypeDrawCardsSuspensionPolicyV111
-                .ControlledLegacyAutomaticHandDraw(combat));
-        return ResumeSavedControlledAutomaticHandDraw(resumedSegment).Run;
+                .ControlledLegacyAutomaticHandDraw(combat)).Run;
     }
 
     private static CombatState CompleteAdvanceTurnAfterCommittedIntents(

@@ -503,14 +503,13 @@ public sealed partial class PrototypeGameEngine
             {
                 World = world with { Combat = combat }
             };
-            var resumedSegment = ResumeAutomaticHandDrawSegment(
+            return ResumeSavedControlledAutomaticHandDraw(
                 drawRun, handDrawRemaining,
                 PrototypeDrawCardsSuspensionPolicyV111
                     .ControlledLegacyAutomaticHandDraw(
                         combat,
                         cardDrawnChoice: !ControlledChanceGuardV111
-                            .EngineOwnedNativeProviderActive));
-            return ResumeSavedControlledAutomaticHandDraw(resumedSegment)
+                            .EngineOwnedNativeProviderActive))
                     .ToAutomaticPipelineResumeResult();
         }
 

@@ -472,6 +472,23 @@ public sealed partial class PrototypeGameEngine
         return resumed ?? ContinueControlledHandDraw(segment);
     }
 
+    /// <summary>
+    /// Resume one saved controlled DrawPlayerHand segment and route its tagged
+    /// result through the common boundary owner. Recycle, hook-choice,
+    /// Stratagem, and insertion adapters keep their own saved-cursor checks,
+    /// while this owns their shared segment-to-boundary handoff.
+    /// </summary>
+    private static PrototypeDrawCardsResumeResultV111
+        ResumeSavedControlledAutomaticHandDraw(
+        RunState state,
+        int remaining,
+        PrototypeDrawCardsSuspensionPolicyV111 suspensionPolicy)
+    {
+        var segment = ResumeAutomaticHandDrawSegment(
+            state, remaining, suspensionPolicy);
+        return ResumeSavedControlledAutomaticHandDraw(segment);
+    }
+
     private sealed record PrototypeAutomaticHandDrawCostResumeV111(
         PrototypeDrawCardsResumeResultV111 Progress,
         PrototypeDrawCardsSegmentV111? Segment);

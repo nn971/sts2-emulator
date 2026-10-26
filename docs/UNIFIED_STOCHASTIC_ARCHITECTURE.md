@@ -269,6 +269,14 @@ intact to semantic boundary interpretation, where
 draws also pass the segment intact into their result owners; typed transcripts
 and provider-specific suspension policies remain with their adapters.
 
+`ResumeSavedControlledAutomaticHandDraw` also owns the shared segment-to-router
+handoff for controlled recycle, CardDrawn-hook, Stratagem, and after-shuffle
+insertion resumes. Each source adapter still validates its saved progress and
+chooses its controlled suspension policy, then passes the checkpoint and
+remaining count to that owner. This keeps the resumed DrawPlayerHand segment
+construction paired with the same tagged-boundary router without merging
+provider-specific validation.
+
 `SemanticChoiceResumeV111.ResumeHandDrawChoiceProgress` now owns the
 standalone-versus-automatic count interpretation and boundary publication
 shared by draw-hook, Stratagem, effect-draw, effect-draw-cost, and
