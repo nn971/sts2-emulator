@@ -302,6 +302,9 @@ public static class SemanticTargetChoiceV111
                 operations[0].TargetEnemyId is null &&
                 PrototypeGameEngine
                     .IsSupportedDistilledChaosAutoplayTargetBoundary(
+                        combat, choice, target) &&
+                PrototypeGameEngine
+                    .IsSupportedRandomAutoplaySourceTargetBoundary(
                         combat, choice, target),
             "effect_random_enemy" =>
                 target.SlyCardInstanceId is null &&

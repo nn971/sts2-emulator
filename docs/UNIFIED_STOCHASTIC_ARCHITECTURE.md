@@ -1839,6 +1839,12 @@ the exact X-cost random-hit effect, supported enchantment, manual source-card
 series and destination, normalized current hit, remaining random-hit queue,
 and single saved `CardPlayed` completion.
 
+Beat Down and Catastrophe autoplay targets now validate their exact source-card
+effect, source play series, current physical autoplay card, and remaining
+random-card queue before using the shared target owner. The current card must
+remain playable and enemy-targeted; Beat Down also requires its queued card to
+match the source effect's Attack-only filter.
+
 Jack of All Trades now enters its distinct Colorless-card shuffle from its
 physical source-card identity and exact upgraded amount, reusing the existing
 full-pool shuffle owner.

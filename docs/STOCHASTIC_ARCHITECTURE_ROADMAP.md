@@ -6311,3 +6311,11 @@ effect and `PotionUsed` completion, and its remaining physical autoplay queue
 and current playable enemy-targeted card match the saved target. Other
 no-source, no-pipeline autoplay roots fail closed. No schema changed. Static
 source review and Core Release build passed; no tests were run.
+
+**S4 Beat Down and Catastrophe autoplay target-source validation increment
+(2026-10-26):** Their autoplay targets now validate the exact source-card
+operation, source card-play frame, current physical autoplay card, and
+remaining random-autoplay suffix through the shared live-target support owner.
+The current card's playability and effective enemy target are checked, along
+with Beat Down's Attack-only filter. No schema changed. Static source review
+and Core Release build passed; no tests were run.

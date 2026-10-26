@@ -2365,6 +2365,167 @@ public sealed partial class PrototypeGameEngine
         return true;
     }
 
+    internal static bool IsSupportedRandomAutoplaySourceTargetBoundary(
+        CombatState combat,
+        PendingCombatChoiceState choice,
+        PrototypeControlledTargetChoiceV111 target)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(choice);
+        ArgumentNullException.ThrowIfNull(target);
+
+        if (choice.SourceCardInstanceId is not { } sourceCardInstanceId)
+            return true;
+        var sourceCard = combat.Cards.SingleOrDefault(card =>
+            card.InstanceId == sourceCardInstanceId);
+        if (sourceCard?.CardId is not
+                ("proto.colorless.beat_down" or
+                 "proto.colorless.catastrophe"))
+            return true;
+
+        var sourceCardId = sourceCard.CardId;
+        var expectedEffect = sourceCardId switch
+        {
+            "proto.colorless.beat_down" =>
+                new PrototypeCombatEffectSpec(
+                    PrototypeCombatEffectKind.AutoPlayRandomCardsFromZone,
+                    3, 1,
+                    AutoPlaySourceZone: PrototypeCardZone.DiscardPile,
+                    AutoPlayRequiredCardType: PrototypeCardType.Attack),
+            "proto.colorless.catastrophe" =>
+                new PrototypeCombatEffectSpec(
+                    PrototypeCombatEffectKind.AutoPlayRandomCardsFromZone,
+                    2, 1,
+                    AutoPlaySourceZone: PrototypeCardZone.DrawPile,
+                    AutoPlayFallbackToUnplayable: true),
+            _ => throw new InvalidOperationException(
+                "Unsupported random-autoplay source card.")
+        };
+        if (combat is not
+                { SemanticDeck:
+                    { Mode: SemanticDeckStateV111.NatureMode,
+                      Pending: null } } ||
+            target is not
+                { Kind: "autoplay_random_enemy",
+                  SlyCardInstanceId: null,
+                  AutoPlayCardInstanceId: { } currentAutoPlayCardId } ||
+            choice is not
+                { ChoiceId: "controlled_random_target",
+                  SourceCardInstanceId: { } choiceSourceCardId,
+                  SourceCardDestination: var sourceCardDestination,
+                  CompletionEvents: [],
+                  OuterChoiceContinuation: { } continuation } ||
+            continuation is not
+                { SourceCardInstanceId: { } continuationSourceCardId,
+                  SourceCardDestination: var continuationSourceCardDestination,
+                  Operations: { Length: > 0 and <= 2 } operations,
+                  PendingDiscardEvents: [],
+                  PendingSlyCardInstanceIds: [],
+                  CompletionEvents: [{ } completion],
+                  EventDispatchContinuation: null,
+                  RemoveSourceCardOnCompletion: false,
+                  SourceCardAlreadyMoved: false,
+                  CompletePlayerHandCleanup: false,
+                  CardPlaySeries: { } series } ||
+            choiceSourceCardId != sourceCardInstanceId ||
+            continuationSourceCardId != sourceCardInstanceId ||
+            continuation.SourceCardInstanceId != sourceCardInstanceId ||
+            sourceCardDestination != continuationSourceCardDestination ||
+            sourceCardDestination is not
+                (PrototypeCardZone.DiscardPile or PrototypeCardZone.DrawPile) ||
+            series.SourceCardInstanceId != sourceCardInstanceId ||
+            series.SourceCardDestination != sourceCardDestination ||
+            series.TargetEnemyId is not null ||
+            series.PlayCount <= 0 || series.NextPlayIndex <= 0 ||
+            series.NextPlayIndex > series.PlayCount ||
+            continuation.MoveSourceCardOnCompletion !=
+                !series.HasRemainingExecutions ||
+            continuation.RemoveSourceCardOnCompletion ||
+            sourceCard.Enchantment is not null)
+            return false;
+
+        var definition = PrototypeContent.Card(sourceCardId);
+        var expectedCost = sourceCardId == "proto.colorless.beat_down"
+            ? 3 : 2;
+        if (definition.Cost.Kind != PrototypeCardCostKind.Fixed ||
+            definition.Cost.Amount != expectedCost ||
+            definition.Target != PrototypeCardTarget.None ||
+            definition.Type != PrototypeCardType.Skill ||
+            CanonicalJson.Sha256(definition.Effects) !=
+                CanonicalJson.Sha256(new[] { expectedEffect }))
+            return false;
+
+        var totalAutoplays = expectedEffect.AmountAt(
+            sourceCard.UpgradeLevel, series.EnergySpent);
+        if (totalAutoplays <= 0 ||
+            operations[0] is not
+                { Kind: PrototypeCombatEffectKind.AutoPlayCombatCard,
+                  Amount: 0,
+                  TargetEnemyId: null,
+                  SourceKind: PrototypeEffectSourceKind.Card,
+                  CardInstanceId: { } firstAutoPlayCardId } ||
+            firstAutoPlayCardId != currentAutoPlayCardId ||
+            !combat.PlayCardIds.Contains(currentAutoPlayCardId))
+            return false;
+
+        var expectedCurrentOperation = new PrototypeQueuedOperation(
+            PrototypeCombatEffectKind.AutoPlayCombatCard, 0,
+            SourceKind: PrototypeEffectSourceKind.Card,
+            CardInstanceId: currentAutoPlayCardId);
+        if (CanonicalJson.Sha256(operations[0]) !=
+            CanonicalJson.Sha256(expectedCurrentOperation))
+            return false;
+
+        var remainingAutoplays = operations.Length == 1
+            ? 0
+            : operations[1].Amount;
+        if (remainingAutoplays < 0 ||
+            remainingAutoplays >= totalAutoplays ||
+            (remainingAutoplays == 0) != (operations.Length == 1))
+            return false;
+        if (operations.Length == 2)
+        {
+            var expectedRemainingOperation = new PrototypeQueuedOperation(
+                expectedEffect.Kind, remainingAutoplays,
+                SourceKind: PrototypeEffectSourceKind.Card,
+                AutoPlaySourceZone: expectedEffect.AutoPlaySourceZone,
+                AutoPlayRequiredCardType:
+                    expectedEffect.AutoPlayRequiredCardType,
+                AutoPlayFallbackToUnplayable:
+                    expectedEffect.AutoPlayFallbackToUnplayable);
+            if (CanonicalJson.Sha256(operations[1]) !=
+                CanonicalJson.Sha256(expectedRemainingOperation))
+                return false;
+        }
+
+        var autoPlayCard = combat.Cards.SingleOrDefault(card =>
+            card.InstanceId == currentAutoPlayCardId);
+        if (autoPlayCard is null ||
+            (sourceCardId == "proto.colorless.beat_down" &&
+             RuntimeCardDefinition(autoPlayCard).Type !=
+                PrototypeCardType.Attack))
+            return false;
+        var autoPlayDefinition = RuntimeCardDefinition(autoPlayCard);
+        if (!autoPlayDefinition.MechanicsImplemented ||
+            autoPlayDefinition.Unplayable ||
+            NormalityPreventsCardPlay(combat) ||
+            EffectiveCardTarget(combat, autoPlayDefinition) !=
+                PrototypeCardTarget.Enemy)
+            return false;
+
+        return completion is
+                { Kind: PrototypeCombatEventKind.CardPlayed,
+                  TargetEnemyId: null,
+                  Amount: 0,
+                  FromHandDraw: false,
+                  IsPoweredAttack: false } &&
+            completion.IsAutoPlay == series.IsAutoPlay &&
+            completion.SourceCardInstanceId == sourceCardInstanceId &&
+            completion.CardId == sourceCardId &&
+            completion.PowerApplicationOrderCeiling is { } ceiling &&
+            ceiling <= combat.NextPowerApplicationOrder - 1;
+    }
+
     internal static bool IsGamblingChipOpeningTingshaTargetBoundary(
         CombatState combat)
     {
