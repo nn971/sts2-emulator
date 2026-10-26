@@ -419,7 +419,8 @@ public static class LegacyFisherYatesV111
             ownerId,
             siteId,
             callOrdinal,
-            controlledCandidateLabel);
+            controlledCandidateLabel,
+            allowRegisteredLegacyShuffle: true);
     }
 }
 
