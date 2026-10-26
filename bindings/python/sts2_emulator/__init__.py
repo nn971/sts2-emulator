@@ -1256,6 +1256,18 @@ class ControlledRunActionChoice:
             candidate_label=candidate_label)
         return ControlledRunActionChoice.from_wire(self.session, result)
 
+    def resolve_outcome_id(self, outcome_id: str):
+        """Resolve the pending run action by its Chance Law outcome ID."""
+        if not self.pending or not self.pending.get("chanceLaw"):
+            raise EmulatorError(
+                "Expected a pending controlled run-action Chance Law")
+        if not isinstance(outcome_id, str) or not outcome_id.strip():
+            raise ValueError("outcome_id must be a non-empty string")
+        result = self.session.call(
+            "controlled_run_action_resolve", state_handle=self.handle,
+            outcome_id=outcome_id)
+        return ControlledRunActionChoice.from_wire(self.session, result)
+
     def save_snapshot(self):
         """Return a hidden exact snapshot, including the pending run-action frame."""
         return self.session.call("save_snapshot", state_handle=self.handle)["snapshot"]

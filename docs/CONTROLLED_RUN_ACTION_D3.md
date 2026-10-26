@@ -144,11 +144,11 @@ observations hide its Nature actions; the explicit controller exposes only
 `choose_controlled_run_action_outcome` actions while the frame is pending.
 For supports larger than the advertised inline-action limit, the controller
 omits expanded action objects and candidate labels but retains the compact
-request bounds. The Chance Law still lists each legal request index, which
-clients resolve through `controlled_run_action_resolve`. When the complete
-candidate-label vector is present, clients may select one unique
-`candidate_label`; `selected_index` remains supported for every materialized
-or compact support.
+request bounds. The Chance Law still lists each legal request outcome, which
+clients resolve through `controlled_run_action_resolve` using `outcome_id`.
+When the complete candidate-label vector is present, clients may select one
+unique `candidate_label`; `selected_index` remains supported for every
+materialized or compact support.
 
 ## Probability provenance
 
@@ -177,7 +177,7 @@ appear in both region groups. The controller supports:
 | Operation | Inputs | Result |
 | --- | --- | --- |
 | `controlled_run_action_begin` | current `state_handle`, legal `action_id` | Pending request, labels and controlled outcome actions |
-| `controlled_run_action_resolve` | pending `state_handle`, exactly one of `selected_index` or `candidate_label` | Child run handle with the selected run-start, configured boss, event-entry, Shop, legacy or fallback Treasure, rest-heal reward, Act 1 combat-entry or Shovel result |
+| `controlled_run_action_resolve` | pending `state_handle`, exactly one of `selected_index`, `candidate_label`, or `outcome_id` | Child run handle with the selected run-start, configured boss, event-entry, Shop, legacy or fallback Treasure, rest-heal reward, Act 1 combat-entry or Shovel result |
 | `controlled_run_action_inspect` | pending `state_handle` | Restore the pending request and legal outcomes after snapshot load |
 
 The JSONL server also exposes an atomic ReferenceNature envelope for these
@@ -362,7 +362,9 @@ The Python binding exposes `State.begin_controlled_run_start()`,
 `State.begin_controlled_shovel_dig()`,
 `State.resume_controlled_run_action()` and `ControlledRunActionChoice.resolve()`;
 `ControlledRunActionChoice.resolve_candidate_label()` is available when the
-pending support publishes candidate labels.
+pending support publishes candidate labels, and
+`ControlledRunActionChoice.resolve_outcome_id()` resolves the current Chance
+Law outcome directly.
 Use a legacy random profile for run-start, map generation, ordinary legacy
 Event/Treasure entry, and Shovel flows. Native-regional Treasure fallback is
 available when `NativeRunRng` is absent. Shop purchase actions can also start from a

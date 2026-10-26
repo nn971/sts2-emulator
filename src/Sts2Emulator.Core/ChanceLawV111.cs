@@ -548,6 +548,26 @@ public sealed record ChanceLawV111(
         return supportOffset >= 0;
     }
 
+    public int RequireOutcomeIndex(
+        string eventId, RandomIndexRequestV111 request, string outcomeId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentException.ThrowIfNullOrWhiteSpace(outcomeId);
+        request.Validate();
+        Validate();
+        if (EventId != eventId || SiteId != request.SiteId ||
+            OperationKind != request.OperationKind ||
+            OwnerId != request.OwnerId || Ordinal != request.Ordinal ||
+            SupportCount != request.SupportCount)
+            throw new InvalidDataException(
+                "Chance Law no longer matches its pending typed request.");
+        if (!TryGetOutcomeIndex(outcomeId, out var supportOffset))
+            throw new InvalidOperationException(
+                "Outcome identity is outside the active Chance Law support.");
+        return supportOffset;
+    }
+
     private static bool TryGetCompactOutcomeIndex(
         string outcomeId, string prefix, int startInclusive, int count,
         out int supportOffset)

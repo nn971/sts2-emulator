@@ -10136,16 +10136,21 @@ internal static class PrototypeAiJsonlServer
                             request, "selected_index");
                         var candidateLabel = OptionalString(
                             request, "candidate_label");
-                        if ((selectedIndex is null) ==
-                            (candidateLabel is null))
+                        var outcomeId = OptionalString(request, "outcome_id");
+                        var selectorCount = (selectedIndex is null ? 0 : 1) +
+                            (candidateLabel is null ? 0 : 1) +
+                            (outcomeId is null ? 0 : 1);
+                        if (selectorCount != 1)
                             throw new ArgumentException(
-                                "Provide exactly one of selected_index or candidate_label.");
+                                "Provide exactly one of selected_index, candidate_label, or outcome_id.");
                         var next = selectedIndex is { } index
                             ? ControlledRunActionEngineV111.Resolve(
                                 source, index)
-                            : ControlledRunActionEngineV111
-                                .ResolveByCandidateLabel(
-                                    source, candidateLabel!);
+                            : candidateLabel is { } label
+                                ? ControlledRunActionEngineV111
+                                    .ResolveByCandidateLabel(source, label)
+                                : ControlledRunActionEngineV111
+                                    .ResolveByOutcomeId(source, outcomeId!);
                         var handle = Store(next, parentHandle);
                         Write(ControlledRunActionResult(next, handle, parentHandle));
                         break;

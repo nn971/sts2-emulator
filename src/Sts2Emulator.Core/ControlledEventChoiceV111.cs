@@ -203,19 +203,8 @@ public static class ControlledEventChoiceEngineV111
         ArgumentException.ThrowIfNullOrWhiteSpace(outcomeId);
         var pending = ControlledEventChoicePendingV111.Describe(source);
         var law = QueryChanceLaw(source);
-        law.Validate();
-        if (law.EventId != pending.ChanceEventId ||
-            law.SiteId != pending.Request.SiteId ||
-            law.OperationKind != pending.Request.OperationKind ||
-            law.OwnerId != pending.Request.OwnerId ||
-            law.Ordinal != pending.Request.Ordinal ||
-            law.SupportCount != pending.Request.SupportCount)
-            throw new InvalidDataException(
-                "Controlled event Chance Law no longer matches its pending request.");
-
-        if (!law.TryGetOutcomeIndex(outcomeId, out var selectedIndex))
-            throw new InvalidOperationException(
-                "Controlled event outcome identity is outside the active Chance Law support.");
+        var selectedIndex = law.RequireOutcomeIndex(
+            pending.ChanceEventId, pending.Request, outcomeId);
         return Resolve(source, selectedIndex);
     }
 

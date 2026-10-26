@@ -2,6 +2,14 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S5 controlled run-action Chance Law outcome resolution increment
+(2026-10-26):** Controlled run-action choices now resolve explicit or compact
+Chance Law outcome IDs through a shared `ChanceLawV111` support-to-index
+resolver. JSONL and Python expose `outcome_id`; existing selected-index and
+candidate-label inputs remain available, and every route records the same
+typed index transcript. Core and CLI Release builds, the static RNG audit,
+and `git diff --check` passed; no tests were run.
+
 **S5 controlled event Chance Law outcome resolution increment (2026-10-26):**
 The controlled-event resolver now accepts a stable outcome ID from the
 current Chance Law and maps it to the existing typed index transcript,

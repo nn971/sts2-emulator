@@ -2478,26 +2478,29 @@ public static class ControlledRunActionEngineV111
         if (selectedIndex is null)
         {
             var law = ChanceLawEngineV111.QueryControlledRunAction(source);
-            if (law.Outcomes.Length == pending.Request.SupportCount)
+            if (law.SupportCount == pending.Request.SupportCount &&
+                law.TryGetOutcomeIndex(candidateLabel, out _))
             {
-                try
-                {
-                    selectedIndex = ControlledChanceContinuationExecutorV111
-                        .IndexOfCandidateLabel(
-                            law.Outcomes.Select(outcome => outcome.OutcomeId)
-                                .ToArray(), pending.Request.SupportCount,
-                            candidateLabel);
-                }
-                catch (ArgumentOutOfRangeException)
-                {
-                    // The requested label is outside both supported label sets.
-                }
+                selectedIndex = law.RequireOutcomeIndex(
+                    pending.ChanceEventId, pending.Request, candidateLabel);
             }
         }
         if (selectedIndex is null)
             throw new InvalidOperationException(
                 "The requested candidate label is not in the pending run-action support or Chance Law outcomes.");
         return Resolve(source, selectedIndex.Value);
+    }
+
+    public static RunState ResolveByOutcomeId(
+        RunState source, string outcomeId)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentException.ThrowIfNullOrWhiteSpace(outcomeId);
+        var pending = ControlledRunActionPendingV111.Describe(source);
+        var law = ChanceLawEngineV111.QueryControlledRunAction(source);
+        var selectedIndex = law.RequireOutcomeIndex(
+            pending.ChanceEventId, pending.Request, outcomeId);
+        return Resolve(source, selectedIndex);
     }
 
     private static RunState Step(RunState source, GameAction action)
