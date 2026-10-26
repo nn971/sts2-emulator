@@ -1195,11 +1195,12 @@ When a saved controlled boundary supplies a complete, unique ordered
 candidate-label vector, the shared index-law mapper can expose those labels as
 outcome IDs while preserving every index's existing weight and binding the
 ordered mapping into the conditioning fingerprint. This covers the generic
-run-action and event-choice fallbacks and validated ReferenceNature Native
-Shovel, combat-reward, and merchant requests. Missing, duplicate, numeric-range,
-or oversized label vectors retain the existing index outcomes; specialized
-laws keep their site-specific semantic support builders. The continuation and
-Chance Law schemas do not change.
+run-action, event-choice, and whole-run replay fallbacks, plus validated
+ReferenceNature Native Shovel, event-relic, combat-reward, and merchant
+requests. Missing, duplicate, numeric-range, or oversized label vectors retain
+the existing index outcomes; specialized laws keep their site-specific
+semantic support builders. The continuation and Chance Law schemas do not
+change.
 
 The `combat.initial_unique_hp` direct query accepts `owner_id` in the form
 `creature:<CombatId>`, the ordered HP support, and the source ordinal. It

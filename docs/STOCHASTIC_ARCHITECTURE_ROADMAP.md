@@ -4,20 +4,21 @@
 
 **S5 saved-session candidate identity increment (2026-10-26):** The shared
 index-law mapper now reuses complete, unique saved candidate labels as ordered
-outcome IDs across validated ReferenceNature Native Shovel, legacy combat
-reward, merchant model, registered purchase, and generic merchant fallback
+outcome IDs across validated ReferenceNature Native Shovel and event-relic,
+legacy combat-reward, merchant, Native run-action, and whole-run replay
 requests. It preserves the existing index weights and binds the label mapping
 into the conditioning fingerprint; missing, duplicate, numeric-range, or
 oversized supports keep their generic index identities. The same helper serves
-the existing run-action and event-choice fallbacks. Specialized site laws and
-continuation schemas are unchanged. The Core/CLI Release build passed with
-zero warnings or errors. Static inventory checks passed: 155 direct RNG calls,
-185/185 registered rows and S0 evidence links, zero ambient-entropy findings,
-zero Native Chance Law references, and zero query-guard violations.
-`git diff --check` passed; no tests were run. The full solution build also
-reached all production projects but failed compiling the test project because
-four existing references to `PrototypeGameEngine.SemanticHandDrawStepIndex`
-do not resolve in `SemanticAutomaticHandDrawV111Tests.cs`.
+the generic run-action and event-choice fallbacks. Specialized site laws and
+continuation schemas are unchanged.
+The Core/CLI Release build passed with zero warnings or errors. Static
+inventory checks passed: 155 direct RNG calls, 185/185 registered rows and
+S0 evidence links, zero ambient-entropy findings, zero Native Chance Law
+references, and zero query-guard violations. `git diff --check` passed; no
+tests were run. A full solution build reaches all production projects but
+fails compiling the test project because four references to
+`PrototypeGameEngine.SemanticHandDrawStepIndex` do not resolve in
+`SemanticAutomaticHandDrawV111Tests.cs`.
 
 **S5 legacy weighted-encounter support and identity-law increment (2026-10-26):**
 `PrototypeWeightedEncounterSupportV111` now owns the ordinary prototype

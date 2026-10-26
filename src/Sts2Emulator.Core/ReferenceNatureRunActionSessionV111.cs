@@ -742,8 +742,9 @@ public sealed record ReferenceNatureRunActionSessionV111(
                 actionId = PrototypeAiEnvironment.StableActionId(action),
                 request = selectionRequest
             });
-            return ChanceLawEngineV111.QueryRandomIndex(
-                eventId, selectionRequest);
+            return ChanceLawEngineV111.QueryRandomIndexWithCandidateOutcomeIds(
+                eventId, selectionRequest,
+                continuation.PendingCandidateLabels);
         }
 
         throw new NotSupportedException(

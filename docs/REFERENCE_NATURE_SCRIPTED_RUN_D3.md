@@ -6,9 +6,14 @@ player action boundary and commits each completed action together with the
 current Nature cursor. Completed and active actions replay from their saved
 boundary before a session or snapshot is accepted.
 
-`resolve_next` samples finite index requests through `QueryRandomIndex`,
-which uses exact Native `NextInt` grid masses for canonical Native stream IDs;
-legacy and unknown streams use the registered unverified uniform-index law.
+`resolve_next` samples finite index requests through the shared candidate-ID
+mapper. It uses exact Native `NextInt` grid masses for canonical Native stream
+IDs and the registered unverified uniform-index law for legacy and unknown
+streams. A complete, unique saved candidate-label vector becomes the ordered
+outcome IDs while preserving each index's weight; incomplete, duplicate,
+numeric-range, and oversized supports retain index outcomes. Specialized
+event, reward, merchant, Treasure, and map-generation laws keep their own
+support builders.
 `resolve_outcome` accepts a caller-supplied typed transcript entry for any of
 the six primitive operations: index, unit float, ranged float, ranged double,
 Gaussian integer, and Gaussian double. The pending status includes the typed

@@ -158,6 +158,14 @@ The Small Capsule request uses the exact Native bounded-index transform for
 emulator's configured relic pool after the acquired relic is added; source-pool
 completeness and Native cursor parity remain separate evidence.
 
+For event relics, Neow pickup effects, and the supported combat-reward relic
+hooks, the session also exposes a complete, unique replay-validated candidate
+label vector as ordered Chance Law outcome IDs. This applies to unowned relic,
+relic-bag identity, Neow card/potion model, and supported relic-acquisition
+index requests. The mapper preserves the existing Native bounded-index or
+legacy equal-index weights and fingerprints the label order; requests without
+a usable label vector retain index outcomes.
+
 The transcript follows actual source request order. An action that also
 reaches another stochastic site fails closed rather than partially
 committing a relic-only prefix. Each `ResolveNext()` samples the next law and

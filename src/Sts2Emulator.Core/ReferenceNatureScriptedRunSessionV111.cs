@@ -672,8 +672,9 @@ public sealed record ReferenceNatureScriptedRunSessionV111(
             if (indexRequest.SiteId == StochasticSiteRegistryV111
                     .NativePotionFactoryModelSiteId)
                 return QueryNativePotionFactoryModel(active, indexRequest);
-            return ChanceLawEngineV111.QueryRandomIndex(
-                PendingEventId(active, indexRequest), indexRequest);
+            return ChanceLawEngineV111.QueryRandomIndexWithCandidateOutcomeIds(
+                PendingEventId(active, indexRequest), indexRequest,
+                active.PendingCandidateLabels);
         }
         if (request.UnitFloatRequest is { } unitFloatRequest)
         {

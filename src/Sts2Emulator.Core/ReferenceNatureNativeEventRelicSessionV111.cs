@@ -615,8 +615,8 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
                     actionId = PrototypeAiEnvironment.StableActionId(action),
                     request = unownedRelicRequest
                 });
-            return ChanceLawEngineV111.QueryRandomIndex(
-                lawEventId, unownedRelicRequest);
+            return ChanceLawEngineV111.QueryRandomIndexWithCandidateOutcomeIds(
+                lawEventId, unownedRelicRequest, candidateLabels);
         }
 
         if (request.IndexRequest is { } neowPickupShuffleRequest &&
@@ -681,7 +681,7 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
                 throw new InvalidDataException(
                     "Neow Lost Coffer request differs from its current reward generation.");
 
-            return ChanceLawEngineV111.QueryRandomIndex(
+            return ChanceLawEngineV111.QueryRandomIndexWithCandidateOutcomeIds(
                 CanonicalJson.Sha256(new
                 {
                     boundary = boundaryId,
@@ -689,7 +689,7 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
                     actionId = PrototypeAiEnvironment.StableActionId(action),
                     prefixFingerprint = CanonicalJson.Sha256(prefix),
                     request = neowLostCofferRequest
-                }), neowLostCofferRequest);
+                }), neowLostCofferRequest, candidateLabels);
         }
 
         if (request.IndexRequest is { } neowRelicAcquisitionRequest &&
@@ -711,8 +711,8 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
                 prefixFingerprint = CanonicalJson.Sha256(prefix),
                 request = neowRelicAcquisitionRequest
             });
-            return ChanceLawEngineV111.QueryRandomIndex(
-                eventId, neowRelicAcquisitionRequest);
+            return ChanceLawEngineV111.QueryRandomIndexWithCandidateOutcomeIds(
+                eventId, neowRelicAcquisitionRequest, candidateLabels);
         }
 
         if (request.IndexRequest is { } indexRequest &&
@@ -785,8 +785,8 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
                         actionId = PrototypeAiEnvironment.StableActionId(action),
                         request = indexRequest
                     });
-            return ChanceLawEngineV111.QueryRandomIndex(
-                lawEventId, indexRequest);
+            return ChanceLawEngineV111.QueryRandomIndexWithCandidateOutcomeIds(
+                lawEventId, indexRequest, candidateLabels);
         }
 
         if (IsCombatRewardRelicAcquisitionAction(source, action) &&
@@ -831,8 +831,8 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
                 candidateLabels,
                 prefixFingerprint = CanonicalJson.Sha256(prefix)
             });
-            return ChanceLawEngineV111.QueryRandomIndex(
-                eventId, acquisitionRequest);
+            return ChanceLawEngineV111.QueryRandomIndexWithCandidateOutcomeIds(
+                eventId, acquisitionRequest, candidateLabels);
         }
 
         throw new NotSupportedException(
