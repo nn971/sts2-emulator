@@ -1993,7 +1993,9 @@ public sealed record SemanticSeededEntryV111(
     string? FixtureSelectionPotionId = null,
     string? FixturePotionGenerationCardId = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    string? FixtureTopAutoplayPotionId = null);
+    string? FixtureTopAutoplayPotionId = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    string? RouteSourceSnapshotJson = null);
 
 /// <summary>
 /// First external playable semantic boundary. Initial opening order is
@@ -3580,6 +3582,68 @@ public static class SemanticPilotCombatEngineV111
         };
     }
 
+    /// <summary>
+    /// Start a source-routed semantic session from a legal Act 1 Combat or
+    /// Elite map choice in an existing Native run. The preceding route and
+    /// player actions remain ordinary engine history; this session owns the
+    /// selected room's entry, initial intents, and subsequent combat policy.
+    /// </summary>
+    public static SemanticPilotCombatV111 BeginSourceMapNode(
+        RunState source, string mapNodeId,
+        bool nativePolicyBaseline = false)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentException.ThrowIfNullOrWhiteSpace(mapNodeId);
+        var world = source.World ?? throw new InvalidOperationException(
+            "Source-route map entry requires a run world.");
+        var configuration = source.Configuration ??
+            throw new InvalidOperationException(
+                "Source-route map entry requires run configuration.");
+        PrototypeStateInvariants.Validate(source);
+        if (world.Act != 1 ||
+            configuration.Ascension != source.Ascension ||
+            source.Phase != RunPhase.MapChoice ||
+            source.Stochastic.NativeRunRng is null ||
+            source.Stochastic.ControlledRunActionChoice is not null ||
+            source.Stochastic.SemanticOtherChance is not null ||
+            !PrototypeGameEngine.UsesNativeRegionalSystems(world))
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_ROUTE site=act1.map " +
+                "operation=source_run_requires_native_act1_map_choice");
+        var region = world.ActIdentity ?? configuration.Acts[0];
+        if (configuration.Acts[0] != region)
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_ROUTE site=act1.map " +
+                "operation=source_run_region_configuration_mismatch");
+        if (region is not (ActIdentity.Overgrowth or ActIdentity.Underdocks))
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_ROUTE site=act1.map " +
+                "operation=unsupported_act_one_region");
+        NativeRunRngV111.Validate(source);
+        var node = world.Map.Nodes.SingleOrDefault(candidate =>
+            candidate.NodeId == mapNodeId);
+        if (node is null || node.RoomType is not (PrototypeRoomType.Combat or
+                PrototypeRoomType.Elite))
+            throw new InvalidOperationException(
+                "Source-route map node must be an Act 1 Combat or Elite node.");
+        var engine = new PrototypeGameEngine();
+        if (!engine.GetLegalActions(source).Any(action =>
+                action.Kind == "choose_map_node" &&
+                action.ReadPayload<ChooseMapNodePayload>().NodeId == mapNodeId))
+            throw new InvalidOperationException(
+                "Requested source-route map node is not currently legal.");
+
+        var entry = new SemanticSeededEntryV111(
+            source.RunSeed, world.Act, "@source-route", "@source-route",
+            world.Floor, source.Ascension, 1, null, null,
+            NativePolicyBaseline: nativePolicyBaseline,
+            SourceRouteEntry: true,
+            RouteActOneRegion: region,
+            RouteMapNodeId: mapNodeId,
+            RouteSourceSnapshotJson: RunSnapshot.Save(source));
+        return BeginSourceRoute(entry);
+    }
+
     private static SemanticPilotCombatV111 BeginSourceRoute(
         SemanticSeededEntryV111 entry)
     {
@@ -3601,13 +3665,28 @@ public static class SemanticPilotCombatEngineV111
                 "UNSUPPORTED_SEMANTIC_ROUTE site=act1.entry " +
                 "operation=route_configuration");
 
-        var configuration = RunConfiguration.Create(
-            "silent", entry.Ascension, entry.RouteActOneRegion) with
-        {
-            FidelityId = V111Build.NativeWeakCombatEntryFidelityId
-        };
+        var sourceRun = entry.RouteSourceSnapshotJson is { } sourceSnapshot
+            ? RunSnapshot.Load(sourceSnapshot)
+            : null;
+        if (sourceRun is not null &&
+            (sourceRun.RunSeed != entry.Seed || sourceRun.World?.Act != 1 ||
+             sourceRun.Ascension != entry.Ascension ||
+             sourceRun.Phase != RunPhase.MapChoice ||
+             (sourceRun.World?.ActIdentity ??
+                sourceRun.Configuration?.Acts.FirstOrDefault()) !=
+                    entry.RouteActOneRegion ||
+             sourceRun.Stochastic.NativeRunRng is null ||
+             sourceRun.Stochastic.ControlledRunActionChoice is not null))
+            throw new InvalidDataException(
+                "Source-route snapshot does not match its pinned Act 1 map boundary.");
+        var configuration = sourceRun?.Configuration ??
+            RunConfiguration.Create(
+                "silent", entry.Ascension, entry.RouteActOneRegion) with
+            {
+                FidelityId = V111Build.NativeWeakCombatEntryFidelityId
+            };
         var engine = new PrototypeGameEngine();
-        var run = V111RunFactory.Create(entry.Seed, configuration);
+        var run = sourceRun ?? V111RunFactory.Create(entry.Seed, configuration);
         var actions = new List<string>();
         string? neowChoice = null;
         string? mapNodeId = null;
@@ -3635,16 +3714,20 @@ public static class SemanticPilotCombatEngineV111
                         .NodeId;
                     var node = world.Map.Nodes.SingleOrDefault(candidate =>
                         candidate.NodeId == nodeId);
-                    return node is not null && node.Floor == 1 &&
-                        (world.Map.EntryNodeIds ?? []).Contains(nodeId,
-                            StringComparer.Ordinal) &&
-                        node.RoomType == PrototypeRoomType.Combat;
+                    return node is not null &&
+                        (sourceRun is not null
+                            ? node.RoomType is PrototypeRoomType.Combat or
+                                PrototypeRoomType.Elite
+                            : node.Floor == 1 &&
+                              (world.Map.EntryNodeIds ?? []).Contains(nodeId,
+                                  StringComparer.Ordinal) &&
+                              node.RoomType == PrototypeRoomType.Combat);
                 }).ToArray();
                 selected = entry.RouteMapNodeId is { Length: > 0 } requested
                     ? available.SingleOrDefault(action =>
                         action.ReadPayload<ChooseMapNodePayload>().NodeId == requested)
                         ?? throw new InvalidOperationException(
-                            "Requested source-route map node is not a legal first-floor combat.")
+                        "Requested source-route map node is not a legal combat entry.")
                     : available.FirstOrDefault()
                         ?? throw new NotSupportedException(
                             "UNSUPPORTED_SEMANTIC_ROUTE site=act1.map " +
@@ -3710,7 +3793,8 @@ public static class SemanticPilotCombatEngineV111
                 "UNSUPPORTED_SEMANTIC_ROUTE site=act1.entry " +
                 "operation=initial_intent_boundary_not_reached");
         if (run.Phase != RunPhase.Combat || run.World?.Combat is not { } combat ||
-            run.World.ActiveRoom != PrototypeRoomType.Combat ||
+            run.World.ActiveRoom is not (PrototypeRoomType.Combat or
+                PrototypeRoomType.Elite) ||
             combat.PendingChoice is not null ||
             combat.AutomaticPipelineContinuation is not null ||
             combat.Enemies.Any(enemy => enemy.PlannedMoveIndex is not null ||
@@ -3743,8 +3827,10 @@ public static class SemanticPilotCombatEngineV111
              entry.EncounterId != actualEncounterId) ||
             (entry.NativeEncounterEntry != "@source-route" &&
              entry.NativeEncounterEntry != actualNativeEntry) ||
-            routeWorld.Floor != 1 ||
-            actualNode.RoomType != PrototypeRoomType.Combat)
+            routeWorld.Floor != actualNode.Floor ||
+            actualNode.RoomType is not (PrototypeRoomType.Combat or
+                PrototypeRoomType.Elite) ||
+            routeWorld.ActiveRoom != actualNode.RoomType)
             throw new InvalidDataException(
                 "Source route differs from the requested pinned combat entry.");
 

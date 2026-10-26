@@ -3198,9 +3198,11 @@ internal static class PrototypeAiJsonlServer
                                 "engine-owned-native-v111-comparator-unverified-v1",
                             semanticSeededRouteEntryProviderId =
                                 SemanticSourceRouteAuditV111.SourceRouteProviderId,
+                            semanticSourceRunRouteProviderId =
+                                "engine-owned-v111-native-act1-map-choice-unverified-v1",
                             semanticPlayable = true,
                             semanticPlayableScope =
-                                "seeded-source-route-or-post-committed-opening-fixture-restricted-Silent-combat",
+                                "seeded-source-route-or-native-act1-combat-elite-map-choice-or-post-committed-opening-fixture-restricted-Silent-combat",
                             semanticControlledSites = new[]
                             {
                                 "enemy_intent", "draw_card"
@@ -6548,6 +6550,20 @@ internal static class PrototypeAiJsonlServer
                             throw new InvalidOperationException(
                                 "semantic_begin requires a valid completed controlled_handle.");
                         var next = SemanticPilotCombatEngineV111.Begin(source);
+                        var handle = StoreSemantic(next);
+                        Write(new { requestId, ok = true,
+                            result = SemanticResult(next, handle) });
+                        break;
+                    }
+
+                    case "semantic_begin_source_map_node":
+                    {
+                        var next = SemanticPilotCombatEngineV111
+                            .BeginSourceMapNode(
+                                RequireState(request),
+                                RequiredString(request, "map_node_id"),
+                                OptionalBool(request,
+                                    "native_policy_baseline"));
                         var handle = StoreSemantic(next);
                         Write(new { requestId, ok = true,
                             result = SemanticResult(next, handle) });

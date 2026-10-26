@@ -4803,6 +4803,27 @@ class Session:
             route_neow_choice_id=neow_choice_id,
             route_map_node_id=first_map_node_id)
 
+    def begin_semantic_combat_from_map_choice(
+            self, state: State, map_node_id: str, *,
+            native_policy_baseline: bool = False):
+        """Enter a legal Act 1 Combat or Elite from an existing Native run."""
+        if self.capabilities.get("semanticSourceRunRouteProviderId") != (
+                "engine-owned-v111-native-act1-map-choice-unverified-v1"):
+            raise EmulatorError(
+                "Emulator lacks source-run semantic map entry")
+        if not isinstance(state, State) or state.session is not self:
+            raise ValueError("Source run belongs to another session")
+        if not isinstance(map_node_id, str) or not map_node_id:
+            raise ValueError("map_node_id must be a non-empty string")
+        if native_policy_baseline and self.capabilities.get(
+                "semanticNativePolicyComparatorId") != (
+                    "engine-owned-native-v111-comparator-unverified-v1"):
+            raise EmulatorError("Emulator lacks the native-policy comparator")
+        return SemanticCombat.from_wire(self, self.call(
+            "semantic_begin_source_map_node",
+            state_handle=state.handle, map_node_id=map_node_id,
+            native_policy_baseline=native_policy_baseline))
+
     def load_semantic_snapshot(self, snapshot: str):
         if self.capabilities.get("semanticChanceSchemaId") != (
                 "sts2-v111-semantic-playable-p0-v1"):

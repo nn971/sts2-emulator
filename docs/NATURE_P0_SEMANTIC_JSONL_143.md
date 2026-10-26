@@ -19,11 +19,12 @@ implemented the original mechanics internally but exposed only
 isolated legacy Fisher–Yates and HP/intent fixtures.
 
 This P0 bridge is an opt-in external boundary, not yet full acceptance for
-source-calibrated training episodes. It now has both an isolated seeded
-entry and a source-routed Act 1 entry that reaches the real first-combat
-hook. The source-route smoke reaches true victory on five weak encounters
-and replays each across fifteen workers. Native probability and complete
-non-Nature RNG parity remain **UNVERIFIED**.
+source-calibrated training episodes. It has an isolated seeded entry, a
+seed-created source route to first combat, and an additive entry from a legal
+Act 1 combat map choice in an existing Native run. The existing source-route
+smoke reaches true victory on five weak encounters and replays each across
+fifteen workers. The existing-run Combat/Elite entry is build-verified only.
+Native probability and complete non-Nature RNG parity remain **UNVERIFIED**.
 
 ## Capability / negotiated protocol
 
@@ -87,7 +88,7 @@ non-Nature RNG parity remain **UNVERIFIED**.
 - `semanticExtendedPlayerChoices = [select_cards,
   card_drawn_hook_action]`.
 - `semanticPlayable = true`, scope
-  `seeded-source-route-or-post-committed-opening-fixture-restricted-Silent-combat`.
+  `seeded-source-route-or-native-act1-combat-elite-map-choice-or-post-committed-opening-fixture-restricted-Silent-combat`.
 - `semanticControlledSites = [enemy_intent, draw_card]`.
 - `semanticOtherChanceProvider =
   engine-owned-deterministic-unverified-v1`.
@@ -99,6 +100,9 @@ non-Nature RNG parity remain **UNVERIFIED**.
   engine-owned-seeded-source-shaped-unverified-v1` and
   `semanticSeededRouteEntryProviderId =
   engine-owned-v111-native-weak-route-entry-unverified-v1`.
+- `semanticSourceRunRouteProviderId =
+  engine-owned-v111-native-act1-map-choice-unverified-v1` advertises the
+  existing-run map-entry operation below.
 - `semanticProbabilityStatus = UNVERIFIED`.
 
 Legacy `nature_*` and `controlled_*` retain their distinct
@@ -113,6 +117,7 @@ paths avoid that external setup chain:
 | --- | --- | --- |
 | `semantic_begin` | `controlled_handle` | Separate `semantic_handle`, phase, pending, fingerprint |
 | `semantic_begin_seeded` | seed and pinned encounter parameters | Engine-owned seeded opening; optional source-route mode |
+| `semantic_begin_source_map_node` | `state_handle`, legal Act 1 Combat/Elite `map_node_id`, optional Native baseline | Source-run map entry audit, then initial intent / player boundary |
 | `semantic_status` | `semantic_handle` | Current player / Nature / terminal boundary |
 | `semantic_observe` | `semantic_handle`, `policy_id=prototype-fair-v0` | Existing **player-only** observation and legal action IDs |
 | `semantic_step` | handle, fingerprint, legal `action_id` | Child player action / Nature / terminal |
@@ -788,6 +793,21 @@ initial intent suspends at `combat.committed_intent.index_draw` before its
 first draw. The native-policy branch resolves that same checkpoint with
 the native provider. The Nature branch exposes its source-filtered weighted
 intent support, then controls later deferred draw identities.
+
+The additive `semantic_begin_source_map_node` operation starts from an
+existing ordinary run handle at a legal Act 1 map choice. It accepts the
+current legal Combat or Elite node and runs the ordinary `choose_map_node`
+action through the same source-entry audit, initial-intent capture, Nature
+continuation and Native-policy baseline used by seeded source-route entry.
+This lets a run that has already been played reach later Normal and Elite
+encounters without synthesizing prior combat history. Entry requires a
+configured Native Act 1 run with its Native run streams present; unsupported
+regions, stale map choices and noncombat nodes fail before a semantic session
+is published. The semantic session keeps the selected action and resulting
+entry decisions, plus a private exact source snapshot needed to replay the
+entry when restoring a semantic session. The source snapshot is excluded from
+fair player observations. This path has build-only verification so far; it
+does not establish route-wide A/B or Native parity.
 
 Non-Nature Snecko/Slither draw costs remain engine-owned through a private
 `run.combat_energy_costs` stream in the Nature branch. This does not expose
