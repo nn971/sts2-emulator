@@ -6340,3 +6340,10 @@ shared legacy-index migration rule, and resolves encounter IDs from the labeled
 support. This closes a stale numeric-outcome read in the prepared-bag audit.
 Core Release build, static RNG audit, and `git diff --check` passed; no tests
 were added or run.
+
+**S4 semantic draw boundary-family ownership increment (2026-10-26):** The
+opening-hand and ordinary automatic hand-draw adapters now share the boundary
+owner's classification of semantic ticket and choice results. Provider guards,
+pipeline cursors, and resume policies remain with their owning adapters. Core
+Release build, static RNG audit, and `git diff --check` passed; no tests were
+added or run.

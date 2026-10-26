@@ -335,25 +335,18 @@ public sealed partial class PrototypeGameEngine
         bool resumeSavedStage = context is
             AutomaticHandDrawResumeContextV111.SavedControlledStage or
             AutomaticHandDrawResumeContextV111.SavedSemanticStage;
-        bool semanticChoiceBoundary = context ==
+        var semanticDeck = combat.Stochastic.SemanticDeck;
+        bool semanticBoundary = context ==
                 AutomaticHandDrawResumeContextV111.SourceStageBoundary &&
-            ControlledChanceGuardV111.Active &&
-            combat.Stochastic.SemanticDeck is
-                { Mode: SemanticDeckStateV111.NatureMode } &&
-            boundary is
-                (PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice or
-                 PrototypeDrawCardsBoundaryKind.AfterShuffleInsertions or
-                 PrototypeDrawCardsBoundaryKind.ShuffleSelection);
-        bool semanticDrawBoundary = context ==
-                AutomaticHandDrawResumeContextV111.SourceStageBoundary &&
-            combat.Stochastic.SemanticDeck is not null &&
-            boundary is
-                (PrototypeDrawCardsBoundaryKind.SemanticDraw or
-                 PrototypeDrawCardsBoundaryKind.ControlledDrawCost);
+            semanticDeck is not null &&
+            IsSemanticDrawResumeBoundary(
+                boundary,
+                includeSemanticDrawChoiceBoundaries:
+                    ControlledChanceGuardV111.Active &&
+                    semanticDeck.Mode == SemanticDeckStateV111.NatureMode);
         bool semanticSavedStage = context ==
             AutomaticHandDrawResumeContextV111.SavedSemanticStage;
-        if (semanticChoiceBoundary || semanticDrawBoundary ||
-            semanticSavedStage)
+        if (semanticBoundary || semanticSavedStage)
         {
             var drawFrame = semanticDraw ?? CreateSemanticDrawResultFrame(
                 drawn.RemainingCount, fromHandDraw: true,

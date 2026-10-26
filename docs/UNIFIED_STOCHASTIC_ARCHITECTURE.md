@@ -958,6 +958,11 @@ Nature cursor after replay completes.
 
 `SemanticDrawPileAdapterV111.ApplyNewDrawPileInsertion` now publishes a newly created `CombatCardInstance`, its draw-pile membership, the next instance ID, and the provider constraint in one committed transition. `ApplyNewCardZoneInsertion` commits the corresponding card record, next identity, and membership for Hand, DiscardPile, PlayPile, ExhaustPile, and ChoicePool. Enemy, Personal Hive, generated-card, controlled insertion, Tea of Discourtesy, and generated-choice paths now use these owners. Draw-pile and non-draw zone deltas reject identities without registered card records. Transform replacement commits the old-card removal and replacement-card record with its zone and provider update; declared source-selection deletions also remove card records in the same transition. Existing-card moves now enter the same boundary, which validates the source, preserves the requested destination order, and synchronizes the provider for DrawPile changes. The tagged `DrawCards` result, boundary constructors, and mechanical result validation are co-located in `PrototypeDrawCardsBoundaryV111.cs`; provider adapters consume that validated value and retain their own resume policies. Controlled insertion now hands draw progress to the provider-neutral continuation owner. Broader draw-resume consolidation and cross-provider equivalence remain open.
 
+Opening and ordinary automatic hand-draw adapters now use the shared
+`PrototypeDrawCardsBoundaryV111` classification for semantic ticket and choice
+boundaries. The adapters keep their separate guards, cursors, and resume
+policies while sharing the boundary family definition.
+
 ## Semantic lifecycle and provider interchangeability
 
 `ReferenceNatureRunActionSessionV111`, `ReferenceNatureMerchantSessionV111`,

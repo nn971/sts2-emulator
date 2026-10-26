@@ -267,12 +267,9 @@ public sealed partial class PrototypeGameEngine
             player = resolved.Player;
             combat = resolved.Combat;
         }
-        else if (drawn.BoundaryKind is
-            PrototypeDrawCardsBoundaryKind.ShuffleSelection or
-            PrototypeDrawCardsBoundaryKind.SemanticDraw or
-            PrototypeDrawCardsBoundaryKind.ControlledDrawCost or
-            PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice or
-            PrototypeDrawCardsBoundaryKind.AfterShuffleInsertions)
+        else if (IsSemanticDrawResumeBoundary(
+                     drawn.BoundaryKind,
+                     includeSemanticDrawChoiceBoundaries: true))
         {
             if (!ControlledChanceGuardV111.Active ||
                 combat.Stochastic.SemanticDeck is not

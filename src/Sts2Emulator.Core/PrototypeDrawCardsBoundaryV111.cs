@@ -18,6 +18,24 @@ public sealed partial class PrototypeGameEngine
         NestedCardDrawnChoice
     }
 
+    private static bool IsSemanticDrawTicketBoundary(
+        PrototypeDrawCardsBoundaryKind boundary) => boundary is
+            PrototypeDrawCardsBoundaryKind.SemanticDraw or
+            PrototypeDrawCardsBoundaryKind.ControlledDrawCost;
+
+    private static bool IsSemanticDrawChoiceBoundary(
+        PrototypeDrawCardsBoundaryKind boundary) => boundary is
+            PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice or
+            PrototypeDrawCardsBoundaryKind.AfterShuffleInsertions or
+            PrototypeDrawCardsBoundaryKind.ShuffleSelection;
+
+    private static bool IsSemanticDrawResumeBoundary(
+        PrototypeDrawCardsBoundaryKind boundary,
+        bool includeSemanticDrawChoiceBoundaries) =>
+            IsSemanticDrawTicketBoundary(boundary) ||
+            includeSemanticDrawChoiceBoundaries &&
+                IsSemanticDrawChoiceBoundary(boundary);
+
     private sealed record PrototypeDrawCardsBoundaryV111
     {
         public PrototypeDrawCardsBoundaryKind Kind { get; }
