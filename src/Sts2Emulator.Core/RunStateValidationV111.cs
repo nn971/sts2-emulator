@@ -719,7 +719,11 @@ public sealed partial record RunState
         var encounterId = world.EncounterIds.LastOrDefault();
         if (encounterId is null)
         {
-            if (world.Map.Nodes.Length > 0)
+            // A controlled fixed-combat fixture can keep the act's generated
+            // map without having traversed a node. A real map-entry combat,
+            // identified by its current node, must record its encounter.
+            if (world.Map.Nodes.Length > 0 &&
+                world.Map.CurrentNodeId is not null)
             {
                 throw new InvalidOperationException(
                     "Map-generated active combat room has no encounter-history entry.");
