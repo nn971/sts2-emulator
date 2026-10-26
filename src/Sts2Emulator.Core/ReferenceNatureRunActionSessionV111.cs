@@ -175,12 +175,17 @@ public sealed record ReferenceNatureRunActionSessionV111(
                     Origin, Action, nativeCombatEntry, DecisionTranscript);
             if (Run.Stochastic.ControlledRunActionChoice is null)
                 return null;
-            return ControlledRunActionEngineV111
-                .IsConfiguredNativeReferenceNatureOvergrowthRunStartSource(
-                    Origin)
-                && Action.Kind == "start_run"
-                ? ChanceLawEngineV111.QueryOvergrowthBossEncounter(0)
-                : ChanceLawEngineV111.QueryControlledRunAction(Run);
+            if (Action.Kind == "start_run"
+                && ControlledRunActionEngineV111
+                    .IsConfiguredNativeReferenceNatureOvergrowthRunStartSource(
+                        Origin))
+                return ChanceLawEngineV111.QueryOvergrowthBossEncounter(0);
+            if (Action.Kind == "start_run"
+                && ControlledRunActionEngineV111
+                    .IsConfiguredNativeReferenceNatureUnderdocksRunStartSource(
+                        Origin))
+                return ChanceLawEngineV111.QueryUnderdocksBossEncounter(0);
+            return ChanceLawEngineV111.QueryControlledRunAction(Run);
         }
     }
 

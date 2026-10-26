@@ -291,11 +291,8 @@ public sealed record ControlledRunActionTraceV111(
                 ControlledStochasticChanceReplayV111.CandidateLabelsMatch(
                     labels, Enumerable.Range(0, labels.Length).Select(index =>
                         index.ToString(CultureInfo.InvariantCulture)).ToArray());
-            var numericUnderdocksBossLabels = !isUnderdocksBossDraw
-                || ControlledStochasticChanceReplayV111.CandidateLabelsMatch(
-                    labels, Enumerable.Range(0, labels.Length)
-                    .Select(index => index.ToString(
-                        CultureInfo.InvariantCulture)).ToArray());
+            var validUnderdocksBossLabels = !isUnderdocksBossDraw
+                || MatchesUnderdocksBossCandidateLabels(labels);
             if (decision.ProviderMode != "controlled-v111"
                 || decision.NativeCursorBefore is not null
                 || decision.NativeCursorAfter is not null
@@ -305,7 +302,7 @@ public sealed record ControlledRunActionTraceV111(
                 || !request.OrderedCandidates.SequenceEqual(prefixCandidates)
                 || (labels.Length != request.SupportCount && !omittedLabels)
                 || !numericLabels
-                || !numericUnderdocksBossLabels
+                || !validUnderdocksBossLabels
                 || labels.Any(string.IsNullOrWhiteSpace))
                 throw new InvalidDataException(
                     "Controlled run-action transcript contains an invalid outcome.");
@@ -482,6 +479,17 @@ public sealed record ControlledRunActionTraceV111(
         labels?.Select(candidateLabels => candidateLabels is null
             ? null! : (string[])candidateLabels.Clone()).ToArray();
 
+    internal static bool MatchesUnderdocksBossCandidateLabels(
+        string[]? labels)
+    {
+        var bossPool = PrototypeNativeUnderdocks.NativeBossEncounterIds;
+        return ControlledStochasticChanceReplayV111.CandidateLabelsMatch(
+                labels, bossPool)
+            || ControlledStochasticChanceReplayV111.CandidateLabelsMatch(
+                labels, Enumerable.Range(0, bossPool.Length).Select(index =>
+                    index.ToString(CultureInfo.InvariantCulture)).ToArray());
+    }
+
     private static ControlledStochasticDecisionV111[]? CloneTypedDecisions(
         ControlledStochasticDecisionV111[]? decisions) => decisions?
             .Select(decision => decision?.Fork()!).ToArray();
@@ -608,6 +616,10 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                 "Controlled run-action frame contains another pending controller.");
 
         PendingRequest.Validate();
+        var configuredUnderdocksStart =
+            ControlledRunActionEngineV111
+                .IsConfiguredNativeReferenceNatureUnderdocksRunStartSource(
+                    state);
         string expectedSite;
         string expectedStream;
         string expectedOwner;
@@ -623,10 +635,6 @@ public sealed record PrototypeControlledRunActionContinuationV111(
         {
             case "start_run":
             {
-                var configuredUnderdocksStart =
-                    ControlledRunActionEngineV111
-                        .IsConfiguredNativeReferenceNatureUnderdocksRunStartSource(
-                            state);
                 var configuredOvergrowthStart =
                     ControlledRunActionEngineV111
                         .IsConfiguredNativeReferenceNatureOvergrowthRunStartSource(
@@ -667,8 +675,7 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                         + CanonicalJson.Sha256(bossPool);
                     expectedCandidates = Enumerable.Range(
                         0, bossPool.Length).ToArray();
-                    expectedLabels = expectedCandidates.Select(index =>
-                        index.ToString(CultureInfo.InvariantCulture)).ToArray();
+                    expectedLabels = (string[])bossPool.Clone();
                 }
                 else if (state.Configuration is null
                     && IsLegacyMapRequest(PendingRequest))
@@ -1038,6 +1045,11 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                 .CandidateLabelsMatch(PendingCandidateLabels,
                     Enumerable.Range(0, expectedLabels.Length).Select(index =>
                         index.ToString(CultureInfo.InvariantCulture)).ToArray());
+        if (!pendingLabelsMatch && configuredUnderdocksStart
+            && PendingRequest.SiteId == PrototypeNativeUnderdocks
+                .BossEncounterIndexSiteId)
+            pendingLabelsMatch = ControlledRunActionTraceV111
+                .MatchesUnderdocksBossCandidateLabels(PendingCandidateLabels);
         if ((!mapNodeRequest && MapNodeId is not null)
             || (!(shopPurchaseRequest || rewardRelicRequest ||
                     relicDeckTransformRequest || restHealRewardRequest)
@@ -1213,11 +1225,9 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                 ControlledStochasticChanceReplayV111.CandidateLabelsMatch(
                     labels, Enumerable.Range(0, labels.Length).Select(index =>
                         index.ToString(CultureInfo.InvariantCulture)).ToArray());
-            var numericUnderdocksBossLabels = !isUnderdocksBossDraw
-                || ControlledStochasticChanceReplayV111.CandidateLabelsMatch(
-                    labels, Enumerable.Range(0, labels.Length)
-                        .Select(index => index.ToString(
-                            CultureInfo.InvariantCulture)).ToArray());
+            var validUnderdocksBossLabels = !isUnderdocksBossDraw
+                || ControlledRunActionTraceV111
+                    .MatchesUnderdocksBossCandidateLabels(labels);
             if (decision.ProviderMode != "controlled-v111"
                 || decision.NativeCursorBefore is not null
                 || decision.NativeCursorAfter is not null
@@ -1227,7 +1237,7 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                 || !request.OrderedCandidates.SequenceEqual(prefixCandidates)
                 || (request.SupportCount != labels.Length && !omittedLabels)
                 || !numericLabels
-                || !numericUnderdocksBossLabels
+                || !validUnderdocksBossLabels
                 || labels.Any(string.IsNullOrWhiteSpace))
                 throw new InvalidDataException(
                     "Controlled run-action decision prefix is malformed.");

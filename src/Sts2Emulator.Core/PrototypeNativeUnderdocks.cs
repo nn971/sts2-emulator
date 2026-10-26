@@ -1404,26 +1404,30 @@ public static class PrototypeNativeUnderdocksRunFactory
         rng.ReplaceStream("combat", clean.GetStream("combat").Fork());
         var bosses = PrototypeNativeUnderdocks.NativeBossEncounterIds;
         RandomIndexDecisionV111 bossDecision;
-        if (bossIndexProvider is null)
+        using (ControlledEventChoiceReplayV111.DescribeCandidates(
+            (string[])bosses.Clone()))
         {
-            bossDecision = LegacyRandomChoiceV111.ChooseIndexRange(
-                rng,
-                PrototypeNativeUnderdocks.BossEncounterIndexSiteId,
-                "combat",
-                "act:1:underdocks:boss_pool:" + CanonicalJson.Sha256(bosses),
-                bosses.Length);
-        }
-        else
-        {
-            using var providerScope = StochasticProviderScopeV111.Enter(
-                indexProvider: bossIndexProvider,
-                overrideExplicitProviders: true);
-            bossDecision = LegacyRandomChoiceV111.ChooseIndexRange(
-                rng,
-                PrototypeNativeUnderdocks.BossEncounterIndexSiteId,
-                "combat",
-                "act:1:underdocks:boss_pool:" + CanonicalJson.Sha256(bosses),
-                bosses.Length, ordinal: 0);
+            if (bossIndexProvider is null)
+            {
+                bossDecision = LegacyRandomChoiceV111.ChooseIndexRange(
+                    rng,
+                    PrototypeNativeUnderdocks.BossEncounterIndexSiteId,
+                    "combat",
+                    "act:1:underdocks:boss_pool:" + CanonicalJson.Sha256(bosses),
+                    bosses.Length);
+            }
+            else
+            {
+                using var providerScope = StochasticProviderScopeV111.Enter(
+                    indexProvider: bossIndexProvider,
+                    overrideExplicitProviders: true);
+                bossDecision = LegacyRandomChoiceV111.ChooseIndexRange(
+                    rng,
+                    PrototypeNativeUnderdocks.BossEncounterIndexSiteId,
+                    "combat",
+                    "act:1:underdocks:boss_pool:" + CanonicalJson.Sha256(bosses),
+                    bosses.Length, ordinal: 0);
+            }
         }
         var boss = bosses[bossDecision.SelectedIndex];
 

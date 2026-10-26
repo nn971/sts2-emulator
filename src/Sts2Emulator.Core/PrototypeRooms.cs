@@ -4391,6 +4391,25 @@ public sealed partial class PrototypeGameEngine
             && ControlledRunActionEngineV111
                 .IsConfiguredNativeReferenceNatureRunStartSource(
                     partialState);
+        if (configuredNativeRunStart
+            && ControlledRunActionEngineV111
+                .IsConfiguredNativeReferenceNatureUnderdocksRunStartSource(
+                    partialState))
+        {
+            var bossPool = PrototypeNativeUnderdocks.NativeBossEncounterIds;
+            for (var index = 0; index < decisions.Length; index++)
+            {
+                if (ControlledRunActionEngineV111
+                        .IsConfiguredNativeUnderdocksBossRequest(
+                            ControlledStochasticRequestV111.FromIndex(
+                                decisions[index].Request))
+                    && ControlledRunActionTraceV111
+                        .MatchesUnderdocksBossCandidateLabels(
+                            decisionCandidateLabels[index]))
+                    decisionCandidateLabels[index] =
+                        (string[])bossPool.Clone();
+            }
+        }
         Func<ControlledStochasticRequestV111, bool>? requestFilter =
             configuredNativeRunStart
                 ? request => ControlledRunActionEngineV111

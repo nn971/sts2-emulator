@@ -9,6 +9,33 @@ public static partial class ChanceLawEngineV111
             throw new InvalidOperationException(
                 "No controlled run-action chance is pending.");
         var pending = ControlledRunActionPendingV111.Describe(run);
+        if (continuation.ActionId == "start_run"
+            && ControlledRunActionEngineV111
+                .IsConfiguredNativeReferenceNatureUnderdocksRunStartSource(
+                    run)
+            && ControlledRunActionEngineV111
+                .IsConfiguredNativeUnderdocksBossRequest(
+                    ControlledStochasticRequestV111.FromIndex(
+                        pending.Request)))
+        {
+            var law = QueryUnderdocksBossEncounter(
+                pending.Request.Ordinal);
+            var bossPool = PrototypeNativeUnderdocks.NativeBossEncounterIds;
+            if (law.SiteId != pending.Request.SiteId
+                || law.OperationKind != pending.Request.OperationKind
+                || law.OwnerId != pending.Request.OwnerId
+                || law.Ordinal != pending.Request.Ordinal
+                || law.Outcomes.Length != pending.Request.SupportCount
+                || !law.Outcomes.Select(outcome => outcome.OutcomeId)
+                    .SequenceEqual(bossPool.Select(id => "encounter:" + id),
+                        StringComparer.Ordinal)
+                || !ControlledRunActionTraceV111
+                    .MatchesUnderdocksBossCandidateLabels(
+                        pending.CandidateLabels))
+                throw new InvalidDataException(
+                    "Underdocks boss Chance Law differs from its controlled run-start support.");
+            return law with { EventId = pending.ChanceEventId };
+        }
         if (QueryControlledRunActionSemanticLaw(
                 run, continuation, pending.ChanceEventId) is { } semanticLaw)
             return semanticLaw;
