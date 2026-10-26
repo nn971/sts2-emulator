@@ -83,7 +83,8 @@ and source parity remain unverified.
 The legacy `event.reward.random_rare_card.model` site has the same direct
 query inputs and returns the current prototype Rare-card reward pool.
 The custom event reward potion option also has a direct pool query; callers
-declare its reward owner prefix and confirm potion acquisition is allowed.
+declare its selected event-choice owner prefix (`Event:<event_id>:choice:<choice_id>`)
+and confirm potion acquisition is allowed.
 
 The supported event-choice sites are:
 
@@ -96,7 +97,8 @@ The supported event-choice sites are:
   `gold` choice potions. These Native-shaped event routes use the existing
   controlled event-choice continuation; their equal-index laws and source
   pool behavior remain `UNVERIFIED`.
-- `event.reward.offer_potion.model.index_draw`
+- `event.reward.offer_potion.model.index_draw`, with the selected event choice
+  bound into its owner and potion IDs retained as candidate labels
 - `event.reward.card_bundle.shuffle_swap_index`
 - `reward.card_rarity.ticket` and `reward.card_model.index_draw` while
   constructing selected event card offers and while a legal Driftwood reroll

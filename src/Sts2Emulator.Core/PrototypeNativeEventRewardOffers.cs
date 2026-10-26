@@ -28,11 +28,12 @@ public sealed partial class PrototypeGameEngine
         string eventId,
         ref RunWorldState world,
         RngBundle prototypeRng,
-        RngBundle? nativeRunRng)
+        RngBundle? nativeRunRng,
+        string? stochasticOwnerPrefix = null)
     {
         var reward = CreateDeferredEventRewardCore(
             state, kind, player, eventId, ref world,
-            prototypeRng, nativeRunRng);
+            prototypeRng, nativeRunRng, stochasticOwnerPrefix);
         if (kind is not (PrototypeRunEffectKind.OfferThreeRareCards
             or PrototypeRunEffectKind.OfferThreeCardsAndPotion
             or PrototypeRunEffectKind.OfferFiveClassCards
@@ -72,7 +73,8 @@ public sealed partial class PrototypeGameEngine
         string eventId,
         ref RunWorldState world,
         RngBundle prototypeRng,
-        RngBundle? nativeRunRng = null)
+        RngBundle? nativeRunRng = null,
+        string? stochasticOwnerPrefix = null)
     {
         var prefix = "Event:" + eventId;
         switch (kind)
@@ -115,6 +117,7 @@ public sealed partial class PrototypeGameEngine
                 if (CanAcquirePotion(player))
                 {
                     var potionPool = PrototypeContent.PotionPool;
+                    var ownerPrefix = stochasticOwnerPrefix ?? prefix;
                     using var labels =
                         ControlledEventChoiceReplayV111.DescribeCandidates(
                             (string[])potionPool.Clone());
@@ -123,7 +126,7 @@ public sealed partial class PrototypeGameEngine
                             prototypeRng,
                             "event.reward.offer_potion.model.index_draw",
                             "reward",
-                            prefix + ":potion_pool:"
+                            ownerPrefix + ":potion_pool:"
                                 + CanonicalJson.Sha256(potionPool),
                             potionPool.Length).SelectedIndex];
                 }

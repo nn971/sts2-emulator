@@ -2248,7 +2248,9 @@ public sealed partial class PrototypeGameEngine
                             eventState.EventId, ref world, prototypeRng,
                             UsesNativeRegionalSystems(world)
                                 ? nativeRunRng
-                                : null);
+                                : null,
+                            stochasticOwnerPrefix: "Event:"
+                                + eventState.EventId + ":choice:" + choice.Id);
                         break;
 
                     case PrototypeRunEffectKind.GainPotionSlots:
