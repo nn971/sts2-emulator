@@ -407,7 +407,12 @@ public sealed record ControlledRunActionTraceV111(
                         .IsEntropicBrewFillRequestShape(indexRequest) &&
                     (request.StreamId ==
                             NativePlayerRngV111.RewardsStreamId
-                        ? decision.CandidateLabels is null
+                        ? decision.CandidateLabels is null ||
+                          decision.CandidateLabels.SequenceEqual(
+                              Enumerable.Range(0, indexRequest.SupportCount)
+                                  .Select(index => index.ToString(
+                                      CultureInfo.InvariantCulture)),
+                              StringComparer.Ordinal)
                         : request.StreamId == "reward" &&
                           decision.CandidateLabels is { } potionLabels &&
                           potionLabels.SequenceEqual(
@@ -698,6 +703,7 @@ public sealed record PrototypeControlledRunActionContinuationV111(
         var rewardRelicRequest = false;
         var relicDeckTransformRequest = false;
         var restHealRewardRequest = false;
+        var entropicBrewRequest = false;
         var legacyTreasureRelicModelRequest = false;
         PrototypeEventSelectionSupportV111? eventSelectionSupport = null;
         ActOneEncounterSelectionSupportV111?
@@ -1200,12 +1206,52 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                 restHealRewardRequest = true;
                 break;
             }
+            case "use_potion":
+            {
+                if (RunAction is null
+                    || RunAction.Kind != ActionId
+                    || MapNodeId is not null
+                    || !ControlledRunActionEngineV111
+                        .IsEntropicBrewRunAction(state, RunAction)
+                    || !ControlledRunActionEngineV111
+                        .IsEntropicBrewFillRequest(
+                            state, RunAction, PendingRequest)
+                    || !new PrototypeGameEngine().GetLegalActions(state)
+                        .Any(action => PrototypeAiEnvironment.StableActionId(
+                                action) ==
+                            PrototypeAiEnvironment.StableActionId(RunAction)))
+                    throw new InvalidDataException(
+                        "Controlled run-action frame is outside its Entropic Brew potion-fill boundary.");
+                expectedSite = PendingRequest.SiteId;
+                expectedStream = PendingRequest.StreamId;
+                expectedOwner = PendingRequest.OwnerId;
+                expectedCandidates = (int[])PendingRequest.OrderedCandidates
+                    .Clone();
+                expectedLabels = PendingRequest.StreamId == "reward"
+                    ? (string[])PrototypeContent.PotionPool.Clone()
+                    : PendingCandidateLabels.Length == 0
+                        ? []
+                        : Enumerable.Range(
+                            0, PendingRequest.SupportCount).Select(index =>
+                                index.ToString(
+                                    CultureInfo.InvariantCulture)).ToArray();
+                entropicBrewRequest = true;
+                break;
+            }
             default:
                 throw new InvalidDataException(
                     "Controlled run-action frame uses an unsupported action.");
         }
         var pendingLabelsMatch = ControlledStochasticChanceReplayV111
             .CandidateLabelsMatch(PendingCandidateLabels, expectedLabels);
+        if (!pendingLabelsMatch && entropicBrewRequest &&
+            PendingRequest.StreamId == NativePlayerRngV111.RewardsStreamId)
+            pendingLabelsMatch = ControlledStochasticChanceReplayV111
+                .CandidateLabelsMatch(
+                    PendingCandidateLabels,
+                    Enumerable.Range(0, PendingRequest.SupportCount)
+                        .Select(index => index.ToString(
+                            CultureInfo.InvariantCulture)).ToArray());
         if (!pendingLabelsMatch && legacyTreasureRelicModelRequest)
             pendingLabelsMatch = ControlledStochasticChanceReplayV111
                 .CandidateLabelsMatch(PendingCandidateLabels,
@@ -1245,7 +1291,8 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                     ControlledRunActionEngineV111.MaximumInlineOutcomeActions);
         if ((!mapNodeRequest && MapNodeId is not null)
             || (!(shopPurchaseRequest || rewardRelicRequest ||
-                    relicDeckTransformRequest || restHealRewardRequest)
+                    relicDeckTransformRequest || restHealRewardRequest ||
+                    entropicBrewRequest)
                 && RunAction is not null)
             || PendingRequest.SiteId != expectedSite
             || PendingRequest.StreamId != expectedStream
@@ -2195,6 +2242,7 @@ public static class ControlledRunActionEngineV111
         var acquisitionAction = shopPurchaseAction || rewardRelicAction;
         var restHealRewardAction = IsLegacyRestHealRewardAction(
             source, action);
+        var entropicBrewAction = IsEntropicBrewRunAction(source, action);
         var outsideCombatPotionAction =
             IsSupportedOutsideCombatPotionAction(source, action);
         var supportedLegacyActTransitionAction =
@@ -2209,6 +2257,7 @@ public static class ControlledRunActionEngineV111
                 or PrototypeNativeRestSiteActionsV111.Dig
                 or "choose_map_node")
                 && !acquisitionAction && !restHealRewardAction
+                && !entropicBrewAction
                 && !outsideCombatPotionAction
                 && !relicDeckTransformAction)
             || action.Kind == "continue_act"
@@ -2240,7 +2289,12 @@ public static class ControlledRunActionEngineV111
                         : legacyActOneCombatEntryAction
                             ? IsLegacyActOneCombatEntryRequest
                     : legacyPrototypeCombatEntryAction
-                        ? IsLegacyActOneCombatEntryRequest : null;
+                        ? IsLegacyActOneCombatEntryRequest
+                    : entropicBrewAction
+                        ? request => request.IndexRequest is { } indexRequest
+                            && IsEntropicBrewFillRequest(
+                                source, action, indexRequest)
+                        : null;
             var replay = ControlledChanceContinuationExecutorV111.Resume(
                 replaySource, [], checkpoint => engine.Step(checkpoint, action).State,
                 requestFilter: requestFilter);
@@ -2275,6 +2329,9 @@ public static class ControlledRunActionEngineV111
                 var supportedRestHealRewardSite = restHealRewardAction
                     && IsSupportedRestHealRewardRequest(
                         pendingChance.Request);
+                var supportedEntropicBrewSite = entropicBrewAction &&
+                    IsEntropicBrewFillRequest(
+                        source, action, pendingChance.Request);
                 var supportedShovelSite = action.Kind ==
                         PrototypeNativeRestSiteActionsV111.Dig
                     && StochasticSiteRegistryV111
@@ -2293,8 +2350,21 @@ public static class ControlledRunActionEngineV111
                             source, action, pendingChance.Request.SiteId)
                         || IsNativeActOneCombatEntrySite(
                             source, action, pendingChance.Request.SiteId));
-                var labelsValid = pendingChance.CandidateLabels is { } labels
-                    && ((supportedShopPurchaseSite
+                var pendingLabels = pendingChance.CandidateLabels ?? [];
+                var labelsValid = supportedEntropicBrewSite
+                    ? pendingChance.Request.StreamId == "reward"
+                        ? pendingLabels.SequenceEqual(
+                            PrototypeContent.PotionPool,
+                            StringComparer.Ordinal)
+                        : pendingLabels.Length == 0 ||
+                          pendingLabels.SequenceEqual(
+                              Enumerable.Range(0,
+                                      pendingChance.Request.SupportCount)
+                                  .Select(index => index.ToString(
+                                      CultureInfo.InvariantCulture)),
+                              StringComparer.Ordinal)
+                    : pendingChance.CandidateLabels is { } labels
+                        && ((supportedShopPurchaseSite
                             || supportedRewardRelicSite
                             || supportedRelicDeckTransformSite)
                         ? labels.Length == pendingChance.Request.SupportCount
@@ -2308,6 +2378,7 @@ public static class ControlledRunActionEngineV111
                         && !supportedRewardRelicSite
                         && !supportedRelicDeckTransformSite
                         && !supportedRestHealRewardSite
+                        && !supportedEntropicBrewSite
                         && !supportedShovelSite)
                     || !labelsValid)
                     throw new NotSupportedException(
@@ -2325,10 +2396,10 @@ public static class ControlledRunActionEngineV111
                         [],
                         [],
                         pendingChance.Request,
-                        pendingChance.CandidateLabels!,
+                        pendingLabels,
                         mapNodeId,
                         acquisitionAction || restHealRewardAction
-                            || relicDeckTransformAction
+                            || relicDeckTransformAction || entropicBrewAction
                             ? CloneAction(action) : null);
                 var suspended = RunStochasticStateV111
                     .SuspendControlledRunActionChoice(
@@ -2343,7 +2414,8 @@ public static class ControlledRunActionEngineV111
         if (result.Stochastic.ControlledRunActionChoice is null)
         {
             if (acquisitionAction || restHealRewardAction ||
-                outsideCombatPotionAction || relicDeckTransformAction ||
+                outsideCombatPotionAction || entropicBrewAction ||
+                relicDeckTransformAction ||
                 supportedLegacyActTransitionAction ||
                 legacyActOneCombatEntryAction ||
                 legacyPrototypeCombatEntryAction ||

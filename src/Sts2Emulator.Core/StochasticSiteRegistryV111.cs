@@ -1728,7 +1728,8 @@ public static class StochasticSiteRegistryV111
                 "reward.lava_rock.relic_offer.shuffle_swap_index" =>
                     operationKind == "bounded_integer",
                 NativePotionFactoryModelSiteId or
-                NativeRewardCardModelSiteId =>
+                NativeRewardCardModelSiteId or
+                "run.potion.fill_empty_slots.model" =>
                     operationKind == "choose_index",
                 _ => false
             },

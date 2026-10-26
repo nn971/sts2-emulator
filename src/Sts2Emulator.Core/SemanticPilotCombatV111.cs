@@ -2167,6 +2167,10 @@ public sealed record SemanticPilotCombatV111(
         PotionGenerationPending =>
             SemanticPilotCombatEngineV111
                 .DescribePendingPotionGenerationEvent(this);
+    [JsonIgnore] public SemanticRunPotionFillEventV111?
+        RunPotionFillPending => Run.Stochastic.ControlledRunActionChoice is
+            null ? null : SemanticRunPotionFillEventV111
+                .DescribePending(Run);
     [JsonIgnore] public SemanticCardTransformEventV111?
         CardTransformPending =>
             SemanticPilotCombatEngineV111
@@ -2200,6 +2204,7 @@ public sealed record SemanticPilotCombatV111(
         PendingInitialIntents is null &&
         PendingEndTurn is null &&
         DeckRevealPending is null &&
+        Run.Stochastic.ControlledRunActionChoice is null &&
         PrototypeGameEngine.IsAtCombatPlayerDecisionBoundary(Run);
     [JsonIgnore] public bool CombatTerminal =>
         PrototypeGameEngine.IsAtCombatRewardOrTerminalBoundary(Run);
@@ -2282,6 +2287,30 @@ public sealed record SemanticPilotCombatV111(
             this.Run.Phase is not (
                 RunPhase.Combat or RunPhase.Reward or RunPhase.Terminal))
             throw new InvalidDataException("Invalid semantic playable session.");
+        if (this.Run.Stochastic.ControlledRunActionChoice is not null)
+        {
+            var runPotionFill = this.RunPotionFillPending ??
+                throw new InvalidDataException(
+                    "Semantic pilot has an unsupported controlled run action.");
+            SemanticRunPotionFillEventV111.ValidateBoundary(
+                this.Run, runPotionFill);
+            if (this.PendingEndTurn is not null ||
+                this.PendingInitialIntents is not null ||
+                this.IntentPending is not null || this.DrawPending is not null ||
+                this.RandomPileCardPending is not null ||
+                this.CostPending is not null || this.TargetPending is not null ||
+                this.GeneratedCardPending is not null ||
+                this.PotionGenerationPending is not null ||
+                this.CardTransformPending is not null ||
+                this.CardSelectionPending is not null ||
+                this.HandCostSelectionPending is not null ||
+                this.PoolShufflePending is not null ||
+                this.DrawInsertionPending is not null ||
+                this.CardShortlistPending is not null ||
+                this.UsesNativePolicyBaseline || this.CombatTerminal)
+                throw new InvalidDataException(
+                    "Run potion-fill continuation conflicts with another semantic boundary.");
+        }
         foreach (var transition in this.History)
             (transition ?? throw new InvalidDataException(
                 "Semantic pilot history contains a null transition."))
@@ -4434,6 +4463,11 @@ public static class SemanticPilotCombatEngineV111
                 throw new InvalidDataException("Missing potion action payload.");
             var validSlot = payload.Slot >= 0 &&
                 payload.Slot < source.Player.PotionSlots.Length;
+            var isEntropicBrew = validSlot &&
+                source.Player.PotionSlots[payload.Slot]?.PotionId ==
+                    "proto.potion.entropic_brew" &&
+                ControlledRunActionEngineV111.IsEntropicBrewRunAction(
+                    source, resolvedAction.Action);
             var isGenerationPotion = validSlot &&
                 source.Player.PotionSlots[payload.Slot]?.PotionId ==
                     "proto.potion.orobic_acid";
@@ -4460,7 +4494,7 @@ public static class SemanticPilotCombatEngineV111
                     source.Player.PotionSlots[payload.Slot]?.PotionId);
             var isSelectionPotion = validSlot && IsSemanticSelectionPotion(
                 source.Player.PotionSlots[payload.Slot]?.PotionId);
-            if ((!isGenerationPotion && !isPoolPotion &&
+            if ((!isEntropicBrew && !isGenerationPotion && !isPoolPotion &&
                  !isSelectionPotion && !isHandReturnPotion &&
                  !isDistilledChaos && !isSemanticDrawPotion &&
                  !isDeterministicPotion &&
@@ -4471,10 +4505,22 @@ public static class SemanticPilotCombatEngineV111
                 throw new NotSupportedException(
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
                     "operation=potion_effect_requires_semantic_audit");
-            result = ControlledChanceGuardV111.ExecuteGuarded(
-                () => environment.StepResolved(
-                    source, resolvedAction.Action).State,
-                allowEngineOwnedPrototypeReward: true);
+            result = isEntropicBrew
+                ? ControlledRunActionEngineV111.Begin(
+                    source, resolvedAction.Action)
+                : ControlledChanceGuardV111.ExecuteGuarded(
+                    () => environment.StepResolved(
+                        source, resolvedAction.Action).State,
+                    allowEngineOwnedPrototypeReward: true);
+            if (result.Stochastic.ControlledRunActionChoice is not null)
+            {
+                var runPotionFill = SemanticRunPotionFillEventV111
+                    .DescribePending(result);
+                SemanticRunPotionFillEventV111.ValidateBoundary(
+                    result, runPotionFill);
+                return ResolveEngineOwnedSemanticChoices(
+                    PublishRunContinuation(current, result, endTurn));
+            }
             if (result.Phase != RunPhase.Combat &&
                 !((isDistilledChaos || isSemanticDrawPotion ||
                    isDeterministicDamagePotion) &&
@@ -6844,6 +6890,15 @@ public static class SemanticPilotCombatEngineV111
             current.Run, current.Fingerprint, ordinal);
     }
 
+    public static SemanticRunPotionFillEventV111?
+        DescribePendingRunPotionFillEvent(SemanticPilotCombatV111 current)
+    {
+        ArgumentNullException.ThrowIfNull(current);
+        return current.Run.Stochastic.ControlledRunActionChoice is null
+            ? null : SemanticRunPotionFillEventV111
+                .DescribePending(current.Run);
+    }
+
     internal static bool IsAlchemizePotionGenerationChoice(
         CombatState? combat, PendingCombatChoiceState? choice,
         PrototypeControlledPotionGenerationV111 generation)
@@ -7869,6 +7924,9 @@ public static class SemanticPilotCombatEngineV111
         if (current.IntentPending is not null)
             return null;
 
+        if (current.RunPotionFillPending is { } runPotionFill)
+            return SemanticPendingIndexChanceEventV111.Create(
+                current.Fingerprint, runPotionFill);
         if (current.EnemyActionEventPending is { } enemyAction)
             return SemanticPendingIndexChanceEventV111.Create(
                 current.Fingerprint, enemyAction);
@@ -8023,6 +8081,58 @@ public static class SemanticPilotCombatEngineV111
             current, pending, selectedIndex, otherChance);
     }
 
+    private static SemanticPilotCombatV111 ResumeRunPotionFill(
+        SemanticPilotCombatV111 current,
+        SemanticRunPotionFillEventV111 pending, int selectedIndex,
+        SemanticOtherChanceStateV111? otherChance)
+    {
+        ArgumentNullException.ThrowIfNull(current);
+        ArgumentNullException.ThrowIfNull(pending);
+        current.Validate();
+        SemanticRunPotionFillEventV111.ValidateBoundary(
+            current.Run, pending);
+        var continuation = current.Run.Stochastic.ControlledRunActionChoice ??
+            throw new InvalidDataException(
+                "Run potion-fill choice lost its saved action continuation.");
+        var action = continuation.RunAction ??
+            throw new InvalidDataException(
+                "Run potion-fill choice lost its saved potion action.");
+        var previousCombat = current.Run.World?.Combat ??
+            throw new InvalidDataException(
+                "Run potion-fill choice lost its combat boundary.");
+
+        var result = ControlledRunActionEngineV111.Resolve(
+            current.Run, selectedIndex);
+        if (result.Phase != RunPhase.Combat ||
+            result.World?.Combat is not { } nextCombat)
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_POTION site=run.potion.fill_empty_slots.model " +
+                "operation=unsupported_post_fill_phase");
+        SemanticDrawPileAdapterV111.RequireUnchangedDrawPile(
+            previousCombat, nextCombat,
+            "UNSUPPORTED_SEMANTIC_DECK site=run.potion.fill_empty_slots.model " +
+            "operation=unexpected_draw_pile_mutation");
+
+        SemanticPilotContinuationV111? historyEntry = null;
+        if (result.Stochastic.ControlledRunActionChoice is null)
+        {
+            ValidateSemanticCombatBoundary(result);
+            historyEntry = new SemanticPilotContinuationV111(
+                "player", PrototypeAiEnvironment.StableActionId(action));
+        }
+        else
+        {
+            var nextFill = SemanticRunPotionFillEventV111
+                .DescribePending(result);
+            SemanticRunPotionFillEventV111.ValidateBoundary(
+                result, nextFill);
+        }
+
+        return ResolveEngineOwnedSemanticChoices(
+            PublishRunContinuation(
+                current, result, null, historyEntry, otherChance));
+    }
+
     private static SemanticPilotCombatV111 ResolveChanceOutcomeByIndex(
         SemanticPilotCombatV111 current,
         SemanticPendingIndexChanceEventV111 pending, int outcomeIndex,
@@ -8070,6 +8180,9 @@ public static class SemanticPilotCombatEngineV111
                     potionGeneration.EventId,
                     potionGeneration.CandidatePotionIds[outcomeIndex],
                     otherChance);
+            case SemanticRunPotionFillEventV111 runPotionFill:
+                return ResumeRunPotionFill(
+                    current, runPotionFill, outcomeIndex, otherChance);
             case SemanticHandCostSelectionEventV111 handCost:
             {
                 var handCostDecision =
@@ -8260,6 +8373,23 @@ public static class SemanticPilotCombatEngineV111
                         potionGenerationOwner, generatedPotion);
                 resolved = ResolveNativeChanceDecision(
                     current, pending, choice.Decision, choice.Next);
+                return true;
+            }
+
+            case SemanticRunPotionFillEventV111 runPotionFill when
+                runPotionFill.StreamId ==
+                    NativePlayerRngV111.RewardsStreamId &&
+                other is { } runPotionFillOwner &&
+                runPotionFillOwner.ProviderId !=
+                    SemanticOtherChanceEngineV111.LegacyProviderId:
+            {
+                var choice = SemanticOtherChanceEngineV111
+                    .ResolveRunPotionFill(
+                        runPotionFillOwner, runPotionFill);
+                resolved = ResolveChanceOutcomeByIndex(
+                    current, pending,
+                    pending.SelectNativeOutcomeIndex(choice.Decision),
+                    choice.Next);
                 return true;
             }
 

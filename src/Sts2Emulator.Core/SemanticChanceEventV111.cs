@@ -74,6 +74,7 @@ internal sealed record SemanticPendingIndexChanceEventV111(
                 SemanticRandomPileCardEventV111 or
                 SemanticCardTransformEventV111 or
                 SemanticPotionGenerationEventV111 or
+            SemanticRunPotionFillEventV111 or
                 SemanticHandCostSelectionEventV111 or
                 SemanticCardShortlistEventV111 or SemanticDeckEventV111 =>
                     "choose_index",
@@ -144,6 +145,8 @@ internal sealed record SemanticPendingIndexChanceEventV111(
         SemanticPotionGenerationEventV111 potion =>
             potion.CandidatePotionIds.Select(potionId =>
                 "potion_model:" + potionId).ToArray(),
+        SemanticRunPotionFillEventV111 potionFill =>
+            potionFill.OrderedOutcomeIds,
         SemanticHandCostSelectionEventV111 handCost =>
             handCost.CandidateCardInstanceIds
                 .Select(CardInstanceOutcomeId).ToArray(),
@@ -186,6 +189,8 @@ internal sealed record SemanticPendingIndexChanceEventV111(
             transform.CandidateCardIds,
         SemanticPotionGenerationEventV111 potion =>
             potion.CandidatePotionIds,
+        SemanticRunPotionFillEventV111 potionFill =>
+            potionFill.SemanticOutcomeIds,
         SemanticHandCostSelectionEventV111 handCost =>
             handCost.CandidateCardInstanceIds.Select(id =>
                 id.ToString(CultureInfo.InvariantCulture)).ToArray(),
@@ -227,6 +232,7 @@ internal sealed record SemanticPendingIndexChanceEventV111(
         SemanticRandomPileCardEventV111 => "random_pile_card",
         SemanticCardTransformEventV111 => "random_card_transform",
         SemanticPotionGenerationEventV111 => "random_potion_generation",
+        SemanticRunPotionFillEventV111 => "run_potion_fill_slot",
         SemanticHandCostSelectionEventV111 => "random_hand_card_selection",
         SemanticPoolShuffleEventV111 poolShuffle => poolShuffle.SiteId ==
             StochasticSiteRegistryV111.CombatHandReturnShuffleSiteId

@@ -32,6 +32,8 @@ internal static class SemanticChanceLawDispatchV111
                 ChanceLawEngineV111.QueryCardTransform(transform),
             SemanticPotionGenerationEventV111 potion =>
                 ChanceLawEngineV111.QueryPotionGeneration(potion),
+            SemanticRunPotionFillEventV111 =>
+                ChanceLawEngineV111.QueryControlledRunAction(combat.Run),
             SemanticHandCostSelectionEventV111 handCost =>
                 ChanceLawEngineV111.QueryHandCostSelection(handCost),
             SemanticPoolShuffleEventV111 poolShuffle =>

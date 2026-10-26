@@ -6567,3 +6567,14 @@ explicitly. The JSONL `hello` response previously failed because Glory Tinker
 Improvement and Pael's Tooth card-return sites entered the union twice. After
 the repair, `hello` succeeds and advertises 156 unique query sites. The CLI
 Release build passed with zero warnings or errors; no tests were run.
+
+**S6 Semantic-pilot Entropic Brew continuation increment (2026-10-26):**
+Combat Entropic Brew now enters the semantic pilot through a controlled
+run-action frame. Each empty-slot request is exposed as a typed semantic
+potion-fill event with its saved action, pool, slot owner, and ordinal; replay
+resumes through later slot draws before publishing the player action. Legacy
+requests use the existing ordered-pool Chance Law, and Native `player.rewards`
+requests use the existing bounded-index law and engine-owned provider path.
+Native pool order and cursor parity remain open. Both Core and CLI Release
+builds passed with zero warnings or errors; the RNG inventory, CLI hello
+capability probe, and whitespace check passed. No tests were added or run.

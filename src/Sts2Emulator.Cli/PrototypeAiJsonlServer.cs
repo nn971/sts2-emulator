@@ -1912,6 +1912,34 @@ internal static class PrototypeAiJsonlServer
                     }).ToArray()
                 };
             }
+            if (state.RunPotionFillPending is { } runPotionFill)
+            {
+                var chanceLaw = ChanceLawEngineV111
+                    .QueryControlledRunAction(state.Run);
+                return new
+                {
+                    kind = "run_potion_fill_slot",
+                    schemaId = runPotionFill.SchemaId,
+                    eventId = runPotionFill.EventId,
+                    siteId = runPotionFill.SiteId,
+                    streamId = runPotionFill.StreamId,
+                    ownerId = runPotionFill.OwnerId,
+                    ordinal = runPotionFill.Ordinal,
+                    operationKind = runPotionFill.OperationKind,
+                    supportFingerprint = runPotionFill.SupportFingerprint,
+                    actionBoundaryFingerprint =
+                        runPotionFill.ActionBoundaryFingerprint,
+                    actionFingerprint = runPotionFill.ActionFingerprint,
+                    chanceLaw,
+                    probabilityStatus = runPotionFill.ProbabilityStatus,
+                    candidates = runPotionFill.CandidatePotionIds
+                        .Select((id, index) => new
+                        {
+                            index,
+                            potionModelId = id
+                        }).ToArray()
+                };
+            }
             if (state.IntentPending is { } intent)
             {
                 var semanticEvent = SemanticPilotCombatEngineV111
@@ -3242,6 +3270,8 @@ internal static class PrototypeAiJsonlServer
                                 SemanticGenerationChoiceV111.SchemaId,
                             semanticPotionGenerationChoiceSchemaId =
                                 SemanticPotionGenerationChoiceV111.SchemaId,
+                            semanticRunPotionFillChoiceSchemaId =
+                                SemanticRunPotionFillEventV111.CurrentSchemaId,
                             semanticCardTransformChoiceSchemaId =
                                 SemanticCardTransformEventV111.EventSchemaId,
                             semanticCardSelectionChoiceSchemaId =
@@ -3274,7 +3304,8 @@ internal static class PrototypeAiJsonlServer
                                 "random_replay_card",
                                 "random_rare_to_hand_shuffle",
                                 "hand_return_shuffle",
-                                "random_potion_generation", "random_card_transform"
+                                "random_potion_generation",
+                                "run_potion_fill_slot", "random_card_transform"
                             },
                             semanticExtendedPlayerChoices = new[]
                             {

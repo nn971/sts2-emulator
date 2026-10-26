@@ -368,6 +368,35 @@ public static class SemanticOtherChanceEngineV111
     }
 
     /// <summary>
+    /// Resolve one Entropic Brew slot fill through the private Native player
+    /// rewards stream. The enclosing run-action continuation still applies
+    /// the selected potion and captures any following empty-slot draw.
+    /// </summary>
+    public static (SemanticOtherChanceStateV111 Next,
+        RandomIndexDecisionV111 Decision) ResolveRunPotionFill(
+        SemanticOtherChanceStateV111 previous,
+        SemanticRunPotionFillEventV111 pending)
+    {
+        Validate(previous);
+        ArgumentNullException.ThrowIfNull(pending);
+        pending.Validate();
+        if (pending.SiteId !=
+                SemanticRunPotionFillEventV111.CurrentSiteId ||
+            pending.StreamId != NativePlayerRngV111.RewardsStreamId ||
+            pending.OperationKind != "choose_index")
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_OTHER_CHANCE site=" + pending.SiteId +
+                " operation=" + pending.OperationKind);
+
+        var request = new RandomIndexRequestV111(
+            pending.SiteId, pending.StreamId, pending.OwnerId,
+            pending.Ordinal,
+            Enumerable.Range(0, pending.CandidatePotionIds.Length).ToArray(),
+            OperationKind: "choose_index");
+        return ResolveNativeIndex(previous, request);
+    }
+
+    /// <summary>
     /// Resolve a registered combat card-transform replacement through the
     /// Native card-generation stream while preserving its semantic source
     /// identity and ordered replacement pool.

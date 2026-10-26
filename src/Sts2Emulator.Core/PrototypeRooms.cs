@@ -4418,6 +4418,15 @@ public sealed partial class PrototypeGameEngine
                     : nativeActOneCombatEntry
                         ? ControlledRunActionEngineV111
                             .IsNativeActOneCombatEntryRequest
+                    : continuation.ActionId == "use_potion" &&
+                        continuation.RunAction is { } potionAction &&
+                        ControlledRunActionEngineV111
+                            .IsEntropicBrewRunAction(
+                                partialState, potionAction)
+                        ? request => request.IndexRequest is { } indexRequest &&
+                            ControlledRunActionEngineV111
+                                .IsEntropicBrewFillRequest(
+                                    partialState, potionAction, indexRequest)
                         : null;
         var replay = ControlledChanceContinuationExecutorV111.Resume(
             partialState,
@@ -4467,6 +4476,14 @@ public sealed partial class PrototypeGameEngine
                         },
                         continuation.RunAction ?? throw new InvalidDataException(
                             "Controlled Shop-purchase frame is missing its action."))
+                    .State,
+                "use_potion" => new PrototypeGameEngine().Step(
+                    checkpoint with
+                    {
+                        DecisionIndex = checked(state.DecisionIndex - 1)
+                    },
+                    continuation.RunAction ?? throw new InvalidDataException(
+                        "Controlled Entropic Brew frame is missing its action."))
                     .State,
                 _ => throw new NotSupportedException(
                     "Controlled run action has no resume implementation.")
@@ -4525,16 +4542,38 @@ public sealed partial class PrototypeGameEngine
                     ControlledRunActionEngineV111
                         .IsSupportedRelicDeckTransformRequest(
                             pendingChance.Request),
+                "use_potion" => continuation.RunAction is { } entropicAction &&
+                    ControlledRunActionEngineV111.IsEntropicBrewRunAction(
+                        partialState, entropicAction) &&
+                    ControlledRunActionEngineV111.IsEntropicBrewFillRequest(
+                        partialState, entropicAction, pendingChance.Request),
                 _ => false
             };
-            if (!supportedSite
-                || pendingChance.CandidateLabels is null
-                || (pendingChance.CandidateLabels.Length !=
-                        pendingChance.Request.SupportCount
-                    && !(pendingChance.CandidateLabels.Length == 0
+            var potionFillLabels = pendingChance.CandidateLabels ?? [];
+            var numericPotionFillLabels = potionFillLabels.SequenceEqual(
+                Enumerable.Range(0, pendingChance.Request.SupportCount)
+                    .Select(index => index.ToString(
+                        System.Globalization.CultureInfo.InvariantCulture)),
+                StringComparer.Ordinal);
+            var supportedEntropicLabels = continuation.ActionId ==
+                    "use_potion" &&
+                (pendingChance.Request.StreamId == "reward"
+                    ? potionFillLabels.SequenceEqual(
+                        PrototypeContent.PotionPool, StringComparer.Ordinal)
+                    : pendingChance.Request.StreamId ==
+                        NativePlayerRngV111.RewardsStreamId &&
+                        (pendingChance.CandidateLabels is null ||
+                         potionFillLabels.Length == 0 ||
+                         numericPotionFillLabels));
+            var supportedInlineLabels = pendingChance.CandidateLabels is { } labels
+                && (labels.Length == pendingChance.Request.SupportCount
+                    || labels.Length == 0
                         && pendingChance.Request.SupportCount >
                             ControlledRunActionEngineV111
-                                .MaximumInlineOutcomeActions)))
+                                .MaximumInlineOutcomeActions);
+            if (!supportedSite ||
+                (continuation.ActionId == "use_potion"
+                    ? !supportedEntropicLabels : !supportedInlineLabels))
                 throw new NotSupportedException(
                     "Controlled run action reached an unsupported chance request.");
 
@@ -4551,7 +4590,7 @@ public sealed partial class PrototypeGameEngine
                     decisions,
                     decisionCandidateLabels,
                     pendingChance.Request,
-                    pendingChance.CandidateLabels,
+                    pendingChance.CandidateLabels ?? [],
                     continuation.MapNodeId,
                     continuation.RunAction);
             return RunStochasticStateV111
@@ -4576,7 +4615,18 @@ public sealed partial class PrototypeGameEngine
                     continuation.RunAction))
         {
             DecisionTranscriptSchemaId =
-                ControlledRunActionTraceV111.IndexTranscriptSchemaId
+                continuation.ActionId == "use_potion"
+                    ? ControlledRunActionTraceV111
+                        .MixedPrimitiveTranscriptSchemaId
+                    : ControlledRunActionTraceV111.IndexTranscriptSchemaId,
+            TypedDecisions = continuation.ActionId == "use_potion"
+                ? decisions.Select((decision, index) =>
+                    ControlledStochasticDecisionV111.FromIndex(
+                        decision,
+                        decisionCandidateLabels[index].Length == 0
+                            ? null : decisionCandidateLabels[index]))
+                    .ToArray()
+                : null
         };
         return result with
         {
