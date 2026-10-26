@@ -387,6 +387,33 @@ public sealed record ScriptedRunActionSessionV111(
         return next;
     }
 
+    /// <summary>
+    /// Resolve a pending index request by its saved candidate label while
+    /// retaining the established index transcript.
+    /// </summary>
+    public ScriptedRunActionSessionV111 ResolveByCandidateLabel(
+        string candidateLabel)
+    {
+        Validate();
+        if (Complete)
+            throw new InvalidOperationException(
+                "Scripted run-action session is already complete.");
+        var request = PendingRequest?.IndexRequest ??
+            throw new InvalidOperationException(
+                "The pending scripted run-action request is not an index request.");
+        var labels = PendingCandidateLabels;
+        var selectedIndex = ControlledChanceContinuationExecutorV111
+            .IndexOfCandidateLabel(labels, request.SupportCount,
+                candidateLabel);
+        var decision = ControlledStochasticDecisionV111.FromIndex(
+            new RandomIndexDecisionV111(request with
+            {
+                OrderedCandidates = (int[])request.OrderedCandidates.Clone()
+            }, selectedIndex, "controlled-v111"), labels);
+        return ResolveNext(ScriptedRunActionOutcomeV111.FromDecision(
+            decision, checked(Stochastic.Decisions.Length + 1)));
+    }
+
     public void Validate()
     {
         Mechanics.Validate();

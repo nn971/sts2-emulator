@@ -1055,7 +1055,11 @@ the owner retains the action and publishes a run only when the action
 completes. `ScriptedRunSessionV111` composes the shared origin/current run
 checkpoint with completed-action history and the active action. Both sessions
 retain their flat snapshot members and JSON schemas; replay validation remains
-with the session facades.
+with the session facades. Their labeled-index resolver uses the shared
+candidate-label validator, accepts only a unique label in the saved support,
+and records the selected index through the existing typed transcript. JSONL
+and the Python whole-run binding accept `candidate_label` in place of a raw
+index transcript entry at those boundaries.
 
 `ReferenceNatureScriptedRunSessionV111` composes the scripted action replay
 owner with one run-level ReferenceNature cursor and a typed Chance Law

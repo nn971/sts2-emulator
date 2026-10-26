@@ -6347,3 +6347,11 @@ owner's classification of semantic ticket and choice results. Provider guards,
 pipeline cursors, and resume policies remain with their owning adapters. Core
 Release build, static RNG audit, and `git diff --check` passed; no tests were
 added or run.
+
+**S4 scripted run-action candidate-label resolution increment (2026-10-26):**
+The single-action and whole-run scripted continuation APIs now resolve a
+pending labeled index by its unique saved candidate label and retain the
+existing typed index transcript. JSONL resolve operations and the standard
+Python whole-run wrapper accept `candidate_label` directly. Other typed
+primitives continue to require their transcript entry. Release build, static
+RNG audit, and `git diff --check` passed; no tests were added or run.

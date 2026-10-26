@@ -11,7 +11,10 @@ Each supplied entry must use the next contiguous transcript sequence and its
 typed request must match the pending request, including site, stream, owner,
 ordinal, and operation bounds. Index entries may include candidate labels in
 the `candidate_labels` field because the provider-boundary journal does not
-store them. All six provider primitives are accepted. Native cursor metadata
+store them. For a pending index request with saved labels, callers may provide
+`candidate_label` instead of a transcript entry; the session resolves it to
+the established index transcript and rejects missing, duplicate, or unknown
+labels. All six provider primitives are accepted. Native cursor metadata
 and the entry's original provider mode do not control replay; outcomes are
 reissued in controlled mode. The replay does not advance Native streams and
 makes no cursor-equivalence claim. The session's saved decisions are marked
@@ -21,7 +24,8 @@ JSONL operations are:
 
 - `scripted_run_action_begin` with `state_handle` and the action's `action_id`;
 - `scripted_run_action_resolve_next` with the session handle, current
-  `fingerprint`, `transcript_entry`, and optional `candidate_labels`;
+  `fingerprint`, and either `transcript_entry` with optional
+  `candidate_labels` or `candidate_label` for a labeled pending index;
 - `scripted_run_action_status`, `scripted_run_action_fork`,
   `scripted_run_action_save`, `scripted_run_action_load`, and
   `scripted_run_action_release_many`.

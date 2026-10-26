@@ -224,6 +224,26 @@ public sealed record ScriptedRunSessionV111(
         return next;
     }
 
+    /// <summary>
+    /// Resolve the active action's pending index request by its saved
+    /// candidate label while retaining the established index transcript.
+    /// </summary>
+    public ScriptedRunSessionV111 ResolveByCandidateLabel(
+        string candidateLabel)
+    {
+        Validate();
+        var activeAction = Stochastic.ActiveAction ??
+            throw new InvalidOperationException(
+                "No scripted random request is pending for the run.");
+        var actionSession = activeAction.ResolveByCandidateLabel(
+            candidateLabel);
+        var next = actionSession.Complete
+            ? CommitAction(this, actionSession)
+            : this with { ActiveAction = actionSession };
+        next.Validate();
+        return next;
+    }
+
     public ScriptedRunSessionV111 Fork()
     {
         Validate();

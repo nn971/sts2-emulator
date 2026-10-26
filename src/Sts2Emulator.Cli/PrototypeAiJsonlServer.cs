@@ -7174,20 +7174,11 @@ internal static class PrototypeAiJsonlServer
                                 "fingerprint"))
                             throw new InvalidOperationException(
                                 "Stale scripted run-action fingerprint.");
-                        if (!request.TryGetProperty("transcript_entry",
-                                out var entryElement) ||
-                            entryElement.ValueKind != JsonValueKind.Object)
-                            throw new ArgumentException(
-                                "transcript_entry must be a random-boundary transcript object.");
-                        var entry = entryElement.Deserialize<
-                                RandomBoundaryTranscriptEntryV111>(
-                                SnakeCaseJsonOptions)
-                            ?? throw new InvalidDataException(
-                                "transcript_entry is empty.");
-                        var outcome = new ScriptedRunActionOutcomeV111(
-                            entry, OptionalStringArray(request,
-                                "candidate_labels"));
-                        var next = session.ResolveNext(outcome);
+                        var resolveInput =
+                            ReadScriptedRunActionResolveInput(request);
+                        var next = resolveInput.CandidateLabel is { } label
+                            ? session.ResolveByCandidateLabel(label)
+                            : session.ResolveNext(resolveInput.Outcome!);
                         var handle = StoreScriptedRunAction(next);
                         Write(new { requestId, ok = true, result =
                             ScriptedRunActionResult(next, handle,
@@ -7304,20 +7295,11 @@ internal static class PrototypeAiJsonlServer
                                 "fingerprint"))
                             throw new InvalidOperationException(
                                 "Stale scripted run fingerprint.");
-                        if (!request.TryGetProperty("transcript_entry",
-                                out var entryElement) ||
-                            entryElement.ValueKind != JsonValueKind.Object)
-                            throw new ArgumentException(
-                                "transcript_entry must be a random-boundary transcript object.");
-                        var entry = entryElement.Deserialize<
-                                RandomBoundaryTranscriptEntryV111>(
-                                SnakeCaseJsonOptions)
-                            ?? throw new InvalidDataException(
-                                "transcript_entry is empty.");
-                        var next = session.ResolveNext(
-                            new ScriptedRunActionOutcomeV111(
-                                entry, OptionalStringArray(request,
-                                    "candidate_labels")));
+                        var resolveInput =
+                            ReadScriptedRunActionResolveInput(request);
+                        var next = resolveInput.CandidateLabel is { } label
+                            ? session.ResolveByCandidateLabel(label)
+                            : session.ResolveNext(resolveInput.Outcome!);
                         var handle = StoreScriptedRun(next);
                         Write(new { requestId, ok = true, result =
                             ScriptedRunResult(next, handle, parentHandle) });
@@ -11799,5 +11781,33 @@ internal static class PrototypeAiJsonlServer
             items.Add(item.GetString()!);
         }
         return items.ToArray();
+    }
+
+    private static (string? CandidateLabel,
+        ScriptedRunActionOutcomeV111? Outcome)
+        ReadScriptedRunActionResolveInput(JsonElement request)
+    {
+        var hasEntry = request.TryGetProperty(
+            "transcript_entry", out var entryElement);
+        var hasCandidateLabel = request.TryGetProperty(
+            "candidate_label", out _);
+        if (hasEntry == hasCandidateLabel)
+            throw new ArgumentException(
+                "Provide exactly one of transcript_entry or candidate_label.");
+        if (hasCandidateLabel)
+        {
+            if (request.TryGetProperty("candidate_labels", out _))
+                throw new ArgumentException(
+                    "candidate_labels may accompany transcript_entry, not candidate_label.");
+            return (RequiredString(request, "candidate_label"), null);
+        }
+        if (entryElement.ValueKind != JsonValueKind.Object)
+            throw new ArgumentException(
+                "transcript_entry must be a random-boundary transcript object.");
+        var entry = entryElement.Deserialize<
+                RandomBoundaryTranscriptEntryV111>(SnakeCaseJsonOptions)
+            ?? throw new InvalidDataException("transcript_entry is empty.");
+        return (null, new ScriptedRunActionOutcomeV111(entry,
+            OptionalStringArray(request, "candidate_labels")));
     }
 }

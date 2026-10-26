@@ -27,7 +27,8 @@ JSONL operations are:
 - `scripted_run_begin_action` with `scripted_run_handle`, current
   `fingerprint`, and a currently legal `action_id`;
 - `scripted_run_resolve_next` with the session handle, current `fingerprint`,
-  the next `transcript_entry`, and optional index `candidate_labels`;
+  either the next `transcript_entry` and optional index `candidate_labels`, or
+  `candidate_label` for a pending labeled index request;
 - `scripted_run_status`, `scripted_run_fork`, `scripted_run_save`,
   `scripted_run_load`, and `scripted_run_release_many`.
 
@@ -36,5 +37,5 @@ remain `UNVERIFIED`: this controller does not query a Chance Law, advance a
 Native RNG cursor, or claim cross-provider equivalence. The session and its
 action history are privileged replay state, not player or Nature observations.
 The standard-library Python binding exposes the same lifecycle through
-`State.begin_scripted_run()` and `ScriptedRunSession`, including snapshot
-restore and handle release.
+`State.begin_scripted_run()` and `ScriptedRunSession`, including
+`resolve_by_candidate_label()`, snapshot restore, and handle release.
