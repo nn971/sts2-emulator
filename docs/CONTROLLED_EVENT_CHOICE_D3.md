@@ -74,12 +74,12 @@ pool query keyed by `event_id` and the selected choice `action_id`; it does not
 cover Wellspring or Whispering Hollow's separate Native-shaped routes. Their
 typed `potion.uniform_model`, `potion.rarity_roll.ticket`, and
 `potion.model_within_rarity` requests are handled by the saved event-choice
-continuation below. The uniform and rarity-conditioned model requests carry
-the event and choice in their owner IDs, and model candidates expose potion
-IDs as labels; the 100 rarity-ticket indices remain numeric. Direct typed
-queries can describe the uniform, rarity-ticket, and model requests.
-Equal-index weights, Native source-pool behavior, and source parity remain
-unverified.
+continuation below. Uniform, rarity-conditioned, and Uncommon-potion model
+requests carry the event and choice in their owner IDs, and model candidates
+expose potion IDs as labels; the 100 rarity-ticket indices remain numeric.
+Direct typed queries can describe the uniform, rarity-ticket, rarity-model,
+and Uncommon-model requests. Equal-index weights, Native source-pool behavior,
+and source parity remain unverified.
 The legacy `event.reward.random_rare_card.model` site has the same direct
 query inputs and returns the current prototype Rare-card reward pool.
 The custom event reward potion option also has a direct pool query; callers
@@ -121,7 +121,8 @@ The supported event-choice sites are:
   identities through the canonicalized Nature bag, preserving each request in
   the event-choice prefix
 - `event.potion.fill_empty_slots.model`
-- `potion.uncommon_model.index_draw` for the Potion Courier event choice
+- `potion.uncommon_model.index_draw` for the Potion Courier event choice,
+  bound to its event and choice owner and labeled with potion IDs
 - `relic.acquisition.random_rare_card.model`,
   `relic.acquisition.random_potion.model` and
   `run.potion.fill_empty_slots.model` for random effects triggered by an

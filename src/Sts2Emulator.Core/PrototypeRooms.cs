@@ -2451,7 +2451,10 @@ public sealed partial class PrototypeGameEngine
                         var potionId = effect.Kind
                             == PrototypeRunEffectKind.GainRandomUncommonPotion
                             ? PrototypeNativePotionCourier.PickRandomUncommonPotion(
-                                prototypeRng, "event")
+                                prototypeRng, "event",
+                                ownerId: "event:" + eventState.EventId
+                                    + ":choice:" + choice.Id
+                                    + ":uncommon_potion")
                             : effect.Kind == PrototypeRunEffectKind.GainRandomPotion
                             ? nativeOvergrowth && eventState.EventId
                                 == "proto.native.event.wellspring"
