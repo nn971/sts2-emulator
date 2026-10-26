@@ -31,6 +31,14 @@ jobs:
             --check-chance-law-outcome-blind \
             --check-draw-kernel-callsite-ownership \
             --format json > /tmp/stochastic-acceptance/site-coverage.json
+      - name: Generate site-by-site proof-obligation ledger
+        run: |
+          python tools/stochastic_site_acceptance.py \
+            --inventory /tmp/stochastic-acceptance/site-coverage.json \
+            --output /tmp/stochastic-acceptance/site-acceptance.json \
+            --strict
+      - name: Regression audit parser unit tests
+        run: python -m unittest discover -s tests -p 'test_stochastic_regression_report.py' -v
       - uses: actions/upload-artifact@v4
         if: always()
         with:
