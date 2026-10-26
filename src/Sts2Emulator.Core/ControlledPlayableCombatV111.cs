@@ -1497,7 +1497,11 @@ public static class ControlledPlayableCombatEngineV111
         stored.Validate();
         // Full provenance replay, from source-verified controlled HP+intent
         // completion through the entire ordered shuffle and player transcript.
-        var current = Begin(stored.Origin, stored.Seed);
+        // A named isolated fixture includes its encounter in run history.
+        // Preserve that same identity during replay rather than rebuilding an
+        // anonymous fixture, which changes the provenanced world snapshot.
+        var fixtureEncounterId = stored.Run.World?.EncounterIds.LastOrDefault();
+        var current = Begin(stored.Origin, stored.Seed, fixtureEncounterId);
         for (int shuffleIndex = 0;
             shuffleIndex < stored.Stochastic.ShuffleTranscript.Length;
             shuffleIndex++)
