@@ -27,7 +27,7 @@ from urllib.parse import unquote, urlparse
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
 RUNTIME_SOURCE_ROOTS = (ROOT / "src", ROOT / "native")
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v61"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v62"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 NATIVE_RNG_SOURCE_FILES = frozenset({
     "NativeCombatRngEntryV111.cs",
@@ -66,6 +66,14 @@ CALL_PATTERN = re.compile(
 
 MAP_RANDOM_CALL_PATTERN = re.compile(
     r"\brandom\.(?P<operation>NextInt|NextGaussianInt|Shuffle)\s*\("
+)
+
+DRAW_KERNEL_CALL_PATTERN = re.compile(r"\bDrawCards\s*\(")
+SAVED_DRAW_KERNEL_CALL_PATTERN = re.compile(
+    r"\bResumeAutomaticHandDrawCards\s*\("
+)
+EXECUTE_DRAW_SEGMENT_CALL_PATTERN = re.compile(
+    r"\bExecuteDrawCardsSegment\s*\("
 )
 MAP_RANDOM_ADAPTER_FILES = {
     "PrototypeNativeLaterActMap.cs",
@@ -409,6 +417,16 @@ def _containing_member_bounds(source: str, offset: int) -> tuple[int, int]:
 def _containing_member_source(source: str, offset: int) -> str:
     start, end = _containing_member_bounds(source, offset)
     return source[start:end]
+
+
+def _member_name(member_source: str) -> str | None:
+    opening_brace = member_source.find("{")
+    header = (member_source[:opening_brace] if opening_brace >= 0
+              else member_source)
+    member_calls = list(re.finditer(
+        r"\b(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*\(", header
+    ))
+    return member_calls[-1].group("name") if member_calls else None
 
 
 def _method_string_constants(
@@ -2888,6 +2906,129 @@ def _chance_law_engine_methods(
     return methods
 
 
+def _is_nested_in_call(
+    source: str, call_offset: int, call_pattern: re.Pattern[str],
+) -> bool:
+    for enclosing in call_pattern.finditer(source, 0, call_offset):
+        opening = source.find("(", enclosing.start())
+        closing = _matching_csharp_delimiter(
+            source, opening, "(", ")"
+        )
+        if closing is not None and closing > call_offset:
+            return True
+    return False
+
+
+def _draw_kernel_callsite_ownership(
+    sources: dict[Path, str],
+) -> dict[str, Any]:
+    """Require draw-kernel calls to use the shared segment or queue owners."""
+    callsites: list[dict[str, Any]] = []
+    violations: list[dict[str, Any]] = []
+    saved_resume_calls: list[dict[str, Any]] = []
+
+    for path, source in sources.items():
+        code = _mask_csharp_comments_and_literals(source)
+        for match in DRAW_KERNEL_CALL_PATTERN.finditer(code):
+            member_start, member_end = _containing_member_bounds(
+                code, match.start()
+            )
+            member = code[member_start:member_end]
+            opening_brace = member.find("{")
+            member_name = _member_name(member)
+            local_offset = match.start() - member_start
+
+            # The DrawCards declaration itself has the same token shape as a
+            # call but occurs in the member signature, before its body.
+            if (member_name == "DrawCards" and opening_brace >= 0 and
+                    local_offset < opening_brace):
+                continue
+
+            if member_name == "ResolveEffectDrawOperation":
+                route = "queued-effect-draw-owner"
+                valid = path.name == "PrototypeDrawCardsContinuationV111.cs"
+            elif member_name == "ResumeAutomaticHandDrawCards":
+                route = "saved-hand-draw-kernel"
+                valid = path.name == "PrototypeDrawCardsContinuationV111.cs"
+            elif _is_nested_in_call(
+                    member, local_offset,
+                    EXECUTE_DRAW_SEGMENT_CALL_PATTERN):
+                route = "shared-draw-segment"
+                valid = True
+            else:
+                route = "unowned-direct-call"
+                valid = False
+
+            entry = {
+                "path": path.relative_to(ROOT).as_posix(),
+                "line": source.count("\n", 0, match.start()) + 1,
+                "member": member_name,
+                "route": route,
+            }
+            callsites.append(entry)
+            if not valid:
+                violations.append(entry)
+
+        for match in SAVED_DRAW_KERNEL_CALL_PATTERN.finditer(code):
+            member_start, member_end = _containing_member_bounds(
+                code, match.start()
+            )
+            member = code[member_start:member_end]
+            local_offset = match.start() - member_start
+            member_name = _member_name(member)
+            opening_brace = member.find("{")
+            if (member_name == "ResumeAutomaticHandDrawCards" and
+                    opening_brace >= 0 and local_offset < opening_brace):
+                continue
+            entry = {
+                "path": path.relative_to(ROOT).as_posix(),
+                "line": source.count("\n", 0, match.start()) + 1,
+                "member": member_name,
+                "wrapped": _is_nested_in_call(
+                    member, local_offset,
+                    EXECUTE_DRAW_SEGMENT_CALL_PATTERN),
+            }
+            saved_resume_calls.append(entry)
+            if not entry["wrapped"]:
+                violations.append({
+                    "path": entry["path"],
+                    "line": entry["line"],
+                    "member": "ResumeAutomaticHandDrawCards",
+                    "route": "saved-hand-draw-resume-bypasses-segment-owner",
+                })
+
+    direct_route_counts = Counter(
+        entry["route"] for entry in callsites
+        if entry["route"] != "shared-draw-segment"
+    )
+    if (not callsites or
+            direct_route_counts["queued-effect-draw-owner"] != 1 or
+            direct_route_counts["saved-hand-draw-kernel"] != 1 or
+            len(saved_resume_calls) != 1):
+        violations.append({
+            "path": "src/Sts2Emulator.Core",
+            "line": None,
+            "member": None,
+            "route": "required-draw-owner-callsite-missing-or-duplicated",
+        })
+
+    return {
+        "draw_call_count": len(callsites),
+        "shared_segment_call_count": sum(
+            entry["route"] == "shared-draw-segment"
+            for entry in callsites
+        ),
+        "queued_effect_owner_call_count":
+            direct_route_counts["queued-effect-draw-owner"],
+        "saved_hand_draw_kernel_call_count":
+            direct_route_counts["saved-hand-draw-kernel"],
+        "saved_hand_draw_resume_call_count": len(saved_resume_calls),
+        "saved_hand_draw_resume_calls": saved_resume_calls,
+        "callsites": callsites,
+        "violations": violations,
+    }
+
+
 def _chance_law_outcome_blind_violations(
     sources: dict[Path, str],
 ) -> dict[str, Any]:
@@ -3387,6 +3528,9 @@ def collect() -> dict[str, Any]:
     chance_law_outcome_blind_contract = (
         _chance_law_outcome_blind_violations(sources)
     )
+    draw_kernel_callsite_ownership = (
+        _draw_kernel_callsite_ownership(sources)
+    )
     string_constants: dict[str, set[str]] = {}
     for source in sources.values():
         for name, values in _string_constants(source).items():
@@ -3853,7 +3997,10 @@ def collect() -> dict[str, Any]:
             "Gaussian `.component` requests map to their parent Gaussian site rows. "
             "Legacy Fisher-Yates callsite values follow source expressions or "
             "finite Core helper callers; event-context shuffles use their validated "
-            "operation-specific site list."
+            "operation-specific site list. The draw-kernel ownership guard scans "
+            "masked Core C# members to check the shared segment, queued-effect, "
+            "and saved hand-draw call boundaries; it does not prove runtime "
+            "reachability or Native source parity."
         ),
         "total_direct_calls": len(entries),
         "ambient_entropy_calls": ambient_entropy_calls,
@@ -3861,6 +4008,8 @@ def collect() -> dict[str, Any]:
             native_chance_law_dependency_references,
         "chance_law_outcome_blind_contract":
             chance_law_outcome_blind_contract,
+        "draw_kernel_callsite_ownership":
+            draw_kernel_callsite_ownership,
         "typed_request_constructions": typed_request_constructions,
         "source_map_random_adapter_calls": map_adapter_calls,
         "source_map_random_adapter_callsite_coverage":
@@ -4024,6 +4173,22 @@ def render_markdown(report: dict[str, Any]) -> str:
             f"{finding['finding']}"
             for finding in report[
                 "chance_law_outcome_blind_contract"
+            ]["violations"]
+        ],
+        "",
+        "DrawCards kernel callsite ownership: "
+        f"**{report['draw_kernel_callsite_ownership']['draw_call_count']}** calls, "
+        f"**{report['draw_kernel_callsite_ownership']['shared_segment_call_count']}** in shared segments, "
+        f"**{report['draw_kernel_callsite_ownership']['queued_effect_owner_call_count']}** queued-effect owner calls, "
+        f"**{report['draw_kernel_callsite_ownership']['saved_hand_draw_kernel_call_count']}** saved-kernel calls, "
+        f"**{report['draw_kernel_callsite_ownership']['saved_hand_draw_resume_call_count']}** wrapped saved-kernel resumes, "
+        f"**{len(report['draw_kernel_callsite_ownership']['violations'])}** ownership violations. "
+        "This masked source-shape check does not establish runtime reachability or Native source parity.",
+        *[
+            f"- {finding['path']}:{finding['line']} "
+            f"`{finding['member']}` `{finding['route']}`"
+            for finding in report[
+                "draw_kernel_callsite_ownership"
             ]["violations"]
         ],
         "",
@@ -4231,6 +4396,13 @@ def main() -> int:
             "through methods declared on ChanceLawEngineV111"
         ),
     )
+    parser.add_argument(
+        "--check-draw-kernel-callsite-ownership", action="store_true",
+        help=(
+            "fail if DrawCards kernel calls bypass the shared segment, "
+            "queued-effect owner, or saved hand-draw resume boundary"
+        ),
+    )
     args = parser.parse_args()
     report = collect()
     if args.check_site_matrix:
@@ -4338,6 +4510,13 @@ def main() -> int:
         print(json.dumps({
             "chance_law_outcome_blind_contract":
                 report["chance_law_outcome_blind_contract"],
+        }, indent=2, sort_keys=True), file=sys.stderr)
+        return 1
+    if (args.check_draw_kernel_callsite_ownership and
+            report["draw_kernel_callsite_ownership"]["violations"]):
+        print(json.dumps({
+            "draw_kernel_callsite_ownership":
+                report["draw_kernel_callsite_ownership"],
         }, indent=2, sort_keys=True), file=sys.stderr)
         return 1
     if args.format == "markdown":

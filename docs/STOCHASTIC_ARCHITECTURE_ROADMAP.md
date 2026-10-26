@@ -6549,3 +6549,13 @@ then exposes `card_instance:<instance_id>` or `map_node:<node_id>` outcomes
 with the existing bounded-index weights. The query validates the saved relic
 effect, site owner, stream, swap order, and identity labels. Core Release
 build, static RNG audit, and `git diff --check` passed; no tests were run.
+
+**S3 DrawCards kernel ownership guard increment (2026-10-26):**
+`rng_callsite_inventory.py --check-draw-kernel-callsite-ownership` now checks
+that Core `DrawCards` invocations use the shared draw-segment boundary, the
+queued-effect draw owner, or the saved automatic hand-draw kernel, and that
+the saved kernel is called through the shared segment boundary. The current
+source census finds eight invocations: six in shared segments and one at each
+direct owner boundary, with one wrapped saved-kernel resume and no violations.
+This syntactic guard does not establish runtime reachability or Native source
+parity. `git diff --check` passed; no tests were run.
