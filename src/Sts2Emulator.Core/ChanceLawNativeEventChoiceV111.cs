@@ -1097,6 +1097,14 @@ public static partial class ChanceLawEngineV111
                     QueryControlledLegacyEventCardTransform(
                         source, effect, request),
             "reward.card_transform.replacement.index_draw" => null,
+            StochasticSiteRegistryV111.RandomPoolDistinctShuffleSiteId
+                when effect is not null =>
+                    QueryControlledEventPoolShuffle(
+                        source, effect, pending),
+            StochasticSiteRegistryV111.EventRewardCardBundleShuffleSiteId
+                when effect is not null =>
+                    QueryControlledEventPoolShuffle(
+                        source, effect, pending),
             "relic.unowned_random_selection.index_draw"
                 when effect is not null =>
                     QueryControlledEventUnownedRelicSelection(
@@ -1130,6 +1138,8 @@ public static partial class ChanceLawEngineV111
                 "reward.card_rarity.ticket" or
                 "reward.card_model.index_draw" or
                 "reward.card_transform.replacement.index_draw" or
+                StochasticSiteRegistryV111.RandomPoolDistinctShuffleSiteId or
+                StochasticSiteRegistryV111.EventRewardCardBundleShuffleSiteId or
                 "event.reward.offer_potion.model.index_draw" or
                 "event.reward.random_modifier_curse.index_draw" => "reward",
             "relic.unowned_random_selection.index_draw" => request.StreamId,
@@ -1138,6 +1148,9 @@ public static partial class ChanceLawEngineV111
         string[] expectedLabels;
         var numericSupportLabels = request.SiteId ==
             "reward.card_rarity.ticket";
+        var boundedIndexSupport = numericSupportLabels || request.SiteId is
+            StochasticSiteRegistryV111.RandomPoolDistinctShuffleSiteId or
+            StochasticSiteRegistryV111.EventRewardCardBundleShuffleSiteId;
         if (request.SiteId == "event.random_upgrade.card_instance")
         {
             const string outcomePrefix = "card_instance:";
@@ -1167,15 +1180,25 @@ public static partial class ChanceLawEngineV111
         }
         else
         {
-            var outcomePrefix = request.SiteId ==
-                "relic.unowned_random_selection.index_draw"
-                    ? "relic:" : request.SiteId is
-                        "event.reward.random_rare_card.model" or
-                        "event.reward.random_modifier_curse.index_draw" or
-                        "relic.acquisition.random_rare_card.model" or
-                        "reward.card_model.index_draw" or
-                        "reward.card_transform.replacement.index_draw"
-                            ? "card:" : "potion:";
+            var eventEffectKind = effect is null
+                ? (PrototypeRunEffectKind?)null
+                : ControlledEventChoiceEffectKind(effect);
+            var relicOutcomes = request.SiteId ==
+                    "relic.unowned_random_selection.index_draw" ||
+                (request.SiteId ==
+                    StochasticSiteRegistryV111.RandomPoolDistinctShuffleSiteId &&
+                    eventEffectKind ==
+                        PrototypeRunEffectKind.OfferNeowsBonesRelics);
+            var cardOutcomes = request.SiteId is
+                StochasticSiteRegistryV111.RandomPoolDistinctShuffleSiteId or
+                StochasticSiteRegistryV111.EventRewardCardBundleShuffleSiteId or
+                "event.reward.random_rare_card.model" or
+                "event.reward.random_modifier_curse.index_draw" or
+                "relic.acquisition.random_rare_card.model" or
+                "reward.card_model.index_draw" or
+                "reward.card_transform.replacement.index_draw";
+            var outcomePrefix = relicOutcomes
+                ? "relic:" : cardOutcomes ? "card:" : "potion:";
             expectedLabels = law.Outcomes.Select(outcome =>
             {
                 if (!outcome.OutcomeId.StartsWith(
@@ -1185,7 +1208,7 @@ public static partial class ChanceLawEngineV111
                 return outcome.OutcomeId[outcomePrefix.Length..];
             }).ToArray();
         }
-        var orderedSupportMatches = numericSupportLabels
+        var orderedSupportMatches = boundedIndexSupport
             ? request.OperationKind == "bounded_integer" &&
                 request.BoundedCount == law.SupportCount &&
                 request.OrderedCandidates.Length == 0
@@ -1198,8 +1221,9 @@ public static partial class ChanceLawEngineV111
             request.Ordinal != law.Ordinal ||
             request.SupportCount != law.SupportCount ||
             !orderedSupportMatches ||
-            !pending.CandidateLabels.SequenceEqual(
-                expectedLabels, StringComparer.Ordinal))
+            !ControlledEventLabelsMatch(
+                request.SiteId, pending.CandidateLabels, expectedLabels,
+                boundedIndexSupport))
             throw new InvalidDataException(
                 "Controlled event law differs from its saved semantic support.");
 
@@ -1330,6 +1354,247 @@ public static partial class ChanceLawEngineV111
 
         cardIds.Reverse();
         return cardIds.ToArray();
+    }
+
+    private static ChanceLawV111? QueryControlledEventPoolShuffle(
+        RunState source,
+        PrototypeControlledEventChoiceContinuationV111 continuation,
+        ControlledEventChoicePendingV111 pending)
+    {
+        if (source.Phase != RunPhase.Event || source.World is not { } world ||
+            world.Event?.EventId != continuation.EventId)
+            throw new InvalidDataException(
+                "Controlled event pool-shuffle law is outside its saved event boundary.");
+
+        var effectKind = ControlledEventChoiceEffectKind(continuation);
+        var request = pending.Request;
+        string[] orderedPool;
+        string outcomePrefix;
+        if (request.SiteId ==
+            StochasticSiteRegistryV111.RandomPoolDistinctShuffleSiteId)
+        {
+            int takeCount;
+            switch (effectKind)
+            {
+                case PrototypeRunEffectKind.OfferThreeRareCards:
+                    orderedPool = PrototypeContent.NativeSilentRewardCardPool
+                        .Where(id => PrototypeContent.Card(id).Rarity ==
+                            PrototypeCardRarity.Rare).ToArray();
+                    takeCount = 3;
+                    outcomePrefix = "card:";
+                    break;
+                case PrototypeRunEffectKind.OfferThreeColorlessCards:
+                    orderedPool = PrototypeColorlessCards
+                        .ImplementedCombatGenerationPool;
+                    takeCount = 3;
+                    outcomePrefix = "card:";
+                    break;
+                case PrototypeRunEffectKind.OfferTwoColorlessCards:
+                {
+                    var profile = source.Configuration?.Profile ??
+                        throw new InvalidDataException(
+                            "Controlled two-Colorless event offer has no saved run profile.");
+                    orderedPool = PrototypeColorlessCards.RewardPoolForProfile(
+                        profile.FullyUnlocked,
+                        profile.UnlockedColorlessEpochs);
+                    takeCount = 2;
+                    outcomePrefix = "card:";
+                    break;
+                }
+                case PrototypeRunEffectKind.OfferNeowsBonesRelics:
+                    orderedPool = PrototypeNativeOvergrowthEvents
+                        .NeowBonesSupportedRelicNames
+                        .Select(PrototypeNativeOvergrowthEvents.NeowRelicId)
+                        .Where(id => !source.Player.Relics.Any(relic =>
+                            StringComparer.Ordinal.Equals(
+                                relic.RelicId, id)))
+                        .ToArray();
+                    takeCount = 2;
+                    outcomePrefix = "relic:";
+                    break;
+                default:
+                    return null;
+            }
+
+            var requiredPoolLength = effectKind ==
+                PrototypeRunEffectKind.OfferThreeRareCards
+                    ? 2 : takeCount;
+            if (orderedPool.Length < requiredPoolLength ||
+                orderedPool.Any(string.IsNullOrWhiteSpace) ||
+                orderedPool.Distinct(StringComparer.Ordinal).Count() !=
+                    orderedPool.Length)
+                throw new InvalidDataException(
+                    "Controlled event pool-shuffle source pool is not a valid ordered set.");
+            var expectedOwnerId = PrototypeGameEngine
+                .DistinctPoolShuffleOwnerId("reward", takeCount, orderedPool);
+            if (request.StreamId != "reward" ||
+                request.OwnerId != expectedOwnerId)
+                throw new InvalidDataException(
+                    "Controlled event pool-shuffle request differs from its saved effect and source pool.");
+        }
+        else if (request.SiteId ==
+            StochasticSiteRegistryV111.EventRewardCardBundleShuffleSiteId)
+        {
+            if (effectKind != PrototypeRunEffectKind.OfferCardBundles)
+                return null;
+
+            var prefix = "Event:" + continuation.EventId + ":";
+            if (request.OwnerId == prefix + "common_bundle")
+            {
+                orderedPool = PrototypeContent.NativeSilentRewardCardPool
+                    .Where(id => PrototypeContent.Card(id).Rarity ==
+                        PrototypeCardRarity.Common).ToArray();
+                if (orderedPool.Length < 4)
+                    throw new InvalidDataException(
+                        "Controlled event Common-card bundle pool is too small.");
+            }
+            else if (request.OwnerId == prefix + "uncommon_bundle")
+            {
+                orderedPool = PrototypeContent.NativeSilentRewardCardPool
+                    .Where(id => PrototypeContent.Card(id).Rarity ==
+                        PrototypeCardRarity.Uncommon).ToArray();
+                if (orderedPool.Length < 2)
+                    throw new InvalidDataException(
+                        "Controlled event Uncommon-card bundle pool is too small.");
+            }
+            else
+            {
+                throw new InvalidDataException(
+                    "Controlled event card-bundle shuffle has an unexpected pool owner.");
+            }
+            if (request.StreamId != "reward" || orderedPool.Length < 2 ||
+                orderedPool.Any(string.IsNullOrWhiteSpace) ||
+                orderedPool.Distinct(StringComparer.Ordinal).Count() !=
+                    orderedPool.Length)
+                throw new InvalidDataException(
+                    "Controlled event card-bundle source pool is not valid.");
+            outcomePrefix = "card:";
+        }
+        else
+        {
+            return null;
+        }
+
+        var values = (string[])orderedPool.Clone();
+        var swapCount = 0;
+        var decisionCandidateLabels =
+            continuation.DecisionCandidateLabels;
+        if (decisionCandidateLabels is not null &&
+            decisionCandidateLabels.Length != continuation.Decisions.Length)
+            throw new InvalidDataException(
+                "Controlled event pool-shuffle label prefix has the wrong length.");
+
+        for (var index = 0; index < continuation.Decisions.Length; index++)
+        {
+            var decision = continuation.Decisions[index];
+            decision.Validate();
+            var priorRequest = decision.Request;
+            if (priorRequest.SiteId != request.SiteId ||
+                priorRequest.OwnerId != request.OwnerId)
+                continue;
+
+            var expectedBound = values.Length - swapCount;
+            if (expectedBound < 2 ||
+                priorRequest.StreamId != "reward" ||
+                priorRequest.OperationKind != "bounded_integer" ||
+                priorRequest.BoundedCount != expectedBound ||
+                priorRequest.OrderedCandidates.Length != 0)
+                throw new InvalidDataException(
+                    "Controlled event pool-shuffle prefix differs from the descending source shuffle.");
+
+            var priorSupport = values.Take(expectedBound).ToArray();
+            if (decisionCandidateLabels is { } allLabels &&
+                !ControlledEventLabelsMatch(
+                    request.SiteId, allLabels[index], priorSupport,
+                    boundedIndexSupport: true))
+                throw new InvalidDataException(
+                    "Controlled event pool-shuffle prefix has changed its ordered candidate labels.");
+
+            var selectedIndex = decision.SelectedIndex;
+            if ((uint)selectedIndex >= (uint)expectedBound)
+                throw new InvalidDataException(
+                    "Controlled event pool-shuffle prefix has an invalid selected index.");
+            (values[expectedBound - 1], values[selectedIndex]) =
+                (values[selectedIndex], values[expectedBound - 1]);
+            swapCount++;
+        }
+
+        var currentBound = values.Length - swapCount;
+        if (currentBound < 2 ||
+            request.OperationKind != "bounded_integer" ||
+            request.BoundedCount != currentBound ||
+            request.OrderedCandidates.Length != 0)
+            throw new InvalidDataException(
+                "Controlled event pool-shuffle request differs from its saved swap prefix.");
+        var currentSupport = values.Take(currentBound).ToArray();
+        if (!ControlledEventLabelsMatch(
+                request.SiteId, pending.CandidateLabels, currentSupport,
+                boundedIndexSupport: true))
+            throw new InvalidDataException(
+                "Controlled event pool-shuffle request has changed its ordered candidate support.");
+
+        var indexLaw = QueryRandomIndex(pending.ChanceEventId, request);
+        var outcomes = currentSupport.Select((candidateId, index) =>
+            new ChanceLawOutcomeV111(
+                outcomePrefix + candidateId,
+                indexLaw.OutcomeWeightAt(index))).ToArray();
+        var conditioningFingerprint = CanonicalJson.Sha256(new
+        {
+            sourceLawId = indexLaw.LawId,
+            sourceConditioningFingerprint =
+                indexLaw.ConditioningFingerprint,
+            eventId = continuation.EventId,
+            choiceId = continuation.ChoiceId,
+            effectIndex = continuation.NextEffectIndex,
+            orderedCandidateIds = currentSupport
+        });
+        var eventId = CanonicalJson.Sha256(new
+        {
+            boundary = "controlled-event-pool-shuffle",
+            indexLaw.LawId,
+            continuation.EventId,
+            continuation.ChoiceId,
+            continuation.NextEffectIndex,
+            orderedCandidateIds = currentSupport
+        });
+        return Create(
+            eventId, indexLaw.SiteId, indexLaw.OperationKind,
+            indexLaw.OwnerId, indexLaw.Ordinal,
+            indexLaw.ConditioningPolicyId + "-semantic-pool-outcome-v1",
+            conditioningFingerprint, indexLaw.ProbabilityProvenance,
+            outcomes, indexLaw.ProbabilityStatus);
+    }
+
+    private static bool ControlledEventLabelsMatch(
+        string siteId, string[] candidateLabels,
+        string[] semanticCandidateIds, bool boundedIndexSupport)
+    {
+        if (candidateLabels.SequenceEqual(
+                semanticCandidateIds, StringComparer.Ordinal))
+            return true;
+        if (!boundedIndexSupport || siteId is not (
+                StochasticSiteRegistryV111.RandomPoolDistinctShuffleSiteId or
+                StochasticSiteRegistryV111.EventRewardCardBundleShuffleSiteId))
+            return false;
+        var legacyIndexLabels = Enumerable.Range(
+                0, semanticCandidateIds.Length)
+            .Select(index => index.ToString(CultureInfo.InvariantCulture));
+        return candidateLabels.SequenceEqual(
+            legacyIndexLabels, StringComparer.Ordinal);
+    }
+
+    private static PrototypeRunEffectKind ControlledEventChoiceEffectKind(
+        PrototypeControlledEventChoiceContinuationV111 continuation)
+    {
+        var choice = PrototypeContent.Event(continuation.EventId).Choices
+            .SingleOrDefault(candidate => candidate.Id == continuation.ChoiceId) ??
+            throw new InvalidDataException(
+                "Controlled event law references an unknown choice.");
+        if ((uint)continuation.NextEffectIndex >=
+                (uint)choice.Effects.Length)
+            throw new InvalidDataException(
+                "Controlled event law is outside its saved effect boundary.");
+        return choice.Effects[continuation.NextEffectIndex].Kind;
     }
 
     private static ChanceLawV111? QueryControlledEventUnownedRelicSelection(

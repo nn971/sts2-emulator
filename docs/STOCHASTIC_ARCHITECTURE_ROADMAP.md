@@ -34,6 +34,18 @@ snapshot schema changed. Legacy weighting, pool fidelity, stream attribution,
 and cursor parity remain open. Core Release build, static outcome-blindness
 audit, and `git diff --check` passed; no tests were run.
 
+**S6 controlled event offer-shuffle law reuse increment (2026-10-26):**
+Controlled event effects that build Rare-card, Colorless-card, or Neow's
+Bones offers now reconstruct the declared source pool and saved descending
+`run.random_pool_distinct.shuffle_swap_index` prefix. `OfferCardBundles`
+similarly validates the active Common or Uncommon pool and prefix for
+`event.reward.card_bundle.shuffle_swap_index`. Each pending index law carries
+the currently eligible card or relic identity in its outcomes. Legacy weights
+and source-pool completeness remain `UNVERIFIED`; stream attribution and
+Native cursor parity remain open. No continuation schema changed. Core Release
+build and static outcome-blindness audit passed; no tests were run;
+`git diff --check` passed.
+
 **S6 event relic-acquisition law reuse increment (2026-10-26):** The
 controlled event-choice query now routes legacy event-gained relic Rare-card
 and potion model requests through the existing relic-acquisition Chance Laws

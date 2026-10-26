@@ -2228,6 +2228,14 @@ Native bounded-index weights for configured Native reward requests. The
 legacy controlled replay. Pool fidelity, legacy weights, and Native
 stream/cursor parity remain open.
 
+Controlled deferred event offers using `run.random_pool_distinct.shuffle_swap_index`
+now bind each current descending-swap support to its selected card or relic
+identity for Rare-card, Colorless-card, and Neow's Bones offers. Scroll Boxes'
+`event.reward.card_bundle.shuffle_swap_index` requests similarly rebuild the
+active Common or Uncommon pool and replay its saved swap prefix. These legacy
+index laws retain `UNVERIFIED` weighting; source-pool completeness, stream
+attribution, and Native cursor parity remain open.
+
 ## Reading order
 
 1. This architecture contract.

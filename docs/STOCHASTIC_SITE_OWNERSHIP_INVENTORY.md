@@ -16,6 +16,9 @@ Legacy event `GainRandomRelic` and `OfferRandomRelic` effects now use the
 existing unowned-relic law with the ordered eligible relic identities derived
 from the saved player; configured Native custom rewards retain their exact
 `player.rewards` index masses.
+Deferred Rare-card, Colorless-card, and Neow's Bones offers now expose the
+current identity support for each saved descending shuffle request; Scroll
+Boxes does the same for its active Common or Uncommon bundle shuffle.
 
 The guarded Native-policy fallback authorizes exact SiteId/stream/operation triples in addition to the concrete adapters' finite site sets. Combat mappings follow their typed request constructors; immediate win rewards admit their source-listed `player.rewards` sites, War Hammer's elite shuffle and Fishing Rod's third-combat choice on their exact `run.niche` sites, Native summoned-creature HP and in-place Tough Egg hatchling HP choices on `run.niche`, and elite relic queue shuffles admit only `relic_grab_bag.queue_shuffle.swap_index` on `run.treasure_room_relics`. PotionFactory rarity and model requests are explicitly mapped to both `run.combat_potion_generation` and `player.rewards` where those source contexts use them; membership under one stream does not authorize an unlisted triple. The explicit engine-owned prototype reward scope retains only its declared legacy reward requests, including Pael's Tooth's saved-card return; the concrete legacy provider now rejects other requests under native control. This is an emulator control-boundary allowlist, not evidence of Native source parity.
 

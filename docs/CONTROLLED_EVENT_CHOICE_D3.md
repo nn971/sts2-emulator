@@ -154,6 +154,12 @@ The supported event-choice sites are:
   on acquisition; direct `TransformFirstCardOfId` requests reuse the existing
   typed reward-pool transform law after validating the saved physical card
   and effect
+- `run.random_pool_distinct.shuffle_swap_index` for deferred Rare-card,
+  Colorless-card, and Neow's Bones relic offers; the query rebuilds the
+  effect-specific source pool and replays its saved descending-swap prefix
+- `event.reward.card_bundle.shuffle_swap_index` for `OfferCardBundles`; the
+  query validates the active Common or Uncommon source pool and its saved
+  descending-swap prefix
 - `relic.unowned_random_selection.index_draw` for eligible event options;
   `GainRandomRelic` and `OfferRandomRelic` effects rebuild the unowned pool
   from the saved player state, validate its request owner and stream, and
