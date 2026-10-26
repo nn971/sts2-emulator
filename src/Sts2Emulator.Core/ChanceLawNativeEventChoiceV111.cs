@@ -1097,6 +1097,11 @@ public static partial class ChanceLawEngineV111
                     QueryControlledLegacyEventCardTransform(
                         source, effect, request),
             "reward.card_transform.replacement.index_draw" => null,
+            "relic.unowned_random_selection.index_draw"
+                when effect is not null =>
+                    QueryControlledEventUnownedRelicSelection(
+                        source, effect, request),
+            "relic.unowned_random_selection.index_draw" => null,
             "relic.acquisition.random_rare_card.model"
                 when effect is null => throw new InvalidDataException(
                     "Legacy Rare-card acquisition law is outside an event-effect continuation."),
@@ -1127,6 +1132,7 @@ public static partial class ChanceLawEngineV111
                 "reward.card_transform.replacement.index_draw" or
                 "event.reward.offer_potion.model.index_draw" or
                 "event.reward.random_modifier_curse.index_draw" => "reward",
+            "relic.unowned_random_selection.index_draw" => request.StreamId,
             _ => "event"
         };
         string[] expectedLabels;
@@ -1161,13 +1167,15 @@ public static partial class ChanceLawEngineV111
         }
         else
         {
-            var outcomePrefix = request.SiteId is
-                "event.reward.random_rare_card.model" or
-                "event.reward.random_modifier_curse.index_draw" or
-                "relic.acquisition.random_rare_card.model" or
-                "reward.card_model.index_draw" or
-                "reward.card_transform.replacement.index_draw"
-                    ? "card:" : "potion:";
+            var outcomePrefix = request.SiteId ==
+                "relic.unowned_random_selection.index_draw"
+                    ? "relic:" : request.SiteId is
+                        "event.reward.random_rare_card.model" or
+                        "event.reward.random_modifier_curse.index_draw" or
+                        "relic.acquisition.random_rare_card.model" or
+                        "reward.card_model.index_draw" or
+                        "reward.card_transform.replacement.index_draw"
+                            ? "card:" : "potion:";
             expectedLabels = law.Outcomes.Select(outcome =>
             {
                 if (!outcome.OutcomeId.StartsWith(
@@ -1322,6 +1330,70 @@ public static partial class ChanceLawEngineV111
 
         cardIds.Reverse();
         return cardIds.ToArray();
+    }
+
+    private static ChanceLawV111? QueryControlledEventUnownedRelicSelection(
+        RunState source,
+        PrototypeControlledEventChoiceContinuationV111 continuation,
+        RandomIndexRequestV111 request)
+    {
+        if (source.Phase != RunPhase.Event || source.World is not { } world ||
+            world.Event?.EventId != continuation.EventId)
+            throw new InvalidDataException(
+                "Controlled unowned-relic law is outside its saved event boundary.");
+
+        var choice = PrototypeContent.Event(continuation.EventId).Choices
+            .SingleOrDefault(candidate => candidate.Id == continuation.ChoiceId) ??
+            throw new InvalidDataException(
+                "Controlled unowned-relic law references an unknown choice.");
+        if ((uint)continuation.NextEffectIndex >=
+                (uint)choice.Effects.Length)
+            throw new InvalidDataException(
+                "Controlled unowned-relic law is outside its saved effect boundary.");
+
+        var effectKind = choice.Effects[continuation.NextEffectIndex].Kind;
+        var availableRelicIds = PrototypeContent.RelicPool
+            .Where(id => !source.Player.Relics.Any(relic =>
+                StringComparer.Ordinal.Equals(relic.RelicId, id)))
+            .ToArray();
+        if (availableRelicIds.Length == 0)
+            throw new InvalidDataException(
+                "Controlled unowned-relic request has no eligible relic support.");
+
+        string expectedOwnerId;
+        string expectedStreamId;
+        if (effectKind == PrototypeRunEffectKind.GainRandomRelic)
+        {
+            if (PrototypeGameEngine.UsesNativeRegionalSystems(world))
+                throw new InvalidDataException(
+                    "Native-regional random relics must use the relic grab bag, not the legacy unowned pool.");
+            expectedStreamId = "event";
+            expectedOwnerId = "event:" + continuation.EventId + ":choice:" +
+                continuation.ChoiceId + ":pool:" +
+                CanonicalJson.Sha256(availableRelicIds);
+        }
+        else if (effectKind == PrototypeRunEffectKind.OfferRandomRelic)
+        {
+            expectedStreamId = source.Stochastic.NativeRunRng is not null &&
+                PrototypeGameEngine.UsesNativeRegionalSystems(world)
+                    ? NativePlayerRngV111.RewardsStreamId : "reward";
+            expectedOwnerId = "Event:" + continuation.EventId +
+                ":unowned_relic_pool:" +
+                CanonicalJson.Sha256(availableRelicIds);
+        }
+        else
+        {
+            return null;
+        }
+
+        if (request.StreamId != expectedStreamId ||
+            request.OwnerId != expectedOwnerId)
+            throw new InvalidDataException(
+                "Controlled unowned-relic request differs from its saved event effect and pool.");
+
+        return QueryUnownedRelicSelectionIndex(
+            expectedStreamId, expectedOwnerId, availableRelicIds,
+            request.Ordinal);
     }
 
     private static ChanceLawV111? QueryControlledLegacyEventCardTransform(

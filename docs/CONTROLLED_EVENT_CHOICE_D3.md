@@ -154,7 +154,10 @@ The supported event-choice sites are:
   on acquisition; direct `TransformFirstCardOfId` requests reuse the existing
   typed reward-pool transform law after validating the saved physical card
   and effect
-- `relic.unowned_random_selection.index_draw` for eligible event options
+- `relic.unowned_random_selection.index_draw` for eligible event options;
+  `GainRandomRelic` and `OfferRandomRelic` effects rebuild the unowned pool
+  from the saved player state, validate its request owner and stream, and
+  expose the ordered relic IDs through the existing typed law
 
 Any other random site reached by the event option or reward action continues
 to fail closed. Other Native regional potion routes, post-reward random

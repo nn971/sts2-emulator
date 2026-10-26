@@ -23,6 +23,17 @@ Pool fidelity and equal-index calibration remain `UNVERIFIED`; Native cursor
 parity remains open. Core Release build and `git diff --check` passed; no
 tests were run.
 
+**S6 controlled event unowned-relic law reuse increment (2026-10-26):** The
+controlled event-effect query now routes legacy event-stream
+`GainRandomRelic` and legacy or configured Native `OfferRandomRelic` requests
+through the existing unowned-relic index law with ordered `relic:<id>`
+outcomes. It derives the source-ordered eligible pool from the saved player,
+validates effect-specific owner and stream, and labels configured Native
+reward offers with relic IDs as well as legacy offers. No continuation or
+snapshot schema changed. Legacy weighting, pool fidelity, stream attribution,
+and cursor parity remain open. Core Release build, static outcome-blindness
+audit, and `git diff --check` passed; no tests were run.
+
 **S6 event relic-acquisition law reuse increment (2026-10-26):** The
 controlled event-choice query now routes legacy event-gained relic Rare-card
 and potion model requests through the existing relic-acquisition Chance Laws

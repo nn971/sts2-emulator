@@ -298,4 +298,49 @@ public static partial class ChanceLawEngineV111
         });
         return QueryRandomIndex(eventId, request);
     }
+
+    /// <summary>
+    /// Query an unowned-relic index with its declared source-ordered model
+    /// identities. The index law supplies the weights; this overload binds
+    /// the semantic result IDs to the caller's exact ordered pool.
+    /// </summary>
+    public static ChanceLawV111 QueryUnownedRelicSelectionIndex(
+        string streamId, string ownerId, string[] candidateRelicIds,
+        int ordinal)
+    {
+        ArgumentNullException.ThrowIfNull(candidateRelicIds);
+        if (candidateRelicIds.Length == 0 ||
+            candidateRelicIds.Any(string.IsNullOrWhiteSpace) ||
+            candidateRelicIds.Distinct(StringComparer.Ordinal).Count() !=
+                candidateRelicIds.Length)
+            throw new ArgumentException(
+                "Unowned-relic candidates must be a nonempty ordered set of unique IDs.",
+                nameof(candidateRelicIds));
+
+        var indexLaw = QueryUnownedRelicSelectionIndex(
+            streamId, ownerId, candidateRelicIds.Length, ordinal);
+        var outcomes = candidateRelicIds.Select((relicId, index) =>
+            new ChanceLawOutcomeV111(
+                "relic:" + relicId,
+                indexLaw.OutcomeWeightAt(index))).ToArray();
+        var conditioningFingerprint = CanonicalJson.Sha256(new
+        {
+            sourceLawId = indexLaw.LawId,
+            sourceConditioningFingerprint =
+                indexLaw.ConditioningFingerprint,
+            orderedCandidateRelicIds = candidateRelicIds
+        });
+        var eventId = CanonicalJson.Sha256(new
+        {
+            boundary = "unowned-relic-semantic-index",
+            indexLaw.LawId,
+            orderedCandidateRelicIds = candidateRelicIds
+        });
+        return Create(
+            eventId, indexLaw.SiteId, indexLaw.OperationKind,
+            indexLaw.OwnerId, indexLaw.Ordinal,
+            indexLaw.ConditioningPolicyId + "-relic-identity-v1",
+            conditioningFingerprint, indexLaw.ProbabilityProvenance,
+            outcomes, indexLaw.ProbabilityStatus);
+    }
 }

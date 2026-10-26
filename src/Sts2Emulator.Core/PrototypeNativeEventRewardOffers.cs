@@ -314,6 +314,9 @@ public sealed partial class PrototypeGameEngine
                 }
                 var ownerId = prefix + ":unowned_relic_pool:"
                     + CanonicalJson.Sha256(available);
+                using var candidateLabels =
+                    ControlledEventChoiceReplayV111.DescribeCandidates(
+                        (string[])available.Clone());
                 int relicIndex;
                 if (nativeRunRng is { } nativeRewardRng)
                 {
@@ -327,9 +330,6 @@ public sealed partial class PrototypeGameEngine
                 }
                 else
                 {
-                    using var labels =
-                        ControlledEventChoiceReplayV111.DescribeCandidates(
-                            (string[])available.Clone());
                     relicIndex = LegacyRandomChoiceV111.ChooseIndexRange(
                         prototypeRng,
                         StochasticSiteRegistryV111

@@ -2219,6 +2219,15 @@ then verifies the saved ordered card-ID support. No new event continuation or
 snapshot field is required; transformed-pool fidelity and equal-index
 calibration remain open.
 
+Controlled legacy event-stream `GainRandomRelic` and legacy or configured
+Native `OfferRandomRelic` effects now reuse the unowned-relic index law with
+source-ordered `relic:<id>` outcomes. The query rebuilds the unowned pool from
+the saved player, validates the effect-specific owner and stream, and preserves
+Native bounded-index weights for configured Native reward requests. The
+`OfferRandomRelic` request retains relic-ID candidate labels in configured and
+legacy controlled replay. Pool fidelity, legacy weights, and Native
+stream/cursor parity remain open.
+
 ## Reading order
 
 1. This architecture contract.
