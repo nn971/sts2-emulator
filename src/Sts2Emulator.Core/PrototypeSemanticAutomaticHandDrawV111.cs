@@ -232,15 +232,16 @@ public sealed partial class PrototypeGameEngine
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.BeforeHandDraw " +
                 "operation=" + unsupportedOperation);
 
-        var savedRequested = completed.Stochastic
-            .GetSavedSemanticHandDrawRequestedCount(
-                completed.Mechanics);
-        var completedRequested = savedRequested ??
-            GetCardsDrawnSince(after, cardsDrawnBefore);
+        bool hasCompletedReceipt = completed.Stochastic
+            .TryGetCompletedSemanticHandDrawReceipt(
+                completed.Mechanics, out int savedRequested);
+        var completedRequested = hasCompletedReceipt
+            ? savedRequested
+            : GetCardsDrawnSince(after, cardsDrawnBefore);
         // The common stage owner already recorded semantic completions that
         // carried a saved request. Only source-committed draw-free completion
         // needs the facade to derive and attach a receipt here.
-        if (savedRequested is null)
+        if (!hasCompletedReceipt)
         {
             after = AttachCompletedSemanticHandDrawReceipt(
                 after, completed, completedRequested);

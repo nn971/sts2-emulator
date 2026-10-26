@@ -284,8 +284,10 @@ this owner predicate; each still validates its own typed payload and source
 support.
 
 `GetSavedSemanticHandDrawRequestedCount` is the shared projection for the
-active request or completed-stage receipt. Semantic facade state updates and
-source-stage completion use it instead of reading the receipt field directly.
+active request or completed-stage receipt. Semantic facade state updates use
+it for that projection; source-stage completion uses
+`TryGetCompletedSemanticHandDrawReceipt` to require the already-advanced
+cursor and cleared active progress before reusing a receipt.
 
 The draw stochastic owner also includes card-shortlist choices in its typed
 transcripts, mixed boundary chronology, and provenance replay. End-turn and

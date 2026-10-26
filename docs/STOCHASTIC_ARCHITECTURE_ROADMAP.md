@@ -6159,3 +6159,10 @@ the controlled hand-draw owner. `ContinueControlledHandDraw` alone reconciles
 that value with saved progress for resumed stages; the initial no-cursor path
 keeps its positive-count admission rule. No snapshot schema changed. Core
 Release build and `git diff --check` passed; no tests were added or run.
+
+**S4 semantic source-stage receipt query reuse (2026-10-26):** Semantic
+automatic-hand-draw completion now uses the pipeline owner's completed-receipt
+query on the already-advanced cursor, and derives a fallback count only when
+that receipt is absent. It no longer treats the active-or-completed count
+projection as a completion predicate. No snapshot schema changed. Core Release
+build and `git diff --check` passed; no tests were added or run.
