@@ -25,15 +25,17 @@ jobs:
         run: |
           python tools/rng_callsite_inventory.py --help
           python tools/rng_callsite_inventory.py --check-site-matrix --check-s0-contract-links --check-no-ambient-entropy --check-no-native-chance-law-dependency --check-chance-law-outcome-blind --check-draw-kernel-callsite-ownership --format json > stochastic-inventory.json
+          python tools/stochastic_coverage_gate.py --out stochastic-coverage.json
       - name: Structural / mathematical reference-law tests (must pass)
         run: |
-          dotnet test tests/Sts2Emulator.Core.Tests/Sts2Emulator.Core.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~SemanticDeckStateV111Tests|FullyQualifiedName~RandomBoundaryJournalV111Tests' --logger 'trx;LogFileName=structural.trx'
+          dotnet test tests/Sts2Emulator.Core.Tests/Sts2Emulator.Core.Tests.csproj -c Release --no-build --filter 'FullyQualifiedName~SemanticDeckStateV111Tests|FullyQualifiedName~RandomBoundaryJournalV111Tests|FullyQualifiedName~StochasticProviderDifferentialAcceptanceTests' --logger 'trx;LogFileName=structural.trx'
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: stochastic-structural-evidence
           path: |
             stochastic-inventory.json
+            stochastic-coverage.json
             tests/**/TestResults/*.trx
 
   regression-inventory:
