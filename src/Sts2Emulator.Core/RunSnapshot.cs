@@ -189,8 +189,9 @@ public static class RunSnapshot
             natureState);
         var preparationDecisions = decisions
             .Skip(preparationStartIndex).ToArray();
-        foreach (var expected in preparationDecisions)
+        for (var index = 0; index < preparationDecisions.Length; index++)
         {
+            var expected = preparationDecisions[index];
             if (preparation.Complete)
                 throw new InvalidDataException(
                     "Experimental run-start preparation ended before its transcript.");
@@ -199,6 +200,19 @@ public static class RunSnapshot
                 CanonicalJson.Sha256(expected))
                 throw new InvalidDataException(
                     "Experimental run-start preparation differs from its generator replay.");
+
+            var savedLaw = laws[preparationStartIndex + index];
+            var replayedLaw = preparation.ChanceLaws[^1];
+            if (CanonicalJson.Sha256(savedLaw with { OutcomeLabels = null }) !=
+                    CanonicalJson.Sha256(replayedLaw with
+                    {
+                        OutcomeLabels = null
+                    }) ||
+                savedLaw.OutcomeLabels is { } savedLabels &&
+                    !savedLabels.SequenceEqual(
+                        replayedLaw.OutcomeLabels ?? []))
+                throw new InvalidDataException(
+                    "Experimental run-start Chance Law differs from its generator replay.");
         }
 
         var world = state.World ?? throw new InvalidDataException(

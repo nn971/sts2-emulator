@@ -16,12 +16,26 @@ public sealed record RandomIndexRequestV111(
 {
     private int[] _orderedCandidates =
         CloneRequired(OrderedCandidates, nameof(OrderedCandidates));
+    private string[]? _candidateLabels;
 
     public int[] OrderedCandidates
     {
         get => (int[])_orderedCandidates.Clone();
         init => _orderedCandidates = CloneRequired(
             value, nameof(OrderedCandidates));
+    }
+
+    /// <summary>
+    /// Optional semantic identities aligned with the index support. Labels
+    /// describe outcomes without changing the sampled index or request owner.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string[]? CandidateLabels
+    {
+        get => _candidateLabels is null
+            ? null : (string[])_candidateLabels.Clone();
+        init => _candidateLabels = value is null
+            ? null : (string[])value.Clone();
     }
 
     // A bounded integer ticket is compact even for very large ranges.
@@ -51,7 +65,12 @@ public sealed record RandomIndexRequestV111(
             || (OperationKind == "choose_index" &&
                 (_orderedCandidates.Length == 0 || BoundedCount is not null))
             || (OperationKind == "bounded_integer" &&
-                (_orderedCandidates.Length != 0 || BoundedCount is null or <= 0)))
+                (_orderedCandidates.Length != 0 || BoundedCount is null or <= 0)) ||
+            (_candidateLabels is not null &&
+                (_candidateLabels.Length != SupportCount ||
+                 _candidateLabels.Any(string.IsNullOrWhiteSpace) ||
+                 _candidateLabels.Distinct(StringComparer.Ordinal).Count() !=
+                    _candidateLabels.Length)))
             throw new ArgumentException("Invalid source-pinned random-choice request.");
     }
 
@@ -259,7 +278,8 @@ public static class LegacyRandomChoiceV111
         string streamId,
         string ownerId,
         int[] orderedCandidates,
-        int? ordinal = null)
+        int? ordinal = null,
+        string[]? candidateLabels = null)
     {
         ArgumentNullException.ThrowIfNull(orderedCandidates);
         if (orderedCandidates.Length == 0)
@@ -268,7 +288,8 @@ public static class LegacyRandomChoiceV111
                 nameof(orderedCandidates));
         return Resolve(
             streams, siteId, streamId, ownerId, orderedCandidates,
-            boundedCount: null, ordinal: ordinal);
+            boundedCount: null, ordinal: ordinal,
+            candidateLabels: candidateLabels);
     }
 
     public static RandomIndexDecisionV111 ChooseIndexRange(
@@ -277,13 +298,15 @@ public static class LegacyRandomChoiceV111
         string streamId,
         string ownerId,
         int candidateCount,
-        int? ordinal = null)
+        int? ordinal = null,
+        string[]? candidateLabels = null)
     {
         if (candidateCount <= 0)
             throw new ArgumentOutOfRangeException(nameof(candidateCount));
         return ChooseIndex(
             streams, siteId, streamId, ownerId,
-            Enumerable.Range(0, candidateCount).ToArray(), ordinal);
+            Enumerable.Range(0, candidateCount).ToArray(), ordinal,
+            candidateLabels);
     }
 
     public static RandomIndexDecisionV111 ChooseBoundedInteger(
@@ -298,7 +321,8 @@ public static class LegacyRandomChoiceV111
             throw new ArgumentOutOfRangeException(nameof(boundedCount));
         return Resolve(
             streams, siteId, streamId, ownerId, [],
-            boundedCount: boundedCount, ordinal: ordinal);
+            boundedCount: boundedCount, ordinal: ordinal,
+            candidateLabels: null);
     }
 
     private static RandomIndexDecisionV111 Resolve(
@@ -308,7 +332,8 @@ public static class LegacyRandomChoiceV111
         string ownerId,
         int[] orderedCandidates,
         int? boundedCount,
-        int? ordinal)
+        int? ordinal,
+        string[]? candidateLabels)
     {
         ArgumentNullException.ThrowIfNull(streams);
         ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
@@ -352,7 +377,10 @@ public static class LegacyRandomChoiceV111
             : new RandomIndexRequestV111(
                 siteId, streamId, ownerId, streamOrdinal,
                 (int[])orderedCandidates.Clone(),
-                OperationKind: "choose_index");
+                OperationKind: "choose_index")
+            {
+                CandidateLabels = candidateLabels
+            };
         var operationKind = request.OperationKind;
         if (ControlledChanceGuardV111.Active
             && !ControlledChanceGuardV111.EngineOwnedNativeProviderActive

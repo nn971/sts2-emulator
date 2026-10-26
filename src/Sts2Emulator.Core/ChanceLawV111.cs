@@ -464,6 +464,7 @@ public sealed record ChanceLawV111(
     long TotalWeight)
 {
     private ChanceLawOutcomeV111[]? _outcomes = Copy(Outcomes);
+    private string[]? _outcomeLabels;
 
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public ChanceLawUniformIndexRangeV111? UniformIndexRange { get; init; }
@@ -482,6 +483,19 @@ public sealed record ChanceLawV111(
     {
         get => Copy(_outcomes)!;
         init => _outcomes = Copy(value);
+    }
+
+    /// <summary>
+    /// Optional semantic labels aligned with the law support. Labels are
+    /// descriptive metadata and do not change OutcomeId, support, or LawId.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string[]? OutcomeLabels
+    {
+        get => _outcomeLabels is null
+            ? null : (string[])_outcomeLabels.Clone();
+        init => _outcomeLabels = value is null
+            ? null : (string[])value.Clone();
     }
 
     public const string CurrentSchemaId = "sts2-v111-chance-law-v1";
@@ -504,6 +518,13 @@ public sealed record ChanceLawV111(
                 ? range.OutcomeIdAt(supportOffset)
                 : Outcomes[supportOffset].OutcomeId;
 
+    public string? OutcomeLabelAt(int supportOffset)
+    {
+        if ((uint)supportOffset >= (uint)SupportCount)
+            throw new ArgumentOutOfRangeException(nameof(supportOffset));
+        return OutcomeLabels?[supportOffset];
+    }
+
     public long OutcomeWeightAt(int supportOffset) =>
         NativeBoundedIndexGrid is { } nativeRange
             ? ChanceLawEngineV111.NativeNextIntGridWeightAt(
@@ -518,7 +539,8 @@ public sealed record ChanceLawV111(
 
     public ChanceLawV111 Fork() => this with
     {
-        Outcomes = (ChanceLawOutcomeV111[])Outcomes.Clone()
+        Outcomes = (ChanceLawOutcomeV111[])Outcomes.Clone(),
+        OutcomeLabels = OutcomeLabels
     };
 
     public void Validate()
@@ -529,6 +551,7 @@ public sealed record ChanceLawV111(
                 "Chance Law exceeds the explicit outcome support limit.");
         var compactRange = UniformIndexRange;
         var nativeGrid = NativeBoundedIndexGrid;
+        var outcomeLabels = OutcomeLabels;
         var compactRangeLaw = SchemaId == UniformIndexRangeSchemaId;
         var nativeGridLaw = SchemaId == NativeBoundedIndexGridSchemaId;
         if (SchemaId is not (CurrentSchemaId or UniformIndexRangeSchemaId or
@@ -544,6 +567,12 @@ public sealed record ChanceLawV111(
             ProbabilityStatus is not (UnverifiedStatus or SourceVerifiedStatus) ||
             string.IsNullOrWhiteSpace(ProbabilityProvenance) ||
             outcomes is null || TotalWeight <= 0 ||
+            outcomeLabels is not null &&
+                (outcomeLabels.Length != (nativeGrid?.BoundExclusive ??
+                    compactRange?.Count ?? outcomes.Length) ||
+                 outcomeLabels.Any(string.IsNullOrWhiteSpace) ||
+                 outcomeLabels.Distinct(StringComparer.Ordinal).Count() !=
+                    outcomeLabels.Length) ||
             (compactRangeLaw
                 ? compactRange is null || nativeGrid is not null ||
                     outcomes.Length != 0 ||

@@ -257,7 +257,9 @@ public static class ExperimentalSilentThreeActRouteV111
                 "combat",
                 $"act:{act}:queue:{queueId}:draw:{i}:pool:"
                     + CanonicalJson.Sha256(eligible),
-                eligible.Length).SelectedIndex];
+                eligible.Length,
+                candidateLabels: eligible.Select(id =>
+                    $"encounter:{id}").ToArray()).SelectedIndex];
             remaining.Remove(selected);
             history.Add(selected);
             result[i] = selected;
@@ -1028,12 +1030,14 @@ internal sealed class ReferenceNatureLaterActEncounterIndexProviderV111
                 "ReferenceNature later-act encounter request has a nonsequential combat ordinal.");
 
         ChanceLawV111 law;
+        string[]? outcomeLabels = null;
         if (IsQueueSite(request.SiteId))
         {
             ValidateQueueRequest(request);
             law = ChanceLawEngineV111.QueryLegacyCallerBoundIndex(
                 request.SiteId, request.OwnerId, request.Ordinal,
                 request.SupportCount);
+            outcomeLabels = request.CandidateLabels;
         }
         else if (request.SiteId == ExperimentalSilentThreeActRouteV111
                 .BossIndexSiteId)
@@ -1073,6 +1077,12 @@ internal sealed class ReferenceNatureLaterActEncounterIndexProviderV111
             law.Outcomes.Length != request.SupportCount)
             throw new InvalidDataException(
                 "ReferenceNature later-act boss Chance Law differs from its source request.");
+
+        if (outcomeLabels is not null)
+        {
+            law = law with { OutcomeLabels = outcomeLabels };
+            law.Validate();
+        }
 
         if (_suspendAfterPrefix &&
             decisionCount == _expectedPrefix!.Length)
@@ -1143,17 +1153,28 @@ internal sealed class ReferenceNatureLaterActEncounterIndexProviderV111
         var expectedSite = $"combat.encounter.later_act.{queueId}.index_draw";
         var expectedOwnerPrefix =
             $"act:{act}:queue:{queueId}:draw:{queueDraw}:pool:";
+        var labels = request.CandidateLabels;
+        const string encounterLabelPrefix = "encounter:";
+        bool ownerShapeMatches =
+            request.OwnerId.StartsWith(expectedOwnerPrefix,
+                StringComparison.Ordinal) &&
+            request.OwnerId.Length == expectedOwnerPrefix.Length + 64 &&
+            request.OwnerId[expectedOwnerPrefix.Length..].All(Uri.IsHexDigit);
+        bool labelsMatchOwner = ownerShapeMatches && labels is not null &&
+            labels.Length == request.SupportCount &&
+            labels.All(label => label.StartsWith(encounterLabelPrefix,
+                StringComparison.Ordinal) &&
+                label.Length > encounterLabelPrefix.Length) &&
+            CanonicalJson.Sha256(labels.Select(label =>
+                label[encounterLabelPrefix.Length..]).ToArray()) ==
+            request.OwnerId[expectedOwnerPrefix.Length..];
         if (request.SiteId != expectedSite ||
             request.OperationKind != "choose_index" ||
             request.Ordinal != checked(InitialCombatOrdinal +
                 _chanceLaws.Count) ||
             !request.OrderedCandidates.SequenceEqual(
                 Enumerable.Range(0, request.SupportCount)) ||
-            !request.OwnerId.StartsWith(expectedOwnerPrefix,
-                StringComparison.Ordinal) ||
-            request.OwnerId.Length != expectedOwnerPrefix.Length + 64 ||
-            !request.OwnerId[expectedOwnerPrefix.Length..].All(
-                Uri.IsHexDigit))
+            !ownerShapeMatches || !labelsMatchOwner)
             throw new InvalidDataException(
                 "ReferenceNature later-act queue request differs from its ordered preparation boundary.");
     }

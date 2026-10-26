@@ -6319,3 +6319,11 @@ remaining random-autoplay suffix through the shared live-target support owner.
 The current card's playability and effective enemy target are checked, along
 with Beat Down's Attack-only filter. No schema changed. Static source review
 and Core Release build passed; no tests were run.
+
+**S0 later-act encounter identity metadata increment (2026-10-26):** Prepared
+weak, normal, and elite queue requests now carry ordered encounter labels, and
+their Chance Laws expose the same labels beside the existing numeric index
+outcomes. Labels are checked against the ordered support fingerprint and are
+excluded from the law ID, event ID, and RNG result. Run snapshot replay checks
+new labels while accepting earlier unlabeled laws. Core Release build, static
+RNG audit, and `git diff --check` passed; no tests were added or run.
