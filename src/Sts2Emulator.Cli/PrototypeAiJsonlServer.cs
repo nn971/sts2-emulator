@@ -3199,7 +3199,8 @@ internal static class PrototypeAiJsonlServer
                             semanticSeededRouteEntryProviderId =
                                 SemanticSourceRouteAuditV111.SourceRouteProviderId,
                             semanticSourceRunRouteProviderId =
-                                "engine-owned-v111-native-act1-map-choice-unverified-v1",
+                                SemanticSourceRouteAuditV111
+                                    .SourceRunMapChoiceProviderId,
                             semanticPlayable = true,
                             semanticPlayableScope =
                                 "seeded-source-route-or-native-act1-combat-elite-map-choice-or-post-committed-opening-fixture-restricted-Silent-combat",

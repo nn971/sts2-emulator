@@ -27,7 +27,7 @@ from urllib.parse import unquote, urlparse
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
 RUNTIME_SOURCE_ROOTS = (ROOT / "src", ROOT / "native")
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v60"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v61"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 NATIVE_RNG_SOURCE_FILES = frozenset({
     "NativeCombatRngEntryV111.cs",
@@ -4030,7 +4030,7 @@ def render_markdown(report: dict[str, Any]) -> str:
         "Explicit typed random-request constructions: "
         f"**{len(report['typed_request_constructions'])}**; site IDs resolved "
         f"to registry: **{sum(call['registry_status'] in ('mapped', 'conditional') for call in report['typed_request_constructions'])}**; "
-        f"dynamic or missing IDs: **{sum(call['registry_status'] in ('dynamic_expression', 'missing') for call in report['typed_request_constructions'])}**; "
+        f"forwarded or otherwise unresolved IDs: **{sum(call['registry_status'] in ('dynamic_expression', 'unmapped', 'missing') for call in report['typed_request_constructions'])}**; "
         f"static IDs absent from registry: **{sum(call['registry_status'] in ('not_registered', 'partially_unregistered') for call in report['typed_request_constructions'])}**.",
         "",
         "Index request operation-kind locators: " + ", ".join(

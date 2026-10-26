@@ -99,10 +99,12 @@ Native probability and complete non-Nature RNG parity remain **UNVERIFIED**.
 - `semanticSeededOpeningProvider =
   engine-owned-seeded-source-shaped-unverified-v1` and
   `semanticSeededRouteEntryProviderId =
-  engine-owned-v111-native-weak-route-entry-unverified-v1`.
+  engine-owned-v111-native-weak-route-entry-unverified-v1`; the source-route
+  audit uses this ID for seed-created first-combat entry.
 - `semanticSourceRunRouteProviderId =
   engine-owned-v111-native-act1-map-choice-unverified-v1` advertises the
-  existing-run map-entry operation below.
+  existing-run map-entry operation below and identifies that route in its
+  private replay audit.
 - `semanticProbabilityStatus = UNVERIFIED`.
 
 Legacy `nature_*` and `controlled_*` retain their distinct

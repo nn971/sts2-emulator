@@ -1939,6 +1939,8 @@ public sealed record SemanticSourceRouteAuditV111(
 {
     public const string SourceRouteProviderId =
         "engine-owned-v111-native-weak-route-entry-unverified-v1";
+    public const string SourceRunMapChoiceProviderId =
+        "engine-owned-v111-native-act1-map-choice-unverified-v1";
 
     private string[]? _actionIds = CopyActionIds(ActionIds);
     private RandomBoundaryEventV111[]? _nativeEntryDecisions =
@@ -2746,7 +2748,10 @@ public sealed record SemanticPilotCombatV111(
                 "Source-route semantic session is missing its route audit.");
             var world = this.Run.World ?? throw new InvalidDataException(
                 "Source-route semantic session is missing its run world.");
-            if (route.ProviderId != SemanticSourceRouteAuditV111.SourceRouteProviderId ||
+            var expectedRouteProviderId = routeEntry.RouteSourceSnapshotJson is null
+                ? SemanticSourceRouteAuditV111.SourceRouteProviderId
+                : SemanticSourceRouteAuditV111.SourceRunMapChoiceProviderId;
+            if (route.ProviderId != expectedRouteProviderId ||
                 route.ProbabilityStatus != "UNVERIFIED" ||
                 route.ActOneRegion != routeEntry.RouteActOneRegion ||
                 route.ActionIds is null || route.ActionIds.Length == 0 ||
@@ -3877,7 +3882,9 @@ public static class SemanticPilotCombatEngineV111
                 }).ToArray()
         };
         var routeAudit = new SemanticSourceRouteAuditV111(
-            SemanticSourceRouteAuditV111.SourceRouteProviderId,
+            entry.RouteSourceSnapshotJson is null
+                ? SemanticSourceRouteAuditV111.SourceRouteProviderId
+                : SemanticSourceRouteAuditV111.SourceRunMapChoiceProviderId,
             entry.RouteActOneRegion, actions.ToArray(), actualNodeId,
             actualEncounterId, actualNativeEntry, nativeDecisions);
 
