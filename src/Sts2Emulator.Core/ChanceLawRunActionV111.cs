@@ -9,18 +9,32 @@ public static partial class ChanceLawEngineV111
             throw new InvalidOperationException(
                 "No controlled run-action chance is pending.");
         var pending = ControlledRunActionPendingV111.Describe(run);
-        if (continuation.ActionId == "start_run"
+        var controlledRunStartRequest =
+            ControlledStochasticRequestV111.FromIndex(pending.Request);
+        var configuredOvergrowthBossStart =
+            continuation.ActionId == "start_run"
+            && ControlledRunActionEngineV111
+                .IsConfiguredNativeReferenceNatureOvergrowthRunStartSource(
+                    run)
+            && ControlledRunActionEngineV111
+                .IsConfiguredNativeOvergrowthBossRequest(
+                    controlledRunStartRequest);
+        var configuredUnderdocksBossStart =
+            continuation.ActionId == "start_run"
             && ControlledRunActionEngineV111
                 .IsConfiguredNativeReferenceNatureUnderdocksRunStartSource(
                     run)
             && ControlledRunActionEngineV111
                 .IsConfiguredNativeUnderdocksBossRequest(
-                    ControlledStochasticRequestV111.FromIndex(
-                        pending.Request)))
+                    controlledRunStartRequest);
+        if (configuredOvergrowthBossStart || configuredUnderdocksBossStart)
         {
-            var law = QueryUnderdocksBossEncounter(
-                pending.Request.Ordinal);
-            var bossPool = PrototypeNativeUnderdocks.NativeBossEncounterIds;
+            var bossPool = configuredOvergrowthBossStart
+                ? PrototypeContent.OvergrowthBossEncounterPool
+                : PrototypeNativeUnderdocks.NativeBossEncounterIds;
+            var law = configuredOvergrowthBossStart
+                ? QueryOvergrowthBossEncounter(pending.Request.Ordinal)
+                : QueryUnderdocksBossEncounter(pending.Request.Ordinal);
             if (law.SiteId != pending.Request.SiteId
                 || law.OperationKind != pending.Request.OperationKind
                 || law.OwnerId != pending.Request.OwnerId
@@ -29,11 +43,15 @@ public static partial class ChanceLawEngineV111
                 || !law.Outcomes.Select(outcome => outcome.OutcomeId)
                     .SequenceEqual(bossPool.Select(id => "encounter:" + id),
                         StringComparer.Ordinal)
-                || !ControlledRunActionTraceV111
-                    .MatchesUnderdocksBossCandidateLabels(
-                        pending.CandidateLabels))
+                || !(configuredOvergrowthBossStart
+                    ? ControlledRunActionTraceV111
+                        .MatchesOvergrowthBossCandidateLabels(
+                            pending.CandidateLabels)
+                    : ControlledRunActionTraceV111
+                        .MatchesUnderdocksBossCandidateLabels(
+                            pending.CandidateLabels)))
                 throw new InvalidDataException(
-                    "Underdocks boss Chance Law differs from its controlled run-start support.");
+                    "Act 1 boss Chance Law differs from its controlled run-start support.");
             return law with { EventId = pending.ChanceEventId };
         }
         if (QueryControlledRunActionSemanticLaw(

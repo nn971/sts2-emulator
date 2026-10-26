@@ -4391,21 +4391,36 @@ public sealed partial class PrototypeGameEngine
             && ControlledRunActionEngineV111
                 .IsConfiguredNativeReferenceNatureRunStartSource(
                     partialState);
-        if (configuredNativeRunStart
+        var configuredUnderdocksBossStart = configuredNativeRunStart
             && ControlledRunActionEngineV111
                 .IsConfiguredNativeReferenceNatureUnderdocksRunStartSource(
-                    partialState))
+                    partialState);
+        var configuredOvergrowthBossStart = configuredNativeRunStart
+            && ControlledRunActionEngineV111
+                .IsConfiguredNativeReferenceNatureOvergrowthRunStartSource(
+                    partialState);
+        if (configuredUnderdocksBossStart || configuredOvergrowthBossStart)
         {
-            var bossPool = PrototypeNativeUnderdocks.NativeBossEncounterIds;
+            var bossPool = configuredOvergrowthBossStart
+                ? PrototypeContent.OvergrowthBossEncounterPool
+                : PrototypeNativeUnderdocks.NativeBossEncounterIds;
             for (var index = 0; index < decisions.Length; index++)
             {
-                if (ControlledRunActionEngineV111
-                        .IsConfiguredNativeUnderdocksBossRequest(
-                            ControlledStochasticRequestV111.FromIndex(
-                                decisions[index].Request))
-                    && ControlledRunActionTraceV111
+                var request = ControlledStochasticRequestV111.FromIndex(
+                    decisions[index].Request);
+                var isBossRequest = configuredOvergrowthBossStart
+                    ? ControlledRunActionEngineV111
+                        .IsConfiguredNativeOvergrowthBossRequest(request)
+                    : ControlledRunActionEngineV111
+                        .IsConfiguredNativeUnderdocksBossRequest(request);
+                var labelsMatch = configuredOvergrowthBossStart
+                    ? ControlledRunActionTraceV111
+                        .MatchesOvergrowthBossCandidateLabels(
+                            decisionCandidateLabels[index])
+                    : ControlledRunActionTraceV111
                         .MatchesUnderdocksBossCandidateLabels(
-                            decisionCandidateLabels[index]))
+                            decisionCandidateLabels[index]);
+                if (isBossRequest && labelsMatch)
                     decisionCandidateLabels[index] =
                         (string[])bossPool.Clone();
             }

@@ -256,7 +256,8 @@ public sealed record ControlledRunActionTraceV111(
                     : ControlledEventChoiceReplayV111
                         .IsRunActionShovelSite(request.SiteId);
             var prefixOwner = isOvergrowthBossDraw
-                ? "run:act:1:boss_pool:" + CanonicalJson.Sha256(labels)
+                ? "run:act:1:boss_pool:" + CanonicalJson.Sha256(
+                    PrototypeContent.OvergrowthBossEncounterPool)
                 : isUnderdocksBossDraw
                     ? "act:1:underdocks:boss_pool:" + CanonicalJson.Sha256(
                         PrototypeNativeUnderdocks.NativeBossEncounterIds)
@@ -291,8 +292,12 @@ public sealed record ControlledRunActionTraceV111(
                 ControlledStochasticChanceReplayV111.CandidateLabelsMatch(
                     labels, Enumerable.Range(0, labels.Length).Select(index =>
                         index.ToString(CultureInfo.InvariantCulture)).ToArray());
-            var validUnderdocksBossLabels = !isUnderdocksBossDraw
-                || MatchesUnderdocksBossCandidateLabels(labels);
+            var validBossLabels = !isOvergrowthBossDraw
+                && !isUnderdocksBossDraw
+                || (isOvergrowthBossDraw
+                    ? MatchesActOneBossCandidateLabels(
+                        labels, PrototypeContent.OvergrowthBossEncounterPool)
+                    : MatchesUnderdocksBossCandidateLabels(labels));
             if (decision.ProviderMode != "controlled-v111"
                 || decision.NativeCursorBefore is not null
                 || decision.NativeCursorAfter is not null
@@ -302,7 +307,7 @@ public sealed record ControlledRunActionTraceV111(
                 || !request.OrderedCandidates.SequenceEqual(prefixCandidates)
                 || (labels.Length != request.SupportCount && !omittedLabels)
                 || !numericLabels
-                || !validUnderdocksBossLabels
+                || !validBossLabels
                 || labels.Any(string.IsNullOrWhiteSpace))
                 throw new InvalidDataException(
                     "Controlled run-action transcript contains an invalid outcome.");
@@ -482,7 +487,17 @@ public sealed record ControlledRunActionTraceV111(
     internal static bool MatchesUnderdocksBossCandidateLabels(
         string[]? labels)
     {
-        var bossPool = PrototypeNativeUnderdocks.NativeBossEncounterIds;
+        return MatchesActOneBossCandidateLabels(
+            labels, PrototypeNativeUnderdocks.NativeBossEncounterIds);
+    }
+
+    internal static bool MatchesOvergrowthBossCandidateLabels(
+        string[]? labels) => MatchesActOneBossCandidateLabels(
+            labels, PrototypeContent.OvergrowthBossEncounterPool);
+
+    private static bool MatchesActOneBossCandidateLabels(
+        string[]? labels, string[] bossPool)
+    {
         return ControlledStochasticChanceReplayV111.CandidateLabelsMatch(
                 labels, bossPool)
             || ControlledStochasticChanceReplayV111.CandidateLabelsMatch(
@@ -620,6 +635,10 @@ public sealed record PrototypeControlledRunActionContinuationV111(
             ControlledRunActionEngineV111
                 .IsConfiguredNativeReferenceNatureUnderdocksRunStartSource(
                     state);
+        var configuredOvergrowthStart =
+            ControlledRunActionEngineV111
+                .IsConfiguredNativeReferenceNatureOvergrowthRunStartSource(
+                    state);
         string expectedSite;
         string expectedStream;
         string expectedOwner;
@@ -635,10 +654,6 @@ public sealed record PrototypeControlledRunActionContinuationV111(
         {
             case "start_run":
             {
-                var configuredOvergrowthStart =
-                    ControlledRunActionEngineV111
-                        .IsConfiguredNativeReferenceNatureOvergrowthRunStartSource(
-                            state);
                 var configuredNativeStart = configuredUnderdocksStart
                     || configuredOvergrowthStart;
                 if (state.Phase != RunPhase.RunStart
@@ -1050,6 +1065,11 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                 .BossEncounterIndexSiteId)
             pendingLabelsMatch = ControlledRunActionTraceV111
                 .MatchesUnderdocksBossCandidateLabels(PendingCandidateLabels);
+        if (!pendingLabelsMatch && configuredOvergrowthStart
+            && PendingRequest.SiteId ==
+                "run.encounter.overgrowth_boss.index_draw")
+            pendingLabelsMatch = ControlledRunActionTraceV111
+                .MatchesOvergrowthBossCandidateLabels(PendingCandidateLabels);
         if ((!mapNodeRequest && MapNodeId is not null)
             || (!(shopPurchaseRequest || rewardRelicRequest ||
                     relicDeckTransformRequest || restHealRewardRequest)
@@ -1193,7 +1213,8 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                     : ControlledEventChoiceReplayV111
                         .IsRunActionShovelSite(request.SiteId);
             var prefixOwner = isOvergrowthBossDraw
-                ? "run:act:1:boss_pool:" + CanonicalJson.Sha256(labels)
+                ? "run:act:1:boss_pool:" + CanonicalJson.Sha256(
+                    PrototypeContent.OvergrowthBossEncounterPool)
                 : isUnderdocksBossDraw
                     ? "act:1:underdocks:boss_pool:" + CanonicalJson.Sha256(
                         PrototypeNativeUnderdocks.NativeBossEncounterIds)
@@ -1225,9 +1246,13 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                 ControlledStochasticChanceReplayV111.CandidateLabelsMatch(
                     labels, Enumerable.Range(0, labels.Length).Select(index =>
                         index.ToString(CultureInfo.InvariantCulture)).ToArray());
-            var validUnderdocksBossLabels = !isUnderdocksBossDraw
-                || ControlledRunActionTraceV111
-                    .MatchesUnderdocksBossCandidateLabels(labels);
+            var validBossLabels = !isOvergrowthBossDraw
+                && !isUnderdocksBossDraw
+                || (isOvergrowthBossDraw
+                    ? ControlledRunActionTraceV111
+                        .MatchesOvergrowthBossCandidateLabels(labels)
+                    : ControlledRunActionTraceV111
+                        .MatchesUnderdocksBossCandidateLabels(labels));
             if (decision.ProviderMode != "controlled-v111"
                 || decision.NativeCursorBefore is not null
                 || decision.NativeCursorAfter is not null
@@ -1237,7 +1262,7 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                 || !request.OrderedCandidates.SequenceEqual(prefixCandidates)
                 || (request.SupportCount != labels.Length && !omittedLabels)
                 || !numericLabels
-                || !validUnderdocksBossLabels
+                || !validBossLabels
                 || labels.Any(string.IsNullOrWhiteSpace))
                 throw new InvalidDataException(
                     "Controlled run-action decision prefix is malformed.");
