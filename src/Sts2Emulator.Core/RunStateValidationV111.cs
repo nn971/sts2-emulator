@@ -763,10 +763,16 @@ public sealed partial record RunState
                 || PrototypeNativeUnderdocks.SupportedBossEncounterIds.Contains(
                     encounter.Id, StringComparer.Ordinal));
 
+        // A named fixed-combat fixture may choose an otherwise zero-weight
+        // registered encounter before traversing any map node. It has no
+        // map-floor eligibility or generated-pool requirement, but must still
+        // match the declared room and act. Ordinary map combats always have
+        // a current node and retain the strict eligibility gate.
+        bool isolatedFixedEncounter = world.Map.CurrentNodeId is null;
         if (encounter.RoomType != world.ActiveRoom
             || world.Act < encounter.MinAct
             || world.Act > encounter.MaxAct
-            || world.Floor < encounter.MinFloor
+            || !isolatedFixedEncounter && (world.Floor < encounter.MinFloor
             || world.Floor > encounter.MaxFloor
             || (encounter.Weight <= 0
                 && !promotedOvergrowthEncounter
