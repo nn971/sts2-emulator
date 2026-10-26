@@ -6296,3 +6296,10 @@ queue, and saved `CardPlayed` completion before using the existing target
 owner. This retains the current autoplay and automatic-pipeline boundaries; no
 schema changed. Static source review, Core Release build, and `git diff --check`
 passed; no tests were run.
+
+**S4 Volley target-source validation increment (2026-10-26):** Volley targets
+now validate the exact X-cost random-hit effect, supported enchantment, manual
+source-card series and destination, normalized current hit, remaining random
+hit queue, and single saved `CardPlayed` completion before using the existing
+target owner. No schema changed. Static source review and Core Release build
+passed; no tests were run.

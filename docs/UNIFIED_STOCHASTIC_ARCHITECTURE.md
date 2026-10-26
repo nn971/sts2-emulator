@@ -1834,8 +1834,10 @@ the saved `CardPlayed` continuation, source upgrade level, and remaining-count
 suffix before resuming the next generation.
 
 Volley now admits its random-target action from its physical source-card
-identity. Each paid X hit uses the existing target event after validating the
-manual `CardPlayed` frame and remaining Volley operation sequence.
+identity. Each paid X hit uses the existing target event only after validating
+the exact X-cost random-hit effect, supported enchantment, manual source-card
+series and destination, normalized current hit, remaining random-hit queue,
+and single saved `CardPlayed` completion.
 
 Jack of All Trades now enters its distinct Colorless-card shuffle from its
 physical source-card identity and exact upgraded amount, reusing the existing

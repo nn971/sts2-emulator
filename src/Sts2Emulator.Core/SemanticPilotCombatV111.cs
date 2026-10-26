@@ -5600,27 +5600,72 @@ public static class SemanticPilotCombatEngineV111
         CombatState? combat, PendingCombatChoiceState? choice,
         PrototypeControlledTargetChoiceV111? target)
     {
-        if (combat is null || target is not { Kind: "effect_random_enemy",
-                SlyCardInstanceId: null, AutoPlayCardInstanceId: null } ||
-            choice is not { ChoiceId: "controlled_random_target",
-                SourceCardInstanceId: { } sourceCardInstanceId,
-                CompletionEvents: [],
-                OuterChoiceContinuation: { } continuation } ||
-            target.EligibleEnemyInstanceIds.Length == 0)
+        if (combat is null || target is not
+                { Kind: "effect_random_enemy",
+                  SlyCardInstanceId: null,
+                  AutoPlayCardInstanceId: null } ||
+            choice is not
+                { ChoiceId: "controlled_random_target",
+                  SourceCardInstanceId: { } sourceCardInstanceId,
+                  SourceCardDestination: var sourceCardDestination,
+                  CompletionEvents: [],
+                  OuterChoiceContinuation: { } continuation } ||
+            continuation is not
+                { SourceCardInstanceId: { } continuationSourceCardId,
+                  SourceCardDestination: var continuationSourceCardDestination,
+                  Operations: { Length: > 0 } operations,
+                  PendingDiscardEvents: [],
+                  PendingSlyCardInstanceIds: [],
+                  CompletionEvents: [{ } completion],
+                  EventDispatchContinuation: null,
+                  Parent: null,
+                  RemoveSourceCardOnCompletion: false,
+                  SourceCardAlreadyMoved: false,
+                  CompletePlayerHandCleanup: false,
+                  CardPlaySeries: { } series } ||
+            target.EligibleEnemyInstanceIds.Length == 0 ||
+            continuationSourceCardId != sourceCardInstanceId ||
+            continuation.SourceCardInstanceId != sourceCardInstanceId ||
+            sourceCardDestination != continuationSourceCardDestination ||
+            sourceCardDestination is not
+                (PrototypeCardZone.DiscardPile or PrototypeCardZone.DrawPile) ||
+            series.SourceCardInstanceId != sourceCardInstanceId ||
+            series.SourceCardDestination != sourceCardDestination ||
+            series.TargetEnemyId is not null || series.IsAutoPlay ||
+            series.PlayCount <= 0 || series.NextPlayIndex <= 0 ||
+            series.NextPlayIndex > series.PlayCount ||
+            series.EnergySpent <= 0 ||
+            operations.Length > series.EnergySpent ||
+            completion.IsAutoPlay ||
+            continuation.MoveSourceCardOnCompletion !=
+                !series.HasRemainingExecutions)
             return false;
+
         var sourceCard = combat.Cards.SingleOrDefault(card =>
             card.InstanceId == sourceCardInstanceId &&
             card.CardId == "proto.colorless.volley");
-        if (sourceCard is null)
+        if (sourceCard is null ||
+            (sourceCard.Enchantment is not null &&
+             sourceCard.Enchantment.Kind !=
+                PrototypeCardEnchantmentKind.TezcatarasEmber))
             return false;
-        var series = continuation.CardPlaySeries;
-        if (series is null || series.SourceCardInstanceId != sourceCardInstanceId ||
-            series.IsAutoPlay || series.NextPlayIndex <= 0 ||
-            series.NextPlayIndex > series.PlayCount ||
-            continuation.Operations.Length == 0 ||
-            continuation.Operations.Length > series.EnergySpent)
+
+        var definition = PrototypeContent.Card(sourceCard.CardId);
+        var expectedEffect = new PrototypeCombatEffectSpec(
+            PrototypeCombatEffectKind.DamageEnemy, 10, 4,
+            Target: PrototypeEffectTarget.RandomEnemy,
+            Repetitions: 0,
+            RepetitionsPerEnergySpent: 1);
+        if (definition.Cost.Kind != PrototypeCardCostKind.X ||
+            definition.Target != PrototypeCardTarget.None ||
+            definition.Type != PrototypeCardType.Attack ||
+            definition.Effects.Length != 1 ||
+            CanonicalJson.Sha256(definition.Effects) !=
+                CanonicalJson.Sha256(new[] { expectedEffect }))
             return false;
-        var damage = 10 + (4 * sourceCard.UpgradeLevel) +
+
+        var damage = expectedEffect.AmountAt(
+                sourceCard.UpgradeLevel, series.EnergySpent) +
             (sourceCard.Enchantment is
                 { Kind: PrototypeCardEnchantmentKind.TezcatarasEmber } ? 3 : 0);
         var firstOperation = new PrototypeQueuedOperation(
@@ -5632,19 +5677,20 @@ public static class SemanticPilotCombatEngineV111
         {
             TargetMode = PrototypeEffectTarget.RandomEnemy
         };
-        return continuation.Operations.Select((operation, index) =>
+        return operations.Select((operation, index) =>
                 CanonicalJson.Sha256(operation) == CanonicalJson.Sha256(
                     index == 0 ? firstOperation : repeatedOperation))
             .All(matches => matches) &&
-            continuation.SourceCardInstanceId == sourceCardInstanceId &&
-            continuation.CompletionEvents.Length == 1 &&
-            continuation.CompletionEvents[0] is
+            completion is
                 { Kind: PrototypeCombatEventKind.CardPlayed,
-                    CardId: "proto.colorless.volley" } &&
-            continuation.CompletionEvents[0].SourceCardInstanceId ==
-                sourceCardInstanceId &&
-            continuation.Parent is null &&
-            continuation.EventDispatchContinuation is null;
+                  CardId: "proto.colorless.volley",
+                  TargetEnemyId: null,
+                  Amount: 0,
+                  FromHandDraw: false,
+                  IsPoweredAttack: true } &&
+            completion.SourceCardInstanceId == sourceCardInstanceId &&
+            completion.PowerApplicationOrderCeiling is { } ceiling &&
+            ceiling <= combat.NextPowerApplicationOrder - 1;
     }
 
     private static bool IsTrashHeapRipAndTearRandomTargetChoice(
