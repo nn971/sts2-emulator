@@ -5,14 +5,14 @@ namespace Sts2Emulator.Core.Tests;
 public sealed class PrototypePowerCardCompletionLifecycleTests
 {
     // A Power is intentionally deleted from combat.Cards when played.
-    // Post-play persistent-enchantment bookkeeping must not look it up after
-    // that deletion; it must also still disable Vigorous on the run deck.
+    // The Attack-only Vigorous bookkeeping must skip that intentional removal
+    // while still disabling Vigorous for an ordinary played Attack.
     [Theory]
     [InlineData("proto.silent.footwork", false)]
-    [InlineData("proto.silent.footwork", true)]
     [InlineData("proto.silent.noxious_fumes", false)]
-    [InlineData("proto.silent.noxious_fumes", true)]
-    [InlineData("proto.silent.defend", true)]
+    [InlineData("proto.silent.defend", false)]
+    [InlineData("proto.silent.strike", false)]
+    [InlineData("proto.silent.strike", true)]
     public void PlayingCardCompletesWithoutRequiringRemovedPowerIdentity(
         string cardId, bool vigorous)
     {
