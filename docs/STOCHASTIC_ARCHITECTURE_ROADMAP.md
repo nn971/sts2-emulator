@@ -6433,3 +6433,12 @@ and per-swap physical labels, reusing the existing legacy bounded-index law
 for weights. The site and owner constants now come from Sand Castle's source
 owner. Core Release build, static RNG audit, and `git diff --check` passed;
 no tests were run.
+
+**S6 event-gained relic shuffle identity-law increment (2026-10-26):**
+Beautiful Bracelet and Fur Coat now use the shared relic-shuffle law owner
+alongside Sand Castle. It replays each saved descending prefix against the
+eligible Swift-enchant card instances or current-act Combat/Elite map nodes,
+then exposes `card_instance:<instance_id>` or `map_node:<node_id>` outcomes
+with the existing bounded-index weights. The query validates the saved relic
+effect, site owner, stream, swap order, and identity labels. Core Release
+build, static RNG audit, and `git diff --check` passed; no tests were run.

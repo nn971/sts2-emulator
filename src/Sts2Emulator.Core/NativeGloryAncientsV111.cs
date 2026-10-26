@@ -10,8 +10,11 @@ public static class NativeGloryAncientsV111
 {
     public const string BeautifulBraceletShuffleSiteId =
         "run.relic.beautiful_bracelet.deck_shuffle.swap_index";
+    public const string BeautifulBraceletShuffleOwnerId =
+        "relic:beautiful_bracelet:acquisition";
     public const string FurCoatShuffleSiteId =
         "run.relic.fur_coat.map_node_shuffle.swap_index";
+    public const string FurCoatShuffleOwnerPrefix = "relic:fur_coat:act:";
     public const string BlessedAntlerId = "proto.native.ancient.blessed_antler";
     public const string BeautifulBraceletId = "proto.native.ancient.beautiful_bracelet";
     public const string FurCoatId = "proto.native.ancient.fur_coat";
@@ -251,7 +254,7 @@ public static class NativeGloryAncientsV111
                 rng,
                 "event",
                 BeautifulBraceletShuffleSiteId,
-                "relic:beautiful_bracelet:acquisition",
+                BeautifulBraceletShuffleOwnerId,
                 controlledCandidateLabel: card =>
                     "card-instance:" + card.InstanceId.ToString(
                         CultureInfo.InvariantCulture));
@@ -264,7 +267,7 @@ public static class NativeGloryAncientsV111
             _ = NativeFisherYatesV111.ShuffleInPlace(
                 shuffled, nativeRunRng,
                 new NativeRandomIndexProviderV111(), "run.niche",
-                "relic:beautiful_bracelet:acquisition",
+                BeautifulBraceletShuffleOwnerId,
                 BeautifulBraceletShuffleSiteId,
                 ordinalOffset: (int)ordinal,
                 controlledCandidateLabel: card =>
@@ -313,7 +316,7 @@ public static class NativeGloryAncientsV111
             var bundle = new RngBundle([stream]);
             _ = NativeFisherYatesV111.ShuffleInPlace(
                 candidates, bundle, new NativeRandomIndexProviderV111(),
-                stream.StreamId, $"relic:fur_coat:act:{act}",
+                stream.StreamId, FurCoatShuffleOwnerPrefix + act,
                 FurCoatShuffleSiteId,
                 controlledCandidateLabel: node => node.NodeId);
             if (!controlledEventReplay)
@@ -327,7 +330,7 @@ public static class NativeGloryAncientsV111
                 prototypeRng,
                 "event",
                 FurCoatShuffleSiteId,
-                $"relic:fur_coat:act:{act}",
+                FurCoatShuffleOwnerPrefix + act,
                 controlledCandidateLabel: node => node.NodeId);
         }
 

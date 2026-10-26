@@ -49,14 +49,21 @@ Stone push and lift use their Native event stream on configured Native runs
 and the legacy `event` stream on retained prototype and Native-regional
 fallback routes. Candidate
 labels identify event card instances, card models, potion models, eligible relics,
-and Sand Castle's physical deck-card instances where those identities describe
-the request support; other swap positions and rarity tickets retain numeric
+and the physical card or map-node identities used by Sand Castle, Beautiful
+Bracelet, and Fur Coat; other swap positions and rarity tickets retain numeric
 labels.
 Completed controlled decisions remain in
 `RunState.ControlledEventChoiceHistory`; pending and
 completed transcripts identify `controlled-v111` outcomes and retain
 `UNVERIFIED` outcome provenance. Controlled outcomes do not advance the legacy
 or Native RNG stream.
+
+Pending Chance Laws for Sand Castle and event-gained Beautiful Bracelet
+replay the saved eligible-card shuffle prefix and expose the current physical
+support as `card_instance:<instance_id>` outcomes. Fur Coat uses the same
+prefix validator for current-act Combat and Elite map nodes and exposes
+`map_node:<node_id>` outcomes. All three retain the bounded-index law's
+weights and validate each saved per-swap identity label before mapping it.
 
 Pending event-effect and post-reward modifier-curse responses also include a
 read-only `chanceLaw` and `boundaryFingerprint`. For generic requests on

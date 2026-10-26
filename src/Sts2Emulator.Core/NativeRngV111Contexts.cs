@@ -129,8 +129,22 @@ public static class NativeRngV111Contexts
         if (playerSlot < 0)
             throw new ArgumentOutOfRangeException(nameof(playerSlot));
         return NativeRngV111.CreateContentStream(
-            $"context.content.{modelEntry}.player_{playerSlot}.mixin_{mixin}",
+            PlayerContentStreamId(modelEntry, mixin, playerSlot),
             NativeRngV111.RunSeed(seed), modelEntry,
             unchecked((ulong)playerSlot + mixin));
+    }
+
+    /// <summary>
+    /// Return a player-content context stream identity without deriving its
+    /// seed or reading its cursor. Pure law queries use this to validate the
+    /// declared source namespace.
+    /// </summary>
+    public static string PlayerContentStreamId(
+        string modelEntry, ulong mixin = 0, int playerSlot = 0)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(modelEntry);
+        if (playerSlot < 0)
+            throw new ArgumentOutOfRangeException(nameof(playerSlot));
+        return $"context.content.{modelEntry}.player_{playerSlot}.mixin_{mixin}";
     }
 }
