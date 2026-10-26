@@ -283,6 +283,7 @@ public sealed partial class PrototypeGameEngine
         if (cursor is null ||
             !cursor.Stochastic.IsAtSemanticHandDrawContinuationBoundary(
                 cursor.Mechanics) ||
+            (!activeHandDraw && !beforeHandDraw) ||
             pending is null || pendingChoice?.ChoiceId !=
                 "controlled_random_pile_card" ||
             pendingChoice.OuterChoiceContinuation is not { } continuation ||
@@ -342,13 +343,72 @@ public sealed partial class PrototypeGameEngine
         var prototypeRng = run.Stochastic.PrototypeRng;
         var resumedEvent = ResumeChoiceResolutionContinuation(
             run.Player, combat, prototypeRng, continuation);
-        if (resumedEvent.Combat.PendingChoice is not null ||
-            resumedEvent.Combat.PendingKnowledgeDemonChoice is not null)
+        var resumedCombat = resumedEvent.Combat;
+        bool taggedDrawHookChoice = false;
+        if (resumedCombat.PendingKnowledgeDemonChoice is not null)
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=" + choiceSite +
-                " operation=nested_choice_after_random_pile_card");
+                " operation=knowledge_demon_after_random_pile_card");
+        if (resumedCombat.PendingChoice is { } nextChoice)
+        {
+            var childClassification =
+                SemanticDrawHookChoiceEngineV111
+                    .ClassifyAutomaticHandDrawChildBoundary(
+                        resumedCombat, nextChoice, beforeHandDraw);
+            var childKind = childClassification.Kind;
+            bool hasTaggedChildChoice =
+                childClassification.HasTaggedChildChoice;
+            if (childKind ==
+                    SemanticDrawHookChoiceEngineV111
+                        .AutomaticHandDrawChildKindV111.None &&
+                hasTaggedChildChoice)
+                throw new NotSupportedException(
+                    "UNSUPPORTED_SEMANTIC_DECK site=" + choiceSite +
+                    " operation=nested_controlled_choice_after_random_pile_card");
+
+            if (childKind ==
+                    SemanticDrawHookChoiceEngineV111
+                        .AutomaticHandDrawChildKindV111.RandomTarget &&
+                activeHandDraw)
+            {
+                resumedCombat = resumedCombat with
+                {
+                    PendingChoice = nextChoice with
+                    {
+                        AutomaticSemanticDrawTargetChoice = true
+                    }
+                };
+            }
+            else if (childKind ==
+                        SemanticDrawHookChoiceEngineV111
+                            .AutomaticHandDrawChildKindV111.None &&
+                     !hasTaggedChildChoice)
+            {
+                resumedCombat = resumedCombat with
+                {
+                    PendingChoice = nextChoice with
+                    {
+                        AutomaticSemanticDrawHookChoice = true
+                    }
+                };
+                taggedDrawHookChoice = true;
+            }
+        }
         var afterHook = PublishDrawMechanicsAndPrototypeRng(
-            run, resumedEvent.Player, resumedEvent.Combat, prototypeRng);
+            run, resumedEvent.Player, resumedCombat, prototypeRng);
+        if (taggedDrawHookChoice &&
+            SemanticDrawHookChoiceEngineV111.DescribePending(afterHook)
+                is null)
+            throw new InvalidDataException(
+                "Resumed draw-hook action has no semantic source event.");
+        if (afterHook.World?.Combat?.PendingChoice is not null)
+        {
+            var childKind = SemanticDrawHookChoiceEngineV111
+                .ClassifyAutomaticHandDrawChild(afterHook);
+            SemanticDrawHookChoiceEngineV111
+                .ValidateClassifiedChildBoundary(
+                    afterHook, childKind, requireSemanticEvent: true);
+        }
         return ResumeSemanticAutomaticHandDrawAfterNestedChoice(
             run, afterHook, null, "random pile-card",
             activeHandDraw ? savedRequested : null,
