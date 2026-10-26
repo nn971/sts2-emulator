@@ -1627,6 +1627,9 @@ reuse that captured view. The projection distinguishes an action-only
 `CardDrawn` hook owned by an active draw from one owned by the surrounding
 pipeline, so both retain their existing resume paths. It is not serialized;
 typed choice owners still validate their source support and apply mechanics.
+`SemanticCombatDrawPendingEventsV111.HasPendingBoundary` owns the matching
+active-draw completion predicate, so `AtBoundary` uses the same typed event
+projection that validation and selected-choice dispatch inspect.
 
 The semantic draw stochastic owner also records random free-attack model
 selections reached from an active `CardDrawn` or pre-draw hook. The selected

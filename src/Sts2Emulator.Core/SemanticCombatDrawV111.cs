@@ -19,7 +19,17 @@ internal sealed record SemanticCombatDrawPendingEventsV111(
     SemanticCardTransformEventV111? CardTransform,
     SemanticCardShortlistEventV111? CardShortlist,
     SemanticCostEventV111? RandomHandCost,
-    SemanticHandCostSelectionEventV111? HandCostSelection);
+    SemanticHandCostSelectionEventV111? HandCostSelection)
+{
+    public bool HasPendingBoundary => PendingDraw is not null ||
+        RandomPileCard is not null || Cost is not null ||
+        DrawHookChoice is not null || StratagemSelection is not null ||
+        Target is not null || DrawInsertion is not null ||
+        GeneratedCard is not null || PotionGeneration is not null ||
+        PoolShuffle is not null || CardSelection is not null ||
+        CardTransform is not null || CardShortlist is not null ||
+        RandomHandCost is not null || HandCostSelection is not null;
+}
 
 /// <summary>
 /// A provenance-replayable, narrowly scoped semantic draw segment. The source
@@ -186,22 +196,7 @@ public sealed record SemanticCombatDrawV111(
         {
             var pending = SemanticCombatDrawEngineV111
                 .DescribePendingEvents(this);
-            return pending.PendingDraw is null &&
-                pending.RandomPileCard is null &&
-                pending.Cost is null &&
-                pending.DrawHookChoice is null &&
-                pending.StratagemSelection is null &&
-                pending.Target is null &&
-                pending.DrawInsertion is null &&
-                pending.GeneratedCard is null &&
-                pending.PotionGeneration is null &&
-                pending.PoolShuffle is null &&
-                pending.CardSelection is null &&
-                pending.CardTransform is null &&
-                pending.CardShortlist is null &&
-                pending.RandomHandCost is null &&
-                pending.HandCostSelection is null &&
-                RemainingCount == 0;
+            return !pending.HasPendingBoundary && RemainingCount == 0;
         }
     }
     // The provider's transcript survives across turns. Only decisions

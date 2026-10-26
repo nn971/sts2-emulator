@@ -6377,3 +6377,10 @@ tagged result through one shared owner. Each adapter retains validation of its
 saved progress and selection of the controlled suspension policy. Core Release
 build, static RNG audit, and `git diff --check` passed; no tests were added or
 run.
+
+**S4 semantic draw pending-boundary projection increment (2026-10-26):**
+`SemanticCombatDrawPendingEventsV111` now owns the aggregate pending-boundary
+predicate used by `SemanticCombatDrawV111.AtBoundary`. The completion gate
+therefore follows the same typed event projection as end-turn validation and
+choice dispatch. Core Release build and `git diff --check` passed; no tests
+were added or run.
