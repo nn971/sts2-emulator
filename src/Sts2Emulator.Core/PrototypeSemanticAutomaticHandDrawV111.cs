@@ -96,7 +96,7 @@ public sealed partial class PrototypeGameEngine
                 if (handDraw.RequireRequestedCount() != requested)
                     throw new InvalidDataException(
                         $"Semantic {choiceKind.ToLowerInvariant()} continuation changed the automatic hand-draw request.");
-                return handDraw.EnsurePipelineBoundary();
+                return handDraw;
             }
             return PrototypeDrawCardsResumeResultV111.ForHandDraw(
                 resumed, requested, remaining, boundary);
@@ -109,8 +109,7 @@ public sealed partial class PrototypeGameEngine
                 combat.PendingKnowledgeDemonChoice is null &&
                 combat.Stochastic.SemanticDeck?.Pending is null)
                 return ControlledChanceGuardV111.ExecuteGuarded(
-                    () => ResumeSemanticBeforeHandDrawActionChoice(resumed))
-                    .EnsurePipelineBoundary();
+                    () => ResumeSemanticBeforeHandDrawActionChoice(resumed));
             return PrototypeDrawCardsResumeResultV111.ForHandDraw(
                 resumed, 0, 0, boundary);
         }

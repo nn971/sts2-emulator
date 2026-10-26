@@ -144,10 +144,9 @@ internal static class SemanticChoiceResumeV111
 
         var decision = SemanticDrawHookChoiceEngineV111.Select(
             checkpoint, pending, actionId);
-        var resumed = Resume(checkpoint, decision)
-            .EnsurePipelineBoundary();
+        var resumed = Resume(checkpoint, decision);
         return (ResumeHandDrawChoiceProgress(
-                checkpoint, resumed.Run, resumed.Boundary, "draw-hook",
+                checkpoint, resumed.Run, resumed.PipelineBoundary, "draw-hook",
                 pending.AutomaticHandDraw, requested, remaining,
                 drawnBefore, publishStandaloneRequestedCount: true),
             decision);
@@ -258,7 +257,7 @@ internal static class SemanticChoiceResumeV111
         progress = ControlledChanceGuardV111.ExecuteGuarded(
             () => PrototypeGameEngine.ResumeSemanticRandomPileCardChoice(
                 checkpoint.Fork(), ownedDecision));
-        return (progress.EnsurePipelineBoundary(),
+        return (progress,
             ownedDecision.Event.SiteId);
     }
 

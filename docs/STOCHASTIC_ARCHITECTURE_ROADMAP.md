@@ -11,6 +11,15 @@ from stochastic trace coverage, so it does not imply route RNG annotation or
 Native parity. Older capture versions remain readable. Core Release build
 passed with zero warnings or errors; no tests were run.
 
+**S4 semantic automatic draw boundary handoff increment (2026-10-26):**
+`ResumeSemanticCombatDrawResult` now constructs automatic hand-draw progress
+through `PrototypeDrawCardsResumeResultV111.ForHandDraw`, so the result owner
+attaches and validates its classified pipeline boundary once. Nested draw-hook
+and random-pile-card resumes carry that boundary through the existing hand-draw
+owner without reclassifying the same run. Standalone draw and generic pipeline
+results retain their own classification path. Core Release build passed with
+zero warnings or errors; no tests were run.
+
 **S4 shared legacy hand-draw Stratagem resume increment (2026-10-26):** Opening and ordinary automatic hand draws now route the legacy `ShuffleSelection` result through one continuation owner. It resumes the same Stratagem-plus-remaining-draw operation suffix and publishes the resulting player/combat mechanics with the advanced prototype RNG in one transition. Nature draw choices retain their typed continuation route. Core Release build and `git diff --check` passed; no tests were run.
 
 **S5 saved-session candidate identity increment (2026-10-26):** The shared

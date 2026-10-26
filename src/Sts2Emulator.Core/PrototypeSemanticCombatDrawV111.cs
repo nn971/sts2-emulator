@@ -222,9 +222,14 @@ public sealed partial class PrototypeGameEngine
         var draw = CreateSemanticDrawResultFrame(
             drawn.RemainingCount, fromHandDraw, eventDepth,
             automaticHandDrawRequested is not null);
-        return ResolveControlledSemanticDrawResult(
+        var progress = ResolveControlledSemanticDrawResult(
             segment, draw, continuation: null,
             automaticHandDrawRequested, recycleSite, recycleOperation);
+        return automaticHandDrawRequested is { } requested
+            ? PrototypeDrawCardsResumeResultV111.ForHandDraw(
+                progress.Run, requested, progress.RemainingCount,
+                progress.PipelineBoundary)
+            : progress;
     }
 
     internal static (PrototypeDrawCardsResumeResultV111 Progress,
