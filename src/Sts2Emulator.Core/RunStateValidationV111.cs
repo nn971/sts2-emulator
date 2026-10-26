@@ -782,7 +782,7 @@ public sealed partial record RunState
                     or PrototypeNativeLaterActMap.GloryProfileId
                     or PrototypeGoldenPathMapV111.ProfileId
                     && ExperimentalSilentThreeActRouteV111.ContainsEncounter(
-                        encounter.Id, world.Act))))
+                        encounter.Id, world.Act)))))
         {
             throw new InvalidOperationException(
                 $"Encounter '{encounter.Id}' is ineligible at act {world.Act}, floor {world.Floor}.");
