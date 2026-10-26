@@ -9440,7 +9440,8 @@ public sealed partial class PrototypeGameEngine
                 resolved = ApplyVigorousAfterCardPlayed(
                     resolved.Player,
                     resolved.Combat,
-                    series.SourceCardInstanceId);
+                    series.SourceCardInstanceId,
+                sourceRemovedAfterPlay: series.RemoveSourceCardOnCompletion);
             }
             return resolved;
         }
@@ -9455,7 +9456,8 @@ public sealed partial class PrototypeGameEngine
             return ApplyVigorousAfterCardPlayed(
                 finalized.Player,
                 finalized.Combat,
-                series.SourceCardInstanceId);
+                series.SourceCardInstanceId,
+                sourceRemovedAfterPlay: series.RemoveSourceCardOnCompletion);
         }
 
         return ResolveCardPlaySeries(
@@ -9469,9 +9471,18 @@ public sealed partial class PrototypeGameEngine
         ApplyVigorousAfterCardPlayed(
             PlayerState player,
             CombatState combat,
-            long sourceCardInstanceId)
+            long sourceCardInstanceId,
+        bool sourceRemovedAfterPlay = false)
     {
-        var card = RequireCombatCard(combat, sourceCardInstanceId);
+        var card = combat.Cards.FirstOrDefault(
+            item => item.InstanceId == sourceCardInstanceId);
+        if (card is null)
+        {
+            if (sourceRemovedAfterPlay)
+                return (player, combat);
+            throw new InvalidOperationException(
+                $"Combat card instance {sourceCardInstanceId} is missing.");
+        }
         if (card.PersistentCardInstanceId is not { } persistentId
             || card.Enchantment is not
                 {
@@ -13541,7 +13552,8 @@ public sealed partial class PrototypeGameEngine
                 resolved = ApplyVigorousAfterCardPlayed(
                     finalized.Player,
                     finalized.Combat,
-                    series.SourceCardInstanceId);
+                    series.SourceCardInstanceId,
+                sourceRemovedAfterPlay: series.RemoveSourceCardOnCompletion);
             }
             else
             {
@@ -13572,7 +13584,8 @@ public sealed partial class PrototypeGameEngine
             resolved = ApplyVigorousAfterCardPlayed(
                 resolved.Player,
                 resolved.Combat,
-                completedSeries.SourceCardInstanceId);
+                completedSeries.SourceCardInstanceId,
+                sourceRemovedAfterPlay: completedSeries.RemoveSourceCardOnCompletion);
         }
 
         return continuation.Parent is null
