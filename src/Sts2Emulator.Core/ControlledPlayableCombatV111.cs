@@ -756,13 +756,6 @@ public static class ControlledPlayableCombatEngineV111
             World = run.World! with
             {
                 ActiveRoom = PrototypeRoomType.Combat,
-                // The source TotalFloor belongs to the RNG formation context;
-                // RunWorld.Floor is act-local and cannot receive that global
-                // value. This isolated entry has no traversed map node: choose
-                // the encounter's earliest legal local floor, while keeping
-                // Formation.TotalFloor unchanged for source-seeded RNG.
-                Floor = Math.Max(1, encounterId is null ? 1
-                    : PrototypeContent.Encounter(encounterId).MinFloor),
                 Combat = combat
             }
         };
