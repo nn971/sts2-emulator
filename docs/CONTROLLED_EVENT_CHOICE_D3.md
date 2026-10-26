@@ -132,7 +132,8 @@ The supported event-choice sites are:
   the event-choice prefix
 - `event.potion.fill_empty_slots.model`
 - `potion.uncommon_model.index_draw` for the Potion Courier event choice,
-  bound to its event and choice owner and labeled with potion IDs
+  bound to its event and choice owner; the pending law reuses the ordered
+  implemented Uncommon-potion pool and validates potion-ID labels
 - `relic.acquisition.random_rare_card.model`,
   `relic.acquisition.random_potion.model` and
   `run.potion.fill_empty_slots.model` for random effects triggered by an

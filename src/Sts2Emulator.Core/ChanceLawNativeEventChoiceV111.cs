@@ -1064,6 +1064,12 @@ public static partial class ChanceLawEngineV111
                         pending.EventId, pending.ChoiceId, request.Ordinal)
                     : throw new InvalidDataException(
                         "Legacy event potion law is outside an event-effect continuation."),
+            "potion.uncommon_model.index_draw"
+                => effect is not null
+                    ? QueryControlledEventUncommonPotionModel(
+                        source, effect, request)
+                    : throw new InvalidDataException(
+                        "Legacy Uncommon-potion law is outside an event-effect continuation."),
             "event.potion.fill_empty_slots.model"
                 => effect is not null
                     ? QueryLegacyControlledEventFillPotionSlot(
@@ -1252,6 +1258,30 @@ public static partial class ChanceLawEngineV111
                 "Controlled event law differs from its saved semantic support.");
 
         return law with { EventId = pending.ChanceEventId };
+    }
+
+    private static ChanceLawV111 QueryControlledEventUncommonPotionModel(
+        RunState source,
+        PrototypeControlledEventChoiceContinuationV111 continuation,
+        RandomIndexRequestV111 request)
+    {
+        if (source.Phase != RunPhase.Event || source.World is not { } world ||
+            world.Event?.EventId != continuation.EventId)
+            throw new InvalidDataException(
+                "Legacy Uncommon-potion law is outside its saved event boundary.");
+        if (ControlledEventChoiceEffectKind(continuation) !=
+                PrototypeRunEffectKind.GainRandomUncommonPotion)
+            throw new InvalidDataException(
+                "Legacy Uncommon-potion law is outside its supported event effect.");
+        if (request.StreamId != "event" ||
+            request.OperationKind != "choose_index" || request.Ordinal < 0)
+            throw new InvalidDataException(
+                "Legacy Uncommon-potion law has an invalid request shape.");
+
+        var ownerPrefix = "event:" + continuation.EventId + ":choice:" +
+            continuation.ChoiceId + ":uncommon_potion";
+        return ChanceLawEngineV111.QueryLegacyUncommonPotionModel(
+            request.StreamId, ownerPrefix, request.Ordinal);
     }
 
     private static ChanceLawV111 QueryControlledLegacyEventRewardCardLaw(

@@ -1211,7 +1211,7 @@ remain separate evidence.
 - The legacy `event.unknown_room.odds.ticket` query exposes all 1,000 request indices for its caller-declared Event owner. It fixes the support and operation but does not map tickets to room outcomes or verify the source `NextFloat` odds; the legacy approximation remains `UNVERIFIED`.
 - The retained legacy combat-potion drop ticket has a separate offered/not-offered law for Combat, Elite, or Boss reward context when the caller declares that potion acquisition is allowed. It binds act, floor, room, and Rewards ordinal; the equal two-ticket model remains `UNVERIFIED` and is consumed by the atomic combat reward session on retained legacy runs.
 - The retained legacy `reward.random_potion.model` query returns the ordered prototype potion pool with equal index weights after callers declare a successful drop and available potion capacity. It binds act, floor, room, pool fingerprint, and Rewards ordinal; pool completeness and Native parity remain `UNVERIFIED`.
-- The legacy `potion.uncommon_model.index_draw` query returns identities from the ordered implemented Uncommon-potion pool for a caller-declared `event` or `reward` stream, owner prefix, and ordinal. The Potion Courier event choice binds its request owner to the event and choice and exposes potion-ID labels through the saved continuation. The query binds the exact pool fingerprint and leaves pool completeness and equal-index weighting `UNVERIFIED`.
+- The legacy `potion.uncommon_model.index_draw` query returns identities from the ordered implemented Uncommon-potion pool for a caller-declared `event` or `reward` stream, owner prefix, and ordinal. The Potion Courier event choice binds its request owner to the event and choice; its pending law rebuilds that same ordered pool and validates the saved potion-ID labels. The query binds the exact pool fingerprint and leaves pool completeness and equal-index weighting `UNVERIFIED`.
 - The legacy `potion.model_within_rarity.index_draw` query returns the source-ordered candidate identities after a caller declares rarity, exclusions, stream (`event`, `reward`, or `shop`), owner prefix, and ordinal. It derives the same owner suffix from the remaining-pool fingerprint; candidate completeness and equal-index weighting remain `UNVERIFIED`.
 - The legacy `potion.uniform_model.index_draw` query returns identities from the full ordered potion pool for a declared `event` or `reward` stream, owner prefix, and ordinal. It binds the same pool fingerprint into the request owner; event-choice controls Wellspring's Native-shaped `bottle` route and the combat reward session controls the registered retained reward-stream request. Source-pool completeness and equal-index weighting remain `UNVERIFIED`.
 - The generic legacy `event.reward.random_potion.model` query returns identities from the ordered prototype potion pool for caller-declared `event_id`, selected `action_id` (choice ID), and ordinal. Wellspring and Whispering Hollow use separate Native-shaped routes; the existing event-choice continuation controls their typed uniform or rarity-and-model requests with event-and-choice owner IDs and potion-ID model labels. Direct typed queries describe those supports; equal-index laws, Native source-pool behavior, and source parity remain `UNVERIFIED`.
@@ -2343,6 +2343,13 @@ source pool, and request owner; Phial Holster also replays its saved
 potion-slot prefix before binding the next pick. Native index masses remain
 `SOURCE_VERIFIED` for each declared support, while legacy equal-index weights,
 game-pool fidelity, and cursor parity remain open.
+
+Potion Courier's controlled `GainRandomUncommonPotion` continuation now routes
+`potion.uncommon_model.index_draw` through the retained Uncommon-potion Chance
+Law. The query validates the saved Event boundary, effect kind, `event` stream,
+and event-choice owner, then checks the ordered index support and potion-ID
+labels against the law's pool. Pool completeness, equal-index weighting, and
+stream parity remain `UNVERIFIED`.
 
 ## Reading order
 

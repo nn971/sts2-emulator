@@ -6405,3 +6405,11 @@ and request-count compatibility against an active DrawPlayerHand cursor before
 routing supported source-stage and saved-stage boundaries to their adapters. The provider adapters retain
 their distinct boundary behavior and pipeline handoff. Core Release build and
 `git diff --check` passed; no tests were added or run.
+
+**S6 Potion Courier pending-law dispatch increment (2026-10-26):** Controlled
+Potion Courier continuations now route their uncommon-potion index request
+through the retained Uncommon-potion Chance Law. The saved Event boundary,
+effect kind, `event` stream, owner prefix, ordered index support, and potion-ID
+labels are validated against the law. Pool completeness and equal-index
+weighting remain unverified. Core Release build and `git diff --check` passed;
+no tests were added or run.
