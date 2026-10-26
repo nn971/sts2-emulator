@@ -5545,6 +5545,16 @@ public static class SemanticPilotCombatEngineV111
                 repeatedTargetCardId))
             throw new InvalidDataException(
                 "Repeated-card target is outside its supported card-play continuation.");
+        if (choice?.ControlledTarget is
+                { Kind: "autoplay_random_enemy" } &&
+            choice.SourceCardInstanceId is { } knifeTrapSourceCardId &&
+            combat?.Cards.Any(card =>
+                card.InstanceId == knifeTrapSourceCardId &&
+                card.CardId == "proto.silent.knife_trap") == true &&
+            !IsKnifeTrapAutoplayRandomTargetChoice(
+                combat, choice, choice.ControlledTarget))
+            throw new InvalidDataException(
+                "Knife Trap target is outside its supported exhausted-Shiv continuation.");
         if (IsTingshaDiscardTargetChoice(combat, choice) &&
             !IsTingshaSupportedDiscardTargetChoice(
                 combat, choice, choice?.ControlledTarget))
@@ -5821,6 +5831,122 @@ public static class SemanticPilotCombatEngineV111
             completion.SourceCardInstanceId == sourceCardInstanceId &&
             completion.CardId == cardId &&
             completion.IsPoweredAttack == poweredAttack &&
+            completion.PowerApplicationOrderCeiling is { } ceiling &&
+            ceiling <= combat.NextPowerApplicationOrder - 1;
+    }
+
+    private static bool IsKnifeTrapAutoplayRandomTargetChoice(
+        CombatState? combat, PendingCombatChoiceState? choice,
+        PrototypeControlledTargetChoiceV111? target)
+    {
+        if (combat is null || target is not
+                { Kind: "autoplay_random_enemy",
+                  SlyCardInstanceId: null,
+                  AutoPlayCardInstanceId: { } currentShivId } ||
+            choice is not
+                { ChoiceId: "controlled_random_target",
+                  SourceCardInstanceId: { } sourceCardInstanceId,
+                  SourceCardDestination: var sourceCardDestination,
+                  CompletionEvents: [],
+                  OuterChoiceContinuation: { } continuation } ||
+            continuation is not
+                { SourceCardInstanceId: { } continuationSourceCardId,
+                  SourceCardDestination: var continuationSourceCardDestination,
+                  Operations: { Length: > 0 } operations,
+                  PendingDiscardEvents: [],
+                  PendingSlyCardInstanceIds: [],
+                  CompletionEvents: [{ } completion],
+                  EventDispatchContinuation: null,
+                  Parent: null,
+                  SourceCardAlreadyMoved: false,
+                  CompletePlayerHandCleanup: false,
+                  CardPlaySeries: { } series } ||
+            sourceCardInstanceId != continuationSourceCardId ||
+            continuation.SourceCardInstanceId != sourceCardInstanceId ||
+            sourceCardDestination != continuationSourceCardDestination ||
+            sourceCardDestination is not
+                (PrototypeCardZone.DiscardPile or PrototypeCardZone.DrawPile) ||
+            series.SourceCardInstanceId != sourceCardInstanceId ||
+            series.SourceCardDestination != sourceCardDestination ||
+            series.TargetEnemyId is not { } originalTargetId ||
+            series.IsAutoPlay != completion.IsAutoPlay ||
+            series.PlayCount <= 0 || series.NextPlayIndex <= 0 ||
+            series.NextPlayIndex > series.PlayCount ||
+            continuation.MoveSourceCardOnCompletion !=
+                !series.HasRemainingExecutions ||
+            continuation.RemoveSourceCardOnCompletion)
+            return false;
+
+        var sourceCard = combat.Cards.SingleOrDefault(card =>
+            card.InstanceId == sourceCardInstanceId &&
+            card.CardId == "proto.silent.knife_trap");
+        if (sourceCard is null || sourceCard.Enchantment is not null ||
+            !combat.Enemies.Any(enemy =>
+                enemy.InstanceId == originalTargetId && enemy.Hp <= 0))
+            return false;
+
+        var expectedEffect = new PrototypeCombatEffectSpec(
+            PrototypeCombatEffectKind.AutoPlayTaggedCardsFromZone, 0,
+            AutoPlaySourceZone: PrototypeCardZone.ExhaustPile,
+            RequiredCardTag: "Shiv",
+            UpgradeAutoPlayedCardsOnSourceUpgrade: true);
+        var definition = PrototypeContent.Card(sourceCard.CardId);
+        if (definition.Target != PrototypeCardTarget.Enemy ||
+            definition.Type != PrototypeCardType.Skill ||
+            definition.ExhaustOnUse ||
+            CanonicalJson.Sha256(definition.Effects) !=
+                CanonicalJson.Sha256(new[] { expectedEffect }))
+            return false;
+
+        var upgradeAutoPlayedCards = sourceCard.UpgradeLevel > 0;
+        if (operations[0] is not
+                { Kind: PrototypeCombatEffectKind.AutoPlayCombatCard,
+                  TargetEnemyId: null,
+                  SourceKind: PrototypeEffectSourceKind.Card,
+                  CardInstanceId: { } firstShivId } ||
+            firstShivId != currentShivId ||
+            !combat.PlayCardIds.Contains(currentShivId) ||
+            currentShivId == sourceCardInstanceId)
+            return false;
+
+        var queuedShivIds = new HashSet<long>();
+        for (var index = 0; index < operations.Length; index++)
+        {
+            var operation = operations[index];
+            if (operation is not
+                    { Kind: PrototypeCombatEffectKind.AutoPlayCombatCard,
+                      Amount: 0,
+                      SourceKind: PrototypeEffectSourceKind.Card,
+                      CardInstanceId: { } shivId } ||
+                !combat.PlayCardIds.Contains(shivId) ||
+                shivId == sourceCardInstanceId ||
+                !queuedShivIds.Add(shivId) ||
+                combat.Cards.SingleOrDefault(card =>
+                    card.InstanceId == shivId) is not { } shiv ||
+                !(PrototypeContent.Card(shiv.CardId).Tags ?? []).Contains(
+                    "Shiv", StringComparer.Ordinal))
+                return false;
+
+            var expectedOperation = new PrototypeQueuedOperation(
+                PrototypeCombatEffectKind.AutoPlayCombatCard, 0,
+                TargetEnemyId: index == 0 ? null : originalTargetId,
+                SourceKind: PrototypeEffectSourceKind.Card,
+                UpgradeAutoPlayedCardsBeforePlay:
+                    upgradeAutoPlayedCards,
+                CardInstanceId: shivId);
+            if (CanonicalJson.Sha256(operation) !=
+                CanonicalJson.Sha256(expectedOperation))
+                return false;
+        }
+
+        return completion is
+                { Kind: PrototypeCombatEventKind.CardPlayed,
+                  TargetEnemyId: null,
+                  Amount: 0,
+                  FromHandDraw: false,
+                  IsPoweredAttack: false } &&
+            completion.SourceCardInstanceId == sourceCardInstanceId &&
+            completion.CardId == sourceCard.CardId &&
             completion.PowerApplicationOrderCeiling is { } ceiling &&
             ceiling <= combat.NextPowerApplicationOrder - 1;
     }

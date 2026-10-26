@@ -1910,7 +1910,10 @@ selection or autoplay target continuation. Unmodeled potion mechanics and
 Native target-pool, stream, and cursor parity remain open.
 Knife Trap also enters from its physical source card and reuses the saved
 autoplay-target continuation if an earlier Shiv kills the chosen enemy before
-the remaining Shiv queue finishes.
+the remaining Shiv queue finishes. The pending target validates Knife Trap's
+exact exhausted-Shiv operation, the dead original target, the current and
+remaining physical Shiv identities, their autoplay operations, and the saved
+`CardPlayed` frame before accepting that target.
 Metamorphosis now enters from its physical source card and reuses the existing
 typed generated-Attack model and draw-insertion events. Admission checks the
 manual Exhausting card-play frame, the exact 3 (5 upgraded) operation and its

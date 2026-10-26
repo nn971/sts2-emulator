@@ -6288,3 +6288,11 @@ operation suffix, and `CardPlayed` completion before using the existing target
 owner. Enchanted copies remain outside this narrow check. No schema changed.
 Static source review, Core Release build, and `git diff --check` passed; no
 tests were run.
+
+**S4 Knife Trap autoplay target-source validation increment (2026-10-26):**
+The post-kill autoplay target now validates Knife Trap's exhausted-Shiv source
+effect, dead original target, physical Shiv identities, retargeted autoplay
+queue, and saved `CardPlayed` completion before using the existing target
+owner. This retains the current autoplay and automatic-pipeline boundaries; no
+schema changed. Static source review, Core Release build, and `git diff --check`
+passed; no tests were run.
