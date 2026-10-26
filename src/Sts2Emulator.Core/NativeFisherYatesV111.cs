@@ -60,6 +60,7 @@ public static class NativeFisherYatesV111
         ArgumentNullException.ThrowIfNull(provider);
         ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
         ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
         // The shared Fisher-Yates mechanics also serve legacy prototype
         // shuffles. Keep their caller-bound sites separate from the Native
         // allowlist: authorization here is only for the legacy wrapper.
