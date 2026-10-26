@@ -82,12 +82,14 @@ pool query keyed by `event_id` and the selected choice `action_id`; it does not
 cover Wellspring or Whispering Hollow's separate Native-shaped routes. Their
 typed `potion.uniform_model`, `potion.rarity_roll.ticket`, and
 `potion.model_within_rarity` requests are handled by the saved event-choice
-continuation below. Uniform, rarity-conditioned, and Uncommon-potion model
-requests carry the event and choice in their owner IDs, and model candidates
-expose potion IDs as labels; the 100 rarity-ticket indices remain numeric.
-Direct typed queries can describe the uniform, rarity-ticket, rarity-model,
-and Uncommon-model requests. Equal-index weights, Native source-pool behavior,
-and source parity remain unverified.
+continuation below. Wellspring's uniform model law rebuilds its ordered potion
+pool and validates the event-choice owner and potion-ID labels. Whispering
+Hollow's rarity-model law recovers the current effect's rarity from its saved
+100-way ticket, then validates the ordered tier pool and potion-ID labels;
+the pending rarity ticket itself retains its numeric index support. Direct
+typed queries can describe the uniform, rarity-ticket, rarity-model, and
+Uncommon-model requests. Equal-index weights, Native source-pool behavior, and
+source parity remain unverified.
 The legacy `event.reward.random_rare_card.model` site has the same direct
 query inputs and returns the current prototype Rare-card reward pool.
 The custom event reward potion option also has a direct pool query; callers
@@ -102,9 +104,11 @@ The supported event-choice sites are:
 - `potion.uniform_model.index_draw` for the Wellspring `bottle` choice and
   `potion.rarity_roll.ticket` followed by
   `potion.model_within_rarity.index_draw` for the two Whispering Hollow
-  `gold` choice potions. These Native-shaped event routes use the existing
-  controlled event-choice continuation; their equal-index laws and source
-  pool behavior remain `UNVERIFIED`.
+  `gold` choice potions. Pending uniform and rarity-model queries reuse their
+  existing pool laws and validate saved event/choice owners and potion-ID
+  labels; the rarity ticket keeps its raw numeric support. These Native-shaped
+  event routes use the existing controlled event-choice continuation; their
+  equal-index laws and source pool behavior remain `UNVERIFIED`.
 - `event.reward.offer_potion.model.index_draw`, with the selected event choice
   bound into its owner and potion IDs retained as candidate labels
 - `event.reward.card_bundle.shuffle_swap_index`

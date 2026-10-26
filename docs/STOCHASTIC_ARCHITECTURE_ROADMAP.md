@@ -6413,3 +6413,13 @@ effect kind, `event` stream, owner prefix, ordered index support, and potion-ID
 labels are validated against the law. Pool completeness and equal-index
 weighting remain unverified. Core Release build and `git diff --check` passed;
 no tests were added or run.
+
+**S6 Wellspring and Whispering Hollow potion-law dispatch increment
+(2026-10-26):** Controlled Wellspring `bottle` choices now reuse the ordered
+uniform-potion law, and Whispering Hollow `gold` choices reuse the
+rarity-conditioned model law. The latter reconstructs rarity from the saved
+ticket in the current effect and checks its numeric prefix, owner, and adjacent
+request ordinal before binding the ordered potion support and labels. Raw
+rarity-ticket queries retain numeric support. Pool fidelity and equal-index
+weights remain unverified. Core Release build, static RNG audit, and
+`git diff --check` passed; no tests were run.

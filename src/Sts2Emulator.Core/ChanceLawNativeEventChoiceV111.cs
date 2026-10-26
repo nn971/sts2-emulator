@@ -1064,6 +1064,18 @@ public static partial class ChanceLawEngineV111
                         pending.EventId, pending.ChoiceId, request.Ordinal)
                     : throw new InvalidDataException(
                         "Legacy event potion law is outside an event-effect continuation."),
+            PrototypeNativePotionShop.UniformModelSiteId
+                => effect is not null
+                    ? QueryControlledEventUniformPotionModel(
+                        source, effect, request)
+                    : throw new InvalidDataException(
+                        "Legacy uniform-potion law is outside an event-effect continuation."),
+            PrototypeNativePotionShop.ModelWithinRaritySiteId
+                => effect is not null
+                    ? QueryControlledEventPotionModelWithinRarity(
+                        source, effect, request)
+                    : throw new InvalidDataException(
+                        "Legacy rarity-potion law is outside an event-effect continuation."),
             "potion.uncommon_model.index_draw"
                 => effect is not null
                     ? QueryControlledEventUncommonPotionModel(
@@ -1158,6 +1170,8 @@ public static partial class ChanceLawEngineV111
                 StochasticSiteRegistryV111.RandomPoolDistinctShuffleSiteId or
                 StochasticSiteRegistryV111.EventRewardCardBundleShuffleSiteId or
                 NativePaelRewardsV111.LegionSkinSiteId or
+                PrototypeNativePotionShop.UniformModelSiteId or
+                PrototypeNativePotionShop.ModelWithinRaritySiteId or
                 "event.reward.offer_potion.model.index_draw" or
                 "event.reward.random_modifier_curse.index_draw" => "reward",
             "relic.unowned_random_selection.index_draw" => request.StreamId,
@@ -1282,6 +1296,100 @@ public static partial class ChanceLawEngineV111
             continuation.ChoiceId + ":uncommon_potion";
         return ChanceLawEngineV111.QueryLegacyUncommonPotionModel(
             request.StreamId, ownerPrefix, request.Ordinal);
+    }
+
+    private static ChanceLawV111 QueryControlledEventUniformPotionModel(
+        RunState source,
+        PrototypeControlledEventChoiceContinuationV111 continuation,
+        RandomIndexRequestV111 request)
+    {
+        ValidateControlledEventPotionModelRequest(
+            source, continuation, request);
+        if (continuation.EventId != "proto.native.event.wellspring" ||
+            continuation.ChoiceId != "bottle" ||
+            continuation.NextEffectIndex != 0)
+            throw new InvalidDataException(
+                "Legacy uniform-potion law is outside the Wellspring bottle choice.");
+
+        var ownerPrefix = "event:" + continuation.EventId + ":choice:" +
+            continuation.ChoiceId + ":uniform_potion";
+        return ChanceLawEngineV111.QueryLegacyUniformPotionModel(
+            request.StreamId, ownerPrefix, request.Ordinal);
+    }
+
+    private static ChanceLawV111 QueryControlledEventPotionModelWithinRarity(
+        RunState source,
+        PrototypeControlledEventChoiceContinuationV111 continuation,
+        RandomIndexRequestV111 request)
+    {
+        ValidateControlledEventPotionModelRequest(
+            source, continuation, request);
+        if (continuation.EventId !=
+                "proto.native.event.whispering_hollow" ||
+            continuation.ChoiceId != "gold" ||
+            continuation.NextEffectIndex is not (1 or 2))
+            throw new InvalidDataException(
+                "Legacy rarity-potion law is outside Whispering Hollow's gold choice.");
+
+        var effectDecisions = continuation.Decisions
+            .Skip(continuation.EffectDecisionStartIndex).ToArray();
+        if (effectDecisions.Length != 1)
+            throw new InvalidDataException(
+                "Legacy rarity-potion law has no unique preceding rarity ticket.");
+        var rarityDecision = effectDecisions[0];
+        var decisionCandidateLabels =
+            continuation.DecisionCandidateLabels ??
+            throw new InvalidDataException(
+                "Legacy rarity-potion law has no saved ticket labels.");
+        var rarityLabels = decisionCandidateLabels[
+            continuation.EffectDecisionStartIndex];
+        var ownerPrefix = "event:" + continuation.EventId + ":choice:" +
+            continuation.ChoiceId + ":weighted_potion";
+        var rarityOwner = ownerPrefix + ":rarity";
+        var rarityRequest = rarityDecision.Request;
+        if (rarityRequest.SiteId != PrototypeNativePotionShop.RarityRollSiteId ||
+            rarityRequest.StreamId != request.StreamId ||
+            rarityRequest.OwnerId != rarityOwner ||
+            request.Ordinal <= 0 ||
+            rarityRequest.Ordinal != request.Ordinal - 1 ||
+            rarityRequest.OperationKind != "bounded_integer" ||
+            rarityRequest.BoundedCount != 100 ||
+            rarityRequest.OrderedCandidates.Length != 0 ||
+            rarityDecision.SelectedIndex is < 0 or >= 100 ||
+            !ControlledStochasticChanceReplayV111.CandidateLabelsMatch(
+                rarityLabels,
+                Enumerable.Range(0, 100).Select(index =>
+                    index.ToString(CultureInfo.InvariantCulture)).ToArray()))
+            throw new InvalidDataException(
+                "Legacy rarity-potion law does not follow its saved rarity ticket.");
+
+        var rarity = rarityDecision.SelectedIndex switch
+        {
+            < 10 => PrototypeNativePotionRarity.Rare,
+            < 35 => PrototypeNativePotionRarity.Uncommon,
+            _ => PrototypeNativePotionRarity.Common
+        };
+        return ChanceLawEngineV111.QueryLegacyPotionModelWithinRarity(
+            rarity, request.StreamId, ownerPrefix, [], request.Ordinal);
+    }
+
+    private static void ValidateControlledEventPotionModelRequest(
+        RunState source,
+        PrototypeControlledEventChoiceContinuationV111 continuation,
+        RandomIndexRequestV111 request)
+    {
+        if (source.Phase != RunPhase.Event || source.World is not { } world ||
+            world.Event?.EventId != continuation.EventId)
+            throw new InvalidDataException(
+                "Legacy event potion-model law is outside its saved event boundary.");
+        if (ControlledEventChoiceEffectKind(continuation) !=
+                PrototypeRunEffectKind.GainRandomPotion)
+            throw new InvalidDataException(
+                "Legacy event potion-model law is outside a random-potion effect.");
+        if (request.StreamId != "reward" ||
+            request.OperationKind != "choose_index" || request.Ordinal < 0)
+            throw new InvalidDataException(
+                "Legacy event potion-model law has an invalid request shape.");
     }
 
     private static ChanceLawV111 QueryControlledLegacyEventRewardCardLaw(
