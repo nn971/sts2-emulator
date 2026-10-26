@@ -1621,7 +1621,6 @@ public static class SemanticCombatDrawEngineV111
         progress = ResumeNestedAutomaticHandDraw(
             state, resumed, "Generated-card");
 
-        progress = progress.EnsurePipelineBoundary();
         return PublishResolvedChoice(
             state, progress, decision,
             static (stochastic, selected) =>
@@ -1646,7 +1645,7 @@ public static class SemanticCombatDrawEngineV111
         var progress = ResumeNestedAutomaticHandDraw(
             state, resumed, "Potion-generation");
         return PublishResolvedChoice(
-            state, progress.EnsurePipelineBoundary(), decision,
+            state, progress, decision,
             static (stochastic, selected) =>
                 stochastic.AppendPotionGeneration(selected));
     }

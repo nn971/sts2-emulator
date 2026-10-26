@@ -291,9 +291,10 @@ standalone-versus-automatic count interpretation and boundary publication
 shared by draw-hook, Stratagem, effect-draw, effect-draw-cost, and
 draw-insertion resumes. Source choice owners still select their mechanics
 checkpoint and retain their typed decisions and transcripts. Automatic
-draw-segment resumes consume the validated pipeline boundary returned by
-`ResumeSemanticAutomaticHandDrawAfterNestedChoice` directly; standalone draws
-still classify their boundary at this shared choice-resume layer.
+draw-segment and nested semantic-draw resumes consume the validated pipeline
+boundary returned by `ResumeSemanticAutomaticHandDrawAfterNestedChoice`
+directly; standalone draws still classify their boundary at this shared
+choice-resume layer.
 
 Draw continuations that resolve further operations around a draw now publish
 their final player/combat mechanics and local prototype RNG through
@@ -671,7 +672,7 @@ Opening and automatic source-stage hand draws now build the Stratagem choice plu
 
 `SemanticChoiceResumeV111.ResumeStratagemSelection` now owns selection-event replay and the post-selection continuation for automatic or standalone semantic draws. The `PrototypeGameEngine.ResumeSemanticStratagemSelection` compatibility facade delegates to it. The semantic draw facade retains the typed selection history and calls the shared owner directly for resumed draw-count handling. The adapter carries the selection's classified automatic-pipeline boundary on transient draw progress; when it resumes more hand-draw work, it carries the typed downstream boundary or classifies the resulting run.
 
-Draw-hook, Stratagem, and standalone effect-draw cost choices now also share `ResumeHandDrawChoiceProgress` for projecting the resumed run and classified boundary into hand-draw progress. The helper preserves each path's requested-count contract and delegates automatic cursor validation and boundary classification to `ResumeSemanticAutomaticHandDrawAfterNestedChoice`, without repeating that classification when projecting its result.
+Draw-hook, Stratagem, and standalone effect-draw cost choices now also share `ResumeHandDrawChoiceProgress` for projecting the resumed run and classified boundary into hand-draw progress. The helper preserves each path's requested-count contract and delegates automatic cursor validation and boundary classification to `ResumeSemanticAutomaticHandDrawAfterNestedChoice`, without repeating that classification when projecting its result. Nested semantic-draw consumers use the same classified result directly.
 
 Semantic hand draws and nested effect draws also suspend after-shuffle insertion through `SuspendDrawCardsAfterShuffleInsertion`. That owner carries forward the remaining count, deferred keyword identities, Stratagem condition, and insertion suffix. Automatic Nature hand draws admit an after-shuffle relic insertion only when the saved semantic draw count matches the active `DrawPlayerHand` cursor; this lets the existing insertion owner resume Biiig Hug's Soot insertion after a recycle. Source-route opening draws use the same owner at the exact `AfterHandDraw` opening cursor.
 

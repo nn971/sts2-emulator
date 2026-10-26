@@ -6595,3 +6595,12 @@ engine-owned legacy reward SiteId/operation pairs now live in
 request check to that shared registry. The fallback still requires an active
 guard and explicit reward allowance. Core and CLI Release builds, static RNG
 inventory checks, and `git diff --check` passed; no tests were added or run.
+
+**S4 draw-resume boundary projection increment (2026-10-26):** Automatic
+semantic hand-draw and nested semantic-draw callers now consume the validated
+pipeline boundary returned by `ResumeSemanticAutomaticHandDrawAfterNestedChoice`
+without classifying the same run again. Standalone semantic draws still use
+the shared choice-resume layer to classify their boundary. Snapshot fields and
+typed transcript ownership are unchanged. Core and CLI Release builds, static
+RNG inventory checks, and `git diff --check` passed; no tests were added or
+run.
