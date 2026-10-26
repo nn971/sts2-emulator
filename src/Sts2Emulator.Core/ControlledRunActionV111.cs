@@ -465,7 +465,7 @@ public sealed record ControlledRunActionTraceV111(
         NativeGloryAncientsV111.BeautifulBraceletShuffleSiteId or
             NativeGloryAncientsV111.DistinguishedCapeCurseSiteId =>
             request.StreamId is "event" or "run.niche",
-        "relic.sand_castle.acquisition_upgrade.shuffle_swap_index" or
+        PrototypeNativeOrobasRelics.SandCastleAcquisitionShuffleSiteId or
             "event.potion.fill_empty_slots.model" =>
             request.StreamId == "event",
         "relic.acquisition.random_rare_card.model" =>

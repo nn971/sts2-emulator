@@ -1123,6 +1123,12 @@ public static partial class ChanceLawEngineV111
                 when effect is not null =>
                     QueryControlledEventPoolShuffle(
                         source, effect, pending),
+            PrototypeNativeOrobasRelics.SandCastleAcquisitionShuffleSiteId
+                when effect is not null =>
+                    QueryControlledEventSandCastleShuffle(
+                        source, effect, pending),
+            PrototypeNativeOrobasRelics.SandCastleAcquisitionShuffleSiteId
+                => null,
             "relic.unowned_random_selection.index_draw"
                 when effect is not null =>
                     QueryControlledEventUnownedRelicSelection(
@@ -1193,7 +1199,8 @@ public static partial class ChanceLawEngineV111
         var boundedIndexSupport = request.SiteId ==
                 "reward.card_rarity.ticket" || request.SiteId is
             StochasticSiteRegistryV111.RandomPoolDistinctShuffleSiteId or
-            StochasticSiteRegistryV111.EventRewardCardBundleShuffleSiteId;
+            StochasticSiteRegistryV111.EventRewardCardBundleShuffleSiteId or
+            PrototypeNativeOrobasRelics.SandCastleAcquisitionShuffleSiteId;
         if (request.SiteId == "event.random_upgrade.card_instance")
         {
             const string outcomePrefix = "card_instance:";
@@ -1220,6 +1227,28 @@ public static partial class ChanceLawEngineV111
             expectedLabels = Enumerable.Range(0, law.SupportCount)
                 .Select(index => index.ToString(CultureInfo.InvariantCulture))
                 .ToArray();
+        }
+        else if (request.SiteId ==
+            PrototypeNativeOrobasRelics.SandCastleAcquisitionShuffleSiteId)
+        {
+            const string outcomePrefix = "card_instance:";
+            expectedLabels = law.Outcomes.Select(outcome =>
+            {
+                if (!outcome.OutcomeId.StartsWith(
+                        outcomePrefix, StringComparison.Ordinal) ||
+                    !long.TryParse(
+                        outcome.OutcomeId[outcomePrefix.Length..],
+                        NumberStyles.None, CultureInfo.InvariantCulture,
+                        out var instanceId))
+                    throw new InvalidDataException(
+                        "Sand Castle acquisition law has an invalid physical card identity.");
+                var card = source.Player.Deck.SingleOrDefault(candidate =>
+                    candidate.InstanceId == instanceId) ??
+                    throw new InvalidDataException(
+                        "Sand Castle acquisition law names a card outside its saved deck.");
+                return "card-instance:" + card.InstanceId.ToString(
+                    CultureInfo.InvariantCulture);
+            }).ToArray();
         }
         else
         {
@@ -1909,6 +1938,148 @@ public static partial class ChanceLawEngineV111
             eventId, indexLaw.SiteId, indexLaw.OperationKind,
             indexLaw.OwnerId, indexLaw.Ordinal,
             indexLaw.ConditioningPolicyId + "-semantic-curse-v1",
+            conditioningFingerprint, indexLaw.ProbabilityProvenance,
+            outcomes, indexLaw.ProbabilityStatus);
+    }
+
+    private static ChanceLawV111 QueryControlledEventSandCastleShuffle(
+        RunState source,
+        PrototypeControlledEventChoiceContinuationV111 continuation,
+        ControlledEventChoicePendingV111 pending)
+    {
+        if (source.Phase != RunPhase.Event || source.World is not { } world ||
+            world.Event?.EventId != continuation.EventId)
+            throw new InvalidDataException(
+                "Sand Castle acquisition law is outside its saved event boundary.");
+
+        var choice = PrototypeContent.Event(continuation.EventId).Choices
+            .SingleOrDefault(candidate =>
+                candidate.Id == continuation.ChoiceId) ??
+            throw new InvalidDataException(
+                "Sand Castle acquisition law references an unknown event choice.");
+        if ((uint)continuation.NextEffectIndex >=
+                (uint)choice.Effects.Length)
+            throw new InvalidDataException(
+                "Sand Castle acquisition law is outside its saved effect boundary.");
+        var effect = choice.Effects[continuation.NextEffectIndex];
+        if (effect.Kind != PrototypeRunEffectKind.GainRelic ||
+            effect.RelicId != PrototypeNativeOrobasRelics.SandCastleId)
+            throw new InvalidDataException(
+                "Sand Castle shuffle request differs from its saved relic-acquisition effect.");
+
+        var request = pending.Request;
+        var orderedPool = source.Player.Deck
+            .Where(card => PrototypeGameEngine.CanSelectEventDeckCard(
+                card, PrototypePersistentDeckChoiceKind.Upgrade,
+                null, null, false))
+            .Select(card => card.InstanceId).ToArray();
+        if (orderedPool.Length < 2 ||
+            orderedPool.Distinct().Count() != orderedPool.Length ||
+            request.SiteId !=
+                PrototypeNativeOrobasRelics.SandCastleAcquisitionShuffleSiteId ||
+            request.StreamId != "event" ||
+            request.OwnerId !=
+                PrototypeNativeOrobasRelics.SandCastleAcquisitionShuffleOwnerId)
+            throw new InvalidDataException(
+                "Sand Castle shuffle request differs from its eligible physical-card pool.");
+
+        var values = (long[])orderedPool.Clone();
+        var decisionLabels = continuation.DecisionCandidateLabels ??
+            throw new InvalidDataException(
+                "Sand Castle continuation has no saved shuffle labels.");
+        if (decisionLabels.Length != continuation.Decisions.Length)
+            throw new InvalidDataException(
+                "Sand Castle continuation has a malformed shuffle-label prefix.");
+        int? previousOrdinal = null;
+        var swapCount = 0;
+        for (var index = continuation.EffectDecisionStartIndex;
+             index < continuation.Decisions.Length; index++)
+        {
+            var decision = continuation.Decisions[index];
+            decision.Validate();
+            var priorRequest = decision.Request;
+            var expectedBound = values.Length - swapCount;
+            if (expectedBound < 2 ||
+                priorRequest.SiteId != request.SiteId ||
+                priorRequest.StreamId != request.StreamId ||
+                priorRequest.OwnerId != request.OwnerId ||
+                priorRequest.OperationKind != "bounded_integer" ||
+                priorRequest.BoundedCount != expectedBound ||
+                priorRequest.OrderedCandidates.Length != 0 ||
+                previousOrdinal is { } priorOrdinal &&
+                    (priorOrdinal == int.MaxValue ||
+                     priorRequest.Ordinal != priorOrdinal + 1))
+                throw new InvalidDataException(
+                    "Sand Castle shuffle prefix differs from the descending source shuffle.");
+
+            var priorSupport = values.Take(expectedBound).ToArray();
+            var expectedLabels = priorSupport.Select(instanceId =>
+                "card-instance:" + instanceId.ToString(
+                    CultureInfo.InvariantCulture)).ToArray();
+            if (!decisionLabels[index].SequenceEqual(
+                    expectedLabels, StringComparer.Ordinal))
+                throw new InvalidDataException(
+                    "Sand Castle shuffle prefix changed its physical card support.");
+
+            var selectedIndex = decision.SelectedIndex;
+            if ((uint)selectedIndex >= (uint)expectedBound)
+                throw new InvalidDataException(
+                    "Sand Castle shuffle prefix selected outside its support.");
+            (values[expectedBound - 1], values[selectedIndex]) =
+                (values[selectedIndex], values[expectedBound - 1]);
+            previousOrdinal = priorRequest.Ordinal;
+            swapCount++;
+        }
+
+        var currentBound = values.Length - swapCount;
+        if (currentBound < 2 ||
+            request.OperationKind != "bounded_integer" ||
+            request.BoundedCount != currentBound ||
+            request.OrderedCandidates.Length != 0 ||
+            previousOrdinal is { } lastOrdinal &&
+                (lastOrdinal == int.MaxValue ||
+                 request.Ordinal != lastOrdinal + 1))
+            throw new InvalidDataException(
+                "Sand Castle shuffle request differs from its saved swap prefix.");
+        var currentSupport = values.Take(currentBound).ToArray();
+        var currentLabels = currentSupport.Select(instanceId =>
+            "card-instance:" + instanceId.ToString(
+                CultureInfo.InvariantCulture)).ToArray();
+        if (!pending.CandidateLabels.SequenceEqual(
+                currentLabels, StringComparer.Ordinal))
+            throw new InvalidDataException(
+                "Sand Castle shuffle request changed its physical card support.");
+
+        var indexLaw = QueryRandomIndex(
+            pending.ChanceEventId, request);
+        var outcomes = currentSupport.Select((instanceId, index) =>
+            new ChanceLawOutcomeV111(
+                "card_instance:" + instanceId.ToString(
+                    CultureInfo.InvariantCulture),
+                indexLaw.OutcomeWeightAt(index))).ToArray();
+        var conditioningFingerprint = CanonicalJson.Sha256(new
+        {
+            sourceLawId = indexLaw.LawId,
+            sourceConditioningFingerprint =
+                indexLaw.ConditioningFingerprint,
+            eventId = continuation.EventId,
+            choiceId = continuation.ChoiceId,
+            effectIndex = continuation.NextEffectIndex,
+            orderedCardInstanceIds = currentSupport
+        });
+        var eventId = CanonicalJson.Sha256(new
+        {
+            boundary = "controlled-event-sand-castle-acquisition-shuffle",
+            indexLaw.LawId,
+            continuation.EventId,
+            continuation.ChoiceId,
+            continuation.NextEffectIndex,
+            orderedCardInstanceIds = currentSupport
+        });
+        return Create(
+            eventId, indexLaw.SiteId, indexLaw.OperationKind,
+            indexLaw.OwnerId, indexLaw.Ordinal,
+            indexLaw.ConditioningPolicyId + "-physical-card-identity-v1",
             conditioningFingerprint, indexLaw.ProbabilityProvenance,
             outcomes, indexLaw.ProbabilityStatus);
     }

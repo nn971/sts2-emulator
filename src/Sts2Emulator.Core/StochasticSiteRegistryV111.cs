@@ -503,7 +503,7 @@ public static class StochasticSiteRegistryV111
                 "map", "choose_index", 1),
             [EventRewardCardBundleShuffleSiteId] = new(
                 "reward", "bounded_integer", 2),
-            ["relic.sand_castle.acquisition_upgrade.shuffle_swap_index"] =
+            [PrototypeNativeOrobasRelics.SandCastleAcquisitionShuffleSiteId] =
                 new("event", "bounded_integer", 2),
             [RandomPoolDistinctShuffleSiteId] = new(
                 "reward", "bounded_integer", 2),
@@ -757,7 +757,7 @@ public static class StochasticSiteRegistryV111
         NativeGloryAncientsV111.BeautifulBraceletShuffleSiteId,
         NativeGloryAncientsV111.DistinguishedCapeCurseSiteId,
         NativePaelRewardsV111.LegionSkinSiteId,
-        "relic.sand_castle.acquisition_upgrade.shuffle_swap_index",
+        PrototypeNativeOrobasRelics.SandCastleAcquisitionShuffleSiteId,
         "relic.acquisition.random_rare_card.model",
         "relic.acquisition.random_potion.model",
         "event.potion.fill_empty_slots.model",
@@ -846,7 +846,7 @@ public static class StochasticSiteRegistryV111
         NativeGloryAncientsV111.DistinguishedCapeCurseSiteId,
         NativeGloryAncientsV111.FurCoatShuffleSiteId,
         NativePaelRewardsV111.LegionSkinSiteId,
-        "relic.sand_castle.acquisition_upgrade.shuffle_swap_index",
+        PrototypeNativeOrobasRelics.SandCastleAcquisitionShuffleSiteId,
         "potion.uncommon_model.index_draw",
         "relic.acquisition.random_rare_card.model",
         "relic.acquisition.random_potion.model",
@@ -1230,7 +1230,7 @@ public static class StochasticSiteRegistryV111
         {
             CombatEffectDrawRecycleShuffleSiteId,
             EventRewardCardBundleShuffleSiteId,
-            "relic.sand_castle.acquisition_upgrade.shuffle_swap_index",
+            PrototypeNativeOrobasRelics.SandCastleAcquisitionShuffleSiteId,
             RandomPoolDistinctShuffleSiteId,
             "shop.potion_offer.shuffle_swap_index",
             "shop.relic_offer.shuffle_swap_index"

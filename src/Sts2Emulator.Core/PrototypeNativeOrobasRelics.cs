@@ -9,6 +9,10 @@ namespace Sts2Emulator.Core;
 public static class PrototypeNativeOrobasRelics
 {
     public const string SandCastleId = "proto.native.ancient.sand_castle";
+    public const string SandCastleAcquisitionShuffleSiteId =
+        "relic.sand_castle.acquisition_upgrade.shuffle_swap_index";
+    internal const string SandCastleAcquisitionShuffleOwnerId =
+        "player:0:sand_castle:eligible_cards";
     public const string TouchOfOrobasId = "proto.native.ancient.touch_of_orobas";
     public const string ArchaicToothId = "proto.native.ancient.archaic_tooth";
     public const string RadiantPearlId = "proto.native.ancient.radiant_pearl";
@@ -210,8 +214,8 @@ public static class PrototypeNativeOrobasRelics
             candidates,
             rng,
             "event",
-            "relic.sand_castle.acquisition_upgrade.shuffle_swap_index",
-            "player:0:sand_castle:eligible_cards",
+            SandCastleAcquisitionShuffleSiteId,
+            SandCastleAcquisitionShuffleOwnerId,
             controlledCandidateLabel: instanceId =>
                 "card-instance:" + instanceId.ToString(
                     CultureInfo.InvariantCulture));

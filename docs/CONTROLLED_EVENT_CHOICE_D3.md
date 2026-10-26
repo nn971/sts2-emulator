@@ -156,7 +156,8 @@ The supported event-choice sites are:
   swap carries the current ordered node-ID labels
 - `relic.sand_castle.acquisition_upgrade.shuffle_swap_index` for the
   event-gained Sand Castle's conditional shuffle over eligible physical deck
-  cards; each swap carries the current ordered instance-ID labels
+  cards; each swap replays the descending support and maps the bounded index
+  law to `card_instance:<instance_id>` outcomes
 - `reward.card_transform.replacement.index_draw` for a direct persistent-card
   transform effect or an event-gained relic that transforms persistent cards
   on acquisition; direct `TransformFirstCardOfId` requests reuse the existing

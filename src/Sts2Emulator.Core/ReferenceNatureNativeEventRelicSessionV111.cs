@@ -215,7 +215,7 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
             NativeGloryAncientsV111.BeautifulBraceletShuffleSiteId,
             NativeGloryAncientsV111.DistinguishedCapeCurseSiteId,
             NativePaelRewardsV111.LegionSkinSiteId,
-            "relic.sand_castle.acquisition_upgrade.shuffle_swap_index"];
+            PrototypeNativeOrobasRelics.SandCastleAcquisitionShuffleSiteId];
 
     public static ReferenceNatureNativeEventRelicSessionV111 Begin(
         RunState source, GameAction action, ulong natureSeed) => Begin(
@@ -1038,7 +1038,8 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
                 request.SiteId == NativePaelRewardsV111.LegionSkinSiteId,
             PrototypeNativeOrobasRelics.SandCastleId =>
                 request.SiteId ==
-                    "relic.sand_castle.acquisition_upgrade.shuffle_swap_index",
+                    PrototypeNativeOrobasRelics
+                        .SandCastleAcquisitionShuffleSiteId,
             _ => false
         };
     }

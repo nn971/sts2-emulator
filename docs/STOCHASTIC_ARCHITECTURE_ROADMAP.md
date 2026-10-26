@@ -6423,3 +6423,13 @@ request ordinal before binding the ordered potion support and labels. Raw
 rarity-ticket queries retain numeric support. Pool fidelity and equal-index
 weights remain unverified. Core Release build, static RNG audit, and
 `git diff --check` passed; no tests were run.
+
+**S6 Sand Castle acquisition shuffle identity-law increment (2026-10-26):**
+The controlled event-effect Chance Law now replays Sand Castle's saved
+descending shuffle prefix over eligible physical deck instances and exposes
+the current support as `card_instance:<instance_id>` outcomes. It validates
+the saved relic-acquisition effect, site owner, event stream, request order,
+and per-swap physical labels, reusing the existing legacy bounded-index law
+for weights. The site and owner constants now come from Sand Castle's source
+owner. Core Release build, static RNG audit, and `git diff --check` passed;
+no tests were run.
