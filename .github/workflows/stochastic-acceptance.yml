@@ -60,7 +60,7 @@ jobs:
           mkdir -p /tmp/stochastic-acceptance
           dotnet test tests/Sts2Emulator.Core.Tests/Sts2Emulator.Core.Tests.csproj \
             -c Release --no-build \
-            --filter 'FullyQualifiedName~SemanticDeckStateV111Tests|FullyQualifiedName~RandomBoundaryJournalV111Tests|FullyQualifiedName~ChanceLawV111Tests.DrawLawMatchesIndependentEnumerationOfConstrainedPhysicalPermutations|FullyQualifiedName~ChanceLawV111Tests.ReferenceNatureSamplingMatchesWeightsAndReplaysFromForkedState|FullyQualifiedName~PrototypeColorlessPowerBatchTests.BombCountdownExplodesAfterThreePlayerTurns|FullyQualifiedName~PrototypeUnderdocksCultistsAndFossilTests.SuckOnlyCountsUnblockedAttackHits|FullyQualifiedName~StochasticAcceptanceFixtureTests' \
+            --filter 'FullyQualifiedName~SemanticDeckStateV111Tests|FullyQualifiedName~RandomBoundaryJournalV111Tests|FullyQualifiedName~ChanceLawV111Tests.DrawLawMatchesIndependentEnumerationOfConstrainedPhysicalPermutations|FullyQualifiedName~ChanceLawV111Tests.ReferenceNatureSamplingMatchesWeightsAndReplaysFromForkedState|FullyQualifiedName~PrototypeColorlessPowerBatchTests.BombCountdownExplodesAfterThreePlayerTurns|FullyQualifiedName~PrototypeUnderdocksCultistsAndFossilTests.SuckOnlyCountsUnblockedAttackHits|FullyQualifiedName~StochasticAcceptanceFixtureTests|FullyQualifiedName~StochasticMechanicsProjectionAcceptanceTests' \
             --logger 'trx;LogFileName=kernel-acceptance.trx' \
             --results-directory /tmp/stochastic-acceptance
       - uses: actions/upload-artifact@v4
