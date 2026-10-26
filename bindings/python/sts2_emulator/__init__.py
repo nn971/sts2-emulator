@@ -1332,9 +1332,11 @@ class ScriptedRunSession:
         return ScriptedRunSession.from_wire(self.session, result["result"])
 
     def resolve_by_candidate_label(self, candidate_label: str):
+        """Resolve a pending labeled index without building a raw ticket."""
         if self.boundary != "scripted" or self.pending is None:
             raise EmulatorError("Scripted run has no pending random request")
-        if not isinstance(candidate_label, str) or not candidate_label:
+        if (not isinstance(candidate_label, str) or
+                not candidate_label.strip()):
             raise ValueError("candidate_label must be a nonempty string")
         result = self.session.call(
             "scripted_run_resolve_next",
