@@ -1485,33 +1485,16 @@ public static class SemanticCombatDrawEngineV111
             var resumedEffectDraw = SemanticChoiceResumeV111.ResumeEffectDraw(
                 run, effectDrawDecision,
                 allowEngineOwnedPrototypeReward: false);
-            if (automaticBeforeHandDrawEffectDraw)
-            {
-                var beforeProgress = ResumeNestedAutomaticHandDraw(
-                    state, resumedEffectDraw,
-                    "BeforeHandDraw effect-draw");
-                return PublishResumeTransition(
-                    state, PublishDrawProgress(state, beforeProgress));
-            }
-            var resumedDraw = resumedEffectDraw.Run;
-            PrototypeDrawCardsResumeResultV111 drawProgress;
-            if (state.AutomaticHandDraw)
-                drawProgress = PrototypeGameEngine
-                    .ResumeSemanticAutomaticHandDrawAfterNestedChoice(
-                        state.Run, resumedDraw,
-                        resumedEffectDraw.PipelineBoundary,
-                        "effect draw", state.RequestedCount,
-                        state.RemainingCount);
-            else
-            {
-                int remaining =
-                    PrototypeGameEngine.GetSemanticDrawRemainingCount(
-                        resumedDraw, state.RemainingCount,
-                        combat.CounterState.CardsDrawnThisCombat);
-                drawProgress = new PrototypeDrawCardsResumeResultV111(
-                    resumedDraw, remaining,
-                    PipelineBoundary: resumedEffectDraw.PipelineBoundary);
-            }
+            var drawProgress = SemanticChoiceResumeV111
+                .ResumeHandDrawChoiceProgress(
+                    state.Run, resumedEffectDraw.Run,
+                    resumedEffectDraw.PipelineBoundary,
+                    automaticBeforeHandDrawEffectDraw
+                        ? "BeforeHandDraw effect-draw" : "effect draw",
+                    state.AutomaticHandDraw, state.RequestedCount,
+                    state.RemainingCount,
+                    combat.CounterState.CardsDrawnThisCombat,
+                    publishStandaloneRequestedCount: false);
             return PublishResumeTransition(
                 state, PublishDrawProgress(state, drawProgress));
         }
@@ -1595,23 +1578,13 @@ public static class SemanticCombatDrawEngineV111
             .CounterState.CardsDrawnThisCombat;
         var resumedInsertion = SemanticChoiceResumeV111.Resume(
             state.Run, decision);
-        var resumed = resumedInsertion.Run;
-        PrototypeDrawCardsResumeResultV111 insertionProgress;
-        if (state.AutomaticHandDraw)
-            insertionProgress = PrototypeGameEngine
-                .ResumeSemanticAutomaticHandDrawAfterNestedChoice(
-                    state.Run, resumed, resumedInsertion.PipelineBoundary,
-                    "draw insertion", state.RequestedCount,
-                    state.RemainingCount);
-        else
-        {
-            int insertionRemaining =
-                PrototypeGameEngine.GetSemanticDrawRemainingCount(
-                    resumed, state.RemainingCount, drawnBefore);
-            insertionProgress = new PrototypeDrawCardsResumeResultV111(
-                resumed, insertionRemaining,
-                PipelineBoundary: resumedInsertion.PipelineBoundary);
-        }
+        var insertionProgress = SemanticChoiceResumeV111
+            .ResumeHandDrawChoiceProgress(
+                state.Run, resumedInsertion.Run,
+                resumedInsertion.PipelineBoundary, "draw insertion",
+                state.AutomaticHandDraw, state.RequestedCount,
+                state.RemainingCount, drawnBefore,
+                publishStandaloneRequestedCount: false);
         var next = PublishResolvedChoice(
             state, insertionProgress, decision,
             static (stochastic, selected) =>

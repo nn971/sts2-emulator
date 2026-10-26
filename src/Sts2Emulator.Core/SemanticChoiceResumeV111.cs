@@ -18,7 +18,7 @@ internal readonly record struct SemanticChoiceResumeResultV111(
 /// </summary>
 internal static class SemanticChoiceResumeV111
 {
-    private static PrototypeDrawCardsResumeResultV111
+    internal static PrototypeDrawCardsResumeResultV111
         ResumeHandDrawChoiceProgress(
             RunState checkpoint, RunState resumed,
             PrototypeAutomaticPipelineResumeBoundaryKindV111? boundary,

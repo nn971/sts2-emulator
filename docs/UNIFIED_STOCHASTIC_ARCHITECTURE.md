@@ -259,6 +259,12 @@ intact to semantic boundary interpretation, where
 draws also pass the segment intact into their result owners; typed transcripts
 and provider-specific suspension policies remain with their adapters.
 
+`SemanticChoiceResumeV111.ResumeHandDrawChoiceProgress` now owns the
+standalone-versus-automatic count interpretation and boundary publication
+shared by draw-hook, Stratagem, effect-draw, effect-draw-cost, and
+draw-insertion resumes. Source choice owners still select their mechanics
+checkpoint and retain their typed decisions and transcripts.
+
 Draw continuations that resolve further operations around a draw now publish
 their final player/combat mechanics and local prototype RNG through
 `PublishDrawMechanicsAndPrototypeRng`, which composes with the existing
