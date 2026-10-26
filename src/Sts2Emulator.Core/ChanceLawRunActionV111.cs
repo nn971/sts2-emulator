@@ -55,6 +55,10 @@ public static partial class ChanceLawEngineV111
             return law with { EventId = pending.ChanceEventId };
         }
         if (continuation.ActionId == "choose_map_node" &&
+            pending.Request.SiteId == "event.unknown_room.odds.ticket")
+            return QueryControlledRunActionUnknownRoomOdds(
+                run, continuation, pending.ChanceEventId);
+        if (continuation.ActionId == "choose_map_node" &&
             pending.Request.SiteId == "event.selection.weighted_ticket")
             return QueryControlledRunActionEventSelection(
                 run, continuation, pending.ChanceEventId);
@@ -114,11 +118,9 @@ public static partial class ChanceLawEngineV111
             return QueryRandomIndex(eventId, request);
 
         var outcomeIds = support.TicketOutcomeIds();
-        var expectedLabels = support.TotalTicketCount <=
-                ControlledRunActionEngineV111.MaximumInlineOutcomeActions
-            ? outcomeIds : [];
-        if (!continuation.PendingCandidateLabels.SequenceEqual(
-                expectedLabels, StringComparer.Ordinal))
+        if (!support.MatchesTicketOutcomeLabels(
+                continuation.PendingCandidateLabels,
+                ControlledRunActionEngineV111.MaximumInlineOutcomeActions))
             throw new InvalidDataException(
                 "Controlled event-selection labels differ from its ordered weighted tickets.");
 
@@ -142,6 +144,66 @@ public static partial class ChanceLawEngineV111
             "emulator eligibility, event weights, and event-to-ticket mapping " +
             "are captured; Native event-pool parity and legacy modulo " +
             "calibration remain unverified.",
+            outcomes);
+        return law with { EventId = eventId };
+    }
+
+    private static ChanceLawV111 QueryControlledRunActionUnknownRoomOdds(
+        RunState run,
+        PrototypeControlledRunActionContinuationV111 continuation,
+        string eventId)
+    {
+        var request = continuation.PendingRequest;
+        var world = run.World;
+        var nodeIsAvailableUnknown = world is not null &&
+            continuation.MapNodeId is { } nodeId &&
+            PrototypeNativeWingedBoots.AvailableNodes(world, run.Player)
+                .Any(node => node.NodeId == nodeId &&
+                    node.RoomType == PrototypeRoomType.Unknown);
+        if (run.Phase != RunPhase.MapChoice ||
+            run.Configuration is not null ||
+            run.Stochastic.NativeRunRng is not null ||
+            world is null ||
+            !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
+            !nodeIsAvailableUnknown ||
+            continuation.Decisions.Length != 0)
+            throw new InvalidDataException(
+                "Controlled Unknown-room law is outside its legacy regional map boundary.");
+
+        var support = PrototypeUnknownRoomOddsSupportV111.Describe(run);
+        if (request.SiteId != "event.unknown_room.odds.ticket" ||
+            request.StreamId != "event" ||
+            request.OperationKind != "bounded_integer" ||
+            request.OwnerId != support.RequestOwnerId ||
+            request.BoundedCount != support.TotalTicketCount ||
+            request.OrderedCandidates.Length != 0 ||
+            !support.MatchesTicketOutcomeLabels(
+                continuation.PendingCandidateLabels,
+                ControlledRunActionEngineV111.MaximumInlineOutcomeActions))
+            throw new InvalidDataException(
+                "Controlled Unknown-room request differs from its ordered ticket-to-room support.");
+
+        var outcomes = support.TicketOutcomeIds().Select(outcomeId =>
+            new ChanceLawOutcomeV111(outcomeId, 1L)).ToArray();
+        var law = CreateLegacyCategoricalLaw(
+            request.SiteId, request.StreamId, request.OwnerId,
+            request.Ordinal,
+            "legacy-unknown-room-ticket-identities-v1",
+            new
+            {
+                request,
+                support.Act,
+                support.Floor,
+                support.EventOnly,
+                odds = world.UnknownRoomOdds ??
+                    new PrototypeUnknownRoomOddsState(),
+                orderedTicketOutcomeIds = support.TicketOutcomeIds()
+            },
+            "Equal mass per legacy bounded ticket, with each outcome bound " +
+            "to the emulator's room result and raw ticket position. The " +
+            "ticket-to-room mapping is captured; the source NextFloat grid, " +
+            "legacy modulo calibration, and Native stream parity remain " +
+            "unverified.",
             outcomes);
         return law with { EventId = eventId };
     }

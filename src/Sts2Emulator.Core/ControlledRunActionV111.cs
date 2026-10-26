@@ -191,6 +191,10 @@ public sealed record ControlledRunActionTraceV111(
             var isEventEntryDraw = mapNodeAction
                 && ControlledEventChoiceReplayV111
                     .IsRunActionEventEntrySite(request.SiteId);
+            var isEventSelectionDraw = isEventEntryDraw && request.SiteId ==
+                "event.selection.weighted_ticket";
+            var isUnknownRoomOddsDraw = isEventEntryDraw && request.SiteId ==
+                "event.unknown_room.odds.ticket";
             var isShopDraw = mapNodeAction
                 && ControlledEventChoiceReplayV111
                     .IsRunActionShopSite(request.SiteId);
@@ -289,8 +293,7 @@ public sealed record ControlledRunActionTraceV111(
                     .MatchesTraceIdentityLabels(
                         request.SiteId, request.OwnerId, labels);
             var eventSelectionIdentityLabels = false;
-            if (isEventEntryDraw && request.SiteId ==
-                "event.selection.weighted_ticket" &&
+            if (isEventSelectionDraw &&
                 request.OperationKind == "bounded_integer" &&
                 request.StreamId == "event")
             {
@@ -301,6 +304,14 @@ public sealed record ControlledRunActionTraceV111(
                             ControlledRunActionEngineV111
                                 .MaximumInlineOutcomeActions);
             }
+            var unknownRoomIdentityLabels = isUnknownRoomOddsDraw &&
+                request.OperationKind == "bounded_integer" &&
+                request.StreamId == "event" &&
+                PrototypeUnknownRoomOddsSupportV111
+                    .IsTicketOutcomeSequence(labels,
+                        request.SupportCount,
+                        ControlledRunActionEngineV111
+                            .MaximumInlineOutcomeActions);
             var numericLabels = !(isMapDraw || isEventEntryDraw || isShopDraw
                 || isTreasureDraw || isNativeShovelFallbackDraw
                 || isCombatDraw || isCombatPotionDraw
@@ -309,6 +320,7 @@ public sealed record ControlledRunActionTraceV111(
                 || nativeRelicBagLabels
                 || actOneEncounterIdentityLabels
                 || eventSelectionIdentityLabels
+                || unknownRoomIdentityLabels
                 || omittedLabels ||
                 ControlledStochasticChanceReplayV111.CandidateLabelsMatch(
                     labels, Enumerable.Range(0, labels.Length).Select(index =>
@@ -327,9 +339,8 @@ public sealed record ControlledRunActionTraceV111(
                 || request.OwnerId != prefixOwner
                 || !request.OrderedCandidates.SequenceEqual(prefixCandidates)
                 || (labels.Length != request.SupportCount && !omittedLabels)
-                || (isEventEntryDraw && request.SiteId ==
-                    "event.selection.weighted_ticket" &&
-                    !eventSelectionIdentityLabels)
+                || (isEventSelectionDraw && !eventSelectionIdentityLabels)
+                || (isUnknownRoomOddsDraw && !unknownRoomIdentityLabels)
                 || !numericLabels
                 || !validBossLabels
                 || labels.Any(string.IsNullOrWhiteSpace))
@@ -915,25 +926,27 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                         "bounded_integer"
                     ? []
                     : (int[])PendingRequest.OrderedCandidates.Clone();
-                if (unknownRoomSite)
-                {
-                    var oddsOwner =
-                        $"act:{world.Act}:floor:{world.Floor}:unknown_room";
-                    if (!legacyUnknownRoomNode ||
-                        PendingRequest.OperationKind != "bounded_integer" ||
-                        PendingRequest.SupportCount !=
-                            PrototypeUnknownRoomOddsState.Scale ||
-                        PendingRequest.OwnerId != oddsOwner)
-                        throw new InvalidDataException(
-                            "Controlled Unknown-room request differs from its regional map boundary.");
-                    expectedOwner = oddsOwner;
-                }
                 expectedLabels = PendingRequest.SupportCount >
                     ControlledRunActionEngineV111.MaximumInlineOutcomeActions
                     ? []
                     : Enumerable.Range(0, PendingRequest.SupportCount)
                         .Select(index => index.ToString(
                             CultureInfo.InvariantCulture)).ToArray();
+                if (unknownRoomSite)
+                {
+                    var oddsSupport = PrototypeUnknownRoomOddsSupportV111
+                        .Describe(state);
+                    if (!legacyUnknownRoomNode ||
+                        PendingRequest.OperationKind != "bounded_integer" ||
+                        PendingRequest.SupportCount !=
+                            oddsSupport.TotalTicketCount ||
+                        PendingRequest.OwnerId !=
+                            oddsSupport.RequestOwnerId)
+                        throw new InvalidDataException(
+                            "Controlled Unknown-room request differs from its regional map boundary.");
+                    expectedOwner = oddsSupport.RequestOwnerId;
+                    expectedLabels = oddsSupport.TicketOutcomeIds();
+                }
                 if (PendingRequest.SiteId ==
                     "event.selection.weighted_ticket")
                 {
@@ -1148,6 +1161,18 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                 "run.encounter.overgrowth_boss.index_draw")
             pendingLabelsMatch = ControlledRunActionTraceV111
                 .MatchesOvergrowthBossCandidateLabels(PendingCandidateLabels);
+        if (!pendingLabelsMatch && PendingRequest.SiteId ==
+            "event.selection.weighted_ticket")
+            pendingLabelsMatch = PrototypeEventSelectionSupportV111
+                .Describe(state).MatchesTicketOutcomeLabels(
+                    PendingCandidateLabels,
+                    ControlledRunActionEngineV111.MaximumInlineOutcomeActions);
+        if (!pendingLabelsMatch && PendingRequest.SiteId ==
+            "event.unknown_room.odds.ticket")
+            pendingLabelsMatch = PrototypeUnknownRoomOddsSupportV111
+                .Describe(state).MatchesTicketOutcomeLabels(
+                    PendingCandidateLabels,
+                    ControlledRunActionEngineV111.MaximumInlineOutcomeActions);
         if ((!mapNodeRequest && MapNodeId is not null)
             || (!(shopPurchaseRequest || rewardRelicRequest ||
                     relicDeckTransformRequest || restHealRewardRequest)
@@ -2354,29 +2379,21 @@ public static class ControlledRunActionEngineV111
         var oddsDecision = continuation.Decisions[0];
         oddsDecision.Validate();
         var oddsRequest = oddsDecision.Request;
-        var expectedOwner =
-            $"act:{world.Act}:floor:{world.Floor}:unknown_room";
-        var expectedLabels = Enumerable.Range(
-                0, PrototypeUnknownRoomOddsState.Scale)
-            .Select(index => index.ToString(CultureInfo.InvariantCulture))
-            .ToArray();
+        var oddsSupport = PrototypeUnknownRoomOddsSupportV111.Describe(source);
         if (oddsRequest.SiteId != "event.unknown_room.odds.ticket" ||
             oddsRequest.StreamId != "event" ||
             oddsRequest.OperationKind != "bounded_integer" ||
-            oddsRequest.OwnerId != expectedOwner ||
-            oddsRequest.BoundedCount != PrototypeUnknownRoomOddsState.Scale ||
+            oddsRequest.OwnerId != oddsSupport.RequestOwnerId ||
+            oddsRequest.BoundedCount != oddsSupport.TotalTicketCount ||
             oddsRequest.OrderedCandidates.Length != 0 ||
             oddsDecision.SelectedIndex < 0 ||
-            oddsDecision.SelectedIndex >= PrototypeUnknownRoomOddsState.Scale ||
-            !continuation.DecisionCandidateLabels[0].SequenceEqual(
-                expectedLabels, StringComparer.Ordinal))
+            oddsDecision.SelectedIndex >= oddsSupport.TotalTicketCount ||
+            !oddsSupport.MatchesTicketOutcomeLabels(
+                continuation.DecisionCandidateLabels[0],
+                ControlledRunActionEngineV111.MaximumInlineOutcomeActions))
             return false;
 
-        var odds = world.UnknownRoomOdds ??
-            new PrototypeUnknownRoomOddsState();
-        var eventOnly = PrototypeGoldenPathMapV111.IsActive(
-            source.Player, world.Act);
-        return odds.SelectRoom(oddsDecision.SelectedIndex, eventOnly) ==
+        return oddsSupport.RoomAtTicket(oddsDecision.SelectedIndex) ==
             PrototypeRoomType.Event;
     }
 

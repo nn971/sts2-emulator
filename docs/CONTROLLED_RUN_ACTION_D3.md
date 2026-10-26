@@ -261,15 +261,18 @@ Event-entry continuation covers legacy
 `event.selection.weighted_ticket` and listed legacy event initialization draws
 when a map Event node is selected. The event-selection law shares its ordered
 eligibility and weighted-ticket support with ordinary event entry, exposes
-stable event-and-ticket outcome IDs, and validates those labels on saved
-continuations. It also accepts a regional Unknown node when the saved
+stable event-and-ticket outcome IDs on new frames, and validates those labels
+on saved continuations while retaining older numeric labels. It also accepts a regional Unknown node when the saved
 `event.unknown_room.odds.ticket` decision maps to Event. The separate
 `event.unknown_room.odds.ticket` request is supported only when an unconfigured
 legacy run with no `NativeRunRng` enters an available Unknown node in a regional
-map profile; its 1000 equal request indices remain `UNVERIFIED` because they
-approximate the source unit-float mapping. The event-selection ticket law also
-remains `UNVERIFIED`: native event-pool parity and legacy modulo calibration
-are unaudited. Other configured Native run streams and source cursor parity
+map profile. Its Chance Law identifies each raw ticket with the emulator room
+result as `room:<type>:ticket:<index>`; new continuations save those labels,
+while older numeric labels remain valid. Equal raw-ticket masses remain
+`UNVERIFIED` because the 1000-ticket request approximates the source unit-float
+mapping. The event-selection ticket law also remains `UNVERIFIED`: native
+event-pool parity and legacy modulo calibration are unaudited. Other configured
+Native run streams and source cursor parity
 remain outside this boundary, apart from the
 configured run-start and Act 1 encounter continuations described above.
 

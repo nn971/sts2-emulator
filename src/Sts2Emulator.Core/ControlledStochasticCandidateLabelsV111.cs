@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Sts2Emulator.Core;
 
 /// <summary>
@@ -23,6 +25,15 @@ internal static class ControlledStochasticCandidateLabelsV111
     public static bool IsActive =>
         ControlledStochasticChanceReplayV111.IsActive ||
         ControlledEventChoiceReplayV111.IsActive;
+
+    public static bool IsNumericRange(string[] labels, int count)
+    {
+        ArgumentNullException.ThrowIfNull(labels);
+        return count >= 0 && labels.SequenceEqual(
+            Enumerable.Range(0, count).Select(index =>
+                index.ToString(CultureInfo.InvariantCulture)),
+            StringComparer.Ordinal);
+    }
 
     public static IDisposable Describe(string[]? candidateLabels)
     {

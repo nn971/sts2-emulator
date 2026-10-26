@@ -32,10 +32,12 @@ public sealed partial class PrototypeGameEngine
 
         var odds = world.UnknownRoomOdds
             ?? new PrototypeUnknownRoomOddsState();
-        var ticketLabels = ControlledStochasticCandidateLabelsV111.IsActive
-            ? Enumerable.Range(0, PrototypeUnknownRoomOddsState.Scale)
-                .Select(index => index.ToString(
-                    System.Globalization.CultureInfo.InvariantCulture)).ToArray()
+        var oddsSupport = PrototypeUnknownRoomOddsSupportV111
+            .ForRoomResolution(world, eventOnly);
+        var ticketLabels = ControlledStochasticCandidateLabelsV111.IsActive &&
+            oddsSupport.TotalTicketCount <=
+                ControlledRunActionEngineV111.MaximumInlineOutcomeActions
+            ? oddsSupport.TicketOutcomeIds()
             : [];
         int roll;
         using (ControlledStochasticCandidateLabelsV111.Describe(ticketLabels))
@@ -44,13 +46,13 @@ public sealed partial class PrototypeGameEngine
                 rng,
                 "event.unknown_room.odds.ticket",
                 "event",
-                $"act:{world.Act}:floor:{world.Floor}:unknown_room",
-                PrototypeUnknownRoomOddsState.Scale).SelectedIndex;
+                oddsSupport.RequestOwnerId,
+                oddsSupport.TotalTicketCount).SelectedIndex;
         }
 
         // UnknownMapPointOdds.Roll consumes the same ticket even when a map
         // modifier permits only Event. Disallowed non-event odds do not grow.
-        var selected = odds.SelectRoom(roll, eventOnly);
+        var selected = oddsSupport.RoomAtTicket(roll);
         if (eventOnly)
             return selected;
         world = world with { UnknownRoomOdds = odds.After(selected) };

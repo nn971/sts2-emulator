@@ -15,6 +15,19 @@ passed with zero warnings or errors, the full static RNG inventory passed
 (185/185 registry-to-matrix rows and all 185 S0 evidence-pointer rows), and
 `git diff --check` passed; no tests were run.
 
+**S5 legacy Unknown-room outcome identity and restore compatibility increment
+(2026-10-26):** `PrototypeUnknownRoomOddsSupportV111` now owns the shared
+1,000-ticket-to-room mapping used by Unknown-node entry, controlled replay,
+and the run-action Chance Law. The law returns `room:<type>:ticket:<index>`
+outcomes, including the forced-event route that consumes a ticket. New frames
+save these labels while restore and completed-trace validation continue to
+accept the previous numeric labels. The ticket-to-room mechanics are captured;
+equal-ticket masses, the source `NextFloat` mapping, and Native stream/cursor
+parity remain `UNVERIFIED`. Core/CLI Release build passed with zero warnings
+or errors, the full static RNG inventory passed (185/185 registry-to-matrix
+rows and all 185 S0 evidence-pointer rows), and `git diff --check` passed; no
+tests were run.
+
 **S5 controlled run-action Chance Law outcome resolution increment
 (2026-10-26):** Controlled run-action choices now resolve explicit or compact
 Chance Law outcome IDs through a shared `ChanceLawV111` support-to-index
