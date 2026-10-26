@@ -6325,5 +6325,7 @@ weak, normal, and elite queue requests now carry ordered encounter labels, and
 their Chance Laws expose the same labels beside the existing numeric index
 outcomes. Labels are checked against the ordered support fingerprint and are
 excluded from the law ID, event ID, and RNG result. Run snapshot replay checks
-new labels while accepting earlier unlabeled laws. Core Release build, static
-RNG audit, and `git diff --check` passed; no tests were added or run.
+new labels in Act 1 and later-act snapshots while accepting earlier unlabeled
+laws. Full bag equality remains checked at the initial Act 1 boundary, before
+the prepared queues are consumed. Core Release build, static RNG audit, and
+`git diff --check` passed; no tests were added or run.

@@ -198,8 +198,10 @@ Later-act weak, normal, and elite encounter queue laws expose optional
 `OutcomeLabels` aligned with their numeric index outcomes. The labels identify
 the eligible encounter models while leaving the sampled indices, Chance Law
 IDs, event IDs, and RNG cursor unchanged. New run-initialization snapshots
-replay and verify these labels; older snapshots with no labels retain their
-index-only replay path.
+replay and verify these labels, including after the run advances beyond Act 1;
+older snapshots with no labels retain their index-only replay path. The full
+prepared bags are compared while the run is still at its initial Act 1
+boundary, before those queues begin to be consumed.
 
 Unconfigured prototype `continue_act` now uses the same controlled run-action continuation for its registered `map.legacy.*` requests. The saved frame checks the act-transition boundary and map stream, replays the exact selected prefix, and only exposes the completed map with the advanced prototype RNG and action trace. A `ReferenceNatureRunActionSessionV111` automatically reuses that action continuation and commits its cursor when map generation completes. This extends legacy prototype coverage; it does not claim Native map-generator coverage, source geometry or call-order fidelity, or calibrated legacy probabilities.
 

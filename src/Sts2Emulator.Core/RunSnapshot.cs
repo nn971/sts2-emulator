@@ -152,7 +152,6 @@ public static class RunSnapshot
             replayMapGeneration: true);
         if (!state.Stochastic.ReferenceNatureRunInitializationPending &&
             state.Configuration?.UsesExperimentalSilentThreeActRoute == true &&
-            state.World?.Act == 1 &&
             state.Stochastic.ReferenceNatureRunInitializationTranscript is
                 { } transcript)
             ValidateExperimentalLaterActPreparation(state, transcript);
@@ -219,8 +218,10 @@ public static class RunSnapshot
             "Experimental run-start snapshot lost its world.");
         if (!preparation.Complete ||
             !preparation.NatureState.SameCursor(transcript.FinalNatureState) ||
-            CanonicalJson.Sha256(preparation.Bags) != CanonicalJson.Sha256(
-                world.Stochastic.PreparedLaterActEncounterBags))
+            world.Act == 1 &&
+                CanonicalJson.Sha256(preparation.Bags) !=
+                    CanonicalJson.Sha256(
+                        world.Stochastic.PreparedLaterActEncounterBags))
             throw new InvalidDataException(
                 "Experimental run-start bags or Nature cursor differ from generator replay.");
     }
