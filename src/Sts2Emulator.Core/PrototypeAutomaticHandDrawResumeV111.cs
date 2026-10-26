@@ -717,17 +717,17 @@ public sealed partial class PrototypeGameEngine
         if (semantic && requestedCount <= 0)
             throw new InvalidDataException(
                 "Semantic automatic draw resume lost its request.");
-        var progress = ResumeAutomaticHandDrawBoundary(
+        var progress = semantic
+            ? ResumeAutomaticHandDrawBoundary(
                 segment, requestedCount,
-                context: semantic
-                    ? AutomaticHandDrawResumeContextV111.SavedSemanticStage
-                    : AutomaticHandDrawResumeContextV111.SavedControlledStage,
+                context: AutomaticHandDrawResumeContextV111.SavedSemanticStage,
                 semanticDraw: semanticDraw,
                 recycleSite: recycleSite ?? "combat.DrawPlayerHand",
                 recycleOperation: recycleOperation ??
                     "unsupported_nested_stage") ??
-            throw new InvalidDataException(
-                "Automatic hand-draw result lost its continuation owner.");
+                throw new InvalidDataException(
+                    "Semantic hand-draw result lost its continuation owner.")
+            : ResumeSavedControlledAutomaticHandDraw(segment);
         if (progress.RequestedCount is { } reportedRequested &&
             reportedRequested != requestedCount)
             throw new InvalidDataException(
