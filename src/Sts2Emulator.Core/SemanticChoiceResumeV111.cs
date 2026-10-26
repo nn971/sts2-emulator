@@ -38,8 +38,7 @@ internal static class SemanticChoiceResumeV111
             return PrototypeGameEngine
                 .ResumeSemanticAutomaticHandDrawAfterNestedChoice(
                     checkpoint, resumed, boundary, choiceKind,
-                    requestedCount, remainingCount)
-                .EnsurePipelineBoundary();
+                    requestedCount, remainingCount);
 
         var progress = new PrototypeDrawCardsResumeResultV111(
             resumed,
@@ -103,9 +102,11 @@ internal static class SemanticChoiceResumeV111
         };
 
         PrototypeDrawCardsResumeResultV111 progress;
-        if (fromHandDraw && run.World?.Combat is { } automaticCombat &&
+        bool automaticHandDraw = fromHandDraw &&
+            run.World?.Combat is { } automaticCombat &&
             PrototypeGameEngine.HasSemanticAutomaticHandDrawProgress(
-                automaticCombat))
+                automaticCombat);
+        if (automaticHandDraw)
             progress = PrototypeGameEngine
                 .ResumeSemanticAutomaticHandDrawAfterNestedChoice(
                     checkpoint, run, null, "draw segment",
@@ -118,7 +119,9 @@ internal static class SemanticChoiceResumeV111
             progress.Run, ownedDecision.Event,
             ownedDecision.SelectedIndex);
         return (
-            progress.EnsurePipelineBoundary(),
+            automaticHandDraw
+                ? progress
+                : progress.EnsurePipelineBoundary(),
             ownedDecision.Event.SiteId);
     }
 
