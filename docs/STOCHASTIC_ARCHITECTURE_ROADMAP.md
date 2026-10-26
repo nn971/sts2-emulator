@@ -2,6 +2,15 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**S6 event relic-acquisition law reuse increment (2026-10-26):** The
+controlled event-choice query now routes legacy event-gained relic Rare-card
+and potion model requests through the existing relic-acquisition Chance Laws
+and validates their owner, stream, ordinal, ordered indices, and saved labels.
+Configured Native `player.rewards` requests retain the Native index-grid
+route. Legacy equal-index weights, pool fidelity, and cursor parity remain
+`UNVERIFIED` or open. Core Release build and `git diff --check` passed; no
+tests were added or run.
+
 **S6 event random-upgrade identity law increment (2026-10-26):** The
 controlled event-choice query now routes `event.random_upgrade.card_instance`
 through a typed legacy law over the saved checkpoint's ordered eligible

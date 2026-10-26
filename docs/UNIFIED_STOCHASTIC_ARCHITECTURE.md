@@ -1003,14 +1003,16 @@ boundary fingerprint. Controlled event-choice resolution accepts a unique
 candidate label and retains the index transcript as its compatibility journal.
 The controlled Chance Law query routes the legacy physical-card random
 upgrade, Rare-card and potion grants, empty potion-slot fills, custom potion
-offers, and post-reward modifier-curse requests through typed laws. The
-upgrade law uses ordered eligible card-instance identities and derives their
-saved model-plus-instance labels from the current event checkpoint. The
-other laws validate each request owner, stream, ordinal, ordered index
-support, and saved semantic labels against their law; potion-slot eligibility
-is also derived from the saved event checkpoint. These
-equal-index legacy models remain `UNVERIFIED`, and Native source-pool fidelity
-and cursor parity remain open.
+offers, post-reward modifier curses, and event-gained relic Rare-card and
+potion acquisitions through typed laws. The upgrade law uses ordered eligible
+card-instance identities and derives their saved model-plus-instance labels
+from the current event checkpoint. Event relic acquisitions reuse the
+existing run-action acquisition laws; configured Native `player.rewards`
+requests retain the Native index-grid query. The other laws validate each
+request owner, stream, ordinal, ordered index support, and saved semantic
+labels against their law; potion-slot eligibility is also derived from the
+saved event checkpoint. Equal-index legacy models remain `UNVERIFIED`, and
+Native source-pool fidelity and cursor parity remain open.
 Event-choice and run-action projections reuse
 `ControlledChancePendingBoundaryV111` for defensive request/label ownership
 and Chance Law event-ID derivation; each context retains its own boundary

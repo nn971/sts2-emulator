@@ -1085,6 +1085,22 @@ public static partial class ChanceLawEngineV111
                         pending.EventId, request.Ordinal)
                     : throw new InvalidDataException(
                         "Legacy event modifier-curse law is outside an event-reward continuation."),
+            "relic.acquisition.random_rare_card.model"
+                when effect is null => throw new InvalidDataException(
+                    "Legacy Rare-card acquisition law is outside an event-effect continuation."),
+            "relic.acquisition.random_rare_card.model"
+                when request.StreamId == "reward" =>
+                    QueryLegacyRelicAcquisitionRareCardModel(
+                        request.Ordinal),
+            "relic.acquisition.random_rare_card.model" => null,
+            "relic.acquisition.random_potion.model"
+                when effect is null => throw new InvalidDataException(
+                    "Legacy potion acquisition law is outside an event-effect continuation."),
+            "relic.acquisition.random_potion.model"
+                when request.StreamId == "event" =>
+                    QueryLegacyRelicAcquisitionPotionModel(
+                        ControlledPotionSlotIndex(request), request.Ordinal),
+            "relic.acquisition.random_potion.model" => null,
             _ => null
         };
         if (law is null)
@@ -1093,6 +1109,7 @@ public static partial class ChanceLawEngineV111
         var expectedStream = request.SiteId switch
         {
             "event.reward.random_rare_card.model" or
+                "relic.acquisition.random_rare_card.model" or
                 "event.reward.offer_potion.model.index_draw" or
                 "event.reward.random_modifier_curse.index_draw" => "reward",
             _ => "event"
@@ -1123,7 +1140,8 @@ public static partial class ChanceLawEngineV111
         {
             var outcomePrefix = request.SiteId is
                 "event.reward.random_rare_card.model" or
-                "event.reward.random_modifier_curse.index_draw"
+                "event.reward.random_modifier_curse.index_draw" or
+                "relic.acquisition.random_rare_card.model"
                     ? "card:" : "potion:";
             expectedLabels = law.Outcomes.Select(outcome =>
             {
