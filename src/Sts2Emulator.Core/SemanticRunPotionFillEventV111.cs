@@ -129,3 +129,70 @@ public sealed record SemanticRunPotionFillEventV111(
         ? null
         : (string[])values.Clone();
 }
+
+/// <summary>
+/// Provider-private identity annotation for a Native Entropic Brew draw.
+/// The cursor transition remains unverified against the game reference.
+/// </summary>
+public sealed record SemanticRunPotionFillNativeAuditV111(
+    RandomIndexDecisionV111 ProviderDecision, string[] CandidatePotionIds)
+{
+    private string[]? _candidatePotionIds = CandidatePotionIds is null
+        ? null : (string[])CandidatePotionIds.Clone();
+
+    public const string CurrentSchemaId =
+        "sts2-v111-native-run-potion-fill-audit-v1";
+
+    public string[] CandidatePotionIds
+    {
+        get => _candidatePotionIds is null
+            ? null! : (string[])_candidatePotionIds.Clone();
+        init => _candidatePotionIds = value is null
+            ? null : (string[])value.Clone();
+    }
+
+    public SemanticRunPotionFillNativeAuditV111 Fork() => this with
+    {
+        ProviderDecision = ProviderDecision with
+        {
+            Request = ProviderDecision.Request with
+            {
+                OrderedCandidates = (int[])ProviderDecision.Request
+                    .OrderedCandidates.Clone()
+            }
+        },
+        CandidatePotionIds = CandidatePotionIds
+    };
+
+    public void Validate()
+    {
+        var decision = ProviderDecision;
+        var request = decision?.Request;
+        var candidates = _candidatePotionIds;
+        if (decision is null || request is null ||
+            decision.ProviderMode != "native-v111" ||
+            request.SiteId != SemanticRunPotionFillEventV111.CurrentSiteId ||
+            request.StreamId != NativePlayerRngV111.RewardsStreamId ||
+            request.OperationKind != "choose_index" ||
+            candidates is null ||
+            !candidates.SequenceEqual(PrototypeContent.PotionPool,
+                StringComparer.Ordinal) ||
+            request.SupportCount != candidates.Length ||
+            !request.OrderedCandidates.SequenceEqual(
+                Enumerable.Range(0, candidates.Length)))
+            throw new InvalidDataException(
+                "Invalid Native run potion-fill identity annotation.");
+        decision.Validate();
+    }
+
+    public static SemanticRunPotionFillNativeAuditV111 Create(
+        RandomIndexDecisionV111 decision, string[] candidatePotionIds)
+    {
+        ArgumentNullException.ThrowIfNull(decision);
+        ArgumentNullException.ThrowIfNull(candidatePotionIds);
+        var audit = new SemanticRunPotionFillNativeAuditV111(
+            decision, candidatePotionIds);
+        audit.Validate();
+        return audit;
+    }
+}

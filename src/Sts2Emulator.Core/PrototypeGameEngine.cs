@@ -1192,14 +1192,26 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                                 .DescribeCandidates(
                                     (string[])potionPool.Clone())
                             : null;
-                        var potionIndex = nativeRunRng is { } nativeRewardRng
-                            ? NativePlayerRngV111.ChooseIndex(
-                                nativeRewardRng,
-                                "run.potion.fill_empty_slots.model",
-                                NativePlayerRngV111.RewardsStreamId,
-                                ownerId,
-                                potionPool.Length)
-                            : ResolveLegacyRandomIndex(
+                        int potionIndex;
+                        if (nativeRunRng is { } nativeRewardRng)
+                        {
+                            var decision = NativePlayerRngV111
+                                .ChooseIndexDecision(
+                                    nativeRewardRng,
+                                    "run.potion.fill_empty_slots.model",
+                                    NativePlayerRngV111.RewardsStreamId,
+                                    ownerId,
+                                    potionPool.Length);
+                            RandomBoundaryJournalV111
+                                .RecordRunPotionFillOutcome(
+                                    SemanticRunPotionFillNativeAuditV111
+                                        .Create(decision,
+                                            (string[])potionPool.Clone()));
+                            potionIndex = decision.SelectedIndex;
+                        }
+                        else
+                        {
+                            potionIndex = ResolveLegacyRandomIndex(
                                 rng,
                                 "run.potion.fill_empty_slots.model",
                                 ownerId,
@@ -1207,6 +1219,7 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                                 streamId: "reward",
                                 controlledCandidateLabels:
                                     (string[])potionPool.Clone());
+                        }
                         var potionId = potionPool[potionIndex];
                         slots[index] =
                             new PotionInstance(

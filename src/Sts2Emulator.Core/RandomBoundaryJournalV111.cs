@@ -560,6 +560,8 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
         _combatGoldOutcomes = [];
     private readonly List<SemanticRelicRewardNativeAuditV111>
         _relicRewardOutcomes = [];
+    private readonly List<SemanticRunPotionFillNativeAuditV111>
+        _runPotionFillOutcomes = [];
     private readonly Dictionary<string, int> _operationSequences =
         new(StringComparer.Ordinal);
     private bool _disposed;
@@ -669,6 +671,11 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
     /// <summary>Typed Native relic-reward rarity and queue outcomes.</summary>
     public IReadOnlyList<SemanticRelicRewardNativeAuditV111>
         RelicRewardOutcomes => _relicRewardOutcomes
+            .Select(outcome => outcome.Fork()).ToArray();
+
+    /// <summary>Typed Native potion identities selected by Entropic Brew.</summary>
+    public IReadOnlyList<SemanticRunPotionFillNativeAuditV111>
+        RunPotionFillOutcomes => _runPotionFillOutcomes
             .Select(outcome => outcome.Fork()).ToArray();
 
     internal static void RecordWeightedIntentOutcome(
@@ -1055,6 +1062,29 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
             throw new InvalidDataException(
                 "Relic-reward annotation differs from the latest primitive unit-float entry.");
         current._relicRewardOutcomes.Add(auditEntry.Fork());
+    }
+
+    internal static void RecordRunPotionFillOutcome(
+        SemanticRunPotionFillNativeAuditV111 auditEntry)
+    {
+        ArgumentNullException.ThrowIfNull(auditEntry);
+        var current = Active.Value;
+        if (current is null)
+            return;
+        auditEntry.Validate();
+        var lastEntry = current._orderedTranscript.LastOrDefault();
+        if (lastEntry is null || lastEntry.OperationKind != "index")
+            throw new InvalidDataException(
+                "Run potion-fill annotation has no preceding primitive index entry.");
+        var boundary = lastEntry.DeserializeEvent<RandomBoundaryEventV111>();
+        var journalDecision = new RandomIndexDecisionV111(
+            boundary.Request, boundary.SelectedIndex, boundary.ProviderMode,
+            boundary.NativeCursorBefore, boundary.NativeCursorAfter);
+        if (CanonicalJson.Sha256(journalDecision) !=
+            CanonicalJson.Sha256(auditEntry.ProviderDecision))
+            throw new InvalidDataException(
+                "Run potion-fill annotation differs from the latest primitive index entry.");
+        current._runPotionFillOutcomes.Add(auditEntry.Fork());
     }
 
     /// <summary>Returns a provider-specific mixed transcript in the order

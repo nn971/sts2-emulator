@@ -1509,10 +1509,17 @@ queues are projected alongside their rarity boundary. Ordinary physical
 draws are recorded separately per player action. Any unrecognized provider
 boundary prevents the semantic trace from being marked complete; the typed
 boundary trace remains available. The projection normalizes Native ordinals
-for reward sites, target, generated
-card, potion generation, transform, energy cost, hand-card selection,
-card-shortlist, combat pool-shuffle, and ordinary draw-insertion families
-against earlier requests in that semantic family. Shortlist owner identity
+for reward sites, including `run.potion.fill_empty_slots.model`, target,
+generated card, potion generation, transform, energy cost, hand-card
+selection, card-shortlist, combat pool-shuffle, and ordinary draw-insertion
+families against earlier requests in that semantic family. Scripted run
+captures map empty or numeric Native labels at the run potion-fill site back
+to the ordered `PrototypeContent.PotionPool` identities. Native-policy
+captures retain a typed annotation for the selected potion identity, allowing
+semantic comparison when every boundary in the action interval is otherwise
+annotated. This establishes outcome equivalence on the declared pool; Native
+pool ordering and cursor parity remain open pending reference evidence.
+Shortlist owner identity
 omits the candidate-pool digest because the support fingerprint already
 records the remaining ordered candidates at each pick. Generated-card owner
 identity likewise omits its pool digest, while random hand-cost owners retain

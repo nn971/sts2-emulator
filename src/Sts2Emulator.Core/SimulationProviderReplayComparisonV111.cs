@@ -316,6 +316,26 @@ internal static class SimulationProviderReplaySemanticIdentityV111
         ChanceLawV111 law, string[]? candidateLabels = null)
     {
         ArgumentNullException.ThrowIfNull(law);
+        if (law.SiteId == SemanticRunPotionFillEventV111.CurrentSiteId)
+        {
+            var potionPool = PrototypeContent.PotionPool;
+            if (law.SupportCount != potionPool.Length)
+                throw new InvalidDataException(
+                    "Run potion-fill Chance Law differs from its canonical potion pool.");
+            if (candidateLabels is { Length: > 0 } runLabels)
+            {
+                var indexedLabels = Enumerable.Range(0, potionPool.Length)
+                    .Select(index => index.ToString(
+                        System.Globalization.CultureInfo.InvariantCulture));
+                if (!runLabels.SequenceEqual(potionPool,
+                        StringComparer.Ordinal) &&
+                    !runLabels.SequenceEqual(indexedLabels,
+                        StringComparer.Ordinal))
+                    throw new InvalidDataException(
+                        "Run potion-fill labels differ from the canonical potion identities.");
+            }
+            return (string[])potionPool.Clone();
+        }
         if (candidateLabels is { Length: > 0 } labels)
         {
             if (labels.Length != law.SupportCount)
@@ -3019,7 +3039,7 @@ public sealed record SimulationProviderReplayCaptureV111(
 
                     var candidateLabels = decision.CandidateLabels ??
                         replay.PendingCandidateLabels;
-                    if (candidateLabels is not null &&
+                    if (candidateLabels is { Length: > 0 } &&
                         candidateLabels.Length != law.SupportCount)
                         return null;
                     var semanticSupportIds =
@@ -3666,6 +3686,19 @@ internal static class SimulationProviderReplayNativeSemanticOutcomeTraceV111
                         outcome.Outcome.Event))))
                 return null;
 
+        foreach (var outcome in audit.RunPotionFillOutcomes)
+            if (!AddDecision(outcome.ProviderDecision, () =>
+                {
+                    outcome.Validate();
+                    var request = outcome.ProviderDecision.Request;
+                    var law = ChanceLawEngineV111
+                        .QueryNativeRunPotionFillSlotModel(request);
+                    return CreateLawOutcome(law,
+                        outcome.ProviderDecision.SelectedIndex,
+                        outcome.CandidatePotionIds);
+                }))
+                return null;
+
         foreach (var outcome in audit.CardOddsOutcomes)
         {
             var request = outcome.ProviderDecision.Request;
@@ -3980,6 +4013,7 @@ internal static class SimulationProviderReplayNativeSemanticOutcomeTraceV111
                 StochasticSiteRegistryV111.CardRarityRollUnitFloatSiteId or
                 StochasticSiteRegistryV111.CardRarityUpgradeRollUnitFloatSiteId or
                 StochasticSiteRegistryV111.NativeRewardCardModelSiteId or
+                SemanticRunPotionFillEventV111.CurrentSiteId or
                 StochasticSiteRegistryV111.RelicGrabBagRaritySiteId or
                 PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId or
                 "card_rarity.encounter_model.index_draw")

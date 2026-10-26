@@ -226,6 +226,8 @@ public sealed record SemanticNativePolicyAuditV111(
         "sts2-v111-native-draw-insertion-audit-v1";
     public const string EnemyPileInsertionAuditSchemaV1 =
         "sts2-v111-native-enemy-pile-insertion-audit-v1";
+    public const string RunPotionFillAuditSchemaV1 =
+        SemanticRunPotionFillNativeAuditV111.CurrentSchemaId;
     public const string ProviderTraceSchemaV1 =
         "sts2-v111-native-policy-mixed-trace-v1";
 
@@ -279,6 +281,9 @@ public sealed record SemanticNativePolicyAuditV111(
     /// <summary>Null for older snapshots that predate typed Native enemy
     /// pile-insertion outcomes.</summary>
     public string? EnemyPileInsertionAuditSchema { get; init; }
+    /// <summary>Null for older snapshots; V1 covers Native Entropic Brew
+    /// potion identities.</summary>
+    public string? RunPotionFillAuditSchema { get; init; }
     /// <summary>Null for older snapshots that did not require a complete
     /// mixed provider trace.</summary>
     public string? ProviderTraceSchema { get; init; }
@@ -309,6 +314,7 @@ public sealed record SemanticNativePolicyAuditV111(
         _potionFactoryOutcomes = [];
     private SemanticCombatGoldNativeAuditV111[]? _combatGoldOutcomes = [];
     private SemanticRelicRewardNativeAuditV111[]? _relicRewardOutcomes = [];
+    private SemanticRunPotionFillNativeAuditV111[]? _runPotionFillOutcomes = [];
     private NativeEncounterFormationAuditV111[]?
         _encounterFormationOutcomes = [];
 
@@ -410,6 +416,12 @@ public sealed record SemanticNativePolicyAuditV111(
         get => CloneRelicRewardOutcomes(_relicRewardOutcomes)!;
         init => _relicRewardOutcomes = CloneRelicRewardOutcomes(value);
     }
+    public SemanticRunPotionFillNativeAuditV111[] RunPotionFillOutcomes
+    {
+        get => CloneRunPotionFillOutcomes(_runPotionFillOutcomes)!;
+        init => _runPotionFillOutcomes =
+            CloneRunPotionFillOutcomes(value);
+    }
     public NativeEncounterFormationAuditV111[] EncounterFormationOutcomes
     {
         get => CloneEncounterFormationOutcomes(
@@ -450,7 +462,9 @@ public sealed record SemanticNativePolicyAuditV111(
         CombatGoldOutcomes = CloneCombatGoldOutcomes(_combatGoldOutcomes)!,
         RelicRewardOutcomes = CloneRelicRewardOutcomes(_relicRewardOutcomes)!,
         EncounterFormationOutcomes = CloneEncounterFormationOutcomes(
-            _encounterFormationOutcomes)!
+            _encounterFormationOutcomes)!,
+        RunPotionFillOutcomes = CloneRunPotionFillOutcomes(
+            _runPotionFillOutcomes)!
     };
 
     internal static SemanticNativePolicyAuditV111
@@ -474,6 +488,7 @@ public sealed record SemanticNativePolicyAuditV111(
             CardTransformAuditSchema = CardTransformAuditSchemaV1,
             RandomTargetAuditSchema = RandomTargetAuditSchemaV1,
             PotionGenerationAuditSchema = PotionGenerationAuditSchemaV1,
+            RunPotionFillAuditSchema = RunPotionFillAuditSchemaV1,
             ProviderTraceSchema = ProviderTraceSchemaV1
         };
 
@@ -533,7 +548,9 @@ public sealed record SemanticNativePolicyAuditV111(
             CombatGoldOutcomes = CombatGoldOutcomes.Concat(
                 journal.CombatGoldOutcomes).ToArray(),
             RelicRewardOutcomes = RelicRewardOutcomes.Concat(
-                journal.RelicRewardOutcomes).ToArray()
+                journal.RelicRewardOutcomes).ToArray(),
+            RunPotionFillOutcomes = RunPotionFillOutcomes.Concat(
+                journal.RunPotionFillOutcomes).ToArray()
         };
     }
 
@@ -655,6 +672,12 @@ public sealed record SemanticNativePolicyAuditV111(
         values?.Select(value => value is null ? null! : value.Fork())
             .ToArray();
 
+    private static SemanticRunPotionFillNativeAuditV111[]?
+        CloneRunPotionFillOutcomes(
+            SemanticRunPotionFillNativeAuditV111[]? values) =>
+        values?.Select(value => value is null ? null! : value.Fork())
+            .ToArray();
+
     public void Validate()
     {
         var decisions = _decisions;
@@ -674,6 +697,7 @@ public sealed record SemanticNativePolicyAuditV111(
         var potionFactoryOutcomes = _potionFactoryOutcomes;
         var combatGoldOutcomes = _combatGoldOutcomes;
         var relicRewardOutcomes = _relicRewardOutcomes;
+        var runPotionFillOutcomes = _runPotionFillOutcomes;
         var encounterFormationOutcomes = _encounterFormationOutcomes;
         if (ProviderId != NativeProviderId ||
             ProbabilityStatus != "UNVERIFIED" || decisions is null ||
@@ -692,6 +716,7 @@ public sealed record SemanticNativePolicyAuditV111(
             potionFactoryOutcomes is null ||
             combatGoldOutcomes is null ||
             relicRewardOutcomes is null ||
+            runPotionFillOutcomes is null ||
             encounterFormationOutcomes is null ||
             (WeightedIntentAuditSchema is not null &&
              WeightedIntentAuditSchema != WeightedIntentAuditSchemaV1) ||
@@ -736,6 +761,8 @@ public sealed record SemanticNativePolicyAuditV111(
             (EnemyPileInsertionAuditSchema is not null &&
              EnemyPileInsertionAuditSchema !=
                 EnemyPileInsertionAuditSchemaV1) ||
+            (RunPotionFillAuditSchema is not null &&
+             RunPotionFillAuditSchema != RunPotionFillAuditSchemaV1) ||
             (ProviderTraceSchema is not null &&
              ProviderTraceSchema != ProviderTraceSchemaV1) ||
             (ProviderTraceSchema is null &&
@@ -1171,6 +1198,8 @@ public sealed record SemanticNativePolicyAuditV111(
             new List<RandomIndexDecisionV111>();
         var tracePotionGenerationDecisions =
             new List<RandomIndexDecisionV111>();
+        var traceRunPotionFillDecisions =
+            new List<RandomIndexDecisionV111>();
         var traceCardOddsDecisions =
             new List<RandomUnitFloatDecisionV111>();
         var tracePotionRewardOddsDecisions =
@@ -1227,6 +1256,13 @@ public sealed record SemanticNativePolicyAuditV111(
                     value.Request.StreamId ==
                         NativePlayerRngV111.RewardsStreamId)
                     tracePotionFactoryModelDecisions.Add(
+                        new RandomIndexDecisionV111(
+                            value.Request, value.SelectedIndex,
+                            value.ProviderMode, value.NativeCursorBefore,
+                            value.NativeCursorAfter));
+                if (value.Request.SiteId ==
+                    SemanticRunPotionFillEventV111.CurrentSiteId)
+                    traceRunPotionFillDecisions.Add(
                         new RandomIndexDecisionV111(
                             value.Request, value.SelectedIndex,
                             value.ProviderMode, value.NativeCursorBefore,
@@ -1918,6 +1954,30 @@ public sealed record SemanticNativePolicyAuditV111(
                 if (matchingOutcomes != 1)
                     throw new InvalidDataException(
                         "Native potion-generation decision does not have exactly one model annotation.");
+            }
+        }
+
+        if (RunPotionFillAuditSchema == RunPotionFillAuditSchemaV1 ||
+            runPotionFillOutcomes.Length > 0)
+        {
+            if (traceRunPotionFillDecisions.Count !=
+                runPotionFillOutcomes.Length)
+                throw new InvalidDataException(
+                    "Native run potion-fill outcomes are incomplete for their mixed trace.");
+            foreach (var fillDecision in traceRunPotionFillDecisions)
+            {
+                var decisionFingerprint = CanonicalJson.Sha256(fillDecision);
+                var matchingOutcomes = runPotionFillOutcomes.Count(outcome =>
+                {
+                    if (outcome is null)
+                        return false;
+                    outcome.Validate();
+                    return CanonicalJson.Sha256(outcome.ProviderDecision) ==
+                        decisionFingerprint;
+                });
+                if (matchingOutcomes != 1)
+                    throw new InvalidDataException(
+                        "Native run potion-fill decision does not have exactly one typed identity annotation.");
             }
         }
     }

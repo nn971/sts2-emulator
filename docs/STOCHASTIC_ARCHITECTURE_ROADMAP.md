@@ -6578,3 +6578,13 @@ requests use the existing bounded-index law and engine-owned provider path.
 Native pool order and cursor parity remain open. Both Core and CLI Release
 builds passed with zero warnings or errors; the RNG inventory, CLI hello
 capability probe, and whitespace check passed. No tests were added or run.
+
+**S6 Entropic Brew cross-provider identity increment (2026-10-26):**
+Scripted run captures now map empty and numeric Native candidate labels for
+`run.potion.fill_empty_slots.model` to the ordered potion identities, and the
+site participates in reward-family ordinal normalization. Native-policy
+transcripts retain a validated selected-potion annotation paired with the
+exact primitive request, so the semantic capture can cover this boundary.
+This establishes identity comparison on the declared pool; Native pool
+ordering and cursor parity remain open pending reference evidence. Core
+Release build and `git diff --check` passed; no tests were added or run.
