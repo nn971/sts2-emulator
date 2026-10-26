@@ -44,8 +44,10 @@ mapper, so a complete and unique saved label vector supplies ordered outcome
 IDs whenever the support fits the explicit-law limit. It preserves each
 request index's existing weight and fingerprints the identity mapping;
 missing, duplicate, or numeric-range labels keep `choice_index:n`, and compact
-supports remain compact. Site-specific event laws keep their existing support
-builders and checks. Core/CLI Release build and static RNG audit passed;
+supports remain compact. The generic post-reward facade uses the same mapper
+for labeled requests outside its site-specific modifier-curse law. Site-specific
+event laws keep their existing support builders and checks. Core/CLI Release
+build and static RNG audit passed;
 `git diff --check` passed; no tests were run.
 
 **S5 controlled run-action outcome identity increment (2026-10-26):** The

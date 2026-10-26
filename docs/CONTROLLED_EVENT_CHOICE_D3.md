@@ -229,7 +229,8 @@ compact index supports; the existing `selected_index` form remains supported.
 All forms retain the controlled index transcript. Event-effect boundaries and
 the post-reward modifier-curse boundary use the same semantic Chance Law query
 for pending inspection and outcome resolution; other post-reward requests
-retain their generic index law.
+retain their generic index law, with complete unique saved candidate labels
+used as outcome IDs when they fit the explicit-law limit.
 
 The exact event-effect or event-reward continuation frame is part of the
 ordinary run snapshot. A pending continuation exposes only

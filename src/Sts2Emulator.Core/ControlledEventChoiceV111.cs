@@ -135,8 +135,9 @@ public static class ControlledEventChoiceEngineV111
             pending.Request.SiteId ==
                 "event.reward.random_modifier_curse.index_draw")
             return ChanceLawEngineV111.QueryControlledEventChoice(source);
-        return ChanceLawEngineV111.QueryRandomIndex(
-            pending.ChanceEventId, pending.Request);
+        return ChanceLawEngineV111.QueryRandomIndexWithCandidateOutcomeIds(
+            pending.ChanceEventId, pending.Request,
+            pending.CandidateLabels);
     }
 
     internal static bool IsStonePushDeckChoiceBoundary(RunState run)
