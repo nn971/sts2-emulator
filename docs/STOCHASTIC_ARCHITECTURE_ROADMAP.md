@@ -6588,3 +6588,10 @@ exact primitive request, so the semantic capture can cover this boundary.
 This establishes identity comparison on the declared pool; Native pool
 ordering and cursor parity remain open pending reference evidence. Core
 Release build and `git diff --check` passed; no tests were added or run.
+
+**S0 prototype reward guard registry increment (2026-10-26):** The five
+engine-owned legacy reward SiteId/operation pairs now live in
+`StochasticSiteRegistryV111`; `ControlledChanceGuardV111` delegates its scoped
+request check to that shared registry. The fallback still requires an active
+guard and explicit reward allowance. Core and CLI Release builds, static RNG
+inventory checks, and `git diff --check` passed; no tests were added or run.

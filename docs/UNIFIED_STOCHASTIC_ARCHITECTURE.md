@@ -2172,6 +2172,9 @@ live support, and applies that action. The string-action `Step` entry point
 composes selection with the same mechanics resume core.
 `ControlledChanceGuardV111.ExecuteGuarded` owns the synchronous guard scope
 and optional engine-owned Native-provider and prototype-reward allowances.
+The exact legacy reward site and operation pairs for the prototype fallback
+live in `StochasticSiteRegistryV111`, which is also the source for the guard's
+request check.
 Typed semantic-choice resumes, semantic-pilot and end-turn transitions,
 controlled-playable resumes, semantic combat-draw entry/resume, controlled
 run-action and event-choice continuations, and the Native-policy action path

@@ -353,6 +353,17 @@ internal sealed record LegacyCallerBoundIndexQuerySiteV111(
 /// </summary>
 public static class StochasticSiteRegistryV111
 {
+    private static readonly Dictionary<string, string>
+        EngineOwnedPrototypeRewardBoundaries = new(StringComparer.Ordinal)
+        {
+            ["reward.card_rarity.ticket"] = "bounded_integer",
+            ["reward.card_model.index_draw"] = "choose_index",
+            ["reward.random_potion.drop.ticket"] = "bounded_integer",
+            ["reward.random_potion.model"] = "choose_index",
+            [PrototypeGameEngine.PaelsToothCardReturnSiteId] =
+                "choose_index"
+        };
+
     public const string RelicGrabBagRaritySiteId =
         "relic_grab_bag.rarity.unit_float";
     public const string NativeCombatGoldSiteId =
@@ -1632,6 +1643,14 @@ public static class StochasticSiteRegistryV111
             _ => false
         };
     }
+
+    internal static bool SupportsEngineOwnedPrototypeRewardBoundary(
+        string siteId, string streamId, string operationKind) =>
+        !string.IsNullOrWhiteSpace(siteId) && streamId == "reward" &&
+        !string.IsNullOrWhiteSpace(operationKind) &&
+        EngineOwnedPrototypeRewardBoundaries.TryGetValue(
+            siteId, out var expectedOperationKind) &&
+        operationKind == expectedOperationKind;
 
     internal static bool SupportsEngineOwnedNativeBoundary(
         string siteId, string streamId, string operationKind)

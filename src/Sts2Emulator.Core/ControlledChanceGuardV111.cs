@@ -12,15 +12,6 @@ public static class ControlledChanceGuardV111
     private sealed record NativeBoundaryAuthorization(
         string SiteId, string StreamId, string OperationKind);
 
-    private static readonly Dictionary<string, string> EngineOwnedRewardSites = new(
-        StringComparer.Ordinal)
-    {
-        ["reward.card_rarity.ticket"] = "bounded_integer",
-        ["reward.card_model.index_draw"] = "choose_index",
-        ["reward.random_potion.drop.ticket"] = "bounded_integer",
-        ["reward.random_potion.model"] = "choose_index",
-        [PrototypeGameEngine.PaelsToothCardReturnSiteId] = "choose_index"
-    };
     private static readonly AsyncLocal<int> Depth = new();
     private static readonly AsyncLocal<int> EngineOwnedRewardDepth = new();
     private static readonly AsyncLocal<int> EngineOwnedNativeDepth = new();
@@ -32,9 +23,10 @@ public static class ControlledChanceGuardV111
         EngineOwnedNativeDepth.Value > 0;
     internal static bool IsEngineOwnedPrototypeRewardRequest(
         string siteId, string streamId, string operationKind) =>
-        Active && EngineOwnedRewardDepth.Value > 0 && streamId == "reward" &&
-        EngineOwnedRewardSites.TryGetValue(siteId, out var expectedOperation) &&
-        operationKind == expectedOperation;
+        Active && EngineOwnedRewardDepth.Value > 0 &&
+        StochasticSiteRegistryV111
+            .SupportsEngineOwnedPrototypeRewardBoundary(
+                siteId, streamId, operationKind);
 
     /// <summary>
     /// An explicit, narrowly scoped engine-owned reward fallback. It permits
