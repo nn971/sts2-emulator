@@ -46,6 +46,14 @@ Native cursor parity remain open. No continuation schema changed. Core Release
 build and static outcome-blindness audit passed; no tests were run;
 `git diff --check` passed.
 
+**S6 controlled event Pael's Legion law reuse increment (2026-10-26):**
+When a controlled event effect acquires Pael's Legion, the query now validates
+that saved `GainRelic` effect, derives the appended relic slot from the
+pre-effect player checkpoint, and routes its isolated `reward` ordinal-zero
+request through the existing four-skin law. The legacy equal-index model and
+emulator seed derivation remain `UNVERIFIED`; no continuation schema changed.
+Core Release build and `git diff --check` passed; no tests were run.
+
 **S6 event relic-acquisition law reuse increment (2026-10-26):** The
 controlled event-choice query now routes legacy event-gained relic Rare-card
 and potion model requests through the existing relic-acquisition Chance Laws

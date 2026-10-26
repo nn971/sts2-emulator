@@ -1110,6 +1110,11 @@ public static partial class ChanceLawEngineV111
                     QueryControlledEventUnownedRelicSelection(
                         source, effect, request),
             "relic.unowned_random_selection.index_draw" => null,
+            NativePaelRewardsV111.LegionSkinSiteId
+                when effect is not null =>
+                    QueryControlledEventPaelsLegionSkin(
+                        source, effect, request),
+            NativePaelRewardsV111.LegionSkinSiteId => null,
             "relic.acquisition.random_rare_card.model"
                 when effect is null => throw new InvalidDataException(
                     "Legacy Rare-card acquisition law is outside an event-effect continuation."),
@@ -1140,15 +1145,18 @@ public static partial class ChanceLawEngineV111
                 "reward.card_transform.replacement.index_draw" or
                 StochasticSiteRegistryV111.RandomPoolDistinctShuffleSiteId or
                 StochasticSiteRegistryV111.EventRewardCardBundleShuffleSiteId or
+                NativePaelRewardsV111.LegionSkinSiteId or
                 "event.reward.offer_potion.model.index_draw" or
                 "event.reward.random_modifier_curse.index_draw" => "reward",
             "relic.unowned_random_selection.index_draw" => request.StreamId,
             _ => "event"
         };
         string[] expectedLabels;
-        var numericSupportLabels = request.SiteId ==
-            "reward.card_rarity.ticket";
-        var boundedIndexSupport = numericSupportLabels || request.SiteId is
+        var numericSupportLabels = request.SiteId is
+            "reward.card_rarity.ticket" or
+            NativePaelRewardsV111.LegionSkinSiteId;
+        var boundedIndexSupport = request.SiteId ==
+                "reward.card_rarity.ticket" || request.SiteId is
             StochasticSiteRegistryV111.RandomPoolDistinctShuffleSiteId or
             StochasticSiteRegistryV111.EventRewardCardBundleShuffleSiteId;
         if (request.SiteId == "event.random_upgrade.card_instance")
@@ -1354,6 +1362,44 @@ public static partial class ChanceLawEngineV111
 
         cardIds.Reverse();
         return cardIds.ToArray();
+    }
+
+    private static ChanceLawV111 QueryControlledEventPaelsLegionSkin(
+        RunState source,
+        PrototypeControlledEventChoiceContinuationV111 continuation,
+        RandomIndexRequestV111 request)
+    {
+        if (source.Phase != RunPhase.Event || source.World is not { } world ||
+            world.Event?.EventId != continuation.EventId)
+            throw new InvalidDataException(
+                "Pael's Legion skin law is outside its saved event boundary.");
+
+        var choice = PrototypeContent.Event(continuation.EventId).Choices
+            .SingleOrDefault(candidate => candidate.Id == continuation.ChoiceId) ??
+            throw new InvalidDataException(
+                "Pael's Legion skin law references an unknown event choice.");
+        if ((uint)continuation.NextEffectIndex >=
+                (uint)choice.Effects.Length)
+            throw new InvalidDataException(
+                "Pael's Legion skin law is outside its saved effect boundary.");
+        var effect = choice.Effects[continuation.NextEffectIndex];
+        if (effect.Kind != PrototypeRunEffectKind.GainRelic ||
+            effect.RelicId != NativePaelRewardsV111.LegionId)
+            throw new InvalidDataException(
+                "Pael's Legion skin request differs from its saved relic-acquisition effect.");
+
+        // Event relic acquisition appends the new instance before running
+        // AfterObtained. The suspended effect checkpoint intentionally keeps
+        // its pre-effect player, so that next append index is the saved count.
+        var expectedOwnerId = "relic:paels_legion:instance:" +
+            source.Player.Relics.Length.ToString(
+                CultureInfo.InvariantCulture);
+        if (request.StreamId != "reward" || request.Ordinal != 0 ||
+            request.OwnerId != expectedOwnerId)
+            throw new InvalidDataException(
+                "Pael's Legion skin request differs from its saved acquisition slot.");
+
+        return QueryPaelsLegionSkin(expectedOwnerId, ordinal: 0);
     }
 
     private static ChanceLawV111? QueryControlledEventPoolShuffle(

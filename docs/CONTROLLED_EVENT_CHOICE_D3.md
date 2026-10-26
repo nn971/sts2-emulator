@@ -160,6 +160,9 @@ The supported event-choice sites are:
 - `event.reward.card_bundle.shuffle_swap_index` for `OfferCardBundles`; the
   query validates the active Common or Uncommon source pool and its saved
   descending-swap prefix
+- `relic.paels_legion.skin.index_draw` when a saved event effect grants
+  Pael's Legion; the query derives the appended relic slot from the pre-effect
+  player state and reuses the existing four-skin law
 - `relic.unowned_random_selection.index_draw` for eligible event options;
   `GainRandomRelic` and `OfferRandomRelic` effects rebuild the unowned pool
   from the saved player state, validate its request owner and stream, and

@@ -2236,6 +2236,12 @@ active Common or Uncommon pool and replay its saved swap prefix. These legacy
 index laws retain `UNVERIFIED` weighting; source-pool completeness, stream
 attribution, and Native cursor parity remain open.
 
+When a controlled event effect grants Pael's Legion, the event query now
+validates the saved `GainRelic` effect, derives the newly appended relic slot
+from the pre-effect player checkpoint, and reuses the dedicated four-skin
+Chance Law on isolated `reward` ordinal zero. The emulator's skin-seed
+derivation and equal-index weighting remain `UNVERIFIED`.
+
 ## Reading order
 
 1. This architecture contract.
