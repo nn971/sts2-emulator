@@ -719,7 +719,11 @@ public sealed partial record RunState
         var encounterId = world.EncounterIds.LastOrDefault();
         if (encounterId is null)
         {
-            if (world.Map.Nodes.Length > 0)
+            // A controlled fixed-combat fixture can keep the act's generated
+            // map without having traversed a node. A real map-entry combat,
+            // identified by its current node, must record its encounter.
+            if (world.Map.Nodes.Length > 0 &&
+                world.Map.CurrentNodeId is not null)
             {
                 throw new InvalidOperationException(
                     "Map-generated active combat room has no encounter-history entry.");
@@ -759,10 +763,16 @@ public sealed partial record RunState
                 || PrototypeNativeUnderdocks.SupportedBossEncounterIds.Contains(
                     encounter.Id, StringComparer.Ordinal));
 
+        // A named fixed-combat fixture may choose an otherwise zero-weight
+        // registered encounter before traversing any map node. It has no
+        // map-floor eligibility or generated-pool requirement, but must still
+        // match the declared room and act. Ordinary map combats always have
+        // a current node and retain the strict eligibility gate.
+        bool isolatedFixedEncounter = world.Map.CurrentNodeId is null;
         if (encounter.RoomType != world.ActiveRoom
             || world.Act < encounter.MinAct
             || world.Act > encounter.MaxAct
-            || world.Floor < encounter.MinFloor
+            || !isolatedFixedEncounter && (world.Floor < encounter.MinFloor
             || world.Floor > encounter.MaxFloor
             || (encounter.Weight <= 0
                 && !promotedOvergrowthEncounter
@@ -772,7 +782,7 @@ public sealed partial record RunState
                     or PrototypeNativeLaterActMap.GloryProfileId
                     or PrototypeGoldenPathMapV111.ProfileId
                     && ExperimentalSilentThreeActRouteV111.ContainsEncounter(
-                        encounter.Id, world.Act))))
+                        encounter.Id, world.Act)))))
         {
             throw new InvalidOperationException(
                 $"Encounter '{encounter.Id}' is ineligible at act {world.Act}, floor {world.Floor}.");

@@ -718,11 +718,23 @@ public static class ControlledPlayableCombatEngineV111
         var cards = player.Deck.Select((c, i) => new CombatCardInstance(
             i + 1L, c.InstanceId, c.CardId, c.UpgradeLevel, false,
             c.PersistentState.Clone(), Enchantment: c.Enchantment)).ToArray();
+        // This constructor joins a separately generated Native formation to
+        // a fresh starter player. Give its subscribers one combat-wide order:
+        // the isolated monster fixture can reuse the same initial power order
+        // on several enemies, which violates the ordinary engine invariant.
+        long nextSubscriberOrder = 1;
         var relics = player.Relics.Select((r, i) =>
         {
             var d = PrototypeContent.Relic(r.RelicId);
-            return new CombatRelicState(i, r.RelicId, i + 1L,
+            return new CombatRelicState(i, r.RelicId, nextSubscriberOrder++,
                 new int[(d.Triggers ?? []).Length], r.IsMelted);
+        }).ToArray();
+        var playerPowers = verified.Combat.PlayerPowers.Select(power =>
+            power with { ApplicationOrder = nextSubscriberOrder++ }).ToArray();
+        var enemies = verified.Combat.Enemies.Select(enemy => enemy with
+        {
+            Powers = enemy.PowerStates.Select(power =>
+                power with { ApplicationOrder = nextSubscriberOrder++ }).ToArray()
         }).ToArray();
         var potions = player.PotionSlots.Select((p, i) =>
             p is null ? null : new CombatPotionState(
@@ -732,6 +744,9 @@ public static class ControlledPlayableCombatEngineV111
         {
             Cards = cards,
             NextCardInstanceId = cards.Length + 1L,
+            PlayerPowers = playerPowers,
+            Enemies = enemies,
+            NextPowerApplicationOrder = nextSubscriberOrder,
             Relics = relics,
             Potions = potions,
             CurrentMapNodeId = run.World!.Map.CurrentNodeId,
@@ -1482,7 +1497,11 @@ public static class ControlledPlayableCombatEngineV111
         stored.Validate();
         // Full provenance replay, from source-verified controlled HP+intent
         // completion through the entire ordered shuffle and player transcript.
-        var current = Begin(stored.Origin, stored.Seed);
+        // A named isolated fixture includes its encounter in run history.
+        // Preserve that same identity during replay rather than rebuilding an
+        // anonymous fixture, which changes the provenanced world snapshot.
+        var fixtureEncounterId = stored.Run.World?.EncounterIds.LastOrDefault();
+        var current = Begin(stored.Origin, stored.Seed, fixtureEncounterId);
         for (int shuffleIndex = 0;
             shuffleIndex < stored.Stochastic.ShuffleTranscript.Length;
             shuffleIndex++)
