@@ -2823,7 +2823,14 @@ class SemanticCombat:
 
     def observe(self):
         """Fair player-only observation: never a privileged Nature event."""
-        return self.observe_frame()[0]
+        observation, actions = self.observe_frame()
+        # Backward compatibility: existing agent code calls observe() then
+        # actions() on this same immutable boundary. Reuse that exact menu,
+        # once, without a duplicate semantic_observe RPC.
+        self.session._semantic_observation_cache = (
+            self.handle, self.fingerprint, actions
+        )
+        return observation
 
     def observe_for_nature(self):
         """Fair public combat state at a pending Nature decision.
@@ -2846,6 +2853,11 @@ class SemanticCombat:
         return observation
 
     def actions(self):
+        cache = getattr(self.session, "_semantic_observation_cache", None)
+        if cache is not None and cache[:2] == (
+                self.handle, self.fingerprint):
+            self.session._semantic_observation_cache = None
+            return cache[2]
         return self.observe_frame()[1]
 
     def step(self, action_id: str):
@@ -3206,6 +3218,7 @@ class Session:
         self._next_request = 0
         self._closed = False
         self._semantic_profile_dir = os.environ.get("STS2_SEMANTIC_PROFILE_DIR")
+        self._semantic_observation_cache = None
         try:
             self.capabilities = self.call("hello")
             self.stochastic_session_coverage = self.capabilities.get(
@@ -3326,6 +3339,10 @@ class Session:
 
     def call(self, operation, **payload):
         with self._lock:
+            # An intervening RPC (including release or another step) invalidates
+            # the one-shot pending menu; querying actions() alone stays correct.
+            if operation != "semantic_observe":
+                self._semantic_observation_cache = None
             if self._closed:
                 raise EmulatorError("Emulator session is closed")
             request_id = str(self._next_request)
