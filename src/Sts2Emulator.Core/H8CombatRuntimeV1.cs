@@ -90,6 +90,12 @@ public sealed class H8CombatRuntimeV1
         new(_runtimeId, _version);
 
     public bool Terminal => _state.CombatTerminal;
+    public string? Outcome => Terminal ? _state.CombatOutcome : null;
+    public int? ExitHp => Terminal ? _state.Run.Player.Hp : null;
+    public int? TerminalEnemyHp => Terminal &&
+        _state.CombatOutcome == "defeat"
+        ? _state.Run.World?.DefeatRemainingEnemyHp
+        : null;
     public bool AtPlayerBoundary =>
         _state.AtPlayerBoundary || _state.AtPlayerChoiceBoundary;
     // Explicitly classified until the native tagged player-choice cursor
