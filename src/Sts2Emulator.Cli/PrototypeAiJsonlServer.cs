@@ -6634,6 +6634,32 @@ internal static class PrototypeAiJsonlServer
                         break;
                     }
 
+                    case "h8_reference_law":
+                    {
+                        // Optional exact H7 Chance-Law compatibility audit.
+                        // This deliberately uses the existing v111 declared
+                        // event identity/provenance. It is slower than the
+                        // compact native H8 weighted-support route and must
+                        // never run unless the caller explicitly requests
+                        // bit-identical event-scoped reference sampling.
+                        var runtime = RequireH8(request);
+                        if (runtime.Boundary != RequiredH8Boundary(request))
+                            throw new InvalidOperationException(
+                                "Stale H8 reference law boundary.");
+                        if (!runtime.HasPendingIntent && !runtime.HasPendingCardDraw)
+                            throw new InvalidOperationException(
+                                "H8 reference law requires a pending Nature event.");
+                        var projected = DescribeSemanticPending(
+                            runtime.LegacySnapshotForAudit());
+                        Write(new
+                        {
+                            requestId, ok = true,
+                            schemaId = SemanticChanceSchemaId,
+                            pending = projected
+                        });
+                        break;
+                    }
+
                     case "h8_observe":
                     {
                         // Public H7 policy surface: same source projection
