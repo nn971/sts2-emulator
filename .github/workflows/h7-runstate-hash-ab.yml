@@ -1,0 +1,91 @@
+name: h7-runstate-hash-ab
+on:
+  pull_request:
+    paths:
+      - 'src/Sts2Emulator.Core/CanonicalJson.cs'
+      - 'src/Sts2Emulator.Core/SemanticPilotCombatV111.cs'
+      - '.github/workflows/h7-runstate-hash-ab.yml'
+  workflow_dispatch:
+
+jobs:
+  sixteen-cell-source-matched-profile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: after-src
+      - uses: actions/checkout@v4
+        with:
+          repository: nn971/sts2-ai
+          ref: research/h7-sampled-terminal-replay-20261027
+          path: ai
+          submodules: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Export exact previous boundary-inspection revision
+        run: |
+          mkdir -p before-src
+          git -C after-src fetch --no-tags --depth=1 origin fa06caac8b8d6b8c4208ffda48511c303bf6ce82
+          git -C after-src archive fa06caac8b8d6b8c4208ffda48511c303bf6ce82 | tar -xf - -C before-src
+      - name: Build two isolated semantic emulators
+        run: |
+          for src in before-src after-src; do
+            dotnet restore "$src/Sts2Emulator.sln"
+            dotnet build "$src/Sts2Emulator.sln" -c Release --no-restore -m:1
+          done
+      - name: Install CPU H7 actor dependencies
+        working-directory: ai
+        run: |
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -e '.[dev]'
+      - name: Paired 16-cell reference-law draw profile
+        working-directory: ai
+        run: |
+          unset STS2_H7_VERIFY_RUN_HASH_REUSE STS2_H7_COMPARE_BOUNDARY_INSPECTION
+          for mode in before after; do
+            if [ "$mode" = before ]; then
+              src=../before-src
+              revision=fa06caac8b8d6b8c4208ffda48511c303bf6ce82
+            else
+              src=../after-src
+              revision=$(git -C "$src" rev-parse HEAD)
+            fi
+            mkdir -p "../results/$mode" "../profiles/$mode"
+            export STS2_SEMANTIC_PROFILE_DIR="../profiles/$mode"
+            python -u tools/benchmark_h7_rollouts.py \
+              --emulator-dll "$src/src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll" \
+              --emulator-bindings "$src/bindings/python" \
+              --emulator-revision "$revision" \
+              --output "../results/$mode/h7.json" \
+              --episodes 16 --workers 2 \
+              --actor-backend local --actor-device cpu \
+              --width 32 --layers 1 --heads 4 --feedforward 64 \
+              --study-seed 73127 --actor-seed 31337 --reference-seed 23387
+            python ../after-src/tools/summarize_semantic_perf.py \
+              "../profiles/$mode" --output "../results/$mode/native.json"
+          done
+          unset STS2_SEMANTIC_PROFILE_DIR
+          python ../after-src/tools/compare_h7_boundary_perf.py \
+            ../results/before ../results/after | tee ../results/comparison.txt
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          a = json.loads(Path('../results/before/native.json').read_text())['operations']
+          b = json.loads(Path('../results/after/native.json').read_text())['operations']
+          k='sub.semantic_draw_hash_RunState'
+          assert k in a and k in b, 'Missing actual draw hash profiler'
+          print('RunState actual hashes:',a[k]['count'],'->',b[k]['count'])
+          print('RunState hashing allocated:',a[k]['allocatedBytes'],'->',b[k]['allocatedBytes'])
+          assert b[k]['count'] <= a[k]['count'], 'Unexpected increase in full RunState SHA computations'
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h7-runstate-readonly-sha-ab
+          path: results
+          if-no-files-found: ignore

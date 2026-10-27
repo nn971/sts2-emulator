@@ -427,6 +427,11 @@ public sealed record SemanticPilotCombatV111(
 
     public void Validate()
     {
+        // Semantic validation only observes an existing immutable-by-contract
+        // snapshot. Keep repeated RunState SHA-256 computations local to this
+        // validation call; never cache across a transition or JSONL request.
+        using var readOnlyHashes =
+            CanonicalJson.BeginReadOnlyRunStateHashReuse();
         this.Mechanics.Continuation.Validate(
             PrototypeMechanicsContinuationKindV111.SemanticPilot);
         this.Run.Validate();
