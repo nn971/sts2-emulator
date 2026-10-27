@@ -221,6 +221,14 @@ class SemanticProfilerIntegrationTests(unittest.TestCase):
                     measurements["sub.semantic_draw_pilot_resolve"]["count"],
                     resolved_draws,
                 )
+                self.assertEqual(
+                    measurements["sub.semantic_draw_result_chance_sites"]["count"],
+                    resolved_draws,
+                )
+                self.assertEqual(
+                    measurements["sub.semantic_draw_result_controller_mode"]["count"],
+                    resolved_draws,
+                )
                 self.assertTrue(any(
                     key.startswith("sub.semantic_draw_hash_")
                     for key in measurements
