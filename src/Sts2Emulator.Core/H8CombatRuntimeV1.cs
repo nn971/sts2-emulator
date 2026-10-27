@@ -110,7 +110,8 @@ public sealed class H8CombatRuntimeV1
     /// </summary>
     public PrototypeAiFrame ObservePlayerFrame()
     {
-        if (!_state.AtPlayerBoundary || _state.CombatTerminal)
+        if ((!_state.AtPlayerBoundary && !_state.AtPlayerChoiceBoundary) ||
+            _state.CombatTerminal)
             throw new InvalidOperationException(
                 "H8 public player observation requires a full player boundary.");
         return new PrototypeAiEnvironment().Observe(_state.Run);
@@ -121,9 +122,9 @@ public sealed class H8CombatRuntimeV1
         if (!AtPlayerBoundary)
             throw new InvalidOperationException(
                 "H8 player actions require a player boundary.");
-        if (_state.AtPlayerChoiceBoundary)
-            throw new NotSupportedException(
-                "H8 player-choice sub-boundaries are pending migration.");
+        // Pending nested player selections remain checked-v111 mechanics;
+        // the H7 player must restrict this full public menu to the exact
+        // pending choice support before sampling.
         return new PrototypeAiEnvironment().Observe(_state.Run)
             .LegalActions.Select(action => action.ActionId).ToArray();
     }
