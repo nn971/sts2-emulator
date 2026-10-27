@@ -1,0 +1,38 @@
+name: semantic-rollout-hotpath
+on:
+  pull_request:
+    paths:
+      - 'src/Sts2Emulator.Cli/PrototypeAiJsonlServer.cs'
+      - 'src/Sts2Emulator.Cli/SemanticOperationProfiler.cs'
+      - 'bindings/python/sts2_emulator/__init__.py'
+      - 'tests/test_semantic_rollout_perf.py'
+      - 'tools/summarize_semantic_perf.py'
+      - '.github/workflows/semantic-rollout-hotpath.yml'
+  workflow_dispatch:
+
+jobs:
+  semantic-hotpath:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - name: Validate Python binding and profiling harness
+        run: python -m unittest discover -s tests -p 'test_semantic_rollout_perf.py' -v
+      - name: Build pinned semantic emulator
+        run: |
+          dotnet restore Sts2Emulator.sln
+          dotnet build Sts2Emulator.sln -c Release --no-restore -m:1
+      - name: Test real semantic requests and snapshot restoration
+        env:
+          STS2_EMULATOR_DLL: src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll
+        run: python -m unittest discover -s tests -p 'test_semantic_rollout_perf.py' -v
+      - name: Focused C# semantic combat regression
+        run: |
+          dotnet test tests/Sts2Emulator.Core.Tests -c Release --no-build \
+            --filter FullyQualifiedName~SemanticPilotCombatV111Tests
