@@ -105,6 +105,8 @@ class SemanticProfilerIntegrationTests(unittest.TestCase):
             self.assertEqual(measurements["op.semantic_observe"]["count"], 2)
             self.assertEqual(measurements["op.semantic_step"]["count"], 1)
             self.assertGreaterEqual(measurements["op.semantic_load"]["count"], 1)
+            self.assertEqual(
+                measurements["sub.semantic_step_transition"]["count"], 1)
             self.assertGreaterEqual(measurements["sub.semantic_store_fork"]["count"], 3)
             self.assertGreater(measurements["sub.semantic_result_fingerprint"]["count"], 0)
             self.assertGreater(measurements["sub.semantic_result_pending"]["count"], 0)
