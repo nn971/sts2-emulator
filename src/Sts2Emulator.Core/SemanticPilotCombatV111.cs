@@ -3226,6 +3226,36 @@ public static class SemanticPilotCombatEngineV111
     }
 
     /// <summary>
+    /// H8 bridge for a version-owned source intent request. The session has
+    /// already checked its opaque boundary version and intent support.
+    /// Retain the legacy event fingerprint solely as transcript data during
+    /// migration; skip the complete source-pilot input invariant walk.
+    /// The underlying typed intent provider and deterministic turn effects
+    /// follow the same mechanics as the checked public resolver.
+    /// </summary>
+    internal static SemanticPilotCombatV111 ResolveIntentFromH8TrustedBoundary(
+        SemanticPilotCombatV111 current, string intentId)
+    {
+        ArgumentNullException.ThrowIfNull(current);
+        ArgumentException.ThrowIfNullOrWhiteSpace(intentId);
+        var ticket = current.PendingInitialIntents ??
+            current.PendingEndTurn?.Intents;
+        if (ticket?.Pending is not { } pending)
+            throw new InvalidOperationException(
+                "H8 intent requires an active source intent request.");
+        var support = ControlledTurnIntentEngineV111
+            .DescribePendingSemanticIntent(ticket) ??
+            throw new InvalidDataException("H8 intent has no weighted support.");
+        var fingerprint = current.Fingerprint;
+        var semanticEvent = SemanticIntentChoiceV111.CreateEvent(
+            fingerprint, pending, support);
+        var selection = SemanticIntentChoiceV111.Select(
+            semanticEvent, intentId);
+        return Resolve(current, fingerprint, selection.SourceTicket,
+            selection.Decision, null, false, null, prevalidated: true);
+    }
+
+    /// <summary>
     /// Resolve one deferred draw by its stable semantic event and physical
     /// card-instance identity. The source-compatible numeric resolver stays
     /// available, but semantic consumers need not interpret an index.
