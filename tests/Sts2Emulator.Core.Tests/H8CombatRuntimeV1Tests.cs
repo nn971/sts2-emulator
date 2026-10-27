@@ -48,6 +48,160 @@ public sealed class H8CombatRuntimeV1Tests
         return runtime;
     }
 
+    private static H8CombatRuntimeV1 ReachFirstFullPlayerBoundary(
+        string seed, bool useNativePlayerEndTurn)
+    {
+        var runtime = H8CombatRuntimeV1.BeginSeeded(
+            Mawler(seed), useNativePlayerEndTurn: useNativePlayerEndTurn);
+        for (var i = 0; i < 12; i++)
+        {
+            if (runtime.LegacySnapshotForAudit().AtPlayerBoundary)
+                return runtime;
+            Assert.True(runtime.HasPendingIntent,
+                "Expected initial enemy-intent choice before first player turn.");
+            runtime.ChooseIntent(runtime.Boundary, runtime.PendingIntentIds()[0]);
+        }
+        throw new InvalidOperationException("No A10 player decision reached.");
+    }
+
+    [Fact]
+    public void NativePlayerEndTurnMatchesCheckedPathAndDecisionJournal()
+    {
+        long checkedAllocation = 0, directAllocation = 0;
+        long checkedTicks = 0, directTicks = 0;
+        for (var index = 0; index < 8; index++)
+        {
+            var seed = "h8-native-endturn-a10-mawler-" + index;
+            var checkedRuntime = ReachFirstFullPlayerBoundary(
+                seed, useNativePlayerEndTurn: false);
+            var directRuntime = ReachFirstFullPlayerBoundary(
+                seed, useNativePlayerEndTurn: true);
+            Assert.Equal(checkedRuntime.DecisionHistory,
+                directRuntime.DecisionHistory);
+            Assert.Equal(checkedRuntime.LegacySnapshotForAudit().Fingerprint,
+                directRuntime.LegacySnapshotForAudit().Fingerprint);
+            var action = checkedRuntime.EndTurnActionId();
+            Assert.Equal(action, directRuntime.EndTurnActionId());
+            var oldToken = directRuntime.Boundary;
+            var oldCount = directRuntime.DecisionHistory.Count;
+            Assert.Throws<InvalidOperationException>(() =>
+                directRuntime.ChoosePlayerAction(
+                    new H8BoundaryTokenV1(Guid.NewGuid(), oldToken.Version),
+                    action));
+            Assert.Equal(oldToken, directRuntime.Boundary);
+            Assert.Equal(oldCount, directRuntime.DecisionHistory.Count);
+
+            void Measure(H8CombatRuntimeV1 runtime,
+                ref long allocated, ref long ticks)
+            {
+                var before = GC.GetAllocatedBytesForCurrentThread();
+                var started = Stopwatch.GetTimestamp();
+                runtime.ChoosePlayerAction(runtime.Boundary, action);
+                ticks += Stopwatch.GetTimestamp() - started;
+                allocated += GC.GetAllocatedBytesForCurrentThread() - before;
+            }
+
+            if (index % 2 == 0)
+            {
+                Measure(checkedRuntime, ref checkedAllocation, ref checkedTicks);
+                Measure(directRuntime, ref directAllocation, ref directTicks);
+            }
+            else
+            {
+                Measure(directRuntime, ref directAllocation, ref directTicks);
+                Measure(checkedRuntime, ref checkedAllocation, ref checkedTicks);
+            }
+
+            Assert.Equal(checkedRuntime.DecisionHistory,
+                directRuntime.DecisionHistory);
+            Assert.Equal(checkedRuntime.LegacySnapshotForAudit().Fingerprint,
+                directRuntime.LegacySnapshotForAudit().Fingerprint);
+            checkedRuntime.AuditReplay();
+            directRuntime.AuditReplay();
+        }
+
+        _output.WriteLine(
+            "H8 checked-vs-native-endturn A10 matched=8 allocated MB/step " +
+            (checkedAllocation / 8e6).ToString("F3") + " -> " +
+            (directAllocation / 8e6).ToString("F3") +
+            " elapsed ms/step " +
+            (checkedTicks * 1000.0 / Stopwatch.Frequency / 8).ToString("F3") +
+            " -> " +
+            (directTicks * 1000.0 / Stopwatch.Frequency / 8).ToString("F3"));
+    }
+
+    [Fact]
+    public void NativeEndTurnMatchesCheckedPathAcrossRealIntentAndDrawSequence()
+    {
+        // Source-valid A10 trajectory with identical player and Nature
+        // decisions, comparing a legacy checked end_turn against the new
+        // H8 native executor across subsequent turns and random draws.
+        const string seed = "h8-native-endturn-sequence-mawler";
+        var checkedRuntime = ReachFirstFullPlayerBoundary(
+            seed, useNativePlayerEndTurn: false);
+        var directRuntime = ReachFirstFullPlayerBoundary(
+            seed, useNativePlayerEndTurn: true);
+        var decisions = 0;
+        var draws = 0;
+        var turns = 0;
+        for (var i = 0; i < 48; i++)
+        {
+            Assert.Equal(
+                checkedRuntime.LegacySnapshotForAudit().Fingerprint,
+                directRuntime.LegacySnapshotForAudit().Fingerprint);
+            Assert.Equal(
+                checkedRuntime.DecisionHistory, directRuntime.DecisionHistory);
+            if (checkedRuntime.Terminal || directRuntime.Terminal)
+            {
+                Assert.Equal(checkedRuntime.Terminal, directRuntime.Terminal);
+                break;
+            }
+
+            if (checkedRuntime.HasPendingCardDraw)
+            {
+                var eligible = checkedRuntime.PendingDrawCardInstanceIds();
+                Assert.Equal(eligible, directRuntime.PendingDrawCardInstanceIds());
+                var chosen = eligible[(i + 1) % eligible.Length];
+                checkedRuntime.ChooseDrawCard(checkedRuntime.Boundary, chosen);
+                directRuntime.ChooseDrawCard(directRuntime.Boundary, chosen);
+                draws++;
+            }
+            else if (checkedRuntime.HasPendingIntent)
+            {
+                var eligible = checkedRuntime.PendingIntentIds();
+                Assert.Equal(eligible, directRuntime.PendingIntentIds());
+                checkedRuntime.ChooseIntent(checkedRuntime.Boundary, eligible[0]);
+                directRuntime.ChooseIntent(directRuntime.Boundary, eligible[0]);
+            }
+            else if (checkedRuntime.LegacySnapshotForAudit().AtPlayerBoundary)
+            {
+                var action = checkedRuntime.EndTurnActionId();
+                Assert.Equal(action, directRuntime.EndTurnActionId());
+                checkedRuntime.ChoosePlayerAction(
+                    checkedRuntime.Boundary, action);
+                directRuntime.ChoosePlayerAction(
+                    directRuntime.Boundary, action);
+                turns++;
+            }
+            else
+                break; // Another H8 stochastic kind awaits future migration.
+            decisions++;
+        }
+
+        Assert.True(turns >= 1);
+        Assert.True(draws >= 1);
+        Assert.Equal(checkedRuntime.DecisionHistory,
+            directRuntime.DecisionHistory);
+        Assert.Equal(checkedRuntime.LegacySnapshotForAudit().Fingerprint,
+            directRuntime.LegacySnapshotForAudit().Fingerprint);
+        checkedRuntime.AuditReplay();
+        directRuntime.AuditReplay();
+        _output.WriteLine(
+            "H8 checked-vs-native-endturn sequential A10 decisions=" +
+            decisions + " end_turns=" + turns + " physical_draws=" + draws +
+            " exact state and replay passed.");
+    }
+
     [Fact]
     public void ControlledDrawSkipsInputHashWhilePreservingCheckedMechanicsAndReplay()
     {

@@ -3345,6 +3345,24 @@ public static class SemanticPilotCombatEngineV111
     }
 
     /// <summary>
+    /// H8-only publication of an already executed deterministic player
+    /// end-turn. The versioned H8 session and native end-turn executor own
+    /// all legality and mechanics; this preserves legacy v111 history for
+    /// explicit replay without running a complete pilot audit at each step.
+    /// </summary>
+    internal static SemanticPilotCombatV111 PublishH8PlayerEndTurn(
+        SemanticPilotCombatV111 current,
+        SemanticEndTurnV111? endTurn,
+        RunState result,
+        string actionId)
+    {
+        var next = PublishRunContinuation(
+            current, result, endTurn,
+            new SemanticPilotContinuationV111("player", actionId));
+        return NormalizeNoncontrolledCosts(next, auditOutput: false);
+    }
+
+    /// <summary>
     /// Resolve one deferred peek or scry by physical card identity. The
     /// provider records the revealed position while draw-pile membership and
     /// order remain unchanged.

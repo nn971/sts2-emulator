@@ -586,21 +586,77 @@ public static class SemanticEndTurnEngineV111
     /// retain its unresolved physical pile.
     /// </summary>
     public static SemanticEndTurnV111 BeginAtAdvanceTurn(
-        RunState source, string nativeEncounterEntry)
+        RunState source, string nativeEncounterEntry) =>
+        BeginAtAdvanceTurnCore(source, nativeEncounterEntry, audit: true);
+
+    private static SemanticEndTurnV111 BeginAtAdvanceTurnCore(
+        RunState source, string nativeEncounterEntry, bool audit)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentException.ThrowIfNullOrWhiteSpace(nativeEncounterEntry);
-        ValidateOrigin(source);
-        var combat = source.World!.Combat!;
+        if (audit)
+            ValidateOrigin(source);
+        var combat = source.World?.Combat ??
+            throw new InvalidOperationException(
+                "End-turn continuation requires an active combat.");
         var intents = ControlledTurnIntentEngineV111.Begin(
             combat, nativeEncounterEntry);
-        var state = new SemanticEndTurnV111(
-            source.Fork(), source.Fork(), nativeEncounterEntry,
-            intents, null, []);
+        // H8 owns the current result exclusively. Share an immutable
+        // checkpoint here; deterministic resolution forks only at its real
+        // mechanics transition. v111 retains its defensive deep copies.
+        var state = audit
+            ? new SemanticEndTurnV111(
+                source.Fork(), source.Fork(), nativeEncounterEntry,
+                intents, null, [])
+            : new SemanticEndTurnV111(
+                source, source, nativeEncounterEntry, intents, null, []);
         if (intents.Complete)
             state = CompleteIntents(state);
-        Validate(state);
+        if (audit)
+            Validate(state);
         return state;
+    }
+
+    /// <summary>
+    /// H8 has already checked one legal end-turn identity at the session
+    /// boundary and executed the real environment step on a private mechanics
+    /// copy. Assemble its continuation directly without another observation,
+    /// another step, or repeated full-state input/output audit. The
+    /// originating run is immutable while the privately advanced result is
+    /// constructed. Reproducibility is checked by explicit H8 journal replay.
+    /// </summary>
+    internal static (SemanticEndTurnV111? Continuation, RunState Result)
+        ContinueFromH8PlayerEndTurn(
+        RunState playerBoundary, RunState advanced,
+        string nativeEncounterEntry, string actionId)
+    {
+        ArgumentNullException.ThrowIfNull(playerBoundary);
+        ArgumentNullException.ThrowIfNull(advanced);
+        ArgumentException.ThrowIfNullOrWhiteSpace(nativeEncounterEntry);
+        ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
+        if (PrototypeGameEngine
+                .IsAtCombatRewardOrTerminalBoundary(advanced))
+            return (null, advanced);
+        if (PrototypeGameEngine
+                .HasPendingSupportedAutomaticPipelineChoice(advanced))
+        {
+            var suspendedChoice = new SemanticEndTurnV111(
+                playerBoundary, advanced, nativeEncounterEntry,
+                null, null, [])
+            {
+                PlayerActionSource = playerBoundary,
+                PlayerActionId = actionId
+            };
+            return (suspendedChoice, suspendedChoice.Run);
+        }
+        var state = BeginAtAdvanceTurnCore(
+            advanced, nativeEncounterEntry, audit: false);
+        var continuation = state with
+        {
+            PlayerActionSource = playerBoundary,
+            PlayerActionId = actionId
+        };
+        return (continuation, continuation.Run);
     }
 
     /// <summary>
