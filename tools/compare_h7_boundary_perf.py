@@ -20,6 +20,14 @@ IDENTICAL = (
     "actor_max_batch", "actor_delay_ms", "initialization", "model_config",
     "emulator_bindings_sha256",
 )
+# Only protocol-level operation counts must match. Hash invocation counts
+# are optimization results; reducing them is the purpose of this experiment.
+MATCHED_COUNT_STAGES = frozenset((
+    "op.semantic_resolve_draw_card",
+    "sub.semantic_resolve_draw_card_transition",
+    "sub.semantic_draw_result_chance_sites",
+    "sub.semantic_draw_result_controller_mode",
+))
 STAGES = (
     "op.semantic_resolve_draw_card",
     "sub.semantic_resolve_draw_card_transition",
@@ -68,8 +76,14 @@ def compare(before: Path, after: Path) -> str:
         if name not in op_a or name not in op_b:
             raise ValueError(f"Missing profiler counter in either run: {name}")
         x, y = op_a[name], op_b[name]
-        if x["count"] != y["count"]:
+        if name in MATCHED_COUNT_STAGES and x["count"] != y["count"]:
             raise ValueError(f"Counter count differs: {name}")
+        # Print hashes per draw instead of imposing identical hash counts.
+        # Reduced canonical hashing is the expected optimization effect.
+        if name.startswith("sub.semantic_draw_hash_"):
+            row(name + " (calls per draw)",
+                x["count"] / draw_count,
+                y["count"] / draw_count, "/draw")
         row(name + " (alloc per draw)",
             x["allocatedBytes"] / draw_count / 1e6,
             y["allocatedBytes"] / draw_count / 1e6, "MB/draw")

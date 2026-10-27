@@ -51,6 +51,29 @@ class H7BoundaryComparisonTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "source_digest"):
                 compare(before, after)
 
+    def test_hash_count_reduction_is_expected_and_reported(self):
+        with tempfile.TemporaryDirectory() as folder:
+            before, after = self.fixtures(Path(folder))
+            path = after / "native.json"
+            report = json.loads(path.read_text())
+            name = "sub.semantic_draw_hash_SemanticPilotCombatV111"
+            report["operations"][name]["count"] = 82
+            path.write_text(json.dumps(report))
+            printed = compare(before, after)
+            self.assertIn(name + " (calls per draw)", printed)
+            self.assertIn("1.000 ->        0.820", printed)
+
+    def test_protocol_stage_mismatch_is_still_rejected(self):
+        with tempfile.TemporaryDirectory() as folder:
+            before, after = self.fixtures(Path(folder))
+            path = after / "native.json"
+            report = json.loads(path.read_text())
+            name = "sub.semantic_resolve_draw_card_transition"
+            report["operations"][name]["count"] = 99
+            path.write_text(json.dumps(report))
+            with self.assertRaisesRegex(ValueError, "Counter count differs"):
+                compare(before, after)
+
     def test_draw_count_mismatch_rejected(self):
         with tempfile.TemporaryDirectory() as folder:
             before, after = self.fixtures(Path(folder))

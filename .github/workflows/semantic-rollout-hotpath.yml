@@ -45,7 +45,7 @@ jobs:
       - name: Verify stage probes remain opt-in, scoped, and exception-safe
         run: |
           dotnet test tests/Sts2Emulator.Core.Tests -c Release --no-build \
-            --filter FullyQualifiedName~SemanticDrawStageProfilerV111Tests
+            --filter 'FullyQualifiedName~SemanticDrawStageProfilerV111Tests|FullyQualifiedName~MemoizedPilotValidationIsReadOnlyAndRejectsCorruptedEnvelope'
 
       # Existing Core semantic-history tests exercise superseded encounter
       # assumptions at this H5 pin (14/17 red before this isolated CLI change).
