@@ -82,8 +82,9 @@ public sealed class ResearchCombatFixtureV111Tests
     {
         var valid = ResearchCombatFixtureGeneratorV111.Generate(0);
         Assert.Throws<NotSupportedException>(() =>
-            (valid with { Deck = [new ResearchCombatCardV111("unknown.card")] })
-                .Validate());
+            (valid with { Deck = valid.Deck.Select((card, i) =>
+                i == 0 ? new ResearchCombatCardV111("unknown.card") : card)
+                .ToArray() }).Validate());
         Assert.Throws<InvalidDataException>(() =>
             (valid with
             {
