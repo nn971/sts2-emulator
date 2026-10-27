@@ -25,6 +25,18 @@ public static class CanonicalJson
 
     public static string Sha256<T>(T value)
     {
+        if (!SemanticDrawStageProfilerV111.Active)
+            return Sha256Core(value);
+        // Profiling only: aggregate canonical JSON hashing by statically
+        // declared source type, including serialization and UTF-8 copies.
+        // This retains the exact same hash and canonical ordering.
+        return SemanticDrawStageProfilerV111.Measure(
+            "sub.semantic_draw_hash_" + typeof(T).Name,
+            () => Sha256Core(value));
+    }
+
+    private static string Sha256Core<T>(T value)
+    {
         var utf8 = Encoding.UTF8.GetBytes(Serialize(value));
         return Convert.ToHexString(SHA256.HashData(utf8)).ToLowerInvariant();
     }
