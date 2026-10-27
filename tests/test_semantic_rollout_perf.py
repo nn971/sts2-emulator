@@ -117,6 +117,79 @@ class SemanticProfilerIntegrationTests(unittest.TestCase):
                 self.assertGreaterEqual(item["allocatedBytes"], 0)
             session.release_semantic_many([state, child, restored])
 
+    def test_real_semantic_stable_id_continuation_and_stale_guard(self):
+        """Exercise the optimized draw/intent wrappers and exact replay."""
+        cmd = [
+            "dotnet", os.environ["STS2_EMULATOR_DLL"], "prototype-ai-jsonl",
+        ]
+        with Session(cmd) as session:
+            state = session.begin_seeded_semantic_combat(
+                "h7-stable-id-hotpath", act=1,
+                encounter_id="proto.encounter.mawler_normal",
+                native_entry="MawlerNormal", total_floor=2,
+                ascension=10, first_monster_combat_id=1,
+                map_column=3, map_row=1,
+                replay_opening_draw_hooks=True,
+                fixture_deck_preset_id="silent-starter-v1",
+            )
+            held = [state]
+            resolved_draws = 0
+            resolved_intents = 0
+            try:
+                for _ in range(220):
+                    if state.terminal:
+                        break
+                    if state.boundary == "player":
+                        _, actions = state.observe_frame()
+                        end_turn = next(
+                            a["actionId"] for a in actions
+                            if a["kind"] == "end_turn")
+                        next_state = state.step(end_turn)
+                    elif state.boundary == "nature":
+                        pending = state.pending
+                        self.assertIsInstance(pending, dict)
+                        if pending["kind"] == "enemy_intent":
+                            intent = pending["semanticCandidates"][0]["intentId"]
+                            with self.assertRaises(EmulatorError):
+                                session.call(
+                                    "semantic_resolve_intent",
+                                    semantic_handle=state.handle,
+                                    fingerprint="stale-fingerprint",
+                                    intent_id=intent)
+                            self.assertEqual(
+                                state.status()["fingerprint"], state.fingerprint)
+                            next_state = state.resolve_intent(intent)
+                            resolved_intents += 1
+                        elif pending["kind"] == "draw_card":
+                            instance_id = pending["candidates"][0]["cardInstanceId"]
+                            with self.assertRaises(EmulatorError):
+                                session.call(
+                                    "semantic_resolve_draw_card",
+                                    semantic_handle=state.handle,
+                                    fingerprint="stale-fingerprint",
+                                    event_id=pending["eventId"],
+                                    card_instance_id=instance_id)
+                            self.assertEqual(
+                                state.status()["fingerprint"], state.fingerprint)
+                            next_state = state.resolve_draw_card(instance_id)
+                            resolved_draws += 1
+                        else:
+                            self.fail(
+                                f"Unexpected research chance event {pending['kind']}")
+                    else:
+                        self.fail(f"Unexpected semantic boundary {state.boundary}")
+                    held.append(next_state)
+                    state = next_state
+                    if resolved_draws >= 2 and resolved_intents >= 1:
+                        break
+                self.assertGreaterEqual(resolved_draws, 2)
+                self.assertGreaterEqual(resolved_intents, 1)
+                restored = session.load_semantic_snapshot(state.save_snapshot())
+                held.append(restored)
+                self.assertEqual(restored.fingerprint, state.fingerprint)
+            finally:
+                session.release_semantic_many(held)
+
     def test_session_close_exports_per_process_profile_when_opted_in(self):
         cmd = [
             "dotnet", os.environ["STS2_EMULATOR_DLL"], "prototype-ai-jsonl",
