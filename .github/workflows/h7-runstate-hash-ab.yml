@@ -1,4 +1,4 @@
-name: h7-runstate-hash-ab
+name: h7-semantic-hash-ab
 on:
   pull_request:
     paths:
@@ -27,11 +27,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Export exact previous boundary-inspection revision
+      - name: Export exact PR #201 optimized baseline
         run: |
           mkdir -p before-src
-          git -C after-src fetch --no-tags --depth=1 origin fa06caac8b8d6b8c4208ffda48511c303bf6ce82
-          git -C after-src archive fa06caac8b8d6b8c4208ffda48511c303bf6ce82 | tar -xf - -C before-src
+          git -C after-src fetch --no-tags --depth=1 origin 2a73c418b92237dd6b425e1f2adce48a0a4ebb55
+          git -C after-src archive 2a73c418b92237dd6b425e1f2adce48a0a4ebb55 | tar -xf - -C before-src
       - name: Build two isolated semantic emulators
         run: |
           for src in before-src after-src; do
@@ -50,7 +50,7 @@ jobs:
           for mode in before after; do
             if [ "$mode" = before ]; then
               src=../before-src
-              revision=fa06caac8b8d6b8c4208ffda48511c303bf6ce82
+              revision=2a73c418b92237dd6b425e1f2adce48a0a4ebb55
             else
               src=../after-src
               revision=$(git -C "$src" rev-parse HEAD)
@@ -81,11 +81,16 @@ jobs:
           assert k in a and k in b, 'Missing actual draw hash profiler'
           print('RunState actual hashes:',a[k]['count'],'->',b[k]['count'])
           print('RunState hashing allocated:',a[k]['allocatedBytes'],'->',b[k]['allocatedBytes'])
+          p='sub.semantic_draw_hash_SemanticPilotCombatV111'
+          assert p in a and p in b, 'Missing pilot hash profiler'
+          print('Pilot actual full hashes:',a[p]['count'],'->',b[p]['count'])
+          print('Pilot hashing allocated:',a[p]['allocatedBytes'],'->',b[p]['allocatedBytes'])
+          assert b[p]['count'] <= a[p]['count'], 'Unexpected increase in pilot full SHA computations'
           assert b[k]['count'] <= a[k]['count'], 'Unexpected increase in full RunState SHA computations'
           PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: h7-runstate-readonly-sha-ab
+          name: h7-semantic-readonly-hash-ab
           path: results
           if-no-files-found: ignore
