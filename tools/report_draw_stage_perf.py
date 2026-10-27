@@ -26,7 +26,11 @@ def main():
         raise SystemExit("Missing or inconsistent draw counts")
     stages = sorted(
         ((name, metrics) for name, metrics in ops.items()
-         if name.startswith(("sub.semantic_draw_", "sub.semantic_result_chance_sites"))),
+         if name.startswith((
+             "sub.semantic_draw_",
+             "sub.semantic_result_chance_sites",
+             "sub.semantic_result_controller_mode",
+         ))),
         key=lambda pair: -pair[1]["allocatedBytes"],
     )
     if not stages:
