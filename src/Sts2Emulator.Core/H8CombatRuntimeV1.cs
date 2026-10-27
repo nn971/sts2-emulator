@@ -32,6 +32,7 @@ public sealed class H8CombatRuntimeV1
     private readonly SemanticSeededEntryV111 _entry;
     private readonly List<H8DecisionEntryV1> _journal;
     private readonly Guid _runtimeId;
+    private readonly bool _useM2AutomaticDraw;
     private SemanticPilotCombatV111 _state;
     private long _version;
     // A projected automatic-hand-draw continuation belongs to exactly one
@@ -50,21 +51,25 @@ public sealed class H8CombatRuntimeV1
         SemanticPilotCombatV111 state,
         Guid runtimeId,
         long version,
-        List<H8DecisionEntryV1> journal)
+        List<H8DecisionEntryV1> journal,
+        bool useM2AutomaticDraw)
     {
         _entry = entry;
+        _useM2AutomaticDraw = useM2AutomaticDraw;
         _state = state;
         _runtimeId = runtimeId;
         _version = version;
         _journal = journal;
     }
 
-    public static H8CombatRuntimeV1 BeginSeeded(SemanticSeededEntryV111 entry)
+    public static H8CombatRuntimeV1 BeginSeeded(
+        SemanticSeededEntryV111 entry, bool useM2AutomaticDraw = true)
     {
         ArgumentNullException.ThrowIfNull(entry);
         var state = SemanticPilotCombatEngineV111.BeginSeeded(entry);
         return new H8CombatRuntimeV1(
-            entry, state, Guid.NewGuid(), 0, new List<H8DecisionEntryV1>());
+            entry, state, Guid.NewGuid(), 0,
+            new List<H8DecisionEntryV1>(), useM2AutomaticDraw);
     }
 
     public H8BoundaryTokenV1 Boundary =>
@@ -206,7 +211,7 @@ public sealed class H8CombatRuntimeV1
         if (selectedIndex < 0)
             throw new InvalidOperationException(
                 "H8 card instance is outside the pending Nature support.");
-        var next = cursor.CanUseFastAutomaticDraw
+        var next = _useM2AutomaticDraw && cursor.CanUseFastAutomaticDraw
             ? SemanticPilotCombatEngineV111.ResolveFromH8AutomaticDrawCursor(
                 _state, cursor.AutomaticEndTurn!,
                 cursor.Event, selectedIndex)
@@ -224,7 +229,7 @@ public sealed class H8CombatRuntimeV1
     /// </summary>
     public H8CombatRuntimeV1 Fork() =>
         new(_entry, _state.Fork(), Guid.NewGuid(), _version,
-            new List<H8DecisionEntryV1>(_journal));
+            new List<H8DecisionEntryV1>(_journal), _useM2AutomaticDraw);
 
     /// <summary>
     /// Explicitly replay the journal from its source-valid seeded checkpoint,
@@ -233,7 +238,7 @@ public sealed class H8CombatRuntimeV1
     /// </summary>
     public void AuditReplay()
     {
-        var replay = BeginSeeded(_entry);
+        var replay = BeginSeeded(_entry, _useM2AutomaticDraw);
         foreach (var item in _journal)
         {
             if (replay.Boundary.Version != item.Version)
