@@ -1,6 +1,8 @@
 """Thin, version-negotiated JSONL binding. Canonical mechanics stay in C#."""
 from dataclasses import dataclass
 import json
+import os
+from pathlib import Path
 import subprocess
 import threading
 
@@ -3203,6 +3205,7 @@ class Session:
         self._lock = threading.RLock()
         self._next_request = 0
         self._closed = False
+        self._semantic_profile_dir = os.environ.get("STS2_SEMANTIC_PROFILE_DIR")
         try:
             self.capabilities = self.call("hello")
             self.stochastic_session_coverage = self.capabilities.get(
@@ -3217,6 +3220,8 @@ class Session:
                 raise EmulatorError("Emulator does not support exact snapshot v1")
             if self.capabilities.get("batchSchemaId") != "sts2-deterministic-batch-v1":
                 raise EmulatorError("Emulator does not support deterministic batch v1")
+            if self._semantic_profile_dir:
+                self.reset_semantic_profile()
         except BaseException:
             self._process.terminate()
             self._process.wait(timeout=5)
@@ -4002,6 +4007,16 @@ class Session:
                 return
             try:
                 if self._process.poll() is None:
+                    if self._semantic_profile_dir:
+                        # One process per semantic emulator worker, no shared
+                        # in-memory counters or output-file races.
+                        result = self.read_semantic_profile()
+                        directory = Path(self._semantic_profile_dir)
+                        directory.mkdir(parents=True, exist_ok=True)
+                        target = directory / (
+                            f"semantic-{os.getpid()}-{self._process.pid}.json")
+                        target.write_text(
+                            json.dumps(result, indent=2) + "\n", encoding="utf-8")
                     self.call("close")
                     self._process.wait(timeout=5)
             finally:
