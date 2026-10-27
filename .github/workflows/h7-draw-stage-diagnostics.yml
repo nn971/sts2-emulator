@@ -49,6 +49,9 @@ jobs:
           # Fail if optimized passive event inspection disagrees with the
           # unchanged reference on any real A10 JSONL boundary.
           STS2_H7_COMPARE_BOUNDARY_INSPECTION: '1'
+          # CI only: recalculate every memo hit from scratch, failing closed
+          # if any RunState instance changed during validation.
+          STS2_H7_VERIFY_RUN_HASH_REUSE: '1'
         run: |
           mkdir -p ../profiles ../reports
           python -u tools/benchmark_h7_rollouts.py \
