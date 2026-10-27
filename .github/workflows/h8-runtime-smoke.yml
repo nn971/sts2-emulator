@@ -6,6 +6,8 @@ on:
       - 'src/Sts2Emulator.Core/H8CombatRuntimeV1.cs'
       - 'src/Sts2Emulator.Core/SemanticPilotCombatV111.cs'
       - 'tests/Sts2Emulator.Core.Tests/H8CombatRuntimeV1Tests.cs'
+      - 'src/Sts2Emulator.Cli/PrototypeAiJsonlServer.cs'
+      - 'tests/test_h8_runtime_jsonl.py'
       - '.github/workflows/h8-runtime-smoke.yml'
   workflow_dispatch:
 
@@ -26,3 +28,11 @@ jobs:
         run: |
           dotnet test Sts2Emulator.sln -c Release --no-build -m:1 \
             --filter 'FullyQualifiedName~H8CombatRuntimeV1Tests|FullyQualifiedName~CanonicalJsonTests'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: H8 versioned JSONL external session and replay audit
+        env:
+          STS2_EMULATOR_DLL: ${{ github.workspace }}/src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll
+        run: |
+          python -m unittest discover -s tests -p 'test_h8_runtime_jsonl.py' -v
