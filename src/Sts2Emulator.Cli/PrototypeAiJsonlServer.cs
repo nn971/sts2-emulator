@@ -2552,6 +2552,7 @@ internal static class PrototypeAiJsonlServer
                   costPending?.TargetCardInstanceId is not null
                     ? "nature-extended-fixture"
                     : "nature-two-site";
+        }
 
         string[] SemanticChanceSitesReference(SemanticPilotCombatV111 state)
         {
