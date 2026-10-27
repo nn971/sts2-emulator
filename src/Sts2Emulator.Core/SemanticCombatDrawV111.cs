@@ -724,13 +724,17 @@ public static class SemanticCombatDrawEngineV111
     public static SemanticCombatDrawV111 Resolve(
         SemanticCombatDrawV111 state, string fingerprint, int selectedIndex)
     {
-        Validate(state);
-        if (state.Fingerprint != fingerprint)
+        SemanticDrawStageProfilerV111.Measure(
+            "sub.semantic_draw_combat_input_validate", () => Validate(state));
+        var inputFingerprint = SemanticDrawStageProfilerV111.Measure(
+            "sub.semantic_draw_combat_input_fingerprint", () => state.Fingerprint);
+        if (inputFingerprint != fingerprint)
             throw new InvalidOperationException("Stale semantic combat draw fingerprint.");
         if (state.DrawHookChoicePending is not null)
             throw new InvalidOperationException(
                 "Resolve the pending CardDrawn hook choice by action ID.");
-        var run = state.Run.Fork();
+        var run = SemanticDrawStageProfilerV111.Measure(
+            "sub.semantic_draw_combat_run_fork", state.Run.Fork);
         var world = run.World!;
         var combat = world.Combat!;
 
@@ -849,12 +853,15 @@ public static class SemanticCombatDrawEngineV111
         if (combat.SemanticDeck?.Pending is null ||
             state.RemainingCount <= 0)
             throw new InvalidOperationException("No semantic draw card pending.");
-        var cardDecision = SemanticDrawChoiceV111.Select(
-            state.Pending ?? throw new InvalidDataException(
-                "Semantic draw frame lost its pending request."),
-            selectedIndex);
-        var resolvedCombat = SemanticDrawChoiceV111.Commit(
-            combat, cardDecision);
+        var cardDecision = SemanticDrawStageProfilerV111.Measure(
+            "sub.semantic_draw_combat_select",
+            () => SemanticDrawChoiceV111.Select(
+                state.Pending ?? throw new InvalidDataException(
+                    "Semantic draw frame lost its pending request."),
+                selectedIndex));
+        var resolvedCombat = SemanticDrawStageProfilerV111.Measure(
+            "sub.semantic_draw_combat_commit",
+            () => SemanticDrawChoiceV111.Commit(combat, cardDecision));
         run = run with
         {
             World = world with
@@ -862,17 +869,23 @@ public static class SemanticCombatDrawEngineV111
                 Combat = resolvedCombat
             }
         };
-        RunState advanced;
-        int remaining;
-        using (ControlledChanceGuardV111.Enter())
-            (advanced, remaining) =
-                PrototypeGameEngine.BeginSemanticCombatDraw(
-                    run, state.RemainingCount, state.FromHandDraw);
-        SemanticDrawChoiceV111.ValidateRecordedChoice(
-            advanced, cardDecision.Event, cardDecision.SelectedIndex);
-        var next = PublishDrawProgress(
-            state, advanced, remainingCount: remaining);
-        Validate(next);
+        var (advanced, remaining) = SemanticDrawStageProfilerV111.Measure(
+            "sub.semantic_draw_combat_engine_mechanics", () =>
+            {
+                using (ControlledChanceGuardV111.Enter())
+                    return PrototypeGameEngine.BeginSemanticCombatDraw(
+                        run, state.RemainingCount, state.FromHandDraw);
+            });
+        SemanticDrawStageProfilerV111.Measure(
+            "sub.semantic_draw_combat_recorded_choice",
+            () => SemanticDrawChoiceV111.ValidateRecordedChoice(
+                advanced, cardDecision.Event, cardDecision.SelectedIndex));
+        var next = SemanticDrawStageProfilerV111.Measure(
+            "sub.semantic_draw_combat_publish",
+            () => PublishDrawProgress(
+                state, advanced, remainingCount: remaining));
+        SemanticDrawStageProfilerV111.Measure(
+            "sub.semantic_draw_combat_output_validate", () => Validate(next));
         return next;
     }
 

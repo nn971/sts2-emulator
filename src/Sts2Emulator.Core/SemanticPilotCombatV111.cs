@@ -2987,8 +2987,10 @@ public static class SemanticPilotCombatEngineV111
         var drawEvent = current.DrawPending;
         var randomPileCardEvent = current.RandomPileCardPending;
         if (expectedDeckDecision is not null)
-            SemanticDrawChoiceV111.ValidateDecision(
-                drawEvent, expectedDeckDecision);
+            SemanticDrawStageProfilerV111.Measure(
+                "sub.semantic_draw_pilot_validate_choice",
+                () => SemanticDrawChoiceV111.ValidateDecision(
+                    drawEvent, expectedDeckDecision));
         if (expectedRandomPileCardDecision is not null)
             SemanticRandomPileCardEngineV111.ValidateDecision(
                 randomPileCardEvent, expectedRandomPileCardDecision,
@@ -3102,13 +3104,17 @@ public static class SemanticPilotCombatEngineV111
             pending.EnemyActionPending is null)
             throw new InvalidOperationException(
                 "No semantic enemy intent, draw or cost choice is pending.");
-        var resolved = SemanticEndTurnEngineV111.Resolve(
-            pending, pending.Fingerprint, selectedIndex);
+        var resolved = SemanticDrawStageProfilerV111.Measure(
+            "sub.semantic_draw_endturn_resolve",
+            () => SemanticEndTurnEngineV111.Resolve(
+                pending, pending.Fingerprint, selectedIndex));
         SemanticDrawDecisionV111? deckDecision = null;
         if (drawEvent is not null)
         {
-            deckDecision = SemanticDrawChoiceV111.ValidateRecordedChoice(
-                resolved.Run, drawEvent, selectedIndex);
+            deckDecision = SemanticDrawStageProfilerV111.Measure(
+                "sub.semantic_draw_pilot_recorded_choice",
+                () => SemanticDrawChoiceV111.ValidateRecordedChoice(
+                    resolved.Run, drawEvent, selectedIndex));
         }
         if (expectedDeckDecision is not null &&
             CanonicalJson.Sha256(expectedDeckDecision) !=
@@ -3156,12 +3162,17 @@ public static class SemanticPilotCombatEngineV111
                 CanonicalJson.Sha256(randomPileCardDecision))
             throw new InvalidOperationException(
                 "Semantic random pile-card decision differs from replay.");
-        return NormalizeNoncontrolledCosts(PublishRunContinuation(
-            current, resolved.Run, resolved,
-            NatureContinuation(
-                selectedIndex, semanticIntent,
-                recordSemanticDraw ? deckDecision : null,
-                costDecision, randomPileCardDecision)));
+        var next = SemanticDrawStageProfilerV111.Measure(
+            "sub.semantic_draw_pilot_publish",
+            () => PublishRunContinuation(
+                current, resolved.Run, resolved,
+                NatureContinuation(
+                    selectedIndex, semanticIntent,
+                    recordSemanticDraw ? deckDecision : null,
+                    costDecision, randomPileCardDecision)));
+        return SemanticDrawStageProfilerV111.Measure(
+            "sub.semantic_draw_pilot_normalize",
+            () => NormalizeNoncontrolledCosts(next));
     }
 
     /// <summary>
@@ -3202,18 +3213,24 @@ public static class SemanticPilotCombatEngineV111
         SemanticPilotCombatV111 current, string fingerprint,
         string eventId, long cardInstanceId)
     {
-        current.Validate();
-        if (current.Fingerprint != fingerprint)
+        SemanticDrawStageProfilerV111.Measure(
+            "sub.semantic_draw_pilot_input_validate", current.Validate);
+        var parentFingerprint = SemanticDrawStageProfilerV111.Measure(
+            "sub.semantic_draw_pilot_input_fingerprint", () => current.Fingerprint);
+        if (parentFingerprint != fingerprint)
             throw new InvalidOperationException(
                 "Stale semantic draw fingerprint.");
         ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
         var pending = current.DrawPending ??
             throw new InvalidOperationException(
                 "Only a pending semantic draw supports card-instance resolution.");
-        var decision = SemanticDrawChoiceV111.Select(
-            pending, eventId, cardInstanceId);
-        return Resolve(current, fingerprint, decision.SelectedIndex,
-            null, decision, true, null, prevalidated: true);
+        var decision = SemanticDrawStageProfilerV111.Measure(
+            "sub.semantic_draw_pilot_select",
+            () => SemanticDrawChoiceV111.Select(pending, eventId, cardInstanceId));
+        return SemanticDrawStageProfilerV111.Measure(
+            "sub.semantic_draw_pilot_resolve",
+            () => Resolve(current, fingerprint, decision.SelectedIndex,
+                null, decision, true, null, prevalidated: true));
     }
 
     /// <summary>

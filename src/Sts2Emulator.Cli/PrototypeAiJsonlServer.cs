@@ -2512,6 +2512,22 @@ internal static class PrototypeAiJsonlServer
             allocated = measure ? SemanticOperationProfiler.Allocated() : 0L;
             var pending = DescribeSemanticPending(state);
             semanticProfiler.Record("sub.semantic_result_pending", started, allocated);
+            started = measure ? SemanticOperationProfiler.Timestamp() : 0L;
+            allocated = measure ? SemanticOperationProfiler.Allocated() : 0L;
+            var chanceSites = SemanticChanceSites(state);
+            semanticProfiler.Record(
+                activeOperation == "semantic_resolve_draw_card"
+                    ? "sub.semantic_draw_result_chance_sites"
+                    : "sub.semantic_result_chance_sites",
+                started, allocated);
+            started = measure ? SemanticOperationProfiler.Timestamp() : 0L;
+            allocated = measure ? SemanticOperationProfiler.Allocated() : 0L;
+            var controllerMode = SemanticControllerMode(state);
+            semanticProfiler.Record(
+                activeOperation == "semantic_resolve_draw_card"
+                    ? "sub.semantic_draw_result_controller_mode"
+                    : "sub.semantic_result_controller_mode",
+                started, allocated);
             return new
             {
                 ok = true, schemaId = SemanticChanceSchemaId,
@@ -2537,8 +2553,8 @@ internal static class PrototypeAiJsonlServer
                     state.CombatOutcome == "defeat"
                     ? state.Run.World?.DefeatRemainingEnemyHp
                     : null,
-                chanceSites = SemanticChanceSites(state),
-                controllerMode = SemanticControllerMode(state),
+                chanceSites,
+                controllerMode,
                 nativePolicyProvider = state.UsesNativePolicyBaseline
                     ? SemanticNativePolicyAuditV111.NativeProviderId
                     : null,
@@ -6482,6 +6498,9 @@ internal static class PrototypeAiJsonlServer
                     {
                         var parentHandle = RequiredString(request, "semantic_handle");
                         var current = RequireSemantic(request);
+                        Action<string, long, long>? recorder = semanticProfiler.Enabled
+                            ? semanticProfiler.Record : null;
+                        using var drawStages = SemanticDrawStageProfilerV111.Begin(recorder);
                         var transitionStart = semanticProfiler.Enabled
                             ? SemanticOperationProfiler.Timestamp() : 0L;
                         var transitionAllocated = semanticProfiler.Enabled

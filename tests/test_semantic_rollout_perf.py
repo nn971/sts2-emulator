@@ -123,6 +123,7 @@ class SemanticProfilerIntegrationTests(unittest.TestCase):
             "dotnet", os.environ["STS2_EMULATOR_DLL"], "prototype-ai-jsonl",
         ]
         with Session(cmd) as session:
+            session.reset_semantic_profile()
             state = session.begin_seeded_semantic_combat(
                 "h7-stable-id-hotpath", act=1,
                 encounter_id="proto.encounter.mawler_normal",
@@ -187,6 +188,57 @@ class SemanticProfilerIntegrationTests(unittest.TestCase):
                 restored = session.load_semantic_snapshot(state.save_snapshot())
                 held.append(restored)
                 self.assertEqual(restored.fingerprint, state.fingerprint)
+                measurements = session.read_semantic_profile()["operations"]
+                # Every successful draw is preceded by a deliberate
+                # stale-fingerprint RPC. Both count as JSONL operations,
+                # but only the successful calls enter nested mechanics.
+                self.assertEqual(
+                    measurements["op.semantic_resolve_draw_card"]["count"],
+                    2 * resolved_draws,
+                )
+                for metric in (
+                    "sub.semantic_draw_pilot_input_validate",
+                    "sub.semantic_draw_pilot_input_fingerprint",
+                    "sub.semantic_draw_pilot_select",
+                    "sub.semantic_draw_pilot_resolve",
+                    "sub.semantic_draw_endturn_input_validate",
+                    "sub.semantic_draw_endturn_input_fingerprint",
+                    "sub.semantic_draw_endturn_state_fork",
+                    "sub.semantic_draw_endturn_combat_draw",
+                    "sub.semantic_draw_combat_input_validate",
+                    "sub.semantic_draw_combat_input_fingerprint",
+                    "sub.semantic_draw_combat_run_fork",
+                    "sub.semantic_draw_combat_output_validate",
+                    "sub.semantic_draw_endturn_output_validate",
+                    "sub.semantic_draw_pilot_normalize",
+                ):
+                    self.assertIn(metric, measurements)
+                    self.assertGreater(measurements[metric]["count"], 0)
+                    self.assertGreaterEqual(
+                        measurements[metric]["allocatedBytes"], 0
+                    )
+                self.assertEqual(
+                    measurements["sub.semantic_draw_pilot_resolve"]["count"],
+                    resolved_draws,
+                )
+                self.assertEqual(
+                    measurements["sub.semantic_draw_result_chance_sites"]["count"],
+                    resolved_draws,
+                )
+                self.assertEqual(
+                    measurements["sub.semantic_draw_result_controller_mode"]["count"],
+                    resolved_draws,
+                )
+                self.assertTrue(any(
+                    key.startswith("sub.semantic_draw_hash_")
+                    for key in measurements
+                ))
+                self.assertLessEqual(
+                    measurements["sub.semantic_draw_pilot_input_validate"][
+                        "allocatedBytes"],
+                    measurements["sub.semantic_resolve_draw_card_transition"][
+                        "allocatedBytes"],
+                )
             finally:
                 session.release_semantic_many(held)
 
