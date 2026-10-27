@@ -205,8 +205,13 @@ public sealed class SemanticPilotCombatV111Tests
     [Fact]
     public void SemanticDrawResolvesByEventAndCardIdentityAndReplaysTypedDecision()
     {
+        // Use a source-valid A10 Act 1 encounter; the legacy Hive fixture
+        // is rejected by the current encounter-history invariants.
         var state = SemanticPilotCombatEngineV111.BeginSeeded(
-            Seeded("semantic-p0-card-identity-event"));
+            new SemanticSeededEntryV111(
+                "semantic-h7-card-identity-verified-continuation",
+                1, "proto.encounter.mawler_normal", "MawlerNormal",
+                2, 10, 1, 3, 1, ReplayOpeningDrawHooks: true));
         for (var stage = 0; state.DrawPending is null; stage++)
         {
             Assert.True(stage < 200,
@@ -243,8 +248,42 @@ public sealed class SemanticPilotCombatV111Tests
                 state, fingerprint, pending.EventId, long.MaxValue));
         Assert.Equal(fingerprint, state.Fingerprint);
 
-        state = SemanticPilotCombatEngineV111.ResolveDrawCard(
-            state, fingerprint, pending.EventId, selectedId);
+        // The pilot's validated continuation contains both checked nested
+        // frames. Reusing that validation must be equivalent to standalone
+        // public resolution, and the outer API still rejects stale inputs.
+        state.Validate();
+        var endTurnFrame = Assert.IsType<SemanticEndTurnV111>(
+            state.PendingEndTurn);
+        var handFrame = Assert.IsType<SemanticCombatDrawV111>(
+            endTurnFrame.HandDraw);
+        Assert.False(handFrame.AtBoundary);
+        int selectedIndex = Array.IndexOf(
+            pending.CandidateCardInstanceIds, selectedId);
+        Assert.True(selectedIndex >= 0);
+        var checkedHand = SemanticCombatDrawEngineV111.Resolve(
+            handFrame, handFrame.Fingerprint, selectedIndex);
+        var trustedHand = SemanticCombatDrawEngineV111
+            .ResolveFromValidatedEndTurn(handFrame, selectedIndex);
+        Assert.Equal(checkedHand.Fingerprint, trustedHand.Fingerprint);
+        var checkedTurn = SemanticEndTurnEngineV111.Resolve(
+            endTurnFrame, endTurnFrame.Fingerprint, selectedIndex);
+        var trustedTurn = SemanticEndTurnEngineV111.ResolveFromValidatedPilot(
+            endTurnFrame, selectedIndex);
+        Assert.Equal(checkedTurn.Fingerprint, trustedTurn.Fingerprint);
+
+        var stages = new List<string>();
+        using (SemanticDrawStageProfilerV111.Begin(
+            (name, _, _) => stages.Add(name)))
+        {
+            state = SemanticPilotCombatEngineV111.ResolveDrawCard(
+                state, fingerprint, pending.EventId, selectedId);
+        }
+        Assert.DoesNotContain("sub.semantic_draw_endturn_input_validate", stages);
+        Assert.DoesNotContain("sub.semantic_draw_endturn_input_fingerprint", stages);
+        Assert.DoesNotContain("sub.semantic_draw_combat_input_validate", stages);
+        Assert.DoesNotContain("sub.semantic_draw_combat_input_fingerprint", stages);
+        Assert.Contains("sub.semantic_draw_combat_output_validate", stages);
+        Assert.Contains("sub.semantic_draw_endturn_output_validate", stages);
         var decision = Assert.Single(state.History,
             transition => transition.Kind == "semantic_draw").DrawDecision!;
         Assert.Equal(pending.EventId, decision.Event.EventId);

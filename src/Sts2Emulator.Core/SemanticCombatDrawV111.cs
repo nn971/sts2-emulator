@@ -723,13 +723,30 @@ public static class SemanticCombatDrawEngineV111
     /// cost checks and CardDrawn hooks before another Nature request.</summary>
     public static SemanticCombatDrawV111 Resolve(
         SemanticCombatDrawV111 state, string fingerprint, int selectedIndex)
+        => ResolveCore(state, fingerprint, selectedIndex, prevalidated: false);
+
+    /// <summary>
+    /// Called only by a validated end-turn continuation, after its defensive
+    /// fork, before any mechanics have changed this hand-draw frame.
+    /// External draw calls must continue to use the fully checked Resolve.
+    /// </summary>
+    internal static SemanticCombatDrawV111 ResolveFromValidatedEndTurn(
+        SemanticCombatDrawV111 state, int selectedIndex)
+        => ResolveCore(state, null, selectedIndex, prevalidated: true);
+
+    private static SemanticCombatDrawV111 ResolveCore(
+        SemanticCombatDrawV111 state, string? fingerprint, int selectedIndex,
+        bool prevalidated)
     {
-        SemanticDrawStageProfilerV111.Measure(
-            "sub.semantic_draw_combat_input_validate", () => Validate(state));
-        var inputFingerprint = SemanticDrawStageProfilerV111.Measure(
-            "sub.semantic_draw_combat_input_fingerprint", () => state.Fingerprint);
-        if (inputFingerprint != fingerprint)
-            throw new InvalidOperationException("Stale semantic combat draw fingerprint.");
+        if (!prevalidated)
+        {
+            SemanticDrawStageProfilerV111.Measure(
+                "sub.semantic_draw_combat_input_validate", () => Validate(state));
+            var inputFingerprint = SemanticDrawStageProfilerV111.Measure(
+                "sub.semantic_draw_combat_input_fingerprint", () => state.Fingerprint);
+            if (inputFingerprint != fingerprint)
+                throw new InvalidOperationException("Stale semantic combat draw fingerprint.");
+        }
         if (state.DrawHookChoicePending is not null)
             throw new InvalidOperationException(
                 "Resolve the pending CardDrawn hook choice by action ID.");
