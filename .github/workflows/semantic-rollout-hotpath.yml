@@ -6,6 +6,8 @@ on:
       - 'src/Sts2Emulator.Cli/SemanticOperationProfiler.cs'
       - 'src/Sts2Emulator.Core/SemanticDrawStageProfilerV111.cs'
       - 'src/Sts2Emulator.Core/SemanticPilotCombatV111.cs'
+      - 'src/Sts2Emulator.Core/CanonicalJson.cs'
+      - 'tests/Sts2Emulator.Core.Tests/CanonicalJsonTests.cs'
       - 'src/Sts2Emulator.Core/SemanticEndTurnV111.cs'
       - 'src/Sts2Emulator.Core/SemanticCombatDrawV111.cs'
       - 'tests/Sts2Emulator.Core.Tests/SemanticDrawStageProfilerV111Tests.cs'
@@ -45,7 +47,7 @@ jobs:
       - name: Verify stage probes remain opt-in, scoped, and exception-safe
         run: |
           dotnet test tests/Sts2Emulator.Core.Tests -c Release --no-build \
-            --filter FullyQualifiedName~SemanticDrawStageProfilerV111Tests
+            --filter 'FullyQualifiedName~SemanticDrawStageProfilerV111Tests|FullyQualifiedName~CanonicalJsonTests'
 
       # Existing Core semantic-history tests exercise superseded encounter
       # assumptions at this H5 pin (14/17 red before this isolated CLI change).
