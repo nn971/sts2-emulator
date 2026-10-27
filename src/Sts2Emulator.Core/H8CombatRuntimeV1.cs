@@ -149,6 +149,24 @@ public sealed class H8CombatRuntimeV1
             .Select(candidate => candidate.IntentId).ToArray();
     }
 
+    /// <summary>
+    /// Preserve the *real source* weighted enemy-intent support in a compact
+    /// policy-independent form. The sample source RNG is owned by Nature,
+    /// never by the H7 player model.
+    /// </summary>
+    public long[] PendingIntentRawWeights()
+    {
+        var intents = _state.PendingInitialIntents ??
+            _state.PendingEndTurn?.Intents;
+        if (intents?.Pending is null)
+            throw new InvalidOperationException(
+                "H8 weighted intent query requires an active intent request.");
+        var support = ControlledTurnIntentEngineV111
+            .DescribePendingSemanticIntent(intents) ??
+            throw new InvalidDataException("H8 weighted intent support missing.");
+        return support.Candidates.Select(c => (long)c.RawWeight).ToArray();
+    }
+
     public long[] PendingDrawCardInstanceIds()
     {
         var cursor = CurrentDrawCursor() ??
