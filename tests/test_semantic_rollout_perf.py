@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import threading
 import tempfile
 import unittest
 from pathlib import Path
@@ -16,6 +17,7 @@ from sts2_emulator import EmulatorError, SemanticCombat, Session  # noqa: E402
 class MockSession:
     def __init__(self):
         self.calls = []
+        self._lock = threading.RLock()
 
     def call(self, operation, **payload):
         self.calls.append((operation, payload))
