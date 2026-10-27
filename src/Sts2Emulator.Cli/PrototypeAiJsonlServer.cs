@@ -6273,7 +6273,12 @@ internal static class PrototypeAiJsonlServer
                             OptionalString(request,
                                 "fixture_top_autoplay_potion_id"),
                             OptionalString(request,
-                                "fixture_deck_preset_id"));
+                                "fixture_deck_preset_id"),
+                            request.TryGetProperty("fixture_spec", out var fixtureSpec)
+                                && fixtureSpec.ValueKind != JsonValueKind.Null
+                                ? fixtureSpec.Deserialize<ResearchCombatFixtureV111>(
+                                    SnakeCaseJsonOptions)
+                                : null);
                         var next = SemanticPilotCombatEngineV111.BeginSeeded(entry);
                         var handle = StoreSemantic(next);
                         Write(new { requestId, ok = true,
