@@ -3223,6 +3223,14 @@ class Session:
             self._close_pipes()
             raise
 
+    def reset_semantic_profile(self):
+        """Enable/reset opt-in emulator-side timings for semantic JSONL requests."""
+        return self.call("semantic_perf_reset")["schemaId"]
+
+    def read_semantic_profile(self):
+        """Read cumulative operation timing and thread allocations."""
+        return self.call("semantic_perf_read")["profile"]
+
     def supports_reference_nature_site(self, site_id: str, *,
                                        session: str = "any") -> bool:
         """Check site coverage for a ReferenceNature continuation schema."""
