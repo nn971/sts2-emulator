@@ -218,6 +218,10 @@ class SemanticProfilerIntegrationTests(unittest.TestCase):
                     measurements["sub.semantic_draw_pilot_resolve"]["count"],
                     resolved_draws,
                 )
+                self.assertTrue(any(
+                    key.startswith("sub.semantic_draw_hash_")
+                    for key in measurements
+                ))
                 self.assertLessEqual(
                     measurements["sub.semantic_draw_pilot_input_validate"][
                         "allocatedBytes"],
