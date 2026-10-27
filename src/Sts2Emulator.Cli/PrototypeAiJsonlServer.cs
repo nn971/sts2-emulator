@@ -2512,6 +2512,10 @@ internal static class PrototypeAiJsonlServer
             allocated = measure ? SemanticOperationProfiler.Allocated() : 0L;
             var pending = DescribeSemanticPending(state);
             semanticProfiler.Record("sub.semantic_result_pending", started, allocated);
+            started = measure ? SemanticOperationProfiler.Timestamp() : 0L;
+            allocated = measure ? SemanticOperationProfiler.Allocated() : 0L;
+            var chanceSites = SemanticChanceSites(state);
+            semanticProfiler.Record("sub.semantic_result_chance_sites", started, allocated);
             return new
             {
                 ok = true, schemaId = SemanticChanceSchemaId,
@@ -2537,7 +2541,7 @@ internal static class PrototypeAiJsonlServer
                     state.CombatOutcome == "defeat"
                     ? state.Run.World?.DefeatRemainingEnemyHp
                     : null,
-                chanceSites = SemanticChanceSites(state),
+                chanceSites,
                 controllerMode = SemanticControllerMode(state),
                 nativePolicyProvider = state.UsesNativePolicyBaseline
                     ? SemanticNativePolicyAuditV111.NativeProviderId
