@@ -3327,6 +3327,24 @@ public static class SemanticPilotCombatEngineV111
     }
 
     /// <summary>
+    /// Temporary v111 snapshot/journal publication bridge for H8's direct
+    /// mechanics executor. H8 owns the physics and chance selection; this
+    /// adapter only retains the compatibility transcript at the boundary.
+    /// It can disappear once H8 checkpointing replaces legacy pilot records.
+    /// </summary>
+    internal static SemanticPilotCombatV111 PublishH8AdvancedDraw(
+        SemanticPilotCombatV111 current,
+        SemanticEndTurnV111 completedHandProgress,
+        int selectedIndex,
+        SemanticDrawDecisionV111 recordedChoice)
+    {
+        var next = PublishRunContinuation(
+            current, completedHandProgress.Run, completedHandProgress,
+            NatureContinuation(selectedIndex, null, recordedChoice));
+        return NormalizeNoncontrolledCosts(next, auditOutput: false);
+    }
+
+    /// <summary>
     /// Resolve one deferred peek or scry by physical card identity. The
     /// provider records the revealed position while draw-pile membership and
     /// order remain unchanged.
