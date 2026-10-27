@@ -47,6 +47,18 @@ class SemanticFrameTests(unittest.TestCase):
         fake, state = self.state()
         self.assertEqual(state.observe()["hp"], 55)
         self.assertEqual(state.actions()[0]["kind"], "end_turn")
+        self.assertEqual(len(fake.calls), 1)
+
+    def test_actions_alone_still_calls_emulator(self):
+        fake, state = self.state()
+        self.assertEqual(state.actions()[0]["actionId"], "end_turn")
+        self.assertEqual(len(fake.calls), 1)
+
+    def test_one_shot_cache_is_scoped_to_handle(self):
+        fake, state = self.state()
+        state.observe()
+        other = SemanticCombat(fake, "m8", "hash8", "player", None, False, None, None)
+        self.assertEqual(other.actions()[0]["actionId"], "end_turn")
         self.assertEqual(len(fake.calls), 2)
 
     def test_non_player_boundaries_cannot_observe(self):
@@ -88,7 +100,7 @@ class SemanticProfilerIntegrationTests(unittest.TestCase):
             profile = session.read_semantic_profile()
             self.assertEqual(profile["schemaId"], schema)
             measurements = profile["operations"]
-            self.assertEqual(measurements["op.semantic_observe"]["count"], 3)
+            self.assertEqual(measurements["op.semantic_observe"]["count"], 2)
             self.assertEqual(measurements["op.semantic_step"]["count"], 1)
             self.assertGreaterEqual(measurements["op.semantic_load"]["count"], 1)
             self.assertGreaterEqual(measurements["sub.semantic_store_fork"]["count"], 3)
