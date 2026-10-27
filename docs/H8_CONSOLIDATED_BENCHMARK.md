@@ -118,6 +118,42 @@ to the 53.13 s fully replayed reference.
 *supported scripted sessions/s*: the tasks, decision policy, curriculum,
 replay workload and actor are different.
 
+## Local 15-worker A/B/B/A result (2026-10-28)
+
+Uploaded benchmark: emulator revision
+`3ed4986afd9d8dd340430a45b5e7d1216aa996f3`,
+DLL SHA `5931509993acebd4c0d8a9848b94427ce5e2a28187b7da9c62424973ef5e33e6`.
+15 persistent worker processes, 128 **terminal** A10 Mawler source seeds,
+3,782 identical scripted decisions in each cohort (778 end-turn player,
+650 weighted intents, 2,354 physical draws), max 80 boundaries.
+All 128 source traces, decision journals and **full mechanics hashes**
+matched across checked/native/native/checked. No unsupported/capped
+sessions; in this special scenario, the fixed policy only ended turns.
+
+| Mode | Wall | Supported decisions/s | Terminal sessions/s |
+| --- | ---: | ---: | ---: |
+| Checked A1 | 18.6705 s | 202.57 | 6.86 |
+| Native B1 | 8.5398 s | 442.87 | 14.99 |
+| Native B2 | 9.0213 s | 419.23 | 14.19 |
+| Checked A2 | 16.6084 s | 227.72 | 7.71 |
+
+Pair-mean wall: 17.6394 s checked vs 8.7805 s native
+(**2.009x supported throughput; 50.2% wall reduction**).
+This is a true 15-worker JSONL/runtime result, but still excludes
+Transformer inference, PPO and actual player card selections.
+The `terminal` property does not distinguish victory/defeat.
+
+The original benchmark selected replay audits by each worker's local
+shard index, so it audited **23** rather than the intended **16** of
+128 sessions *per cohort*. Both arms audited identical seeds, preserving
+the paired speed result; the sums of individual worker audit times
+(37.18 and 35.79 s checked; 11.67 and 13.89 s native) overlap across
+workers and must not be subtracted from wall time. The audit scheduler
+has since been corrected to select by **global source index** (16/128),
+with a 15-shard regression test. Reruns after that change are a
+slightly lighter, correctly specified workload and should be compared
+only with matching audit settings.
+
 ## Gating the actual H8 shared-Transformer benchmark
 
 The new runner is **stage one: isolate emulator throughput of the
