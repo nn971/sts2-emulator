@@ -31,6 +31,27 @@ public sealed class ResearchCombatFixtureV111Tests
     }
 
     [Fact]
+    public void OneHundredDistinctSpecsAllOpenAsGenuinePlayableCombats()
+    {
+        var fixtures = ResearchCombatFixtureGeneratorV111.GenerateDistinct(
+            100, 20261027);
+        var encounters = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var (spec, index) in fixtures.Select((item, i) => (item, i)))
+        {
+            // The source RNG seed is deliberately separate from the spec index.
+            var state = SemanticPilotCombatEngineV111.BeginSeeded(
+                Entry(spec, "research-a10-hundred-openings-" + index));
+            Assert.True(state.AtPlayerBoundary);
+            Assert.NotEmpty(state.Run.World!.Combat!.Enemies);
+            Assert.Equal(spec.Deck.Length, state.Run.World.Combat.Cards.Length);
+            Assert.Equal(spec.SpecHash, state.OpeningSource.FixtureSpec!.SpecHash);
+            encounters.Add(spec.EncounterId);
+        }
+        Assert.Equal(ResearchCombatFixtureGeneratorV111.SupportedEncounters.Length,
+            encounters.Count);
+    }
+
+    [Fact]
     public void SourceWorldSeedIsIndependentOfFixtureIdentity()
     {
         var spec = ResearchCombatFixtureGeneratorV111.Generate(0, 20261027);
