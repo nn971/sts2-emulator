@@ -264,7 +264,7 @@ internal static class PrototypeAiJsonlServer
                 outcome = runtime.Outcome,
                 exitHp = runtime.ExitHp,
                 terminalEnemyHp = runtime.TerminalEnemyHp,
-                decisionCount = runtime.DecisionHistory.Count,
+                decisionCount = runtime.DecisionCount,
                 cardInstanceIds = kind == "draw_card"
                     ? runtime.PendingDrawCardInstanceIds() : Array.Empty<long>(),
                 intentIds = kind == "enemy_intent"
@@ -6658,6 +6658,22 @@ internal static class PrototypeAiJsonlServer
                             actions = frame.LegalActions.Select(ActionWire).ToArray(),
                             terminal = false
                         });
+                        break;
+                    }
+
+                    case "h8_reference_law":
+                    {
+                        // Opt-in typed provider bridge. Preserves the original
+                        // H7 declared event law and event-scoped reference RNG.
+                        // Normal H8 status and advancement remain hash-free.
+                        var runtime = RequireH8(request);
+                        if (runtime.Boundary != RequiredH8Boundary(request))
+                            throw new InvalidOperationException(
+                                "Stale H8 reference Chance Law boundary.");
+                        var pending = runtime.DescribePendingReferenceLaw();
+                        Write(new { requestId, ok = true,
+                            schemaId = "sts2-v111-chance-law-v1",
+                            pending });
                         break;
                     }
 
