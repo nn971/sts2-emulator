@@ -27,7 +27,8 @@ jobs:
       - name: Real source-valid A10 H8 draw/replay and old checked draw parity
         run: |
           dotnet test Sts2Emulator.sln -c Release --no-build -m:1 \
-            --filter 'FullyQualifiedName~H8CombatRuntimeV1Tests|FullyQualifiedName~CanonicalJsonTests'
+            --filter 'FullyQualifiedName~H8CombatRuntimeV1Tests|FullyQualifiedName~CanonicalJsonTests' \
+            --logger 'console;verbosity=detailed'
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
