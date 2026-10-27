@@ -39,7 +39,7 @@ def _choose(seed: str, ordinal: int, kind: str, choices: list[Any]) -> Any:
 
 
 def _run_shard(
-    seeds: list[str], dll: str, bindings: str, mode: str,
+    indexed_seeds: list[tuple[int, str]], dll: str, bindings: str, mode: str,
     max_boundaries: int, audit_every: int,
 ) -> list[dict[str, Any]]:
     # Import in the child: the parent process never touches a live .NET
@@ -49,7 +49,7 @@ def _run_shard(
 
     results = []
     with Session(["dotnet", dll, "prototype-ai-jsonl"]) as session:
-        for index, seed in enumerate(seeds):
+        for source_index, seed in indexed_seeds:
             native = mode == "native"
             begin = time.perf_counter()
             state = session.call(
@@ -123,7 +123,9 @@ def _run_shard(
                     h8_handle=handle)["fingerprint"]
                 if len(history) != len(actions):
                     raise RuntimeError("H8 decision journal count diverged")
-                should_audit = index % audit_every == 0
+                # Stable global source ordinal across workers/shards;
+                # exactly one of each audit_every source sessions is audited.
+                should_audit = source_index % audit_every == 0
                 audit_start = time.perf_counter()
                 if should_audit:
                     result = session.call(
@@ -154,7 +156,7 @@ def run_cohort(
     mode: str, workers: int, max_boundaries: int, audit_every: int,
 ) -> dict[str, Any]:
     began = time.perf_counter()
-    shards = split_shards(seeds, workers)
+    shards = split_shards(list(enumerate(seeds)), workers)
     with ProcessPoolExecutor(max_workers=len(shards)) as pool:
         futures = [
             pool.submit(
