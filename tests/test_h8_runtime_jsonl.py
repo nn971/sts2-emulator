@@ -43,6 +43,17 @@ class H8JsonlRuntimeTests(unittest.TestCase):
                         provider_id="scripted-h8-regression",
                     )
                 elif state["kind"] == "player":
+                    public = session.call(
+                        "h8_public_observe", **token,
+                        policy_id="prototype-fair-v0",
+                    )
+                    self.assertTrue(public["payloadJson"])
+                    self.assertTrue(public["observationHash"])
+                    self.assertEqual(
+                        public["boundaryVersion"], state["boundaryVersion"])
+                    self.assertEqual(
+                        {x["actionId"] for x in public["actions"]},
+                        set(state["playerActionIds"]))
                     self.assertIn(
                         state["endTurnActionId"], state["playerActionIds"])
                     action = session.call(
