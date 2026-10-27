@@ -6620,6 +6620,31 @@ internal static class PrototypeAiJsonlServer
                         break;
                     }
 
+                    case "h8_public_observe":
+                    {
+                        // Exact same fair source-public observation and action
+                        // wire codec used by semantic_observe, but read from
+                        // the H8 single-writer versioned session directly.
+                        // No semantic-pilot checkpoint fork or input audit.
+                        var runtime = RequireH8(request);
+                        var boundary = RequiredH8Boundary(request);
+                        if (RequiredString(request, "policy_id") != FairPolicyId)
+                            throw new NotSupportedException(
+                                "H8 observation requires the fair source policy.");
+                        var frame = environment.Observe(
+                            runtime.PlayerRunForPublicObservation(boundary));
+                        Write(new { requestId, ok = true,
+                            schemaId = SemanticChanceSchemaId,
+                            policyId = FairPolicyId,
+                            payloadJson = CanonicalJson.Serialize(frame.Observation),
+                            observationHash = frame.ObservationHash,
+                            actions = frame.LegalActions.Select(ActionWire).ToArray(),
+                            terminal = false,
+                            runtimeId = boundary.RuntimeId.ToString("N"),
+                            boundaryVersion = boundary.Version });
+                        break;
+                    }
+
                     case "h8_step":
                     {
                         var runtime = RequireH8(request);
