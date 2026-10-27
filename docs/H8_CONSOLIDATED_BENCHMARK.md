@@ -59,8 +59,9 @@ python tools/benchmark_h8_sessions.py \
 `--order abba` executes checked/native/native/checked in four cohorts;
 `--order ab` is faster for an initial smoke. The experiment rejects any
 paired disagreement in status, boundary counts, type counts, scripted
-physical/intent/player choices or H8 decision-journal digest, and
-records reproducible source hashes, DLL SHA, per-phase wall time,
+physical/intent/player choices, H8 decision-journal digest **or the exact
+whole-mechanics SHA-256 audit checkpoint**, and records reproducible
+source hashes, DLL SHA, per-phase wall time,
 supported decisions/s, terminal/unsupported/capped counts, as well as
 sampled replay verification.
 
