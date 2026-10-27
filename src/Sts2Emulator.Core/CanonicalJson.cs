@@ -18,6 +18,12 @@ public static class CanonicalJson
     [ThreadStatic]
     private static RunStateHashScope? _readOnlyRunHashes;
 
+    // Diagnostic-only recomputation checks in CI, never in production
+    // throughput benchmarks. Environment is fixed at process startup.
+    private static readonly bool VerifyReadOnlyReuse =
+        Environment.GetEnvironmentVariable(
+            "STS2_H7_VERIFY_RUN_HASH_REUSE") == "1";
+
     private sealed class RunStateHashScope
     {
         public readonly Dictionary<RunState, string> Hashes =
@@ -77,6 +83,11 @@ public static class CanonicalJson
         {
             if (scope.Hashes.TryGetValue(run, out var cached))
             {
+                if (VerifyReadOnlyReuse &&
+                    !StringComparer.Ordinal.Equals(
+                        cached, Sha256Core(value)))
+                    throw new InvalidDataException(
+                        "RunState was modified during read-only validation.");
                 if (!SemanticDrawStageProfilerV111.Active)
                     return cached;
                 return SemanticDrawStageProfilerV111.Measure(
