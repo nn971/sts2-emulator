@@ -442,7 +442,10 @@ public sealed record SemanticPilotCombatV111(
             this.Run.Phase is not (
                 RunPhase.Combat or RunPhase.Reward or RunPhase.Terminal))
             throw new InvalidDataException("Invalid semantic playable session.");
-        if (this.PendingEndTurn is { } endTurn)
+        // A pending continuation projection is deterministic and read-only.
+        // Capture it once rather than reconstructing it for every guard.
+        var pendingEndTurn = this.PendingEndTurn;
+        if (pendingEndTurn is { } endTurn)
         {
             endTurn.Validate();
             if (endTurn.Complete ||
@@ -462,7 +465,7 @@ public sealed record SemanticPilotCombatV111(
         }
         if (this.PendingInitialIntents is { } initialIntents)
         {
-            if (initialIntents.Complete || this.PendingEndTurn is not null ||
+            if (initialIntents.Complete || pendingEndTurn is not null ||
                 this.SeededEntry?.SourceRouteEntry != true ||
                 this.Run.World?.Combat is not { } entryCombat ||
                 CanonicalJson.Sha256(entryCombat with
@@ -484,8 +487,8 @@ public sealed record SemanticPilotCombatV111(
                   ControlledSemanticDraw: not null })
         {
             SemanticDrawChoiceV111.ValidateBoundary(this.Run);
-            if ((this.PendingEndTurn is not null &&
-                 !this.HasPendingEndTurnNestedSemanticChoice) ||
+            if ((pendingEndTurn is not null &&
+                 !HasPendingEndTurnNestedSemanticChoiceAt(pendingEndTurn)) ||
                 this.PendingInitialIntents is not null ||
                 this.IntentPending is not null ||
                 this.DrawPending is null ||
@@ -510,8 +513,8 @@ public sealed record SemanticPilotCombatV111(
                   ControlledSemanticDraw: not null })
         {
             SemanticCostChoiceV111.ValidateDrawBoundary(this.Run);
-            if ((this.PendingEndTurn is not null &&
-                 !this.HasPendingEndTurnNestedSemanticChoice) ||
+            if ((pendingEndTurn is not null &&
+                 !HasPendingEndTurnNestedSemanticChoiceAt(pendingEndTurn)) ||
                 this.PendingInitialIntents is not null ||
                 this.IntentPending is not null ||
                 this.DrawPending is not null || this.CostPending is null ||
@@ -530,7 +533,7 @@ public sealed record SemanticPilotCombatV111(
         if (this.RandomPileCardPending is { } randomPileCardPending)
         {
             randomPileCardPending.Validate();
-            if (this.PendingEndTurn is null ||
+            if (pendingEndTurn is null ||
                 this.PendingInitialIntents is not null ||
                 this.IntentPending is not null || this.DrawPending is not null ||
                 this.CostPending is not null || this.TargetPending is not null ||
@@ -549,7 +552,7 @@ public sealed record SemanticPilotCombatV111(
         if (this.DrawHookChoicePending is { } drawHookChoicePending)
         {
             drawHookChoicePending.Validate();
-            if (this.PendingEndTurn is null ||
+            if (pendingEndTurn is null ||
                 this.PendingInitialIntents is not null ||
                 this.IntentPending is not null || this.DrawPending is not null ||
                 this.RandomPileCardPending is not null ||
@@ -568,7 +571,7 @@ public sealed record SemanticPilotCombatV111(
         if (this.KnowledgeDemonChoicePending is { } knowledgeDemonChoicePending)
         {
             knowledgeDemonChoicePending.Validate();
-            if (this.PendingEndTurn is null ||
+            if (pendingEndTurn is null ||
                 this.PendingInitialIntents is not null ||
                 this.IntentPending is not null || this.DrawPending is not null ||
                 this.RandomPileCardPending is not null ||
@@ -587,8 +590,8 @@ public sealed record SemanticPilotCombatV111(
         if (this.TargetPending is { } targetPending)
         {
             targetPending.Validate();
-            if ((this.PendingEndTurn is not null &&
-                 this.PendingEndTurn.TargetPending is null) ||
+            if ((pendingEndTurn is not null &&
+                 pendingEndTurn.TargetPending is null) ||
                 this.PendingInitialIntents is not null ||
                 this.GeneratedCardPending is not null ||
                 this.PotionGenerationPending is not null ||
@@ -601,8 +604,8 @@ public sealed record SemanticPilotCombatV111(
             generatedCardPending.Validate();
             if (this.TargetPending is not null ||
                 this.PotionGenerationPending is not null ||
-                (this.PendingEndTurn is not null &&
-                 this.PendingEndTurn.GeneratedCardPending is null) ||
+                (pendingEndTurn is not null &&
+                 pendingEndTurn.GeneratedCardPending is null) ||
                 this.PendingInitialIntents is not null ||
                 this.UsesNativePolicyBaseline || this.CombatTerminal)
                 throw new InvalidDataException(
@@ -623,8 +626,8 @@ public sealed record SemanticPilotCombatV111(
                 this.CardShortlistPending is not null ||
                 this.PoolShufflePending is not null ||
                 this.DrawInsertionPending is not null ||
-                (this.PendingEndTurn is not null &&
-                 this.PendingEndTurn.PotionGenerationPending is null) ||
+                (pendingEndTurn is not null &&
+                 pendingEndTurn.PotionGenerationPending is null) ||
                 this.PendingInitialIntents is not null ||
                 this.UsesNativePolicyBaseline || this.CombatTerminal)
                 throw new InvalidDataException(
@@ -652,8 +655,8 @@ public sealed record SemanticPilotCombatV111(
                 this.CardShortlistPending is not null ||
                 this.PoolShufflePending is not null ||
                 this.DrawInsertionPending is not null ||
-                (this.PendingEndTurn is not null &&
-                 this.PendingEndTurn.CardTransformPending is null) ||
+                (pendingEndTurn is not null &&
+                 pendingEndTurn.CardTransformPending is null) ||
                 this.PendingInitialIntents is not null ||
                 this.UsesNativePolicyBaseline || this.CombatTerminal)
                 throw new InvalidDataException(
@@ -667,8 +670,8 @@ public sealed record SemanticPilotCombatV111(
         {
             cardSelectionPending.Validate();
             SemanticCardSelectionEngineV111.ValidatePendingBoundary(this.Run);
-            if ((this.PendingEndTurn is not null &&
-                 this.PendingEndTurn.NestedCardSelectionPending is null) ||
+            if ((pendingEndTurn is not null &&
+                 pendingEndTurn.NestedCardSelectionPending is null) ||
                 this.PendingInitialIntents is not null ||
                 this.TargetPending is not null ||
                 this.GeneratedCardPending is not null ||
@@ -698,7 +701,7 @@ public sealed record SemanticPilotCombatV111(
                 this.DrawInsertionPending is not null ||
                 this.RandomPileCardPending is not null ||
                 this.DrawHookChoicePending is not null ||
-                this.PendingEndTurn is not null ||
+                pendingEndTurn is not null ||
                 this.PendingInitialIntents is not null ||
                 this.UsesNativePolicyBaseline || this.CombatTerminal)
                 throw new InvalidDataException(
@@ -718,7 +721,7 @@ public sealed record SemanticPilotCombatV111(
                     .IsAutomaticPipelineSemanticPoolShuffleContinuation(
                         combat, automaticPoolShuffleChoice);
             var automaticEndTurnShuffle =
-                this.PendingEndTurn?.PoolShufflePending is not null;
+                pendingEndTurn?.PoolShufflePending is not null;
             bool handReturnShuffle = poolShufflePending.SourceOperationKind ==
                 nameof(PrototypeCombatEffectKind.ReturnHandToDrawAndShuffle);
             bool recycleShuffle = poolShufflePending.SourceOperationKind ==
@@ -738,7 +741,7 @@ public sealed record SemanticPilotCombatV111(
                         : this.SeededEntry?.FixturePoolGenerationPotionId ==
                             "proto.potion.colorless");
             if ((!fixtureMatches && !automaticEndTurnShuffle) ||
-                (this.PendingEndTurn is not null &&
+                (pendingEndTurn is not null &&
                  !automaticEndTurnShuffle && !mayhemRecycle) ||
                 this.PendingInitialIntents is not null ||
                 this.IntentPending is not null || this.DrawPending is not null ||
@@ -754,8 +757,8 @@ public sealed record SemanticPilotCombatV111(
         {
             drawInsertionPending.Validate();
             SemanticDrawInsertionChoiceV111.ValidateBoundary(this.Run);
-            if ((this.PendingEndTurn is not null &&
-                 this.PendingEndTurn.DrawInsertionPending is null) ||
+            if ((pendingEndTurn is not null &&
+                 pendingEndTurn.DrawInsertionPending is null) ||
                 this.PendingInitialIntents is not null ||
                 this.IntentPending is not null || this.DrawPending is not null ||
                 this.TargetPending is not null ||
@@ -771,8 +774,8 @@ public sealed record SemanticPilotCombatV111(
         {
             cardShortlistPending.Validate();
             SemanticCardShortlistChoiceV111.ValidateBoundary(this.Run);
-            if ((this.PendingEndTurn is not null &&
-                 this.PendingEndTurn.CardShortlistPending is null) ||
+            if ((pendingEndTurn is not null &&
+                 pendingEndTurn.CardShortlistPending is null) ||
                 this.PendingInitialIntents is not null ||
                 this.IntentPending is not null || this.DrawPending is not null ||
                 this.TargetPending is not null ||
@@ -790,8 +793,8 @@ public sealed record SemanticPilotCombatV111(
         {
             handCostSelectionPending.Validate();
             SemanticRandomHandCostChoiceV111.ValidateBoundary(this.Run);
-            if ((this.PendingEndTurn is not null &&
-                 this.PendingEndTurn.NestedHandCostSelectionPending is null) ||
+            if ((pendingEndTurn is not null &&
+                 pendingEndTurn.NestedHandCostSelectionPending is null) ||
                 this.PendingInitialIntents is not null ||
                 this.IntentPending is not null || this.DrawPending is not null ||
                 this.TargetPending is not null ||
@@ -832,9 +835,9 @@ public sealed record SemanticPilotCombatV111(
                     : handCost
                         ? this.Run.World?.Combat?.PendingChoice?
                             .ControlledRandomCost is null
-                        : this.PendingEndTurn?.CostPending is null) ||
-                (this.PendingEndTurn is not null && automaticHandCost &&
-                 this.PendingEndTurn.NestedCostPending is null))
+                        : pendingEndTurn?.CostPending is null) ||
+                (pendingEndTurn is not null && automaticHandCost &&
+                 pendingEndTurn.NestedCostPending is null))
                 throw new InvalidDataException(
                     "Semantic cost continuation conflicts with another boundary.");
         }
@@ -888,7 +891,7 @@ public sealed record SemanticPilotCombatV111(
                 "Fixture semantic session cannot retain a source-route audit.");
         if (this.UsesNativePolicyBaseline)
         {
-            if (this.OtherChance is not null || this.PendingEndTurn is not null ||
+            if (this.OtherChance is not null || pendingEndTurn is not null ||
                 this.PendingInitialIntents is not null)
                 throw new InvalidDataException(
                     "Native policy baseline cannot retain Nature-only continuations.");
@@ -905,13 +908,17 @@ public sealed record SemanticPilotCombatV111(
         else if (this.NativePolicyAudit is not null)
             throw new InvalidDataException(
                 "Nature-controlled sessions cannot retain native policy decisions.");
-        if (this.CombatTerminal && this.PendingEndTurn is not null)
+        if (this.CombatTerminal && pendingEndTurn is not null)
             throw new InvalidDataException(
                 "Terminal combat retained an unresolved chance.");
     }
 
     private bool HasPendingEndTurnNestedSemanticChoice =>
-        this.PendingEndTurn is { Complete: false } endTurn &&
+        HasPendingEndTurnNestedSemanticChoiceAt(this.PendingEndTurn);
+
+    private bool HasPendingEndTurnNestedSemanticChoiceAt(
+        SemanticEndTurnV111? pendingEndTurn) =>
+        pendingEndTurn is { Complete: false } endTurn &&
         endTurn.HandDraw is not { AtBoundary: false } &&
         PrototypeGameEngine
             .HasPendingSupportedAutomaticPipelineSemanticChoice(this.Run) &&
