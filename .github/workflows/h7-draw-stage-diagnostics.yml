@@ -37,6 +37,11 @@ jobs:
         run: |
           dotnet restore Sts2Emulator.sln
           dotnet build Sts2Emulator.sln -c Release --no-restore -m:1
+      - name: Focused canonical-hash and verified-draw invariants
+        working-directory: emulator
+        run: |
+          dotnet test Sts2Emulator.sln -c Release --no-build -m:1 \
+            --filter 'FullyQualifiedName~CanonicalJsonTests|FullyQualifiedName~SemanticPilotCombatV111Tests.SemanticDrawResolvesByEventAndCardIdentityAndReplaysTypedDecision'
       - name: Install lightweight H7 actor, Python tests
         working-directory: ai
         run: |

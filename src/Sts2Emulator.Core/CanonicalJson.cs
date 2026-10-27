@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -71,7 +72,8 @@ public static class CanonicalJson
 
     public static string Serialize<T>(T value)
     {
-        return Encoding.UTF8.GetString(SerializeCanonicalUtf8(value));
+        using var bytes = WriteCanonicalUtf8(value);
+        return Encoding.UTF8.GetString(bytes.WrittenSpan);
     }
 
     public static string Sha256<T>(T value)
@@ -134,30 +136,100 @@ public static class CanonicalJson
 
     private static string Sha256Core<T>(T value)
     {
-        // Hash canonical UTF-8 directly: converting it to a UTF-16 string
-        // and back allocates two redundant full-state copies on every hash.
-        using var stream = WriteCanonicalUtf8(value);
-        return Convert.ToHexString(SHA256.HashData(
-            stream.GetBuffer().AsSpan(0, checked((int)stream.Length))))
+        // Stream canonical UTF-8 to a reusable pooled buffer. SHA-256 reads the
+        // exact written span; neither a UTF-16 roundtrip nor a final byte[]
+        // copy is needed. The pool lease never escapes one invocation.
+        using var bytes = WriteCanonicalUtf8(value);
+        return Convert.ToHexString(SHA256.HashData(bytes.WrittenSpan))
             .ToLowerInvariant();
     }
 
-    private static byte[] SerializeCanonicalUtf8<T>(T value)
-    {
-        using var stream = WriteCanonicalUtf8(value);
-        return stream.ToArray();
-    }
-
-    private static MemoryStream WriteCanonicalUtf8<T>(T value)
+    private static PooledCanonicalBuffer WriteCanonicalUtf8<T>(T value)
     {
         var element = JsonSerializer.SerializeToElement(value, SerializerOptions);
-        var stream = new MemoryStream();
-        using (var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = false }))
+        var bytes = new PooledCanonicalBuffer();
+        try
         {
-            WriteCanonical(writer, element);
+            using (var writer = new Utf8JsonWriter(
+                bytes, new JsonWriterOptions { Indented = false }))
+            {
+                WriteCanonical(writer, element);
+                writer.Flush();
+            }
+            return bytes;
         }
-        stream.Position = 0;
-        return stream;
+        catch
+        {
+            bytes.Dispose();
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Pooled write buffer for the canonical UTF-8 writer. Leases are owned by
+    /// a single serialization operation (including nested ones); no shared
+    /// mutable scratch data or cross-boundary fingerprints are retained.
+    /// </summary>
+    private sealed class PooledCanonicalBuffer : IBufferWriter<byte>, IDisposable
+    {
+        private byte[] _buffer = ArrayPool<byte>.Shared.Rent(16 * 1024);
+        private int _written;
+        private bool _disposed;
+
+        public ReadOnlySpan<byte> WrittenSpan
+        {
+            get
+            {
+                ObjectDisposedException.ThrowIf(_disposed, this);
+                return _buffer.AsSpan(0, _written);
+            }
+        }
+
+        public void Advance(int count)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (count < 0 || count > _buffer.Length - _written)
+                throw new ArgumentOutOfRangeException(nameof(count));
+            _written += count;
+        }
+
+        public Memory<byte> GetMemory(int sizeHint = 0)
+        {
+            EnsureCapacity(sizeHint);
+            return _buffer.AsMemory(_written);
+        }
+
+        public Span<byte> GetSpan(int sizeHint = 0)
+        {
+            EnsureCapacity(sizeHint);
+            return _buffer.AsSpan(_written);
+        }
+
+        private void EnsureCapacity(int sizeHint)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (sizeHint < 0)
+                throw new ArgumentOutOfRangeException(nameof(sizeHint));
+            if (sizeHint == 0) sizeHint = 1;
+            if (sizeHint <= _buffer.Length - _written) return;
+
+            var required = checked(_written + sizeHint);
+            var replacement = ArrayPool<byte>.Shared.Rent(
+                Math.Max(checked(_buffer.Length * 2), required));
+            _buffer.AsSpan(0, _written).CopyTo(replacement);
+            ArrayPool<byte>.Shared.Return(_buffer);
+            _buffer = replacement;
+        }
+
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true;
+            var old = _buffer;
+            _buffer = Array.Empty<byte>();
+            _written = 0;
+            ArrayPool<byte>.Shared.Return(old);
+        }
     }
 
     private static readonly JsonSerializerOptions SerializerOptions = new()
