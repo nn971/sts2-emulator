@@ -95,6 +95,37 @@ serve as the mechanics adapter; this is explicit temporary technical debt.
   choice. If a correctness assumption has not been proved, keep that segment
   on the checked path until the test and model support exist.
 
+## Implementation checkpoint: first M1 slice
+
+As of 2026-10-28, draft PR
+[#205](https://github.com/nn971/sts2-emulator/pull/205)
+implements `H8CombatRuntimeV1` and `h8_*` opt-in JSONL operations.
+A session owns a versioned boundary and compact ordered decision journal
+for player actions, intent selections and physical draw-card selections.
+A stale or foreign fork token is rejected before running mechanics.
+The first actual optimized operation is a selected real semantic card draw:
+the internal trusted resolver avoids the source-wide input pilot validator
+and SHA-256 entirely, checks the selected physical identity against live
+eligible support, and retains existing output correctness validation.
+
+Source-valid Act 1 A10 Mawler tests compare the resulting entire legacy
+pilot fingerprint to the checked resolver, reject stale/illegal decisions
+without altering the history, and independently replay branched decisions.
+The opt-in `h8_begin_seeded`, `h8_status`, `h8_step`,
+`h8_resolve_intent`, `h8_resolve_draw_card`, `h8_fork`,
+`h8_decision_history`, `h8_replay_audit`, and `h8_release_many`
+operations are available without changing the old `semantic_*` API.
+
+[Focused H8 CI run](https://github.com/nn971/sts2-emulator/actions/runs/40555506064)
+passed: 10 xUnit canonical/H8 checks and one live Python JSONL
+A10 fork/replay regression. This is **only M1**: in ordinary player/intent
+steps, the bridge calls v111 checked mechanics; even H8 draw still uses
+the legacy continuation and output validator. Provider IDs journal the
+external choice, but the unified typed multi-primitive Native / learned /
+reference / scripted provider interface is **still M3**, not claimed
+complete. Source-view hashes can still be computed inside those legacy
+mechanics. No GPU speedup claim is justified yet.
+
 ## Implementable milestones
 
 ### M0 — Provenance and measurements
@@ -106,14 +137,14 @@ serve as the mechanics adapter; this is explicit temporary technical debt.
   allocation, GC pause, CPU and GPU waiting.
 
 ### M1 — Versioned runtime and journal (first live vertical slice)
-- [ ] Implement a session-owned monotonically versioned boundary handle,
+- [x] Implement a session-owned monotonically versioned boundary handle,
   typed request identity and append-only player/Nature decision journal.
-- [ ] Prove stale/rejected transitions cannot modify state or journal.
-- [ ] Exercise a **real** source-valid A10 Silent card draw through the H8
+- [x] Prove stale/rejected transitions cannot modify state or journal.
+- [x] Exercise a **real** source-valid A10 Silent card draw through the H8
   boundary; compare source mechanics and outcomes to the legacy checked
   resolver. Provider selection is distinct from mechanics resume.
-- [ ] Exercise forked replay and verify deterministic decision order.
-- [ ] Expose an opt-in public H8 adapter, not a replacement of the old API.
+- [x] Exercise forked replay and verify deterministic decision order.
+- [x] Expose an opt-in public H8 adapter, not a replacement of the old API.
 
 ### M2 — One mechanical owner and an effect cursor
 - [ ] Replace `SemanticPilotCombatV111.PendingEndTurn`,
