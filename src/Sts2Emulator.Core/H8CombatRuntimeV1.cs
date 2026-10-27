@@ -92,6 +92,9 @@ public sealed class H8CombatRuntimeV1
     public bool Terminal => _state.CombatTerminal;
     public bool AtPlayerBoundary =>
         _state.AtPlayerBoundary || _state.AtPlayerChoiceBoundary;
+    // Explicitly classified until the native tagged player-choice cursor
+    // provides a fair restricted action menu.
+    public bool AtPlayerChoiceBoundary => _state.AtPlayerChoiceBoundary;
     public bool HasPendingCardDraw => CurrentDrawCursor() is not null;
     public bool HasPendingIntent => _state.IntentPending is not null;
 
