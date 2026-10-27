@@ -6620,6 +6620,33 @@ internal static class PrototypeAiJsonlServer
                         break;
                     }
 
+                    case "h8_observe":
+                    {
+                        // Public H7 policy surface: same source projection
+                        // and action wire codec as semantic_observe; no
+                        // mutable state copy or whole-pilot hash. The caller
+                        // supplies the expected opaque versioned boundary.
+                        var runtime = RequireH8(request);
+                        if (RequiredString(request, "policy_id") != FairPolicyId)
+                            throw new NotSupportedException(
+                                "H8 observation requires the existing fair policy.");
+                        if (runtime.Boundary != RequiredH8Boundary(request))
+                            throw new InvalidOperationException(
+                                "Stale H8 public observation boundary.");
+                        var frame = runtime.ObservePlayerFrame();
+                        Write(new
+                        {
+                            requestId, ok = true,
+                            schemaId = SemanticChanceSchemaId,
+                            policyId = FairPolicyId,
+                            payloadJson = CanonicalJson.Serialize(frame.Observation),
+                            observationHash = frame.ObservationHash,
+                            actions = frame.LegalActions.Select(ActionWire).ToArray(),
+                            terminal = false
+                        });
+                        break;
+                    }
+
                     case "h8_step":
                     {
                         var runtime = RequireH8(request);
