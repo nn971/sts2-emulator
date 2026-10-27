@@ -27,11 +27,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Export exact previous boundary-inspection revision
+      - name: Export exact previous validated read-only-hash revision
         run: |
           mkdir -p before-src
-          git -C after-src fetch --no-tags --depth=1 origin fa06caac8b8d6b8c4208ffda48511c303bf6ce82
-          git -C after-src archive fa06caac8b8d6b8c4208ffda48511c303bf6ce82 | tar -xf - -C before-src
+          git -C after-src fetch --no-tags --depth=1 origin 93e780e4f1f6195071719af8aa5ea9fc49633c7b
+          git -C after-src archive 93e780e4f1f6195071719af8aa5ea9fc49633c7b | tar -xf - -C before-src
       - name: Build two isolated semantic emulators
         run: |
           for src in before-src after-src; do
@@ -50,7 +50,7 @@ jobs:
           for mode in before after; do
             if [ "$mode" = before ]; then
               src=../before-src
-              revision=fa06caac8b8d6b8c4208ffda48511c303bf6ce82
+              revision=93e780e4f1f6195071719af8aa5ea9fc49633c7b
             else
               src=../after-src
               revision=$(git -C "$src" rev-parse HEAD)
@@ -82,6 +82,12 @@ jobs:
           print('RunState actual hashes:',a[k]['count'],'->',b[k]['count'])
           print('RunState hashing allocated:',a[k]['allocatedBytes'],'->',b[k]['allocatedBytes'])
           assert b[k]['count'] <= a[k]['count'], 'Unexpected increase in full RunState SHA computations'
+          assert b[k]['allocatedBytes'] < a[k]['allocatedBytes'], 'Canonical UTF-8 hashing did not lower allocations'
+          p = 'sub.semantic_draw_hash_SemanticPilotCombatV111'
+          if p in a and p in b:
+              print('Pilot full hashes:',a[p]['count'],'->',b[p]['count'])
+              print('Pilot hashing allocation:',a[p]['allocatedBytes'],'->',b[p]['allocatedBytes'])
+              assert b[p]['count'] <= a[p]['count'], 'Unexpected increase in full pilot hashes'
           PY
       - uses: actions/upload-artifact@v4
         if: always()
