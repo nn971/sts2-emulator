@@ -96,11 +96,23 @@ class SemanticProfilerIntegrationTests(unittest.TestCase):
             self.assertTrue(actions)
             self.assertEqual(state.observe(), observation)
             self.assertEqual(state.actions(), actions)
-            self.assertEqual(state.fingerprint, state.status()["fingerprint"])
+            initial_status = state.status()
+            self.assertEqual(state.fingerprint, initial_status["fingerprint"])
+            source_opening_hash = initial_status["sourceOpeningFingerprint"]
+            self.assertIsInstance(source_opening_hash, str)
+            # Repeated status reuses a live handle, then the child inherits
+            # frozen provenance. Deserialized snapshots verify independently.
+            self.assertEqual(
+                source_opening_hash, state.status()["sourceOpeningFingerprint"])
             child = state.step(actions[0]["actionId"])
+            self.assertEqual(
+                source_opening_hash, child.status()["sourceOpeningFingerprint"])
             snapshot = child.save_snapshot()
             restored = session.load_semantic_snapshot(snapshot)
             self.assertEqual(child.fingerprint, restored.fingerprint)
+            self.assertEqual(
+                source_opening_hash,
+                restored.status()["sourceOpeningFingerprint"])
             profile = session.read_semantic_profile()
             self.assertEqual(profile["schemaId"], schema)
             measurements = profile["operations"]
@@ -112,6 +124,8 @@ class SemanticProfilerIntegrationTests(unittest.TestCase):
             self.assertGreaterEqual(measurements["sub.semantic_store_fork"]["count"], 3)
             self.assertGreater(measurements["sub.semantic_result_fingerprint"]["count"], 0)
             self.assertGreater(measurements["sub.semantic_result_pending"]["count"], 0)
+            self.assertGreater(
+                measurements["sub.semantic_result_source_opening"]["count"], 0)
             for item in measurements.values():
                 self.assertGreaterEqual(item["totalSeconds"], 0.0)
                 self.assertGreaterEqual(item["allocatedBytes"], 0)

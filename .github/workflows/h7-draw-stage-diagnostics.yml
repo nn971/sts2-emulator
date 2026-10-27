@@ -52,6 +52,9 @@ jobs:
           # CI only: recalculate every memo hit from scratch, failing closed
           # if any RunState instance changed during validation.
           STS2_H7_VERIFY_RUN_HASH_REUSE: '1'
+          # Rehash inherited opening provenance to prove it is immutable
+          # across status calls, forks, draw and intent continuations.
+          STS2_H7_VERIFY_SOURCE_OPENING_HASH_REUSE: '1'
         run: |
           mkdir -p ../profiles ../reports
           python -u tools/benchmark_h7_rollouts.py \
