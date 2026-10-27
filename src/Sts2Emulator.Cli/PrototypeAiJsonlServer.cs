@@ -250,6 +250,7 @@ internal static class PrototypeAiJsonlServer
             string kind = runtime.Terminal ? "terminal" :
                 runtime.HasPendingCardDraw ? "draw_card" :
                 runtime.HasPendingIntent ? "enemy_intent" :
+                runtime.AtPlayerChoiceBoundary ? "player_choice" :
                 runtime.AtPlayerBoundary ? "player" : "unsupported";
             return new
             {
@@ -260,13 +261,24 @@ internal static class PrototypeAiJsonlServer
                 boundaryVersion = boundary.Version,
                 kind,
                 terminal = runtime.Terminal,
+                outcome = runtime.Outcome,
+                exitHp = runtime.ExitHp,
+                terminalEnemyHp = runtime.TerminalEnemyHp,
                 decisionCount = runtime.DecisionHistory.Count,
                 cardInstanceIds = kind == "draw_card"
                     ? runtime.PendingDrawCardInstanceIds() : Array.Empty<long>(),
                 intentIds = kind == "enemy_intent"
                     ? runtime.PendingIntentIds() : Array.Empty<string>(),
-                playerActionIds = kind == "player"
+                intentRawWeights = kind == "enemy_intent"
+                    ? runtime.PendingIntentRawWeights() : Array.Empty<long>(),
+                playerActionIds = kind is "player" or "player_choice"
                     ? runtime.LegalPlayerActionIds() : Array.Empty<string>(),
+                // Nested player selections use the same exact semantic
+                // pending support as the legacy fair-policy filter. No
+                // hidden event is exposed at an ordinary player boundary.
+                playerChoicePending = kind == "player_choice"
+                    ? DescribeSemanticPending(runtime.LegacySnapshotForAudit())
+                    : null,
                 endTurnActionId = kind == "player"
                     ? runtime.EndTurnActionId() : null
             };
@@ -6593,7 +6605,9 @@ internal static class PrototypeAiJsonlServer
                             ReplayOpeningDrawHooks:
                                 !request.TryGetProperty(
                                     "replay_opening_draw_hooks", out _) ||
-                                OptionalBool(request, "replay_opening_draw_hooks"));
+                                OptionalBool(request, "replay_opening_draw_hooks"),
+                            FixtureDeckPresetId:
+                                OptionalString(request, "fixture_deck_preset_id"));
                         // Benchmark A/B switches: omitted flags preserve
                         // the optimized runtime. Explicit false selects the
                         // corresponding compatibility resolver for a paired
@@ -6617,6 +6631,59 @@ internal static class PrototypeAiJsonlServer
                         var runtime = RequireH8(request);
                         Write(new { requestId, ok = true, result = H8Status(
                             runtime, RequiredString(request, "h8_handle")) });
+                        break;
+                    }
+
+                    case "h8_reference_law":
+                    {
+                        // Optional exact H7 Chance-Law compatibility audit.
+                        // This deliberately uses the existing v111 declared
+                        // event identity/provenance. It is slower than the
+                        // compact native H8 weighted-support route and must
+                        // never run unless the caller explicitly requests
+                        // bit-identical event-scoped reference sampling.
+                        var runtime = RequireH8(request);
+                        if (runtime.Boundary != RequiredH8Boundary(request))
+                            throw new InvalidOperationException(
+                                "Stale H8 reference law boundary.");
+                        if (!runtime.HasPendingIntent && !runtime.HasPendingCardDraw)
+                            throw new InvalidOperationException(
+                                "H8 reference law requires a pending Nature event.");
+                        var projected = DescribeSemanticPending(
+                            runtime.LegacySnapshotForAudit());
+                        Write(new
+                        {
+                            requestId, ok = true,
+                            schemaId = SemanticChanceSchemaId,
+                            pending = projected
+                        });
+                        break;
+                    }
+
+                    case "h8_observe":
+                    {
+                        // Public H7 policy surface: same source projection
+                        // and action wire codec as semantic_observe; no
+                        // mutable state copy or whole-pilot hash. The caller
+                        // supplies the expected opaque versioned boundary.
+                        var runtime = RequireH8(request);
+                        if (RequiredString(request, "policy_id") != FairPolicyId)
+                            throw new NotSupportedException(
+                                "H8 observation requires the existing fair policy.");
+                        if (runtime.Boundary != RequiredH8Boundary(request))
+                            throw new InvalidOperationException(
+                                "Stale H8 public observation boundary.");
+                        var frame = runtime.ObservePlayerFrame();
+                        Write(new
+                        {
+                            requestId, ok = true,
+                            schemaId = SemanticChanceSchemaId,
+                            policyId = FairPolicyId,
+                            payloadJson = CanonicalJson.Serialize(frame.Observation),
+                            observationHash = frame.ObservationHash,
+                            actions = frame.LegalActions.Select(ActionWire).ToArray(),
+                            terminal = false
+                        });
                         break;
                     }
 

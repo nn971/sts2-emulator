@@ -43,6 +43,10 @@ public sealed class H8CombatRuntimeV1
     // selection all reuse the same projection; it is never copied to a fork.
     private H8DrawCursorV1? _drawCursor;
     private bool _drawCursorCaptured;
+    // A single source-public H7 observation+menu projection per committed
+    // player boundary, shared by H8Status and h8_observe. Do not recompute
+    // observation hashing/action projection two or three times per step.
+    private PrototypeAiFrame? _playerFrame;
 
     private sealed record H8DrawCursorV1(
         SemanticDeckEventV111 Event, long[] EligibleCards,
@@ -90,23 +94,48 @@ public sealed class H8CombatRuntimeV1
         new(_runtimeId, _version);
 
     public bool Terminal => _state.CombatTerminal;
+    public string? Outcome => Terminal ? _state.CombatOutcome : null;
+    public int? ExitHp => Terminal ? _state.Run.Player.Hp : null;
+    public int? TerminalEnemyHp => Terminal &&
+        _state.CombatOutcome == "defeat"
+        ? _state.Run.World?.DefeatRemainingEnemyHp
+        : null;
     public bool AtPlayerBoundary =>
         _state.AtPlayerBoundary || _state.AtPlayerChoiceBoundary;
+    // Explicitly classified until the native tagged player-choice cursor
+    // provides a fair restricted action menu.
+    public bool AtPlayerChoiceBoundary => _state.AtPlayerChoiceBoundary;
     public bool HasPendingCardDraw => CurrentDrawCursor() is not null;
     public bool HasPendingIntent => _state.IntentPending is not null;
 
     public IReadOnlyList<H8DecisionEntryV1> DecisionHistory =>
         Array.AsReadOnly(_journal.ToArray());
 
+    /// <summary>
+    /// Observe only the source-visible player frame. This is the identical
+    /// public observation/action encoder consumed by the H7 Transformer,
+    /// with no legacy pilot snapshot, JSON round trip, or pilot fingerprint.
+    /// The H8 player boundary must be real; future H8 work will expose
+    /// nested selection actions through a tagged cursor.
+    /// </summary>
+    public PrototypeAiFrame ObservePlayerFrame()
+    {
+        if ((!_state.AtPlayerBoundary && !_state.AtPlayerChoiceBoundary) ||
+            _state.CombatTerminal)
+            throw new InvalidOperationException(
+                "H8 public player observation requires a full player boundary.");
+        return _playerFrame ??= new PrototypeAiEnvironment().Observe(_state.Run);
+    }
+
     public string[] LegalPlayerActionIds()
     {
         if (!AtPlayerBoundary)
             throw new InvalidOperationException(
                 "H8 player actions require a player boundary.");
-        if (_state.AtPlayerChoiceBoundary)
-            throw new NotSupportedException(
-                "H8 player-choice sub-boundaries are pending migration.");
-        return new PrototypeAiEnvironment().Observe(_state.Run)
+        // Pending nested player selections remain checked-v111 mechanics;
+        // the H7 player must restrict this full public menu to the exact
+        // pending choice support before sampling.
+        return ObservePlayerFrame()
             .LegalActions.Select(action => action.ActionId).ToArray();
     }
 
@@ -115,7 +144,7 @@ public sealed class H8CombatRuntimeV1
         if (!_state.AtPlayerBoundary)
             throw new InvalidOperationException(
                 "End turn is available only at a full player boundary.");
-        return new PrototypeAiEnvironment().Observe(_state.Run)
+        return ObservePlayerFrame()
             .LegalActions.Single(action => action.Kind == "end_turn").ActionId;
     }
 
@@ -132,6 +161,24 @@ public sealed class H8CombatRuntimeV1
                 "H8 intent support is absent.");
         return support.Candidates
             .Select(candidate => candidate.IntentId).ToArray();
+    }
+
+    /// <summary>
+    /// Preserve the *real source* weighted enemy-intent support in a compact
+    /// policy-independent form. The sample source RNG is owned by Nature,
+    /// never by the H7 player model.
+    /// </summary>
+    public long[] PendingIntentRawWeights()
+    {
+        var intents = _state.PendingInitialIntents ??
+            _state.PendingEndTurn?.Intents;
+        if (intents?.Pending is null)
+            throw new InvalidOperationException(
+                "H8 weighted intent query requires an active intent request.");
+        var support = ControlledTurnIntentEngineV111
+            .DescribePendingSemanticIntent(intents) ??
+            throw new InvalidDataException("H8 weighted intent support missing.");
+        return support.Candidates.Select(c => (long)c.RawWeight).ToArray();
     }
 
     public long[] PendingDrawCardInstanceIds()
@@ -346,5 +393,6 @@ public sealed class H8CombatRuntimeV1
         _version = nextVersion;
         _drawCursor = null;
         _drawCursorCaptured = false;
+        _playerFrame = null;
     }
 }

@@ -65,6 +65,33 @@ public sealed class H8CombatRuntimeV1Tests
     }
 
     [Fact]
+    public void H8PublicTransformerFrameMatchesExactCheckedSourceObservation()
+    {
+        var runtime = ReachFirstFullPlayerBoundary(
+            "h8-h7-public-observe-a10", useNativePlayerEndTurn: true);
+        var oracle = new PrototypeAiEnvironment().Observe(
+            runtime.LegacySnapshotForAudit().Run);
+        var frame = runtime.ObservePlayerFrame();
+        Assert.Same(frame, runtime.ObservePlayerFrame());
+        Assert.Equal(CanonicalJson.Sha256(oracle.Observation),
+            CanonicalJson.Sha256(frame.Observation));
+        Assert.Equal(oracle.ObservationHash, frame.ObservationHash);
+        Assert.Equal(
+            oracle.LegalActions.Select(a => a.ActionId),
+            frame.LegalActions.Select(a => a.ActionId));
+        Assert.Contains(frame.LegalActions,
+            action => action.Kind == "end_turn");
+        Assert.Contains(frame.LegalActions,
+            action => action.Kind == "play_card");
+        Assert.Equal(runtime.LegalPlayerActionIds(),
+            frame.LegalActions.Select(a => a.ActionId).ToArray());
+        Assert.Equal(
+            runtime.Boundary,
+            runtime.Boundary);
+        runtime.AuditReplay();
+    }
+
+    [Fact]
     public void NativePlayerEndTurnMatchesCheckedPathAndDecisionJournal()
     {
         long checkedAllocation = 0, directAllocation = 0;
