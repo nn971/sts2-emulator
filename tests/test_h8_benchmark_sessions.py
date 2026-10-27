@@ -20,6 +20,18 @@ class H8BenchmarkContractTests(unittest.TestCase):
             [seed for shard in shards for seed in shard], seeds)
         self.assertEqual(max(map(len, shards)) - min(map(len, shards)), 1)
 
+    def test_replay_audit_uses_global_seed_index_across_shards(self):
+        indexed = list(enumerate(f"source-{i:03d}" for i in range(128)))
+        shards = split_shards(indexed, workers=15)
+        selected = [
+            seed for shard in shards for source_index, seed in shard
+            if source_index % 8 == 0
+        ]
+        self.assertEqual(len(selected), 16)
+        self.assertEqual(
+            set(selected),
+            {f"source-{i:03d}" for i in range(0, 128, 8)})
+
     def test_scripted_choice_is_same_for_both_arms(self):
         for ordinal in range(30):
             support = [4, 7, 11, 19]
