@@ -2823,14 +2823,15 @@ class SemanticCombat:
 
     def observe(self):
         """Fair player-only observation: never a privileged Nature event."""
-        observation, actions = self.observe_frame()
-        # Backward compatibility: existing agent code calls observe() then
-        # actions() on this same immutable boundary. Reuse that exact menu,
-        # once, without a duplicate semantic_observe RPC.
-        self.session._semantic_observation_cache = (
-            self.handle, self.fingerprint, actions
-        )
-        return observation
+        # The Session lock also guards invalidation in Session.call().
+        with self.session._lock:
+            observation, actions = self.observe_frame()
+            # Existing agents call observe() then actions(). Reuse the exact
+            # same legal menu once, without a duplicate semantic_observe RPC.
+            self.session._semantic_observation_cache = (
+                self.handle, self.fingerprint, actions
+            )
+            return observation
 
     def observe_for_nature(self):
         """Fair public combat state at a pending Nature decision.
@@ -2853,12 +2854,13 @@ class SemanticCombat:
         return observation
 
     def actions(self):
-        cache = getattr(self.session, "_semantic_observation_cache", None)
-        if cache is not None and cache[:2] == (
-                self.handle, self.fingerprint):
-            self.session._semantic_observation_cache = None
-            return cache[2]
-        return self.observe_frame()[1]
+        with self.session._lock:
+            cache = getattr(self.session, "_semantic_observation_cache", None)
+            if cache is not None and cache[:2] == (
+                    self.handle, self.fingerprint):
+                self.session._semantic_observation_cache = None
+                return cache[2]
+            return self.observe_frame()[1]
 
     def step(self, action_id: str):
         if self.boundary not in ("player", "player_choice"):
