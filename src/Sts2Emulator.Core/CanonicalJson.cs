@@ -11,10 +11,9 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public static class CanonicalJson
 {
-    // RunState contains mutable nested arrays. Its fingerprint may be cached
-    // only during a provably read-only operation; never beyond validation or
-    // across a transition. Identity comparison deliberately ignores the
-    // record's structural equality.
+    // RunState and SemanticPilotCombatV111 contain mutable nested arrays.
+    // Only memoize during a synchronous read-only scope. Reference identity
+    // avoids expensive structural record equality; never cache across steps.
     [ThreadStatic]
     private static RunStateHashScope? _readOnlyRunHashes;
 
@@ -27,6 +26,8 @@ public static class CanonicalJson
     private sealed class RunStateHashScope
     {
         public readonly Dictionary<RunState, string> Hashes =
+            new(ReferenceEqualityComparer.Instance);
+        public readonly Dictionary<SemanticPilotCombatV111, string> PilotHashes =
             new(ReferenceEqualityComparer.Instance);
     }
 
@@ -59,6 +60,15 @@ public static class CanonicalJson
         return new ReadOnlyHashLease(previous);
     }
 
+    /// <summary>
+    /// Read-only semantic status/projection scope. Shares the same nested
+    /// reference-identity dictionary as the existing RunState validation
+    /// lease, but also reuses exact SemanticPilotCombatV111 fingerprints.
+    /// Dispose before advancing mechanics or changing any mutable array.
+    /// </summary>
+    public static IDisposable BeginReadOnlySemanticSnapshotHashReuse() =>
+        BeginReadOnlyRunStateHashReuse();
+
     public static string Serialize<T>(T value)
     {
         return Encoding.UTF8.GetString(SerializeCanonicalUtf8(value));
@@ -66,10 +76,9 @@ public static class CanonicalJson
 
     public static string Sha256<T>(T value)
     {
-        // Generic serialization can depend on static type. Restrict reuse to
-        // exact RunState-typed calls, with a reference-identity key, inside
-        // a read-only validation scope. The cache is never shared across a
-        // new decision boundary or another thread.
+        // Generic serialization depends on static type. Only the exact
+        // RunState and SemanticPilotCombatV111 generic calls participate.
+        // No scopes survive a mechanical transition or another thread.
         if (typeof(T) == typeof(RunState) &&
             value is RunState run &&
             _readOnlyRunHashes is { } scope)
@@ -89,6 +98,26 @@ public static class CanonicalJson
             }
             var hash = Sha256Measured(value);
             scope.Hashes.Add(run, hash);
+            return hash;
+        }
+        if (typeof(T) == typeof(SemanticPilotCombatV111) &&
+            value is SemanticPilotCombatV111 pilot &&
+            _readOnlyRunHashes is { } pilotScope)
+        {
+            if (pilotScope.PilotHashes.TryGetValue(pilot, out var cached))
+            {
+                if (VerifyReadOnlyReuse &&
+                    !StringComparer.Ordinal.Equals(cached, Sha256Core(value)))
+                    throw new InvalidDataException(
+                        "Semantic pilot changed during read-only hashing.");
+                if (!SemanticDrawStageProfilerV111.Active)
+                    return cached;
+                return SemanticDrawStageProfilerV111.Measure(
+                    "sub.semantic_draw_hash_SemanticPilotCombatV111_cache_hit",
+                    () => cached);
+            }
+            var hash = Sha256Measured(value);
+            pilotScope.PilotHashes.Add(pilot, hash);
             return hash;
         }
         return Sha256Measured(value);
