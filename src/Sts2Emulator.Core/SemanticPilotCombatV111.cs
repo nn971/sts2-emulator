@@ -3257,6 +3257,36 @@ public static class SemanticPilotCombatEngineV111
     }
 
     /// <summary>
+    /// H8 bridge: the owning runtime has established the current boundary
+    /// version and is the only writer of this private in-memory session.
+    /// Validate the selected physical identity against the live provider-owned
+    /// support, then resume the exact legacy mechanics without recomputing a
+    /// whole-pilot input hash or running a full input audit. Existing output
+    /// checks remain in place until H8 owns the continuation cursor.
+    ///
+    /// Internal only: NEVER expose this directly to a caller that can submit
+    /// a stale snapshot or untrusted event fingerprint.
+    /// </summary>
+    internal static SemanticPilotCombatV111 ResolveFromH8TrustedDrawBoundary(
+        SemanticPilotCombatV111 current, long cardInstanceId)
+    {
+        ArgumentNullException.ThrowIfNull(current);
+        var pending = current.DrawPending ??
+            throw new InvalidOperationException(
+                "H8 draw requires an active controlled draw-card boundary.");
+        var eligible = pending.CandidateCardInstanceIds;
+        var selectedIndex = Array.IndexOf(eligible, cardInstanceId);
+        if (selectedIndex < 0)
+            throw new InvalidOperationException(
+                "H8 card instance is outside the pending Nature support.");
+        var decision = SemanticDrawChoiceV111.Select(
+            pending, pending.EventId, cardInstanceId);
+        return Resolve(current, string.Empty, decision.SelectedIndex,
+            null, decision, true, null, prevalidated: true,
+            validatedDrawEvent: pending);
+    }
+
+    /// <summary>
     /// Resolve one deferred peek or scry by physical card identity. The
     /// provider records the revealed position while draw-pile membership and
     /// order remain unchanged.
