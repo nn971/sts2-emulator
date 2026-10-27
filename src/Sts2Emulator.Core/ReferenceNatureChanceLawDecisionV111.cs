@@ -327,12 +327,66 @@ public static class ReferenceNatureChanceLawDecisionV111
                 return FromAncientOfferSelection(
                     law, indexRequest, selection, outcome,
                     conditioningRun, candidateLabels);
+            if (indexRequest.SiteId == StochasticSiteRegistryV111
+                    .NativeRewardCardModelSiteId &&
+                law.OperationKind == "choose_card_model")
+            {
+                if (candidateLabels is not { Length: > 0 } cardLabels ||
+                    indexRequest.OperationKind != "choose_index" ||
+                    cardLabels.Length != indexRequest.SupportCount)
+                    throw new InvalidDataException(
+                        "Native reward-card law has no matching ordered index support.");
+                var generatedCard = SemanticGeneratedCardNativeAuditV111
+                    .CreateNativeRewardEvent(indexRequest, cardLabels);
+                var expectedLaw = ChanceLawEngineV111.QueryGeneratedCard(
+                    generatedCard);
+                if (CanonicalJson.Sha256(law) !=
+                    CanonicalJson.Sha256(expectedLaw))
+                    throw new InvalidDataException(
+                        "Native reward-card law differs from its saved candidate support.");
+                var cardDecision = new RandomIndexDecisionV111(
+                    indexRequest with
+                    {
+                        OrderedCandidates = (int[])
+                            indexRequest.OrderedCandidates.Clone()
+                    }, selection.OutcomeIndex, "controlled-v111");
+                cardDecision.Validate();
+                var controlledCard =
+                    ControlledStochasticDecisionV111.FromIndex(
+                        cardDecision, cardLabels);
+                controlledCard.Validate();
+                return controlledCard;
+            }
+            if (candidateLabels is { Length: > 0 } labelsByIndex &&
+                law.OperationKind == indexRequest.OperationKind &&
+                law.SupportCount == indexRequest.SupportCount &&
+                labelsByIndex.Length == indexRequest.SupportCount &&
+                Enumerable.Range(0, labelsByIndex.Length).All(index =>
+                    law.OutcomeIdAt(index) == labelsByIndex[index]))
+            {
+                var labeledDecision = new RandomIndexDecisionV111(
+                    indexRequest with
+                    {
+                        OrderedCandidates = (int[])
+                            indexRequest.OrderedCandidates.Clone()
+                    }, selection.OutcomeIndex, "controlled-v111");
+                labeledDecision.Validate();
+                var controlledLabeled =
+                    ControlledStochasticDecisionV111.FromIndex(
+                        labeledDecision, labelsByIndex);
+                controlledLabeled.Validate();
+                return controlledLabeled;
+            }
+            if (TryMapLegacyCombatRewardTicket(
+                    law, indexRequest, selection, candidateLabels,
+                    out var rewardTicketDecision))
+                return rewardTicketDecision;
             if (law.OperationKind != indexRequest.OperationKind ||
                 law.SupportCount != indexRequest.SupportCount ||
                 !OutcomeEndsInIndex(outcome.OutcomeId,
                     selection.OutcomeIndex))
                 throw new NotSupportedException(
-                    "Chance Law support does not map one-to-one to this index request.");
+                    $"Chance Law support does not map one-to-one to index request '{indexRequest.SiteId}' (law operation/support {law.OperationKind}/{law.SupportCount}, request {indexRequest.OperationKind}/{indexRequest.SupportCount}, outcome '{outcome.OutcomeId}', selected index {selection.OutcomeIndex}).");
             var labels = candidateLabels is { Length: > 0 }
                 ? candidateLabels : null;
             var decision = new RandomIndexDecisionV111(
@@ -601,8 +655,15 @@ public static class ReferenceNatureChanceLawDecisionV111
                     (room == PrototypeRoomType.Elite
                         ? PrototypeNativePotionRewardOdds.EliteBonus : 0)) /
                     1000f;
-                return FindUnitFloatRepresentative(
-                    roll => roll < threshold ? 1 : 0, selectedOffered);
+                var representative = selectedOffered == 1
+                    ? threshold > 0f ? 0f : float.NaN
+                    : threshold <= 0f ? 0f
+                    : threshold < 1f ? threshold : float.NaN;
+                if (!float.IsFinite(representative) ||
+                    (representative < threshold ? 1 : 0) != selectedOffered)
+                    throw new InvalidDataException(
+                        "Combat potion outcome has no source-float representative.");
+                return representative;
             }
 
             if (request.SiteId == "potion_factory.rarity_roll.unit_float")
@@ -689,8 +750,16 @@ public static class ReferenceNatureChanceLawDecisionV111
             var threshold = PrototypeNativeCardRarityOdds
                 .EncounterCardUpgradeThresholdBasisPoints(
                     cardId, act, ascension) / 10000f;
-            return FindUnitFloatRepresentative(
-                roll => roll <= threshold ? 1 : 0, expectedPass);
+            var representative = expectedPass == 1
+                ? threshold >= 0f ? 0f : float.NaN
+                : threshold < 0f ? 0f
+                : threshold < 1f ? MathF.BitIncrement(threshold)
+                : float.NaN;
+            if (!float.IsFinite(representative) ||
+                (representative <= threshold ? 1 : 0) != expectedPass)
+                throw new InvalidDataException(
+                    "Native card-upgrade outcome has no source-float representative.");
+            return representative;
         }
 
         if (law.OperationKind == "unit_float_weighted_ticket" &&
@@ -956,6 +1025,58 @@ public static class ReferenceNatureChanceLawDecisionV111
         return markerIndex >= 0 && int.TryParse(
             outcomeId[(markerIndex + 1)..], NumberStyles.Integer,
             CultureInfo.InvariantCulture, out var parsed) && parsed == index;
+    }
+
+    private static bool TryMapLegacyCombatRewardTicket(
+        ChanceLawV111 law, RandomIndexRequestV111 request,
+        ReferenceNatureSelectionV111 selection, string[]? candidateLabels,
+        out ControlledStochasticDecisionV111 decision)
+    {
+        var expectedPolicy = request.SiteId switch
+        {
+            "reward.card_rarity.ticket" =>
+                "legacy-reward-card-rarity-ticket-v1",
+            "reward.potion_odds.ticket" =>
+                "legacy-potion-reward-odds-ticket-v1",
+            "reward.random_potion.drop.ticket" =>
+                "legacy-combat-potion-drop-ticket-v1",
+            _ => null
+        };
+        if (expectedPolicy is null ||
+            law.ConditioningPolicyId != expectedPolicy)
+        {
+            decision = null!;
+            return false;
+        }
+
+        if (candidateLabels is not null ||
+            law.SiteId != request.SiteId ||
+            law.OperationKind != "bounded_integer" ||
+            request.OperationKind != "bounded_integer" ||
+            request.BoundedCount is not { } boundedCount ||
+            request.OrderedCandidates.Length != 0 ||
+            law.SupportCount != law.Outcomes.Length ||
+            law.Outcomes.Any(outcome => outcome.Weight <= 0) ||
+            law.Outcomes.Aggregate(0L, (sum, outcome) =>
+                checked(sum + outcome.Weight)) != boundedCount ||
+            selection.OutcomeIndex < 0 ||
+            selection.OutcomeIndex >= law.Outcomes.Length)
+            throw new InvalidDataException(
+                "Legacy combat reward ticket law does not partition its bounded request.");
+
+        var selectedTicket = checked((int)law.Outcomes
+            .Take(selection.OutcomeIndex)
+            .Aggregate(0L, (sum, outcome) =>
+                checked(sum + outcome.Weight)));
+        var indexDecision = new RandomIndexDecisionV111(
+            request with
+            {
+                OrderedCandidates = (int[])request.OrderedCandidates.Clone()
+            }, selectedTicket, "controlled-v111");
+        indexDecision.Validate();
+        decision = ControlledStochasticDecisionV111.FromIndex(indexDecision);
+        decision.Validate();
+        return true;
     }
 
     private static float FloatFromBits(uint bits) =>

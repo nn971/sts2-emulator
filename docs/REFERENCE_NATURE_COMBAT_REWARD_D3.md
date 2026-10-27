@@ -36,6 +36,18 @@ replaying the existing rarity fallback and bag-removal mechanics. Every
 selected float is mapped to a representative that preserves the sampled
 mechanic outcome.
 
+The source-independent [combat reward acceptance test](../tests/Sts2Emulator.Core.Tests/StochasticCombatRewardAcceptanceTests.cs)
+replays legacy and configured Native immediate victories, saves and restores a
+pending prefix, exercises both potion-presence outcomes, and checks selected
+potion, gold, card, rarity, and upgrade results against the committed reward.
+It also verifies that replay leaves each source provider cursor unchanged.
+The Native card-model law uses semantic `card_model:<id>` outcomes; the mapper
+checks the saved candidate order before translating one back to its typed
+index. Potion pity uses the source's strict float comparison, while card-
+upgrade mapping uses its inclusive comparison. These checks cover the
+emulator continuation and declared transforms; installed-game pool fidelity,
+stream attribution, and cursor parity remain separate.
+
 When `NativeRunRng` is absent, the same session also captures these registered
 legacy reward-stream index requests:
 

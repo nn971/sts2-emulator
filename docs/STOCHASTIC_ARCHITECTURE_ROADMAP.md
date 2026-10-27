@@ -6,15 +6,31 @@
 dedicated CI workflow that emits registry/matrix and contract-declaration
 artifacts, runs focused provider and mechanics checks, replays seeded JSONL and
 source-route combats, and compares complete test identities against frozen
-main. The site ledger declares focused mechanics regressions for 154 sites and
-lists 31 remaining gaps; runtime continuation acceptance and source-callsite
-completeness remain open. Local validation passed the full 1,844-test suite;
-the frozen-main comparison found zero regressions across 1,625 shared test
-identities, repaired 323 shared failures, and passed all 218 candidate-only
-tests. The seeded 15-worker smoke, matched 15-process Nature/control replay,
+main. The site ledger declares focused mechanics regressions for 158 sites and
+lists 27 remaining gaps; runtime continuation acceptance and source-callsite
+completeness remain open. The latest local full suite passed 1,846 tests. On
+the preceding 1,844-test checkpoint, the frozen-main comparison found zero
+regressions across 1,625 shared test identities, repaired 323 shared failures,
+and passed all 218 candidate-only tests. The seeded 15-worker smoke, matched 15-process Nature/control replay,
 five documented source-route victory pairs, and Python snapshot/canonical
 replay smoke passed. These remain source-independent emulator evidence, not
 native-game parity or learned-policy training evidence.
+
+**S4 combat-reward continuation acceptance increment (2026-10-27):** Added
+source-independent legacy and configured-Native immediate-victory replay tests.
+They restore mid-prefix, exercise both potion-presence branches, match legacy
+potion and Native gold/model/card/upgrade outcomes to the committed reward,
+and verify the corresponding provider cursor remains unchanged. The shared
+law mapper now validates Native generated-card identity outcomes against the
+saved ordered candidate pool. Native potion-pity representatives use the
+strict source threshold, while card-upgrade representatives preserve the
+inclusive comparison. These additions declare focused mechanics regressions
+for 11 stochastic sites; 27 sites remain without one. Probability status and
+all Native source-parity claims retain their existing provenance. The focused
+and full tests pass. The latest main CI failure came from five Native Inspector
+Python fixtures that omitted the newly required `provider_mode`; the fixture
+now declares `native-v111` and all 104 Native protocol tests pass locally.
+Remote CI for this correction is pending.
 
 **S1 constrained-deck and duplicate-model acceptance increment (2026-10-27):**
 Independent permutation tests now compare `EnumeratePossibleOrders` across

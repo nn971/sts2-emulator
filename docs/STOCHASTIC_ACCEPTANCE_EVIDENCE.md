@@ -39,31 +39,34 @@ The current inventory reports 185 registered sites mapped to 185 matrix rows,
 185 contract-evidence links, and no unspecified reference-law status. Those
 counts establish declaration consistency, not executable coverage of every
 source callsite or continuation. The per-site ledger declares focused mechanics
-regressions for 154 sites; 31 remain without a focused regression. Full
+regressions for 158 sites; 27 remain without a focused regression. Full
 continuation acceptance remains `NOT_ESTABLISHED` for every site.
 
 ## Latest local run
 
-On 2026-10-27, the full .NET suite passed 1,844 tests. The pinned frozen-main
-comparison found 0 regressions among 1,625 shared test identities; 323 shared
-failures were repaired. Four tests were baseline-only; all 218 candidate-only
-tests passed. The Nature HP/intent JSONL and Python binding smoke now passes
-with the source-verified Native bounded-index law status. The configured
-Treasure acceptance resolves and restores the Native entry, checks the
-selected relic against the compact draw law, and preserves the Native RNG
-cursor. The source-independent acceptance workflow passed on checkpoint
-`c10de583`; its main CI run then exposed the stale HP law-status assertion,
-which is fixed and passes locally. The updated CI is pending after this
-increment is pushed. The seeded semantic worker smoke, 15-process matched A/B
-replay, and all five documented source-route victory pairs also passed. The
-A/B report still says
-`trainingEvidence=false` and `probabilityStatus=UNVERIFIED`.
+On 2026-10-27, the full .NET suite passed 1,846 tests. The latest pinned
+frozen-main comparison was on the preceding 1,844-test checkpoint: it found
+0 regressions among 1,625 shared test identities, repaired 323 shared
+failures, and passed all 218 candidate-only tests. All 104 Native Inspector
+Python protocol tests pass locally after correcting the boundary comparator
+fixture to identify its Native provider mode; the 98effbcb CI run had failed
+those five fixtures because that field was missing. Nature HP/intent JSONL,
+Python binding, static site contracts, and the 158-site declaration ledger
+pass. The legacy and configured Native combat reward acceptance tests cover
+both potion-presence branches, card and potion identity mapping, gold bounds,
+upgrade flags, save/restore, and unchanged source provider cursors. The
+configured Treasure acceptance also passes. The 98effbcb source-independent
+workflow passed; both workflows are pending after this correction is pushed.
+The seeded semantic worker smoke, 15-process matched A/B replay, and all five
+documented source-route victory pairs passed on the preceding checkpoint. The
+A/B report still says `trainingEvidence=false` and
+`probabilityStatus=UNVERIFIED`.
 
 ## Remaining acceptance work
 
 - Build the runtime site matrix across mechanics entry, legal support, provider,
   law, save/restore, and fail-closed behavior for every advertised executable
-  stochastic site. The migration matrix currently identifies 31 remaining
+  stochastic site. The migration matrix currently identifies 27 remaining
   sites without a focused controlled mechanics regression.
 - Compare complete mechanics continuations for matching semantic outcomes
   through representative combat, nested draw, event, reward, and terminal

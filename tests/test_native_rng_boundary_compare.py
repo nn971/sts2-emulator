@@ -36,6 +36,7 @@ def engine(index=1, events=True):
                 "operation_kind": "bounded_integer",
                 "bounded_count": 2, "source_version": "v0.111.0"},
             "selected_index": index,
+            "provider_mode": "native-v111",
             "native_cursor_before": {"counter": 0},
             "native_cursor_after": {"counter": 1}
         }] if events else []
