@@ -74,6 +74,29 @@ and can be retired once H8 has a native single-owner effect cursor.
    semantic hot-path regression. Do not repin sts2-ai without its full
    128-combat, 15-worker, 14.66M CUDA actor A/B/B/A acceptance.
 
+## First measured result — CI smoke A/B
+
+The matched source-valid 8-combat test on GitHub Actions
+([H8 runtime smoke workflow](https://github.com/nn971/sts2-emulator/actions/runs/40561069164))
+passed **11/11 C# tests** and the real Python JSONL fork/replay test.
+Both sides chose exactly the same physical draws and replayed their
+complete source, player and Nature decisions. The test alternates execution
+order across seeds, measures allocations with
+`GC.GetAllocatedBytesForCurrentThread` and elapsed ticks via
+`Stopwatch.GetTimestamp`, and reports:
+
+| M1 -> M2 | Before | After | Delta |
+| --- | ---: | ---: | ---: |
+| Managed allocation / accepted card draw | 8.150 MB | 4.735 MB | -41.9% |
+| Elapsed time / accepted card draw | 18.922 ms | 11.053 ms | -41.6% |
+
+This is **eight draws on one shared CI CPU runner**, not a statistically
+validated production workload. These values are isolated H8 resolution
+operations (they exclude the setup and model inference) and cannot be
+summed with nested H7 profiler counters. The existing source-valid H8
+JSONL integration also passed. Repeat with profiler off over a full
+128-combat, 15-worker GPU actor cohort before repinning any training code.
+
 ## Incomplete architecture
 
 The runtime still uses v111 as a deterministic mechanics adapter and
