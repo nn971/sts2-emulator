@@ -1492,6 +1492,28 @@ public static class SemanticEndTurnEngineV111
         return ContinueHandDraw(state with { Intents = null }, draw);
     }
 
+    /// <summary>
+    /// H8 M2 native transition handoff. The session already owns a valid
+    /// automatic hand-draw cursor; its mechanics RunState was advanced by
+    /// the game engine, not by a nested semantic draw resolver. Reattach the
+    /// resulting projection once at the boundary (for legacy snapshot/replay)
+    /// and perform normal automatic-pipeline completion when appropriate.
+    /// No recursive semantic output audit runs on this trusted path.
+    /// </summary>
+    internal static SemanticEndTurnV111 ContinueFromH8AdvancedDraw(
+        SemanticEndTurnV111 source, SemanticCombatDrawV111 advancedDraw)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(advancedDraw);
+        if (source.Complete ||
+            source.HandDraw is not { AtBoundary: false, Pending: not null } ||
+            !advancedDraw.AutomaticHandDraw ||
+            !advancedDraw.FromHandDraw)
+            throw new InvalidOperationException(
+                "H8 automatic draw cursor is no longer active.");
+        return ContinueHandDraw(source, advancedDraw);
+    }
+
     private static SemanticEndTurnV111 ContinueHandDraw(
         SemanticEndTurnV111 source, SemanticCombatDrawV111 handDraw)
     {
