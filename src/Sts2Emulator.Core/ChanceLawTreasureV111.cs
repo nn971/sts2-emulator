@@ -253,9 +253,14 @@ public static partial class ChanceLawEngineV111
         var plan = PrototypeNativeRelicGrabBag.PlanNaturePull(
             bag, rarity, merchant: false, run.Player);
         var expectedCandidates = plan.CandidateIds;
-        var ownerId = PrototypeNativeRelicGrabBag.TreasureModelOwnerId(
-            world, rarity, candidateIds);
-        if (plan.SelectedTier is null || request.OwnerId != ownerId ||
+        var ownerMatchesReachableTreasure =
+            PrototypeNativeWingedBoots.AvailableNodes(world, run.Player)
+                .Where(node => node.RoomType == PrototypeRoomType.Treasure)
+                .Any(node => request.OwnerId ==
+                    PrototypeNativeRelicGrabBag.TreasureModelOwnerId(
+                        world with { Floor = node.Floor }, rarity,
+                        candidateIds));
+        if (plan.SelectedTier is null || !ownerMatchesReachableTreasure ||
             !candidateIds.SequenceEqual(expectedCandidates,
                 StringComparer.Ordinal))
             throw new InvalidDataException(

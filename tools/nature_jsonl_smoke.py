@@ -46,8 +46,12 @@ def main() -> None:
         assert hp_event["ok"] and hp_event["kind"] == "initial_hp", hp_event
         assert hp_event["schemaId"] == hello["natureEventMetadataSchemaId"]
         assert hp_event["pending"]["siteId"] == "combat.initial_unique_hp"
-        assert hp_event["pending"]["probabilityStatus"] == "UNVERIFIED"
-        assert hp_event["pending"]["referenceLawId"] is None
+        # The Native bounded-index transform is source-verified for the
+        # declared HP support; live-pool completeness and source parity remain
+        # separate evidence.
+        assert hp_event["pending"]["probabilityStatus"] == "SOURCE_VERIFIED"
+        law_id = hp_event["pending"]["referenceLawId"]
+        assert isinstance(law_id, str) and len(law_id) == 64
         first_event_id = hp_event["pending"]["eventId"]
         assert hp_event["transcript"] == []
 

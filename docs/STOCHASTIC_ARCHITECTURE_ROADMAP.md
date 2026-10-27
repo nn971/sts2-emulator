@@ -6,9 +6,9 @@
 dedicated CI workflow that emits registry/matrix and contract-declaration
 artifacts, runs focused provider and mechanics checks, replays seeded JSONL and
 source-route combats, and compares complete test identities against frozen
-main. The site ledger declares focused mechanics regressions for 152 sites and
-lists 33 remaining gaps; runtime continuation acceptance and source-callsite
-completeness remain open. Local validation passed the full 1,843-test suite;
+main. The site ledger declares focused mechanics regressions for 154 sites and
+lists 31 remaining gaps; runtime continuation acceptance and source-callsite
+completeness remain open. Local validation passed the full 1,844-test suite;
 the frozen-main comparison found zero regressions across 1,625 shared test
 identities, repaired 323 shared failures, and passed all 218 candidate-only
 tests. The seeded 15-worker smoke, matched 15-process Nature/control replay,
@@ -6684,6 +6684,18 @@ run/count/boundary handoff. Saved draw-cost resumes consume that validated
 result directly instead of reclassifying it. No snapshot or transcript schema
 changed. Core and CLI Release builds, static RNG inventory checks, and
 `git diff --check` passed; no tests were added or run.
+
+**S4 configured Treasure continuation acceptance (2026-10-27):** A new
+source-independent configured Treasure test replays rarity and relic identity,
+restores the in-flight session, and checks the selected identity against the
+compact pre-entry law. Its floor-8 fixture exposed that the identity-law owner
+contains the reachable target floor; the query now validates that owner
+against available Treasure nodes instead of the player's current floor. The
+Nature HP/intent JSONL smoke now expects the source-verified bounded-index
+transform and its law ID. The targeted Treasure test, Nature smoke, complete
+1,844-test suite, strict frozen-main comparison, declaration inventory, and
+`git diff --check` passed. Native source-pool completeness and queue/cursor
+parity remain open; full runtime acceptance remains open for every site.
 
 **S4 automatic draw owner audit (2026-10-26):** The architecture status now
 records the shared mechanics that are in place across controlled and semantic

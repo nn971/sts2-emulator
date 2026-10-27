@@ -20,7 +20,9 @@ Fidelity Inspector, or learned policy.
   enumeration with brute-force physical permutations and checks draw, peek,
   and scry laws with duplicate card models. The saved Shop-entry case
   exercises all seven legacy card, potion, and relic offer sites through a
-  complete ReferenceNature replay and mid-continuation restore.
+  complete ReferenceNature replay and mid-continuation restore. The configured
+  Treasure-entry case replays rarity and relic identity, restores the session,
+  and checks its result against the compact pre-entry draw law.
 - **JSONL isolation:** seeded semantic combat, save/restore, the fixed-policy
   two-site Nature/control experiment, and the five documented source-route
   victory pairs run in separate emulator processes. Public-view checks inspect
@@ -37,20 +39,22 @@ The current inventory reports 185 registered sites mapped to 185 matrix rows,
 185 contract-evidence links, and no unspecified reference-law status. Those
 counts establish declaration consistency, not executable coverage of every
 source callsite or continuation. The per-site ledger declares focused mechanics
-regressions for 152 sites; 33 remain without a focused regression. Full
+regressions for 154 sites; 31 remain without a focused regression. Full
 continuation acceptance remains `NOT_ESTABLISHED` for every site.
 
 ## Latest local run
 
-On 2026-10-27, the full .NET suite passed 1,843 tests. The pinned frozen-main
+On 2026-10-27, the full .NET suite passed 1,844 tests. The pinned frozen-main
 comparison found 0 regressions among 1,625 shared test identities; 323 shared
 failures were repaired. Four tests were baseline-only; all 218 candidate-only
-tests passed. The Python binding/snapshot/canonical-replay smoke passed. The
-source-independent acceptance workflow passed on checkpoint
-`8394cbcc`; remote CI for the new Shop continuation and site-ledger increment
-is pending. That checkpoint's main CI run exposed an outdated snapshot field
-path in the smoke, which now follows the v4 simulation-envelope schema and
-passes locally. The seeded semantic worker smoke, 15-process matched A/B
+tests passed. The Nature HP/intent JSONL and Python binding smoke now passes
+with the source-verified Native bounded-index law status. The configured
+Treasure acceptance resolves and restores the Native entry, checks the
+selected relic against the compact draw law, and preserves the Native RNG
+cursor. The source-independent acceptance workflow passed on checkpoint
+`c10de583`; its main CI run then exposed the stale HP law-status assertion,
+which is fixed and passes locally. The updated CI is pending after this
+increment is pushed. The seeded semantic worker smoke, 15-process matched A/B
 replay, and all five documented source-route victory pairs also passed. The
 A/B report still says
 `trainingEvidence=false` and `probabilityStatus=UNVERIFIED`.
@@ -59,7 +63,7 @@ A/B report still says
 
 - Build the runtime site matrix across mechanics entry, legal support, provider,
   law, save/restore, and fail-closed behavior for every advertised executable
-  stochastic site. The migration matrix currently identifies 33 remaining
+  stochastic site. The migration matrix currently identifies 31 remaining
   sites without a focused controlled mechanics regression.
 - Compare complete mechanics continuations for matching semantic outcomes
   through representative combat, nested draw, event, reward, and terminal
