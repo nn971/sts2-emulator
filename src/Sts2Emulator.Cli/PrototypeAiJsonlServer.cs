@@ -6674,6 +6674,16 @@ internal static class PrototypeAiJsonlServer
                         break;
                     }
 
+                    case "h8_audit_state_fingerprint":
+                    {
+                        // Explicit diagnostic only; canonical hashing is
+                        // never part of normal H8 decision advancement.
+                        var runtime = RequireH8(request);
+                        Write(new { requestId, ok = true,
+                            fingerprint = runtime.AuditStateFingerprint() });
+                        break;
+                    }
+
                     case "h8_decision_history":
                     {
                         var runtime = RequireH8(request);
