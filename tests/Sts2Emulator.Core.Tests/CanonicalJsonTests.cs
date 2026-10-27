@@ -27,6 +27,18 @@ public sealed class CanonicalJsonTests
             CanonicalJson.Sha256(rightDoc.RootElement));
     }
     [Fact]
+    public void Sha256MatchesHashOfCanonicalUtf8Json()
+    {
+        using var doc = JsonDocument.Parse(
+            "{\"z\":[{\"ñ\":\"汉字😀\",\"b\":-12.75},null,true],\"a\":\"line\\n\\u003c\"}");
+        var canonical = CanonicalJson.Serialize(doc.RootElement);
+        var expected = Convert.ToHexString(
+            System.Security.Cryptography.SHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes(canonical))).ToLowerInvariant();
+        Assert.Equal(expected, CanonicalJson.Sha256(doc.RootElement));
+    }
+
+    [Fact]
     public void ReadOnlyRunStateHashReuseIsScopedAndReferenceBased()
     {
         var pilot = SemanticPilotCombatEngineV111.BeginSeeded(
