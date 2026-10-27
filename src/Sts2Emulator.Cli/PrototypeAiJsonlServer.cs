@@ -6594,7 +6594,19 @@ internal static class PrototypeAiJsonlServer
                                 !request.TryGetProperty(
                                     "replay_opening_draw_hooks", out _) ||
                                 OptionalBool(request, "replay_opening_draw_hooks"));
-                        var runtime = H8CombatRuntimeV1.BeginSeeded(entry);
+                        // Benchmark A/B switches: omitted flags preserve
+                        // the optimized runtime. Explicit false selects the
+                        // corresponding compatibility resolver for a paired
+                        // source-valid replay/performance comparison.
+                        bool H8Flag(string name) =>
+                            !request.TryGetProperty(name, out _) ||
+                            OptionalBool(request, name);
+                        var runtime = H8CombatRuntimeV1.BeginSeeded(
+                            entry,
+                            useM2AutomaticDraw: H8Flag("use_m2_automatic_draw"),
+                            useNativeDrawTransition: H8Flag("use_native_draw_transition"),
+                            useNativePlayerEndTurn: H8Flag("use_native_player_end_turn"),
+                            useTrustedIntent: H8Flag("use_trusted_intent"));
                         var handle = StoreH8(runtime);
                         Write(new { requestId, ok = true, result = H8Status(runtime, handle) });
                         break;
