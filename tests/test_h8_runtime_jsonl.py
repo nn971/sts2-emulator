@@ -37,6 +37,19 @@ class H8JsonlRuntimeTests(unittest.TestCase):
                     "boundary_version": state["boundaryVersion"],
                 }
                 if state["kind"] == "enemy_intent":
+                    law = session.call("h8_reference_law", **token)["pending"]
+                    self.assertEqual(law["kind"], "enemy_intent")
+                    self.assertEqual(
+                        [c["intentId"] for c in law["semanticCandidates"]],
+                        state["intentIds"])
+                    self.assertEqual(
+                        [c["rawWeight"] for c in law["semanticCandidates"]],
+                        state["intentRawWeights"])
+                    self.assertEqual(
+                        [c["outcomeId"] for c in law["chanceLaw"]["outcomes"]],
+                        state["intentIds"])
+                    self.assertEqual(
+                        law["eventId"], law["chanceLaw"]["eventId"])
                     action = session.call(
                         "h8_resolve_intent", **token,
                         intent_id=state["intentIds"][0],
@@ -82,6 +95,23 @@ class H8JsonlRuntimeTests(unittest.TestCase):
                 "runtime_id": state["runtimeId"],
                 "boundary_version": state["boundaryVersion"],
             }
+            law = session.call("h8_reference_law", **token)["pending"]
+            self.assertEqual(law["kind"], "draw_card")
+            self.assertEqual(
+                [c["cardInstanceId"] for c in law["candidates"]],
+                state["cardInstanceIds"])
+            self.assertEqual(
+                [c["outcomeId"] for c in law["chanceLaw"]["outcomes"]],
+                ["card_instance:" + str(x) for x in state["cardInstanceIds"]])
+            self.assertEqual(law["eventId"], law["chanceLaw"]["eventId"])
+            self.assertEqual(
+                law["constraintFingerprint"],
+                law["chanceLaw"]["conditioningFingerprint"])
+            with self.assertRaises(EmulatorError):
+                session.call(
+                    "h8_reference_law", **{
+                        **token, "boundary_version":
+                            state["boundaryVersion"] + 1})
             original = session.call(
                 "h8_status", h8_handle=state["h8Handle"])["result"]
             self.assertEqual(original, state)
