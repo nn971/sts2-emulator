@@ -6593,7 +6593,9 @@ internal static class PrototypeAiJsonlServer
                             ReplayOpeningDrawHooks:
                                 !request.TryGetProperty(
                                     "replay_opening_draw_hooks", out _) ||
-                                OptionalBool(request, "replay_opening_draw_hooks"));
+                                OptionalBool(request, "replay_opening_draw_hooks"),
+                            FixtureDeckPresetId:
+                                OptionalString(request, "fixture_deck_preset_id"));
                         // Benchmark A/B switches: omitted flags preserve
                         // the optimized runtime. Explicit false selects the
                         // corresponding compatibility resolver for a paired
