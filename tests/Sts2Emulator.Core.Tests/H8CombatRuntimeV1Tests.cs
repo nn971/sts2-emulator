@@ -449,6 +449,38 @@ public sealed class H8CombatRuntimeV1Tests
     }
 
     [Fact]
+    public void TrustedIntentUsesRealA10SupportAndMatchesCheckedLegacyResolver()
+    {
+        var state = H8CombatRuntimeV1.BeginSeeded(
+            Mawler("h8-a10-trusted-intent-real-combat"));
+        for (var i = 0; !state.HasPendingIntent; i++)
+        {
+            Assert.True(i < 20, "Expected a real A10 next-turn intent request.");
+            Assert.True(state.AtPlayerBoundary);
+            state.ChoosePlayerAction(state.Boundary, state.EndTurnActionId());
+        }
+        var snapshot = state.LegacySnapshotForAudit();
+        var support = state.PendingIntentIds();
+        Assert.NotEmpty(support);
+        var selected = support[^1];
+        var expected = SemanticPilotCombatEngineV111.ResolveIntent(
+            snapshot, snapshot.Fingerprint, selected);
+        var before = state.Boundary;
+        Assert.Throws<InvalidOperationException>(() =>
+            state.ChooseIntent(new H8BoundaryTokenV1(Guid.NewGuid(),
+                before.Version), selected));
+        Assert.Throws<InvalidOperationException>(() =>
+            state.ChooseIntent(before, "intent-id-not-in-support"));
+        Assert.Equal(before, state.Boundary);
+        state.ChooseIntent(before, selected, "scripted-test");
+        Assert.Equal(expected.Fingerprint,
+            state.LegacySnapshotForAudit().Fingerprint);
+        Assert.Equal("intent", state.DecisionHistory[^1].Kind);
+        Assert.Equal(selected, state.DecisionHistory[^1].IntentId);
+        state.AuditReplay();
+    }
+
+    [Fact]
     public void ForkHasIndependentRuntimeIdentityAndDeterministicJournal()
     {
         var runtime = ReachNaturalDraw("h8-versioned-mawler-fork-v1");
