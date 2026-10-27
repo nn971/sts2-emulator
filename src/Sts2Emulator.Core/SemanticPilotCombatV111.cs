@@ -55,7 +55,7 @@ public sealed record SemanticNativePolicyAuditV111(
 
     public RandomBoundaryTranscriptEntryV111[] ProviderTrace { get; init; } = [];
 
-    public void Validate()
+    private void ValidateReference()
     {
         if (ProviderId != NativeProviderId ||
             ProbabilityStatus != "UNVERIFIED" || Decisions is null ||
@@ -903,6 +903,904 @@ public sealed record SemanticPilotCombatV111(
         if (this.CombatTerminal && this.PendingEndTurn is not null)
             throw new InvalidDataException(
                 "Terminal combat retained an unresolved chance.");
+    }
+
+    public void Validate()
+    {
+        if (ProviderId != NativeProviderId ||
+            ProbabilityStatus != "UNVERIFIED" || Decisions is null ||
+            ProviderTrace is null)
+            throw new InvalidDataException(
+                "Native policy baseline has invalid provider provenance.");
+
+        for (var index = 0; index < Decisions.Length; index++)
+        {
+            var decision = Decisions[index];
+            if (decision is null || decision.Sequence != index + 1 ||
+                decision.ProviderMode != "native-v111" ||
+                decision.Request is null || decision.Request.Ordinal < 0 ||
+                string.IsNullOrWhiteSpace(decision.Request.StreamId))
+                throw new InvalidDataException(
+                    "Native policy index decision is invalid at " + index + ".");
+            new RandomIndexDecisionV111(decision.Request,
+                decision.SelectedIndex, decision.ProviderMode,
+                decision.NativeCursorBefore, decision.NativeCursorAfter).Validate();
+        }
+
+        var traceIndices = new List<RandomBoundaryEventV111>();
+        for (var index = 0; index < ProviderTrace.Length; index++)
+        {
+            var entry = ProviderTrace[index];
+            if (entry is null || entry.Sequence != index + 1)
+                throw new InvalidDataException(
+                    "Native policy mixed trace sequence is invalid at " + index + ".");
+            entry.Validate();
+            ValidateNativeTraceProvenance(entry.ReadProviderMode(), index);
+            if (entry.OperationKind == "index")
+            {
+                var value = entry.DeserializeEvent<RandomBoundaryEventV111>();
+                traceIndices.Add(value with
+                {
+                    Sequence = traceIndices.Count + 1
+                });
+            }
+        }
+
+        // Older snapshots have only the compatibility index list. Newer
+        // snapshots retain the full mixed trace and project its index entries.
+        if (ProviderTrace.Length > 0 && traceIndices.Count != Decisions.Length)
+            throw new InvalidDataException(
+                "Native policy index projection differs from its mixed trace.");
+        for (var index = 0; ProviderTrace.Length > 0 &&
+             index < traceIndices.Count; index++)
+        {
+            if (CanonicalJson.Sha256(traceIndices[index]) !=
+                CanonicalJson.Sha256(Decisions[index]))
+                throw new InvalidDataException(
+                    "Native policy index projection differs from its mixed trace at " +
+                    index + ".");
+        }
+    }
+
+    private static void ValidateNativeTraceProvenance(
+        string providerMode, int index)
+    {
+        if (providerMode != "native-v111")
+            throw new InvalidDataException(
+                "Native policy trace has non-native provenance at " + index + ".");
+    }
+}
+
+public sealed record SemanticSourceRouteAuditV111(
+    string ProviderId, ActIdentity ActOneRegion, string[] ActionIds,
+    string MapNodeId, string EncounterId, string NativeEncounterEntry,
+    RandomBoundaryEventV111[] NativeEntryDecisions,
+    string ProbabilityStatus = "UNVERIFIED")
+{
+    public const string SourceRouteProviderId =
+        "engine-owned-v111-native-weak-route-entry-unverified-v1";
+}
+
+public sealed record SemanticSeededEntryV111(
+    string Seed, int Act, string EncounterId, string NativeEncounterEntry,
+    int TotalFloor, int Ascension, long FirstMonsterCombatId,
+    int? MapColumn, int? MapRow,
+    string? OtherChanceProviderId = null,
+    string? FixtureDrawCostRelicId = null,
+    bool ReplayOpeningDrawHooks = false,
+    bool NativePolicyBaseline = false,
+    bool SourceRouteEntry = false,
+    ActIdentity RouteActOneRegion = ActIdentity.Overgrowth,
+    string? RouteNeowChoiceId = null,
+    string? RouteMapNodeId = null,
+    string? FixtureRandomTargetCardId = null,
+    string? FixtureGenerationPotionId = null,
+    string? FixtureSelectionCardId = null,
+    bool FixtureNatureDrawCosts = false,
+    string? FixturePoolGenerationPotionId = null,
+    string? FixtureGeneratedDrawInsertionCardId = null,
+    bool FixtureRandomFreeAttackDrawInsertion = false,
+    int? FixtureRandomizeHandCostsMaxExclusive = null,
+    int? FixtureSetRandomHandCardCost = null,
+    string? FixtureSelectionPotionId = null,
+    string? FixturePotionGenerationCardId = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    string? FixtureTopAutoplayPotionId = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    string? FixtureDeckPresetId = null);
+
+/// <summary>
+/// First external playable semantic boundary. Initial opening order is
+/// already committed by the separate controlled fixture: this provider
+/// copies those exact hidden positions without issuing new Nature tickets.
+/// Subsequent fresh recycle epochs are deferred one card at a time.
+/// </summary>
+public sealed record SemanticPilotCombatV111(
+    ControlledPlayableCombatV111 OpeningSource,
+    RunState Run, SemanticEndTurnV111? PendingEndTurn,
+    SemanticPilotContinuationV111[] History,
+    string NativeEncounterEntry,
+    string Mode = "sts2-v111-semantic-playable-p0-v1")
+{
+    public const string SchemaId = "sts2-v111-semantic-playable-p0-v1";
+    /// <summary>
+    /// Atomic mechanics/provider envelope for the semantic playable session.
+    /// Existing continuation properties remain flattened snapshot fields.
+    /// </summary>
+    [JsonIgnore]
+    public SimulationStateV111<SemanticPilotMechanicsStateV111,
+        SemanticPilotStochasticStateV111> Simulation { get; init; } = new(
+            new SemanticPilotMechanicsStateV111(
+                OpeningSource, Run, History, NativeEncounterEntry, Mode)
+            {
+                PendingEndTurn = PendingEndTurn is { } endTurn
+                    ? SemanticPilotEndTurnMechanicsProjectionV111
+                        .Capture(endTurn)
+                    : null
+            },
+            new SemanticPilotStochasticStateV111(
+                PendingEndTurn: PendingEndTurn?.Stochastic.Fork()));
+
+    [JsonIgnore]
+    public SemanticPilotMechanicsStateV111 Mechanics
+    {
+        get => Simulation.Mechanics;
+        init => Simulation = Simulation with { Mechanics = value };
+    }
+
+    /// <summary>Private state for opted-in RNG and provider provenance.</summary>
+    [JsonIgnore]
+    public SemanticPilotStochasticStateV111 Stochastic
+    {
+        get => Simulation.Stochastic;
+        init => Simulation = Simulation with { Stochastic = value };
+    }
+
+    public ControlledPlayableCombatV111 OpeningSource
+    {
+        get => Mechanics.OpeningSource;
+        init => Mechanics = Mechanics with { OpeningSource = value };
+    }
+
+    public RunState Run
+    {
+        get => Mechanics.Run;
+        init => Mechanics = Mechanics with { Run = value };
+    }
+
+    public SemanticPilotContinuationV111[] History
+    {
+        get => Mechanics.History;
+        init => Mechanics = Mechanics with { History = value };
+    }
+
+    public string NativeEncounterEntry
+    {
+        get => Mechanics.NativeEncounterEntry;
+        init => Mechanics = Mechanics with
+        { NativeEncounterEntry = value };
+    }
+
+    public string Mode
+    {
+        get => Mechanics.Mode;
+        init => Mechanics = Mechanics with { Mode = value };
+    }
+
+    /// <summary>
+    /// Null for legacy precommitted fixtures. Seeded entries are verified by
+    /// regenerating the entire source-shaped opening on snapshot restoration.
+    /// This field is provider-private and never part of fair observation.
+    /// </summary>
+    public SemanticSeededEntryV111? SeededEntry
+    {
+        get => Stochastic.SeededEntry;
+        init => Stochastic = Stochastic with { SeededEntry = value };
+    }
+
+    public SemanticEndTurnV111? PendingEndTurn
+    {
+        get
+        {
+            var mechanics = Mechanics.PendingEndTurn;
+            var stochastic = Stochastic.PendingEndTurn;
+            if (mechanics is null && stochastic is null)
+                return null;
+            if (mechanics is null || stochastic is null)
+                throw new InvalidDataException(
+                    "Semantic pilot end-turn owners disagree.");
+            return mechanics.Project(Run, stochastic);
+        }
+        init
+        {
+            Mechanics = Mechanics with
+            {
+                PendingEndTurn = value is null
+                    ? null
+                    : SemanticPilotEndTurnMechanicsProjectionV111
+                        .Capture(value)
+            };
+            Stochastic = Stochastic with
+            {
+                PendingEndTurn = value?.Stochastic.Fork()
+            };
+        }
+    }
+    public SemanticOtherChanceStateV111? OtherChance
+    {
+        get => Run.Stochastic.SemanticOtherChance;
+        init => Run = Run with
+        {
+            Stochastic = RunStochasticStateV111.WithSemanticOtherChance(
+                Run.Stochastic, value)
+        };
+    }
+    public SemanticRewardAuditV111? RewardAudit
+    {
+        get => Run.Stochastic.SemanticRewardAudit;
+        init => Run = Run with
+        {
+            Stochastic = RunStochasticStateV111.WithSemanticRewardAudit(
+                Run.Stochastic, value)
+        };
+    }
+    public SemanticNativePolicyAuditV111? NativePolicyAudit
+    {
+        get => Stochastic.NativePolicyAudit;
+        init => Stochastic =
+            SemanticPilotStochasticStateV111.WithNativePolicyAudit(
+                Stochastic, value);
+    }
+    public SemanticSourceRouteAuditV111? SourceRouteAudit
+    {
+        get => Stochastic.SourceRouteAudit;
+        init => Stochastic =
+            SemanticPilotStochasticStateV111.WithSourceRouteAudit(
+                Stochastic, value);
+    }
+    public ControlledTurnIntentsV111? PendingInitialIntents
+    {
+        get => Run.World?.Combat?.AutomaticPipelineContinuation is
+            { OpeningStage: PrototypeOpeningCombatStage.InitialEnemyIntents }
+            continuation ? continuation.ControlledTurnIntents : null;
+        init => Run = PrototypeGameEngine
+            .SetControlledTurnIntentContinuation(Run, value);
+    }
+    [JsonIgnore] public SemanticTargetEventV111? TargetPending =>
+        PendingEndTurn is { } endTurn
+            ? endTurn.TargetPending
+            : SemanticPilotCombatEngineV111.DescribePendingTargetEvent(this);
+    [JsonIgnore] public SemanticGeneratedCardEventV111? GeneratedCardPending =>
+        SemanticPilotCombatEngineV111.DescribePendingGeneratedCardEvent(this);
+    [JsonIgnore] public SemanticPotionGenerationEventV111?
+        PotionGenerationPending =>
+            SemanticPilotCombatEngineV111
+                .DescribePendingPotionGenerationEvent(this);
+    [JsonIgnore] public SemanticCardTransformEventV111?
+        CardTransformPending =>
+            SemanticPilotCombatEngineV111
+                .DescribePendingCardTransformEvent(this);
+    [JsonIgnore] public SemanticCardSelectionEventV111? CardSelectionPending =>
+        SemanticPilotCombatEngineV111.DescribePendingCardSelectionEvent(this);
+    [JsonIgnore] public SemanticCostEventV111? CostPending =>
+        SemanticPilotCombatEngineV111.DescribePendingCostEvent(this);
+    [JsonIgnore] public SemanticHandCostSelectionEventV111?
+        HandCostSelectionPending =>
+            SemanticPilotCombatEngineV111
+                .DescribePendingHandCostSelectionEvent(this);
+    [JsonIgnore] public SemanticCardShortlistEventV111?
+        CardShortlistPending =>
+            SemanticPilotCombatEngineV111
+                .DescribePendingCardShortlistEvent(this);
+    [JsonIgnore] public SemanticPoolShuffleEventV111? PoolShufflePending =>
+        SemanticPilotCombatEngineV111.DescribePendingPoolShuffleEvent(this);
+    [JsonIgnore] public SemanticDrawInsertionEventV111? DrawInsertionPending =>
+        PendingEndTurn is { } endTurn
+            ? endTurn.DrawInsertionPending
+            : SemanticPilotCombatEngineV111
+                .DescribePendingDrawInsertionEvent(this);
+    [JsonIgnore] public SemanticDrawHookChoiceEventV111?
+        DrawHookChoicePending => PendingEndTurn?.DrawHookChoicePending;
+    [JsonIgnore] public SemanticKnowledgeDemonChoiceEventV111?
+        KnowledgeDemonChoicePending =>
+            PendingEndTurn?.KnowledgeDemonChoicePending;
+    [JsonIgnore] public string Fingerprint => CanonicalJson.Sha256(this);
+    [JsonIgnore] public bool AtPlayerBoundary =>
+        PendingInitialIntents is null &&
+        PendingEndTurn is null &&
+        DeckRevealPending is null &&
+        PrototypeGameEngine.IsAtCombatPlayerDecisionBoundary(Run);
+    [JsonIgnore] public bool CombatTerminal =>
+        PrototypeGameEngine.IsAtCombatRewardOrTerminalBoundary(Run);
+    [JsonIgnore] public bool AtPlayerChoiceBoundary =>
+        !CombatTerminal &&
+        ((PendingEndTurn is null && PendingInitialIntents is null &&
+          CardSelectionPending is not null) ||
+         (PendingEndTurn is not null && PendingInitialIntents is null &&
+          (DrawHookChoicePending is not null ||
+           KnowledgeDemonChoicePending is not null ||
+           PendingEndTurn?.NestedCardSelectionPending is not null)));
+    [JsonIgnore] public bool UsesNativePolicyBaseline =>
+        SeededEntry?.NativePolicyBaseline ?? false;
+    [JsonIgnore] public string? SourceOpeningFingerprint =>
+        SeededEntry is { } entry
+            ? CanonicalJson.Sha256(new
+            {
+                Entry = entry with { NativePolicyBaseline = false },
+                OpeningSource,
+                SourceRouteAudit
+            })
+            : null;
+    [JsonIgnore] public string? CombatOutcome =>
+        Run.Phase switch
+        {
+            RunPhase.Reward => "victory",
+            RunPhase.Terminal => "defeat",
+            _ => null
+        };
+    [JsonIgnore] public RandomIndexRequestV111? IntentPending =>
+        PendingInitialIntents?.Pending ?? PendingEndTurn?.IntentPending;
+    [JsonIgnore] public RandomIndexRequestV111? EnemyActionPending =>
+        PendingEndTurn?.EnemyActionPending;
+    [JsonIgnore] public SemanticEndTurnIndexEventV111?
+        EnemyActionEventPending => PendingEndTurn is { } endTurn &&
+            endTurn.EnemyActionPending is { } request
+                ? SemanticEndTurnIndexEventV111.Create(Fingerprint, request)
+                : null;
+    [JsonIgnore] public SemanticDeckEventV111? DrawPending
+    {
+        get
+        {
+            if (PendingEndTurn?.DrawPending is { } endTurnDraw)
+                return endTurnDraw;
+            var combat = Run.World?.Combat;
+            return combat?.PendingChoice is
+                { ChoiceId: "controlled_semantic_draw",
+                    ControlledSemanticDraw: not null } &&
+                combat.SemanticDeck is
+                    { Pending: { Purpose: "draw" } } deck
+                    ? SemanticDeckEngineV111.Inspect(deck) : null;
+        }
+    }
+    [JsonIgnore] public SemanticDeckEventV111? DeckRevealPending
+    {
+        get
+        {
+            var deck = Run.World?.Combat?.SemanticDeck;
+            return deck?.Pending?.Purpose is "peek" or "scry"
+                ? SemanticDeckEngineV111.Inspect(deck)
+                : null;
+        }
+    }
+    [JsonIgnore] public SemanticRandomPileCardEventV111?
+        RandomPileCardPending => PendingEndTurn?.RandomPileCardPending;
+
+    public void Validate()
+    {
+        this.Mechanics.Continuation.Validate(
+            PrototypeMechanicsContinuationKindV111.SemanticPilot);
+        this.Run.Validate();
+        // Validation owns a read-only semantic boundary: memoize derived
+        // pending projections/events for this invocation only. This retains
+        // lazy short-circuit order and the original validators, without
+        // copying or retaining caches across a state transition.
+        var memoPendingEndTurn = new Lazy<SemanticEndTurnV111?>(() => this.PendingEndTurn,
+            System.Threading.LazyThreadSafetyMode.None);
+        var memoTargetPending = new Lazy<SemanticTargetEventV111?>(() => this.TargetPending,
+            System.Threading.LazyThreadSafetyMode.None);
+        var memoGeneratedCardPending = new Lazy<SemanticGeneratedCardEventV111?>(() => this.GeneratedCardPending,
+            System.Threading.LazyThreadSafetyMode.None);
+        var memoPotionGenerationPending = new Lazy<SemanticPotionGenerationEventV111?>(() => this.PotionGenerationPending,
+            System.Threading.LazyThreadSafetyMode.None);
+        var memoCardTransformPending = new Lazy<SemanticCardTransformEventV111?>(() => this.CardTransformPending,
+            System.Threading.LazyThreadSafetyMode.None);
+        var memoCardSelectionPending = new Lazy<SemanticCardSelectionEventV111?>(() => this.CardSelectionPending,
+            System.Threading.LazyThreadSafetyMode.None);
+        var memoCostPending = new Lazy<SemanticCostEventV111?>(() => this.CostPending,
+            System.Threading.LazyThreadSafetyMode.None);
+        var memoHandCostSelectionPending = new Lazy<SemanticHandCostSelectionEventV111?>(() => this.HandCostSelectionPending,
+            System.Threading.LazyThreadSafetyMode.None);
+        var memoCardShortlistPending = new Lazy<SemanticCardShortlistEventV111?>(() => this.CardShortlistPending,
+            System.Threading.LazyThreadSafetyMode.None);
+        var memoPoolShufflePending = new Lazy<SemanticPoolShuffleEventV111?>(() => this.PoolShufflePending,
+            System.Threading.LazyThreadSafetyMode.None);
+        var memoDrawInsertionPending = new Lazy<SemanticDrawInsertionEventV111?>(() => this.DrawInsertionPending,
+            System.Threading.LazyThreadSafetyMode.None);
+        var memoDrawHookChoicePending = new Lazy<SemanticDrawHookChoiceEventV111?>(() => this.DrawHookChoicePending,
+            System.Threading.LazyThreadSafetyMode.None);
+        var memoKnowledgeDemonChoicePending = new Lazy<SemanticKnowledgeDemonChoiceEventV111?>(() => this.KnowledgeDemonChoicePending,
+            System.Threading.LazyThreadSafetyMode.None);
+        var memoDeckRevealPending = new Lazy<SemanticDeckEventV111?>(() => this.DeckRevealPending,
+            System.Threading.LazyThreadSafetyMode.None);
+        var memoIntentPending = new Lazy<RandomIndexRequestV111?>(() => this.IntentPending,
+            System.Threading.LazyThreadSafetyMode.None);
+        var memoDrawPending = new Lazy<SemanticDeckEventV111?>(() => this.DrawPending,
+            System.Threading.LazyThreadSafetyMode.None);
+        var memoRandomPileCardPending = new Lazy<SemanticRandomPileCardEventV111?>(() => this.RandomPileCardPending,
+            System.Threading.LazyThreadSafetyMode.None);
+        var memoHasPendingEndTurnNestedSemanticChoice = new Lazy<bool>(() => this.HasPendingEndTurnNestedSemanticChoice,
+            System.Threading.LazyThreadSafetyMode.None);
+        var memoAtPlayerBoundary = new Lazy<bool>(() => this.AtPlayerBoundary,
+            System.Threading.LazyThreadSafetyMode.None);
+        var memoAtPlayerChoiceBoundary = new Lazy<bool>(() => this.AtPlayerChoiceBoundary,
+            System.Threading.LazyThreadSafetyMode.None);
+        if (this.Mode != SemanticPilotCombatV111.SchemaId ||
+            this.History is null ||
+            this.NativeEncounterEntry != this.OpeningSource.Origin
+                .Formation.NativeEncounterEntry ||
+            this.Run.Phase is not (
+                RunPhase.Combat or RunPhase.Reward or RunPhase.Terminal))
+            throw new InvalidDataException("Invalid semantic playable session.");
+        if (memoPendingEndTurn.Value is { } endTurn)
+        {
+            endTurn.Validate();
+            if (endTurn.Complete ||
+                (endTurn.EnemyActionPending is not null &&
+                 (this.PendingInitialIntents is not null ||
+                  endTurn.IntentPending is not null ||
+                  endTurn.DrawPending is not null ||
+                  endTurn.HandDraw is not null ||
+                  this.UsesNativePolicyBaseline)) ||
+                (endTurn.CostPending is not null &&
+                 (memoCostPending.Value is null ||
+                  memoCostPending.Value.TargetCardInstanceId is not null ||
+                  CanonicalJson.Sha256(endTurn.CostPending) !=
+                      CanonicalJson.Sha256(memoCostPending.Value.Request))))
+                throw new InvalidDataException(
+                    "Semantic playable and end-turn continuation diverged.");
+        }
+        if (this.PendingInitialIntents is { } initialIntents)
+        {
+            if (initialIntents.Complete || memoPendingEndTurn.Value is not null ||
+                this.SeededEntry?.SourceRouteEntry != true ||
+                this.Run.World?.Combat is not { } entryCombat ||
+                CanonicalJson.Sha256(entryCombat with
+                {
+                    AutomaticPipelineContinuation = null
+                }) !=
+                    CanonicalJson.Sha256(initialIntents.BaselineCombat with
+                    {
+                        AutomaticPipelineContinuation = null
+                    }) ||
+                entryCombat.NativeRng is not null ||
+                entryCombat.SemanticDeck is not null ||
+                this.Run.NativeRunRng is not null)
+                throw new InvalidDataException(
+                    "Initial intent continuation diverged from the source-route boundary.");
+        }
+        if (this.Run.World?.Combat?.PendingChoice is
+                { ChoiceId: "controlled_semantic_draw",
+                  ControlledSemanticDraw: not null })
+        {
+            SemanticDrawChoiceV111.ValidateBoundary(this.Run);
+            if ((memoPendingEndTurn.Value is not null &&
+                 !memoHasPendingEndTurnNestedSemanticChoice.Value) ||
+                this.PendingInitialIntents is not null ||
+                memoIntentPending.Value is not null ||
+                memoDrawPending.Value is null ||
+                memoRandomPileCardPending.Value is not null ||
+                memoCostPending.Value is not null ||
+                memoTargetPending.Value is not null ||
+                memoGeneratedCardPending.Value is not null ||
+                memoPotionGenerationPending.Value is not null ||
+                memoCardTransformPending.Value is not null ||
+                memoCardSelectionPending.Value is not null ||
+                memoPoolShufflePending.Value is not null ||
+                memoDrawInsertionPending.Value is not null ||
+                memoCardShortlistPending.Value is not null ||
+                memoHandCostSelectionPending.Value is not null ||
+                this.UsesNativePolicyBaseline || this.CombatTerminal)
+                throw new InvalidDataException(
+                    "Card-effect draw conflicts with another semantic boundary.");
+        }
+        if (this.Run.World?.Combat?.PendingChoice is
+                { ChoiceId: "controlled_draw_cost",
+                  ControlledDrawCost: not null,
+                  ControlledSemanticDraw: not null })
+        {
+            SemanticCostChoiceV111.ValidateDrawBoundary(this.Run);
+            if ((memoPendingEndTurn.Value is not null &&
+                 !memoHasPendingEndTurnNestedSemanticChoice.Value) ||
+                this.PendingInitialIntents is not null ||
+                memoIntentPending.Value is not null ||
+                memoDrawPending.Value is not null || memoCostPending.Value is null ||
+                memoRandomPileCardPending.Value is not null ||
+                memoTargetPending.Value is not null ||
+                memoGeneratedCardPending.Value is not null ||
+                memoCardSelectionPending.Value is not null ||
+                memoPoolShufflePending.Value is not null ||
+                memoDrawInsertionPending.Value is not null ||
+                memoCardShortlistPending.Value is not null ||
+                memoHandCostSelectionPending.Value is not null ||
+                this.UsesNativePolicyBaseline || this.CombatTerminal)
+                throw new InvalidDataException(
+                    "Card-effect draw cost conflicts with another semantic boundary.");
+        }
+        if (memoRandomPileCardPending.Value is { } randomPileCardPending)
+        {
+            randomPileCardPending.Validate();
+            if (memoPendingEndTurn.Value is null ||
+                this.PendingInitialIntents is not null ||
+                memoIntentPending.Value is not null || memoDrawPending.Value is not null ||
+                memoCostPending.Value is not null || memoTargetPending.Value is not null ||
+                memoGeneratedCardPending.Value is not null ||
+                memoCardSelectionPending.Value is not null ||
+                memoPoolShufflePending.Value is not null ||
+                memoDrawInsertionPending.Value is not null ||
+                memoCardShortlistPending.Value is not null ||
+                memoHandCostSelectionPending.Value is not null ||
+                this.UsesNativePolicyBaseline || this.CombatTerminal ||
+                this.Run.World?.Combat?.PendingChoice?
+                    .ControlledRandomPileCard is null)
+                throw new InvalidDataException(
+                    "Random pile-card continuation conflicts with another boundary.");
+        }
+        if (memoDrawHookChoicePending.Value is { } drawHookChoicePending)
+        {
+            drawHookChoicePending.Validate();
+            if (memoPendingEndTurn.Value is null ||
+                this.PendingInitialIntents is not null ||
+                memoIntentPending.Value is not null || memoDrawPending.Value is not null ||
+                memoRandomPileCardPending.Value is not null ||
+                memoCostPending.Value is not null || memoTargetPending.Value is not null ||
+                memoGeneratedCardPending.Value is not null ||
+                memoCardSelectionPending.Value is not null ||
+                memoPoolShufflePending.Value is not null ||
+                memoDrawInsertionPending.Value is not null ||
+                memoCardShortlistPending.Value is not null ||
+                memoHandCostSelectionPending.Value is not null ||
+                !memoAtPlayerChoiceBoundary.Value || this.UsesNativePolicyBaseline ||
+                this.CombatTerminal)
+                throw new InvalidDataException(
+                    "CardDrawn hook action conflicts with another semantic boundary.");
+        }
+        if (memoKnowledgeDemonChoicePending.Value is { } knowledgeDemonChoicePending)
+        {
+            knowledgeDemonChoicePending.Validate();
+            if (memoPendingEndTurn.Value is null ||
+                this.PendingInitialIntents is not null ||
+                memoIntentPending.Value is not null || memoDrawPending.Value is not null ||
+                memoRandomPileCardPending.Value is not null ||
+                memoCostPending.Value is not null || memoTargetPending.Value is not null ||
+                memoGeneratedCardPending.Value is not null ||
+                memoCardSelectionPending.Value is not null ||
+                memoPoolShufflePending.Value is not null ||
+                memoDrawInsertionPending.Value is not null ||
+                memoCardShortlistPending.Value is not null ||
+                memoHandCostSelectionPending.Value is not null ||
+                !memoAtPlayerChoiceBoundary.Value || this.UsesNativePolicyBaseline ||
+                this.CombatTerminal)
+                throw new InvalidDataException(
+                    "Knowledge Demon action conflicts with another semantic boundary.");
+        }
+        if (memoTargetPending.Value is { } targetPending)
+        {
+            targetPending.Validate();
+            if ((memoPendingEndTurn.Value is not null &&
+                 memoPendingEndTurn.Value.TargetPending is null) ||
+                this.PendingInitialIntents is not null ||
+                memoGeneratedCardPending.Value is not null ||
+                memoPotionGenerationPending.Value is not null ||
+                this.UsesNativePolicyBaseline || this.CombatTerminal)
+                throw new InvalidDataException(
+                    "Random-target continuation conflicts with another boundary.");
+        }
+        if (memoGeneratedCardPending.Value is { } generatedCardPending)
+        {
+            generatedCardPending.Validate();
+            if (memoTargetPending.Value is not null ||
+                memoPotionGenerationPending.Value is not null ||
+                (memoPendingEndTurn.Value is not null &&
+                 memoPendingEndTurn.Value.GeneratedCardPending is null) ||
+                this.PendingInitialIntents is not null ||
+                this.UsesNativePolicyBaseline || this.CombatTerminal)
+                throw new InvalidDataException(
+                    "Generated-card continuation conflicts with another boundary.");
+        }
+        if (memoPotionGenerationPending.Value is { } potionGenerationPending)
+        {
+            potionGenerationPending.Validate();
+            SemanticPotionGenerationChoiceV111.ValidateBoundary(this.Run);
+            if (memoTargetPending.Value is not null ||
+                memoGeneratedCardPending.Value is not null ||
+                memoIntentPending.Value is not null ||
+                memoDrawPending.Value is not null ||
+                memoRandomPileCardPending.Value is not null ||
+                memoCardSelectionPending.Value is not null ||
+                memoCostPending.Value is not null ||
+                memoHandCostSelectionPending.Value is not null ||
+                memoCardShortlistPending.Value is not null ||
+                memoPoolShufflePending.Value is not null ||
+                memoDrawInsertionPending.Value is not null ||
+                (memoPendingEndTurn.Value is not null &&
+                 memoPendingEndTurn.Value.PotionGenerationPending is null) ||
+                this.PendingInitialIntents is not null ||
+                this.UsesNativePolicyBaseline || this.CombatTerminal)
+                throw new InvalidDataException(
+                    "Potion-generation continuation conflicts with another boundary.");
+        }
+        else if (this.Run.World?.Combat?.PendingChoice?
+                     .ControlledPotionGeneration is not null)
+            throw new InvalidDataException(
+                "Controlled potion generation has no semantic event.");
+        if (memoCardTransformPending.Value is { } cardTransformPending)
+        {
+            cardTransformPending.Validate();
+            SemanticCardTransformChoiceV111.ValidateBoundary(this.Run,
+                this.Run.World!.Combat!.PendingChoice!
+                    .ControlledCardTransform!);
+            if (memoTargetPending.Value is not null ||
+                memoGeneratedCardPending.Value is not null ||
+                memoPotionGenerationPending.Value is not null ||
+                memoIntentPending.Value is not null ||
+                memoDrawPending.Value is not null ||
+                memoRandomPileCardPending.Value is not null ||
+                memoCardSelectionPending.Value is not null ||
+                memoCostPending.Value is not null ||
+                memoHandCostSelectionPending.Value is not null ||
+                memoCardShortlistPending.Value is not null ||
+                memoPoolShufflePending.Value is not null ||
+                memoDrawInsertionPending.Value is not null ||
+                (memoPendingEndTurn.Value is not null &&
+                 memoPendingEndTurn.Value.CardTransformPending is null) ||
+                this.PendingInitialIntents is not null ||
+                this.UsesNativePolicyBaseline || this.CombatTerminal)
+                throw new InvalidDataException(
+                    "Card-transform continuation conflicts with another semantic boundary.");
+        }
+        else if (this.Run.World?.Combat?.PendingChoice?
+                     .ControlledCardTransform is not null)
+            throw new InvalidDataException(
+                "Controlled card transform has no semantic event.");
+        if (memoCardSelectionPending.Value is { } cardSelectionPending)
+        {
+            cardSelectionPending.Validate();
+            SemanticCardSelectionEngineV111.ValidatePendingBoundary(this.Run);
+            if ((memoPendingEndTurn.Value is not null &&
+                 memoPendingEndTurn.Value.NestedCardSelectionPending is null) ||
+                this.PendingInitialIntents is not null ||
+                memoTargetPending.Value is not null ||
+                memoGeneratedCardPending.Value is not null ||
+                this.UsesNativePolicyBaseline || this.CombatTerminal)
+                throw new InvalidDataException(
+                    "Card-selection continuation conflicts with another boundary.");
+        }
+        if (memoDeckRevealPending.Value is { } deckRevealPending)
+        {
+            var deck = this.Run.World?.Combat?.SemanticDeck ??
+                throw new InvalidDataException(
+                    "Semantic deck reveal lost its provider this.");
+            if (CanonicalJson.Sha256(
+                    SemanticDeckEngineV111.Inspect(deck)) !=
+                CanonicalJson.Sha256(deckRevealPending) ||
+                memoDrawPending.Value is not null ||
+                memoIntentPending.Value is not null ||
+                memoTargetPending.Value is not null ||
+                memoGeneratedCardPending.Value is not null ||
+                memoPotionGenerationPending.Value is not null ||
+                memoCardTransformPending.Value is not null ||
+                memoCardSelectionPending.Value is not null ||
+                memoCostPending.Value is not null ||
+                memoHandCostSelectionPending.Value is not null ||
+                memoCardShortlistPending.Value is not null ||
+                memoPoolShufflePending.Value is not null ||
+                memoDrawInsertionPending.Value is not null ||
+                memoRandomPileCardPending.Value is not null ||
+                memoDrawHookChoicePending.Value is not null ||
+                memoPendingEndTurn.Value is not null ||
+                this.PendingInitialIntents is not null ||
+                this.UsesNativePolicyBaseline || this.CombatTerminal)
+                throw new InvalidDataException(
+                    "Semantic deck reveal conflicts with another chance boundary.");
+        }
+        if (memoPoolShufflePending.Value is { } poolShufflePending)
+        {
+            poolShufflePending.Validate();
+            SemanticPoolShuffleChoiceV111.ValidateBoundary(this.Run);
+            var combat = this.Run.World?.Combat;
+            var mayhemRecycle = combat?.PendingChoice is { } pendingChoice &&
+                PrototypeGameEngine.IsMayhemLegacyRecycleContinuation(
+                    combat, pendingChoice);
+            var automaticPipelinePoolShuffle =
+                combat?.PendingChoice is { } automaticPoolShuffleChoice &&
+                PrototypeGameEngine
+                    .IsAutomaticPipelineSemanticPoolShuffleContinuation(
+                        combat, automaticPoolShuffleChoice);
+            var automaticEndTurnShuffle =
+                memoPendingEndTurn.Value?.PoolShufflePending is not null;
+            bool handReturnShuffle = poolShufflePending.SourceOperationKind ==
+                nameof(PrototypeCombatEffectKind.ReturnHandToDrawAndShuffle);
+            bool recycleShuffle = poolShufflePending.SourceOperationKind ==
+                nameof(PrototypeCombatEffectKind.RecycleDrawPileForEffectDraw);
+            bool randomRareToHandShuffle =
+                poolShufflePending.SourceOperationKind ==
+                    nameof(PrototypeCombatEffectKind.MoveRandomRareDrawCardsToHand);
+            bool randomShortlistShuffle = poolShufflePending.SourceOperationKind ==
+                nameof(PrototypeCombatEffectKind.ChooseCards);
+            var fixtureMatches = automaticPipelinePoolShuffle ||
+                handReturnShuffle || recycleShuffle ||
+                (randomRareToHandShuffle
+                    ? this.SeededEntry?.FixtureSelectionCardId ==
+                        "proto.colorless.anointed"
+                    : randomShortlistShuffle
+                        ? this.SeededEntry?.FixtureSelectionCardId is not null
+                        : this.SeededEntry?.FixturePoolGenerationPotionId ==
+                            "proto.potion.colorless");
+            if ((!fixtureMatches && !automaticEndTurnShuffle) ||
+                (memoPendingEndTurn.Value is not null &&
+                 !automaticEndTurnShuffle && !mayhemRecycle) ||
+                this.PendingInitialIntents is not null ||
+                memoIntentPending.Value is not null || memoDrawPending.Value is not null ||
+                memoTargetPending.Value is not null ||
+                memoGeneratedCardPending.Value is not null ||
+                memoCardSelectionPending.Value is not null ||
+                memoCostPending.Value is not null ||
+                this.UsesNativePolicyBaseline || this.CombatTerminal)
+                throw new InvalidDataException(
+                    "Full-pool shuffle conflicts with another semantic boundary.");
+        }
+        if (memoDrawInsertionPending.Value is { } drawInsertionPending)
+        {
+            drawInsertionPending.Validate();
+            SemanticDrawInsertionChoiceV111.ValidateBoundary(this.Run);
+            if ((memoPendingEndTurn.Value is not null &&
+                 memoPendingEndTurn.Value.DrawInsertionPending is null) ||
+                this.PendingInitialIntents is not null ||
+                memoIntentPending.Value is not null || memoDrawPending.Value is not null ||
+                memoTargetPending.Value is not null ||
+                memoGeneratedCardPending.Value is not null ||
+                memoCardSelectionPending.Value is not null ||
+                memoPoolShufflePending.Value is not null ||
+                memoCostPending.Value is not null ||
+                this.UsesNativePolicyBaseline || this.CombatTerminal)
+                throw new InvalidDataException(
+                    "Draw insertion conflicts with another semantic boundary.");
+        }
+        if (memoCardShortlistPending.Value is { } cardShortlistPending)
+        {
+            cardShortlistPending.Validate();
+            SemanticCardShortlistChoiceV111.ValidateBoundary(this.Run);
+            if ((memoPendingEndTurn.Value is not null &&
+                 memoPendingEndTurn.Value.CardShortlistPending is null) ||
+                this.PendingInitialIntents is not null ||
+                memoIntentPending.Value is not null || memoDrawPending.Value is not null ||
+                memoTargetPending.Value is not null ||
+                memoGeneratedCardPending.Value is not null ||
+                memoCardSelectionPending.Value is not null ||
+                memoCostPending.Value is not null ||
+                memoHandCostSelectionPending.Value is not null ||
+                memoPoolShufflePending.Value is not null ||
+                memoDrawInsertionPending.Value is not null ||
+                this.UsesNativePolicyBaseline || this.CombatTerminal)
+                throw new InvalidDataException(
+                    "Card shortlist conflicts with another semantic boundary.");
+        }
+        if (memoHandCostSelectionPending.Value is { } handCostSelectionPending)
+        {
+            handCostSelectionPending.Validate();
+            SemanticRandomHandCostChoiceV111.ValidateBoundary(this.Run);
+            if ((memoPendingEndTurn.Value is not null &&
+                 memoPendingEndTurn.Value.NestedHandCostSelectionPending is null) ||
+                this.PendingInitialIntents is not null ||
+                memoIntentPending.Value is not null || memoDrawPending.Value is not null ||
+                memoTargetPending.Value is not null ||
+                memoGeneratedCardPending.Value is not null ||
+                memoCardSelectionPending.Value is not null ||
+                memoCostPending.Value is not null ||
+                memoPoolShufflePending.Value is not null ||
+                memoDrawInsertionPending.Value is not null ||
+                this.UsesNativePolicyBaseline || this.CombatTerminal)
+                throw new InvalidDataException(
+                    "Hand-cost selection conflicts with another semantic boundary.");
+        }
+        if (memoCostPending.Value is { } costPending)
+        {
+            costPending.Validate();
+            var handCost = costPending.TargetCardInstanceId is not null;
+            var effectDrawCost = this.Run.World?.Combat?.PendingChoice is
+                { ChoiceId: "controlled_draw_cost",
+                  ControlledDrawCost: not null,
+                  ControlledSemanticDraw: not null };
+            var automaticHandCost = this.Run.World?.Combat?.PendingChoice?
+                .ControlledRandomCost is not null;
+            if (effectDrawCost)
+                SemanticCostChoiceV111.ValidateDrawBoundary(this.Run);
+            else if (automaticHandCost)
+                SemanticRandomHandCostChoiceV111.ValidateBoundary(this.Run);
+            if (memoIntentPending.Value is not null || memoDrawPending.Value is not null ||
+                memoCardSelectionPending.Value is not null ||
+                memoTargetPending.Value is not null ||
+                memoGeneratedCardPending.Value is not null ||
+                memoPoolShufflePending.Value is not null ||
+                memoDrawInsertionPending.Value is not null ||
+                memoCardShortlistPending.Value is not null ||
+                memoHandCostSelectionPending.Value is not null ||
+                (effectDrawCost
+                    ? this.Run.World?.Combat?.PendingChoice?
+                        .ControlledDrawCost is null
+                    : handCost
+                        ? this.Run.World?.Combat?.PendingChoice?
+                            .ControlledRandomCost is null
+                        : memoPendingEndTurn.Value?.CostPending is null) ||
+                (memoPendingEndTurn.Value is not null && automaticHandCost &&
+                 memoPendingEndTurn.Value.NestedCostPending is null))
+                throw new InvalidDataException(
+                    "Semantic cost continuation conflicts with another boundary.");
+        }
+        if (this.Run.World?.Combat?.PendingChoice?
+                .ControlledRandomCost is not null &&
+            memoCostPending.Value?.TargetCardInstanceId is null &&
+            memoHandCostSelectionPending.Value is null)
+            throw new InvalidDataException(
+                "Source random hand-cost continuation has no semantic event.");
+        this.Stochastic.Validate();
+        if (this.SeededEntry is { } entry)
+        {
+            var routeCostProviderExpected = entry.SourceRouteEntry &&
+                !entry.NativePolicyBaseline;
+            var otherChanceExpected = entry.OtherChanceProviderId is not null ||
+                routeCostProviderExpected;
+            if (entry.Seed != this.OpeningSource.Seed ||
+                entry.Act != this.OpeningSource.Origin.Combat.Act ||
+                entry.NativeEncounterEntry != this.NativeEncounterEntry ||
+                entry.TotalFloor != this.OpeningSource.Origin.Formation.TotalFloor ||
+                otherChanceExpected != (this.OtherChance is not null) ||
+                (entry.OtherChanceProviderId is not null &&
+                 entry.OtherChanceProviderId != this.OtherChance?.ProviderId) ||
+                (routeCostProviderExpected && this.OtherChance?.ProviderId !=
+                 SemanticOtherChanceEngineV111.ProviderId))
+                throw new InvalidDataException(
+                    "Seeded Nature entry provenance disagrees with its opening.");
+        }
+        if (this.SeededEntry is { SourceRouteEntry: true } routeEntry)
+        {
+            var route = this.SourceRouteAudit ?? throw new InvalidDataException(
+                "Source-route semantic session is missing its route audit.");
+            var world = this.Run.World ?? throw new InvalidDataException(
+                "Source-route semantic session is missing its run world.");
+            if (route.ProviderId != SemanticSourceRouteAuditV111.SourceRouteProviderId ||
+                route.ProbabilityStatus != "UNVERIFIED" ||
+                route.ActOneRegion != routeEntry.RouteActOneRegion ||
+                route.ActionIds is null || route.ActionIds.Length == 0 ||
+                route.ActionIds.Any(string.IsNullOrWhiteSpace) ||
+                route.MapNodeId != routeEntry.RouteMapNodeId ||
+                route.EncounterId != routeEntry.EncounterId ||
+                route.NativeEncounterEntry != routeEntry.NativeEncounterEntry ||
+                world.Map.CurrentNodeId != route.MapNodeId ||
+                (world.EncounterHistory ?? []).LastOrDefault() != route.EncounterId ||
+                route.NativeEntryDecisions is null)
+                throw new InvalidDataException(
+                    "Source-route audit disagrees with the seeded run entry.");
+        }
+        else if (this.SourceRouteAudit is not null)
+            throw new InvalidDataException(
+                "Fixture semantic session cannot retain a source-route audit.");
+        if (this.UsesNativePolicyBaseline)
+        {
+            if (this.OtherChance is not null || memoPendingEndTurn.Value is not null ||
+                this.PendingInitialIntents is not null)
+                throw new InvalidDataException(
+                    "Native policy baseline cannot retain Nature-only continuations.");
+            var nativeAudit = this.NativePolicyAudit ??
+                throw new InvalidDataException(
+                    "Native policy baseline is missing provider provenance.");
+            if (memoAtPlayerBoundary.Value)
+                SemanticPilotCombatEngineV111.ValidateNativePolicyBoundary(this.Run);
+            else
+                NativeRunRngV111.Validate(this.Run);
+        }
+        else if (memoAtPlayerBoundary.Value)
+            SemanticPlayerActionEngineV111.ValidateBoundary(this.Run);
+        else if (this.NativePolicyAudit is not null)
+            throw new InvalidDataException(
+                "Nature-controlled sessions cannot retain native policy decisions.");
+        if (this.CombatTerminal && memoPendingEndTurn.Value is not null)
+            throw new InvalidDataException(
+                "Terminal combat retained an unresolved chance.");
+        // Research-only differential contract; never enable during timing.
+        if (Environment.GetEnvironmentVariable(
+                "STS2_H7_COMPARE_PILOT_VALIDATION") == "1")
+            ValidateReference();
     }
 
     private bool HasPendingEndTurnNestedSemanticChoice =>
