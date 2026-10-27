@@ -2637,7 +2637,7 @@ public static class SemanticPilotCombatEngineV111
         var decision = SemanticRandomPileCardEngineV111.Select(
             pending, eventId, cardInstanceId);
         return Resolve(current, fingerprint, decision.SelectedIndex,
-            null, null, false, null, decision);
+            null, null, false, null, decision, prevalidated: true);
     }
 
     public static SemanticPilotCombatV111 ResolveCost(
@@ -2658,7 +2658,7 @@ public static class SemanticPilotCombatEngineV111
         if (current.Run.World?.Combat?.PendingChoice?
                 .ControlledSemanticDraw is not null)
             return Resolve(current, fingerprint, index,
-                null, null, false, decision);
+                null, null, false, decision, prevalidated: true);
         if (pending.TargetCardInstanceId is not null)
         {
             SemanticCostChoiceV111.ValidateDecision(
@@ -2943,11 +2943,19 @@ public static class SemanticPilotCombatEngineV111
         SemanticDrawDecisionV111? expectedDeckDecision,
         bool recordSemanticDraw,
         SemanticCostDecisionV111? expectedCostDecision,
-        SemanticRandomPileCardDecisionV111? expectedRandomPileCardDecision = null)
+        SemanticRandomPileCardDecisionV111? expectedRandomPileCardDecision = null,
+        bool prevalidated = false)
     {
-        current.Validate();
-        if (current.Fingerprint != fingerprint)
-            throw new InvalidOperationException("Stale semantic Nature fingerprint.");
+        // Stable-ID resolvers already validate both the exact parent state and
+        // caller fingerprint before constructing a choice. Avoid repeating the
+        // full semantic invariant walk and canonical SHA-256 at this boundary.
+        // The public numeric Resolve path still checks them here.
+        if (!prevalidated)
+        {
+            current.Validate();
+            if (current.Fingerprint != fingerprint)
+                throw new InvalidOperationException("Stale semantic Nature fingerprint.");
+        }
         if (current.DrawHookChoicePending is not null)
             throw new InvalidOperationException(
                 "Resolve the pending CardDrawn hook action by action ID.");
@@ -3182,7 +3190,7 @@ public static class SemanticPilotCombatEngineV111
         var selection = SemanticIntentChoiceV111.Select(
             semanticEvent, intentId);
         return Resolve(current, fingerprint, selection.SourceTicket,
-            selection.Decision, null, false, null);
+            selection.Decision, null, false, null, prevalidated: true);
     }
 
     /// <summary>
@@ -3205,7 +3213,7 @@ public static class SemanticPilotCombatEngineV111
         var decision = SemanticDrawChoiceV111.Select(
             pending, eventId, cardInstanceId);
         return Resolve(current, fingerprint, decision.SelectedIndex,
-            null, decision, true, null);
+            null, decision, true, null, prevalidated: true);
     }
 
     /// <summary>
