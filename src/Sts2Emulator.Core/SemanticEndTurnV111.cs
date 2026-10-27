@@ -674,12 +674,16 @@ public static class SemanticEndTurnEngineV111
     public static SemanticEndTurnV111 Resolve(
         SemanticEndTurnV111 source, string fingerprint, int selectedIndex)
     {
-        Validate(source);
-        if (!StringComparer.Ordinal.Equals(source.Fingerprint, fingerprint))
+        SemanticDrawStageProfilerV111.Measure(
+            "sub.semantic_draw_endturn_input_validate", () => Validate(source));
+        var inputFingerprint = SemanticDrawStageProfilerV111.Measure(
+            "sub.semantic_draw_endturn_input_fingerprint", () => source.Fingerprint);
+        if (!StringComparer.Ordinal.Equals(inputFingerprint, fingerprint))
             throw new InvalidOperationException("Stale semantic end-turn fingerprint.");
         if (source.Complete)
             throw new InvalidOperationException("End-turn Nature choices are complete.");
-        var state = source.Fork();
+        var state = SemanticDrawStageProfilerV111.Measure(
+            "sub.semantic_draw_endturn_state_fork", source.Fork);
         if (state.EnemyActionPending is { } enemyActionRequest)
         {
             var decision = new RandomIndexDecisionV111(
@@ -829,9 +833,13 @@ public static class SemanticEndTurnEngineV111
         else if (state.HandDraw is { AtBoundary: false } handDraw &&
                  handDraw.DrawInsertionPending is not null)
         {
-            var nextHand = SemanticCombatDrawEngineV111.Resolve(
-                handDraw, handDraw.Fingerprint, selectedIndex);
-            state = ContinueHandDraw(state, nextHand);
+            var nextHand = SemanticDrawStageProfilerV111.Measure(
+                "sub.semantic_draw_endturn_combat_draw",
+                () => SemanticCombatDrawEngineV111.Resolve(
+                    handDraw, handDraw.Fingerprint, selectedIndex));
+            state = SemanticDrawStageProfilerV111.Measure(
+                "sub.semantic_draw_endturn_continue_hand",
+                () => ContinueHandDraw(state, nextHand));
         }
         else if (state.NestedDrawInsertionPending is { } nestedInsertion)
         {
@@ -882,13 +890,18 @@ public static class SemanticEndTurnEngineV111
             if (hand.StratagemSelectionPending is not null)
                 throw new InvalidOperationException(
                     "Resolve the pending source Stratagem selection by action ID.");
-            var next = SemanticCombatDrawEngineV111.Resolve(
-                hand, hand.Fingerprint, selectedIndex);
-            state = ContinueHandDraw(state, next);
+            var next = SemanticDrawStageProfilerV111.Measure(
+                "sub.semantic_draw_endturn_combat_draw",
+                () => SemanticCombatDrawEngineV111.Resolve(
+                    hand, hand.Fingerprint, selectedIndex));
+            state = SemanticDrawStageProfilerV111.Measure(
+                "sub.semantic_draw_endturn_continue_hand",
+                () => ContinueHandDraw(state, next));
         }
         else
             throw new InvalidOperationException("No pending semantic end-turn choice.");
-        Validate(state);
+        SemanticDrawStageProfilerV111.Measure(
+            "sub.semantic_draw_endturn_output_validate", () => Validate(state));
         return state;
     }
 
