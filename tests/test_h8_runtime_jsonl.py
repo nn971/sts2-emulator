@@ -45,6 +45,23 @@ class H8JsonlRuntimeTests(unittest.TestCase):
                 elif state["kind"] == "player":
                     self.assertIn(
                         state["endTurnActionId"], state["playerActionIds"])
+                    observed = session.call(
+                        "h8_observe", **token,
+                        policy_id="prototype-fair-v0")
+                    import json
+                    public = json.loads(observed["payloadJson"])
+                    self.assertIsInstance(public, dict)
+                    self.assertNotIn("semanticDeck", public)
+                    self.assertNotIn("pending", public)
+                    self.assertEqual(
+                        [x["actionId"] for x in observed["actions"]],
+                        state["playerActionIds"])
+                    self.assertEqual(observed["policyId"], "prototype-fair-v0")
+                    with self.assertRaises(EmulatorError):
+                        session.call("h8_observe", **{
+                            **token, "boundary_version":
+                            state["boundaryVersion"] + 1,
+                        }, policy_id="prototype-fair-v0")
                     action = session.call(
                         "h8_step", **token,
                         action_id=state["endTurnActionId"],
