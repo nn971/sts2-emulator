@@ -37,6 +37,12 @@ class H8JsonlRuntimeTests(unittest.TestCase):
                     "boundary_version": state["boundaryVersion"],
                 }
                 if state["kind"] == "enemy_intent":
+                    law = session.call(
+                        "h8_reference_law", **token)["pending"]
+                    self.assertEqual(law["kind"], "enemy_intent")
+                    self.assertEqual(
+                        [x["outcomeId"] for x in law["chanceLaw"]["outcomes"]],
+                        state["intentIds"])
                     action = session.call(
                         "h8_resolve_intent", **token,
                         intent_id=state["intentIds"][0],
@@ -82,6 +88,12 @@ class H8JsonlRuntimeTests(unittest.TestCase):
                 "runtime_id": state["runtimeId"],
                 "boundary_version": state["boundaryVersion"],
             }
+            draw_law = session.call("h8_reference_law", **token)["pending"]
+            self.assertEqual(draw_law["kind"], "draw_card")
+            self.assertEqual(
+                [int(x["outcomeId"].removeprefix("card_instance:"))
+                 for x in draw_law["chanceLaw"]["outcomes"]],
+                state["cardInstanceIds"])
             original = session.call(
                 "h8_status", h8_handle=state["h8Handle"])["result"]
             self.assertEqual(original, state)
