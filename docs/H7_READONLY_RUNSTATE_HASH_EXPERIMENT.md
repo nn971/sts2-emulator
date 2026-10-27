@@ -143,3 +143,52 @@ cannot eliminate hashes of distinct intermediate RunState instances.
 If the 16-cell profile shows few cache hits or negligible allocation
 improvement, record the negative result and move to a different
 optimization rather than expanding unsafe cache lifetime.
+
+## Completed paired 16-cell A10 measurement — 2026-10-27
+
+The automated **two-emulator-build A/B** run
+[GitHub Actions #40525333801](https://github.com/nn971/sts2-emulator/actions/runs/40525333801)
+passed and uploaded all four H7/native reports plus the strict
+comparison. Control SHA was `fa06caac8b8d`; treatment was GitHub's
+PR-merge checkout `acd8abb5aad9`, combining this branch with the
+same control base. Same 16 A10 scenario cells, reference-law seeds,
+actor initialization and 435 player decisions, 515 draw resolutions
+in each run.
+
+| Metric | Before | After | Difference |
+| --- | ---: | ---: | ---: |
+| Cohort wall | 66.804 s | 51.540 s | -22.8% |
+| Player decisions/s | 6.512 | 8.440 | +29.6% |
+| Full draw operation allocation | 77.027 MB/draw | 53.805 MB/draw | -30.1% |
+| Core draw transition allocation | 63.765 MB/draw | 40.544 MB/draw | -36.4% |
+| Core draw transition time | 83.447 ms/draw | 55.269 ms/draw | -33.8% |
+| Full RunState hash calls | 57,462 | 26,100 | -54.6% |
+| Full RunState hash allocation | 21.911 GB | 9.955 GB | -54.6% |
+| Full RunState hash time | 56.130 ms/draw | 27.084 ms/draw | -51.7% |
+
+**Interpretation:** the optimization eliminates repeated canonical
+RunState serializations within read-only validation. The allocation
+decrease confirms a large real benefit; the 22.8% wall-time reduction
+in one CI run remains sensitive to shared-host scheduling.
+
+The independent 16-cell real-combat workflow with
+`STS2_H7_VERIFY_RUN_HASH_REUSE=1` also passed: **every cached hash
+hit was independently recomputed and compared**. The focused real
+semantic stable-ID, stale-fingerprint, restore/replay, nested scope
+and exception-cleanup tests passed.
+
+### What remains before adoption
+
+1. Run the **128-combat, 15-worker GPU A/B** documented above with
+   the real shared transformer (same model SHA, source digest and
+   40 wins/3418 decisions/4054 draws).
+2. Repeat without opt-in profiling, in alternating A/B/B/A order, to
+   establish production wall-time improvement.
+3. Check `--train-terminal-replay-every 8` plus full evaluation
+   in the H7 combined training branch. Do not move its existing
+   pinned emulator submodule before this gate.
+
+The large measured win is from hashing fewer times, with no cache
+reuse beyond validation scope. The actual target across full H7
+remains approximately 458,045 RunState hashes/128 combats prior to
+this change; scale-up savings have not yet been measured.
