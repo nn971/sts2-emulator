@@ -12,6 +12,8 @@ public static class SemanticDrawStageProfilerV111
     [ThreadStatic]
     private static Action<string, long, long>? _sink;
 
+    public static bool Active => _sink is not null;
+
     private sealed class Scope : IDisposable
     {
         private readonly Action<string, long, long>? _previous;
