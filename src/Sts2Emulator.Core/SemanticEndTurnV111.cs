@@ -673,13 +673,30 @@ public static class SemanticEndTurnEngineV111
 
     public static SemanticEndTurnV111 Resolve(
         SemanticEndTurnV111 source, string fingerprint, int selectedIndex)
+        => ResolveCore(source, fingerprint, selectedIndex, prevalidated: false);
+
+    /// <summary>
+    /// The pilot has already validated its nested end-turn frame and checked
+    /// the caller's full pilot fingerprint. Only use this synchronously before
+    /// any mutation of the validated source. Public entry remains checked.
+    /// </summary>
+    internal static SemanticEndTurnV111 ResolveFromValidatedPilot(
+        SemanticEndTurnV111 source, int selectedIndex)
+        => ResolveCore(source, null, selectedIndex, prevalidated: true);
+
+    private static SemanticEndTurnV111 ResolveCore(
+        SemanticEndTurnV111 source, string? fingerprint, int selectedIndex,
+        bool prevalidated)
     {
-        SemanticDrawStageProfilerV111.Measure(
-            "sub.semantic_draw_endturn_input_validate", () => Validate(source));
-        var inputFingerprint = SemanticDrawStageProfilerV111.Measure(
-            "sub.semantic_draw_endturn_input_fingerprint", () => source.Fingerprint);
-        if (!StringComparer.Ordinal.Equals(inputFingerprint, fingerprint))
-            throw new InvalidOperationException("Stale semantic end-turn fingerprint.");
+        if (!prevalidated)
+        {
+            SemanticDrawStageProfilerV111.Measure(
+                "sub.semantic_draw_endturn_input_validate", () => Validate(source));
+            var inputFingerprint = SemanticDrawStageProfilerV111.Measure(
+                "sub.semantic_draw_endturn_input_fingerprint", () => source.Fingerprint);
+            if (!StringComparer.Ordinal.Equals(inputFingerprint, fingerprint))
+                throw new InvalidOperationException("Stale semantic end-turn fingerprint.");
+        }
         if (source.Complete)
             throw new InvalidOperationException("End-turn Nature choices are complete.");
         var state = SemanticDrawStageProfilerV111.Measure(
@@ -835,8 +852,8 @@ public static class SemanticEndTurnEngineV111
         {
             var nextHand = SemanticDrawStageProfilerV111.Measure(
                 "sub.semantic_draw_endturn_combat_draw",
-                () => SemanticCombatDrawEngineV111.Resolve(
-                    handDraw, handDraw.Fingerprint, selectedIndex));
+                () => SemanticCombatDrawEngineV111.ResolveFromValidatedEndTurn(
+                    handDraw, selectedIndex));
             state = SemanticDrawStageProfilerV111.Measure(
                 "sub.semantic_draw_endturn_continue_hand",
                 () => ContinueHandDraw(state, nextHand));
@@ -892,8 +909,8 @@ public static class SemanticEndTurnEngineV111
                     "Resolve the pending source Stratagem selection by action ID.");
             var next = SemanticDrawStageProfilerV111.Measure(
                 "sub.semantic_draw_endturn_combat_draw",
-                () => SemanticCombatDrawEngineV111.Resolve(
-                    hand, hand.Fingerprint, selectedIndex));
+                () => SemanticCombatDrawEngineV111.ResolveFromValidatedEndTurn(
+                    hand, selectedIndex));
             state = SemanticDrawStageProfilerV111.Measure(
                 "sub.semantic_draw_endturn_continue_hand",
                 () => ContinueHandDraw(state, next));
