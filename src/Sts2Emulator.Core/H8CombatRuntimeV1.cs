@@ -237,8 +237,9 @@ public sealed class H8CombatRuntimeV1
         // All selection/legality/mechanics work completes before advancing
         // the live boundary or committing a journal entry.
         ArgumentNullException.ThrowIfNull(next);
+        var nextVersion = checked(_version + 1);
         _journal.Add(entry);
         _state = next;
-        _version = checked(_version + 1);
+        _version = nextVersion;
     }
 }
