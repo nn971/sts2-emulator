@@ -157,7 +157,9 @@ public sealed record SemanticSeededEntryV111(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     string? FixtureTopAutoplayPotionId = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    string? FixtureDeckPresetId = null);
+    string? FixtureDeckPresetId = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    ResearchCombatFixtureV111? FixtureSpec = null);
 
 /// <summary>
 /// First external playable semantic boundary. Initial opening order is
@@ -1050,6 +1052,9 @@ public static class SemanticPilotCombatEngineV111
         ArgumentException.ThrowIfNullOrWhiteSpace(entry.Seed);
         ArgumentException.ThrowIfNullOrWhiteSpace(entry.EncounterId);
         ArgumentException.ThrowIfNullOrWhiteSpace(entry.NativeEncounterEntry);
+        // Reject incompatible research configurations before any HP, intent,
+        // draw, or RNG tickets are requested.
+        entry.FixtureSpec?.ValidateFor(entry);
         if (entry.Act is not (1 or 2 or 3) || entry.TotalFloor < 1 ||
             entry.FirstMonsterCombatId < 1)
             throw new ArgumentOutOfRangeException(nameof(entry),
@@ -1174,7 +1179,8 @@ public static class SemanticPilotCombatEngineV111
                 intents, intents.Fingerprint, decision.SelectedIndex);
         }
         var opening = ControlledPlayableCombatEngineV111.Begin(
-            intents, entry.Seed, entry.EncounterId, entry.FixtureDeckPresetId);
+            intents, entry.Seed, entry.EncounterId, entry.FixtureDeckPresetId,
+            entry.FixtureSpec);
         while (!opening.AtPlayerBoundary)
         {
             var pending = opening.Pending ??
