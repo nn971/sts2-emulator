@@ -268,8 +268,14 @@ internal static class PrototypeAiJsonlServer
                     ? runtime.PendingIntentIds() : Array.Empty<string>(),
                 intentRawWeights = kind == "enemy_intent"
                     ? runtime.PendingIntentRawWeights() : Array.Empty<long>(),
-                playerActionIds = kind == "player"
+                playerActionIds = kind is "player" or "player_choice"
                     ? runtime.LegalPlayerActionIds() : Array.Empty<string>(),
+                // Nested player selections use the same exact semantic
+                // pending support as the legacy fair-policy filter. No
+                // hidden event is exposed at an ordinary player boundary.
+                playerChoicePending = kind == "player_choice"
+                    ? DescribeSemanticPending(runtime.LegacySnapshotForAudit())
+                    : null,
                 endTurnActionId = kind == "player"
                     ? runtime.EndTurnActionId() : null
             };
