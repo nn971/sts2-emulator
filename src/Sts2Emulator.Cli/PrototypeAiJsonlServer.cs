@@ -6590,8 +6590,10 @@ internal static class PrototypeAiJsonlServer
                             OptionalInt(request, "first_monster_combat_id") ?? 1,
                             OptionalInt(request, "map_column") ?? 3,
                             OptionalInt(request, "map_row") ?? 1,
-                            ReplayOpeningDrawHooks: OptionalBool(
-                                request, "replay_opening_draw_hooks") ?? true);
+                            ReplayOpeningDrawHooks:
+                                !request.TryGetProperty(
+                                    "replay_opening_draw_hooks", out _) ||
+                                OptionalBool(request, "replay_opening_draw_hooks"));
                         var runtime = H8CombatRuntimeV1.BeginSeeded(entry);
                         var handle = StoreH8(runtime);
                         Write(new { requestId, ok = true, result = H8Status(runtime, handle) });
