@@ -11,6 +11,48 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public static class CanonicalJson
 {
+    // RunState contains mutable nested arrays. Its fingerprint may be cached
+    // only during a provably read-only operation; never beyond validation or
+    // across a transition. Identity comparison deliberately ignores the
+    // record's structural equality.
+    [ThreadStatic]
+    private static RunStateHashScope? _readOnlyRunHashes;
+
+    private sealed class RunStateHashScope
+    {
+        public readonly Dictionary<RunState, string> Hashes =
+            new(ReferenceEqualityComparer.Instance);
+    }
+
+    private sealed class ReadOnlyHashLease : IDisposable
+    {
+        private readonly RunStateHashScope? _previous;
+        private bool _disposed;
+
+        public ReadOnlyHashLease(RunStateHashScope? previous) =>
+            _previous = previous;
+
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _readOnlyRunHashes = _previous;
+            _disposed = true;
+        }
+    }
+
+    /// <summary>
+    /// Memoize identical RunState references only inside a synchronous,
+    /// read-only validation pass. Nested validators share the current scope;
+    /// disposal clears it even when validation throws. State transitions and
+    /// JSONL request handling must remain outside the scope.
+    /// </summary>
+    public static IDisposable BeginReadOnlyRunStateHashReuse()
+    {
+        var previous = _readOnlyRunHashes;
+        _readOnlyRunHashes = previous ?? new RunStateHashScope();
+        return new ReadOnlyHashLease(previous);
+    }
+
     public static string Serialize<T>(T value)
     {
         var element = JsonSerializer.SerializeToElement(value, SerializerOptions);
@@ -25,11 +67,33 @@ public static class CanonicalJson
 
     public static string Sha256<T>(T value)
     {
+        // Generic serialization can depend on static type. Restrict reuse to
+        // exact RunState-typed calls, with a reference-identity key, inside
+        // a read-only validation scope. The cache is never shared across a
+        // new decision boundary or another thread.
+        if (typeof(T) == typeof(RunState) &&
+            value is RunState run &&
+            _readOnlyRunHashes is { } scope)
+        {
+            if (scope.Hashes.TryGetValue(run, out var cached))
+            {
+                if (!SemanticDrawStageProfilerV111.Active)
+                    return cached;
+                return SemanticDrawStageProfilerV111.Measure(
+                    "sub.semantic_draw_hash_RunState_cache_hit",
+                    () => cached);
+            }
+            var hash = Sha256Measured(value);
+            scope.Hashes.Add(run, hash);
+            return hash;
+        }
+        return Sha256Measured(value);
+    }
+
+    private static string Sha256Measured<T>(T value)
+    {
         if (!SemanticDrawStageProfilerV111.Active)
             return Sha256Core(value);
-        // Profiling only: aggregate canonical JSON hashing by statically
-        // declared source type, including serialization and UTF-8 copies.
-        // This retains the exact same hash and canonical ordering.
         return SemanticDrawStageProfilerV111.Measure(
             "sub.semantic_draw_hash_" + typeof(T).Name,
             () => Sha256Core(value));
