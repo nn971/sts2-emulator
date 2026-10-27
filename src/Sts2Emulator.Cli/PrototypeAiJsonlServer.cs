@@ -2515,11 +2515,19 @@ internal static class PrototypeAiJsonlServer
             started = measure ? SemanticOperationProfiler.Timestamp() : 0L;
             allocated = measure ? SemanticOperationProfiler.Allocated() : 0L;
             var chanceSites = SemanticChanceSites(state);
-            semanticProfiler.Record("sub.semantic_result_chance_sites", started, allocated);
+            semanticProfiler.Record(
+                activeOperation == "semantic_resolve_draw_card"
+                    ? "sub.semantic_draw_result_chance_sites"
+                    : "sub.semantic_result_chance_sites",
+                started, allocated);
             started = measure ? SemanticOperationProfiler.Timestamp() : 0L;
             allocated = measure ? SemanticOperationProfiler.Allocated() : 0L;
             var controllerMode = SemanticControllerMode(state);
-            semanticProfiler.Record("sub.semantic_result_controller_mode", started, allocated);
+            semanticProfiler.Record(
+                activeOperation == "semantic_resolve_draw_card"
+                    ? "sub.semantic_draw_result_controller_mode"
+                    : "sub.semantic_result_controller_mode",
+                started, allocated);
             return new
             {
                 ok = true, schemaId = SemanticChanceSchemaId,
