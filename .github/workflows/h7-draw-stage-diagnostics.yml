@@ -49,6 +49,9 @@ jobs:
           # Fail if optimized passive event inspection disagrees with the
           # unchanged reference on any real A10 JSONL boundary.
           STS2_H7_COMPARE_BOUNDARY_INSPECTION: '1'
+          # Original full pilot-state validation must accept every state
+          # accepted by memoized validation during the real-combat study.
+          STS2_H7_COMPARE_PILOT_VALIDATION: '1'
         run: |
           mkdir -p ../profiles ../reports
           python -u tools/benchmark_h7_rollouts.py \
