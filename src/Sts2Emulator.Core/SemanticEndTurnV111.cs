@@ -687,9 +687,29 @@ public static class SemanticEndTurnEngineV111
         SemanticEndTurnV111 source, int selectedIndex)
         => ResolveCore(source, null, selectedIndex, prevalidated: true);
 
+    /// <summary>
+    /// H8 only: a versioned runtime cursor has verified a real pending
+    /// automatic hand draw. Operates on the privately owned continuation
+    /// without first duplicating its entire Origin/Run frame. The inner
+    /// mechanics resolver forks the RunState it actually advances. Full
+    /// end-turn auditing is deferred to an explicit journal replay.
+    /// </summary>
+    internal static SemanticEndTurnV111 ResolveFromH8DrawCursor(
+        SemanticEndTurnV111 source, int selectedIndex)
+    {
+        if (source.Complete ||
+            source.HandDraw is not { AtBoundary: false, Pending: not null } ||
+            source.EnemyActionPending is not null ||
+            source.Intents is { Pending: not null })
+            throw new InvalidOperationException(
+                "H8 optimized end-turn requires an active automatic hand draw.");
+        return ResolveCore(source, null, selectedIndex, prevalidated: true,
+            trustedH8HandDraw: true);
+    }
+
     private static SemanticEndTurnV111 ResolveCore(
         SemanticEndTurnV111 source, string? fingerprint, int selectedIndex,
-        bool prevalidated)
+        bool prevalidated, bool trustedH8HandDraw = false)
     {
         if (!prevalidated)
         {
@@ -702,8 +722,12 @@ public static class SemanticEndTurnEngineV111
         }
         if (source.Complete)
             throw new InvalidOperationException("End-turn Nature choices are complete.");
-        var state = SemanticDrawStageProfilerV111.Measure(
-            "sub.semantic_draw_endturn_state_fork", source.Fork);
+        // The H8 hand-draw branch is copy-on-write at the actual RunState
+        // transition: avoid cloning the entire enclosing end-turn frame.
+        // All other legacy branches preserve their defensive deep fork.
+        var state = trustedH8HandDraw ? source :
+            SemanticDrawStageProfilerV111.Measure(
+                "sub.semantic_draw_endturn_state_fork", source.Fork);
         if (state.EnemyActionPending is { } enemyActionRequest)
         {
             var decision = new RandomIndexDecisionV111(
@@ -912,16 +936,20 @@ public static class SemanticEndTurnEngineV111
                     "Resolve the pending source Stratagem selection by action ID.");
             var next = SemanticDrawStageProfilerV111.Measure(
                 "sub.semantic_draw_endturn_combat_draw",
-                () => SemanticCombatDrawEngineV111.ResolveFromValidatedEndTurn(
-                    hand, selectedIndex));
+                () => trustedH8HandDraw
+                    ? SemanticCombatDrawEngineV111.ResolveFromH8Cursor(
+                        hand, selectedIndex)
+                    : SemanticCombatDrawEngineV111.ResolveFromValidatedEndTurn(
+                        hand, selectedIndex));
             state = SemanticDrawStageProfilerV111.Measure(
                 "sub.semantic_draw_endturn_continue_hand",
                 () => ContinueHandDraw(state, next));
         }
         else
             throw new InvalidOperationException("No pending semantic end-turn choice.");
-        SemanticDrawStageProfilerV111.Measure(
-            "sub.semantic_draw_endturn_output_validate", () => Validate(state));
+        if (!trustedH8HandDraw)
+            SemanticDrawStageProfilerV111.Measure(
+                "sub.semantic_draw_endturn_output_validate", () => Validate(state));
         return state;
     }
 

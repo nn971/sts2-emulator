@@ -1,16 +1,25 @@
+using System.Diagnostics;
 using Sts2Emulator.Core;
+using Xunit.Abstractions;
 
 namespace Sts2Emulator.Core.Tests;
 
 public sealed class H8CombatRuntimeV1Tests
 {
+    private readonly ITestOutputHelper _output;
+
+    public H8CombatRuntimeV1Tests(ITestOutputHelper output) =>
+        _output = output;
+
     private static SemanticSeededEntryV111 Mawler(string seed) =>
         new(seed, 1, "proto.encounter.mawler_normal", "MawlerNormal",
             2, 10, 1, 3, 1, ReplayOpeningDrawHooks: true);
 
-    private static H8CombatRuntimeV1 ReachNaturalDraw(string seed)
+    private static H8CombatRuntimeV1 ReachNaturalDraw(
+        string seed, bool useM2AutomaticDraw = true)
     {
-        var runtime = H8CombatRuntimeV1.BeginSeeded(Mawler(seed));
+        var runtime = H8CombatRuntimeV1.BeginSeeded(
+            Mawler(seed), useM2AutomaticDraw);
         for (var step = 0; !runtime.HasPendingCardDraw; step++)
         {
             Assert.True(step < 200,
@@ -70,8 +79,13 @@ public sealed class H8CombatRuntimeV1Tests
         }
         Assert.DoesNotContain("sub.semantic_draw_pilot_input_validate", stages);
         Assert.DoesNotContain("sub.semantic_draw_pilot_input_fingerprint", stages);
-        Assert.Contains("sub.semantic_draw_combat_output_validate", stages);
-        Assert.Contains("sub.semantic_draw_endturn_output_validate", stages);
+        // H8 M2 owns this automatic-hand-draw cursor. The actual gameplay
+        // transition still executes, while full nested audits run only when
+        // AuditReplay is explicitly requested.
+        Assert.DoesNotContain("sub.semantic_draw_endturn_state_fork", stages);
+        Assert.DoesNotContain("sub.semantic_draw_combat_output_validate", stages);
+        Assert.DoesNotContain("sub.semantic_draw_endturn_output_validate", stages);
+        Assert.Contains("sub.semantic_draw_combat_engine_mechanics", stages);
         Assert.Equal(expected.Fingerprint,
             runtime.LegacySnapshotForAudit().Fingerprint);
         Assert.Equal(boundary.Version + 1, runtime.Boundary.Version);
@@ -81,6 +95,68 @@ public sealed class H8CombatRuntimeV1Tests
         Assert.Equal("scripted-h8-test", decision.ProviderId);
         Assert.Equal(pending.SiteId, decision.SiteId);
         runtime.AuditReplay();
+    }
+
+    [Fact]
+    public void MatchedEightCombatM1M2DrawsPreserveExactMechanicsAndMeasureAllocation()
+    {
+        // A/B checks the same H8 session implementation with only the M2
+        // automatic-draw cursor/recursive-audit switch changed. Player/intent
+        // action history, seeds and physical draw cards are identical.
+        long m1Alloc = 0, m2Alloc = 0;
+        long m1Ticks = 0, m2Ticks = 0;
+        var draws = 0;
+        for (var i = 0; i < 8; i++)
+        {
+            var seed = "h8-m2-matched-a10-mawler-" + i;
+            var m1 = ReachNaturalDraw(seed, useM2AutomaticDraw: false);
+            var m2 = ReachNaturalDraw(seed, useM2AutomaticDraw: true);
+            Assert.Equal(m1.DecisionHistory, m2.DecisionHistory);
+            var candidates = m1.PendingDrawCardInstanceIds();
+            Assert.Equal(candidates, m2.PendingDrawCardInstanceIds());
+            var selectedId = candidates[i % candidates.Length];
+
+            void Measure(H8CombatRuntimeV1 runtime,
+                ref long allocation, ref long ticks)
+            {
+                var bytesStart = GC.GetAllocatedBytesForCurrentThread();
+                var tickStart = Stopwatch.GetTimestamp();
+                runtime.ChooseDrawCard(
+                    runtime.Boundary, selectedId, "scripted-h8-ab");
+                ticks += Stopwatch.GetTimestamp() - tickStart;
+                allocation += GC.GetAllocatedBytesForCurrentThread() - bytesStart;
+            }
+
+            // Alternating order avoids comparing a systematically colder A
+            // run to a warmer B run on every scenario.
+            if (i % 2 == 0)
+            {
+                Measure(m1, ref m1Alloc, ref m1Ticks);
+                Measure(m2, ref m2Alloc, ref m2Ticks);
+            }
+            else
+            {
+                Measure(m2, ref m2Alloc, ref m2Ticks);
+                Measure(m1, ref m1Alloc, ref m1Ticks);
+            }
+            Assert.Equal(
+                m1.LegacySnapshotForAudit().Fingerprint,
+                m2.LegacySnapshotForAudit().Fingerprint);
+            Assert.Equal(m1.DecisionHistory, m2.DecisionHistory);
+            m1.AuditReplay();
+            m2.AuditReplay();
+            draws++;
+        }
+        _output.WriteLine(
+            "H8 M1-versus-M2 A10 matched draws=" + draws +
+            " allocated MB/draw " +
+            (m1Alloc / 1e6 / draws).ToString("F3") + " -> " +
+            (m2Alloc / 1e6 / draws).ToString("F3") +
+            " elapsed ms/draw " +
+            (m1Ticks * 1000.0 / Stopwatch.Frequency / draws).ToString("F3") +
+            " -> " +
+            (m2Ticks * 1000.0 / Stopwatch.Frequency / draws).ToString("F3"));
+        Assert.Equal(8, draws);
     }
 
     [Fact]
