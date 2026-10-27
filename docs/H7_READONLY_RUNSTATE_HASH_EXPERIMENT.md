@@ -192,3 +192,61 @@ The large measured win is from hashing fewer times, with no cache
 reuse beyond validation scope. The actual target across full H7
 remains approximately 458,045 RunState hashes/128 combats prior to
 this change; scale-up savings have not yet been measured.
+
+## Full-scale 128-combat, 15-worker A/B measured — 2026-10-27
+
+User-provided paired results: `h7(6).json`/`native(6).json` (control,
+`fa06caac8b8d6b8c4208ffda48511c303bf6ce82`) and
+`h7(7).json`/`native(7).json` (treatment,
+`b5659ee62ed412a9710288b63a3aa4b1375d2cbc`).
+
+Both used 15 workers and the same CUDA shared actor, 14,659,972
+parameters, actor SHA-256
+`189d4d6a06912242af9113b72c3c28ed153fa967038adc24009c5baf0c2307e7`,
+identical source digest
+`f7e599e1154c99c59c52d85174daa7b329f456396d2f779bbd7d14304905c3b5`,
+seeds, 16-cell distribution, 128 combats, 40 victories, 3,418 player
+decisions, 7,659 boundaries, 4,054 draw resolutions, and 128 full
+terminal replay loads.
+
+| Metric | Control | Treatment | Change |
+| --- | ---: | ---: | ---: |
+| Real cohort wall time | 116.9751 s | 106.2299 s | **−9.19%** |
+| Decisions/second | 29.2199 | 32.1755 | **+10.12%** |
+| Top-level op allocation sum | 742.048 GB | 530.132 GB | **−28.56%** |
+| Full RunState SHA calls (during draws) | 458,045 | 208,032 | **−54.58%** |
+| Reused SHA results | 0 | 250,013 | +250,013 |
+| RunState SHA allocation | 174.055 GB | 79.069 GB | **−54.57%** |
+| Full draw request allocation | 313.160 GB | 218.155 GB | **−30.34%** |
+| Inner draw transition allocation | 259.230 GB | 164.226 GB | **−36.65%** |
+| Pilot input-validation allocation | 77.364 GB | 24.447 GB | **−68.40%** |
+| Pilot normalization allocation | 66.315 GB | 24.231 GB | **−63.46%** |
+| Full terminal replay load allocation | 339.865 GB | 233.914 GB | **−31.17%** |
+| Player-step allocation | 67.826 GB | 58.832 GB | **−13.26%** |
+| Actual card mechanics allocation | 2.618 GB | 2.618 GB | unchanged |
+
+Nested SHA/validation counters overlap and should never be added
+together. Top-level `op.*` allocations sum to approximately
+212 GB less across all operations; they are cumulative managed
+allocations, not process resident or peak memory. All complete
+draw requests allocate 77.247 MB/draw before and 53.812 MB/draw after.
+All measured hash-cache hits plus full hashes sum to the original
+458,045 computations, matching the intended memoization mechanism.
+
+**Interpretation:** The full-scale 128-combat measurement confirms a
+large and repeatable *allocation* effect; the 9.19% measured wall-time
+improvement in this single 15-worker GPU run should be confirmed with
+repeated profiling-disabled alternating A/B/B/A trials before
+asserting an invariant production speedup. The 16-cell CI verified
+each SHA cache hit by independently recomputing the digest, and the
+focused semantic, stale-fingerprint and snapshot replay tests passed.
+Matching aggregate source/outcome digests do not establish bytewise
+identity of every per-action trajectory.
+
+**Next gate:** Run the combined sts2-ai 1/8 stratified terminal-replay
+configuration with this emulator at 128 combats/15 CUDA workers,
+compare against the pinned combined PR #118, and retain full replay
+verification for evaluation. Keep PR #118's submodule pin unchanged
+until that test completes. Broad repository CI failures need separate
+classification and should not be interpreted as failed semantic
+replay without checking job logs.
