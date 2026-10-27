@@ -201,12 +201,8 @@ class SemanticProfilerIntegrationTests(unittest.TestCase):
                     "sub.semantic_draw_pilot_input_fingerprint",
                     "sub.semantic_draw_pilot_select",
                     "sub.semantic_draw_pilot_resolve",
-                    "sub.semantic_draw_endturn_input_validate",
-                    "sub.semantic_draw_endturn_input_fingerprint",
                     "sub.semantic_draw_endturn_state_fork",
                     "sub.semantic_draw_endturn_combat_draw",
-                    "sub.semantic_draw_combat_input_validate",
-                    "sub.semantic_draw_combat_input_fingerprint",
                     "sub.semantic_draw_combat_run_fork",
                     "sub.semantic_draw_combat_output_validate",
                     "sub.semantic_draw_endturn_output_validate",
@@ -217,6 +213,16 @@ class SemanticProfilerIntegrationTests(unittest.TestCase):
                     self.assertGreaterEqual(
                         measurements[metric]["allocatedBytes"], 0
                     )
+                # The parent pilot has checked both nested input frames.
+                # Their redundant full-state input-validation stages are
+                # intentionally absent, while each output stays validated.
+                for skipped in (
+                    "sub.semantic_draw_endturn_input_validate",
+                    "sub.semantic_draw_endturn_input_fingerprint",
+                    "sub.semantic_draw_combat_input_validate",
+                    "sub.semantic_draw_combat_input_fingerprint",
+                ):
+                    self.assertNotIn(skipped, measurements)
                 self.assertEqual(
                     measurements["sub.semantic_draw_pilot_resolve"]["count"],
                     resolved_draws,
