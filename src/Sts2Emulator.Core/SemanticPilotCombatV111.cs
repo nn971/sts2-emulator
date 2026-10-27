@@ -2957,7 +2957,9 @@ public static class SemanticPilotCombatEngineV111
         SemanticCostDecisionV111? expectedCostDecision,
         SemanticRandomPileCardDecisionV111? expectedRandomPileCardDecision = null,
         bool prevalidated = false,
-        SemanticDeckEventV111? validatedDrawEvent = null)
+        SemanticDeckEventV111? validatedDrawEvent = null,
+        SemanticEndTurnV111? projectedEndTurn = null,
+        bool trustedH8AutomaticDraw = false)
     {
         // Stable-ID resolvers already validate both the exact parent state and
         // caller fingerprint before constructing a choice. Avoid repeating the
@@ -2970,8 +2972,8 @@ public static class SemanticPilotCombatEngineV111
                 throw new InvalidOperationException("Stale semantic Nature fingerprint.");
         }
         // One mechanics/provider projection for this read-only source.
-        var pendingEndTurn = current.PendingEndTurn;
-        if (current.DrawHookChoicePending is not null)
+        var pendingEndTurn = projectedEndTurn ?? current.PendingEndTurn;
+        if (pendingEndTurn?.DrawHookChoicePending is not null)
             throw new InvalidOperationException(
                 "Resolve the pending CardDrawn hook action by action ID.");
         if (pendingEndTurn?.TargetPending is { } automaticTarget)
@@ -3121,8 +3123,11 @@ public static class SemanticPilotCombatEngineV111
                 "No semantic enemy intent, draw or cost choice is pending.");
         var resolved = SemanticDrawStageProfilerV111.Measure(
             "sub.semantic_draw_endturn_resolve",
-            () => SemanticEndTurnEngineV111.ResolveFromValidatedPilot(
-                pending, selectedIndex));
+            () => trustedH8AutomaticDraw
+                ? SemanticEndTurnEngineV111.ResolveFromH8DrawCursor(
+                    pending, selectedIndex)
+                : SemanticEndTurnEngineV111.ResolveFromValidatedPilot(
+                    pending, selectedIndex));
         SemanticDrawDecisionV111? deckDecision = null;
         if (drawEvent is not null)
         {
@@ -3187,7 +3192,8 @@ public static class SemanticPilotCombatEngineV111
                     costDecision, randomPileCardDecision)));
         return SemanticDrawStageProfilerV111.Measure(
             "sub.semantic_draw_pilot_normalize",
-            () => NormalizeNoncontrolledCosts(next));
+            () => NormalizeNoncontrolledCosts(
+                next, auditOutput: !trustedH8AutomaticDraw));
     }
 
     /// <summary>
@@ -3284,6 +3290,40 @@ public static class SemanticPilotCombatEngineV111
         return Resolve(current, string.Empty, decision.SelectedIndex,
             null, decision, true, null, prevalidated: true,
             validatedDrawEvent: pending);
+    }
+
+    /// <summary>
+    /// M2 experimental path: a session-owned H8 cursor has captured both the
+    /// actual end-turn stage and physical Nature support for this exact
+    /// boundary version. Resolves only ordinary automatic hand draws; any
+    /// other event must use the checked compatibility mechanics route. Full
+    /// recursive output audits are deferred to explicit H8 journal replay.
+    /// </summary>
+    internal static SemanticPilotCombatV111 ResolveFromH8AutomaticDrawCursor(
+        SemanticPilotCombatV111 current,
+        SemanticEndTurnV111 endTurn,
+        SemanticDeckEventV111 drawEvent,
+        int selectedIndex)
+    {
+        ArgumentNullException.ThrowIfNull(current);
+        ArgumentNullException.ThrowIfNull(endTurn);
+        ArgumentNullException.ThrowIfNull(drawEvent);
+        if (endTurn.HandDraw is not { AtBoundary: false, Pending: not null } ||
+            current.Run.World?.Combat?.PendingChoice is
+                { ChoiceId: "controlled_semantic_draw",
+                  ControlledSemanticDraw: not null } ||
+            drawEvent.Purpose != "draw" ||
+            selectedIndex < 0 ||
+            selectedIndex >= drawEvent.CandidateCardInstanceIds.Length)
+            throw new InvalidOperationException(
+                "H8 fast draw requires a supported automatic hand-draw cursor.");
+        // The selected physical card ID was checked against this exact
+        // session's live support before entering the resolver. We still
+        // validate the recorded decision produced by the mechanics engine.
+        return Resolve(current, string.Empty, selectedIndex,
+            null, null, true, null, prevalidated: true,
+            validatedDrawEvent: drawEvent, projectedEndTurn: endTurn,
+            trustedH8AutomaticDraw: true);
     }
 
     /// <summary>
@@ -3828,7 +3868,7 @@ public static class SemanticPilotCombatEngineV111
     /// deterministic fallback, NOT an audited native RNG distribution.
     /// </summary>
     private static SemanticPilotCombatV111 NormalizeNoncontrolledCosts(
-        SemanticPilotCombatV111 current)
+        SemanticPilotCombatV111 current, bool auditOutput = true)
     {
         if (current.SeededEntry?.FixtureNatureDrawCosts == true)
             return current;
@@ -3860,7 +3900,8 @@ public static class SemanticPilotCombatEngineV111
             current = PublishRunContinuation(
                 current, resolved.Run, resolved, otherChance: nextOther);
         }
-        current.Validate();
+        if (auditOutput)
+            current.Validate();
         return current;
     }
 
