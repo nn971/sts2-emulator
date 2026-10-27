@@ -2368,6 +2368,195 @@ internal static class PrototypeAiJsonlServer
         {
             if (state.UsesNativePolicyBaseline) return [];
             var sites = new List<string> { "enemy_intent", "draw_card" };
+            // Cheap source-continuation discriminators avoid constructing
+            // heavyweight event descriptions when that choice type is absent.
+            // Only the present event is still inspected by its old validator.
+            var combatChoice = state.Run.World?.Combat?.PendingChoice;
+            var shufflePending = combatChoice?.ControlledPoolShuffle is not null
+                ? state.PoolShufflePending : null;
+            var shortlistPending = combatChoice?.ControlledCardShortlist is not null
+                ? state.CardShortlistPending : null;
+            var insertionPending = combatChoice?.ControlledDrawInsertion is not null
+                ? state.DrawInsertionPending : null;
+            var potionPending = combatChoice?.ControlledPotionGeneration is not null
+                ? state.PotionGenerationPending : null;
+            var transformPending = combatChoice?.ControlledCardTransform is not null
+                ? state.CardTransformPending : null;
+            var targetPending = combatChoice?.ControlledTarget is not null
+                ? state.TargetPending : null;
+            var generationPending = combatChoice?.ControlledGeneration is not null ||
+                combatChoice?.ControlledDrawInsertion?.Stage == "card_model"
+                ? state.GeneratedCardPending : null;
+            var costPending = combatChoice?.ControlledDrawCost is not null ||
+                combatChoice?.ControlledRandomCost?.Operation.Kind ==
+                    PrototypeCombatEffectKind.RandomizeHandCardEnergyCostsUntilTurnEndOrPlayed
+                ? state.CostPending : null;
+            var handCostPending = combatChoice?.ControlledRandomCost?.Operation.Kind ==
+                PrototypeCombatEffectKind.SetRandomHandCardEnergyCostUntilTurnEndOrPlayed
+                ? state.HandCostSelectionPending : null;
+            var enemyActionPending = state.Run.World?.Combat?
+                .AutomaticPipelineContinuation?.ControlledEnemyAction?
+                .PendingRequest is not null && state.EnemyActionPending is not null;
+            var randomPileCardPending = combatChoice?.ControlledRandomPileCard is not null &&
+                state.RandomPileCardPending is not null;
+            if ((state.Run.World?.Combat?.SemanticDeck?.Pending?.Purpose is "peek" or "scry") &&
+                state.DeckRevealPending is not null)
+                sites.Add("deck_reveal");
+            if (randomPileCardPending ||
+                state.Run.Player.ActiveRelics.Any(relic =>
+                    relic.RelicId == "proto.relic.jeweled_mask"))
+                sites.Add("random_pile_card");
+            if (state.SeededEntry?.FixtureRandomTargetCardId is not null)
+                sites.Add("random_target");
+            if (state.SeededEntry?.FixtureGenerationPotionId is not null)
+                sites.Add("generated_card");
+            if (state.SeededEntry?.FixturePotionGenerationCardId is not null ||
+                potionPending is not null)
+                sites.Add("random_potion_generation");
+            if (transformPending is not null)
+                sites.Add("random_card_transform");
+            if (state.SeededEntry?.FixtureNatureDrawCosts == true)
+                sites.Add("drawn_card_cost");
+            if (state.SeededEntry?.FixturePoolGenerationPotionId is not null ||
+                shufflePending?.SiteId ==
+                    "combat.generation.full_pool_shuffle.swap_index")
+                sites.Add("generated_card_pool_shuffle");
+            if (state.Run.Player.PotionSlots.Any(potion =>
+                    potion?.PotionId == "proto.potion.bottled_potential") ||
+                shufflePending?.SiteId ==
+                    "combat.hand_return.draw_pile.shuffle_swap_index")
+                sites.Add("hand_return_shuffle");
+            if (enemyActionPending)
+                sites.Add("enemy_action_chance");
+            if (state.SeededEntry?.FixtureSelectionCardId is
+                    "proto.colorless.beat_down" or
+                    "proto.colorless.catastrophe" ||
+                shortlistPending?.SiteId ==
+                    "combat.autoplay.random_card.select")
+                sites.Add("random_auto_play_card");
+            if (state.SeededEntry?.FixtureSelectionCardId ==
+                    "proto.colorless.hidden_gem" ||
+                shortlistPending?.SiteId ==
+                    "combat.draw_pile.random_replay_card.select")
+                sites.Add("random_replay_card");
+            if (state.SeededEntry?.FixtureSelectionCardId ==
+                    "proto.colorless.anointed" ||
+                shufflePending?.SiteId ==
+                    "combat.draw_pile.random_rare_to_hand.shuffle_swap_index")
+                sites.Add("random_rare_to_hand_shuffle");
+            if (state.SeededEntry?.FixtureGeneratedDrawInsertionCardId is not null)
+                sites.Add("generated_draw_pile_insertion");
+            if (insertionPending?.SiteId ==
+                    PrototypeControlledDrawInsertionV111
+                        .PersonalHiveDazedSiteId &&
+                !sites.Contains("generated_draw_pile_insertion"))
+                sites.Add("generated_draw_pile_insertion");
+            if (state.SeededEntry?.FixtureRandomFreeAttackDrawInsertion == true)
+            {
+                sites.Add("random_draw_attack_card_model");
+                sites.Add("generated_draw_pile_insertion");
+            }
+            if ((state.Run.World?.Combat?.PendingChoice?
+                    .ControlledDrawInsertion?.AfterShuffleRelic is not null ||
+                 state.Run.Player.ActiveRelics.Any(relic =>
+                     PrototypeContent.Relic(relic.RelicId)
+                         .AfterShuffleGeneratedCardId is not null)) &&
+                !sites.Contains("generated_draw_pile_insertion"))
+                sites.Add("generated_draw_pile_insertion");
+            if (state.SeededEntry?.FixtureRandomizeHandCostsMaxExclusive is not null)
+                sites.Add("random_hand_card_energy_cost");
+            if (state.SeededEntry?.FixtureSetRandomHandCardCost is not null)
+                sites.Add("random_hand_card_select");
+            if (state.SeededEntry?.FixtureSelectionCardId ==
+                "proto.colorless.seeker_strike")
+                sites.Add("random_pile_selection_shortlist");
+            if (shortlistPending is not null &&
+                !sites.Contains("random_pile_selection_shortlist"))
+                sites.Add("random_pile_selection_shortlist");
+            if (handCostPending is not null &&
+                !sites.Contains("random_hand_card_select"))
+                sites.Add("random_hand_card_select");
+            if (targetPending is not null &&
+                !sites.Contains("random_target"))
+                sites.Add("random_target");
+            if (generationPending is not null &&
+                !sites.Contains("generated_card"))
+                sites.Add("generated_card");
+            if (potionPending is not null &&
+                !sites.Contains("random_potion_generation"))
+                sites.Add("random_potion_generation");
+            if (transformPending is not null &&
+                !sites.Contains("random_card_transform"))
+                sites.Add("random_card_transform");
+            if (costPending is
+                    { TargetCardInstanceId: null } &&
+                !sites.Contains("drawn_card_cost"))
+                sites.Add("drawn_card_cost");
+            if (costPending?.TargetCardInstanceId is not null &&
+                !sites.Contains("random_hand_card_energy_cost"))
+                sites.Add("random_hand_card_energy_cost");
+            return sites.ToArray();
+        }
+
+        string SemanticControllerMode(SemanticPilotCombatV111 state)
+        {
+            var choice = state.Run.World?.Combat?.PendingChoice;
+            var insertionPending = choice?.ControlledDrawInsertion is not null
+                ? state.DrawInsertionPending : null;
+            var shortlistPending = choice?.ControlledCardShortlist is not null
+                ? state.CardShortlistPending : null;
+            var handCostPending =
+                choice?.ControlledRandomCost?.Operation.Kind ==
+                    PrototypeCombatEffectKind.SetRandomHandCardEnergyCostUntilTurnEndOrPlayed
+                ? state.HandCostSelectionPending : null;
+            var costPending =
+                choice?.ControlledDrawCost is not null ||
+                choice?.ControlledRandomCost?.Operation.Kind ==
+                    PrototypeCombatEffectKind.RandomizeHandCardEnergyCostsUntilTurnEndOrPlayed
+                ? state.CostPending : null;
+            var randomPileCardPending =
+                choice?.ControlledRandomPileCard is not null &&
+                state.RandomPileCardPending is not null;
+            var enemyActionPending = state.Run.World?.Combat?
+                .AutomaticPipelineContinuation?.ControlledEnemyAction?
+                .PendingRequest is not null && state.EnemyActionPending is not null;
+            return state.UsesNativePolicyBaseline
+                ? "engine-owned-native-v111-policy-baseline"
+                : state.SeededEntry?.FixtureRandomTargetCardId is not null ||
+                  state.SeededEntry?.FixtureGenerationPotionId is not null ||
+                  state.SeededEntry?.FixturePotionGenerationCardId is not null ||
+                  state.SeededEntry?.FixtureSelectionCardId is not null ||
+                  state.SeededEntry?.FixtureNatureDrawCosts == true ||
+                  state.SeededEntry?.FixturePoolGenerationPotionId is not null ||
+                  state.SeededEntry?.FixtureTopAutoplayPotionId is not null ||
+                  state.SeededEntry?.FixtureGeneratedDrawInsertionCardId is not null ||
+                  state.SeededEntry?.FixtureRandomFreeAttackDrawInsertion == true ||
+                  (state.Run.World?.Combat?.SemanticDeck?.Pending?.Purpose is "peek" or "scry") &&
+                state.DeckRevealPending is not null ||
+                  insertionPending?.SiteId ==
+                    PrototypeControlledDrawInsertionV111
+                        .PersonalHiveDazedSiteId ||
+                  state.SeededEntry?.FixtureRandomizeHandCostsMaxExclusive is not null ||
+                  state.SeededEntry?.FixtureSetRandomHandCardCost is not null ||
+                  enemyActionPending ||
+                  randomPileCardPending ||
+                  state.Run.Player.ActiveRelics.Any(relic =>
+                      relic.RelicId == "proto.relic.jeweled_mask") ||
+                  state.Run.World?.Combat?.PendingChoice?
+                      .ControlledDrawInsertion?.AfterShuffleRelic is not null ||
+                  state.Run.Player.ActiveRelics.Any(relic =>
+                      PrototypeContent.Relic(relic.RelicId)
+                          .AfterShuffleGeneratedCardId is not null) ||
+                  shortlistPending is not null ||
+                  handCostPending is not null ||
+                  costPending?.TargetCardInstanceId is not null
+                    ? "nature-extended-fixture"
+                    : "nature-two-site";
+
+        string[] SemanticChanceSitesReference(SemanticPilotCombatV111 state)
+        {
+            if (state.UsesNativePolicyBaseline) return [];
+            var sites = new List<string> { "enemy_intent", "draw_card" };
             if (state.DeckRevealPending is not null)
                 sites.Add("deck_reveal");
             if (state.RandomPileCardPending is not null ||
@@ -2466,7 +2655,7 @@ internal static class PrototypeAiJsonlServer
             return sites.ToArray();
         }
 
-        string SemanticControllerMode(SemanticPilotCombatV111 state) =>
+        string SemanticControllerModeReference(SemanticPilotCombatV111 state) =>
             state.UsesNativePolicyBaseline
                 ? "engine-owned-native-v111-policy-baseline"
                 : state.SeededEntry?.FixtureRandomTargetCardId is not null ||
@@ -2528,6 +2717,15 @@ internal static class PrototypeAiJsonlServer
                     ? "sub.semantic_draw_result_controller_mode"
                     : "sub.semantic_result_controller_mode",
                 started, allocated);
+            // Differential assertion (opt-in): validate the cheap predicates
+            // against the unchanged implementation at every JSONL boundary.
+            // Disable this switch for unbiased performance comparisons.
+            if (Environment.GetEnvironmentVariable(
+                    "STS2_H7_COMPARE_BOUNDARY_INSPECTION") == "1" &&
+                (!chanceSites.SequenceEqual(SemanticChanceSitesReference(state)) ||
+                 controllerMode != SemanticControllerModeReference(state)))
+                throw new InvalidDataException(
+                    "Semantic boundary-inspection fast path differs from reference.");
             return new
             {
                 ok = true, schemaId = SemanticChanceSchemaId,
