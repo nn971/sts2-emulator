@@ -250,6 +250,7 @@ internal static class PrototypeAiJsonlServer
             string kind = runtime.Terminal ? "terminal" :
                 runtime.HasPendingCardDraw ? "draw_card" :
                 runtime.HasPendingIntent ? "enemy_intent" :
+                runtime.AtPlayerChoiceBoundary ? "player_choice" :
                 runtime.AtPlayerBoundary ? "player" : "unsupported";
             return new
             {
