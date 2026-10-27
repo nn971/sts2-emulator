@@ -5,6 +5,8 @@ on:
     paths:
       - 'src/Sts2Emulator.Core/H8CombatRuntimeV1.cs'
       - 'src/Sts2Emulator.Core/H8NativePhysicalDrawEngineV1.cs'
+      - 'src/Sts2Emulator.Core/H8NativePlayerEndTurnEngineV1.cs'
+      - 'src/Sts2Emulator.Core/SemanticEndTurnV111.cs'
       - 'src/Sts2Emulator.Core/SemanticPilotCombatV111.cs'
       - 'tests/Sts2Emulator.Core.Tests/H8CombatRuntimeV1Tests.cs'
       - 'src/Sts2Emulator.Cli/PrototypeAiJsonlServer.cs'
