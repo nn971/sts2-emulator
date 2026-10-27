@@ -118,6 +118,9 @@ def _run_shard(
                 execution_seconds = time.perf_counter() - begin
                 history = session.call(
                     "h8_decision_history", h8_handle=handle)["decisions"]
+                mechanics_sha = session.call(
+                    "h8_audit_state_fingerprint",
+                    h8_handle=handle)["fingerprint"]
                 if len(history) != len(actions):
                     raise RuntimeError("H8 decision journal count diverged")
                 should_audit = index % audit_every == 0
@@ -133,6 +136,7 @@ def _run_shard(
                     kinds=dict(kinds),
                     trace_digest=canonical_hash(actions),
                     journal_digest=canonical_hash(history),
+                    mechanics_sha256=mechanics_sha,
                     execution_seconds=execution_seconds,
                     replay_verified=should_audit,
                     audit_seconds=audit_seconds if should_audit else 0.0,
@@ -192,7 +196,7 @@ def validate_pair(a: dict[str, Any], b: dict[str, Any]) -> None:
     for seed, left in a["trajectories"].items():
         right = b["trajectories"][seed]
         for key in ("status", "decisions", "kinds",
-                    "trace_digest", "journal_digest"):
+                    "trace_digest", "journal_digest", "mechanics_sha256"):
             if left[key] != right[key]:
                 raise RuntimeError(
                     f"H8 {seed} diverged on {key}: "
