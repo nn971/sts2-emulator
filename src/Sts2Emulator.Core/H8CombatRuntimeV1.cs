@@ -108,6 +108,9 @@ public sealed class H8CombatRuntimeV1
     public bool HasPendingCardDraw => CurrentDrawCursor() is not null;
     public bool HasPendingIntent => _state.IntentPending is not null;
 
+    // O(1) on every status response. A materialized journal is audit-only.
+    public int DecisionCount => _journal.Count;
+
     public IReadOnlyList<H8DecisionEntryV1> DecisionHistory =>
         Array.AsReadOnly(_journal.ToArray());
 
@@ -146,6 +149,71 @@ public sealed class H8CombatRuntimeV1
                 "End turn is available only at a full player boundary.");
         return ObservePlayerFrame()
             .LegalActions.Single(action => action.Kind == "end_turn").ActionId;
+    }
+
+    /// <summary>
+    /// Exact event-scoped v111 reference Chance Law at an H8 Nature boundary.
+    /// Only called by the explicit h8_reference_law API, not by h8_status
+    /// or by the native hot path. It queries the live run without Fork(),
+    /// a complete-state SHA, or a legacy semantic snapshot.
+    ///
+    /// The wire deliberately retains the same Chance Law and candidate
+    /// fields as semantic pending, so the H7 DeclaredLaw and SeededLawSampler
+    /// can operate unchanged. Future providers can consume this typed law
+    /// without owning or serializing the mechanics state.
+    /// </summary>
+    public object DescribePendingReferenceLaw()
+    {
+        if (CurrentDrawCursor() is { } cursor)
+        {
+            var drawn = cursor.Event;
+            var deck = _state.Run.World?.Combat?.SemanticDeck ??
+                throw new InvalidDataException(
+                    "H8 reference draw lacks a provider-owned semantic deck.");
+            var law = ChanceLawEngineV111.QueryDraw(deck);
+            return new
+            {
+                kind = "draw_card",
+                eventId = drawn.EventId,
+                siteId = drawn.SiteId,
+                streamId = drawn.StreamId,
+                ownerId = drawn.OwnerId,
+                ordinal = drawn.Ordinal,
+                operationKind = drawn.OperationKind,
+                constraintFingerprint = deck.Fingerprint,
+                probabilityStatus = drawn.ProbabilityStatus,
+                chanceLaw = law,
+                candidates = drawn.CandidateCardInstanceIds.Select(id =>
+                    new { cardInstanceId = id }).ToArray()
+            };
+        }
+        if (_state.IntentPending is { } intent)
+        {
+            var evt = SemanticPilotCombatEngineV111
+                .DescribePendingIntentEvent(_state);
+            var support = evt.Support;
+            var law = ChanceLawEngineV111.QueryIntent(evt);
+            return new
+            {
+                kind = "enemy_intent",
+                siteId = intent.SiteId,
+                streamId = intent.StreamId,
+                ownerId = intent.OwnerId,
+                ordinal = intent.Ordinal,
+                eventId = evt.EventId,
+                operationKind = evt.OperationKind,
+                probabilityStatus = law.ProbabilityStatus,
+                chanceLaw = law,
+                totalRawWeight = support.TotalRawWeight,
+                semanticCandidates = support.Candidates.Select(candidate => new
+                {
+                    intentId = candidate.IntentId,
+                    rawWeight = candidate.RawWeight
+                }).ToArray()
+            };
+        }
+        throw new InvalidOperationException(
+            "H8 reference law requires an unresolved Nature event.");
     }
 
     public string[] PendingIntentIds()
