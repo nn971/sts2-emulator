@@ -1,0 +1,28 @@
+name: h8-runtime-smoke
+
+on:
+  pull_request:
+    paths:
+      - 'src/Sts2Emulator.Core/H8CombatRuntimeV1.cs'
+      - 'src/Sts2Emulator.Core/SemanticPilotCombatV111.cs'
+      - 'tests/Sts2Emulator.Core.Tests/H8CombatRuntimeV1Tests.cs'
+      - '.github/workflows/h8-runtime-smoke.yml'
+  workflow_dispatch:
+
+jobs:
+  real-a10-versioned-boundary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - name: Build emulator
+        run: |
+          dotnet restore Sts2Emulator.sln
+          dotnet build Sts2Emulator.sln -c Release --no-restore -m:1
+      - name: Real source-valid A10 H8 draw/replay and old checked draw parity
+        run: |
+          dotnet test Sts2Emulator.sln -c Release --no-build -m:1 \
+            --filter 'FullyQualifiedName~H8CombatRuntimeV1Tests|FullyQualifiedName~CanonicalJsonTests'
