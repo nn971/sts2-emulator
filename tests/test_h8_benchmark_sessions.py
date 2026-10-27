@@ -32,13 +32,20 @@ class H8BenchmarkContractTests(unittest.TestCase):
         episode = dict(
             status="capped", decisions=2,
             kinds=dict(player=1, draw_card=1),
-            trace_digest="trace", journal_digest="journal")
+            trace_digest="trace", journal_digest="journal",
+            mechanics_sha256="mechanics")
         good = dict(source_digest="source", trajectories=dict(s=episode))
         validate_pair(good, good)
         bad = dict(source_digest="source",
                    trajectories=dict(s={**episode, "journal_digest": "other"}))
         with self.assertRaisesRegex(RuntimeError, "journal_digest"):
             validate_pair(good, bad)
+        bad_state = dict(
+            source_digest="source",
+            trajectories=dict(
+                s={**episode, "mechanics_sha256": "mismatched"}))
+        with self.assertRaisesRegex(RuntimeError, "mechanics_sha256"):
+            validate_pair(good, bad_state)
 
 
 if __name__ == "__main__":
