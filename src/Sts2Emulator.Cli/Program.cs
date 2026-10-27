@@ -918,8 +918,10 @@ switch (args[0])
         var bossIds = new HashSet<string>(StringComparer.Ordinal);
         for (var run = 0; run < count; run++)
         {
-            var state = PrototypeNativeOvergrowthRunFactory.Create(
-                $"native-generation-sweep-{ascension}-{run}", ascension);
+            var state = CreateConfiguredNativeOvergrowthRun(
+                engine,
+                $"native-generation-sweep-{ascension}-{run}",
+                ascension);
             PrototypeStateInvariants.Validate(state);
             var map = state.World!.Map;
             if (map.GenerationProfileId
@@ -1005,7 +1007,8 @@ switch (args[0])
         }
 
         var engine = new PrototypeGameEngine();
-        var state = PrototypeNativeOvergrowthRunFactory.Create(seed, ascension);
+        var state = CreateConfiguredNativeOvergrowthRun(
+            engine, seed, ascension);
         var reachedFloors = new HashSet<int>();
         var phases = new HashSet<RunPhase> { state.Phase };
         for (var step = 0; step < 5_000
@@ -1641,4 +1644,18 @@ static GameAction ChoosePrototypeAction(
     }
 
     return legal[0];
+}
+
+static RunState CreateConfiguredNativeOvergrowthRun(
+    PrototypeGameEngine engine,
+    string seed,
+    int ascension)
+{
+    var configuration = RunConfiguration.Create(
+        ascension: ascension,
+        firstAct: ActIdentity.Overgrowth);
+    var runStart = V111RunFactory.Create(seed, configuration);
+    return engine.Step(
+        runStart,
+        GameAction.Empty("start_run")).State;
 }
