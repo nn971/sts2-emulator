@@ -34,6 +34,23 @@ On PR creation, these existing workflows cover the change:
 
 The A/B workflow requires RunState hash allocation to decrease and no increase in the full RunState or pilot hash counts. The profiling stages overlap and must not be added together. Results are not established until CI completes.
 
+## Measured 16-cell A10 CI results (2026-10-27)
+
+The paired source-matched, 2-worker CPU benchmark [run #40538500322](https://github.com/nn971/sts2-emulator/actions/runs/40538500322) **passed**. The independent real-combat hash-recomputation workflow [run #40538500338](https://github.com/nn971/sts2-emulator/actions/runs/40538500338) also **passed**, as did the focused compile, legacy-hash differential, stale-boundary, and snapshot-restoration suite [run #40538500408](https://github.com/nn971/sts2-emulator/actions/runs/40538500408).
+
+| Matched 16-combat metric | PR #198 baseline | This branch | Change |
+| --- | ---: | ---: | ---: |
+| Wall time | 52.886 s | 42.383 s | -19.9% |
+| Player decisions/s | 8.225 | 10.263 | +24.8% |
+| Full draw allocation | 53.804 MB/draw | 32.471 MB/draw | -39.7% |
+| Full draw worker operation time | 76.649 ms/draw | 58.258 ms/draw | -24.0% |
+| Full `RunState` hashes | 26,100 | 15,005 | -42.5% |
+| Full `RunState` hash allocation | 9.955 GB | 4.427 GB | -55.5% |
+| Full `SemanticPilotCombatV111` hashes | 2,983 | 2,060 | -30.9% |
+| Full pilot hash allocation | 9.853 GB | 5.439 GB | -44.8% |
+
+The test uses 515 physical draw resolutions, 435 player decisions, matched source and actor digests, and the same outcomes. The independent 16-cell diagnostic run checked every cached hash hit against a fresh canonical SHA-256. Nested profiler categories overlap; only the top-level draw allocation metric represents the complete draw request. This is one CI A/B result, **not** a repeated profiler-disabled 15-worker GPU measurement.
+
 ## Full 128-combat training-target performance gate
 
 In the existing `~/projects/sts2-ai` environment (fish), build both emulator revisions in isolated temporary directories rather than modifying the active emulator branch. Use `tools/benchmark_h7_rollouts.py` with **128 episodes, 15 workers, shared CUDA actor, max batch 16, delay 3 ms**, seeds `73127/31337/23387`, and the same 14.66M-parameter actor configuration.
