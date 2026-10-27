@@ -72,6 +72,7 @@ public sealed class H8CombatRuntimeV1Tests
         var oracle = new PrototypeAiEnvironment().Observe(
             runtime.LegacySnapshotForAudit().Run);
         var frame = runtime.ObservePlayerFrame();
+        Assert.Same(frame, runtime.ObservePlayerFrame());
         Assert.Equal(CanonicalJson.Sha256(oracle.Observation),
             CanonicalJson.Sha256(frame.Observation));
         Assert.Equal(oracle.ObservationHash, frame.ObservationHash);
