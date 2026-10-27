@@ -74,6 +74,68 @@ public sealed class CanonicalJsonTests
     }
 
     [Fact]
+    public void ReadOnlyPilotHashReuseIsExactScopedAndReferenceBased()
+    {
+        var pilot = SemanticPilotCombatEngineV111.BeginSeeded(
+            new SemanticSeededEntryV111(
+                "h7-pilot-readonly-sha-test", 1,
+                "proto.encounter.mawler_normal", "MawlerNormal",
+                2, 10, 1, 3, 1, ReplayOpeningDrawHooks: true));
+        var expected = CanonicalJson.Sha256(pilot);
+        var hits = 0;
+        using (SemanticDrawStageProfilerV111.Begin(
+            (name, _, _) =>
+            {
+                if (name == "sub.semantic_draw_hash_SemanticPilotCombatV111_cache_hit")
+                    hits++;
+            }))
+        {
+            using (CanonicalJson.BeginReadOnlySemanticSnapshotHashReuse())
+            {
+                Assert.Equal(expected, CanonicalJson.Sha256(pilot));
+                using (CanonicalJson.BeginReadOnlySemanticSnapshotHashReuse())
+                {
+                    Assert.Equal(expected, CanonicalJson.Sha256(pilot));
+                }
+                Assert.Equal(expected, CanonicalJson.Sha256(pilot));
+
+                // A distinct record must always be hashed independently.
+                var advanced = pilot with
+                {
+                    Run = pilot.Run with
+                    {
+                        DecisionIndex = pilot.Run.DecisionIndex + 1
+                    }
+                };
+                Assert.NotEqual(expected, CanonicalJson.Sha256(advanced));
+            }
+            // The read-only lease is gone: a changed source cannot reuse it.
+            Assert.Equal(expected, CanonicalJson.Sha256(pilot));
+        }
+        Assert.Equal(2, hits);
+        pilot.Validate();
+    }
+
+    [Fact]
+    public void ReadOnlyPilotHashReuseScopeClearsOnException()
+    {
+        var pilot = SemanticPilotCombatEngineV111.BeginSeeded(
+            new SemanticSeededEntryV111(
+                "h7-pilot-hash-exception-test", 1,
+                "proto.encounter.mawler_normal", "MawlerNormal",
+                2, 10, 1, 3, 1, ReplayOpeningDrawHooks: true));
+        var expected = CanonicalJson.Sha256(pilot);
+        Assert.Throws<InvalidOperationException>((Action)(() =>
+        {
+            using var scope =
+                CanonicalJson.BeginReadOnlySemanticSnapshotHashReuse();
+            Assert.Equal(expected, CanonicalJson.Sha256(pilot));
+            throw new InvalidOperationException("synthetic");
+        }));
+        Assert.Equal(expected, CanonicalJson.Sha256(pilot));
+    }
+
+    [Fact]
     public void ReadOnlyRunStateHashReuseIsReleasedAfterExceptions()
     {
         var pilot = SemanticPilotCombatEngineV111.BeginSeeded(

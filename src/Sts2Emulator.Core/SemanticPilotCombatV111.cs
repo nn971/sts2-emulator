@@ -3228,20 +3228,27 @@ public static class SemanticPilotCombatEngineV111
         SemanticPilotCombatV111 current, string fingerprint,
         string eventId, long cardInstanceId)
     {
-        SemanticDrawStageProfilerV111.Measure(
-            "sub.semantic_draw_pilot_input_validate", current.Validate);
-        var parentFingerprint = SemanticDrawStageProfilerV111.Measure(
-            "sub.semantic_draw_pilot_input_fingerprint", () => current.Fingerprint);
-        if (parentFingerprint != fingerprint)
-            throw new InvalidOperationException(
-                "Stale semantic draw fingerprint.");
-        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
-        var pending = current.DrawPending ??
-            throw new InvalidOperationException(
-                "Only a pending semantic draw supports card-instance resolution.");
-        var decision = SemanticDrawStageProfilerV111.Measure(
-            "sub.semantic_draw_pilot_select",
-            () => SemanticDrawChoiceV111.Select(pending, eventId, cardInstanceId));
+        SemanticDeckEventV111 pending;
+        SemanticDrawDecisionV111 decision;
+        // This block only inspects the input snapshot. End the read-only
+        // lease before any provider choice is committed or mechanics advance.
+        using (CanonicalJson.BeginReadOnlySemanticSnapshotHashReuse())
+        {
+            SemanticDrawStageProfilerV111.Measure(
+                "sub.semantic_draw_pilot_input_validate", current.Validate);
+            var parentFingerprint = SemanticDrawStageProfilerV111.Measure(
+                "sub.semantic_draw_pilot_input_fingerprint", () => current.Fingerprint);
+            if (parentFingerprint != fingerprint)
+                throw new InvalidOperationException(
+                    "Stale semantic draw fingerprint.");
+            ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+            pending = current.DrawPending ??
+                throw new InvalidOperationException(
+                    "Only a pending semantic draw supports card-instance resolution.");
+            decision = SemanticDrawStageProfilerV111.Measure(
+                "sub.semantic_draw_pilot_select",
+                () => SemanticDrawChoiceV111.Select(pending, eventId, cardInstanceId));
+        }
         return SemanticDrawStageProfilerV111.Measure(
             "sub.semantic_draw_pilot_resolve",
             () => Resolve(current, fingerprint, decision.SelectedIndex,
