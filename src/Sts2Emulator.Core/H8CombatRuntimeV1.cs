@@ -34,6 +34,16 @@ public sealed class H8CombatRuntimeV1
     private readonly Guid _runtimeId;
     private SemanticPilotCombatV111 _state;
     private long _version;
+    // A projected automatic-hand-draw continuation belongs to exactly one
+    // H8 boundary version. Repeated status/support queries and the eventual
+    // selection all reuse the same projection; it is never copied to a fork.
+    private H8DrawCursorV1? _drawCursor;
+    private bool _drawCursorCaptured;
+
+    private sealed record H8DrawCursorV1(
+        SemanticDeckEventV111 Event, long[] EligibleCards,
+        SemanticEndTurnV111? AutomaticEndTurn,
+        bool CanUseFastAutomaticDraw);
 
     private H8CombatRuntimeV1(
         SemanticSeededEntryV111 entry,
@@ -63,7 +73,7 @@ public sealed class H8CombatRuntimeV1
     public bool Terminal => _state.CombatTerminal;
     public bool AtPlayerBoundary =>
         _state.AtPlayerBoundary || _state.AtPlayerChoiceBoundary;
-    public bool HasPendingCardDraw => _state.DrawPending is not null;
+    public bool HasPendingCardDraw => CurrentDrawCursor() is not null;
     public bool HasPendingIntent => _state.IntentPending is not null;
 
     public IReadOnlyList<H8DecisionEntryV1> DecisionHistory =>
@@ -107,10 +117,35 @@ public sealed class H8CombatRuntimeV1
 
     public long[] PendingDrawCardInstanceIds()
     {
-        var pending = _state.DrawPending ??
+        var cursor = CurrentDrawCursor() ??
             throw new InvalidOperationException(
                 "H8 draw query requires an active card-draw request.");
-        return pending.CandidateCardInstanceIds;
+        // No caller may retain a mutable alias to the session's live support.
+        return (long[])cursor.EligibleCards.Clone();
+    }
+
+    private H8DrawCursorV1? CurrentDrawCursor()
+    {
+        if (_drawCursorCaptured)
+            return _drawCursor;
+        // Resolve the nested v111 end-turn projection once per boundary.
+        // M2 will replace this temporary projected frame with a compact
+        // tagged effect cursor owned by the new mechanics runtime.
+        var frame = _state.PendingEndTurn;
+        var pending = frame?.DrawPending ?? _state.DrawPending;
+        if (pending is not null)
+        {
+            var automatic = frame?.HandDraw is
+                { AtBoundary: false, Pending: not null } &&
+                _state.Run.World?.Combat?.PendingChoice is not
+                { ChoiceId: "controlled_semantic_draw",
+                  ControlledSemanticDraw: not null };
+            _drawCursor = new H8DrawCursorV1(
+                pending, pending.CandidateCardInstanceIds,
+                automatic ? frame : null, automatic);
+        }
+        _drawCursorCaptured = true;
+        return _drawCursor;
     }
 
     /// <summary>
@@ -163,17 +198,23 @@ public sealed class H8CombatRuntimeV1
     {
         RequireBoundary(boundary);
         ArgumentException.ThrowIfNullOrWhiteSpace(providerId);
-        var pending = _state.DrawPending ??
+        var cursor = CurrentDrawCursor() ??
             throw new InvalidOperationException(
                 "H8 draw is not the next pending boundary.");
-        if (Array.IndexOf(pending.CandidateCardInstanceIds, cardInstanceId) < 0)
+        var selectedIndex = Array.IndexOf(
+            cursor.EligibleCards, cardInstanceId);
+        if (selectedIndex < 0)
             throw new InvalidOperationException(
                 "H8 card instance is outside the pending Nature support.");
-        var next = SemanticPilotCombatEngineV111
-            .ResolveFromH8TrustedDrawBoundary(_state, cardInstanceId);
+        var next = cursor.CanUseFastAutomaticDraw
+            ? SemanticPilotCombatEngineV111.ResolveFromH8AutomaticDrawCursor(
+                _state, cursor.AutomaticEndTurn!,
+                cursor.Event, selectedIndex)
+            : SemanticPilotCombatEngineV111.ResolveFromH8TrustedDrawBoundary(
+                _state, cardInstanceId);
         Commit(next, new H8DecisionEntryV1(
             _version, "draw_card", providerId,
-            SiteId: pending.SiteId, CardInstanceId: cardInstanceId));
+            SiteId: cursor.Event.SiteId, CardInstanceId: cardInstanceId));
     }
 
     /// <summary>
@@ -250,5 +291,7 @@ public sealed class H8CombatRuntimeV1
         _journal.Add(entry);
         _state = next;
         _version = nextVersion;
+        _drawCursor = null;
+        _drawCursorCaptured = false;
     }
 }
