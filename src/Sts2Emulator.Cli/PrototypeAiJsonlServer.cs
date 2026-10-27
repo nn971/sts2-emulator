@@ -6482,6 +6482,9 @@ internal static class PrototypeAiJsonlServer
                     {
                         var parentHandle = RequiredString(request, "semantic_handle");
                         var current = RequireSemantic(request);
+                        Action<string, long, long>? recorder = semanticProfiler.Enabled
+                            ? semanticProfiler.Record : null;
+                        using var drawStages = SemanticDrawStageProfilerV111.Begin(recorder);
                         var transitionStart = semanticProfiler.Enabled
                             ? SemanticOperationProfiler.Timestamp() : 0L;
                         var transitionAllocated = semanticProfiler.Enabled
