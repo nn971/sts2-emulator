@@ -16,7 +16,9 @@ import time
 from collections import Counter
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeVar
+
+T = TypeVar("T")
 
 
 def canonical_hash(value: Any) -> str:
@@ -25,7 +27,7 @@ def canonical_hash(value: Any) -> str:
         ensure_ascii=True).encode()).hexdigest()
 
 
-def split_shards(seeds: list[str], workers: int) -> list[list[str]]:
+def split_shards(seeds: list[T], workers: int) -> list[list[T]]:
     """One persistent emulator subprocess per nonempty shard."""
     return [seeds[i::workers] for i in range(min(workers, len(seeds)))]
 
