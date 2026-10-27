@@ -189,9 +189,12 @@ class SemanticProfilerIntegrationTests(unittest.TestCase):
                 held.append(restored)
                 self.assertEqual(restored.fingerprint, state.fingerprint)
                 measurements = session.read_semantic_profile()["operations"]
+                # Every successful draw is preceded by a deliberate
+                # stale-fingerprint RPC. Both count as JSONL operations,
+                # but only the successful calls enter nested mechanics.
                 self.assertEqual(
                     measurements["op.semantic_resolve_draw_card"]["count"],
-                    resolved_draws,
+                    2 * resolved_draws,
                 )
                 for metric in (
                     "sub.semantic_draw_pilot_input_validate",
