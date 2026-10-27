@@ -2802,12 +2802,26 @@ class SemanticCombat:
         return self.session.call(
             "semantic_status", semantic_handle=self.handle)["result"]
 
-    def observe(self):
-        """Fair player-only observation: never a privileged Nature event."""
+    def observe_frame(self):
+        """Return fair observation and its *same-boundary* legal menu in one RPC.
+
+        The paired view is useful for high-throughput agent rollouts. Hidden
+        Nature support and private semantic state remain excluded.
+        """
+        if self.boundary not in ("player", "player_choice"):
+            raise EmulatorError("Expected a semantic player decision")
         result = self.session.call(
             "semantic_observe", semantic_handle=self.handle,
             policy_id="prototype-fair-v0")
-        return json.loads(result["payloadJson"])
+        observation = json.loads(result["payloadJson"])
+        legal_actions = result["actions"]
+        if not isinstance(observation, dict) or not isinstance(legal_actions, list):
+            raise EmulatorError("Malformed fair semantic observation and actions")
+        return observation, legal_actions
+
+    def observe(self):
+        """Fair player-only observation: never a privileged Nature event."""
+        return self.observe_frame()[0]
 
     def observe_for_nature(self):
         """Fair public combat state at a pending Nature decision.
@@ -2830,10 +2844,7 @@ class SemanticCombat:
         return observation
 
     def actions(self):
-        result = self.session.call(
-            "semantic_observe", semantic_handle=self.handle,
-            policy_id="prototype-fair-v0")
-        return result["actions"]
+        return self.observe_frame()[1]
 
     def step(self, action_id: str):
         if self.boundary not in ("player", "player_choice"):
