@@ -107,19 +107,28 @@ public static class CanonicalJson
     {
         // Hash canonical UTF-8 directly: converting it to a UTF-16 string
         // and back allocates two redundant full-state copies on every hash.
-        var utf8 = SerializeCanonicalUtf8(value);
-        return Convert.ToHexString(SHA256.HashData(utf8)).ToLowerInvariant();
+        using var stream = WriteCanonicalUtf8(value);
+        return Convert.ToHexString(SHA256.HashData(
+            stream.GetBuffer().AsSpan(0, checked((int)stream.Length))))
+            .ToLowerInvariant();
     }
 
     private static byte[] SerializeCanonicalUtf8<T>(T value)
     {
+        using var stream = WriteCanonicalUtf8(value);
+        return stream.ToArray();
+    }
+
+    private static MemoryStream WriteCanonicalUtf8<T>(T value)
+    {
         var element = JsonSerializer.SerializeToElement(value, SerializerOptions);
-        using var stream = new MemoryStream();
+        var stream = new MemoryStream();
         using (var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = false }))
         {
             WriteCanonical(writer, element);
         }
-        return stream.ToArray();
+        stream.Position = 0;
+        return stream;
     }
 
     private static readonly JsonSerializerOptions SerializerOptions = new()
