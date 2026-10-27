@@ -34,6 +34,10 @@ time, maximum latency and calling-thread managed allocation. It records:
   `op.semantic_resolve_intent`, `op.semantic_resolve_draw_card`,
   `op.semantic_observe`, `op.semantic_save`, `op.semantic_load` and
   other semantic JSONL requests, **including reply serialization**;
+- `sub.semantic_step_transition`, `sub.semantic_resolve_transition`,
+  `sub.semantic_resolve_draw_card_transition`, and
+  `sub.semantic_resolve_intent_transition` (C# transition logic,
+  including input validation, before state-store copying);
 - `sub.semantic_store_fork` (deep copy on handle storage);
 - `sub.semantic_result_fingerprint` (full canonical semantic state hash);
 - `sub.semantic_result_pending` (pending event / Chance Law description);
