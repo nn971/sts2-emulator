@@ -1,6 +1,8 @@
 """Thin, version-negotiated JSONL binding. Canonical mechanics stay in C#."""
 from dataclasses import dataclass
 import json
+import os
+from pathlib import Path
 import subprocess
 import threading
 
@@ -2802,12 +2804,34 @@ class SemanticCombat:
         return self.session.call(
             "semantic_status", semantic_handle=self.handle)["result"]
 
-    def observe(self):
-        """Fair player-only observation: never a privileged Nature event."""
+    def observe_frame(self):
+        """Return fair observation and its *same-boundary* legal menu in one RPC.
+
+        The paired view is useful for high-throughput agent rollouts. Hidden
+        Nature support and private semantic state remain excluded.
+        """
+        if self.boundary not in ("player", "player_choice"):
+            raise EmulatorError("Expected a semantic player decision")
         result = self.session.call(
             "semantic_observe", semantic_handle=self.handle,
             policy_id="prototype-fair-v0")
-        return json.loads(result["payloadJson"])
+        observation = json.loads(result["payloadJson"])
+        legal_actions = result["actions"]
+        if not isinstance(observation, dict) or not isinstance(legal_actions, list):
+            raise EmulatorError("Malformed fair semantic observation and actions")
+        return observation, legal_actions
+
+    def observe(self):
+        """Fair player-only observation: never a privileged Nature event."""
+        # The Session lock also guards invalidation in Session.call().
+        with self.session._lock:
+            observation, actions = self.observe_frame()
+            # Existing agents call observe() then actions(). Reuse the exact
+            # same legal menu once, without a duplicate semantic_observe RPC.
+            self.session._semantic_observation_cache = (
+                self.handle, self.fingerprint, actions
+            )
+            return observation
 
     def observe_for_nature(self):
         """Fair public combat state at a pending Nature decision.
@@ -2830,10 +2854,13 @@ class SemanticCombat:
         return observation
 
     def actions(self):
-        result = self.session.call(
-            "semantic_observe", semantic_handle=self.handle,
-            policy_id="prototype-fair-v0")
-        return result["actions"]
+        with self.session._lock:
+            cache = getattr(self.session, "_semantic_observation_cache", None)
+            if cache is not None and cache[:2] == (
+                    self.handle, self.fingerprint):
+                self.session._semantic_observation_cache = None
+                return cache[2]
+            return self.observe_frame()[1]
 
     def step(self, action_id: str):
         if self.boundary not in ("player", "player_choice"):
@@ -3192,6 +3219,8 @@ class Session:
         self._lock = threading.RLock()
         self._next_request = 0
         self._closed = False
+        self._semantic_profile_dir = os.environ.get("STS2_SEMANTIC_PROFILE_DIR")
+        self._semantic_observation_cache = None
         try:
             self.capabilities = self.call("hello")
             self.stochastic_session_coverage = self.capabilities.get(
@@ -3206,11 +3235,21 @@ class Session:
                 raise EmulatorError("Emulator does not support exact snapshot v1")
             if self.capabilities.get("batchSchemaId") != "sts2-deterministic-batch-v1":
                 raise EmulatorError("Emulator does not support deterministic batch v1")
+            if self._semantic_profile_dir:
+                self.reset_semantic_profile()
         except BaseException:
             self._process.terminate()
             self._process.wait(timeout=5)
             self._close_pipes()
             raise
+
+    def reset_semantic_profile(self):
+        """Enable/reset opt-in emulator-side timings for semantic JSONL requests."""
+        return self.call("semantic_perf_reset")["schemaId"]
+
+    def read_semantic_profile(self):
+        """Read cumulative operation timing and thread allocations."""
+        return self.call("semantic_perf_read")["profile"]
 
     def supports_reference_nature_site(self, site_id: str, *,
                                        session: str = "any") -> bool:
@@ -3302,6 +3341,10 @@ class Session:
 
     def call(self, operation, **payload):
         with self._lock:
+            # An intervening RPC (including release or another step) invalidates
+            # the one-shot pending menu; querying actions() alone stays correct.
+            if operation != "semantic_observe":
+                self._semantic_observation_cache = None
             if self._closed:
                 raise EmulatorError("Emulator session is closed")
             request_id = str(self._next_request)
@@ -3983,6 +4026,16 @@ class Session:
                 return
             try:
                 if self._process.poll() is None:
+                    if self._semantic_profile_dir:
+                        # One process per semantic emulator worker, no shared
+                        # in-memory counters or output-file races.
+                        result = self.read_semantic_profile()
+                        directory = Path(self._semantic_profile_dir)
+                        directory.mkdir(parents=True, exist_ok=True)
+                        target = directory / (
+                            f"semantic-{os.getpid()}-{self._process.pid}.json")
+                        target.write_text(
+                            json.dumps(result, indent=2) + "\n", encoding="utf-8")
                     self.call("close")
                     self._process.wait(timeout=5)
             finally:

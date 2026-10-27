@@ -1,0 +1,216 @@
+"""H7-compatible semantic observation and opt-in JSONL profiling regression."""
+from __future__ import annotations
+
+import json
+import os
+import sys
+import threading
+import tempfile
+import unittest
+from pathlib import Path
+from unittest.mock import patch
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "bindings" / "python"))
+from sts2_emulator import EmulatorError, SemanticCombat, Session  # noqa: E402
+
+
+class MockSession:
+    def __init__(self):
+        self.calls = []
+        self._lock = threading.RLock()
+
+    def call(self, operation, **payload):
+        self.calls.append((operation, payload))
+        return {
+            "payloadJson": json.dumps({"combat": {"hand": []}, "hp": 55}),
+            "actions": [{"actionId": "end_turn", "kind": "end_turn", "payloadJson": "{}"}],
+        }
+
+
+class SemanticFrameTests(unittest.TestCase):
+    @staticmethod
+    def state(boundary="player"):
+        fake = MockSession()
+        state = SemanticCombat(
+            fake, "m7", "hash7", boundary, None,
+            boundary == "terminal", None, None,
+        )
+        return fake, state
+
+    def test_joint_frame_one_request_same_menu(self):
+        fake, state = self.state()
+        frame, actions = state.observe_frame()
+        self.assertEqual(frame["hp"], 55)
+        self.assertEqual(actions[0]["actionId"], "end_turn")
+        self.assertEqual(len(fake.calls), 1)
+        self.assertEqual(fake.calls[0], ("semantic_observe", {
+            "semantic_handle": "m7", "policy_id": "prototype-fair-v0",
+        }))
+
+    def test_legacy_interfaces_keep_values(self):
+        fake, state = self.state()
+        self.assertEqual(state.observe()["hp"], 55)
+        self.assertEqual(state.actions()[0]["kind"], "end_turn")
+        self.assertEqual(len(fake.calls), 1)
+
+    def test_actions_alone_still_calls_emulator(self):
+        fake, state = self.state()
+        self.assertEqual(state.actions()[0]["actionId"], "end_turn")
+        self.assertEqual(len(fake.calls), 1)
+
+    def test_one_shot_cache_is_scoped_to_handle(self):
+        fake, state = self.state()
+        state.observe()
+        other = SemanticCombat(fake, "m8", "hash8", "player", None, False, None, None)
+        self.assertEqual(other.actions()[0]["actionId"], "end_turn")
+        self.assertEqual(len(fake.calls), 2)
+
+    def test_non_player_boundaries_cannot_observe(self):
+        fake, state = self.state("nature")
+        with self.assertRaises(EmulatorError):
+            state.observe_frame()
+        self.assertEqual(fake.calls, [])
+
+
+@unittest.skipUnless(os.environ.get("STS2_EMULATOR_DLL"), "Set STS2_EMULATOR_DLL for live semantic smoke")
+class SemanticProfilerIntegrationTests(unittest.TestCase):
+    def test_real_cli_fair_frame_and_profile_snapshot(self):
+        cmd = [
+            "dotnet", os.environ["STS2_EMULATOR_DLL"], "prototype-ai-jsonl",
+        ]
+        with Session(cmd) as session:
+            schema = session.reset_semantic_profile()
+            self.assertEqual(schema, "sts2-semantic-jsonl-performance-v1")
+            state = session.begin_seeded_semantic_combat(
+                "h7-semantic-perf-regression", act=1,
+                encounter_id="proto.encounter.mawler_normal",
+                native_entry="MawlerNormal", total_floor=2,
+                ascension=10, first_monster_combat_id=1,
+                map_column=3, map_row=1,
+                replay_opening_draw_hooks=True,
+                fixture_deck_preset_id="silent-starter-v1",
+            )
+            self.assertIn(state.boundary, ("player", "player_choice"))
+            observation, actions = state.observe_frame()
+            self.assertIsInstance(observation, dict)
+            self.assertTrue(actions)
+            self.assertEqual(state.observe(), observation)
+            self.assertEqual(state.actions(), actions)
+            self.assertEqual(state.fingerprint, state.status()["fingerprint"])
+            child = state.step(actions[0]["actionId"])
+            snapshot = child.save_snapshot()
+            restored = session.load_semantic_snapshot(snapshot)
+            self.assertEqual(child.fingerprint, restored.fingerprint)
+            profile = session.read_semantic_profile()
+            self.assertEqual(profile["schemaId"], schema)
+            measurements = profile["operations"]
+            self.assertEqual(measurements["op.semantic_observe"]["count"], 2)
+            self.assertEqual(measurements["op.semantic_step"]["count"], 1)
+            self.assertGreaterEqual(measurements["op.semantic_load"]["count"], 1)
+            self.assertEqual(
+                measurements["sub.semantic_step_transition"]["count"], 1)
+            self.assertGreaterEqual(measurements["sub.semantic_store_fork"]["count"], 3)
+            self.assertGreater(measurements["sub.semantic_result_fingerprint"]["count"], 0)
+            self.assertGreater(measurements["sub.semantic_result_pending"]["count"], 0)
+            for item in measurements.values():
+                self.assertGreaterEqual(item["totalSeconds"], 0.0)
+                self.assertGreaterEqual(item["allocatedBytes"], 0)
+            session.release_semantic_many([state, child, restored])
+
+    def test_real_semantic_stable_id_continuation_and_stale_guard(self):
+        """Exercise the optimized draw/intent wrappers and exact replay."""
+        cmd = [
+            "dotnet", os.environ["STS2_EMULATOR_DLL"], "prototype-ai-jsonl",
+        ]
+        with Session(cmd) as session:
+            state = session.begin_seeded_semantic_combat(
+                "h7-stable-id-hotpath", act=1,
+                encounter_id="proto.encounter.mawler_normal",
+                native_entry="MawlerNormal", total_floor=2,
+                ascension=10, first_monster_combat_id=1,
+                map_column=3, map_row=1,
+                replay_opening_draw_hooks=True,
+                fixture_deck_preset_id="silent-starter-v1",
+            )
+            held = [state]
+            resolved_draws = 0
+            resolved_intents = 0
+            try:
+                for _ in range(220):
+                    if state.terminal:
+                        break
+                    if state.boundary == "player":
+                        _, actions = state.observe_frame()
+                        end_turn = next(
+                            a["actionId"] for a in actions
+                            if a["kind"] == "end_turn")
+                        next_state = state.step(end_turn)
+                    elif state.boundary == "nature":
+                        pending = state.pending
+                        self.assertIsInstance(pending, dict)
+                        if pending["kind"] == "enemy_intent":
+                            intent = pending["semanticCandidates"][0]["intentId"]
+                            with self.assertRaises(EmulatorError):
+                                session.call(
+                                    "semantic_resolve_intent",
+                                    semantic_handle=state.handle,
+                                    fingerprint="stale-fingerprint",
+                                    intent_id=intent)
+                            self.assertEqual(
+                                state.status()["fingerprint"], state.fingerprint)
+                            next_state = state.resolve_intent(intent)
+                            resolved_intents += 1
+                        elif pending["kind"] == "draw_card":
+                            instance_id = pending["candidates"][0]["cardInstanceId"]
+                            with self.assertRaises(EmulatorError):
+                                session.call(
+                                    "semantic_resolve_draw_card",
+                                    semantic_handle=state.handle,
+                                    fingerprint="stale-fingerprint",
+                                    event_id=pending["eventId"],
+                                    card_instance_id=instance_id)
+                            self.assertEqual(
+                                state.status()["fingerprint"], state.fingerprint)
+                            next_state = state.resolve_draw_card(instance_id)
+                            resolved_draws += 1
+                        else:
+                            self.fail(
+                                f"Unexpected research chance event {pending['kind']}")
+                    else:
+                        self.fail(f"Unexpected semantic boundary {state.boundary}")
+                    held.append(next_state)
+                    state = next_state
+                    if resolved_draws >= 2 and resolved_intents >= 1:
+                        break
+                self.assertGreaterEqual(resolved_draws, 2)
+                self.assertGreaterEqual(resolved_intents, 1)
+                restored = session.load_semantic_snapshot(state.save_snapshot())
+                held.append(restored)
+                self.assertEqual(restored.fingerprint, state.fingerprint)
+            finally:
+                session.release_semantic_many(held)
+
+    def test_session_close_exports_per_process_profile_when_opted_in(self):
+        cmd = [
+            "dotnet", os.environ["STS2_EMULATOR_DLL"], "prototype-ai-jsonl",
+        ]
+        with tempfile.TemporaryDirectory(prefix="sts2-semantic-smoke-") as tmp:
+            with patch.dict(os.environ, {"STS2_SEMANTIC_PROFILE_DIR": tmp}):
+                with Session(cmd) as session:
+                    session.reset_semantic_profile()
+                    _ = session.begin_seeded_semantic_combat(
+                        "h7-auto-profile-smoke", act=1,
+                        encounter_id="proto.encounter.mawler_normal",
+                        native_entry="MawlerNormal", total_floor=2,
+                        ascension=10, first_monster_combat_id=1,
+                        map_column=3, map_row=1,
+                        replay_opening_draw_hooks=True,
+                        fixture_deck_preset_id="silent-starter-v1",
+                    )
+                exports = list(Path(tmp).glob("semantic-*.json"))
+                self.assertEqual(len(exports), 1)
+                report = json.loads(exports[0].read_text(encoding="utf-8"))
+                self.assertEqual(
+                    report["schemaId"], "sts2-semantic-jsonl-performance-v1")
+                self.assertGreaterEqual(
+                    report["operations"]["op.semantic_begin_seeded"]["count"], 1)
