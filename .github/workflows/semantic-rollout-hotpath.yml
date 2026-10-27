@@ -4,6 +4,11 @@ on:
     paths:
       - 'src/Sts2Emulator.Cli/PrototypeAiJsonlServer.cs'
       - 'src/Sts2Emulator.Cli/SemanticOperationProfiler.cs'
+      - 'src/Sts2Emulator.Core/SemanticDrawStageProfilerV111.cs'
+      - 'src/Sts2Emulator.Core/SemanticPilotCombatV111.cs'
+      - 'src/Sts2Emulator.Core/SemanticEndTurnV111.cs'
+      - 'src/Sts2Emulator.Core/SemanticCombatDrawV111.cs'
+      - 'tests/Sts2Emulator.Core.Tests/SemanticDrawStageProfilerV111Tests.cs'
       - 'bindings/python/sts2_emulator/__init__.py'
       - 'tests/test_semantic_rollout_perf.py'
       - 'tools/summarize_semantic_perf.py'
@@ -32,6 +37,11 @@ jobs:
         env:
           STS2_EMULATOR_DLL: src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll
         run: python -m unittest discover -s tests -p 'test_semantic_rollout_perf.py' -v
+      - name: Verify stage probes remain opt-in, scoped, and exception-safe
+        run: |
+          dotnet test tests/Sts2Emulator.Core.Tests -c Release --no-build \
+            --filter FullyQualifiedName~SemanticDrawStageProfilerV111Tests
+
       # Existing Core semantic-history tests exercise superseded encounter
       # assumptions at this H5 pin (14/17 red before this isolated CLI change).
       # The built real-C# semantic integration above is the relevant acceptance.
