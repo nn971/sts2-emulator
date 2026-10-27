@@ -1,9 +1,10 @@
-name: h7-semantic-hash-ab
+name: h7-opening-provenance-ab
 on:
   pull_request:
     paths:
       - 'src/Sts2Emulator.Core/CanonicalJson.cs'
       - 'src/Sts2Emulator.Core/SemanticPilotCombatV111.cs'
+      - 'src/Sts2Emulator.Cli/PrototypeAiJsonlServer.cs'
       - '.github/workflows/h7-runstate-hash-ab.yml'
   workflow_dispatch:
 
@@ -27,11 +28,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Export exact PR #201 optimized baseline
+      - name: Export exact PR #202 optimized baseline
         run: |
           mkdir -p before-src
-          git -C after-src fetch --no-tags --depth=1 origin 2a73c418b92237dd6b425e1f2adce48a0a4ebb55
-          git -C after-src archive 2a73c418b92237dd6b425e1f2adce48a0a4ebb55 | tar -xf - -C before-src
+          git -C after-src fetch --no-tags --depth=1 origin 652d100c403a070a0e2a110413e5f7c9969ab07f
+          git -C after-src archive 652d100c403a070a0e2a110413e5f7c9969ab07f | tar -xf - -C before-src
       - name: Build two isolated semantic emulators
         run: |
           for src in before-src after-src; do
@@ -46,11 +47,11 @@ jobs:
       - name: Paired 16-cell reference-law draw profile
         working-directory: ai
         run: |
-          unset STS2_H7_VERIFY_RUN_HASH_REUSE STS2_H7_COMPARE_BOUNDARY_INSPECTION
+          unset STS2_H7_VERIFY_RUN_HASH_REUSE STS2_H7_VERIFY_SOURCE_OPENING_HASH_REUSE STS2_H7_COMPARE_BOUNDARY_INSPECTION
           for mode in before after; do
             if [ "$mode" = before ]; then
               src=../before-src
-              revision=2a73c418b92237dd6b425e1f2adce48a0a4ebb55
+              revision=652d100c403a070a0e2a110413e5f7c9969ab07f
             else
               src=../after-src
               revision=$(git -C "$src" rev-parse HEAD)
@@ -91,6 +92,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: h7-semantic-readonly-hash-ab
+          name: h7-opening-provenance-hash-ab
           path: results
           if-no-files-found: ignore
