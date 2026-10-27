@@ -734,9 +734,20 @@ public static class SemanticCombatDrawEngineV111
         SemanticCombatDrawV111 state, int selectedIndex)
         => ResolveCore(state, null, selectedIndex, prevalidated: true);
 
+    /// <summary>
+    /// The H8 session's version-checked draw cursor owns the selected support.
+    /// Only called for an active automatic-hand-draw continuation. Full
+    /// recursive output auditing is deferred to H8 AuditReplay; the gameplay
+    /// effects, source hook order and physical draw commitment still execute.
+    /// </summary>
+    internal static SemanticCombatDrawV111 ResolveFromH8Cursor(
+        SemanticCombatDrawV111 state, int selectedIndex)
+        => ResolveCore(state, null, selectedIndex,
+            prevalidated: true, auditOutput: false);
+
     private static SemanticCombatDrawV111 ResolveCore(
         SemanticCombatDrawV111 state, string? fingerprint, int selectedIndex,
-        bool prevalidated)
+        bool prevalidated, bool auditOutput = true)
     {
         if (!prevalidated)
         {
@@ -901,8 +912,9 @@ public static class SemanticCombatDrawEngineV111
             "sub.semantic_draw_combat_publish",
             () => PublishDrawProgress(
                 state, advanced, remainingCount: remaining));
-        SemanticDrawStageProfilerV111.Measure(
-            "sub.semantic_draw_combat_output_validate", () => Validate(next));
+        if (auditOutput)
+            SemanticDrawStageProfilerV111.Measure(
+                "sub.semantic_draw_combat_output_validate", () => Validate(next));
         return next;
     }
 
