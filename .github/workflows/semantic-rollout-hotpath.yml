@@ -9,6 +9,8 @@ on:
       - 'src/Sts2Emulator.Core/SemanticEndTurnV111.cs'
       - 'src/Sts2Emulator.Core/SemanticCombatDrawV111.cs'
       - 'tests/Sts2Emulator.Core.Tests/SemanticDrawStageProfilerV111Tests.cs'
+      - 'tools/compare_h7_boundary_perf.py'
+      - 'tests/test_h7_boundary_profile_comparison.py'
       - 'bindings/python/sts2_emulator/__init__.py'
       - 'tests/test_semantic_rollout_perf.py'
       - 'tools/summarize_semantic_perf.py'
@@ -37,6 +39,9 @@ jobs:
         env:
           STS2_EMULATOR_DLL: src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll
         run: python -m unittest discover -s tests -p 'test_semantic_rollout_perf.py' -v
+      - name: Verify H7 A/B comparison rejects mismatched sources
+        run: |
+          python -m unittest discover -s tests -p 'test_h7_boundary_profile_comparison.py' -v
       - name: Verify stage probes remain opt-in, scoped, and exception-safe
         run: |
           dotnet test tests/Sts2Emulator.Core.Tests -c Release --no-build \

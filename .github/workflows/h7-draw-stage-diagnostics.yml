@@ -46,6 +46,9 @@ jobs:
         working-directory: ai
         env:
           STS2_SEMANTIC_PROFILE_DIR: ../profiles
+          # Fail if optimized passive event inspection disagrees with the
+          # unchanged reference on any real A10 JSONL boundary.
+          STS2_H7_COMPARE_BOUNDARY_INSPECTION: '1'
         run: |
           mkdir -p ../profiles ../reports
           python -u tools/benchmark_h7_rollouts.py \
