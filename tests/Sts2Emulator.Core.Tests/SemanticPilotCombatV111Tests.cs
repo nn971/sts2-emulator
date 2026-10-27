@@ -79,8 +79,11 @@ public sealed class SemanticPilotCombatV111Tests
     [Fact]
     public void MemoizedPilotValidationIsReadOnlyAndRejectsCorruptedEnvelope()
     {
-        var state = SemanticPilotCombatEngineV111.Begin(
-            Opening("h7-pilot-validation-cache-contract"));
+        var state = SemanticPilotCombatEngineV111.BeginSeeded(
+            new SemanticSeededEntryV111(
+                "h7-pilot-validation-cache-contract",
+                1, "proto.encounter.mawler_normal", "MawlerNormal",
+                2, 10, 1, 3, 1, ReplayOpeningDrawHooks: true));
         var before = state.Fingerprint;
         state.Validate();
         state.Validate();
