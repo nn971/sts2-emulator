@@ -37,12 +37,17 @@ def main():
             "combat.next_turn_intent.index_draw")
         assert chance["pending"]["streamId"] == "run.monster_ai"
         assert chance["playerActionIds"] == [end["actionId"]]
-        assert chance["pending"]["probabilityStatus"] == "UNVERIFIED"
+        # The canonical Native monster-AI stream has a source-verified
+        # NextInt grid law for this declared index support. This law metadata
+        # does not assert source-call or whole-combat parity.
+        assert chance["pending"]["probabilityStatus"] == "SOURCE_VERIFIED"
+        law_id = chance["pending"]["referenceLawId"]
+        assert isinstance(law_id, str) and len(law_id) == 64
 
         try:
             next_state.observe()
         except EmulatorError as error:
-            assert "pending" in str(error) or "unavailable" in str(error)
+            assert "player boundary" in str(error)
         else:
             raise AssertionError("Player observed mid-action state")
 

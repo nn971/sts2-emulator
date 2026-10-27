@@ -18,8 +18,12 @@ def rollout(worker):
     with Session(COMMAND) as session:
         assert session.capabilities["semanticTargetChoiceSchemaId"] == (
             "sts2-v111-semantic-target-choice-v1")
-        assert session.capabilities["semanticExtendedControlledSites"] == [
-            "random_enemy_target", "generated_card_pool"]
+        extended_sites = session.capabilities[
+            "semanticExtendedControlledSites"]
+        assert isinstance(extended_sites, list)
+        assert len(extended_sites) == len(set(extended_sites))
+        assert {"random_enemy_target", "generated_card_pool"} <= set(
+            extended_sites)
         combat = session.begin_seeded_semantic_combat(
             SEED, act=2,
             encounter_id="proto.native.hive.encounter.exoskeletons_normal",

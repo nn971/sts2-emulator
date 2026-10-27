@@ -40,7 +40,12 @@ def main():
         assert first["pending"]["siteId"] == (
             "combat.draw_pile_recycle.swap_index")
         assert first["pending"]["streamId"] == "run.shuffle"
-        assert first["pending"]["probabilityStatus"] == "UNVERIFIED"
+        # The Native Fisher-Yates bounded-index transform is source-verified
+        # for this declared support; pile and continuation parity remain
+        # separate evidence.
+        assert first["pending"]["probabilityStatus"] == "SOURCE_VERIFIED"
+        law_id = first["pending"]["referenceLawId"]
+        assert isinstance(law_id, str) and len(law_id) == 64
         assert first["pending"]["boundedCount"] >= 2
         event_id = first["pending"]["eventId"]
         original = combat.fingerprint
