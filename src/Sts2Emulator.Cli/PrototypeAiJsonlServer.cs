@@ -266,7 +266,9 @@ internal static class PrototypeAiJsonlServer
                 intentIds = kind == "enemy_intent"
                     ? runtime.PendingIntentIds() : Array.Empty<string>(),
                 playerActionIds = kind == "player"
-                    ? runtime.LegalPlayerActionIds() : Array.Empty<string>()
+                    ? runtime.LegalPlayerActionIds() : Array.Empty<string>(),
+                endTurnActionId = kind == "player"
+                    ? runtime.EndTurnActionId() : null
             };
         }
 
