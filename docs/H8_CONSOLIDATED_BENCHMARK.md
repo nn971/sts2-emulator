@@ -97,6 +97,17 @@ Transformer and 128 source-complete replay-verified A10 combats from
 | Actor collation time (server sum) | 8.1848 s |
 | Model input encoding time (worker sum) | 1.4951 s |
 
+Baseline provenance (from the uploaded reports):
+- H7 128-combat actor checkpoint SHA-256:
+  `189d4d6a06912242af9113b72c3c28ed153fa967038adc24009c5baf0c2307e7`.
+- H7 source cohort digest:
+  `f7e599e1154c99c59c52d85174daa7b329f456396d2f779bbd7d14304905c3b5`.
+- Emulator DLL SHA-256:
+  `5afcf8c5d000d16ad39eaa2103bf48ce98f8ec50ad01c3f11fbfcfbfdd17a7c9`.
+  The reported actor device is explicitly `cuda` and the server also
+  reports `cuda`; the existing H7 readiness record's
+  `actor_inference_device="cpu"` is a stale hardcoded reporting field.
+
 A separate 1-round, 128-combat PPO train run (sampled 16 terminal
 replays) measured 37.809 s rollout collection, 3,478 decisions,
 14.438 s server forward and 6.521 s collate; this was a different
