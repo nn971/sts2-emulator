@@ -98,6 +98,24 @@ public sealed class H8CombatRuntimeV1
     public IReadOnlyList<H8DecisionEntryV1> DecisionHistory =>
         Array.AsReadOnly(_journal.ToArray());
 
+    /// <summary>
+    /// Read-only, live source run exposed for a fair public policy
+    /// observation. No RunState fork, full pilot SHA, or validation walk.
+    /// The JSONL server must never serialize or expose private Run fields;
+    /// only PrototypeAiEnvironment.Observe's public observation is allowed.
+    /// </summary>
+    public RunState PlayerRunForPublicObservation(H8BoundaryTokenV1 boundary)
+    {
+        RequireBoundary(boundary);
+        if (!AtPlayerBoundary)
+            throw new InvalidOperationException(
+                "H8 public player observation requires a player boundary.");
+        if (_state.AtPlayerChoiceBoundary)
+            throw new NotSupportedException(
+                "H8 nested player-choice observation is not yet supported.");
+        return _state.Run;
+    }
+
     public string[] LegalPlayerActionIds()
     {
         if (!AtPlayerBoundary)
