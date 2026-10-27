@@ -123,3 +123,60 @@ Use `--player-checkpoint` to pin an existing actor.
 The existing general emulator microbenchmark does not measure this exact
 H7 semantic loop. This workflow supplements it with the real training
 boundary path and keeps native Inspector checks independent of training.
+
+## Measured full H7 A10 profile (128 combats, 15 workers)
+
+**Source:** locally generated `h7-perf-semantic-128.json` and
+`h7-semantic-profile-summary.json`, supplied 2026-10-27. Revision
+`ca458eda7aeddff8b15dd7925dbac14f9547f443`,
+full 14,659,972-parameter H7 actor, shared CUDA, 16 A10 training cells,
+3,418 player decisions, 4,054 draw resolutions, 187 intent resolutions,
+40 victories, 128 completed combats. Reference Chance Law. End-to-end
+rollout: **158.998 s / 21.497 player decisions/s**.
+
+Native JSONL profiling (cumulative wall time across 15 overlapping
+workers; total worker episode time 2,195.18 worker-seconds):
+
+| Operation | Calls | Cumulative seconds | Avg latency | Managed allocation |
+| --- | ---: | ---: | ---: | ---: |
+| `semantic_resolve_draw_card` | 4,054 | 999.09 | 246 ms | 540.29 GB |
+| `semantic_load` | 128 | 739.40 | 5,777 ms | 436.82 GB |
+| `semantic_step` | 3,418 | 247.35 | 72 ms | 113.20 GB |
+| `semantic_resolve_intent` | 187 | 42.37 | 227 ms | 20.27 GB |
+| `semantic_observe` | 3,418 | 16.17 | 4.7 ms | 2.70 GB |
+| `sub.semantic_store_fork` | 7,915 | 9.21 | 1.16 ms | 5.27 GB |
+
+All top-level semantic JSONL operations allocated **1.12 TB in aggregate**
+(across the run, *not* peak memory). The 4,054 draw operations contain
+645.43 seconds in the measured internal C# draw transition itself.
+Nested `sub.*` counters must never be added to `op.*` totals.
+
+### Revised priorities supported by evidence
+
+1. **Terminal full-history replay** consumes 33.7% of cumulative worker
+   episode time. The existing `semantic_load` must remain an independent
+   full mechanical replay. For routine AI training, consider separately
+   changing the `sts2-ai` episode contract to audit a deterministic
+   subset of terminals while maintaining full replays in acceptance tests.
+   **Never claim `terminal_replay_verified=true` if replay was skipped.**
+   Altering the emulator loader silently would undermine the test.
+2. **Draw resolution** consumes 45.5% of cumulative worker episode time
+   and produces the majority of non-replay allocation. The current
+   stable-ID `ResolveDrawCard` wrapper performs an invariant validation
+   and full SHA-256 before dispatching to a private resolver that repeated
+   the same checks. A subsequent isolated commit removes the duplicate
+   check while preserving validation at the public entry and raw numeric
+   `Resolve` entry. This change awaits a paired full-size benchmark before
+   claiming a speedup.
+3. **Store forks (0.4%)** and **public observations (0.7%)** are much
+   smaller, and should not be the next large refactor. History sharing
+   and caching fingerprints still need independent profiling evidence
+   and exact-state semantics tests before invasive implementation.
+4. The 128-combat baseline with shared CUDA was about 157.3s. This
+   profile-instrumented revision took 159.0s. The difference is too small
+   and uncontrolled to infer a performance regression or improvement.
+
+No Inspector fidelity or native RNG parity gates are required for reference
+training. Full-snapshot semantic replay remains an explicit, measurable
+independent contract, and changing the replay sampling policy belongs in the
+consumer with provenance.
