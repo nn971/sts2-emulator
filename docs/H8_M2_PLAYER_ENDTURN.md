@@ -58,9 +58,16 @@ replay, alternating A/B execution order on the same CPU worker:
 | Elapsed time | 9.064 ms | 0.604 ms | 93.3% |
 
 The tests also reject a foreign runtime/version token before doing
-mechanics or appending the journal. A follow-up longer test compares
-a matched source-valid encounter across successive real intent, player
-and physical draw decisions and verifies the full replay afterward.
+mechanics or appending the journal. A second
+[CI run](https://github.com/nn971/sts2-emulator/actions/runs/40565108175)
+passed **15/15 focused C# tests** plus live Python JSONL integration,
+including a longer source-valid checked-vs-H8 trajectory with
+**29 matched decisions, six end-turn actions, and 18 physical draws**.
+The complete pilot fingerprints and both explicit replays matched.
+Its repeat paired end-turn measurement was **7.388 -> 0.480 MB/step**
+and **6.112 -> 0.428 ms/step**, confirming the allocation reduction
+across separate CI runs. CPU timings fluctuate across shared runners.
+
 The above microbench is **not** the full 128-combat/15-worker CUDA actor
 and excludes all model inference, H8 JSONL status and observation costs.
 
