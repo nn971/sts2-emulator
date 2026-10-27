@@ -81,6 +81,15 @@ public sealed class H8CombatRuntimeV1
             .LegalActions.Select(action => action.ActionId).ToArray();
     }
 
+    public string EndTurnActionId()
+    {
+        if (!_state.AtPlayerBoundary)
+            throw new InvalidOperationException(
+                "End turn is available only at a full player boundary.");
+        return new PrototypeAiEnvironment().Observe(_state.Run)
+            .LegalActions.Single(action => action.Kind == "end_turn").ActionId;
+    }
+
     public string[] PendingIntentIds()
     {
         var intents = _state.PendingInitialIntents ??
