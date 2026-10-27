@@ -1252,7 +1252,8 @@ public static class ControlledPlayableCombatEngineV111
         // Full provenance replay, from source-verified controlled HP+intent
         // completion through the entire ordered shuffle and player transcript.
         var current = Begin(stored.Origin, stored.Seed,
-            stored.FixtureEncounterId, stored.FixtureDeckPresetId);
+            stored.FixtureEncounterId, stored.FixtureDeckPresetId,
+            stored.FixtureSpec);
         foreach (var decision in stored.ShuffleTranscript)
         {
             decision.Validate();
