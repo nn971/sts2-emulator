@@ -71,12 +71,12 @@ public sealed class CanonicalJsonTests
                 2, 10, 1, 3, 1, ReplayOpeningDrawHooks: true));
         var source = pilot.Run;
         var original = CanonicalJson.Sha256(source);
-        Assert.Throws<InvalidOperationException>(() =>
+        Assert.Throws<InvalidOperationException>((Action)(() =>
         {
             using var scope = CanonicalJson.BeginReadOnlyRunStateHashReuse();
             Assert.Equal(original, CanonicalJson.Sha256(source));
             throw new InvalidOperationException("test");
-        });
+        }));
         Assert.Equal(original, CanonicalJson.Sha256(source));
         pilot.Validate();
     }
