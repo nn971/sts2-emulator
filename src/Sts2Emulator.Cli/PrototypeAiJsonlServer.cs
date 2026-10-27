@@ -261,6 +261,9 @@ internal static class PrototypeAiJsonlServer
                 boundaryVersion = boundary.Version,
                 kind,
                 terminal = runtime.Terminal,
+                outcome = runtime.Outcome,
+                exitHp = runtime.ExitHp,
+                terminalEnemyHp = runtime.TerminalEnemyHp,
                 decisionCount = runtime.DecisionHistory.Count,
                 cardInstanceIds = kind == "draw_card"
                     ? runtime.PendingDrawCardInstanceIds() : Array.Empty<long>(),
