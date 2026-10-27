@@ -34,6 +34,7 @@ public sealed class H8CombatRuntimeV1
     private readonly Guid _runtimeId;
     private readonly bool _useM2AutomaticDraw;
     private readonly bool _useNativeDrawTransition;
+    private readonly bool _useNativePlayerEndTurn;
     private SemanticPilotCombatV111 _state;
     private long _version;
     // A projected automatic-hand-draw continuation belongs to exactly one
@@ -54,11 +55,13 @@ public sealed class H8CombatRuntimeV1
         long version,
         List<H8DecisionEntryV1> journal,
         bool useM2AutomaticDraw,
-        bool useNativeDrawTransition)
+        bool useNativeDrawTransition,
+        bool useNativePlayerEndTurn)
     {
         _entry = entry;
         _useM2AutomaticDraw = useM2AutomaticDraw;
         _useNativeDrawTransition = useNativeDrawTransition;
+        _useNativePlayerEndTurn = useNativePlayerEndTurn;
         _state = state;
         _runtimeId = runtimeId;
         _version = version;
@@ -67,14 +70,15 @@ public sealed class H8CombatRuntimeV1
 
     public static H8CombatRuntimeV1 BeginSeeded(
         SemanticSeededEntryV111 entry, bool useM2AutomaticDraw = true,
-        bool useNativeDrawTransition = true)
+        bool useNativeDrawTransition = true,
+        bool useNativePlayerEndTurn = true)
     {
         ArgumentNullException.ThrowIfNull(entry);
         var state = SemanticPilotCombatEngineV111.BeginSeeded(entry);
         return new H8CombatRuntimeV1(
             entry, state, Guid.NewGuid(), 0,
             new List<H8DecisionEntryV1>(), useM2AutomaticDraw,
-            useNativeDrawTransition);
+            useNativeDrawTransition, useNativePlayerEndTurn);
     }
 
     public H8BoundaryTokenV1 Boundary =>
@@ -177,7 +181,13 @@ public sealed class H8CombatRuntimeV1
             throw new InvalidOperationException(
                 "H8 player action is not the next pending boundary.");
         ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
-        var next = SemanticPilotCombatEngineV111.Step(
+        // Only ordinary end_turn is migrated: card plays, potions and
+        // selection hooks remain checked until their native cursor exists.
+        // No player mutation or journal append occurs until this succeeds.
+        var next = _useNativePlayerEndTurn
+            ? H8NativePlayerEndTurnEngineV1.TryAdvance(_state, actionId)
+            : null;
+        next ??= SemanticPilotCombatEngineV111.Step(
             _state, _state.Fingerprint, actionId);
         Commit(next, new H8DecisionEntryV1(
             _version, "player", "player", ActionId: actionId));
@@ -249,7 +259,7 @@ public sealed class H8CombatRuntimeV1
     public H8CombatRuntimeV1 Fork() =>
         new(_entry, _state.Fork(), Guid.NewGuid(), _version,
             new List<H8DecisionEntryV1>(_journal), _useM2AutomaticDraw,
-            _useNativeDrawTransition);
+            _useNativeDrawTransition, _useNativePlayerEndTurn);
 
     /// <summary>
     /// Explicitly replay the journal from its source-valid seeded checkpoint,
@@ -259,7 +269,8 @@ public sealed class H8CombatRuntimeV1
     public void AuditReplay()
     {
         var replay = BeginSeeded(
-            _entry, _useM2AutomaticDraw, _useNativeDrawTransition);
+            _entry, _useM2AutomaticDraw, _useNativeDrawTransition,
+            _useNativePlayerEndTurn);
         foreach (var item in _journal)
         {
             if (replay.Boundary.Version != item.Version)
