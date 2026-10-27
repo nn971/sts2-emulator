@@ -265,6 +265,8 @@ internal static class PrototypeAiJsonlServer
                     ? runtime.PendingDrawCardInstanceIds() : Array.Empty<long>(),
                 intentIds = kind == "enemy_intent"
                     ? runtime.PendingIntentIds() : Array.Empty<string>(),
+                intentRawWeights = kind == "enemy_intent"
+                    ? runtime.PendingIntentRawWeights() : Array.Empty<long>(),
                 playerActionIds = kind == "player"
                     ? runtime.LegalPlayerActionIds() : Array.Empty<string>(),
                 endTurnActionId = kind == "player"
