@@ -61,8 +61,7 @@ coverage requires mechanic tests and a fair public enemy-position bridge.
 
 `ResearchCombatFixtureV111Tests` checks a 1,000-spec deterministic census,
 rejection of unsupported cards/upgrades/relics/potions/health/floor,
-independence of spec from source RNG seeds, and two real semantic openings
-with persistent deck IDs, upgrades, relics, health, and saved snapshot replay.
+independence of spec from source RNG seeds, and two independently replayed semantic openings with persistent deck IDs,\nupgrades, relics, health, plus a 100-configuration real opening sweep.
 
 Build/test locally after checking out the isolated research branch:
 
