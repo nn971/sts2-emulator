@@ -2693,6 +2693,11 @@ internal static class PrototypeAiJsonlServer
             SemanticPilotCombatV111 state, string handle,
             string? parent = null)
         {
+            // Response projection only reads the completed state. Its pending
+            // event, chance-site, and mode descriptors may request the same
+            // state fingerprint repeatedly. Never hold this scope through
+            // StoreSemantic, resolution, or the next JSONL request.
+            using var hashReuse = CanonicalJson.BeginReadOnlyRunStateHashReuse();
             var measure = semanticProfiler.Enabled;
             var started = measure ? SemanticOperationProfiler.Timestamp() : 0L;
             var allocated = measure ? SemanticOperationProfiler.Allocated() : 0L;
