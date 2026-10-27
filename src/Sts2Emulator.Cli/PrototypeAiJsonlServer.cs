@@ -262,11 +262,11 @@ internal static class PrototypeAiJsonlServer
                 terminal = runtime.Terminal,
                 decisionCount = runtime.DecisionHistory.Count,
                 cardInstanceIds = kind == "draw_card"
-                    ? runtime.PendingDrawCardInstanceIds() : [],
+                    ? runtime.PendingDrawCardInstanceIds() : Array.Empty<long>(),
                 intentIds = kind == "enemy_intent"
-                    ? runtime.PendingIntentIds() : [],
+                    ? runtime.PendingIntentIds() : Array.Empty<string>(),
                 playerActionIds = kind == "player"
-                    ? runtime.LegalPlayerActionIds() : []
+                    ? runtime.LegalPlayerActionIds() : Array.Empty<string>()
             };
         }
 
@@ -6592,14 +6592,14 @@ internal static class PrototypeAiJsonlServer
                                 request, "replay_opening_draw_hooks") ?? true);
                         var runtime = H8CombatRuntimeV1.BeginSeeded(entry);
                         var handle = StoreH8(runtime);
-                        Write(new { requestId, result = H8Status(runtime, handle) });
+                        Write(new { requestId, ok = true, result = H8Status(runtime, handle) });
                         break;
                     }
 
                     case "h8_status":
                     {
                         var runtime = RequireH8(request);
-                        Write(new { requestId, result = H8Status(
+                        Write(new { requestId, ok = true, result = H8Status(
                             runtime, RequiredString(request, "h8_handle")) });
                         break;
                     }
@@ -6610,7 +6610,7 @@ internal static class PrototypeAiJsonlServer
                         runtime.ChoosePlayerAction(
                             RequiredH8Boundary(request),
                             RequiredString(request, "action_id"));
-                        Write(new { requestId, result = H8Status(
+                        Write(new { requestId, ok = true, result = H8Status(
                             runtime, RequiredString(request, "h8_handle")) });
                         break;
                     }
@@ -6623,7 +6623,7 @@ internal static class PrototypeAiJsonlServer
                             RequiredString(request, "intent_id"),
                             OptionalString(request, "provider_id") ??
                                 "reference-nature");
-                        Write(new { requestId, result = H8Status(
+                        Write(new { requestId, ok = true, result = H8Status(
                             runtime, RequiredString(request, "h8_handle")) });
                         break;
                     }
@@ -6636,7 +6636,7 @@ internal static class PrototypeAiJsonlServer
                             RequiredLong(request, "card_instance_id"),
                             OptionalString(request, "provider_id") ??
                                 "reference-nature");
-                        Write(new { requestId, result = H8Status(
+                        Write(new { requestId, ok = true, result = H8Status(
                             runtime, RequiredString(request, "h8_handle")) });
                         break;
                     }
@@ -6645,7 +6645,7 @@ internal static class PrototypeAiJsonlServer
                     {
                         var child = RequireH8(request).Fork();
                         var handle = StoreH8(child);
-                        Write(new { requestId, result = H8Status(child, handle) });
+                        Write(new { requestId, ok = true, result = H8Status(child, handle) });
                         break;
                     }
 
