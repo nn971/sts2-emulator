@@ -16,10 +16,11 @@ public sealed class H8CombatRuntimeV1Tests
             2, 10, 1, 3, 1, ReplayOpeningDrawHooks: true);
 
     private static H8CombatRuntimeV1 ReachNaturalDraw(
-        string seed, bool useM2AutomaticDraw = true)
+        string seed, bool useM2AutomaticDraw = true,
+        bool useNativeDrawTransition = true)
     {
         var runtime = H8CombatRuntimeV1.BeginSeeded(
-            Mawler(seed), useM2AutomaticDraw);
+            Mawler(seed), useM2AutomaticDraw, useNativeDrawTransition);
         for (var step = 0; !runtime.HasPendingCardDraw; step++)
         {
             Assert.True(step < 200,
@@ -85,7 +86,8 @@ public sealed class H8CombatRuntimeV1Tests
         Assert.DoesNotContain("sub.semantic_draw_endturn_state_fork", stages);
         Assert.DoesNotContain("sub.semantic_draw_combat_output_validate", stages);
         Assert.DoesNotContain("sub.semantic_draw_endturn_output_validate", stages);
-        Assert.Contains("sub.semantic_draw_combat_engine_mechanics", stages);
+        Assert.Contains("sub.h8_native_draw_engine_mechanics", stages);
+        Assert.DoesNotContain("sub.semantic_draw_combat_engine_mechanics", stages);
         Assert.Equal(expected.Fingerprint,
             runtime.LegacySnapshotForAudit().Fingerprint);
         Assert.Equal(boundary.Version + 1, runtime.Boundary.Version);
@@ -110,7 +112,9 @@ public sealed class H8CombatRuntimeV1Tests
         {
             var seed = "h8-m2-matched-a10-mawler-" + i;
             var m1 = ReachNaturalDraw(seed, useM2AutomaticDraw: false);
-            var m2 = ReachNaturalDraw(seed, useM2AutomaticDraw: true);
+            var m2 = ReachNaturalDraw(
+                seed, useM2AutomaticDraw: true,
+                useNativeDrawTransition: false);
             Assert.Equal(m1.DecisionHistory, m2.DecisionHistory);
             var candidates = m1.PendingDrawCardInstanceIds();
             Assert.Equal(candidates, m2.PendingDrawCardInstanceIds());
@@ -157,6 +161,66 @@ public sealed class H8CombatRuntimeV1Tests
             " -> " +
             (m2Ticks * 1000.0 / Stopwatch.Frequency / draws).ToString("F3"));
         Assert.Equal(8, draws);
+    }
+
+    [Fact]
+    public void MatchedEightCombatDirectNativeDrawsAgreeWithM2Bridge()
+    {
+        // The prior M2 bridge and the new direct engine route consume the
+        // same provider-selected physical identities from actual A10 draws.
+        // Inspect mechanics, history and full replay independently.
+        long m2Bytes = 0, nativeBytes = 0, m2Ticks = 0, nativeTicks = 0;
+        const int combatCount = 8;
+        for (var i = 0; i < combatCount; i++)
+        {
+            var seed = "h8-native-draw-matched-mawler-" + i;
+            var prior = ReachNaturalDraw(
+                seed, useM2AutomaticDraw: true,
+                useNativeDrawTransition: false);
+            var direct = ReachNaturalDraw(
+                seed, useM2AutomaticDraw: true,
+                useNativeDrawTransition: true);
+            Assert.Equal(prior.DecisionHistory, direct.DecisionHistory);
+            var candidates = prior.PendingDrawCardInstanceIds();
+            Assert.Equal(candidates, direct.PendingDrawCardInstanceIds());
+            var selected = candidates[(i * 3) % candidates.Length];
+
+            void Measure(H8CombatRuntimeV1 runtime,
+                ref long bytes, ref long ticks)
+            {
+                var beforeBytes = GC.GetAllocatedBytesForCurrentThread();
+                var beforeTicks = Stopwatch.GetTimestamp();
+                runtime.ChooseDrawCard(
+                    runtime.Boundary, selected, "scripted-h8-native-ab");
+                ticks += Stopwatch.GetTimestamp() - beforeTicks;
+                bytes += GC.GetAllocatedBytesForCurrentThread() - beforeBytes;
+            }
+            if (i % 2 == 0)
+            {
+                Measure(prior, ref m2Bytes, ref m2Ticks);
+                Measure(direct, ref nativeBytes, ref nativeTicks);
+            }
+            else
+            {
+                Measure(direct, ref nativeBytes, ref nativeTicks);
+                Measure(prior, ref m2Bytes, ref m2Ticks);
+            }
+            Assert.Equal(prior.DecisionHistory, direct.DecisionHistory);
+            Assert.Equal(
+                prior.LegacySnapshotForAudit().Fingerprint,
+                direct.LegacySnapshotForAudit().Fingerprint);
+            prior.AuditReplay();
+            direct.AuditReplay();
+        }
+        _output.WriteLine(
+            "H8 M2-bridge-vs-direct A10 draws=" + combatCount +
+            " allocated MB/draw " +
+            (m2Bytes / 1e6 / combatCount).ToString("F3") + " -> " +
+            (nativeBytes / 1e6 / combatCount).ToString("F3") +
+            " elapsed ms/draw " +
+            (m2Ticks * 1000.0 / Stopwatch.Frequency / combatCount).ToString("F3") +
+            " -> " +
+            (nativeTicks * 1000.0 / Stopwatch.Frequency / combatCount).ToString("F3"));
     }
 
     [Fact]
