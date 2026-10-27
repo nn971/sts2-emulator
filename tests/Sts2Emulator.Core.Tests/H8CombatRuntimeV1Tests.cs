@@ -224,6 +224,77 @@ public sealed class H8CombatRuntimeV1Tests
     }
 
     [Fact]
+    public void DirectDrawAndM2BridgeRemainEquivalentAcrossSubsequentBoundaries()
+    {
+        // The comparison must remain valid after the first resumed draw:
+        // end-turn completion, another turn, or a further controlled draw
+        // must not depend on a stale projected HandDraw/EndTurn frame.
+        var prior = ReachNaturalDraw(
+            "h8-native-multiboundary-mawler",
+            useM2AutomaticDraw: true, useNativeDrawTransition: false);
+        var direct = ReachNaturalDraw(
+            "h8-native-multiboundary-mawler",
+            useM2AutomaticDraw: true, useNativeDrawTransition: true);
+        var decisions = 0;
+        var draws = 0;
+        for (var i = 0; i < 36; i++)
+        {
+            Assert.Equal(
+                prior.LegacySnapshotForAudit().Fingerprint,
+                direct.LegacySnapshotForAudit().Fingerprint);
+            Assert.Equal(prior.DecisionHistory, direct.DecisionHistory);
+            if (prior.Terminal || direct.Terminal)
+            {
+                Assert.Equal(prior.Terminal, direct.Terminal);
+                break;
+            }
+
+            if (prior.HasPendingCardDraw)
+            {
+                var support = prior.PendingDrawCardInstanceIds();
+                Assert.Equal(support, direct.PendingDrawCardInstanceIds());
+                var selectedId = support[(i + 1) % support.Length];
+                prior.ChooseDrawCard(prior.Boundary, selectedId);
+                direct.ChooseDrawCard(direct.Boundary, selectedId);
+                draws++;
+            }
+            else if (prior.HasPendingIntent)
+            {
+                var support = prior.PendingIntentIds();
+                Assert.Equal(support, direct.PendingIntentIds());
+                prior.ChooseIntent(prior.Boundary, support[0]);
+                direct.ChooseIntent(direct.Boundary, support[0]);
+            }
+            else if (prior.LegacySnapshotForAudit().AtPlayerBoundary)
+            {
+                var endTurn = prior.EndTurnActionId();
+                Assert.Equal(endTurn, direct.EndTurnActionId());
+                prior.ChoosePlayerAction(prior.Boundary, endTurn);
+                direct.ChoosePlayerAction(direct.Boundary, endTurn);
+            }
+            else
+            {
+                // The H8 typed chooser for this other chance/selection
+                // boundary has not been migrated. Prior H8 and direct H8
+                // must still agree at the last supported boundary.
+                break;
+            }
+            decisions++;
+        }
+
+        Assert.True(draws >= 1, "Expected at least one real physical draw.");
+        Assert.Equal(prior.DecisionHistory, direct.DecisionHistory);
+        Assert.Equal(
+            prior.LegacySnapshotForAudit().Fingerprint,
+            direct.LegacySnapshotForAudit().Fingerprint);
+        prior.AuditReplay();
+        direct.AuditReplay();
+        _output.WriteLine(
+            "H8 direct-vs-M2 sequential A10 decisions=" + decisions +
+            " physical_draws=" + draws + " exact replay passed.");
+    }
+
+    [Fact]
     public void ForkHasIndependentRuntimeIdentityAndDeterministicJournal()
     {
         var runtime = ReachNaturalDraw("h8-versioned-mawler-fork-v1");
