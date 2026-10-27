@@ -77,6 +77,24 @@ public sealed class SemanticPilotCombatV111Tests
     }
 
     [Fact]
+    public void MemoizedPilotValidationIsReadOnlyAndRejectsCorruptedEnvelope()
+    {
+        var state = SemanticPilotCombatEngineV111.Begin(
+            Opening("h7-pilot-validation-cache-contract"));
+        var before = state.Fingerprint;
+        state.Validate();
+        state.Validate();
+        Assert.Equal(before, state.Fingerprint);
+        Assert.Throws<InvalidDataException>(() =>
+            (state with { Mode = "corrupted-mode" }).Validate());
+        Assert.Throws<InvalidDataException>(() =>
+            (state with { History = null! }).Validate());
+        // The valid original state remains usable after checking a corrupt fork.
+        state.Validate();
+        Assert.Equal(before, state.Fingerprint);
+    }
+
+    [Fact]
     public void SemanticProtocolReusesExactlyPrecommittedOpeningOrder()
     {
         var legacy = Opening("semantic-p0-precommitted-opening");
