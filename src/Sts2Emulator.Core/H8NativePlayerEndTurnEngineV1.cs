@@ -30,13 +30,14 @@ internal static class H8NativePlayerEndTurnEngineV1
         return action?.Kind == "end_turn";
     }
 
-    internal static SemanticPilotCombatV111 Advance(
+    /// <summary>Returns null when this boundary is a different legal
+    /// player-action kind; only the native end-turn route is migrated.</summary>
+    internal static SemanticPilotCombatV111? TryAdvance(
         SemanticPilotCombatV111 current, string actionId)
     {
         ArgumentNullException.ThrowIfNull(current);
         if (!IsEndTurn(current, actionId))
-            throw new InvalidOperationException(
-                "H8 native end-turn requires the current legal end_turn action.");
+            return null;
         var combat = current.Run.World?.Combat ??
             throw new InvalidOperationException(
                 "H8 end-turn requires active combat mechanics.");
