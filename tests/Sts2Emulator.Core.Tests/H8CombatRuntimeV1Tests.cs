@@ -70,8 +70,13 @@ public sealed class H8CombatRuntimeV1Tests
         }
         Assert.DoesNotContain("sub.semantic_draw_pilot_input_validate", stages);
         Assert.DoesNotContain("sub.semantic_draw_pilot_input_fingerprint", stages);
-        Assert.Contains("sub.semantic_draw_combat_output_validate", stages);
-        Assert.Contains("sub.semantic_draw_endturn_output_validate", stages);
+        // H8 M2 owns this automatic-hand-draw cursor. The actual gameplay
+        // transition still executes, while full nested audits run only when
+        // AuditReplay is explicitly requested.
+        Assert.DoesNotContain("sub.semantic_draw_endturn_state_fork", stages);
+        Assert.DoesNotContain("sub.semantic_draw_combat_output_validate", stages);
+        Assert.DoesNotContain("sub.semantic_draw_endturn_output_validate", stages);
+        Assert.Contains("sub.semantic_draw_combat_engine_mechanics", stages);
         Assert.Equal(expected.Fingerprint,
             runtime.LegacySnapshotForAudit().Fingerprint);
         Assert.Equal(boundary.Version + 1, runtime.Boundary.Version);
