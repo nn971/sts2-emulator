@@ -59,6 +59,11 @@ internal static class PrototypeAiJsonlServer
             Environment.GetEnvironmentVariable(
                 "STS2_H7_VERIFY_SOURCE_OPENING_HASH_REUSE") == "1";
         long nextSemanticHandle = 1;
+        // H8 sessions use an independent namespace and live boundary version;
+        // the old semantic protocol and fingerprint handles stay untouched.
+        var h8States = new Dictionary<string, H8CombatRuntimeV1>(
+            StringComparer.Ordinal);
+        long nextH8Handle = 1;
         var semanticProfiler = new SemanticOperationProfiler();
         string? activeOperation = null;
         long activeStarted = 0;
@@ -216,6 +221,55 @@ internal static class PrototypeAiJsonlServer
                 ? state
                 : throw new InvalidOperationException(
                     "Unknown semantic session handle: " + handle);
+        }
+
+        string StoreH8(H8CombatRuntimeV1 runtime)
+        {
+            var handle = "h8-" + nextH8Handle++;
+            h8States.Add(handle, runtime);
+            return handle;
+        }
+
+        H8CombatRuntimeV1 RequireH8(JsonElement request)
+        {
+            var handle = RequiredString(request, "h8_handle");
+            return h8States.TryGetValue(handle, out var runtime)
+                ? runtime
+                : throw new InvalidOperationException(
+                    "Unknown H8 combat handle: " + handle);
+        }
+
+        H8BoundaryTokenV1 RequiredH8Boundary(JsonElement request) =>
+            new(
+                Guid.Parse(RequiredString(request, "runtime_id")),
+                RequiredLong(request, "boundary_version"));
+
+        object H8Status(H8CombatRuntimeV1 runtime, string handle)
+        {
+            var boundary = runtime.Boundary;
+            string kind = runtime.Terminal ? "terminal" :
+                runtime.HasPendingCardDraw ? "draw_card" :
+                runtime.HasPendingIntent ? "enemy_intent" :
+                runtime.AtPlayerBoundary ? "player" : "unsupported";
+            return new
+            {
+                ok = true,
+                schemaId = "sts2-h8-versioned-combat-runtime-v1",
+                h8Handle = handle,
+                runtimeId = boundary.RuntimeId.ToString("N"),
+                boundaryVersion = boundary.Version,
+                kind,
+                terminal = runtime.Terminal,
+                decisionCount = runtime.DecisionHistory.Count,
+                cardInstanceIds = kind == "draw_card"
+                    ? runtime.PendingDrawCardInstanceIds() : Array.Empty<long>(),
+                intentIds = kind == "enemy_intent"
+                    ? runtime.PendingIntentIds() : Array.Empty<string>(),
+                playerActionIds = kind == "player"
+                    ? runtime.LegalPlayerActionIds() : Array.Empty<string>(),
+                endTurnActionId = kind == "player"
+                    ? runtime.EndTurnActionId() : null
+            };
         }
 
         string StoreReferenceNature(ReferenceNatureSessionV111 session)
@@ -6518,6 +6572,121 @@ internal static class PrototypeAiJsonlServer
                         var handle = StoreSemantic(next);
                         Write(new { requestId, ok = true,
                             result = SemanticResult(next, handle) });
+                        break;
+                    }
+
+                    case "h8_begin_seeded":
+                    {
+                        // New version-based execution protocol. This narrow
+                        // H8 M1 entry currently supports a seeded combat;
+                        // mechanics remain delegated to the v111 adapter.
+                        var entry = new SemanticSeededEntryV111(
+                            RequiredString(request, "seed"),
+                            OptionalInt(request, "act") ?? 1,
+                            RequiredString(request, "encounter_id"),
+                            RequiredString(request, "native_entry"),
+                            OptionalInt(request, "total_floor") ?? 2,
+                            OptionalInt(request, "ascension") ?? 10,
+                            OptionalInt(request, "first_monster_combat_id") ?? 1,
+                            OptionalInt(request, "map_column") ?? 3,
+                            OptionalInt(request, "map_row") ?? 1,
+                            ReplayOpeningDrawHooks:
+                                !request.TryGetProperty(
+                                    "replay_opening_draw_hooks", out _) ||
+                                OptionalBool(request, "replay_opening_draw_hooks"));
+                        var runtime = H8CombatRuntimeV1.BeginSeeded(entry);
+                        var handle = StoreH8(runtime);
+                        Write(new { requestId, ok = true, result = H8Status(runtime, handle) });
+                        break;
+                    }
+
+                    case "h8_status":
+                    {
+                        var runtime = RequireH8(request);
+                        Write(new { requestId, ok = true, result = H8Status(
+                            runtime, RequiredString(request, "h8_handle")) });
+                        break;
+                    }
+
+                    case "h8_step":
+                    {
+                        var runtime = RequireH8(request);
+                        runtime.ChoosePlayerAction(
+                            RequiredH8Boundary(request),
+                            RequiredString(request, "action_id"));
+                        Write(new { requestId, ok = true, result = H8Status(
+                            runtime, RequiredString(request, "h8_handle")) });
+                        break;
+                    }
+
+                    case "h8_resolve_intent":
+                    {
+                        var runtime = RequireH8(request);
+                        runtime.ChooseIntent(
+                            RequiredH8Boundary(request),
+                            RequiredString(request, "intent_id"),
+                            OptionalString(request, "provider_id") ??
+                                "reference-nature");
+                        Write(new { requestId, ok = true, result = H8Status(
+                            runtime, RequiredString(request, "h8_handle")) });
+                        break;
+                    }
+
+                    case "h8_resolve_draw_card":
+                    {
+                        var runtime = RequireH8(request);
+                        runtime.ChooseDrawCard(
+                            RequiredH8Boundary(request),
+                            RequiredLong(request, "card_instance_id"),
+                            OptionalString(request, "provider_id") ??
+                                "reference-nature");
+                        Write(new { requestId, ok = true, result = H8Status(
+                            runtime, RequiredString(request, "h8_handle")) });
+                        break;
+                    }
+
+                    case "h8_fork":
+                    {
+                        var child = RequireH8(request).Fork();
+                        var handle = StoreH8(child);
+                        Write(new { requestId, ok = true, result = H8Status(child, handle) });
+                        break;
+                    }
+
+                    case "h8_replay_audit":
+                    {
+                        var runtime = RequireH8(request);
+                        runtime.AuditReplay();
+                        Write(new { requestId, ok = true, replayVerified = true,
+                            decisionCount = runtime.DecisionHistory.Count });
+                        break;
+                    }
+
+                    case "h8_decision_history":
+                    {
+                        var runtime = RequireH8(request);
+                        Write(new { requestId, ok = true,
+                            decisions = runtime.DecisionHistory });
+                        break;
+                    }
+
+                    case "h8_release_many":
+                    {
+                        if (!request.TryGetProperty("h8_handles", out var handles) ||
+                            handles.ValueKind != JsonValueKind.Array)
+                            throw new ArgumentException(
+                                "h8_handles must be an array.");
+                        var released = 0;
+                        foreach (var item in handles.EnumerateArray())
+                        {
+                            if (item.ValueKind != JsonValueKind.String ||
+                                string.IsNullOrWhiteSpace(item.GetString()))
+                                throw new ArgumentException(
+                                    "Invalid H8 handle.");
+                            if (h8States.Remove(item.GetString()!))
+                                released++;
+                        }
+                        Write(new { requestId, ok = true, released });
                         break;
                     }
 
