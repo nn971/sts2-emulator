@@ -207,8 +207,8 @@ public sealed class H8CombatRuntimeV1
         if (!HasPendingIntent)
             throw new InvalidOperationException(
                 "H8 intent is not the next pending boundary.");
-        var next = SemanticPilotCombatEngineV111.ResolveIntent(
-            _state, _state.Fingerprint, intentId);
+        var next = SemanticPilotCombatEngineV111
+            .ResolveIntentFromH8TrustedBoundary(_state, intentId);
         Commit(next, new H8DecisionEntryV1(
             _version, "intent", providerId,
             SiteId: "enemy_intent", IntentId: intentId));
