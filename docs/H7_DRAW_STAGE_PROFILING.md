@@ -170,3 +170,53 @@ Any such change requires exact source-state identity, injected stale
 fingerprint rejection, terminal replay equality, and a matched 128-combat
 A10 source digest before performance claims. Training and native fidelity
 remain independently gated.
+
+## First measured nested profile: 16 A10 cells, two workers
+
+[Workflow run 40508260127](https://github.com/nn971/sts2-emulator/actions/runs/40508260127)
+completed 16 genuine A10 source-cell combats using a deliberately small
+CPU actor and opt-in measurements. It resolved 515 semantic draws.
+The 16-cell average **109.86MB per complete draw** closely matches
+the full-size 128-combat CUDA actor run's **110.13MB per draw**.
+
+Measured averages (MB decimal per draw, unless labelled otherwise):
+
+| Nested metric | Count across cohort | Time | Managed allocation |
+| --- | ---: | ---: | ---: |
+| Full draw op | 515 | 110.3 ms/draw | 109.86 MB/draw |
+| Native draw transition | 515 | 62.4 ms/draw | 63.76 MB/draw |
+| Pilot input validation | 515 | 17.2 ms/draw | 19.02 MB/draw |
+| Pilot normalizer | 501 | 15.0 ms/invocation | 16.25 MB/draw |
+| Entire pilot private resolver | 515 | 40.3 ms/draw | 39.79 MB/draw |
+| End-turn resolver | 501 | 13.4 ms/invocation | 11.45 MB/draw |
+| End-turn state fork | 501 | 0.72 ms/invocation | 0.36 MB/draw |
+| Combat draw RunState fork | 501 | 0.03 ms/invocation | 0.02 MB/draw |
+| Actual DrawCards engine mechanics | 501 | 0.70 ms/invocation | **0.65 MB/draw** |
+| Canonical hash of RunState | **81,952** | 0.37 ms/hash | **60.77 MB/draw** |
+| Canonical hash of SemanticPilotCombatV111 | **5,163** | 3.18 ms/hash | **35.00 MB/draw** |
+
+**Crucial:** stages and typed hashes overlap. Hashes generated during a
+pilot validation are *also* counted by both the validation stage and
+the typed hash stage; summing these rows is invalid. The RunState
+hash count averages **159.1 per draw**. Each full-state canonical hash
+rebuilds sorted JSON and copies UTF-8 before hashing. The direct
+mechanical card-draw engine itself is inexpensive compared with this
+verification/bookkeeping overhead.
+
+In the first profiling run, `SemanticChanceSites` was measured across
+*all* semantic responses (1,042 calls, 17.37MB per invocation); that
+unscoped aggregate cannot be divided by the 515 draw calls to claim
+a per-draw cost. The subsequent diagnostic revision separates
+`sub.semantic_draw_result_chance_sites` and
+`sub.semantic_draw_result_controller_mode` from unrelated response
+types for rigorous attribution.
+
+**Practical next target:** eliminate unnecessary repeated full
+`RunState` JSON hashes created by passive pending-event/capability
+enumeration and repeated validation over already-validated immutable
+source boundaries, while preserving exact source event IDs and
+stale-state rejection. The measured fork cost is too small to justify
+a wholesale persistent-state rewrite first.
+
+The original benchmark's pinned 128-combat 15-worker model/source
+digest still needs to be rerun after any future optimization.
