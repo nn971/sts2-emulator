@@ -2956,7 +2956,8 @@ public static class SemanticPilotCombatEngineV111
         bool recordSemanticDraw,
         SemanticCostDecisionV111? expectedCostDecision,
         SemanticRandomPileCardDecisionV111? expectedRandomPileCardDecision = null,
-        bool prevalidated = false)
+        bool prevalidated = false,
+        SemanticDeckEventV111? validatedDrawEvent = null)
     {
         // Stable-ID resolvers already validate both the exact parent state and
         // caller fingerprint before constructing a choice. Avoid repeating the
@@ -2968,10 +2969,12 @@ public static class SemanticPilotCombatEngineV111
             if (current.Fingerprint != fingerprint)
                 throw new InvalidOperationException("Stale semantic Nature fingerprint.");
         }
+        // One mechanics/provider projection for this read-only source.
+        var pendingEndTurn = current.PendingEndTurn;
         if (current.DrawHookChoicePending is not null)
             throw new InvalidOperationException(
                 "Resolve the pending CardDrawn hook action by action ID.");
-        if (current.PendingEndTurn?.TargetPending is { } automaticTarget)
+        if (pendingEndTurn?.TargetPending is { } automaticTarget)
         {
             if (selectedIndex < 0 || selectedIndex >=
                     automaticTarget.CandidateEnemyInstanceIds.Length)
@@ -2983,7 +2986,7 @@ public static class SemanticPilotCombatEngineV111
         if (semanticIntent is not null)
         {
             var ticket = current.PendingInitialIntents ??
-                current.PendingEndTurn?.Intents;
+                pendingEndTurn?.Intents;
             if (ticket?.Pending is not { } request)
                 throw new InvalidOperationException(
                     "Semantic intent decision has no matching pending event.");
@@ -2992,11 +2995,11 @@ public static class SemanticPilotCombatEngineV111
                 throw new InvalidDataException(
                     "Missing weighted intent support.");
             var semanticEvent = SemanticIntentChoiceV111.CreateEvent(
-                current.Fingerprint, request, support);
+                fingerprint, request, support);
             SemanticIntentChoiceV111.ValidateDecision(
                 semanticEvent, semanticIntent, selectedIndex);
         }
-        var drawEvent = current.DrawPending;
+        var drawEvent = validatedDrawEvent ?? current.DrawPending;
         var randomPileCardEvent = current.RandomPileCardPending;
         if (expectedDeckDecision is not null)
             SemanticDrawStageProfilerV111.Measure(
@@ -3058,7 +3061,7 @@ public static class SemanticPilotCombatEngineV111
             var (effectCostResult, siteId) =
                 SemanticNestedChoiceResumeV111.Resume(
                     current.Run, choice);
-            var nextEndTurn = current.PendingEndTurn is { } costEndTurn
+            var nextEndTurn = pendingEndTurn is { } costEndTurn
                 ? SemanticEndTurnEngineV111.ContinueNestedAutomaticChoice(
                     costEndTurn, effectCostResult, choice, siteId)
                 : null;
@@ -3067,7 +3070,7 @@ public static class SemanticPilotCombatEngineV111
                 new SemanticPilotContinuationV111(
                     "semantic_cost",
                     CostDecision: effectCostDecision.Fork()),
-                preservePendingEndTurn: current.PendingEndTurn is null);
+                preservePendingEndTurn: pendingEndTurn is null);
             Validate(effectCostState);
             return effectCostState;
         }
@@ -3096,7 +3099,7 @@ public static class SemanticPilotCombatEngineV111
             var (effectDrawResult, siteId) =
                 SemanticNestedChoiceResumeV111.Resume(
                     current.Run, choice);
-            var nextEndTurn = current.PendingEndTurn is { } drawEndTurn
+            var nextEndTurn = pendingEndTurn is { } drawEndTurn
                 ? SemanticEndTurnEngineV111.ContinueNestedAutomaticChoice(
                     drawEndTurn, effectDrawResult, choice, siteId)
                 : null;
@@ -3105,11 +3108,11 @@ public static class SemanticPilotCombatEngineV111
                 new SemanticPilotContinuationV111(
                     "semantic_draw",
                     DrawDecision: effectDrawDecision.Fork()),
-                preservePendingEndTurn: current.PendingEndTurn is null);
+                preservePendingEndTurn: pendingEndTurn is null);
             Validate(effectDrawState);
             return effectDrawState;
         }
-        var pending = current.PendingEndTurn ??
+        var pending = pendingEndTurn ??
             throw new InvalidOperationException("No Nature decision is pending.");
         if (pending.IntentPending is null && pending.DrawPending is null &&
             pending.RandomPileCardPending is null && pending.CostPending is null &&
@@ -3242,7 +3245,8 @@ public static class SemanticPilotCombatEngineV111
         return SemanticDrawStageProfilerV111.Measure(
             "sub.semantic_draw_pilot_resolve",
             () => Resolve(current, fingerprint, decision.SelectedIndex,
-                null, decision, true, null, prevalidated: true));
+                null, decision, true, null, prevalidated: true,
+                validatedDrawEvent: pending));
     }
 
     /// <summary>
