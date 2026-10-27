@@ -91,6 +91,8 @@ for mode in before after
     or break
 end
 set -e STS2_SEMANTIC_PROFILE_DIR
+python $root/after/source/tools/compare_h7_boundary_perf.py \
+    $root/before $root/after
 echo $root
 ```
 
