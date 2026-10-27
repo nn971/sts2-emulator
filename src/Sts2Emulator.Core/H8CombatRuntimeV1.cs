@@ -148,13 +148,13 @@ public sealed class H8CombatRuntimeV1
             // Only fast-path a plain physical automatic hand draw.
             // A pending cost/insertion/selection/hook remains owned by its
             // separate typed continuation and must keep the checked fallback.
-            var automatic = frame?.HandDraw is
-                { AtBoundary: false, Pending: not null,
-                  CostPending: null, RandomPileCardPending: null,
-                  DrawInsertionPending: null, StratagemSelectionPending: null,
-                  DrawHookChoicePending: null } &&
-                frame.EnemyActionPending is null &&
-                frame.IntentPending is null &&
+            var automatic = frame is
+                { HandDraw:
+                    { AtBoundary: false, Pending: not null,
+                      CostPending: null, RandomPileCardPending: null,
+                      DrawInsertionPending: null, StratagemSelectionPending: null,
+                      DrawHookChoicePending: null },
+                  EnemyActionPending: null, IntentPending: null } &&
                 _state.Run.World?.Combat?.PendingChoice is not
                 { ChoiceId: "controlled_semantic_draw",
                   ControlledSemanticDraw: not null };
