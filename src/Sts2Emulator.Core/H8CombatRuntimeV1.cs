@@ -228,7 +228,7 @@ public sealed class H8CombatRuntimeV1
         if (_useM2AutomaticDraw && cursor.CanUseFastAutomaticDraw)
         {
             next = _useNativeDrawTransition
-                ? SemanticPilotCombatEngineV111.AdvanceH8AutomaticPhysicalDraw(
+                ? H8NativePhysicalDrawEngineV1.AdvanceAutomaticHandDraw(
                     _state, cursor.AutomaticEndTurn!, cursor.Event, selectedIndex)
                 : SemanticPilotCombatEngineV111.ResolveFromH8AutomaticDrawCursor(
                     _state, cursor.AutomaticEndTurn!, cursor.Event, selectedIndex);
