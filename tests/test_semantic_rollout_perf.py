@@ -4,8 +4,10 @@ from __future__ import annotations
 import json
 import os
 import sys
+import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "bindings" / "python"))
 from sts2_emulator import EmulatorError, SemanticCombat, Session  # noqa: E402
@@ -110,3 +112,28 @@ class SemanticProfilerIntegrationTests(unittest.TestCase):
                 self.assertGreaterEqual(item["totalSeconds"], 0.0)
                 self.assertGreaterEqual(item["allocatedBytes"], 0)
             session.release_semantic_many([state, child, restored])
+
+    def test_session_close_exports_per_process_profile_when_opted_in(self):
+        cmd = [
+            "dotnet", os.environ["STS2_EMULATOR_DLL"], "prototype-ai-jsonl",
+        ]
+        with tempfile.TemporaryDirectory(prefix="sts2-semantic-smoke-") as tmp:
+            with patch.dict(os.environ, {"STS2_SEMANTIC_PROFILE_DIR": tmp}):
+                with Session(cmd) as session:
+                    session.reset_semantic_profile()
+                    _ = session.begin_seeded_semantic_combat(
+                        "h7-auto-profile-smoke", act=1,
+                        encounter_id="proto.encounter.mawler_normal",
+                        native_entry="MawlerNormal", total_floor=2,
+                        ascension=10, first_monster_combat_id=1,
+                        map_column=3, map_row=1,
+                        replay_opening_draw_hooks=True,
+                        fixture_deck_preset_id="silent-starter-v1",
+                    )
+                exports = list(Path(tmp).glob("semantic-*.json"))
+                self.assertEqual(len(exports), 1)
+                report = json.loads(exports[0].read_text(encoding="utf-8"))
+                self.assertEqual(
+                    report["schemaId"], "sts2-semantic-jsonl-performance-v1")
+                self.assertGreaterEqual(
+                    report["operations"]["op.semantic_begin_seeded"]["count"], 1)
