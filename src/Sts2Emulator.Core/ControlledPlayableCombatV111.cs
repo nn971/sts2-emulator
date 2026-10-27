@@ -24,6 +24,8 @@ public sealed record ControlledPlayableCombatV111(
     // Distinct source-conditioned persistent starter deck recipe. It must be
     // replayed before the initial engine shuffle, just like encounter ID.
     public string? FixtureDeckPresetId { get; init; }
+    // Opt-in, validated initial conditions, kept with the replay envelope.
+    public ResearchCombatFixtureV111? FixtureSpec { get; init; }
 
     /// <summary>
     /// Atomic mechanics/provider envelope for the playable combat fixture.
@@ -654,7 +656,8 @@ public static class ControlledPlayableCombatEngineV111
 
     public static ControlledPlayableCombatV111 Begin(
         ControlledIntentStateV111 completed, string seed,
-        string? encounterId = null, string? fixtureDeckPresetId = null)
+        string? encounterId = null, string? fixtureDeckPresetId = null,
+        ResearchCombatFixtureV111? fixtureSpec = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(seed);
         var verified = ControlledIntentsV111.Restore(
@@ -682,6 +685,27 @@ public static class ControlledPlayableCombatEngineV111
             : PrototypeNativeLaterActFixture.Create(
                 seed, act, verified.Combat.Ascension);
         var player = run.Player;
+        if (fixtureSpec is not null)
+        {
+            // The spec is validated at the seeded entry *before* Chance Law
+            // sampling, then applied before physical cards and opening hooks.
+            fixtureSpec.Validate();
+            if (fixtureDeckPresetId is not null || encounterId != fixtureSpec.EncounterId ||
+                act != 1)
+                throw new NotSupportedException(
+                    "UNSUPPORTED_RESEARCH_FIXTURE: incompatible opening context");
+            player = fixtureSpec.ApplyBeforeOpening(player);
+            run = run with
+            {
+                Player = player,
+                World = run.World! with
+                {
+                    NextCardInstanceId = Math.Max(
+                        run.World!.NextCardInstanceId,
+                        player.Deck.Max(c => c.InstanceId) + 1)
+                }
+            };
+        }
         if (fixtureDeckPresetId is not null)
         {
             if (act != 1)
@@ -761,7 +785,8 @@ public static class ControlledPlayableCombatEngineV111
             World = run.World! with
             {
                 ActiveRoom = encounterId is not null &&
-                    SemanticConditionedDeckPresetV111.IsBossDeck(fixtureDeckPresetId)
+                     (SemanticConditionedDeckPresetV111.IsBossDeck(fixtureDeckPresetId) ||
+                     fixtureSpec?.IsBoss == true)
                     ? PrototypeRoomType.Boss : PrototypeRoomType.Combat,
                 Combat = combat
             }
@@ -772,7 +797,8 @@ public static class ControlledPlayableCombatEngineV111
             if (act < encounter.MinAct || act > encounter.MaxAct ||
                 (encounter.RoomType != PrototypeRoomType.Combat &&
                  !(encounter.RoomType == PrototypeRoomType.Boss &&
-                   SemanticConditionedDeckPresetV111.IsBossDeck(fixtureDeckPresetId))))
+                   (SemanticConditionedDeckPresetV111.IsBossDeck(fixtureDeckPresetId) ||
+                    fixtureSpec?.IsBoss == true))))
                 throw new InvalidDataException(
                     "Fixed playable encounter is ineligible for its run entry.");
             var world = run.World ?? throw new InvalidDataException(
@@ -813,7 +839,8 @@ public static class ControlledPlayableCombatEngineV111
             MakePending(nextIndex, 0))
         {
             FixtureEncounterId = encounterId,
-            FixtureDeckPresetId = fixtureDeckPresetId
+            FixtureDeckPresetId = fixtureDeckPresetId,
+            FixtureSpec = fixtureSpec
         };
         return state;
     }
