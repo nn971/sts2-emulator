@@ -98,6 +98,21 @@ public sealed class H8CombatRuntimeV1
     public IReadOnlyList<H8DecisionEntryV1> DecisionHistory =>
         Array.AsReadOnly(_journal.ToArray());
 
+    /// <summary>
+    /// Observe only the source-visible player frame. This is the identical
+    /// public observation/action encoder consumed by the H7 Transformer,
+    /// with no legacy pilot snapshot, JSON round trip, or pilot fingerprint.
+    /// The H8 player boundary must be real; future H8 work will expose
+    /// nested selection actions through a tagged cursor.
+    /// </summary>
+    public PrototypeAiFrame ObservePlayerFrame()
+    {
+        if (!_state.AtPlayerBoundary || _state.CombatTerminal)
+            throw new InvalidOperationException(
+                "H8 public player observation requires a full player boundary.");
+        return new PrototypeAiEnvironment().Observe(_state.Run);
+    }
+
     public string[] LegalPlayerActionIds()
     {
         if (!AtPlayerBoundary)
