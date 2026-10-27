@@ -313,6 +313,13 @@ public sealed class H8CombatRuntimeV1
     }
 
     /// <summary>
+    /// Explicitly requested audit checkpoint for paired native/checked
+    /// measurements. Costly canonical serialization is performed only on
+    /// demand, never during ordinary H8 state transitions or status queries.
+    /// </summary>
+    public string AuditStateFingerprint() => CanonicalJson.Sha256(_state);
+
+    /// <summary>
     /// Audit-only legacy snapshot accessor. Deliberately leaves the fast
     /// choice protocol independent of the old canonical SHA fingerprint.
     /// </summary>
