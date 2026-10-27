@@ -399,10 +399,13 @@ public sealed record SemanticEndTurnV111(
         this.Mechanics.Continuation.Validate(
             PrototypeMechanicsContinuationKindV111.SemanticEndTurn);
         this.Stochastic.Validate();
+        // The split mechanics/provider hand frame is only a projection.
+        // Reuse one instance throughout this read-only invariant check.
+        var handDraw = this.HandDraw;
         if (this.EnemyActionPending is not null)
         {
             if (this.Complete || this.Intents is not null ||
-                this.HandDraw is not null ||
+                handDraw is not null ||
                 this.PlayerActionSource is not { } playerSource ||
                 !PrototypeGameEngine
                     .IsAtCombatPlayerDecisionBoundary(playerSource))
@@ -420,7 +423,7 @@ public sealed record SemanticEndTurnV111(
         {
             target.Validate();
             if (this.Complete || this.Intents is not null ||
-                this.HandDraw is { AtBoundary: false } ||
+                handDraw is { AtBoundary: false } ||
                 this.Run.World?.Combat?.PendingChoice?
                     .ControlledTarget is null ||
                 !PrototypeGameEngine
@@ -444,7 +447,7 @@ public sealed record SemanticEndTurnV111(
         {
             knowledgeDemon.Validate();
             if (this.Complete || this.Intents is not null ||
-                this.HandDraw is not null ||
+                handDraw is not null ||
                 this.Run.World?.Combat?.PendingKnowledgeDemonChoice is null ||
                 this.PlayerActionSource is not { } playerSource ||
                 !PrototypeGameEngine
@@ -470,20 +473,20 @@ public sealed record SemanticEndTurnV111(
             (this.Complete && (this.Intents is not null ||
                 (PrototypeGameEngine
                     .IsAtCombatRewardOrTerminalBoundary(this.Run)
-                    ? this.HandDraw is { AtBoundary: false }
-                    : this.HandDraw is not { AtBoundary: true }))) ||
+                    ? handDraw is { AtBoundary: false }
+                    : handDraw is not { AtBoundary: true }))) ||
             (!this.Complete && this.Intents is null &&
-             this.HandDraw is null && this.EnemyActionPending is null &&
+             handDraw is null && this.EnemyActionPending is null &&
              this.TargetPending is null &&
              this.KnowledgeDemonChoicePending is null &&
              !PrototypeGameEngine
                 .HasPendingSupportedAutomaticPipelineSemanticChoice(
                     this.Run)) ||
-            (!this.Complete && this.HandDraw is { AtBoundary: true } &&
+            (!this.Complete && handDraw is { AtBoundary: true } &&
              this.TargetPending is null &&
              !PrototypeGameEngine
                 .HasPendingSupportedAutomaticPipelineSemanticChoice(this.Run)) ||
-            (this.Intents is not null && this.HandDraw is not null))
+            (this.Intents is not null && handDraw is not null))
             throw new InvalidDataException("Invalid semantic end-turn stages.");
         if (this.Intents is { } intents)
         {
@@ -494,7 +497,7 @@ public sealed record SemanticEndTurnV111(
                 CanonicalJson.Sha256(this.Origin))
                 throw new InvalidDataException("Invalid pending intent stage.");
         }
-        if (this.HandDraw is { } hand)
+        if (handDraw is { } hand)
         {
             hand.Validate();
             if (!this.Complete &&
