@@ -6441,9 +6441,16 @@ internal static class PrototypeAiJsonlServer
                     {
                         var parentHandle = RequiredString(request, "semantic_handle");
                         var current = RequireSemantic(request);
+                        var transitionStart = semanticProfiler.Enabled
+                            ? SemanticOperationProfiler.Timestamp() : 0L;
+                        var transitionAllocated = semanticProfiler.Enabled
+                            ? SemanticOperationProfiler.Allocated() : 0L;
                         var next = SemanticPilotCombatEngineV111.Step(
                             current, RequiredString(request, "fingerprint"),
                             RequiredString(request, "action_id"));
+                        semanticProfiler.Record(
+                            "sub.semantic_step_transition",
+                            transitionStart, transitionAllocated);
                         var handle = StoreSemantic(next);
                         Write(new { requestId, ok = true,
                             result = SemanticResult(next, handle, parentHandle) });
@@ -6454,10 +6461,17 @@ internal static class PrototypeAiJsonlServer
                     {
                         var parentHandle = RequiredString(request, "semantic_handle");
                         var current = RequireSemantic(request);
+                        var transitionStart = semanticProfiler.Enabled
+                            ? SemanticOperationProfiler.Timestamp() : 0L;
+                        var transitionAllocated = semanticProfiler.Enabled
+                            ? SemanticOperationProfiler.Allocated() : 0L;
                         var next = SemanticPilotCombatEngineV111.Resolve(
                             current, RequiredString(request, "fingerprint"),
                             OptionalInt(request, "selected_index") ??
                                 throw new ArgumentException("Missing selected_index."));
+                        semanticProfiler.Record(
+                            "sub.semantic_resolve_transition",
+                            transitionStart, transitionAllocated);
                         var handle = StoreSemantic(next);
                         Write(new { requestId, ok = true,
                             result = SemanticResult(next, handle, parentHandle) });
@@ -6468,10 +6482,17 @@ internal static class PrototypeAiJsonlServer
                     {
                         var parentHandle = RequiredString(request, "semantic_handle");
                         var current = RequireSemantic(request);
+                        var transitionStart = semanticProfiler.Enabled
+                            ? SemanticOperationProfiler.Timestamp() : 0L;
+                        var transitionAllocated = semanticProfiler.Enabled
+                            ? SemanticOperationProfiler.Allocated() : 0L;
                         var next = SemanticPilotCombatEngineV111.ResolveDrawCard(
                             current, RequiredString(request, "fingerprint"),
                             RequiredString(request, "event_id"),
                             RequiredLong(request, "card_instance_id"));
+                        semanticProfiler.Record(
+                            "sub.semantic_resolve_draw_card_transition",
+                            transitionStart, transitionAllocated);
                         var handle = StoreSemantic(next);
                         Write(new { requestId, ok = true,
                             result = SemanticResult(next, handle, parentHandle) });
@@ -6644,9 +6665,16 @@ internal static class PrototypeAiJsonlServer
                     {
                         var parentHandle = RequiredString(request, "semantic_handle");
                         var current = RequireSemantic(request);
+                        var transitionStart = semanticProfiler.Enabled
+                            ? SemanticOperationProfiler.Timestamp() : 0L;
+                        var transitionAllocated = semanticProfiler.Enabled
+                            ? SemanticOperationProfiler.Allocated() : 0L;
                         var next = SemanticPilotCombatEngineV111.ResolveIntent(
                             current, RequiredString(request, "fingerprint"),
                             RequiredString(request, "intent_id"));
+                        semanticProfiler.Record(
+                            "sub.semantic_resolve_intent_transition",
+                            transitionStart, transitionAllocated);
                         var handle = StoreSemantic(next);
                         Write(new { requestId, ok = true,
                             result = SemanticResult(next, handle, parentHandle) });
