@@ -3111,8 +3111,8 @@ public static class SemanticPilotCombatEngineV111
                 "No semantic enemy intent, draw or cost choice is pending.");
         var resolved = SemanticDrawStageProfilerV111.Measure(
             "sub.semantic_draw_endturn_resolve",
-            () => SemanticEndTurnEngineV111.Resolve(
-                pending, pending.Fingerprint, selectedIndex));
+            () => SemanticEndTurnEngineV111.ResolveFromValidatedPilot(
+                pending, selectedIndex));
         SemanticDrawDecisionV111? deckDecision = null;
         if (drawEvent is not null)
         {
