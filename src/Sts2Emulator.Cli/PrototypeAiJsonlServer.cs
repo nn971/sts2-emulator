@@ -2693,6 +2693,11 @@ internal static class PrototypeAiJsonlServer
             SemanticPilotCombatV111 state, string handle,
             string? parent = null)
         {
+            // A JSONL result only reads this completed state. Pending-event
+            // projection may ask for its whole-pilot fingerprint again; share
+            // that exact canonical digest for this response only.
+            using var readOnlyHashes =
+                CanonicalJson.BeginReadOnlySemanticSnapshotHashReuse();
             var measure = semanticProfiler.Enabled;
             var started = measure ? SemanticOperationProfiler.Timestamp() : 0L;
             var allocated = measure ? SemanticOperationProfiler.Allocated() : 0L;
