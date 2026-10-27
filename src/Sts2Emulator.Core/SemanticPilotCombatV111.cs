@@ -3327,6 +3327,82 @@ public static class SemanticPilotCombatEngineV111
     }
 
     /// <summary>
+    /// H8 M2 direct deterministic draw transition. One H8 boundary owns the
+    /// running mechanics RunState, a suspended automatic draw cursor, and a
+    /// provider-owned eligible card support. Advance the single mechanics
+    /// owner directly through the real DrawCards engine: no semantic
+    /// pilot/end-turn/hand-draw ResolveCore dispatcher or intermediate
+    /// recursive state audit. Project legacy records only once *after*
+    /// mechanics commit, for journal replay / snapshot interoperability.
+    ///
+    /// This deliberately supports only regular automatic hand draws; nested
+    /// card effects, draw costs, insertions and hooks with independent choices
+    /// still use the existing controlled continuation machinery.
+    /// </summary>
+    internal static SemanticPilotCombatV111 AdvanceH8AutomaticPhysicalDraw(
+        SemanticPilotCombatV111 current,
+        SemanticEndTurnV111 endTurn,
+        SemanticDeckEventV111 drawEvent,
+        int selectedIndex)
+    {
+        ArgumentNullException.ThrowIfNull(current);
+        ArgumentNullException.ThrowIfNull(endTurn);
+        ArgumentNullException.ThrowIfNull(drawEvent);
+        if (endTurn.Complete ||
+            endTurn.HandDraw is not
+                { AtBoundary: false, Pending: not null } hand ||
+            !hand.AutomaticHandDraw || !hand.FromHandDraw ||
+            drawEvent.Purpose != "draw" ||
+            selectedIndex < 0 ||
+            selectedIndex >= drawEvent.CandidateCardInstanceIds.Length ||
+            current.Run.World?.Combat?.PendingChoice is
+                { ChoiceId: "controlled_semantic_draw",
+                  ControlledSemanticDraw: not null })
+            throw new InvalidOperationException(
+                "H8 direct physical draw requires an automatic hand-draw cursor.");
+
+        // No input-wide hash/Validate: the opaque runtime version and the
+        // selected physical support were checked by the H8 session owner.
+        // The provider selection is committed atomically to the mechanics
+        // draw-pile owner before deterministic draw hooks execute.
+        var selected = SemanticDrawChoiceV111.Select(drawEvent, selectedIndex);
+        var run = current.Run.Fork();
+        var world = run.World ?? throw new InvalidDataException(
+            "H8 automatic draw has no world.");
+        var combat = world.Combat ?? throw new InvalidDataException(
+            "H8 automatic draw has no combat.");
+        var committed = SemanticDrawStageProfilerV111.Measure(
+            "sub.h8_native_draw_provider_commit",
+            () => SemanticDrawChoiceV111.Commit(combat, selected));
+        run = run with { World = world with { Combat = committed } };
+        var (advanced, remaining) = SemanticDrawStageProfilerV111.Measure(
+            "sub.h8_native_draw_engine_mechanics", () =>
+            {
+                using (ControlledChanceGuardV111.Enter())
+                    return PrototypeGameEngine.BeginSemanticCombatDraw(
+                        run, hand.RemainingCount, hand.FromHandDraw);
+            });
+        var recorded = SemanticDrawStageProfilerV111.Measure(
+            "sub.h8_native_draw_recorded_choice",
+            () => SemanticDrawChoiceV111.ValidateRecordedChoice(
+                advanced, drawEvent, selectedIndex));
+
+        // The mechanical RunState has one owner throughout this operation.
+        // Reconstruct only the required output compatibility projections.
+        var nextHand = hand with
+        {
+            Run = advanced,
+            RemainingCount = remaining
+        };
+        var resolved = SemanticEndTurnEngineV111.ContinueFromH8AdvancedDraw(
+            endTurn, nextHand);
+        var next = PublishRunContinuation(
+            current, resolved.Run, resolved,
+            NatureContinuation(selectedIndex, null, recorded));
+        return NormalizeNoncontrolledCosts(next, auditOutput: false);
+    }
+
+    /// <summary>
     /// Resolve one deferred peek or scry by physical card identity. The
     /// provider records the revealed position while draw-pile membership and
     /// order remain unchanged.
