@@ -35,6 +35,7 @@ public sealed class H8CombatRuntimeV1
     private readonly bool _useM2AutomaticDraw;
     private readonly bool _useNativeDrawTransition;
     private readonly bool _useNativePlayerEndTurn;
+    private readonly bool _useTrustedIntent;
     private SemanticPilotCombatV111 _state;
     private long _version;
     // A projected automatic-hand-draw continuation belongs to exactly one
@@ -56,12 +57,14 @@ public sealed class H8CombatRuntimeV1
         List<H8DecisionEntryV1> journal,
         bool useM2AutomaticDraw,
         bool useNativeDrawTransition,
-        bool useNativePlayerEndTurn)
+        bool useNativePlayerEndTurn,
+        bool useTrustedIntent)
     {
         _entry = entry;
         _useM2AutomaticDraw = useM2AutomaticDraw;
         _useNativeDrawTransition = useNativeDrawTransition;
         _useNativePlayerEndTurn = useNativePlayerEndTurn;
+        _useTrustedIntent = useTrustedIntent;
         _state = state;
         _runtimeId = runtimeId;
         _version = version;
@@ -71,14 +74,16 @@ public sealed class H8CombatRuntimeV1
     public static H8CombatRuntimeV1 BeginSeeded(
         SemanticSeededEntryV111 entry, bool useM2AutomaticDraw = true,
         bool useNativeDrawTransition = true,
-        bool useNativePlayerEndTurn = true)
+        bool useNativePlayerEndTurn = true,
+        bool useTrustedIntent = true)
     {
         ArgumentNullException.ThrowIfNull(entry);
         var state = SemanticPilotCombatEngineV111.BeginSeeded(entry);
         return new H8CombatRuntimeV1(
             entry, state, Guid.NewGuid(), 0,
             new List<H8DecisionEntryV1>(), useM2AutomaticDraw,
-            useNativeDrawTransition, useNativePlayerEndTurn);
+            useNativeDrawTransition, useNativePlayerEndTurn,
+            useTrustedIntent);
     }
 
     public H8BoundaryTokenV1 Boundary =>
@@ -207,8 +212,11 @@ public sealed class H8CombatRuntimeV1
         if (!HasPendingIntent)
             throw new InvalidOperationException(
                 "H8 intent is not the next pending boundary.");
-        var next = SemanticPilotCombatEngineV111.ResolveIntent(
-            _state, _state.Fingerprint, intentId);
+        var next = _useTrustedIntent
+            ? SemanticPilotCombatEngineV111
+                .ResolveIntentFromH8TrustedBoundary(_state, intentId)
+            : SemanticPilotCombatEngineV111.ResolveIntent(
+                _state, _state.Fingerprint, intentId);
         Commit(next, new H8DecisionEntryV1(
             _version, "intent", providerId,
             SiteId: "enemy_intent", IntentId: intentId));
@@ -259,7 +267,8 @@ public sealed class H8CombatRuntimeV1
     public H8CombatRuntimeV1 Fork() =>
         new(_entry, _state.Fork(), Guid.NewGuid(), _version,
             new List<H8DecisionEntryV1>(_journal), _useM2AutomaticDraw,
-            _useNativeDrawTransition, _useNativePlayerEndTurn);
+            _useNativeDrawTransition, _useNativePlayerEndTurn,
+            _useTrustedIntent);
 
     /// <summary>
     /// Explicitly replay the journal from its source-valid seeded checkpoint,
@@ -270,7 +279,7 @@ public sealed class H8CombatRuntimeV1
     {
         var replay = BeginSeeded(
             _entry, _useM2AutomaticDraw, _useNativeDrawTransition,
-            _useNativePlayerEndTurn);
+            _useNativePlayerEndTurn, _useTrustedIntent);
         foreach (var item in _journal)
         {
             if (replay.Boundary.Version != item.Version)
@@ -302,6 +311,13 @@ public sealed class H8CombatRuntimeV1
             throw new InvalidDataException(
                 "H8 replay decision journal differs.");
     }
+
+    /// <summary>
+    /// Explicitly requested audit checkpoint for paired native/checked
+    /// measurements. Costly canonical serialization is performed only on
+    /// demand, never during ordinary H8 state transitions or status queries.
+    /// </summary>
+    public string AuditStateFingerprint() => CanonicalJson.Sha256(_state);
 
     /// <summary>
     /// Audit-only legacy snapshot accessor. Deliberately leaves the fast

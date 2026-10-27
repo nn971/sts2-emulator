@@ -11,6 +11,8 @@ on:
       - 'tests/Sts2Emulator.Core.Tests/H8CombatRuntimeV1Tests.cs'
       - 'src/Sts2Emulator.Cli/PrototypeAiJsonlServer.cs'
       - 'tests/test_h8_runtime_jsonl.py'
+      - 'tests/test_h8_benchmark_sessions.py'
+      - 'tools/benchmark_h8_sessions.py'
       - '.github/workflows/h8-runtime-smoke.yml'
   workflow_dispatch:
 
@@ -40,3 +42,15 @@ jobs:
           STS2_EMULATOR_DLL: ${{ github.workspace }}/src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll
         run: |
           python -m unittest discover -s tests -p 'test_h8_runtime_jsonl.py' -v
+      - name: H8 versioned-session benchmark pair, source and replay invariants
+        env:
+          STS2_EMULATOR_DLL: ${{ github.workspace }}/src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll
+        run: |
+          python -m unittest discover -s tests -p 'test_h8_benchmark_sessions.py' -v
+          python tools/benchmark_h8_sessions.py \
+            --emulator-dll "$STS2_EMULATOR_DLL" \
+            --emulator-bindings bindings/python \
+            --emulator-revision "$GITHUB_SHA" \
+            --workers 2 --episodes 2 --max-boundaries 25 \
+            --replay-every 1 --order ab \
+            --output /tmp/h8-session-ab.json
