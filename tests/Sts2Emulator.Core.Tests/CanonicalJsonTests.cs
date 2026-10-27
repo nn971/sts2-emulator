@@ -39,6 +39,28 @@ public sealed class CanonicalJsonTests
     }
 
     [Fact]
+    public void PooledCanonicalBufferGrowsAndRetainsExactUnicodeHash()
+    {
+        // Exercise several array-pool growth thresholds and non-ASCII
+        // escaping; canonical UTF-8 bytes must remain byte-for-byte stable.
+        var text = string.Concat(Enumerable.Repeat("汉字😀\\n\\tÅñ", 20000));
+        var payload = new
+        {
+            z = new[] { text, "short", "🌊" },
+            a = Enumerable.Range(0, 4096).Reverse().ToArray(),
+            obj = new { nested = true, negative = -12.75 }
+        };
+        var expected = Convert.ToHexString(
+            System.Security.Cryptography.SHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes(
+                    CanonicalJson.Serialize(payload)))).ToLowerInvariant();
+        Assert.Equal(expected, CanonicalJson.Sha256(payload));
+        Assert.Equal(expected, CanonicalJson.Sha256(payload));
+        Parallel.For(0, 16, _ =>
+            Assert.Equal(expected, CanonicalJson.Sha256(payload)));
+    }
+
+    [Fact]
     public void ReadOnlyRunStateHashReuseIsScopedAndReferenceBased()
     {
         var pilot = SemanticPilotCombatEngineV111.BeginSeeded(
