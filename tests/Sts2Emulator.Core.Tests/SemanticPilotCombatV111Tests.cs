@@ -205,8 +205,13 @@ public sealed class SemanticPilotCombatV111Tests
     [Fact]
     public void SemanticDrawResolvesByEventAndCardIdentityAndReplaysTypedDecision()
     {
+        // Use a source-valid A10 Act 1 encounter; the legacy Hive fixture
+        // is rejected by the current encounter-history invariants.
         var state = SemanticPilotCombatEngineV111.BeginSeeded(
-            Seeded("semantic-p0-card-identity-event"));
+            new SemanticSeededEntryV111(
+                "semantic-h7-card-identity-verified-continuation",
+                1, "proto.encounter.mawler_normal", "MawlerNormal",
+                2, 10, 1, 3, 1, ReplayOpeningDrawHooks: true));
         for (var stage = 0; state.DrawPending is null; stage++)
         {
             Assert.True(stage < 200,
