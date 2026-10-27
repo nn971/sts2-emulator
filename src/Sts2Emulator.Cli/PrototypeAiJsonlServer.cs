@@ -49,6 +49,15 @@ internal static class PrototypeAiJsonlServer
         long nextControlledHandle = 1;
         var semanticStates = new Dictionary<string, SemanticPilotCombatV111>(
             StringComparer.Ordinal);
+        // OpeningSource, SeededEntry and SourceRouteAudit are frozen once the
+        // semantic session is begun. Fork/resolve can copy these large objects,
+        // but cannot change their opening-provenance fingerprint.
+        // Cache only for live JSONL handles and evict on release.
+        var semanticSourceOpeningHashes = new Dictionary<string, string?>(
+            StringComparer.Ordinal);
+        var verifySourceOpeningHashReuse =
+            Environment.GetEnvironmentVariable(
+                "STS2_H7_VERIFY_SOURCE_OPENING_HASH_REUSE") == "1";
         long nextSemanticHandle = 1;
         var semanticProfiler = new SemanticOperationProfiler();
         string? activeOperation = null;
@@ -2689,6 +2698,38 @@ internal static class PrototypeAiJsonlServer
                     ? "nature-extended-fixture"
                     : "nature-two-site";
 
+        string? SemanticSourceOpeningFingerprint(
+            SemanticPilotCombatV111 state, string handle, string? parent)
+        {
+            if (semanticSourceOpeningHashes.TryGetValue(handle, out var cached))
+            {
+                if (verifySourceOpeningHashReuse &&
+                    !StringComparer.Ordinal.Equals(
+                        cached, state.SourceOpeningFingerprint))
+                    throw new InvalidDataException(
+                        "Semantic source opening changed inside one JSONL handle.");
+                return cached;
+            }
+
+            if (parent is not null &&
+                semanticSourceOpeningHashes.TryGetValue(parent, out var inherited))
+            {
+                if (verifySourceOpeningHashReuse &&
+                    !StringComparer.Ordinal.Equals(
+                        inherited, state.SourceOpeningFingerprint))
+                    throw new InvalidDataException(
+                        "Semantic source opening changed across a continuation.");
+                semanticSourceOpeningHashes.Add(handle, inherited);
+                return inherited;
+            }
+
+            // Begin or restore: independently compute once from full source
+            // provenance, then inherit the exact value down this handle tree.
+            var computed = state.SourceOpeningFingerprint;
+            semanticSourceOpeningHashes.Add(handle, computed);
+            return computed;
+        }
+
         object SemanticResult(
             SemanticPilotCombatV111 state, string handle,
             string? parent = null)
@@ -2732,12 +2773,18 @@ internal static class PrototypeAiJsonlServer
                  controllerMode != SemanticControllerModeReference(state)))
                 throw new InvalidDataException(
                     "Semantic boundary-inspection fast path differs from reference.");
+            started = measure ? SemanticOperationProfiler.Timestamp() : 0L;
+            allocated = measure ? SemanticOperationProfiler.Allocated() : 0L;
+            var sourceOpeningFingerprint = SemanticSourceOpeningFingerprint(
+                state, handle, parent);
+            semanticProfiler.Record(
+                "sub.semantic_result_source_opening", started, allocated);
             return new
             {
                 ok = true, schemaId = SemanticChanceSchemaId,
                 semanticHandle = handle, parent,
                 fingerprint,
-                sourceOpeningFingerprint = state.SourceOpeningFingerprint,
+                sourceOpeningFingerprint,
                 sourceRouteProvider = state.SourceRouteAudit?.ProviderId,
                 sourceRouteActionCount = state.SourceRouteAudit?.ActionIds.Length ?? 0,
                 sourceRouteEncounterId = state.SourceRouteAudit?.EncounterId,
@@ -9526,8 +9573,10 @@ internal static class PrototypeAiJsonlServer
                             if (element.ValueKind != JsonValueKind.String ||
                                 string.IsNullOrWhiteSpace(element.GetString()))
                                 throw new ArgumentException("Invalid semantic handle.");
-                            if (semanticStates.Remove(element.GetString()!))
+                            var semanticHandle = element.GetString()!;
+                            if (semanticStates.Remove(semanticHandle))
                                 released++;
+                            semanticSourceOpeningHashes.Remove(semanticHandle);
                         }
                         Write(new { requestId, ok = true, released });
                         break;
