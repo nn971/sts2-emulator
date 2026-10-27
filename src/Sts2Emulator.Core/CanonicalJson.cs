@@ -61,14 +61,7 @@ public static class CanonicalJson
 
     public static string Serialize<T>(T value)
     {
-        var element = JsonSerializer.SerializeToElement(value, SerializerOptions);
-        using var stream = new MemoryStream();
-        using (var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = false }))
-        {
-            WriteCanonical(writer, element);
-        }
-
-        return Encoding.UTF8.GetString(stream.ToArray());
+        return Encoding.UTF8.GetString(SerializeCanonicalUtf8(value));
     }
 
     public static string Sha256<T>(T value)
@@ -112,8 +105,30 @@ public static class CanonicalJson
 
     private static string Sha256Core<T>(T value)
     {
-        var utf8 = Encoding.UTF8.GetBytes(Serialize(value));
-        return Convert.ToHexString(SHA256.HashData(utf8)).ToLowerInvariant();
+        // Hash canonical UTF-8 directly: converting it to a UTF-16 string
+        // and back allocates two redundant full-state copies on every hash.
+        using var stream = WriteCanonicalUtf8(value);
+        return Convert.ToHexString(SHA256.HashData(
+            stream.GetBuffer().AsSpan(0, checked((int)stream.Length))))
+            .ToLowerInvariant();
+    }
+
+    private static byte[] SerializeCanonicalUtf8<T>(T value)
+    {
+        using var stream = WriteCanonicalUtf8(value);
+        return stream.ToArray();
+    }
+
+    private static MemoryStream WriteCanonicalUtf8<T>(T value)
+    {
+        var element = JsonSerializer.SerializeToElement(value, SerializerOptions);
+        var stream = new MemoryStream();
+        using (var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = false }))
+        {
+            WriteCanonical(writer, element);
+        }
+        stream.Position = 0;
+        return stream;
     }
 
     private static readonly JsonSerializerOptions SerializerOptions = new()
