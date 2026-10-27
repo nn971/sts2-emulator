@@ -103,8 +103,9 @@ stopwatch time and managed allocation deltas for:
 - `sub.semantic_draw_hash_<type>`, one per static argument type to
   `CanonicalJson.Sha256` while resolving a draw; includes canonical
   serialization, UTF-8 copies and the hash computation;
-- `sub.semantic_result_chance_sites`, measuring chance-site
-  materialization outside the native draw transition.
+- `sub.semantic_result_chance_sites` and
+  `sub.semantic_result_controller_mode`, measuring chance-site and
+  controller-mode materialization outside the native draw transition.
 
 The outer counters from PR #194 are unchanged. `sub.*` timings are
 nested within `op.*`; `sub.semantic_draw_hash_<type>` is nested in
