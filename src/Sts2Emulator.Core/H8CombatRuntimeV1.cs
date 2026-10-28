@@ -470,6 +470,64 @@ public sealed class H8CombatRuntimeV1
     }
 
     /// <summary>
+    /// Consume consecutive reference-owned stochastic events inside the
+    /// mechanics process, stopping at the next player/terminal/unsupported
+    /// boundary. An externally controlled learned or scripted Nature provider
+    /// continues to use ChooseIntent / ChooseDrawCard instead.
+    ///
+    /// Each resolved choice still passes the same trusted H8 mechanics
+    /// resolver and appends the identical journal entry structure. Only the
+    /// reference distribution's actual random sample moves into C#.
+    /// </summary>
+    public int AdvanceLocalReferenceNature(
+        H8BoundaryTokenV1 boundary, long seed, int maxNatureDecisions = 1200)
+    {
+        RequireBoundary(boundary);
+        if (maxNatureDecisions <= 0)
+            throw new ArgumentOutOfRangeException(nameof(maxNatureDecisions));
+        var resolved = 0;
+        while (resolved < maxNatureDecisions)
+        {
+            var kind = PendingBoundaryKind();
+            if (kind == H8PendingKindV1.DrawCard)
+            {
+                var cursor = CurrentDrawCursor() ??
+                    throw new InvalidDataException("H8 draw cursor absent.");
+                var selected = H8LocalReferenceNatureV1.UniformIndex(
+                    seed, cursor.Event.EventId, cursor.Event.SiteId,
+                    cursor.EligibleCards.Length);
+                ChooseDrawCard(Boundary, cursor.EligibleCards[selected],
+                    H8LocalReferenceNatureV1.ProviderId);
+            }
+            else if (kind == H8PendingKindV1.EnemyIntent)
+            {
+                // Use the identical source identity exposed by the v111
+                // event-scoped Chance Law; reuse its fingerprint during the
+                // ensuing trusted resolver to avoid rehashing.
+                var evt = SemanticPilotCombatEngineV111
+                    .DescribePendingIntentEvent(
+                        _state,
+                        _pendingIntentPilotFingerprint ??= _state.Fingerprint);
+                var support = CurrentIntentSupport();
+                var selected = H8LocalReferenceNatureV1.WeightedIntentIndex(
+                    seed, evt.EventId, evt.SiteId, support.RawWeights);
+                ChooseIntent(Boundary, support.Ids[selected],
+                    H8LocalReferenceNatureV1.ProviderId);
+            }
+            else
+            {
+                return resolved;
+            }
+            resolved++;
+        }
+        if (PendingBoundaryKind() is H8PendingKindV1.DrawCard or
+            H8PendingKindV1.EnemyIntent)
+            throw new InvalidOperationException(
+                "H8 local Nature continuation exceeded its decision limit.");
+        return resolved;
+    }
+
+    /// <summary>
     /// Branch from the same logical boundary. A fork has a distinct live ID;
     /// both mechanics and journal must advance independently from this point.
     /// Deep forking is currently handled by v111 until H8 checkpointing.
