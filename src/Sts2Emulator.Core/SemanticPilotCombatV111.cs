@@ -2322,10 +2322,26 @@ public static class SemanticPilotCombatEngineV111
                     "proto.potion.distilled_chaos";
             var isSelectionPotion = validSlot && IsSemanticSelectionPotion(
                 source.Player.PotionSlots[payload.Slot]?.PotionId);
+            // The H9 structured research fixtures only admit three
+            // deterministic, implemented potion effects. Source legality
+            // still validates the living target and inventory slot in
+            // PrototypeGameEngine.UsePotion. Do not discard offered actions
+            // or treat legal potion use as a censored training world.
+            var researchPotionId = current.SeededEntry?.FixtureSpec is not null
+                && validSlot
+                ? source.Player.PotionSlots[payload.Slot]?.PotionId
+                : null;
+            var isResearchSelfPotion =
+                researchPotionId == "proto.potion.block";
+            var isResearchTargetPotion = researchPotionId is
+                ("proto.potion.fire" or "proto.potion.poison");
             if ((!isGenerationPotion && !isPoolPotion &&
                  !isSelectionPotion && !isHandReturnPotion &&
-                 !isDistilledChaos) ||
-                payload.TargetEnemyId is not null)
+                 !isDistilledChaos && !isResearchSelfPotion &&
+                 !isResearchTargetPotion) ||
+                (isResearchTargetPotion
+                    ? payload.TargetEnemyId is null
+                    : payload.TargetEnemyId is not null))
                 throw new NotSupportedException(
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
                     "operation=potion_effect_requires_semantic_audit");
@@ -2336,7 +2352,7 @@ public static class SemanticPilotCombatEngineV111
                         source, playerFrame, actionId).State
                     : environment.Step(source, actionId).State;
             if (result.Phase != RunPhase.Combat &&
-                !(isDistilledChaos &&
+                !((isDistilledChaos || isResearchTargetPotion) &&
                   PrototypeGameEngine.IsAtCombatActionResultBoundary(result)))
                 throw new NotSupportedException(
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
@@ -2365,7 +2381,7 @@ public static class SemanticPilotCombatEngineV111
                      (result.World?.Reward is null ||
                       result.World.Combat is not null))
                 throw new InvalidDataException(
-                    "Distilled Chaos victory did not enter a combat reward boundary.");
+                    "Potion victory did not enter a combat reward boundary.");
             var previous = current.Run.World!.Combat!;
             var next = result.World?.Combat;
             if (result.Phase == RunPhase.Combat &&
