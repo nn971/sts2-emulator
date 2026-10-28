@@ -130,7 +130,12 @@ public sealed class H8CombatRuntimeV1
             _state.CombatTerminal)
             throw new InvalidOperationException(
                 "H8 public player observation requires a full player boundary.");
-        return _playerFrame ??= new PrototypeAiEnvironment().Observe(_state.Run);
+        if (_playerFrame is null)
+        {
+            using var scope = H8HotPathProfilerV1.Begin("h8.observe.public_frame");
+            _playerFrame = new PrototypeAiEnvironment().ObserveH8(_state.Run);
+        }
+        return _playerFrame;
     }
 
     public string[] LegalPlayerActionIds()
@@ -167,6 +172,7 @@ public sealed class H8CombatRuntimeV1
     /// </summary>
     public object DescribePendingReferenceLaw()
     {
+        using var scope = H8HotPathProfilerV1.Begin("h8.chance_law.total");
         if (CurrentDrawCursor() is { } cursor)
         {
             var drawn = cursor.Event;
@@ -270,6 +276,7 @@ public sealed class H8CombatRuntimeV1
     {
         if (_drawCursorCaptured)
             return _drawCursor;
+        using var scope = H8HotPathProfilerV1.Begin("h8.draw.cursor_capture");
         // Resolve the nested v111 end-turn projection once per boundary.
         // M2 will replace this temporary projected frame with a compact
         // tagged effect cursor owned by the new mechanics runtime.
@@ -304,6 +311,7 @@ public sealed class H8CombatRuntimeV1
     /// </summary>
     public void ChoosePlayerAction(H8BoundaryTokenV1 boundary, string actionId)
     {
+        using var scope = H8HotPathProfilerV1.Begin("h8.player.total");
         RequireBoundary(boundary);
         if (!AtPlayerBoundary)
             throw new InvalidOperationException(
@@ -335,6 +343,7 @@ public sealed class H8CombatRuntimeV1
         H8BoundaryTokenV1 boundary, string intentId,
         string providerId = "reference-nature")
     {
+        using var scope = H8HotPathProfilerV1.Begin("h8.intent.total");
         RequireBoundary(boundary);
         ArgumentException.ThrowIfNullOrWhiteSpace(providerId);
         ArgumentException.ThrowIfNullOrWhiteSpace(intentId);
@@ -362,6 +371,7 @@ public sealed class H8CombatRuntimeV1
         H8BoundaryTokenV1 boundary, long cardInstanceId,
         string providerId = "reference-nature")
     {
+        using var scope = H8HotPathProfilerV1.Begin("h8.draw.total");
         RequireBoundary(boundary);
         ArgumentException.ThrowIfNullOrWhiteSpace(providerId);
         var cursor = CurrentDrawCursor() ??
@@ -467,6 +477,7 @@ public sealed class H8CombatRuntimeV1
     private void Commit(
         SemanticPilotCombatV111 next, H8DecisionEntryV1 entry)
     {
+        using var scope = H8HotPathProfilerV1.Begin("h8.commit");
         // All selection/legality/mechanics work completes before advancing
         // the live boundary or committing a journal entry.
         ArgumentNullException.ThrowIfNull(next);
