@@ -1180,7 +1180,9 @@ public static class SemanticPilotCombatEngineV111
             ? PrototypeNativeActOneWeakNatureFixtureV111.CreateCombatRngPreEntry(
                 entry.Seed, entry.EncounterId, entry.NativeEncounterEntry,
                 entry.TotalFloor, entry.Ascension, entry.FirstMonsterCombatId,
-                entry.MapColumn, entry.MapRow)
+                entry.MapColumn, entry.MapRow,
+                richResearch: entry.FixtureSpec?.DistributionId ==
+                    ResearchCombatFixtureGeneratorV111.RichDistributionId)
             : PrototypeNativeLaterActFixture.CreateCombatRngPreEntry(
                 entry.Seed, entry.Act, entry.EncounterId,
                 entry.NativeEncounterEntry, entry.TotalFloor, entry.Ascension,
