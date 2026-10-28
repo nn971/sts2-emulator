@@ -6637,6 +6637,15 @@ internal static class PrototypeAiJsonlServer
                         break;
                     }
 
+                    case "h8_perf_resume":
+                    {
+                        h8Profiler.Resume();
+                        H8HotPathProfilerV1.SetSink(h8Profiler.RecordElapsed);
+                        Write(new { requestId, ok = true,
+                            schemaId = "sts2-h8-nested-hotpath-performance-v1" });
+                        break;
+                    }
+
                     case "h8_begin_seeded":
                     {
                         // New version-based execution protocol. This narrow
