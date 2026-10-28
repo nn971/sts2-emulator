@@ -636,9 +636,30 @@ public sealed class H8CombatRuntimeV1Tests
         var draws = 0;
         for (var i = 0; i < 36; i++)
         {
+            var priorState = prior.LegacySnapshotForAudit();
+            var directState = direct.LegacySnapshotForAudit();
+            if (priorState.Fingerprint != directState.Fingerprint)
+            {
+                var aa = System.Text.Json.JsonSerializer.Serialize(priorState);
+                var bb = System.Text.Json.JsonSerializer.Serialize(directState);
+                var point = Enumerable.Range(0, Math.Min(aa.Length, bb.Length))
+                    .FirstOrDefault(k => aa[k] != bb[k], -1);
+                var left = Math.Max(0, point - 110);
+                _output.WriteLine(
+                    "H8 M4 divergence step=" + i + " decisions=" + draws +
+                    " priorRun=" + CanonicalJson.Sha256(priorState.Run) +
+                    " nativeRun=" + CanonicalJson.Sha256(directState.Run) +
+                    " priorEndTurn=" + CanonicalJson.Sha256(priorState.PendingEndTurn) +
+                    " nativeEndTurn=" + CanonicalJson.Sha256(directState.PendingEndTurn) +
+                    " firstJsonDiff=" + point +
+                    " prior=" + aa.Substring(left,
+                        Math.Min(350, aa.Length - left)) +
+                    " native=" + bb.Substring(left,
+                        Math.Min(350, bb.Length - left)));
+            }
             Assert.Equal(
-                prior.LegacySnapshotForAudit().Fingerprint,
-                direct.LegacySnapshotForAudit().Fingerprint);
+                priorState.Fingerprint,
+                directState.Fingerprint);
             Assert.Equal(prior.DecisionHistory, direct.DecisionHistory);
             if (prior.Terminal || direct.Terminal)
             {

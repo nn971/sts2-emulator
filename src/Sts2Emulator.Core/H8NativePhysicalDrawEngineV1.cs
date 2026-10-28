@@ -81,7 +81,7 @@ internal static class H8NativePhysicalDrawEngineV1
             RemainingCount = remaining
         };
         var endTurnAtBoundary =
-            SemanticEndTurnEngineV111.ContinueFromH8AdvancedDraw(
+            H8NativeTurnContinuationV1.AdvancePhysicalHandDraw(
                 endTurn, advancedHand);
         return SemanticPilotCombatEngineV111.PublishH8AdvancedDraw(
             current, endTurnAtBoundary, selectedIndex, recorded);
