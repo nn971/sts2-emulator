@@ -332,8 +332,6 @@ public static class LegacyRandomChoiceV111
         if (ControlledChanceGuardV111.Active
             && !ControlledChanceGuardV111.EngineOwnedNativeProviderActive
             && !ControlledChanceGuardV111.IsEngineOwnedPrototypeRewardRequest(
-                siteId, streamId, operationKind)
-            && !ControlledChanceGuardV111.IsEngineOwnedDeathSummonHpRequest(
                 siteId, streamId, operationKind))
         {
             if (ControlledEventChoiceReplayV111.IsActive &&
