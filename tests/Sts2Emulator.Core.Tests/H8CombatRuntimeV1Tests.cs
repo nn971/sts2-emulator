@@ -73,6 +73,9 @@ public sealed class H8CombatRuntimeV1Tests
             runtime.LegacySnapshotForAudit().Run);
         var frame = runtime.ObservePlayerFrame();
         Assert.Same(frame, runtime.ObservePlayerFrame());
+        // The H8 version token replaces the expensive hidden-state hash:
+        // public observation and legal action hashes remain identical.
+        Assert.Equal(string.Empty, frame.CanonicalStateHash);
         Assert.Equal(CanonicalJson.Sha256(oracle.Observation),
             CanonicalJson.Sha256(frame.Observation));
         Assert.Equal(oracle.ObservationHash, frame.ObservationHash);
@@ -153,6 +156,44 @@ public sealed class H8CombatRuntimeV1Tests
             + "; managed MB/action "
             + (checkedAlloc / 8e6).ToString("F3") + " -> "
             + (trustedAlloc / 8e6).ToString("F3"));
+    }
+
+    [Fact]
+    public void OptInNestedProfilerAttributesH8OwnedCardAndEngineFork()
+    {
+        var runtime = ReachFirstFullPlayerBoundary(
+            "h8-profile-single-fork-a10", useNativePlayerEndTurn: true);
+        var action = runtime.ObservePlayerFrame().LegalActions
+            .First(item => item.Kind == "play_card");
+        var snapshot = runtime.LegacySnapshotForAudit();
+        var expected = SemanticPilotCombatEngineV111.Step(
+            snapshot, snapshot.Fingerprint, action.ActionId);
+
+        var counts = new Dictionary<string, int>(StringComparer.Ordinal);
+        var allocations = new Dictionary<string, long>(StringComparer.Ordinal);
+        H8HotPathProfilerV1.SetSink((name, elapsed, bytes) =>
+        {
+            Assert.True(elapsed >= 0);
+            Assert.True(bytes >= 0);
+            counts[name] = counts.GetValueOrDefault(name) + 1;
+            allocations[name] = allocations.GetValueOrDefault(name) + bytes;
+        });
+        try
+        {
+            runtime.ChoosePlayerAction(runtime.Boundary, action.ActionId);
+        }
+        finally
+        {
+            H8HotPathProfilerV1.SetSink(null);
+        }
+        Assert.Equal(1, counts["h8.player.total"]);
+        Assert.Equal(1, counts["h8.player.engine_card"]);
+        Assert.True(counts["h8.fork.run_total"] >= 1);
+        Assert.True(allocations["h8.player.total"] > 0);
+        Assert.Equal(expected.Fingerprint,
+            runtime.LegacySnapshotForAudit().Fingerprint);
+        runtime.AuditReplay();
+        Assert.False(H8HotPathProfilerV1.Active);
     }
 
     [Fact]
