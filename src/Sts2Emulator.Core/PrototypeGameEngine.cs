@@ -234,7 +234,21 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             .ToArray();
     }
 
-    public TransitionResult Step(RunState state, GameAction action)
+    public TransitionResult Step(RunState state, GameAction action) =>
+        StepCore(state, action, trustedH8: false);
+
+    /// <summary>
+    /// Version-guarded H8 execution. The live session exclusively owns the
+    /// input checkpoint and the combat engine's transitions are functional.
+    /// Ordinary public Step retains full defensive cloning for external
+    /// callers, forks and legacy interop.
+    /// </summary>
+    internal TransitionResult StepFromH8TrustedBoundary(
+        RunState state, GameAction action) =>
+        StepCore(state, action, trustedH8: true);
+
+    private TransitionResult StepCore(
+        RunState state, GameAction action, bool trustedH8)
     {
         RunConfiguration.ValidateState(state);
         using var providerScope = StochasticProviderScopeV111.Enter(
@@ -253,8 +267,14 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             throw new InvalidOperationException(
                 "A suspended controlled choice requires its explicit outcome adapter.");
         }
-        var fork = state.Fork();
-        fork = fork with { DecisionIndex = fork.DecisionIndex + 1 };
+        // Every public Step owns an isolated copy. H8's versioned owner
+        // instead advances from an immutable input; all mechanics updates
+        // publish successor records, avoiding a complete clone for every
+        // combat player action.
+        var fork = (trustedH8 ? state : state.Fork()) with
+        {
+            DecisionIndex = state.DecisionIndex + 1
+        };
 
         var next = fork.ControlledRunActionChoice is { } runActionContinuation
             ? ResumeControlledRunAction(
