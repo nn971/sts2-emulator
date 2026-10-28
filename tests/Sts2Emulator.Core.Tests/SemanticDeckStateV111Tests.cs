@@ -15,6 +15,52 @@ public sealed class SemanticDeckStateV111Tests
     }
 
     [Fact]
+    public void TrustedContentComparisonMatchesCanonicalShaAcrossStateChanges()
+    {
+        static void AssertSameAsSerialized(
+            SemanticDeckStateV111 baseline, SemanticDeckStateV111 candidate)
+        {
+            Assert.Equal(
+                baseline.Fingerprint == candidate.Fingerprint,
+                baseline.HasSameSerializedContentsAs(candidate));
+        }
+
+        var baseDeck = SemanticDeckEngineV111.BeginNature([11L, 22L, 33L]);
+        AssertSameAsSerialized(baseDeck, baseDeck);
+        AssertSameAsSerialized(baseDeck, baseDeck.Fork());
+        AssertSameAsSerialized(baseDeck,
+            baseDeck with { ShuffleEpoch = baseDeck.ShuffleEpoch + 1 });
+        AssertSameAsSerialized(baseDeck, baseDeck with
+        {
+            Slots = [SemanticDeckSlotV111.Known(11L), ..baseDeck.Slots[1..]]
+        });
+        AssertSameAsSerialized(baseDeck, baseDeck with
+        {
+            Pools = [new SemanticDeckPoolV111(
+                "shuffle:0", [11L, 22L])]
+        });
+        AssertSameAsSerialized(baseDeck,
+            baseDeck with { Transcript = null });
+
+        var pending = SemanticDeckEngineV111.Require(baseDeck, 0, "draw");
+        AssertSameAsSerialized(baseDeck, pending);
+        AssertSameAsSerialized(pending, pending.Fork());
+        AssertSameAsSerialized(pending, pending with
+        {
+            Pending = pending.Pending! with { Ordinal = 17 }
+        });
+        var selected = SemanticDeckEngineV111.Resolve(
+            pending, pending.Fingerprint, 1);
+        AssertSameAsSerialized(pending, selected);
+        AssertSameAsSerialized(selected, selected.Fork());
+        AssertSameAsSerialized(selected, selected with
+        {
+            Transcript = selected.Transcript!.Select(
+                x => x with { SelectedIndex = x.SelectedIndex + 1 }).ToArray()
+        });
+    }
+
+    [Fact]
     public void DeferredDrawsChoosePhysicalCardInstancesWithoutReplacement()
     {
         var state = SemanticDeckEngineV111.BeginNature([21, 22, 23]);
