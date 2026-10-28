@@ -2224,7 +2224,8 @@ public static class SemanticPilotCombatEngineV111
                 card?.CardId == "proto.colorless.seeker_strike";
             var supportedCardAction = card is not null &&
                 (SemanticPlayerActionEngineV111.SupportsCard(card.CardId) ||
-                 card.CardId == "proto.silent.ricochet" ||
+                 card.CardId is ("proto.silent.ricochet" or
+                     "proto.silent.bouncing_flask") ||
                  semanticDrawCard ||
                  semanticAutoplayCard ||
                  semanticRandomReplayCard ||
