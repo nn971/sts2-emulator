@@ -85,7 +85,16 @@ public sealed class H8CombatRuntimeV1
         _useNativeDrawTransition = useNativeDrawTransition;
         _useNativePlayerEndTurn = useNativePlayerEndTurn;
         _useTrustedIntent = useTrustedIntent;
-        _state = state;
+        // H8's version-owned journal already records every player/Nature
+        // selection. Keep only an immutable legacy continuation trail in
+        // the live v111 adapter so long fights do not copy History on each
+        // committed draw/card play. Explicit audit/fork still materializes.
+        _state = state.H8HistoryTrail is null
+            ? state with
+            {
+                H8HistoryTrail = H8HistoryTrailV1.FromHistory(state.History)
+            }
+            : state;
         _runtimeId = runtimeId;
         _version = version;
         _journal = journal;
