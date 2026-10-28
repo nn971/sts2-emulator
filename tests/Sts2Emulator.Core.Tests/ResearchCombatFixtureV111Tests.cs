@@ -345,6 +345,51 @@ public sealed class ResearchCombatFixtureV111Tests
         session.AuditReplay();
     }
 
+    [Theory]
+    [InlineData("proto.encounter.vantom_boss")]
+    [InlineData("proto.encounter.inklets_normal")]
+    public void RichBouncingFlaskUsesReplayableRandomTargetNature(
+        string encounterId)
+    {
+        var encounter = Assert.Single(
+            ResearchCombatFixtureGeneratorV111.RichSupportedEncounters,
+            item => item.EncounterId == encounterId);
+        var fixture = ResearchCombatFixtureGeneratorV111
+            .Generate(0, 20261027) with
+        {
+            DistributionId = ResearchCombatFixtureGeneratorV111.RichDistributionId,
+            EncounterId = encounter.EncounterId,
+            NativeEncounterEntry = encounter.NativeEntry,
+            TotalFloor = encounter.TotalFloor,
+            MapRow = encounter.MapRow,
+            Deck = Enumerable.Range(0, 12)
+                .Select(_ => new ResearchCombatCardV111(
+                    "proto.silent.bouncing_flask"))
+                .ToArray(),
+            PotionIds = [null, null]
+        };
+        var runtime = H8CombatRuntimeV1.BeginSeeded(
+            Entry(fixture, "h9-rich-bouncing-flask-" + encounterId));
+        runtime.AdvanceLocalReferenceNature(runtime.Boundary, 20261028);
+        Assert.True(runtime.AtPlayerBoundary);
+        var flask = runtime.ObservePlayerFrame().LegalActions
+            .First(action => action.Kind == "play_card");
+        runtime.ChoosePlayerAction(runtime.Boundary, flask.ActionId);
+        Assert.Equal("random_target", runtime.BoundaryKind);
+        var eventId = runtime.PendingRandomTargetEventId();
+        var ids = runtime.PendingRandomTargetEnemyIds();
+        Assert.NotEmpty(ids);
+        runtime.ChooseRandomTarget(
+            runtime.Boundary, eventId, ids[0], "test-reference");
+        runtime.AdvanceLocalReferenceNature(runtime.Boundary, 20261028);
+        Assert.True(runtime.AtPlayerBoundary || runtime.Terminal);
+        Assert.Contains(runtime.DecisionHistory,
+            item => item.Kind == "random_target" &&
+                item.TargetEventId == eventId &&
+                item.TargetEnemyInstanceId == ids[0]);
+        runtime.AuditReplay();
+    }
+
     [Fact]
     public void GuardedDeathSummonHpUsesJournaledCombatStreamOnlyInsideItsScope()
     {
