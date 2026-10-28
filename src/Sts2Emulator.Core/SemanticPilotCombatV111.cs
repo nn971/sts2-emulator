@@ -1462,7 +1462,8 @@ public static class SemanticPilotCombatEngineV111
             "proto.silent.restlessness" or
             "proto.silent.acrobatics" or
             "proto.silent.dagger_throw" or
-            "proto.silent.prepared");
+            "proto.silent.prepared" or
+            "proto.status.slimed");
 
     private static SemanticPilotCombatV111 ApplyFixtureSelectionCard(
         SemanticPilotCombatV111 state, string cardId)
