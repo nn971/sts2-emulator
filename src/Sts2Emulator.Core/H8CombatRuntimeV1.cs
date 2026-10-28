@@ -47,6 +47,9 @@ public sealed class H8CombatRuntimeV1
     // player boundary, shared by H8Status and h8_observe. Do not recompute
     // observation hashing/action projection two or three times per step.
     private PrototypeAiFrame? _playerFrame;
+    // Exact pre-choice pilot fingerprint reused when the same version-owned
+    // intent Chance Law has already been exposed to the external provider.
+    private string? _pendingIntentPilotFingerprint;
 
     private sealed record H8DrawCursorV1(
         SemanticDeckEventV111 Event, long[] EligibleCards,
@@ -180,7 +183,10 @@ public sealed class H8CombatRuntimeV1
                 ownerId = drawn.OwnerId,
                 ordinal = drawn.Ordinal,
                 operationKind = drawn.OperationKind,
-                constraintFingerprint = deck.Fingerprint,
+                // The declared law has already computed this exact deck
+                // fingerprint. Reuse it instead of serializing the growing
+                // provider transcript a second time on every draw request.
+                constraintFingerprint = law.ConditioningFingerprint,
                 probabilityStatus = drawn.ProbabilityStatus,
                 chanceLaw = law,
                 candidates = drawn.CandidateCardInstanceIds.Select(id =>
@@ -190,7 +196,9 @@ public sealed class H8CombatRuntimeV1
         if (_state.IntentPending is { } intent)
         {
             var evt = SemanticPilotCombatEngineV111
-                .DescribePendingIntentEvent(_state);
+                .DescribePendingIntentEvent(
+                    _state,
+                    _pendingIntentPilotFingerprint ??= _state.Fingerprint);
             var support = evt.Support;
             var law = ChanceLawEngineV111.QueryIntent(evt);
             return new
@@ -304,11 +312,17 @@ public sealed class H8CombatRuntimeV1
         // Only ordinary end_turn is migrated: card plays, potions and
         // selection hooks remain checked until their native cursor exists.
         // No player mutation or journal append occurs until this succeeds.
+        // The version-owned frame is also the legality/menu snapshot already
+        // presented to the policy at this boundary. Reuse it for both native
+        // end-turn and checked-mechanics card/selection actions; the H8 token
+        // provides freshness without serializing the entire combat state.
+        var frame = ObservePlayerFrame();
         var next = _useNativePlayerEndTurn
-            ? H8NativePlayerEndTurnEngineV1.TryAdvance(_state, actionId)
+            ? H8NativePlayerEndTurnEngineV1.TryAdvance(
+                _state, actionId, frame)
             : null;
-        next ??= SemanticPilotCombatEngineV111.Step(
-            _state, _state.Fingerprint, actionId);
+        next ??= SemanticPilotCombatEngineV111
+            .StepFromH8TrustedBoundary(_state, actionId, frame);
         Commit(next, new H8DecisionEntryV1(
             _version, "player", "player", ActionId: actionId));
     }
@@ -329,7 +343,8 @@ public sealed class H8CombatRuntimeV1
                 "H8 intent is not the next pending boundary.");
         var next = _useTrustedIntent
             ? SemanticPilotCombatEngineV111
-                .ResolveIntentFromH8TrustedBoundary(_state, intentId)
+                .ResolveIntentFromH8TrustedBoundary(
+                    _state, intentId, _pendingIntentPilotFingerprint)
             : SemanticPilotCombatEngineV111.ResolveIntent(
                 _state, _state.Fingerprint, intentId);
         Commit(next, new H8DecisionEntryV1(
@@ -462,5 +477,6 @@ public sealed class H8CombatRuntimeV1
         _drawCursor = null;
         _drawCursorCaptured = false;
         _playerFrame = null;
+        _pendingIntentPilotFingerprint = null;
     }
 }

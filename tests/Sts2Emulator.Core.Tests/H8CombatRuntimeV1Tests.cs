@@ -92,6 +92,70 @@ public sealed class H8CombatRuntimeV1Tests
     }
 
     [Fact]
+    public void TrustedH8CardPlayMatchesCheckedV111AndReplaysAcrossSourceSeeds()
+    {
+        // The H8 runtime must keep its exact action mechanics even though
+        // player version tokens replace the expensive v111 pilot SHA.
+        long checkedTicks = 0, trustedTicks = 0;
+        long checkedAlloc = 0, trustedAlloc = 0;
+        for (var index = 0; index < 8; index++)
+        {
+            var runtime = ReachFirstFullPlayerBoundary(
+                "h8-trusted-card-a10-mawler-" + index,
+                useNativePlayerEndTurn: true);
+            var source = runtime.LegacySnapshotForAudit();
+            var action = runtime.ObservePlayerFrame().LegalActions
+                .First(item => item.Kind == "play_card");
+            var oldToken = runtime.Boundary;
+            var oldHistory = runtime.DecisionCount;
+            SemanticPilotCombatV111 expected;
+            void Checked()
+            {
+                var allocated = GC.GetAllocatedBytesForCurrentThread();
+                var start = Stopwatch.GetTimestamp();
+                expected = SemanticPilotCombatEngineV111.Step(
+                    source, source.Fingerprint, action.ActionId);
+                checkedTicks += Stopwatch.GetTimestamp() - start;
+                checkedAlloc += GC.GetAllocatedBytesForCurrentThread() - allocated;
+            }
+            void Trusted()
+            {
+                var allocated = GC.GetAllocatedBytesForCurrentThread();
+                var start = Stopwatch.GetTimestamp();
+                runtime.ChoosePlayerAction(oldToken, action.ActionId);
+                trustedTicks += Stopwatch.GetTimestamp() - start;
+                trustedAlloc += GC.GetAllocatedBytesForCurrentThread() - allocated;
+            }
+            expected = null!;
+            if (index % 2 == 0)
+            {
+                Checked();
+                Trusted();
+            }
+            else
+            {
+                Trusted();
+                Checked();
+            }
+            Assert.Equal(oldHistory + 1, runtime.DecisionCount);
+            Assert.Equal(expected.Fingerprint,
+                runtime.LegacySnapshotForAudit().Fingerprint);
+            Assert.Throws<InvalidOperationException>(() =>
+                runtime.ChoosePlayerAction(oldToken, action.ActionId));
+            runtime.AuditReplay();
+        }
+        _output.WriteLine(
+            "H8 trusted player card versus v111 checked: eight real A10 "
+            + "plays, exact state and replay; elapsed ms/action "
+            + (checkedTicks * 1000.0 / Stopwatch.Frequency / 8).ToString("F3")
+            + " -> "
+            + (trustedTicks * 1000.0 / Stopwatch.Frequency / 8).ToString("F3")
+            + "; managed MB/action "
+            + (checkedAlloc / 8e6).ToString("F3") + " -> "
+            + (trustedAlloc / 8e6).ToString("F3"));
+    }
+
+    [Fact]
     public void NativePlayerEndTurnMatchesCheckedPathAndDecisionJournal()
     {
         long checkedAllocation = 0, directAllocation = 0;
@@ -486,6 +550,11 @@ public sealed class H8CombatRuntimeV1Tests
             Assert.True(state.AtPlayerBoundary);
             state.ChoosePlayerAction(state.Boundary, state.EndTurnActionId());
         }
+        // The real H7 actor asks for an event-scoped reference law before
+        // selecting an intent. That query now caches the exact pilot SHA
+        // and the subsequent H8 resolve must reuse it without state drift.
+        Assert.NotNull(state.DescribePendingReferenceLaw());
+        Assert.NotNull(state.DescribePendingReferenceLaw());
         var snapshot = state.LegacySnapshotForAudit();
         var support = state.PendingIntentIds();
         Assert.NotEmpty(support);

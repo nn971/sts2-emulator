@@ -2101,6 +2101,30 @@ public static class SemanticPilotCombatEngineV111
         current.Validate();
         if (current.Fingerprint != fingerprint)
             throw new InvalidOperationException("Stale semantic player-action fingerprint.");
+        return StepCurrentPlayerAction(current, actionId, null, false);
+    }
+
+    /// <summary>
+    /// Internal only: the H8 runtime has already checked its opaque boundary
+    /// version and uses the immutable public action frame captured for that
+    /// version. Skip the v111 whole-state SHA and redundant observation.
+    /// The source action engine still checks legality and executes the same
+    /// card, hook, selection, reward and terminal mechanics as legacy Step.
+    /// </summary>
+    internal static SemanticPilotCombatV111 StepFromH8TrustedBoundary(
+        SemanticPilotCombatV111 current, string actionId,
+        PrototypeAiFrame playerFrame)
+    {
+        ArgumentNullException.ThrowIfNull(current);
+        ArgumentNullException.ThrowIfNull(playerFrame);
+        ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
+        return StepCurrentPlayerAction(current, actionId, playerFrame, true);
+    }
+
+    private static SemanticPilotCombatV111 StepCurrentPlayerAction(
+        SemanticPilotCombatV111 current, string actionId,
+        PrototypeAiFrame? playerFrame, bool trustedH8)
+    {
         if (current.AtPlayerChoiceBoundary)
             return current.KnowledgeDemonChoicePending is not null
                 ? StepKnowledgeDemonChoice(current, actionId)
@@ -2112,7 +2136,7 @@ public static class SemanticPilotCombatEngineV111
         if (current.UsesNativePolicyBaseline)
             return StepNativePolicyBaseline(current, actionId);
         var environment = new PrototypeAiEnvironment();
-        var frame = environment.Observe(current.Run);
+        var frame = playerFrame ?? environment.Observe(current.Run);
         var action = frame.LegalActions.SingleOrDefault(a =>
             a.ActionId == actionId) ?? throw new InvalidOperationException(
                 "Illegal semantic player action.");
@@ -2216,8 +2240,8 @@ public static class SemanticPilotCombatEngineV111
             }
             else if (next is null ||
                      !previous.DrawPile.SequenceEqual(next.DrawPile) ||
-                     CanonicalJson.Sha256(previous.SemanticDeck) !=
-                         CanonicalJson.Sha256(next.SemanticDeck))
+                     !SameSemanticDeckForPlayerAction(
+                         previous.SemanticDeck, next.SemanticDeck, trustedH8))
             {
                 if ((!semanticDrawCard && !semanticAutoplayCard &&
                      !semanticRandomRareToHandCard) || next is null)
@@ -2296,8 +2320,8 @@ public static class SemanticPilotCombatEngineV111
                 (!isHandReturnPotion && !isDistilledChaos &&
                 !previous.DrawPile.SequenceEqual(next.DrawPile) ||
                 !isHandReturnPotion && !isDistilledChaos &&
-                CanonicalJson.Sha256(previous.SemanticDeck) !=
-                    CanonicalJson.Sha256(next.SemanticDeck))))
+                !SameSemanticDeckForPlayerAction(
+                    previous.SemanticDeck, next.SemanticDeck, trustedH8))))
                 throw new NotSupportedException(
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
                     "operation=unmodeled_draw_pile_mutation");
@@ -2310,6 +2334,23 @@ public static class SemanticPilotCombatEngineV111
             current, result, endTurn,
             new SemanticPilotContinuationV111("player", actionId));
         return NormalizeNoncontrolledCosts(nextState);
+    }
+
+    /// <summary>
+    /// A trusted H8 player frame is version-owned and has already passed its
+    /// source legality check. Compare the live provider deck fields directly
+    /// rather than serializing its growing transcript on every ordinary play.
+    /// Retain the original canonical SHA comparison on the external v111 path.
+    /// </summary>
+    private static bool SameSemanticDeckForPlayerAction(
+        SemanticDeckStateV111? before, SemanticDeckStateV111? after,
+        bool trustedH8)
+    {
+        if (!trustedH8)
+            return CanonicalJson.Sha256(before) == CanonicalJson.Sha256(after);
+        return before is null
+            ? after is null
+            : before.HasSameSerializedContentsAs(after);
     }
 
     private static SemanticPilotCombatV111 StepCardSelection(
@@ -3234,7 +3275,8 @@ public static class SemanticPilotCombatEngineV111
     /// follow the same mechanics as the checked public resolver.
     /// </summary>
     internal static SemanticPilotCombatV111 ResolveIntentFromH8TrustedBoundary(
-        SemanticPilotCombatV111 current, string intentId)
+        SemanticPilotCombatV111 current, string intentId,
+        string? boundaryFingerprint = null)
     {
         ArgumentNullException.ThrowIfNull(current);
         ArgumentException.ThrowIfNullOrWhiteSpace(intentId);
@@ -3246,7 +3288,10 @@ public static class SemanticPilotCombatEngineV111
         var support = ControlledTurnIntentEngineV111
             .DescribePendingSemanticIntent(ticket) ??
             throw new InvalidDataException("H8 intent has no weighted support.");
-        var fingerprint = current.Fingerprint;
+        // When H8 already exposed this exact version-owned reference law,
+        // its pre-choice fingerprint is identical. Do not hash the entire
+        // mechanics/transcript twice for one intent provider decision.
+        var fingerprint = boundaryFingerprint ?? current.Fingerprint;
         var semanticEvent = SemanticIntentChoiceV111.CreateEvent(
             fingerprint, pending, support);
         var selection = SemanticIntentChoiceV111.Select(
@@ -3431,6 +3476,14 @@ public static class SemanticPilotCombatEngineV111
         SemanticPilotCombatV111 current)
     {
         ArgumentNullException.ThrowIfNull(current);
+        return DescribePendingIntentEvent(current, current.Fingerprint);
+    }
+
+    internal static SemanticIntentEventV111 DescribePendingIntentEvent(
+        SemanticPilotCombatV111 current, string boundaryFingerprint)
+    {
+        ArgumentNullException.ThrowIfNull(current);
+        ArgumentException.ThrowIfNullOrWhiteSpace(boundaryFingerprint);
         var ticket = current.PendingInitialIntents ??
             current.PendingEndTurn?.Intents;
         if (ticket?.Pending is not { } request)
@@ -3440,7 +3493,7 @@ public static class SemanticPilotCombatEngineV111
             .DescribePendingSemanticIntent(ticket) ??
             throw new InvalidDataException("Missing weighted intent support.");
         return SemanticIntentChoiceV111.CreateEvent(
-            current.Fingerprint, request, support);
+            boundaryFingerprint, request, support);
     }
 
     public static SemanticTargetEventV111? DescribePendingTargetEvent(

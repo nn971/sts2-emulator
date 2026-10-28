@@ -8,7 +8,9 @@ on:
       - 'src/Sts2Emulator.Core/H8NativePlayerEndTurnEngineV1.cs'
       - 'src/Sts2Emulator.Core/SemanticEndTurnV111.cs'
       - 'src/Sts2Emulator.Core/SemanticPilotCombatV111.cs'
+      - 'src/Sts2Emulator.Core/SemanticDeckStateV111.cs'
       - 'tests/Sts2Emulator.Core.Tests/H8CombatRuntimeV1Tests.cs'
+      - 'tests/Sts2Emulator.Core.Tests/SemanticDeckStateV111Tests.cs'
       - 'src/Sts2Emulator.Cli/PrototypeAiJsonlServer.cs'
       - 'tests/test_h8_runtime_jsonl.py'
       - 'tests/test_h8_benchmark_sessions.py'
@@ -32,7 +34,7 @@ jobs:
       - name: Real source-valid A10 H8 draw/replay and old checked draw parity
         run: |
           dotnet test Sts2Emulator.sln -c Release --no-build -m:1 \
-            --filter 'FullyQualifiedName~H8CombatRuntimeV1Tests|FullyQualifiedName~CanonicalJsonTests' \
+            --filter 'FullyQualifiedName~H8CombatRuntimeV1Tests|FullyQualifiedName~SemanticDeckStateV111Tests|FullyQualifiedName~CanonicalJsonTests' \
             --logger 'console;verbosity=detailed'
       - uses: actions/setup-python@v5
         with:

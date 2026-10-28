@@ -489,6 +489,69 @@ public sealed record SemanticDeckStateV111
     [JsonIgnore] public int Count => _slots.Length;
     [JsonIgnore] public string Fingerprint => CanonicalJson.Sha256(this);
 
+    /// <summary>
+    /// Exact field equality for the in-process H8 mechanics-owner guard.
+    /// The v111 checked API still uses canonical SHA fingerprints at its
+    /// external trust boundary; an H8 version token already proves freshness.
+    /// This comparison deliberately covers EVERY serialized state field,
+    /// including provenance and transcript entries. It allocates no JSON
+    /// buffers, constructs no digest and never changes provider state.
+    /// </summary>
+    internal bool HasSameSerializedContentsAs(SemanticDeckStateV111? other)
+    {
+        if (ReferenceEquals(this, other))
+            return true;
+        if (other is null ||
+            !string.Equals(Mode, other.Mode, StringComparison.Ordinal) ||
+            ShuffleEpoch != other.ShuffleEpoch ||
+            _slots.Length != other._slots.Length ||
+            _pools.Length != other._pools.Length ||
+            (_transcript?.Length ?? -1) != (other._transcript?.Length ?? -1))
+            return false;
+        for (var i = 0; i < _slots.Length; i++)
+            if (_slots[i] != other._slots[i])
+                return false;
+        for (var i = 0; i < _pools.Length; i++)
+        {
+            if (_pools[i].PoolId != other._pools[i].PoolId ||
+                !_pools[i].RemainingCardInstanceIds.AsSpan().SequenceEqual(
+                    other._pools[i].RemainingCardInstanceIds))
+                return false;
+        }
+        if ((Pending is null) != (other.Pending is null))
+            return false;
+        if (Pending is { } leftPending &&
+            other.Pending is { } rightPending &&
+            (leftPending.SiteId != rightPending.SiteId ||
+             leftPending.Purpose != rightPending.Purpose ||
+             leftPending.TopOffset != rightPending.TopOffset ||
+             leftPending.PoolId != rightPending.PoolId ||
+             leftPending.Ordinal != rightPending.Ordinal ||
+             !leftPending.CandidateCardInstanceIds.AsSpan().SequenceEqual(
+                 rightPending.CandidateCardInstanceIds)))
+            return false;
+        if (_transcript is not null)
+        {
+            for (var i = 0; i < _transcript.Length; i++)
+            {
+                var left = _transcript[i];
+                var right = other._transcript![i];
+                if (left.EventId != right.EventId ||
+                    left.SiteId != right.SiteId ||
+                    left.Purpose != right.Purpose ||
+                    left.TopOffset != right.TopOffset ||
+                    left.Ordinal != right.Ordinal ||
+                    left.SelectedIndex != right.SelectedIndex ||
+                    left.SelectedCardInstanceId != right.SelectedCardInstanceId ||
+                    left.ProbabilityStatus != right.ProbabilityStatus ||
+                    !left.CandidateCardInstanceIds.AsSpan().SequenceEqual(
+                        right.CandidateCardInstanceIds))
+                    return false;
+            }
+        }
+        return true;
+    }
+
     public SemanticDeckStateV111 Fork() => this with
     {
         Slots = (SemanticDeckSlotV111[])_slots.Clone(),

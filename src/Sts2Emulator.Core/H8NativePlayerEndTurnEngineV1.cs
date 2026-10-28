@@ -11,7 +11,8 @@ namespace Sts2Emulator.Core;
 internal static class H8NativePlayerEndTurnEngineV1
 {
     internal static bool IsEndTurn(
-        SemanticPilotCombatV111 current, string actionId)
+        SemanticPilotCombatV111 current, string actionId,
+        PrototypeAiFrame? playerFrame = null)
     {
         ArgumentNullException.ThrowIfNull(current);
         ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
@@ -24,19 +25,20 @@ internal static class H8NativePlayerEndTurnEngineV1
 
         // One source observation establishes both legal action and kind.
         // It avoids the separate v111 Step -> EndTurn double observation.
-        var action = new PrototypeAiEnvironment()
-            .Observe(current.Run).LegalActions
-            .SingleOrDefault(item => item.ActionId == actionId);
+        var action = (playerFrame ??
+            new PrototypeAiEnvironment().Observe(current.Run))
+            .LegalActions.SingleOrDefault(item => item.ActionId == actionId);
         return action?.Kind == "end_turn";
     }
 
     /// <summary>Returns null when this boundary is a different legal
     /// player-action kind; only the native end-turn route is migrated.</summary>
     internal static SemanticPilotCombatV111? TryAdvance(
-        SemanticPilotCombatV111 current, string actionId)
+        SemanticPilotCombatV111 current, string actionId,
+        PrototypeAiFrame? playerFrame = null)
     {
         ArgumentNullException.ThrowIfNull(current);
-        if (!IsEndTurn(current, actionId))
+        if (!IsEndTurn(current, actionId, playerFrame))
             return null;
         var combat = current.Run.World?.Combat ??
             throw new InvalidOperationException(
