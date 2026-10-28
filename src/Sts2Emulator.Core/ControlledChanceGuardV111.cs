@@ -17,6 +17,9 @@ public static class ControlledChanceGuardV111
     {
         ["reward.card_rarity.ticket"] = "bounded_integer",
         ["reward.card_model.index_draw"] = "choose_index",
+        // Elite postcombat reward is engine-owned just like card/potion
+        // reward offers. It never contributes to an active combat outcome.
+        ["reward.elite_relic.model"] = "choose_index",
         ["reward.random_potion.drop.ticket"] = "bounded_integer",
         ["reward.random_potion.model"] = "choose_index",
         // After a boss is defeated, the source engine initializes the
