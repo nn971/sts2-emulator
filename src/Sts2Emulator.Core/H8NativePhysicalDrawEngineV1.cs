@@ -43,12 +43,16 @@ internal static class H8NativePhysicalDrawEngineV1
             throw new InvalidOperationException(
                 "H8 native draw requires a clean automatic hand-draw cursor.");
 
-        // Selection is first validated against the provider's actual pending
-        // support. All mutations run on this local fork; the runtime publishes
-        // it only after a successful mechanics transition.
+        // The versioned H8 session has exclusive ownership of this
+        // checkpoint. SemanticDrawChoice.Commit and BeginSemanticCombatDraw
+        // use functional record transitions: they construct new card-zone,
+        // provider and RNG owners rather than mutating the source arrays.
+        // Publishing happens only after the complete transition succeeds.
+        // A full RunState.Fork here used to copy every unrelated room/map,
+        // relic/potion, RNG and combat field once for EACH drawn card.
         using var total = H8HotPathProfilerV1.Begin("h8.draw.native_transition");
         var selected = SemanticDrawChoiceV111.Select(drawEvent, selectedIndex);
-        var run = current.Run.Fork();
+        var run = current.Run;
         var world = run.World ?? throw new InvalidDataException(
             "H8 automatic draw has no world.");
         var combat = world.Combat ?? throw new InvalidDataException(
