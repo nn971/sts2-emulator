@@ -165,6 +165,47 @@ public sealed class H8CombatRuntimeV1Tests
     }
 
     [Fact]
+    public void H8TaggedIntentAndPlayerBoundariesAvoidLegacyDrawCapture()
+    {
+        // All source-valid initial intents and ordinary player boundaries
+        // are classified without materializing nested v111 draw events.
+        var runtime = H8CombatRuntimeV1.BeginSeeded(
+            Mawler("h8-boundary-no-spurious-draw-projection"));
+        var calls = new Dictionary<string, int>(StringComparer.Ordinal);
+        H8HotPathProfilerV1.SetSink((operation, _, _) =>
+        {
+            calls[operation] = calls.GetValueOrDefault(operation) + 1;
+        });
+        try
+        {
+            for (var i = 0; i < 12; i++)
+            {
+                if (runtime.BoundaryKind == "player")
+                    break;
+                Assert.Equal("enemy_intent", runtime.BoundaryKind);
+                var ids = runtime.PendingIntentIds();
+                Assert.Equal(ids, runtime.PendingIntentIds());
+                Assert.NotEmpty(runtime.PendingIntentRawWeights());
+                runtime.ChooseIntent(runtime.Boundary, ids[0]);
+            }
+            Assert.Equal("player", runtime.BoundaryKind);
+            Assert.Equal("player", runtime.BoundaryKind);
+            Assert.Equal(0, calls.GetValueOrDefault("h8.draw.cursor_capture"));
+            // Repeated status-equivalent observations must reuse the same
+            // computed boundary tag until Commit invalidates it.
+            Assert.True(calls.GetValueOrDefault("h8.boundary.classify") <= 13);
+            Assert.Equal(
+                runtime.LegalPlayerActionIds(),
+                runtime.LegalPlayerActionIds());
+        }
+        finally
+        {
+            H8HotPathProfilerV1.SetSink(null);
+        }
+        runtime.AuditReplay();
+    }
+
+    [Fact]
     public void TrustedH8CardPlayMatchesCheckedV111AndReplaysAcrossSourceSeeds()
     {
         // The H8 runtime must keep its exact action mechanics even though
