@@ -184,8 +184,7 @@ public sealed class H8CombatRuntimeV1
     /// </summary>
     public PrototypeAiFrame ObservePlayerFrame()
     {
-        if ((!_state.AtPlayerBoundary && !_state.AtPlayerChoiceBoundary) ||
-            _state.CombatTerminal)
+        if (!AtPlayerBoundary)
             throw new InvalidOperationException(
                 "H8 public player observation requires a full player boundary.");
         if (_playerFrame is null)
@@ -210,7 +209,7 @@ public sealed class H8CombatRuntimeV1
 
     public string EndTurnActionId()
     {
-        if (!_state.AtPlayerBoundary)
+        if (PendingBoundaryKind() != H8PendingKindV1.Player)
             throw new InvalidOperationException(
                 "End turn is available only at a full player boundary.");
         return ObservePlayerFrame()
@@ -231,7 +230,7 @@ public sealed class H8CombatRuntimeV1
     public object DescribePendingReferenceLaw()
     {
         using var scope = H8HotPathProfilerV1.Begin("h8.chance_law.total");
-        if (CurrentDrawCursor() is { } cursor)
+        if (HasPendingCardDraw && CurrentDrawCursor() is { } cursor)
         {
             var drawn = cursor.Event;
             var deck = _state.Run.World?.Combat?.SemanticDeck ??
