@@ -363,8 +363,7 @@ public sealed class ResearchCombatFixtureV111Tests
                 Assert.Equal("legacy-prototype-v0", chosen.ProviderMode);
                 Assert.InRange(chosen.SelectedValue, 7, 9);
                 Assert.Throws<NotSupportedException>(() =>
-                    LegacyRandomChoiceV111.ChooseIndex(
-                        rng, site, "reward", "creature:3", [7, 8, 9]));
+                    PrototypeRng.NextInt(rng, "reward", 3));
             }
             Assert.Throws<NotSupportedException>(() =>
                 LegacyRandomChoiceV111.ChooseIndex(
@@ -377,7 +376,7 @@ public sealed class ResearchCombatFixtureV111Tests
             site, "combat", "creature:2", [7, 8, 9]);
         Assert.Equal(baseline.SelectedIndex, chosen.SelectedIndex);
         Assert.Equal((ulong)1, rng.Streams.Single(x =>
-            x.StreamId == "combat").CallCount);
+            x.StreamId == "combat").CallCount ?? 0UL);
     }
 
     [Fact]
