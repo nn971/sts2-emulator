@@ -64,6 +64,27 @@ internal static class H8LocalReferenceNatureV1
     }
 
     /// <summary>
+    /// Draw an event-keyed random-target index with the source-verified
+    /// NativeNextInt 53-bit grid masses. Ordinary physical card draws still
+    /// use their separate uniform reference distribution.
+    /// </summary>
+    internal static int NativeTargetIndex(
+        long seed, string eventId, string siteId, int count)
+    {
+        var weights = ChanceLawEngineV111.NativeNextIntGridWeights(count);
+        var ticket = Ticket(seed, eventId, siteId, NativeDoubleGrid);
+        ulong cumulative = 0;
+        for (var i = 0; i < weights.Length; i++)
+        {
+            cumulative = checked(cumulative + (ulong)weights[i]);
+            if (ticket < cumulative)
+                return i;
+        }
+        throw new InvalidDataException(
+            "Source-verified random-target grid does not cover sampled ticket.");
+    }
+
+    /// <summary>
     /// The NativeNextDouble 53-bit bucket boundary is the exact integer
     /// boundary used by the existing v111 source-verified intent law. The
     /// formula avoids rounding native weights through binary64.
