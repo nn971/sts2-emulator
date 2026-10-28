@@ -127,6 +127,14 @@ public sealed class H8CombatRuntimeV1
         _state.CombatOutcome == "defeat"
         ? _state.Run.World?.DefeatRemainingEnemyHp
         : null;
+    public int? DefeatTotalNonMinionEnemyHp => Terminal &&
+        _state.CombatOutcome == "defeat"
+        ? _state.Run.World?.DefeatTotalNonMinionEnemyHp
+        : null;
+    public int? DefeatRemainingNonMinionEnemyHp => Terminal &&
+        _state.CombatOutcome == "defeat"
+        ? _state.Run.World?.DefeatRemainingNonMinionEnemyHp
+        : null;
     public bool AtPlayerBoundary =>
         PendingBoundaryKind() is H8PendingKindV1.Player or
             H8PendingKindV1.PlayerChoice;

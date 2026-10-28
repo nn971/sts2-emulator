@@ -1426,16 +1426,82 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             : card;
     }
 
+    /// <summary>
+    /// Compute the total non-minion HP over the whole encounter, including
+    /// completed forms and future scripted death-spawn stages. Defeated
+    /// parents remain in the formation. Before the non-minion death summons
+    /// exist, their declared maximum HP is reserved as *both* remaining and
+    /// total HP; once created the budget uses their actual rolled MaxHp.
+    /// A staged transition must not erase progress earned against the parent.
+    /// Minion definitions and dynamically minion-marked enemies are excluded.
+    /// </summary>
+    internal static (int Total, int Remaining) NonMinionEncounterHp(
+        CombatState combat)
+    {
+        var total = 0;
+        var remaining = 0;
+        foreach (var enemy in combat.Enemies)
+        {
+            var definition = PrototypeContent.Enemy(enemy.EnemyId);
+            if (definition.IsMinion ||
+                enemy.PowerStates.Any(power =>
+                    power.PowerId == "proto.power.minion" && power.Stacks > 0))
+                continue;
+            total = checked(total + Math.Max(enemy.MaxHp, Math.Max(0, enemy.Hp))
+                + enemy.CompletedPhaseMaxHp);
+            remaining = checked(remaining + Math.Max(0, enemy.Hp));
+
+            // Summons are deterministic stage obligations, while their exact
+            // HP is rolled on creation. Max is a stable conservative budget:
+            // replacing it with the rolled value cannot decrease progress.
+            if (!enemy.DeathEffectsResolved && definition.DeathSummons is { } summons)
+                foreach (var summon in summons)
+                {
+                    var summoned = PrototypeContent.Enemy(summon.EnemyId);
+                    if (summoned.IsMinion ||
+                        summoned.StartingPowers?.Any(power =>
+                            power.PowerId == "proto.power.minion") == true)
+                        continue;
+                    var pendingHp = summoned.HpRangeAt(
+                        combat.Act, combat.Ascension).Max;
+                    total = checked(total + pendingHp);
+                    remaining = checked(remaining + pendingHp);
+                }
+
+            // The Test Subject restores the same monster's HP twice. These
+            // phases are source-declared, not new combat instances.
+            if (enemy.EnemyId == PrototypeNativeGloryBosses.TestSubjectId)
+            {
+                if (enemy.BossPhase < 1)
+                {
+                    var hp = combat.Ascension >= 8 ? 212 : 200;
+                    total = checked(total + hp);
+                    remaining = checked(remaining + hp);
+                }
+                if (enemy.BossPhase < 2)
+                {
+                    var hp = combat.Ascension >= 8 ? 313 : 300;
+                    total = checked(total + hp);
+                    remaining = checked(remaining + hp);
+                }
+            }
+        }
+        return (total, remaining);
+    }
+
     private static RunState EndRun(RunState state, string outcome)
     {
         var original = RequireWorld(state);
+        var nonMinion = outcome == "defeat" && original.Combat is { } combat
+            ? NonMinionEncounterHp(combat) : ((int Total, int Remaining)?)null;
         var world = original with
         {
-            // Preserve this scalar at the exact transition that discards
-            // Combat. H4 uses it only as a terminal scoring statistic.
+            // Keep the legacy all-enemy terminal scalar for existing clients.
             DefeatRemainingEnemyHp = outcome == "defeat"
                 ? original.Combat?.Enemies.Sum(enemy => Math.Max(0, enemy.Hp))
                 : null,
+            DefeatTotalNonMinionEnemyHp = nonMinion?.Total,
+            DefeatRemainingNonMinionEnemyHp = nonMinion?.Remaining,
             Combat = null,
             Reward = null,
             Shop = null,

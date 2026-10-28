@@ -32,4 +32,6 @@ public sealed record RunWorldMechanicsStateV111(
     bool FreedRepy = false,
     long? LastCombatEndDecisionIndex = null,
     PrototypeCustomRewardReturnState? CustomRewardReturn = null,
-    int? DefeatRemainingEnemyHp = null);
+    int? DefeatRemainingEnemyHp = null,
+    int? DefeatTotalNonMinionEnemyHp = null,
+    int? DefeatRemainingNonMinionEnemyHp = null);
