@@ -242,12 +242,29 @@ public sealed class SemanticDeckStateV111Tests
             SemanticDeckEngineV111.Resolve(pending, "stale", 0));
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             SemanticDeckEngineV111.Resolve(pending, stable, 4));
-        var forged = pending.Fork();
-        forged.Pending!.CandidateCardInstanceIds[0] = 999;
+        // Public array getters are defensive copies. Modifying their
+        // returned arrays must not mutate a provider-owned checkpoint.
+        var forked = pending.Fork();
+        forked.Pending!.CandidateCardInstanceIds[0] = 999;
+        forked.Pools[0].RemainingCardInstanceIds[0] = 777;
+        SemanticDeckEngineV111.Validate(forked);
+        Assert.Equal(stable, forked.Fingerprint);
+
+        // Actually forge a new record through its init-only properties,
+        // then confirm that the provider's membership invariants reject it.
+        var ids = forked.Pending!.CandidateCardInstanceIds;
+        ids[0] = 999;
+        var forged = forked with
+        {
+            Pending = forked.Pending with { CandidateCardInstanceIds = ids }
+        };
         Assert.Throws<InvalidDataException>(() =>
             SemanticDeckEngineV111.Validate(forged));
-        var mutated = pending.Fork();
-        mutated.Pools[0].RemainingCardInstanceIds[0] = 777;
+        var poolIds = forked.Pools[0].RemainingCardInstanceIds;
+        poolIds[0] = 777;
+        var pools = forked.Pools;
+        pools[0] = pools[0] with { RemainingCardInstanceIds = poolIds };
+        var mutated = forked with { Pools = pools };
         Assert.Throws<InvalidDataException>(() =>
             SemanticDeckEngineV111.Validate(mutated));
         Assert.Equal(stable, pending.Fingerprint);
