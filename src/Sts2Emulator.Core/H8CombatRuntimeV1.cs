@@ -320,6 +320,8 @@ public sealed class H8CombatRuntimeV1
                 target.Ordinal,
                 target.OperationKind,
                 target.ProbabilityStatus,
+                constraintFingerprint =
+                    ChanceLawEngineV111.QueryTarget(target).ConditioningFingerprint,
                 chanceLaw = ChanceLawEngineV111.QueryTarget(target),
                 candidates = target.CandidateEnemyInstanceIds.Select(id =>
                     new { enemyInstanceId = id }).ToArray()
