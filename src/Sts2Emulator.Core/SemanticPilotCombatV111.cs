@@ -3473,8 +3473,11 @@ public static class SemanticPilotCombatEngineV111
     /// support. It is bound to the exact pre-choice state and eligible pool.
     /// </summary>
     public static SemanticIntentEventV111 DescribePendingIntentEvent(
-        SemanticPilotCombatV111 current) =>
-        DescribePendingIntentEvent(current, current.Fingerprint);
+        SemanticPilotCombatV111 current)
+    {
+        ArgumentNullException.ThrowIfNull(current);
+        return DescribePendingIntentEvent(current, current.Fingerprint);
+    }
 
     internal static SemanticIntentEventV111 DescribePendingIntentEvent(
         SemanticPilotCombatV111 current, string boundaryFingerprint)
