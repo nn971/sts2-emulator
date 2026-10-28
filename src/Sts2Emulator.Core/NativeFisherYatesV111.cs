@@ -52,16 +52,17 @@ public static class NativeFisherYatesV111
         string ownerId,
         string siteId,
         int ordinalOffset = 0,
-        Func<T, string>? controlledCandidateLabel = null)
+        Func<T, string>? controlledCandidateLabel = null,
+        bool allowRegisteredLegacySite = false)
     {
         ArgumentNullException.ThrowIfNull(values);
         ArgumentNullException.ThrowIfNull(streams);
         ArgumentNullException.ThrowIfNull(provider);
         ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
         ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
-        ValidateSiteId(siteId,
-            StochasticSiteRegistryV111.NativeFisherYatesSiteIds,
-            "shuffle");
+        ValidateSiteId(
+            siteId, streamId, allowRegisteredLegacySite,
+            StochasticSiteRegistryV111.NativeFisherYatesSiteIds);
         if (ordinalOffset < 0)
             throw new ArgumentOutOfRangeException(nameof(ordinalOffset));
         var decisions = new List<RandomIndexDecisionV111>();
@@ -110,15 +111,26 @@ public static class NativeFisherYatesV111
     }
 
     private static void ValidateSiteId(
-        string siteId, string[] supportedSiteIds, string operation)
+        string siteId, string streamId, bool allowRegisteredLegacySite,
+        string[] supportedSiteIds)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
         ArgumentNullException.ThrowIfNull(supportedSiteIds);
-        ArgumentException.ThrowIfNullOrWhiteSpace(operation);
-        if (!supportedSiteIds.Contains(siteId, StringComparer.Ordinal))
-            throw new NotSupportedException(
-                $"Native Fisher-Yates does not support {operation} site " +
-                $"'{siteId}'.");
+        if (supportedSiteIds.Contains(siteId, StringComparer.Ordinal))
+            return;
+
+        // LegacyFisherYates reuses the swap loop, but its caller-bound
+        // sites must not be silently promoted to native RNG sites.
+        if (allowRegisteredLegacySite
+            && StochasticSiteRegistryV111.TryGetLegacyCallerBoundIndexQuerySite(
+                siteId, out var registered)
+            && registered.StreamId == streamId
+            && registered.OperationKind == "bounded_integer")
+            return;
+
+        throw new NotSupportedException(
+            $"Fisher-Yates does not support shuffle site '{siteId}' " +
+            $"on stream '{streamId}'.");
     }
 }
 
