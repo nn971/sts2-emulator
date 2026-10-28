@@ -251,11 +251,7 @@ internal static class PrototypeAiJsonlServer
         {
             using var scope = H8HotPathProfilerV1.Begin("h8.status.project");
             var boundary = runtime.Boundary;
-            string kind = runtime.Terminal ? "terminal" :
-                runtime.HasPendingCardDraw ? "draw_card" :
-                runtime.HasPendingIntent ? "enemy_intent" :
-                runtime.AtPlayerChoiceBoundary ? "player_choice" :
-                runtime.AtPlayerBoundary ? "player" : "unsupported";
+            var kind = runtime.BoundaryKind;
             return new
             {
                 ok = true,
