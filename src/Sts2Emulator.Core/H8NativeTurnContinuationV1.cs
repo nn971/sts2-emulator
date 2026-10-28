@@ -46,11 +46,18 @@ internal static class H8NativeTurnContinuationV1
         // provider history, but it performs no automatic turn mechanics.
         using var projection =
             H8HotPathProfilerV1.Begin("h8.turn_cursor.compat_projection");
+        // First publish the hand progress to the compatibility record,
+        // then attach any resumed pipeline result. These are distinct source
+        // checkpoints: the HandDraw remains at its committed physical draw,
+        // while EndTurn.Run advances to the following Nature/player boundary.
+        // Preserve the exact v111 write order for nested Simulation envelopes.
         var projected = origin with
         {
-            Run = cursor.ActiveRun,
-            HandDraw = cursor.HandDraw
+            Run = advancedDraw.Run,
+            HandDraw = advancedDraw
         };
+        if (advancedDraw.AtBoundary)
+            projected = projected with { Run = cursor.ActiveRun };
         return cursor.Complete ? projected with { Complete = true } : projected;
     }
 
