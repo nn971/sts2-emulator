@@ -283,8 +283,13 @@ public sealed class ResearchCombatFixtureV111Tests
         runtime.AdvanceLocalReferenceNature(runtime.Boundary, 20261028);
         Assert.True(runtime.AtPlayerBoundary);
         Assert.NotEmpty(runtime.ObservePlayerFrame().LegalActions);
-        Assert.True(runtime.LegacySnapshotForAudit()
-            .Run.World!.Combat!.Enemies.Length >= 1);
+        var enemies = runtime.LegacySnapshotForAudit()
+            .Run.World!.Combat!.Enemies;
+        Assert.NotEmpty(enemies);
+        if (encounterId is "proto.encounter.inklets_normal"
+            or "proto.encounter.ruby_raiders_normal"
+            or "proto.encounter.the_kin_boss")
+            Assert.True(enemies.Length >= 2, "Expected multi-enemy formation");
         runtime.AuditReplay();
     }
 
