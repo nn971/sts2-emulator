@@ -92,6 +92,33 @@ public sealed class H8CombatRuntimeV1Tests
     }
 
     [Fact]
+    public void TrustedH8CardPlayMatchesCheckedV111AndReplaysAcrossSourceSeeds()
+    {
+        // The H8 runtime must keep its exact action mechanics even though
+        // player version tokens replace the expensive v111 pilot SHA.
+        for (var index = 0; index < 8; index++)
+        {
+            var runtime = ReachFirstFullPlayerBoundary(
+                "h8-trusted-card-a10-mawler-" + index,
+                useNativePlayerEndTurn: true);
+            var source = runtime.LegacySnapshotForAudit();
+            var action = runtime.ObservePlayerFrame().LegalActions
+                .First(item => item.Kind == "play_card");
+            var expected = SemanticPilotCombatEngineV111.Step(
+                source, source.Fingerprint, action.ActionId);
+            var oldToken = runtime.Boundary;
+            var oldHistory = runtime.DecisionCount;
+            runtime.ChoosePlayerAction(oldToken, action.ActionId);
+            Assert.Equal(oldHistory + 1, runtime.DecisionCount);
+            Assert.Equal(expected.Fingerprint,
+                runtime.LegacySnapshotForAudit().Fingerprint);
+            Assert.Throws<InvalidOperationException>(() =>
+                runtime.ChoosePlayerAction(oldToken, action.ActionId));
+            runtime.AuditReplay();
+        }
+    }
+
+    [Fact]
     public void NativePlayerEndTurnMatchesCheckedPathAndDecisionJournal()
     {
         long checkedAllocation = 0, directAllocation = 0;
