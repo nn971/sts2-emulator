@@ -52,7 +52,7 @@ internal static class H8NativePlayerEndTurnEngineV1
         // immutable checkpoint for the replay journal and next-turn cursor.
         RunState advanced;
         var environment = new PrototypeAiEnvironment();
-        using var scope = H8HotPathProfilerV1.Begin("h8.endturn.native_mechanics");
+        using (H8HotPathProfilerV1.Begin("h8.endturn.native_mechanics"))
         using (ControlledChanceGuardV111.Enter())
         using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
             advanced = environment.Step(
