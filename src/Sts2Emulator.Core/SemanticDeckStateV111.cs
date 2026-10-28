@@ -489,6 +489,15 @@ public sealed record SemanticDeckStateV111
     [JsonIgnore] public int Count => _slots.Length;
     [JsonIgnore] public string Fingerprint => CanonicalJson.Sha256(this);
 
+    // Trusted in-process H8 continuation can address the just-committed
+    // transcript entry by its source ordinal. Avoid cloning and scanning
+    // the full defensive-copy Transcript array for every physical draw.
+    // The returned record is read-only to the internal caller; public
+    // Transcript and explicit Fork still provide detached copies.
+    internal SemanticDeckChoiceV111? TranscriptChoiceAtOrdinal(int ordinal) =>
+        ordinal >= 0 && _transcript is { } transcript &&
+        ordinal < transcript.Length ? transcript[ordinal] : null;
+
     /// <summary>
     /// Exact field equality for the in-process H8 mechanics-owner guard.
     /// The v111 checked API still uses canonical SHA fingerprints at its
