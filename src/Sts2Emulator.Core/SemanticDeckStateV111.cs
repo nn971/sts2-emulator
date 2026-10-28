@@ -447,6 +447,8 @@ public sealed record SemanticDeckStateV111
     private SemanticDeckSlotV111[] _slots;
     private SemanticDeckPoolV111[] _pools;
     private SemanticDeckChoiceV111[]? _transcript;
+    // H8 commits share immutable transcript prefixes between decisions.
+    private H8DeckTranscriptTrailV1? _h8TranscriptTrail;
 
     public const string SchemaId = "sts2-v111-semantic-deck-v1";
     public const string NatureMode = "nature-deferred-v1";
@@ -482,9 +484,23 @@ public sealed record SemanticDeckStateV111
     public SemanticDeckPendingV111? Pending { get; init; }
     public SemanticDeckChoiceV111[]? Transcript
     {
-        get => CloneOptional(_transcript);
-        init => _transcript = CloneOptional(value);
+        get => _h8TranscriptTrail?.Materialize() ?? CloneOptional(_transcript);
+        init
+        {
+            _transcript = CloneOptional(value);
+            _h8TranscriptTrail = null;
+        }
     }
+
+    [JsonIgnore]
+    internal H8DeckTranscriptTrailV1? H8TranscriptTrail
+    {
+        get => _h8TranscriptTrail;
+        init => _h8TranscriptTrail = value;
+    }
+
+    [JsonIgnore] internal int TranscriptCount =>
+        _h8TranscriptTrail?.Count ?? _transcript?.Length ?? -1;
 
     [JsonIgnore] public int Count => _slots.Length;
     [JsonIgnore] public string Fingerprint => CanonicalJson.Sha256(this);
@@ -494,9 +510,24 @@ public sealed record SemanticDeckStateV111
     // the full defensive-copy Transcript array for every physical draw.
     // The returned record is read-only to the internal caller; public
     // Transcript and explicit Fork still provide detached copies.
-    internal SemanticDeckChoiceV111? TranscriptChoiceAtOrdinal(int ordinal) =>
-        ordinal >= 0 && _transcript is { } transcript &&
-        ordinal < transcript.Length ? transcript[ordinal] : null;
+    internal SemanticDeckChoiceV111? TranscriptChoiceAtOrdinal(int ordinal)
+    {
+        if (ordinal < 0 || ordinal >= TranscriptCount)
+            return null;
+        if (_h8TranscriptTrail is { } trail)
+            return ordinal == trail.Count - 1
+                ? trail.LastChoice
+                : trail.Materialize()[ordinal];
+        return _transcript![ordinal];
+    }
+
+    internal SemanticDeckStateV111 AppendH8Transcript(
+        SemanticDeckChoiceV111 choice)
+    {
+        var trail = _h8TranscriptTrail ??
+            H8DeckTranscriptTrailV1.FromHistory(_transcript ?? []);
+        return this with { H8TranscriptTrail = trail.Append(choice) };
+    }
 
     /// <summary>
     /// Exact field equality for the in-process H8 mechanics-owner guard.
@@ -515,7 +546,7 @@ public sealed record SemanticDeckStateV111
             ShuffleEpoch != other.ShuffleEpoch ||
             _slots.Length != other._slots.Length ||
             _pools.Length != other._pools.Length ||
-            (_transcript?.Length ?? -1) != (other._transcript?.Length ?? -1))
+            TranscriptCount != other.TranscriptCount)
             return false;
         for (var i = 0; i < _slots.Length; i++)
             if (_slots[i] != other._slots[i])
@@ -539,12 +570,18 @@ public sealed record SemanticDeckStateV111
              !leftPending.CandidateCardInstanceIds.AsSpan().SequenceEqual(
                  rightPending.CandidateCardInstanceIds)))
             return false;
-        if (_transcript is not null)
+        if (TranscriptCount >= 0 &&
+            !(_h8TranscriptTrail is not null &&
+              ReferenceEquals(_h8TranscriptTrail, other._h8TranscriptTrail)))
         {
-            for (var i = 0; i < _transcript.Length; i++)
+            // Explicit deep comparison only; normal H8 transitions share
+            // immutable prefixes and never materialize them.
+            var leftChoices = Transcript!;
+            var rightChoices = other.Transcript!;
+            for (var i = 0; i < leftChoices.Length; i++)
             {
-                var left = _transcript[i];
-                var right = other._transcript![i];
+                var left = leftChoices[i];
+                var right = rightChoices[i];
                 if (left.EventId != right.EventId ||
                     left.SiteId != right.SiteId ||
                     left.Purpose != right.Purpose ||
@@ -566,7 +603,7 @@ public sealed record SemanticDeckStateV111
         Slots = (SemanticDeckSlotV111[])_slots.Clone(),
         Pools = _pools.Select(p => p.Fork()).ToArray(),
         Pending = Pending?.Fork(),
-        Transcript = (_transcript ?? []).Select(t => t.Fork()).ToArray()
+        Transcript = (Transcript ?? []).Select(t => t.Fork()).ToArray()
     };
 
     public void Deconstruct(
@@ -685,7 +722,7 @@ public static class SemanticDeckEngineV111
                     : "combat.draw_pile.reveal_card",
                 purpose, topOffset, pool.PoolId,
                 (long[])pool.RemainingCardInstanceIds.Clone(),
-                (state.Transcript ?? []).Length)
+                state.TranscriptCount)
         });
     }
 
@@ -710,12 +747,43 @@ public static class SemanticDeckEngineV111
         Validate(state);
         if (!StringComparer.Ordinal.Equals(state.Fingerprint, fingerprint))
             throw new InvalidOperationException("Stale semantic deck fingerprint.");
+        return ResolveCore(state, selectedIndex, EventId(state), trustedH8: false);
+    }
+
+    /// <summary>
+    /// A versioned H8 boundary already fixes the exact physical draw event.
+    /// Resolve it without rehashing the full deck or copying its transcript.
+    /// </summary>
+    internal static SemanticDeckStateV111 ResolveFromH8TrustedBoundary(
+        SemanticDeckStateV111 state, SemanticDeckEventV111 expectedEvent,
+        int selectedIndex)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(expectedEvent);
         var pending = state.Pending ??
             throw new InvalidOperationException("No semantic card reveal pending.");
-        if (selectedIndex < 0 || selectedIndex >= pending.CandidateCardInstanceIds.Length)
+        if (expectedEvent.Purpose != pending.Purpose ||
+            expectedEvent.SiteId != pending.SiteId ||
+            expectedEvent.TopOffset != pending.TopOffset ||
+            expectedEvent.Ordinal != pending.Ordinal ||
+            !expectedEvent.CandidateCardInstanceIds.AsSpan().SequenceEqual(
+                pending.CandidateCardInstanceIds))
+            throw new InvalidDataException("Stale H8 physical draw support.");
+        return ResolveCore(state, selectedIndex, expectedEvent.EventId,
+            trustedH8: true);
+    }
+
+    private static SemanticDeckStateV111 ResolveCore(
+        SemanticDeckStateV111 state, int selectedIndex,
+        string eventId, bool trustedH8)
+    {
+        var pending = state.Pending ??
+            throw new InvalidOperationException("No semantic card reveal pending.");
+        if (selectedIndex < 0 ||
+            selectedIndex >= pending.CandidateCardInstanceIds.Length)
             throw new ArgumentOutOfRangeException(nameof(selectedIndex));
         var cardId = pending.CandidateCardInstanceIds[selectedIndex];
-        var slots = (SemanticDeckSlotV111[])state.Slots.Clone();
+        var slots = state.Slots;
         slots[pending.TopOffset] = SemanticDeckSlotV111.Known(
             cardId, pending.Purpose != "draw");
         var pools = state.Pools.Select(pool => pool.PoolId == pending.PoolId
@@ -728,10 +796,18 @@ public static class SemanticDeckEngineV111
             .Where(pool => pool.RemainingCardInstanceIds.Length > 0)
             .ToArray();
         var choice = new SemanticDeckChoiceV111(
-            EventId(state), pending.SiteId, pending.Purpose,
+            eventId, pending.SiteId, pending.Purpose,
             pending.TopOffset, pending.Ordinal,
             (long[])pending.CandidateCardInstanceIds.Clone(),
             selectedIndex, cardId);
+        if (trustedH8)
+        {
+            var next = state with
+            {
+                Slots = slots, Pools = pools, Pending = null
+            };
+            return Checked(next.AppendH8Transcript(choice));
+        }
         return Checked(state with
         {
             Slots = slots, Pools = pools, Pending = null,
