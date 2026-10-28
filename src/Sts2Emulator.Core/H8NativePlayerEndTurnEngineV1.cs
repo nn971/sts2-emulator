@@ -48,15 +48,17 @@ internal static class H8NativePlayerEndTurnEngineV1
             throw new InvalidOperationException(
                 "H8 native end-turn requires a supported Nature-owned deck.");
 
-        // Only the mechanics-owned state is forked. The source remains the
-        // immutable checkpoint for the replay journal and next-turn cursor.
+        // The engine's Step implementation creates its own full defensive
+        // fork before mutating combat mechanics. Pass the immutable source
+        // directly to avoid a second RunState.Fork here, preserving the
+        // original checkpoint for comparison and replay.
         RunState advanced;
         var environment = new PrototypeAiEnvironment();
         using (H8HotPathProfilerV1.Begin("h8.endturn.native_mechanics"))
         using (ControlledChanceGuardV111.Enter())
         using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
             advanced = environment.Step(
-                current.Run.Fork(), actionId).State;
+                current.Run, actionId).State;
 
         using var projected = H8HotPathProfilerV1.Begin("h8.endturn.legacy_projection");
         var (continuation, result) =
