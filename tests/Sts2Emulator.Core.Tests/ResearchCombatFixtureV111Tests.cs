@@ -159,8 +159,9 @@ public sealed class ResearchCombatFixtureV111Tests
         var beforeHp = beforeCombat.Enemies[0].Hp;
         var beforeBlock = beforeCombat.PlayerBlock;
 
-        var potionAction = Assert.Single(runtime.ObservePlayerFrame()
-            .LegalActions.Where(action => action.Kind == "use_potion"));
+        var potionAction = Assert.Single(
+            runtime.ObservePlayerFrame().LegalActions,
+            action => action.Kind == "use_potion");
         runtime.ChoosePlayerAction(runtime.Boundary, potionAction.ActionId);
         runtime.AuditReplay();
 
