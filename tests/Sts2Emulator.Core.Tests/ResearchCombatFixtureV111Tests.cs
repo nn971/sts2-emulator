@@ -245,6 +245,196 @@ public sealed class ResearchCombatFixtureV111Tests
         Assert.Fail("Source-supported Strike + Fire combat did not reach potion range.");
     }
 
+
+    [Theory]
+    [InlineData("proto.encounter.slimes_weak")]
+    [InlineData("proto.encounter.inklets_normal")]
+    [InlineData("proto.encounter.ruby_raiders_normal")]
+    [InlineData("proto.encounter.phrog_parasite_elite")]
+    [InlineData("proto.encounter.the_kin_boss")]
+    public void RichV2NewEncounterOpensWithNativeResearchRuntime(string encounterId)
+    {
+        var encounter = Assert.Single(
+            ResearchCombatFixtureGeneratorV111.RichSupportedEncounters,
+            item => item.EncounterId == encounterId);
+        var legacy = ResearchCombatFixtureGeneratorV111.Generate(0, 20261027);
+        var rich = legacy with
+        {
+            DistributionId = ResearchCombatFixtureGeneratorV111.RichDistributionId,
+            EncounterId = encounter.EncounterId,
+            NativeEncounterEntry = encounter.NativeEntry,
+            TotalFloor = encounter.TotalFloor,
+            MapRow = encounter.MapRow,
+            RelicIds = ["proto.relic.silent_ring",
+                        "proto.relic.bag_of_preparation"],
+            Deck = legacy.Deck.Append(
+                new ResearchCombatCardV111("proto.silent.blade_dance")
+            ).ToArray(),
+            PotionIds = ["proto.potion.swift", "proto.potion.fire"]
+        };
+        rich.Validate();
+        Assert.Throws<NotSupportedException>(() =>
+            (rich with
+            {
+                DistributionId = ResearchCombatFixtureGeneratorV111.DistributionId
+            }).Validate());
+        var runtime = H8CombatRuntimeV1.BeginSeeded(
+            Entry(rich, "h9-rich-v2-accept-" + encounterId));
+        runtime.AdvanceLocalReferenceNature(runtime.Boundary, 20261028);
+        Assert.True(runtime.AtPlayerBoundary);
+        Assert.NotEmpty(runtime.ObservePlayerFrame().LegalActions);
+        var world = runtime.LegacySnapshotForAudit().Run.World!;
+        var combat = world.Combat!;
+        var enemies = combat.Enemies;
+        Assert.NotEmpty(enemies);
+        Assert.Equal(PrototypeContent.Encounter(encounterId).RoomType,
+            world.ActiveRoom);
+        Assert.Equal(encounter.TotalFloor, world.Floor);
+        var orders = combat.PlayerPowers.Select(p => p.ApplicationOrder)
+            .Concat(enemies.SelectMany(enemy =>
+                enemy.PowerStates.Select(p => p.ApplicationOrder)))
+            .Concat(combat.RelicStates.Select(relic => relic.ApplicationOrder))
+            .ToArray();
+        Assert.Equal(orders.Length, orders.Distinct().Count());
+        Assert.All(orders, order =>
+            Assert.InRange(order, 1, combat.NextPowerApplicationOrder - 1));
+        if (encounterId is "proto.encounter.inklets_normal"
+            or "proto.encounter.ruby_raiders_normal"
+            or "proto.encounter.the_kin_boss")
+            Assert.True(enemies.Length >= 2, "Expected multi-enemy formation");
+        runtime.AuditReplay();
+    }
+
+    // A legal action and an end turn exercise the real H8 session beyond
+    // its opening. In particular, more than one enemy must commit intents
+    // to the same combat checkpoint, and Swift must use the Nature draw
+    // provider without swallowing its public player action.
+    [Theory]
+    [InlineData("proto.encounter.inklets_normal")]
+    [InlineData("proto.encounter.the_kin_boss")]
+    public void RichMultiEnemyTurnAndSwiftPotionAdvance(string encounterId)
+    {
+        var encounter = Assert.Single(
+            ResearchCombatFixtureGeneratorV111.RichSupportedEncounters,
+            item => item.EncounterId == encounterId);
+        var original = ResearchCombatFixtureGeneratorV111.Generate(0, 20261027);
+        var fixture = original with
+        {
+            DistributionId = ResearchCombatFixtureGeneratorV111.RichDistributionId,
+            EncounterId = encounter.EncounterId,
+            NativeEncounterEntry = encounter.NativeEntry,
+            TotalFloor = encounter.TotalFloor,
+            MapRow = encounter.MapRow,
+            PotionIds = ["proto.potion.swift", null]
+        };
+        var session = H8CombatRuntimeV1.BeginSeeded(
+            Entry(fixture, "h9-rich-action-" + encounterId));
+        session.AdvanceLocalReferenceNature(session.Boundary, 20261028);
+        Assert.True(session.AtPlayerBoundary);
+        var potion = Assert.Single(
+            session.ObservePlayerFrame().LegalActions,
+            action => action.Kind == "use_potion");
+        session.ChoosePlayerAction(session.Boundary, potion.ActionId);
+        session.AdvanceLocalReferenceNature(session.Boundary, 20261028);
+        Assert.True(session.AtPlayerBoundary);
+        var end = Assert.Single(
+            session.ObservePlayerFrame().LegalActions,
+            action => action.Kind == "end_turn");
+        session.ChoosePlayerAction(session.Boundary, end.ActionId);
+        session.AdvanceLocalReferenceNature(session.Boundary, 20261028);
+        session.AuditReplay();
+    }
+
+    [Theory]
+    [InlineData("proto.encounter.vantom_boss")]
+    [InlineData("proto.encounter.inklets_normal")]
+    public void RichBouncingFlaskUsesReplayableRandomTargetNature(
+        string encounterId)
+    {
+        var encounter = Assert.Single(
+            ResearchCombatFixtureGeneratorV111.RichSupportedEncounters,
+            item => item.EncounterId == encounterId);
+        var fixture = ResearchCombatFixtureGeneratorV111
+            .Generate(0, 20261027) with
+        {
+            DistributionId = ResearchCombatFixtureGeneratorV111.RichDistributionId,
+            EncounterId = encounter.EncounterId,
+            NativeEncounterEntry = encounter.NativeEntry,
+            TotalFloor = encounter.TotalFloor,
+            MapRow = encounter.MapRow,
+            Deck = Enumerable.Range(0, 12)
+                .Select(_ => new ResearchCombatCardV111(
+                    "proto.silent.bouncing_flask"))
+                .ToArray(),
+            PotionIds = [null, null]
+        };
+        var runtime = H8CombatRuntimeV1.BeginSeeded(
+            Entry(fixture, "h9-rich-bouncing-flask-" + encounterId));
+        runtime.AdvanceLocalReferenceNature(runtime.Boundary, 20261028);
+        Assert.True(runtime.AtPlayerBoundary);
+        var flask = runtime.ObservePlayerFrame().LegalActions
+            .First(action => action.Kind == "play_card");
+        runtime.ChoosePlayerAction(runtime.Boundary, flask.ActionId);
+        Assert.Equal("random_target", runtime.BoundaryKind);
+        var eventId = runtime.PendingRandomTargetEventId();
+        var ids = runtime.PendingRandomTargetEnemyIds();
+        Assert.NotEmpty(ids);
+        runtime.ChooseRandomTarget(
+            runtime.Boundary, eventId, ids[0], "test-reference");
+        runtime.AdvanceLocalReferenceNature(runtime.Boundary, 20261028);
+        Assert.True(runtime.AtPlayerBoundary || runtime.Terminal);
+        Assert.Contains(runtime.DecisionHistory,
+            item => item.Kind == "random_target" &&
+                item.TargetEventId == eventId &&
+                item.TargetEnemyInstanceId == ids[0]);
+        runtime.AuditReplay();
+    }
+
+    [Fact]
+    public void GuardedDeathSummonHpUsesJournaledCombatStreamOnlyInsideItsScope()
+    {
+        const string site = NativeCombatRngEntryV111.InitialUniqueHpSiteId;
+        var rng = PrototypeRng.CreateBundle("h9-rich-death-summon-hp");
+        RandomIndexDecisionV111 chosen;
+        using (ControlledChanceGuardV111.Enter())
+        {
+            Assert.Throws<NotSupportedException>(() =>
+                LegacyRandomChoiceV111.ChooseIndex(
+                    rng, site, "combat", "creature:2", [7, 8, 9]));
+            using (ControlledChanceGuardV111.AllowEngineOwnedDeathSummonHp())
+            {
+                chosen = LegacyRandomChoiceV111.ChooseIndex(
+                    rng, site, "combat", "creature:2", [7, 8, 9]);
+                Assert.Equal("legacy-prototype-v0", chosen.ProviderMode);
+                Assert.InRange(chosen.SelectedValue, 7, 9);
+                Assert.Throws<NotSupportedException>(() =>
+                    PrototypeRng.NextInt(rng, "reward", 3));
+            }
+            Assert.Throws<NotSupportedException>(() =>
+                LegacyRandomChoiceV111.ChooseIndex(
+                    rng, site, "combat", "creature:3", [7, 8, 9]));
+        }
+        // The exact deterministic source profile is retained; this scope
+        // changes admission, never the random outcome or stream cursor.
+        var baseline = LegacyRandomChoiceV111.ChooseIndex(
+            PrototypeRng.CreateBundle("h9-rich-death-summon-hp"),
+            site, "combat", "creature:2", [7, 8, 9]);
+        Assert.Equal(baseline.SelectedIndex, chosen.SelectedIndex);
+        Assert.Equal((ulong)1, rng.Streams.Single(x =>
+            x.StreamId == "combat").CallCount ?? 0UL);
+    }
+
+    [Fact]
+    public void RichFixtureAllowlistDoesNotAlterLegacyV1Generator()
+    {
+        var original = ResearchCombatFixtureGeneratorV111.Generate(0, 20261027);
+        Assert.Equal(ResearchCombatFixtureGeneratorV111.DistributionId,
+            original.DistributionId);
+        Assert.Equal(20, original.Deck.Length);
+        Assert.Equal(7, ResearchCombatFixtureGeneratorV111.SupportedEncounters.Length);
+        Assert.Equal(21, ResearchCombatFixtureGeneratorV111.RichSupportedEncounters.Length);
+    }
+
     private static SemanticSeededEntryV111 Entry(
         ResearchCombatFixtureV111 spec, string sourceSeed) => new(
         sourceSeed, spec.Act, spec.EncounterId, spec.NativeEncounterEntry,

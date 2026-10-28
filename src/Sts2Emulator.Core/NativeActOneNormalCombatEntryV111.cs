@@ -138,7 +138,7 @@ public static class NativeActOneNormalCombatEntryV111
     /// Order and null-vs-named slots intentionally differ from certain
     /// legacy prototype definitions.
     /// </summary>
-    private static (
+    internal static (
         PrototypeEncounterEnemySpec[] Enemies, int? OpeningOffset)
         ResolveSourceFormation(string id, Func<int, int> nextIndex)
     {

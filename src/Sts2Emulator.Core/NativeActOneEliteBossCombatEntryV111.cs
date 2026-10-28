@@ -89,6 +89,18 @@ public static class NativeActOneEliteBossCombatEntryV111
     public static bool IsSupported(string encounterId) =>
         Entries.ContainsKey(encounterId);
 
+    // Reuse the pinned native fixed formations in isolated research openings.
+    // These contain source slot and leader references absent from some legacy
+    // encounter definitions. Do not consume additional encounter RNG.
+    internal static PrototypeEncounterEnemySpec[] ResearchSourceFormation(
+        string encounterId)
+    {
+        if (!Entries.TryGetValue(encounterId, out var entry))
+            throw new NotSupportedException(
+                "Unsupported research elite/boss formation: " + encounterId);
+        return entry.Formation.Select(spec => spec with { }).ToArray();
+    }
+
     public static NativeEncounterFormationV111 Prepare(
         RunState state, RunWorldState world,
         PrototypeEncounterDefinition encounter)

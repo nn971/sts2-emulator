@@ -125,7 +125,7 @@ public static class NativeActOneWeakCombatEntryV111
     /// other small]. The generic grouped emulator resolver skips the
     /// singleton roll and has a different draw order, so must not be used.
     /// </summary>
-    private static (
+    internal static (
         PrototypeEncounterEnemySpec[] Enemies, int? OpeningOffset)
         ResolveSlimesWeak(Func<int, int> nextIndex)
     {

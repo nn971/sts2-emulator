@@ -784,10 +784,17 @@ public static class ControlledPlayableCombatEngineV111
             Phase = RunPhase.Combat,
             World = run.World! with
             {
+                // Rich research fixtures use the declared room identity,
+                // including Elite. Legacy conditioned weak/boss openings
+                // keep their original room classification.
                 ActiveRoom = encounterId is not null &&
-                     (SemanticConditionedDeckPresetV111.IsBossDeck(fixtureDeckPresetId) ||
-                     fixtureSpec?.IsBoss == true)
-                    ? PrototypeRoomType.Boss : PrototypeRoomType.Combat,
+                    fixtureSpec?.DistributionId ==
+                        ResearchCombatFixtureGeneratorV111.RichDistributionId
+                    ? PrototypeContent.Encounter(encounterId).RoomType
+                    : encounterId is not null &&
+                        (SemanticConditionedDeckPresetV111.IsBossDeck(
+                            fixtureDeckPresetId) || fixtureSpec?.IsBoss == true)
+                        ? PrototypeRoomType.Boss : PrototypeRoomType.Combat,
                 Combat = combat
             }
         };
@@ -795,10 +802,7 @@ public static class ControlledPlayableCombatEngineV111
         {
             var encounter = PrototypeContent.Encounter(encounterId);
             if (act < encounter.MinAct || act > encounter.MaxAct ||
-                (encounter.RoomType != PrototypeRoomType.Combat &&
-                 !(encounter.RoomType == PrototypeRoomType.Boss &&
-                   (SemanticConditionedDeckPresetV111.IsBossDeck(fixtureDeckPresetId) ||
-                    fixtureSpec?.IsBoss == true))))
+                encounter.RoomType != run.World!.ActiveRoom)
                 throw new InvalidDataException(
                     "Fixed playable encounter is ineligible for its run entry.");
             var world = run.World ?? throw new InvalidDataException(

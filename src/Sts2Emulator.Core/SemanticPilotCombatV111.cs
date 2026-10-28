@@ -1180,7 +1180,9 @@ public static class SemanticPilotCombatEngineV111
             ? PrototypeNativeActOneWeakNatureFixtureV111.CreateCombatRngPreEntry(
                 entry.Seed, entry.EncounterId, entry.NativeEncounterEntry,
                 entry.TotalFloor, entry.Ascension, entry.FirstMonsterCombatId,
-                entry.MapColumn, entry.MapRow)
+                entry.MapColumn, entry.MapRow,
+                richResearch: entry.FixtureSpec?.DistributionId ==
+                    ResearchCombatFixtureGeneratorV111.RichDistributionId)
             : PrototypeNativeLaterActFixture.CreateCombatRngPreEntry(
                 entry.Seed, entry.Act, entry.EncounterId,
                 entry.NativeEncounterEntry, entry.TotalFloor, entry.Ascension,
@@ -1460,7 +1462,8 @@ public static class SemanticPilotCombatEngineV111
             "proto.silent.restlessness" or
             "proto.silent.acrobatics" or
             "proto.silent.dagger_throw" or
-            "proto.silent.prepared");
+            "proto.silent.prepared" or
+            "proto.status.slimed");
 
     private static SemanticPilotCombatV111 ApplyFixtureSelectionCard(
         SemanticPilotCombatV111 state, string cardId)
@@ -2205,7 +2208,8 @@ public static class SemanticPilotCombatEngineV111
                     "proto.silent.nightmare" or
                     NativeGloryAncientsV111.WishCardId);
             var semanticDrawCard = card is not null &&
-                IsSemanticEffectDrawCard(card.CardId);
+                (IsSemanticEffectDrawCard(card.CardId) ||
+                 card.CardId == "proto.silent.calculated_gamble");
             var semanticAutoplayCard = card?.CardId is
                 ("proto.colorless.beat_down" or
                  "proto.colorless.catastrophe");
@@ -2221,7 +2225,8 @@ public static class SemanticPilotCombatEngineV111
                 card?.CardId == "proto.colorless.seeker_strike";
             var supportedCardAction = card is not null &&
                 (SemanticPlayerActionEngineV111.SupportsCard(card.CardId) ||
-                 card.CardId == "proto.silent.ricochet" ||
+                 card.CardId is ("proto.silent.ricochet" or
+                     "proto.silent.bouncing_flask") ||
                  semanticDrawCard ||
                  semanticAutoplayCard ||
                  semanticRandomReplayCard ||
@@ -2232,7 +2237,8 @@ public static class SemanticPilotCombatEngineV111
             if (!supportedCardAction)
                 throw new NotSupportedException(
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
-                    "operation=card_effect_requires_semantic_audit");
+                    "operation=card_effect_requires_semantic_audit card=" +
+                    (card?.CardId ?? "<missing>"));
             // Preserve actual source damage, relic/power hooks and victory
             // transitions. Supported hidden-pile mutations must update the
             // provider-owned semantic deck at their source boundary.
@@ -2331,10 +2337,20 @@ public static class SemanticPilotCombatEngineV111
                 && validSlot
                 ? source.Player.PotionSlots[payload.Slot]?.PotionId
                 : null;
-            var isResearchSelfPotion =
-                researchPotionId == "proto.potion.block";
+            // These effects are defined by the source combat engine.
+            // Swift uses its existing controlled semantic draw boundary.
+            // Fairy in a Bottle is automatic and offers no manual action.
+            var isResearchDrawPotion =
+                researchPotionId == "proto.potion.swift";
+            var isResearchSelfPotion = researchPotionId is
+                ("proto.potion.block" or "proto.potion.dexterity" or
+                 "proto.potion.energy" or "proto.potion.strength" or
+                 "proto.potion.explosive" or "proto.potion.swift");
             var isResearchTargetPotion = researchPotionId is
-                ("proto.potion.fire" or "proto.potion.poison");
+                ("proto.potion.fire" or "proto.potion.poison" or
+                 "proto.potion.weak");
+            var isResearchLethalPotion = researchPotionId is
+                ("proto.potion.fire" or "proto.potion.explosive");
             if ((!isGenerationPotion && !isPoolPotion &&
                  !isSelectionPotion && !isHandReturnPotion &&
                  !isDistilledChaos && !isResearchSelfPotion &&
@@ -2344,7 +2360,10 @@ public static class SemanticPilotCombatEngineV111
                     : payload.TargetEnemyId is not null))
                 throw new NotSupportedException(
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
-                    "operation=potion_effect_requires_semantic_audit");
+                    "operation=potion_effect_requires_semantic_audit potion=" +
+                    (validSlot
+                        ? source.Player.PotionSlots[payload.Slot]?.PotionId
+                        : "<invalid-slot>"));
             using (H8HotPathProfilerV1.Begin("h8.player.engine_potion"))
             using (ControlledChanceGuardV111.Enter())
             // A killing potion completes combat and initializes its reward.
@@ -2357,7 +2376,7 @@ public static class SemanticPilotCombatEngineV111
                         source, playerFrame, actionId).State
                     : environment.Step(source, actionId).State;
             if (result.Phase != RunPhase.Combat &&
-                !((isDistilledChaos || isResearchTargetPotion) &&
+                !((isDistilledChaos || isResearchLethalPotion) &&
                   PrototypeGameEngine.IsAtCombatActionResultBoundary(result)))
                 throw new NotSupportedException(
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
@@ -2392,8 +2411,10 @@ public static class SemanticPilotCombatEngineV111
             if (result.Phase == RunPhase.Combat &&
                 (next is null ||
                 (!isHandReturnPotion && !isDistilledChaos &&
+                 !isResearchDrawPotion &&
                 !previous.DrawPile.SequenceEqual(next.DrawPile) ||
                 !isHandReturnPotion && !isDistilledChaos &&
+                 !isResearchDrawPotion &&
                 !SameSemanticDeckForPlayerAction(
                     previous.SemanticDeck, next.SemanticDeck, trustedH8))))
                 throw new NotSupportedException(

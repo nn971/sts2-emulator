@@ -17,6 +17,9 @@ public static class ControlledChanceGuardV111
     {
         ["reward.card_rarity.ticket"] = "bounded_integer",
         ["reward.card_model.index_draw"] = "choose_index",
+        // Elite postcombat reward is engine-owned just like card/potion
+        // reward offers. It never contributes to an active combat outcome.
+        ["reward.elite_relic.model"] = "choose_index",
         ["reward.random_potion.drop.ticket"] = "bounded_integer",
         ["reward.random_potion.model"] = "choose_index",
         // After a boss is defeated, the source engine initializes the
@@ -29,6 +32,7 @@ public static class ControlledChanceGuardV111
     };
     private static readonly AsyncLocal<int> Depth = new();
     private static readonly AsyncLocal<int> EngineOwnedRewardDepth = new();
+    private static readonly AsyncLocal<int> EngineOwnedDeathSummonHpDepth = new();
     private static readonly AsyncLocal<int> EngineOwnedNativeDepth = new();
     private static readonly AsyncLocal<NativeBoundaryAuthorization?>
         NativeBoundary = new();
@@ -41,6 +45,36 @@ public static class ControlledChanceGuardV111
         Active && EngineOwnedRewardDepth.Value > 0 && streamId == "reward" &&
         EngineOwnedRewardSites.TryGetValue(siteId, out var expectedOperation) &&
         operationKind == expectedOperation;
+
+    // Legacy-profile death summons have a finite source HP pool. During
+    // H9 combat, this one draw is assigned to the engine's own recorded
+    // combat stream; it is not a draw-card or enemy-intent Nature decision.
+    // The scope is entered only by the death-summon HP resolver.
+    internal static bool IsEngineOwnedDeathSummonHpRequest(
+        string siteId, string streamId, string operationKind) =>
+        Active && EngineOwnedDeathSummonHpDepth.Value > 0 &&
+        siteId == NativeCombatRngEntryV111.InitialUniqueHpSiteId &&
+        streamId == "combat" && operationKind == "choose_index";
+
+    internal static IDisposable AllowEngineOwnedDeathSummonHp()
+    {
+        if (!Active)
+            throw new InvalidOperationException(
+                "Death summon HP delegation requires a guarded combat action.");
+        EngineOwnedDeathSummonHpDepth.Value++;
+        return new DeathSummonHpExitScope();
+    }
+
+    private sealed class DeathSummonHpExitScope : IDisposable
+    {
+        private bool _exited;
+        public void Dispose()
+        {
+            if (_exited) return;
+            _exited = true;
+            EngineOwnedDeathSummonHpDepth.Value--;
+        }
+    }
 
     /// <summary>
     /// An explicit, narrowly scoped engine-owned reward fallback. It permits
@@ -123,8 +157,11 @@ public static class ControlledChanceGuardV111
             NativeBoundary.Value is { } authorization &&
             site == "native_rng." + authorization.StreamId)
             return;
-        if (Active && !(EngineOwnedRewardDepth.Value > 0 &&
-                site == "prototype_rng.reward" && operation == "next_int"))
+        if (Active &&
+            !(EngineOwnedRewardDepth.Value > 0 &&
+              site == "prototype_rng.reward" && operation == "next_int") &&
+            !(EngineOwnedDeathSummonHpDepth.Value > 0 &&
+              site == "prototype_rng.combat" && operation == "next_int"))
             throw new NotSupportedException(
                 "UNSUPPORTED_CONTROLLED_CHANCE site=" + site +
                 " operation=" + operation +
