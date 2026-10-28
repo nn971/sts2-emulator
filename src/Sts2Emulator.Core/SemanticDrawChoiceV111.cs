@@ -158,7 +158,10 @@ public static class SemanticDrawChoiceV111
                 CandidateCardInstanceIds =
                     (long[])pending.CandidateCardInstanceIds.Clone()
             }, recorded.SelectedIndex, recorded.SelectedCardInstanceId);
-        ValidateDecision(pending, decision);
+        if (trustedH8)
+            decision.Validate();
+        else
+            ValidateDecision(pending, decision);
         return decision;
     }
 
