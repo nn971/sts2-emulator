@@ -113,7 +113,8 @@ public static class SemanticDrawChoiceV111
     /// exact request and candidate index supplied to its continuation.
     /// </summary>
     internal static SemanticDrawDecisionV111 ValidateRecordedChoice(
-        RunState run, SemanticDeckEventV111 pending, int selectedIndex)
+        RunState run, SemanticDeckEventV111 pending, int selectedIndex,
+        bool trustedH8 = false)
     {
         ArgumentNullException.ThrowIfNull(run);
         ArgumentNullException.ThrowIfNull(pending);
@@ -125,10 +126,19 @@ public static class SemanticDrawChoiceV111
         var deck = run.World?.Combat?.SemanticDeck ??
             throw new InvalidDataException(
                 "Semantic draw continuation lost its provider-owned deck.");
-        var recorded = deck.Transcript?.SingleOrDefault(choice =>
-            choice.EventId == pending.EventId) ??
+        // A trusted H8 version token already fixes the exact just-committed
+        // event. The semantic deck's validated ordinal is its transcript
+        // index, so this avoids cloning and scanning the growing transcript.
+        // Keep the externally checked v111 lookup unchanged.
+        var recorded = (trustedH8
+            ? deck.TranscriptChoiceAtOrdinal(pending.Ordinal)
+            : deck.Transcript?.SingleOrDefault(choice =>
+                choice.EventId == pending.EventId)) ??
             throw new InvalidDataException(
                 "Semantic draw continuation did not record its source event.");
+        if (recorded.EventId != pending.EventId)
+            throw new InvalidDataException(
+                "Semantic draw transcript diverged from its event.");
         if (recorded.SiteId != pending.SiteId ||
             recorded.Purpose != pending.Purpose ||
             recorded.TopOffset != pending.TopOffset ||
