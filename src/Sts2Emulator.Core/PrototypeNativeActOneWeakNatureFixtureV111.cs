@@ -117,6 +117,10 @@ public static class PrototypeNativeActOneWeakNatureFixtureV111
                     "Pinned Act 1 fixed single-enemy formation no longer matches the source.");
         }
 
+        // Application order is global to the combat, including powers on
+        // different enemies. The old single-formation fixture keeps its
+        // original ordering and serialized behavior.
+        long nextPowerOrder = 1;
         var enemies = formation.Enemies.Select((spec, index) =>
         {
             var definition = PrototypeContent.Enemy(spec.EnemyId);
@@ -124,7 +128,8 @@ public static class PrototypeNativeActOneWeakNatureFixtureV111
             var powers = (definition.StartingPowers ??
                           Array.Empty<PrototypeStartingPowerSpec>())
                 .Select((power, powerIndex) => new PrototypePowerInstanceState(
-                    power.PowerId, power.StacksAt(ascension), powerIndex + 1))
+                    power.PowerId, power.StacksAt(ascension),
+                    richResearch ? nextPowerOrder++ : powerIndex + 1))
                 .Where(power => power.Stacks > 0).ToArray();
             return new EnemyCombatState(
                 InstanceId: index + 1,
@@ -158,7 +163,7 @@ public static class PrototypeNativeActOneWeakNatureFixtureV111
             NextCardInstanceId: 1,
             Cards: [],
             PlayerPowers: [],
-            NextPowerApplicationOrder: 1,
+            NextPowerApplicationOrder: richResearch ? nextPowerOrder : 1,
             Act: 1,
             Ascension: ascension);
         return (combat, formation, NativeRngV111.CreateBundle(seed));
