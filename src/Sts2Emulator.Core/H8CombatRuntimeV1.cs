@@ -50,6 +50,19 @@ public sealed class H8CombatRuntimeV1
     // Exact pre-choice pilot fingerprint reused when the same version-owned
     // intent Chance Law has already been exposed to the external provider.
     private string? _pendingIntentPilotFingerprint;
+    // One typed boundary discriminator per committed H8 version. Resolve
+    // cheap phase/intent/direct-hand-draw markers before asking v111 for
+    // its heavyweight derived pending-choice projections. A failed choice
+    // never invalidates this cache; Commit always does.
+    private H8PendingKindV1? _pendingBoundaryKind;
+    private H8IntentSupportV1? _intentSupport;
+
+    private enum H8PendingKindV1
+    {
+        Terminal, DrawCard, EnemyIntent, PlayerChoice, Player, Unsupported
+    }
+
+    private sealed record H8IntentSupportV1(string[] Ids, long[] RawWeights);
 
     private sealed record H8DrawCursorV1(
         SemanticDeckEventV111 Event, long[] EligibleCards,
@@ -104,12 +117,57 @@ public sealed class H8CombatRuntimeV1
         ? _state.Run.World?.DefeatRemainingEnemyHp
         : null;
     public bool AtPlayerBoundary =>
-        _state.AtPlayerBoundary || _state.AtPlayerChoiceBoundary;
-    // Explicitly classified until the native tagged player-choice cursor
-    // provides a fair restricted action menu.
-    public bool AtPlayerChoiceBoundary => _state.AtPlayerChoiceBoundary;
-    public bool HasPendingCardDraw => CurrentDrawCursor() is not null;
-    public bool HasPendingIntent => _state.IntentPending is not null;
+        PendingBoundaryKind() is H8PendingKindV1.Player or
+            H8PendingKindV1.PlayerChoice;
+    public bool AtPlayerChoiceBoundary =>
+        PendingBoundaryKind() == H8PendingKindV1.PlayerChoice;
+    public bool HasPendingCardDraw =>
+        PendingBoundaryKind() == H8PendingKindV1.DrawCard;
+    public bool HasPendingIntent =>
+        PendingBoundaryKind() == H8PendingKindV1.EnemyIntent;
+
+    /// <summary>
+    /// Stable boundary tag for this version. H8Status and the subsequent
+    /// explicit player/Nature provider invocation share one classification
+    /// without scanning legacy continuation properties again.
+    /// </summary>
+    public string BoundaryKind => PendingBoundaryKind() switch
+    {
+        H8PendingKindV1.Terminal => "terminal",
+        H8PendingKindV1.DrawCard => "draw_card",
+        H8PendingKindV1.EnemyIntent => "enemy_intent",
+        H8PendingKindV1.PlayerChoice => "player_choice",
+        H8PendingKindV1.Player => "player",
+        _ => "unsupported"
+    };
+
+    private H8PendingKindV1 PendingBoundaryKind()
+    {
+        if (_pendingBoundaryKind is { } kind)
+            return kind;
+        using var scope = H8HotPathProfilerV1.Begin("h8.boundary.classify");
+        var endTurn = _state.PendingEndTurn;
+        // The direct automatic hand-draw ticket requires no v111 derived
+        // event projection. This must be tested before intent and player
+        // kinds to preserve the original H8 boundary precedence.
+        if (_state.CombatTerminal)
+            kind = H8PendingKindV1.Terminal;
+        else if (endTurn?.HandDraw?.Pending is not null)
+            kind = H8PendingKindV1.DrawCard;
+        else if (_state.PendingInitialIntents?.Pending is not null ||
+                 endTurn?.IntentPending is not null)
+            kind = H8PendingKindV1.EnemyIntent;
+        else if (_state.AtPlayerBoundary)
+            kind = H8PendingKindV1.Player;
+        else if (_state.AtPlayerChoiceBoundary)
+            kind = H8PendingKindV1.PlayerChoice;
+        else if (CurrentDrawCursor() is not null)
+            kind = H8PendingKindV1.DrawCard;
+        else
+            kind = H8PendingKindV1.Unsupported;
+        _pendingBoundaryKind = kind;
+        return kind;
+    }
 
     // O(1) on every status response. A materialized journal is audit-only.
     public int DecisionCount => _journal.Count;
@@ -230,8 +288,17 @@ public sealed class H8CombatRuntimeV1
             "H8 reference law requires an unresolved Nature event.");
     }
 
-    public string[] PendingIntentIds()
+    public string[] PendingIntentIds() =>
+        (string[])CurrentIntentSupport().Ids.Clone();
+
+    private H8IntentSupportV1 CurrentIntentSupport()
     {
+        if (_intentSupport is { } cached)
+            return cached;
+        if (PendingBoundaryKind() != H8PendingKindV1.EnemyIntent)
+            throw new InvalidOperationException(
+                "H8 intent support requires an active intent request.");
+        using var scope = H8HotPathProfilerV1.Begin("h8.intent.support_capture");
         var intents = _state.PendingInitialIntents ??
             _state.PendingEndTurn?.Intents;
         if (intents?.Pending is null)
@@ -239,10 +306,11 @@ public sealed class H8CombatRuntimeV1
                 "H8 intent query requires an active intent request.");
         var support = ControlledTurnIntentEngineV111
             .DescribePendingSemanticIntent(intents) ??
-            throw new InvalidDataException(
-                "H8 intent support is absent.");
-        return support.Candidates
-            .Select(candidate => candidate.IntentId).ToArray();
+            throw new InvalidDataException("H8 intent support is absent.");
+        _intentSupport = new H8IntentSupportV1(
+            support.Candidates.Select(candidate => candidate.IntentId).ToArray(),
+            support.Candidates.Select(candidate => (long)candidate.RawWeight).ToArray());
+        return _intentSupport;
     }
 
     /// <summary>
@@ -250,18 +318,8 @@ public sealed class H8CombatRuntimeV1
     /// policy-independent form. The sample source RNG is owned by Nature,
     /// never by the H7 player model.
     /// </summary>
-    public long[] PendingIntentRawWeights()
-    {
-        var intents = _state.PendingInitialIntents ??
-            _state.PendingEndTurn?.Intents;
-        if (intents?.Pending is null)
-            throw new InvalidOperationException(
-                "H8 weighted intent query requires an active intent request.");
-        var support = ControlledTurnIntentEngineV111
-            .DescribePendingSemanticIntent(intents) ??
-            throw new InvalidDataException("H8 weighted intent support missing.");
-        return support.Candidates.Select(c => (long)c.RawWeight).ToArray();
-    }
+    public long[] PendingIntentRawWeights() =>
+        (long[])CurrentIntentSupport().RawWeights.Clone();
 
     public long[] PendingDrawCardInstanceIds()
     {
@@ -281,7 +339,11 @@ public sealed class H8CombatRuntimeV1
         // M2 will replace this temporary projected frame with a compact
         // tagged effect cursor owned by the new mechanics runtime.
         var frame = _state.PendingEndTurn;
-        var pending = frame?.DrawPending ?? _state.DrawPending;
+        // Direct hand-draw support is already an immutable event. Only
+        // fallback to the legacy derived pending properties for nonstandard
+        // nested/card-effect draw events.
+        var pending = frame?.HandDraw?.Pending ??
+            frame?.DrawPending ?? _state.DrawPending;
         if (pending is not null)
         {
             // Only fast-path a plain physical automatic hand draw.
@@ -489,5 +551,7 @@ public sealed class H8CombatRuntimeV1
         _drawCursorCaptured = false;
         _playerFrame = null;
         _pendingIntentPilotFingerprint = null;
+        _pendingBoundaryKind = null;
+        _intentSupport = null;
     }
 }
