@@ -13,6 +13,67 @@ from sts2_emulator import EmulatorError, Session  # noqa: E402
 @unittest.skipUnless(os.environ.get("STS2_EMULATOR_DLL"),
                      "Set STS2_EMULATOR_DLL to test the real H8 runtime")
 class H8JsonlRuntimeTests(unittest.TestCase):
+    def test_inline_chance_law_matches_standalone_across_real_draws(self):
+        with Session([
+            "dotnet", os.environ["STS2_EMULATOR_DLL"], "prototype-ai-jsonl"
+        ]) as session:
+            state = session.call(
+                "h8_begin_seeded", seed="h8-jsonl-inline-event-law-a10",
+                act=1, encounter_id="proto.encounter.mawler_normal",
+                native_entry="MawlerNormal", total_floor=2,
+                ascension=10, first_monster_combat_id=1,
+                map_column=3, map_row=1,
+                replay_opening_draw_hooks=True,
+                include_reference_law=True,
+            )["result"]
+            handle = state["h8Handle"]
+            seen_laws = 0
+            for _ in range(160):
+                kind = state["kind"]
+                if kind == "terminal":
+                    break
+                token = {
+                    "h8_handle": handle,
+                    "runtime_id": state["runtimeId"],
+                    "boundary_version": state["boundaryVersion"],
+                }
+                if kind in ("draw_card", "enemy_intent"):
+                    reference = session.call(
+                        "h8_reference_law", **token)["pending"]
+                    self.assertEqual(state["referenceLaw"], reference)
+                    seen_laws += 1
+                    if kind == "draw_card":
+                        response = session.call(
+                            "h8_resolve_draw_card", **token,
+                            card_instance_id=state["cardInstanceIds"][0],
+                            provider_id="h8-inline-provider-regression",
+                            include_reference_law=True,
+                        )
+                    else:
+                        response = session.call(
+                            "h8_resolve_intent", **token,
+                            intent_id=state["intentIds"][0],
+                            provider_id="h8-inline-provider-regression",
+                            include_reference_law=True,
+                        )
+                elif kind == "player":
+                    self.assertIsNone(state["referenceLaw"])
+                    response = session.call(
+                        "h8_step", **token,
+                        action_id=state["endTurnActionId"],
+                        include_reference_law=True,
+                    )
+                else:
+                    self.fail("Unsupported inline Chance Law boundary " + kind)
+                nxt = response["result"]
+                self.assertEqual(nxt["boundaryVersion"],
+                                 state["boundaryVersion"] + 1)
+                state = nxt
+            self.assertGreaterEqual(seen_laws, 3)
+            audit = session.call("h8_replay_audit", h8_handle=handle)
+            self.assertTrue(audit["replayVerified"])
+            session.call("h8_release_many", h8_handles=[handle])
+
     def test_real_a10_versioned_combat_draw_and_replay(self):
         with Session([
             "dotnet", os.environ["STS2_EMULATOR_DLL"], "prototype-ai-jsonl"
