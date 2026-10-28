@@ -598,13 +598,26 @@ public sealed record SemanticDeckStateV111
         return true;
     }
 
-    public SemanticDeckStateV111 Fork() => this with
+    public SemanticDeckStateV111 Fork()
     {
-        Slots = (SemanticDeckSlotV111[])_slots.Clone(),
-        Pools = _pools.Select(p => p.Fork()).ToArray(),
-        Pending = Pending?.Fork(),
-        Transcript = (Transcript ?? []).Select(t => t.Fork()).ToArray()
-    };
+        // All transcript records expose defensive-copy arrays and all H8
+        // history nodes are immutable. A fork can safely share this prefix;
+        // later appends produce new tails. The other mechanics fields retain
+        // their independent copies.
+        var fork = this with
+        {
+            Slots = _slots,
+            Pools = _pools.Select(p => p.Fork()).ToArray(),
+            Pending = Pending?.Fork()
+        };
+        return _h8TranscriptTrail is null
+            ? fork with
+            {
+                Transcript = (_transcript ?? [])
+                    .Select(choice => choice.Fork()).ToArray()
+            }
+            : fork;
+    }
 
     public void Deconstruct(
         out string Mode, out SemanticDeckSlotV111[] Slots,
