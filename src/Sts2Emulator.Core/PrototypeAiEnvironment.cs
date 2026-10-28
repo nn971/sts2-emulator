@@ -276,7 +276,20 @@ public sealed class PrototypeAiEnvironment
     public PrototypeAiObservation ObservePublic(RunState state) =>
         CreateObservation(state);
 
-    public PrototypeAiFrame Observe(RunState state)
+    public PrototypeAiFrame Observe(RunState state) =>
+        ObserveCore(state, includeStateHash: true);
+
+    /// <summary>
+    /// H8's session-bound public observation. The versioned H8 token already
+    /// authenticates the current source state and h8_observe never transmits
+    /// the legacy canonical state hash. Avoid the full hidden RunState JSON
+    /// serialization at every player decision; keep the exact public
+    /// observation, action IDs and observation fingerprint.
+    /// </summary>
+    internal PrototypeAiFrame ObserveH8(RunState state) =>
+        ObserveCore(state, includeStateHash: false);
+
+    private PrototypeAiFrame ObserveCore(RunState state, bool includeStateHash)
     {
         var observation = CreateObservation(state);
         var legalActions = PlayerLegalActions(state)
@@ -294,7 +307,7 @@ public sealed class PrototypeAiEnvironment
             observation,
             legalActions,
             CanonicalJson.Sha256(observation),
-            CanonicalJson.Sha256(state));
+            includeStateHash ? CanonicalJson.Sha256(state) : string.Empty);
     }
 
     public PrototypeAiExpansion[] Expand(RunState state)
