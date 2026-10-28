@@ -105,3 +105,48 @@ Keep local Nature sampling separate from external learned/scripted
 provider decisions; do not force source RNG parity or Inspector fidelity
 checks into the training release gate. Use the existing smoke/replay
 validation, not a new test framework.
+
+## Measured 2026-10-28 results and next structural target
+
+The uploaded pinned reports used emulator `c2751560`, 15 workers, the
+14,659,972-parameter Transformer, packed CUDA actor, in-emulator local
+reference Nature, and inline player frames.
+
+- 1,024 terminal combats: 71.0165 s full run (14.4192 combats/s),
+  including warmup. Steady-state: 994 combats / 58.7369 s =
+  **16.9229 combats/s**. Previous packed baseline: approximately
+  17.04 combats/s; no improvement established. All 1,024 terminated
+  and 64 sampled terminal replays verified.
+- 128-source PPO iteration: 19.3296 s rollout (6.622 combats/s),
+  17.3568 s PPO update, 36.6863 s total; all 128 terminated and
+  16 replays verified. Rollout and PPO use different workloads.
+- Steady-state 994-combat run: 27,051 `h8_step` RPCs; cumulative
+  cross-worker step RPC time 280.15 s, begin RPC time 31.12 s.
+  Shared actor reports 26.21 s forward and 7.51 s collation across
+  the full cohort. These times overlap with worker execution, so
+  do not add them to rollout wall-clock. At the same actor work per
+  fight, approximately 33.72 s of serial actor service for 1,024
+  combats already places an optimistic ceiling near 30 combats/s:
+  reaching 50 requires actor improvements alongside mechanics refactoring.
+
+Subsequent hot-path changes on PR #219:
+- Defer duplicate automatic-turn legal-action enumeration until the
+  cached H8 player frame is built, preserving the empty-menu check.
+- Address the committed semantic deck decision by its source ordinal
+  on H8's trusted native draw, avoiding a full transcript clone and
+  linear search in `ValidateRecordedChoice`. Other checked v111
+  callers retain the old validation route.
+
+These commits postdate the measured reports; no newer throughput gain
+has been established. Reuse existing H8 tests/replays, then rerun the
+one 1,024-combat workload after structural changes.
+
+**Deeper remaining deficit:** `SemanticDeckStateV111.Transcript` is
+a defensive-copy array property. The normal deck resolver also copies
+and appends that growing array, and repeated checked validation
+traverses it. Even with the new O(1) H8 recorded-choice lookup, other
+parts of the native draw path still perform work proportional to
+fight length. A persistent H8-owned deck transcript and H8-specific
+trusted commit avoiding redundant full-state validation should accompany
+the direct `RunState` owner/cursor migration. Explicit audit and fork
+must still materialize independent complete snapshots.
