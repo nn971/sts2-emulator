@@ -708,11 +708,11 @@ public sealed partial class PrototypeGameEngine
         string stage,
         int minimum,
         int candidateCount) =>
-        ResolveLegacyRandomIndex(
+        minimum + ResolveLegacyBoundedInteger(
             rng,
             "event.generated_gold.index_draw",
             $"event:{eventId}:gold:{stage}",
-            Enumerable.Range(minimum, candidateCount),
+            candidateCount,
             streamId: "event");
 
     private static RunState ResolveNativeEventGold(RunState state)
