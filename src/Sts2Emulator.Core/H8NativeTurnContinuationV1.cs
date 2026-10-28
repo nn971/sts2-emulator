@@ -98,12 +98,10 @@ internal static class H8NativeTurnContinuationV1
                 combat,
                 "Completed semantic end-turn has no Nature deck.",
                 "Completed semantic end-turn has an invalid Nature deck boundary.");
-            // This is the exact source legality condition checked by
-            // v111, without building an unused complete observation and
-            // hashing the hidden RunState.
-            if (!new PrototypeGameEngine().GetLegalActions(resumed).Any())
-                throw new InvalidOperationException(
-                    "The next player boundary has no available legal actions.");
+            // H8's next boundary already constructs a source-public frame
+            // for the actor. Validate action availability there, using the
+            // same legal-action menu, instead of constructing and discarding
+            // a second complete menu during automatic-turn continuation.
         }
         return cursor with { ActiveRun = resumed, Complete = true };
     }
