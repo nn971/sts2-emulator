@@ -1567,26 +1567,32 @@ public static class SemanticEndTurnEngineV111
             !advancedDraw.FromHandDraw)
             throw new InvalidOperationException(
                 "H8 automatic draw cursor is no longer active.");
-        return ContinueHandDraw(source, advancedDraw);
+        return ContinueHandDraw(source, advancedDraw, trustedH8: true);
     }
 
     private static SemanticEndTurnV111 ContinueHandDraw(
-        SemanticEndTurnV111 source, SemanticCombatDrawV111 handDraw)
+        SemanticEndTurnV111 source, SemanticCombatDrawV111 handDraw,
+        bool trustedH8 = false)
     {
         var next = source with
         {
             Run = handDraw.Run,
             HandDraw = handDraw
         };
-        return handDraw.AtBoundary ? CompleteHandDraw(next) : next;
+        return handDraw.AtBoundary ? CompleteHandDraw(next, trustedH8) : next;
     }
 
-    private static SemanticEndTurnV111 CompleteHandDraw(SemanticEndTurnV111 state)
+    private static SemanticEndTurnV111 CompleteHandDraw(
+        SemanticEndTurnV111 state, bool trustedH8)
     {
         if (state.HandDraw is not { AtBoundary: true } draw)
             throw new InvalidOperationException(
                 "Cannot finish end turn with pending drawn-card choices.");
         RunState result;
+        // This is real resumed turn mechanics, formerly included in the
+        // profiler's broad "legacy projection" bucket. Keep it independent
+        // of snapshot publication and provider bookkeeping.
+        using (H8HotPathProfilerV1.Begin("h8.draw.resume_turn_mechanics"))
         using (ControlledChanceGuardV111.Enter())
             result = PrototypeGameEngine.ResumeAutomaticPipelineContinuation(
                 draw.Run.Fork());
@@ -1598,11 +1604,12 @@ public static class SemanticEndTurnEngineV111
             PrototypeGameEngine
                 .HasPendingSupportedAutomaticPipelineSemanticChoice(result))
             return state with { Run = result };
-        return CompleteHandDrawAtPlayerBoundary(state, result);
+        return CompleteHandDrawAtPlayerBoundary(state, result, trustedH8);
     }
 
     private static SemanticEndTurnV111 CompleteHandDrawAtPlayerBoundary(
-        SemanticEndTurnV111 state, RunState result)
+        SemanticEndTurnV111 state, RunState result,
+        bool trustedH8 = false)
     {
         if (!PrototypeGameEngine.IsAtCombatPlayerDecisionBoundary(result))
             throw new NotSupportedException(
@@ -1615,8 +1622,18 @@ public static class SemanticEndTurnEngineV111
             combat,
             "Completed semantic end-turn has no Nature deck.",
             "Completed semantic end-turn has an invalid Nature deck boundary.");
-        var actions = new PrototypeAiEnvironment().Observe(result).LegalActions;
-        if (!actions.Any())
+        // H8 will construct its source-public observation and action IDs at
+        // the version-owned player boundary. Creating a whole legacy frame
+        // here also hashes hidden RunState and repeats all action encoding.
+        // Check only action existence on the trusted transition. Keep the
+        // externally checked v111 validation path byte-for-byte unchanged.
+        bool hasActions;
+        using (H8HotPathProfilerV1.Begin("h8.draw.next_player_check"))
+            hasActions = trustedH8
+                ? new PrototypeGameEngine().GetLegalActions(result).Any()
+                : new PrototypeAiEnvironment().Observe(result)
+                    .LegalActions.Any();
+        if (!hasActions)
             throw new InvalidOperationException(
                 "The next player boundary has no available legal actions.");
         return CompleteAtBoundary(
