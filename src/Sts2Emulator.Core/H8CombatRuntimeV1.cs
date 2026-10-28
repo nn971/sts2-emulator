@@ -15,7 +15,8 @@ public readonly record struct H8BoundaryTokenV1(Guid RuntimeId, long Version);
 public sealed record H8DecisionEntryV1(
     long Version, string Kind, string ProviderId,
     string? SiteId = null, string? ActionId = null,
-    string? IntentId = null, long? CardInstanceId = null);
+    string? IntentId = null, long? CardInstanceId = null,
+    string? TargetEventId = null, int? TargetEnemyInstanceId = null);
 
 /// <summary>
 /// First executable H8 combat runtime slice.
@@ -59,7 +60,8 @@ public sealed class H8CombatRuntimeV1
 
     private enum H8PendingKindV1
     {
-        Terminal, DrawCard, EnemyIntent, PlayerChoice, Player, Unsupported
+        Terminal, DrawCard, EnemyIntent, RandomTarget,
+        PlayerChoice, Player, Unsupported
     }
 
     private sealed record H8IntentSupportV1(string[] Ids, long[] RawWeights);
@@ -145,6 +147,7 @@ public sealed class H8CombatRuntimeV1
         H8PendingKindV1.Terminal => "terminal",
         H8PendingKindV1.DrawCard => "draw_card",
         H8PendingKindV1.EnemyIntent => "enemy_intent",
+        H8PendingKindV1.RandomTarget => "random_target",
         H8PendingKindV1.PlayerChoice => "player_choice",
         H8PendingKindV1.Player => "player",
         _ => "unsupported"
@@ -166,6 +169,10 @@ public sealed class H8CombatRuntimeV1
         else if (_state.PendingInitialIntents?.Pending is not null ||
                  endTurn?.IntentPending is not null)
             kind = H8PendingKindV1.EnemyIntent;
+        else if (_state.Run.World?.Combat?.PendingChoice?.ChoiceId ==
+                    "controlled_random_target" ||
+                 endTurn?.TargetPending is not null)
+            kind = H8PendingKindV1.RandomTarget;
         else if (_state.AtPlayerBoundary)
             kind = H8PendingKindV1.Player;
         else if (_state.AtPlayerChoiceBoundary)
@@ -301,6 +308,16 @@ public sealed class H8CombatRuntimeV1
         }
         throw new InvalidOperationException(
             "H8 reference law requires an unresolved Nature event.");
+    }
+
+    public int[] PendingRandomTargetEnemyIds()
+    {
+        if (PendingBoundaryKind() != H8PendingKindV1.RandomTarget)
+            throw new InvalidOperationException(
+                "H8 random-target support requires a pending target.");
+        var target = _state.TargetPending ??
+            throw new InvalidDataException("H8 random target event is missing.");
+        return (int[])target.CandidateEnemyInstanceIds.Clone();
     }
 
     public string[] PendingIntentIds() =>
@@ -444,6 +461,28 @@ public sealed class H8CombatRuntimeV1
     /// card support is checked. The legacy engine currently performs the
     /// actual card/hook/continuation mechanics and output validation.
     /// </summary>
+    public void ChooseRandomTarget(
+        H8BoundaryTokenV1 boundary, string eventId, int enemyInstanceId,
+        string providerId = "reference-nature")
+    {
+        RequireBoundary(boundary);
+        ArgumentException.ThrowIfNullOrWhiteSpace(providerId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        if (PendingBoundaryKind() != H8PendingKindV1.RandomTarget)
+            throw new InvalidOperationException("H8 random target is not pending.");
+        var target = _state.TargetPending ??
+            throw new InvalidDataException("H8 target support is absent.");
+        if (target.EventId != eventId ||
+            !target.CandidateEnemyInstanceIds.Contains(enemyInstanceId))
+            throw new InvalidOperationException(
+                "H8 random target is outside the versioned event support.");
+        var next = SemanticPilotCombatEngineV111.ResolveRandomTarget(
+            _state, _state.Fingerprint, eventId, enemyInstanceId);
+        Commit(next, new H8DecisionEntryV1(
+            _version, "random_target", providerId, SiteId: target.SiteId,
+            TargetEventId: eventId, TargetEnemyInstanceId: enemyInstanceId));
+    }
+
     public void ChooseDrawCard(
         H8BoundaryTokenV1 boundary, long cardInstanceId,
         string providerId = "reference-nature")
@@ -521,6 +560,18 @@ public sealed class H8CombatRuntimeV1
                 ChooseIntent(Boundary, support.Ids[selected],
                     H8LocalReferenceNatureV1.ProviderId);
             }
+            else if (kind == H8PendingKindV1.RandomTarget)
+            {
+                var target = _state.TargetPending ??
+                    throw new InvalidDataException("H8 target event is absent.");
+                var selected = H8LocalReferenceNatureV1.UniformIndex(
+                    seed, target.EventId, target.SiteId,
+                    target.CandidateEnemyInstanceIds.Length);
+                ChooseRandomTarget(
+                    Boundary, target.EventId,
+                    target.CandidateEnemyInstanceIds[selected],
+                    H8LocalReferenceNatureV1.ProviderId);
+            }
             else
             {
                 return resolved;
@@ -528,7 +579,7 @@ public sealed class H8CombatRuntimeV1
             resolved++;
         }
         if (PendingBoundaryKind() is H8PendingKindV1.DrawCard or
-            H8PendingKindV1.EnemyIntent)
+            H8PendingKindV1.EnemyIntent or H8PendingKindV1.RandomTarget)
             throw new InvalidOperationException(
                 "H8 local Nature continuation exceeded its decision limit.");
         return resolved;
@@ -571,6 +622,11 @@ public sealed class H8CombatRuntimeV1
                     break;
                 case "draw_card" when item.CardInstanceId is long id:
                     replay.ChooseDrawCard(token, id, item.ProviderId);
+                    break;
+                case "random_target" when item.TargetEventId is not null &&
+                    item.TargetEnemyInstanceId is int enemyId:
+                    replay.ChooseRandomTarget(
+                        token, item.TargetEventId, enemyId, item.ProviderId);
                     break;
                 default:
                     throw new InvalidDataException(
