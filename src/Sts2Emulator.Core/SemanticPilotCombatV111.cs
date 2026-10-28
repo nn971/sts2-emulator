@@ -3321,8 +3321,9 @@ public static class SemanticPilotCombatEngineV111
             fingerprint, pending, support);
         var selection = SemanticIntentChoiceV111.Select(
             semanticEvent, intentId);
-        return Resolve(current, fingerprint, selection.SourceTicket,
-            selection.Decision, null, false, null, prevalidated: true);
+        using (H8HotPathProfilerV1.Begin("h8.intent.v111_resolution"))
+            return Resolve(current, fingerprint, selection.SourceTicket,
+                selection.Decision, null, false, null, prevalidated: true);
     }
 
     /// <summary>
