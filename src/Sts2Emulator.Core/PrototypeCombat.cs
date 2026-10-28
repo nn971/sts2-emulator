@@ -4477,7 +4477,11 @@ public sealed partial class PrototypeGameEngine
                                     // without creating a second RNG context.
                                     combat = NativeCombatRngEntryV111.HatchToughEgg(
                                         combat, enemy, out var nativeHatchling);
-                                    enemy = nativeHatchling;
+                                    enemy = nativeHatchling with
+                                    {
+                                        CompletedPhaseMaxHp =
+                                            enemy.CompletedPhaseMaxHp + enemy.MaxHp
+                                    };
                                     break;
                                 }
                                 throw new NotSupportedException(
@@ -4502,6 +4506,8 @@ public sealed partial class PrototypeGameEngine
                                 EnemyId = effect.EnemyId,
                                 Hp = maxHp,
                                 MaxHp = maxHp,
+                                CompletedPhaseMaxHp =
+                                    enemy.CompletedPhaseMaxHp + enemy.MaxHp,
                                 Block = 0,
                                 Statuses = new Dictionary<string, int>(
                                     StringComparer.Ordinal),
@@ -4546,6 +4552,8 @@ public sealed partial class PrototypeGameEngine
                                 Block = 0,
                                 BossPhase = newPhase,
                                 BossPendingRevival = false,
+                                CompletedPhaseMaxHp =
+                                    enemy.CompletedPhaseMaxHp + enemy.MaxHp,
                                 ExtraMultiClawCount = 0,
                                 AiStateId = newPhase == 1 ? "claw" : "lacerate",
                                 Powers = enemy.PowerStates.Where(power =>
