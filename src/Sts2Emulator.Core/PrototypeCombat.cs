@@ -5148,13 +5148,8 @@ public sealed partial class PrototypeGameEngine
                         ? hpRange.Max
                         : hpRange.Min == hpRange.Max
                             ? hpRange.Min
-                            : ResolveLegacyRandomIndex(
-                                rng,
-                                NativeCombatRngEntryV111.InitialUniqueHpSiteId,
-                                "creature:" + nextEnemyId,
-                                Enumerable.Range(
-                                    hpRange.Min,
-                                    checked(hpRange.Max - hpRange.Min + 1)));
+                            : ResolveLegacyDeathSummonHp(
+                                rng, nextEnemyId, hpRange.Min, hpRange.Max);
                 var powers =
                     (definition.StartingPowers
                         ?? Array.Empty<
@@ -13683,6 +13678,22 @@ public sealed partial class PrototypeGameEngine
                     current.Parent,
                     parent)
             };
+
+    // Only the HP roll caused by an actual death-summon mechanic is
+    // delegated to the deterministic, journaled prototype combat stream.
+    // Keep every other guarded combat random site fail-closed until a
+    // dedicated saved continuation is implemented.
+    private static int ResolveLegacyDeathSummonHp(
+        RngBundle rng, int combatId, int minimum, int maximum)
+    {
+        using var scope = ControlledChanceGuardV111.Active
+            ? ControlledChanceGuardV111.AllowEngineOwnedDeathSummonHp()
+            : null;
+        return ResolveLegacyRandomIndex(
+            rng, NativeCombatRngEntryV111.InitialUniqueHpSiteId,
+            "creature:" + combatId,
+            Enumerable.Range(minimum, checked(maximum - minimum + 1)));
+    }
 
     private static int ResolveLegacyRandomIndex(
         RngBundle legacyRng,
