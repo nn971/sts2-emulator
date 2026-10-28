@@ -47,6 +47,9 @@ public sealed class H8CombatRuntimeV1
     // player boundary, shared by H8Status and h8_observe. Do not recompute
     // observation hashing/action projection two or three times per step.
     private PrototypeAiFrame? _playerFrame;
+    // Exact pre-choice pilot fingerprint reused when the same version-owned
+    // intent Chance Law has already been exposed to the external provider.
+    private string? _pendingIntentPilotFingerprint;
 
     private sealed record H8DrawCursorV1(
         SemanticDeckEventV111 Event, long[] EligibleCards,
@@ -193,7 +196,9 @@ public sealed class H8CombatRuntimeV1
         if (_state.IntentPending is { } intent)
         {
             var evt = SemanticPilotCombatEngineV111
-                .DescribePendingIntentEvent(_state);
+                .DescribePendingIntentEvent(
+                    _state,
+                    _pendingIntentPilotFingerprint ??= _state.Fingerprint);
             var support = evt.Support;
             var law = ChanceLawEngineV111.QueryIntent(evt);
             return new
@@ -338,7 +343,8 @@ public sealed class H8CombatRuntimeV1
                 "H8 intent is not the next pending boundary.");
         var next = _useTrustedIntent
             ? SemanticPilotCombatEngineV111
-                .ResolveIntentFromH8TrustedBoundary(_state, intentId)
+                .ResolveIntentFromH8TrustedBoundary(
+                    _state, intentId, _pendingIntentPilotFingerprint)
             : SemanticPilotCombatEngineV111.ResolveIntent(
                 _state, _state.Fingerprint, intentId);
         Commit(next, new H8DecisionEntryV1(
@@ -471,5 +477,6 @@ public sealed class H8CombatRuntimeV1
         _drawCursor = null;
         _drawCursorCaptured = false;
         _playerFrame = null;
+        _pendingIntentPilotFingerprint = null;
     }
 }
