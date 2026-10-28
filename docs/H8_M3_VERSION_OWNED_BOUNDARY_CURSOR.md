@@ -47,6 +47,14 @@ overhead. We now measure `h8.draw.resume_turn_mechanics` and
 5. There is **no change** to native RNG, ordinary Chance Law, or learned
    Nature provider interchangeability.
 
+Additional opt-in C# scopes now split the expensive combat initialization
+into `h8.begin.native_hp`, `h8.begin.native_intents`,
+`h8.begin.opening_shuffle`, `h8.begin.semantic_projection`,
+`h8.begin.opening_draw_hooks` and `h8.begin.final_validation`.
+`h8.intent.v111_resolution` isolates legacy intent mechanics from
+reference-law event construction. These counters inform later structural
+rewrites and are not themselves claimed speedups.
+
 **Remaining legacy ownership**: the native draw path still calls
 `SemanticEndTurnEngineV111.ContinueFromH8AdvancedDraw` to resume automatic
 turn mechanics and return its legacy continuation projection. This PR
