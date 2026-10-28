@@ -306,8 +306,35 @@ public sealed class H8CombatRuntimeV1
                 }).ToArray()
             };
         }
+        if (PendingBoundaryKind() == H8PendingKindV1.RandomTarget)
+        {
+            var target = _state.TargetPending ??
+                throw new InvalidDataException("H8 random target event is missing.");
+            return new
+            {
+                kind = "random_target",
+                target.EventId,
+                target.SiteId,
+                target.StreamId,
+                target.OwnerId,
+                target.Ordinal,
+                target.OperationKind,
+                target.ProbabilityStatus,
+                chanceLaw = ChanceLawEngineV111.QueryTarget(target),
+                candidates = target.CandidateEnemyInstanceIds.Select(id =>
+                    new { enemyInstanceId = id }).ToArray()
+            };
+        }
         throw new InvalidOperationException(
             "H8 reference law requires an unresolved Nature event.");
+    }
+
+    public string PendingRandomTargetEventId()
+    {
+        if (PendingBoundaryKind() != H8PendingKindV1.RandomTarget)
+            throw new InvalidOperationException("H8 random target is not pending.");
+        return (_state.TargetPending ??
+            throw new InvalidDataException("H8 target event is missing.")).EventId;
     }
 
     public int[] PendingRandomTargetEnemyIds()
