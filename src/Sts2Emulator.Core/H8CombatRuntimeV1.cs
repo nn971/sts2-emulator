@@ -203,7 +203,7 @@ public sealed class H8CombatRuntimeV1
             // Automatic-turn continuation defers this legality check here
             // so the policy's required public frame is the only action menu
             // built for this boundary.
-            if (frame.LegalActions.Count == 0)
+            if (frame.LegalActions.Length == 0)
                 throw new InvalidOperationException(
                     "The next player boundary has no available legal actions.");
             _playerFrame = frame;
