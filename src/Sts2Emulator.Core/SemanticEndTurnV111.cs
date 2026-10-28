@@ -491,10 +491,34 @@ public sealed record SemanticEndTurnV111(
         if (this.Intents is { } intents)
         {
             intents.Validate();
-            if (CanonicalJson.Sha256(intents.Transcript) !=
-                CanonicalJson.Sha256(this.IntentTranscript) ||
-                CanonicalJson.Sha256(this.Run) !=
-                CanonicalJson.Sha256(this.Origin))
+            // A committed prefix may update several enemies before the next
+            // intent ticket suspends. Origin remains the pre-intent mechanics
+            // checkpoint; Run owns the partially committed enemy state.
+            // Compare both against the pure intent replay and verify that
+            // the enclosing run has no other differences from Origin.
+            var originCombat = this.Origin.World?.Combat;
+            var activeCombat = this.Run.World?.Combat;
+            if (originCombat is null || activeCombat is null ||
+                CanonicalJson.Sha256(intents.Transcript) !=
+                    CanonicalJson.Sha256(this.IntentTranscript) ||
+                CanonicalJson.Sha256(intents.BaselineCombat with
+                {
+                    AutomaticPipelineContinuation = null
+                }) != CanonicalJson.Sha256(originCombat with
+                {
+                    AutomaticPipelineContinuation = null
+                }) ||
+                CanonicalJson.Sha256(intents.Combat with
+                {
+                    AutomaticPipelineContinuation = null
+                }) != CanonicalJson.Sha256(activeCombat with
+                {
+                    AutomaticPipelineContinuation = null
+                }) ||
+                CanonicalJson.Sha256(this.Run with
+                {
+                    World = this.Run.World! with { Combat = originCombat }
+                }) != CanonicalJson.Sha256(this.Origin))
                 throw new InvalidDataException("Invalid pending intent stage.");
         }
         if (handDraw is { } hand)
