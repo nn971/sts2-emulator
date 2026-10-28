@@ -1,0 +1,103 @@
+namespace Sts2Emulator.Core;
+
+/// <summary>
+/// H8-owned execution of the ordinary automatic physical hand-draw continuation.
+/// The engine takes an already committed player/Nature draw effect and advances
+/// the real source mechanics through the remainder of the turn before emitting
+/// the v111 compatibility projection.
+///
+/// An H8 cursor holds only the current mechanics, hand draw, and terminal/next
+/// boundary status. It never owns the legacy pilot history, stochastic choices,
+/// or a copied end-turn stack. The enclosing H8 session owns the authoritative
+/// versioned player/Nature decision journal.
+///
+/// The final v111 projection remains necessary for H8 mechanics not yet migrated.
+/// A later owner can retain this cursor over multiple decisions and project
+/// only for explicit audits; all actual automatic turn advancement here is
+/// already independent of SemanticEndTurnEngineV111.
+/// </summary>
+internal static class H8NativeTurnContinuationV1
+{
+    private readonly record struct Cursor(
+        RunState ActiveRun, SemanticCombatDrawV111 HandDraw,
+        bool Complete, bool SuspendedNestedChoice);
+
+    internal static SemanticEndTurnV111 AdvancePhysicalHandDraw(
+        SemanticEndTurnV111 origin,
+        SemanticCombatDrawV111 advancedDraw)
+    {
+        ArgumentNullException.ThrowIfNull(origin);
+        ArgumentNullException.ThrowIfNull(advancedDraw);
+        if (origin.Complete ||
+            origin.HandDraw is not
+                { AtBoundary: false, Pending: not null,
+                  AutomaticHandDraw: true, FromHandDraw: true } ||
+            !advancedDraw.AutomaticHandDraw ||
+            !advancedDraw.FromHandDraw)
+            throw new InvalidOperationException(
+                "H8 turn cursor needs an active automatic physical hand draw.");
+
+        using var total = H8HotPathProfilerV1.Begin("h8.turn_cursor.total");
+        var cursor = new Cursor(advancedDraw.Run, advancedDraw, false, false);
+        if (advancedDraw.AtBoundary)
+            cursor = ResumeActualTurn(cursor);
+
+        // The output projection preserves the public v111 audit shape and
+        // provider history, but it performs no automatic turn mechanics.
+        using var projection =
+            H8HotPathProfilerV1.Begin("h8.turn_cursor.compat_projection");
+        var projected = origin with
+        {
+            Run = cursor.ActiveRun,
+            HandDraw = cursor.HandDraw
+        };
+        return cursor.Complete ? projected with { Complete = true } : projected;
+    }
+
+    private static Cursor ResumeActualTurn(Cursor cursor)
+    {
+        var draw = cursor.HandDraw;
+        // The underlying automatic pipeline may modify card zones, powers,
+        // combat outcome, or issue further Nature requests. The existing
+        // game engine remains the single authority for those effects.
+        RunState resumed;
+        using (H8HotPathProfilerV1.Begin("h8.turn_cursor.resume_mechanics"))
+        using (ControlledChanceGuardV111.Enter())
+            resumed = PrototypeGameEngine.ResumeAutomaticPipelineContinuation(
+                draw.Run.Fork());
+
+        if (PrototypeGameEngine.IsAtCombatRewardOrTerminalBoundary(resumed))
+            return cursor with { ActiveRun = resumed, Complete = true };
+
+        if (resumed.World?.Combat?.PendingChoice?.ControlledTarget is not null ||
+            PrototypeGameEngine.HasPendingSupportedAutomaticPipelineSemanticChoice(
+                resumed))
+            return cursor with
+            {
+                ActiveRun = resumed,
+                SuspendedNestedChoice = true
+            };
+
+        using (H8HotPathProfilerV1.Begin("h8.turn_cursor.validate_player"))
+        {
+            if (!PrototypeGameEngine.IsAtCombatPlayerDecisionBoundary(resumed))
+                throw new NotSupportedException(
+                    "UNSUPPORTED_SEMANTIC_DECK site=combat.semantic_end_turn " +
+                    "operation=not_at_next_player_boundary");
+            var combat = resumed.World?.Combat ??
+                throw new InvalidDataException(
+                    "Completed H8 end-turn lost its combat state.");
+            SemanticDrawPileAdapterV111.ValidateNatureDeckBoundary(
+                combat,
+                "Completed semantic end-turn has no Nature deck.",
+                "Completed semantic end-turn has an invalid Nature deck boundary.");
+            // This is the exact source legality condition checked by
+            // v111, without building an unused complete observation and
+            // hashing the hidden RunState.
+            if (!new PrototypeGameEngine().GetLegalActions(resumed).Any())
+                throw new InvalidOperationException(
+                    "The next player boundary has no available legal actions.");
+        }
+        return cursor with { ActiveRun = resumed, Complete = true };
+    }
+}
