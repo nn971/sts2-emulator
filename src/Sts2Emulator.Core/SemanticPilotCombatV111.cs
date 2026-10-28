@@ -2347,6 +2347,11 @@ public static class SemanticPilotCombatEngineV111
                     "operation=potion_effect_requires_semantic_audit");
             using (H8HotPathProfilerV1.Begin("h8.player.engine_potion"))
             using (ControlledChanceGuardV111.Enter())
+            // A killing potion completes combat and initializes its reward.
+            // The reward generator uses its own RNG stream and is explicitly
+            // allowlisted; it must not be mistaken for combat Nature chance.
+            // Match the existing play-card action boundary exactly.
+            using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
                 result = trustedH8 && playerFrame is not null
                     ? environment.StepFromH8TrustedBoundary(
                         source, playerFrame, actionId).State
