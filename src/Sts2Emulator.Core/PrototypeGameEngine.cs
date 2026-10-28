@@ -1427,11 +1427,13 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
     }
 
     /// <summary>
-    /// Compute the complete non-minion HP budget over an encounter. Defeated
-    /// enemies remain in the formation, so death-summoned non-minions count
-    /// alongside their dead parent. Completed forms of the same enemy are
-    /// counted via CompletedPhaseMaxHp; summons marked as minions do not
-    /// contribute to either total or remaining HP.
+    /// Compute the total non-minion HP over the whole encounter, including
+    /// completed forms and future scripted death-spawn stages. Defeated
+    /// parents remain in the formation. Before the non-minion death summons
+    /// exist, their declared maximum HP is reserved as *both* remaining and
+    /// total HP; once created the budget uses their actual rolled MaxHp.
+    /// A staged transition must not erase progress earned against the parent.
+    /// Minion definitions and dynamically minion-marked enemies are excluded.
     /// </summary>
     internal static (int Total, int Remaining) NonMinionEncounterHp(
         CombatState combat)
@@ -1440,13 +1442,49 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         var remaining = 0;
         foreach (var enemy in combat.Enemies)
         {
-            if (PrototypeContent.Enemy(enemy.EnemyId).IsMinion ||
+            var definition = PrototypeContent.Enemy(enemy.EnemyId);
+            if (definition.IsMinion ||
                 enemy.PowerStates.Any(power =>
                     power.PowerId == "proto.power.minion" && power.Stacks > 0))
                 continue;
             total = checked(total + Math.Max(enemy.MaxHp, Math.Max(0, enemy.Hp))
                 + enemy.CompletedPhaseMaxHp);
             remaining = checked(remaining + Math.Max(0, enemy.Hp));
+
+            // Summons are deterministic stage obligations, while their exact
+            // HP is rolled on creation. Max is a stable conservative budget:
+            // replacing it with the rolled value cannot decrease progress.
+            if (!enemy.DeathEffectsResolved && definition.DeathSummons is { } summons)
+                foreach (var summon in summons)
+                {
+                    var summoned = PrototypeContent.Enemy(summon.EnemyId);
+                    if (summoned.IsMinion ||
+                        summoned.StartingPowers?.Any(power =>
+                            power.PowerId == "proto.power.minion") == true)
+                        continue;
+                    var pendingHp = summoned.HpRangeAt(
+                        combat.Act, combat.Ascension).Max;
+                    total = checked(total + pendingHp);
+                    remaining = checked(remaining + pendingHp);
+                }
+
+            // The Test Subject restores the same monster's HP twice. These
+            // phases are source-declared, not new combat instances.
+            if (enemy.EnemyId == PrototypeNativeGloryBosses.TestSubjectId)
+            {
+                if (enemy.BossPhase < 1)
+                {
+                    var hp = combat.Ascension >= 8 ? 212 : 200;
+                    total = checked(total + hp);
+                    remaining = checked(remaining + hp);
+                }
+                if (enemy.BossPhase < 2)
+                {
+                    var hp = combat.Ascension >= 8 ? 313 : 300;
+                    total = checked(total + hp);
+                    remaining = checked(remaining + hp);
+                }
+            }
         }
         return (total, remaining);
     }
