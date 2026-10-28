@@ -30,6 +30,8 @@ internal sealed class SemanticOperationProfiler
 
     public void Stop() => Enabled = false;
 
+    public void Resume() => Enabled = true;
+
     public static long Timestamp() => Stopwatch.GetTimestamp();
 
     public static long Allocated() => GC.GetAllocatedBytesForCurrentThread();
