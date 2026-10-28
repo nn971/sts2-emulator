@@ -37,14 +37,27 @@ public sealed record ResearchCombatFixtureV111(
 
     public void Validate()
     {
-        if (DistributionId != ResearchCombatFixtureGeneratorV111.DistributionId ||
+        var rich = DistributionId == ResearchCombatFixtureGeneratorV111.RichDistributionId;
+        var encounters = rich
+            ? ResearchCombatFixtureGeneratorV111.RichSupportedEncounters
+            : ResearchCombatFixtureGeneratorV111.SupportedEncounters;
+        var cards = rich
+            ? ResearchCombatFixtureGeneratorV111.RichSupportedCardIds
+            : ResearchCombatFixtureGeneratorV111.SupportedCardIds;
+        var relics = rich
+            ? ResearchCombatFixtureGeneratorV111.RichSupportedRelicIds
+            : ResearchCombatFixtureGeneratorV111.SupportedRelicIds;
+        var potions = rich
+            ? ResearchCombatFixtureGeneratorV111.RichSupportedPotionIds
+            : ResearchCombatFixtureGeneratorV111.SupportedPotionIds;
+        if ((!rich && DistributionId != ResearchCombatFixtureGeneratorV111.DistributionId) ||
             Act != 1 || Ascension != 10 || MapColumn != 3 ||
-            !ResearchCombatFixtureGeneratorV111.SupportedEncounters.Any(e =>
+            !encounters.Any(e =>
                 e.EncounterId == EncounterId &&
                 e.NativeEntry == NativeEncounterEntry &&
                 e.TotalFloor == TotalFloor && e.MapRow == MapRow))
             throw new NotSupportedException(
-                "UNSUPPORTED_RESEARCH_FIXTURE: unapproved Act 1 A10 single-enemy encounter/floor/distribution");
+                "UNSUPPORTED_RESEARCH_FIXTURE: unapproved Act 1 A10 encounter/floor/distribution");
 
         if (Deck is null || Deck.Length is < 12 or > 24 ||
             Deck.Any(card => card is null))
@@ -52,7 +65,7 @@ public sealed record ResearchCombatFixtureV111(
                 "INVALID_RESEARCH_FIXTURE: deck must contain 12–24 physical cards");
         foreach (var card in Deck)
         {
-            if (!ResearchCombatFixtureGeneratorV111.SupportedCardIds.Contains(
+            if (!cards.Contains(
                     card.CardId, StringComparer.Ordinal))
                 throw new NotSupportedException(
                     "UNSUPPORTED_RESEARCH_FIXTURE: card " + card.CardId);
@@ -71,7 +84,7 @@ public sealed record ResearchCombatFixtureV111(
                 "INVALID_RESEARCH_FIXTURE: Silent starter relic plus at most two distinct research relics");
         foreach (var relicId in RelicIds)
         {
-            if (!ResearchCombatFixtureGeneratorV111.SupportedRelicIds.Contains(
+            if (!relics.Contains(
                     relicId, StringComparer.Ordinal))
                 throw new NotSupportedException(
                     "UNSUPPORTED_RESEARCH_FIXTURE: relic " + relicId);
@@ -84,7 +97,7 @@ public sealed record ResearchCombatFixtureV111(
         {
             if (potionId is null)
                 continue;
-            if (!ResearchCombatFixtureGeneratorV111.SupportedPotionIds.Contains(
+            if (!potions.Contains(
                     potionId, StringComparer.Ordinal))
                 throw new NotSupportedException(
                     "UNSUPPORTED_RESEARCH_FIXTURE: potion " + potionId);
@@ -142,6 +155,66 @@ public sealed record ResearchCombatFixtureV111(
 public static class ResearchCombatFixtureGeneratorV111
 {
     public const string DistributionId = "silent-a10-structured-combat-v1";
+    public const string RichDistributionId = "silent-a10-overgrowth-rich-v2";
+
+    // Opt-in H9 continuation distribution. The original H8/H9 generator and
+    // its pinned v1 source population remain unchanged.
+    public static readonly (string EncounterId, string NativeEntry,
+        int TotalFloor, int MapRow)[] RichSupportedEncounters =
+    [
+        ("proto.encounter.shrinker_beetle_weak", "ShrinkerBeetleWeak", 2, 1),
+        ("proto.encounter.nibbits_weak", "NibbitsWeak", 2, 1),
+        ("proto.encounter.fuzzy_wurm_crawler_weak", "FuzzyWurmCrawlerWeak", 2, 1),
+        ("proto.encounter.slimes_weak", "SlimesWeak", 2, 1),
+        ("proto.encounter.mawler_normal", "MawlerNormal", 2, 1),
+        ("proto.encounter.cubex_construct_normal", "CubexConstructNormal", 2, 1),
+        ("proto.encounter.vine_shambler_normal", "VineShamblerNormal", 2, 1),
+        ("proto.encounter.flyconid_normal", "FlyconidNormal", 2, 1),
+        ("proto.encounter.fogmog_normal", "FogmogNormal", 2, 1),
+        ("proto.encounter.inklets_normal", "InkletsNormal", 2, 1),
+        ("proto.encounter.overgrowth_crawlers", "OvergrowthCrawlers", 2, 1),
+        ("proto.encounter.ruby_raiders_normal", "RubyRaidersNormal", 2, 1),
+        ("proto.encounter.slimes_normal", "SlimesNormal", 2, 1),
+        ("proto.encounter.slithering_strangler_normal", "SlitheringStranglerNormal", 2, 1),
+        ("proto.encounter.snapping_jaxfruit_normal", "SnappingJaxfruitNormal", 2, 1),
+        ("proto.encounter.bygone_effigy_elite", "BygoneEffigyElite", 2, 1),
+        ("proto.encounter.byrdonis_elite", "ByrdonisElite", 2, 1),
+        ("proto.encounter.phrog_parasite_elite", "PhrogParasiteElite", 2, 1),
+        ("proto.encounter.ceremonial_beast_boss", "CeremonialBeastBoss", 6, 5),
+        ("proto.encounter.vantom_boss", "VantomBoss", 6, 5),
+        ("proto.encounter.the_kin_boss", "TheKinBoss", 6, 5)
+    ];
+
+    public static readonly string[] RichSupportedCardIds = SupportedCardIds.Concat(
+    [
+        "proto.silent.blade_dance", "proto.silent.dagger_spray",
+        "proto.silent.quick_slash", "proto.silent.dagger_throw",
+        "proto.silent.cloak_and_dagger", "proto.silent.deflect",
+        "proto.silent.sucker_punch", "proto.silent.dash",
+        "proto.silent.leg_sweep", "proto.silent.skewer",
+        "proto.silent.footwork", "proto.silent.noxious_fumes",
+        "proto.silent.prepared", "proto.silent.piercing_wail",
+        "proto.silent.backstab", "proto.silent.adrenaline",
+        "proto.silent.afterimage", "proto.silent.bouncing_flask",
+        "proto.silent.calculated_gamble", "proto.silent.predator",
+        "proto.silent.blur"
+    ]).ToArray();
+
+    public static readonly string[] RichSupportedRelicIds = SupportedRelicIds.Concat(
+    [
+        "proto.relic.bag_of_preparation", "proto.relic.anchor",
+        "proto.relic.bag_of_marbles", "proto.relic.nunchaku",
+        "proto.relic.bronze_scales", "proto.relic.snecko_skull",
+        "proto.relic.kunai", "proto.relic.shuriken"
+    ]).ToArray();
+
+    public static readonly string[] RichSupportedPotionIds = SupportedPotionIds.Concat(
+    [
+        "proto.potion.swift", "proto.potion.weak", "proto.potion.dexterity",
+        "proto.potion.energy", "proto.potion.strength", "proto.potion.explosive",
+        "proto.potion.fairy_in_a_bottle"
+    ]).ToArray();
+
 
     public static readonly (string EncounterId, string NativeEntry,
         int TotalFloor, int MapRow)[] SupportedEncounters =
