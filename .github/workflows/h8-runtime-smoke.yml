@@ -9,6 +9,7 @@ on:
       - 'src/Sts2Emulator.Core/RunState.cs'
       - 'src/Sts2Emulator.Cli/SemanticOperationProfiler.cs'
       - 'src/Sts2Emulator.Core/H8NativePhysicalDrawEngineV1.cs'
+      - 'src/Sts2Emulator.Core/H8NativeTurnContinuationV1.cs'
       - 'src/Sts2Emulator.Core/H8NativePlayerEndTurnEngineV1.cs'
       - 'src/Sts2Emulator.Core/SemanticEndTurnV111.cs'
       - 'src/Sts2Emulator.Core/SemanticPilotCombatV111.cs'
