@@ -290,6 +290,10 @@ internal static class PrototypeAiJsonlServer
                     ? runtime.PendingDrawCardInstanceIds() : Array.Empty<long>(),
                 intentIds = kind == "enemy_intent"
                     ? runtime.PendingIntentIds() : Array.Empty<string>(),
+                targetEnemyInstanceIds = kind == "random_target"
+                    ? runtime.PendingRandomTargetEnemyIds() : Array.Empty<int>(),
+                targetEventId = kind == "random_target"
+                    ? runtime.PendingRandomTargetEventId() : null,
                 intentRawWeights = kind == "enemy_intent"
                     ? runtime.PendingIntentRawWeights() : Array.Empty<long>(),
                 playerActionIds = kind is "player" or "player_choice"
@@ -6815,6 +6819,21 @@ internal static class PrototypeAiJsonlServer
                         runtime.ChooseIntent(
                             RequiredH8Boundary(request),
                             RequiredString(request, "intent_id"),
+                            OptionalString(request, "provider_id") ??
+                                "reference-nature");
+                        Write(new { requestId, ok = true, result = H8Status(
+                                runtime, RequiredString(request, "h8_handle"),
+                                OptionalBool(request, "include_player_frame")) });
+                        break;
+                    }
+
+                    case "h8_resolve_random_target":
+                    {
+                        var runtime = RequireH8(request);
+                        runtime.ChooseRandomTarget(
+                            RequiredH8Boundary(request),
+                            RequiredString(request, "target_event_id"),
+                            RequiredInt(request, "enemy_instance_id"),
                             OptionalString(request, "provider_id") ??
                                 "reference-nature");
                         Write(new { requestId, ok = true, result = H8Status(
