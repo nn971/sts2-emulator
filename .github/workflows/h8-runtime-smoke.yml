@@ -4,6 +4,10 @@ on:
   pull_request:
     paths:
       - 'src/Sts2Emulator.Core/H8CombatRuntimeV1.cs'
+      - 'src/Sts2Emulator.Core/H8HotPathProfilerV1.cs'
+      - 'src/Sts2Emulator.Core/PrototypeAiEnvironment.cs'
+      - 'src/Sts2Emulator.Core/RunState.cs'
+      - 'src/Sts2Emulator.Cli/SemanticOperationProfiler.cs'
       - 'src/Sts2Emulator.Core/H8NativePhysicalDrawEngineV1.cs'
       - 'src/Sts2Emulator.Core/H8NativePlayerEndTurnEngineV1.cs'
       - 'src/Sts2Emulator.Core/SemanticEndTurnV111.cs'
