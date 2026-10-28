@@ -245,6 +245,60 @@ public sealed class ResearchCombatFixtureV111Tests
         Assert.Fail("Source-supported Strike + Fire combat did not reach potion range.");
     }
 
+
+    [Theory]
+    [InlineData("proto.encounter.slimes_weak")]
+    [InlineData("proto.encounter.inklets_normal")]
+    [InlineData("proto.encounter.ruby_raiders_normal")]
+    [InlineData("proto.encounter.phrog_parasite_elite")]
+    [InlineData("proto.encounter.the_kin_boss")]
+    public void RichV2NewEncounterOpensWithNativeResearchRuntime(string encounterId)
+    {
+        var encounter = Assert.Single(
+            ResearchCombatFixtureGeneratorV111.RichSupportedEncounters,
+            item => item.EncounterId == encounterId);
+        var legacy = ResearchCombatFixtureGeneratorV111.Generate(0, 20261027);
+        var rich = legacy with
+        {
+            DistributionId = ResearchCombatFixtureGeneratorV111.RichDistributionId,
+            EncounterId = encounter.EncounterId,
+            NativeEncounterEntry = encounter.NativeEntry,
+            TotalFloor = encounter.TotalFloor,
+            MapRow = encounter.MapRow,
+            RelicIds = ["proto.relic.silent_ring",
+                        "proto.relic.bag_of_preparation"],
+            Deck = legacy.Deck.Append(
+                new ResearchCombatCardV111("proto.silent.blade_dance")
+            ).ToArray(),
+            PotionIds = ["proto.potion.swift", "proto.potion.fire"]
+        };
+        rich.Validate();
+        Assert.Throws<NotSupportedException>(() =>
+            (rich with
+            {
+                DistributionId = ResearchCombatFixtureGeneratorV111.DistributionId
+            }).Validate());
+        var runtime = H8CombatRuntimeV1.BeginSeeded(
+            Entry(rich, "h9-rich-v2-accept-" + encounterId));
+        runtime.AdvanceLocalReferenceNature(runtime.Boundary, 20261028);
+        Assert.True(runtime.AtPlayerBoundary);
+        Assert.NotEmpty(runtime.ObservePlayerFrame().LegalActions);
+        Assert.True(runtime.LegacySnapshotForAudit()
+            .Run.World!.Combat!.Enemies.Length >= 1);
+        runtime.AuditReplay();
+    }
+
+    [Fact]
+    public void RichFixtureAllowlistDoesNotAlterLegacyV1Generator()
+    {
+        var original = ResearchCombatFixtureGeneratorV111.Generate(0, 20261027);
+        Assert.Equal(ResearchCombatFixtureGeneratorV111.DistributionId,
+            original.DistributionId);
+        Assert.Equal(20, original.Deck.Length);
+        Assert.Equal(7, ResearchCombatFixtureGeneratorV111.SupportedEncounters.Length);
+        Assert.Equal(21, ResearchCombatFixtureGeneratorV111.RichSupportedEncounters.Length);
+    }
+
     private static SemanticSeededEntryV111 Entry(
         ResearchCombatFixtureV111 spec, string sourceSeed) => new(
         sourceSeed, spec.Act, spec.EncounterId, spec.NativeEncounterEntry,
