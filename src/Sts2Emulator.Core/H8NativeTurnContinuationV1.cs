@@ -68,10 +68,14 @@ internal static class H8NativeTurnContinuationV1
         // combat outcome, or issue further Nature requests. The existing
         // game engine remains the single authority for those effects.
         RunState resumed;
+        // ResumeAutomaticPipelineContinuation is a functional mechanics
+        // transition. Keeping the committed draw.Run as an immutable source
+        // allows the compatibility HandDraw checkpoint to remain replayable
+        // without another deep clone of the entire run per completed draw.
         using (H8HotPathProfilerV1.Begin("h8.turn_cursor.resume_mechanics"))
         using (ControlledChanceGuardV111.Enter())
             resumed = PrototypeGameEngine.ResumeAutomaticPipelineContinuation(
-                draw.Run.Fork());
+                draw.Run);
 
         if (PrototypeGameEngine.IsAtCombatRewardOrTerminalBoundary(resumed))
             return cursor with { ActiveRun = resumed, Complete = true };
