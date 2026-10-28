@@ -1818,7 +1818,12 @@ public sealed partial class PrototypeGameEngine
         {
             World = world! with
             {
-                Combat = combat with
+                // During a multi-enemy intent pass, previous enemy
+                // outcomes are already committed to intents.Combat. Keep
+                // the enclosing combat checkpoint in step with that state:
+                // the continuation invariant compares these exact mechanics
+                // with the pipeline envelope removed.
+                Combat = (intents?.Combat ?? combat) with
                 {
                     AutomaticPipelineContinuation = pipeline with
                     {
