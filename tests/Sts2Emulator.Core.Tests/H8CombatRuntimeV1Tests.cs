@@ -550,6 +550,11 @@ public sealed class H8CombatRuntimeV1Tests
             Assert.True(state.AtPlayerBoundary);
             state.ChoosePlayerAction(state.Boundary, state.EndTurnActionId());
         }
+        // The real H7 actor asks for an event-scoped reference law before
+        // selecting an intent. That query now caches the exact pilot SHA
+        // and the subsequent H8 resolve must reuse it without state drift.
+        Assert.NotNull(state.DescribePendingReferenceLaw());
+        Assert.NotNull(state.DescribePendingReferenceLaw());
         var snapshot = state.LegacySnapshotForAudit();
         var support = state.PendingIntentIds();
         Assert.NotEmpty(support);
