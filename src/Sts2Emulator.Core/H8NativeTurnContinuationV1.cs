@@ -74,6 +74,9 @@ internal static class H8NativeTurnContinuationV1
         // without another deep clone of the entire run per completed draw.
         using (H8HotPathProfilerV1.Begin("h8.turn_cursor.resume_mechanics"))
         using (ControlledChanceGuardV111.Enter())
+        // End-of-turn and turn-start effects can kill the final enemy here.
+        // Only the separately allowlisted postcombat reward RNG may run.
+        using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
             resumed = PrototypeGameEngine.ResumeAutomaticPipelineContinuation(
                 draw.Run);
 

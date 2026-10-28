@@ -3481,6 +3481,7 @@ class Session:
             fixture_set_random_hand_card_cost: int | None = None,
             fixture_potion_generation_card_id: str | None = None,
             fixture_deck_preset_id: str | None = None,
+            fixture_spec: dict | None = None,
             replay_opening_draw_hooks: bool = False,
             native_policy_baseline: bool = False,
             source_route_entry: bool = False,
@@ -3548,6 +3549,7 @@ class Session:
             fixture_potion_generation_card_id=
                 fixture_potion_generation_card_id,
             fixture_deck_preset_id=fixture_deck_preset_id,
+            fixture_spec=fixture_spec,
             replay_opening_draw_hooks=replay_opening_draw_hooks,
             native_policy_baseline=native_policy_baseline,
             source_route_entry=source_route_entry,

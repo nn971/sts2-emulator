@@ -6683,7 +6683,13 @@ internal static class PrototypeAiJsonlServer
                                     "replay_opening_draw_hooks", out _) ||
                                 OptionalBool(request, "replay_opening_draw_hooks"),
                             FixtureDeckPresetId:
-                                OptionalString(request, "fixture_deck_preset_id"));
+                                OptionalString(request, "fixture_deck_preset_id"),
+                            FixtureSpec:
+                                request.TryGetProperty("fixture_spec", out var h8Fixture)
+                                && h8Fixture.ValueKind != JsonValueKind.Null
+                                ? h8Fixture.Deserialize<ResearchCombatFixtureV111>(
+                                    SnakeCaseJsonOptions)
+                                : null);
                         // Benchmark A/B switches: omitted flags preserve
                         // the optimized runtime. Explicit false selects the
                         // corresponding compatibility resolver for a paired
@@ -6949,7 +6955,12 @@ internal static class PrototypeAiJsonlServer
                             OptionalString(request,
                                 "fixture_top_autoplay_potion_id"),
                             OptionalString(request,
-                                "fixture_deck_preset_id"));
+                                "fixture_deck_preset_id"),
+                            request.TryGetProperty("fixture_spec", out var fixtureSpec)
+                                && fixtureSpec.ValueKind != JsonValueKind.Null
+                                ? fixtureSpec.Deserialize<ResearchCombatFixtureV111>(
+                                    SnakeCaseJsonOptions)
+                                : null);
                         var next = SemanticPilotCombatEngineV111.BeginSeeded(entry);
                         var handle = StoreSemantic(next);
                         Write(new { requestId, ok = true,
