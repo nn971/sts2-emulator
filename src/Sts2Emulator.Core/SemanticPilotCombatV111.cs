@@ -2140,7 +2140,13 @@ public static class SemanticPilotCombatEngineV111
         var action = frame.LegalActions.SingleOrDefault(a =>
             a.ActionId == actionId) ?? throw new InvalidOperationException(
                 "Illegal semantic player action.");
-        var source = current.Run.Fork();
+        // PrototypeGameEngine.Step already forks the input before touching
+        // combat mechanics. H8's version-owned card/potion path can pass the
+        // immutable checkpoint directly and avoid a second complete copy.
+        // End-turn continuation construction does not use Step and retains
+        // its independently owned defensive fork.
+        var source = trustedH8 && action.Kind is "play_card" or "use_potion"
+            ? current.Run : current.Run.Fork();
         SemanticEndTurnV111? endTurn = null;
         RunState result;
         if (action.Kind == "end_turn")
