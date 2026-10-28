@@ -95,6 +95,76 @@ public sealed class H8CombatRuntimeV1Tests
     }
 
     [Fact]
+    public void H8VersionOwnedBoundaryTagMatchesCheckedStateAcrossRealA10Choices()
+    {
+        // The H8 status tag may bypass expensive nested draw projections,
+        // but must reproduce the checked v111 precedence at every sampled
+        // player, initial/turn intent, and real physical draw boundary.
+        var runtime = H8CombatRuntimeV1.BeginSeeded(
+            Mawler("h8-tagged-cursor-a10-real-combat"));
+        var seenPlayer = 0;
+        var seenDraw = 0;
+        var seenIntent = 0;
+        var lastVersion = runtime.Boundary.Version;
+        for (var i = 0; i < 75; i++)
+        {
+            var state = runtime.LegacySnapshotForAudit();
+            var checkedKind = state.CombatTerminal ? "terminal" :
+                state.DrawPending is not null ? "draw_card" :
+                state.IntentPending is not null ? "enemy_intent" :
+                state.AtPlayerChoiceBoundary ? "player_choice" :
+                state.AtPlayerBoundary ? "player" : "unsupported";
+            var kind = runtime.BoundaryKind;
+            Assert.Equal(checkedKind, kind);
+            Assert.Equal(kind, runtime.BoundaryKind);
+            Assert.Equal(kind == "draw_card", runtime.HasPendingCardDraw);
+            Assert.Equal(kind == "enemy_intent", runtime.HasPendingIntent);
+            Assert.Equal(kind is "player" or "player_choice",
+                runtime.AtPlayerBoundary);
+            if (kind == "terminal")
+                break;
+            var token = runtime.Boundary;
+            switch (kind)
+            {
+                case "enemy_intent":
+                    var ids = runtime.PendingIntentIds();
+                    var weights = runtime.PendingIntentRawWeights();
+                    Assert.Equal(ids.Length, weights.Length);
+                    Assert.All(weights, weight => Assert.True(weight > 0));
+                    Assert.Equal(ids, runtime.PendingIntentIds());
+                    Assert.Equal(weights, runtime.PendingIntentRawWeights());
+                    runtime.ChooseIntent(token, ids[0]);
+                    seenIntent++;
+                    break;
+                case "draw_card":
+                    var cards = runtime.PendingDrawCardInstanceIds();
+                    Assert.NotEmpty(cards);
+                    Assert.Equal(cards, runtime.PendingDrawCardInstanceIds());
+                    runtime.ChooseDrawCard(token, cards[0]);
+                    seenDraw++;
+                    break;
+                case "player":
+                    runtime.ChoosePlayerAction(token, runtime.EndTurnActionId());
+                    seenPlayer++;
+                    break;
+                default:
+                    // Other nested choices have intentionally not been
+                    // migrated to the H8 decision protocol.
+                    i = 75;
+                    continue;
+            }
+            Assert.Equal(lastVersion + 1, runtime.Boundary.Version);
+            lastVersion++;
+            Assert.Throws<InvalidOperationException>(() =>
+                runtime.ChoosePlayerAction(token, "stale-option"));
+        }
+        Assert.True(seenIntent > 0);
+        Assert.True(seenPlayer > 0);
+        Assert.True(seenDraw > 0);
+        runtime.AuditReplay();
+    }
+
+    [Fact]
     public void TrustedH8CardPlayMatchesCheckedV111AndReplaysAcrossSourceSeeds()
     {
         // The H8 runtime must keep its exact action mechanics even though
