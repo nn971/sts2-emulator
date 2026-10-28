@@ -199,7 +199,14 @@ public sealed class H8CombatRuntimeV1
         if (_playerFrame is null)
         {
             using var scope = H8HotPathProfilerV1.Begin("h8.observe.public_frame");
-            _playerFrame = new PrototypeAiEnvironment().ObserveH8(_state.Run);
+            var frame = new PrototypeAiEnvironment().ObserveH8(_state.Run);
+            // Automatic-turn continuation defers this legality check here
+            // so the policy's required public frame is the only action menu
+            // built for this boundary.
+            if (frame.LegalActions.Count == 0)
+                throw new InvalidOperationException(
+                    "The next player boundary has no available legal actions.");
+            _playerFrame = frame;
         }
         return _playerFrame;
     }
