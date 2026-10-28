@@ -6676,6 +6676,14 @@ internal static class PrototypeAiJsonlServer
                             useNativeDrawTransition: H8Flag("use_native_draw_transition"),
                             useNativePlayerEndTurn: H8Flag("use_native_player_end_turn"),
                             useTrustedIntent: H8Flag("use_trusted_intent"));
+                        // Opt in to local reference Nature for training
+                        // rollouts; external learned/scripted providers still
+                        // receive explicit unresolved boundaries by default.
+                        if (request.TryGetProperty("local_reference_seed", out _))
+                            runtime.AdvanceLocalReferenceNature(
+                                runtime.Boundary,
+                                RequiredLong(request, "local_reference_seed"),
+                                OptionalInt(request, "max_nature_decisions") ?? 1200);
                         var handle = StoreH8(runtime);
                         Write(new { requestId, ok = true, result = H8Status(runtime, handle) });
                         break;
@@ -6716,6 +6724,23 @@ internal static class PrototypeAiJsonlServer
                         break;
                     }
 
+                    case "h8_continue_reference":
+                    {
+                        // Can be invoked at the opening Nature boundary, after
+                        // an externally controlled transition, or as an
+                        // explicit local reference-provider operation.
+                        var runtime = RequireH8(request);
+                        var resolved = runtime.AdvanceLocalReferenceNature(
+                            RequiredH8Boundary(request),
+                            RequiredLong(request, "local_reference_seed"),
+                            OptionalInt(request, "max_nature_decisions") ?? 1200);
+                        Write(new { requestId, ok = true,
+                            resolvedNatureDecisions = resolved,
+                            result = H8Status(
+                                runtime, RequiredString(request, "h8_handle")) });
+                        break;
+                    }
+
                     case "h8_reference_law":
                     {
                         // Opt-in typed provider bridge. Preserves the original
@@ -6738,6 +6763,15 @@ internal static class PrototypeAiJsonlServer
                         runtime.ChoosePlayerAction(
                             RequiredH8Boundary(request),
                             RequiredString(request, "action_id"));
+                        // One request advances the player decision and every
+                        // following reference-owned Nature event, stopping
+                        // before the next external player/choice boundary.
+                        // No separate law/status/RPC needed per physical draw.
+                        if (request.TryGetProperty("local_reference_seed", out _))
+                            runtime.AdvanceLocalReferenceNature(
+                                runtime.Boundary,
+                                RequiredLong(request, "local_reference_seed"),
+                                OptionalInt(request, "max_nature_decisions") ?? 1200);
                         Write(new { requestId, ok = true, result = H8Status(
                             runtime, RequiredString(request, "h8_handle")) });
                         break;
