@@ -2207,7 +2207,8 @@ public static class SemanticPilotCombatEngineV111
                     "proto.silent.nightmare" or
                     NativeGloryAncientsV111.WishCardId);
             var semanticDrawCard = card is not null &&
-                IsSemanticEffectDrawCard(card.CardId);
+                (IsSemanticEffectDrawCard(card.CardId) ||
+                 card.CardId == "proto.silent.calculated_gamble");
             var semanticAutoplayCard = card?.CardId is
                 ("proto.colorless.beat_down" or
                  "proto.colorless.catastrophe");
