@@ -277,7 +277,12 @@ internal static class PrototypeAiJsonlServer
                 decisionCount = runtime.DecisionCount,
                 playerFrame = playerFrame is null ? null : new
                 {
-                    observation = playerFrame.Observation,
+                    // Preserve the snake_case source-public observation
+                    // contract of CanonicalJson.Serialize used by h8_observe.
+                    // A JsonElement embeds it directly, avoiding the old
+                    // nested JSON string and Python reparse.
+                    observation = JsonSerializer.SerializeToElement(
+                        playerFrame.Observation, SnakeCaseJsonOptions),
                     actions = playerFrame.LegalActions
                         .Select(ActionWire).ToArray()
                 },
