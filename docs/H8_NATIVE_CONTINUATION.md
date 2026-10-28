@@ -150,3 +150,43 @@ fight length. A persistent H8-owned deck transcript and H8-specific
 trusted commit avoiding redundant full-state validation should accompany
 the direct `RunState` owner/cursor migration. Explicit audit and fork
 must still materialize independent complete snapshots.
+
+## H8 persistent deck transcript (post-benchmark optimization)
+
+The prior H8-native draw path committed a Nature choice via the checked
+semantic-deck resolver. For every draw it copied the entire
+`SemanticDeckStateV111.Transcript` and appended one entry, recomputed
+deck/event SHA digests, validated the full historical transcript, then
+cloned and searched the transcript again to verify the committed choice.
+This was work growing with the total number of draws.
+
+The current experimental branch adds `H8DeckTranscriptTrailV1` and a
+version-guarded trusted commit path:
+
+- Append one immutable choice node in constant time, retaining shared
+  prefixes across subsequent deck updates and `RunState.Fork()` calls.
+- Read transcript count and the latest choice directly, without
+  materializing a historical array or scanning it.
+- Validate the newly committed choice against the already validated
+  immutable prefix. Ordinary checked v111 calls still validate all
+  array-backed history.
+- Reuse the exact pending source event ID in the trusted deck resolver;
+  skip duplicate event serialization/hash, SHA freshness checks and
+  repeated recorded-choice event hashes after H8's token/support guard.
+- Preserve the public `Transcript` array for canonical serialization,
+  source-event identity, legacy snapshots and explicit audits. History
+  nodes and choice entries are immutable, so forks can share history
+  safely while mutable run mechanics remain independently forked.
+
+**Important:** The canonical source-style event identifier still hashes
+its historical transcript when it is first produced for an H8 Nature
+boundary. The implementation leaves that event identity unchanged to
+preserve existing replay/history contracts. The two full mechanics
+`RunState.Fork()` calls in the physical draw/automatic-turn path remain
+in place because they isolate mutable RNG and suspended checkpoints.
+Eliminating them requires an explicit native mutation/checkpoint owner.
+
+This code is newer than the last measured 16.92 combats/s steady state.
+No improvement claim is established until it passes the existing
+`h8-runtime-smoke`, multi-boundary replay/parity and 15-worker
+1,024-combat workload.
