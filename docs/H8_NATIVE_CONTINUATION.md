@@ -190,3 +190,34 @@ This code is newer than the last measured 16.92 combats/s steady state.
 No improvement claim is established until it passes the existing
 `h8-runtime-smoke`, multi-boundary replay/parity and 15-worker
 1,024-combat workload.
+
+## H8 mechanics ownership: direct functional transitions
+
+H8's player and automatic-draw hot paths now advance a session-owned
+immutable `RunState` checkpoint directly:
+
+- `H8NativePhysicalDrawEngineV1` commits a physical draw without
+  making a separate whole-run fork of the input checkpoint.
+- `H8NativeTurnContinuationV1` resumes the functional automatic
+  pipeline from the committed draw checkpoint without an additional
+  whole-run fork. The compatibility `HandDraw.Run` continues to point
+  to the pre-resume immutable state.
+- `PrototypeGameEngine.StepFromH8TrustedBoundary` shares ordinary
+  deterministic mechanics with public `Step`, but does not create its
+  defensive per-action `RunState.Fork()`. This trusted entry is only
+  called after the H8 runtime checks its version token and player
+  action's source-public menu.
+- `PrototypeAiEnvironment.StepFromH8TrustedBoundary` reuses the exact
+  cached `PrototypeAiFrame` action and payload, avoiding a second
+  full legal-action scan/hashing cycle for card, potion and end-turn
+  transitions. Generic public `Step` still forks.
+
+This is an ownership optimization, not a stochastic-rule change: each
+transition produces successor records and does not mutate the original
+run snapshot. Public snapshot/fork/replay APIs keep their isolation
+contract. The H8 replay workflow and comparison with the checked draw
+route are the existing implementation gates.
+
+No GPU performance claim is inferred from this refactor. Compare
+steady-state 1,024-combat results on 15 workers against the previously
+measured 16.92 combats/s after rebuilding the emulator DLL.
