@@ -166,6 +166,68 @@ class H8JsonlRuntimeTests(unittest.TestCase):
             released = session.call("h8_release_many", h8_handles=seen)
             self.assertEqual(released["released"], 2)
 
+    def test_opt_in_profile_attributes_h8_player_mechanics_without_changing_game(self):
+        with Session([
+            "dotnet", os.environ["STS2_EMULATOR_DLL"], "prototype-ai-jsonl"
+        ]) as session:
+            reset = session.call("h8_perf_reset")
+            self.assertEqual(
+                reset["schemaId"], "sts2-h8-nested-hotpath-performance-v1")
+            state = session.call(
+                "h8_begin_seeded",
+                seed="h8-jsonl-profile-player-a10",
+                act=1, encounter_id="proto.encounter.mawler_normal",
+                native_entry="MawlerNormal", total_floor=2,
+                ascension=10, first_monster_combat_id=1,
+                map_column=3, map_row=1,
+                replay_opening_draw_hooks=True,
+            )["result"]
+            handle = state["h8Handle"]
+            for _ in range(20):
+                token = dict(
+                    h8_handle=handle, runtime_id=state["runtimeId"],
+                    boundary_version=state["boundaryVersion"])
+                if state["kind"] == "player":
+                    session.call(
+                        "h8_observe", **token, policy_id="prototype-fair-v0")
+                    choice = state["endTurnActionId"]
+                    state = session.call(
+                        "h8_step", **token, action_id=choice)["result"]
+                    break
+                self.assertEqual(state["kind"], "enemy_intent")
+                state = session.call(
+                    "h8_resolve_intent", **token,
+                    intent_id=state["intentIds"][0])["result"]
+            else:
+                self.fail("Expected a real player action to profile")
+            profile = session.call("h8_perf_read")["profile"]
+            self.assertTrue(profile["enabled"])
+            self.assertTrue(profile["inclusiveNestedOperations"])
+            operations = profile["operations"]
+            self.assertIn("h8.player.total", operations)
+            self.assertIn("h8.fork.run_total", operations)
+            self.assertIn("h8.status.project", operations)
+            self.assertIn("h8.jsonl.response", operations)
+            self.assertEqual(1, operations["h8.player.total"]["count"])
+            self.assertGreater(
+                operations["h8.player.total"]["allocatedBytes"], 0)
+            stopped = session.call("h8_perf_stop")["profile"]
+            self.assertFalse(stopped["enabled"])
+            self.assertEqual(
+                stopped["operations"]["h8.player.total"],
+                operations["h8.player.total"])
+            resumed = session.call("h8_perf_resume")
+            self.assertEqual(
+                resumed["schemaId"],
+                "sts2-h8-nested-hotpath-performance-v1")
+            second_stop = session.call("h8_perf_stop")["profile"]
+            self.assertEqual(
+                second_stop["operations"]["h8.player.total"],
+                operations["h8.player.total"])
+            self.assertTrue(session.call(
+                "h8_replay_audit", h8_handle=handle)["replayVerified"])
+            session.call("h8_release_many", h8_handles=[handle])
+
 
 if __name__ == "__main__":
     unittest.main()

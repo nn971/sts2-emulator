@@ -2140,7 +2140,13 @@ public static class SemanticPilotCombatEngineV111
         var action = frame.LegalActions.SingleOrDefault(a =>
             a.ActionId == actionId) ?? throw new InvalidOperationException(
                 "Illegal semantic player action.");
-        var source = current.Run.Fork();
+        // PrototypeGameEngine.Step already forks the input before touching
+        // combat mechanics. H8's version-owned card/potion path can pass the
+        // immutable checkpoint directly and avoid a second complete copy.
+        // End-turn continuation construction does not use Step and retains
+        // its independently owned defensive fork.
+        var source = trustedH8 && action.Kind is "play_card" or "use_potion"
+            ? current.Run : current.Run.Fork();
         SemanticEndTurnV111? endTurn = null;
         RunState result;
         if (action.Kind == "end_turn")
@@ -2191,6 +2197,7 @@ public static class SemanticPilotCombatEngineV111
             // Preserve actual source damage, relic/power hooks and victory
             // transitions. Supported hidden-pile mutations must update the
             // provider-owned semantic deck at their source boundary.
+            using (H8HotPathProfilerV1.Begin("h8.player.engine_card"))
             using (ControlledChanceGuardV111.Enter())
             using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
                 result = environment.Step(source, actionId).State;
@@ -2280,6 +2287,7 @@ public static class SemanticPilotCombatEngineV111
                 throw new NotSupportedException(
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
                     "operation=potion_effect_requires_semantic_audit");
+            using (H8HotPathProfilerV1.Begin("h8.player.engine_potion"))
             using (ControlledChanceGuardV111.Enter())
                 result = environment.Step(source, actionId).State;
             if (result.Phase != RunPhase.Combat &&
@@ -4032,6 +4040,7 @@ public static class SemanticPilotCombatEngineV111
         SemanticOtherChanceStateV111? otherChance = null,
         bool preservePendingEndTurn = false)
     {
+        using var scope = H8HotPathProfilerV1.Begin("h8.continuation.publish");
         var next = current with
         {
             Run = run,

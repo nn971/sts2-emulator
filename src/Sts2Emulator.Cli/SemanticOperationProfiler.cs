@@ -28,6 +28,10 @@ internal sealed class SemanticOperationProfiler
         Enabled = true;
     }
 
+    public void Stop() => Enabled = false;
+
+    public void Resume() => Enabled = true;
+
     public static long Timestamp() => Stopwatch.GetTimestamp();
 
     public static long Allocated() => GC.GetAllocatedBytesForCurrentThread();
@@ -45,6 +49,39 @@ internal sealed class SemanticOperationProfiler
         counter.AllocatedBytes += Math.Max(0L, allocated);
         counter.MaxTicks = Math.Max(counter.MaxTicks, elapsed);
     }
+
+    /// <summary>Nested H8 scopes already compute their own elapsed ticks and bytes.</summary>
+    public void RecordElapsed(string operation, long elapsedTicks, long allocatedBytes)
+    {
+        if (!Enabled)
+            return;
+        if (!_counters.TryGetValue(operation, out var counter))
+            _counters.Add(operation, counter = new Counter());
+        counter.Count++;
+        counter.Ticks += Math.Max(0, elapsedTicks);
+        counter.AllocatedBytes += Math.Max(0, allocatedBytes);
+        counter.MaxTicks = Math.Max(counter.MaxTicks, elapsedTicks);
+    }
+
+    public object SnapshotH8() => new
+    {
+        schemaId = "sts2-h8-nested-hotpath-performance-v1",
+        enabled = Enabled,
+        processId = Environment.ProcessId,
+        stopwatchFrequency = Stopwatch.Frequency,
+        inclusiveNestedOperations = true,
+        operations = _counters.OrderBy(pair => pair.Key, StringComparer.Ordinal)
+            .ToDictionary(
+                pair => pair.Key,
+                pair => new
+                {
+                    count = pair.Value.Count,
+                    totalSeconds = (double)pair.Value.Ticks / Stopwatch.Frequency,
+                    maxSeconds = (double)pair.Value.MaxTicks / Stopwatch.Frequency,
+                    allocatedBytes = pair.Value.AllocatedBytes
+                },
+                StringComparer.Ordinal)
+    };
 
     public object Snapshot() => new
     {

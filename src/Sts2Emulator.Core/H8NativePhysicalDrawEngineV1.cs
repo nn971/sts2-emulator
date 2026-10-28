@@ -46,6 +46,7 @@ internal static class H8NativePhysicalDrawEngineV1
         // Selection is first validated against the provider's actual pending
         // support. All mutations run on this local fork; the runtime publishes
         // it only after a successful mechanics transition.
+        using var total = H8HotPathProfilerV1.Begin("h8.draw.native_transition");
         var selected = SemanticDrawChoiceV111.Select(drawEvent, selectedIndex);
         var run = current.Run.Fork();
         var world = run.World ?? throw new InvalidDataException(
@@ -53,9 +54,11 @@ internal static class H8NativePhysicalDrawEngineV1
         var combat = world.Combat ?? throw new InvalidDataException(
             "H8 automatic draw has no combat.");
 
-        var committed = SemanticDrawStageProfilerV111.Measure(
-            "sub.h8_native_draw_provider_commit",
-            () => SemanticDrawChoiceV111.Commit(combat, selected));
+        CombatState committed;
+        using (H8HotPathProfilerV1.Begin("h8.draw.provider_commit"))
+            committed = SemanticDrawStageProfilerV111.Measure(
+                "sub.h8_native_draw_provider_commit",
+                () => SemanticDrawChoiceV111.Commit(combat, selected));
         run = run with { World = world with { Combat = committed } };
         var (advanced, remaining) = SemanticDrawStageProfilerV111.Measure(
             "sub.h8_native_draw_engine_mechanics", () =>
@@ -71,6 +74,7 @@ internal static class H8NativePhysicalDrawEngineV1
 
         // One output projection, only for the still-supported legacy
         // snapshot/replay bridge. H8 M3 will instead commit its native cursor.
+        using var projection = H8HotPathProfilerV1.Begin("h8.draw.legacy_projection");
         var advancedHand = hand with
         {
             Run = advanced,

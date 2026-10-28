@@ -65,9 +65,12 @@ internal static class PrototypeAiJsonlServer
             StringComparer.Ordinal);
         long nextH8Handle = 1;
         var semanticProfiler = new SemanticOperationProfiler();
+        var h8Profiler = new SemanticOperationProfiler();
         string? activeOperation = null;
         long activeStarted = 0;
         long activeAllocated = 0;
+        long h8ActiveStarted = 0;
+        long h8ActiveAllocated = 0;
         var referenceNatureStates = new Dictionary<string, ReferenceNatureSessionV111>(
             StringComparer.Ordinal);
         long nextReferenceNatureHandle = 1;
@@ -246,6 +249,7 @@ internal static class PrototypeAiJsonlServer
 
         object H8Status(H8CombatRuntimeV1 runtime, string handle)
         {
+            using var scope = H8HotPathProfilerV1.Begin("h8.status.project");
             var boundary = runtime.Boundary;
             string kind = runtime.Terminal ? "terminal" :
                 runtime.HasPendingCardDraw ? "draw_card" :
@@ -3152,6 +3156,14 @@ internal static class PrototypeAiJsonlServer
 
         void Write(object response)
         {
+            var h8Measure = h8Profiler.Enabled &&
+                activeOperation is not null &&
+                activeOperation.StartsWith("h8_", StringComparison.Ordinal) &&
+                !activeOperation.StartsWith("h8_perf_", StringComparison.Ordinal);
+            var h8WireStarted = h8Measure
+                ? SemanticOperationProfiler.Timestamp() : 0L;
+            var h8WireAllocated = h8Measure
+                ? SemanticOperationProfiler.Allocated() : 0L;
             var measure = semanticProfiler.Enabled &&
                 activeOperation is not null &&
                 activeOperation.StartsWith("semantic_", StringComparison.Ordinal) &&
@@ -3167,6 +3179,13 @@ internal static class PrototypeAiJsonlServer
                 semanticProfiler.Record("sub.semantic_wire_response", started, allocated);
                 semanticProfiler.Record("op." + activeOperation, activeStarted,
                     activeAllocated);
+            }
+            if (h8Measure)
+            {
+                h8Profiler.Record("h8.jsonl.response", h8WireStarted,
+                    h8WireAllocated);
+                h8Profiler.Record("h8.jsonl.op." + activeOperation,
+                    h8ActiveStarted, h8ActiveAllocated);
             }
         }
 
@@ -3189,6 +3208,12 @@ internal static class PrototypeAiJsonlServer
                 activeStarted = semanticProfiler.Enabled
                     ? SemanticOperationProfiler.Timestamp() : 0L;
                 activeAllocated = semanticProfiler.Enabled
+                    ? SemanticOperationProfiler.Allocated() : 0L;
+                var h8Measured = h8Profiler.Enabled &&
+                    operation.StartsWith("h8_", StringComparison.Ordinal);
+                h8ActiveStarted = h8Measured
+                    ? SemanticOperationProfiler.Timestamp() : 0L;
+                h8ActiveAllocated = h8Measured
                     ? SemanticOperationProfiler.Allocated() : 0L;
 
                 switch (operation)
@@ -6584,6 +6609,40 @@ internal static class PrototypeAiJsonlServer
                         var handle = StoreSemantic(next);
                         Write(new { requestId, ok = true,
                             result = SemanticResult(next, handle) });
+                        break;
+                    }
+
+                    case "h8_perf_reset":
+                    {
+                        h8Profiler.Reset();
+                        H8HotPathProfilerV1.SetSink(h8Profiler.RecordElapsed);
+                        Write(new { requestId, ok = true,
+                            schemaId = "sts2-h8-nested-hotpath-performance-v1" });
+                        break;
+                    }
+
+                    case "h8_perf_read":
+                    {
+                        Write(new { requestId, ok = true,
+                            profile = h8Profiler.SnapshotH8() });
+                        break;
+                    }
+
+                    case "h8_perf_stop":
+                    {
+                        H8HotPathProfilerV1.SetSink(null);
+                        h8Profiler.Stop();
+                        Write(new { requestId, ok = true,
+                            profile = h8Profiler.SnapshotH8() });
+                        break;
+                    }
+
+                    case "h8_perf_resume":
+                    {
+                        h8Profiler.Resume();
+                        H8HotPathProfilerV1.SetSink(h8Profiler.RecordElapsed);
+                        Write(new { requestId, ok = true,
+                            schemaId = "sts2-h8-nested-hotpath-performance-v1" });
                         break;
                     }
 
