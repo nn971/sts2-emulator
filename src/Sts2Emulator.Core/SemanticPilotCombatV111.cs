@@ -2335,10 +2335,20 @@ public static class SemanticPilotCombatEngineV111
                 && validSlot
                 ? source.Player.PotionSlots[payload.Slot]?.PotionId
                 : null;
-            var isResearchSelfPotion =
-                researchPotionId == "proto.potion.block";
+            // These effects are defined by the source combat engine.
+            // Swift uses its existing controlled semantic draw boundary.
+            // Fairy in a Bottle is automatic and offers no manual action.
+            var isResearchDrawPotion =
+                researchPotionId == "proto.potion.swift";
+            var isResearchSelfPotion = researchPotionId is
+                ("proto.potion.block" or "proto.potion.dexterity" or
+                 "proto.potion.energy" or "proto.potion.strength" or
+                 "proto.potion.explosive" or "proto.potion.swift");
             var isResearchTargetPotion = researchPotionId is
-                ("proto.potion.fire" or "proto.potion.poison");
+                ("proto.potion.fire" or "proto.potion.poison" or
+                 "proto.potion.weak");
+            var isResearchLethalPotion = researchPotionId is
+                ("proto.potion.fire" or "proto.potion.explosive");
             if ((!isGenerationPotion && !isPoolPotion &&
                  !isSelectionPotion && !isHandReturnPotion &&
                  !isDistilledChaos && !isResearchSelfPotion &&
@@ -2361,7 +2371,7 @@ public static class SemanticPilotCombatEngineV111
                         source, playerFrame, actionId).State
                     : environment.Step(source, actionId).State;
             if (result.Phase != RunPhase.Combat &&
-                !((isDistilledChaos || isResearchTargetPotion) &&
+                !((isDistilledChaos || isResearchLethalPotion) &&
                   PrototypeGameEngine.IsAtCombatActionResultBoundary(result)))
                 throw new NotSupportedException(
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
@@ -2396,8 +2406,10 @@ public static class SemanticPilotCombatEngineV111
             if (result.Phase == RunPhase.Combat &&
                 (next is null ||
                 (!isHandReturnPotion && !isDistilledChaos &&
+                 !isResearchDrawPotion &&
                 !previous.DrawPile.SequenceEqual(next.DrawPile) ||
                 !isHandReturnPotion && !isDistilledChaos &&
+                 !isResearchDrawPotion &&
                 !SameSemanticDeckForPlayerAction(
                     previous.SemanticDeck, next.SemanticDeck, trustedH8))))
                 throw new NotSupportedException(
