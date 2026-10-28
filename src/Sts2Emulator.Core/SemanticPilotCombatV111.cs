@@ -2236,7 +2236,8 @@ public static class SemanticPilotCombatEngineV111
             if (!supportedCardAction)
                 throw new NotSupportedException(
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
-                    "operation=card_effect_requires_semantic_audit");
+                    "operation=card_effect_requires_semantic_audit card=" +
+                    (card?.CardId ?? "<missing>"));
             // Preserve actual source damage, relic/power hooks and victory
             // transitions. Supported hidden-pile mutations must update the
             // provider-owned semantic deck at their source boundary.
@@ -2358,7 +2359,10 @@ public static class SemanticPilotCombatEngineV111
                     : payload.TargetEnemyId is not null))
                 throw new NotSupportedException(
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
-                    "operation=potion_effect_requires_semantic_audit");
+                    "operation=potion_effect_requires_semantic_audit potion=" +
+                    (validSlot
+                        ? source.Player.PotionSlots[payload.Slot]?.PotionId
+                        : "<invalid-slot>"));
             using (H8HotPathProfilerV1.Begin("h8.player.engine_potion"))
             using (ControlledChanceGuardV111.Enter())
             // A killing potion completes combat and initializes its reward.
