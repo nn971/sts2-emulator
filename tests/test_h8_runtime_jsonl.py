@@ -216,6 +216,14 @@ class H8JsonlRuntimeTests(unittest.TestCase):
             self.assertEqual(
                 stopped["operations"]["h8.player.total"],
                 operations["h8.player.total"])
+            resumed = session.call("h8_perf_resume")
+            self.assertEqual(
+                resumed["schemaId"],
+                "sts2-h8-nested-hotpath-performance-v1")
+            second_stop = session.call("h8_perf_stop")["profile"]
+            self.assertEqual(
+                second_stop["operations"]["h8.player.total"],
+                operations["h8.player.total"])
             self.assertTrue(session.call(
                 "h8_replay_audit", h8_handle=handle)["replayVerified"])
             session.call("h8_release_many", h8_handles=[handle])
