@@ -270,7 +270,7 @@ public sealed class H8CombatRuntimeV1Tests
     }
 
     [Fact]
-    public void OptInNestedProfilerAttributesH8OwnedCardAndEngineFork()
+    public void OptInNestedProfilerAttributesH8OwnedCardWithoutEngineFork()
     {
         var runtime = ReachFirstFullPlayerBoundary(
             "h8-profile-single-fork-a10", useNativePlayerEndTurn: true);
@@ -299,7 +299,9 @@ public sealed class H8CombatRuntimeV1Tests
         }
         Assert.Equal(1, counts["h8.player.total"]);
         Assert.Equal(1, counts["h8.player.engine_card"]);
-        Assert.True(counts["h8.fork.run_total"] >= 1);
+        // H8 now advances the version-owned immutable source directly.
+        // A mechanics deep fork here is redundant and would regress the hot path.
+        Assert.Equal(0, counts.GetValueOrDefault("h8.fork.run_total"));
         Assert.True(allocations["h8.player.total"] > 0);
         Assert.Equal(expected.Fingerprint,
             runtime.LegacySnapshotForAudit().Fingerprint);
