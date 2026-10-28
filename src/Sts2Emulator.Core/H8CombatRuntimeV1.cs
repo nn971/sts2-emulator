@@ -310,6 +310,7 @@ public sealed class H8CombatRuntimeV1
         {
             var target = _state.TargetPending ??
                 throw new InvalidDataException("H8 random target event is missing.");
+            var targetLaw = ChanceLawEngineV111.QueryTarget(target);
             return new
             {
                 kind = "random_target",
@@ -320,9 +321,8 @@ public sealed class H8CombatRuntimeV1
                 target.Ordinal,
                 target.OperationKind,
                 target.ProbabilityStatus,
-                constraintFingerprint =
-                    ChanceLawEngineV111.QueryTarget(target).ConditioningFingerprint,
-                chanceLaw = ChanceLawEngineV111.QueryTarget(target),
+                constraintFingerprint = targetLaw.ConditioningFingerprint,
+                chanceLaw = targetLaw,
                 candidates = target.CandidateEnemyInstanceIds.Select(id =>
                     new { enemyInstanceId = id }).ToArray()
             };
