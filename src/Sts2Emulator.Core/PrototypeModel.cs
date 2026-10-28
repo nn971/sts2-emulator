@@ -1938,7 +1938,12 @@ public sealed record EnemyCombatState(
     // HatchlingId below is a move/observation proxy, not a new model.
     [property: System.Text.Json.Serialization.JsonIgnore(
         Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-    bool NativeToughEggHatched = false)
+    bool NativeToughEggHatched = false,
+    // HP budgets of completed forms on this same enemy instance. Death
+    // summons are separate instances and are counted independently.
+    [property: System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    int CompletedPhaseMaxHp = 0)
 {
     public EnemyCombatState Fork() => this with
     {
@@ -3607,7 +3612,9 @@ public sealed record RunWorldState(
     PrototypeLaterActEncounterBagV111[]? PreparedLaterActEncounterBags = null,
     long? LastCombatEndDecisionIndex = null,
     PrototypeCustomRewardReturnState? CustomRewardReturn = null,
-    int? DefeatRemainingEnemyHp = null)
+    int? DefeatRemainingEnemyHp = null,
+    int? DefeatTotalNonMinionEnemyHp = null,
+    int? DefeatRemainingNonMinionEnemyHp = null)
 {
     /// <summary>
     /// Atomic mechanics/provider envelope for persistent run-world state.
@@ -3624,7 +3631,8 @@ public sealed record RunWorldState(
                 PotionRewardOddsThousandths, CardRarityOffsetBasisPoints,
                 NativeOvergrowthOpening, ActIdentity, FreedRepy,
                 LastCombatEndDecisionIndex, CustomRewardReturn,
-                DefeatRemainingEnemyHp),
+                DefeatRemainingEnemyHp, DefeatTotalNonMinionEnemyHp,
+                DefeatRemainingNonMinionEnemyHp),
             new RunWorldStochasticStateV111(
                 ActOneEncounterPool, RelicBag, LaterActEncounterBag,
                 PreparedLaterActEncounterBags));
@@ -3722,6 +3730,25 @@ public sealed record RunWorldState(
     {
         get => Mechanics.DefeatRemainingEnemyHp;
         init => Mechanics = Mechanics with { DefeatRemainingEnemyHp = value };
+    }
+
+    /// <summary>Total HP budget of all non-minion enemies and completed forms.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public int? DefeatTotalNonMinionEnemyHp
+    {
+        get => Mechanics.DefeatTotalNonMinionEnemyHp;
+        init => Mechanics = Mechanics with { DefeatTotalNonMinionEnemyHp = value };
+    }
+
+    /// <summary>Actual living non-minion HP at lethal combat exit.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public int? DefeatRemainingNonMinionEnemyHp
+    {
+        get => Mechanics.DefeatRemainingNonMinionEnemyHp;
+        init => Mechanics = Mechanics with
+        { DefeatRemainingNonMinionEnemyHp = value };
     }
 
     public string[]? EncounterHistory
