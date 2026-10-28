@@ -304,11 +304,17 @@ public sealed class H8CombatRuntimeV1
         // Only ordinary end_turn is migrated: card plays, potions and
         // selection hooks remain checked until their native cursor exists.
         // No player mutation or journal append occurs until this succeeds.
+        // The version-owned frame is also the legality/menu snapshot already
+        // presented to the policy at this boundary. Reuse it for both native
+        // end-turn and checked-mechanics card/selection actions; the H8 token
+        // provides freshness without serializing the entire combat state.
+        var frame = ObservePlayerFrame();
         var next = _useNativePlayerEndTurn
-            ? H8NativePlayerEndTurnEngineV1.TryAdvance(_state, actionId)
+            ? H8NativePlayerEndTurnEngineV1.TryAdvance(
+                _state, actionId, frame)
             : null;
-        next ??= SemanticPilotCombatEngineV111.Step(
-            _state, _state.Fingerprint, actionId);
+        next ??= SemanticPilotCombatEngineV111
+            .StepFromH8TrustedBoundary(_state, actionId, frame);
         Commit(next, new H8DecisionEntryV1(
             _version, "player", "player", ActionId: actionId));
     }
