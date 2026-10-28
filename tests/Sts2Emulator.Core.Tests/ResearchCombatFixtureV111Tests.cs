@@ -136,6 +136,58 @@ public sealed class ResearchCombatFixtureV111Tests
             }));
     }
 
+    [Theory]
+    [InlineData("proto.potion.block")]
+    [InlineData("proto.potion.fire")]
+    [InlineData("proto.potion.poison")]
+    public void H8StructuredLegalPotionIsExecutableAndReplays(
+        string potionId)
+    {
+        // Boss HP ensures Fire Potion remains an ordinary combat action.
+        var spec = ResearchCombatFixtureGeneratorV111
+            .GenerateDistinct(100, 20261027)
+            .First(item => item.IsBoss) with
+        {
+            PotionIds = [potionId, null]
+        };
+        var runtime = H8CombatRuntimeV1.BeginSeeded(
+            Entry(spec, "h9-research-potion-" + potionId));
+        runtime.AdvanceLocalReferenceNature(runtime.Boundary, 628391);
+        Assert.True(runtime.AtPlayerBoundary);
+        var previous = runtime.LegacySnapshotForAudit();
+        var beforeCombat = previous.Run.World!.Combat!;
+        var beforeHp = beforeCombat.Enemies[0].Hp;
+        var beforeBlock = beforeCombat.PlayerBlock;
+
+        var potionAction = Assert.Single(runtime.ObservePlayerFrame()
+            .LegalActions.Where(action => action.Kind == "use_potion"));
+        runtime.ChoosePlayerAction(runtime.Boundary, potionAction.ActionId);
+        runtime.AuditReplay();
+
+        var current = runtime.LegacySnapshotForAudit();
+        Assert.Null(current.Run.Player.PotionSlots[0]);
+        Assert.True(current.AtPlayerBoundary || current.CombatTerminal);
+        var afterCombat = current.Run.World?.Combat;
+        switch (potionId)
+        {
+            case "proto.potion.block":
+                Assert.NotNull(afterCombat);
+                Assert.Equal(beforeBlock + 12, afterCombat.PlayerBlock);
+                break;
+            case "proto.potion.fire":
+                if (afterCombat is not null)
+                    Assert.True(afterCombat.Enemies[0].Hp < beforeHp);
+                else
+                    Assert.Equal("victory", current.CombatOutcome);
+                break;
+            case "proto.potion.poison":
+                Assert.NotNull(afterCombat);
+                Assert.Equal(6, afterCombat.Enemies[0].Statuses
+                    .GetValueOrDefault("proto.status.poison"));
+                break;
+        }
+    }
+
     private static SemanticSeededEntryV111 Entry(
         ResearchCombatFixtureV111 spec, string sourceSeed) => new(
         sourceSeed, spec.Act, spec.EncounterId, spec.NativeEncounterEntry,
