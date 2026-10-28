@@ -122,24 +122,36 @@ public sealed class PrototypeNativeNeowGenerationTests
     }
 
     [Fact]
-    public void HeftyTabletUsesRegisteredLegacyRewardShuffleAtNeow()
+    public void RegisteredLegacyRewardPoolShuffleIsDeterministic()
     {
-        // H10 collector hit this Neow action on source seed
-        // h10-native-a10-collector-v1-3 before reaching combat.
-        var engine = new PrototypeGameEngine();
-        var state = ForceNeowOption(
-            "h10-native-a10-collector-v1-3", "HeftyTablet");
-        var action = engine.GetLegalActions(state).Single(candidate =>
-            candidate.Kind == "event_choice"
-            && candidate.ReadPayload<EventChoicePayload>().ChoiceId
-                == OptionId("HeftyTablet"));
-
-        state = engine.Step(state, action).State;
-
-        Assert.Contains(state.Player.Relics, relic =>
-            relic.RelicId == PrototypeNativeOvergrowthEvents
-                .NeowRelicId("HeftyTablet"));
-        PrototypeStateInvariants.Validate(state);
+        // H10 HeftyTablet uses this registered legacy reward shuffle
+        // to offer three distinct rare cards. This directly tests the
+        // stochastic interface without forging a native Neow context.
+        const string siteId = "run.random_pool_distinct.shuffle_swap_index";
+        string[] source = ["rare-a", "rare-b", "rare-c", "rare-d"];
+        static (string[] Result, RandomIndexDecisionV111[] Choices) Run(
+            string[] source, string siteId)
+        {
+            var items = (string[])source.Clone();
+            var decisions = LegacyFisherYatesV111.ShuffleInPlace(
+                items, PrototypeRng.CreateBundle("h10-hefty-tablet-shuffle"),
+                "reward", siteId, "event:neow:rare-card-options");
+            return (items, decisions);
+        }
+        var (first, draws) = Run(source, siteId);
+        var (second, _) = Run(source, siteId);
+        Assert.Equal(first, second);
+        Assert.Equal(source.Order(StringComparer.Ordinal),
+            first.Order(StringComparer.Ordinal));
+        Assert.Equal(source.Length - 1, draws.Length);
+        Assert.All(draws, decision =>
+        {
+            Assert.Equal("legacy-prototype-v0", decision.ProviderMode);
+            Assert.Equal("reward", decision.Request.StreamId);
+            Assert.Equal("bounded_integer", decision.Request.OperationKind);
+        });
+        Assert.Throws<NotSupportedException>(() =>
+            Run(source, "run.unregistered.shuffle_swap_index"));
     }
 
     [Fact]
