@@ -346,6 +346,41 @@ public sealed class ResearchCombatFixtureV111Tests
     }
 
     [Fact]
+    public void GuardedDeathSummonHpUsesJournaledCombatStreamOnlyInsideItsScope()
+    {
+        const string site = NativeCombatRngEntryV111.InitialUniqueHpSiteId;
+        var rng = PrototypeRng.CreateBundle("h9-rich-death-summon-hp");
+        RandomIndexDecisionV111 chosen;
+        using (ControlledChanceGuardV111.Enter())
+        {
+            Assert.Throws<NotSupportedException>(() =>
+                LegacyRandomChoiceV111.ChooseIndex(
+                    rng, site, "combat", "creature:2", [7, 8, 9]));
+            using (ControlledChanceGuardV111.AllowEngineOwnedDeathSummonHp())
+            {
+                chosen = LegacyRandomChoiceV111.ChooseIndex(
+                    rng, site, "combat", "creature:2", [7, 8, 9]);
+                Assert.Equal("legacy-prototype-v0", chosen.ProviderMode);
+                Assert.InRange(chosen.SelectedValue, 7, 9);
+                Assert.Throws<NotSupportedException>(() =>
+                    LegacyRandomChoiceV111.ChooseIndex(
+                        rng, site, "reward", "creature:3", [7, 8, 9]));
+            }
+            Assert.Throws<NotSupportedException>(() =>
+                LegacyRandomChoiceV111.ChooseIndex(
+                    rng, site, "combat", "creature:3", [7, 8, 9]));
+        }
+        // The exact deterministic source profile is retained; this scope
+        // changes admission, never the random outcome or stream cursor.
+        var baseline = LegacyRandomChoiceV111.ChooseIndex(
+            PrototypeRng.CreateBundle("h9-rich-death-summon-hp"),
+            site, "combat", "creature:2", [7, 8, 9]);
+        Assert.Equal(baseline.SelectedIndex, chosen.SelectedIndex);
+        Assert.Equal((ulong)1, rng.Streams.Single(x =>
+            x.StreamId == "combat").CallCount);
+    }
+
+    [Fact]
     public void RichFixtureAllowlistDoesNotAlterLegacyV1Generator()
     {
         var original = ResearchCombatFixtureGeneratorV111.Generate(0, 20261027);
