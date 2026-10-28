@@ -221,7 +221,8 @@ public static class SemanticDrawChoiceV111
     /// its provider state, and publishes the matching physical pile update.
     /// </summary>
     internal static CombatState Commit(
-        CombatState checkpoint, SemanticDrawDecisionV111 decision)
+        CombatState checkpoint, SemanticDrawDecisionV111 decision,
+        bool trustedH8 = false)
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
         ArgumentNullException.ThrowIfNull(decision);
@@ -229,6 +230,7 @@ public static class SemanticDrawChoiceV111
         return SemanticDrawPileAdapterV111.ResolveNatureDeckEvent(
             checkpoint, decision.Event, decision.SelectedIndex,
             "Semantic draw choice lost its Nature deck checkpoint.",
-            "Semantic draw choice request changed before commit.");
+            "Semantic draw choice request changed before commit.",
+            trustedH8: trustedH8);
     }
 }
