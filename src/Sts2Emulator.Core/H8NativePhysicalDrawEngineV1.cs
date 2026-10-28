@@ -70,7 +70,7 @@ internal static class H8NativePhysicalDrawEngineV1
         var recorded = SemanticDrawStageProfilerV111.Measure(
             "sub.h8_native_draw_recorded_choice",
             () => SemanticDrawChoiceV111.ValidateRecordedChoice(
-                advanced, drawEvent, selectedIndex));
+                advanced, drawEvent, selectedIndex, trustedH8: true));
 
         // One output projection, only for the still-supported legacy
         // snapshot/replay bridge. H8 M3 will instead commit its native cursor.
