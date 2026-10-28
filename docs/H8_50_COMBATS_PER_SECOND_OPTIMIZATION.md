@@ -50,6 +50,10 @@ Do not conflate scripted emulator-only throughput with full neural PPO.
    `law.ConditioningFingerprint` instead of hashing the same Nature
    deck again in the same request. Event-scope and provider outcomes
    remain unchanged.
+5. H8 caches its version-owned prechoice pilot fingerprint when the
+   event-scoped intent Chance Law is queried, then reuses it during
+   trusted intent resolution. This avoids one redundant full-state SHA
+   without changing event IDs, stochastic outcomes or player mechanics.
 
 The source still uses legacy v111 mechanics continuations; the bigger
 structural opportunities are native in-place action/hook cursors,
@@ -123,6 +127,21 @@ small or noisy improvement.
   utilization (only 4096/roughly 7300 rollout player decisions optimized).
   The current actor forward time already exceeds the target wall clock.
 
+**Measured isolated microbenchmark (GitHub Actions, 2026-10-28):**
+eight real A10 Mawler card plays with alternating checked/trusted order:
+**5.618 ms -> 1.290 ms per action (4.35x faster)** and
+**2.180 MB -> 0.584 MB managed allocation (3.73x less)**.
+The same check asserts exact mechanics and replay. This is a small
+per-transition sample, not a measured change in complete fights/s.
+H8 JSONL, 30 targeted .NET tests (including typed deck equality and
+checked source card parity) and paired scripted journals passed on
+the preceding head. A pre-existing test that attempted to mutate
+defensive-copy array getters was corrected to test actual forged records.
+
 **Status:** source optimizations committed and tests/CI wired;
-no local dotnet SDK or live workstation CUDA in the remote execution
-environment; benchmark gain remains **unmeasured**, target **not reached**.
+the latest intent-fingerprint caching addition awaits its own CI run.
+No local dotnet SDK or live workstation CUDA in this environment; full
+128-combat H7 actor speedup is **unmeasured**, and 50/s **not reached**.
+Other broad-repo CI workflows show numerous failures in encounter
+history, Native RNG and event/room tests outside H8; baseline status
+of those tests has not been independently established.
