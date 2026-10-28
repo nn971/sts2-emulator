@@ -593,7 +593,7 @@ public sealed class H8CombatRuntimeV1
             {
                 var target = _state.TargetPending ??
                     throw new InvalidDataException("H8 target event is absent.");
-                var selected = H8LocalReferenceNatureV1.UniformIndex(
+                var selected = H8LocalReferenceNatureV1.NativeTargetIndex(
                     seed, target.EventId, target.SiteId,
                     target.CandidateEnemyInstanceIds.Length);
                 ChooseRandomTarget(
