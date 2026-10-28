@@ -58,7 +58,7 @@ internal static class H8NativePhysicalDrawEngineV1
         using (H8HotPathProfilerV1.Begin("h8.draw.provider_commit"))
             committed = SemanticDrawStageProfilerV111.Measure(
                 "sub.h8_native_draw_provider_commit",
-                () => SemanticDrawChoiceV111.Commit(combat, selected));
+                () => SemanticDrawChoiceV111.Commit(combat, selected, trustedH8: true));
         run = run with { World = world with { Combat = committed } };
         var (advanced, remaining) = SemanticDrawStageProfilerV111.Measure(
             "sub.h8_native_draw_engine_mechanics", () =>
