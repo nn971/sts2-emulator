@@ -1,0 +1,80 @@
+name: research-a10-structured-combat
+on:
+  push:
+    paths:
+      - 'src/Sts2Emulator.Core/ResearchCombatFixtureV111.cs'
+      - 'src/Sts2Emulator.Core/ControlledPlayableCombatV111.cs'
+      - 'src/Sts2Emulator.Core/SemanticPilotCombatV111.cs'
+      - 'src/Sts2Emulator.Cli/PrototypeAiJsonlServer.cs'
+      - 'bindings/python/sts2_emulator/__init__.py'
+      - 'tests/Sts2Emulator.Core.Tests/ResearchCombatFixtureV111Tests.cs'
+      - '.github/workflows/research-a10-structured-combat.yml'
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  research-fixture-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Restore and compile
+        run: |
+          dotnet restore Sts2Emulator.sln
+          dotnet build Sts2Emulator.sln -c Release --no-restore
+      - name: Research-only structural and genuine opening regression tests
+        run: dotnet test tests/Sts2Emulator.Core.Tests -c Release --no-build --filter FullyQualifiedName~ResearchCombatFixtureV111Tests --logger "console;verbosity=normal"
+      - name: Genuine Python JSONL fixture bridge and first public observation
+        run: |
+          python - <<'PY'
+          import sys
+          sys.path.insert(0, 'bindings/python')
+          from sts2_emulator import Session
+          cards = (
+              [{'card_id': 'proto.silent.strike', 'upgrade_level': 0} for _ in range(5)] +
+              [{'card_id': 'proto.silent.defend', 'upgrade_level': 0} for _ in range(5)] +
+              [{'card_id': 'proto.silent.neutralize', 'upgrade_level': 0},
+               {'card_id': 'proto.silent.survivor', 'upgrade_level': 0}] +
+              [{'card_id': 'proto.silent.backflip', 'upgrade_level': 1} for _ in range(4)] +
+              [{'card_id': 'proto.silent.acrobatics', 'upgrade_level': 0} for _ in range(4)]
+          )
+          fixture = {
+              'encounter_id': 'proto.encounter.shrinker_beetle_weak',
+              'native_encounter_entry': 'ShrinkerBeetleWeak',
+              'total_floor': 2,
+              'deck': cards,
+              'relic_ids': ['proto.relic.silent_ring', 'proto.relic.lantern', 'proto.relic.vajra'],
+              'potion_ids': [None, None],
+              'hp': 55, 'max_hp': 70,
+              'map_column': 3, 'map_row': 1, 'act': 1, 'ascension': 10,
+              'distribution_id': 'silent-a10-structured-combat-v1',
+          }
+          dll = 'src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll'
+          with Session(['dotnet', dll, 'prototype-ai-jsonl']) as session:
+              states = []
+              try:
+                  for seed in ('research-bridge-seed-one', 'research-bridge-seed-two'):
+                      state = session.begin_seeded_semantic_combat(
+                          seed, act=1, encounter_id=fixture['encounter_id'],
+                          native_entry=fixture['native_encounter_entry'],
+                          total_floor=2, ascension=10, first_monster_combat_id=1,
+                          map_column=3, map_row=1,
+                          replay_opening_draw_hooks=True,
+                          fixture_spec=fixture,
+                      )
+                      states.append(state)
+                      assert state.boundary == 'player', state.boundary
+                      public = state.observe()
+                      assert public['hp'] == 55 and public['max_hp'] == 70, public
+                      restored = session.load_semantic_snapshot(state.save_snapshot())
+                      states.append(restored)
+                      assert restored.fingerprint == state.fingerprint
+                      print(f'[a10-fixture] source={seed} boundary=player replay=pass')
+              finally:
+                  session.release_semantic_many(states)
+          PY
