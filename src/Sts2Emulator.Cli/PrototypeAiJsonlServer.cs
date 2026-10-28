@@ -6833,7 +6833,7 @@ internal static class PrototypeAiJsonlServer
                         runtime.ChooseRandomTarget(
                             RequiredH8Boundary(request),
                             RequiredString(request, "target_event_id"),
-                            RequiredInt(request, "enemy_instance_id"),
+                            checked((int)RequiredLong(request, "enemy_instance_id")),
                             OptionalString(request, "provider_id") ??
                                 "reference-nature");
                         Write(new { requestId, ok = true, result = H8Status(
