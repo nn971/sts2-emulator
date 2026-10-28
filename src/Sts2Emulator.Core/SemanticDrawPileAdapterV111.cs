@@ -973,7 +973,7 @@ public static class SemanticDrawPileAdapterV111
     internal static CombatState ResolveNatureDeckEvent(
         CombatState checkpoint, SemanticDeckEventV111 expectedEvent,
         int selectedIndex, string missingDeckMessage,
-        string staleEventMessage)
+        string staleEventMessage, bool trustedH8 = false)
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
         ArgumentNullException.ThrowIfNull(expectedEvent);
@@ -984,17 +984,28 @@ public static class SemanticDrawPileAdapterV111
             selectedIndex >= expectedEvent.CandidateCardInstanceIds.Length)
             throw new ArgumentOutOfRangeException(nameof(selectedIndex));
 
-        var deck = ValidateNatureDeckBoundary(
-            checkpoint, missingDeckMessage, staleEventMessage,
-            requiredPendingPurpose: expectedEvent.Purpose) ??
-            throw new InvalidDataException(missingDeckMessage);
-        var liveEvent = SemanticDeckEngineV111.Inspect(deck);
-        if (liveEvent is null || CanonicalJson.Sha256(liveEvent) !=
-            CanonicalJson.Sha256(expectedEvent))
-            throw new InvalidDataException(staleEventMessage);
-
-        var resolvedDeck = SemanticDeckEngineV111.Resolve(
-            deck, deck.Fingerprint, selectedIndex);
+        // The H8 runtime has already verified the versioned draw cursor
+        // and its physical support. The checked external v111 branch keeps
+        // its full correspondence, event hash and deck fingerprint checks.
+        var deck = trustedH8
+            ? checkpoint.SemanticDeck ??
+                throw new InvalidDataException(missingDeckMessage)
+            : ValidateNatureDeckBoundary(
+                checkpoint, missingDeckMessage, staleEventMessage,
+                requiredPendingPurpose: expectedEvent.Purpose) ??
+                throw new InvalidDataException(missingDeckMessage);
+        if (!trustedH8)
+        {
+            var liveEvent = SemanticDeckEngineV111.Inspect(deck);
+            if (liveEvent is null || CanonicalJson.Sha256(liveEvent) !=
+                CanonicalJson.Sha256(expectedEvent))
+                throw new InvalidDataException(staleEventMessage);
+        }
+        var resolvedDeck = trustedH8
+            ? SemanticDeckEngineV111.ResolveFromH8TrustedBoundary(
+                deck, expectedEvent, selectedIndex)
+            : SemanticDeckEngineV111.Resolve(
+                deck, deck.Fingerprint, selectedIndex);
         return ApplyCommittedPhysicalMutation(
             checkpoint, checkpoint.DrawPile, resolvedDeck);
     }
