@@ -2233,7 +2233,10 @@ public static class SemanticPilotCombatEngineV111
             using (H8HotPathProfilerV1.Begin("h8.player.engine_card"))
             using (ControlledChanceGuardV111.Enter())
             using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
-                result = environment.Step(source, actionId).State;
+                result = trustedH8 && playerFrame is not null
+                    ? environment.StepFromH8TrustedBoundary(
+                        source, playerFrame, actionId).State
+                    : environment.Step(source, actionId).State;
             if (!PrototypeGameEngine.IsAtCombatActionResultBoundary(result))
                 throw new NotSupportedException(
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
@@ -2322,7 +2325,10 @@ public static class SemanticPilotCombatEngineV111
                     "operation=potion_effect_requires_semantic_audit");
             using (H8HotPathProfilerV1.Begin("h8.player.engine_potion"))
             using (ControlledChanceGuardV111.Enter())
-                result = environment.Step(source, actionId).State;
+                result = trustedH8 && playerFrame is not null
+                    ? environment.StepFromH8TrustedBoundary(
+                        source, playerFrame, actionId).State
+                    : environment.Step(source, actionId).State;
             if (result.Phase != RunPhase.Combat &&
                 !(isDistilledChaos &&
                   PrototypeGameEngine.IsAtCombatActionResultBoundary(result)))
