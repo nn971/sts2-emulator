@@ -7,13 +7,15 @@ public sealed class NatureH4TerminalEnemyHpTests
 {
     private static EnemyCombatState Enemy(
         int instanceId, string modelId, int hp, int maxHp,
-        int priorPhaseHp = 0, bool minionPower = false) =>
+        int priorPhaseHp = 0, bool minionPower = false,
+        bool deathResolved = false, int bossPhase = 0) =>
         new(instanceId, modelId, hp, 0, 0,
             new Dictionary<string, int>(StringComparer.Ordinal),
             Powers: minionPower
                 ? [new PrototypePowerInstanceState("proto.power.minion", 1, 1L)]
                 : [],
-            MaxHp: maxHp, CompletedPhaseMaxHp: priorPhaseHp);
+            MaxHp: maxHp, CompletedPhaseMaxHp: priorPhaseHp,
+            DeathEffectsResolved: deathResolved, BossPhase: bossPhase);
 
     private static CombatState Opening()
     {
@@ -33,7 +35,7 @@ public sealed class NatureH4TerminalEnemyHpTests
         var combat = Opening() with
         {
             Enemies = [
-                Enemy(1, "proto.enemy.gremlin_merc", 0, 53),
+                Enemy(1, "proto.enemy.gremlin_merc", 0, 53, deathResolved: true),
                 Enemy(2, "proto.enemy.sneaky_gremlin", 8, 15),
                 Enemy(3, "proto.enemy.fat_gremlin", 13, 18)
             ]
@@ -45,12 +47,41 @@ public sealed class NatureH4TerminalEnemyHpTests
     }
 
     [Fact]
+    public void UnspawnedGremlinStagesReserveTheirHpBeforeDeath()
+    {
+        var before = Opening() with
+        {
+            Enemies = [Enemy(1, "proto.enemy.gremlin_merc", 1, 53)]
+        };
+        var (beforeTotal, beforeRemaining) =
+            PrototypeGameEngine.NonMinionEncounterHp(before);
+        // A10: Sneaky maximum 15 HP, Fat maximum 18 HP.
+        Assert.Equal(53 + 15 + 18, beforeTotal);
+        Assert.Equal(1 + 15 + 18, beforeRemaining);
+        var after = before with
+        {
+            Enemies = [
+                Enemy(1, "proto.enemy.gremlin_merc", 0, 53,
+                    deathResolved: true),
+                Enemy(2, "proto.enemy.sneaky_gremlin", 14, 14),
+                Enemy(3, "proto.enemy.fat_gremlin", 16, 16)
+            ]
+        };
+        var (afterTotal, afterRemaining) =
+            PrototypeGameEngine.NonMinionEncounterHp(after);
+        Assert.Equal(53 + 14 + 16, afterTotal);
+        Assert.Equal(14 + 16, afterRemaining);
+        Assert.True(1.0 - afterRemaining / (double)afterTotal >=
+                    1.0 - beforeRemaining / (double)beforeTotal);
+    }
+
+    [Fact]
     public void PhrogDeathStageCountsEveryNonMinionWriggler()
     {
         var combat = Opening() with
         {
             Enemies = [
-                Enemy(1, "proto.enemy.phrog_parasite", 0, 68),
+                Enemy(1, "proto.enemy.phrog_parasite", 0, 68, deathResolved: true),
                 Enemy(2, "proto.enemy.wriggler", 8, 18),
                 Enemy(3, "proto.enemy.wriggler", 11, 19),
                 Enemy(4, "proto.enemy.wriggler", 0, 20),
@@ -69,9 +100,9 @@ public sealed class NatureH4TerminalEnemyHpTests
         var combat = Opening() with
         {
             Enemies = [
-                Enemy(1, "proto.enemy.gremlin_merc", 0, 53),
+                Enemy(1, "proto.enemy.gremlin_merc", 0, 53, deathResolved: true),
                 Enemy(2, "proto.enemy.wriggler", 7, 20),
-                Enemy(3, "proto.enemy.phrog_parasite", 19, 68),
+                Enemy(3, "proto.enemy.phrog_parasite", 19, 68, deathResolved: true),
                 Enemy(4, "proto.enemy.eye_with_teeth", 50, 50),
                 Enemy(5, "proto.enemy.sneaky_gremlin", 40, 40,
                     minionPower: true)
@@ -96,7 +127,7 @@ public sealed class NatureH4TerminalEnemyHpTests
         var combat = state.World!.Combat! with
         {
             Enemies = [
-                Enemy(1, "proto.enemy.gremlin_merc", 0, 53),
+                Enemy(1, "proto.enemy.gremlin_merc", 0, 53, deathResolved: true),
                 Enemy(2, "proto.enemy.sneaky_gremlin", 8, 15),
                 Enemy(3, "proto.enemy.fat_gremlin", 13, 18),
                 Enemy(4, "proto.enemy.eye_with_teeth", 99, 99)
@@ -117,13 +148,29 @@ public sealed class NatureH4TerminalEnemyHpTests
     }
 
     [Fact]
+    public void UnreachedTestSubjectPhasesAreIncludedInBudget()
+    {
+        var combat = Opening() with
+        {
+            Enemies = [
+                Enemy(1, "proto.native.glory.test_subject", 1, 111,
+                    bossPhase: 0)
+            ]
+        };
+        var (total, remaining) =
+            PrototypeGameEngine.NonMinionEncounterHp(combat);
+        Assert.Equal(111 + 212 + 313, total);
+        Assert.Equal(1 + 212 + 313, remaining);
+    }
+
+    [Fact]
     public void RepeatedFormsOnSameEnemyCountEveryCompletedStage()
     {
         var combat = Opening() with
         {
             Enemies = [
                 Enemy(1, "proto.native.glory.test_subject", 250, 313,
-                    priorPhaseHp: 111 + 212)
+                    priorPhaseHp: 111 + 212, bossPhase: 2)
             ]
         };
         var (total, remaining) =
