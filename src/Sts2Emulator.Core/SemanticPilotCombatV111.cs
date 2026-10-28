@@ -2101,7 +2101,7 @@ public static class SemanticPilotCombatEngineV111
         current.Validate();
         if (current.Fingerprint != fingerprint)
             throw new InvalidOperationException("Stale semantic player-action fingerprint.");
-        return StepCurrentPlayerAction(current, actionId, null);
+        return StepCurrentPlayerAction(current, actionId, null, false);
     }
 
     /// <summary>
@@ -2118,12 +2118,12 @@ public static class SemanticPilotCombatEngineV111
         ArgumentNullException.ThrowIfNull(current);
         ArgumentNullException.ThrowIfNull(playerFrame);
         ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
-        return StepCurrentPlayerAction(current, actionId, playerFrame);
+        return StepCurrentPlayerAction(current, actionId, playerFrame, true);
     }
 
     private static SemanticPilotCombatV111 StepCurrentPlayerAction(
         SemanticPilotCombatV111 current, string actionId,
-        PrototypeAiFrame? playerFrame)
+        PrototypeAiFrame? playerFrame, bool trustedH8)
     {
         if (current.AtPlayerChoiceBoundary)
             return current.KnowledgeDemonChoicePending is not null
@@ -2240,8 +2240,8 @@ public static class SemanticPilotCombatEngineV111
             }
             else if (next is null ||
                      !previous.DrawPile.SequenceEqual(next.DrawPile) ||
-                     CanonicalJson.Sha256(previous.SemanticDeck) !=
-                         CanonicalJson.Sha256(next.SemanticDeck))
+                     !SameSemanticDeckForPlayerAction(
+                         previous.SemanticDeck, next.SemanticDeck, trustedH8))
             {
                 if ((!semanticDrawCard && !semanticAutoplayCard &&
                      !semanticRandomRareToHandCard) || next is null)
@@ -2320,8 +2320,8 @@ public static class SemanticPilotCombatEngineV111
                 (!isHandReturnPotion && !isDistilledChaos &&
                 !previous.DrawPile.SequenceEqual(next.DrawPile) ||
                 !isHandReturnPotion && !isDistilledChaos &&
-                CanonicalJson.Sha256(previous.SemanticDeck) !=
-                    CanonicalJson.Sha256(next.SemanticDeck))))
+                !SameSemanticDeckForPlayerAction(
+                    previous.SemanticDeck, next.SemanticDeck, trustedH8))))
                 throw new NotSupportedException(
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
                     "operation=unmodeled_draw_pile_mutation");
@@ -2334,6 +2334,23 @@ public static class SemanticPilotCombatEngineV111
             current, result, endTurn,
             new SemanticPilotContinuationV111("player", actionId));
         return NormalizeNoncontrolledCosts(nextState);
+    }
+
+    /// <summary>
+    /// A trusted H8 player frame is version-owned and has already passed its
+    /// source legality check. Compare the live provider deck fields directly
+    /// rather than serializing its growing transcript on every ordinary play.
+    /// Retain the original canonical SHA comparison on the external v111 path.
+    /// </summary>
+    private static bool SameSemanticDeckForPlayerAction(
+        SemanticDeckStateV111? before, SemanticDeckStateV111? after,
+        bool trustedH8)
+    {
+        if (!trustedH8)
+            return CanonicalJson.Sha256(before) == CanonicalJson.Sha256(after);
+        return before is null
+            ? after is null
+            : before.HasSameSerializedContentsAs(after);
     }
 
     private static SemanticPilotCombatV111 StepCardSelection(
