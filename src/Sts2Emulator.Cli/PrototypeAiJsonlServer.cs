@@ -247,11 +247,21 @@ internal static class PrototypeAiJsonlServer
                 Guid.Parse(RequiredString(request, "runtime_id")),
                 RequiredLong(request, "boundary_version"));
 
-        object H8Status(H8CombatRuntimeV1 runtime, string handle)
+        object H8Status(
+            H8CombatRuntimeV1 runtime, string handle,
+            bool includePlayerFrame = false)
         {
             using var scope = H8HotPathProfilerV1.Begin("h8.status.project");
             var boundary = runtime.Boundary;
             var kind = runtime.BoundaryKind;
+            // The public frame is already cached per H8 boundary for action
+            // identity and legality. Include typed observation/actions in
+            // the same transition response, eliminating the separate
+            // h8_observe RPC and its nested JSON string decode for training.
+            var playerFrame = includePlayerFrame &&
+                (kind is "player" or "player_choice")
+                ? runtime.ObservePlayerFrame()
+                : null;
             return new
             {
                 ok = true,
@@ -265,6 +275,12 @@ internal static class PrototypeAiJsonlServer
                 exitHp = runtime.ExitHp,
                 terminalEnemyHp = runtime.TerminalEnemyHp,
                 decisionCount = runtime.DecisionCount,
+                playerFrame = playerFrame is null ? null : new
+                {
+                    observation = playerFrame.Observation,
+                    actions = playerFrame.LegalActions
+                        .Select(ActionWire).ToArray()
+                },
                 cardInstanceIds = kind == "draw_card"
                     ? runtime.PendingDrawCardInstanceIds() : Array.Empty<long>(),
                 intentIds = kind == "enemy_intent"
@@ -6685,7 +6701,9 @@ internal static class PrototypeAiJsonlServer
                                 RequiredLong(request, "local_reference_seed"),
                                 OptionalInt(request, "max_nature_decisions") ?? 1200);
                         var handle = StoreH8(runtime);
-                        Write(new { requestId, ok = true, result = H8Status(runtime, handle) });
+                        Write(new { requestId, ok = true, result = H8Status(
+                            runtime, handle,
+                            OptionalBool(request, "include_player_frame")) });
                         break;
                     }
 
@@ -6693,7 +6711,8 @@ internal static class PrototypeAiJsonlServer
                     {
                         var runtime = RequireH8(request);
                         Write(new { requestId, ok = true, result = H8Status(
-                            runtime, RequiredString(request, "h8_handle")) });
+                                runtime, RequiredString(request, "h8_handle"),
+                                OptionalBool(request, "include_player_frame")) });
                         break;
                     }
 
@@ -6737,7 +6756,8 @@ internal static class PrototypeAiJsonlServer
                         Write(new { requestId, ok = true,
                             resolvedNatureDecisions = resolved,
                             result = H8Status(
-                                runtime, RequiredString(request, "h8_handle")) });
+                                runtime, RequiredString(request, "h8_handle"),
+                                OptionalBool(request, "include_player_frame")) });
                         break;
                     }
 
@@ -6773,7 +6793,8 @@ internal static class PrototypeAiJsonlServer
                                 RequiredLong(request, "local_reference_seed"),
                                 OptionalInt(request, "max_nature_decisions") ?? 1200);
                         Write(new { requestId, ok = true, result = H8Status(
-                            runtime, RequiredString(request, "h8_handle")) });
+                                runtime, RequiredString(request, "h8_handle"),
+                                OptionalBool(request, "include_player_frame")) });
                         break;
                     }
 
@@ -6786,7 +6807,8 @@ internal static class PrototypeAiJsonlServer
                             OptionalString(request, "provider_id") ??
                                 "reference-nature");
                         Write(new { requestId, ok = true, result = H8Status(
-                            runtime, RequiredString(request, "h8_handle")) });
+                                runtime, RequiredString(request, "h8_handle"),
+                                OptionalBool(request, "include_player_frame")) });
                         break;
                     }
 
@@ -6799,7 +6821,8 @@ internal static class PrototypeAiJsonlServer
                             OptionalString(request, "provider_id") ??
                                 "reference-nature");
                         Write(new { requestId, ok = true, result = H8Status(
-                            runtime, RequiredString(request, "h8_handle")) });
+                                runtime, RequiredString(request, "h8_handle"),
+                                OptionalBool(request, "include_player_frame")) });
                         break;
                     }
 
@@ -6807,7 +6830,9 @@ internal static class PrototypeAiJsonlServer
                     {
                         var child = RequireH8(request).Fork();
                         var handle = StoreH8(child);
-                        Write(new { requestId, ok = true, result = H8Status(child, handle) });
+                        Write(new { requestId, ok = true, result = H8Status(
+                            child, handle,
+                            OptionalBool(request, "include_player_frame")) });
                         break;
                     }
 
