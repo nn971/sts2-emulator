@@ -122,6 +122,27 @@ public sealed class PrototypeNativeNeowGenerationTests
     }
 
     [Fact]
+    public void HeftyTabletUsesRegisteredLegacyRewardShuffleAtNeow()
+    {
+        // H10 collector hit this Neow action on source seed
+        // h10-native-a10-collector-v1-3 before reaching combat.
+        var engine = new PrototypeGameEngine();
+        var state = ForceNeowOption(
+            "h10-native-a10-collector-v1-3", "HeftyTablet");
+        var action = engine.GetLegalActions(state).Single(candidate =>
+            candidate.Kind == "event_choice"
+            && candidate.ReadPayload<EventChoicePayload>().ChoiceId
+                == OptionId("HeftyTablet"));
+
+        state = engine.Step(state, action).State;
+
+        Assert.Contains(state.Player.Relics, relic =>
+            relic.RelicId == PrototypeNativeOvergrowthEvents
+                .NeowRelicId("HeftyTablet"));
+        PrototypeStateInvariants.Validate(state);
+    }
+
+    [Fact]
     public void NeowsTalismanUpgradesTheLastStrikeAndDefendOnAcquisition()
     {
         var engine = new PrototypeGameEngine();
