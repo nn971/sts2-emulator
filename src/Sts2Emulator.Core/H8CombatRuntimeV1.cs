@@ -180,7 +180,10 @@ public sealed class H8CombatRuntimeV1
                 ownerId = drawn.OwnerId,
                 ordinal = drawn.Ordinal,
                 operationKind = drawn.OperationKind,
-                constraintFingerprint = deck.Fingerprint,
+                // The declared law has already computed this exact deck
+                // fingerprint. Reuse it instead of serializing the growing
+                // provider transcript a second time on every draw request.
+                constraintFingerprint = law.ConditioningFingerprint,
                 probabilityStatus = drawn.ProbabilityStatus,
                 chanceLaw = law,
                 candidates = drawn.CandidateCardInstanceIds.Select(id =>
