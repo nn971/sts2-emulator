@@ -157,6 +157,48 @@ public static class ResearchCombatFixtureGeneratorV111
     public const string DistributionId = "silent-a10-structured-combat-v1";
     public const string RichDistributionId = "silent-a10-overgrowth-rich-v2";
 
+    public static readonly (string EncounterId, string NativeEntry,
+        int TotalFloor, int MapRow)[] SupportedEncounters =
+    [
+        ("proto.encounter.shrinker_beetle_weak", "ShrinkerBeetleWeak", 2, 1),
+        ("proto.encounter.nibbits_weak", "NibbitsWeak", 2, 1),
+        ("proto.encounter.mawler_normal", "MawlerNormal", 2, 1),
+        ("proto.encounter.cubex_construct_normal", "CubexConstructNormal", 2, 1),
+        ("proto.encounter.vine_shambler_normal", "VineShamblerNormal", 2, 1),
+        ("proto.encounter.ceremonial_beast_boss", "CeremonialBeastBoss", 6, 5),
+        ("proto.encounter.vantom_boss", "VantomBoss", 6, 5)
+    ];
+
+    // Conservative explicit support list: newly registered cards must pass
+    // real playable-combat tests before admission.
+    public static readonly string[] SupportedCardIds =
+    [
+        "proto.silent.strike", "proto.silent.defend",
+        "proto.silent.neutralize", "proto.silent.survivor",
+        "proto.silent.acrobatics", "proto.silent.backflip",
+        "proto.silent.slice", "proto.silent.poisoned_stab",
+        "proto.silent.deadly_poison", "proto.silent.catalyst"
+    ];
+
+    public static readonly string[] SupportedRelicIds =
+    [
+        "proto.relic.silent_ring",
+        "proto.relic.lantern", "proto.relic.vajra",
+        "proto.relic.ornamental_fan", "proto.relic.orichalcum"
+    ];
+
+    public static readonly string[] SupportedPotionIds =
+    [
+        "proto.potion.block", "proto.potion.fire", "proto.potion.poison"
+    ];
+
+    private static readonly string[] Additions =
+    [
+        "proto.silent.acrobatics", "proto.silent.backflip",
+        "proto.silent.slice", "proto.silent.poisoned_stab",
+        "proto.silent.deadly_poison", "proto.silent.catalyst"
+    ];
+
     // Opt-in H9 continuation distribution. The original H8/H9 generator and
     // its pinned v1 source population remain unchanged.
     public static readonly (string EncounterId, string NativeEntry,
@@ -215,48 +257,6 @@ public static class ResearchCombatFixtureGeneratorV111
         "proto.potion.fairy_in_a_bottle"
     ]).ToArray();
 
-
-    public static readonly (string EncounterId, string NativeEntry,
-        int TotalFloor, int MapRow)[] SupportedEncounters =
-    [
-        ("proto.encounter.shrinker_beetle_weak", "ShrinkerBeetleWeak", 2, 1),
-        ("proto.encounter.nibbits_weak", "NibbitsWeak", 2, 1),
-        ("proto.encounter.mawler_normal", "MawlerNormal", 2, 1),
-        ("proto.encounter.cubex_construct_normal", "CubexConstructNormal", 2, 1),
-        ("proto.encounter.vine_shambler_normal", "VineShamblerNormal", 2, 1),
-        ("proto.encounter.ceremonial_beast_boss", "CeremonialBeastBoss", 6, 5),
-        ("proto.encounter.vantom_boss", "VantomBoss", 6, 5)
-    ];
-
-    // Conservative explicit support list: newly registered cards must pass
-    // real playable-combat tests before admission.
-    public static readonly string[] SupportedCardIds =
-    [
-        "proto.silent.strike", "proto.silent.defend",
-        "proto.silent.neutralize", "proto.silent.survivor",
-        "proto.silent.acrobatics", "proto.silent.backflip",
-        "proto.silent.slice", "proto.silent.poisoned_stab",
-        "proto.silent.deadly_poison", "proto.silent.catalyst"
-    ];
-
-    public static readonly string[] SupportedRelicIds =
-    [
-        "proto.relic.silent_ring",
-        "proto.relic.lantern", "proto.relic.vajra",
-        "proto.relic.ornamental_fan", "proto.relic.orichalcum"
-    ];
-
-    public static readonly string[] SupportedPotionIds =
-    [
-        "proto.potion.block", "proto.potion.fire", "proto.potion.poison"
-    ];
-
-    private static readonly string[] Additions =
-    [
-        "proto.silent.acrobatics", "proto.silent.backflip",
-        "proto.silent.slice", "proto.silent.poisoned_stab",
-        "proto.silent.deadly_poison", "proto.silent.catalyst"
-    ];
 
     private static ulong Roll(int curriculumSeed, int index, string domain, int ordinal)
     {
