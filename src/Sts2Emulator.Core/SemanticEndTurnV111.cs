@@ -1529,6 +1529,7 @@ public static class SemanticEndTurnEngineV111
     {
         RunState handCheckpoint;
         using (ControlledChanceGuardV111.Enter())
+        using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
             handCheckpoint = PrototypeGameEngine.ResumeControlledTurnAfterIntents(
                 state.Run.Fork(),
                 stopBeforeSemanticHandDraw: true);
@@ -1594,6 +1595,7 @@ public static class SemanticEndTurnEngineV111
         // of snapshot publication and provider bookkeeping.
         using (H8HotPathProfilerV1.Begin("h8.draw.resume_turn_mechanics"))
         using (ControlledChanceGuardV111.Enter())
+        using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
             result = PrototypeGameEngine.ResumeAutomaticPipelineContinuation(
                 draw.Run.Fork());
         if (PrototypeGameEngine
