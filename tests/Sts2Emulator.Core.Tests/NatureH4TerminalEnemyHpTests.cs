@@ -84,6 +84,39 @@ public sealed class NatureH4TerminalEnemyHpTests
     }
 
     [Fact]
+    public void DefeatSnapshotsCompleteMultistageFormationBeforeTeardown()
+    {
+        var source = new SemanticSeededEntryV111(
+            "gremlin-merc-hp-exit", 1,
+            "proto.encounter.ceremonial_beast_boss",
+            "CeremonialBeastBoss", 6, 10, 1, 3, 5,
+            ReplayOpeningDrawHooks: true,
+            FixtureDeckPresetId: SemanticConditionedDeckPresetV111.BossCycle20);
+        var state = SemanticPilotCombatEngineV111.BeginSeeded(source).Run;
+        var combat = state.World!.Combat! with
+        {
+            Enemies = [
+                Enemy(1, "proto.enemy.gremlin_merc", 0, 53),
+                Enemy(2, "proto.enemy.sneaky_gremlin", 8, 15),
+                Enemy(3, "proto.enemy.fat_gremlin", 13, 18),
+                Enemy(4, "proto.enemy.eye_with_teeth", 99, 99)
+            ]
+        };
+        state = state with { World = state.World with { Combat = combat } };
+        var end = typeof(PrototypeGameEngine).GetMethod(
+            "EndRun", BindingFlags.NonPublic | BindingFlags.Static);
+        Assert.NotNull(end);
+        var terminal = Assert.IsType<RunState>(
+            end.Invoke(null, new object[] { state, "defeat" }));
+        Assert.Null(terminal.World!.Combat);
+        Assert.Equal(120, terminal.World.DefeatRemainingEnemyHp);
+        Assert.Equal(53 + 15 + 18,
+            terminal.World.DefeatTotalNonMinionEnemyHp);
+        Assert.Equal(8 + 13,
+            terminal.World.DefeatRemainingNonMinionEnemyHp);
+    }
+
+    [Fact]
     public void RepeatedFormsOnSameEnemyCountEveryCompletedStage()
     {
         var combat = Opening() with
