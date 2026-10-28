@@ -1426,16 +1426,44 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             : card;
     }
 
+    /// <summary>
+    /// Compute the complete non-minion HP budget over an encounter. Defeated
+    /// enemies remain in the formation, so death-summoned non-minions count
+    /// alongside their dead parent. Completed forms of the same enemy are
+    /// counted via CompletedPhaseMaxHp; summons marked as minions do not
+    /// contribute to either total or remaining HP.
+    /// </summary>
+    internal static (int Total, int Remaining) NonMinionEncounterHp(
+        CombatState combat)
+    {
+        var total = 0;
+        var remaining = 0;
+        foreach (var enemy in combat.Enemies)
+        {
+            if (PrototypeContent.Enemy(enemy.EnemyId).IsMinion ||
+                enemy.PowerStates.Any(power =>
+                    power.PowerId == "proto.power.minion" && power.Stacks > 0))
+                continue;
+            total = checked(total + Math.Max(enemy.MaxHp, Math.Max(0, enemy.Hp))
+                + enemy.CompletedPhaseMaxHp);
+            remaining = checked(remaining + Math.Max(0, enemy.Hp));
+        }
+        return (total, remaining);
+    }
+
     private static RunState EndRun(RunState state, string outcome)
     {
         var original = RequireWorld(state);
+        var nonMinion = outcome == "defeat" && original.Combat is { } combat
+            ? NonMinionEncounterHp(combat) : ((int Total, int Remaining)?)null;
         var world = original with
         {
-            // Preserve this scalar at the exact transition that discards
-            // Combat. H4 uses it only as a terminal scoring statistic.
+            // Keep the legacy all-enemy terminal scalar for existing clients.
             DefeatRemainingEnemyHp = outcome == "defeat"
                 ? original.Combat?.Enemies.Sum(enemy => Math.Max(0, enemy.Hp))
                 : null,
+            DefeatTotalNonMinionEnemyHp = nonMinion?.Total,
+            DefeatRemainingNonMinionEnemyHp = nonMinion?.Remaining,
             Combat = null,
             Reward = null,
             Shop = null,
