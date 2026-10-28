@@ -218,11 +218,23 @@ public sealed record SemanticPilotCombatV111(
         init => Mechanics = Mechanics with { Run = value };
     }
 
+    /// <summary>
+    /// H8 uses an immutable append-only history trail instead of repeatedly
+    /// copying this v111 array. The original full array is materialized only
+    /// for an explicit legacy snapshot, fingerprint, or audit consumer.
+    /// </summary>
+    [JsonIgnore]
+    public H8HistoryTrailV1? H8HistoryTrail { get; init; }
+
     public SemanticPilotContinuationV111[] History
     {
-        get => Mechanics.History;
+        get => H8HistoryTrail?.Materialize() ?? Mechanics.History;
         init => Mechanics = Mechanics with { History = value };
     }
+
+    internal int HistoryOrdinal(string kind) =>
+        H8HistoryTrail?.CountKind(kind) ??
+        Mechanics.History.Count(transition => transition.Kind == kind);
 
     public string NativeEncounterEntry
     {
@@ -1006,6 +1018,10 @@ public sealed record SemanticPilotCombatV111(
             },
             _ => transition
         }).ToArray(),
+        // Explicit compatibility fork publishes independent fully copied
+        // semantic history. H8's live owner may re-enable the persistent
+        // trail from this audited fork at its new runtime boundary.
+        H8HistoryTrail = null,
         PendingEndTurn = PendingEndTurn?.Fork(),
         Stochastic = Stochastic.Fork()
     };
@@ -2217,7 +2233,10 @@ public static class SemanticPilotCombatEngineV111
             using (H8HotPathProfilerV1.Begin("h8.player.engine_card"))
             using (ControlledChanceGuardV111.Enter())
             using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
-                result = environment.Step(source, actionId).State;
+                result = trustedH8 && playerFrame is not null
+                    ? environment.StepFromH8TrustedBoundary(
+                        source, playerFrame, actionId).State
+                    : environment.Step(source, actionId).State;
             if (!PrototypeGameEngine.IsAtCombatActionResultBoundary(result))
                 throw new NotSupportedException(
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
@@ -2306,7 +2325,10 @@ public static class SemanticPilotCombatEngineV111
                     "operation=potion_effect_requires_semantic_audit");
             using (H8HotPathProfilerV1.Begin("h8.player.engine_potion"))
             using (ControlledChanceGuardV111.Enter())
-                result = environment.Step(source, actionId).State;
+                result = trustedH8 && playerFrame is not null
+                    ? environment.StepFromH8TrustedBoundary(
+                        source, playerFrame, actionId).State
+                    : environment.Step(source, actionId).State;
             if (result.Phase != RunPhase.Combat &&
                 !(isDistilledChaos &&
                   PrototypeGameEngine.IsAtCombatActionResultBoundary(result)))
@@ -3529,8 +3551,7 @@ public static class SemanticPilotCombatEngineV111
         if (current.PendingEndTurn is { } endTurn)
             return endTurn.TargetPending;
         return DescribePendingTargetEvent(current.Run, current.Fingerprint,
-            current.History.Count(transition =>
-                transition.Kind == "semantic_target"));
+            current.HistoryOrdinal("semantic_target"));
     }
 
     internal static SemanticTargetEventV111? DescribePendingTargetEvent(
@@ -3578,8 +3599,7 @@ public static class SemanticPilotCombatEngineV111
                     "Random draw-Attack model choice lacks a supported source boundary.");
             SemanticDrawInsertionChoiceV111.ValidateBoundary(current.Run);
         }
-        var ordinal = current.History.Count(transition =>
-            transition.Kind == "semantic_generated_card");
+        var ordinal = current.HistoryOrdinal("semantic_generated_card");
         if (generation is not null)
             return SemanticGenerationChoiceV111.DescribePending(
                 current.Run, current.Fingerprint, ordinal);
@@ -3607,8 +3627,7 @@ public static class SemanticPilotCombatEngineV111
         var combat = current.Run.World?.Combat;
         var generation = combat?.PendingChoice?.ControlledPotionGeneration;
         if (generation is null) return null;
-        var ordinal = current.History.Count(transition =>
-            transition.Kind == "semantic_potion_generation");
+        var ordinal = current.HistoryOrdinal("semantic_potion_generation");
         return SemanticPotionGenerationChoiceV111.DescribePending(
             current.Run, current.Fingerprint, ordinal);
     }
@@ -3630,8 +3649,7 @@ public static class SemanticPilotCombatEngineV111
             current.UsesNativePolicyBaseline || current.CombatTerminal)
             throw new InvalidDataException(
                 "Card-transform choice conflicts with another semantic boundary.");
-        var ordinal = current.History.Count(transition =>
-            transition.Kind == "semantic_card_transform");
+        var ordinal = current.HistoryOrdinal("semantic_card_transform");
         return SemanticCardTransformChoiceV111.DescribePending(
             current.Run, current.Fingerprint, ordinal);
     }
@@ -3692,8 +3710,7 @@ public static class SemanticPilotCombatEngineV111
                     ":hand:" + CanonicalJson.Sha256(
                         randomCost.EligibleCardInstanceIds) +
                     ":index:" + randomCost.NextCardIndex,
-                current.History.Count(transition =>
-                    transition.Kind == "semantic_cost"), [],
+                current.HistoryOrdinal("semantic_cost"), [],
                 OperationKind: "bounded_integer",
                 BoundedCount: maxExclusive);
         }
@@ -3706,8 +3723,7 @@ public static class SemanticPilotCombatEngineV111
                 return nestedCost;
             return SemanticCostChoiceV111.DescribeEffectDrawEvent(
                 current.Run, current.Fingerprint,
-                current.History.Count(transition =>
-                    transition.Kind == "semantic_cost"));
+                current.HistoryOrdinal("semantic_cost"));
         }
         else
             return null;
@@ -3742,8 +3758,7 @@ public static class SemanticPilotCombatEngineV111
         var modelIds = randomCost.EligibleCardInstanceIds.Select(id =>
             combat!.Cards.Single(card =>
             card.InstanceId == id).CardId).ToArray();
-        var ordinal = current.History.Count(transition =>
-            transition.Kind == "semantic_hand_cost_selection");
+        var ordinal = current.HistoryOrdinal("semantic_hand_cost_selection");
         return SemanticHandCostSelectionChoiceV111.CreateEvent(
             current.Fingerprint, randomCost, modelIds, ordinal);
     }
@@ -3755,8 +3770,7 @@ public static class SemanticPilotCombatEngineV111
         if (current.PendingEndTurn?.CardShortlistPending is
             { } endTurnEvent)
             return endTurnEvent;
-        var ordinal = current.History.Count(transition =>
-            transition.Kind == "semantic_card_shortlist");
+        var ordinal = current.HistoryOrdinal("semantic_card_shortlist");
         return SemanticCardShortlistChoiceV111.DescribePending(
             current.Run, current.Fingerprint, ordinal);
     }
@@ -3804,8 +3818,7 @@ public static class SemanticPilotCombatEngineV111
             current.UsesNativePolicyBaseline || current.CombatTerminal)
             throw new InvalidDataException(
                 "Full-pool shuffle conflicts with another semantic boundary.");
-        var ordinal = current.History.Count(transition =>
-            transition.Kind == "semantic_pool_shuffle");
+        var ordinal = current.HistoryOrdinal("semantic_pool_shuffle");
         return SemanticPoolShuffleChoiceV111.DescribePending(
             current.Run, current.Fingerprint, ordinal);
     }
@@ -3860,8 +3873,7 @@ public static class SemanticPilotCombatEngineV111
                 "Draw insertion conflicts with another semantic boundary.");
         var requestOrdinal = afterShuffleRelicMatches || personalHiveInsertion
             ? insertion.RequestOrdinal
-            : current.History.Count(transition =>
-                transition.Kind == "semantic_draw_insertion");
+            : current.HistoryOrdinal("semantic_draw_insertion");
         var nativeOwnerPrefix = afterShuffleRelicMatches || personalHiveInsertion
             ? insertion.RequestOwnerId
             : choice!.SourceCardInstanceId is { } sourceCardInstanceId
@@ -4074,12 +4086,17 @@ public static class SemanticPilotCombatEngineV111
                     ? pendingEndTurn
                     : null
             };
-        return historyEntry is null
-            ? next
-            : next with
-            {
-                History = next.History.Append(historyEntry).ToArray()
-            };
+        if (historyEntry is null)
+            return next;
+        // A source-valid H8 session maintains event ordinals in its
+        // immutable trail. Preserve legacy v111's growing History array
+        // only for ordinary v111 sessions and explicit materialization.
+        if (next.H8HistoryTrail is { } trail)
+            return next with { H8HistoryTrail = trail.Append(historyEntry) };
+        return next with
+        {
+            History = next.History.Append(historyEntry).ToArray()
+        };
     }
 
     public static void Validate(SemanticPilotCombatV111 state) =>

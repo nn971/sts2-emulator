@@ -68,10 +68,14 @@ internal static class H8NativeTurnContinuationV1
         // combat outcome, or issue further Nature requests. The existing
         // game engine remains the single authority for those effects.
         RunState resumed;
+        // ResumeAutomaticPipelineContinuation is a functional mechanics
+        // transition. Keeping the committed draw.Run as an immutable source
+        // allows the compatibility HandDraw checkpoint to remain replayable
+        // without another deep clone of the entire run per completed draw.
         using (H8HotPathProfilerV1.Begin("h8.turn_cursor.resume_mechanics"))
         using (ControlledChanceGuardV111.Enter())
             resumed = PrototypeGameEngine.ResumeAutomaticPipelineContinuation(
-                draw.Run.Fork());
+                draw.Run);
 
         if (PrototypeGameEngine.IsAtCombatRewardOrTerminalBoundary(resumed))
             return cursor with { ActiveRun = resumed, Complete = true };
@@ -98,12 +102,10 @@ internal static class H8NativeTurnContinuationV1
                 combat,
                 "Completed semantic end-turn has no Nature deck.",
                 "Completed semantic end-turn has an invalid Nature deck boundary.");
-            // This is the exact source legality condition checked by
-            // v111, without building an unused complete observation and
-            // hashing the hidden RunState.
-            if (!new PrototypeGameEngine().GetLegalActions(resumed).Any())
-                throw new InvalidOperationException(
-                    "The next player boundary has no available legal actions.");
+            // H8's next boundary already constructs a source-public frame
+            // for the actor. Validate action availability there, using the
+            // same legal-action menu, instead of constructing and discarding
+            // a second complete menu during automatic-turn continuation.
         }
         return cursor with { ActiveRun = resumed, Complete = true };
     }

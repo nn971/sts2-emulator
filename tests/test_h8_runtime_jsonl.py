@@ -1,6 +1,7 @@
 """H8 versioned JSONL runtime: source-valid A10 draw, stale guard, fork, audit."""
 from __future__ import annotations
 
+import json
 import os
 import sys
 import unittest
@@ -165,6 +166,81 @@ class H8JsonlRuntimeTests(unittest.TestCase):
                 self.assertEqual(history[-1]["kind"], "draw_card")
             released = session.call("h8_release_many", h8_handles=seen)
             self.assertEqual(released["released"], 2)
+
+    def test_local_reference_continuation_replays_without_nature_rpcs(self):
+        # Existing real A10 runtime fixture; one focused behavioral gate for
+        # the new execution path, without a separate performance harness.
+        def run():
+            with Session([
+                "dotnet", os.environ["STS2_EMULATOR_DLL"],
+                "prototype-ai-jsonl",
+            ]) as session:
+                state = session.call(
+                    "h8_begin_seeded",
+                    seed="h8-native-reference-a10-mawler",
+                    act=1, encounter_id="proto.encounter.mawler_normal",
+                    native_entry="MawlerNormal", total_floor=2,
+                    ascension=10, first_monster_combat_id=1,
+                    map_column=3, map_row=1,
+                    replay_opening_draw_hooks=True,
+                    local_reference_seed=8173,
+                    include_player_frame=True,
+                )["result"]
+                handle = state["h8Handle"]
+                self.assertEqual(state["kind"], "player")
+                # Inline typed source-public representation is exactly the
+                # former fair H8 observation/menu, including snake_case keys.
+                observed = session.call(
+                    "h8_observe", h8_handle=handle,
+                    runtime_id=state["runtimeId"],
+                    boundary_version=state["boundaryVersion"],
+                    policy_id="prototype-fair-v0")
+                self.assertEqual(
+                    state["playerFrame"]["observation"],
+                    json.loads(observed["payloadJson"]))
+                self.assertEqual(
+                    state["playerFrame"]["actions"], observed["actions"])
+                for _ in range(40):
+                    if state["kind"] == "terminal":
+                        break
+                    self.assertEqual(state["kind"], "player")
+                    previous_version = state["boundaryVersion"]
+                    state = session.call(
+                        "h8_step",
+                        h8_handle=handle,
+                        runtime_id=state["runtimeId"],
+                        boundary_version=previous_version,
+                        action_id=state["endTurnActionId"],
+                        local_reference_seed=8173,
+                        include_player_frame=True,
+                    )["result"]
+                    self.assertGreater(state["boundaryVersion"], previous_version)
+                    if state["kind"] == "player":
+                        self.assertIsInstance(
+                            state["playerFrame"]["observation"], dict)
+                        self.assertEqual(
+                            [a["actionId"] for a in
+                             state["playerFrame"]["actions"]],
+                            state["playerActionIds"])
+                journal = session.call(
+                    "h8_decision_history", h8_handle=handle)["decisions"]
+                self.assertEqual(state["decisionCount"], len(journal))
+                self.assertTrue(any(entry["kind"] == "draw_card"
+                                    for entry in journal))
+                self.assertTrue(any(
+                    entry["providerId"] == "h8-local-reference-v1"
+                    for entry in journal))
+                self.assertTrue(session.call(
+                    "h8_replay_audit", h8_handle=handle)["replayVerified"])
+                session.call("h8_release_many", h8_handles=[handle])
+                return [
+                    (entry["kind"], entry["providerId"],
+                     entry.get("actionId"), entry.get("intentId"),
+                     entry.get("cardInstanceId"))
+                    for entry in journal
+                ]
+
+        self.assertEqual(run(), run())
 
     def test_opt_in_profile_attributes_h8_player_mechanics_without_changing_game(self):
         with Session([

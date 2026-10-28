@@ -331,6 +331,25 @@ public sealed class PrototypeAiEnvironment
         return _engine.Step(state, resolved.Action);
     }
 
+    /// <summary>
+    /// H8 has already checked legality and captured the source-public action
+    /// frame under the current boundary token. Reuse that exact payload
+    /// instead of hashing/rebuilding every candidate and deep-forking the
+    /// whole mechanics checkpoint for a second time.
+    /// </summary>
+    internal TransitionResult StepFromH8TrustedBoundary(
+        RunState state, PrototypeAiFrame frame, string actionId)
+    {
+        ArgumentNullException.ThrowIfNull(frame);
+        ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
+        var action = frame.LegalActions.SingleOrDefault(candidate =>
+            StringComparer.Ordinal.Equals(candidate.ActionId, actionId)) ??
+            throw new InvalidOperationException(
+                "H8 player action is absent from its versioned legal menu.");
+        return _engine.StepFromH8TrustedBoundary(
+            state, new GameAction(action.Kind, action.Payload.Clone()));
+    }
+
     public PrototypeAiStepFrame StepFrame(RunState state, string actionId)
     {
         var resolved = ResolveAction(state, actionId);

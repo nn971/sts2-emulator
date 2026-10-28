@@ -447,6 +447,8 @@ public sealed record SemanticDeckStateV111
     private SemanticDeckSlotV111[] _slots;
     private SemanticDeckPoolV111[] _pools;
     private SemanticDeckChoiceV111[]? _transcript;
+    // H8 commits share immutable transcript prefixes between decisions.
+    private H8DeckTranscriptTrailV1? _h8TranscriptTrail;
 
     public const string SchemaId = "sts2-v111-semantic-deck-v1";
     public const string NatureMode = "nature-deferred-v1";
@@ -482,12 +484,50 @@ public sealed record SemanticDeckStateV111
     public SemanticDeckPendingV111? Pending { get; init; }
     public SemanticDeckChoiceV111[]? Transcript
     {
-        get => CloneOptional(_transcript);
-        init => _transcript = CloneOptional(value);
+        get => _h8TranscriptTrail?.Materialize() ?? CloneOptional(_transcript);
+        init
+        {
+            _transcript = CloneOptional(value);
+            _h8TranscriptTrail = null;
+        }
     }
+
+    [JsonIgnore]
+    internal H8DeckTranscriptTrailV1? H8TranscriptTrail
+    {
+        get => _h8TranscriptTrail;
+        init => _h8TranscriptTrail = value;
+    }
+
+    [JsonIgnore] internal int TranscriptCount =>
+        _h8TranscriptTrail?.Count ?? _transcript?.Length ?? -1;
 
     [JsonIgnore] public int Count => _slots.Length;
     [JsonIgnore] public string Fingerprint => CanonicalJson.Sha256(this);
+
+    // Trusted in-process H8 continuation can address the just-committed
+    // transcript entry by its source ordinal. Avoid cloning and scanning
+    // the full defensive-copy Transcript array for every physical draw.
+    // The returned record is read-only to the internal caller; public
+    // Transcript and explicit Fork still provide detached copies.
+    internal SemanticDeckChoiceV111? TranscriptChoiceAtOrdinal(int ordinal)
+    {
+        if (ordinal < 0 || ordinal >= TranscriptCount)
+            return null;
+        if (_h8TranscriptTrail is { } trail)
+            return ordinal == trail.Count - 1
+                ? trail.LastChoice
+                : trail.Materialize()[ordinal];
+        return _transcript![ordinal];
+    }
+
+    internal SemanticDeckStateV111 AppendH8Transcript(
+        SemanticDeckChoiceV111 choice)
+    {
+        var trail = _h8TranscriptTrail ??
+            H8DeckTranscriptTrailV1.FromHistory(_transcript ?? []);
+        return this with { H8TranscriptTrail = trail.Append(choice) };
+    }
 
     /// <summary>
     /// Exact field equality for the in-process H8 mechanics-owner guard.
@@ -506,7 +546,7 @@ public sealed record SemanticDeckStateV111
             ShuffleEpoch != other.ShuffleEpoch ||
             _slots.Length != other._slots.Length ||
             _pools.Length != other._pools.Length ||
-            (_transcript?.Length ?? -1) != (other._transcript?.Length ?? -1))
+            TranscriptCount != other.TranscriptCount)
             return false;
         for (var i = 0; i < _slots.Length; i++)
             if (_slots[i] != other._slots[i])
@@ -530,12 +570,18 @@ public sealed record SemanticDeckStateV111
              !leftPending.CandidateCardInstanceIds.AsSpan().SequenceEqual(
                  rightPending.CandidateCardInstanceIds)))
             return false;
-        if (_transcript is not null)
+        if (TranscriptCount >= 0 &&
+            !(_h8TranscriptTrail is not null &&
+              ReferenceEquals(_h8TranscriptTrail, other._h8TranscriptTrail)))
         {
-            for (var i = 0; i < _transcript.Length; i++)
+            // Explicit deep comparison only; normal H8 transitions share
+            // immutable prefixes and never materialize them.
+            var leftChoices = Transcript!;
+            var rightChoices = other.Transcript!;
+            for (var i = 0; i < leftChoices.Length; i++)
             {
-                var left = _transcript[i];
-                var right = other._transcript![i];
+                var left = leftChoices[i];
+                var right = rightChoices[i];
                 if (left.EventId != right.EventId ||
                     left.SiteId != right.SiteId ||
                     left.Purpose != right.Purpose ||
@@ -552,13 +598,26 @@ public sealed record SemanticDeckStateV111
         return true;
     }
 
-    public SemanticDeckStateV111 Fork() => this with
+    public SemanticDeckStateV111 Fork()
     {
-        Slots = (SemanticDeckSlotV111[])_slots.Clone(),
-        Pools = _pools.Select(p => p.Fork()).ToArray(),
-        Pending = Pending?.Fork(),
-        Transcript = (_transcript ?? []).Select(t => t.Fork()).ToArray()
-    };
+        // All transcript records expose defensive-copy arrays and all H8
+        // history nodes are immutable. A fork can safely share this prefix;
+        // later appends produce new tails. The other mechanics fields retain
+        // their independent copies.
+        var fork = this with
+        {
+            Slots = _slots,
+            Pools = _pools.Select(p => p.Fork()).ToArray(),
+            Pending = Pending?.Fork()
+        };
+        return _h8TranscriptTrail is null
+            ? fork with
+            {
+                Transcript = (_transcript ?? [])
+                    .Select(choice => choice.Fork()).ToArray()
+            }
+            : fork;
+    }
 
     public void Deconstruct(
         out string Mode, out SemanticDeckSlotV111[] Slots,
@@ -676,7 +735,7 @@ public static class SemanticDeckEngineV111
                     : "combat.draw_pile.reveal_card",
                 purpose, topOffset, pool.PoolId,
                 (long[])pool.RemainingCardInstanceIds.Clone(),
-                (state.Transcript ?? []).Length)
+                state.TranscriptCount)
         });
     }
 
@@ -701,12 +760,43 @@ public static class SemanticDeckEngineV111
         Validate(state);
         if (!StringComparer.Ordinal.Equals(state.Fingerprint, fingerprint))
             throw new InvalidOperationException("Stale semantic deck fingerprint.");
+        return ResolveCore(state, selectedIndex, EventId(state), trustedH8: false);
+    }
+
+    /// <summary>
+    /// A versioned H8 boundary already fixes the exact physical draw event.
+    /// Resolve it without rehashing the full deck or copying its transcript.
+    /// </summary>
+    internal static SemanticDeckStateV111 ResolveFromH8TrustedBoundary(
+        SemanticDeckStateV111 state, SemanticDeckEventV111 expectedEvent,
+        int selectedIndex)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(expectedEvent);
         var pending = state.Pending ??
             throw new InvalidOperationException("No semantic card reveal pending.");
-        if (selectedIndex < 0 || selectedIndex >= pending.CandidateCardInstanceIds.Length)
+        if (expectedEvent.Purpose != pending.Purpose ||
+            expectedEvent.SiteId != pending.SiteId ||
+            expectedEvent.TopOffset != pending.TopOffset ||
+            expectedEvent.Ordinal != pending.Ordinal ||
+            !expectedEvent.CandidateCardInstanceIds.AsSpan().SequenceEqual(
+                pending.CandidateCardInstanceIds))
+            throw new InvalidDataException("Stale H8 physical draw support.");
+        return ResolveCore(state, selectedIndex, expectedEvent.EventId,
+            trustedH8: true);
+    }
+
+    private static SemanticDeckStateV111 ResolveCore(
+        SemanticDeckStateV111 state, int selectedIndex,
+        string eventId, bool trustedH8)
+    {
+        var pending = state.Pending ??
+            throw new InvalidOperationException("No semantic card reveal pending.");
+        if (selectedIndex < 0 ||
+            selectedIndex >= pending.CandidateCardInstanceIds.Length)
             throw new ArgumentOutOfRangeException(nameof(selectedIndex));
         var cardId = pending.CandidateCardInstanceIds[selectedIndex];
-        var slots = (SemanticDeckSlotV111[])state.Slots.Clone();
+        var slots = state.Slots;
         slots[pending.TopOffset] = SemanticDeckSlotV111.Known(
             cardId, pending.Purpose != "draw");
         var pools = state.Pools.Select(pool => pool.PoolId == pending.PoolId
@@ -719,10 +809,18 @@ public static class SemanticDeckEngineV111
             .Where(pool => pool.RemainingCardInstanceIds.Length > 0)
             .ToArray();
         var choice = new SemanticDeckChoiceV111(
-            EventId(state), pending.SiteId, pending.Purpose,
+            eventId, pending.SiteId, pending.Purpose,
             pending.TopOffset, pending.Ordinal,
             (long[])pending.CandidateCardInstanceIds.Clone(),
             selectedIndex, cardId);
+        if (trustedH8)
+        {
+            var next = state with
+            {
+                Slots = slots, Pools = pools, Pending = null
+            };
+            return Checked(next.AppendH8Transcript(choice));
+        }
         return Checked(state with
         {
             Slots = slots, Pools = pools, Pending = null,
@@ -1242,20 +1340,26 @@ public static class SemanticDeckEngineV111
     public static void Validate(SemanticDeckStateV111 state)
     {
         ArgumentNullException.ThrowIfNull(state);
+        // Defensive copies are fetched once per validation. On an H8
+        // transition the immutable transcript prefix is already validated
+        // by the previous boundary, so only its new last choice is checked.
+        var slots = state.Slots;
+        var pools = state.Pools;
+        var transcriptCount = state.TranscriptCount;
         if (state.Mode is not (
                 SemanticDeckStateV111.NatureMode or SemanticDeckStateV111.NativeMode) ||
-            state.Slots is null || state.Pools is null ||
-            state.Transcript is null || state.ShuffleEpoch < 0)
+            slots is null || pools is null ||
+            transcriptCount < 0 || state.ShuffleEpoch < 0)
             throw new InvalidDataException("Invalid semantic deck header.");
         if (state.Mode == SemanticDeckStateV111.NativeMode &&
-            (state.Pools.Length > 0 || state.Pending is not null ||
-             state.Slots.Any(s => s.PoolId is not null) ||
-             state.Transcript.Length > 0))
+            (pools.Length > 0 || state.Pending is not null ||
+             slots.Any(slot => slot.PoolId is not null) ||
+             transcriptCount > 0))
             throw new InvalidDataException("Native exact state cannot include Nature events.");
         var poolById = new Dictionary<string, SemanticDeckPoolV111>(
             StringComparer.Ordinal);
         var all = new HashSet<long>();
-        foreach (var pool in state.Pools)
+        foreach (var pool in pools)
         {
             if (pool is null || string.IsNullOrWhiteSpace(pool.PoolId) ||
                 pool.RemainingCardInstanceIds is not { Length: > 0 } ||
@@ -1265,7 +1369,7 @@ public static class SemanticDeckEngineV111
                 if (!all.Add(id))
                     throw new InvalidDataException("Duplicate card instance in pools.");
         }
-        foreach (var slot in state.Slots)
+        foreach (var slot in slots)
         {
             if (slot is null ||
                 (slot.KnownCardInstanceId is null) == (slot.PoolId is null) ||
@@ -1276,14 +1380,16 @@ public static class SemanticDeckEngineV111
             if (slot.PoolId is not null && !poolById.ContainsKey(slot.PoolId))
                 throw new InvalidDataException("Unknown card pool reference.");
         }
-        foreach (var pool in state.Pools)
+        foreach (var pool in pools)
         {
-            if (state.Slots.Count(s => s.PoolId == pool.PoolId) !=
+            if (slots.Count(slot => slot.PoolId == pool.PoolId) !=
                 pool.RemainingCardInstanceIds.Length)
                 throw new InvalidDataException(
                     "Shared card-pool size conflicts with remaining positions.");
         }
-        foreach (var (choice, ordinal) in state.Transcript.Select((c, i) => (c, i)))
+
+        static void ValidateTranscriptChoice(
+            SemanticDeckChoiceV111 choice, int ordinal)
         {
             if (choice is null || choice.Ordinal != ordinal ||
                 choice.ProbabilityStatus != "UNVERIFIED" ||
@@ -1295,6 +1401,21 @@ public static class SemanticDeckEngineV111
                     choice.CandidateCardInstanceIds[choice.SelectedIndex])
                 throw new InvalidDataException("Invalid semantic Nature transcript.");
         }
+
+        if (state.H8TranscriptTrail is { } trail)
+        {
+            if (trail.Count != transcriptCount)
+                throw new InvalidDataException("Invalid H8 semantic transcript count.");
+            if (trail.Count > 0)
+                ValidateTranscriptChoice(trail.LastChoice!, trail.Count - 1);
+        }
+        else
+        {
+            var transcript = state.Transcript!;
+            for (var ordinal = 0; ordinal < transcript.Length; ordinal++)
+                ValidateTranscriptChoice(transcript[ordinal], ordinal);
+        }
+
         if (state.Pending is { } pending)
         {
             if (state.Mode != SemanticDeckStateV111.NatureMode ||
@@ -1304,8 +1425,8 @@ public static class SemanticDeckEngineV111
                     : "combat.draw_pile.reveal_card") ||
                 pending.TopOffset < 0 || pending.TopOffset >= state.Count ||
                 (pending.Purpose == "draw" && pending.TopOffset != 0) ||
-                pending.Ordinal != state.Transcript.Length ||
-                state.Slots[pending.TopOffset].PoolId != pending.PoolId ||
+                pending.Ordinal != transcriptCount ||
+                slots[pending.TopOffset].PoolId != pending.PoolId ||
                 !poolById.TryGetValue(pending.PoolId, out var pool) ||
                 pending.CandidateCardInstanceIds is null ||
                 !pool.RemainingCardInstanceIds.SequenceEqual(
