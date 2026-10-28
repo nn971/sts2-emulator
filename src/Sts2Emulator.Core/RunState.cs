@@ -62,13 +62,17 @@ public sealed record PlayerState(
     [System.Text.Json.Serialization.JsonIgnore]
     public IEnumerable<RelicInstance> ActiveRelics => Relics.Where(relic => !relic.IsMelted);
 
-    public PlayerState Fork() => this with
+    public PlayerState Fork()
     {
-        Deck = (CardInstance[])Deck.Clone(),
-        Relics = (RelicInstance[])Relics.Clone(),
-        PotionSlots = (PotionInstance?[])PotionSlots.Clone(),
-        Resources = Resources?.Fork()
-    };
+        using var scope = H8HotPathProfilerV1.Begin("h8.fork.player");
+        return this with
+        {
+            Deck = (CardInstance[])Deck.Clone(),
+            Relics = (RelicInstance[])Relics.Clone(),
+            PotionSlots = (PotionInstance?[])PotionSlots.Clone(),
+            Resources = Resources?.Fork()
+        };
+    }
 }
 
 /// <summary>
@@ -265,12 +269,16 @@ public sealed partial record RunState(
                 Stochastic, value);
     }
 
-    public RunState Fork() => this with
+    public RunState Fork()
     {
-        Player = Player.Fork(),
-        Stochastic = Stochastic.Fork(),
-        ExtensionState = ExtensionState.Clone(),
-        World = World?.Fork(),
-        Configuration = Configuration?.Fork()
-    };
+        using var scope = H8HotPathProfilerV1.Begin("h8.fork.run_total");
+        return this with
+        {
+            Player = Player.Fork(),
+            Stochastic = Stochastic.Fork(),
+            ExtensionState = ExtensionState.Clone(),
+            World = World?.Fork(),
+            Configuration = Configuration?.Fork()
+        };
+    }
 }
