@@ -1018,6 +1018,10 @@ public sealed record SemanticPilotCombatV111(
             },
             _ => transition
         }).ToArray(),
+        // Explicit compatibility fork publishes independent fully copied
+        // semantic history. H8's live owner may re-enable the persistent
+        // trail from this audited fork at its new runtime boundary.
+        H8HistoryTrail = null,
         PendingEndTurn = PendingEndTurn?.Fork(),
         Stochastic = Stochastic.Fork()
     };
