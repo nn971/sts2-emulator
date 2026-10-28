@@ -283,9 +283,21 @@ public sealed class ResearchCombatFixtureV111Tests
         runtime.AdvanceLocalReferenceNature(runtime.Boundary, 20261028);
         Assert.True(runtime.AtPlayerBoundary);
         Assert.NotEmpty(runtime.ObservePlayerFrame().LegalActions);
-        var enemies = runtime.LegacySnapshotForAudit()
-            .Run.World!.Combat!.Enemies;
+        var world = runtime.LegacySnapshotForAudit().Run.World!;
+        var combat = world.Combat!;
+        var enemies = combat.Enemies;
         Assert.NotEmpty(enemies);
+        Assert.Equal(PrototypeContent.Encounter(encounterId).RoomType,
+            world.ActiveRoom);
+        Assert.Equal(encounter.TotalFloor, world.Floor);
+        var orders = combat.PlayerPowers.Select(p => p.ApplicationOrder)
+            .Concat(enemies.SelectMany(enemy =>
+                enemy.PowerStates.Select(p => p.ApplicationOrder)))
+            .Concat(combat.RelicStates.Select(relic => relic.ApplicationOrder))
+            .ToArray();
+        Assert.Equal(orders.Length, orders.Distinct().Count());
+        Assert.All(orders, order =>
+            Assert.InRange(order, 1, combat.NextPowerApplicationOrder - 1));
         if (encounterId is "proto.encounter.inklets_normal"
             or "proto.encounter.ruby_raiders_normal"
             or "proto.encounter.the_kin_boss")
