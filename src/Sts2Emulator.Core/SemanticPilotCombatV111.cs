@@ -2101,6 +2101,30 @@ public static class SemanticPilotCombatEngineV111
         current.Validate();
         if (current.Fingerprint != fingerprint)
             throw new InvalidOperationException("Stale semantic player-action fingerprint.");
+        return StepCurrentPlayerAction(current, actionId, null);
+    }
+
+    /// <summary>
+    /// Internal only: the H8 runtime has already checked its opaque boundary
+    /// version and uses the immutable public action frame captured for that
+    /// version. Skip the v111 whole-state SHA and redundant observation.
+    /// The source action engine still checks legality and executes the same
+    /// card, hook, selection, reward and terminal mechanics as legacy Step.
+    /// </summary>
+    internal static SemanticPilotCombatV111 StepFromH8TrustedBoundary(
+        SemanticPilotCombatV111 current, string actionId,
+        PrototypeAiFrame playerFrame)
+    {
+        ArgumentNullException.ThrowIfNull(current);
+        ArgumentNullException.ThrowIfNull(playerFrame);
+        ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
+        return StepCurrentPlayerAction(current, actionId, playerFrame);
+    }
+
+    private static SemanticPilotCombatV111 StepCurrentPlayerAction(
+        SemanticPilotCombatV111 current, string actionId,
+        PrototypeAiFrame? playerFrame)
+    {
         if (current.AtPlayerChoiceBoundary)
             return current.KnowledgeDemonChoicePending is not null
                 ? StepKnowledgeDemonChoice(current, actionId)
@@ -2112,7 +2136,7 @@ public static class SemanticPilotCombatEngineV111
         if (current.UsesNativePolicyBaseline)
             return StepNativePolicyBaseline(current, actionId);
         var environment = new PrototypeAiEnvironment();
-        var frame = environment.Observe(current.Run);
+        var frame = playerFrame ?? environment.Observe(current.Run);
         var action = frame.LegalActions.SingleOrDefault(a =>
             a.ActionId == actionId) ?? throw new InvalidOperationException(
                 "Illegal semantic player action.");
