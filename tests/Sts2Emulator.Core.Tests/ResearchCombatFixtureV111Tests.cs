@@ -305,6 +305,46 @@ public sealed class ResearchCombatFixtureV111Tests
         runtime.AuditReplay();
     }
 
+    // A legal action and an end turn exercise the real H8 session beyond
+    // its opening. In particular, more than one enemy must commit intents
+    // to the same combat checkpoint, and Swift must use the Nature draw
+    // provider without swallowing its public player action.
+    [Theory]
+    [InlineData("proto.encounter.inklets_normal")]
+    [InlineData("proto.encounter.the_kin_boss")]
+    public void RichMultiEnemyTurnAndSwiftPotionAdvance(string encounterId)
+    {
+        var encounter = Assert.Single(
+            ResearchCombatFixtureGeneratorV111.RichSupportedEncounters,
+            item => item.EncounterId == encounterId);
+        var original = ResearchCombatFixtureGeneratorV111.Generate(0, 20261027);
+        var fixture = original with
+        {
+            DistributionId = ResearchCombatFixtureGeneratorV111.RichDistributionId,
+            EncounterId = encounter.EncounterId,
+            NativeEncounterEntry = encounter.NativeEntry,
+            TotalFloor = encounter.TotalFloor,
+            MapRow = encounter.MapRow,
+            PotionIds = ["proto.potion.swift", null]
+        };
+        var session = H8CombatRuntimeV1.BeginSeeded(
+            Entry(fixture, "h9-rich-action-" + encounterId));
+        session.AdvanceLocalReferenceNature(session.Boundary, 20261028);
+        Assert.True(session.AtPlayerBoundary);
+        var potion = Assert.Single(
+            session.ObservePlayerFrame().LegalActions,
+            action => action.Kind == "use_potion");
+        session.ChoosePlayerAction(session.Boundary, potion.ActionId);
+        session.AdvanceLocalReferenceNature(session.Boundary, 20261028);
+        Assert.True(session.AtPlayerBoundary);
+        var end = Assert.Single(
+            session.ObservePlayerFrame().LegalActions,
+            action => action.Kind == "end_turn");
+        session.ChoosePlayerAction(session.Boundary, end.ActionId);
+        session.AdvanceLocalReferenceNature(session.Boundary, 20261028);
+        session.AuditReplay();
+    }
+
     [Fact]
     public void RichFixtureAllowlistDoesNotAlterLegacyV1Generator()
     {
