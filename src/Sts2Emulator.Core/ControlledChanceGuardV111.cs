@@ -157,8 +157,11 @@ public static class ControlledChanceGuardV111
             NativeBoundary.Value is { } authorization &&
             site == "native_rng." + authorization.StreamId)
             return;
-        if (Active && !(EngineOwnedRewardDepth.Value > 0 &&
-                site == "prototype_rng.reward" && operation == "next_int"))
+        if (Active &&
+            !(EngineOwnedRewardDepth.Value > 0 &&
+              site == "prototype_rng.reward" && operation == "next_int") &&
+            !(EngineOwnedDeathSummonHpDepth.Value > 0 &&
+              site == "prototype_rng.combat" && operation == "next_int"))
             throw new NotSupportedException(
                 "UNSUPPORTED_CONTROLLED_CHANCE site=" + site +
                 " operation=" + operation +
