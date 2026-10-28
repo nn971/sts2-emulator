@@ -1,6 +1,7 @@
 """H8 versioned JSONL runtime: source-valid A10 draw, stale guard, fork, audit."""
 from __future__ import annotations
 
+import json
 import os
 import sys
 import unittest
@@ -183,9 +184,22 @@ class H8JsonlRuntimeTests(unittest.TestCase):
                     map_column=3, map_row=1,
                     replay_opening_draw_hooks=True,
                     local_reference_seed=8173,
+                    include_player_frame=True,
                 )["result"]
                 handle = state["h8Handle"]
                 self.assertEqual(state["kind"], "player")
+                # Inline typed source-public representation is exactly the
+                # former fair H8 observation/menu, including snake_case keys.
+                observed = session.call(
+                    "h8_observe", h8_handle=handle,
+                    runtime_id=state["runtimeId"],
+                    boundary_version=state["boundaryVersion"],
+                    policy_id="prototype-fair-v0")
+                self.assertEqual(
+                    state["playerFrame"]["observation"],
+                    json.loads(observed["payloadJson"]))
+                self.assertEqual(
+                    state["playerFrame"]["actions"], observed["actions"])
                 for _ in range(40):
                     if state["kind"] == "terminal":
                         break
@@ -198,8 +212,16 @@ class H8JsonlRuntimeTests(unittest.TestCase):
                         boundary_version=previous_version,
                         action_id=state["endTurnActionId"],
                         local_reference_seed=8173,
+                        include_player_frame=True,
                     )["result"]
                     self.assertGreater(state["boundaryVersion"], previous_version)
+                    if state["kind"] == "player":
+                        self.assertIsInstance(
+                            state["playerFrame"]["observation"], dict)
+                        self.assertEqual(
+                            [a["actionId"] for a in
+                             state["playerFrame"]["actions"]],
+                            state["playerActionIds"])
                 journal = session.call(
                     "h8_decision_history", h8_handle=handle)["decisions"]
                 self.assertEqual(state["decisionCount"], len(journal))
