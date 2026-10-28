@@ -3275,7 +3275,8 @@ public static class SemanticPilotCombatEngineV111
     /// follow the same mechanics as the checked public resolver.
     /// </summary>
     internal static SemanticPilotCombatV111 ResolveIntentFromH8TrustedBoundary(
-        SemanticPilotCombatV111 current, string intentId)
+        SemanticPilotCombatV111 current, string intentId,
+        string? boundaryFingerprint = null)
     {
         ArgumentNullException.ThrowIfNull(current);
         ArgumentException.ThrowIfNullOrWhiteSpace(intentId);
@@ -3287,7 +3288,10 @@ public static class SemanticPilotCombatEngineV111
         var support = ControlledTurnIntentEngineV111
             .DescribePendingSemanticIntent(ticket) ??
             throw new InvalidDataException("H8 intent has no weighted support.");
-        var fingerprint = current.Fingerprint;
+        // When H8 already exposed this exact version-owned reference law,
+        // its pre-choice fingerprint is identical. Do not hash the entire
+        // mechanics/transcript twice for one intent provider decision.
+        var fingerprint = boundaryFingerprint ?? current.Fingerprint;
         var semanticEvent = SemanticIntentChoiceV111.CreateEvent(
             fingerprint, pending, support);
         var selection = SemanticIntentChoiceV111.Select(
@@ -3469,9 +3473,14 @@ public static class SemanticPilotCombatEngineV111
     /// support. It is bound to the exact pre-choice state and eligible pool.
     /// </summary>
     public static SemanticIntentEventV111 DescribePendingIntentEvent(
-        SemanticPilotCombatV111 current)
+        SemanticPilotCombatV111 current) =>
+        DescribePendingIntentEvent(current, current.Fingerprint);
+
+    internal static SemanticIntentEventV111 DescribePendingIntentEvent(
+        SemanticPilotCombatV111 current, string boundaryFingerprint)
     {
         ArgumentNullException.ThrowIfNull(current);
+        ArgumentException.ThrowIfNullOrWhiteSpace(boundaryFingerprint);
         var ticket = current.PendingInitialIntents ??
             current.PendingEndTurn?.Intents;
         if (ticket?.Pending is not { } request)
@@ -3481,7 +3490,7 @@ public static class SemanticPilotCombatEngineV111
             .DescribePendingSemanticIntent(ticket) ??
             throw new InvalidDataException("Missing weighted intent support.");
         return SemanticIntentChoiceV111.CreateEvent(
-            current.Fingerprint, request, support);
+            boundaryFingerprint, request, support);
     }
 
     public static SemanticTargetEventV111? DescribePendingTargetEvent(
