@@ -247,7 +247,9 @@ internal static class PrototypeAiJsonlServer
                 Guid.Parse(RequiredString(request, "runtime_id")),
                 RequiredLong(request, "boundary_version"));
 
-        object H8Status(H8CombatRuntimeV1 runtime, string handle)
+        object H8Status(
+            H8CombatRuntimeV1 runtime, string handle,
+            bool includeReferenceLaw = false)
         {
             using var scope = H8HotPathProfilerV1.Begin("h8.status.project");
             var boundary = runtime.Boundary;
@@ -280,7 +282,14 @@ internal static class PrototypeAiJsonlServer
                     ? DescribeSemanticPending(runtime.LegacySnapshotForAudit())
                     : null,
                 endTurnActionId = kind == "player"
-                    ? runtime.EndTurnActionId() : null
+                    ? runtime.EndTurnActionId() : null,
+                // Optional provider-neutral event law, computed only when
+                // explicitly requested at an unresolved Nature boundary.
+                // This is the identical event-scoped law returned by the
+                // standalone h8_reference_law query; no RNG is consumed.
+                referenceLaw = includeReferenceLaw &&
+                    (kind is "draw_card" or "enemy_intent")
+                    ? runtime.DescribePendingReferenceLaw() : null
             };
         }
 
@@ -6677,7 +6686,8 @@ internal static class PrototypeAiJsonlServer
                             useNativePlayerEndTurn: H8Flag("use_native_player_end_turn"),
                             useTrustedIntent: H8Flag("use_trusted_intent"));
                         var handle = StoreH8(runtime);
-                        Write(new { requestId, ok = true, result = H8Status(runtime, handle) });
+                        Write(new { requestId, ok = true, result = H8Status(runtime, handle,
+                            OptionalBool(request, "include_reference_law")) });
                         break;
                     }
 
@@ -6685,7 +6695,8 @@ internal static class PrototypeAiJsonlServer
                     {
                         var runtime = RequireH8(request);
                         Write(new { requestId, ok = true, result = H8Status(
-                            runtime, RequiredString(request, "h8_handle")) });
+                            runtime, RequiredString(request, "h8_handle"),
+                            OptionalBool(request, "include_reference_law")) });
                         break;
                     }
 
@@ -6739,7 +6750,8 @@ internal static class PrototypeAiJsonlServer
                             RequiredH8Boundary(request),
                             RequiredString(request, "action_id"));
                         Write(new { requestId, ok = true, result = H8Status(
-                            runtime, RequiredString(request, "h8_handle")) });
+                            runtime, RequiredString(request, "h8_handle"),
+                            OptionalBool(request, "include_reference_law")) });
                         break;
                     }
 
@@ -6752,7 +6764,8 @@ internal static class PrototypeAiJsonlServer
                             OptionalString(request, "provider_id") ??
                                 "reference-nature");
                         Write(new { requestId, ok = true, result = H8Status(
-                            runtime, RequiredString(request, "h8_handle")) });
+                            runtime, RequiredString(request, "h8_handle"),
+                            OptionalBool(request, "include_reference_law")) });
                         break;
                     }
 
@@ -6765,7 +6778,8 @@ internal static class PrototypeAiJsonlServer
                             OptionalString(request, "provider_id") ??
                                 "reference-nature");
                         Write(new { requestId, ok = true, result = H8Status(
-                            runtime, RequiredString(request, "h8_handle")) });
+                            runtime, RequiredString(request, "h8_handle"),
+                            OptionalBool(request, "include_reference_law")) });
                         break;
                     }
 
