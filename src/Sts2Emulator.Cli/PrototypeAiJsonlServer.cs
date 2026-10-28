@@ -274,6 +274,8 @@ internal static class PrototypeAiJsonlServer
                 outcome = runtime.Outcome,
                 exitHp = runtime.ExitHp,
                 terminalEnemyHp = runtime.TerminalEnemyHp,
+                defeatTotalNonMinionEnemyHp = runtime.DefeatTotalNonMinionEnemyHp,
+                defeatRemainingNonMinionEnemyHp = runtime.DefeatRemainingNonMinionEnemyHp,
                 decisionCount = runtime.DecisionCount,
                 playerFrame = playerFrame is null ? null : new
                 {
