@@ -188,6 +188,62 @@ public sealed class ResearchCombatFixtureV111Tests
         }
     }
 
+    [Fact]
+    public void NativeH8LethalFirePotionCompletesRealRewardAndReplays()
+    {
+        // An all-Strike deck guarantees enough direct damage to place the
+        // Shrinker Beetle within Fire Potion range on a legal player turn.
+        // This exercises a genuine win/regular card-reward RNG transition,
+        // never a fabricated postcombat state.
+        var spec = ResearchCombatFixtureGeneratorV111.Generate(0, 20261027)
+            with
+            {
+                EncounterId = "proto.encounter.shrinker_beetle_weak",
+                NativeEncounterEntry = "ShrinkerBeetleWeak",
+                TotalFloor = 2,
+                MapRow = 1,
+                Deck = Enumerable.Range(0, 20)
+                    .Select(_ => new ResearchCombatCardV111("proto.silent.strike"))
+                    .ToArray(),
+                RelicIds = ["proto.relic.silent_ring",
+                    "proto.relic.lantern", "proto.relic.vajra"],
+                PotionIds = ["proto.potion.fire", null]
+            };
+        spec.Validate();
+        var runtime = H8CombatRuntimeV1.BeginSeeded(
+            Entry(spec, "h9-lethal-fire-potion-reward-20261028"));
+        const long natureSeed = 76139;
+        for (int decision = 0; decision < 35; decision++)
+        {
+            if (!runtime.AtPlayerBoundary)
+                runtime.AdvanceLocalReferenceNature(runtime.Boundary, natureSeed);
+            Assert.False(runtime.Terminal,
+                "Expected to reach a legal killing potion action.");
+            var combat = runtime.LegacySnapshotForAudit().Run.World!.Combat!;
+            var enemy = Assert.Single(combat.Enemies);
+            var actions = runtime.ObservePlayerFrame().LegalActions;
+            if (enemy.Hp <= 20)
+            {
+                Assert.True(enemy.Hp > 0);
+                var fire = Assert.Single(actions,
+                    action => action.Kind == "use_potion");
+                runtime.ChoosePlayerAction(runtime.Boundary, fire.ActionId);
+                Assert.True(runtime.Terminal);
+                Assert.Equal("victory", runtime.Outcome);
+                Assert.Equal(RunPhase.Reward,
+                    runtime.LegacySnapshotForAudit().Run.Phase);
+                runtime.AuditReplay();
+                return;
+            }
+
+            var strike = actions.FirstOrDefault(action =>
+                action.Kind == "play_card");
+            runtime.ChoosePlayerAction(runtime.Boundary,
+                strike?.ActionId ?? runtime.EndTurnActionId());
+        }
+        Assert.Fail("Source-supported Strike + Fire combat did not reach potion range.");
+    }
+
     private static SemanticSeededEntryV111 Entry(
         ResearchCombatFixtureV111 spec, string sourceSeed) => new(
         sourceSeed, spec.Act, spec.EncounterId, spec.NativeEncounterEntry,
