@@ -1058,6 +1058,7 @@ public static class SemanticPilotCombatEngineV111
     public static SemanticPilotCombatV111 BeginSeeded(
         SemanticSeededEntryV111 entry)
     {
+        using var entryScope = H8HotPathProfilerV1.Begin("h8.begin.total");
         ArgumentNullException.ThrowIfNull(entry);
         ArgumentException.ThrowIfNullOrWhiteSpace(entry.Seed);
         ArgumentException.ThrowIfNullOrWhiteSpace(entry.EncounterId);
@@ -1168,54 +1169,69 @@ public static class SemanticPilotCombatEngineV111
         var nativeProvider = new NativeRandomIndexProviderV111();
         var hp = ControlledInitialHpV111.Begin(
             prepared.Combat, prepared.Formation, prepared.NativeStreams);
-        while (!hp.Complete)
+        using (H8HotPathProfilerV1.Begin("h8.begin.native_hp"))
         {
-            var pending = hp.Pending!;
-            var decision = StochasticProviderScopeV111.ResolveIndex(
-                nativeProvider, pending, rng);
-            hp = ControlledInitialHpV111.Resolve(
-                hp, hp.Fingerprint, decision.SelectedIndex);
+            while (!hp.Complete)
+            {
+                var pending = hp.Pending!;
+                var decision = StochasticProviderScopeV111.ResolveIndex(
+                    nativeProvider, pending, rng);
+                hp = ControlledInitialHpV111.Resolve(
+                    hp, hp.Fingerprint, decision.SelectedIndex);
+            }
         }
         var intents = ControlledIntentsV111.BeginAfterControlledHp(hp);
-        while (!intents.Complete)
+        using (H8HotPathProfilerV1.Begin("h8.begin.native_intents"))
         {
-            var pending = intents.Pending!;
-            var decision = StochasticProviderScopeV111.ResolveIndex(
-                nativeProvider, pending, rng);
-            intents = ControlledIntentsV111.Resolve(
-                intents, intents.Fingerprint, decision.SelectedIndex);
+            while (!intents.Complete)
+            {
+                var pending = intents.Pending!;
+                var decision = StochasticProviderScopeV111.ResolveIndex(
+                    nativeProvider, pending, rng);
+                intents = ControlledIntentsV111.Resolve(
+                    intents, intents.Fingerprint, decision.SelectedIndex);
+            }
         }
         var opening = ControlledPlayableCombatEngineV111.Begin(
             intents, entry.Seed, entry.EncounterId, entry.FixtureDeckPresetId);
-        while (!opening.AtPlayerBoundary)
+        using (H8HotPathProfilerV1.Begin("h8.begin.opening_shuffle"))
         {
-            var pending = opening.Pending ??
-                throw new InvalidDataException(
-                    "Engine-owned opening encountered an unsupported chance site.");
-            if (pending.SiteId != ControlledPlayableCombatEngineV111.ShuffleSite)
-                throw new NotSupportedException(
-                    "UNSUPPORTED_SEMANTIC_OPENING site=" + pending.SiteId);
-            var decision = StochasticProviderScopeV111.ResolveIndex(
-                nativeProvider, pending with
-                {
-                    SiteId = NativeFisherYatesV111.SiteId
-                }, rng);
-            opening = ControlledPlayableCombatEngineV111.Resolve(
-                opening, opening.Fingerprint, decision.SelectedIndex);
+            while (!opening.AtPlayerBoundary)
+            {
+                var pending = opening.Pending ??
+                    throw new InvalidDataException(
+                        "Engine-owned opening encountered an unsupported chance site.");
+                if (pending.SiteId != ControlledPlayableCombatEngineV111.ShuffleSite)
+                    throw new NotSupportedException(
+                        "UNSUPPORTED_SEMANTIC_OPENING site=" + pending.SiteId);
+                var decision = StochasticProviderScopeV111.ResolveIndex(
+                    nativeProvider, pending with
+                    {
+                        SiteId = NativeFisherYatesV111.SiteId
+                    }, rng);
+                opening = ControlledPlayableCombatEngineV111.Resolve(
+                    opening, opening.Fingerprint, decision.SelectedIndex);
+            }
         }
         if (entry.OtherChanceProviderId is not null &&
             entry.OtherChanceProviderId != SemanticOtherChanceEngineV111.ProviderId)
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_OTHER_CHANCE provider=" +
                 entry.OtherChanceProviderId);
-        var state = Begin(opening) with
-        {
-            SeededEntry = entry,
-            OtherChance = entry.OtherChanceProviderId is null
-                ? null : SemanticOtherChanceEngineV111.Begin(rng)
-        };
+        SemanticPilotCombatV111 state;
+        using (H8HotPathProfilerV1.Begin("h8.begin.semantic_projection"))
+            state = Begin(opening) with
+            {
+                SeededEntry = entry,
+                OtherChance = entry.OtherChanceProviderId is null
+                    ? null : SemanticOtherChanceEngineV111.Begin(rng)
+            };
         if (entry.ReplayOpeningDrawHooks)
+        {
+            using var openingHooks =
+                H8HotPathProfilerV1.Begin("h8.begin.opening_draw_hooks");
             state = ReapplyCommittedOpeningThroughDrawCards(state);
+        }
         if (entry.NativePolicyBaseline)
             state = AttachNativePolicyBaseline(state, rng,
                 opening.Origin.Formation,
@@ -1282,7 +1298,8 @@ public static class SemanticPilotCombatEngineV111
             state = ApplyFixtureSetRandomHandCardCost(state, setCost);
         if (entry.FixturePotionGenerationCardId is { } potionCardId)
             state = ApplyFixturePotionGenerationCard(state, potionCardId);
-        state.Validate();
+        using (H8HotPathProfilerV1.Begin("h8.begin.final_validation"))
+            state.Validate();
         return state;
     }
 
