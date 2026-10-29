@@ -17,7 +17,8 @@ public sealed class H15ChanceLawBoundaryTests
         var payload = JsonSerializer.SerializeToElement(
             runtime.DescribePendingReferenceLaw());
         return payload.GetProperty("chanceLaw")
-            .Deserialize<ChanceLawV111>() ??
+            .Deserialize<ChanceLawV111>(
+                new JsonSerializerOptions(JsonSerializerDefaults.Web)) ??
             throw new InvalidDataException("H8 Chance Law missing.");
     }
 
