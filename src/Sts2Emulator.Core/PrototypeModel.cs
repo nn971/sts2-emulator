@@ -1987,11 +1987,12 @@ public sealed record CombatState(
     string? CurrentMapNodeId = null,
     int PotionExtraTurnsPending = 0,
     bool IsPlayerSideActive = true,
-    bool TookDamageThisCombat = false,
-    [property: System.Text.Json.Serialization.JsonIgnore(
-        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    PrototypeCombatEffectReceipt[]? EffectReceipts = null)
+    bool TookDamageThisCombat = false)
 {
+    [System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public PrototypeCombatEffectReceipt[]? EffectReceipts { get; init; }
+
     public CombatState Fork() => this with
     {
         Hand = (long[])Hand.Clone(),
@@ -2120,11 +2121,12 @@ public sealed record RewardState(
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     bool LavaLampRewardActive = false,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-    bool LastingCandyRewardActive = false,
-    [property: System.Text.Json.Serialization.JsonIgnore(
-        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    PrototypeCombatEffectReceipt[]? CombatEffectReceipts = null)
+    bool LastingCandyRewardActive = false)
 {
+    [System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public PrototypeCombatEffectReceipt[]? CombatEffectReceipts { get; init; }
+
     [System.Text.Json.Serialization.JsonIgnore(
         Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public bool? ExtraRelicGroupsSkippable { get; init; }
