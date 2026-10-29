@@ -118,7 +118,8 @@ public sealed class PrototypePersistentCombatBoundaryTests
 
         // Opening-hand draws may increment either counter; independently
         // persisted residues must agree with the live combat trigger counts.
-        Assert.Equal(PersistentValues(state, "TurnsSeen"), CounterValues(state));
+        Assert.Equal(PersistentValues(state, "TurnsSeen"),
+            CounterValues(state).Select(count => count % 3).ToArray());
         var fair = new PrototypeAiEnvironment().Observe(state).Observation;
         Assert.Equal(
             PersistentValues(state, "TurnsSeen"),
