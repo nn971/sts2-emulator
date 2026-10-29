@@ -167,6 +167,50 @@ public sealed class RandomIndexProvidersV111Tests
     }
 
     [Fact]
+    public void GuardedLegacyDeathSummonHpConsumesOnlyItsScopedCombatDraw()
+    {
+        const string seed = "h10-legacy-phrog-death-summon-hp";
+        var streams = PrototypeRng.CreateBundle(seed);
+        var before = CanonicalJson.Sha256(streams);
+        var site = NativeCombatRngEntryV111.InitialUniqueHpSiteId;
+
+        using (ControlledChanceGuardV111.Enter())
+        {
+            // Ordinary guarded combat cannot use the legacy HP site.
+            var blocked = Assert.Throws<NotSupportedException>(() =>
+                LegacyRandomChoiceV111.ChooseIndex(
+                    streams, site, "combat", "creature:5", [18, 19, 20]));
+            Assert.Contains("requires a saved continuation", blocked.Message);
+            Assert.Equal(before, CanonicalJson.Sha256(streams));
+
+            // The real death-summon resolver enters precisely this scope.
+            using (ControlledChanceGuardV111.AllowEngineOwnedDeathSummonHp())
+            {
+                var decision = LegacyRandomChoiceV111.ChooseIndex(
+                    streams, site, "combat", "creature:5", [18, 19, 20]);
+                Assert.Equal("legacy-prototype-v0", decision.ProviderMode);
+                Assert.Equal(site, decision.Request.SiteId);
+                Assert.Equal("combat", decision.Request.StreamId);
+                Assert.Equal("creature:5", decision.Request.OwnerId);
+                Assert.InRange(decision.SelectedValue, 18, 20);
+
+                // Even inside the narrow scope, unrelated RNG remains guarded.
+                Assert.Throws<NotSupportedException>(() =>
+                    PrototypeRng.NextInt(streams, "combat_targets", 2));
+            }
+
+            Assert.Throws<NotSupportedException>(() =>
+                LegacyRandomChoiceV111.ChooseIndex(
+                    streams, site, "combat", "creature:6", [21, 22]));
+        }
+
+        var oracle = PrototypeRng.CreateBundle(seed);
+        _ = PrototypeRng.NextInt(oracle, "combat", 3);
+        Assert.Equal(CanonicalJson.Sha256(oracle),
+            CanonicalJson.Sha256(streams));
+    }
+
+    [Fact]
     public void InvalidRequestsFailBeforeConsumingRng()
     {
         var streams = NativeRngV111.CreateBundle("invalid-zero-chance");
