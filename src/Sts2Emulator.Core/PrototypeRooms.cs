@@ -5051,9 +5051,11 @@ public sealed partial class PrototypeGameEngine
                 ? null : returnedCards,
             CardRewardGenerators: cardRewardGenerators,
             LastingCandyRewardActive:
-                lastingCandy.Reward.LastingCandyRewardActive,
-            CombatEffectReceipts: combat.EffectReceipts is null
-                ? null : (PrototypeCombatEffectReceipt[])combat.EffectReceipts.Clone());
+                lastingCandy.Reward.LastingCandyRewardActive)
+        {
+            CombatEffectReceipts = combat.EffectReceipts is null
+                ? null : (PrototypeCombatEffectReceipt[])combat.EffectReceipts.Clone()
+        };
         reward = CaptureLavaLampCombatReward(
             state.Player, combat, reward);
         world = world with
