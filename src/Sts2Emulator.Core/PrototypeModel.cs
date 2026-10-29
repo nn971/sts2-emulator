@@ -1941,6 +1941,13 @@ public sealed record PrototypeAutoPlayTargetRoll(
     int SelectedIndex,
     int TargetEnemyInstanceId);
 
+/// <summary>
+/// A combat-caused, source-attributed effect already disclosed by play and
+/// the resulting reward screen. This carries causal labels, never RNG rolls.
+/// </summary>
+public sealed record PrototypeCombatEffectReceipt(
+    string Kind, string? SourceCardId, int Count);
+
 public sealed record CombatState(
     int Turn,
     int Energy,
@@ -1980,7 +1987,10 @@ public sealed record CombatState(
     string? CurrentMapNodeId = null,
     int PotionExtraTurnsPending = 0,
     bool IsPlayerSideActive = true,
-    bool TookDamageThisCombat = false)
+    bool TookDamageThisCombat = false,
+    [property: System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    PrototypeCombatEffectReceipt[]? EffectReceipts = null)
 {
     public CombatState Fork() => this with
     {
@@ -1989,6 +1999,7 @@ public sealed record CombatState(
         DiscardPile = (long[])DiscardPile.Clone(),
         ExhaustPile = (long[])ExhaustPile.Clone(),
         Enemies = Enemies.Select(enemy => enemy.Fork()).ToArray(),
+        EffectReceipts = EffectReceipts is null ? null : (PrototypeCombatEffectReceipt[])EffectReceipts.Clone(),
         NativeRng = NativeRng?.Fork(),
         Cards = Cards.Select(card => card.Fork()).ToArray(),
         PlayerPowers = PlayerPowers.Select(power => power.Fork()).ToArray(),
@@ -2109,7 +2120,10 @@ public sealed record RewardState(
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     bool LavaLampRewardActive = false,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-    bool LastingCandyRewardActive = false)
+    bool LastingCandyRewardActive = false,
+    [property: System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    PrototypeCombatEffectReceipt[]? CombatEffectReceipts = null)
 {
     [System.Text.Json.Serialization.JsonIgnore(
         Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
@@ -2300,6 +2314,7 @@ public sealed record RewardState(
 
     public RewardState Fork() => this with
     {
+        CombatEffectReceipts = CombatEffectReceipts is null ? null : (PrototypeCombatEffectReceipt[])CombatEffectReceipts.Clone(),
         CardOptions = (string[])CardOptions.Clone(),
         ExtraCardOptions = ExtraCardOptions is null
             ? null
