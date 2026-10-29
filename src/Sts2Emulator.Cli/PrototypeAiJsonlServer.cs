@@ -6815,6 +6815,31 @@ internal static class PrototypeAiJsonlServer
                         break;
                     }
 
+                    case "h8_resolve_chance_law_outcome":
+                    {
+                        // The emulator owns the conditional distribution.
+                        // Nature selects only one advertised outcome ID; the
+                        // runtime validates law identity, version and support
+                        // against the CURRENT pending mechanics boundary.
+                        var runtime = RequireH8(request);
+                        if (!request.TryGetProperty("chance_law", out var advertised) ||
+                            advertised.ValueKind != JsonValueKind.Object)
+                            throw new InvalidDataException(
+                                "H8 outcome selection requires the advertised chance_law.");
+                        var law = advertised.Deserialize<ChanceLawV111>() ??
+                            throw new InvalidDataException(
+                                "Malformed H8 advertised Chance Law.");
+                        runtime.ChooseChanceLawOutcome(
+                            RequiredH8Boundary(request), law,
+                            RequiredString(request, "outcome_id"),
+                            OptionalString(request, "provider_id") ??
+                                "external-chance-law");
+                        Write(new { requestId, ok = true, result = H8Status(
+                                runtime, RequiredString(request, "h8_handle"),
+                                OptionalBool(request, "include_player_frame")) });
+                        break;
+                    }
+
                     case "h8_resolve_intent":
                     {
                         var runtime = RequireH8(request);
