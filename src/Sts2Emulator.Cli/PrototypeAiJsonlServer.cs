@@ -6826,7 +6826,8 @@ internal static class PrototypeAiJsonlServer
                             advertised.ValueKind != JsonValueKind.Object)
                             throw new InvalidDataException(
                                 "H8 outcome selection requires the advertised chance_law.");
-                        var law = advertised.Deserialize<ChanceLawV111>() ??
+                        var law = advertised.Deserialize<ChanceLawV111>(
+                            new JsonSerializerOptions(JsonSerializerDefaults.Web)) ??
                             throw new InvalidDataException(
                                 "Malformed H8 advertised Chance Law.");
                         runtime.ChooseChanceLawOutcome(
