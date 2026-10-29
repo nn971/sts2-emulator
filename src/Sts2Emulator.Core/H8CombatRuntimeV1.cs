@@ -553,6 +553,97 @@ public sealed class H8CombatRuntimeV1
     }
 
     /// <summary>
+    /// Apply an outcome chosen by an interchangeable Nature provider from the
+    /// emulator-declared Chance Law. The law, including its exact conditional
+    /// support and probability provenance, belongs to mechanics; the provider
+    /// only supplies an outcome ID. Check the current event/law before
+    /// committing so stale or forged provider selections cannot mutate state.
+    ///
+    /// The local reference hot path remains separate to avoid materializing
+    /// Chance Laws for every simulated draw.
+    /// </summary>
+    public void ChooseChanceLawOutcome(
+        H8BoundaryTokenV1 boundary, ChanceLawV111 advertisedLaw,
+        string outcomeId, string providerId = "external-chance-law")
+    {
+        RequireBoundary(boundary);
+        ArgumentNullException.ThrowIfNull(advertisedLaw);
+        ArgumentException.ThrowIfNullOrWhiteSpace(outcomeId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(providerId);
+        advertisedLaw.Validate();
+
+        var kind = PendingBoundaryKind();
+        ChanceLawV111 currentLaw;
+        if (kind == H8PendingKindV1.DrawCard)
+        {
+            var deck = _state.Run.World?.Combat?.SemanticDeck ??
+                throw new InvalidDataException(
+                    "Pending H8 draw has no semantic deck.");
+            currentLaw = ChanceLawEngineV111.QueryDraw(deck);
+        }
+        else if (kind == H8PendingKindV1.EnemyIntent)
+        {
+            var evt = SemanticPilotCombatEngineV111
+                .DescribePendingIntentEvent(
+                    _state,
+                    _pendingIntentPilotFingerprint ??= _state.Fingerprint);
+            currentLaw = ChanceLawEngineV111.QueryIntent(evt);
+        }
+        else if (kind == H8PendingKindV1.RandomTarget)
+        {
+            var target = _state.TargetPending ??
+                throw new InvalidDataException(
+                    "Pending H8 target event is missing.");
+            currentLaw = ChanceLawEngineV111.QueryTarget(target);
+        }
+        else
+            throw new InvalidOperationException(
+                "No supported H8 Nature event is currently pending.");
+
+        if (advertisedLaw.LawId != currentLaw.LawId ||
+            advertisedLaw.EventId != currentLaw.EventId ||
+            !advertisedLaw.Outcomes.SequenceEqual(currentLaw.Outcomes))
+            throw new InvalidOperationException(
+                "Selected H8 Chance Law is stale or differs from mechanics.");
+        if (!currentLaw.Outcomes.Any(candidate =>
+                candidate.OutcomeId == outcomeId))
+            throw new InvalidOperationException(
+                "Nature outcome is outside the pending Chance Law support.");
+
+        if (kind == H8PendingKindV1.EnemyIntent)
+        {
+            ChooseIntent(boundary, outcomeId, providerId);
+            return;
+        }
+        if (kind == H8PendingKindV1.DrawCard)
+        {
+            const string prefix = "card_instance:";
+            if (!outcomeId.StartsWith(prefix, StringComparison.Ordinal) ||
+                !long.TryParse(
+                    outcomeId.AsSpan(prefix.Length),
+                    System.Globalization.NumberStyles.None,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    out var cardInstanceId))
+                throw new InvalidDataException(
+                    "Malformed physical-card Chance Law outcome.");
+            ChooseDrawCard(boundary, cardInstanceId, providerId);
+            return;
+        }
+
+        const string targetPrefix = "enemy_instance:";
+        if (!outcomeId.StartsWith(targetPrefix, StringComparison.Ordinal) ||
+            !int.TryParse(
+                outcomeId.AsSpan(targetPrefix.Length),
+                System.Globalization.NumberStyles.None,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var enemyInstanceId))
+            throw new InvalidDataException(
+                "Malformed random-target Chance Law outcome.");
+        ChooseRandomTarget(
+            boundary, currentLaw.EventId, enemyInstanceId, providerId);
+    }
+
+    /// <summary>
     /// Consume consecutive reference-owned stochastic events inside the
     /// mechanics process, stopping at the next player/terminal/unsupported
     /// boundary. An externally controlled learned or scripted Nature provider
