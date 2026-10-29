@@ -1941,6 +1941,13 @@ public sealed record PrototypeAutoPlayTargetRoll(
     int SelectedIndex,
     int TargetEnemyInstanceId);
 
+/// <summary>
+/// A combat-caused, source-attributed effect already disclosed by play and
+/// the resulting reward screen. This carries causal labels, never RNG rolls.
+/// </summary>
+public sealed record PrototypeCombatEffectReceipt(
+    string Kind, string? SourceCardId, int Count);
+
 public sealed record CombatState(
     int Turn,
     int Energy,
@@ -1982,6 +1989,10 @@ public sealed record CombatState(
     bool IsPlayerSideActive = true,
     bool TookDamageThisCombat = false)
 {
+    [System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public PrototypeCombatEffectReceipt[]? EffectReceipts { get; init; }
+
     public CombatState Fork() => this with
     {
         Hand = (long[])Hand.Clone(),
@@ -1989,6 +2000,7 @@ public sealed record CombatState(
         DiscardPile = (long[])DiscardPile.Clone(),
         ExhaustPile = (long[])ExhaustPile.Clone(),
         Enemies = Enemies.Select(enemy => enemy.Fork()).ToArray(),
+        EffectReceipts = EffectReceipts is null ? null : (PrototypeCombatEffectReceipt[])EffectReceipts.Clone(),
         NativeRng = NativeRng?.Fork(),
         Cards = Cards.Select(card => card.Fork()).ToArray(),
         PlayerPowers = PlayerPowers.Select(power => power.Fork()).ToArray(),
@@ -2111,6 +2123,10 @@ public sealed record RewardState(
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     bool LastingCandyRewardActive = false)
 {
+    [System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public PrototypeCombatEffectReceipt[]? CombatEffectReceipts { get; init; }
+
     [System.Text.Json.Serialization.JsonIgnore(
         Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public bool? ExtraRelicGroupsSkippable { get; init; }
@@ -2300,6 +2316,7 @@ public sealed record RewardState(
 
     public RewardState Fork() => this with
     {
+        CombatEffectReceipts = CombatEffectReceipts is null ? null : (PrototypeCombatEffectReceipt[])CombatEffectReceipts.Clone(),
         CardOptions = (string[])CardOptions.Clone(),
         ExtraCardOptions = ExtraCardOptions is null
             ? null

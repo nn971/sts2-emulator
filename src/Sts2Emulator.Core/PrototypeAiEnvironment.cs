@@ -126,7 +126,11 @@ public sealed record PrototypeAiReward(
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     PrototypeAiRewardCardReroll[]? AvailableCardRerolls = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    PrototypeAiExtraPotionReward[]? PendingExtraPotionRewards = null);
+    PrototypeAiExtraPotionReward[]? PendingExtraPotionRewards = null)
+{
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public PrototypeCombatEffectReceipt[]? CombatEffectReceipts { get; init; }
+}
 
 public sealed record PrototypeAiEventDeckChoice(
     string ChoiceId,
@@ -557,7 +561,12 @@ public sealed class PrototypeAiEnvironment
                             .Select(index => new PrototypeAiExtraPotionReward(
                                 index, extraPotions[index]))
                             .ToArray()
-                        : null),
+                        : null)
+                  {
+                      CombatEffectReceipts = world.Reward.CombatEffectReceipts is null
+                          ? null : (PrototypeCombatEffectReceipt[])
+                              world.Reward.CombatEffectReceipts.Clone()
+                  },
             Shop: world?.Shop is null
                 ? null
                 : new PrototypeAiShop(

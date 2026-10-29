@@ -16,6 +16,8 @@ jobs:
         run: dotnet restore Sts2Emulator.sln
       - name: Build
         run: dotnet build Sts2Emulator.sln -c Release --no-restore
+      - name: H14 focused combat-boundary regression
+        run: dotnet test Sts2Emulator.sln -c Release --no-build --filter 'FullyQualifiedName~PrototypePersistentCombatBoundaryTests|FullyQualifiedName~PrototypeTheHuntTests'
       - name: Test
         run: dotnet test Sts2Emulator.sln -c Release --no-build
       - name: Pinned v111 inventory and executable coverage

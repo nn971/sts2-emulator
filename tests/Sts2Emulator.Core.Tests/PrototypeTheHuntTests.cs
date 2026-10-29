@@ -118,6 +118,12 @@ public sealed class PrototypeTheHuntTests
         var extra = Assert.Single(reward.ExtraCardOptions!);
         Assert.Equal(3, extra.Length);
         Assert.Equal(0, reward.ExtraCardRewardsResolved);
+        var cause = Assert.Single(reward.CombatEffectReceipts!);
+        Assert.Equal("extra_card_reward_earned", cause.Kind);
+        Assert.Equal("proto.silent.the_hunt", cause.SourceCardId);
+        Assert.Equal(1, cause.Count);
+        var fair = new PrototypeAiEnvironment().Observe(state).Observation;
+        Assert.Equal(cause, Assert.Single(fair.Reward!.CombatEffectReceipts!));
 
         var standardActions = engine.GetLegalActions(state);
         Assert.Equal(
