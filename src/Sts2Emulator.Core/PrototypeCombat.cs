@@ -5135,7 +5135,18 @@ public sealed partial class PrototypeGameEngine
                                 {
                                     ExtraCardRewardsEarned =
                                         combat.ExtraCardRewardsEarned
-                                        + operation.ExtraCardRewardsOnFatal
+                                        + operation.ExtraCardRewardsOnFatal,
+                                    EffectReceipts = (combat.EffectReceipts
+                                        ?? Array.Empty<PrototypeCombatEffectReceipt>())
+                                        .Append(new PrototypeCombatEffectReceipt(
+                                            "extra_card_reward_earned",
+                                            combat.Cards.FirstOrDefault(card =>
+                                                card.InstanceId ==
+                                                (sourceCardInstanceId
+                                                 ?? eventSourceCardInstanceId))
+                                                ?.CardId,
+                                            operation.ExtraCardRewardsOnFatal))
+                                        .ToArray()
                                 };
                             }
 
