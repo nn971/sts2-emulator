@@ -75,7 +75,7 @@ public sealed class PrototypePersistentCombatBoundaryTests
         state = PlayLethalStrike(engine, state);
         Assert.Equal([2, 0], PersistentValues(state));
 
-        var published = new PrototypeAiEnvironment(engine).Observe(state).Observation;
+        var published = new PrototypeAiEnvironment().Observe(state).Observation;
         Assert.Equal(
             [2, 0],
             published.Relics
@@ -119,11 +119,12 @@ public sealed class PrototypePersistentCombatBoundaryTests
         // Opening-hand draws may increment either counter; independently
         // persisted residues must agree with the live combat trigger counts.
         Assert.Equal(PersistentValues(state, "TurnsSeen"), CounterValues(state));
-        var fair = new PrototypeAiEnvironment(engine).Observe(state).Observation;
+        var fair = new PrototypeAiEnvironment().Observe(state).Observation;
         Assert.Equal(
             PersistentValues(state, "TurnsSeen"),
             fair.Relics.Select(relic =>
-                relic.State.GetProperty("TurnsSeen").GetInt32()).ToArray());
+                relic.State.TryGetProperty("TurnsSeen", out var count)
+                    ? count.GetInt32() : 0).ToArray());
     }
 
     private static int[] CounterValues(RunState state) =>
