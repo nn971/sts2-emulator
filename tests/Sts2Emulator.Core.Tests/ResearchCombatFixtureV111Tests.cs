@@ -391,6 +391,62 @@ public sealed class ResearchCombatFixtureV111Tests
     }
 
     [Fact]
+    public void GuardedRichPhrogDeathSpawnsFourWrigglersInRealCombatMechanics()
+    {
+        var source = ResearchCombatFixtureGeneratorV111.Generate(0, 20261027);
+        var fixture = source with
+        {
+            DistributionId = ResearchCombatFixtureGeneratorV111.RichDistributionId,
+            EncounterId = "proto.encounter.phrog_parasite_elite",
+            NativeEncounterEntry = "PhrogParasiteElite",
+            TotalFloor = 3,
+            MapRow = 2
+        };
+        fixture.Validate();
+        var runtime = H8CombatRuntimeV1.BeginSeeded(
+            Entry(fixture, "h10-phrog-death-summon-guarded"));
+        runtime.AdvanceLocalReferenceNature(runtime.Boundary, 20261028);
+        var original = runtime.LegacySnapshotForAudit().Run;
+        var combat = original.World!.Combat!;
+        // H9/H10 synthetic combats retain their legacy RNG ownership.
+        Assert.Null(combat.NativeRng);
+        Assert.Equal("proto.enemy.phrog_parasite",
+            Assert.Single(combat.Enemies).EnemyId);
+        var dying = combat with
+        {
+            Enemies = combat.Enemies.Select(enemy =>
+                enemy with { Hp = 0 }).ToArray()
+        };
+        var rng = original.Rng.Fork();
+        var priorCount = rng.Streams.Single(stream =>
+            stream.StreamId == "combat").CallCount ?? 0;
+        CombatState summoned;
+        using (ControlledChanceGuardV111.Enter())
+        using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
+            summoned = PrototypeGameEngine.ResolveEnemyDeathSummons(dying, rng);
+
+        Assert.True(summoned.Enemies[0].DeathEffectsResolved);
+        Assert.Equal(5, summoned.Enemies.Length);
+        Assert.All(summoned.Enemies.Skip(1), enemy =>
+        {
+            Assert.Equal("proto.enemy.wriggler", enemy.EnemyId);
+            Assert.Equal(enemy.Hp, enemy.MaxHp);
+            Assert.True(enemy.Hp > 0);
+        });
+        Assert.True((rng.Streams.Single(stream =>
+            stream.StreamId == "combat").CallCount ?? 0) > priorCount);
+        // The scope must end when the summon mechanics return.
+        using (ControlledChanceGuardV111.Enter())
+            Assert.Throws<NotSupportedException>(() =>
+                LegacyRandomChoiceV111.ChooseIndex(
+                    rng, NativeCombatRngEntryV111.InitialUniqueHpSiteId,
+                    "combat", "creature:99", [10, 11]));
+
+        Assert.Equal(CanonicalJson.Sha256(combat),
+            CanonicalJson.Sha256(original.World.Combat));
+    }
+
+    [Fact]
     public void GuardedDeathSummonHpUsesJournaledCombatStreamOnlyInsideItsScope()
     {
         const string site = NativeCombatRngEntryV111.InitialUniqueHpSiteId;
