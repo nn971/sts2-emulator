@@ -223,7 +223,14 @@ public sealed record PrototypeAiObservation(
     string? TerminalOutcome,
     PrototypeAiEvent? Event = null,
     string? MapGenerationProfileId = null,
-    PrototypeCompletedRoomRecord[]? CompletedRooms = null);
+    PrototypeCompletedRoomRecord[]? CompletedRooms = null,
+    // Terminal-only training feedback; never emitted during active combat.
+    [property: System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    int? DefeatTotalNonMinionEnemyHp = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    int? DefeatRemainingNonMinionEnemyHp = null);
 
 public sealed record PrototypeAiFrame(
     string SchemaId,
@@ -676,7 +683,11 @@ public sealed class PrototypeAiEnvironment
                 world?.Map.GenerationProfileId,
             CompletedRooms: world is null
                 ? Array.Empty<PrototypeCompletedRoomRecord>()
-                : (PrototypeCompletedRoomRecord[])world.CompletedRooms.Clone());
+                : (PrototypeCompletedRoomRecord[])world.CompletedRooms.Clone(),
+            DefeatTotalNonMinionEnemyHp: world is { Combat: null, TerminalOutcome: "defeat" }
+                ? world.DefeatTotalNonMinionEnemyHp : null,
+            DefeatRemainingNonMinionEnemyHp: world is { Combat: null, TerminalOutcome: "defeat" }
+                ? world.DefeatRemainingNonMinionEnemyHp : null);
     }
 
     /// <summary>

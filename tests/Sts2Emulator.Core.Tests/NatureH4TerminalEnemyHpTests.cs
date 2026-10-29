@@ -145,6 +145,14 @@ public sealed class NatureH4TerminalEnemyHpTests
             terminal.World.DefeatTotalNonMinionEnemyHp);
         Assert.Equal(8 + 13,
             terminal.World.DefeatRemainingNonMinionEnemyHp);
+        var publicTerminal = new PrototypeAiEnvironment().ObservePublic(terminal);
+        Assert.Equal(53 + 15 + 18,
+            publicTerminal.DefeatTotalNonMinionEnemyHp);
+        Assert.Equal(8 + 13,
+            publicTerminal.DefeatRemainingNonMinionEnemyHp);
+        var publicActive = new PrototypeAiEnvironment().ObservePublic(state);
+        Assert.Null(publicActive.DefeatTotalNonMinionEnemyHp);
+        Assert.Null(publicActive.DefeatRemainingNonMinionEnemyHp);
     }
 
     [Fact]
