@@ -6916,7 +6916,7 @@ internal static class PrototypeAiJsonlServer
 
                     case "h8_step":
                     {
-                        var runtime = RequireH8(request);
+                        var owned = RequireH8(request);
                         var h8Handle = RequiredString(request, "h8_handle");
                         var declared = h8DeclaredReferenceStates.TryGetValue(
                             h8Handle, out var declaredCursor);
@@ -6924,25 +6924,34 @@ internal static class PrototypeAiJsonlServer
                             request.TryGetProperty("local_reference_seed", out _))
                             throw new InvalidOperationException(
                                 "H8 declared and local ReferenceNature cannot mix.");
+                        // Declared-law steps commit mechanics and provider
+                        // cursor as one transaction. A failed effect or status
+                        // projection leaves the old session untouched.
+                        var runtime = declared
+                            ? owned.CopyForAtomicCommit() : owned;
                         runtime.ChoosePlayerAction(
                             RequiredH8Boundary(request),
                             RequiredString(request, "action_id"));
-                        // One request advances player mechanics and ensuing
-                        // emulator-owned Nature events to the next boundary.
+                        ReferenceNatureStateV111? nextCursor = null;
                         if (declared)
-                            h8DeclaredReferenceStates[h8Handle] =
-                                runtime.AdvanceDeclaredReferenceNature(
-                                    runtime.Boundary, declaredCursor!,
-                                    OptionalInt(request, "max_nature_decisions") ?? 1200);
+                            nextCursor = runtime.AdvanceDeclaredReferenceNature(
+                                runtime.Boundary, declaredCursor!,
+                                OptionalInt(request, "max_nature_decisions") ?? 1200);
                         else if (request.TryGetProperty(
                             "local_reference_seed", out _))
                             runtime.AdvanceLocalReferenceNature(
                                 runtime.Boundary,
                                 RequiredLong(request, "local_reference_seed"),
                                 OptionalInt(request, "max_nature_decisions") ?? 1200);
-                        Write(new { requestId, ok = true, result = H8Status(
-                                runtime, h8Handle,
-                                OptionalBool(request, "include_player_frame")) });
+                        var status = H8Status(
+                            runtime, h8Handle,
+                            OptionalBool(request, "include_player_frame"));
+                        if (declared)
+                        {
+                            h8States[h8Handle] = runtime;
+                            h8DeclaredReferenceStates[h8Handle] = nextCursor!;
+                        }
+                        Write(new { requestId, ok = true, result = status });
                         break;
                     }
 
