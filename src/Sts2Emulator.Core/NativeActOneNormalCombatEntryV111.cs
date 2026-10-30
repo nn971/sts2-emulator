@@ -59,6 +59,10 @@ public static class NativeActOneNormalCombatEntryV111
                 ("GremlinMercNormal", PrototypeActOneRegion.Underdocks)
         };
 
+    internal static string? ResearchNativeEntry(string encounterId) =>
+        Entries.TryGetValue(encounterId, out var entry)
+            ? entry.NativeName : null;
+
     public static string[] SupportedEncounterIds =>
         Entries.Keys.Order(StringComparer.Ordinal).ToArray();
 
