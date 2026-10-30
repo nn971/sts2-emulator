@@ -10474,6 +10474,33 @@ internal static class PrototypeAiJsonlServer
                         break;
                     }
 
+                    case "h15_native_combat_candidate_probe":
+                    {
+                        // Diagnostic only: construct an independent candidate
+                        // from a genuine live native entry, validate that its
+                        // public player view is unchanged, and DISCARD it.
+                        // Until all chance sites and hidden correlations are
+                        // audited there is no fair-search state handle.
+                        var state = RequireState(request);
+                        var candidate = H15NativeCombatEntryCandidateV1.Build(
+                            state, RequiredString(request, "independent_seed"));
+                        var frame = environment.ObserveH8(candidate);
+                        var unknown = candidate.World!.Combat!.SemanticDeck!.Slots
+                            .Count(slot => slot.KnownCardInstanceId is null);
+                        Write(new
+                        {
+                            requestId, ok = true,
+                            schemaId = H15NativeCombatEntryCandidateV1.CandidateModelId,
+                            fairContinuationCapability =
+                                H15NativeCombatEntryCandidateV1.FairSearchCapabilityId,
+                            stateHandleReturned = false,
+                            observationHash = frame.ObservationHash,
+                            legalActionCount = frame.LegalActions.Length,
+                            unknownDrawPositions = unknown
+                        });
+                        break;
+                    }
+
                     case "reset_factorized_hypothetical":
                     {
                         if (!request.TryGetProperty("initial_streams", out var streams)
