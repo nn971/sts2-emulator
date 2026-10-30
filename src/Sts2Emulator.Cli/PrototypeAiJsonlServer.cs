@@ -10569,6 +10569,23 @@ internal static class PrototypeAiJsonlServer
                         break;
                     }
 
+                    case "h15_experimental_player_action":
+                    {
+                        var handle = RequiredString(request, "h15_handle");
+                        var session = RequireH15(request);
+                        if (RequiredLong(request, "version") != session.DecisionVersion)
+                            throw new InvalidOperationException(
+                                "Stale H15 experimental session version.");
+                        var next = session.PlayerAction(
+                            RequiredString(request, "action_id"));
+                        // Project the full public boundary BEFORE publishing
+                        // the successful new session state.
+                        var status = H15Status(next, handle, requestId);
+                        h15States[handle] = next;
+                        Write(status);
+                        break;
+                    }
+
                     case "h15_experimental_end_turn":
                     {
                         var handle = RequiredString(request, "h15_handle");
