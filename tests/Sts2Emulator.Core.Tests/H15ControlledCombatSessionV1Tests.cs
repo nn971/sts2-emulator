@@ -96,6 +96,49 @@ public sealed class H15ControlledCombatSessionV1Tests
     }
 
     [Fact]
+    public void KillingCardCanPublishGenuineCombatRewardBoundary()
+    {
+        // Test-only low-HP mechanics setup from a real native-structure
+        // root. This checks that a final hit exits combat without a false
+        // unsupported-intermediate-player-boundary error.
+        var original = NativeStructureEntry();
+        var session = H15ControlledCombatSessionV1.Begin(
+            original, "h15-killing-card-transition");
+        var combat = session.Run.World!.Combat!;
+        var attack = new PrototypeAiEnvironment().Observe(session.Run)
+            .LegalActions.FirstOrDefault(action =>
+            {
+                if (action.Kind != "play_card")
+                    return false;
+                var payload = action.Payload.Deserialize<PlayCardPayload>();
+                return payload?.TargetEnemyId is not null &&
+                    combat.Cards.Any(card =>
+                        card.InstanceId == payload.CardInstanceId &&
+                        card.CardId is ("proto.silent.strike" or
+                            "proto.silent.neutralize"));
+            });
+        Assert.NotNull(attack);
+        var target = attack!.Payload.Deserialize<PlayCardPayload>()!
+            .TargetEnemyId!.Value;
+        var enemies = combat.Enemies.Select(enemy =>
+            enemy with { Hp = enemy.InstanceId == target ? 1 : 0 })
+            .ToArray();
+        var reducedCombat = combat with { Enemies = enemies };
+        var reducedRun = session.Run with
+        {
+            World = session.Run.World with { Combat = reducedCombat }
+        };
+        var reduced = session with { Run = reducedRun };
+        var progressed = reduced.PlayerAction(attack.ActionId);
+        Assert.Equal("combat_exit", progressed.BoundaryKind);
+        Assert.Equal(RunPhase.Reward, progressed.Run.Phase);
+        Assert.NotNull(progressed.Run.World!.Reward);
+        Assert.Null(progressed.Run.World.Combat);
+        Assert.Equal(1L, progressed.DecisionVersion);
+        Assert.Equal("player", session.BoundaryKind);
+    }
+
+    [Fact]
     public void RealEndTurnIsEitherTypedOrExplicitlyUnsupported()
     {
         var source = NativeStructureEntry();
