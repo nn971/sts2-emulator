@@ -63,8 +63,11 @@ public sealed record H15ControlledCombatSessionV1(
             H15NativeCombatEntryCandidateV1.ModelId(source),
             // The session, not the player policy or an external Python
             // sampler, owns its independent ReferenceNature cursor.
-            ReferenceNatureStateV111.Create(NativeRngV111.HashString(
-                independentSeed + "\nH15ReferenceNatureV111")));
+            ReferenceNatureRunCursorV111.Begin(
+                candidate,
+                NativeRngV111.HashString(
+                    independentSeed + "\nH15ReferenceNatureV111"),
+                "H15 experimental combat"));
     }
 
     public string BoundaryKind
