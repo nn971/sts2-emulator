@@ -141,23 +141,31 @@ public static class SemanticPlayerActionEngineV111
 
         RunState run;
         using (ControlledChanceGuardV111.Enter())
+        // Source victory initializes post-combat rewards. Delegate only the
+        // reward sites already explicitly allowlisted by the chance guard.
+        using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
             run = environment.Step(source.Fork(), actionId).State;
-        // The allowlisted action may still activate an unmodeled relic,
-        // power, draw hook or enemy mechanic. Assert the hidden deck is
-        // untouched before accepting the advanced player boundary.
-        var afterCombat = run.World?.Combat;
-        if (!PrototypeGameEngine
-                .IsAtCombatPlayerDecisionBoundary(run) || afterCombat is null)
-            throw new NotSupportedException(
-                "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
-                "operation=action_crossed_chance_or_turn_boundary");
-        if (!combat.DrawPile.SequenceEqual(afterCombat.DrawPile) ||
-            CanonicalJson.Sha256(combat.SemanticDeck) !=
-                CanonicalJson.Sha256(afterCombat.SemanticDeck))
-            throw new NotSupportedException(
-                "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
-                "operation=unmodeled_draw_pile_mutation");
-        ValidateBoundary(run);
+        // A real killing card may exit active combat before publishing
+        // another player choice. Its semantic deck is consumed on combat
+        // exit, so require the source's genuine reward/defeat boundary.
+        if (PrototypeGameEngine.IsAtCombatRewardOrTerminalBoundary(run))
+            ValidateCombatExit(run);
+        else
+        {
+            var afterCombat = run.World?.Combat;
+            if (!PrototypeGameEngine
+                    .IsAtCombatPlayerDecisionBoundary(run) || afterCombat is null)
+                throw new NotSupportedException(
+                    "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
+                    "operation=action_crossed_chance_or_turn_boundary");
+            if (!combat.DrawPile.SequenceEqual(afterCombat.DrawPile) ||
+                CanonicalJson.Sha256(combat.SemanticDeck) !=
+                    CanonicalJson.Sha256(afterCombat.SemanticDeck))
+                throw new NotSupportedException(
+                    "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
+                    "operation=unmodeled_draw_pile_mutation");
+            ValidateBoundary(run);
+        }
 
         var result = new SemanticPlayerActionV111(
             source.Fork(), run, actionId, action.Kind);
@@ -188,15 +196,34 @@ public static class SemanticPlayerActionEngineV111
     {
         ArgumentNullException.ThrowIfNull(state);
         ValidateBoundary(state.Origin);
-        ValidateBoundary(state.Run);
         if (state.ActionKind != "play_card" ||
-            string.IsNullOrWhiteSpace(state.ActionId) ||
-            !state.Origin.World!.Combat!.DrawPile.SequenceEqual(
+            string.IsNullOrWhiteSpace(state.ActionId))
+            throw new InvalidDataException("Invalid semantic player action.");
+        if (PrototypeGameEngine.IsAtCombatRewardOrTerminalBoundary(state.Run))
+        {
+            ValidateCombatExit(state.Run);
+            return;
+        }
+        ValidateBoundary(state.Run);
+        if (!state.Origin.World!.Combat!.DrawPile.SequenceEqual(
                 state.Run.World!.Combat!.DrawPile) ||
             CanonicalJson.Sha256(state.Origin.World.Combat.SemanticDeck) !=
                 CanonicalJson.Sha256(state.Run.World.Combat.SemanticDeck))
             throw new InvalidDataException(
                 "Semantic player action changed provider-owned hidden deck.");
+    }
+
+    private static void ValidateCombatExit(RunState run)
+    {
+        if (run.Phase == RunPhase.Reward &&
+            run.World is { Combat: null, Reward: not null })
+            return;
+        if (run.Phase == RunPhase.Terminal &&
+            run.World is { Combat: null, Reward: null,
+                TerminalOutcome: "defeat" })
+            return;
+        throw new InvalidDataException(
+            "Semantic killing card did not produce a genuine combat exit.");
     }
 
     public static void ValidateBoundary(RunState run)
