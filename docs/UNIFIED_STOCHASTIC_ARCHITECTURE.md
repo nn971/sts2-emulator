@@ -4,6 +4,57 @@
 
 This is the **canonical responsibility/ownership contract** for RNG, Nature, Chance Law, and the native bridge. [Desired RNG Implementation](DESIRED_RNG_IMPLEMENTATION.md) specifies the migration details; [staged roadmap](STOCHASTIC_ARCHITECTURE_ROADMAP.md) records implementation and acceptance. The code still contains legacy/prototype and isolated semantic implementations, described in the [migration matrix](DESIRED_RNG_MIGRATION_STATUS.md) and [Nature pilot history](NATURE_P0_SEMANTIC_JSONL_143.md). Those are implementation evidence, not alternate ownership rules.
 
+## Current implementation crosswalk (2026-10-30)
+
+The ownership contract below remains authoritative. In particular,
+**ReferenceNature is already implemented**; the missing native H15 fair
+posterior must not be described as a missing general-purpose Nature provider.
+
+- **Engine-owned stochastic primitives and native provider:** pinned native
+  stream derivation, typed RNG requests, source-owned immediate resolution,
+  and provider-private cursors are implemented at audited sites. The
+  six-stream prototype RNG remains a distinct approximation. Native primitive
+  parity and complete game-mechanics parity remain separate evidence gates.
+- **Chance Law and ReferenceNature:** `ChanceLawV111`,
+  `ReferenceNatureV111.SampleValidated`, `ReferenceNatureSessionV111`,
+  `ReferenceNatureRunActionSessionV111`, and specialized atomic sessions
+  for combat reward, merchant, treasure, events, map generation and other
+  registered sites already exist. The reference sampler is independent
+  SplitMix64 and consumes the law's declared weights; it neither advances
+  Native RNG nor independently certifies a law's source distribution.
+  `H8LocalReferenceNatureV1` additionally offers fast event-keyed sampling
+  for supported H8 combat events.
+- **History-conditioned sampling already exists in a limited domain:**
+  `sts2-ai/src/sts2_ai/emulator/h15_h8_reference.py` implements
+  `H8ReferenceNaturePosterior`, which rejection-conditions independent
+  H8 fixture Nature seeds on the complete visible *combat-local* history.
+  Its fair claim is restricted to the pinned fixed-fixture prior. It does
+  not reconstruct arbitrary native-run hidden-state posteriors or macro history.
+- **H15 experimental real-entry route (not unified yet):**
+  `H15NativeCombatEntryCandidateV1` independently reseeds a real
+  native-structure/prototype-RNG combat entry.
+  `H15ControlledCombatSessionV1` exposes a smaller `player` /
+  `enemy_action` / `enemy_intent` / `draw_card` /
+  `random_target` continuation surface. The AI's
+  `h15_experimental_rollout.py` separately samples those downgraded
+  `UNVERIFIED` laws in Python rather than using the existing atomic
+  ReferenceNature session/provider. That route is useful for
+  implementation diagnostics, but is **not** a second canonical Nature
+  architecture and produces no certified PUCT supervision.
+- **Reward distinction:** `ReferenceNatureCombatRewardSessionV111`
+  already handles a registered set of configured Native combat-victory
+  reward requests atomically. The H15 prototype-RNG action adapter uses
+  a narrower guarded, engine-owned reward path. These are different
+  provenance profiles; never infer that the latter supersedes the former.
+
+**Integration priority:** make H15 consume the shared typed continuation
+and ReferenceNature state ownership, extend public-history conditioning
+from fixed H8 fixtures to authentic supported entry states, then audit
+all remaining mechanics and source-law provenance. Continue labeling
+`native-structure/prototype-RNG` entries separately from
+`native-combat-RNG` entries. No training result can establish native
+probability fidelity merely by evaluating against the same emulator.
+
 ## Responsibility boundaries
 
 | Owner | Authoritative responsibility | May contain information hidden from player? |
