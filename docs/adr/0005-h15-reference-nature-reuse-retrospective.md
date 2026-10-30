@@ -5,6 +5,31 @@
 - **Supersedes:** treating H15's diagnostic Python law sampler as a second authoritative Nature implementation
 - **Related:** [ADR 0004](0004-provider-owned-stochastic-state-and-chance-law.md), [canonical architecture](../UNIFIED_STOCHASTIC_ARCHITECTURE.md)
 
+## H15 training priority after the 2026-10-30 correction
+
+**AI-side canonical plan:** [H15 search-training execution](https://github.com/nn971/sts2-ai/blob/research/h15-experimental-search-20261030/docs/H15_SEARCH_TRAINING_PLAN.md).
+
+The previously assumed dependency "*certified native-run full-history
+posterior first, then any search-guided training*" was incorrect. The
+emulator's existing Nature/ReferenceNature and declared Chance Laws already
+provide the stochastic reference model for a versioned, supported A10 combat
+search-training slice. An exact native-run posterior and source-game RNG parity
+are *separate research refinements*, not gates to emulator-relative training.
+
+The next cross-repository deliverable is a complete existing-ReferenceNature
+neural PUCT → real visit targets and terminal rewards → policy/value update
+→ renewed search loop. Preserve provider-owned hidden deck constraints and
+honestly label root-conditioned search as an approximate/possibly privileged
+teacher. Where a native-exact entry has already committed hidden order, choose
+an existing supported Nature-mode initialization path; do not invent a new
+sampler to conceal an adapter/continuation gap.
+
+**Change control:** If existing tests, old H15 milestone notes, this ADR or
+any architectural interpretation conflicts with the canonical H15 training
+plan, explicitly tell the user the exact conflict and recommended resolution
+*before changing goals, adding a blocking gate, or rerouting effort*. Update
+both repositories' canonical entry points when the user changes the decision.
+
 ## The error and its consequences
 
 While extending H15 combat search, we repeatedly reasoned from the latest
