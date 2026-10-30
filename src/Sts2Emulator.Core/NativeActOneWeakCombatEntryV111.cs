@@ -23,6 +23,9 @@ public static class NativeActOneWeakCombatEntryV111
             ["proto.encounter.corpse_slugs_weak"] = "CorpseSlugsWeak"
         };
 
+    internal static string? ResearchNativeEntry(string encounterId) =>
+        NativeNames.TryGetValue(encounterId, out var entry) ? entry : null;
+
     public static string[] SupportedEncounterIds =>
         NativeNames.Keys.Order(StringComparer.Ordinal).ToArray();
 
