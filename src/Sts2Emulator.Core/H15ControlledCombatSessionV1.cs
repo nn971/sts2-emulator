@@ -35,15 +35,22 @@ public sealed record H15ControlledCombatSessionV1(
         var encounterId = source.World?.EncounterHistory?.LastOrDefault() ??
             throw new NotSupportedException(
                 "Combat entry lacks a committed encounter identity.");
-        var nativeEntry = NativeActOneWeakCombatEntryV111
+        // This source is the native-structure *prototype-RNG* simulator.
+        // The native formation names are consulted only for encounter
+        // coverage. They must not select native-specific slot rewrites:
+        // e.g. prototype The Kin followers already have "quick"/"dance"
+        // slots, whereas Native TheKinBoss uses "slot1"/"slot2".
+        var supported = NativeActOneWeakCombatEntryV111
                 .ResearchNativeEntry(encounterId)
             ?? NativeActOneNormalCombatEntryV111
                 .ResearchNativeEntry(encounterId)
             ?? NativeActOneEliteBossCombatEntryV111
-                .ResearchNativeEntry(encounterId)
-            ?? throw new NotSupportedException(
+                .ResearchNativeEntry(encounterId);
+        if (supported is null)
+            throw new NotSupportedException(
                 "Encounter has no pinned semantic intent mapping: " +
                 encounterId);
+        var prototypeEntry = "h15-prototype:" + encounterId;
         var candidate = H15NativeCombatEntryCandidateV1.Build(
             source, independentSeed);
         if (H15NativeCombatEntryCandidateV1.ProviderClass(source) !=
@@ -51,7 +58,7 @@ public sealed record H15ControlledCombatSessionV1(
             throw new InvalidOperationException(
                 "H15 experimental end turn lost prototype RNG provenance.");
         return new H15ControlledCombatSessionV1(
-            candidate, null, nativeEntry, 0,
+            candidate, null, prototypeEntry, 0,
             H15NativeCombatEntryCandidateV1.ModelId(source));
     }
 
