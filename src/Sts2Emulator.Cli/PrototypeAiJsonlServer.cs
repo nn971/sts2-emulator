@@ -10484,7 +10484,7 @@ internal static class PrototypeAiJsonlServer
                         var state = RequireState(request);
                         var candidate = H15NativeCombatEntryCandidateV1.Build(
                             state, RequiredString(request, "independent_seed"));
-                        var frame = environment.ObserveH8(candidate);
+                        var frame = environment.Observe(candidate);
                         var unknown = candidate.World!.Combat!.SemanticDeck!.Slots
                             .Count(slot => slot.KnownCardInstanceId is null);
                         Write(new
