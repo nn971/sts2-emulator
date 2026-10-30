@@ -10490,7 +10490,8 @@ internal static class PrototypeAiJsonlServer
                         Write(new
                         {
                             requestId, ok = true,
-                            schemaId = H15NativeCombatEntryCandidateV1.CandidateModelId,
+                            schemaId = H15NativeCombatEntryCandidateV1.ModelId(state),
+                            providerClass = H15NativeCombatEntryCandidateV1.ProviderClass(state),
                             fairContinuationCapability =
                                 H15NativeCombatEntryCandidateV1.FairSearchCapabilityId,
                             stateHandleReturned = false,
