@@ -279,7 +279,13 @@ internal static class PrototypeAiJsonlServer
                 chanceLaw = law,
                 observationHash = frame?.ObservationHash,
                 legalActions = frame?.LegalActions.Select(ActionWire).ToArray(),
-                combatExit = session.Run.Phase != RunPhase.Combat
+                combatExit = session.Run.Phase is RunPhase.Reward or RunPhase.Terminal,
+                combatOutcome = session.Run.Phase switch
+                {
+                    RunPhase.Reward => "victory",
+                    RunPhase.Terminal => "defeat",
+                    _ => (string?)null
+                }
             };
         }
 
