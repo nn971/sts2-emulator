@@ -652,16 +652,6 @@ public sealed class H8CombatRuntimeV1
     }
 
     /// <summary>
-    /// Consume consecutive reference-owned stochastic events inside the
-    /// mechanics process, stopping at the next player/terminal/unsupported
-    /// boundary. An externally controlled learned or scripted Nature provider
-    /// continues to use ChooseIntent / ChooseDrawCard instead.
-    ///
-    /// Each resolved choice still passes the same trusted H8 mechanics
-    /// resolver and appends the identical journal entry structure. Only the
-    /// reference distribution's actual random sample moves into C#.
-    /// </summary>
-    /// <summary>
     /// Resolve consecutive declared H8 laws with the common emulator-owned
     /// ReferenceNatureV111 sampler. The caller owns the immutable cursor and
     /// publishes the returned state only after the mechanics continuation.
@@ -698,6 +688,11 @@ public sealed class H8CombatRuntimeV1
         return cursor;
     }
 
+    /// <summary>
+    /// Fast event-keyed H8 reference Nature, separate from the stateful
+    /// declared-law provider. It advances source-owned mechanics and stops
+    /// before the next player or unsupported decision.
+    /// </summary>
     public int AdvanceLocalReferenceNature(
         H8BoundaryTokenV1 boundary, long seed, int maxNatureDecisions = 1200)
     {
@@ -765,6 +760,20 @@ public sealed class H8CombatRuntimeV1
     /// </summary>
     public H8CombatRuntimeV1 Fork() =>
         new(_entry, _state.Fork(), Guid.NewGuid(), _version,
+            new List<H8DecisionEntryV1>(_journal), _useM2AutomaticDraw,
+            _useNativeDrawTransition, _useNativePlayerEndTurn,
+            _useTrustedIntent);
+
+    /// <summary>
+    /// Stage a transactional update of the SAME live H8 session. This
+    /// copies mechanics and the compact journal but retains the runtime
+    /// identity so existing public boundary tokens remain valid. The JSONL
+    /// owner publishes this copy only after the ReferenceNature cursor and
+    /// projected status are both successfully computed. Unlike Fork(), this
+    /// copy must never be exposed as a second independent live handle.
+    /// </summary>
+    public H8CombatRuntimeV1 CopyForAtomicCommit() =>
+        new(_entry, _state.Fork(), _runtimeId, _version,
             new List<H8DecisionEntryV1>(_journal), _useM2AutomaticDraw,
             _useNativeDrawTransition, _useNativePlayerEndTurn,
             _useTrustedIntent);
