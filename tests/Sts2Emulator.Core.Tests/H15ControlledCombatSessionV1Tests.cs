@@ -185,6 +185,69 @@ public sealed class H15ControlledCombatSessionV1Tests
     }
 
     [Fact]
+    public void BatchedReferenceContinuationMatchesIndividualTypedChoices()
+    {
+        var source = NativeStructureEntry();
+        var start = H15ControlledCombatSessionV1.Begin(
+            source, "h15-atomic-reference-batch");
+        var legal = new PrototypeAiEnvironment().Observe(start.Run)
+            .LegalActions.Single(action => action.Kind == "end_turn");
+        H15ControlledCombatSessionV1 pending;
+        try
+        {
+            pending = start.EndTurn(legal.ActionId);
+        }
+        catch (NotSupportedException exc)
+        {
+            Assert.Contains("UNSUPPORTED_", exc.Message);
+            Assert.Equal(0L, start.DecisionVersion);
+            return;
+        }
+
+        if (pending.BoundaryKind is not ("enemy_action" or "enemy_intent"
+                or "draw_card" or "random_target"))
+        {
+            Assert.Contains(pending.BoundaryKind,
+                new[] { "player", "combat_exit", "unsupported" });
+            return;
+        }
+        var pendingHash = CanonicalJson.Sha256(pending.Run);
+        var initialCursor = pending.NatureState;
+        try
+        {
+            var (batched, receipts) =
+                pending.AdvanceReferenceToPlayer(1200);
+            Assert.NotEmpty(receipts);
+            Assert.Contains(batched.BoundaryKind,
+                new[] { "player", "combat_exit" });
+            var individual = pending;
+            foreach (var receipt in receipts)
+            {
+                var (next, chosen) = individual.ChooseReference();
+                Assert.Equal(receipt.LawId, chosen.LawId);
+                Assert.Equal(receipt.EventId, chosen.EventId);
+                Assert.Equal(receipt.OutcomeId, chosen.OutcomeId);
+                individual = next;
+            }
+            Assert.Equal(batched.DecisionVersion, individual.DecisionVersion);
+            Assert.Equal(batched.NatureState, individual.NatureState);
+            Assert.Equal(CanonicalJson.Sha256(batched.Run),
+                CanonicalJson.Sha256(individual.Run));
+            Assert.Equal(initialCursor.SampleCount + receipts.Length,
+                batched.NatureState.SampleCount);
+        }
+        catch (NotSupportedException exc)
+        {
+            Assert.Contains("UNSUPPORTED_", exc.Message);
+        }
+        // Whether a batch completes or is rejected, its input is immutable.
+        Assert.Equal(pendingHash, CanonicalJson.Sha256(pending.Run));
+        Assert.Equal(initialCursor, pending.NatureState);
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            pending.AdvanceReferenceToPlayer(0));
+    }
+
+    [Fact]
     public void RealEndTurnIsEitherTypedOrExplicitlyUnsupported()
     {
         var source = NativeStructureEntry();
