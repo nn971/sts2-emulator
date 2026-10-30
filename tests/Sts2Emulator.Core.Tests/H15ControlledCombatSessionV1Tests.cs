@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Sts2Emulator.Core;
 using Xunit;
 
@@ -46,6 +47,52 @@ public sealed class H15ControlledCombatSessionV1Tests
         Assert.Throws<InvalidOperationException>(() =>
             session.EndTurn("not-a-legal-end-turn"));
         Assert.Equal(0L, session.DecisionVersion);
+    }
+
+    [Fact]
+    public void AuditedStarterCardAdvancesRealPlayerStateBeforeEndTurn()
+    {
+        var source = NativeStructureEntry();
+        var originalHash = CanonicalJson.Sha256(source);
+        var session = H15ControlledCombatSessionV1.Begin(
+            source, "h15-guarded-player-card-seed");
+        var environment = new PrototypeAiEnvironment();
+        var legal = environment.Observe(session.Run).LegalActions;
+        var cardAction = legal.FirstOrDefault(action =>
+        {
+            if (action.Kind != "play_card")
+                return false;
+            var payload = action.Payload.Deserialize<PlayCardPayload>();
+            return payload is not null &&
+                session.Run.World!.Combat!.Cards.Any(card =>
+                    card.InstanceId == payload.CardInstanceId &&
+                    card.CardId is "proto.silent.strike" or
+                        "proto.silent.defend" or "proto.silent.neutralize");
+        });
+        Assert.NotNull(cardAction);
+        var after = session.PlayerAction(cardAction!.ActionId);
+        Assert.Equal(1L, after.DecisionVersion);
+        Assert.Equal("player", after.BoundaryKind);
+        Assert.NotEqual(CanonicalJson.Sha256(session.Run),
+            CanonicalJson.Sha256(after.Run));
+        Assert.Equal(originalHash, CanonicalJson.Sha256(source));
+        Assert.Equal(
+            CanonicalJson.Sha256(session.Run.World!.Combat!.SemanticDeck),
+            CanonicalJson.Sha256(after.Run.World!.Combat!.SemanticDeck));
+        Assert.Equal("unavailable",
+            H15ControlledCombatSessionV1.FairContinuationCapability);
+
+        var endTurn = environment.Observe(after.Run).LegalActions
+            .Single(action => action.Kind == "end_turn");
+        try
+        {
+            var next = after.EndTurn(endTurn.ActionId);
+            Assert.Equal(2L, next.DecisionVersion);
+        }
+        catch (NotSupportedException failure)
+        {
+            Assert.Contains("UNSUPPORTED_", failure.Message);
+        }
     }
 
     [Fact]
