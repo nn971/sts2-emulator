@@ -37,7 +37,7 @@ The scaffold therefore represents a stream generically as:
 - opaque state bytes;
 - optional call count for diagnostics.
 
-We intentionally avoid hard-coding a guessed PRNG algorithm into the starter repo.
+The native v0.111.0 provider now implements the audited source RNG codec explicitly; these generic stream fields describe transport and snapshot ownership, **not** an absence of an implemented native algorithm. The retained six-stream `PrototypeRng` is a separate approximation, and exact call-site/stream parity is still incomplete.
 
 ## Forking
 
