@@ -10555,8 +10555,9 @@ internal static class PrototypeAiJsonlServer
                         var session = H15ControlledCombatSessionV1.Begin(
                             source, RequiredString(request, "independent_seed"));
                         var handle = "h15-" + nextH15Handle++;
+                        var status = H15Status(session, handle, requestId);
                         h15States.Add(handle, session);
-                        Write(H15Status(session, handle, requestId));
+                        Write(status);
                         break;
                     }
 
@@ -10579,8 +10580,9 @@ internal static class PrototypeAiJsonlServer
                             RequiredString(request, "action_id"));
                         // Publish only after the complete guarded mechanics
                         // action has succeeded without an unowned RNG site.
+                        var status = H15Status(next, handle, requestId);
                         h15States[handle] = next;
-                        Write(H15Status(next, handle, requestId));
+                        Write(status);
                         break;
                     }
 
@@ -10599,8 +10601,9 @@ internal static class PrototypeAiJsonlServer
                             throw new ArgumentException("Invalid H15 Chance Law.");
                         var next = session.Choose(
                             law, RequiredString(request, "outcome_id"));
+                        var status = H15Status(next, handle, requestId);
                         h15States[handle] = next;
-                        Write(H15Status(next, handle, requestId));
+                        Write(status);
                         break;
                     }
 
