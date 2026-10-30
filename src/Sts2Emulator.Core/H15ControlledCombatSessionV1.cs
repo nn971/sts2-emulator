@@ -211,10 +211,10 @@ public sealed record H15ControlledCombatSessionV1(
             throw new InvalidDataException(
                 "H15 experimental reference law has invalid probability provenance.");
         var selection = ReferenceNatureV111.SampleValidated(law, NatureState);
-        // Choose validates the exact event/law, outcome support, and source
-        // mechanics. A failure leaves this immutable session and its
-        // reference cursor unchanged.
-        var next = Choose(law, selection.OutcomeId);
+        // SampleValidated has already checked the exact law/support.
+        // Resolve that same law once; no redundant law query/hash.
+        // A mechanics failure leaves the original immutable cursor intact.
+        var next = ResolveDeclaredChoice(law, selection.OutcomeId);
         return (next with { NatureState = selection.NextState }, selection);
     }
 
@@ -233,6 +233,12 @@ public sealed record H15ControlledCombatSessionV1(
             CanonicalJson.Sha256(expected) != CanonicalJson.Sha256(advertised))
             throw new InvalidOperationException(
                 "H15 stale or mismatched Chance Law.");
+        return ResolveDeclaredChoice(expected, outcomeId);
+    }
+
+    private H15ControlledCombatSessionV1 ResolveDeclaredChoice(
+        ChanceLawV111 expected, string outcomeId)
+    {
         if (!expected.Outcomes.Any(choice => choice.OutcomeId == outcomeId))
             throw new InvalidOperationException(
                 "Nature selected an outcome outside the declared support.");
