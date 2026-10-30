@@ -167,6 +167,33 @@ public sealed class ChanceLawV111Tests
     }
 
     [Fact]
+    public void ExperimentalLawDowngradeRecomputesOneCanonicalIdentity()
+    {
+        var original = ChanceLawEngineV111.QueryIntent(
+            IntentEvent("h15-downgrade-event", "boundary"));
+        var originalFingerprint = CanonicalJson.Sha256(original);
+        var replacement = original.Outcomes
+            .Select(item => item with { Weight = 1L }).ToArray();
+        var downgraded = original.WithUnverifiedProvenance(
+            "h15-independent-model-unverified", replacement);
+
+        downgraded.Validate();
+        Assert.Equal(ChanceLawV111.UnverifiedStatus,
+            downgraded.ProbabilityStatus);
+        Assert.Equal("h15-independent-model-unverified",
+            downgraded.ProbabilityProvenance);
+        Assert.Equal(3L, downgraded.TotalWeight);
+        Assert.NotEqual(original.LawId, downgraded.LawId);
+        Assert.NotEqual(original.SupportFingerprint,
+            downgraded.SupportFingerprint);
+        Assert.Equal(originalFingerprint, CanonicalJson.Sha256(original));
+        Assert.Equal(
+            downgraded.ComputeCanonicalLawId(), downgraded.LawId);
+        Assert.Throws<InvalidDataException>(() =>
+            (downgraded with { LawId = original.LawId }).Validate());
+    }
+
+    [Fact]
     public void IntentCandidateReorderingPreservesIdsAndInvalidatesSupportFingerprint()
     {
         var original = IntentEvent("intent-order-a", "boundary-a");
