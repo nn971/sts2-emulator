@@ -63,6 +63,11 @@ internal static class PrototypeAiJsonlServer
         // the old semantic protocol and fingerprint handles stay untouched.
         var h8States = new Dictionary<string, H8CombatRuntimeV1>(
             StringComparer.Ordinal);
+        // Declared-law H8 sessions own the same immutable ReferenceNature
+        // cursor as the semantic sessions, keyed by their opaque H8 handle.
+        var h8DeclaredReferenceStates =
+            new Dictionary<string, ReferenceNatureStateV111>(
+                StringComparer.Ordinal);
         long nextH8Handle = 1;
         // H15 experimental continuations are isolated from ordinary
         // player state handles and certified H8 Nature sessions.
@@ -247,6 +252,15 @@ internal static class PrototypeAiJsonlServer
                     "Unknown H8 combat handle: " + handle);
         }
 
+        void RejectExternalNatureForDeclaredH8(JsonElement request)
+        {
+            var handle = RequiredString(request, "h8_handle");
+            if (h8DeclaredReferenceStates.ContainsKey(handle))
+                throw new InvalidOperationException(
+                    "H8 declared ReferenceNature session owns all pending " +
+                    "chance selections; use h8_step or fork the session.");
+        }
+
         H15ControlledCombatSessionV1 RequireH15(JsonElement request)
         {
             var handle = RequiredString(request, "h15_handle");
@@ -258,7 +272,9 @@ internal static class PrototypeAiJsonlServer
 
         object H15Status(
             H15ControlledCombatSessionV1 session,
-            string handle, object? requestId)
+            string handle, object? requestId,
+            ReferenceNatureSelectionV111? referenceSelection = null,
+            IReadOnlyList<ReferenceNatureSelectionV111>? referenceSelections = null)
         {
             var kind = session.BoundaryKind;
             var law = kind is "enemy_action" or "enemy_intent"
@@ -266,6 +282,9 @@ internal static class PrototypeAiJsonlServer
                     ? session.PendingLaw() : null;
             var frame = kind == "player"
                 ? environment.Observe(session.Run) : null;
+            // H9 terminal reward needs only four scalar fields. Publish
+            // these at genuine combat exit without constructing/serializing
+            // a complete deck, map, reward menu and terminal observation.
             return new
             {
                 requestId, ok = true,
@@ -276,6 +295,27 @@ internal static class PrototypeAiJsonlServer
                 fairContinuationCapability =
                     H15ControlledCombatSessionV1.FairContinuationCapability,
                 candidateModelId = session.CandidateModelId,
+                // Reference Nature's cursor never enters the player
+                // observation. Report only the replayable selected event
+                // for a reference-owned choice, never the private seed.
+                referenceNatureSelection = referenceSelection is null
+                    ? null : new
+                    {
+                        referenceSelection.LawId,
+                        referenceSelection.EventId,
+                        referenceSelection.OutcomeId,
+                        referenceSelection.OutcomeIndex,
+                        providerId = ReferenceNatureV111.ProviderId
+                    },
+                referenceNatureSelections = referenceSelections?.Select(choice => new
+                {
+                    choice.LawId,
+                    choice.EventId,
+                    choice.OutcomeId,
+                    choice.OutcomeIndex,
+                    providerId = ReferenceNatureV111.ProviderId
+                }).ToArray(),
+                referenceNatureSampleCount = session.NatureState.SampleCount,
                 chanceLaw = law,
                 observationHash = frame?.ObservationHash,
                 // The exact public fair-policy projection consumed by the
@@ -293,6 +333,19 @@ internal static class PrototypeAiJsonlServer
                 },
                 exitHp = session.Run.Phase is RunPhase.Reward or RunPhase.Terminal
                     ? session.Run.Player.Hp : (int?)null,
+                // The authoritative H9 total-nonminion-HP accounting
+                // is source-owned and terminal-only; no private RNG escapes.
+                combatExitH9Reward = kind == "combat_exit"
+                    ? new
+                    {
+                        hp = session.Run.Player.Hp,
+                        maxHp = session.Run.Player.MaxHp,
+                        defeatTotalNonMinionEnemyHp =
+                            session.Run.World?.DefeatTotalNonMinionEnemyHp,
+                        defeatRemainingNonMinionEnemyHp =
+                            session.Run.World?.DefeatRemainingNonMinionEnemyHp
+                    }
+                    : null,
                 combatTurn = session.Run.World?.Combat?.Turn
             };
         }
@@ -6764,15 +6817,36 @@ internal static class PrototypeAiJsonlServer
                             useNativeDrawTransition: H8Flag("use_native_draw_transition"),
                             useNativePlayerEndTurn: H8Flag("use_native_player_end_turn"),
                             useTrustedIntent: H8Flag("use_trusted_intent"));
-                        // Opt in to local reference Nature for training
-                        // rollouts; external learned/scripted providers still
-                        // receive explicit unresolved boundaries by default.
-                        if (request.TryGetProperty("local_reference_seed", out _))
+                        // H8 local event-keyed reference and the shared
+                        // stateful ReferenceNature declared-law sampler are
+                        // mutually exclusive. Neither samples in Python.
+                        var hasLocal = request.TryGetProperty(
+                            "local_reference_seed", out _);
+                        var hasDeclared = request.TryGetProperty(
+                            "declared_reference_seed", out _);
+                        if (hasLocal && hasDeclared)
+                            throw new ArgumentException(
+                                "H8 reference session accepts exactly one provider.");
+                        ReferenceNatureStateV111? declaredCursor = null;
+                        if (hasDeclared)
+                        {
+                            var seed = RequiredLong(request, "declared_reference_seed");
+                            if (seed < 0)
+                                throw new ArgumentOutOfRangeException(
+                                    "declared_reference_seed");
+                            declaredCursor = runtime.AdvanceDeclaredReferenceNature(
+                                runtime.Boundary,
+                                ReferenceNatureStateV111.Create((ulong)seed),
+                                OptionalInt(request, "max_nature_decisions") ?? 1200);
+                        }
+                        else if (hasLocal)
                             runtime.AdvanceLocalReferenceNature(
                                 runtime.Boundary,
                                 RequiredLong(request, "local_reference_seed"),
                                 OptionalInt(request, "max_nature_decisions") ?? 1200);
                         var handle = StoreH8(runtime);
+                        if (declaredCursor is not null)
+                            h8DeclaredReferenceStates.Add(handle, declaredCursor);
                         Write(new { requestId, ok = true, result = H8Status(
                             runtime, handle,
                             OptionalBool(request, "include_player_frame")) });
@@ -6851,27 +6925,48 @@ internal static class PrototypeAiJsonlServer
 
                     case "h8_step":
                     {
-                        var runtime = RequireH8(request);
+                        var owned = RequireH8(request);
+                        var h8Handle = RequiredString(request, "h8_handle");
+                        var declared = h8DeclaredReferenceStates.TryGetValue(
+                            h8Handle, out var declaredCursor);
+                        if (declared &&
+                            request.TryGetProperty("local_reference_seed", out _))
+                            throw new InvalidOperationException(
+                                "H8 declared and local ReferenceNature cannot mix.");
+                        // Declared-law steps commit mechanics and provider
+                        // cursor as one transaction. A failed effect or status
+                        // projection leaves the old session untouched.
+                        var runtime = declared
+                            ? owned.CopyForAtomicCommit() : owned;
                         runtime.ChoosePlayerAction(
                             RequiredH8Boundary(request),
                             RequiredString(request, "action_id"));
-                        // One request advances the player decision and every
-                        // following reference-owned Nature event, stopping
-                        // before the next external player/choice boundary.
-                        // No separate law/status/RPC needed per physical draw.
-                        if (request.TryGetProperty("local_reference_seed", out _))
+                        ReferenceNatureStateV111? nextCursor = null;
+                        if (declared)
+                            nextCursor = runtime.AdvanceDeclaredReferenceNature(
+                                runtime.Boundary, declaredCursor!,
+                                OptionalInt(request, "max_nature_decisions") ?? 1200);
+                        else if (request.TryGetProperty(
+                            "local_reference_seed", out _))
                             runtime.AdvanceLocalReferenceNature(
                                 runtime.Boundary,
                                 RequiredLong(request, "local_reference_seed"),
                                 OptionalInt(request, "max_nature_decisions") ?? 1200);
-                        Write(new { requestId, ok = true, result = H8Status(
-                                runtime, RequiredString(request, "h8_handle"),
-                                OptionalBool(request, "include_player_frame")) });
+                        var status = H8Status(
+                            runtime, h8Handle,
+                            OptionalBool(request, "include_player_frame"));
+                        if (declared)
+                        {
+                            h8States[h8Handle] = runtime;
+                            h8DeclaredReferenceStates[h8Handle] = nextCursor!;
+                        }
+                        Write(new { requestId, ok = true, result = status });
                         break;
                     }
 
                     case "h8_resolve_chance_law_outcome":
                     {
+                        RejectExternalNatureForDeclaredH8(request);
                         // The emulator owns the conditional distribution.
                         // Nature selects only one advertised outcome ID; the
                         // runtime validates law identity, version and support
@@ -6898,6 +6993,7 @@ internal static class PrototypeAiJsonlServer
 
                     case "h8_resolve_intent":
                     {
+                        RejectExternalNatureForDeclaredH8(request);
                         var runtime = RequireH8(request);
                         runtime.ChooseIntent(
                             RequiredH8Boundary(request),
@@ -6912,6 +7008,7 @@ internal static class PrototypeAiJsonlServer
 
                     case "h8_resolve_random_target":
                     {
+                        RejectExternalNatureForDeclaredH8(request);
                         var runtime = RequireH8(request);
                         runtime.ChooseRandomTarget(
                             RequiredH8Boundary(request),
@@ -6927,6 +7024,7 @@ internal static class PrototypeAiJsonlServer
 
                     case "h8_resolve_draw_card":
                     {
+                        RejectExternalNatureForDeclaredH8(request);
                         var runtime = RequireH8(request);
                         runtime.ChooseDrawCard(
                             RequiredH8Boundary(request),
@@ -6941,8 +7039,13 @@ internal static class PrototypeAiJsonlServer
 
                     case "h8_fork":
                     {
+                        var parentHandle = RequiredString(request, "h8_handle");
                         var child = RequireH8(request).Fork();
                         var handle = StoreH8(child);
+                        if (h8DeclaredReferenceStates.TryGetValue(
+                                parentHandle, out var parentCursor))
+                            h8DeclaredReferenceStates.Add(
+                                handle, parentCursor.Fork());
                         Write(new { requestId, ok = true, result = H8Status(
                             child, handle,
                             OptionalBool(request, "include_player_frame")) });
@@ -6989,7 +7092,9 @@ internal static class PrototypeAiJsonlServer
                                 string.IsNullOrWhiteSpace(item.GetString()))
                                 throw new ArgumentException(
                                     "Invalid H8 handle.");
-                            if (h8States.Remove(item.GetString()!))
+                            var h8Handle = item.GetString()!;
+                            h8DeclaredReferenceStates.Remove(h8Handle);
+                            if (h8States.Remove(h8Handle))
                                 released++;
                         }
                         Write(new { requestId, ok = true, released });
@@ -10627,6 +10732,45 @@ internal static class PrototypeAiJsonlServer
                         var next = session.Choose(
                             law, RequiredString(request, "outcome_id"));
                         var status = H15Status(next, handle, requestId);
+                        h15States[handle] = next;
+                        Write(status);
+                        break;
+                    }
+
+                    case "h15_experimental_reference_choose":
+                    {
+                        var handle = RequiredString(request, "h15_handle");
+                        var session = RequireH15(request);
+                        if (RequiredLong(request, "version") != session.DecisionVersion)
+                            throw new InvalidOperationException(
+                                "Stale H15 experimental reference session version.");
+                        // Reuse the emulator-owned ReferenceNature sampler,
+                        // not a second Python weighted-roulette implementation.
+                        var (next, selection) = session.ChooseReference();
+                        // Status projection must succeed before the old
+                        // session or its Nature cursor is replaced.
+                        var status = H15Status(
+                            next, handle, requestId, selection);
+                        h15States[handle] = next;
+                        Write(status);
+                        break;
+                    }
+
+                    case "h15_experimental_reference_advance":
+                    {
+                        var handle = RequiredString(request, "h15_handle");
+                        var session = RequireH15(request);
+                        if (RequiredLong(request, "version") != session.DecisionVersion)
+                            throw new InvalidOperationException(
+                                "Stale H15 experimental reference session version.");
+                        // The immutable session is staged locally. One
+                        // response owns all declared ReferenceNature events;
+                        // any failure discards mechanics and Nature cursor.
+                        var (next, selections) = session.AdvanceReferenceToPlayer(
+                            OptionalInt(request, "max_nature_decisions") ?? 1200);
+                        var status = H15Status(
+                            next, handle, requestId,
+                            referenceSelections: selections);
                         h15States[handle] = next;
                         Write(status);
                         break;

@@ -96,6 +96,52 @@ public sealed class H15ControlledCombatSessionV1Tests
     }
 
     [Fact]
+    public void AuditedPotionUsesSharedSemanticActionAndPreservesNatureCursor()
+    {
+        var session = H15ControlledCombatSessionV1.Begin(
+            NativeStructureEntry(), "h15-shared-potion-adapter");
+        var empty = PrototypeJson.EmptyObject();
+        var slots = (PotionInstance?[])session.Run.Player.PotionSlots.Clone();
+        slots[0] = new PotionInstance("proto.potion.block", empty);
+        var combat = session.Run.World!.Combat!;
+        var withPotion = session with
+        {
+            Run = session.Run with
+            {
+                Player = session.Run.Player with { PotionSlots = slots },
+                World = session.Run.World with
+                {
+                    Combat = combat with
+                    {
+                        Potions = (combat.Potions ??
+                            Array.Empty<CombatPotionState>()).Append(
+                            new CombatPotionState(
+                                0, "proto.potion.block", empty)).ToArray()
+                    }
+                }
+            }
+        };
+        PrototypeStateInvariants.Validate(withPotion.Run);
+        var action = new PrototypeAiEnvironment().Observe(withPotion.Run)
+            .LegalActions.Single(a => a.Kind == "use_potion" &&
+                a.Payload.Deserialize<UsePotionPayload>()!.Slot == 0);
+        var result = withPotion.PlayerAction(action.ActionId);
+        Assert.Equal("player", result.BoundaryKind);
+        Assert.Equal(1L, result.DecisionVersion);
+        Assert.Null(result.Run.Player.PotionSlots[0]);
+        Assert.Equal(0L, result.NatureState.SampleCount);
+        Assert.Equal(
+            CanonicalJson.Sha256(withPotion.Run.World!.Combat!.SemanticDeck),
+            CanonicalJson.Sha256(result.Run.World!.Combat!.SemanticDeck));
+        // The shared replay contract, rather than a second H15 potion
+        // resolver, is authoritative for the same source action.
+        var shared = SemanticPlayerActionEngineV111.Step(
+            withPotion.Run, action.ActionId);
+        Assert.Equal(CanonicalJson.Sha256(result.Run),
+            CanonicalJson.Sha256(shared.Run));
+    }
+
+    [Fact]
     public void KillingCardCanPublishGenuineCombatRewardBoundary()
     {
         // Test-only low-HP mechanics setup from a real native-structure
@@ -139,6 +185,69 @@ public sealed class H15ControlledCombatSessionV1Tests
     }
 
     [Fact]
+    public void BatchedReferenceContinuationMatchesIndividualTypedChoices()
+    {
+        var source = NativeStructureEntry();
+        var start = H15ControlledCombatSessionV1.Begin(
+            source, "h15-atomic-reference-batch");
+        var legal = new PrototypeAiEnvironment().Observe(start.Run)
+            .LegalActions.Single(action => action.Kind == "end_turn");
+        H15ControlledCombatSessionV1 pending;
+        try
+        {
+            pending = start.EndTurn(legal.ActionId);
+        }
+        catch (NotSupportedException exc)
+        {
+            Assert.Contains("UNSUPPORTED_", exc.Message);
+            Assert.Equal(0L, start.DecisionVersion);
+            return;
+        }
+
+        if (pending.BoundaryKind is not ("enemy_action" or "enemy_intent"
+                or "draw_card" or "random_target"))
+        {
+            Assert.Contains(pending.BoundaryKind,
+                new[] { "player", "combat_exit", "unsupported" });
+            return;
+        }
+        var pendingHash = CanonicalJson.Sha256(pending.Run);
+        var initialCursor = pending.NatureState;
+        try
+        {
+            var (batched, receipts) =
+                pending.AdvanceReferenceToPlayer(1200);
+            Assert.NotEmpty(receipts);
+            Assert.Contains(batched.BoundaryKind,
+                new[] { "player", "combat_exit" });
+            var individual = pending;
+            foreach (var receipt in receipts)
+            {
+                var (next, chosen) = individual.ChooseReference();
+                Assert.Equal(receipt.LawId, chosen.LawId);
+                Assert.Equal(receipt.EventId, chosen.EventId);
+                Assert.Equal(receipt.OutcomeId, chosen.OutcomeId);
+                individual = next;
+            }
+            Assert.Equal(batched.DecisionVersion, individual.DecisionVersion);
+            Assert.Equal(batched.NatureState, individual.NatureState);
+            Assert.Equal(CanonicalJson.Sha256(batched.Run),
+                CanonicalJson.Sha256(individual.Run));
+            Assert.Equal(initialCursor.SampleCount + receipts.Length,
+                batched.NatureState.SampleCount);
+        }
+        catch (NotSupportedException exc)
+        {
+            Assert.Contains("UNSUPPORTED_", exc.Message);
+        }
+        // Whether a batch completes or is rejected, its input is immutable.
+        Assert.Equal(pendingHash, CanonicalJson.Sha256(pending.Run));
+        Assert.Equal(initialCursor, pending.NatureState);
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            pending.AdvanceReferenceToPlayer(0));
+    }
+
+    [Fact]
     public void RealEndTurnIsEitherTypedOrExplicitlyUnsupported()
     {
         var source = NativeStructureEntry();
@@ -166,6 +275,30 @@ public sealed class H15ControlledCombatSessionV1Tests
                         law with { EventId = "stale-event" },
                         law.Outcomes[0].OutcomeId));
                 Assert.Equal(original, advanced.DecisionVersion);
+
+                // H15 consumes the existing ReferenceNatureV111 sampler.
+                // Sampler state and mechanics advance atomically and the
+                // explicit external (scripted/learned) path remains separate.
+                var (referenceNext, selection) = advanced.ChooseReference();
+                Assert.Equal(law.LawId, selection.LawId);
+                Assert.Equal(law.EventId, selection.EventId);
+                Assert.Contains(law.Outcomes,
+                    outcome => outcome.OutcomeId == selection.OutcomeId);
+                Assert.Equal(0L, advanced.NatureState.SampleCount);
+                Assert.Equal(1L, referenceNext.NatureState.SampleCount);
+                Assert.Equal(original + 1, referenceNext.DecisionVersion);
+                var (repeatedNext, repeatedSelection) =
+                    advanced.ChooseReference();
+                Assert.Equal(selection.OutcomeId, repeatedSelection.OutcomeId);
+                Assert.Equal(
+                    CanonicalJson.Sha256(referenceNext.Run),
+                    CanonicalJson.Sha256(repeatedNext.Run));
+                var scriptedNext = advanced.Choose(
+                    law, selection.OutcomeId);
+                Assert.Equal(0L, scriptedNext.NatureState.SampleCount);
+                Assert.Equal(
+                    CanonicalJson.Sha256(referenceNext.Run),
+                    CanonicalJson.Sha256(scriptedNext.Run));
             }
             else
                 Assert.Contains(advanced.BoundaryKind,

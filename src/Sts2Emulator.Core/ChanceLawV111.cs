@@ -360,6 +360,55 @@ public sealed record ChanceLawV111(
         Outcomes = (ChanceLawOutcomeV111[])Outcomes.Clone()
     };
 
+    /// <summary>
+    /// One canonical law identity for creation, validation, and changes
+    /// to the distribution's declared provenance/support.
+    /// </summary>
+    internal string ComputeCanonicalLawId() => CanonicalJson.Sha256(new
+    {
+        SchemaId,
+        SiteId,
+        OperationKind,
+        OwnerId,
+        Ordinal,
+        SupportFingerprint,
+        ConditioningPolicyId,
+        ConditioningFingerprint,
+        ProbabilityStatus,
+        ProbabilityProvenance
+    });
+
+    /// <summary>
+    /// Downgrade a declared law to an explicitly unverified conditional
+    /// model, optionally replacing its weights. Used for a legitimate
+    /// model change without incorrectly retaining source-verified status
+    /// or the old law fingerprint. Never upgrade provenance through
+    /// this adapter.
+    /// </summary>
+    public ChanceLawV111 WithUnverifiedProvenance(
+        string provenance, ChanceLawOutcomeV111[]? replacement = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(provenance);
+        Validate();
+        var outcomes = (ChanceLawOutcomeV111[])
+            (replacement ?? Outcomes).Clone();
+        var downgraded = this with
+        {
+            Outcomes = outcomes,
+            TotalWeight = outcomes.Aggregate(0L,
+                (total, outcome) => checked(total + outcome.Weight)),
+            SupportFingerprint = CanonicalJson.Sha256(outcomes),
+            ProbabilityStatus = UnverifiedStatus,
+            ProbabilityProvenance = provenance
+        };
+        downgraded = downgraded with
+        {
+            LawId = downgraded.ComputeCanonicalLawId()
+        };
+        downgraded.Validate();
+        return downgraded;
+    }
+
     public void Validate()
     {
         if (SchemaId != CurrentSchemaId ||
@@ -398,20 +447,7 @@ public sealed record ChanceLawV111(
             throw new InvalidDataException(
                 "A source-verified Chance Law must cover the complete Native 53-bit input grid or encode one deterministic outcome.");
 
-        var expectedLawId = CanonicalJson.Sha256(new
-        {
-            SchemaId,
-            SiteId,
-            OperationKind,
-            OwnerId,
-            Ordinal,
-            SupportFingerprint,
-            ConditioningPolicyId,
-            ConditioningFingerprint,
-            ProbabilityStatus,
-            ProbabilityProvenance
-        });
-        if (LawId != expectedLawId)
+        if (LawId != ComputeCanonicalLawId())
             throw new InvalidDataException("Chance Law identifier is inconsistent.");
     }
 }
@@ -6290,25 +6326,13 @@ public static partial class ChanceLawEngineV111
         var totalWeight = outcomes.Aggregate(0L,
             (total, outcome) => checked(total + outcome.Weight));
         var supportFingerprint = CanonicalJson.Sha256(outcomes);
-        var lawId = CanonicalJson.Sha256(new
-        {
-            SchemaId = ChanceLawV111.CurrentSchemaId,
-            SiteId = siteId,
-            OperationKind = operationKind,
-            OwnerId = ownerId,
-            Ordinal = ordinal,
-            SupportFingerprint = supportFingerprint,
-            ConditioningPolicyId = conditioningPolicyId,
-            ConditioningFingerprint = conditioningFingerprint,
-            ProbabilityStatus = probabilityStatus,
-            ProbabilityProvenance = probabilityProvenance
-        });
         var law = new ChanceLawV111(
-            ChanceLawV111.CurrentSchemaId, lawId, eventId, siteId,
+            ChanceLawV111.CurrentSchemaId, "", eventId, siteId,
             operationKind, ownerId, ordinal, supportFingerprint,
             conditioningPolicyId, conditioningFingerprint,
             probabilityStatus, probabilityProvenance,
             outcomes, totalWeight);
+        law = law with { LawId = law.ComputeCanonicalLawId() };
         law.Validate();
         return law;
     }

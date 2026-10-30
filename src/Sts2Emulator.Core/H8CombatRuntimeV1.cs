@@ -261,13 +261,11 @@ public sealed class H8CombatRuntimeV1
     public object DescribePendingReferenceLaw()
     {
         using var scope = H8HotPathProfilerV1.Begin("h8.chance_law.total");
+        var declaredLaw = CurrentDeclaredReferenceLaw();
         if (HasPendingCardDraw && CurrentDrawCursor() is { } cursor)
         {
             var drawn = cursor.Event;
-            var deck = _state.Run.World?.Combat?.SemanticDeck ??
-                throw new InvalidDataException(
-                    "H8 reference draw lacks a provider-owned semantic deck.");
-            var law = ChanceLawEngineV111.QueryDraw(deck);
+            var law = declaredLaw;
             return new
             {
                 kind = "draw_card",
@@ -294,7 +292,7 @@ public sealed class H8CombatRuntimeV1
                     _state,
                     _pendingIntentPilotFingerprint ??= _state.Fingerprint);
             var support = evt.Support;
-            var law = ChanceLawEngineV111.QueryIntent(evt);
+            var law = declaredLaw;
             return new
             {
                 kind = "enemy_intent",
@@ -318,7 +316,7 @@ public sealed class H8CombatRuntimeV1
         {
             var target = _state.TargetPending ??
                 throw new InvalidDataException("H8 random target event is missing.");
-            var targetLaw = ChanceLawEngineV111.QueryTarget(target);
+            var targetLaw = declaredLaw;
             return new
             {
                 kind = "random_target",
@@ -562,6 +560,40 @@ public sealed class H8CombatRuntimeV1
     /// The local reference hot path remains separate to avoid materializing
     /// Chance Laws for every simulated draw.
     /// </summary>
+    /// <summary>
+    /// Read the authoritative typed law for an unresolved H8 event.
+    /// Shared by external Nature choices and the engine-owned reference
+    /// sampler; neither the player actor nor Python draws this outcome.
+    /// </summary>
+    public ChanceLawV111 CurrentDeclaredReferenceLaw()
+    {
+        var kind = PendingBoundaryKind();
+        if (kind == H8PendingKindV1.DrawCard)
+        {
+            var deck = _state.Run.World?.Combat?.SemanticDeck ??
+                throw new InvalidDataException(
+                    "Pending H8 draw has no semantic deck.");
+            return ChanceLawEngineV111.QueryDraw(deck);
+        }
+        if (kind == H8PendingKindV1.EnemyIntent)
+        {
+            var evt = SemanticPilotCombatEngineV111
+                .DescribePendingIntentEvent(
+                    _state,
+                    _pendingIntentPilotFingerprint ??= _state.Fingerprint);
+            return ChanceLawEngineV111.QueryIntent(evt);
+        }
+        if (kind == H8PendingKindV1.RandomTarget)
+        {
+            var target = _state.TargetPending ??
+                throw new InvalidDataException(
+                    "Pending H8 target event is missing.");
+            return ChanceLawEngineV111.QueryTarget(target);
+        }
+        throw new InvalidOperationException(
+            "No supported H8 Nature event is currently pending.");
+    }
+
     public void ChooseChanceLawOutcome(
         H8BoundaryTokenV1 boundary, ChanceLawV111 advertisedLaw,
         string outcomeId, string providerId = "external-chance-law")
@@ -573,33 +605,7 @@ public sealed class H8CombatRuntimeV1
         advertisedLaw.Validate();
 
         var kind = PendingBoundaryKind();
-        ChanceLawV111 currentLaw;
-        if (kind == H8PendingKindV1.DrawCard)
-        {
-            var deck = _state.Run.World?.Combat?.SemanticDeck ??
-                throw new InvalidDataException(
-                    "Pending H8 draw has no semantic deck.");
-            currentLaw = ChanceLawEngineV111.QueryDraw(deck);
-        }
-        else if (kind == H8PendingKindV1.EnemyIntent)
-        {
-            var evt = SemanticPilotCombatEngineV111
-                .DescribePendingIntentEvent(
-                    _state,
-                    _pendingIntentPilotFingerprint ??= _state.Fingerprint);
-            currentLaw = ChanceLawEngineV111.QueryIntent(evt);
-        }
-        else if (kind == H8PendingKindV1.RandomTarget)
-        {
-            var target = _state.TargetPending ??
-                throw new InvalidDataException(
-                    "Pending H8 target event is missing.");
-            currentLaw = ChanceLawEngineV111.QueryTarget(target);
-        }
-        else
-            throw new InvalidOperationException(
-                "No supported H8 Nature event is currently pending.");
-
+        var currentLaw = CurrentDeclaredReferenceLaw();
         if (advertisedLaw.LawId != currentLaw.LawId ||
             advertisedLaw.EventId != currentLaw.EventId ||
             !advertisedLaw.Outcomes.SequenceEqual(currentLaw.Outcomes))
@@ -644,14 +650,46 @@ public sealed class H8CombatRuntimeV1
     }
 
     /// <summary>
-    /// Consume consecutive reference-owned stochastic events inside the
-    /// mechanics process, stopping at the next player/terminal/unsupported
-    /// boundary. An externally controlled learned or scripted Nature provider
-    /// continues to use ChooseIntent / ChooseDrawCard instead.
-    ///
-    /// Each resolved choice still passes the same trusted H8 mechanics
-    /// resolver and appends the identical journal entry structure. Only the
-    /// reference distribution's actual random sample moves into C#.
+    /// Resolve consecutive declared H8 laws with the common emulator-owned
+    /// ReferenceNatureV111 sampler. The caller owns the immutable cursor and
+    /// publishes the returned state only after the mechanics continuation.
+    /// Local event-keyed H8 reference mode remains a separate fast option.
+    /// </summary>
+    public ReferenceNatureStateV111 AdvanceDeclaredReferenceNature(
+        H8BoundaryTokenV1 boundary, ReferenceNatureStateV111 natureState,
+        int maxNatureDecisions = 1200)
+    {
+        RequireBoundary(boundary);
+        ArgumentNullException.ThrowIfNull(natureState);
+        natureState.Validate();
+        if (maxNatureDecisions <= 0)
+            throw new ArgumentOutOfRangeException(nameof(maxNatureDecisions));
+        var cursor = natureState.Fork();
+        for (var resolved = 0; resolved < maxNatureDecisions; resolved++)
+        {
+            if (PendingBoundaryKind() is not (
+                    H8PendingKindV1.DrawCard or
+                    H8PendingKindV1.EnemyIntent or
+                    H8PendingKindV1.RandomTarget))
+                return cursor;
+            var law = CurrentDeclaredReferenceLaw();
+            var selection = ReferenceNatureV111.SampleValidated(law, cursor);
+            ChooseChanceLawOutcome(
+                Boundary, law, selection.OutcomeId,
+                ReferenceNatureV111.ProviderId);
+            cursor = selection.NextState;
+        }
+        if (PendingBoundaryKind() is H8PendingKindV1.DrawCard or
+            H8PendingKindV1.EnemyIntent or H8PendingKindV1.RandomTarget)
+            throw new InvalidOperationException(
+                "H8 declared ReferenceNature exceeded its decision limit.");
+        return cursor;
+    }
+
+    /// <summary>
+    /// Fast event-keyed H8 reference Nature, separate from the stateful
+    /// declared-law provider. It advances source-owned mechanics and stops
+    /// before the next player or unsupported decision.
     /// </summary>
     public int AdvanceLocalReferenceNature(
         H8BoundaryTokenV1 boundary, long seed, int maxNatureDecisions = 1200)
@@ -720,6 +758,20 @@ public sealed class H8CombatRuntimeV1
     /// </summary>
     public H8CombatRuntimeV1 Fork() =>
         new(_entry, _state.Fork(), Guid.NewGuid(), _version,
+            new List<H8DecisionEntryV1>(_journal), _useM2AutomaticDraw,
+            _useNativeDrawTransition, _useNativePlayerEndTurn,
+            _useTrustedIntent);
+
+    /// <summary>
+    /// Stage a transactional update of the SAME live H8 session. This
+    /// copies mechanics and the compact journal but retains the runtime
+    /// identity so existing public boundary tokens remain valid. The JSONL
+    /// owner publishes this copy only after the ReferenceNature cursor and
+    /// projected status are both successfully computed. Unlike Fork(), this
+    /// copy must never be exposed as a second independent live handle.
+    /// </summary>
+    public H8CombatRuntimeV1 CopyForAtomicCommit() =>
+        new(_entry, _state.Fork(), _runtimeId, _version,
             new List<H8DecisionEntryV1>(_journal), _useM2AutomaticDraw,
             _useNativeDrawTransition, _useNativePlayerEndTurn,
             _useTrustedIntent);

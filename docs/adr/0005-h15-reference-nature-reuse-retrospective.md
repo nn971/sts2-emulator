@@ -1,0 +1,143 @@
+# ADR 0005: H15 must reuse the existing stochastic-provider stack
+
+- **Date:** 2026-10-30
+- **Status:** accepted; migration tracked on independent H15 research branches
+- **Supersedes:** treating H15's diagnostic Python law sampler as a second authoritative Nature implementation
+- **Related:** [ADR 0004](0004-provider-owned-stochastic-state-and-chance-law.md), [canonical architecture](../UNIFIED_STOCHASTIC_ARCHITECTURE.md)
+
+## H15 training priority after the 2026-10-30 correction
+
+**AI-side canonical plan:** [H15 search-training execution](https://github.com/nn971/sts2-ai/blob/research/h15-experimental-search-20261030/docs/H15_SEARCH_TRAINING_PLAN.md).
+
+The previously assumed dependency "*certified native-run full-history
+posterior first, then any search-guided training*" was incorrect. The
+emulator's existing Nature/ReferenceNature and declared Chance Laws already
+provide the stochastic reference model for a versioned, supported A10 combat
+search-training slice. An exact native-run posterior and source-game RNG parity
+are *separate research refinements*, not gates to emulator-relative training.
+
+The next cross-repository deliverable is a complete existing-ReferenceNature
+neural PUCT → real visit targets and terminal rewards → policy/value update
+→ renewed search loop. Preserve provider-owned hidden deck constraints and
+honestly label root-conditioned search as an approximate/possibly privileged
+teacher. Where a native-exact entry has already committed hidden order, choose
+an existing supported Nature-mode initialization path; do not invent a new
+sampler to conceal an adapter/continuation gap.
+
+**Change control:** If existing tests, old H15 milestone notes, this ADR or
+any architectural interpretation conflicts with the canonical H15 training
+plan, explicitly tell the user the exact conflict and recommended resolution
+*before changing goals, adding a blocking gate, or rerouting effort*. Update
+both repositories' canonical entry points when the user changes the decision.
+
+## The error and its consequences
+
+While extending H15 combat search, we repeatedly reasoned from the latest
+H15 milestone and introduced independent stochastic-control code without
+first examining the existing **full** emulator provider inventory.
+
+In particular, we introduced `sts2_ai/training/h15_experimental_rollout.py::_sample_law`
+as a new weighted Nature sampler and allowed H15's cursor/decision-history
+logic to grow separately, even though the emulator already provides
+`ChanceLawV111`, `ReferenceNatureV111.SampleValidated`, atomic
+`ReferenceNatureSessionV111` / `ReferenceNatureRunActionSessionV111`,
+specialized reward/event sessions, and H8's fast local reference provider.
+We also described public-history conditioning as generally missing even
+though `H8ReferenceNaturePosterior` already implements a restricted
+**fixed-fixture, combat-local** conditional distribution.
+
+The resulting duplication made unsupported sites appear to require new
+systems instead of routing work through established semantic continuation
+owners. An independent H15 prototype-RNG candidate was repeatedly
+described without enough emphasis on its distinct distributional provenance.
+The fix is architectural consolidation, not an additional ad hoc probe.
+
+## Non-negotiable engineering check before modifying stochastic behavior
+
+1. **Read the ownership contract first:** `docs/UNIFIED_STOCHASTIC_ARCHITECTURE.md`,
+   this ADR and ADR 0004; then inspect `StochasticSiteRegistryV111`,
+   `ChanceLawV111`, `ReferenceNatureV111`, the existing reference session
+   family and actual caller sites. This check applies even to seemingly
+   local H15 patches.
+2. **Classify the operation's owner:** deterministic mechanics; native
+   provider; reference/learned/scripted Nature; read-only law query;
+   player observation; privileged inspector. A new path must name the
+   missing owner/capability, rather than replicate an existing one.
+3. **Reuse ReferenceNature for sampling:** no Python or H15-specific
+   duplicate integer-weight roulette sampling when the same declared law
+   can be passed to `ReferenceNatureV111.SampleValidated`. Preserve
+   an explicit `UNVERIFIED` law and independent sampler state where
+   source calibration is absent.
+4. **Reuse semantic continuations for effects:** do not add a new card,
+   potion, shuffle, deck-constraint, random-target, or reward resolver if
+   a typed source-mechanics continuation already exists. An old resolver
+   may have narrower admission/provenance; establish that constraint
+   and add the missing adapter rather than bypassing it.
+5. **Keep three independent claims separate:** legal controlled mechanics,
+   `SOURCE_VERIFIED` event-local probability laws, and a
+   history-conditioned posterior for the *specified prior*. A fixed
+   fixture posterior must never be renamed as the complete authentic
+   native-run posterior. Native-structure/prototype-RNG source records
+   must not be relabeled native-combat-RNG.
+6. **Keep strict fail-closed boundaries:** unexpected mechanics/hidden
+   state rejection must not silently switch providers; never turn
+   incomplete/unsupported simulations into critic/PUCT targets.
+7. **Check whether docs are current:** distinguish append-only dated
+   research history from accepted architecture. Update the current
+   implementation crosswalk and this ADR when modifying the provider
+   interfaces.
+8. **Protect experiments:** do not modify the pinned branches or working
+   directories used by a running training experiment. Changes go to a
+   separate research branch with its own revision.
+
+## Concrete acceptance for removing the H15 duplication
+
+- H15 diagnostic reference selections use the emulator's
+  `ReferenceNatureV111.SampleValidated` and an atomic, forkable
+  `ReferenceNatureStateV111` cursor.
+- The Python diagnostic must not contain a second weighted-law RNG
+  implementation. External `choose` remains distinct for scripted
+  or learned Nature and does not advance the reference cursor.
+- Session-level failure retains the pre-choice cursor and mechanics
+  state; the journal records exact event/law/outcome/provider identity.
+- Unsupported stochastic sites remain identified, never implicitly
+  delegated to legacy RNG or misreported as source-calibrated.
+- Regression tests exercise reproducible reference selection, refusal
+  of stale versions and incorrect law, and no ReferenceNature cursor
+  consumption by ordinary player actions or external scripted choices.
+
+This ADR records a concrete **assistant design mistake** and a required
+code-review checklist. It is not evidence that all stochastic sites or
+native-game probability calibration are complete.
+
+## Follow-up: H8 declared-law fixed-fixture mode
+
+The initial M11 cleanup addressed the native-entry experimental Python
+sampler. A second weighted roulette implementation remained in
+`sts2_ai.emulator.h15_h8_reference.H8ReferenceCombatBackend` when
+`use_declared_chance_laws=True`. That path now passes
+`declared_reference_seed` to the H8 JSONL entry and delegates the entire
+typed-law outcome selection to `ReferenceNatureV111.SampleValidated` in
+the emulator. Each H8 handle owns the cursor through future steps and forks;
+external choices cannot silently advance or replace that cursor.
+
+The fast H8 event-keyed reference provider remains available and separate.
+The declared-law stream changed from Python MT19937 to emulator SplitMix64;
+the declared law and fixed-fixture posterior semantics retain their scope.
+This fixes an ownership inconsistency and is **not** evidence of a
+native full-run posterior or an H15 PUCT training breakthrough.
+
+## Follow-up: grouped H15 ReferenceNature continuation
+
+The real-entry experimental session now exposes an atomic
+`AdvanceReferenceToPlayer` method, invoking its already-audited
+`ChooseReference` for each consecutive typed Chance Law until another
+player/combat-exit boundary. The JSONL response includes ordered
+law/event/outcome/provider receipts, and mechanics plus the private
+ReferenceNature cursor publish together only after successful completion.
+The AI-side public-history rejection conditioner uses this one engine-owned
+operation rather than implementing another sampler or per-event Python loop.
+
+This reduces JSONL round trips for frequent stochastic hooks. It **does not**
+expand the set of owned mechanics sites or certify the independent candidate
+prior as a posterior for the source run.

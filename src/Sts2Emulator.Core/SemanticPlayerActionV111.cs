@@ -25,9 +25,9 @@ public sealed record SemanticPlayerActionV111(
 
 public static class SemanticPlayerActionEngineV111
 {
-    // This first gate has verified source card effects with no primitive
-    // draw-pile mutation. The full action/effect state machine will replace
-    // this allowlist as semantic continuations become available.
+    // This first gate has audited source card and potion effects with
+    // no primitive draw-pile mutation. The full typed player-action
+    // continuation will supersede these restricted admission lists.
     private static readonly HashSet<string> SupportedCards =
         new(StringComparer.Ordinal)
         {
@@ -104,6 +104,28 @@ public static class SemanticPlayerActionEngineV111
             "proto.silent.storm_of_steel"
         };
 
+    // These eight existing source-implemented potion effects are
+    // draw-pile-neutral and require no nested player or Nature choice.
+    // Keep the one supported-action gate here, rather than in H15.
+    private static readonly HashSet<string> SupportedPotions =
+        new(StringComparer.Ordinal)
+        {
+            "proto.potion.block",
+            "proto.potion.dexterity",
+            "proto.potion.energy",
+            "proto.potion.strength",
+            "proto.potion.explosive",
+            "proto.potion.fire",
+            "proto.potion.poison",
+            "proto.potion.weak"
+        };
+
+    internal static bool SupportsPotion(string potionId) =>
+        SupportedPotions.Contains(potionId);
+
+    public static string[] SupportedPotionIds =>
+        SupportedPotions.Order(StringComparer.Ordinal).ToArray();
+
     internal static bool SupportsCard(string cardId) =>
         SupportedCards.Contains(cardId)
         && PrototypeContent.Card(cardId) is
@@ -124,20 +146,35 @@ public static class SemanticPlayerActionEngineV111
             .SingleOrDefault(a => a.ActionId == actionId) ??
             throw new InvalidOperationException(
                 "Illegal or ambiguous semantic player action.");
-        if (action.Kind != "play_card")
+        var combat = source.World!.Combat!;
+        if (action.Kind == "play_card")
+        {
+            var payload = action.Payload.Deserialize<PlayCardPayload>()
+                ?? throw new InvalidDataException("Invalid play-card payload.");
+            var card = combat.Cards.SingleOrDefault(c =>
+                c.InstanceId == payload.CardInstanceId);
+            if (card is null || !combat.Hand.Contains(payload.CardInstanceId) ||
+                !SupportsCard(card.CardId))
+                throw new NotSupportedException(
+                    "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
+                    "operation=card_effect_requires_semantic_audit");
+        }
+        else if (action.Kind == "use_potion")
+        {
+            var payload = action.Payload.Deserialize<UsePotionPayload>()
+                ?? throw new InvalidDataException("Invalid use-potion payload.");
+            var slots = source.Player.PotionSlots;
+            var potionId = payload.Slot >= 0 && payload.Slot < slots.Length
+                ? slots[payload.Slot]?.PotionId : null;
+            if (potionId is null || !SupportsPotion(potionId))
+                throw new NotSupportedException(
+                    "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
+                    "operation=potion_effect_requires_semantic_audit");
+        }
+        else
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
                 "operation=" + action.Kind);
-        var payload = action.Payload.Deserialize<PlayCardPayload>()
-            ?? throw new InvalidDataException("Invalid play-card payload.");
-        var combat = source.World!.Combat!;
-        var card = combat.Cards.SingleOrDefault(c =>
-            c.InstanceId == payload.CardInstanceId);
-        if (card is null || !combat.Hand.Contains(payload.CardInstanceId) ||
-            !SupportsCard(card.CardId))
-            throw new NotSupportedException(
-                "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
-                "operation=card_effect_requires_semantic_audit");
 
         RunState run;
         using (ControlledChanceGuardV111.Enter())
@@ -145,9 +182,9 @@ public static class SemanticPlayerActionEngineV111
         // reward sites already explicitly allowlisted by the chance guard.
         using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
             run = environment.Step(source.Fork(), actionId).State;
-        // A real killing card may exit active combat before publishing
-        // another player choice. Its semantic deck is consumed on combat
-        // exit, so require the source's genuine reward/defeat boundary.
+        // A real killing card or potion may exit combat before another
+        // player choice. Its semantic deck is consumed on combat exit:
+        // require the source's genuine reward/defeat boundary.
         if (PrototypeGameEngine.IsAtCombatRewardOrTerminalBoundary(run))
             ValidateCombatExit(run);
         else
@@ -196,7 +233,7 @@ public static class SemanticPlayerActionEngineV111
     {
         ArgumentNullException.ThrowIfNull(state);
         ValidateBoundary(state.Origin);
-        if (state.ActionKind != "play_card" ||
+        if (state.ActionKind is not ("play_card" or "use_potion") ||
             string.IsNullOrWhiteSpace(state.ActionId))
             throw new InvalidDataException("Invalid semantic player action.");
         if (PrototypeGameEngine.IsAtCombatRewardOrTerminalBoundary(state.Run))
@@ -223,7 +260,7 @@ public static class SemanticPlayerActionEngineV111
                 TerminalOutcome: "defeat" })
             return;
         throw new InvalidDataException(
-            "Semantic killing card did not produce a genuine combat exit.");
+            "Semantic killing action did not produce a genuine combat exit.");
     }
 
     public static void ValidateBoundary(RunState run)

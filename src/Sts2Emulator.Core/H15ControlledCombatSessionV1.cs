@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Text.Json;
 
 namespace Sts2Emulator.Core;
 
@@ -10,13 +9,13 @@ namespace Sts2Emulator.Core;
 /// engine; no encounter or card-effect fixture is fabricated.
 ///
 /// The independent candidate is NOT a public-history conditional posterior.
-/// Only end_turn actions and the listed typed Chance Law boundaries are
-/// available. Every other stochastic/player-action boundary fails closed.
+/// Audited player actions, end_turn and the listed typed Chance Law
+/// boundaries are available. Every unsupported site fails closed.
 /// </summary>
 public sealed record H15ControlledCombatSessionV1(
     RunState Run, SemanticEndTurnV111? PendingTurn,
     string NativeEncounterEntry, long DecisionVersion,
-    string CandidateModelId)
+    string CandidateModelId, ReferenceNatureStateV111 NatureState)
 {
     public const string SchemaId =
         "sts2-h15-controlled-prototype-combat-endturn-experimental-v1";
@@ -60,7 +59,14 @@ public sealed record H15ControlledCombatSessionV1(
                 "H15 experimental end turn lost prototype RNG provenance.");
         return new H15ControlledCombatSessionV1(
             candidate, null, prototypeEntry, 0,
-            H15NativeCombatEntryCandidateV1.ModelId(source));
+            H15NativeCombatEntryCandidateV1.ModelId(source),
+            // The session, not the player policy or an external Python
+            // sampler, owns its independent ReferenceNature cursor.
+            ReferenceNatureRunCursorV111.Begin(
+                candidate,
+                NativeRngV111.HashString(
+                    independentSeed + "\nH15ReferenceNatureV111"),
+                "H15 experimental combat"));
     }
 
     public string BoundaryKind
@@ -131,40 +137,8 @@ public sealed record H15ControlledCombatSessionV1(
             throw new NotSupportedException(
                 "UNSUPPORTED_H15_CHANCE boundary=" + BoundaryKind +
                 " : continuation requires additional typed Chance Law ownership.");
-        return Unverified(law, alternativeWeights);
-    }
-
-    private static ChanceLawV111 Unverified(
-        ChanceLawV111 original, ChanceLawOutcomeV111[]? newOutcomes)
-    {
-        var outcomes = newOutcomes ?? original.Outcomes;
-        var downgraded = original with
-        {
-            Outcomes = outcomes,
-            TotalWeight = outcomes.Sum(choice => choice.Weight),
-            SupportFingerprint = CanonicalJson.Sha256(outcomes),
-            ProbabilityStatus = ChanceLawV111.UnverifiedStatus,
-            ProbabilityProvenance = UnverifiedProvenance
-        };
-        // ChanceLawV111.Validate defines its canonical identifier over
-        // these exact typed fields. Never carry a SOURCE_VERIFIED law ID
-        // across the experimental provenance downgrade.
-        var lawId = CanonicalJson.Sha256(new
-        {
-            downgraded.SchemaId,
-            downgraded.SiteId,
-            downgraded.OperationKind,
-            downgraded.OwnerId,
-            downgraded.Ordinal,
-            downgraded.SupportFingerprint,
-            downgraded.ConditioningPolicyId,
-            downgraded.ConditioningFingerprint,
-            downgraded.ProbabilityStatus,
-            downgraded.ProbabilityProvenance
-        });
-        var result = downgraded with { LawId = lawId };
-        result.Validate();
-        return result;
+        return law.WithUnverifiedProvenance(
+            UnverifiedProvenance, alternativeWeights);
     }
 
     /// <summary>
@@ -180,68 +154,11 @@ public sealed record H15ControlledCombatSessionV1(
         if (BoundaryKind != "player" || PendingTurn is not null)
             throw new InvalidOperationException(
                 "H15 player action requires an unsuspended player boundary.");
-        var action = new PrototypeAiEnvironment().Observe(Run)
-            .LegalActions.SingleOrDefault(candidate =>
-                candidate.ActionId == actionId) ??
-            throw new InvalidOperationException(
-                "H15 selected an illegal or stale player action.");
-        RunState advanced;
-        if (action.Kind == "play_card")
-        {
-            // Reuse the audited source action adapter: it validates the
-            // supported card effect, real gameplay hook order, the
-            // controlled RNG guard and provider-owned deck invariance.
-            advanced = SemanticPlayerActionEngineV111
-                .Step(Run, actionId).Run;
-        }
-        else if (action.Kind == "use_potion")
-        {
-            var payload = action.Payload.Deserialize<UsePotionPayload>() ??
-                throw new InvalidDataException("Invalid H15 potion payload.");
-            var slots = Run.Player.PotionSlots;
-            var id = payload.Slot >= 0 && payload.Slot < slots.Length
-                ? slots[payload.Slot]?.PotionId : null;
-            // Deck-affecting or choice-producing potions require separate
-            // typed resumable continuations and cannot enter this slice.
-            if (id is not ("proto.potion.block" or
-                "proto.potion.dexterity" or "proto.potion.energy" or
-                "proto.potion.strength" or "proto.potion.explosive" or
-                "proto.potion.fire" or "proto.potion.poison" or
-                "proto.potion.weak"))
-                throw new NotSupportedException(
-                    "UNSUPPORTED_H15_PLAYER_ACTION potion=" +
-                    (id ?? "<missing>"));
-            var sourceCombat = Run.World?.Combat ??
-                throw new InvalidOperationException(
-                    "H15 potion action lost its active combat.");
-            using (ControlledChanceGuardV111.Enter())
-            using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
-                advanced = new PrototypeAiEnvironment()
-                    .Step(Run.Fork(), actionId).State;
-            if (advanced.Phase == RunPhase.Combat)
-            {
-                var combat = advanced.World?.Combat ??
-                    throw new InvalidDataException(
-                        "H15 potion lost the active combat.");
-                if (!PrototypeGameEngine.IsAtCombatPlayerDecisionBoundary(advanced)
-                    || !sourceCombat.DrawPile.SequenceEqual(combat.DrawPile)
-                    || CanonicalJson.Sha256(sourceCombat.SemanticDeck) !=
-                       CanonicalJson.Sha256(combat.SemanticDeck))
-                    throw new NotSupportedException(
-                        "UNSUPPORTED_H15_PLAYER_ACTION " +
-                        "operation=potion_pending_choice_or_hidden_pile_mutation");
-                SemanticPlayerActionEngineV111.ValidateBoundary(advanced);
-            }
-            else if (!PrototypeGameEngine.IsAtCombatRewardOrTerminalBoundary(
-                         advanced))
-                throw new NotSupportedException(
-                    "UNSUPPORTED_H15_PLAYER_ACTION " +
-                    "operation=potion_left_combat_without_valid_exit");
-        }
-        else
-            throw new NotSupportedException(
-                "UNSUPPORTED_H15_PLAYER_ACTION kind=" + action.Kind +
-                " : use the controlled end_turn operation for turn advancement.");
+        // All audited, draw-pile-neutral cards AND potions share the same
+        // source-mechanics replay, chance guard and semantic-deck validation.
+        // H15 does not maintain a second allowlist or potion resolver.
+        var advanced = SemanticPlayerActionEngineV111.Step(
+            Run, actionId).Run;
         PrototypeStateInvariants.Validate(advanced);
         return this with
         {
@@ -279,6 +196,67 @@ public sealed record H15ControlledCombatSessionV1(
     }
 
     /// <summary>
+    /// The existing ReferenceNatureV111 is the sole reference sampler for
+    /// H15's current, explicitly UNVERIFIED experimental Chance Law. The
+    /// reference cursor, mechanics continuation, and version advance publish
+    /// atomically. Scripted/learned external Choose remains available and
+    /// deliberately does not consume the reference cursor.
+    /// </summary>
+    public (H15ControlledCombatSessionV1 Next,
+        ReferenceNatureSelectionV111 Selection) ChooseReference()
+    {
+        NatureState.Validate();
+        var law = PendingLaw();
+        if (law.ProbabilityStatus != ChanceLawV111.UnverifiedStatus)
+            throw new InvalidDataException(
+                "H15 experimental reference law has invalid probability provenance.");
+        var selection = ReferenceNatureV111.SampleValidated(law, NatureState);
+        // SampleValidated has already checked the exact law/support.
+        // Resolve that same law once; no redundant law query/hash.
+        // A mechanics failure leaves the original immutable cursor intact.
+        var next = ResolveDeclaredChoice(law, selection.OutcomeId);
+        return (next with { NatureState = selection.NextState }, selection);
+    }
+
+    /// <summary>
+    /// Advance the *existing* ReferenceNature and SemanticEndTurn owners
+    /// through consecutive typed chance requests in a single transaction.
+    /// Every sampled outcome receives the normal explicit event/law receipt.
+    /// A failed mechanics site, unsupported boundary or exhausted event
+    /// budget leaves this immutable source session and cursor unchanged.
+    /// </summary>
+    public (H15ControlledCombatSessionV1 Next,
+        ReferenceNatureSelectionV111[] Selections) AdvanceReferenceToPlayer(
+        int maxNatureDecisions)
+    {
+        if (maxNatureDecisions <= 0)
+            throw new ArgumentOutOfRangeException(nameof(maxNatureDecisions));
+        if (BoundaryKind is not ("enemy_action" or "enemy_intent"
+                or "draw_card" or "random_target"))
+            throw new InvalidOperationException(
+                "H15 reference continuation requires a Nature boundary.");
+
+        var current = this;
+        var selected = new List<ReferenceNatureSelectionV111>();
+        while (current.BoundaryKind is "enemy_action" or "enemy_intent"
+            or "draw_card" or "random_target")
+        {
+            if (selected.Count >= maxNatureDecisions)
+                throw new NotSupportedException(
+                    "UNSUPPORTED_H15_NATURE_BUDGET : " +
+                    "ReferenceNature continuation reached its event limit.");
+            var (next, receipt) = current.ChooseReference();
+            selected.Add(receipt);
+            current = next;
+        }
+        if (current.BoundaryKind is not ("player" or "combat_exit"))
+            throw new NotSupportedException(
+                "UNSUPPORTED_H15_CHANCE boundary=" + current.BoundaryKind +
+                " : ReferenceNature continuation has no semantic owner.");
+        return (current, selected.ToArray());
+    }
+
+    /// <summary>
     /// Nature selects an outcome from the CURRENT declared event. Reject
     /// stale IDs and unsupported sites before mutating a continuation.
     /// </summary>
@@ -293,6 +271,12 @@ public sealed record H15ControlledCombatSessionV1(
             CanonicalJson.Sha256(expected) != CanonicalJson.Sha256(advertised))
             throw new InvalidOperationException(
                 "H15 stale or mismatched Chance Law.");
+        return ResolveDeclaredChoice(expected, outcomeId);
+    }
+
+    private H15ControlledCombatSessionV1 ResolveDeclaredChoice(
+        ChanceLawV111 expected, string outcomeId)
+    {
         if (!expected.Outcomes.Any(choice => choice.OutcomeId == outcomeId))
             throw new InvalidOperationException(
                 "Nature selected an outcome outside the declared support.");
