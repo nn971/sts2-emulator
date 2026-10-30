@@ -99,6 +99,42 @@ public sealed class H15NativeCombatEntryCandidateV1Tests
     }
 
     [Fact]
+    public void NativeStructurePrototypeRngRootHasSeparateCandidateProvenance()
+    {
+        var source = PrototypeNativeOvergrowthRunFactory.Create("native-entry");
+        var neow = Engine.GetLegalActions(source)[0];
+        source = Engine.Step(source, neow).State;
+        Assert.Equal(RunPhase.MapChoice, source.Phase);
+        source = Engine.Step(
+            source, Engine.GetLegalActions(source)[0]).State;
+        Assert.Equal(RunPhase.Combat, source.Phase);
+        Assert.Null(source.NativeRunRng);
+        Assert.Null(source.World!.Combat!.NativeRng);
+        var originalHash = CanonicalJson.Sha256(source);
+
+        var candidate = H15NativeCombatEntryCandidateV1.Build(
+            source, "h15-independent-prototype-candidate");
+        Assert.Equal(originalHash, CanonicalJson.Sha256(source));
+        Assert.Equal(
+            H15NativeCombatEntryCandidateV1.PrototypeCombatProviderClass,
+            H15NativeCombatEntryCandidateV1.ProviderClass(source));
+        Assert.Equal(
+            H15NativeCombatEntryCandidateV1.PrototypeCandidateModelId,
+            H15NativeCombatEntryCandidateV1.ModelId(source));
+        Assert.Null(candidate.NativeRunRng);
+        Assert.Null(candidate.World!.Combat!.NativeRng);
+        Assert.Equal(
+            SemanticDeckStateV111.NatureMode,
+            candidate.World.Combat.SemanticDeck!.Mode);
+        Assert.Equal("unavailable",
+            H15NativeCombatEntryCandidateV1.FairSearchCapabilityId);
+        Assert.Equal(
+            new PrototypeAiEnvironment().Observe(source).ObservationHash,
+            new PrototypeAiEnvironment().Observe(candidate).ObservationHash);
+        PrototypeStateInvariants.Validate(candidate);
+    }
+
+    [Fact]
     public void NativeCandidateRequiresGenuineUnresolvedNativeEntry()
     {
         var native = NativeWeakEntry();
