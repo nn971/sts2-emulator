@@ -290,7 +290,10 @@ internal static class PrototypeAiJsonlServer
                     RunPhase.Reward => "victory",
                     RunPhase.Terminal => "defeat",
                     _ => (string?)null
-                }
+                },
+                exitHp = session.Run.Phase is RunPhase.Reward or RunPhase.Terminal
+                    ? session.Run.Player.Hp : (int?)null,
+                combatTurn = session.Run.World?.Combat?.Turn
             };
         }
 
