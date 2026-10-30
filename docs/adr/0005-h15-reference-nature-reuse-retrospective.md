@@ -84,3 +84,20 @@ The fix is architectural consolidation, not an additional ad hoc probe.
 This ADR records a concrete **assistant design mistake** and a required
 code-review checklist. It is not evidence that all stochastic sites or
 native-game probability calibration are complete.
+
+## Follow-up: H8 declared-law fixed-fixture mode
+
+The initial M11 cleanup addressed the native-entry experimental Python
+sampler. A second weighted roulette implementation remained in
+`sts2_ai.emulator.h15_h8_reference.H8ReferenceCombatBackend` when
+`use_declared_chance_laws=True`. That path now passes
+`declared_reference_seed` to the H8 JSONL entry and delegates the entire
+typed-law outcome selection to `ReferenceNatureV111.SampleValidated` in
+the emulator. Each H8 handle owns the cursor through future steps and forks;
+external choices cannot silently advance or replace that cursor.
+
+The fast H8 event-keyed reference provider remains available and separate.
+The declared-law stream changed from Python MT19937 to emulator SplitMix64;
+the declared law and fixed-fixture posterior semantics retain their scope.
+This fixes an ownership inconsistency and is **not** evidence of a
+native full-run posterior or an H15 PUCT training breakthrough.
