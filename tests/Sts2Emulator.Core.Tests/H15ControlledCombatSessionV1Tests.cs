@@ -113,7 +113,8 @@ public sealed class H15ControlledCombatSessionV1Tests
                 {
                     Combat = combat with
                     {
-                        Potions = combat.Potions.Append(
+                        Potions = (combat.Potions ??
+                            Array.Empty<CombatPotionState>()).Append(
                             new CombatPotionState(
                                 0, "proto.potion.block", empty)).ToArray()
                     }
