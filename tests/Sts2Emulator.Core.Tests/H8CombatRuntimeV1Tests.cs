@@ -780,4 +780,36 @@ public sealed class H8CombatRuntimeV1Tests
         runtime.AuditReplay();
         branch.AuditReplay();
     }
+
+    [Fact]
+    public void DeclaredReferenceNatureUsesSharedCursorAndExactTypedLaws()
+    {
+        var first = ReachNaturalDraw("h15-h8-declared-reference-cursor");
+        var replay = ReachNaturalDraw("h15-h8-declared-reference-cursor");
+        var boundary = first.Boundary;
+        var law = first.CurrentDeclaredReferenceLaw();
+        law.Validate();
+        Assert.NotEmpty(law.Outcomes);
+        var initial = ReferenceNatureStateV111.Create(123456789UL);
+        var expectedFirst = ReferenceNatureV111.SampleValidated(law, initial);
+        Assert.Contains(law.Outcomes, outcome =>
+            outcome.OutcomeId == expectedFirst.OutcomeId);
+
+        var firstDecision = first.DecisionHistory.Count;
+        var next = first.AdvanceDeclaredReferenceNature(boundary, initial);
+        var replayNext = replay.AdvanceDeclaredReferenceNature(
+            replay.Boundary, initial);
+
+        Assert.True(next.SampleCount > 0);
+        Assert.Equal(0, initial.SampleCount);
+        Assert.Equal(next, replayNext);
+        Assert.Equal(first.DecisionHistory, replay.DecisionHistory);
+        Assert.All(first.DecisionHistory.Skip(firstDecision),
+            decision => Assert.Equal(
+                ReferenceNatureV111.ProviderId, decision.ProviderId));
+        Assert.Throws<InvalidOperationException>(() =>
+            first.AdvanceDeclaredReferenceNature(boundary, next));
+        first.AuditReplay();
+        replay.AuditReplay();
+    }
 }
