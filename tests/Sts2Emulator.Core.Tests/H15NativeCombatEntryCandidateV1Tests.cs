@@ -102,8 +102,13 @@ public sealed class H15NativeCombatEntryCandidateV1Tests
     public void NativeStructurePrototypeRngRootHasSeparateCandidateProvenance()
     {
         var source = PrototypeNativeOvergrowthRunFactory.Create("native-entry");
-        var neow = Engine.GetLegalActions(source)[0];
-        source = Engine.Step(source, neow).State;
+        // Some Neow outcomes have additional event/reward choices.
+        // Complete the opening using actual legal actions before routing.
+        for (var step = 0;
+             step < 30 && source.Phase is RunPhase.Event or RunPhase.Reward;
+             step++)
+            source = Engine.Step(
+                source, Engine.GetLegalActions(source)[0]).State;
         Assert.Equal(RunPhase.MapChoice, source.Phase);
         source = Engine.Step(
             source, Engine.GetLegalActions(source)[0]).State;
@@ -139,7 +144,7 @@ public sealed class H15NativeCombatEntryCandidateV1Tests
     {
         var native = NativeWeakEntry();
         var sourceHash = CanonicalJson.Sha256(native);
-        Assert.Throws<NotSupportedException>(() =>
+        Assert.Throws<InvalidOperationException>(() =>
             H15NativeCombatEntryCandidateV1.Build(
                 native with { NativeRunRng = null }, "independent"));
         Assert.Throws<NotSupportedException>(() =>
