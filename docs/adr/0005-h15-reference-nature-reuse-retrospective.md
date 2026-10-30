@@ -101,3 +101,18 @@ The declared-law stream changed from Python MT19937 to emulator SplitMix64;
 the declared law and fixed-fixture posterior semantics retain their scope.
 This fixes an ownership inconsistency and is **not** evidence of a
 native full-run posterior or an H15 PUCT training breakthrough.
+
+## Follow-up: grouped H15 ReferenceNature continuation
+
+The real-entry experimental session now exposes an atomic
+`AdvanceReferenceToPlayer` method, invoking its already-audited
+`ChooseReference` for each consecutive typed Chance Law until another
+player/combat-exit boundary. The JSONL response includes ordered
+law/event/outcome/provider receipts, and mechanics plus the private
+ReferenceNature cursor publish together only after successful completion.
+The AI-side public-history rejection conditioner uses this one engine-owned
+operation rather than implementing another sampler or per-event Python loop.
+
+This reduces JSONL round trips for frequent stochastic hooks. It **does not**
+expand the set of owned mechanics sites or certify the independent candidate
+prior as a posterior for the source run.
