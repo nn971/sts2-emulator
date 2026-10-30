@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Text.Json;
 
 namespace Sts2Emulator.Core;
 
@@ -10,8 +9,8 @@ namespace Sts2Emulator.Core;
 /// engine; no encounter or card-effect fixture is fabricated.
 ///
 /// The independent candidate is NOT a public-history conditional posterior.
-/// Only end_turn actions and the listed typed Chance Law boundaries are
-/// available. Every other stochastic/player-action boundary fails closed.
+/// Audited player actions, end_turn and the listed typed Chance Law
+/// boundaries are available. Every unsupported site fails closed.
 /// </summary>
 public sealed record H15ControlledCombatSessionV1(
     RunState Run, SemanticEndTurnV111? PendingTurn,
@@ -187,68 +186,11 @@ public sealed record H15ControlledCombatSessionV1(
         if (BoundaryKind != "player" || PendingTurn is not null)
             throw new InvalidOperationException(
                 "H15 player action requires an unsuspended player boundary.");
-        var action = new PrototypeAiEnvironment().Observe(Run)
-            .LegalActions.SingleOrDefault(candidate =>
-                candidate.ActionId == actionId) ??
-            throw new InvalidOperationException(
-                "H15 selected an illegal or stale player action.");
-        RunState advanced;
-        if (action.Kind == "play_card")
-        {
-            // Reuse the audited source action adapter: it validates the
-            // supported card effect, real gameplay hook order, the
-            // controlled RNG guard and provider-owned deck invariance.
-            advanced = SemanticPlayerActionEngineV111
-                .Step(Run, actionId).Run;
-        }
-        else if (action.Kind == "use_potion")
-        {
-            var payload = action.Payload.Deserialize<UsePotionPayload>() ??
-                throw new InvalidDataException("Invalid H15 potion payload.");
-            var slots = Run.Player.PotionSlots;
-            var id = payload.Slot >= 0 && payload.Slot < slots.Length
-                ? slots[payload.Slot]?.PotionId : null;
-            // Deck-affecting or choice-producing potions require separate
-            // typed resumable continuations and cannot enter this slice.
-            if (id is not ("proto.potion.block" or
-                "proto.potion.dexterity" or "proto.potion.energy" or
-                "proto.potion.strength" or "proto.potion.explosive" or
-                "proto.potion.fire" or "proto.potion.poison" or
-                "proto.potion.weak"))
-                throw new NotSupportedException(
-                    "UNSUPPORTED_H15_PLAYER_ACTION potion=" +
-                    (id ?? "<missing>"));
-            var sourceCombat = Run.World?.Combat ??
-                throw new InvalidOperationException(
-                    "H15 potion action lost its active combat.");
-            using (ControlledChanceGuardV111.Enter())
-            using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
-                advanced = new PrototypeAiEnvironment()
-                    .Step(Run.Fork(), actionId).State;
-            if (advanced.Phase == RunPhase.Combat)
-            {
-                var combat = advanced.World?.Combat ??
-                    throw new InvalidDataException(
-                        "H15 potion lost the active combat.");
-                if (!PrototypeGameEngine.IsAtCombatPlayerDecisionBoundary(advanced)
-                    || !sourceCombat.DrawPile.SequenceEqual(combat.DrawPile)
-                    || CanonicalJson.Sha256(sourceCombat.SemanticDeck) !=
-                       CanonicalJson.Sha256(combat.SemanticDeck))
-                    throw new NotSupportedException(
-                        "UNSUPPORTED_H15_PLAYER_ACTION " +
-                        "operation=potion_pending_choice_or_hidden_pile_mutation");
-                SemanticPlayerActionEngineV111.ValidateBoundary(advanced);
-            }
-            else if (!PrototypeGameEngine.IsAtCombatRewardOrTerminalBoundary(
-                         advanced))
-                throw new NotSupportedException(
-                    "UNSUPPORTED_H15_PLAYER_ACTION " +
-                    "operation=potion_left_combat_without_valid_exit");
-        }
-        else
-            throw new NotSupportedException(
-                "UNSUPPORTED_H15_PLAYER_ACTION kind=" + action.Kind +
-                " : use the controlled end_turn operation for turn advancement.");
+        // All audited, draw-pile-neutral cards AND potions share the same
+        // source-mechanics replay, chance guard and semantic-deck validation.
+        // H15 does not maintain a second allowlist or potion resolver.
+        var advanced = SemanticPlayerActionEngineV111.Step(
+            Run, actionId).Run;
         PrototypeStateInvariants.Validate(advanced);
         return this with
         {
