@@ -83,6 +83,10 @@ public static class NativeActOneEliteBossCombatEntryV111
                 [new("proto.enemy.waterfall_giant", 0)])
         };
 
+    internal static string? ResearchNativeEntry(string encounterId) =>
+        Entries.TryGetValue(encounterId, out var entry)
+            ? entry.NativeName : null;
+
     public static string[] SupportedEncounterIds =>
         Entries.Keys.Order(StringComparer.Ordinal).ToArray();
 
