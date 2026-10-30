@@ -273,7 +273,8 @@ internal static class PrototypeAiJsonlServer
         object H15Status(
             H15ControlledCombatSessionV1 session,
             string handle, object? requestId,
-            ReferenceNatureSelectionV111? referenceSelection = null)
+            ReferenceNatureSelectionV111? referenceSelection = null,
+            IReadOnlyList<ReferenceNatureSelectionV111>? referenceSelections = null)
         {
             var kind = session.BoundaryKind;
             var law = kind is "enemy_action" or "enemy_intent"
@@ -306,6 +307,14 @@ internal static class PrototypeAiJsonlServer
                         referenceSelection.OutcomeIndex,
                         providerId = ReferenceNatureV111.ProviderId
                     },
+                referenceNatureSelections = referenceSelections?.Select(choice => new
+                {
+                    choice.LawId,
+                    choice.EventId,
+                    choice.OutcomeId,
+                    choice.OutcomeIndex,
+                    providerId = ReferenceNatureV111.ProviderId
+                }).ToArray(),
                 referenceNatureSampleCount = session.NatureState.SampleCount,
                 chanceLaw = law,
                 observationHash = frame?.ObservationHash,
@@ -10742,6 +10751,26 @@ internal static class PrototypeAiJsonlServer
                         // session or its Nature cursor is replaced.
                         var status = H15Status(
                             next, handle, requestId, selection);
+                        h15States[handle] = next;
+                        Write(status);
+                        break;
+                    }
+
+                    case "h15_experimental_reference_advance":
+                    {
+                        var handle = RequiredString(request, "h15_handle");
+                        var session = RequireH15(request);
+                        if (RequiredLong(request, "version") != session.DecisionVersion)
+                            throw new InvalidOperationException(
+                                "Stale H15 experimental reference session version.");
+                        // The immutable session is staged locally. One
+                        // response owns all declared ReferenceNature events;
+                        // any failure discards mechanics and Nature cursor.
+                        var (next, selections) = session.AdvanceReferenceToPlayer(
+                            OptionalInt(request, "max_nature_decisions") ?? 1200);
+                        var status = H15Status(
+                            next, handle, requestId,
+                            referenceSelections: selections);
                         h15States[handle] = next;
                         Write(status);
                         break;
