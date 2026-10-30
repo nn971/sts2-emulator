@@ -1,5 +1,15 @@
 # Unified stochastic architecture
 
+> **H15 training integration (2026-10-30):** This document defines stochastic
+> ownership and mechanics, **not H15's training execution order**. The active
+> [H15 combat search-training plan](https://github.com/nn971/sts2-ai/blob/research/h15-experimental-search-20261030/docs/H15_SEARCH_TRAINING_PLAN.md)
+> reuses Nature/ReferenceNature and Chance Laws; native-run hidden-state
+> posterior certification and original-game RNG parity are independent work.
+> Any apparent conflict between stochastic-architecture requirements and the
+> active training milestone must be stated to the user explicitly, with its
+> exact source, before imposing a new gate or changing work focus.
+
+
 **Decision:** 2026-10-16. **Status:** accepted target contract; implemented only in part. **Target:** STS2 v0.111.0, single-player first.
 
 This is the **canonical responsibility/ownership contract** for RNG, Nature, Chance Law, and the native bridge. [Desired RNG Implementation](DESIRED_RNG_IMPLEMENTATION.md) specifies the migration details; [staged roadmap](STOCHASTIC_ARCHITECTURE_ROADMAP.md) records implementation and acceptance. The code still contains legacy/prototype and isolated semantic implementations, described in the [migration matrix](DESIRED_RNG_MIGRATION_STATUS.md) and [Nature pilot history](NATURE_P0_SEMANTIC_JSONL_143.md). Those are implementation evidence, not alternate ownership rules.
