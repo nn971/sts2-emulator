@@ -35,17 +35,20 @@ posterior must not be described as a missing general-purpose Nature provider.
   native-structure/prototype-RNG combat entry.
   `H15ControlledCombatSessionV1` exposes a smaller `player` /
   `enemy_action` / `enemy_intent` / `draw_card` /
-  `random_target` continuation surface. The AI's
-  `h15_experimental_rollout.py` separately samples those downgraded
-  `UNVERIFIED` laws in Python rather than using the existing atomic
-  ReferenceNature session/provider. That route is useful for
-  implementation diagnostics, but is **not** a second canonical Nature
-  architecture and produces no certified PUCT supervision.
+  `random_target` continuation surface. H15 now samples the
+  downgraded `UNVERIFIED` laws via `ReferenceNatureV111.SampleValidated`
+  with a session-owned cursor and an atomic selected-event receipt.
+  The duplicate Python `_sample_law` sampler has been removed. This
+  remains an experimental model with no certified PUCT supervision.
+  Its `SemanticEndTurnV111` continuation surface is narrower than the
+  full semantic combat ReferenceNature event coverage.
 - **Reward distinction:** `ReferenceNatureCombatRewardSessionV111`
   already handles a registered set of configured Native combat-victory
   reward requests atomically. The H15 prototype-RNG action adapter uses
-  a narrower guarded, engine-owned reward path. These are different
-  provenance profiles; never infer that the latter supersedes the former.
+  a narrower guarded, engine-owned reward path; its audited card
+  and potion effects now share `SemanticPlayerActionEngineV111`
+  rather than H15 maintaining a second potion allowlist. Their
+  reward provenance differs; neither supersedes the other.
 
 **Integration priority:** make H15 consume the shared typed continuation
 and ReferenceNature state ownership, extend public-history conditioning
