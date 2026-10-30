@@ -59,8 +59,10 @@ public sealed record H15ControlledCombatSessionV1(
     {
         get
         {
+            if (Run.Phase is RunPhase.Reward or RunPhase.Terminal)
+                return "combat_exit";
             if (Run.Phase != RunPhase.Combat)
-                return "terminal";
+                return "unsupported";
             if (PendingTurn is null)
                 return "player";
             var turn = PendingTurn;
