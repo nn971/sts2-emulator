@@ -47,7 +47,7 @@ public static class H15NativeCombatEntryCandidateV1
             sourceCombat.AutomaticPipelineContinuation is not null ||
             sourceCombat.PendingKnowledgeDemonChoice is not null)
             throw new NotSupportedException(
-                "H15 native candidate requires a settled first-turn player boundary.");
+                "H15 candidate requires a settled first-turn player boundary.");
         if (source.ReferenceNatureState is not null ||
             source.Stochastic.SemanticOtherChance is not null)
             throw new NotSupportedException(
@@ -69,7 +69,7 @@ public static class H15NativeCombatEntryCandidateV1
             RngStreamState old, string seed) =>
             NativeRngV111.CreateStream(
                 old.StreamId,
-                NativeRngV111.HashString(seed + "\\n" + old.StreamId));
+                NativeRngV111.HashString(seed + "\n" + old.StreamId));
 
         NativeCombatRngV111? independentCombatRng = null;
         if (sourceCombat.NativeRng is { } originalNative)
@@ -92,7 +92,7 @@ public static class H15NativeCombatEntryCandidateV1
             };
         }
 
-        // Scrub the native physical draw ordering as well as the semantic
+        // Scrub the physical draw ordering as well as the semantic
         // provider's ordering. Remaining physical instances are unchanged.
         // Subsequent supported draws must be resolved through the Nature deck.
         var drawPile = (long[])sourceCombat.DrawPile.Clone();
