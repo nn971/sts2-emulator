@@ -63,6 +63,11 @@ internal static class PrototypeAiJsonlServer
         // the old semantic protocol and fingerprint handles stay untouched.
         var h8States = new Dictionary<string, H8CombatRuntimeV1>(
             StringComparer.Ordinal);
+        // Declared-law H8 sessions own the same immutable ReferenceNature
+        // cursor as the semantic sessions, keyed by their opaque H8 handle.
+        var h8DeclaredReferenceStates =
+            new Dictionary<string, ReferenceNatureStateV111>(
+                StringComparer.Ordinal);
         long nextH8Handle = 1;
         // H15 experimental continuations are isolated from ordinary
         // player state handles and certified H8 Nature sessions.
@@ -245,6 +250,15 @@ internal static class PrototypeAiJsonlServer
                 ? runtime
                 : throw new InvalidOperationException(
                     "Unknown H8 combat handle: " + handle);
+        }
+
+        void RejectExternalNatureForDeclaredH8(JsonElement request)
+        {
+            var handle = RequiredString(request, "h8_handle");
+            if (h8DeclaredReferenceStates.ContainsKey(handle))
+                throw new InvalidOperationException(
+                    "H8 declared ReferenceNature session owns all pending " +
+                    "chance selections; use h8_step or fork the session.");
         }
 
         H15ControlledCombatSessionV1 RequireH15(JsonElement request)
@@ -6794,15 +6808,36 @@ internal static class PrototypeAiJsonlServer
                             useNativeDrawTransition: H8Flag("use_native_draw_transition"),
                             useNativePlayerEndTurn: H8Flag("use_native_player_end_turn"),
                             useTrustedIntent: H8Flag("use_trusted_intent"));
-                        // Opt in to local reference Nature for training
-                        // rollouts; external learned/scripted providers still
-                        // receive explicit unresolved boundaries by default.
-                        if (request.TryGetProperty("local_reference_seed", out _))
+                        // H8 local event-keyed reference and the shared
+                        // stateful ReferenceNature declared-law sampler are
+                        // mutually exclusive. Neither samples in Python.
+                        var hasLocal = request.TryGetProperty(
+                            "local_reference_seed", out _);
+                        var hasDeclared = request.TryGetProperty(
+                            "declared_reference_seed", out _);
+                        if (hasLocal && hasDeclared)
+                            throw new ArgumentException(
+                                "H8 reference session accepts exactly one provider.");
+                        ReferenceNatureStateV111? declaredCursor = null;
+                        if (hasDeclared)
+                        {
+                            var seed = RequiredLong(request, "declared_reference_seed");
+                            if (seed < 0)
+                                throw new ArgumentOutOfRangeException(
+                                    "declared_reference_seed");
+                            declaredCursor = runtime.AdvanceDeclaredReferenceNature(
+                                runtime.Boundary,
+                                ReferenceNatureStateV111.Create((ulong)seed),
+                                OptionalInt(request, "max_nature_decisions") ?? 1200);
+                        }
+                        else if (hasLocal)
                             runtime.AdvanceLocalReferenceNature(
                                 runtime.Boundary,
                                 RequiredLong(request, "local_reference_seed"),
                                 OptionalInt(request, "max_nature_decisions") ?? 1200);
                         var handle = StoreH8(runtime);
+                        if (declaredCursor is not null)
+                            h8DeclaredReferenceStates.Add(handle, declaredCursor);
                         Write(new { requestId, ok = true, result = H8Status(
                             runtime, handle,
                             OptionalBool(request, "include_player_frame")) });
@@ -6882,26 +6917,38 @@ internal static class PrototypeAiJsonlServer
                     case "h8_step":
                     {
                         var runtime = RequireH8(request);
+                        var h8Handle = RequiredString(request, "h8_handle");
+                        var declared = h8DeclaredReferenceStates.TryGetValue(
+                            h8Handle, out var declaredCursor);
+                        if (declared &&
+                            request.TryGetProperty("local_reference_seed", out _))
+                            throw new InvalidOperationException(
+                                "H8 declared and local ReferenceNature cannot mix.");
                         runtime.ChoosePlayerAction(
                             RequiredH8Boundary(request),
                             RequiredString(request, "action_id"));
-                        // One request advances the player decision and every
-                        // following reference-owned Nature event, stopping
-                        // before the next external player/choice boundary.
-                        // No separate law/status/RPC needed per physical draw.
-                        if (request.TryGetProperty("local_reference_seed", out _))
+                        // One request advances player mechanics and ensuing
+                        // emulator-owned Nature events to the next boundary.
+                        if (declared)
+                            h8DeclaredReferenceStates[h8Handle] =
+                                runtime.AdvanceDeclaredReferenceNature(
+                                    runtime.Boundary, declaredCursor!,
+                                    OptionalInt(request, "max_nature_decisions") ?? 1200);
+                        else if (request.TryGetProperty(
+                            "local_reference_seed", out _))
                             runtime.AdvanceLocalReferenceNature(
                                 runtime.Boundary,
                                 RequiredLong(request, "local_reference_seed"),
                                 OptionalInt(request, "max_nature_decisions") ?? 1200);
                         Write(new { requestId, ok = true, result = H8Status(
-                                runtime, RequiredString(request, "h8_handle"),
+                                runtime, h8Handle,
                                 OptionalBool(request, "include_player_frame")) });
                         break;
                     }
 
                     case "h8_resolve_chance_law_outcome":
                     {
+                        RejectExternalNatureForDeclaredH8(request);
                         // The emulator owns the conditional distribution.
                         // Nature selects only one advertised outcome ID; the
                         // runtime validates law identity, version and support
@@ -6928,6 +6975,7 @@ internal static class PrototypeAiJsonlServer
 
                     case "h8_resolve_intent":
                     {
+                        RejectExternalNatureForDeclaredH8(request);
                         var runtime = RequireH8(request);
                         runtime.ChooseIntent(
                             RequiredH8Boundary(request),
@@ -6942,6 +6990,7 @@ internal static class PrototypeAiJsonlServer
 
                     case "h8_resolve_random_target":
                     {
+                        RejectExternalNatureForDeclaredH8(request);
                         var runtime = RequireH8(request);
                         runtime.ChooseRandomTarget(
                             RequiredH8Boundary(request),
@@ -6957,6 +7006,7 @@ internal static class PrototypeAiJsonlServer
 
                     case "h8_resolve_draw_card":
                     {
+                        RejectExternalNatureForDeclaredH8(request);
                         var runtime = RequireH8(request);
                         runtime.ChooseDrawCard(
                             RequiredH8Boundary(request),
@@ -6971,8 +7021,13 @@ internal static class PrototypeAiJsonlServer
 
                     case "h8_fork":
                     {
+                        var parentHandle = RequiredString(request, "h8_handle");
                         var child = RequireH8(request).Fork();
                         var handle = StoreH8(child);
+                        if (h8DeclaredReferenceStates.TryGetValue(
+                                parentHandle, out var parentCursor))
+                            h8DeclaredReferenceStates.Add(
+                                handle, parentCursor.Fork());
                         Write(new { requestId, ok = true, result = H8Status(
                             child, handle,
                             OptionalBool(request, "include_player_frame")) });
@@ -7019,7 +7074,9 @@ internal static class PrototypeAiJsonlServer
                                 string.IsNullOrWhiteSpace(item.GetString()))
                                 throw new ArgumentException(
                                     "Invalid H8 handle.");
-                            if (h8States.Remove(item.GetString()!))
+                            var h8Handle = item.GetString()!;
+                            h8DeclaredReferenceStates.Remove(h8Handle);
+                            if (h8States.Remove(h8Handle))
                                 released++;
                         }
                         Write(new { requestId, ok = true, released });
