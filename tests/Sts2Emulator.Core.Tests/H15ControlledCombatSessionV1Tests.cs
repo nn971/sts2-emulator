@@ -96,6 +96,51 @@ public sealed class H15ControlledCombatSessionV1Tests
     }
 
     [Fact]
+    public void AuditedPotionUsesSharedSemanticActionAndPreservesNatureCursor()
+    {
+        var session = H15ControlledCombatSessionV1.Begin(
+            NativeStructureEntry(), "h15-shared-potion-adapter");
+        var empty = PrototypeJson.EmptyObject();
+        var slots = (PotionInstance?[])session.Run.Player.PotionSlots.Clone();
+        slots[0] = new PotionInstance("proto.potion.block", empty);
+        var combat = session.Run.World!.Combat!;
+        var withPotion = session with
+        {
+            Run = session.Run with
+            {
+                Player = session.Run.Player with { PotionSlots = slots },
+                World = session.Run.World with
+                {
+                    Combat = combat with
+                    {
+                        Potions = combat.Potions.Append(
+                            new CombatPotionState(
+                                0, "proto.potion.block", empty)).ToArray()
+                    }
+                }
+            }
+        };
+        PrototypeStateInvariants.Validate(withPotion.Run);
+        var action = new PrototypeAiEnvironment().Observe(withPotion.Run)
+            .LegalActions.Single(a => a.Kind == "use_potion" &&
+                a.Payload.Deserialize<UsePotionPayload>()!.Slot == 0);
+        var result = withPotion.PlayerAction(action.ActionId);
+        Assert.Equal("player", result.BoundaryKind);
+        Assert.Equal(1L, result.DecisionVersion);
+        Assert.Null(result.Run.Player.PotionSlots[0]);
+        Assert.Equal(0L, result.NatureState.SampleCount);
+        Assert.Equal(
+            CanonicalJson.Sha256(withPotion.Run.World!.Combat!.SemanticDeck),
+            CanonicalJson.Sha256(result.Run.World!.Combat!.SemanticDeck));
+        // The shared replay contract, rather than a second H15 potion
+        // resolver, is authoritative for the same source action.
+        var shared = SemanticPlayerActionEngineV111.Step(
+            withPotion.Run, action.ActionId);
+        Assert.Equal(CanonicalJson.Sha256(result.Run),
+            CanonicalJson.Sha256(shared.Run));
+    }
+
+    [Fact]
     public void KillingCardCanPublishGenuineCombatRewardBoundary()
     {
         // Test-only low-HP mechanics setup from a real native-structure
