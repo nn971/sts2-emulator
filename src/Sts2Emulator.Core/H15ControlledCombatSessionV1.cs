@@ -16,7 +16,7 @@ namespace Sts2Emulator.Core;
 public sealed record H15ControlledCombatSessionV1(
     RunState Run, SemanticEndTurnV111? PendingTurn,
     string NativeEncounterEntry, long DecisionVersion,
-    string CandidateModelId)
+    string CandidateModelId, ReferenceNatureStateV111 NatureState)
 {
     public const string SchemaId =
         "sts2-h15-controlled-prototype-combat-endturn-experimental-v1";
@@ -60,7 +60,11 @@ public sealed record H15ControlledCombatSessionV1(
                 "H15 experimental end turn lost prototype RNG provenance.");
         return new H15ControlledCombatSessionV1(
             candidate, null, prototypeEntry, 0,
-            H15NativeCombatEntryCandidateV1.ModelId(source));
+            H15NativeCombatEntryCandidateV1.ModelId(source),
+            // The session, not the player policy or an external Python
+            // sampler, owns its independent ReferenceNature cursor.
+            ReferenceNatureStateV111.Create(NativeRngV111.HashString(
+                independentSeed + "\nH15ReferenceNatureV111")));
     }
 
     public string BoundaryKind
@@ -276,6 +280,29 @@ public sealed record H15ControlledCombatSessionV1(
                 ? continuation : null,
             DecisionVersion = checked(DecisionVersion + 1)
         };
+    }
+
+    /// <summary>
+    /// The existing ReferenceNatureV111 is the sole reference sampler for
+    /// H15's current, explicitly UNVERIFIED experimental Chance Law. The
+    /// reference cursor, mechanics continuation, and version advance publish
+    /// atomically. Scripted/learned external Choose remains available and
+    /// deliberately does not consume the reference cursor.
+    /// </summary>
+    public (H15ControlledCombatSessionV1 Next,
+        ReferenceNatureSelectionV111 Selection) ChooseReference()
+    {
+        NatureState.Validate();
+        var law = PendingLaw();
+        if (law.ProbabilityStatus != ChanceLawV111.UnverifiedStatus)
+            throw new InvalidDataException(
+                "H15 experimental reference law has invalid probability provenance.");
+        var selection = ReferenceNatureV111.SampleValidated(law, NatureState);
+        // Choose validates the exact event/law, outcome support, and source
+        // mechanics. A failure leaves this immutable session and its
+        // reference cursor unchanged.
+        var next = Choose(law, selection.OutcomeId);
+        return (next with { NatureState = selection.NextState }, selection);
     }
 
     /// <summary>
