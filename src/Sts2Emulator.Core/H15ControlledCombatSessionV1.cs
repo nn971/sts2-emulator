@@ -219,6 +219,44 @@ public sealed record H15ControlledCombatSessionV1(
     }
 
     /// <summary>
+    /// Advance the *existing* ReferenceNature and SemanticEndTurn owners
+    /// through consecutive typed chance requests in a single transaction.
+    /// Every sampled outcome receives the normal explicit event/law receipt.
+    /// A failed mechanics site, unsupported boundary or exhausted event
+    /// budget leaves this immutable source session and cursor unchanged.
+    /// </summary>
+    public (H15ControlledCombatSessionV1 Next,
+        ReferenceNatureSelectionV111[] Selections) AdvanceReferenceToPlayer(
+        int maxNatureDecisions)
+    {
+        if (maxNatureDecisions <= 0)
+            throw new ArgumentOutOfRangeException(nameof(maxNatureDecisions));
+        if (BoundaryKind is not ("enemy_action" or "enemy_intent"
+                or "draw_card" or "random_target"))
+            throw new InvalidOperationException(
+                "H15 reference continuation requires a Nature boundary.");
+
+        var current = this;
+        var selected = new List<ReferenceNatureSelectionV111>();
+        while (current.BoundaryKind is "enemy_action" or "enemy_intent"
+            or "draw_card" or "random_target")
+        {
+            if (selected.Count >= maxNatureDecisions)
+                throw new NotSupportedException(
+                    "UNSUPPORTED_H15_NATURE_BUDGET : " +
+                    "ReferenceNature continuation reached its event limit.");
+            var (next, receipt) = current.ChooseReference();
+            selected.Add(receipt);
+            current = next;
+        }
+        if (current.BoundaryKind is not ("player" or "combat_exit"))
+            throw new NotSupportedException(
+                "UNSUPPORTED_H15_CHANCE boundary=" + current.BoundaryKind +
+                " : ReferenceNature continuation has no semantic owner.");
+        return (current, selected.ToArray());
+    }
+
+    /// <summary>
     /// Nature selects an outcome from the CURRENT declared event. Reject
     /// stale IDs and unsupported sites before mutating a continuation.
     /// </summary>
