@@ -787,6 +787,9 @@ public sealed class H8CombatRuntimeV1Tests
         var first = ReachNaturalDraw("h15-h8-declared-reference-cursor");
         var replay = ReachNaturalDraw("h15-h8-declared-reference-cursor");
         var boundary = first.Boundary;
+        var staged = first.CopyForAtomicCommit();
+        Assert.Equal(boundary, staged.Boundary);
+        Assert.Equal(first.DecisionHistory, staged.DecisionHistory);
         var law = first.CurrentDeclaredReferenceLaw();
         law.Validate();
         Assert.NotEmpty(law.Outcomes);
@@ -796,6 +799,14 @@ public sealed class H8CombatRuntimeV1Tests
             outcome.OutcomeId == expectedFirst.OutcomeId);
 
         var firstDecision = first.DecisionHistory.Count;
+        // A failed staged transaction is discarded without mutating the
+        // published live mechanics state or its boundary token.
+        var abandoned = staged.AdvanceDeclaredReferenceNature(
+            staged.Boundary, initial);
+        Assert.Equal(boundary, first.Boundary);
+        Assert.Equal(firstDecision, first.DecisionHistory.Count);
+        Assert.True(abandoned.SampleCount > 0);
+
         var next = first.AdvanceDeclaredReferenceNature(boundary, initial);
         var replayNext = replay.AdvanceDeclaredReferenceNature(
             replay.Boundary, initial);
