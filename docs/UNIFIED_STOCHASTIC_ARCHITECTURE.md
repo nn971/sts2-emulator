@@ -50,10 +50,14 @@ posterior must not be described as a missing general-purpose Nature provider.
   rather than H15 maintaining a second potion allowlist. Their
   reward provenance differs; neither supersedes the other.
 
-**Integration priority:** make H15 consume the shared typed continuation
-and ReferenceNature state ownership, extend public-history conditioning
-from fixed H8 fixtures to authentic supported entry states, then audit
-all remaining mechanics and source-law provenance. Continue labeling
+**Integration priority:** H15's reference **sampling and cursor**
+now use the shared ReferenceNature owner, and its audited player effects
+use the shared semantic action adapter. The remaining integration is
+to expand H15's narrow `SemanticEndTurnV111` continuation admission
+using the already-implemented richer semantic owners, extend
+public-history conditioning from fixed H8 fixtures to authentic
+supported entry states, and audit remaining mechanics/source-law
+provenance. Continue labeling
 `native-structure/prototype-RNG` entries separately from
 `native-combat-RNG` entries. No training result can establish native
 probability fidelity merely by evaluating against the same emulator.
