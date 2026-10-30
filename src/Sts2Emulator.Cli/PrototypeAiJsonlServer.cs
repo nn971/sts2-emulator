@@ -258,7 +258,8 @@ internal static class PrototypeAiJsonlServer
 
         object H15Status(
             H15ControlledCombatSessionV1 session,
-            string handle, object? requestId)
+            string handle, object? requestId,
+            ReferenceNatureSelectionV111? referenceSelection = null)
         {
             var kind = session.BoundaryKind;
             var law = kind is "enemy_action" or "enemy_intent"
@@ -279,6 +280,19 @@ internal static class PrototypeAiJsonlServer
                 fairContinuationCapability =
                     H15ControlledCombatSessionV1.FairContinuationCapability,
                 candidateModelId = session.CandidateModelId,
+                // Reference Nature's cursor never enters the player
+                // observation. Report only the replayable selected event
+                // for a reference-owned choice, never the private seed.
+                referenceNatureSelection = referenceSelection is null
+                    ? null : new
+                    {
+                        referenceSelection.LawId,
+                        referenceSelection.EventId,
+                        referenceSelection.OutcomeId,
+                        referenceSelection.OutcomeIndex,
+                        providerId = ReferenceNatureV111.ProviderId
+                    },
+                referenceNatureSampleCount = session.NatureState.SampleCount,
                 chanceLaw = law,
                 observationHash = frame?.ObservationHash,
                 // The exact public fair-policy projection consumed by the
@@ -10643,6 +10657,25 @@ internal static class PrototypeAiJsonlServer
                         var next = session.Choose(
                             law, RequiredString(request, "outcome_id"));
                         var status = H15Status(next, handle, requestId);
+                        h15States[handle] = next;
+                        Write(status);
+                        break;
+                    }
+
+                    case "h15_experimental_reference_choose":
+                    {
+                        var handle = RequiredString(request, "h15_handle");
+                        var session = RequireH15(request);
+                        if (RequiredLong(request, "version") != session.DecisionVersion)
+                            throw new InvalidOperationException(
+                                "Stale H15 experimental reference session version.");
+                        // Reuse the emulator-owned ReferenceNature sampler,
+                        // not a second Python weighted-roulette implementation.
+                        var (next, selection) = session.ChooseReference();
+                        // Status projection must succeed before the old
+                        // session or its Nature cursor is replaced.
+                        var status = H15Status(
+                            next, handle, requestId, selection);
                         h15States[handle] = next;
                         Write(status);
                         break;
