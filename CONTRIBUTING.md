@@ -13,6 +13,24 @@ For parity-critical changes, please include as many of the following as applicab
 - first-divergence fix evidence;
 - performance impact if the path is hot.
 
+## Stochastic provider changes: mandatory architecture review
+
+Before adding or changing RNG, Nature, Chance Law, draw order, controlled
+continuations, or H15 search boundaries, read
+[the canonical stochastic ownership contract](docs/UNIFIED_STOCHASTIC_ARCHITECTURE.md),
+[ADR 0004](docs/adr/0004-provider-owned-stochastic-state-and-chance-law.md),
+and [ADR 0005: H15 duplication retrospective](docs/adr/0005-h15-reference-nature-reuse-retrospective.md).
+Inspect the existing `StochasticSiteRegistryV111`, `ChanceLawV111`,
+`ReferenceNatureV111`, and related atomic session implementations
+**before** proposing a new sampler or mechanics resolver.
+
+A PR introducing a new stochastic component must name the specific
+capability absent from the existing owners. Prefer reusing shared
+`ReferenceNature` sampling, typed continuation replay, and the canonical
+Chance Law identity/provenance validator. Keep fixed-fixture conditioning,
+authentic native-run posterior conditioning, and local
+`SOURCE_VERIFIED` chance laws distinct.
+
 ## Do not
 
 - copy decompiled source text into the repository;
