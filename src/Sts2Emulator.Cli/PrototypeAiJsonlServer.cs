@@ -278,6 +278,11 @@ internal static class PrototypeAiJsonlServer
                 candidateModelId = session.CandidateModelId,
                 chanceLaw = law,
                 observationHash = frame?.ObservationHash,
+                // The exact public fair-policy projection consumed by the
+                // H9/H15 tactical codec; private provider state is excluded.
+                observationPayloadJson = frame is null
+                    ? null : CanonicalJson.Serialize(frame.Observation),
+                observationPolicyId = frame is null ? null : FairPolicyId,
                 legalActions = frame?.LegalActions.Select(ActionWire).ToArray(),
                 combatExit = session.Run.Phase is RunPhase.Reward or RunPhase.Terminal,
                 combatOutcome = session.Run.Phase switch
