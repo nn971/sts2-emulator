@@ -43,8 +43,14 @@ posterior must not be described as a missing general-purpose Nature provider.
   `random_target` continuation surface. H15 now samples the
   downgraded `UNVERIFIED` laws via `ReferenceNatureV111.SampleValidated`
   with a session-owned cursor and an atomic selected-event receipt.
-  The duplicate Python `_sample_law` sampler has been removed. This
-  remains an experimental model with no certified PUCT supervision.
+  The duplicate Python `_sample_law` sampler has been removed.
+  `H15ControlledCombatSessionV1.AdvanceReferenceToPlayer` now reuses
+  `ChooseReference` for consecutive typed chance events and publishes all
+  event receipts with mechanics and cursor as one atomic JSONL transition.
+  The research AI's `H15ExperimentalReferencePosterior` rejection-conditions
+  independent real-entry candidates on complete public combat-local
+  observation/menu/action histories under the explicit `UNVERIFIED` prior.
+  This remains an experimental model with no certified PUCT supervision.
   Its `SemanticEndTurnV111` continuation surface is narrower than the
   full semantic combat ReferenceNature event coverage.
 - **Reward distinction:** `ReferenceNatureCombatRewardSessionV111`
