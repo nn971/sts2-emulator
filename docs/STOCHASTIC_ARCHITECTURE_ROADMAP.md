@@ -1,6 +1,6 @@
 # Unified stochastic architecture — implementation roadmap
 
-**Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
+**Recorded:** 2026-10-16. **Status:** historical milestone plan with many implemented increments and remaining incomplete acceptance gates. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md), especially its [current implementation crosswalk](UNIFIED_STOCHASTIC_ARCHITECTURE.md#current-implementation-crosswalk-2026-10-30). This document appends dated progress notes and must not be read as a current statement that ReferenceNature or typed Chance Law is unimplemented.
 
 **Tracking:** [S1 Chance Law and ReferenceNature issue #174](https://github.com/nn971/sts2-emulator/issues/174); [Nature pilot #143](https://github.com/nn971/sts2-emulator/issues/143); [native inspector #122](https://github.com/nn971/sts2-emulator/issues/122). The existing site ledger and this architecture's ownership crosswalk are joined in the [site and state inventory](STOCHASTIC_SITE_OWNERSHIP_INVENTORY.md); that file deliberately does not duplicate per-site rows.
 
