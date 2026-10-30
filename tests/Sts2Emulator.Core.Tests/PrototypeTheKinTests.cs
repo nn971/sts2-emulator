@@ -228,6 +228,29 @@ public sealed class PrototypeTheKinTests
                 enemy.InstanceId == 3).LastMoveId);
     }
 
+    [Fact]
+    public void H15PrototypeContinuationKeepsTheKinFollowerSlotSemantics()
+    {
+        var source = CreateKinState();
+        var enemies = source.World!.Combat!.Enemies;
+        Assert.Equal("quick", enemies[0].SlotName);
+        Assert.Equal("dance", enemies[2].SlotName);
+
+        const string prototypeEncounter =
+            "h15-prototype:proto.encounter.the_kin_boss";
+        foreach (var index in new[] { 0, 2 })
+        {
+            // A real prototype combat has already normalized these slots.
+            // Native TheKinBoss preprocessing would instead expect
+            // "slot1" / "slot2" and throw.
+            var sourceMove = PrototypeGameEngine.EvaluateEnemyIntentChoice(
+                enemies, index, nativeEntry: null, nextIndex: _ => 0);
+            var controlledMove = PrototypeGameEngine.EvaluateEnemyIntentChoice(
+                enemies, index, prototypeEncounter, nextIndex: _ => 0);
+            Assert.Equal(sourceMove, controlledMove);
+        }
+    }
+
     private static RunState CreateKinState(
         int priestHp = 190,
         CombatCardInstance[]? cards = null,
