@@ -266,11 +266,9 @@ internal static class PrototypeAiJsonlServer
                     ? session.PendingLaw() : null;
             var frame = kind == "player"
                 ? environment.Observe(session.Run) : null;
-            // H9's measured terminal reward needs the public defeat
-            // non-minion HP accounting, which is terminal-only. Keep the
-            // exit frame separate from the combat actor observation.
-            var exitFrame = kind == "combat_exit"
-                ? environment.Observe(session.Run) : null;
+            // H9 terminal reward needs only four scalar fields. Publish
+            // these at genuine combat exit without constructing/serializing
+            // a complete deck, map, reward menu and terminal observation.
             return new
             {
                 requestId, ok = true,
@@ -298,10 +296,19 @@ internal static class PrototypeAiJsonlServer
                 },
                 exitHp = session.Run.Phase is RunPhase.Reward or RunPhase.Terminal
                     ? session.Run.Player.Hp : (int?)null,
-                // Only published at actual combat exit, to reproduce
-                // H9's complete terminal reward without a synthetic loss.
-                combatExitPublicObservationJson = exitFrame is null
-                    ? null : CanonicalJson.Serialize(exitFrame.Observation),
+                // The authoritative H9 total-nonminion-HP accounting
+                // is source-owned and terminal-only; no private RNG escapes.
+                combatExitH9Reward = kind == "combat_exit"
+                    ? new
+                    {
+                        hp = session.Run.Player.Hp,
+                        maxHp = session.Run.Player.MaxHp,
+                        defeatTotalNonMinionEnemyHp =
+                            session.Run.World?.DefeatTotalNonMinionEnemyHp,
+                        defeatRemainingNonMinionEnemyHp =
+                            session.Run.World?.DefeatRemainingNonMinionEnemyHp
+                    }
+                    : null,
                 combatTurn = session.Run.World?.Combat?.Turn
             };
         }
