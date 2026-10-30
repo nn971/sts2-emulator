@@ -9,7 +9,7 @@ public sealed class H15ControlledCombatSessionV1Tests
     {
         var engine = new PrototypeGameEngine();
         var source = PrototypeNativeOvergrowthRunFactory.Create(
-            "h15-experimental-native-structure");
+            "native-entry");
         for (var step = 0;
              step < 30 && source.Phase is RunPhase.Event or RunPhase.Reward;
              step++)
