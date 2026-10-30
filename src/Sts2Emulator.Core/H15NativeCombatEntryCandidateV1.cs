@@ -1,10 +1,10 @@
-using System.Globalization;
-
 namespace Sts2Emulator.Core;
 
 /// <summary>
-/// A source-native combat-entry *candidate* with its live source RNG cursors
+/// A first-turn combat-entry *candidate* with its private RNG cursors
 /// replaced by a separately seeded experimental chance prior.
+/// Supports both native-structure/prototype-RNG training roots and
+/// opt-in native-combat RNG roots, without conflating their provenance.
 ///
 /// This is intentionally not a fair public-history posterior. In particular,
 /// arbitrary source-specific hidden correlations, previously revealed top
@@ -15,18 +15,32 @@ public static class H15NativeCombatEntryCandidateV1
 {
     public const string CandidateModelId =
         "h15-native-combat-entry-independent-candidate-unverified-v1";
+    public const string PrototypeCandidateModelId =
+        "h15-native-structure-prototype-rng-candidate-unverified-v1";
+    public const string NativeCombatProviderClass = "native-combat-rng";
+    public const string PrototypeCombatProviderClass = "prototype-combat-rng";
     public const string FairSearchCapabilityId = "unavailable";
+
+    public static string ProviderClass(RunState source) =>
+        source.World?.Combat?.NativeRng is null
+            ? PrototypeCombatProviderClass : NativeCombatProviderClass;
+
+    public static string ModelId(RunState source) =>
+        ProviderClass(source) == NativeCombatProviderClass
+            ? CandidateModelId : PrototypeCandidateModelId;
 
     public static RunState Build(RunState source, string independentSeed)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentException.ThrowIfNullOrWhiteSpace(independentSeed);
         if (source.Phase != RunPhase.Combat ||
-            source.World?.Combat is not { } sourceCombat ||
-            source.NativeRunRng is null ||
-            sourceCombat.NativeRng is null)
+            source.World?.Combat is not { } sourceCombat)
             throw new NotSupportedException(
-                "H15 native candidate requires a live native combat entry.");
+                "H15 candidate requires an active combat entry.");
+        if (sourceCombat.NativeRng is not null &&
+            source.NativeRunRng is null)
+            throw new InvalidOperationException(
+                "Native combat provider requires a persistent native run owner.");
         if (sourceCombat.Turn != 1 ||
             !sourceCombat.IsPlayerTurn ||
             sourceCombat.PendingChoice is not null ||
@@ -45,24 +59,38 @@ public static class H15NativeCombatEntryCandidateV1
         var view = new PrototypeAiEnvironment();
         var before = view.ObserveH8(source);
 
-        var independentNative = NativeRngV111.CreateBundle(independentSeed);
+        // A prototype-RNG native-structure run has no NativeCombatRng
+        // sidecar. Leave that absence explicit and retain its mechanics.
+        // A v111 configured run may have a run-owned native sidecar before
+        // any native combat provider is active; replace it independently too.
+        var independentNative = source.NativeRunRng is null
+            ? null : NativeRngV111.CreateBundle(independentSeed);
         static RngStreamState IndependentContext(
             RngStreamState old, string seed) =>
             NativeRngV111.CreateStream(
                 old.StreamId,
-                NativeRngV111.HashString(seed + "\n" + old.StreamId));
+                NativeRngV111.HashString(seed + "\\n" + old.StreamId));
 
-        var originalFormation = sourceCombat.NativeRng.Formation;
-        var formation = originalFormation with
+        NativeCombatRngV111? independentCombatRng = null;
+        if (sourceCombat.NativeRng is { } originalNative)
         {
-            EncounterRng = IndependentContext(
-                originalFormation.EncounterRng, independentSeed),
-            MonsterContexts = originalFormation.MonsterContexts.Select(context =>
-                context with
-                {
-                    Rng = IndependentContext(context.Rng, independentSeed)
-                }).ToArray()
-        };
+            var originalFormation = originalNative.Formation;
+            var formation = originalFormation with
+            {
+                EncounterRng = IndependentContext(
+                    originalFormation.EncounterRng, independentSeed),
+                MonsterContexts = originalFormation.MonsterContexts.Select(context =>
+                    context with
+                    {
+                        Rng = IndependentContext(context.Rng, independentSeed)
+                    }).ToArray()
+            };
+            independentCombatRng = originalNative with
+            {
+                RunStreams = independentNative!.Fork(),
+                Formation = formation
+            };
+        }
 
         // Scrub the native physical draw ordering as well as the semantic
         // provider's ordering. Remaining physical instances are unchanged.
@@ -83,11 +111,7 @@ public static class H15NativeCombatEntryCandidateV1
         var rekeyedCombat = withoutDeck with
         {
             DrawPile = drawPile,
-            NativeRng = sourceCombat.NativeRng with
-            {
-                RunStreams = independentNative.Fork(),
-                Formation = formation
-            }
+            NativeRng = independentCombatRng
         };
         var candidateDeck = SemanticDeckEngineV111.BeginNature(
             drawPile.Reverse().ToArray());
@@ -97,7 +121,7 @@ public static class H15NativeCombatEntryCandidateV1
         var candidate = source.Fork() with
         {
             Rng = PrototypeRng.CreateBundle(independentSeed),
-            NativeRunRng = independentNative.Fork(),
+            NativeRunRng = independentNative?.Fork(),
             ReferenceNatureState = null,
             World = source.World with { Combat = rekeyedCombat }
         };
