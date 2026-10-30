@@ -166,6 +166,60 @@ public sealed class RandomIndexProvidersV111Tests
             new ControlledRandomIndexProviderV111(1).Resolve(singleton, streams));
     }
 
+    [Theory]
+    [InlineData("reward.potion_odds.ticket", false)]
+    [InlineData("reward.combat_gold.index_draw", false)]
+    [InlineData("potion.rarity_roll.ticket", false)]
+    [InlineData("potion.model_within_rarity.index_draw", true)]
+    [InlineData("card_rarity.roll.ticket", false)]
+    [InlineData("card_rarity.encounter_model.index_draw", true)]
+    [InlineData("card_rarity.upgrade_roll.ticket", false)]
+    public void GuardedNativeStructureCombatRewardUsesOnlyNamedRewardSites(
+        string siteId, bool chooseIndex)
+    {
+        var streams = PrototypeRng.CreateBundle(
+            "h15-postcombat-reward-site:" + siteId);
+        var hash = CanonicalJson.Sha256(streams);
+
+        RandomIndexDecisionV111 Select(string stream = "reward") =>
+            chooseIndex
+                ? LegacyRandomChoiceV111.ChooseIndexRange(
+                    streams, siteId, stream, "h15:test:reward", 3)
+                : LegacyRandomChoiceV111.ChooseBoundedInteger(
+                    streams, siteId, stream, "h15:test:reward", 1000);
+
+        using (ControlledChanceGuardV111.Enter())
+        {
+            // No implicit gameplay reward delegation outside the narrow
+            // source EnterReward scope.
+            Assert.Throws<NotSupportedException>(() => Select());
+            Assert.Equal(hash, CanonicalJson.Sha256(streams));
+
+            using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
+            {
+                var accepted = Select();
+                Assert.Equal(siteId, accepted.Request.SiteId);
+                Assert.Equal("reward", accepted.Request.StreamId);
+                Assert.Equal(
+                    chooseIndex ? "choose_index" : "bounded_integer",
+                    accepted.Request.OperationKind);
+
+                // The scoped permission cannot redirect to a different
+                // stream or authorize unrelated hidden combat chance.
+                Assert.Throws<NotSupportedException>(() => Select("combat"));
+                Assert.Throws<NotSupportedException>(() =>
+                    LegacyRandomChoiceV111.ChooseBoundedInteger(
+                        streams, "combat.committed_intent.index_draw",
+                        "combat", "h15:test", 3));
+                Assert.Throws<NotSupportedException>(() =>
+                    LegacyRandomChoiceV111.ChooseBoundedInteger(
+                        streams, "reward.unaudited.ticket",
+                        "reward", "h15:test", 3));
+            }
+            Assert.Throws<NotSupportedException>(() => Select());
+        }
+    }
+
     [Fact]
     public void GuardedLegacyDeathSummonHpConsumesOnlyItsScopedCombatDraw()
     {
