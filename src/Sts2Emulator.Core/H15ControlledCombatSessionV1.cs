@@ -137,40 +137,8 @@ public sealed record H15ControlledCombatSessionV1(
             throw new NotSupportedException(
                 "UNSUPPORTED_H15_CHANCE boundary=" + BoundaryKind +
                 " : continuation requires additional typed Chance Law ownership.");
-        return Unverified(law, alternativeWeights);
-    }
-
-    private static ChanceLawV111 Unverified(
-        ChanceLawV111 original, ChanceLawOutcomeV111[]? newOutcomes)
-    {
-        var outcomes = newOutcomes ?? original.Outcomes;
-        var downgraded = original with
-        {
-            Outcomes = outcomes,
-            TotalWeight = outcomes.Sum(choice => choice.Weight),
-            SupportFingerprint = CanonicalJson.Sha256(outcomes),
-            ProbabilityStatus = ChanceLawV111.UnverifiedStatus,
-            ProbabilityProvenance = UnverifiedProvenance
-        };
-        // ChanceLawV111.Validate defines its canonical identifier over
-        // these exact typed fields. Never carry a SOURCE_VERIFIED law ID
-        // across the experimental provenance downgrade.
-        var lawId = CanonicalJson.Sha256(new
-        {
-            downgraded.SchemaId,
-            downgraded.SiteId,
-            downgraded.OperationKind,
-            downgraded.OwnerId,
-            downgraded.Ordinal,
-            downgraded.SupportFingerprint,
-            downgraded.ConditioningPolicyId,
-            downgraded.ConditioningFingerprint,
-            downgraded.ProbabilityStatus,
-            downgraded.ProbabilityProvenance
-        });
-        var result = downgraded with { LawId = lawId };
-        result.Validate();
-        return result;
+        return law.WithUnverifiedProvenance(
+            UnverifiedProvenance, alternativeWeights);
     }
 
     /// <summary>
