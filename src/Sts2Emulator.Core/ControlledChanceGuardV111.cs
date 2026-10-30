@@ -17,6 +17,17 @@ public static class ControlledChanceGuardV111
     {
         ["reward.card_rarity.ticket"] = "bounded_integer",
         ["reward.card_model.index_draw"] = "choose_index",
+        // Native-structure prototype-RNG combat victory enters
+        // EnterReward synchronously, before publishing the reward phase.
+        // These sites all belong to that source reward initialization
+        // (Rewards stream), never to unresolved combat Nature.
+        ["reward.potion_odds.ticket"] = "bounded_integer",
+        ["reward.combat_gold.index_draw"] = "bounded_integer",
+        ["potion.rarity_roll.ticket"] = "bounded_integer",
+        ["potion.model_within_rarity.index_draw"] = "choose_index",
+        ["card_rarity.roll.ticket"] = "bounded_integer",
+        ["card_rarity.encounter_model.index_draw"] = "choose_index",
+        ["card_rarity.upgrade_roll.ticket"] = "bounded_integer",
         // Elite postcombat reward is engine-owned just like card/potion
         // reward offers. It never contributes to an active combat outcome.
         ["reward.elite_relic.model"] = "choose_index",
