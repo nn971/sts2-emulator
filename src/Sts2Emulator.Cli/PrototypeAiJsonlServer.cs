@@ -64,6 +64,11 @@ internal static class PrototypeAiJsonlServer
         var h8States = new Dictionary<string, H8CombatRuntimeV1>(
             StringComparer.Ordinal);
         long nextH8Handle = 1;
+        // H15 experimental continuations are isolated from ordinary
+        // player state handles and certified H8 Nature sessions.
+        var h15States = new Dictionary<string, H15ControlledCombatSessionV1>(
+            StringComparer.Ordinal);
+        long nextH15Handle = 1;
         var semanticProfiler = new SemanticOperationProfiler();
         var h8Profiler = new SemanticOperationProfiler();
         string? activeOperation = null;
@@ -240,6 +245,42 @@ internal static class PrototypeAiJsonlServer
                 ? runtime
                 : throw new InvalidOperationException(
                     "Unknown H8 combat handle: " + handle);
+        }
+
+        H15ControlledCombatSessionV1 RequireH15(JsonElement request)
+        {
+            var handle = RequiredString(request, "h15_handle");
+            return h15States.TryGetValue(handle, out var session)
+                ? session
+                : throw new InvalidOperationException(
+                    "Unknown H15 experimental session handle: " + handle);
+        }
+
+        object H15Status(
+            H15ControlledCombatSessionV1 session,
+            string handle, object? requestId)
+        {
+            var kind = session.BoundaryKind;
+            var law = kind is "enemy_action" or "enemy_intent"
+                or "draw_card" or "random_target"
+                    ? session.PendingLaw() : null;
+            var frame = kind == "player"
+                ? environment.Observe(session.Run) : null;
+            return new
+            {
+                requestId, ok = true,
+                schemaId = H15ControlledCombatSessionV1.SchemaId,
+                h15Handle = handle,
+                version = session.DecisionVersion,
+                boundaryKind = kind,
+                fairContinuationCapability =
+                    H15ControlledCombatSessionV1.FairContinuationCapability,
+                candidateModelId = session.CandidateModelId,
+                chanceLaw = law,
+                observationHash = frame?.ObservationHash,
+                legalActions = frame?.LegalActions.Select(ActionWire).ToArray(),
+                combatExit = session.Run.Phase != RunPhase.Combat
+            };
         }
 
         H8BoundaryTokenV1 RequiredH8Boundary(JsonElement request) =>
@@ -10499,6 +10540,80 @@ internal static class PrototypeAiJsonlServer
                             legalActionCount = frame.LegalActions.Length,
                             unknownDrawPositions = unknown
                         });
+                        break;
+                    }
+
+                    case "h15_experimental_begin":
+                    {
+                        var source = RequireState(request);
+                        var session = H15ControlledCombatSessionV1.Begin(
+                            source, RequiredString(request, "independent_seed"));
+                        var handle = "h15-" + nextH15Handle++;
+                        h15States.Add(handle, session);
+                        Write(H15Status(session, handle, requestId));
+                        break;
+                    }
+
+                    case "h15_experimental_status":
+                    {
+                        var session = RequireH15(request);
+                        Write(H15Status(session,
+                            RequiredString(request, "h15_handle"), requestId));
+                        break;
+                    }
+
+                    case "h15_experimental_end_turn":
+                    {
+                        var handle = RequiredString(request, "h15_handle");
+                        var session = RequireH15(request);
+                        if (RequiredLong(request, "version") != session.DecisionVersion)
+                            throw new InvalidOperationException(
+                                "Stale H15 experimental session version.");
+                        var next = session.EndTurn(
+                            RequiredString(request, "action_id"));
+                        // Publish only after the complete guarded mechanics
+                        // action has succeeded without an unowned RNG site.
+                        h15States[handle] = next;
+                        Write(H15Status(next, handle, requestId));
+                        break;
+                    }
+
+                    case "h15_experimental_choose":
+                    {
+                        var handle = RequiredString(request, "h15_handle");
+                        var session = RequireH15(request);
+                        if (RequiredLong(request, "version") != session.DecisionVersion)
+                            throw new InvalidOperationException(
+                                "Stale H15 experimental session version.");
+                        if (!request.TryGetProperty("chance_law", out var lawJson))
+                            throw new ArgumentException(
+                                "H15 choice requires the declared chance_law.");
+                        var law = lawJson.Deserialize<ChanceLawV111>(
+                            new JsonSerializerOptions(JsonSerializerDefaults.Web)) ??
+                            throw new ArgumentException("Invalid H15 Chance Law.");
+                        var next = session.Choose(
+                            law, RequiredString(request, "outcome_id"));
+                        h15States[handle] = next;
+                        Write(H15Status(next, handle, requestId));
+                        break;
+                    }
+
+                    case "h15_experimental_release_many":
+                    {
+                        if (!request.TryGetProperty("h15_handles", out var handles) ||
+                            handles.ValueKind != JsonValueKind.Array)
+                            throw new ArgumentException(
+                                "H15 release requires h15_handles array.");
+                        var count = 0;
+                        foreach (var element in handles.EnumerateArray())
+                        {
+                            if (element.ValueKind != JsonValueKind.String)
+                                throw new ArgumentException(
+                                    "Invalid H15 experimental session handle.");
+                            if (h15States.Remove(element.GetString()!))
+                                count++;
+                        }
+                        Write(new { requestId, ok = true, released = count });
                         break;
                     }
 
