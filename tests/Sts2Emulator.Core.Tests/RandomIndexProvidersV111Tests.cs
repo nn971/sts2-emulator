@@ -270,12 +270,15 @@ public sealed class RandomIndexProvidersV111Tests
         var streams = NativeRngV111.CreateBundle("invalid-zero-chance");
         var before = CanonicalJson.Sha256(streams);
         var provider = new NativeRandomIndexProviderV111();
+        // Use a registered site so each assertion isolates the intended
+        // failure: empty support, negative ordinal, or absent native stream.
+        const string site = NativeCombatRngEntryV111.InitialUniqueHpSiteId;
         Assert.Throws<ArgumentException>(() => provider.Resolve(new(
-            "site", "run.niche", "owner", 0, []), streams));
+            site, "run.niche", "owner", 0, []), streams));
         Assert.Throws<ArgumentException>(() => provider.Resolve(new(
-            "site", "run.niche", "owner", -1, [1]), streams));
+            site, "run.niche", "owner", -1, [1]), streams));
         Assert.Throws<InvalidOperationException>(() => provider.Resolve(new(
-            "site", "run.invalid", "owner", 0, [1]), streams));
+            site, "run.invalid", "owner", 0, [1]), streams));
         Assert.Equal(before, CanonicalJson.Sha256(streams));
     }
 }
