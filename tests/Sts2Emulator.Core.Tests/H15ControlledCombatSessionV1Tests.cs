@@ -166,6 +166,30 @@ public sealed class H15ControlledCombatSessionV1Tests
                         law with { EventId = "stale-event" },
                         law.Outcomes[0].OutcomeId));
                 Assert.Equal(original, advanced.DecisionVersion);
+
+                // H15 consumes the existing ReferenceNatureV111 sampler.
+                // Sampler state and mechanics advance atomically and the
+                // explicit external (scripted/learned) path remains separate.
+                var (referenceNext, selection) = advanced.ChooseReference();
+                Assert.Equal(law.LawId, selection.LawId);
+                Assert.Equal(law.EventId, selection.EventId);
+                Assert.Contains(law.Outcomes,
+                    outcome => outcome.OutcomeId == selection.OutcomeId);
+                Assert.Equal(0L, advanced.NatureState.SampleCount);
+                Assert.Equal(1L, referenceNext.NatureState.SampleCount);
+                Assert.Equal(original + 1, referenceNext.DecisionVersion);
+                var (repeatedNext, repeatedSelection) =
+                    advanced.ChooseReference();
+                Assert.Equal(selection.OutcomeId, repeatedSelection.OutcomeId);
+                Assert.Equal(
+                    CanonicalJson.Sha256(referenceNext.Run),
+                    CanonicalJson.Sha256(repeatedNext.Run));
+                var scriptedNext = advanced.Choose(
+                    law, selection.OutcomeId);
+                Assert.Equal(0L, scriptedNext.NatureState.SampleCount);
+                Assert.Equal(
+                    CanonicalJson.Sha256(referenceNext.Run),
+                    CanonicalJson.Sha256(scriptedNext.Run));
             }
             else
                 Assert.Contains(advanced.BoundaryKind,
