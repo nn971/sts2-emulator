@@ -261,13 +261,11 @@ public sealed class H8CombatRuntimeV1
     public object DescribePendingReferenceLaw()
     {
         using var scope = H8HotPathProfilerV1.Begin("h8.chance_law.total");
+        var declaredLaw = CurrentDeclaredReferenceLaw();
         if (HasPendingCardDraw && CurrentDrawCursor() is { } cursor)
         {
             var drawn = cursor.Event;
-            var deck = _state.Run.World?.Combat?.SemanticDeck ??
-                throw new InvalidDataException(
-                    "H8 reference draw lacks a provider-owned semantic deck.");
-            var law = ChanceLawEngineV111.QueryDraw(deck);
+            var law = declaredLaw;
             return new
             {
                 kind = "draw_card",
@@ -294,7 +292,7 @@ public sealed class H8CombatRuntimeV1
                     _state,
                     _pendingIntentPilotFingerprint ??= _state.Fingerprint);
             var support = evt.Support;
-            var law = ChanceLawEngineV111.QueryIntent(evt);
+            var law = declaredLaw;
             return new
             {
                 kind = "enemy_intent",
@@ -318,7 +316,7 @@ public sealed class H8CombatRuntimeV1
         {
             var target = _state.TargetPending ??
                 throw new InvalidDataException("H8 random target event is missing.");
-            var targetLaw = ChanceLawEngineV111.QueryTarget(target);
+            var targetLaw = declaredLaw;
             return new
             {
                 kind = "random_target",
