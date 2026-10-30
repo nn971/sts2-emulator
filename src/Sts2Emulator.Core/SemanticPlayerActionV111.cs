@@ -25,9 +25,9 @@ public sealed record SemanticPlayerActionV111(
 
 public static class SemanticPlayerActionEngineV111
 {
-    // This first gate has verified source card effects with no primitive
-    // draw-pile mutation. The full action/effect state machine will replace
-    // this allowlist as semantic continuations become available.
+    // This first gate has audited source card and potion effects with
+    // no primitive draw-pile mutation. The full typed player-action
+    // continuation will supersede these restricted admission lists.
     private static readonly HashSet<string> SupportedCards =
         new(StringComparer.Ordinal)
         {
@@ -182,9 +182,9 @@ public static class SemanticPlayerActionEngineV111
         // reward sites already explicitly allowlisted by the chance guard.
         using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
             run = environment.Step(source.Fork(), actionId).State;
-        // A real killing card may exit active combat before publishing
-        // another player choice. Its semantic deck is consumed on combat
-        // exit, so require the source's genuine reward/defeat boundary.
+        // A real killing card or potion may exit combat before another
+        // player choice. Its semantic deck is consumed on combat exit:
+        // require the source's genuine reward/defeat boundary.
         if (PrototypeGameEngine.IsAtCombatRewardOrTerminalBoundary(run))
             ValidateCombatExit(run);
         else
