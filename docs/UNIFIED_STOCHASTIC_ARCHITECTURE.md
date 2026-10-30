@@ -23,7 +23,12 @@ posterior must not be described as a missing general-purpose Nature provider.
   SplitMix64 and consumes the law's declared weights; it neither advances
   Native RNG nor independently certifies a law's source distribution.
   `H8LocalReferenceNatureV1` additionally offers fast event-keyed sampling
-  for supported H8 combat events.
+  for supported H8 combat events. H8's opt-in declared-law fixed-fixture
+  path now uses `ReferenceNatureV111.SampleValidated` with a
+  session-owned `ReferenceNatureStateV111` cursor in the emulator,
+  rather than a second Python weighted-law sampler. The fast event-keyed
+  provider and the stateful declared-law provider have distinct seed
+  semantics and share authoritative mechanics resolution.
 - **History-conditioned sampling already exists in a limited domain:**
   `sts2-ai/src/sts2_ai/emulator/h15_h8_reference.py` implements
   `H8ReferenceNaturePosterior`, which rejection-conditions independent
