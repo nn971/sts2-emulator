@@ -27,3 +27,5 @@ jobs:
         run: python -m unittest discover -s tests -p 'test_unified_native_rng_fidelity_gate.py' -v
       - name: Controlled isolated Nature HP-intent JSONL bridge
         run: python tools/nature_jsonl_smoke.py
+      - name: Persistent emulator shadow session (emulator-derived synthetic source only)
+        run: python tools/native_lockstep_shadow_jsonl_smoke.py
