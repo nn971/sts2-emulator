@@ -71,6 +71,48 @@ public sealed class NativeRunPreludeRecorder : IAsyncDisposable
         });
     }
 
+    /// <summary>
+    /// Read-only snapshots from native RunRngSet.ToSerializable and
+    /// PlayerRngSet.ToSerializable. These expose counters/words at three
+    /// observed sites, not all RNG calls or a verified emulator alignment.
+    /// </summary>
+    public void RunRngSnapshot(
+        string site, ulong playerSeed,
+        IReadOnlyList<NativeRunRngStreamView> streams)
+    {
+        if (_closed) return;
+        if (site is not ("run_started" or "room_entered" or "combat_attach")
+            || streams.Count == 0
+            || streams.Any(s => s.Scope is not ("run" or "player")
+                || string.IsNullOrWhiteSpace(s.StreamId) || s.Counter < 0)
+            || streams.Select(s => (s.Scope, s.StreamId)).Distinct().Count()
+                != streams.Count
+            || !streams.Any(s => s.Scope == "run")
+            || !streams.Any(s => s.Scope == "player"))
+        {
+            ObservationFailure("run_rng_snapshot", "INVALID_SOURCE_RNG_PROJECTION");
+            return;
+        }
+        Write("run_rng_snapshot", new
+        {
+            site,
+            player_rng_seed = playerSeed,
+            streams = streams.OrderBy(s => s.Scope, StringComparer.Ordinal)
+                .ThenBy(s => s.StreamId, StringComparer.Ordinal)
+                .Select(s => new
+                {
+                    scope = s.Scope,
+                    stream_id = s.StreamId,
+                    counter = s.Counter,
+                    s0 = s.S0, s1 = s.S1, s2 = s.S2, s3 = s.S3
+                }).ToArray(),
+            source = "RunRngSet.ToSerializable+PlayerRngSet.ToSerializable",
+            source_rng_consumed_by_inspector = false,
+            native_rng_precombat_history_complete = false,
+            emulator_rng_alignment = "NOT_TESTED"
+        });
+    }
+
     public void RoomEntered(
         int actIndex, string actId, int actFloor, int totalFloor,
         int? mapColumn, int? mapRow, string roomType,
@@ -225,6 +267,10 @@ public sealed class NativeRunPreludeRecorder : IAsyncDisposable
         await _writer.CompleteAsync().ConfigureAwait(false);
     }
 }
+
+public sealed record NativeRunRngStreamView(
+    string Scope, string StreamId, int Counter,
+    ulong S0, ulong S1, ulong S2, ulong S3);
 
 public sealed record NativeRunPreludeRecord(
     string Type, long Ordinal, string RunId, JsonElement Data);
