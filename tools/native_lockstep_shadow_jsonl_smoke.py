@@ -75,10 +75,14 @@ def test_real_jsonl(command: list[str]) -> dict:
                 "defend_silent", "strike_silent")
         selected = next((a for a in legal if is_basic_card(a)), None)
         if selected is None:
+            # Still exercise source payload translation when the initial
+            # hand uses an unfamiliar but legal v111 card model.
+            selected = next((a for a in legal if a["kind"] == "play_card"), None)
+        if selected is None:
             selected = next((a for a in legal if a["kind"] == "end_turn"
                              and json.loads(a["payloadJson"]) == {}), None)
         if selected is None:
-            raise AssertionError("No basic card or end_turn in first combat")
+            raise AssertionError("No playable card or end_turn in first combat")
         payload = json.loads(selected["payloadJson"])
         if selected["kind"] == "play_card":
             target = payload.get("target_enemy_id")
@@ -94,8 +98,18 @@ def test_real_jsonl(command: list[str]) -> dict:
             source_action = {"kind": "end_turn", "payload": {}}
         emulated_child = state.step(selected["actionId"])
         final = emulated_child.observe()
+        if final.get("combat") is None and selected["kind"] == "play_card":
+            # Early lethal plays can finish a combat and leave no source
+            # combat projection to compare. Fall back to a non-lethal turn.
+            selected = next((a for a in legal if a["kind"] == "end_turn"
+                             and json.loads(a["payloadJson"]) == {}), None)
+            if selected is None:
+                raise AssertionError("Early lethal card has no end-turn fallback")
+            source_action = {"kind": "end_turn", "payload": {}}
+            emulated_child = state.step(selected["actionId"])
+            final = emulated_child.observe()
         if final.get("combat") is None:
-            raise AssertionError("Fixture first turn must preserve a live combat")
+            raise AssertionError("Fixture first transition must preserve a live combat")
         raw_snapshot = state.save_snapshot()
         owned = json.loads(raw_snapshot)
         seed = owned["state"]["run_seed"]
@@ -148,6 +162,8 @@ def test_real_jsonl(command: list[str]) -> dict:
             "source_data": "EMULATOR_DERIVED_SYNTHETIC_ONLY",
             "shadow_actions_stepped": report["emulator_actions_stepped"],
             "source_action_kind": source_action["kind"],
+            "emulator_play_card_actions_offered": sum(
+                a["kind"] == "play_card" for a in legal),
             "target_mapping_exercised": (
                 source_action["kind"] == "play_card" and
                 source_action["payload"]["target_id"] is not None),
