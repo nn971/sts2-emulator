@@ -10,6 +10,10 @@ namespace Sts2ReferenceMod.Trace;
 /// cannot identify a stable player input boundary. It does not claim hook
 /// completeness or parity with the emulated effects.
 /// </summary>
+/// <summary>Card identity already assigned by native NetCombatCardDb.</summary>
+public sealed record NativeHandMenuOption(
+    long CombatCardId, string ModelId, int UiHandIndex);
+
 public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
 {
     public const string Schema = "native-action-envelope-v1";
@@ -26,6 +30,7 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
     private readonly Dictionary<object, long> _requested =
         new(ReferenceEqualityComparer.Instance);
     private long _nextInputRequestId;
+    private long _nextHandMenuId;
     private readonly string _gameBuild;
     private long _sequence;
     private long _nextActionId;
@@ -166,6 +171,91 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
                 native_acceptance = "UNVERIFIED",
                 human_origin = "UNVERIFIED",
                 input_injected = false
+            })));
+    }
+
+    /// <summary>
+    /// A native UI hand-selection menu, recorded after the original UI
+    /// has already applied its own filter. This is the exact holder-visibility
+    /// projection at that instant, not all legal game actions or proof that
+    /// the same options remained valid until the user selected one.
+    /// </summary>
+    public void NativeHandMenu(
+        string mode, string? sourceModelId,
+        int minSelect, int maxSelect, bool requireConfirmation,
+        int nativeHolderCount, int missingCardIds,
+        IReadOnlyList<NativeHandMenuOption> visibleOptions)
+    {
+        if (_closed) return;
+        if (mode is not ("SimpleSelect" or "UpgradeSelect")
+            || minSelect < 0 || maxSelect < minSelect
+            || nativeHolderCount < 0 || missingCardIds < 0
+            || visibleOptions.Count + missingCardIds > nativeHolderCount
+            || visibleOptions.Any(x => x.CombatCardId < 0
+                || string.IsNullOrWhiteSpace(x.ModelId)
+                || x.UiHandIndex < 0 || x.UiHandIndex >= nativeHolderCount)
+            || visibleOptions.Select(x => x.CombatCardId).Distinct().Count()
+                != visibleOptions.Count)
+        {
+            ObservationFailure("native_hand_menu", "INVALID_NATIVE_UI_PROJECTION");
+            return;
+        }
+        Write(new NativeActionEnvelopeRecord(
+            "native_hand_menu", Next(),
+            _activeOrder.Count == 0 ? null : _activeOrder[^1],
+            Data: JsonSerializer.SerializeToElement(new
+            {
+                menu_id = ++_nextHandMenuId,
+                mode,
+                source_model_id = sourceModelId,
+                min_select = minSelect,
+                max_select = maxSelect,
+                require_manual_confirmation = requireConfirmation,
+                native_hand_holder_count = nativeHolderCount,
+                missing_card_ids = missingCardIds,
+                options = visibleOptions.Select(x => new
+                {
+                    combat_card_id = x.CombatCardId,
+                    card_model_id = x.ModelId,
+                    ui_hand_index = x.UiHandIndex
+                }).ToArray(),
+                coverage = missingCardIds == 0
+                    ? "SOURCE_NATIVE_UI_VISIBLE_HAND_OPTIONS"
+                    : "INCOMPLETE_NATIVE_CARD_ID_MAPPING",
+                selection_id_binding = "UNVERIFIED",
+                predicate_re_evaluated_by_inspector = false,
+                source = "NPlayerHand.SelectCards.postfix_after_native_visibility_update",
+                emulator_parity = "NOT_TESTED"
+            })));
+    }
+
+    /// <summary>
+    /// Result from the native manual play method, after its own
+    /// CanPlayTargeting check and optional queue request. Do not treat a
+    /// true result as permission from the native action queue.
+    /// </summary>
+    public void NativeManualPlayResult(long? combatCardId, string modelId,
+        string? targetId, bool returnedSuccess)
+    {
+        if (_closed) return;
+        if (string.IsNullOrWhiteSpace(modelId)
+            || combatCardId is < 0)
+        {
+            ObservationFailure("native_manual_play_result", "INVALID_CARD_ID");
+            return;
+        }
+        Write(new NativeActionEnvelopeRecord(
+            "native_manual_play_result", Next(),
+            Data: JsonSerializer.SerializeToElement(new
+            {
+                combat_card_id = combatCardId,
+                card_model_id = modelId,
+                target_id = targetId,
+                returned_success = returnedSuccess,
+                source = "CardModel.TryManualPlay.postfix",
+                queue_acceptance = "UNVERIFIED",
+                human_origin = "UNVERIFIED",
+                emulator_parity = "NOT_TESTED"
             })));
     }
 
