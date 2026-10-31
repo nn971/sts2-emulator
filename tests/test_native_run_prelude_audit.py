@@ -190,7 +190,7 @@ class RunPreludeAuditTests(unittest.TestCase):
             row["ordinal"] = n
         result = audit(rows)
         self.assertEqual("RUN_PRELUDE_SOURCE_OBSERVED", result["status"])
-        self.assertEqual(6, result["first_combat_link"]["ordinal"])
+        self.assertEqual(7, result["first_combat_link"]["ordinal"])
 
     def test_missing_linked_combat_room_or_unsettled_postfix_fails(self):
         rows = prelude()
