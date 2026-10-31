@@ -129,8 +129,13 @@ class DecisionGapAuditTests(unittest.TestCase):
                   "data": {"combat_card_id": 2, "target_id": None,
                            "returned_success": True,
                            "source": "CardModel.TryManualPlay.postfix"}}
+        ui_start = {"type": "native_ui_play_begin",
+                    "data": {"combat_card_id": 2,
+                             "started_via_shortcut": True,
+                             "native_ui_gate": "SOURCE_CALLSITE_PASSED"}}
         rows.insert(4, displayed)
         rows.insert(5, selection)
+        rows.insert(-1, ui_start)
         rows.insert(-1, manual)
         for i, row in enumerate(rows, 1):
             row["ordinal"] = i
@@ -148,6 +153,10 @@ class DecisionGapAuditTests(unittest.TestCase):
             gap["source_matching_manual_play_return_candidates"][0]["returned_success"])
         self.assertEqual("TEMPORAL_CANDIDATES_NOT_UNIQUE_PROOF",
                          gap["manual_play_correlation"])
+        self.assertTrue(
+            gap["source_matching_ui_play_begin_candidates"][0]["started_via_shortcut"])
+        self.assertEqual("CARD_ID_CANDIDATES_NOT_UNIQUE_PROOF",
+                         gap["ui_play_correlation"])
 
     def test_all_source_candidates_aligned(self):
         strict, rows = pair()
