@@ -77,6 +77,7 @@ def audit(strict: list[dict], sidecar: list[dict]) -> dict:
         elif row.get("type") == "native_input_outcome":
             returned[details.get("input_request_id")] = row
     choices = []
+    hand_menus = []
     for i, record in enumerate(sidecar, 1):
         if record.get("ordinal") != i:
             report["errors"].append("NONCONSECUTIVE_SIDECAR_ORDINAL")
@@ -96,6 +97,8 @@ def audit(strict: list[dict], sidecar: list[dict]) -> dict:
             frames.append(i)
         elif kind == "native_player_choice":
             choices.append((i, record.get("data") or {}))
+        elif kind == "native_hand_menu":
+            hand_menus.append((i, record.get("data") or {}))
         elif kind == "action_started":
             chosen = _canonical(record.get("canonical_action"))
             if chosen is None:
@@ -122,7 +125,22 @@ def audit(strict: list[dict], sidecar: list[dict]) -> dict:
                 source_return = returned.get(input_id) if input_id is not None else None
                 selected = [(n, d) for n, d in choices
                             if last_matched_start < n < i]
+                displayed = [(n, d) for n, d in hand_menus
+                             if last_matched_start < n < i]
                 report["first_gap"] = {
+                    "source_native_hand_menus_since_prior_action": [
+                        {
+                            "ordinal": n, "menu_id": d.get("menu_id"),
+                            "source_model_id": d.get("source_model_id"),
+                            "coverage": d.get("coverage"),
+                            "option_ids": [
+                                o.get("combat_card_id")
+                                for o in d.get("options", [])
+                                if isinstance(o, dict)],
+                            "selection_id_binding":
+                                d.get("selection_id_binding"),
+                        } for n, d in displayed
+                    ],
                     "source_input_request_id": input_id,
                     "source_input_request_ordinal": (
                         source_request.get("ordinal") if source_request else None),
@@ -156,6 +174,26 @@ def audit(strict: list[dict], sidecar: list[dict]) -> dict:
                 }
     if report["errors"]:
         return report
+    if report["first_gap"] is not None:
+        gap = report["first_gap"]
+        candidate = gap.get("candidate_action") or {}
+        payload = candidate.get("payload") or {}
+        cid, target = payload.get("card_instance_id"), payload.get("target_id")
+        if candidate.get("kind") == "play_card":
+            matching_manual = [
+                {
+                    "ordinal": r.get("ordinal"),
+                    "returned_success": (r.get("data") or {}).get("returned_success"),
+                    "source": (r.get("data") or {}).get("source")
+                } for r in sidecar
+                if r.get("type") == "native_manual_play_result"
+                and (r.get("data") or {}).get("combat_card_id") == cid
+                and (r.get("data") or {}).get("target_id") == target
+            ]
+        else:
+            matching_manual = []
+        gap["source_matching_manual_play_return_candidates"] = matching_manual
+        gap["manual_play_correlation"] = "TEMPORAL_CANDIDATES_NOT_UNIQUE_PROOF"
     unpaired_strict = sorted(set(actions) - consumed)
     if unpaired_strict:
         report["errors"].append("STRICT_ACTION_WITHOUT_MATCHED_EXECUTOR_START")
