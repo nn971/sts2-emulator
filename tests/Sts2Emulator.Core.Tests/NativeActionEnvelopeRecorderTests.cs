@@ -35,6 +35,65 @@ public sealed class NativeActionEnvelopeRecorderTests
     }
 
     [Fact]
+    public void NativeHandChoiceFlowBindsOnlyOneMatchingSourceReservation()
+    {
+        Assert.Equal("UNVERIFIED", NativeHandChoiceFlow.Current().Status);
+        using (NativeHandChoiceFlow.BeginFromHand(11))
+        {
+            Assert.Equal("CHOICE_ID_NOT_YET_OBSERVED",
+                NativeHandChoiceFlow.Current().Status);
+            NativeHandChoiceFlow.Reserved(11, 4);
+            var binding = NativeHandChoiceFlow.Current();
+            Assert.Equal(11UL, binding.OwnerId);
+            Assert.Equal(4U, binding.ChoiceId);
+            Assert.Equal("SOURCE_ASYNC_FLOW_RESERVED_ID", binding.Status);
+            using (NativeHandChoiceFlow.BeginFromHand(12))
+            {
+                NativeHandChoiceFlow.Reserved(12, 8);
+                Assert.Equal(8U, NativeHandChoiceFlow.Current().ChoiceId);
+                NativeHandChoiceFlow.Reserved(12, 9);
+                Assert.Equal("AMBIGUOUS_SOURCE_RESERVATION",
+                    NativeHandChoiceFlow.Current().Status);
+                Assert.Null(NativeHandChoiceFlow.Current().ChoiceId);
+            }
+            Assert.Equal(4U, NativeHandChoiceFlow.Current().ChoiceId);
+        }
+        Assert.Equal("UNVERIFIED", NativeHandChoiceFlow.Current().Status);
+        using (NativeHandChoiceFlow.BeginFromHand(11))
+        {
+            NativeHandChoiceFlow.Reserved(99, 3);
+            Assert.Equal("AMBIGUOUS_SOURCE_RESERVATION",
+                NativeHandChoiceFlow.Current().Status);
+        }
+    }
+
+    [Fact]
+    public async Task NativeHandChoiceFlowSurvivesCapturedAsyncContinuationAndRestoresCaller()
+    {
+        var ready = new TaskCompletionSource<bool>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        static async Task<NativeHandChoiceFlow.Binding> GetAfterAwait(
+            Task wait)
+        {
+            await wait;
+            return NativeHandChoiceFlow.Current();
+        }
+        Task<NativeHandChoiceFlow.Binding> continuation;
+        using (NativeHandChoiceFlow.BeginFromHand(7))
+        {
+            NativeHandChoiceFlow.Reserved(7, 18);
+            continuation = GetAfterAwait(ready.Task);
+        }
+        Assert.Equal("UNVERIFIED", NativeHandChoiceFlow.Current().Status);
+        ready.SetResult(true);
+        var binding = await continuation;
+        Assert.Equal(7UL, binding.OwnerId);
+        Assert.Equal(18U, binding.ChoiceId);
+        Assert.Equal("SOURCE_ASYNC_FLOW_RESERVED_ID", binding.Status);
+        Assert.Equal("UNVERIFIED", NativeHandChoiceFlow.Current().Status);
+    }
+
+    [Fact]
     public async Task NativeRequestAndExecutionRetainSameObjectIdentityAndUnknownAcceptance()
     {
         object action = new();
