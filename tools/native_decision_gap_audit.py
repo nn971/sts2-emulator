@@ -78,6 +78,8 @@ def audit(strict: list[dict], sidecar: list[dict]) -> dict:
             returned[details.get("input_request_id")] = row
     choices = []
     hand_menus = []
+    menu_revisions = []
+    menu_closures = []
     for i, record in enumerate(sidecar, 1):
         if record.get("ordinal") != i:
             report["errors"].append("NONCONSECUTIVE_SIDECAR_ORDINAL")
@@ -99,6 +101,10 @@ def audit(strict: list[dict], sidecar: list[dict]) -> dict:
             choices.append((i, record.get("data") or {}))
         elif kind == "native_hand_menu":
             hand_menus.append((i, record.get("data") or {}))
+        elif kind == "native_hand_menu_revision":
+            menu_revisions.append((i, record.get("data") or {}))
+        elif kind == "native_hand_menu_closed":
+            menu_closures.append((i, record.get("data") or {}))
         elif kind == "action_started":
             chosen = _canonical(record.get("canonical_action"))
             if chosen is None:
@@ -144,6 +150,28 @@ def audit(strict: list[dict], sidecar: list[dict]) -> dict:
                             "selection_choice_id":
                                 d.get("selection_choice_id"),
                         } for n, d in displayed
+                    ],
+                    "source_native_menu_revisions_since_prior_action": [
+                        {
+                            "ordinal": n,
+                            "menu_id": d.get("menu_id"),
+                            "revision": d.get("revision"),
+                            "peek_mode": d.get("peek_mode"),
+                            "coverage": d.get("coverage"),
+                            "option_ids": [
+                                o.get("combat_card_id")
+                                for o in d.get("options", [])
+                                if isinstance(o, dict)]
+                        } for n, d in menu_revisions
+                        if last_matched_start < n < i
+                    ],
+                    "source_native_menu_closures_since_prior_action": [
+                        {
+                            "ordinal": n, "menu_id": d.get("menu_id"),
+                            "final_revision": d.get("final_revision"),
+                            "native_reason": d.get("native_reason")
+                        } for n, d in menu_closures
+                        if last_matched_start < n < i
                     ],
                     "source_input_request_id": input_id,
                     "source_input_request_ordinal": (
