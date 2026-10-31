@@ -111,6 +111,51 @@ public sealed class NativeRunPreludeRecorderTests
     }
 
     [Fact]
+    public async Task AwaitedRoomArrivalAndMapPostfixCanFollowCombatLink()
+    {
+        object mapMove = new();
+        bool beforeArrival = true;
+        bool afterArrival = true;
+        bool afterQueueReturn = false;
+        var rows = await Record(recorder =>
+        {
+            recorder.MapActionRequested(mapMove, "map_move", 0,
+                null, null, 3, 1, null);
+            recorder.CombatLink("combat-uuid", "passive.jsonl", 0, 3, 1);
+            beforeArrival = recorder.HasLinkedCombatRoomAndSettledMapRequests;
+            recorder.RoomEntered(0, "OVERGROWTH", 2, 2, 3, 1,
+                "Monster", "MAWLER", 70, 99);
+            afterArrival = recorder.HasLinkedCombatRoomAndSettledMapRequests;
+            recorder.MapActionOutcome(mapMove, "Finished", 5);
+            afterQueueReturn = recorder.HasLinkedCombatRoomAndSettledMapRequests;
+            recorder.Finish("Late room arrival and queue return observed");
+        });
+        Assert.False(beforeArrival);
+        Assert.False(afterArrival);
+        Assert.True(afterQueueReturn);
+        Assert.Equal("SOURCE_PRELUDE_OBSERVED",
+            rows[^1].GetProperty("data").GetProperty("status").GetString());
+        Assert.True(rows[^1].GetProperty("data")
+            .GetProperty("linked_combat_room_arrival_observed").GetBoolean());
+        Assert.Equal(0, rows[^1].GetProperty("data")
+            .GetProperty("map_requests_missing_postfix").GetInt32());
+    }
+
+    [Fact]
+    public async Task MissingAwaitedRoomArrivalFailsClosedEvenAfterCombatLink()
+    {
+        var rows = await Record(recorder =>
+        {
+            recorder.CombatLink("combat-uuid", "passive.jsonl", 0, 3, 1);
+            recorder.Finish("Room callback not yet observed");
+        });
+        Assert.Equal("INCOMPLETE_CAPTURE",
+            rows[^1].GetProperty("data").GetProperty("status").GetString());
+        Assert.False(rows[^1].GetProperty("data")
+            .GetProperty("linked_combat_room_arrival_observed").GetBoolean());
+    }
+
+    [Fact]
     public async Task MissingCombatLinkIsNotReportedAsCompletePrelude()
     {
         var rows = await Record(recorder =>
@@ -133,6 +178,8 @@ public sealed class NativeRunPreludeRecorderTests
             recorder.MapActionRequested(move, "map_move", 0,
                 3, 0, 2, 1, null);
             recorder.MapActionOutcome(move, "Deferred", null);
+            recorder.RoomEntered(0, "OVERGROWTH", 2, 2,
+                2, 1, "Monster", "MAWLER", 70, 99);
             recorder.CombatLink("combat-uuid", "passive.jsonl", 0, 2, 1);
             recorder.Finish("First combat");
         });
