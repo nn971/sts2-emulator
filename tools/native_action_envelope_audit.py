@@ -483,7 +483,7 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                       and type(owner) is int and owner >= 0)
                      if exact else choice_id is None))
             valid = (valid_binding
-                type(menu_id) is int and menu_id > 0
+                and type(menu_id) is int and menu_id > 0
                 and menu_id not in hand_menus_seen
                 and mode in ("SimpleSelect", "UpgradeSelect")
                 and type(minimum) is int and minimum >= 0
