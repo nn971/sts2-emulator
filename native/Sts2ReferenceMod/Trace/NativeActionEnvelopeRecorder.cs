@@ -49,7 +49,9 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
         bool nativeRngBoolHookInstalled = false,
         bool nativeRngStreamCheckpointsEnabled = false,
         bool nativeRngFloatHookInstalled = false,
-        bool nativeInputHookInstalled = false)
+        bool nativeInputHookInstalled = false,
+        bool nativeHandMenuHookInstalled = false,
+        bool nativeManualPlayHookInstalled = false)
     {
         _gameBuild = gameBuild;
         _writer = new AsyncTraceWriter(path, queueCapacity);
@@ -66,6 +68,8 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
                 native_rng_bool_hook_installed = nativeRngBoolHookInstalled,
                 native_rng_float_hook_installed = nativeRngFloatHookInstalled,
                 native_input_hook_installed = nativeInputHookInstalled,
+                native_hand_menu_hook_installed = nativeHandMenuHookInstalled,
+                native_manual_play_hook_installed = nativeManualPlayHookInstalled,
                 native_rng_stream_checkpoints_enabled = nativeRngStreamCheckpointsEnabled,
                 native_monster_ai_scope_installed = nativeMonsterAiScopeInstalled,
                 native_shuffle_scope_installed = nativeShuffleScopeInstalled,
