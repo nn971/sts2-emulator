@@ -115,6 +115,20 @@ def assess(preflight: dict, records: list[dict], read_error: str | None,
         "installed_build_pin": "MATCH" if pin_ok else "INVALID_OR_UNVERIFIED",
         "native_callback_status": envelope["status"],
         "native_callback_reason": envelope["reason"],
+        "native_source_input_observation": {
+            "input_hook_reported_installed":
+                envelope.get("native_input_hook_installed", False),
+            "source_requests": len(envelope.get("native_input_requests", [])),
+            "source_return_outcomes":
+                len(envelope.get("native_input_outcomes", [])),
+            "requests_linked_to_executor":
+                envelope.get("source_request_execution_links", 0),
+            "source_choice_results":
+                len(envelope.get("native_player_choices", [])),
+            "native_run_identity": envelope.get("native_run_identity"),
+            "legal_menu_coverage": "NOT_TESTED",
+            "native_input_nonperturbation": "NOT_TESTED",
+        },
         "strict_decision_trace_status": (
             strict_trace["status"] if strict_trace is not None else "NOT_AUDITED"),
         "strict_decision_trace_reason": (
