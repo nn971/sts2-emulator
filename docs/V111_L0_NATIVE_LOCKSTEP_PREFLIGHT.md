@@ -312,6 +312,42 @@ own legal menu with observed accepted commands as a separate fidelity
 check. The local native DLL build, real Harmony hook attachment,
 passive nonperturbation and lockstep parity remain untested.
 
+### Source chronology handoff toward persistent emulator parity
+
+`tools/native_lockstep_source_journal.py` is an offline, fail-closed
+translation of the independent native action sidecar into a compact
+source-chronology JSON report:
+
+```fish
+python tools/native_lockstep_source_journal.py \\
+    --sidecar "$trace/passive-<combat>.actions.jsonl" \\
+    --out "$trace/source-action-journal.json"
+```
+
+The extractor first requires
+`native_action_envelope_audit.CALLBACK_TIMELINE_CONSISTENT`. It
+retains the actual run seed and ascension read from `RunState.Rng`,
+original request ordinal and canonical action, eventual queue-return
+classification, executor start/completion ordinals and measured
+before/after snapshots. Source identity is joined only by the **same
+native GameAction object** already carried into the sidecar; asynchronous
+execution before the request method's postfix is supported. A choice
+result is attached by its real synchronized (owner, choice ID), and the
+initial hand menu is referenced only when a source-reserved ID binding
+exists.
+
+The journal distinguishes `SOURCE_ACTION_CHRONOLOGY_OBSERVED` from
+`SOURCE_INPUT_COVERAGE_PARTIAL`, `SOURCE_IDENTITY_MISSING` and
+`INVALID_SOURCE_CAPTURE`. Unlinked canonical executor actions and
+requests that were deferred or canceled without execution remain
+visible. This is **source evidence for a future replay adapter**:
+`originating_human_input=UNVERIFIED`,
+`emulator_replay=NOT_EXECUTED`, and `emulator_parity=NOT_TESTED`.
+The extractor neither applies actions nor assumes a stable pre-request
+decision menu. The next lockstep adapter should stage the source
+requests in order and compare native and emulator states at agreed
+settlement boundaries, with native RNG stream checkpoints.
+
 The new async choice-ID, menu-refresh and UI-gate hooks still need a
 single combined validation against the installed v111 assembly.
 Opening, revising and closing the native hand-selection UI are now
