@@ -122,6 +122,10 @@ def assess(preflight: dict, records: list[dict], read_error: str | None,
                 envelope.get("native_hand_menu_hook_installed", False),
             "manual_play_hook_reported_installed":
                 envelope.get("native_manual_play_hook_installed", False),
+            "ui_play_begin_hook_reported_installed":
+                envelope.get("native_ui_play_begin_hook_installed", False),
+            "native_ui_play_begins":
+                len(envelope.get("native_ui_play_begins", [])),
             "native_filtered_hand_menus":
                 len(envelope.get("native_hand_menus", [])),
             "hand_menus_with_complete_ui_id_projection":
