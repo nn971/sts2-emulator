@@ -94,6 +94,39 @@ These captures establish installed native hooks and internally consistent
 observed source RNG. **No native/emulator parity or passive
 nonperturbation is certified.**
 
+A newer, completely offline paired-trace tool now pinpoints the first
+candidate that the strict recorder missed:
+
+```fish
+python tools/native_decision_gap_audit.py \
+    --strict "$trace/passive-20261031-151012598-c4d5c60eccdb498598392ad721c69547.jsonl" \
+    --sidecar "$trace/passive-20261031-151012598-c4d5c60eccdb498598392ad721c69547.actions.jsonl"
+
+python tools/native_decision_gap_audit.py \
+    --strict "$trace/passive-20261031-151134082-0b0c1084b8d74e779e672649b85c57b6.jsonl" \
+    --sidecar "$trace/passive-20261031-151134082-0b0c1084b8d74e779e672649b85c57b6.actions.jsonl"
+```
+
+An independent structural alignment over the uploaded records found **14**
+strict actions matched by the Wurm sidecar followed by **7** unmatched
+canonical player-action candidates. First unmatched source event: ordinal
+**524**, executor action **18**, Defend; it follows a source-observed
+Survivor `nested_choice_pause` (ordinal **507**). In Slimes **15** strict
+actions matched, followed by **6** unmatched candidates; the first
+missing action is ordinal **636**, executor action **19**, Shiv. There
+are changed-state frame observations between Leading Strike finishing
+and that new source-executor action, but no intervening strict decision
+record. This is evidence of a missing strict boundary, **not proof of
+the exact native input-ready moment**.
+
+The current branch also adds a `strict_input_gap` diagnostic event when
+a new source-executor action finds no unique strict decision. It records
+the last main-frame gate reason and the decision-generation counters.
+The sidecar remains valid and the original strict trace still stops
+fail-closed. This diagnostic cannot retroactively appear in older captures.
+No native-game rerun is needed merely to test the offline pairing code;
+collect the extra diagnostic only in a later combined game validation.
+
 ## 3. Local native acceptance (fish, WSL on Windows game install)
 
 Perform all game-local operations on the existing `sts2-inspector` worktree,
