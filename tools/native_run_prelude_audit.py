@@ -208,6 +208,18 @@ def audit(records: list[dict], error: str | None = None,
         errors.append("Prelude terminal improperly claims complete macro/RNG fidelity")
     if link is None:
         errors.append("Missing first combat link")
+    else:
+        matching_room_arrival = any(
+            room["act_index"] == link["act_index"]
+            and room["map_column"] == link["map_column"]
+            and room["map_row"] == link["map_row"]
+            for room in events["rooms"])
+        if not matching_room_arrival:
+            errors.append("Linked combat source RoomEntered not observed")
+        if terminal.get("linked_combat_room_arrival_observed") is not True:
+            errors.append("Terminal did not verify linked combat room arrival")
+        if terminal.get("map_requests_missing_postfix") != 0:
+            errors.append("Terminal has pending native map queue returns")
 
     # A coincident request/arrival is useful diagnostic evidence only.
     # It never proves which queued action caused an actual map traversal.
