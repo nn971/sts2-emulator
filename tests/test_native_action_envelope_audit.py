@@ -316,6 +316,139 @@ class EnvelopeAuditTests(unittest.TestCase):
             r["ordinal"] = i
         self.assertEqual("INCOMPLETE_CAPTURE", audit(duplicated)["status"])
 
+    def test_source_menu_lifetime_revisions_and_peek_never_invent_eligibility(self):
+        rows = sample()
+        original = {"type": "native_hand_menu", "action_id": 1, "data": {
+            "menu_id": 1, "mode": "SimpleSelect",
+            "source_model_id": "SURVIVOR",
+            "min_select": 1, "max_select": 1,
+            "require_manual_confirmation": False,
+            "native_hand_holder_count": 2, "missing_card_ids": 0,
+            "options": [
+                {"combat_card_id": 7, "card_model_id": "DEFEND_SILENT",
+                 "ui_hand_index": 0}],
+            "coverage": "SOURCE_NATIVE_UI_VISIBLE_HAND_OPTIONS",
+            "selection_id_binding": "SOURCE_ASYNC_FLOW_RESERVED_ID",
+            "selection_owner_id": 1, "selection_choice_id": 4,
+            "predicate_re_evaluated_by_inspector": False,
+            "source": "NPlayerHand.SelectCards.postfix_after_native_visibility_update",
+            "emulator_parity": "NOT_TESTED"}}
+        def revision(number, option_ids, peek=False):
+            options = [
+                {"combat_card_id": cid,
+                 "card_model_id": "STRIKE_SILENT" if cid == 9 else "DEFEND_SILENT",
+                 "ui_hand_index": i} for i, cid in enumerate(option_ids)]
+            return {"type": "native_hand_menu_revision", "action_id": 1,
+                "data": {
+                    "menu_id": 1, "revision": number,
+                    "selection_owner_id": 1,
+                    "selection_choice_id": 4,
+                    "selection_id_binding": "SOURCE_ASYNC_FLOW_RESERVED_ID",
+                    "mode": "SimpleSelect", "peek_mode": peek,
+                    "native_hand_holder_count": 2,
+                    "missing_card_ids": 0, "options": options,
+                    "coverage": ("NATIVE_PEEK_VIEW_NOT_SELECTABLE" if peek
+                        else "SOURCE_NATIVE_UI_VISIBLE_HAND_OPTIONS"),
+                    "source": "NPlayerHand.UpdateSelectModeCardVisibility.postfix",
+                    "predicate_re_evaluated_by_inspector": False,
+                    "complete_menu_history": "NOT_VERIFIED",
+                    "emulator_parity": "NOT_TESTED"}}
+        closed = {"type": "native_hand_menu_closed", "action_id": 1,
+                  "data": {"menu_id": 1, "final_revision": 4,
+                    "selection_owner_id": 1, "selection_choice_id": 4,
+                    "selection_id_binding": "SOURCE_ASYNC_FLOW_RESERVED_ID",
+                    "native_reason": "AfterCardsSelected",
+                    "source": "NPlayerHand.AfterCardsSelected.postfix",
+                    "native_choice_result_verified": False,
+                    "complete_menu_history": "NOT_VERIFIED"}}
+        selection = {"type": "native_player_choice", "action_id": 1, "data": {
+            "owner_id": 1, "choice_id": 4,
+            "choice_type": "CombatCard",
+            "selected_combat_card_ids": [9],
+            "selection_projection": "EXACT_COMBAT_CARD_IDS",
+            "origin": "PlayerChoiceSynchronizer.PlayerChoiceReceived",
+            "accepted_choice_menu": "NOT_CAPTURED",
+            "human_origin": "UNVERIFIED"}}
+        # The original visible offer contained only 7; after state change it
+        # contains 9. Native peek never establishes a selectable option.
+        rows[5:5] = [original, revision(2, [9]), revision(3, [], True),
+                     revision(4, [9]), closed, selection]
+        for i, row in enumerate(rows, 1):
+            row["ordinal"] = i
+        report = audit(rows)
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", report["status"])
+        self.assertEqual(3, len(report["native_hand_menu_revisions"]))
+        self.assertEqual(1, len(report["native_hand_menu_closures"]))
+        self.assertEqual([], report["native_hand_menu_open_lifetimes"])
+        self.assertEqual("NATIVE_PEEK_VIEW_NOT_SELECTABLE",
+                         report["native_hand_menu_revisions"][1]["coverage"])
+        link = report["native_hand_menu_choice_matches"][0]
+        self.assertFalse(link["selection_in_initial_visible_options"])
+        self.assertTrue(link["selection_in_latest_captured_options"])
+        self.assertTrue(link["native_hand_menu_closed_before_choice"])
+        self.assertEqual(4, link["latest_captured_revision"])
+        self.assertEqual("SOURCE_REVISIONS_OBSERVED",
+                         link["selection_menu_revalidation"])
+        self.assertEqual("NOT_VERIFIED", link["complete_menu_history"])
+
+        altered = copy.deepcopy(rows)
+        altered[7]["data"]["options"] = [
+            {"combat_card_id": 9, "card_model_id": "STRIKE_SILENT",
+             "ui_hand_index": 0}]
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(altered)["status"])
+        altered = copy.deepcopy(rows)
+        altered[8]["data"]["revision"] = 7
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(altered)["status"])
+        altered = copy.deepcopy(rows)
+        altered[9]["data"]["final_revision"] = 3
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(altered)["status"])
+        altered = copy.deepcopy(rows)
+        altered[9]["data"]["selection_choice_id"] = 5
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(altered)["status"])
+
+    def test_source_peek_mode_has_no_selectable_options_at_choice(self):
+        rows = sample()
+        initial = {"type": "native_hand_menu", "data": {
+            "menu_id": 1, "mode": "SimpleSelect",
+            "source_model_id": "SURVIVOR", "min_select": 1, "max_select": 1,
+            "require_manual_confirmation": False,
+            "native_hand_holder_count": 1, "missing_card_ids": 0,
+            "options": [{"combat_card_id": 7, "card_model_id": "DEFEND_SILENT",
+                         "ui_hand_index": 0}],
+            "coverage": "SOURCE_NATIVE_UI_VISIBLE_HAND_OPTIONS",
+            "selection_id_binding": "SOURCE_ASYNC_FLOW_RESERVED_ID",
+            "selection_owner_id": 1, "selection_choice_id": 4,
+            "predicate_re_evaluated_by_inspector": False,
+            "source": "NPlayerHand.SelectCards.postfix_after_native_visibility_update",
+            "emulator_parity": "NOT_TESTED"}}
+        peek = {"type": "native_hand_menu_revision", "data": {
+            "menu_id": 1, "revision": 2,
+            "selection_owner_id": 1, "selection_choice_id": 4,
+            "selection_id_binding": "SOURCE_ASYNC_FLOW_RESERVED_ID",
+            "mode": "SimpleSelect", "peek_mode": True,
+            "native_hand_holder_count": 1, "missing_card_ids": 0,
+            "options": [], "coverage": "NATIVE_PEEK_VIEW_NOT_SELECTABLE",
+            "source": "NPlayerHand.UpdateSelectModeCardVisibility.postfix",
+            "predicate_re_evaluated_by_inspector": False,
+            "complete_menu_history": "NOT_VERIFIED",
+            "emulator_parity": "NOT_TESTED"}}
+        selection = {"type": "native_player_choice", "data": {
+            "owner_id": 1, "choice_id": 4,
+            "choice_type": "CombatCard", "selected_combat_card_ids": [7],
+            "selection_projection": "EXACT_COMBAT_CARD_IDS",
+            "origin": "PlayerChoiceSynchronizer.PlayerChoiceReceived",
+            "accepted_choice_menu": "NOT_CAPTURED",
+            "human_origin": "UNVERIFIED"}}
+        rows[5:5] = [initial, peek, selection]
+        for i, row in enumerate(rows, 1):
+            row["ordinal"] = i
+        result = audit(rows)
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", result["status"])
+        link = result["native_hand_menu_choice_matches"][0]
+        self.assertIsNone(link["selection_in_latest_captured_options"])
+        self.assertTrue(link["latest_captured_peek_mode"])
+        self.assertEqual([1], result["native_hand_menu_open_lifetimes"])
+
     def test_native_manual_play_result_does_not_prove_queue_acceptance(self):
         rows = sample()
         manual = {"type": "native_manual_play_result", "data": {
