@@ -184,6 +184,8 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         "native_hand_choice_flow_hook_installed": False,
         "native_manual_play_hook_installed": False,
         "native_ui_play_begin_hook_installed": False,
+        "native_ui_gate_hook_installed": False,
+        "native_ui_hand_gates": [],
         "native_ui_play_begins": [],
         "native_input_requests": [],
         "native_input_outcomes": [],
@@ -241,6 +243,8 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         records[0].get("data", {}).get("native_manual_play_hook_installed") is True)
     report["native_ui_play_begin_hook_installed"] = (
         records[0].get("data", {}).get("native_ui_play_begin_hook_installed") is True)
+    report["native_ui_gate_hook_installed"] = (
+        records[0].get("data", {}).get("native_ui_gate_hook_installed") is True)
     report["native_rng_hook_installed"] = (
         records[0].get("data", {}).get("native_rng_hook_installed") is True)
     report["native_rng_double_hook_installed"] = (
@@ -273,7 +277,7 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         "native_player_choice", "native_run_identity",
         "native_hand_menu", "native_hand_menu_revision",
         "native_hand_menu_closed", "native_manual_play_result",
-        "native_ui_play_begin", "terminal",
+        "native_ui_play_begin", "native_ui_hand_gate", "terminal",
     }
     running: dict[int, dict] = {}
     completed: dict[int, dict] = {}
@@ -675,6 +679,33 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                     "ordinal": ordinal, "menu_id": menu_id,
                     "final_revision": menu["revision"],
                     "native_reason": reason
+                })
+        elif typ == "native_ui_hand_gate":
+            data = record.get("data") or {}
+            gate = data.get("gate")
+            if (gate not in ("CanPlayCards", "AreCardActionsAllowed")
+                or type(data.get("returned_allowed")) is not bool
+                or data.get("native_hand_mode") not in (
+                    "Play", "None", "SimpleSelect", "UpgradeSelect")
+                or type(data.get("existing_card_play_active")) is not bool
+                or data.get("source") !=
+                    "NPlayerHand." + str(gate) + ".postfix"
+                or data.get("result_basis") != "ORIGINAL_NATIVE_RETURN_VALUE"
+                or data.get("source_evaluation_only") is not True
+                or data.get("human_origin") != "UNVERIFIED"
+                or data.get("full_legal_menu") != "NOT_TESTED"
+                or data.get("emulator_parity") != "NOT_TESTED"):
+                strict_failures.append(
+                    f"Invalid native hand UI gate at {ordinal}")
+            else:
+                report["native_ui_hand_gates"].append({
+                    "ordinal": ordinal, "gate": gate,
+                    "returned_allowed": data["returned_allowed"],
+                    "native_hand_mode": data["native_hand_mode"],
+                    "existing_card_play_active":
+                        data["existing_card_play_active"],
+                    "source_evaluation_only": True,
+                    "full_legal_menu": "NOT_TESTED"
                 })
         elif typ == "native_ui_play_begin":
             data = record.get("data") or {}
