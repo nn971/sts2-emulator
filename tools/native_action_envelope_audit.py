@@ -181,6 +181,7 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         "strict_input_gaps": [],
         "native_input_hook_installed": False,
         "native_hand_menu_hook_installed": False,
+        "native_hand_choice_flow_hook_installed": False,
         "native_manual_play_hook_installed": False,
         "native_ui_play_begin_hook_installed": False,
         "native_ui_play_begins": [],
@@ -188,6 +189,7 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         "native_input_outcomes": [],
         "native_player_choices": [],
         "native_hand_menus": [],
+        "native_hand_menu_choice_matches": [],
         "native_manual_play_results": [],
         "native_run_identity": None,
         "source_request_execution_links": 0,
@@ -230,6 +232,8 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         records[0].get("data", {}).get("native_input_hook_installed") is True)
     report["native_hand_menu_hook_installed"] = (
         records[0].get("data", {}).get("native_hand_menu_hook_installed") is True)
+    report["native_hand_choice_flow_hook_installed"] = (
+        records[0].get("data", {}).get("native_hand_choice_flow_hook_installed") is True)
     report["native_manual_play_hook_installed"] = (
         records[0].get("data", {}).get("native_manual_play_hook_installed") is True)
     report["native_ui_play_begin_hook_installed"] = (
@@ -279,6 +283,7 @@ def audit(records: list[dict], error: str | None = None) -> dict:
     request_outcomes: set[int] = set()
     choices_seen: set[tuple[int, int]] = set()
     hand_menus_seen: set[int] = set()
+    menus_by_choice: dict[tuple[int, int], dict] = {}
     for ordinal, record in enumerate(records, 1):
         typ = record.get("type")
         if record.get("ordinal") != ordinal:
@@ -465,7 +470,19 @@ def audit(records: list[dict], error: str | None = None) -> dict:
             holder_count = data.get("native_hand_holder_count")
             missing_ids = data.get("missing_card_ids")
             options = data.get("options")
-            valid = (
+            binding = data.get("selection_id_binding")
+            owner = data.get("selection_owner_id")
+            choice_id = data.get("selection_choice_id")
+            exact = binding == "SOURCE_ASYNC_FLOW_RESERVED_ID"
+            valid_binding = (binding in (
+                    "UNVERIFIED", "SOURCE_ASYNC_FLOW_RESERVED_ID",
+                    "CHOICE_ID_NOT_YET_OBSERVED",
+                    "AMBIGUOUS_SOURCE_RESERVATION")
+                and (type(owner) is int and owner >= 0 or owner is None)
+                and ((type(choice_id) is int and choice_id >= 0
+                      and type(owner) is int and owner >= 0)
+                     if exact else choice_id is None))
+            valid = (valid_binding
                 type(menu_id) is int and menu_id > 0
                 and menu_id not in hand_menus_seen
                 and mode in ("SimpleSelect", "UpgradeSelect")
@@ -476,7 +493,6 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                 and type(data.get("require_manual_confirmation")) is bool
                 and isinstance(options, list)
                 and len(options) + missing_ids <= holder_count
-                and data.get("selection_id_binding") == "UNVERIFIED"
                 and data.get("predicate_re_evaluated_by_inspector") is False
                 and data.get("source") ==
                     "NPlayerHand.SelectCards.postfix_after_native_visibility_update"
@@ -511,13 +527,24 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                 strict_failures.append(f"Invalid native hand menu at {ordinal}")
             else:
                 hand_menus_seen.add(menu_id)
+                if exact:
+                    key = (owner, choice_id)
+                    if key in menus_by_choice:
+                        strict_failures.append(
+                            f"Multiple source menus for one choice id at {ordinal}")
+                    else:
+                        menus_by_choice[key] = {
+                            "menu_id": menu_id, "ordinal": ordinal,
+                            "options": options, "coverage": data["coverage"]
+                        }
                 report["native_hand_menus"].append({
                     "ordinal": ordinal, "menu_id": menu_id,
                     "mode": mode,
                     "source_model_id": data.get("source_model_id"),
                     "min_select": minimum, "max_select": maximum,
                     "options": options, "coverage": data["coverage"],
-                    "choice_id_binding": "UNVERIFIED",
+                    "choice_id_binding": binding,
+                    "choice_owner_id": owner, "choice_id": choice_id,
                 })
         elif typ == "native_ui_play_begin":
             data = record.get("data") or {}
@@ -605,6 +632,30 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                         data.get("selected_combat_card_ids"),
                     "selected_indexes": data.get("selected_indexes"),
                 })
+                source_menu = menus_by_choice.get((owner, choice_id))
+                if source_menu is not None and kind == "CombatCard":
+                    selected = data.get("selected_combat_card_ids")
+                    initial_offers = {
+                        option["combat_card_id"]
+                        for option in source_menu["options"]}
+                    is_initial_subset = (
+                        isinstance(selected, list)
+                        and all(type(x) is int and x >= 0 for x in selected)
+                        and set(selected) <= initial_offers)
+                    report["native_hand_menu_choice_matches"].append({
+                        "owner_id": owner, "choice_id": choice_id,
+                        "menu_id": source_menu["menu_id"],
+                        "menu_ordinal": source_menu["ordinal"],
+                        "choice_ordinal": ordinal,
+                        "selection_in_initial_visible_options": (
+                            is_initial_subset
+                            if source_menu["coverage"] ==
+                            "SOURCE_NATIVE_UI_VISIBLE_HAND_OPTIONS"
+                            else None),
+                        "selection_menu_revalidation": "NOT_OBSERVED",
+                        "complete_menu_history": "NOT_VERIFIED",
+                        "binding": "SOURCE_ASYNC_FLOW_RESERVED_ID",
+                    })
         elif typ == "native_initial_hp_roll":
             data = record.get("data") or {}
             if (data.get("source_version") != "v0.111.0"
