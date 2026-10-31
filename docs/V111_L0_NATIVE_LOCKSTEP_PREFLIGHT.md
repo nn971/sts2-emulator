@@ -312,6 +312,57 @@ own legal menu with observed accepted commands as a separate fidelity
 check. The local native DLL build, real Harmony hook attachment,
 passive nonperturbation and lockstep parity remain untested.
 
+### Source run-start to first-combat prelude (offline installed-hook proposal)
+
+The previous combat-only action sidecar began recording only after the
+first native combat frame, so it could not prove which map coordinates
+or run-start settings preceded that encounter. The reference mod now
+subscribes, **only after exact native DLL SHA pin acceptance**, to pinned
+`RunManager.RunStarted(RunState)` and `RunManager.RoomEntered`. The
+source callback reports the true `RunState.Rng.StringSeed`, ascension,
+character ID and first-act ID. Each room-entered callback reports its
+actual `RunState.CurrentMapCoord`, act/floor, room model/type, HP and
+gold. An independent bounded, nonblocking
+`NativeRunPreludeRecorder` writes to a
+`run-prelude-<timestamp>-<run-id>.jsonl` file.
+
+When the source input hook is separately enabled, it also observes
+precombat `VoteForMapCoordAction` and `MoveToMapCoordAction`
+`RequestEnqueue` prefix/postfix pairs. In the pinned v111 source
+their `ToNetAction()` methods only project private map fields into
+value-type structs, so reading their source/destination coordinates
+does not sample RNG or enqueue actions. This preserves **human-origin
+and queue-acceptance uncertainty**, and the independent
+`RoomEntered` callback provides actual visited coordinates without
+asserting that a particular queued request caused them.
+
+On its first combat, the run prelude records a `combat_link` containing
+the exact combat trace run ID and filename, then closes. It remains
+**source route evidence**, with
+`source_macro_choices_complete=false`. In particular, Neow choices,
+events, card/reward/shop/rest choices, potion/relic/deck changes, and
+full **precombat native RNG continuation** are not yet captured as an
+executable macro action transcript.
+
+To audit the run prelude alone, or pair it against the existing
+independently audited action sidecar:
+
+```fish
+python tools/native_run_prelude_audit.py \\
+    --prelude "$trace/run-prelude-<timestamp>-<run-id>.jsonl" \\
+    --combat-sidecar "$trace/passive-<combat>.actions.jsonl" \\
+    --out "$trace/run-prelude-audit.json"
+```
+
+Pairing checks the native DLL fingerprint, source seed/ascension and
+exact combat trace ID. It keeps `native_macro_action_transcript_complete`,
+`emulator_combat_bootstrap` and `native_emulator_parity` negative or
+unverified even when the visited map coordinate and queued move request
+happen to coincide. Older captures lack this source prelude: the
+auditor cannot infer missing evidence from their combat-only traces.
+This integration remains **offline-tested only** until the next
+combined installed-DLL build/game validation.
+
 ### Source chronology handoff toward persistent emulator parity
 
 `tools/native_lockstep_source_journal.py` is an offline, fail-closed
