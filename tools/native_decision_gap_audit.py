@@ -80,6 +80,7 @@ def audit(strict: list[dict], sidecar: list[dict]) -> dict:
     hand_menus = []
     menu_revisions = []
     menu_closures = []
+    ui_gates = []
     for i, record in enumerate(sidecar, 1):
         if record.get("ordinal") != i:
             report["errors"].append("NONCONSECUTIVE_SIDECAR_ORDINAL")
@@ -105,6 +106,8 @@ def audit(strict: list[dict], sidecar: list[dict]) -> dict:
             menu_revisions.append((i, record.get("data") or {}))
         elif kind == "native_hand_menu_closed":
             menu_closures.append((i, record.get("data") or {}))
+        elif kind == "native_ui_hand_gate":
+            ui_gates.append((i, record.get("data") or {}))
         elif kind == "action_started":
             chosen = _canonical(record.get("canonical_action"))
             if chosen is None:
@@ -171,6 +174,16 @@ def audit(strict: list[dict], sidecar: list[dict]) -> dict:
                             "final_revision": d.get("final_revision"),
                             "native_reason": d.get("native_reason")
                         } for n, d in menu_closures
+                        if last_matched_start < n < i
+                    ],
+                    "source_native_ui_gate_evaluations_since_prior_action": [
+                        {
+                            "ordinal": n, "gate": d.get("gate"),
+                            "returned_allowed": d.get("returned_allowed"),
+                            "existing_card_play_active":
+                                d.get("existing_card_play_active"),
+                            "full_legal_menu": d.get("full_legal_menu")
+                        } for n, d in ui_gates
                         if last_matched_start < n < i
                     ],
                     "source_input_request_id": input_id,
