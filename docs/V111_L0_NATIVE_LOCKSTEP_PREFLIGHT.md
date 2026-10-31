@@ -127,7 +127,57 @@ fail-closed. This diagnostic cannot retroactively appear in older captures.
 No native-game rerun is needed merely to test the offline pairing code;
 collect the extra diagnostic only in a later combined game validation.
 
-## 3. Local native acceptance (fish, WSL on Windows game install)
+## 3. Offline-audited source-input observation (staged; native-game test deferred)
+
+**Source locator:** `Flaaax/STS2-source@706ef1c9fa2219220065849fd5265328607ece20`:
+`src/Core/GameActions/Multiplayer/ActionQueueSynchronizer.cs`,
+`ActionQueueSet.cs`, `PlayerChoiceSynchronizer.cs`, `GameAction.cs`,
+`src/Core/Entities/Multiplayer/NetPlayerChoiceResult.cs`, and
+`src/Core/Runs/RunRngSet.cs`.
+
+The new read-only `NativeV111InputHooks` provides an **optional**
+`STS2_FIDELITY_INPUT_HOOK=1` source patch, separate from RNG and passive
+capture. It instruments the actual
+`ActionQueueSynchronizer.RequestEnqueue(GameAction)` method with a void
+prefix and void postfix; both call observer code only and leave the original
+game action, queue and input arguments unchanged.
+
+| Evidence | Source boundary | What it establishes |
+| --- | --- | --- |
+| `native_input_request` | `RequestEnqueue` prefix | original requested action object, type, canonical candidate and pre-request state; **not** acceptance |
+| `native_input_outcome` | `RequestEnqueue` postfix | actual native action ID and state after original method returned: deferred/un-enqueued, canceled, or assigned queue ID and still not canceled |
+| `action_started` | existing `ActionExecutor.BeforeActionExecuted` | the same action object reached execution, linked to its source request ID where observed |
+| `native_player_choice` | `PlayerChoiceSynchronizer.PlayerChoiceReceived` event | source-synchronized selection ID, type and selected combat-card IDs, indexes or canonical card models; Survivor's discard can be identified |
+| `native_run_identity` | `RunState.Rng.StringSeed` + `RunState.AscensionLevel` | the game's original seed and ascension, also written into the paired strict header |
+
+The source synchronizer may *defer* a card play until the next player
+turn, or the underlying queue may *cancel* an input after assigning its
+native ID. In singleplayer a post-return
+`ASSIGNED_QUEUE_ID_AND_NOT_CANCELED_AT_RETURN` is a genuine observation of
+queue admission at that instant. It is not a proof that the input originated
+from the human UI or was a member of the complete legal menu. The recorder
+retains `human_origin=UNVERIFIED` and
+`accepted_choice_menu=NOT_CAPTURED` until those independent source hooks
+exist. The spectator interface remains **read-only**, and its public
+projection still excludes the native seed.
+
+**Offline test status:** the new recorder contract and sidecar auditor can
+run in standard GitHub CI without a game launch. This source patch is staged
+behind a separate environment flag; it has not been compiled against or
+executed within the user's installed v111 game DLL. The static source audit
+and standard .NET contract tests alone cannot certify Harmony attachment,
+actual native input event ordering, nonperturbation, or emulator parity.
+
+**Next combined native validation:** only after all source hooks, seed
+projection, strict menu/source acceptance and tests are ready, rebuild the
+mod once against the installed game, enable the new
+`STS2_FIDELITY_INPUT_HOOK=1` alongside the existing L0 flags, and exercise
+a Silent A10 run with a Survivor discard and rapid consecutive card plays.
+Include passive capture on/off against the same seed. One game session should
+collect both the request/choice source evidence and persistent RNG checkpoints;
+a separate controlled comparison run is needed to test nonperturbation.
+
+## 4. Local native acceptance (fish, WSL on Windows game install)
 
 Perform all game-local operations on the existing `sts2-inspector` worktree,
 with the actual game **closed while building/installing**. This example
@@ -208,7 +258,7 @@ uncontrolled. If the installed game DLL or the mod changes, start a new
 pinned evidence set. Keep the raw source observations, log and report local;
 share only selected sanitized captures and summaries.
 
-## 4. L0 acceptance and next engineering gate
+## 5. L0 acceptance and next engineering gate
 
 - [ ] Exact installed DLL native mod compile, install and launch, hash pinned
 - [ ] Fresh sidecar and startup log from the **same** session; hooks attached
