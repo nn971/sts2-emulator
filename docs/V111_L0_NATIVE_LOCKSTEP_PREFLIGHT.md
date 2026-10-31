@@ -193,11 +193,32 @@ New `native_hand_menu` records carry `menu_id`,
 `options` (card IDs, model IDs, UI holder order), and
 `coverage=SOURCE_NATIVE_UI_VISIBLE_HAND_OPTIONS` when mapped in
 full. These establish the native UI's offered visible hand choices **at
-one instant**. They are not yet tied to the `choice_id` reserved by
-`PlayerChoiceSynchronizer`; the trace explicitly reports
-`selection_id_binding=UNVERIFIED`. Revalidation while a choice is open
-can change options, and other non-hand option screens remain uncovered.
-The full combat legal menu is still `NOT_TESTED`.
+one instant**.
+
+**Native reserved-choice ID binding (new):** v0.111 `CardSelectCmd.FromHand`
+reserves its actual `choiceId` using
+`PlayerChoiceSynchronizer.ReserveChoiceId(player)` before calling
+`NPlayerHand.SelectCards`. Two additional observer-only Harmony hooks
+record the *actual returned* `uint` from the reservation method
+and open a narrow async-execution-context scope around `FromHand`.
+The UI-menu postfix reads the captured scope; if exactly one reservation
+belongs to the same player, it adds `selection_owner_id`,
+`selection_choice_id` and
+`selection_id_binding=SOURCE_ASYNC_FLOW_RESERVED_ID`. This is the
+source value, not a latest-counter estimate or retrospective matching
+based on selected cards. Nested flows get independent scopes. Missing,
+duplicate or cross-player reservations downgrade to explicit unknown or
+ambiguous binding, never a fabricated ID.
+
+The independent sidecar auditor validates this source linkage and, when
+`PlayerChoiceReceived` reports the same owner and choice ID, checks
+whether the selection was in the **initial** native UI visible
+candidate set. A later selection outside that set is reported
+without claiming a mechanical mismatch, since native UI revalidation
+can change the options between opening and confirmation. Non-hand
+choice screens remain uninstrumented, and an exact hand-menu lifetime
+across subsequent state changes has not been verified. The full
+combat legal menu is still `NOT_TESTED`.
 
 For rapid card plays, an optional Harmony **prefix** on pinned private
 `NPlayerHand.StartCardPlay(NHandCardHolder,bool)` records
@@ -230,10 +251,13 @@ unique input-to-executor identity. The existing strict
 decision recorder remains fail-closed at unknown boundaries and the
 spectator endpoint remains read-only.
 
-**Remaining source gates:** bind the observed hand menu to the exact
-reserved `choice_id` with a source-level selection lifetime, capture
-menu changes while selection is open, and establish a complete native
-input-ready legal menu for rapid actions like Leading Strike → Shiv.
+**Remaining source gates:** establish menu refresh/lifetime evidence
+through native UI state changes, capture the complete native input-ready
+legal menu for rapid actions like Leading Strike → Shiv, and validate
+the new async choice-ID source hooks against the installed v111 DLL.
+The current source linkage is verified by isolated flow tests but
+requires installed-game compilation and runtime evidence to certify
+actual Harmony async execution-context behavior.
 A following native DLL build and passive-on/off game test will be bundled
 with these changes, not requested separately for this interim slice.
 
