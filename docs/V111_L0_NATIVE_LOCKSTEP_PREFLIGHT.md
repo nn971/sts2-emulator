@@ -378,6 +378,14 @@ The postfix pairs the same request with the method's synchronous return.
 The offer is read **before** the original method executes, because an
 event selection can immediately replace `CurrentOptions`.
 
+The event-choice prefix additionally snapshots the *event-local*
+`EventModel.Rng.ToSerializable()` counter and four xoshiro words.
+Pinned `Rng.ToSerializable()` only copies the source state; it never
+calls `Next*`. This is distinct from named run/player RNG streams,
+and provides a checkable **post-offer, pre-selection** local-event RNG
+checkpoint. It cannot reconstruct the random calls used to generate
+the offer or certify an emulator event RNG alignment.
+
 The records `event_choice_request` and `event_choice_return` are
 source evidence of a local synchronizer call and its return. The return
 can precede completion of async `EventOption.Chosen()` effects.

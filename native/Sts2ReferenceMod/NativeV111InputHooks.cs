@@ -169,10 +169,16 @@ internal static class NativeV111InputHooks
                 .Select(o => new NativeEventOptionView(
                     o.TextKey, o.IsLocked, o.IsProceed, o.Relic?.Id.Entry))
                 .ToArray();
+            // ToSerializable copies event-local RNG counter and xoshiro
+            // words; unlike Next* it makes no source random draw.
+            var rng = eventModel.Rng.ToSerializable();
             object token = new();
             NativeV111PassiveBridge.NativeEventChoiceRequested(
                 token, eventModel.Id.Entry, eventModel.Owner.NetId,
-                index, offered);
+                index, offered,
+                new NativeEventRngView(
+                    rng.counter, rng.state0, rng.state1,
+                    rng.state2, rng.state3));
             __state = token;
         }
         catch (Exception error)

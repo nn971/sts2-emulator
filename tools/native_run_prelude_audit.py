@@ -317,7 +317,18 @@ def audit(records: list[dict], error: str | None = None,
                     "EventSynchronizer.ChooseLocalOption.prefix"
                 and data.get("selection_origin") == "LOCAL_SYNCHRONIZER_CALL"
                 and data.get("option_execution") == "NOT_OBSERVED"
-                and data.get("effects_settled") is False)
+                and data.get("effects_settled") is False
+                and data.get("event_rng_source") ==
+                    "EventModel.Rng.ToSerializable"
+                and data.get("source_event_rng_consumed") is False
+                and data.get("event_rng_alignment") == "NOT_TESTED")
+            event_rng = data.get("event_rng")
+            if valid:
+                valid = (isinstance(event_rng, dict)
+                         and _nonnegative(event_rng.get("counter"))
+                         and all(_nonnegative(event_rng.get(k)) and
+                                 event_rng[k] <= 2**64 - 1
+                                 for k in ("s0", "s1", "s2", "s3")))
             if valid:
                 for i, option in enumerate(offers):
                     if (not isinstance(option, dict)

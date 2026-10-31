@@ -364,6 +364,11 @@ class RunPreludeAuditTests(unittest.TestCase):
                  "relic_model_id": "HEFTY_TABLET"}],
             "source": "EventSynchronizer.ChooseLocalOption.prefix",
             "selection_origin": "LOCAL_SYNCHRONIZER_CALL",
+            "event_rng": {"counter": 8, "s0": 18446744073709551615,
+                          "s1": 2, "s2": 3, "s3": 4},
+            "event_rng_source": "EventModel.Rng.ToSerializable",
+            "source_event_rng_consumed": False,
+            "event_rng_alignment": "NOT_TESTED",
             "option_execution": "NOT_OBSERVED",
             "effects_settled": False}}
         returned = {"type": "event_choice_return", "run_id": "run-uuid",
@@ -387,6 +392,9 @@ class RunPreludeAuditTests(unittest.TestCase):
         request["data"]["selected_text_key"] = "not-offered"
         self.assertEqual("INVALID_PRELUDE", audit(rows)["status"])
         request["data"]["selected_text_key"] = "hefty_tablet"
+        request["data"]["event_rng"]["s0"] = 2**64
+        self.assertEqual("INVALID_PRELUDE", audit(rows)["status"])
+        request["data"]["event_rng"]["s0"] = 18446744073709551615
         returned["data"]["request_id"] = 999
         self.assertEqual("INVALID_PRELUDE", audit(rows)["status"])
 
@@ -405,6 +413,11 @@ class RunPreludeAuditTests(unittest.TestCase):
                  "relic_model_id": "HEFTY_TABLET"}],
             "source": "EventSynchronizer.ChooseLocalOption.prefix",
             "selection_origin": "LOCAL_SYNCHRONIZER_CALL",
+            "event_rng": {"counter": 8, "s0": 18446744073709551615,
+                          "s1": 2, "s2": 3, "s3": 4},
+            "event_rng_source": "EventModel.Rng.ToSerializable",
+            "source_event_rng_consumed": False,
+            "event_rng_alignment": "NOT_TESTED",
             "option_execution": "NOT_OBSERVED",
             "effects_settled": False}})
         for i, row in enumerate(rows, 1):

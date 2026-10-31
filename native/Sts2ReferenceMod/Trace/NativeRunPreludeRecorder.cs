@@ -248,13 +248,15 @@ public sealed class NativeRunPreludeRecorder : IAsyncDisposable
     /// </summary>
     public void EventChoiceRequested(
         object token, string eventModelId, ulong ownerId,
-        int selectedIndex, IReadOnlyList<NativeEventOptionView> options)
+        int selectedIndex, IReadOnlyList<NativeEventOptionView> options,
+        NativeEventRngView eventRng)
     {
         if (_closed) return;
         if (string.IsNullOrWhiteSpace(eventModelId)
             || selectedIndex < 0 || selectedIndex >= options.Count
             || options.Count == 0
             || options.Any(o => string.IsNullOrWhiteSpace(o.TextKey))
+            || eventRng.Counter < 0
             || _eventRequests.ContainsKey(token))
         {
             ObservationFailure("event_choice_request",
@@ -268,6 +270,14 @@ public sealed class NativeRunPreludeRecorder : IAsyncDisposable
             request_id = id, event_model_id = eventModelId,
             owner_id = ownerId, selected_index = selectedIndex,
             selected_text_key = options[selectedIndex].TextKey,
+            event_rng = new
+            {
+                counter = eventRng.Counter, s0 = eventRng.S0,
+                s1 = eventRng.S1, s2 = eventRng.S2, s3 = eventRng.S3
+            },
+            event_rng_source = "EventModel.Rng.ToSerializable",
+            source_event_rng_consumed = false,
+            event_rng_alignment = "NOT_TESTED",
             options = options.Select((o, index) => new
             {
                 index, text_key = o.TextKey,
@@ -426,3 +436,6 @@ public sealed record NativeRunPreludeRecord(
 // callbacks or localization resolvers are invoked by the observer.
 public sealed record NativeEventOptionView(
     string TextKey, bool IsLocked, bool IsProceed, string? RelicModelId);
+
+public sealed record NativeEventRngView(
+    int Counter, ulong S0, ulong S1, ulong S2, ulong S3);

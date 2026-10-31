@@ -286,7 +286,7 @@ public sealed class NativeRunPreludeRecorderTests
                 new("arcane_scroll", false, false, "ARCANE_SCROLL"),
                 new("hefty_tablet", false, false, "HEFTY_TABLET"),
                 new("other", true, false, null)
-            ]);
+            ], new NativeEventRngView(9, ulong.MaxValue, 2, 3, 4));
             recorder.EventChoiceReturned(token);
             recorder.RoomEntered(0, "OVERGROWTH", 2, 2,
                 3, 1, "Monster", "MAWLER", 70, 99);
@@ -303,6 +303,11 @@ public sealed class NativeRunPreludeRecorderTests
         Assert.Equal("HEFTY_TABLET", offer.GetProperty("options")[1]
             .GetProperty("relic_model_id").GetString());
         Assert.False(offer.GetProperty("effects_settled").GetBoolean());
+        Assert.Equal(9, offer.GetProperty("event_rng")
+            .GetProperty("counter").GetInt32());
+        Assert.Equal(ulong.MaxValue, offer.GetProperty("event_rng")
+            .GetProperty("s0").GetUInt64());
+        Assert.False(offer.GetProperty("source_event_rng_consumed").GetBoolean());
         var returned = Assert.Single(rows, r =>
             r.GetProperty("type").GetString() == "event_choice_return")
             .GetProperty("data");
@@ -323,7 +328,8 @@ public sealed class NativeRunPreludeRecorderTests
         var rows = await Record(recorder =>
         {
             recorder.EventChoiceRequested(token, "NEOW", 7, 0,
-                [new("hefty_tablet", false, false, "HEFTY_TABLET")]);
+                [new("hefty_tablet", false, false, "HEFTY_TABLET")],
+                new NativeEventRngView(7, 1, 2, 3, 4));
             recorder.RoomEntered(0, "OVERGROWTH", 2, 2,
                 3, 1, "Monster", "MAWLER", 70, 99);
             recorder.CombatLink("combat-uuid", "passive.jsonl", 0, 3, 1);

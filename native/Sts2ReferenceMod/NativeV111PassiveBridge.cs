@@ -140,9 +140,10 @@ internal static class NativeV111PassiveBridge
 
     internal static void NativeEventChoiceRequested(
         object token, string eventModelId, ulong ownerId, int selectedIndex,
-        IReadOnlyList<NativeEventOptionView> options) =>
+        IReadOnlyList<NativeEventOptionView> options,
+        NativeEventRngView eventRng) =>
         _runPrelude?.EventChoiceRequested(
-            token, eventModelId, ownerId, selectedIndex, options);
+            token, eventModelId, ownerId, selectedIndex, options, eventRng);
 
     internal static void NativeEventChoiceReturned(object token)
     {
