@@ -188,6 +188,32 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
                 "passive observation")));
     }
 
+    /// <summary>
+    /// A canonical executor action began without a preceding unique strict
+    /// decision. The sidecar remains usable: it already has the actual
+    /// executor-start snapshot and action identity. No legal menu or human
+    /// input origin is inferred from this diagnostic.
+    /// </summary>
+    public void StrictInputGap(
+        string? lastGateReason, int decisionGeneration,
+        int lastCapturedGeneration)
+    {
+        if (_closed) return;
+        Write(new NativeActionEnvelopeRecord(
+            "strict_input_gap", Next(),
+            _activeOrder.Count == 0 ? null : _activeOrder[^1],
+            Data: JsonSerializer.SerializeToElement(new
+            {
+                reason = "executor_action_without_unique_strict_decision",
+                last_reported_gate = lastGateReason,
+                decision_generation = decisionGeneration,
+                last_captured_generation = lastCapturedGeneration,
+                provenance = "native_executor_callback_and_cached_frame_gate",
+                human_input_origin_verified = false,
+                legal_menu_reconstructed = false
+            })));
+    }
+
     public void StableBoundary(long decisionId, JsonElement state)
     {
         if (_closed) return;
