@@ -122,10 +122,22 @@ internal static class NativeV111PassiveBridge
         int minSelect, int maxSelect, bool requireConfirmation,
         int holderCount, int missingCardIds,
         IReadOnlyList<NativeHandMenuOption> options,
-        ulong? choiceOwnerId, uint? choiceId, string bindingStatus) =>
+        ulong? choiceOwnerId, uint? choiceId, string bindingStatus,
+        object nativeHand) =>
         _actionEnvelopes?.NativeHandMenu(mode, sourceModelId, minSelect,
             maxSelect, requireConfirmation, holderCount, missingCardIds,
-            options, choiceOwnerId, choiceId, bindingStatus);
+            options, choiceOwnerId, choiceId, bindingStatus, nativeHand);
+
+    /// <summary>Read completed native visibility updates, without rerunning a filter.</summary>
+    internal static void NativeHandMenuRefresh(
+        object nativeHand, string mode, bool peekMode, int holderCount,
+        int missingCardIds, IReadOnlyList<NativeHandMenuOption> options) =>
+        _actionEnvelopes?.NativeHandMenuRefresh(nativeHand, mode, peekMode,
+            holderCount, missingCardIds, options);
+
+    /// <summary>Close the original UI menu lifetime, preserving native reason.</summary>
+    internal static void NativeHandMenuClosed(object nativeHand, string reason) =>
+        _actionEnvelopes?.NativeHandMenuClosed(nativeHand, reason);
 
     /// <summary>Original native UI card interaction before drag/targeting.</summary>
     internal static void NativeUiPlayBegin(
