@@ -22,8 +22,22 @@ public sealed class NativeRunPreludeRecorder : IAsyncDisposable
     private bool _closed;
     private bool _incomplete;
     private bool _linked;
+    private int _linkedActIndex;
+    private int? _linkedMapColumn;
+    private int? _linkedMapRow;
+    private readonly HashSet<(int ActIndex, int? Column, int? Row)>
+        _sourceRoomArrivals = [];
 
     public string RunId { get; }
+    /// <summary>
+    /// Source room callbacks can occur after combat initialization has begun.
+    /// Do not close before the linked room and pending map postfixes arrive.
+    /// </summary>
+    public bool HasLinkedCombatRoomAndSettledMapRequests =>
+        _linked
+        && _sourceRoomArrivals.Contains((
+            _linkedActIndex, _linkedMapColumn, _linkedMapRow))
+        && _requests.Count == 0;
     public bool IsIncomplete => _incomplete;
 
     public NativeRunPreludeRecorder(
@@ -73,6 +87,7 @@ public sealed class NativeRunPreludeRecorder : IAsyncDisposable
             ObservationFailure("room_entered", "INVALID_NATIVE_ROOM_PROJECTION");
             return;
         }
+        _sourceRoomArrivals.Add((actIndex, mapColumn, mapRow));
         Write("room_entered", new
         {
             act_index = actIndex, act_id = actId,
@@ -154,6 +169,9 @@ public sealed class NativeRunPreludeRecorder : IAsyncDisposable
             return;
         }
         _linked = true;
+        _linkedActIndex = actIndex;
+        _linkedMapColumn = mapColumn;
+        _linkedMapRow = mapRow;
         Write("combat_link", new
         {
             combat_run_id = combatRunId,
@@ -181,6 +199,10 @@ public sealed class NativeRunPreludeRecorder : IAsyncDisposable
             status = _incomplete ? "INCOMPLETE_CAPTURE"
                 : _linked ? "SOURCE_PRELUDE_OBSERVED" : "NO_COMBAT_LINK",
             reason, combat_link_recorded = _linked,
+            linked_combat_room_arrival_observed =
+                _linked && _sourceRoomArrivals.Contains((
+                    _linkedActIndex, _linkedMapColumn, _linkedMapRow)),
+            map_requests_missing_postfix = _requests.Count,
             source_macro_choices_complete = false,
             native_rng_parity = "NOT_TESTED",
             emulator_bootstrap = "NOT_TESTED"
