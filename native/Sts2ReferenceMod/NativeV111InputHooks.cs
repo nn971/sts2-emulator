@@ -46,7 +46,11 @@ internal static class NativeV111InputHooks
                 nameof(PrefixRequestEnqueue),
                 BindingFlags.NonPublic | BindingFlags.Static)!;
             patches = new Harmony(Owner);
-            patches.Patch(target, prefix: new HarmonyMethod(prefix));
+            MethodInfo postfix = typeof(NativeV111InputHooks).GetMethod(
+                nameof(PostfixRequestEnqueue),
+                BindingFlags.NonPublic | BindingFlags.Static)!;
+            patches.Patch(target, prefix: new HarmonyMethod(prefix),
+                postfix: new HarmonyMethod(postfix));
             _patches = patches;
             GD.Print("[Sts2ReferenceMod] INPUT_HOOK_STATUS=REQUEST_SOURCE_INSTALLED;" +
                 " source=ActionQueueSynchronizer.RequestEnqueue;" +
@@ -66,6 +70,24 @@ internal static class NativeV111InputHooks
     private static void PrefixRequestEnqueue(GameAction action)
     {
         try { NativeV111PassiveBridge.NativeInputRequested(action); }
+        catch (Exception error)
+        {
+            NativeV111PassiveBridge.NativeInputHookFailure(
+                error.GetType().Name);
+        }
+    }
+
+    // The game's request synchronizer has now returned. In singleplayer,
+    // the action queue has either accepted, canceled or deferred this
+    // request. This reflects the actual GameAction state at this instant;
+    // it does not imply that a full legal input menu was observed.
+    private static void PostfixRequestEnqueue(GameAction action)
+    {
+        try
+        {
+            NativeV111PassiveBridge.NativeInputRequestOutcome(
+                action, action.State.ToString(), action.Id);
+        }
         catch (Exception error)
         {
             NativeV111PassiveBridge.NativeInputHookFailure(
