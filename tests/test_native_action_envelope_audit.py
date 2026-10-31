@@ -117,6 +117,29 @@ class EnvelopeAuditTests(unittest.TestCase):
             entry["ordinal"] = i + 1
         self.assertEqual("INCOMPLETE_CAPTURE", audit(records)["status"])
 
+    def test_source_observed_strict_boundary_miss_preserves_executor_timeline(self):
+        records = sample()
+        records.insert(3, {"type": "strict_input_gap", "action_id": 1,
+                           "data": {
+                               "reason": "executor_action_without_unique_strict_decision",
+                               "last_reported_gate": "WAITING_FOR_DECISION:CARD_PLAY_ANIMATION",
+                               "decision_generation": 15,
+                               "last_captured_generation": 14,
+                               "provenance": "native_executor_callback_and_cached_frame_gate",
+                               "human_input_origin_verified": False,
+                               "legal_menu_reconstructed": False}})
+        for i, row in enumerate(records):
+            row["ordinal"] = i + 1
+        report = audit(records)
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", report["status"])
+        self.assertEqual(1, len(report["strict_input_gaps"]))
+        gap = report["strict_input_gaps"][0]
+        self.assertEqual(1, gap["action_id"])
+        self.assertEqual(15, gap["decision_generation"])
+        self.assertEqual("NOT_TESTED", report["native_game_parity"])
+        records[3]["data"]["legal_menu_reconstructed"] = True
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(records)["status"])
+
     def test_frame_hp_delta_records_enemy_damage_between_callbacks(self):
         records = sample()
         state1 = {"player": {"hp": 45}, "combat": {"energy": 2}}
