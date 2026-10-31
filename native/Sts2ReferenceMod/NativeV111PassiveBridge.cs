@@ -112,6 +112,10 @@ internal static class NativeV111PassiveBridge
             ProjectCanonicalAction(action));
     }
 
+    internal static void NativeInputRequestOutcome(
+        NativeGameAction action, string nativeState, uint? nativeActionId) =>
+        _actionEnvelopes?.NativeInputOutcome(action, nativeState, nativeActionId);
+
     private static CanonicalAction? ProjectCanonicalAction(NativeGameAction action) =>
         action switch
         {
