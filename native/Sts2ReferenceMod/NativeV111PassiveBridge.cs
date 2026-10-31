@@ -415,7 +415,9 @@ internal static class NativeV111PassiveBridge
             nativeRngStreamCheckpointsEnabled:
                 NativeV111RngHook.StreamCheckpointsEnabled,
             nativeRngFloatHookInstalled: NativeV111RngHook.HasFloatHook,
-            nativeInputHookInstalled: NativeV111InputHooks.IsInstalled);
+            nativeInputHookInstalled: NativeV111InputHooks.IsInstalled,
+            nativeHandMenuHookInstalled: NativeV111InputHooks.HasHandMenuHook,
+            nativeManualPlayHookInstalled: NativeV111InputHooks.HasManualPlayHook);
         if (!string.IsNullOrWhiteSpace(actualSeed))
             _actionEnvelopes.NativeRunIdentity(actualSeed, actualAscension);
         // A source-audited initial shuffle executes before the rendered
