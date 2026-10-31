@@ -92,6 +92,69 @@ public sealed class NativeRunPreludeRecorderTests
     }
 
     [Fact]
+    public async Task SourceRunAndPlayerRngWordsAreRecordedWithoutClaimingHistory()
+    {
+        var streams = new NativeRunRngStreamView[]
+        {
+            new("run", "UpFront", 12, 1, 2, 3, 4),
+            new("player", "Rewards", 0, ulong.MaxValue, 7, 8, 9)
+        };
+        var entries = await Record(recorder =>
+        {
+            recorder.RunRngSnapshot("run_started", 123UL, streams);
+            recorder.RoomEntered(0, "OVERGROWTH", 2, 2,
+                3, 1, "Monster", "MAWLER", 70, 99);
+            recorder.RunRngSnapshot("room_entered", 123UL, streams);
+            recorder.RunRngSnapshot("combat_attach", 123UL, streams);
+            recorder.CombatLink("combat-uuid", "passive.jsonl", 0, 3, 1);
+            recorder.Finish("First observed combat");
+        });
+        var rng = entries.Where(x =>
+            x.GetProperty("type").GetString() == "run_rng_snapshot").ToArray();
+        Assert.Equal(3, rng.Length);
+        var initial = rng[0].GetProperty("data");
+        Assert.Equal("run_started", initial.GetProperty("site").GetString());
+        Assert.Equal("RunRngSet.ToSerializable+PlayerRngSet.ToSerializable",
+            initial.GetProperty("source").GetString());
+        Assert.False(initial.GetProperty("source_rng_consumed_by_inspector")
+            .GetBoolean());
+        Assert.False(initial.GetProperty("native_rng_precombat_history_complete")
+            .GetBoolean());
+        Assert.Equal(2, initial.GetProperty("streams").GetArrayLength());
+        var first = initial.GetProperty("streams")[0];
+        Assert.Equal("player", first.GetProperty("scope").GetString());
+        Assert.Equal(ulong.MaxValue, first.GetProperty("s0").GetUInt64());
+        Assert.Equal(12, initial.GetProperty("streams")[1]
+            .GetProperty("counter").GetInt32());
+        Assert.Equal("SOURCE_PRELUDE_OBSERVED",
+            entries[^1].GetProperty("data").GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task DuplicateOrInvalidSourceStreamDoesNotProduceRngEvidence()
+    {
+        var rows = await Record(recorder =>
+        {
+            recorder.RunRngSnapshot("run_started", 123UL,
+            [
+                new("run", "UpFront", 0, 1, 2, 3, 4),
+                new("run", "UpFront", 0, 1, 2, 3, 4),
+                new("player", "Rewards", 0, 1, 2, 3, 4)
+            ]);
+            recorder.RoomEntered(0, "OVERGROWTH", 2, 2, 3, 1,
+                "Monster", "MAWLER", 70, 99);
+            recorder.CombatLink("combat-uuid", "passive.jsonl", 0, 3, 1);
+            recorder.Finish("First observed combat");
+        });
+        Assert.DoesNotContain(rows, x =>
+            x.GetProperty("type").GetString() == "run_rng_snapshot");
+        Assert.Single(rows, x =>
+            x.GetProperty("type").GetString() == "observation_failure");
+        Assert.Equal("INCOMPLETE_CAPTURE",
+            rows[^1].GetProperty("data").GetProperty("status").GetString());
+    }
+
+    [Fact]
     public async Task InvalidMapRequestOrDuplicateNativeObjectFailsClosed()
     {
         object move = new();
