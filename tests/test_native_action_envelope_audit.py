@@ -133,6 +133,59 @@ class EnvelopeAuditTests(unittest.TestCase):
         self.assertEqual("UNVERIFIED",
                          result["native_input_requests"][0]["acceptance"])
 
+    def test_native_request_postfix_distinguishes_queue_and_cancellation(self):
+        records = sample()
+        source = "ActionQueueSynchronizer.RequestEnqueue."
+        request = {"type": "native_input_request",
+            "native_type": "PlayCardAction",
+            "canonical_action": records[2]["canonical_action"],
+            "data": {"input_request_id": 1,
+                "source": source + "prefix",
+                "native_acceptance": "UNVERIFIED",
+                "human_origin": "UNVERIFIED", "input_injected": False}}
+        accepted = {"type": "native_input_outcome",
+            "native_type": "PlayCardAction",
+            "data": {"input_request_id": 1,
+                "native_action_state": "Executing", "native_action_id": 8,
+                "queue_result": "ASSIGNED_QUEUE_ID_AND_NOT_CANCELED_AT_RETURN",
+                "source": source + "postfix",
+                "human_origin": "UNVERIFIED",
+                "legal_menu_verified": False}}
+        records.insert(2, request)
+        records[3]["data"] = {
+            "input_request_id": 1,
+            "request_execution_link": "SAME_NATIVE_ACTION_OBJECT",
+            "human_origin": "UNVERIFIED"}
+        records.insert(4, accepted)
+        for i, row in enumerate(records):
+            row["ordinal"] = i + 1
+        report = audit(records)
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", report["status"])
+        self.assertEqual(1, report["source_request_execution_links"])
+        self.assertEqual(1, len(report["native_input_outcomes"]))
+        self.assertFalse(report["native_input_outcomes"][0]["menu_verified"])
+        self.assertEqual("ASSIGNED_QUEUE_ID_AND_NOT_CANCELED_AT_RETURN",
+                         report["native_input_outcomes"][0]["queue_result"])
+
+        canceled = copy.deepcopy(records)
+        canceled[4]["data"].update(
+            native_action_state="Canceled", native_action_id=8,
+            queue_result="CANCELED_AT_RETURN")
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT",
+                         audit(canceled)["status"])
+        # A state of None with no queue ID has no acceptance evidence.
+        deferred = copy.deepcopy(records)
+        deferred[4]["data"].update(
+            native_action_state="None", native_action_id=None,
+            queue_result="DEFERRED_OR_UNENQUEUED")
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT",
+                         audit(deferred)["status"])
+        forged = copy.deepcopy(records)
+        forged[4]["data"].update(
+            native_action_state="None", native_action_id=None,
+            queue_result="ASSIGNED_QUEUE_ID_AND_NOT_CANCELED_AT_RETURN")
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(forged)["status"])
+
     def test_valid_nested_action_window_and_measured_delta(self):
         report = audit(sample())
         self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", report["status"])
