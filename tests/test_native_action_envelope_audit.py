@@ -186,6 +186,67 @@ class EnvelopeAuditTests(unittest.TestCase):
             queue_result="ASSIGNED_QUEUE_ID_AND_NOT_CANCELED_AT_RETURN")
         self.assertEqual("INCOMPLETE_CAPTURE", audit(forged)["status"])
 
+    def test_native_hand_menu_is_ui_evidence_without_choice_id_reconstruction(self):
+        rows = sample()
+        menu = {"type": "native_hand_menu", "action_id": 1, "data": {
+            "menu_id": 1, "mode": "SimpleSelect",
+            "source_model_id": "SURVIVOR",
+            "min_select": 1, "max_select": 1,
+            "require_manual_confirmation": False,
+            "native_hand_holder_count": 4, "missing_card_ids": 0,
+            "options": [
+                {"combat_card_id": 7, "card_model_id": "DEFEND_SILENT",
+                 "ui_hand_index": 0},
+                {"combat_card_id": 9, "card_model_id": "STRIKE_SILENT",
+                 "ui_hand_index": 2}],
+            "coverage": "SOURCE_NATIVE_UI_VISIBLE_HAND_OPTIONS",
+            "selection_id_binding": "UNVERIFIED",
+            "predicate_re_evaluated_by_inspector": False,
+            "source": "NPlayerHand.SelectCards.postfix_after_native_visibility_update",
+            "emulator_parity": "NOT_TESTED"}}
+        rows.insert(5, menu)
+        for i, r in enumerate(rows):
+            r["ordinal"] = i + 1
+        result = audit(rows)
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", result["status"])
+        self.assertEqual(1, len(result["native_hand_menus"]))
+        self.assertEqual([7, 9], [o["combat_card_id"] for o in
+                         result["native_hand_menus"][0]["options"]])
+        self.assertEqual("UNVERIFIED",
+                         result["native_hand_menus"][0]["choice_id_binding"])
+        self.assertEqual("NOT_TESTED", result["native_game_parity"])
+        forged = copy.deepcopy(rows)
+        forged[5]["data"]["predicate_re_evaluated_by_inspector"] = True
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(forged)["status"])
+        duplicate = copy.deepcopy(rows)
+        duplicate[5]["data"]["options"][1]["combat_card_id"] = 7
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(duplicate)["status"])
+        missing = copy.deepcopy(rows)
+        missing[5]["data"]["missing_card_ids"] = 1
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(missing)["status"])
+
+    def test_native_manual_play_result_does_not_prove_queue_acceptance(self):
+        rows = sample()
+        manual = {"type": "native_manual_play_result", "data": {
+            "combat_card_id": 19, "card_model_id": "SHIV",
+            "target_id": "creature:1", "returned_success": True,
+            "source": "CardModel.TryManualPlay.postfix",
+            "queue_acceptance": "UNVERIFIED",
+            "human_origin": "UNVERIFIED",
+            "emulator_parity": "NOT_TESTED"}}
+        rows.insert(3, manual)
+        for i, r in enumerate(rows):
+            r["ordinal"] = i + 1
+        result = audit(rows)
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", result["status"])
+        self.assertEqual(1, len(result["native_manual_play_results"]))
+        self.assertTrue(result["native_manual_play_results"][0]["returned_success"])
+        self.assertEqual("UNVERIFIED",
+                         result["native_manual_play_results"][0]["queue_acceptance"])
+        forged = copy.deepcopy(rows)
+        forged[3]["data"]["queue_acceptance"] = "VERIFIED"
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(forged)["status"])
+
     def test_valid_nested_action_window_and_measured_delta(self):
         report = audit(sample())
         self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", report["status"])
