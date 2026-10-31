@@ -66,6 +66,17 @@ def audit(strict: list[dict], sidecar: list[dict]) -> dict:
     nested_pause = []
     frames = []
     candidates = []
+    # RequestEnqueue may execute an action synchronously before its postfix;
+    # index all source return observations before walking executor starts.
+    requested = {}
+    returned = {}
+    for row in sidecar:
+        details = row.get("data") or {}
+        if row.get("type") == "native_input_request":
+            requested[details.get("input_request_id")] = row
+        elif row.get("type") == "native_input_outcome":
+            returned[details.get("input_request_id")] = row
+    choices = []
     for i, record in enumerate(sidecar, 1):
         if record.get("ordinal") != i:
             report["errors"].append("NONCONSECUTIVE_SIDECAR_ORDINAL")
@@ -83,6 +94,8 @@ def audit(strict: list[dict], sidecar: list[dict]) -> dict:
             nested_pause.append((i, record.get("action_id")))
         elif kind == "frame_state":
             frames.append(i)
+        elif kind == "native_player_choice":
+            choices.append((i, record.get("data") or {}))
         elif kind == "action_started":
             chosen = _canonical(record.get("canonical_action"))
             if chosen is None:
@@ -104,7 +117,27 @@ def audit(strict: list[dict], sidecar: list[dict]) -> dict:
                 # suspension/resume can consume a second human input.
                 pauses = [n for n, _ in nested_pause if last_matched_start < n < i]
                 recent_frames = [n for n in frames if last_matched_start < n < i]
+                input_id = (record.get("data") or {}).get("input_request_id")
+                source_request = requested.get(input_id) if input_id is not None else None
+                source_return = returned.get(input_id) if input_id is not None else None
+                selected = [(n, d) for n, d in choices
+                            if last_matched_start < n < i]
                 report["first_gap"] = {
+                    "source_input_request_id": input_id,
+                    "source_input_request_ordinal": (
+                        source_request.get("ordinal") if source_request else None),
+                    "source_queue_return_classification": (
+                        (source_return.get("data") or {}).get("queue_result")
+                        if source_return else None),
+                    "source_selected_choices_since_prior_action": [
+                        {
+                            "ordinal": n,
+                            "choice_id": d.get("choice_id"),
+                            "choice_type": d.get("choice_type"),
+                            "selected_combat_card_ids":
+                                d.get("selected_combat_card_ids"),
+                        } for n, d in selected
+                    ],
                     "sidecar_ordinal": i,
                     "executor_action_id": aid,
                     "native_type": record.get("native_type"),
