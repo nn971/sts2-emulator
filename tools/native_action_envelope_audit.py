@@ -180,6 +180,8 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         "nested_choices": [],
         "strict_input_gaps": [],
         "native_input_hook_installed": False,
+        "native_hand_menu_hook_installed": False,
+        "native_manual_play_hook_installed": False,
         "native_input_requests": [],
         "native_input_outcomes": [],
         "native_player_choices": [],
@@ -224,6 +226,10 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         return report
     report["native_input_hook_installed"] = (
         records[0].get("data", {}).get("native_input_hook_installed") is True)
+    report["native_hand_menu_hook_installed"] = (
+        records[0].get("data", {}).get("native_hand_menu_hook_installed") is True)
+    report["native_manual_play_hook_installed"] = (
+        records[0].get("data", {}).get("native_manual_play_hook_installed") is True)
     report["native_rng_hook_installed"] = (
         records[0].get("data", {}).get("native_rng_hook_installed") is True)
     report["native_rng_double_hook_installed"] = (
