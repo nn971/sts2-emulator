@@ -115,6 +115,12 @@ class NativeL0EvidenceTests(unittest.TestCase):
             "native_hand_menu_open_lifetimes": [2],
             "native_manual_play_hook_installed": True,
             "native_ui_play_begin_hook_installed": True,
+            "native_ui_gate_hook_installed": True,
+            "native_ui_hand_gates": [
+                {"gate": "AreCardActionsAllowed",
+                 "returned_allowed": True},
+                {"gate": "CanPlayCards",
+                 "returned_allowed": False}],
             "native_ui_play_begins": [{"started_via_shortcut": True}],
             "native_hand_menus": [
                 {"coverage": "SOURCE_NATIVE_UI_VISIBLE_HAND_OPTIONS",
@@ -148,6 +154,10 @@ class NativeL0EvidenceTests(unittest.TestCase):
         self.assertEqual(1, observed["native_hand_choice_matches_latest_outside_captured_offers"])
         self.assertTrue(observed["manual_play_hook_reported_installed"])
         self.assertTrue(observed["ui_play_begin_hook_reported_installed"])
+        self.assertTrue(observed["ui_gate_hook_reported_installed"])
+        self.assertEqual(2, observed["native_ui_gate_evaluations"])
+        self.assertEqual(1, observed["native_ui_gate_allowed_evaluations"])
+        self.assertEqual(1, observed["native_ui_gate_rejected_evaluations"])
         self.assertEqual(1, observed["native_ui_play_begins"])
         self.assertEqual(2, observed["native_filtered_hand_menus"])
         self.assertEqual(1, observed["hand_menus_with_complete_ui_id_projection"])
