@@ -276,13 +276,13 @@ def audit(records: list[dict], error: str | None = None,
         or terminal.get("native_rng_parity") != "NOT_TESTED"
         or terminal.get("emulator_bootstrap") != "NOT_TESTED"):
         errors.append("Prelude terminal improperly claims complete macro/RNG fidelity")
-    if link is None:
-        errors.append("Missing first combat link")
     if (not events["rng_snapshots"]
         or events["rng_snapshots"][0]["site"] != "run_started"
         or not any(s["site"] == "combat_attach"
                    for s in events["rng_snapshots"])):
         errors.append("Missing native run-start or first-combat RNG snapshot")
+    if link is None:
+        errors.append("Missing first combat link")
     else:
         matching_room_arrival = any(
             room["act_index"] == link["act_index"]
