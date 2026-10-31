@@ -15,12 +15,14 @@ from pathlib import Path
 from native_action_envelope_audit import audit as audit_envelope, load
 from native_rng_boundary_verify import audit as audit_primitives
 from native_rng_checkpoint_audit import audit as audit_checkpoints
+from native_parity import load_trace
+from native_trace_audit import audit as audit_strict_trace
 
 _SHA_IN_BUILD = re.compile(r"(?<![a-z0-9])sha256=([0-9a-f]{64})(?![a-z0-9])", re.I)
 
 
 def assess(preflight: dict, records: list[dict], read_error: str | None,
-           game_log: str | None) -> dict:
+           game_log: str | None, strict_trace: dict | None = None) -> dict:
     """Return statuses without promoting an observed primitive to game parity."""
     header = (records[0].get("data") or {}) if (
         records and records[0].get("type") == "header") else {}
@@ -92,6 +94,10 @@ def assess(preflight: dict, records: list[dict], read_error: str | None,
         pending.append("PERSISTENT_STREAM_COVERAGE_NOT_COMPLETE")
     if primitives["stream_gap_count"]:
         pending.append("SOURCE_STREAM_CALL_GAPS_REMAIN")
+    if strict_trace is not None and strict_trace["status"] != "STRUCTURALLY_VALID":
+        # An incomplete strict trace does not invalidate source RNG evidence,
+        # but cannot count as a complete player-decision capture.
+        pending.append("STRICT_DECISION_TRACE_INCOMPLETE")
 
     status = ("L0_EVIDENCE_REJECTED" if failures
               else "L0_SOURCE_EVIDENCE_PARTIAL" if pending
@@ -102,6 +108,12 @@ def assess(preflight: dict, records: list[dict], read_error: str | None,
         "installed_build_pin": "MATCH" if pin_ok else "INVALID_OR_UNVERIFIED",
         "native_callback_status": envelope["status"],
         "native_callback_reason": envelope["reason"],
+        "strict_decision_trace_status": (
+            strict_trace["status"] if strict_trace is not None else "NOT_AUDITED"),
+        "strict_decision_trace_reason": (
+            strict_trace.get("reason") if strict_trace is not None else None),
+        "strict_decision_count": (
+            strict_trace.get("decisions") if strict_trace is not None else None),
         "source_hook_flags": flags,
         "matching_game_log_hook_evidence": "OBSERVED" if logged else "NOT_VERIFIED",
         "native_rng_primitive_status": primitives["status"],
@@ -140,12 +152,28 @@ def main() -> int:
                         help="Explicit new passive-*.actions.jsonl, not a directory")
     parser.add_argument("--game-log", type=Path,
                         help="Fresh game session log with CAPTURE/RNG_HOOK statuses")
+    parser.add_argument("--strict-trace", type=Path,
+                        help="Matching passive-*.jsonl decision trace (auto-detected "
+                             "beside passive-*.actions.jsonl when omitted)")
     parser.add_argument("--out", type=Path)
     args = parser.parse_args()
     preflight = json.loads(args.preflight.read_text(encoding="utf-8"))
     records, error = load(args.sidecar)
     game_log = args.game_log.read_text(encoding="utf-8") if args.game_log else None
-    report = assess(preflight, records, error, game_log)
+    companion = args.strict_trace
+    if companion is None and args.sidecar.name.endswith(".actions.jsonl"):
+        companion = args.sidecar.with_name(
+            args.sidecar.name.removesuffix(".actions.jsonl") + ".jsonl")
+    strict_trace = None
+    if companion is not None:
+        if companion.exists():
+            strict_records, strict_error = load_trace(companion)
+            strict_trace = audit_strict_trace(strict_records, strict_error)
+        else:
+            strict_trace = {"status": "INCOMPLETE_CAPTURE",
+                            "reason": "Matching native decision trace missing",
+                            "decisions": 0}
+    report = assess(preflight, records, error, game_log, strict_trace)
     rendered = json.dumps(report, indent=2, sort_keys=True) + "\n"
     print(rendered, end="")
     if args.out:
