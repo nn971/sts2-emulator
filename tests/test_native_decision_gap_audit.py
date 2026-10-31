@@ -75,6 +75,44 @@ class DecisionGapAuditTests(unittest.TestCase):
         self.assertEqual("EXECUTOR_ACTION_TYPE_ONLY_HUMAN_ORIGIN_UNVERIFIED",
                          result["action_origin"])
 
+    def test_source_input_and_selected_choice_correlate_with_missing_boundary(self):
+        strict, rows = pair(nested=True, frame=True)
+        request = {"type": "native_input_request",
+            "native_type": "PlayCardAction",
+            "canonical_action": action(2),
+            "data": {"input_request_id": 17}}
+        selected = {"type": "native_player_choice", "action_id": 1,
+                    "data": {"choice_id": 3, "choice_type": "CombatCard",
+                             "selected_combat_card_ids": [9]}}
+        outcome = {"type": "native_input_outcome",
+                   "native_type": "PlayCardAction",
+                   "data": {"input_request_id": 17,
+                            "queue_result": "ASSIGNED_QUEUE_ID_AND_NOT_CANCELED_AT_RETURN"}}
+        # The request precedes the executor start; the native method may
+        # return only *after* synchronous execution of that action.
+        second_start = next(i for i, row in enumerate(rows)
+                            if row.get("action_id") == 2
+                            and row.get("type") == "action_started")
+        rows.insert(second_start, request)
+        rows.insert(second_start, selected)
+        second_start += 2
+        rows[second_start]["data"] = {"input_request_id": 17}
+        rows.insert(second_start + 2, outcome)
+        for i, row in enumerate(rows, 1):
+            row["ordinal"] = i
+        result = audit(strict, rows)
+        self.assertEqual("FIRST_UNCAPTURED_EXECUTOR_ACTION_FOUND",
+                         result["status"])
+        gap = result["first_gap"]
+        self.assertEqual(17, gap["source_input_request_id"])
+        self.assertEqual("ASSIGNED_QUEUE_ID_AND_NOT_CANCELED_AT_RETURN",
+                         gap["source_queue_return_classification"])
+        self.assertEqual(3,
+                         gap["source_selected_choices_since_prior_action"][0]["choice_id"])
+        self.assertEqual([9], gap[
+            "source_selected_choices_since_prior_action"][0]["selected_combat_card_ids"])
+        self.assertEqual("NOT_PERFORMED", result["legal_menu_reconstruction"])
+
     def test_all_source_candidates_aligned(self):
         strict, rows = pair()
         rows = [r for r in rows if r.get("action_id") != 2]
