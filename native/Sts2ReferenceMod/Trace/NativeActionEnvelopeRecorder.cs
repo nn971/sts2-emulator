@@ -31,6 +31,18 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
         new(ReferenceEqualityComparer.Instance);
     private long _nextInputRequestId;
     private long _nextHandMenuId;
+    private sealed class HandMenuLifetime
+    {
+        public required long MenuId { get; init; }
+        public required string Mode { get; init; }
+        public ulong? OwnerId { get; init; }
+        public uint? ChoiceId { get; init; }
+        public required string Binding { get; init; }
+        public string LastSignature { get; set; } = "";
+        public int Revision { get; set; } = 1;
+    }
+    private readonly Dictionary<object, HandMenuLifetime> _activeHandMenus =
+        new(ReferenceEqualityComparer.Instance);
     private readonly string _gameBuild;
     private long _sequence;
     private long _nextActionId;
@@ -195,7 +207,8 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
         int nativeHolderCount, int missingCardIds,
         IReadOnlyList<NativeHandMenuOption> visibleOptions,
         ulong? selectionOwnerId = null, uint? selectionChoiceId = null,
-        string selectionIdBinding = "UNVERIFIED")
+        string selectionIdBinding = "UNVERIFIED",
+        object? nativeHand = null)
     {
         if (_closed) return;
         bool exact = selectionIdBinding == "SOURCE_ASYNC_FLOW_RESERVED_ID";
@@ -219,12 +232,31 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
             ObservationFailure("native_hand_menu", "INVALID_NATIVE_UI_PROJECTION");
             return;
         }
+        if (nativeHand is not null && _activeHandMenus.ContainsKey(nativeHand))
+        {
+            ObservationFailure("native_hand_menu", "OVERLAPPING_NATIVE_SELECTION");
+            return;
+        }
+        long menuId = ++_nextHandMenuId;
+        if (nativeHand is not null)
+        {
+            _activeHandMenus[nativeHand] = new HandMenuLifetime
+            {
+                MenuId = menuId,
+                Mode = mode,
+                OwnerId = selectionOwnerId,
+                ChoiceId = selectionChoiceId,
+                Binding = selectionIdBinding,
+                LastSignature = MenuSignature(
+                    nativeHolderCount, missingCardIds, visibleOptions, false)
+            };
+        }
         Write(new NativeActionEnvelopeRecord(
             "native_hand_menu", Next(),
             _activeOrder.Count == 0 ? null : _activeOrder[^1],
             Data: JsonSerializer.SerializeToElement(new
             {
-                menu_id = ++_nextHandMenuId,
+                menu_id = menuId,
                 mode,
                 source_model_id = sourceModelId,
                 min_select = minSelect,
@@ -247,6 +279,116 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
                 predicate_re_evaluated_by_inspector = false,
                 source = "NPlayerHand.SelectCards.postfix_after_native_visibility_update",
                 emulator_parity = "NOT_TESTED"
+            })));
+    }
+
+    private static string MenuSignature(
+        int holderCount, int missing, IReadOnlyList<NativeHandMenuOption> options,
+        bool peeking) =>
+        JsonSerializer.Serialize(new
+        {
+            holderCount, missing, peeking,
+            options = options.Select(x => new
+            {
+                x.CombatCardId, x.ModelId, x.UiHandIndex
+            })
+        });
+
+    /// <summary>
+    /// The original NPlayerHand.UpdateSelectModeCardVisibility has already
+    /// finished running all native predicates and setting holder.Visible.
+    /// Only changed UI snapshots are emitted; the source menu's identity
+    /// and choice ID are carried from its original SelectCards call.
+    /// </summary>
+    public void NativeHandMenuRefresh(
+        object nativeHand, string mode, bool peeking,
+        int holderCount, int missingCardIds,
+        IReadOnlyList<NativeHandMenuOption> visibleOptions)
+    {
+        if (_closed || !_activeHandMenus.TryGetValue(
+                nativeHand, out var lifetime))
+            return;
+        if (mode != lifetime.Mode || holderCount < 0 || missingCardIds < 0
+            || (!peeking &&
+                (visibleOptions.Count + missingCardIds > holderCount
+                 || visibleOptions.Select(x => x.CombatCardId).Distinct().Count()
+                    != visibleOptions.Count))
+            || (peeking && (missingCardIds != 0 || visibleOptions.Count != 0))
+            || visibleOptions.Any(x => x.CombatCardId < 0
+                || string.IsNullOrWhiteSpace(x.ModelId)
+                || x.UiHandIndex < 0 || x.UiHandIndex >= holderCount))
+        {
+            ObservationFailure("native_hand_menu_refresh", "INVALID_NATIVE_UI_REFRESH");
+            return;
+        }
+        string signature = MenuSignature(
+            holderCount, missingCardIds, visibleOptions, peeking);
+        if (signature == lifetime.LastSignature) return;
+        lifetime.LastSignature = signature;
+        int revision = ++lifetime.Revision;
+        Write(new NativeActionEnvelopeRecord(
+            "native_hand_menu_revision", Next(),
+            _activeOrder.Count == 0 ? null : _activeOrder[^1],
+            Data: JsonSerializer.SerializeToElement(new
+            {
+                menu_id = lifetime.MenuId,
+                revision,
+                selection_owner_id = lifetime.OwnerId,
+                selection_choice_id = lifetime.ChoiceId,
+                selection_id_binding = lifetime.Binding,
+                mode,
+                peek_mode = peeking,
+                native_hand_holder_count = holderCount,
+                missing_card_ids = missingCardIds,
+                options = visibleOptions.Select(x => new
+                {
+                    combat_card_id = x.CombatCardId,
+                    card_model_id = x.ModelId,
+                    ui_hand_index = x.UiHandIndex
+                }).ToArray(),
+                coverage = peeking ? "NATIVE_PEEK_VIEW_NOT_SELECTABLE"
+                    : missingCardIds == 0
+                        ? "SOURCE_NATIVE_UI_VISIBLE_HAND_OPTIONS"
+                        : "INCOMPLETE_NATIVE_CARD_ID_MAPPING",
+                source = "NPlayerHand.UpdateSelectModeCardVisibility.postfix",
+                predicate_re_evaluated_by_inspector = false,
+                complete_menu_history = "NOT_VERIFIED",
+                emulator_parity = "NOT_TESTED"
+            })));
+    }
+
+    /// <summary>
+    /// Record the native menu's end of UI lifetime. A selection may be
+    /// completed, canceled, or torn down. The synchronized choice result
+    /// remains a distinct event, usually observed after UI close.
+    /// </summary>
+    public void NativeHandMenuClosed(object nativeHand, string nativeReason)
+    {
+        if (_closed || !_activeHandMenus.Remove(nativeHand, out var lifetime))
+            return;
+        if (nativeReason is not ("AfterCardsSelected"
+            or "NativeHandExitTree"))
+        {
+            ObservationFailure("native_hand_menu_closed",
+                "INVALID_NATIVE_CLOSE_REASON");
+            return;
+        }
+        Write(new NativeActionEnvelopeRecord(
+            "native_hand_menu_closed", Next(),
+            _activeOrder.Count == 0 ? null : _activeOrder[^1],
+            Data: JsonSerializer.SerializeToElement(new
+            {
+                menu_id = lifetime.MenuId,
+                final_revision = lifetime.Revision,
+                selection_owner_id = lifetime.OwnerId,
+                selection_choice_id = lifetime.ChoiceId,
+                selection_id_binding = lifetime.Binding,
+                native_reason = nativeReason,
+                source = nativeReason == "AfterCardsSelected"
+                    ? "NPlayerHand.AfterCardsSelected.postfix"
+                    : "NPlayerHand._ExitTree.prefix",
+                native_choice_result_verified = false,
+                complete_menu_history = "NOT_VERIFIED"
             })));
     }
 
