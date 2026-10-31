@@ -178,6 +178,7 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         "record_counts": dict(Counter(r.get("type") for r in records)),
         "actions": [],
         "nested_choices": [],
+        "strict_input_gaps": [],
         "observed_mechanic_indicators": {},
         "nested_choice_pauses": 0,
         "unattributed_history_entries": 0,
@@ -237,7 +238,7 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         return report
     allowed = {
         "header", "history_baseline", "frame_state", "action_started", "action_resumed", "action_completed", "stable_decision",
-        "nested_choice_pause", "history_entry", "history_reset", "anomaly",
+        "nested_choice_pause", "strict_input_gap", "history_entry", "history_reset", "anomaly",
         "observation_failure", "native_rng_boundary",
         "native_rng_scalar_boundary", "native_rng_stream_checkpoint",
         "native_shuffle_operation", "native_initial_hp_roll", "terminal",
@@ -330,6 +331,23 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                 strict_failures.append(f"Nested choice with no active action: {aid}")
             else:
                 awaiting_resume.add(aid)
+        elif typ == "strict_input_gap":
+            data = record.get("data") or {}
+            if (aid not in running
+                or data.get("reason") != "executor_action_without_unique_strict_decision"
+                or type(data.get("decision_generation")) is not int
+                or type(data.get("last_captured_generation")) is not int
+                or data.get("human_input_origin_verified") is not False
+                or data.get("legal_menu_reconstructed") is not False):
+                strict_failures.append(f"Invalid strict input gap at ordinal {ordinal}")
+            else:
+                report["strict_input_gaps"].append({
+                    "ordinal": ordinal,
+                    "action_id": aid,
+                    "last_reported_gate": data.get("last_reported_gate"),
+                    "decision_generation": data["decision_generation"],
+                    "last_captured_generation": data["last_captured_generation"],
+                })
         elif typ == "native_initial_hp_roll":
             data = record.get("data") or {}
             if (data.get("source_version") != "v0.111.0"
