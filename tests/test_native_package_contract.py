@@ -86,6 +86,36 @@ class NativePackageContractTests(unittest.TestCase):
         self.assertIn("_failedCombat", native)
         self.assertIn("if (ReferenceEquals(_failedCombat, combat)) return;", native)
 
+    def test_source_input_hooks_remain_opt_in_and_observer_only(self):
+        native_dir = ROOT / "native" / "Sts2ReferenceMod"
+        hooks = (native_dir / "NativeV111InputHooks.cs").read_text(encoding="utf-8")
+        bridge = (native_dir / "NativeV111PassiveBridge.cs").read_text(encoding="utf-8")
+        plugin = (native_dir / "Plugin.cs").read_text(encoding="utf-8")
+        recorder = (native_dir / "Trace" /
+                    "NativeActionEnvelopeRecorder.cs").read_text(encoding="utf-8")
+        self.assertIn("STS2_FIDELITY_INPUT_HOOK", hooks)
+        self.assertIn("nameof(ActionQueueSynchronizer.RequestEnqueue)", hooks)
+        self.assertIn("prefix: new HarmonyMethod(prefix)", hooks)
+        self.assertIn("postfix: new HarmonyMethod(postfix)", hooks)
+        self.assertIn("NativeV111InputHooks.TryInstall()", plugin)
+        self.assertIn("NativeInputRequested(action)", hooks)
+        self.assertIn("NativeInputRequestOutcome(", hooks)
+        self.assertIn("RunState.Rng.StringSeed", bridge)
+        self.assertIn("PlayerChoiceReceived += OnNativePlayerChoice", bridge)
+        self.assertIn("PlayerChoiceReceived -= OnNativePlayerChoice", bridge)
+        self.assertIn("SAME_NATIVE_ACTION_OBJECT", recorder)
+        self.assertIn("human_origin = \"UNVERIFIED\"", recorder)
+        self.assertIn("legal_menu_verified = false", recorder)
+        # The patch must be an observation of the actual game method;
+        # it must never replace/enqueue/execute the action itself.
+        self.assertNotIn("return false;", hooks)
+        self.assertNotIn("__runOriginal", hooks)
+        self.assertNotIn(".EnqueueWithoutSynchronizing(", hooks)
+        self.assertNotIn(".RequestEnqueue(", hooks.replace(
+            "nameof(ActionQueueSynchronizer.RequestEnqueue)", ""))
+        self.assertNotIn(".Execute(", hooks)
+        self.assertNotIn("SkipOriginal", hooks)
+
     def test_manifest_pck_name_is_consistent(self):
         import json
         manifest = json.loads(
