@@ -337,7 +337,14 @@ and queue-acceptance uncertainty**, and the independent
 asserting that a particular queued request caused them.
 
 On its first combat, the run prelude records a `combat_link` containing
-the exact combat trace run ID and filename, then closes. It remains
+the exact combat trace run ID and filename. The actual
+`RunManager.RoomEntered` callback runs **after** awaited native
+`room.Enter`, and may therefore arrive after the combat observer has
+already attached on a frame. The prelude stays open until both the
+linked combat's actual room-arrival callback and all outstanding map
+`RequestEnqueue` postfixes have been observed; it then closes.
+If combat ends before those callbacks arrive, it terminates as
+`INCOMPLETE_CAPTURE`, preserving the missing evidence. It remains
 **source route evidence**, with
 `source_macro_choices_complete=false`. In particular, Neow choices,
 events, card/reward/shop/rest choices, potion/relic/deck changes, and
@@ -354,8 +361,9 @@ python tools/native_run_prelude_audit.py \\
     --out "$trace/run-prelude-audit.json"
 ```
 
-Pairing checks the native DLL fingerprint, source seed/ascension and
-exact combat trace ID. It keeps `native_macro_action_transcript_complete`,
+Pairing checks the native DLL fingerprint, source seed/ascension,
+exact combat trace ID, awaited matching room-arrival evidence, and
+zero missing native map queue postfixes. It keeps `native_macro_action_transcript_complete`,
 `emulator_combat_bootstrap` and `native_emulator_parity` negative or
 unverified even when the visited map coordinate and queued move request
 happen to coincide. Older captures lack this source prelude: the
