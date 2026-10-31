@@ -178,6 +178,20 @@ def _resolve(action: dict, legal: list[dict], cards: dict,
             emu_payload = json.loads(candidate["payloadJson"])
         except (ValueError, KeyError, TypeError):
             return None, "INVALID_EMULATOR_ACTION_WIRE"
+        if not isinstance(emu_payload, dict):
+            return None, "INVALID_EMULATOR_ACTION_WIRE"
+        # Core GameAction.Create<T> creates a JsonElement with the original
+        # record property names (PascalCase); CanonicalJson does not rewrite
+        # names *inside* a JsonElement. Legacy/synthetic wires can expose
+        # snake_case. Accept only these two explicit typed shapes.
+        if kind == "play_card":
+            if set(emu_payload) == {"CardInstanceId", "TargetEnemyId"}:
+                emu_payload = {
+                    "card_instance_id": emu_payload["CardInstanceId"],
+                    "target_enemy_id": emu_payload["TargetEnemyId"]
+                }
+            elif set(emu_payload) != {"card_instance_id", "target_enemy_id"}:
+                return None, "UNSUPPORTED_EMULATOR_ACTION_PAYLOAD_SCHEMA"
         if emu_payload == expected:
             matching.append(candidate["actionId"])
     if len(matching) != 1:
