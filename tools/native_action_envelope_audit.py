@@ -183,6 +183,8 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         "native_input_requests": [],
         "native_input_outcomes": [],
         "native_player_choices": [],
+        "native_hand_menus": [],
+        "native_manual_play_results": [],
         "native_run_identity": None,
         "source_request_execution_links": 0,
         "observed_mechanic_indicators": {},
@@ -251,7 +253,8 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         "native_rng_scalar_boundary", "native_rng_stream_checkpoint",
         "native_shuffle_operation", "native_initial_hp_roll",
         "native_input_request", "native_input_outcome",
-        "native_player_choice", "native_run_identity", "terminal",
+        "native_player_choice", "native_run_identity",
+        "native_hand_menu", "native_manual_play_result", "terminal",
     }
     running: dict[int, dict] = {}
     completed: dict[int, dict] = {}
@@ -264,6 +267,7 @@ def audit(records: list[dict], error: str | None = None) -> dict:
     input_requests: dict[int, dict] = {}
     request_outcomes: set[int] = set()
     choices_seen: set[tuple[int, int]] = set()
+    hand_menus_seen: set[int] = set()
     for ordinal, record in enumerate(records, 1):
         typ = record.get("type")
         if record.get("ordinal") != ordinal:
@@ -441,6 +445,91 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                     "native_action_state": native_state,
                     "queue_result": expected,
                     "menu_verified": False,
+                })
+        elif typ == "native_hand_menu":
+            data = record.get("data") or {}
+            menu_id = data.get("menu_id")
+            mode = data.get("mode")
+            minimum, maximum = data.get("min_select"), data.get("max_select")
+            holder_count = data.get("native_hand_holder_count")
+            missing_ids = data.get("missing_card_ids")
+            options = data.get("options")
+            valid = (
+                type(menu_id) is int and menu_id > 0
+                and menu_id not in hand_menus_seen
+                and mode in ("SimpleSelect", "UpgradeSelect")
+                and type(minimum) is int and minimum >= 0
+                and type(maximum) is int and maximum >= minimum
+                and type(holder_count) is int and holder_count >= 0
+                and type(missing_ids) is int and missing_ids >= 0
+                and type(data.get("require_manual_confirmation")) is bool
+                and isinstance(options, list)
+                and len(options) + missing_ids <= holder_count
+                and data.get("selection_id_binding") == "UNVERIFIED"
+                and data.get("predicate_re_evaluated_by_inspector") is False
+                and data.get("source") ==
+                    "NPlayerHand.SelectCards.postfix_after_native_visibility_update"
+                and data.get("emulator_parity") == "NOT_TESTED"
+                and data.get("coverage") == (
+                    "SOURCE_NATIVE_UI_VISIBLE_HAND_OPTIONS"
+                    if missing_ids == 0 else
+                    "INCOMPLETE_NATIVE_CARD_ID_MAPPING"))
+            if valid:
+                all_ids, all_positions = [], []
+                for option in options:
+                    if not isinstance(option, dict):
+                        valid = False
+                        break
+                    card_id = option.get("combat_card_id")
+                    model_id = option.get("card_model_id")
+                    slot = option.get("ui_hand_index")
+                    if (type(card_id) is not int or card_id < 0
+                        or not isinstance(model_id, str) or not model_id
+                        or type(slot) is not int
+                        or slot < 0 or slot >= holder_count):
+                        valid = False
+                        break
+                    all_ids.append(card_id)
+                    all_positions.append(slot)
+                if valid:
+                    valid = (
+                        len(all_ids) == len(set(all_ids))
+                        and len(all_positions) == len(set(all_positions))
+                        and all_positions == sorted(all_positions))
+            if not valid:
+                strict_failures.append(f"Invalid native hand menu at {ordinal}")
+            else:
+                hand_menus_seen.add(menu_id)
+                report["native_hand_menus"].append({
+                    "ordinal": ordinal, "menu_id": menu_id,
+                    "mode": mode,
+                    "source_model_id": data.get("source_model_id"),
+                    "min_select": minimum, "max_select": maximum,
+                    "options": options, "coverage": data["coverage"],
+                    "choice_id_binding": "UNVERIFIED",
+                })
+        elif typ == "native_manual_play_result":
+            data = record.get("data") or {}
+            card_id = data.get("combat_card_id")
+            if (card_id is not None and
+                (type(card_id) is not int or card_id < 0)
+                or not isinstance(data.get("card_model_id"), str)
+                or not data.get("card_model_id")
+                or type(data.get("returned_success")) is not bool
+                or data.get("source") != "CardModel.TryManualPlay.postfix"
+                or data.get("queue_acceptance") != "UNVERIFIED"
+                or data.get("human_origin") != "UNVERIFIED"
+                or data.get("emulator_parity") != "NOT_TESTED"):
+                strict_failures.append(
+                    f"Invalid native manual play result at {ordinal}")
+            else:
+                report["native_manual_play_results"].append({
+                    "ordinal": ordinal,
+                    "combat_card_id": card_id,
+                    "card_model_id": data["card_model_id"],
+                    "target_id": data.get("target_id"),
+                    "returned_success": data["returned_success"],
+                    "queue_acceptance": "UNVERIFIED",
                 })
         elif typ == "native_player_choice":
             data = record.get("data") or {}
