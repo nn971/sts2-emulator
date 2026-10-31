@@ -51,7 +51,8 @@ class NativeL0EvidenceTests(unittest.TestCase):
             }},
         }
 
-    def assess(self, *, log=True, error=None, strict_trace=None):
+    def assess(self, *, log=True, error=None, strict_trace=None,
+               run_prelude=None):
         with (patch("native_l0_evidence.audit_envelope",
                     return_value=self.envelope),
               patch("native_l0_evidence.audit_primitives",
@@ -59,7 +60,8 @@ class NativeL0EvidenceTests(unittest.TestCase):
               patch("native_l0_evidence.audit_checkpoints",
                     return_value=self.checkpoints)):
             return assess(self.preflight, self.records, error,
-                          self.log if log else None, strict_trace)
+                          self.log if log else None, strict_trace,
+                          run_prelude=run_prelude)
 
     def test_all_existing_source_gates_still_need_no_perturbation_and_parity(self):
         result = self.assess()
@@ -171,6 +173,37 @@ class NativeL0EvidenceTests(unittest.TestCase):
         self.assertEqual("NOT_TESTED", observed["legal_menu_coverage"])
         self.assertEqual("NOT_TESTED", observed["native_input_nonperturbation"])
         self.assertEqual("NOT_TESTED", report["native_emulator_mechanics_parity"])
+
+    def test_source_run_prelude_links_first_combat_without_macro_bootstrap(self):
+        prelude = {
+            "status": "RUN_PRELUDE_PAIRED_SOURCE_OBSERVED",
+            "first_combat_link": {
+                "combat_run_id": "combat-uuid",
+                "source": "NativeV111PassiveBridge.OpenCombat",
+            },
+            "run_identity": {"seed": "6JK8MD0VQQTA", "ascension": 10},
+            "native_macro_action_transcript_complete": False,
+            "emulator_combat_bootstrap": "NOT_EXECUTED",
+            "native_emulator_parity": "NOT_TESTED",
+        }
+        result = self.assess(run_prelude=prelude)
+        self.assertEqual("L0_SOURCE_EVIDENCE_PARTIAL", result["status"])
+        self.assertEqual("NOT_READY", result["source_macro_bootstrap"])
+        self.assertEqual("combat-uuid",
+                         result["source_run_prelude"]["first_combat_link"][
+                             "combat_run_id"])
+        self.assertIn("NATIVE_RUN_MACRO_CHOICES_AND_PRECOMBAT_RNG_INCOMPLETE",
+                      result["remaining_capture_gates"])
+        self.assertEqual("NOT_TESTED", result["native_emulator_mechanics_parity"])
+        self.assertEqual("NOT_TESTED", result["native_emulator_exact_rng_parity"])
+
+    def test_invalid_paired_source_run_prelude_is_rejected(self):
+        result = self.assess(run_prelude={
+            "status": "INVALID_PRELUDE",
+            "errors": ["Prelude/combat source identity mismatch"]})
+        self.assertEqual("L0_EVIDENCE_REJECTED", result["status"])
+        self.assertIn("NATIVE_RUN_PRELUDE_SOURCE_PAIRING_INVALID",
+                      result["hard_failures"])
 
     def test_missing_real_game_log_is_not_a_pass(self):
         result = self.assess(log=False)
