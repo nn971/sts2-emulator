@@ -1,5 +1,7 @@
 # Native Reference Mod and Fidelity Inspector: implementation plan
 
+> **Historical design / milestone ordering superseded (2026-10-31).** The canonical active objective is a live, same-seed **human Silent A10 native game + independently advancing emulator Native-RNG session + in-mod Inspector**, specified in [LIVE_LOCKSTEP_NATIVE_FIDELITY_PLAN.md](LIVE_LOCKSTEP_NATIVE_FIDELITY_PLAN.md) and tracked by [issue #122](https://github.com/nn971/sts2-emulator/issues/122). This file retains historical interface detail; its original passive → isolated step → controller → later exact-RNG order is no longer the current priority sequence. The Inspector's viewer remains in `Sts2ReferenceMod`; the comparator may run in the emulator process.
+
 **Status:** Planned; no implementation claimed by this document.
 **Repository ownership:** `sts2-emulator`
 **First application:** Native-versus-emulator fidelity checking for single-player Silent, beginning with Act 1 Overgrowth.

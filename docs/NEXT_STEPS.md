@@ -2,6 +2,8 @@
 
 **Effective after the Silent v0.111 gameplay freeze (2026-10-13).**
 
+> **2026-10-31 fidelity priority update:** The [live lockstep Silent A10 plan](LIVE_LOCKSTEP_NATIVE_FIDELITY_PLAN.md) is the canonical ordered implementation plan for native fidelity (issue #122): installed-game run + reference-mod action capture + persistent independent emulator Native-RNG continuation + in-mod first-difference Inspector. The earlier priorities below remain a historical baseline and general checklist; they must not be interpreted as postponing exact Native RNG until after an unrelated native step controller.
+
 The frozen [all-Act Silent gameplay baseline](SILENT_V111_FROZEN_BASELINE.md) is the comparison target. Preserve the existing gameplay implementation and consumer contracts while the Inspector/RNG work progresses on isolated branches.
 
 ## 1. Establish the reference baseline
