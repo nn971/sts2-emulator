@@ -113,6 +113,42 @@ class DecisionGapAuditTests(unittest.TestCase):
             "source_selected_choices_since_prior_action"][0]["selected_combat_card_ids"])
         self.assertEqual("NOT_PERFORMED", result["legal_menu_reconstruction"])
 
+    def test_survivor_hand_ui_and_manual_shiv_return_are_diagnostic_only(self):
+        strict, rows = pair(nested=True, frame=True)
+        displayed = {"type": "native_hand_menu", "action_id": 1,
+                     "data": {"menu_id": 3, "source_model_id": "SURVIVOR",
+                              "coverage": "SOURCE_NATIVE_UI_VISIBLE_HAND_OPTIONS",
+                              "selection_id_binding": "UNVERIFIED",
+                              "options": [
+                                  {"combat_card_id": 8},
+                                  {"combat_card_id": 9}]}}
+        selection = {"type": "native_player_choice", "action_id": 1,
+                     "data": {"choice_id": 4, "choice_type": "CombatCard",
+                              "selected_combat_card_ids": [8]}}
+        manual = {"type": "native_manual_play_result",
+                  "data": {"combat_card_id": 2, "target_id": None,
+                           "returned_success": True,
+                           "source": "CardModel.TryManualPlay.postfix"}}
+        rows.insert(4, displayed)
+        rows.insert(5, selection)
+        rows.insert(-1, manual)
+        for i, row in enumerate(rows, 1):
+            row["ordinal"] = i
+        result = audit(strict, rows)
+        gap = result["first_gap"]
+        self.assertEqual("FIRST_UNCAPTURED_EXECUTOR_ACTION_FOUND",
+                         result["status"])
+        self.assertEqual("SURVIVOR",
+                         gap["source_native_hand_menus_since_prior_action"][0]["source_model_id"])
+        self.assertEqual([8, 9],
+                         gap["source_native_hand_menus_since_prior_action"][0]["option_ids"])
+        self.assertEqual("UNVERIFIED",
+                         gap["source_native_hand_menus_since_prior_action"][0]["selection_id_binding"])
+        self.assertTrue(
+            gap["source_matching_manual_play_return_candidates"][0]["returned_success"])
+        self.assertEqual("TEMPORAL_CANDIDATES_NOT_UNIQUE_PROOF",
+                         gap["manual_play_correlation"])
+
     def test_all_source_candidates_aligned(self):
         strict, rows = pair()
         rows = [r for r in rows if r.get("action_id") != 2]
