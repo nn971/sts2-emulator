@@ -182,6 +182,8 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         "native_input_hook_installed": False,
         "native_hand_menu_hook_installed": False,
         "native_manual_play_hook_installed": False,
+        "native_ui_play_begin_hook_installed": False,
+        "native_ui_play_begins": [],
         "native_input_requests": [],
         "native_input_outcomes": [],
         "native_player_choices": [],
@@ -230,6 +232,8 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         records[0].get("data", {}).get("native_hand_menu_hook_installed") is True)
     report["native_manual_play_hook_installed"] = (
         records[0].get("data", {}).get("native_manual_play_hook_installed") is True)
+    report["native_ui_play_begin_hook_installed"] = (
+        records[0].get("data", {}).get("native_ui_play_begin_hook_installed") is True)
     report["native_rng_hook_installed"] = (
         records[0].get("data", {}).get("native_rng_hook_installed") is True)
     report["native_rng_double_hook_installed"] = (
@@ -260,7 +264,8 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         "native_shuffle_operation", "native_initial_hp_roll",
         "native_input_request", "native_input_outcome",
         "native_player_choice", "native_run_identity",
-        "native_hand_menu", "native_manual_play_result", "terminal",
+        "native_hand_menu", "native_manual_play_result",
+        "native_ui_play_begin", "terminal",
     }
     running: dict[int, dict] = {}
     completed: dict[int, dict] = {}
@@ -513,6 +518,31 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                     "min_select": minimum, "max_select": maximum,
                     "options": options, "coverage": data["coverage"],
                     "choice_id_binding": "UNVERIFIED",
+                })
+        elif typ == "native_ui_play_begin":
+            data = record.get("data") or {}
+            card_id = data.get("combat_card_id")
+            if (card_id is not None and
+                (type(card_id) is not int or card_id < 0)
+                or not isinstance(data.get("card_model_id"), str)
+                or not data.get("card_model_id")
+                or type(data.get("started_via_shortcut")) is not bool
+                or data.get("source") != "NPlayerHand.StartCardPlay.prefix"
+                or data.get("native_ui_gate") != "SOURCE_CALLSITE_PASSED"
+                or data.get("manual_play_accepted") != "NOT_TESTED"
+                or data.get("queue_acceptance") != "NOT_TESTED"
+                or data.get("human_origin") != "UNVERIFIED"
+                or data.get("full_legal_menu") != "NOT_TESTED"
+                or data.get("emulator_parity") != "NOT_TESTED"):
+                strict_failures.append(
+                    f"Invalid native UI play begin at {ordinal}")
+            else:
+                report["native_ui_play_begins"].append({
+                    "ordinal": ordinal,
+                    "combat_card_id": card_id,
+                    "card_model_id": data["card_model_id"],
+                    "started_via_shortcut": data["started_via_shortcut"],
+                    "ui_gate": "SOURCE_CALLSITE_PASSED",
                 })
         elif typ == "native_manual_play_result":
             data = record.get("data") or {}
