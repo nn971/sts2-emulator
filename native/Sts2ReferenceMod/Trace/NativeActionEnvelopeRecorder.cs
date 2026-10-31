@@ -175,6 +175,47 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
     /// Other choice categories remain distinguishable even if their full
     /// source payload has not been projected.
     /// </summary>
+    /// <summary>
+    /// Return-time action state from RequestEnqueue; a state of None can
+    /// indicate an intentionally deferred input. A Canceled action may have
+    /// already received an ID before it was rejected by queue policy.
+    /// </summary>
+    public void NativeInputOutcome(object action, string nativeState,
+        uint? nativeActionId)
+    {
+        if (_closed) return;
+        ArgumentNullException.ThrowIfNull(action);
+        if (!_requested.TryGetValue(action, out long requestId))
+        {
+            ObservationFailure("native_input_request_outcome",
+                "NO_MATCHING_SOURCE_REQUEST");
+            return;
+        }
+        string result = nativeState switch
+        {
+            "None" when !nativeActionId.HasValue => "DEFERRED_OR_UNENQUEUED",
+            "Canceled" => "CANCELED_AT_RETURN",
+            "WaitingForExecution" or "Executing" or
+                "GatheringPlayerChoice" or "ReadyToResumeExecuting" or
+                "Finished" when nativeActionId.HasValue =>
+                "ASSIGNED_QUEUE_ID_AND_NOT_CANCELED_AT_RETURN",
+            _ => "STATE_UNCLASSIFIED"
+        };
+        Write(new NativeActionEnvelopeRecord(
+            "native_input_outcome", Next(),
+            NativeType: action.GetType().FullName ?? action.GetType().Name,
+            Data: JsonSerializer.SerializeToElement(new
+            {
+                input_request_id = requestId,
+                native_action_state = nativeState,
+                native_action_id = nativeActionId,
+                queue_result = result,
+                source = "ActionQueueSynchronizer.RequestEnqueue.postfix",
+                human_origin = "UNVERIFIED",
+                legal_menu_verified = false
+            })));
+    }
+
     public void NativePlayerChoice(
         ulong ownerId, uint choiceId, string choiceType,
         long[]? combatCardIds, int[]? indexes,
@@ -271,7 +312,8 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
             return;
         }
         _pendingResumption.Remove(action);
-        _requested.Remove(action);
+        // Keep the request mapping until encounter end. An action may finish
+        // synchronously inside RequestEnqueue before its postfix runs.
         if (state is null) ObservationFailure("action_complete_snapshot", "STATE_UNAVAILABLE");
         int index = _activeOrder.LastIndexOf(id);
         if (index >= 0) _activeOrder.RemoveAt(index);
