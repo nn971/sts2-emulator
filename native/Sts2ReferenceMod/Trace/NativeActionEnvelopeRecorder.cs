@@ -21,6 +21,11 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
     // action instance after resuming a player-choice suspension.
     private readonly HashSet<object> _pendingResumption =
         new(ReferenceEqualityComparer.Instance);
+    // RequestEnqueue can defer a request or cancel it. Only a later
+    // ActionExecutor callback proves execution of the same action object.
+    private readonly Dictionary<object, long> _requested =
+        new(ReferenceEqualityComparer.Instance);
+    private long _nextInputRequestId;
     private readonly string _gameBuild;
     private long _sequence;
     private long _nextActionId;
@@ -38,7 +43,8 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
         bool nativeRngDoubleHookInstalled = false,
         bool nativeRngBoolHookInstalled = false,
         bool nativeRngStreamCheckpointsEnabled = false,
-        bool nativeRngFloatHookInstalled = false)
+        bool nativeRngFloatHookInstalled = false,
+        bool nativeInputHookInstalled = false)
     {
         _gameBuild = gameBuild;
         _writer = new AsyncTraceWriter(path, queueCapacity);
@@ -54,6 +60,7 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
                 native_rng_double_hook_installed = nativeRngDoubleHookInstalled,
                 native_rng_bool_hook_installed = nativeRngBoolHookInstalled,
                 native_rng_float_hook_installed = nativeRngFloatHookInstalled,
+                native_input_hook_installed = nativeInputHookInstalled,
                 native_rng_stream_checkpoints_enabled = nativeRngStreamCheckpointsEnabled,
                 native_monster_ai_scope_installed = nativeMonsterAiScopeInstalled,
                 native_shuffle_scope_installed = nativeShuffleScopeInstalled,
@@ -116,6 +123,95 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
             })));
     }
 
+    /// <summary>Actual native run identity, read from RunRngSet.</summary>
+    public void NativeRunIdentity(string seed, int ascension)
+    {
+        if (_closed) return;
+        if (string.IsNullOrWhiteSpace(seed) || ascension < 0)
+        {
+            ObservationFailure("native_run_identity", "INVALID_RUN_IDENTITY");
+            return;
+        }
+        Write(new NativeActionEnvelopeRecord(
+            "native_run_identity", Next(),
+            Data: JsonSerializer.SerializeToElement(new
+            {
+                seed, ascension,
+                source = "RunState.Rng.StringSeed",
+                rng_draws_performed = 0,
+                emulator_run_identity_parity = "NOT_TESTED"
+            })));
+    }
+
+    /// <summary>
+    /// Source method receives an action REQUEST before potential deferral,
+    /// validation and cancellation. The object identity joins a later
+    /// executor callback, if one ever occurs.
+    /// </summary>
+    public void NativeInputRequest(
+        object action, string nativeType, JsonElement? state,
+        GameAction? canonicalAction)
+    {
+        if (_closed) return;
+        ArgumentNullException.ThrowIfNull(action);
+        long id = ++_nextInputRequestId;
+        _requested[action] = id;
+        Write(new NativeActionEnvelopeRecord(
+            "native_input_request", Next(), NativeType: nativeType,
+            CanonicalAction: canonicalAction, State: Snapshot(state),
+            Data: JsonSerializer.SerializeToElement(new
+            {
+                input_request_id = id,
+                source = "ActionQueueSynchronizer.RequestEnqueue.prefix",
+                native_acceptance = "UNVERIFIED",
+                human_origin = "UNVERIFIED",
+                input_injected = false
+            })));
+    }
+
+    /// <summary>
+    /// A synchronized source-observed choice result; no menu is fabricated.
+    /// Survivor's hand discard uses CombatCard and a combat-card index.
+    /// Other choice categories remain distinguishable even if their full
+    /// source payload has not been projected.
+    /// </summary>
+    public void NativePlayerChoice(
+        ulong ownerId, uint choiceId, string choiceType,
+        long[]? combatCardIds, int[]? indexes,
+        string[]? canonicalCardModels, ulong? selectedPlayerId)
+    {
+        if (_closed) return;
+        if (string.IsNullOrWhiteSpace(choiceType))
+        {
+            ObservationFailure("native_player_choice", "MISSING_CHOICE_TYPE");
+            return;
+        }
+        Write(new NativeActionEnvelopeRecord(
+            "native_player_choice", Next(),
+            _activeOrder.Count == 0 ? null : _activeOrder[^1],
+            Data: JsonSerializer.SerializeToElement(new
+            {
+                owner_id = ownerId,
+                choice_id = choiceId,
+                choice_type = choiceType,
+                selected_combat_card_ids = combatCardIds,
+                selected_indexes = indexes,
+                selected_canonical_card_models = canonicalCardModels,
+                selected_player_id = selectedPlayerId,
+                selection_projection = choiceType switch
+                {
+                    "CombatCard" => "EXACT_COMBAT_CARD_IDS",
+                    "Index" => "EXACT_INDEXES",
+                    "CanonicalCard" => "EXACT_CANONICAL_MODEL_IDS",
+                    "Player" => "EXACT_PLAYER_ID",
+                    _ => "UNPROJECTED_CHOICE_PAYLOAD"
+                },
+                origin = "PlayerChoiceSynchronizer.PlayerChoiceReceived",
+                accepted_choice_menu = "NOT_CAPTURED",
+                human_origin = "UNVERIFIED"
+            })));
+    }
+
     public void Start(
         object action, string type, JsonElement? state,
         GameAction? canonicalAction = null)
@@ -146,9 +242,19 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
         long? parent = _activeOrder.Count == 0 ? null : _activeOrder[^1];
         _running.Add(action, id);
         _activeOrder.Add(id);
+        long? requestId = _requested.TryGetValue(action, out long requested)
+            ? requested : null;
         Write(new NativeActionEnvelopeRecord(
             "action_started", Next(), id, parent, type,
-            canonicalAction, Snapshot(state)));
+            canonicalAction, Snapshot(state),
+            requestId.HasValue
+                ? JsonSerializer.SerializeToElement(new
+                {
+                    input_request_id = requestId,
+                    request_execution_link = "SAME_NATIVE_ACTION_OBJECT",
+                    human_origin = "UNVERIFIED"
+                })
+                : null));
     }
 
     public void Complete(object action, JsonElement? state)
@@ -165,6 +271,7 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
             return;
         }
         _pendingResumption.Remove(action);
+        _requested.Remove(action);
         if (state is null) ObservationFailure("action_complete_snapshot", "STATE_UNAVAILABLE");
         int index = _activeOrder.LastIndexOf(id);
         if (index >= 0) _activeOrder.RemoveAt(index);
