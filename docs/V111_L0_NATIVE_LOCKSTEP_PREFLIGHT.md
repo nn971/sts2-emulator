@@ -49,7 +49,52 @@ evidence is separately obtained.**
 audited native/CLI source files later into the current game implementation
 via a dedicated integration PR. Keep H15 and active training pins unchanged.
 
-## 2. Local native acceptance (fish, WSL on Windows game install)
+## 2. Real-game capture evidence: 2026-10-31 Silent A10
+
+One uploaded `godot.log` and two matching combat traces from game
+**v0.111.0** (installed `sts2.dll` SHA-256
+`0861bfa1df347538d932f22d580e75420f08082792eb914e53b4882764acdbe9`)
+showed:
+
+| Native encounter | Source calls | `NextFloat` calls | 15-stream checkpoints | Observed persistent advances | Unobserved persistent advances | Strict trace |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| `FUZZY_WURM_CRAWLER_WEAK` | 438 | 404 | 55 | 19 | 0 | stopped after 14 decisions at Survivor discard choice |
+| `SLIMES_WEAK` | 433 | 402 | 52 | 13 | 0 | stopped after 15 decisions before subsequent Shiv play |
+
+The trace headers contained `UNVERIFIED` for run seed; the *game log*
+independently identified Silent A10, seed `6JK8MD0VQQTA`. No change to the
+seed-capture code was made. Native `NextFloat` was installed and observed;
+only **one** observed float call on `run.monster_ai` is present in the
+Slimes encounter. Unattributed/context source calls remain an owner-identity
+coverage gap. The game also loaded BaseLib, which patched unrelated game
+functions; disable it during controlled passive-on/off tests.
+
+**Verifier correction:** the JSON wire stores `System.Single` as
+shortest-roundtrip decimal, which Python parses as binary64. The old
+`verify_scalar_call` required `f32(json_value) == json_value`, falsely
+rejecting all 806 legitimate float calls. The corrected verifier first
+restores `float_min`, `float_max` and `selected_float` to binary32, then
+recomputes the C# arithmetic. All 806 uploaded float records pass that
+formula; two reduced real source examples are in
+`tests/fixtures/native_nextfloat_json_single_v111.jsonl`. The original
+xoshiro state, counter and output tamper checks remain enabled.
+
+**Strict decisions:** the action sidecars ended with 26 and 25 completed
+executor actions respectively and no unfinished actions, but their paired
+strict `passive-*.jsonl` traces have terminal `INCOMPLETE_CAPTURE`.
+After Survivor's nested discard or Leading Strike's new Shivs, later
+`PlayCardAction` callbacks occurred **without a new recorded strict legal
+menu**. Sidecar player-action observations preserve evidence but cannot
+serve as a retroactively proven menu. The L0 CLI automatically audits the
+paired strict trace and reports `STRICT_DECISION_TRACE_INCOMPLETE` separately
+from source RNG integrity. Native accepted-input/menu hooks must eventually
+close this gap for L1 lockstep.
+
+These captures establish installed native hooks and internally consistent
+observed source RNG. **No native/emulator parity or passive
+nonperturbation is certified.**
+
+## 3. Local native acceptance (fish, WSL on Windows game install)
 
 Perform all game-local operations on the existing `sts2-inspector` worktree,
 with the actual game **closed while building/installing**. This example
@@ -108,7 +153,7 @@ python tools/native_l0_evidence.py \
     --out "$trace/l0-evidence.json"
 ```
 
-The report validates the installed-assembly hash against the **sidecar's
+The L0 CLI also audits the matching strict decision trace next to the\nselected `*.actions.jsonl` automatically (or accepts `--strict-trace`).\nAn incomplete strict trace downgrades the source report to partial while\npreserving independently validated primitive math. The report validates the installed-assembly hash against the **sidecar's
 source-reported `game_build`**, authentic callback timeline, declared
 hook flags, source primitive results and state transitions, stream conflicts,
 15 persistent stream checkpoints and **observed `run.monster_ai`
@@ -130,7 +175,7 @@ uncontrolled. If the installed game DLL or the mod changes, start a new
 pinned evidence set. Keep the raw source observations, log and report local;
 share only selected sanitized captures and summaries.
 
-## 3. L0 acceptance and next engineering gate
+## 4. L0 acceptance and next engineering gate
 
 - [ ] Exact installed DLL native mod compile, install and launch, hash pinned
 - [ ] Fresh sidecar and startup log from the **same** session; hooks attached
