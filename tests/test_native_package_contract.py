@@ -86,6 +86,31 @@ class NativePackageContractTests(unittest.TestCase):
         self.assertIn("_failedCombat", native)
         self.assertIn("if (ReferenceEquals(_failedCombat, combat)) return;", native)
 
+    def test_run_prelude_observes_source_run_and_rooms_without_replay(self):
+        native_dir = ROOT / "native" / "Sts2ReferenceMod"
+        bridge = (native_dir / "NativeV111PassiveBridge.cs").read_text(
+            encoding="utf-8")
+        recorder = (native_dir / "Trace" /
+                    "NativeRunPreludeRecorder.cs").read_text(encoding="utf-8")
+        self.assertIn("RunManager.Instance.RunStarted += OnRunStarted", bridge)
+        self.assertIn("RunManager.Instance.RoomEntered += OnRunRoomEntered", bridge)
+        self.assertIn("state.Rng.StringSeed", bridge)
+        self.assertIn("state.Players[0].Character.Id.Entry", bridge)
+        self.assertIn("state.AscensionLevel", bridge)
+        self.assertIn("state.CurrentMapCoord", bridge)
+        self.assertIn("state.Act.Id.Entry", bridge)
+        self.assertIn("move.ToNetAction()", bridge)
+        self.assertIn("vote.ToNetAction()", bridge)
+        self.assertIn("NativeRunPreludeRecorder(", bridge)
+        self.assertIn("prelude.CombatLink(runId, _currentFile", bridge)
+        self.assertIn("source_macro_choices_complete = false", recorder)
+        self.assertIn('emulator_bootstrap = "NOT_TESTED"', recorder)
+        self.assertIn('human_origin = "UNVERIFIED"', recorder)
+        self.assertIn("visited_room_proves_this_request = false", recorder)
+        self.assertNotIn("SelectRandom", recorder)
+        self.assertNotIn("SampleNext", recorder)
+        self.assertNotIn(".Step(", recorder)
+
     def test_source_input_hooks_remain_opt_in_and_observer_only(self):
         native_dir = ROOT / "native" / "Sts2ReferenceMod"
         hooks = (native_dir / "NativeV111InputHooks.cs").read_text(encoding="utf-8")
