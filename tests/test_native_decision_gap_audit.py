@@ -174,7 +174,12 @@ class DecisionGapAuditTests(unittest.TestCase):
         closed = {"type": "native_hand_menu_closed", "action_id": 1,
                   "data": {"menu_id": 3, "final_revision": 2,
                            "native_reason": "AfterCardsSelected"}}
-        rows[3:3] = [original, changed, closed]
+        gate = {"type": "native_ui_hand_gate", "data": {
+            "gate": "AreCardActionsAllowed",
+            "returned_allowed": True,
+            "existing_card_play_active": True,
+            "full_legal_menu": "NOT_TESTED"}}
+        rows[3:3] = [original, changed, closed, gate]
         for i, row in enumerate(rows, 1):
             row["ordinal"] = i
         report = audit(strict, rows)
@@ -188,6 +193,10 @@ class DecisionGapAuditTests(unittest.TestCase):
         self.assertEqual(2, gap[
             "source_native_menu_closures_since_prior_action"][0]["final_revision"])
         self.assertEqual("NOT_PERFORMED", report["legal_menu_reconstruction"])
+        self.assertTrue(gap[
+            "source_native_ui_gate_evaluations_since_prior_action"][0]["returned_allowed"])
+        self.assertTrue(gap[
+            "source_native_ui_gate_evaluations_since_prior_action"][0]["existing_card_play_active"])
 
     def test_all_source_candidates_aligned(self):
         strict, rows = pair()
