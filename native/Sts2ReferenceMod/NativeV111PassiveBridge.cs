@@ -435,6 +435,11 @@ internal static class NativeV111PassiveBridge
         }
         catch (InvalidOperationException)
         {
+            // Preserve the *last reported frame gate*, which is more useful
+            // than querying StableDecisionBlocker inside an already-running
+            // ActionExecutor callback. This is diagnostic only.
+            _actionEnvelopes?.StrictInputGap(
+                _lastGateReason, _decisionGeneration, _lastCapturedGeneration);
             _choiceInterrupted = true;
             StopStrictCapture("INCOMPLETE_CAPTURE: action started without a stable boundary");
         }
