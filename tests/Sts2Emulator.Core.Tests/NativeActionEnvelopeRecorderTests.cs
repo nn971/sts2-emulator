@@ -51,8 +51,23 @@ public sealed class NativeActionEnvelopeRecorderTests
                 canonical);
             recorder.Start(action, "PlayCardAction", State(3), canonical);
             recorder.Complete(action, State(2));
+            // Exercise the possible synchronous completion: even if the
+            // original completes before the postfix, the source request
+            // identity must still be available.
+            recorder.NativeInputOutcome(action, "Finished", 5U);
+            object deferred = new();
+            recorder.NativeInputRequest(deferred, "PlayCardAction", State(2),
+                canonical);
+            recorder.NativeInputOutcome(deferred, "None", null);
             recorder.Finish("Combat ended", State(2));
         });
+        var outcomes = entries.Where(x =>
+            x.GetProperty("type").GetString() == "native_input_outcome").ToArray();
+        Assert.Equal(2, outcomes.Length);
+        Assert.Equal("ASSIGNED_QUEUE_ID_AND_NOT_CANCELED_AT_RETURN",
+            outcomes[0].GetProperty("data").GetProperty("queue_result").GetString());
+        Assert.Equal("DEFERRED_OR_UNENQUEUED",
+            outcomes[1].GetProperty("data").GetProperty("queue_result").GetString());
         var identity = Assert.Single(entries,
             x => x.GetProperty("type").GetString() == "native_run_identity");
         Assert.Equal("6JK8MD0VQQTA",
