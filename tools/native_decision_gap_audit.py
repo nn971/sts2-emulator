@@ -139,6 +139,10 @@ def audit(strict: list[dict], sidecar: list[dict]) -> dict:
                                 if isinstance(o, dict)],
                             "selection_id_binding":
                                 d.get("selection_id_binding"),
+                            "selection_owner_id":
+                                d.get("selection_owner_id"),
+                            "selection_choice_id":
+                                d.get("selection_choice_id"),
                         } for n, d in displayed
                     ],
                     "source_input_request_id": input_id,
