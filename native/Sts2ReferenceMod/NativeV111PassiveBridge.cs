@@ -10,6 +10,7 @@ using MegaCrit.Sts2.Core.Entities.Multiplayer;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.GameActions;
+using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Nodes.Combat;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
@@ -40,6 +41,7 @@ internal static class NativeV111PassiveBridge
     private static FidelityInspectorPanel? _panel;
     private static bool _f8WasDown;
     private static ActionExecutor? _executor;
+    private static PlayerChoiceSynchronizer? _choiceSync;
     private static CombatState? _combat;
     private static NativeRecordingSession? _recording;
     // Independent action observer: remains active after the strict decision
@@ -95,6 +97,57 @@ internal static class NativeV111PassiveBridge
 
     internal static void NativeRngHookFailure(string exceptionType) =>
         _actionEnvelopes?.ObservationFailure("native_rng_source_hook", exceptionType);
+
+    internal static void NativeInputHookFailure(string exceptionType) =>
+        _actionEnvelopes?.ObservationFailure("native_input_source_hook", exceptionType);
+
+    // Called by a source method Harmony PREFIX, while the original native
+    // request is still pending. Acceptance and human provenance are unknown.
+    internal static void NativeInputRequested(NativeGameAction action)
+    {
+        if (_actionEnvelopes is null || _combat is null) return;
+        _actionEnvelopes.NativeInputRequest(action,
+            action.GetType().FullName ?? action.GetType().Name,
+            TryActionSnapshot("native_input_request"),
+            ProjectCanonicalAction(action));
+    }
+
+    private static CanonicalAction? ProjectCanonicalAction(NativeGameAction action) =>
+        action switch
+        {
+            PlayCardAction play => new CanonicalAction("play_card",
+                JsonSerializer.SerializeToElement(new
+                {
+                    card_instance_id = (long)play.NetCombatCard.CombatCardIndex,
+                    target_id = play.TargetId.HasValue
+                        ? "creature:" + play.TargetId.Value : null
+                })),
+            EndPlayerTurnAction => CanonicalAction.Empty("end_turn"),
+            _ => null
+        };
+
+    private static void OnNativePlayerChoice(
+        Player player, uint choiceId, NetPlayerChoiceResult result)
+    {
+        try
+        {
+            // The game's synchronizer publishes the selected *result*.
+            // CombatCard choices carry original combat-card indexes, including
+            // Survivor's selected discard. This event has no legal menu.
+            _actionEnvelopes?.NativePlayerChoice(
+                player.NetId, choiceId, result.type.ToString(),
+                result.combatCards?.Select(card =>
+                    (long)card.CombatCardIndex).ToArray(),
+                result.indexes?.ToArray(),
+                result.canonicalCards?.Select(card =>
+                    card.Id.Entry).ToArray(),
+                result.playerId);
+        }
+        catch (Exception error)
+        {
+            CaptureCallbackFailure("native_player_choice", error);
+        }
+    }
 
     internal static void Start()
     {
@@ -316,11 +369,15 @@ internal static class NativeV111PassiveBridge
         Directory.CreateDirectory(root);
         _currentFile = Path.Combine(root, "passive-" +
             DateTimeOffset.UtcNow.ToString("yyyyMMdd-HHmmssfff") + "-" + runId + ".jsonl");
+        // Source-v111 real run seed and ascension; unlike the old env-provided
+        // STS2_FIDELITY_RUN_SEED this is taken directly from RunState.
+        string actualSeed = combat.Players[0].RunState.Rng.StringSeed;
+        int actualAscension = combat.Players[0].RunState.AscensionLevel;
         var header = new NativeTraceHeader(
             "header", NativeTraceVersion.Current, BuildId,
             typeof(Plugin).Assembly.GetName().Version?.ToString() ?? "unknown",
             null, runId,
-            System.Environment.GetEnvironmentVariable("STS2_FIDELITY_RUN_SEED") ?? "UNVERIFIED",
+            string.IsNullOrWhiteSpace(actualSeed) ? "UNVERIFIED" : actualSeed,
             DateTimeOffset.UtcNow, "passive", "v111_source_audited_local_validation_pending;"
                 + "emulator_commit=UNVERIFIED;static_data=UNVERIFIED;single_player_combat");
         _recording = new NativeRecordingSession(_currentFile, header);
@@ -337,7 +394,10 @@ internal static class NativeV111PassiveBridge
             nativeRngBoolHookInstalled: NativeV111RngHook.HasBoolHook,
             nativeRngStreamCheckpointsEnabled:
                 NativeV111RngHook.StreamCheckpointsEnabled,
-            nativeRngFloatHookInstalled: NativeV111RngHook.HasFloatHook);
+            nativeRngFloatHookInstalled: NativeV111RngHook.HasFloatHook,
+            nativeInputHookInstalled: NativeV111InputHooks.IsInstalled);
+        if (!string.IsNullOrWhiteSpace(actualSeed))
+            _actionEnvelopes.NativeRunIdentity(actualSeed, actualAscension);
         // A source-audited initial shuffle executes before the rendered
         // combat frame. Buffered evidence must precede later RNG requests
         // in this sidecar, with its pre-attachment basis clearly marked.
@@ -362,6 +422,9 @@ internal static class NativeV111PassiveBridge
             _agentBridge is not null);
         CombatManager.Instance.History.Changed += OnHistoryChanged;
         AttachActionExecutor();
+        _choiceSync = RunManager.Instance.PlayerChoiceSynchronizer;
+        if (_choiceSync is not null)
+            _choiceSync.PlayerChoiceReceived += OnNativePlayerChoice;
         Godot.GD.Print("[Sts2ReferenceMod] CAPTURE_STATUS=RECORDING_STARTED; " +
             "Recording (passive): " + _currentFile);
     }
@@ -410,17 +473,7 @@ internal static class NativeV111PassiveBridge
         var snapshot = TryActionSnapshot("before_action");
         action.BeforePausedForPlayerChoice -= OnNestedChoice;
         action.BeforePausedForPlayerChoice += OnNestedChoice;
-        CanonicalAction? chosen = action switch
-        {
-            PlayCardAction play => new CanonicalAction("play_card",
-                JsonSerializer.SerializeToElement(new
-                {
-                    card_instance_id = (long)play.NetCombatCard.CombatCardIndex,
-                    target_id = play.TargetId.HasValue ? "creature:" + play.TargetId.Value : null
-                })),
-            EndPlayerTurnAction => CanonicalAction.Empty("end_turn"),
-            _ => null
-        };
+        CanonicalAction? chosen = ProjectCanonicalAction(action);
         _actionEnvelopes?.Start(
             action, action.GetType().FullName ?? action.GetType().Name,
             snapshot, chosen);
@@ -593,6 +646,11 @@ internal static class NativeV111PassiveBridge
             _executor.BeforeActionExecuted -= BeforeAction;
             _executor.AfterActionExecuted -= AfterAction;
             _executor = null;
+        }
+        if (_choiceSync is not null)
+        {
+            _choiceSync.PlayerChoiceReceived -= OnNativePlayerChoice;
+            _choiceSync = null;
         }
         CombatManager.Instance.History.Changed -= OnHistoryChanged;
         _combat = null;
