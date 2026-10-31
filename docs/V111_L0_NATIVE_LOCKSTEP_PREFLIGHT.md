@@ -348,6 +348,75 @@ decision menu. The next lockstep adapter should stage the source
 requests in order and compare native and emulator states at agreed
 settlement boundaries, with native RNG stream checkpoints.
 
+### Persistent emulator shadow session (offline implementation)
+
+`tools/native_lockstep_shadow.py` consumes a fresh raw sidecar (audited
+through `native_lockstep_source_journal.build`) and opens **one real
+persistent JSONL emulator process** through the existing
+`bindings/python/sts2_emulator.Session`. It loads an **independently
+prepared exact emulator snapshot** with
+`sts2-exact-snapshot-v1`/ `Session.load_snapshot`, retains the state
+handle between source actions, looks up the uniquely matching emulator
+`legal_actions` entry and calls `step`. The source and emulator
+observation surfaces are compared only on structurally compatible
+visible scalar and card-hand fields.
+
+It deliberately **does not** synthesize an emulator combat state from
+the native partial `CaptureCanonicalState` projection. The core
+`NativeCombatSnapshotImporter` explicitly reports
+`ReadyForDeterministicStep=false`: full pending effects, hidden card
+state, relic/potion continuations and native RNG are not imported. A
+naive `Session.reset(seed)` also begins at run start, so it cannot
+automatically align with a captured combat.
+
+A genuine invocation needs the matching snapshot exported by the
+emulator after an independently verified route to this combat, plus
+an explicit native-to-emulator card and creature ID crosswalk:
+
+```fish
+python tools/native_lockstep_shadow.py \\
+    --sidecar "$trace/passive-<combat>.actions.jsonl" \\
+    --emulator-snapshot "$trace/aligned-emulator-exact-snapshot.json" \\
+    --identity-crosswalk "$trace/native-emulator-ids.json" \\
+    --cli-dll ./src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll \\
+    --out "$trace/native-emulator-shadow.json"
+```
+
+Crosswalk schema (explicit identities, **never automatically guessed**
+from similar-looking numeric IDs):
+
+```json
+{
+  "schema": "native-emulator-id-crosswalk-v1",
+  "cards": {"7": 101, "9": 102},
+  "enemies": {"creature:2": 5}
+}
+```
+
+The example IDs illustrate wire formatting **only**; they are not
+mappings for a real game capture. The shadow runner checks run
+seed/ascension, presence of a real emulator combat continuation,
+source visible-state alignment and exact action payload matching
+(`target_id` versus the emulator's `target_enemy_id`) before
+stepping. It stops on unmatched/multiple legal commands, source
+nested-choice continuations, incomplete or wrong ID maps, and rapid
+overlapping native requests (whose pre-request snapshots are not
+sequential emulator decision states). It never substitutes an
+automatic action choice to make progress.
+
+Results such as `SHADOW_STEPPED_VISIBLE_ONLY` or
+`SHADOW_VISIBLE_DIFFERENCE_UNCERTIFIED` explicitly retain
+`native_game_parity=NOT_TESTED`,
+`emulator_rng_alignment=NOT_TESTED`,
+`native_boundary_settlement=UNVERIFIED`, and
+`verified_native_state_import=false`. The code and isolated tests
+demonstrate persistent stepping, **not** real-game lockstep fidelity.
+Reaching a full fidelity verdict still requires verified native
+continuation/initial combat alignment, native RNG provider and settled
+boundary attribution.
+
+
+
 The new async choice-ID, menu-refresh and UI-gate hooks still need a
 single combined validation against the installed v111 assembly.
 Opening, revising and closing the native hand-selection UI are now
