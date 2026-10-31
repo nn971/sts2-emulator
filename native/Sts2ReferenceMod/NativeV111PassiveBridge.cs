@@ -133,6 +133,7 @@ internal static class NativeV111PassiveBridge
     {
         _actionEnvelopes?.NativeInputOutcome(action, nativeState, nativeActionId);
         _runPrelude?.MapActionOutcome(action, nativeState, nativeActionId);
+        TryFinishRunPrelude();
     }
 
     /// <summary>Read-only capture of the original UI-filtered hand options.</summary>
@@ -255,6 +256,9 @@ internal static class NativeV111PassiveBridge
         {
             if (_runPrelude is not null)
             {
+                if (!_runPrelude.HasLinkedCombatRoomAndSettledMapRequests)
+                    _runPrelude.ObservationFailure("run_replaced",
+                        "PREVIOUS_PRELUDE_UNSETTLED");
                 _runPrelude.Finish("A new RunStarted replaced the previous prelude");
                 _ = FinishRunPreludeAsync(_runPrelude);
                 _runPrelude = null;
@@ -303,6 +307,7 @@ internal static class NativeV111PassiveBridge
                 room?.ModelId?.Entry,
                 state.Players[0].Creature.CurrentHp,
                 state.Players[0].Gold);
+            TryFinishRunPrelude();
         }
         catch (Exception error)
         {
@@ -335,6 +340,18 @@ internal static class NativeV111PassiveBridge
                 from?.col, from?.row,
                 to?.coord.col, to?.coord.row, to?.mapGenerationCount);
         }
+    }
+
+    private static void TryFinishRunPrelude()
+    {
+        var prelude = _runPrelude;
+        if (prelude is null
+            || !prelude.HasLinkedCombatRoomAndSettledMapRequests)
+            return;
+        prelude.Finish("Linked first combat room and map returns observed");
+        _runPrelude = null;
+        _preludeRunState = null;
+        _ = FinishRunPreludeAsync(prelude);
     }
 
     private static async Task FinishRunPreludeAsync(
@@ -563,15 +580,14 @@ internal static class NativeV111PassiveBridge
                 prelude.CombatLink(runId, _currentFile,
                     _preludeRunState?.CurrentActIndex ?? 0,
                     coord?.col, coord?.row);
-                prelude.Finish("First observed combat capture");
+                // RoomEntered fires after an awaited room.Enter. It may
+                // arrive after combat frame polling has already begun.
+                TryFinishRunPrelude();
             }
             catch (Exception error)
             {
                 prelude.ObservationFailure("combat_link", error.GetType().Name);
             }
-            _runPrelude = null;
-            _preludeRunState = null;
-            _ = FinishRunPreludeAsync(prelude);
         }
         _actionEnvelopes = new NativeActionEnvelopeRecorder(
             _currentFile[..^".jsonl".Length] + ".actions.jsonl",
@@ -809,6 +825,17 @@ internal static class NativeV111PassiveBridge
 
     private static void EndCombat(string reason)
     {
+        // If the native room callback or a pending map request postfix was
+        // never observed, preserve the incomplete run-prelude evidence.
+        if (_runPrelude is { } prelude)
+        {
+            prelude.ObservationFailure("linked_combat_room_settlement",
+                "FIRST_COMBAT_FINISHED_BEFORE_PRELUDE_SETTLED");
+            prelude.Finish("First combat ended before native prelude completed");
+            _runPrelude = null;
+            _preludeRunState = null;
+            _ = FinishRunPreludeAsync(prelude);
+        }
         _agentFeed?.EndCombat(reason);
         NativeV111RngHook.EndCombat();
         var recording = _recording;
