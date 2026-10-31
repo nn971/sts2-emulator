@@ -62,9 +62,7 @@ def audit(strict: list[dict], sidecar: list[dict]) -> dict:
         return report
     stable_id = None
     consumed = set()
-    last_matched_end = 0
-    last_start_id = None
-    last_end_by_id = {}
+    last_matched_start = 0
     nested_pause = []
     frames = []
     candidates = []
@@ -85,9 +83,6 @@ def audit(strict: list[dict], sidecar: list[dict]) -> dict:
             nested_pause.append((i, record.get("action_id")))
         elif kind == "frame_state":
             frames.append(i)
-        elif kind == "action_completed":
-            if type(record.get("action_id")) is int:
-                last_end_by_id[record["action_id"]] = i
         elif kind == "action_started":
             chosen = _canonical(record.get("canonical_action"))
             if chosen is None:
@@ -101,13 +96,14 @@ def audit(strict: list[dict], sidecar: list[dict]) -> dict:
                 and _canonical(expected.get("action")) == chosen):
                 consumed.add(stable_id)
                 report["matched_actions"] += 1
-                last_start_id = aid
+                last_matched_start = i
                 continue
             report["unmatched_actions"] += 1
             if report["first_gap"] is None:
-                from_ordinal = last_end_by_id.get(last_start_id, last_matched_end)
-                pauses = [n for n, _ in nested_pause if n > from_ordinal]
-                recent_frames = [n for n in frames if from_ordinal < n < i]
+                # Include pauses *during* the preceding matched action, whose
+                # suspension/resume can consume a second human input.
+                pauses = [n for n, _ in nested_pause if last_matched_start < n < i]
+                recent_frames = [n for n in frames if last_matched_start < n < i]
                 report["first_gap"] = {
                     "sidecar_ordinal": i,
                     "executor_action_id": aid,
