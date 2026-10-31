@@ -18,13 +18,15 @@ from native_rng_checkpoint_audit import audit as audit_checkpoints
 from native_parity import load_trace
 from native_trace_audit import audit as audit_strict_trace
 from native_decision_gap_audit import audit as audit_decision_gap
+from native_run_prelude_audit import audit as audit_run_prelude, load as load_run_prelude
 
 _SHA_IN_BUILD = re.compile(r"(?<![a-z0-9])sha256=([0-9a-f]{64})(?![a-z0-9])", re.I)
 
 
 def assess(preflight: dict, records: list[dict], read_error: str | None,
            game_log: str | None, strict_trace: dict | None = None,
-           decision_gap: dict | None = None) -> dict:
+           decision_gap: dict | None = None,
+           run_prelude: dict | None = None) -> dict:
     """Return statuses without promoting an observed primitive to game parity."""
     header = (records[0].get("data") or {}) if (
         records and records[0].get("type") == "header") else {}
@@ -101,6 +103,11 @@ def assess(preflight: dict, records: list[dict], read_error: str | None,
             failures.append("NATIVE_DECISION_EXECUTOR_PAIRING_INVALID")
         elif decision_gap["status"] == "FIRST_UNCAPTURED_EXECUTOR_ACTION_FOUND":
             pending.append("EXECUTOR_ACTION_WITHOUT_STRICT_BOUNDARY")
+    if run_prelude is not None:
+        if run_prelude["status"] == "INVALID_PRELUDE":
+            failures.append("NATIVE_RUN_PRELUDE_SOURCE_PAIRING_INVALID")
+        else:
+            pending.append("NATIVE_RUN_MACRO_CHOICES_AND_PRECOMBAT_RNG_INCOMPLETE")
     if strict_trace is not None and strict_trace["status"] != "STRUCTURALLY_VALID":
         # An incomplete strict trace does not invalidate source RNG evidence,
         # but cannot count as a complete player-decision capture.
@@ -185,6 +192,9 @@ def assess(preflight: dict, records: list[dict], read_error: str | None,
         "strict_decision_count": (
             strict_trace.get("decisions") if strict_trace is not None else None),
         "executor_decision_pairing": decision_gap,
+        "source_run_prelude": run_prelude,
+        "source_macro_bootstrap": "NOT_READY" if run_prelude is not None
+            else "NO_SOURCE_PRELUDE_SUPPLIED",
         "source_hook_flags": flags,
         "matching_game_log_hook_evidence": "OBSERVED" if logged else "NOT_VERIFIED",
         "native_rng_primitive_status": primitives["status"],
@@ -226,6 +236,9 @@ def main() -> int:
     parser.add_argument("--strict-trace", type=Path,
                         help="Matching passive-*.jsonl decision trace (auto-detected "
                              "beside passive-*.actions.jsonl when omitted)")
+    parser.add_argument("--run-prelude", type=Path,
+                        help="Optional source RunStarted-to-first-combat .jsonl; "
+                             "source macro/RNG continuation remains incomplete")
     parser.add_argument("--out", type=Path)
     args = parser.parse_args()
     preflight = json.loads(args.preflight.read_text(encoding="utf-8"))
@@ -247,8 +260,14 @@ def main() -> int:
             strict_trace = {"status": "INCOMPLETE_CAPTURE",
                             "reason": "Matching native decision trace missing",
                             "decisions": 0}
+    run_prelude = None
+    if args.run_prelude is not None:
+        prelude_records, prelude_error = load_run_prelude(args.run_prelude)
+        run_prelude = audit_run_prelude(
+            prelude_records, prelude_error, records,
+            audit_envelope(records, error).get("status"))
     report = assess(preflight, records, error, game_log,
-                    strict_trace, decision_gap)
+                    strict_trace, decision_gap, run_prelude)
     rendered = json.dumps(report, indent=2, sort_keys=True) + "\n"
     print(rendered, end="")
     if args.out:
