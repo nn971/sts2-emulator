@@ -136,6 +136,21 @@ def assess(preflight: dict, records: list[dict], read_error: str | None,
                 len(envelope.get("native_ui_play_begins", [])),
             "native_filtered_hand_menus":
                 len(envelope.get("native_hand_menus", [])),
+            "native_hand_menu_revisions":
+                len(envelope.get("native_hand_menu_revisions", [])),
+            "native_peek_view_revisions":
+                sum(bool(r.get("peek_mode"))
+                    for r in envelope.get("native_hand_menu_revisions", [])),
+            "native_hand_menu_closures":
+                len(envelope.get("native_hand_menu_closures", [])),
+            "native_hand_menus_open_at_capture_end":
+                len(envelope.get("native_hand_menu_open_lifetimes", [])),
+            "native_hand_choice_matches_latest_captured_offers":
+                sum(m.get("selection_in_latest_captured_options") is True
+                    for m in envelope.get("native_hand_menu_choice_matches", [])),
+            "native_hand_choice_matches_latest_outside_captured_offers":
+                sum(m.get("selection_in_latest_captured_options") is False
+                    for m in envelope.get("native_hand_menu_choice_matches", [])),
             "hand_menus_with_complete_ui_id_projection":
                 sum(item.get("coverage") ==
                     "SOURCE_NATIVE_UI_VISIBLE_HAND_OPTIONS"
