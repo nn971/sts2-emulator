@@ -136,6 +136,20 @@ internal static class NativeV111PassiveBridge
         TryFinishRunPrelude();
     }
 
+    internal static bool HasRunPrelude => _runPrelude is not null && _combat is null;
+
+    internal static void NativeEventChoiceRequested(
+        object token, string eventModelId, ulong ownerId, int selectedIndex,
+        IReadOnlyList<NativeEventOptionView> options) =>
+        _runPrelude?.EventChoiceRequested(
+            token, eventModelId, ownerId, selectedIndex, options);
+
+    internal static void NativeEventChoiceReturned(object token)
+    {
+        _runPrelude?.EventChoiceReturned(token);
+        TryFinishRunPrelude();
+    }
+
     /// <summary>Read-only capture of the original UI-filtered hand options.</summary>
     internal static void NativeHandMenu(
         string mode, string? sourceModelId,

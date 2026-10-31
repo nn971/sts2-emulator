@@ -364,6 +364,30 @@ An unreturned opaque request keeps the prelude open or marks it incomplete.
 This leaves Neow/event/reward selection and replay completeness explicitly
 **unverified**, particularly for decisions implemented outside the queue.
 
+### Original event-option selection before first combat
+
+In pinned `Flaaax/STS2-source@706ef1c9`, **Neow is an
+`EventModel` with choices executed through
+`EventSynchronizer.ChooseLocalOption(int)`**. It is not a
+`PlayerChoiceSynchronizer.PlayerChoiceReceived` choice. An optional
+read-only Harmony prefix/postfix on the original event synchronizer now
+records the local mutable event's `Id.Entry`, owner, exact ordered
+`EventModel.CurrentOptions` (option index, `TextKey`, locked/proceed
+flags and associated relic model ID) and the selected native option index.
+The postfix pairs the same request with the method's synchronous return.
+The offer is read **before** the original method executes, because an
+event selection can immediately replace `CurrentOptions`.
+
+The records `event_choice_request` and `event_choice_return` are
+source evidence of a local synchronizer call and its return. The return
+can precede completion of async `EventOption.Chosen()` effects.
+Only the complete original-game prelude can later certify the resulting
+resource/relic/deck changes and RNG. A missing postfix fails the audit.
+The observer does not run any event option callbacks, roll RNG,
+inject a choice, or infer any `PROCEED` button (which takes a separate
+UI path). A dedicated pinned-assembly build and runtime attach are still
+required before claiming that this source-level hook works in the game.
+
 On its first combat, the run prelude records a `combat_link` containing
 the exact combat trace run ID and filename. The actual
 `RunManager.RoomEntered` callback runs **after** awaited native

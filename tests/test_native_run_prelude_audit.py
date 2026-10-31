@@ -346,5 +346,73 @@ class RunPreludeAuditTests(unittest.TestCase):
 
 
 
+    def test_precombat_event_choice_offer_and_return(self):
+        rows = prelude()
+        pos = next(i for i, row in enumerate(rows)
+                   if row["type"] == "map_action_request")
+        request = {"type": "event_choice_request", "run_id": "run-uuid",
+                   "data": {
+            "request_id": 1, "event_model_id": "NEOW",
+            "owner_id": 7, "selected_index": 1,
+            "selected_text_key": "hefty_tablet",
+            "options": [
+                {"index": 0, "text_key": "arcane_scroll",
+                 "is_locked": False, "is_proceed": False,
+                 "relic_model_id": "ARCANE_SCROLL"},
+                {"index": 1, "text_key": "hefty_tablet",
+                 "is_locked": False, "is_proceed": False,
+                 "relic_model_id": "HEFTY_TABLET"}],
+            "source": "EventSynchronizer.ChooseLocalOption.prefix",
+            "selection_origin": "LOCAL_SYNCHRONIZER_CALL",
+            "option_execution": "NOT_OBSERVED",
+            "effects_settled": False}}
+        returned = {"type": "event_choice_return", "run_id": "run-uuid",
+                    "data": {
+            "request_id": 1,
+            "source": "EventSynchronizer.ChooseLocalOption.postfix",
+            "handler_returned": True, "option_effects_settled": False}}
+        rows[pos:pos] = [request, returned]
+        for i, row in enumerate(rows, 1):
+            row["ordinal"] = i
+        report = audit(rows)
+        self.assertEqual("RUN_PRELUDE_SOURCE_OBSERVED", report["status"])
+        self.assertEqual(1, len(report["source_event_choice_requests"]))
+        self.assertEqual(1, len(report["source_event_choice_returns"]))
+        self.assertEqual("hefty_tablet",
+                         report["source_event_choice_requests"][0]
+                         ["selected_text_key"])
+        self.assertFalse(report["native_macro_action_transcript_complete"])
+        self.assertEqual("NOT_EXECUTED", report["emulator_combat_bootstrap"])
+
+        request["data"]["selected_text_key"] = "not-offered"
+        self.assertEqual("INVALID_PRELUDE", audit(rows)["status"])
+        request["data"]["selected_text_key"] = "hefty_tablet"
+        returned["data"]["request_id"] = 999
+        self.assertEqual("INVALID_PRELUDE", audit(rows)["status"])
+
+    def test_unreturned_source_event_choice_fails(self):
+        rows = prelude()
+        pos = next(i for i, row in enumerate(rows)
+                   if row["type"] == "map_action_request")
+        rows.insert(pos, {"type": "event_choice_request",
+                          "run_id": "run-uuid", "data": {
+            "request_id": 1, "event_model_id": "NEOW",
+            "owner_id": 7, "selected_index": 0,
+            "selected_text_key": "hefty_tablet",
+            "options": [
+                {"index": 0, "text_key": "hefty_tablet",
+                 "is_locked": False, "is_proceed": False,
+                 "relic_model_id": "HEFTY_TABLET"}],
+            "source": "EventSynchronizer.ChooseLocalOption.prefix",
+            "selection_origin": "LOCAL_SYNCHRONIZER_CALL",
+            "option_execution": "NOT_OBSERVED",
+            "effects_settled": False}})
+        for i, row in enumerate(rows, 1):
+            row["ordinal"] = i
+        self.assertEqual("INVALID_PRELUDE", audit(rows)["status"])
+        rows[-1]["data"]["event_choice_requests_missing_postfix"] = 1
+        self.assertEqual("INVALID_PRELUDE", audit(rows)["status"])
+
+
 if __name__ == "__main__":
     unittest.main()

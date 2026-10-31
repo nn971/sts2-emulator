@@ -9,6 +9,7 @@ using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.GameActions;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Multiplayer.Game;
 using MegaCrit.Sts2.Core.Nodes.Combat;
 using MegaCrit.Sts2.Core.Nodes.Cards.Holders;
 using Sts2ReferenceMod.Trace;
@@ -27,16 +28,19 @@ internal static class NativeV111InputHooks
     private const string ChoiceOwner = Owner + ".choice-flow";
     private const string HandMenuOwner = Owner + ".hand-menu";
     private const string UiGateOwner = Owner + ".ui-gate";
+    private const string EventOwner = Owner + ".event-choice";
     private static Harmony? _patches;
     private static Harmony? _choicePatches;
     private static Harmony? _handMenuPatches;
     private static Harmony? _uiGatePatches;
+    private static Harmony? _eventPatches;
     internal static bool IsInstalled => _patches is not null;
     internal static bool HasHandMenuHook { get; private set; }
     internal static bool HasHandChoiceFlowHook { get; private set; }
     internal static bool HasManualPlayHook { get; private set; }
     internal static bool HasUiPlayBeginHook { get; private set; }
     internal static bool HasUiGateHook { get; private set; }
+    internal static bool HasEventChoiceHook { get; private set; }
 
     internal static void TryInstall()
     {
@@ -77,6 +81,7 @@ internal static class NativeV111InputHooks
             HasManualPlayHook = TryPatchManualPlay(patches);
             HasUiPlayBeginHook = TryPatchUiPlayBegin(patches);
             HasUiGateHook = TryPatchUiGate();
+            HasEventChoiceHook = TryPatchEventChoice();
             _patches = patches;
             GD.Print("[Sts2ReferenceMod] INPUT_HOOK_STATUS=REQUEST_SOURCE_INSTALLED;" +
                 " source=ActionQueueSynchronizer.RequestEnqueue;" +
@@ -85,7 +90,9 @@ internal static class NativeV111InputHooks
                 "; hand_choice_id_source=" + (HasHandChoiceFlowHook ? "INSTALLED" : "UNAVAILABLE") +
                 "; manual_play_source=" + (HasManualPlayHook ? "INSTALLED" : "UNAVAILABLE") +
                 "; ui_play_begin_source=" + (HasUiPlayBeginHook ? "INSTALLED" : "UNAVAILABLE") +
-                "; ui_gate_source=" + (HasUiGateHook ? "INSTALLED" : "UNAVAILABLE"));
+                "; ui_gate_source=" + (HasUiGateHook ? "INSTALLED" : "UNAVAILABLE") +
+                "; precombat_event_choice_source=" +
+                (HasEventChoiceHook ? "INSTALLED" : "UNAVAILABLE"));
         }
         catch (Exception error)
         {
@@ -97,16 +104,92 @@ internal static class NativeV111InputHooks
             catch (Exception) { }
             try { _uiGatePatches?.UnpatchAll(UiGateOwner); }
             catch (Exception) { }
+            try { _eventPatches?.UnpatchAll(EventOwner); }
+            catch (Exception) { }
             _choicePatches = null;
             _handMenuPatches = null;
             _uiGatePatches = null;
+            _eventPatches = null;
             HasHandChoiceFlowHook = false;
             HasHandMenuHook = false;
             HasManualPlayHook = false;
             HasUiPlayBeginHook = false;
             HasUiGateHook = false;
+            HasEventChoiceHook = false;
             GD.PushError("[Sts2ReferenceMod] INPUT_HOOK_STATUS=UNAVAILABLE;" +
                 " reason=" + error.GetType().Name);
+        }
+    }
+
+    private static bool TryPatchEventChoice()
+    {
+        Harmony? instance = null;
+        try
+        {
+            // Pinned v111 Neow uses EventSynchronizer, not the mid-combat
+            // PlayerChoiceSynchronizer. The native source reads options
+            // synchronously before executing an event choice.
+            MethodInfo choose = AccessTools.Method(typeof(EventSynchronizer),
+                nameof(EventSynchronizer.ChooseLocalOption), [typeof(int)])
+                ?? throw new MissingMethodException(
+                    "EventSynchronizer.ChooseLocalOption(int)");
+            instance = new Harmony(EventOwner);
+            instance.Patch(choose, prefix: new HarmonyMethod(
+                typeof(NativeV111InputHooks).GetMethod(
+                    nameof(PrefixEventChoice),
+                    BindingFlags.NonPublic | BindingFlags.Static)!),
+                postfix: new HarmonyMethod(
+                typeof(NativeV111InputHooks).GetMethod(
+                    nameof(PostfixEventChoice),
+                    BindingFlags.NonPublic | BindingFlags.Static)!));
+            _eventPatches = instance;
+            return true;
+        }
+        catch (Exception error)
+        {
+            try { instance?.UnpatchAll(EventOwner); }
+            catch (Exception) { }
+            GD.PushError("[Sts2ReferenceMod] EVENT_CHOICE_HOOK_STATUS=UNAVAILABLE;" +
+                " reason=" + error.GetType().Name);
+            return false;
+        }
+    }
+
+    private static void PrefixEventChoice(
+        EventSynchronizer __instance, int index, out object? __state)
+    {
+        __state = null;
+        if (!NativeV111PassiveBridge.HasRunPrelude) return;
+        try
+        {
+            EventModel eventModel = __instance.GetLocalEvent();
+            if (eventModel.Owner is null)
+                throw new InvalidOperationException("Source event has no owner");
+            NativeEventOptionView[] offered = eventModel.CurrentOptions
+                .Select(o => new NativeEventOptionView(
+                    o.TextKey, o.IsLocked, o.IsProceed, o.Relic?.Id.Entry))
+                .ToArray();
+            object token = new();
+            NativeV111PassiveBridge.NativeEventChoiceRequested(
+                token, eventModel.Id.Entry, eventModel.Owner.NetId,
+                index, offered);
+            __state = token;
+        }
+        catch (Exception error)
+        {
+            NativeV111PassiveBridge.NativeInputHookFailure(
+                error.GetType().Name);
+        }
+    }
+
+    private static void PostfixEventChoice(object? __state)
+    {
+        if (__state is null) return;
+        try { NativeV111PassiveBridge.NativeEventChoiceReturned(__state); }
+        catch (Exception error)
+        {
+            NativeV111PassiveBridge.NativeInputHookFailure(
+                error.GetType().Name);
         }
     }
 

@@ -276,6 +276,68 @@ public sealed class NativeRunPreludeRecorderTests
     }
 
     [Fact]
+    public async Task SourceEventChoiceCapturesNativeOfferAndHandlerReturn()
+    {
+        object token = new();
+        var rows = await Record(recorder =>
+        {
+            recorder.EventChoiceRequested(token, "NEOW", 7, 1,
+            [
+                new("arcane_scroll", false, false, "ARCANE_SCROLL"),
+                new("hefty_tablet", false, false, "HEFTY_TABLET"),
+                new("other", true, false, null)
+            ]);
+            recorder.EventChoiceReturned(token);
+            recorder.RoomEntered(0, "OVERGROWTH", 2, 2,
+                3, 1, "Monster", "MAWLER", 70, 99);
+            recorder.CombatLink("combat-uuid", "passive.jsonl", 0, 3, 1);
+            recorder.Finish("First combat");
+        });
+        var offer = Assert.Single(rows, r =>
+            r.GetProperty("type").GetString() == "event_choice_request")
+            .GetProperty("data");
+        Assert.Equal("NEOW", offer.GetProperty("event_model_id").GetString());
+        Assert.Equal(1, offer.GetProperty("selected_index").GetInt32());
+        Assert.Equal("hefty_tablet", offer.GetProperty("selected_text_key").GetString());
+        Assert.Equal(3, offer.GetProperty("options").GetArrayLength());
+        Assert.Equal("HEFTY_TABLET", offer.GetProperty("options")[1]
+            .GetProperty("relic_model_id").GetString());
+        Assert.False(offer.GetProperty("effects_settled").GetBoolean());
+        var returned = Assert.Single(rows, r =>
+            r.GetProperty("type").GetString() == "event_choice_return")
+            .GetProperty("data");
+        Assert.Equal(offer.GetProperty("request_id").GetInt64(),
+            returned.GetProperty("request_id").GetInt64());
+        Assert.False(returned.GetProperty("option_effects_settled").GetBoolean());
+        Assert.Equal(0, rows[^1].GetProperty("data")
+            .GetProperty("event_choice_requests_missing_postfix").GetInt32());
+        Assert.Equal("SOURCE_PRELUDE_OBSERVED",
+            rows[^1].GetProperty("data").GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task PendingEventHandlerReturnKeepsPreludeIncomplete()
+    {
+        object token = new();
+        bool canFinish = true;
+        var rows = await Record(recorder =>
+        {
+            recorder.EventChoiceRequested(token, "NEOW", 7, 0,
+                [new("hefty_tablet", false, false, "HEFTY_TABLET")]);
+            recorder.RoomEntered(0, "OVERGROWTH", 2, 2,
+                3, 1, "Monster", "MAWLER", 70, 99);
+            recorder.CombatLink("combat-uuid", "passive.jsonl", 0, 3, 1);
+            canFinish = recorder.HasLinkedCombatRoomAndSettledMapRequests;
+            recorder.Finish("Unreturned event hook");
+        });
+        Assert.False(canFinish);
+        Assert.Equal(1, rows[^1].GetProperty("data")
+            .GetProperty("event_choice_requests_missing_postfix").GetInt32());
+        Assert.Equal("INCOMPLETE_CAPTURE",
+            rows[^1].GetProperty("data").GetProperty("status").GetString());
+    }
+
+    [Fact]
     public async Task MissingCombatLinkIsNotReportedAsCompletePrelude()
     {
         var rows = await Record(recorder =>

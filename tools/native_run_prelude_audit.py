@@ -19,6 +19,7 @@ _TYPES = {
     "run_started", "room_entered", "run_rng_snapshot",
     "map_action_request",
     "map_action_outcome", "opaque_action_request", "opaque_action_outcome",
+    "event_choice_request", "event_choice_return",
     "combat_link", "observation_failure", "terminal",
 }
 _EXPLICIT_GAPS = [
@@ -56,6 +57,8 @@ def _status(status, errors, events, **additional):
         "source_map_outcomes": events.get("outcomes", []),
         "source_opaque_queue_requests": events.get("opaque_requests", []),
         "source_opaque_queue_outcomes": events.get("opaque_outcomes", []),
+        "source_event_choice_requests": events.get("event_requests", []),
+        "source_event_choice_returns": events.get("event_returns", []),
         "observed_precombat_queue_action_types": sorted({
             item["native_action_type"]
             for item in events.get("opaque_requests", [])
@@ -78,6 +81,7 @@ def audit(records: list[dict], error: str | None = None,
     errors = []
     events = {"rooms": [], "requests": [], "outcomes": [],
               "opaque_requests": [], "opaque_outcomes": [],
+              "event_requests": [], "event_returns": [],
               "arrivals": [], "rng_snapshots": []}
     if error:
         errors.append(error)
@@ -112,6 +116,8 @@ def audit(records: list[dict], error: str | None = None,
     identity["run_id"] = run_id
     request_ids: dict[int, dict] = {}
     outcomes_seen = set()
+    event_request_ids: dict[int, dict] = {}
+    event_returns_seen = set()
     source_rng_streams = None
     player_rng_seed = None
     link = None
@@ -291,6 +297,57 @@ def audit(records: list[dict], error: str | None = None,
             else:
                 outcomes_seen.add(request_id)
                 events["opaque_outcomes"].append({"ordinal": ordinal, **data})
+        elif typ == "event_choice_request":
+            rid = data.get("request_id")
+            index = data.get("selected_index")
+            offers = data.get("options")
+            valid = (
+                _nonnegative(rid) and rid > 0
+                and rid not in event_request_ids
+                and isinstance(data.get("event_model_id"), str)
+                and bool(data["event_model_id"])
+                and _nonnegative(data.get("owner_id"))
+                and _nonnegative(index)
+                and isinstance(offers, list) and bool(offers)
+                and index < len(offers)
+                and data.get("source") ==
+                    "EventSynchronizer.ChooseLocalOption.prefix"
+                and data.get("selection_origin") == "LOCAL_SYNCHRONIZER_CALL"
+                and data.get("option_execution") == "NOT_OBSERVED"
+                and data.get("effects_settled") is False)
+            if valid:
+                for i, option in enumerate(offers):
+                    if (not isinstance(option, dict)
+                        or option.get("index") != i
+                        or not isinstance(option.get("text_key"), str)
+                        or not option["text_key"]
+                        or type(option.get("is_locked")) is not bool
+                        or type(option.get("is_proceed")) is not bool
+                        or (option.get("relic_model_id") is not None and
+                            (not isinstance(option["relic_model_id"], str)
+                             or not option["relic_model_id"]))):
+                        valid = False
+                        break
+            if valid and (data.get("selected_text_key")
+                          != offers[index]["text_key"]):
+                valid = False
+            if not valid:
+                errors.append(f"Invalid source event choice request at {ordinal}")
+            else:
+                event_request_ids[rid] = {"ordinal": ordinal, **data}
+                events["event_requests"].append({"ordinal": ordinal, **data})
+        elif typ == "event_choice_return":
+            rid = data.get("request_id")
+            if (rid not in event_request_ids
+                or rid in event_returns_seen
+                or data.get("source") !=
+                    "EventSynchronizer.ChooseLocalOption.postfix"
+                or data.get("handler_returned") is not True
+                or data.get("option_effects_settled") is not False):
+                errors.append(f"Invalid source event choice return at {ordinal}")
+            else:
+                event_returns_seen.add(rid)
+                events["event_returns"].append({"ordinal": ordinal, **data})
         elif typ == "combat_link":
             if (link is not None
                 or not isinstance(data.get("combat_run_id"), str)
@@ -309,6 +366,8 @@ def audit(records: list[dict], error: str | None = None,
                 link = {"ordinal": ordinal, **data}
         elif typ == "observation_failure":
             errors.append(f"Source observer reported failure at {ordinal}")
+    if set(event_request_ids) != event_returns_seen:
+        errors.append("Native event choice requests missing handler return observations")
     unmatched = set(request_ids) - outcomes_seen
     if any(not request_ids[rid]["opaque"] for rid in unmatched):
         errors.append("Native map requests missing queue return observations")
@@ -342,6 +401,8 @@ def audit(records: list[dict], error: str | None = None,
             errors.append("Terminal has pending native map queue returns")
         if terminal.get("opaque_requests_missing_postfix", 0) != 0:
             errors.append("Terminal has pending native opaque queue returns")
+        if terminal.get("event_choice_requests_missing_postfix", 0) != 0:
+            errors.append("Terminal has pending native event choice handlers")
 
     # A coincident request/arrival is useful diagnostic evidence only.
     # It never proves which queued action caused an actual map traversal.

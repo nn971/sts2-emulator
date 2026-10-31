@@ -8,8 +8,8 @@ namespace Sts2ReferenceMod.Trace;
 /// identity, visited room coordinates, precombat queue request types/outcomes
 /// and the first combat trace link without executing commands or RNG.
 ///
-/// This is intentionally NOT a complete macro choice journal: Neow,
-/// events, rewards, shops, and rest-site choices are not yet projected.
+/// Event-choice observations are pre-execution synchronous offers/requests;
+/// option effects, other precombat choices, and RNG remain unverified.
 /// </summary>
 public sealed class NativeRunPreludeRecorder : IAsyncDisposable
 {
@@ -19,6 +19,9 @@ public sealed class NativeRunPreludeRecorder : IAsyncDisposable
         new(ReferenceEqualityComparer.Instance);
     private long _ordinal;
     private long _nextRequestId;
+    private long _nextEventRequestId;
+    private readonly Dictionary<object, long> _eventRequests =
+        new(ReferenceEqualityComparer.Instance);
     private bool _closed;
     private bool _incomplete;
     private bool _linked;
@@ -37,7 +40,8 @@ public sealed class NativeRunPreludeRecorder : IAsyncDisposable
         _linked
         && _sourceRoomArrivals.Contains((
             _linkedActIndex, _linkedMapColumn, _linkedMapRow))
-        && _requests.Count == 0;
+        && _requests.Count == 0
+        && _eventRequests.Count == 0;
     public bool IsIncomplete => _incomplete;
 
     public NativeRunPreludeRecorder(
@@ -236,6 +240,58 @@ public sealed class NativeRunPreludeRecorder : IAsyncDisposable
         });
     }
 
+    /// <summary>
+    /// A read-only copy of EventSynchronizer's exact local options at its
+    /// ChooseLocalOption entry. The native method may begin async effects;
+    /// even a successful synchronous return does not certify completion.
+    /// </summary>
+    public void EventChoiceRequested(
+        object token, string eventModelId, ulong ownerId,
+        int selectedIndex, IReadOnlyList<NativeEventOptionView> options)
+    {
+        if (_closed) return;
+        if (string.IsNullOrWhiteSpace(eventModelId)
+            || selectedIndex < 0 || selectedIndex >= options.Count
+            || options.Count == 0
+            || options.Any(o => string.IsNullOrWhiteSpace(o.TextKey))
+            || _eventRequests.ContainsKey(token))
+        {
+            ObservationFailure("event_choice_request",
+                "INVALID_SOURCE_EVENT_SELECTION");
+            return;
+        }
+        long id = ++_nextEventRequestId;
+        _eventRequests[token] = id;
+        Write("event_choice_request", new
+        {
+            request_id = id, event_model_id = eventModelId,
+            owner_id = ownerId, selected_index = selectedIndex,
+            selected_text_key = options[selectedIndex].TextKey,
+            options = options.Select((o, index) => new
+            {
+                index, text_key = o.TextKey,
+                is_locked = o.IsLocked, is_proceed = o.IsProceed,
+                relic_model_id = o.RelicModelId
+            }).ToArray(),
+            source = "EventSynchronizer.ChooseLocalOption.prefix",
+            selection_origin = "LOCAL_SYNCHRONIZER_CALL",
+            option_execution = "NOT_OBSERVED",
+            effects_settled = false
+        });
+    }
+
+    public void EventChoiceReturned(object token)
+    {
+        if (_closed || !_eventRequests.Remove(token, out long id)) return;
+        Write("event_choice_return", new
+        {
+            request_id = id,
+            source = "EventSynchronizer.ChooseLocalOption.postfix",
+            handler_returned = true,
+            option_effects_settled = false
+        });
+    }
+
     public void CombatLink(string combatRunId, string combatTraceFile,
                            int actIndex, int? mapColumn, int? mapRow)
     {
@@ -286,6 +342,7 @@ public sealed class NativeRunPreludeRecorder : IAsyncDisposable
                     _linkedActIndex, _linkedMapColumn, _linkedMapRow)),
             map_requests_missing_postfix = _requests.Values.Count(p => !p.Opaque),
             opaque_requests_missing_postfix = _requests.Values.Count(p => p.Opaque),
+            event_choice_requests_missing_postfix = _eventRequests.Count,
             source_macro_choices_complete = false,
             native_rng_parity = "NOT_TESTED",
             emulator_bootstrap = "NOT_TESTED"
@@ -313,3 +370,8 @@ public sealed record NativeRunRngStreamView(
 
 public sealed record NativeRunPreludeRecord(
     string Type, long Ordinal, string RunId, JsonElement Data);
+
+// The source EventModel.CurrentOptions projection is read-only. No option
+// callbacks or localization resolvers are invoked by the observer.
+public sealed record NativeEventOptionView(
+    string TextKey, bool IsLocked, bool IsProceed, string? RelicModelId);
