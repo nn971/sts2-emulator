@@ -74,8 +74,10 @@ public sealed class NativeActionEnvelopeRecorderTests
             identity.GetProperty("data").GetProperty("seed").GetString());
         Assert.Equal(10,
             identity.GetProperty("data").GetProperty("ascension").GetInt32());
-        var request = Assert.Single(entries,
-            x => x.GetProperty("type").GetString() == "native_input_request");
+        var requests = entries.Where(x =>
+            x.GetProperty("type").GetString() == "native_input_request").ToArray();
+        Assert.Equal(2, requests.Length);
+        var request = requests[0];
         Assert.Equal("UNVERIFIED", request.GetProperty("data")
             .GetProperty("native_acceptance").GetString());
         Assert.False(request.GetProperty("data")
