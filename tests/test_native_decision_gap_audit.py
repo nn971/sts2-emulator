@@ -158,6 +158,37 @@ class DecisionGapAuditTests(unittest.TestCase):
         self.assertEqual("CARD_ID_CANDIDATES_NOT_UNIQUE_PROOF",
                          gap["ui_play_correlation"])
 
+    def test_first_gap_preserves_observed_menu_revision_and_close_chronology(self):
+        strict, rows = pair(nested=True, frame=True)
+        original = {"type": "native_hand_menu", "action_id": 1, "data": {
+            "menu_id": 3, "source_model_id": "SURVIVOR",
+            "coverage": "SOURCE_NATIVE_UI_VISIBLE_HAND_OPTIONS",
+            "selection_id_binding": "SOURCE_ASYNC_FLOW_RESERVED_ID",
+            "selection_owner_id": 1, "selection_choice_id": 4,
+            "options": [{"combat_card_id": 7}]}}
+        changed = {"type": "native_hand_menu_revision", "action_id": 1,
+                   "data": {"menu_id": 3, "revision": 2,
+                            "peek_mode": False,
+                            "coverage": "SOURCE_NATIVE_UI_VISIBLE_HAND_OPTIONS",
+                            "options": [{"combat_card_id": 9}]}}
+        closed = {"type": "native_hand_menu_closed", "action_id": 1,
+                  "data": {"menu_id": 3, "final_revision": 2,
+                           "native_reason": "AfterCardsSelected"}}
+        rows[3:3] = [original, changed, closed]
+        for i, row in enumerate(rows, 1):
+            row["ordinal"] = i
+        report = audit(strict, rows)
+        self.assertEqual("FIRST_UNCAPTURED_EXECUTOR_ACTION_FOUND",
+                         report["status"])
+        gap = report["first_gap"]
+        self.assertEqual(4, gap[
+            "source_native_hand_menus_since_prior_action"][0]["selection_choice_id"])
+        self.assertEqual([9], gap[
+            "source_native_menu_revisions_since_prior_action"][0]["option_ids"])
+        self.assertEqual(2, gap[
+            "source_native_menu_closures_since_prior_action"][0]["final_revision"])
+        self.assertEqual("NOT_PERFORMED", report["legal_menu_reconstruction"])
+
     def test_all_source_candidates_aligned(self):
         strict, rows = pair()
         rows = [r for r in rows if r.get("action_id") != 2]
