@@ -59,6 +59,8 @@ def check_inputs(journal: dict, snapshot: str | None,
         or journal.get("errors")
         or not isinstance(journal.get("source_linked_commands"), list)):
         return "BLOCKED_NATIVE_SOURCE", "Missing or incomplete native source action chronology"
+    if not journal["source_linked_commands"]:
+        return "BLOCKED_NO_SOURCE_ACTIONS", "No canonical executed native commands"
     if (not isinstance(journal.get("run_seed"), str)
         or not journal["run_seed"]
         or type(journal.get("ascension")) is not int):
@@ -210,9 +212,35 @@ def run_shadow(journal: dict, snapshot: str | None, crosswalk: dict | None,
                        "Emulator exact snapshot rejected: " + type(exc).__name__,
                        source_actions=total)
 
+    previous_completion_ordinal = -1
     for index, command in enumerate(journal["source_linked_commands"]):
         action = command.get("canonical_action")
         eid = command.get("executor_action_id")
+        request_ordinal = command.get("request_ordinal")
+        start_ordinal = command.get("executor_start_ordinal")
+        complete_ordinal = command.get("executor_complete_ordinal")
+        if (type(request_ordinal) is not int
+            or type(start_ordinal) is not int
+            or type(complete_ordinal) is not int
+            or not request_ordinal < start_ordinal <= complete_ordinal):
+            return _result(
+                "BLOCKED_NATIVE_ACTION_ORDER",
+                "Native request/executor ordinals are missing or inconsistent",
+                first={"command_index": index, "executor_action_id": eid},
+                source_actions=total, mapped_actions=stepped,
+                transitions=transitions)
+        if request_ordinal < previous_completion_ordinal:
+            return _result(
+                "BLOCKED_OVERLAPPING_NATIVE_REQUEST",
+                "The native UI requested another card while the previous "
+                "action was unresolved; source pre-request snapshots cannot "
+                "be treated as sequential emulator decision states",
+                first={"command_index": index, "executor_action_id": eid,
+                       "previous_completion_ordinal": previous_completion_ordinal,
+                       "request_ordinal": request_ordinal},
+                source_actions=total, mapped_actions=stepped,
+                transitions=transitions)
+        previous_completion_ordinal = complete_ordinal
         if not isinstance(action, dict):
             return _result("BLOCKED_NATIVE_COMMAND",
                            "Missing canonical source action",
