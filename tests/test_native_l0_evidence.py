@@ -51,7 +51,7 @@ class NativeL0EvidenceTests(unittest.TestCase):
             }},
         }
 
-    def assess(self, *, log=True, error=None):
+    def assess(self, *, log=True, error=None, strict_trace=None):
         with (patch("native_l0_evidence.audit_envelope",
                     return_value=self.envelope),
               patch("native_l0_evidence.audit_primitives",
@@ -59,7 +59,7 @@ class NativeL0EvidenceTests(unittest.TestCase):
               patch("native_l0_evidence.audit_checkpoints",
                     return_value=self.checkpoints)):
             return assess(self.preflight, self.records, error,
-                          self.log if log else None)
+                          self.log if log else None, strict_trace)
 
     def test_all_existing_source_gates_still_need_no_perturbation_and_parity(self):
         result = self.assess()
@@ -69,6 +69,31 @@ class NativeL0EvidenceTests(unittest.TestCase):
         self.assertEqual("NOT_TESTED", result["native_emulator_exact_rng_parity"])
         self.assertEqual("NOT_TESTED", result["native_emulator_mechanics_parity"])
         self.assertEqual([], result["hard_failures"])
+
+    def test_incomplete_strict_decision_trace_downgrades_source_report(self):
+        report = self.assess(strict_trace={
+            "status": "INCOMPLETE_CAPTURE",
+            "reason": "UNSUPPORTED: nested native player choice",
+            "decisions": 14,
+        })
+        self.assertEqual("L0_SOURCE_EVIDENCE_PARTIAL", report["status"])
+        self.assertEqual("INCOMPLETE_CAPTURE",
+                         report["strict_decision_trace_status"])
+        self.assertEqual(14, report["strict_decision_count"])
+        self.assertIn("STRICT_DECISION_TRACE_INCOMPLETE",
+                      report["remaining_capture_gates"])
+        self.assertEqual(0, report["native_rng_primitive_errors"])
+
+    def test_valid_paired_strict_trace_remains_source_only(self):
+        report = self.assess(strict_trace={
+            "status": "STRUCTURALLY_VALID",
+            "reason": "Complete passive event sequence",
+            "decisions": 7,
+        })
+        self.assertEqual("L0_SOURCE_EVIDENCE_CONFIRMED_NONPERTURBATION_PENDING",
+                         report["status"])
+        self.assertEqual(7, report["strict_decision_count"])
+        self.assertEqual("NOT_TESTED", report["native_emulator_mechanics_parity"])
 
     def test_missing_real_game_log_is_not_a_pass(self):
         result = self.assess(log=False)
