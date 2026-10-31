@@ -92,8 +92,8 @@ public sealed class NativeActionEnvelopeRecorderTests
         var observed = Assert.Single(entries,
             x => x.GetProperty("type").GetString() == "native_player_choice");
         var data = observed.GetProperty("data");
-        Assert.Equal(1, data.GetProperty("owner_id").GetUInt64());
-        Assert.Equal(0, data.GetProperty("choice_id").GetUInt32());
+        Assert.Equal(1UL, data.GetProperty("owner_id").GetUInt64());
+        Assert.Equal(0U, data.GetProperty("choice_id").GetUInt32());
         Assert.Equal("CombatCard", data.GetProperty("choice_type").GetString());
         Assert.Equal(7, data.GetProperty("selected_combat_card_ids")[0].GetInt64());
         Assert.Equal("NOT_CAPTURED",
