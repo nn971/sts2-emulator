@@ -190,12 +190,22 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
         string mode, string? sourceModelId,
         int minSelect, int maxSelect, bool requireConfirmation,
         int nativeHolderCount, int missingCardIds,
-        IReadOnlyList<NativeHandMenuOption> visibleOptions)
+        IReadOnlyList<NativeHandMenuOption> visibleOptions,
+        ulong? selectionOwnerId = null, uint? selectionChoiceId = null,
+        string selectionIdBinding = "UNVERIFIED")
     {
         if (_closed) return;
+        bool exact = selectionIdBinding == "SOURCE_ASYNC_FLOW_RESERVED_ID";
         if (mode is not ("SimpleSelect" or "UpgradeSelect")
             || minSelect < 0 || maxSelect < minSelect
             || nativeHolderCount < 0 || missingCardIds < 0
+            || selectionIdBinding is not ("UNVERIFIED"
+                or "SOURCE_ASYNC_FLOW_RESERVED_ID"
+                or "CHOICE_ID_NOT_YET_OBSERVED"
+                or "AMBIGUOUS_SOURCE_RESERVATION")
+            || (exact && (!selectionOwnerId.HasValue
+                          || !selectionChoiceId.HasValue))
+            || (!exact && selectionChoiceId.HasValue)
             || visibleOptions.Count + missingCardIds > nativeHolderCount
             || visibleOptions.Any(x => x.CombatCardId < 0
                 || string.IsNullOrWhiteSpace(x.ModelId)
@@ -228,7 +238,9 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
                 coverage = missingCardIds == 0
                     ? "SOURCE_NATIVE_UI_VISIBLE_HAND_OPTIONS"
                     : "INCOMPLETE_NATIVE_CARD_ID_MAPPING",
-                selection_id_binding = "UNVERIFIED",
+                selection_owner_id = selectionOwnerId,
+                selection_choice_id = selectionChoiceId,
+                selection_id_binding = selectionIdBinding,
                 predicate_re_evaluated_by_inspector = false,
                 source = "NPlayerHand.SelectCards.postfix_after_native_visibility_update",
                 emulator_parity = "NOT_TESTED"
