@@ -121,9 +121,11 @@ internal static class NativeV111PassiveBridge
         string mode, string? sourceModelId,
         int minSelect, int maxSelect, bool requireConfirmation,
         int holderCount, int missingCardIds,
-        IReadOnlyList<NativeHandMenuOption> options) =>
+        IReadOnlyList<NativeHandMenuOption> options,
+        ulong? choiceOwnerId, uint? choiceId, string bindingStatus) =>
         _actionEnvelopes?.NativeHandMenu(mode, sourceModelId, minSelect,
-            maxSelect, requireConfirmation, holderCount, missingCardIds, options);
+            maxSelect, requireConfirmation, holderCount, missingCardIds,
+            options, choiceOwnerId, choiceId, bindingStatus);
 
     /// <summary>Original native UI card interaction before drag/targeting.</summary>
     internal static void NativeUiPlayBegin(
@@ -423,6 +425,8 @@ internal static class NativeV111PassiveBridge
             nativeRngFloatHookInstalled: NativeV111RngHook.HasFloatHook,
             nativeInputHookInstalled: NativeV111InputHooks.IsInstalled,
             nativeHandMenuHookInstalled: NativeV111InputHooks.HasHandMenuHook,
+            nativeHandChoiceFlowHookInstalled:
+                NativeV111InputHooks.HasHandChoiceFlowHook,
             nativeManualPlayHookInstalled: NativeV111InputHooks.HasManualPlayHook,
             nativeUiPlayBeginHookInstalled: NativeV111InputHooks.HasUiPlayBeginHook);
         if (!string.IsNullOrWhiteSpace(actualSeed))
