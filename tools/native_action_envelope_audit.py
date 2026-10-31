@@ -179,6 +179,11 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         "actions": [],
         "nested_choices": [],
         "strict_input_gaps": [],
+        "native_input_hook_installed": False,
+        "native_input_requests": [],
+        "native_player_choices": [],
+        "native_run_identity": None,
+        "source_request_execution_links": 0,
         "observed_mechanic_indicators": {},
         "nested_choice_pauses": 0,
         "unattributed_history_entries": 0,
@@ -214,6 +219,8 @@ def audit(records: list[dict], error: str | None = None) -> dict:
     if records[0].get("data", {}).get("schema") != "native-action-envelope-v1":
         report["reason"] = "Unexpected sidecar schema"
         return report
+    report["native_input_hook_installed"] = (
+        records[0].get("data", {}).get("native_input_hook_installed") is True)
     report["native_rng_hook_installed"] = (
         records[0].get("data", {}).get("native_rng_hook_installed") is True)
     report["native_rng_double_hook_installed"] = (
@@ -241,7 +248,8 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         "nested_choice_pause", "strict_input_gap", "history_entry", "history_reset", "anomaly",
         "observation_failure", "native_rng_boundary",
         "native_rng_scalar_boundary", "native_rng_stream_checkpoint",
-        "native_shuffle_operation", "native_initial_hp_roll", "terminal",
+        "native_shuffle_operation", "native_initial_hp_roll",
+        "native_input_request", "native_player_choice", "native_run_identity", "terminal",
     }
     running: dict[int, dict] = {}
     completed: dict[int, dict] = {}
@@ -251,6 +259,8 @@ def audit(records: list[dict], error: str | None = None) -> dict:
     last_frame_index = -1
     last_frame_hash = None
     strict_failures: list[str] = []
+    input_requests: dict[int, dict] = {}
+    choices_seen: set[tuple[int, int]] = set()
     for ordinal, record in enumerate(records, 1):
         typ = record.get("type")
         if record.get("ordinal") != ordinal:
@@ -281,6 +291,16 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                 report["reason"] = f"Action {aid} references inactive parent {parent}"
                 return report
             running[aid] = record
+            link = (record.get("data") or {}).get("input_request_id")
+            if link is not None:
+                source = input_requests.get(link)
+                if (source is None
+                    or source.get("canonical_action") != record.get("canonical_action")
+                    or source.get("native_type") != record.get("native_type")):
+                    strict_failures.append(
+                        f"Invalid source request/executor link at ordinal {ordinal}")
+                else:
+                    report["source_request_execution_links"] += 1
         elif typ == "action_resumed":
             if aid not in running or aid not in awaiting_resume:
                 report["reason"] = f"Resume has no matching suspended action: {aid}"
@@ -347,6 +367,80 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                     "last_reported_gate": data.get("last_reported_gate"),
                     "decision_generation": data["decision_generation"],
                     "last_captured_generation": data["last_captured_generation"],
+                })
+        elif typ == "native_run_identity":
+            data = record.get("data") or {}
+            if (report["native_run_identity"] is not None
+                or not isinstance(data.get("seed"), str)
+                or not data["seed"]
+                or type(data.get("ascension")) is not int
+                or data["ascension"] < 0
+                or data.get("source") != "RunState.Rng.StringSeed"
+                or data.get("rng_draws_performed") != 0):
+                strict_failures.append(f"Invalid native run identity at {ordinal}")
+            else:
+                report["native_run_identity"] = {
+                    "seed": data["seed"], "ascension": data["ascension"],
+                    "source": data["source"]
+                }
+        elif typ == "native_input_request":
+            data = record.get("data") or {}
+            request_id = data.get("input_request_id")
+            if (type(request_id) is not int or request_id <= 0
+                or request_id in input_requests
+                or data.get("source") !=
+                    "ActionQueueSynchronizer.RequestEnqueue.prefix"
+                or data.get("native_acceptance") != "UNVERIFIED"
+                or data.get("human_origin") != "UNVERIFIED"
+                or data.get("input_injected") is not False
+                or not isinstance(record.get("native_type"), str)):
+                strict_failures.append(f"Invalid native input request at {ordinal}")
+            else:
+                input_requests[request_id] = record
+                report["native_input_requests"].append({
+                    "ordinal": ordinal,
+                    "input_request_id": request_id,
+                    "native_type": record["native_type"],
+                    "canonical_action": record.get("canonical_action"),
+                    "acceptance": "UNVERIFIED",
+                })
+        elif typ == "native_player_choice":
+            data = record.get("data") or {}
+            owner, choice_id = data.get("owner_id"), data.get("choice_id")
+            kind, projection = data.get("choice_type"), data.get("selection_projection")
+            valid = (type(owner) is int and owner >= 0
+                and type(choice_id) is int and choice_id >= 0
+                and isinstance(kind, str) and bool(kind)
+                and data.get("origin") ==
+                    "PlayerChoiceSynchronizer.PlayerChoiceReceived"
+                and data.get("accepted_choice_menu") == "NOT_CAPTURED"
+                and data.get("human_origin") == "UNVERIFIED"
+                and (owner, choice_id) not in choices_seen
+                and (projection == {
+                    "CombatCard": "EXACT_COMBAT_CARD_IDS",
+                    "Index": "EXACT_INDEXES",
+                    "CanonicalCard": "EXACT_CANONICAL_MODEL_IDS",
+                    "Player": "EXACT_PLAYER_ID",
+                }.get(kind, "UNPROJECTED_CHOICE_PAYLOAD")))
+            if kind == "CombatCard":
+                valid = valid and isinstance(
+                    data.get("selected_combat_card_ids"), list)
+            elif kind == "Index":
+                valid = valid and isinstance(data.get("selected_indexes"), list)
+            elif kind == "CanonicalCard":
+                valid = valid and isinstance(
+                    data.get("selected_canonical_card_models"), list)
+            if not valid:
+                strict_failures.append(f"Invalid native player choice at {ordinal}")
+            else:
+                choices_seen.add((owner, choice_id))
+                report["native_player_choices"].append({
+                    "ordinal": ordinal, "action_id": aid,
+                    "owner_id": owner, "choice_id": choice_id,
+                    "choice_type": kind, "selection_projection": projection,
+                    "selected_combat_card_ids":
+                        data.get("selected_combat_card_ids"),
+                    "selected_indexes": data.get("selected_indexes"),
                 })
         elif typ == "native_initial_hp_roll":
             data = record.get("data") or {}
