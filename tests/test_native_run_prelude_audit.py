@@ -93,6 +93,25 @@ def prelude():
             "native_rng_parity": "NOT_TESTED",
             "emulator_bootstrap": "NOT_TESTED"}},
     ]
+    def snapshot(site):
+        return {"type": "run_rng_snapshot", "data": {
+            "site": site, "player_rng_seed": 998877665544332211,
+            "streams": [
+                {"scope": "player", "stream_id": "Rewards", "counter": 0,
+                 "s0": 18446744073709551615, "s1": 13, "s2": 24, "s3": 42},
+                {"scope": "run", "stream_id": "UpFront", "counter": 12,
+                 "s0": 1, "s1": 2, "s2": 3, "s3": 4}],
+            "source":
+                "RunRngSet.ToSerializable+PlayerRngSet.ToSerializable",
+            "source_rng_consumed_by_inspector": False,
+            "native_rng_precombat_history_complete": False,
+            "emulator_rng_alignment": "NOT_TESTED"}}
+    rows.insert(1, snapshot("run_started"))
+    for index in reversed(range(len(rows))):
+        if rows[index]["type"] == "room_entered":
+            rows.insert(index + 1, snapshot("room_entered"))
+        elif rows[index]["type"] == "combat_link":
+            rows.insert(index, snapshot("combat_attach"))
     for n, row in enumerate(rows, 1):
         row["ordinal"] = n
         row["run_id"] = "run-uuid"
@@ -117,6 +136,13 @@ class RunPreludeAuditTests(unittest.TestCase):
         self.assertEqual("6JK8MD0VQQTA", result["run_identity"]["seed"])
         self.assertEqual(2, len(result["source_room_arrivals"]))
         self.assertEqual(2, len(result["source_map_requests"]))
+        self.assertEqual(4, len(result["source_run_rng_snapshots"]))
+        self.assertEqual("run_started",
+                         result["source_run_rng_snapshots"][0]["site"])
+        self.assertEqual(18446744073709551615,
+                         result["source_run_rng_snapshots"][0][
+                             "streams"][0]["s0"])
+        self.assertFalse(result["precombat_rng_call_history_complete"])
         self.assertEqual(1, len(result["source_observed_map_arrival_matches"]))
         self.assertFalse(result["source_observed_map_arrival_matches"][0][
             "causal_link_verified"])
@@ -158,7 +184,8 @@ class RunPreludeAuditTests(unittest.TestCase):
         rows[2]["ordinal"] = 88
         self.assertEqual("INVALID_PRELUDE", audit(rows)["status"])
         rows = prelude()
-        rows[4]["data"]["request_id"] = 1
+        next(row for row in rows if row["type"] == "map_action_request"
+             and row["data"]["request_id"] == 2)["data"]["request_id"] = 1
         self.assertEqual("INVALID_PRELUDE", audit(rows)["status"])
 
     def test_no_verified_start_or_no_link_fail(self):
@@ -173,7 +200,9 @@ class RunPreludeAuditTests(unittest.TestCase):
 
     def test_missing_map_postfix_fails_but_never_invents_acceptance(self):
         rows = prelude()
-        rows.pop(5)
+        rows.remove(next(row for row in rows
+                         if row["type"] == "map_action_outcome"
+                         and row["data"]["request_id"] == 2))
         for n, row in enumerate(rows, 1):
             row["ordinal"] = n
         result = audit(rows)
@@ -184,17 +213,33 @@ class RunPreludeAuditTests(unittest.TestCase):
 
     def test_combat_link_can_precede_native_room_entered_callback(self):
         rows = prelude()
-        link = rows.pop(-2)
-        rows.insert(6, link)  # Earlier than source RoomEntered
+        link = next(row for row in rows if row["type"] == "combat_link")
+        rows.remove(link)
+        room_index = next(i for i, row in enumerate(rows)
+                          if row["type"] == "room_entered"
+                          and row["data"]["map_column"] == 3)
+        rows.insert(room_index, link)  # Earlier than source RoomEntered
+        # The combat_attach RNG snapshot must immediately precede the
+        # link; relocate it to keep the same native callback source order.
+        rng = next(row for row in rows
+                   if row["type"] == "run_rng_snapshot"
+                   and row["data"]["site"] == "combat_attach")
+        rows.remove(rng)
+        rows.insert(room_index, rng)
         for n, row in enumerate(rows, 1):
             row["ordinal"] = n
         result = audit(rows)
         self.assertEqual("RUN_PRELUDE_SOURCE_OBSERVED", result["status"])
-        self.assertEqual(7, result["first_combat_link"]["ordinal"])
+        self.assertLess(result["first_combat_link"]["ordinal"],
+                        next(room["ordinal"] for room in
+                             result["source_room_arrivals"]
+                             if room["map_column"] == 3))
 
     def test_missing_linked_combat_room_or_unsettled_postfix_fails(self):
         rows = prelude()
-        rows.pop(6)  # Remove real Monster RoomEntered
+        rows.remove(next(row for row in rows
+                         if row["type"] == "room_entered"
+                         and row["data"]["map_column"] == 3))
         for n, row in enumerate(rows, 1):
             row["ordinal"] = n
         result = audit(rows)
@@ -212,6 +257,32 @@ class RunPreludeAuditTests(unittest.TestCase):
         rows = prelude()
         rows[-1]["data"]["linked_combat_room_arrival_observed"] = False
         self.assertEqual("INVALID_PRELUDE", audit(rows)["status"])
+
+    def test_invalid_source_rng_snapshot_fails_closed(self):
+        rows = prelude()
+        rng = next(row for row in rows
+                   if row["type"] == "run_rng_snapshot"
+                   and row["data"]["site"] == "run_started")
+        rng["data"]["streams"][0]["s0"] = 2**64
+        self.assertEqual("INVALID_PRELUDE", audit(rows)["status"])
+        rows = prelude()
+        rng = next(row for row in rows
+                   if row["type"] == "run_rng_snapshot"
+                   and row["data"]["site"] == "combat_attach")
+        rng["data"]["native_rng_precombat_history_complete"] = True
+        self.assertEqual("INVALID_PRELUDE", audit(rows)["status"])
+
+    def test_missing_combat_rng_source_state_is_never_silently_recovered(self):
+        rows = prelude()
+        rows.remove(next(row for row in rows
+                         if row["type"] == "run_rng_snapshot"
+                         and row["data"]["site"] == "combat_attach"))
+        for n, row in enumerate(rows, 1):
+            row["ordinal"] = n
+        result = audit(rows)
+        self.assertEqual("INVALID_PRELUDE", result["status"])
+        self.assertIn("Missing native run-start or first-combat RNG snapshot",
+                      result["errors"])
 
     def test_no_macro_completeness_promotion_even_if_causal_destination_matches(self):
         rows = prelude()
