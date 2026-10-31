@@ -213,12 +213,39 @@ ambiguous binding, never a fabricated ID.
 The independent sidecar auditor validates this source linkage and, when
 `PlayerChoiceReceived` reports the same owner and choice ID, checks
 whether the selection was in the **initial** native UI visible
-candidate set. A later selection outside that set is reported
-without claiming a mechanical mismatch, since native UI revalidation
-can change the options between opening and confirmation. Non-hand
-choice screens remain uninstrumented, and an exact hand-menu lifetime
-across subsequent state changes has not been verified. The full
-combat legal menu is still `NOT_TESTED`.
+candidate set.
+
+**Observed menu revalidation and lifecycle (new):** The original
+`NPlayerHand.UpdateSelectModeCardVisibility` already runs the game's
+selection predicates and changes the `Visible` flags of its native hand
+holders. The Inspector installs an observer-only **postfix** on that
+method and reads those flags *after* the native update. The original
+`SelectCards` postfix opens the corresponding menu lifetime with a
+source-reserved choice ID, and subsequent changed observations produce
+`native_hand_menu_revision` records with monotonically increasing
+revisions and the **same native menu ID**. Identical snapshots are
+deduplicated. Source `AfterCardsSelected` and `_ExitTree` hooks record
+`native_hand_menu_closed`, preserving the native closure reason and
+final observed revision.
+
+The native peek view deliberately exposes cards that may be ineligible
+for selection. Peek revisions therefore report
+`coverage=NATIVE_PEEK_VIEW_NOT_SELECTABLE`, with an empty selectable
+offer set; a later return from peek produces a normal visible-offer
+revision. The Inspector never calls the selection predicate, creates
+new card IDs, or advances RNG. Missing native card IDs are reported as
+incomplete UI projection.
+
+For a synchronized `PlayerChoiceReceived`, the auditor now reports
+both `selection_in_initial_visible_options` and
+`selection_in_latest_captured_options`. The latest result becomes
+unknown if the last observation was a peek view or had an incomplete
+card-ID mapping. These are **source snapshot comparisons**, not a
+certification that every intermediate native UI change was observed
+or that all hand-card interactions are legal. In particular,
+`complete_menu_history=NOT_VERIFIED` remains explicit. Other card
+selection screens are still uninstrumented; the full combat legal
+menu remains `NOT_TESTED`.
 
 For rapid card plays, an optional Harmony **prefix** on pinned private
 `NPlayerHand.StartCardPlay(NHandCardHolder,bool)` records
@@ -251,10 +278,12 @@ unique input-to-executor identity. The existing strict
 decision recorder remains fail-closed at unknown boundaries and the
 spectator endpoint remains read-only.
 
-**Remaining source gates:** establish menu refresh/lifetime evidence
-through native UI state changes, capture the complete native input-ready
+**Remaining source gates:** establish the complete native input-ready
 legal menu for rapid actions like Leading Strike → Shiv, and validate
-the new async choice-ID source hooks against the installed v111 DLL.
+the new async choice-ID and menu-refresh source hooks against the
+installed v111 DLL. Opening, revising and closing the native
+hand-selection UI are now instrumented offline; the source UI can
+still have additional unobserved transitions.
 The current source linkage is verified by isolated flow tests but
 requires installed-game compilation and runtime evidence to certify
 actual Harmony async execution-context behavior.
