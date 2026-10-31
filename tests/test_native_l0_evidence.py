@@ -99,11 +99,16 @@ class NativeL0EvidenceTests(unittest.TestCase):
         self.envelope.update({
             "native_input_hook_installed": True,
             "native_hand_menu_hook_installed": True,
+            "native_hand_choice_flow_hook_installed": True,
+            "native_hand_menu_choice_matches": [{
+                "owner_id": 1, "choice_id": 4, "menu_id": 1,
+                "binding": "SOURCE_ASYNC_FLOW_RESERVED_ID"}],
             "native_manual_play_hook_installed": True,
             "native_ui_play_begin_hook_installed": True,
             "native_ui_play_begins": [{"started_via_shortcut": True}],
             "native_hand_menus": [
-                {"coverage": "SOURCE_NATIVE_UI_VISIBLE_HAND_OPTIONS"},
+                {"coverage": "SOURCE_NATIVE_UI_VISIBLE_HAND_OPTIONS",
+                 "choice_id_binding": "SOURCE_ASYNC_FLOW_RESERVED_ID"},
                 {"coverage": "INCOMPLETE_NATIVE_CARD_ID_MAPPING"}],
             "native_manual_play_results": [
                 {"returned_success": True}, {"returned_success": False}],
@@ -122,6 +127,9 @@ class NativeL0EvidenceTests(unittest.TestCase):
         observed = report["native_source_input_observation"]
         self.assertTrue(observed["input_hook_reported_installed"])
         self.assertTrue(observed["hand_menu_hook_reported_installed"])
+        self.assertTrue(observed["hand_choice_id_hook_reported_installed"])
+        self.assertEqual(1, observed["source_reserved_hand_menu_bindings"])
+        self.assertEqual(1, observed["hand_menu_choice_result_correlations"])
         self.assertTrue(observed["manual_play_hook_reported_installed"])
         self.assertTrue(observed["ui_play_begin_hook_reported_installed"])
         self.assertEqual(1, observed["native_ui_play_begins"])
