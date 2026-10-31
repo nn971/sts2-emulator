@@ -116,6 +116,22 @@ internal static class NativeV111PassiveBridge
         NativeGameAction action, string nativeState, uint? nativeActionId) =>
         _actionEnvelopes?.NativeInputOutcome(action, nativeState, nativeActionId);
 
+    /// <summary>Read-only capture of the original UI-filtered hand options.</summary>
+    internal static void NativeHandMenu(
+        string mode, string? sourceModelId,
+        int minSelect, int maxSelect, bool requireConfirmation,
+        int holderCount, int missingCardIds,
+        IReadOnlyList<NativeHandMenuOption> options) =>
+        _actionEnvelopes?.NativeHandMenu(mode, sourceModelId, minSelect,
+            maxSelect, requireConfirmation, holderCount, missingCardIds, options);
+
+    /// <summary>Result of native CanPlayTargeting/manual action request.</summary>
+    internal static void NativeManualPlayReturn(
+        long? combatCardId, string cardModelId,
+        string? targetId, bool success) =>
+        _actionEnvelopes?.NativeManualPlayResult(
+            combatCardId, cardModelId, targetId, success);
+
     private static CanonicalAction? ProjectCanonicalAction(NativeGameAction action) =>
         action switch
         {
