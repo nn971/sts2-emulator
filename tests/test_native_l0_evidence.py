@@ -100,6 +100,8 @@ class NativeL0EvidenceTests(unittest.TestCase):
             "native_input_hook_installed": True,
             "native_hand_menu_hook_installed": True,
             "native_manual_play_hook_installed": True,
+            "native_ui_play_begin_hook_installed": True,
+            "native_ui_play_begins": [{"started_via_shortcut": True}],
             "native_hand_menus": [
                 {"coverage": "SOURCE_NATIVE_UI_VISIBLE_HAND_OPTIONS"},
                 {"coverage": "INCOMPLETE_NATIVE_CARD_ID_MAPPING"}],
@@ -121,6 +123,8 @@ class NativeL0EvidenceTests(unittest.TestCase):
         self.assertTrue(observed["input_hook_reported_installed"])
         self.assertTrue(observed["hand_menu_hook_reported_installed"])
         self.assertTrue(observed["manual_play_hook_reported_installed"])
+        self.assertTrue(observed["ui_play_begin_hook_reported_installed"])
+        self.assertEqual(1, observed["native_ui_play_begins"])
         self.assertEqual(2, observed["native_filtered_hand_menus"])
         self.assertEqual(1, observed["hand_menus_with_complete_ui_id_projection"])
         self.assertEqual(2, observed["native_manual_play_results"])
