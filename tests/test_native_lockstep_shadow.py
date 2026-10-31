@@ -219,6 +219,32 @@ class NativeShadowTests(unittest.TestCase):
         self.assertEqual([], first.step_calls)
         self.assertEqual(4, result["first_observation"]["choice_ids"][0])
 
+    def test_rapid_queued_native_request_blocks_false_serial_alignment(self):
+        end = FakeState(emulator_state(1, hand=False), [])
+        middle = FakeState(emulator_state(2, hand=False), [
+            {"kind": "end_turn", "actionId": "emu-end",
+             "payloadJson": "{}"}], end)
+        initial = FakeState(emulator_state(3), card_action(), middle)
+        session = FakeSession(initial)
+        j = journal()
+        j["source_linked_commands"].append({
+            "input_request_id": 2, "executor_action_id": 18,
+            "request_ordinal": 5,  # before action 17 completes at ordinal 9
+            "executor_start_ordinal": 10,
+            "executor_complete_ordinal": 11,
+            "canonical_action": {"kind": "end_turn", "payload": {}},
+            "pre_request_state": native_state(2, hand=False),
+            "post_execution_state": native_state(1, hand=False),
+        })
+        result = run_shadow(j, snapshot(), crosswalk(), session)
+        self.assertEqual("BLOCKED_OVERLAPPING_NATIVE_REQUEST",
+                         result["status"])
+        self.assertEqual(1, result["emulator_actions_stepped"])
+        self.assertEqual(5, result["first_observation"]["request_ordinal"])
+        self.assertEqual("NOT_TESTED", result["native_game_parity"])
+        self.assertEqual(["emu-action-1"], initial.step_calls)
+        self.assertEqual([], middle.step_calls)
+
     def test_two_source_commands_advance_single_emulator_state(self):
         end = FakeState(emulator_state(1, hand=False), [])
         middle = FakeState(emulator_state(2, hand=False), [
