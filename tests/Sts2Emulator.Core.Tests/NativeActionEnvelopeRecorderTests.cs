@@ -338,8 +338,8 @@ public sealed class NativeActionEnvelopeRecorderTests
             recorder.NativeHandMenuClosed(hand, "NativeHandExitTree");
             recorder.Finish("Combat ended", State(2));
         });
-        Assert.Empty(entries.Where(x =>
-            x.GetProperty("type").GetString() == "native_hand_menu_revision"));
+        Assert.DoesNotContain(entries, x =>
+            x.GetProperty("type").GetString() == "native_hand_menu_revision");
         Assert.Single(entries, x =>
             x.GetProperty("type").GetString() == "observation_failure");
         Assert.Equal("INCOMPLETE_CAPTURE", entries[^1]
