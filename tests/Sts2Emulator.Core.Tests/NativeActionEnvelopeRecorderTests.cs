@@ -376,6 +376,34 @@ public sealed class NativeActionEnvelopeRecorderTests
     }
 
     [Fact]
+    public async Task NativeHandUiGateObservationsKeepRealReturnValuesAndUnknownMenu()
+    {
+        var entries = await Record(recorder =>
+        {
+            recorder.NativeUiHandGate("CanPlayCards", false, "Play", true);
+            recorder.NativeUiHandGate("AreCardActionsAllowed", true,
+                "Play", true);
+            recorder.NativeUiPlayBegin(8, "SHIV", true);
+            recorder.Finish("Combat ended", State(3));
+        });
+        var gates = entries.Where(x =>
+            x.GetProperty("type").GetString() == "native_ui_hand_gate").ToArray();
+        Assert.Equal(2, gates.Length);
+        Assert.False(gates[0].GetProperty("data")
+            .GetProperty("returned_allowed").GetBoolean());
+        Assert.True(gates[1].GetProperty("data")
+            .GetProperty("returned_allowed").GetBoolean());
+        Assert.True(gates[1].GetProperty("data")
+            .GetProperty("existing_card_play_active").GetBoolean());
+        Assert.Equal("ORIGINAL_NATIVE_RETURN_VALUE",
+            gates[1].GetProperty("data").GetProperty("result_basis").GetString());
+        Assert.Equal("NOT_TESTED",
+            gates[1].GetProperty("data").GetProperty("full_legal_menu").GetString());
+        Assert.Equal("OBSERVED", entries[^1]
+            .GetProperty("data").GetProperty("status").GetString());
+    }
+
+    [Fact]
     public async Task ManualCardPlayReturnSeparatesLocalAcceptanceFromQueueExecution()
     {
         var entries = await Record(recorder =>
