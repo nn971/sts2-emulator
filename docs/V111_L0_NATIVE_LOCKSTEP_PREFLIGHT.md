@@ -397,7 +397,7 @@ The example IDs illustrate wire formatting **only**; they are not
 mappings for a real game capture. The shadow runner checks run
 seed/ascension, presence of a real emulator combat continuation,
 source visible-state alignment and exact action payload matching
-(`target_id` versus the emulator's `target_enemy_id`) before
+(native `target_id` versus the actual emulator `TargetEnemyId` in the `PlayCardPayload` JSON element; its card field is `CardInstanceId`) before
 stepping. It stops on unmatched/multiple legal commands, source
 nested-choice continuations, incomplete or wrong ID maps, and rapid
 overlapping native requests (whose pre-request snapshots are not
