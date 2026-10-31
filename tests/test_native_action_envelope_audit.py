@@ -225,6 +225,38 @@ class EnvelopeAuditTests(unittest.TestCase):
         missing[5]["data"]["missing_card_ids"] = 1
         self.assertEqual("INCOMPLETE_CAPTURE", audit(missing)["status"])
 
+    def test_original_native_hand_gate_results_do_not_imply_full_menu(self):
+        rows = sample()
+        gate = {"type": "native_ui_hand_gate", "data": {
+            "gate": "AreCardActionsAllowed",
+            "returned_allowed": True, "native_hand_mode": "Play",
+            "existing_card_play_active": True,
+            "source": "NPlayerHand.AreCardActionsAllowed.postfix",
+            "result_basis": "ORIGINAL_NATIVE_RETURN_VALUE",
+            "source_evaluation_only": True, "human_origin": "UNVERIFIED",
+            "full_legal_menu": "NOT_TESTED",
+            "emulator_parity": "NOT_TESTED"}}
+        rows.insert(3, gate)
+        for i, row in enumerate(rows, 1):
+            row["ordinal"] = i
+        audit_result = audit(rows)
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT",
+                         audit_result["status"])
+        observed = audit_result["native_ui_hand_gates"]
+        self.assertEqual(1, len(observed))
+        self.assertTrue(observed[0]["returned_allowed"])
+        self.assertTrue(observed[0]["existing_card_play_active"])
+        self.assertEqual("NOT_TESTED", observed[0]["full_legal_menu"])
+        forgery = copy.deepcopy(rows)
+        forgery[3]["data"]["full_legal_menu"] = "VERIFIED"
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(forgery)["status"])
+        forgery = copy.deepcopy(rows)
+        forgery[3]["data"]["source_evaluation_only"] = False
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(forgery)["status"])
+        forgery = copy.deepcopy(rows)
+        forgery[3]["data"]["gate"] = "FakeGate"
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(forgery)["status"])
+
     def test_native_ui_card_interaction_is_before_optional_manual_acceptance(self):
         rows = sample()
         ui = {"type": "native_ui_play_begin", "data": {
