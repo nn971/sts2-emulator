@@ -309,8 +309,11 @@ def audit(records: list[dict], error: str | None = None,
                 link = {"ordinal": ordinal, **data}
         elif typ == "observation_failure":
             errors.append(f"Source observer reported failure at {ordinal}")
-    if set(request_ids) != outcomes_seen:
-        errors.append("Native precombat queue requests missing return observations")
+    unmatched = set(request_ids) - outcomes_seen
+    if any(not request_ids[rid]["opaque"] for rid in unmatched):
+        errors.append("Native map requests missing queue return observations")
+    if any(request_ids[rid]["opaque"] for rid in unmatched):
+        errors.append("Native opaque queue requests missing return observations")
     if terminal.get("status") != "SOURCE_PRELUDE_OBSERVED":
         errors.append("Native prelude terminal is incomplete or lacks combat")
     if (terminal.get("combat_link_recorded") is not True

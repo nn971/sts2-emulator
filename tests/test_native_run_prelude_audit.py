@@ -311,6 +311,8 @@ class RunPreludeAuditTests(unittest.TestCase):
             "source": "ActionQueueSynchronizer.RequestEnqueue.postfix",
             "native_executor_completion": "NOT_OBSERVED"}}
         rows[insert:insert] = [request, outcome]
+        for row in (request, outcome):
+            row["run_id"] = "run-uuid"
         for i, row in enumerate(rows, 1):
             row["ordinal"] = i
         report = audit(rows)
