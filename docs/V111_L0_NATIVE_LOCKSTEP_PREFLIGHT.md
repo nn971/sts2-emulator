@@ -247,6 +247,18 @@ or that all hand-card interactions are legal. In particular,
 selection screens are still uninstrumented; the full combat legal
 menu remains `NOT_TESTED`.
 
+For rapid card plays, optional Harmony **postfixes** on native
+`NPlayerHand.CanPlayCards()` and
+`NPlayerHand.AreCardActionsAllowed()` capture the *original boolean
+results* of the mouse/click and shortcut input gates. These source
+methods are already called by the game's UI; the Inspector never
+invokes them itself. New `native_ui_hand_gate` records include the
+gate name, its actual returned value, the current hand mode, and
+whether a previous card play was active. A `true` result means that
+the particular native UI gate evaluation passed. It does not imply
+the chosen card and target were legal, that the queue accepted an
+action, or that a complete legal-action menu was enumerated.
+
 For rapid card plays, an optional Harmony **prefix** on pinned private
 `NPlayerHand.StartCardPlay(NHandCardHolder,bool)` records
 `native_ui_play_begin`, the original card ID, and
@@ -278,12 +290,32 @@ unique input-to-executor identity. The existing strict
 decision recorder remains fail-closed at unknown boundaries and the
 spectator endpoint remains read-only.
 
-**Remaining source gates:** establish the complete native input-ready
-legal menu for rapid actions like Leading Strike → Shiv, and validate
-the new async choice-ID and menu-refresh source hooks against the
-installed v111 DLL. Opening, revising and closing the native
-hand-selection UI are now instrumented offline; the source UI can
-still have additional unobserved transitions.
+**Implementation boundary:** the audited v111 hand UI validates
+inputs through several separate methods (hand-mode gates, card
+targetability, native `TryManualPlay`, queue admission and later
+execution). These are event-driven checks; the audited code does not
+expose one comprehensive enumeration of all legal card/target
+combinations. The Inspector now records each observed gate *without
+calling native eligibility checks a second time*. A future exhaustive
+native menu would require additional proof of how and when every
+candidate is checked. Complete menu coverage remains `NOT_TESTED`.
+
+For **mechanics lockstep**, however, full native legal-menu enumeration
+is not a prerequisite: the observer has actual source-requested,
+queue-returned and executor-started actions with real card/target
+identities and pre-request snapshots, plus choice ID/selected card
+evidence. The next engineering milestone should consume that
+source-observed action chronology in a persistent emulator, preserving
+async queue ordering, while testing native/emulator state and RNG
+parity at well-defined settlement boundaries. Compare the **emulator's**
+own legal menu with observed accepted commands as a separate fidelity
+check. The local native DLL build, real Harmony hook attachment,
+passive nonperturbation and lockstep parity remain untested.
+
+The new async choice-ID, menu-refresh and UI-gate hooks still need a
+single combined validation against the installed v111 assembly.
+Opening, revising and closing the native hand-selection UI are now
+instrumented offline; further unobserved UI transitions are possible.
 The current source linkage is verified by isolated flow tests but
 requires installed-game compilation and runtime evidence to certify
 actual Harmony async execution-context behavior.
