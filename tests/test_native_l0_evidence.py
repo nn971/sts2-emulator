@@ -102,7 +102,17 @@ class NativeL0EvidenceTests(unittest.TestCase):
             "native_hand_choice_flow_hook_installed": True,
             "native_hand_menu_choice_matches": [{
                 "owner_id": 1, "choice_id": 4, "menu_id": 1,
-                "binding": "SOURCE_ASYNC_FLOW_RESERVED_ID"}],
+                "binding": "SOURCE_ASYNC_FLOW_RESERVED_ID",
+                "selection_in_latest_captured_options": True}, {
+                "owner_id": 1, "choice_id": 5, "menu_id": 2,
+                "binding": "SOURCE_ASYNC_FLOW_RESERVED_ID",
+                "selection_in_latest_captured_options": False}],
+            "native_hand_menu_revisions": [
+                {"menu_id": 1, "revision": 2, "peek_mode": False},
+                {"menu_id": 1, "revision": 3, "peek_mode": True}],
+            "native_hand_menu_closures": [
+                {"menu_id": 1, "final_revision": 3}],
+            "native_hand_menu_open_lifetimes": [2],
             "native_manual_play_hook_installed": True,
             "native_ui_play_begin_hook_installed": True,
             "native_ui_play_begins": [{"started_via_shortcut": True}],
@@ -129,7 +139,13 @@ class NativeL0EvidenceTests(unittest.TestCase):
         self.assertTrue(observed["hand_menu_hook_reported_installed"])
         self.assertTrue(observed["hand_choice_id_hook_reported_installed"])
         self.assertEqual(1, observed["source_reserved_hand_menu_bindings"])
-        self.assertEqual(1, observed["hand_menu_choice_result_correlations"])
+        self.assertEqual(2, observed["hand_menu_choice_result_correlations"])
+        self.assertEqual(2, observed["native_hand_menu_revisions"])
+        self.assertEqual(1, observed["native_peek_view_revisions"])
+        self.assertEqual(1, observed["native_hand_menu_closures"])
+        self.assertEqual(1, observed["native_hand_menus_open_at_capture_end"])
+        self.assertEqual(1, observed["native_hand_choice_matches_latest_captured_offers"])
+        self.assertEqual(1, observed["native_hand_choice_matches_latest_outside_captured_offers"])
         self.assertTrue(observed["manual_play_hook_reported_installed"])
         self.assertTrue(observed["ui_play_begin_hook_reported_installed"])
         self.assertEqual(1, observed["native_ui_play_begins"])
