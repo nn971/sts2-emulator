@@ -199,7 +199,16 @@ one instant**. They are not yet tied to the `choice_id` reserved by
 can change options, and other non-hand option screens remain uncovered.
 The full combat legal menu is still `NOT_TESTED`.
 
-For rapid card plays, a second optional Harmony **postfix** on pinned
+For rapid card plays, an optional Harmony **prefix** on pinned private
+`NPlayerHand.StartCardPlay(NHandCardHolder,bool)` records
+`native_ui_play_begin`, the original card ID, and
+`started_via_shortcut`. Both mouse-click and shortcut paths call this
+method only after their own native UI guards. This is a genuine native
+UI card interaction; drag or targeting can subsequently cancel it.
+`manual_play_accepted` and `full_legal_menu` remain `NOT_TESTED`
+at this early boundary.
+
+A separate Harmony **postfix** on pinned
 `CardModel.TryManualPlay(Creature?)` records the original boolean
 return (`native_manual_play_result`), card and target IDs. The source
 returns `true` after `CanPlayTargeting` and calling
@@ -210,10 +219,14 @@ object correlation already record subsequent queue lifecycle. Source
 `human_origin` remains `UNVERIFIED` since a mod could call the same
 public manual-play method.
 
-Both extra hooks share the existing
+All the optional input/UI hooks share the existing
 `STS2_FIDELITY_INPUT_HOOK=1` opt-in; their individual installation
 statuses are logged and declared in sidecar headers, allowing partial
-coverage if one native method has changed. The existing strict
+coverage if one native method has changed. The first-gap report now
+includes displayed native hand options, UI-origin interactions, and
+manual-play return candidates alongside the executor chronology.
+Matching by card ID is a **candidate correlation**, not verified
+unique input-to-executor identity. The existing strict
 decision recorder remains fail-closed at unknown boundaries and the
 spectator endpoint remains read-only.
 
