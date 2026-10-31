@@ -181,6 +181,7 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         "strict_input_gaps": [],
         "native_input_hook_installed": False,
         "native_input_requests": [],
+        "native_input_outcomes": [],
         "native_player_choices": [],
         "native_run_identity": None,
         "source_request_execution_links": 0,
@@ -249,7 +250,8 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         "observation_failure", "native_rng_boundary",
         "native_rng_scalar_boundary", "native_rng_stream_checkpoint",
         "native_shuffle_operation", "native_initial_hp_roll",
-        "native_input_request", "native_player_choice", "native_run_identity", "terminal",
+        "native_input_request", "native_input_outcome",
+        "native_player_choice", "native_run_identity", "terminal",
     }
     running: dict[int, dict] = {}
     completed: dict[int, dict] = {}
@@ -260,6 +262,7 @@ def audit(records: list[dict], error: str | None = None) -> dict:
     last_frame_hash = None
     strict_failures: list[str] = []
     input_requests: dict[int, dict] = {}
+    request_outcomes: set[int] = set()
     choices_seen: set[tuple[int, int]] = set()
     for ordinal, record in enumerate(records, 1):
         typ = record.get("type")
@@ -403,6 +406,41 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                     "native_type": record["native_type"],
                     "canonical_action": record.get("canonical_action"),
                     "acceptance": "UNVERIFIED",
+                })
+        elif typ == "native_input_outcome":
+            data = record.get("data") or {}
+            request_id = data.get("input_request_id")
+            request = input_requests.get(request_id)
+            native_state = data.get("native_action_state")
+            action_id = data.get("native_action_id")
+            expected = (
+                "DEFERRED_OR_UNENQUEUED"
+                if native_state == "None" and action_id is None else
+                "CANCELED_AT_RETURN"
+                if native_state == "Canceled" else
+                "ASSIGNED_QUEUE_ID_AND_NOT_CANCELED_AT_RETURN"
+                if native_state in ("WaitingForExecution", "Executing",
+                                    "GatheringPlayerChoice",
+                                    "ReadyToResumeExecuting", "Finished")
+                and type(action_id) is int and action_id >= 0 else
+                "STATE_UNCLASSIFIED"
+            )
+            if (request is None or request_id in request_outcomes
+                or request.get("native_type") != record.get("native_type")
+                or data.get("source") !=
+                    "ActionQueueSynchronizer.RequestEnqueue.postfix"
+                or data.get("human_origin") != "UNVERIFIED"
+                or data.get("legal_menu_verified") is not False
+                or data.get("queue_result") != expected):
+                strict_failures.append(f"Invalid native input outcome at {ordinal}")
+            else:
+                request_outcomes.add(request_id)
+                report["native_input_outcomes"].append({
+                    "ordinal": ordinal, "input_request_id": request_id,
+                    "native_action_id": action_id,
+                    "native_action_state": native_state,
+                    "queue_result": expected,
+                    "menu_verified": False,
                 })
         elif typ == "native_player_choice":
             data = record.get("data") or {}
