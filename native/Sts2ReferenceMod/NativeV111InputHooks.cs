@@ -3,6 +3,8 @@ using System.Reflection;
 using Godot;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.CardSelection;
+using MegaCrit.Sts2.Core.Commands;
+using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.GameActions;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
@@ -22,9 +24,12 @@ namespace Sts2ReferenceMod;
 internal static class NativeV111InputHooks
 {
     private const string Owner = "nn971.sts2-inspector.native-input-v111";
+    private const string ChoiceOwner = Owner + ".choice-flow";
     private static Harmony? _patches;
+    private static Harmony? _choicePatches;
     internal static bool IsInstalled => _patches is not null;
     internal static bool HasHandMenuHook { get; private set; }
+    internal static bool HasHandChoiceFlowHook { get; private set; }
     internal static bool HasManualPlayHook { get; private set; }
     internal static bool HasUiPlayBeginHook { get; private set; }
 
@@ -63,6 +68,7 @@ internal static class NativeV111InputHooks
             // Optional UI sources. Native RequestEnqueue evidence stays usable
             // if either local game signature has changed since the pinned source.
             HasHandMenuHook = TryPatchHandMenu(patches);
+            HasHandChoiceFlowHook = TryPatchHandChoiceFlow();
             HasManualPlayHook = TryPatchManualPlay(patches);
             HasUiPlayBeginHook = TryPatchUiPlayBegin(patches);
             _patches = patches;
@@ -70,6 +76,7 @@ internal static class NativeV111InputHooks
                 " source=ActionQueueSynchronizer.RequestEnqueue;" +
                 " acceptance=UNVERIFIED; input_injection=DISABLED;" +
                 " hand_menu_source=" + (HasHandMenuHook ? "INSTALLED" : "UNAVAILABLE") +
+                "; hand_choice_id_source=" + (HasHandChoiceFlowHook ? "INSTALLED" : "UNAVAILABLE") +
                 "; manual_play_source=" + (HasManualPlayHook ? "INSTALLED" : "UNAVAILABLE") +
                 "; ui_play_begin_source=" + (HasUiPlayBeginHook ? "INSTALLED" : "UNAVAILABLE"));
         }
@@ -77,6 +84,10 @@ internal static class NativeV111InputHooks
         {
             try { patches?.UnpatchAll(Owner); }
             catch (Exception) { }
+            try { _choicePatches?.UnpatchAll(ChoiceOwner); }
+            catch (Exception) { }
+            _choicePatches = null;
+            HasHandChoiceFlowHook = false;
             HasHandMenuHook = false;
             HasManualPlayHook = false;
             HasUiPlayBeginHook = false;
@@ -110,6 +121,92 @@ internal static class NativeV111InputHooks
             GD.PushError("[Sts2ReferenceMod] HAND_MENU_HOOK_STATUS=UNAVAILABLE;" +
                 " reason=" + error.GetType().Name);
             return false;
+        }
+    }
+
+    private static bool TryPatchHandChoiceFlow()
+    {
+        Harmony? instance = null;
+        try
+        {
+            // CardSelectCmd.FromHand reserves a synchronizer choice ID
+            // before opening NPlayerHand.SelectCards. Patch both source
+            // methods to carry the actual returned ID across any awaits.
+            var fromHand = AccessTools.Method(typeof(CardSelectCmd),
+                nameof(CardSelectCmd.FromHand),
+                [typeof(PlayerChoiceContext), typeof(Player),
+                 typeof(CardSelectorPrefs), typeof(Func<CardModel, bool>),
+                 typeof(AbstractModel)])
+                ?? throw new MissingMethodException("CardSelectCmd.FromHand");
+            var reserve = AccessTools.Method(typeof(PlayerChoiceSynchronizer),
+                nameof(PlayerChoiceSynchronizer.ReserveChoiceId),
+                [typeof(Player)])
+                ?? throw new MissingMethodException(
+                    "PlayerChoiceSynchronizer.ReserveChoiceId");
+            instance = new Harmony(ChoiceOwner);
+            instance.Patch(fromHand,
+                prefix: new HarmonyMethod(typeof(NativeV111InputHooks)
+                    .GetMethod(nameof(PrefixFromHand),
+                        BindingFlags.NonPublic | BindingFlags.Static)!),
+                postfix: new HarmonyMethod(typeof(NativeV111InputHooks)
+                    .GetMethod(nameof(PostfixFromHand),
+                        BindingFlags.NonPublic | BindingFlags.Static)!));
+            instance.Patch(reserve,
+                postfix: new HarmonyMethod(typeof(NativeV111InputHooks)
+                    .GetMethod(nameof(PostfixReserveChoiceId),
+                        BindingFlags.NonPublic | BindingFlags.Static)!));
+            _choicePatches = instance;
+            return true;
+        }
+        catch (Exception error)
+        {
+            try { instance?.UnpatchAll(ChoiceOwner); }
+            catch (Exception) { }
+            GD.PushError("[Sts2ReferenceMod] CHOICE_FLOW_HOOK_STATUS=UNAVAILABLE;" +
+                " reason=" + error.GetType().Name);
+            return false;
+        }
+    }
+
+    // Harmony state spans precisely the synchronous portion of the async
+    // FromHand wrapper. Captured async continuations inherit the token.
+    private static void PrefixFromHand(
+        Player player, out NativeHandChoiceFlow.Scope? __state)
+    {
+        __state = null;
+        try
+        {
+            if (NativeV111PassiveBridge.HasActionSidecar)
+                __state = NativeHandChoiceFlow.BeginFromHand(player.NetId);
+        }
+        catch (Exception error)
+        {
+            NativeV111PassiveBridge.NativeInputHookFailure(
+                error.GetType().Name);
+        }
+    }
+
+    private static void PostfixFromHand(NativeHandChoiceFlow.Scope? __state)
+    {
+        try { __state?.Dispose(); }
+        catch (Exception error)
+        {
+            NativeV111PassiveBridge.NativeInputHookFailure(
+                error.GetType().Name);
+        }
+    }
+
+    private static void PostfixReserveChoiceId(Player player, uint __result)
+    {
+        try
+        {
+            if (NativeV111PassiveBridge.HasActionSidecar)
+                NativeHandChoiceFlow.Reserved(player.NetId, __result);
+        }
+        catch (Exception error)
+        {
+            NativeV111PassiveBridge.NativeInputHookFailure(
+                error.GetType().Name);
         }
     }
 
@@ -215,11 +312,12 @@ internal static class NativeV111InputHooks
                 options.Add(new NativeHandMenuOption(
                     (long)id, card.Id.Entry, i));
             }
+            NativeHandChoiceFlow.Binding flow = NativeHandChoiceFlow.Current();
             NativeV111PassiveBridge.NativeHandMenu(
                 mode.ToString(), source?.Id.Entry,
                 prefs.MinSelect, prefs.MaxSelect,
                 prefs.RequireManualConfirmation, holders.Length,
-                missingIds, options);
+                missingIds, options, flow.OwnerId, flow.ChoiceId, flow.Status);
         }
         catch (Exception error)
         {
