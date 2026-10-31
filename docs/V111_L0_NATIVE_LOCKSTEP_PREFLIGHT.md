@@ -168,33 +168,61 @@ executed within the user's installed v111 game DLL. The static source audit
 and standard .NET contract tests alone cannot certify Harmony attachment,
 actual native input event ordering, nonperturbation, or emulator parity.
 
-### Remaining exact-menu hook, identified but not yet certified
+### Additional read-only UI/manual-play hooks (staged offline)
 
-Pinned `src/Core/Models/Cards/Survivor.cs` invokes
-`CardSelectCmd.FromHandForDiscard`, which delegates to
-`CardSelectCmd.FromHand`. That method reserves a choice ID, suspends
-the player action, filters the offered hand-card list, invokes
-`NPlayerHand.SelectCards`, and synchronizes the selected
-`MutableCombatCards` result. The synchronizer event now captures the
-**selected** card's real combat ID; it provides neither the exact
-pre-choice offered list nor the native menu's acceptance predicate.
+Pinned `src/Core/Models/Cards/Survivor.cs` calls
+`CardSelectCmd.FromHandForDiscard` → `CardSelectCmd.FromHand`,
+which reserves a player-choice ID, suspends the parent action, invokes
+`NPlayerHand.SelectCards` for the native selection UI, then sends the
+selected combat-card IDs through `PlayerChoiceSynchronizer`.
 
-Pinned `NPlayerHand.SelectCards` enters selection mode, updates the
-selection filter and refreshes selectable holder visibility before
-awaiting a user choice. The filter can be evaluated inside the native
-UI; re-running it from the Inspector would risk observer side effects.
-Capture the original eligible candidates at the engine/UI production
-boundary, with unique card-instance identities, filter/prompt provenance,
-choice ID and selection bounds; retain `accepted_choice_menu=NOT_CAPTURED`
-until this is supported.
+The new **optional** `NPlayerHand.SelectCards` Harmony **postfix**
+captures the UI's already-filtered visible `NHandCardHolder` nodes
+*after* `UpdateSelectModeCardVisibility`, at the method's first
+suspension awaiting a user selection. It reads the native
+`CardSelectorPrefs.MinSelect/MaxSelect/RequireManualConfirmation`, the
+source model, display order, and card identities from
+`NetCombatCardDb.TryGetCardId`. The pinned native ID getter is a
+dictionary lookup; the Inspector never re-evaluates the selection
+predicate, registers cards, or draws RNG. If any displayed card lacks
+a native ID, the menu is explicitly
+`INCOMPLETE_NATIVE_CARD_ID_MAPPING`.
 
-Consecutive plays (Leading Strike → Shivs) are a distinct gate:
-`ActionQueueSynchronizer.RequestEnqueue` may run while the preceding
-card's executor/animation is still busy. Its prefix and return event
-now provide genuine request and queue chronology; a distinct **source
-input-ready legal menu** is required before declaring a strict decision,
-even if the same requested action later executes. Do not derive an
-invented menu by polling the next frame after it has already changed.
+New `native_hand_menu` records carry `menu_id`,
+`mode`, `source_model_id`, `min_select`, `max_select`,
+`options` (card IDs, model IDs, UI holder order), and
+`coverage=SOURCE_NATIVE_UI_VISIBLE_HAND_OPTIONS` when mapped in
+full. These establish the native UI's offered visible hand choices **at
+one instant**. They are not yet tied to the `choice_id` reserved by
+`PlayerChoiceSynchronizer`; the trace explicitly reports
+`selection_id_binding=UNVERIFIED`. Revalidation while a choice is open
+can change options, and other non-hand option screens remain uncovered.
+The full combat legal menu is still `NOT_TESTED`.
+
+For rapid card plays, a second optional Harmony **postfix** on pinned
+`CardModel.TryManualPlay(Creature?)` records the original boolean
+return (`native_manual_play_result`), card and target IDs. The source
+returns `true` after `CanPlayTargeting` and calling
+`EnqueueManualPlay`; therefore `true` proves a successful *manual
+play request* at that source, independently from the eventual queue
+state, execution, or a complete stable menu. Source request and executor
+object correlation already record subsequent queue lifecycle. Source
+`human_origin` remains `UNVERIFIED` since a mod could call the same
+public manual-play method.
+
+Both extra hooks share the existing
+`STS2_FIDELITY_INPUT_HOOK=1` opt-in; their individual installation
+statuses are logged and declared in sidecar headers, allowing partial
+coverage if one native method has changed. The existing strict
+decision recorder remains fail-closed at unknown boundaries and the
+spectator endpoint remains read-only.
+
+**Remaining source gates:** bind the observed hand menu to the exact
+reserved `choice_id` with a source-level selection lifetime, capture
+menu changes while selection is open, and establish a complete native
+input-ready legal menu for rapid actions like Leading Strike → Shiv.
+A following native DLL build and passive-on/off game test will be bundled
+with these changes, not requested separately for this interim slice.
 
 **Next combined native validation:** only after all source hooks, seed
 projection, strict menu/source acceptance and tests are ready, rebuild the
