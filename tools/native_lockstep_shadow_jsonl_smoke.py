@@ -60,13 +60,39 @@ def test_real_jsonl(command: list[str]) -> dict:
 
         first = state.observe()
         legal = state.actions()
-        # End-turn is always a valid simple combat action and carries no
-        # special card ID mapping, nested hand choice, or selected target.
-        turn = next((a for a in legal if a["kind"] == "end_turn"
-                     and json.loads(a["payloadJson"]) == {}), None)
-        if turn is None:
-            raise AssertionError("Emulator first combat has no end_turn action")
-        emulated_child = state.step(turn["actionId"])
+        # Prefer actual card/target payload alignment against the real
+        # JSONL legal-action wire. Fall back to end turn only if no basic
+        # Strike/Defend card is legal in this seeded combat.
+        hand_by_id = {
+            card["instance_id"]: card["card_id"].casefold()
+            for card in first["combat"]["hand"]
+        }
+        def is_basic_card(action):
+            if action["kind"] != "play_card":
+                return False
+            payload = json.loads(action["payloadJson"])
+            return hand_by_id.get(payload.get("card_instance_id")) in (
+                "defend_silent", "strike_silent")
+        selected = next((a for a in legal if is_basic_card(a)), None)
+        if selected is None:
+            selected = next((a for a in legal if a["kind"] == "end_turn"
+                             and json.loads(a["payloadJson"]) == {}), None)
+        if selected is None:
+            raise AssertionError("No basic card or end_turn in first combat")
+        payload = json.loads(selected["payloadJson"])
+        if selected["kind"] == "play_card":
+            target = payload.get("target_enemy_id")
+            source_action = {
+                "kind": "play_card",
+                "payload": {
+                    "card_instance_id": payload["card_instance_id"],
+                    "target_id": "creature:" + str(target)
+                    if target is not None else None,
+                },
+            }
+        else:
+            source_action = {"kind": "end_turn", "payload": {}}
+        emulated_child = state.step(selected["actionId"])
         final = emulated_child.observe()
         if final.get("combat") is None:
             raise AssertionError("Fixture first turn must preserve a live combat")
@@ -81,7 +107,10 @@ def test_real_jsonl(command: list[str]) -> dict:
             "schema": "native-emulator-id-crosswalk-v1",
             "cards": {str(card["instance_id"]): card["instance_id"]
                       for card in all_cards},
-            "enemies": {},
+            "enemies": {
+                "creature:" + str(enemy["instance_id"]): enemy["instance_id"]
+                for enemy in first["combat"]["enemies"]
+            },
         }
         journal = {
             "schema": "native-source-action-journal-v1",
@@ -98,7 +127,7 @@ def test_real_jsonl(command: list[str]) -> dict:
                 "executor_action_id": 17,
                 "executor_start_ordinal": 4,
                 "executor_complete_ordinal": 9,
-                "canonical_action": {"kind": "end_turn", "payload": {}},
+                "canonical_action": source_action,
                 "pre_request_state": projection(first),
                 "post_execution_state": projection(final),
             }],
@@ -118,6 +147,10 @@ def test_real_jsonl(command: list[str]) -> dict:
             "real_emulator_session": True,
             "source_data": "EMULATOR_DERIVED_SYNTHETIC_ONLY",
             "shadow_actions_stepped": report["emulator_actions_stepped"],
+            "source_action_kind": source_action["kind"],
+            "target_mapping_exercised": (
+                source_action["kind"] == "play_card" and
+                source_action["payload"]["target_id"] is not None),
             "native_game_parity": report["native_game_parity"],
         }
 
