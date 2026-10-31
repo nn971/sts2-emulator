@@ -108,7 +108,19 @@ class NativePackageContractTests(unittest.TestCase):
         self.assertIn("legal_menu_verified = false", recorder)
         # The patch must be an observation of the actual game method;
         # it must never replace/enqueue/execute the action itself.
-        self.assertNotIn("return false;", hooks)
+        # Optional hook installers return false when an audited v111 method
+        # cannot be found; only Harmony prefix signatures must be void.
+        self.assertIn("private static void PrefixRequestEnqueue(", hooks)
+        self.assertIn("private static void PostfixRequestEnqueue(", hooks)
+        self.assertIn("private static void PostfixHandSelect(", hooks)
+        self.assertIn("private static void PostfixManualPlay(", hooks)
+        self.assertIn("nameof(NPlayerHand.SelectCards)", hooks)
+        self.assertIn("nameof(CardModel.TryManualPlay)", hooks)
+        self.assertIn("NetCombatCardDb.Instance.TryGetCardId", hooks)
+        self.assertIn("holder.Visible", hooks)
+        self.assertIn("predicate_re_evaluated_by_inspector = false", recorder)
+        self.assertNotIn("filter(card)", hooks)
+        self.assertNotIn("card.CanPlay(", hooks)
         self.assertNotIn("__runOriginal", hooks)
         self.assertNotIn(".EnqueueWithoutSynchronizing(", hooks)
         self.assertNotIn("action.RequestEnqueue(", hooks)
