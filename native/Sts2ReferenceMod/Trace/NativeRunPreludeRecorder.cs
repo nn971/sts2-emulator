@@ -20,6 +20,7 @@ public sealed class NativeRunPreludeRecorder : IAsyncDisposable
     private long _ordinal;
     private long _nextRequestId;
     private long _nextEventRequestId;
+    private readonly HashSet<(ulong Owner, uint ChoiceId)> _precombatChoices = [];
     private readonly Dictionary<object, long> _eventRequests =
         new(ReferenceEqualityComparer.Instance);
     private bool _closed;
@@ -289,6 +290,56 @@ public sealed class NativeRunPreludeRecorder : IAsyncDisposable
             source = "EventSynchronizer.ChooseLocalOption.postfix",
             handler_returned = true,
             option_effects_settled = false
+        });
+    }
+
+    /// <summary>
+    /// A source-synchronized precombat result, not an offered menu. The
+    /// enclosing run is singleplayer; IDs are the original native values.
+    /// Mutable-card contents and all post-choice effects remain unobserved.
+    /// </summary>
+    public void PrecombatPlayerChoice(
+        ulong ownerId, uint choiceId, string choiceType,
+        IReadOnlyList<long>? combatCardIds, IReadOnlyList<long>? deckIndices,
+        IReadOnlyList<string>? canonicalCardIds, IReadOnlyList<int>? indexes,
+        ulong? selectedPlayerId, int? mutableCardCount, ulong? mutableOwnerId)
+    {
+        if (_closed) return;
+        bool typeMatches = choiceType switch
+        {
+            "CombatCard" => combatCardIds is not null,
+            "DeckCard" => deckIndices is not null,
+            "CanonicalCard" => canonicalCardIds is not null,
+            "Index" => indexes is not null,
+            "Player" => true,
+            "MutableCard" => mutableCardCount is >= 0,
+            _ => false
+        };
+        if (!typeMatches
+            || (combatCardIds is not null && combatCardIds.Any(i => i < 0))
+            || (deckIndices is not null && deckIndices.Any(i => i < 0))
+            || (canonicalCardIds is not null
+                && canonicalCardIds.Any(string.IsNullOrWhiteSpace))
+            || (indexes is not null && indexes.Any(i => i < 0))
+            || !_precombatChoices.Add((ownerId, choiceId)))
+        {
+            ObservationFailure("precombat_player_choice",
+                "INVALID_OR_DUPLICATE_SYNCHRONIZED_CHOICE");
+            return;
+        }
+        Write("player_choice_result", new
+        {
+            owner_id = ownerId, choice_id = choiceId, choice_type = choiceType,
+            combat_card_ids = combatCardIds, deck_indices = deckIndices,
+            canonical_card_ids = canonicalCardIds, indexes,
+            selected_player_id = selectedPlayerId,
+            mutable_card_count = mutableCardCount,
+            mutable_owner_id = mutableOwnerId,
+            source = "PlayerChoiceSynchronizer.PlayerChoiceReceived",
+            synchronized_result_observed = true,
+            offered_options = "NOT_CAPTURED",
+            effects_settled = false,
+            emulator_replay = "NOT_EXECUTED"
         });
     }
 

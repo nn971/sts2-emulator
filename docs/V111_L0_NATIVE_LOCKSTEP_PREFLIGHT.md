@@ -388,6 +388,20 @@ inject a choice, or infer any `PROCEED` button (which takes a separate
 UI path). A dedicated pinned-assembly build and runtime attach are still
 required before claiming that this source-level hook works in the game.
 
+The existing `PlayerChoiceSynchronizer.PlayerChoiceReceived` callback
+is now subscribed at **source RunStarted** (after synchronizer construction
+in pinned `RunManager.Launch`). Prior to combat attachment, it records
+`player_choice_result` with the original source owner/choice ID and
+selected Index/CombatCard/DeckCard/CanonicalCard/Player result values.
+MutableCard results preserve count and owner, not full card content.
+The bridge checks the synchronizer reference when entering combat to
+avoid duplicate subscriptions, and keeps the combat sidecar's existing
+choice handler. This source result journal complements the event-option
+hook: **Neow is an event option**, while nested card/deck selections
+may use PlayerChoiceSynchronizer. These results lack corresponding offered
+options and choice-context effects; the auditor reports them separately,
+rejects duplicate (owner, choice ID), and never marks macro replay complete.
+
 On its first combat, the run prelude records a `combat_link` containing
 the exact combat trace run ID and filename. The actual
 `RunManager.RoomEntered` callback runs **after** awaited native

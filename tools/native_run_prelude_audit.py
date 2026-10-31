@@ -19,7 +19,7 @@ _TYPES = {
     "run_started", "room_entered", "run_rng_snapshot",
     "map_action_request",
     "map_action_outcome", "opaque_action_request", "opaque_action_outcome",
-    "event_choice_request", "event_choice_return",
+    "event_choice_request", "event_choice_return", "player_choice_result",
     "combat_link", "observation_failure", "terminal",
 }
 _EXPLICIT_GAPS = [
@@ -59,6 +59,7 @@ def _status(status, errors, events, **additional):
         "source_opaque_queue_outcomes": events.get("opaque_outcomes", []),
         "source_event_choice_requests": events.get("event_requests", []),
         "source_event_choice_returns": events.get("event_returns", []),
+        "source_precombat_player_choices": events.get("player_choices", []),
         "observed_precombat_queue_action_types": sorted({
             item["native_action_type"]
             for item in events.get("opaque_requests", [])
@@ -82,6 +83,7 @@ def audit(records: list[dict], error: str | None = None,
     events = {"rooms": [], "requests": [], "outcomes": [],
               "opaque_requests": [], "opaque_outcomes": [],
               "event_requests": [], "event_returns": [],
+              "player_choices": [],
               "arrivals": [], "rng_snapshots": []}
     if error:
         errors.append(error)
@@ -118,6 +120,7 @@ def audit(records: list[dict], error: str | None = None,
     outcomes_seen = set()
     event_request_ids: dict[int, dict] = {}
     event_returns_seen = set()
+    player_choice_ids = set()
     source_rng_streams = None
     player_rng_seed = None
     link = None
@@ -348,6 +351,63 @@ def audit(records: list[dict], error: str | None = None,
             else:
                 event_returns_seen.add(rid)
                 events["event_returns"].append({"ordinal": ordinal, **data})
+        elif typ == "player_choice_result":
+            owner = data.get("owner_id")
+            cid = data.get("choice_id")
+            choice_type = data.get("choice_type")
+            expected = {
+                "CombatCard": "combat_card_ids",
+                "DeckCard": "deck_indices",
+                "CanonicalCard": "canonical_card_ids",
+                "Index": "indexes",
+                "Player": "selected_player_id",
+                "MutableCard": "mutable_card_count"
+            }
+            target = expected.get(choice_type)
+            valid = (
+                _nonnegative(owner) and owner <= 2**64 - 1
+                and _nonnegative(cid) and cid <= 2**32 - 1
+                and (owner, cid) not in player_choice_ids
+                and target is not None
+                and data.get("source") ==
+                    "PlayerChoiceSynchronizer.PlayerChoiceReceived"
+                and data.get("synchronized_result_observed") is True
+                and data.get("offered_options") == "NOT_CAPTURED"
+                and data.get("effects_settled") is False
+                and data.get("emulator_replay") == "NOT_EXECUTED")
+            arrays = ("combat_card_ids", "deck_indices",
+                      "canonical_card_ids", "indexes")
+            if valid:
+                for key in arrays:
+                    value = data.get(key)
+                    if value is None:
+                        continue
+                    if not isinstance(value, list):
+                        valid = False
+                        break
+                    if key == "canonical_card_ids":
+                        valid = all(isinstance(v, str) and bool(v) for v in value)
+                    else:
+                        valid = all(_nonnegative(v) for v in value)
+                    if not valid:
+                        break
+                if choice_type != "Player" and choice_type != "MutableCard":
+                    valid = valid and isinstance(data.get(target), list)
+                if choice_type == "MutableCard":
+                    valid = valid and _nonnegative(data.get(target))
+                for key in ("selected_player_id", "mutable_owner_id"):
+                    value = data.get(key)
+                    if value is not None and (not _nonnegative(value)
+                                              or value > 2**64 - 1):
+                        valid = False
+                if data.get("mutable_card_count") is not None and not _nonnegative(
+                        data["mutable_card_count"]):
+                    valid = False
+            if not valid:
+                errors.append(f"Invalid precombat player choice at {ordinal}")
+            else:
+                player_choice_ids.add((owner, cid))
+                events["player_choices"].append({"ordinal": ordinal, **data})
         elif typ == "combat_link":
             if (link is not None
                 or not isinstance(data.get("combat_run_id"), str)

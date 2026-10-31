@@ -215,6 +215,17 @@ internal static class NativeV111PassiveBridge
             // The game's synchronizer publishes the selected *result*.
             // CombatCard choices carry original combat-card indexes, including
             // Survivor's selected discard. This event has no legal menu.
+            if (_runPrelude is not null && _combat is null)
+                _runPrelude.PrecombatPlayerChoice(
+                    player.NetId, choiceId, result.type.ToString(),
+                    result.combatCards?.Select(c =>
+                        (long)c.CombatCardIndex).ToArray(),
+                    result.deckCards?.Select(c =>
+                        (long)c.DeckIndex).ToArray(),
+                    result.canonicalCards?.Select(c =>
+                        c.Id.Entry).ToArray(),
+                    result.indexes?.ToArray(), result.playerId,
+                    result.mutableCards?.Count, result.mutableCardOwner);
             _actionEnvelopes?.NativePlayerChoice(
                 player.NetId, choiceId, result.type.ToString(),
                 result.combatCards?.Select(card =>
@@ -277,6 +288,11 @@ internal static class NativeV111PassiveBridge
                 _ = FinishRunPreludeAsync(_runPrelude);
                 _runPrelude = null;
             }
+            if (_choiceSync is not null)
+            {
+                _choiceSync.PlayerChoiceReceived -= OnNativePlayerChoice;
+                _choiceSync = null;
+            }
             _preludeRunState = state;
             if (state.Players.Count != 1) return;
             string seed = state.Rng.StringSeed;
@@ -295,6 +311,15 @@ internal static class NativeV111PassiveBridge
                 state.Players[0].Character.Id.Entry, state.Act.Id.Entry,
                 state.Players.Count);
             CapturePreludeRng("run_started", state);
+            // Launch() raises RunStarted after synchronizer construction in
+            // pinned v111. Subscribe now to capture Neow-triggered nested
+            // card/deck choices before the first combat observer exists.
+            _choiceSync = RunManager.Instance.PlayerChoiceSynchronizer;
+            if (_choiceSync is null)
+                _runPrelude.ObservationFailure("precombat_player_choice",
+                    "SOURCE_SYNCHRONIZER_UNAVAILABLE");
+            else
+                _choiceSync.PlayerChoiceReceived += OnNativePlayerChoice;
             GD.Print("[Sts2ReferenceMod] RUN_PRELUDE_STATUS=RUN_STARTED; " +
                 "source=RunManager.RunStarted; path=" + path);
         }
@@ -690,9 +715,15 @@ internal static class NativeV111PassiveBridge
             _agentBridge is not null);
         CombatManager.Instance.History.Changed += OnHistoryChanged;
         AttachActionExecutor();
-        _choiceSync = RunManager.Instance.PlayerChoiceSynchronizer;
-        if (_choiceSync is not null)
-            _choiceSync.PlayerChoiceReceived += OnNativePlayerChoice;
+        var currentChoiceSync = RunManager.Instance.PlayerChoiceSynchronizer;
+        if (!ReferenceEquals(_choiceSync, currentChoiceSync))
+        {
+            if (_choiceSync is not null)
+                _choiceSync.PlayerChoiceReceived -= OnNativePlayerChoice;
+            _choiceSync = currentChoiceSync;
+            if (_choiceSync is not null)
+                _choiceSync.PlayerChoiceReceived += OnNativePlayerChoice;
+        }
         Godot.GD.Print("[Sts2ReferenceMod] CAPTURE_STATUS=RECORDING_STARTED; " +
             "Recording (passive): " + _currentFile);
     }

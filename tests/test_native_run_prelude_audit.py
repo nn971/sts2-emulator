@@ -414,5 +414,59 @@ class RunPreludeAuditTests(unittest.TestCase):
         self.assertEqual("INVALID_PRELUDE", audit(rows)["status"])
 
 
+    def test_synchronized_player_choice_result_preserves_source_ids(self):
+        rows = prelude()
+        index = next(i for i, r in enumerate(rows)
+                     if r["type"] == "map_action_request")
+        choice = {"type": "player_choice_result", "run_id": "run-uuid",
+                  "data": {
+            "owner_id": 99, "choice_id": 3, "choice_type": "DeckCard",
+            "combat_card_ids": None, "deck_indices": [2, 7],
+            "canonical_card_ids": None, "indexes": None,
+            "selected_player_id": None, "mutable_card_count": None,
+            "mutable_owner_id": None,
+            "source": "PlayerChoiceSynchronizer.PlayerChoiceReceived",
+            "synchronized_result_observed": True,
+            "offered_options": "NOT_CAPTURED",
+            "effects_settled": False,
+            "emulator_replay": "NOT_EXECUTED"}}
+        rows.insert(index, choice)
+        for i, row in enumerate(rows, 1):
+            row["ordinal"] = i
+        report = audit(rows)
+        self.assertEqual("RUN_PRELUDE_SOURCE_OBSERVED", report["status"])
+        self.assertEqual([2, 7],
+                         report["source_precombat_player_choices"][0]
+                         ["deck_indices"])
+        self.assertFalse(report["native_macro_action_transcript_complete"])
+        choice["data"]["offered_options"] = "COMPLETE"
+        self.assertEqual("INVALID_PRELUDE", audit(rows)["status"])
+        choice["data"]["offered_options"] = "NOT_CAPTURED"
+        choice["data"]["choice_id"] = -1
+        self.assertEqual("INVALID_PRELUDE", audit(rows)["status"])
+
+    def test_repeated_precombat_choice_id_rejected(self):
+        rows = prelude()
+        index = next(i for i, r in enumerate(rows)
+                     if r["type"] == "map_action_request")
+        data = {"owner_id": 9, "choice_id": 0,
+                "choice_type": "Index", "indexes": [1],
+                "combat_card_ids": None, "deck_indices": None,
+                "canonical_card_ids": None, "selected_player_id": None,
+                "mutable_card_count": None, "mutable_owner_id": None,
+                "source": "PlayerChoiceSynchronizer.PlayerChoiceReceived",
+                "synchronized_result_observed": True,
+                "offered_options": "NOT_CAPTURED",
+                "effects_settled": False, "emulator_replay": "NOT_EXECUTED"}
+        rows[index:index] = [
+            {"type": "player_choice_result", "run_id": "run-uuid",
+             "data": data.copy()},
+            {"type": "player_choice_result", "run_id": "run-uuid",
+             "data": data.copy()}]
+        for i, row in enumerate(rows, 1):
+            row["ordinal"] = i
+        self.assertEqual("INVALID_PRELUDE", audit(rows)["status"])
+
+
 if __name__ == "__main__":
     unittest.main()

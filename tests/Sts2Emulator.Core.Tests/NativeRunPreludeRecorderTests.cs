@@ -338,6 +338,54 @@ public sealed class NativeRunPreludeRecorderTests
     }
 
     [Fact]
+    public async Task PrecombatPlayerChoiceRecordsOriginalSynchronizedResult()
+    {
+        var rows = await Record(recorder =>
+        {
+            recorder.PrecombatPlayerChoice(99, 0, "DeckCard",
+                null, [3, 5], null, null, null, null, null);
+            recorder.PrecombatPlayerChoice(99, 1, "Index",
+                null, null, null, [2], null, null, null);
+            recorder.RoomEntered(0, "OVERGROWTH", 2, 2,
+                3, 1, "Monster", "MAWLER", 70, 99);
+            recorder.CombatLink("combat-uuid", "passive.jsonl", 0, 3, 1);
+            recorder.Finish("First combat");
+        });
+        var results = rows.Where(r =>
+            r.GetProperty("type").GetString() == "player_choice_result")
+            .Select(r => r.GetProperty("data")).ToArray();
+        Assert.Equal(2, results.Length);
+        Assert.Equal(0U, results[0].GetProperty("choice_id").GetUInt32());
+        Assert.Equal("DeckCard", results[0].GetProperty("choice_type").GetString());
+        Assert.Equal(3, results[0].GetProperty("deck_indices")[0].GetInt64());
+        Assert.Equal("NOT_CAPTURED",
+            results[0].GetProperty("offered_options").GetString());
+        Assert.False(results[1].GetProperty("effects_settled").GetBoolean());
+        Assert.Equal("SOURCE_PRELUDE_OBSERVED",
+            rows[^1].GetProperty("data").GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task DuplicateSourcePlayerChoiceIdFailsClosed()
+    {
+        var rows = await Record(recorder =>
+        {
+            recorder.PrecombatPlayerChoice(99, 3, "Index",
+                null, null, null, [1], null, null, null);
+            recorder.PrecombatPlayerChoice(99, 3, "Index",
+                null, null, null, [2], null, null, null);
+            recorder.CombatLink("combat-uuid", "passive.jsonl", 0, 3, 1);
+            recorder.Finish("First combat");
+        });
+        Assert.Single(rows, r =>
+            r.GetProperty("type").GetString() == "player_choice_result");
+        Assert.Single(rows, r =>
+            r.GetProperty("type").GetString() == "observation_failure");
+        Assert.Equal("INCOMPLETE_CAPTURE",
+            rows[^1].GetProperty("data").GetProperty("status").GetString());
+    }
+
+    [Fact]
     public async Task MissingCombatLinkIsNotReportedAsCompletePrelude()
     {
         var rows = await Record(recorder =>
