@@ -280,6 +280,7 @@ internal static class NativeV111PassiveBridge
                 path, BuildId, runId, seed, state.AscensionLevel,
                 state.Players[0].Character.Id.Entry, state.Act.Id.Entry,
                 state.Players.Count);
+            CapturePreludeRng("run_started", state);
             GD.Print("[Sts2ReferenceMod] RUN_PRELUDE_STATUS=RUN_STARTED; " +
                 "source=RunManager.RunStarted; path=" + path);
         }
@@ -307,6 +308,7 @@ internal static class NativeV111PassiveBridge
                 room?.ModelId?.Entry,
                 state.Players[0].Creature.CurrentHp,
                 state.Players[0].Gold);
+            CapturePreludeRng("room_entered", state);
             TryFinishRunPrelude();
         }
         catch (Exception error)
@@ -339,6 +341,36 @@ internal static class NativeV111PassiveBridge
                 action, "map_vote", netVote.source.actIndex,
                 from?.col, from?.row,
                 to?.coord.col, to?.coord.row, to?.mapGenerationCount);
+        }
+    }
+
+    private static void CapturePreludeRng(
+        string site, MegaCrit.Sts2.Core.Runs.RunState state)
+    {
+        if (_runPrelude is null || state.Players.Count != 1) return;
+        try
+        {
+            // Both ToSerializable calls inspect native RNG words/counters
+            // without advancing or reconstructing any source RNG stream.
+            var run = state.Rng.ToSerializable();
+            var player = state.Players[0].PlayerRng.ToSerializable();
+            var streams = run.Rngs.Select(pair =>
+                new NativeRunRngStreamView(
+                    "run", pair.Key.ToString(), pair.Value.counter,
+                    pair.Value.state0, pair.Value.state1,
+                    pair.Value.state2, pair.Value.state3))
+                .Concat(player.Rngs.Select(pair =>
+                    new NativeRunRngStreamView(
+                        "player", pair.Key.ToString(), pair.Value.counter,
+                        pair.Value.state0, pair.Value.state1,
+                        pair.Value.state2, pair.Value.state3)))
+                .ToArray();
+            _runPrelude.RunRngSnapshot(site, player.Seed, streams);
+        }
+        catch (Exception error)
+        {
+            _runPrelude.ObservationFailure("source_rng_snapshot",
+                error.GetType().Name);
         }
     }
 
@@ -577,6 +609,8 @@ internal static class NativeV111PassiveBridge
             try
             {
                 var coord = _preludeRunState?.CurrentMapCoord;
+                if (_preludeRunState is not null)
+                    CapturePreludeRng("combat_attach", _preludeRunState);
                 prelude.CombatLink(runId, _currentFile,
                     _preludeRunState?.CurrentActIndex ?? 0,
                     coord?.col, coord?.row);
