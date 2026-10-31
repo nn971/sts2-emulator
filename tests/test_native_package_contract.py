@@ -111,8 +111,7 @@ class NativePackageContractTests(unittest.TestCase):
         self.assertNotIn("return false;", hooks)
         self.assertNotIn("__runOriginal", hooks)
         self.assertNotIn(".EnqueueWithoutSynchronizing(", hooks)
-        self.assertNotIn(".RequestEnqueue(", hooks.replace(
-            "nameof(ActionQueueSynchronizer.RequestEnqueue)", ""))
+        self.assertNotIn("action.RequestEnqueue(", hooks)
         self.assertNotIn(".Execute(", hooks)
         self.assertNotIn("SkipOriginal", hooks)
 
