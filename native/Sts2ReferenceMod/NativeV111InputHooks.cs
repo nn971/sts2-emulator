@@ -26,14 +26,17 @@ internal static class NativeV111InputHooks
     private const string Owner = "nn971.sts2-inspector.native-input-v111";
     private const string ChoiceOwner = Owner + ".choice-flow";
     private const string HandMenuOwner = Owner + ".hand-menu";
+    private const string UiGateOwner = Owner + ".ui-gate";
     private static Harmony? _patches;
     private static Harmony? _choicePatches;
     private static Harmony? _handMenuPatches;
+    private static Harmony? _uiGatePatches;
     internal static bool IsInstalled => _patches is not null;
     internal static bool HasHandMenuHook { get; private set; }
     internal static bool HasHandChoiceFlowHook { get; private set; }
     internal static bool HasManualPlayHook { get; private set; }
     internal static bool HasUiPlayBeginHook { get; private set; }
+    internal static bool HasUiGateHook { get; private set; }
 
     internal static void TryInstall()
     {
@@ -73,6 +76,7 @@ internal static class NativeV111InputHooks
             HasHandChoiceFlowHook = TryPatchHandChoiceFlow();
             HasManualPlayHook = TryPatchManualPlay(patches);
             HasUiPlayBeginHook = TryPatchUiPlayBegin(patches);
+            HasUiGateHook = TryPatchUiGate();
             _patches = patches;
             GD.Print("[Sts2ReferenceMod] INPUT_HOOK_STATUS=REQUEST_SOURCE_INSTALLED;" +
                 " source=ActionQueueSynchronizer.RequestEnqueue;" +
@@ -80,7 +84,8 @@ internal static class NativeV111InputHooks
                 " hand_menu_source=" + (HasHandMenuHook ? "INSTALLED" : "UNAVAILABLE") +
                 "; hand_choice_id_source=" + (HasHandChoiceFlowHook ? "INSTALLED" : "UNAVAILABLE") +
                 "; manual_play_source=" + (HasManualPlayHook ? "INSTALLED" : "UNAVAILABLE") +
-                "; ui_play_begin_source=" + (HasUiPlayBeginHook ? "INSTALLED" : "UNAVAILABLE"));
+                "; ui_play_begin_source=" + (HasUiPlayBeginHook ? "INSTALLED" : "UNAVAILABLE") +
+                "; ui_gate_source=" + (HasUiGateHook ? "INSTALLED" : "UNAVAILABLE"));
         }
         catch (Exception error)
         {
@@ -90,12 +95,16 @@ internal static class NativeV111InputHooks
             catch (Exception) { }
             try { _handMenuPatches?.UnpatchAll(HandMenuOwner); }
             catch (Exception) { }
+            try { _uiGatePatches?.UnpatchAll(UiGateOwner); }
+            catch (Exception) { }
             _choicePatches = null;
             _handMenuPatches = null;
+            _uiGatePatches = null;
             HasHandChoiceFlowHook = false;
             HasHandMenuHook = false;
             HasManualPlayHook = false;
             HasUiPlayBeginHook = false;
+            HasUiGateHook = false;
             GD.PushError("[Sts2ReferenceMod] INPUT_HOOK_STATUS=UNAVAILABLE;" +
                 " reason=" + error.GetType().Name);
         }
@@ -233,6 +242,68 @@ internal static class NativeV111InputHooks
         {
             if (NativeV111PassiveBridge.HasActionSidecar)
                 NativeHandChoiceFlow.Reserved(player.NetId, __result);
+        }
+        catch (Exception error)
+        {
+            NativeV111PassiveBridge.NativeInputHookFailure(
+                error.GetType().Name);
+        }
+    }
+
+    private static bool TryPatchUiGate()
+    {
+        Harmony? instance = null;
+        try
+        {
+            // The click path calls CanPlayCards, and shortcuts call
+            // AreCardActionsAllowed. We observe only *already-calculated*
+            // native results, never invoke either gate ourselves.
+            var click = AccessTools.Method(typeof(NPlayerHand),
+                "CanPlayCards", Type.EmptyTypes)
+                ?? throw new MissingMethodException("NPlayerHand.CanPlayCards");
+            var shortcut = AccessTools.Method(typeof(NPlayerHand),
+                "AreCardActionsAllowed", Type.EmptyTypes)
+                ?? throw new MissingMethodException(
+                    "NPlayerHand.AreCardActionsAllowed");
+            instance = new Harmony(UiGateOwner);
+            instance.Patch(click, postfix: new HarmonyMethod(
+                typeof(NativeV111InputHooks).GetMethod(
+                    nameof(PostfixCanPlayCards),
+                    BindingFlags.NonPublic | BindingFlags.Static)!));
+            instance.Patch(shortcut, postfix: new HarmonyMethod(
+                typeof(NativeV111InputHooks).GetMethod(
+                    nameof(PostfixAreCardActionsAllowed),
+                    BindingFlags.NonPublic | BindingFlags.Static)!));
+            _uiGatePatches = instance;
+            return true;
+        }
+        catch (Exception error)
+        {
+            try { instance?.UnpatchAll(UiGateOwner); }
+            catch (Exception) { }
+            GD.PushError("[Sts2ReferenceMod] UI_GATE_HOOK_STATUS=UNAVAILABLE;" +
+                " reason=" + error.GetType().Name);
+            return false;
+        }
+    }
+
+    private static void PostfixCanPlayCards(
+        NPlayerHand __instance, bool __result) =>
+        ReportHandGate(__instance, "CanPlayCards", __result);
+
+    private static void PostfixAreCardActionsAllowed(
+        NPlayerHand __instance, bool __result) =>
+        ReportHandGate(__instance, "AreCardActionsAllowed", __result);
+
+    private static void ReportHandGate(
+        NPlayerHand hand, string sourceMethod, bool allowed)
+    {
+        if (!NativeV111PassiveBridge.HasActionSidecar) return;
+        try
+        {
+            NativeV111PassiveBridge.NativeUiHandGate(
+                sourceMethod, allowed, hand.CurrentMode.ToString(),
+                hand.InCardPlay);
         }
         catch (Exception error)
         {
