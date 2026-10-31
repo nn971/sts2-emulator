@@ -51,6 +51,7 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
         bool nativeRngFloatHookInstalled = false,
         bool nativeInputHookInstalled = false,
         bool nativeHandMenuHookInstalled = false,
+        bool nativeHandChoiceFlowHookInstalled = false,
         bool nativeManualPlayHookInstalled = false,
         bool nativeUiPlayBeginHookInstalled = false)
     {
@@ -70,6 +71,8 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
                 native_rng_float_hook_installed = nativeRngFloatHookInstalled,
                 native_input_hook_installed = nativeInputHookInstalled,
                 native_hand_menu_hook_installed = nativeHandMenuHookInstalled,
+                native_hand_choice_flow_hook_installed =
+                    nativeHandChoiceFlowHookInstalled,
                 native_manual_play_hook_installed = nativeManualPlayHookInstalled,
                 native_ui_play_begin_hook_installed = nativeUiPlayBeginHookInstalled,
                 native_rng_stream_checkpoints_enabled = nativeRngStreamCheckpointsEnabled,
