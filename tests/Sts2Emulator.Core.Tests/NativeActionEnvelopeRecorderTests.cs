@@ -216,6 +216,52 @@ public sealed class NativeActionEnvelopeRecorderTests
     }
 
     [Fact]
+    public async Task SourceReservedChoiceIdIsEmittedOnlyWithAnExactFlowBinding()
+    {
+        var entries = await Record(recorder =>
+        {
+            recorder.NativeHandMenu("SimpleSelect", "SURVIVOR",
+                1, 1, false, 2, 0,
+                [
+                    new NativeHandMenuOption(7, "DEFEND_SILENT", 0),
+                    new NativeHandMenuOption(9, "STRIKE_SILENT", 1)
+                ],
+                1UL, 4U, "SOURCE_ASYNC_FLOW_RESERVED_ID");
+            recorder.NativePlayerChoice(1UL, 4U, "CombatCard",
+                [9L], null, null, null);
+            recorder.Finish("Combat ended", State(2));
+        });
+        var menu = Assert.Single(entries, x =>
+            x.GetProperty("type").GetString() == "native_hand_menu");
+        var data = menu.GetProperty("data");
+        Assert.Equal(1UL, data.GetProperty("selection_owner_id").GetUInt64());
+        Assert.Equal(4U, data.GetProperty("selection_choice_id").GetUInt32());
+        Assert.Equal("SOURCE_ASYNC_FLOW_RESERVED_ID",
+            data.GetProperty("selection_id_binding").GetString());
+        Assert.Equal("OBSERVED", entries[^1].GetProperty("data")
+            .GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task UnprovenOrAmbiguousNativeMenuIdCannotBeAssertedAsExact()
+    {
+        var entries = await Record(recorder =>
+        {
+            recorder.NativeHandMenu("SimpleSelect", "SURVIVOR",
+                1, 1, false, 1, 0,
+                [new NativeHandMenuOption(7, "DEFEND_SILENT", 0)],
+                1UL, 4U, "AMBIGUOUS_SOURCE_RESERVATION");
+            recorder.Finish("Combat ended", State(3));
+        });
+        Assert.DoesNotContain(entries,
+            x => x.GetProperty("type").GetString() == "native_hand_menu");
+        Assert.Single(entries, x => x.GetProperty("type").GetString()
+            == "observation_failure");
+        Assert.Equal("INCOMPLETE_CAPTURE", entries[^1].GetProperty("data")
+            .GetProperty("status").GetString());
+    }
+
+    [Fact]
     public async Task UnmappedUiCardPreventsCompleteMenuAndInvalidProjectionFailsClosed()
     {
         var entries = await Record(recorder =>
