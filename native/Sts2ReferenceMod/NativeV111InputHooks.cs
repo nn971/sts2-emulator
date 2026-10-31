@@ -26,6 +26,7 @@ internal static class NativeV111InputHooks
     internal static bool IsInstalled => _patches is not null;
     internal static bool HasHandMenuHook { get; private set; }
     internal static bool HasManualPlayHook { get; private set; }
+    internal static bool HasUiPlayBeginHook { get; private set; }
 
     internal static void TryInstall()
     {
@@ -63,12 +64,14 @@ internal static class NativeV111InputHooks
             // if either local game signature has changed since the pinned source.
             HasHandMenuHook = TryPatchHandMenu(patches);
             HasManualPlayHook = TryPatchManualPlay(patches);
+            HasUiPlayBeginHook = TryPatchUiPlayBegin(patches);
             _patches = patches;
             GD.Print("[Sts2ReferenceMod] INPUT_HOOK_STATUS=REQUEST_SOURCE_INSTALLED;" +
                 " source=ActionQueueSynchronizer.RequestEnqueue;" +
                 " acceptance=UNVERIFIED; input_injection=DISABLED;" +
                 " hand_menu_source=" + (HasHandMenuHook ? "INSTALLED" : "UNAVAILABLE") +
-                "; manual_play_source=" + (HasManualPlayHook ? "INSTALLED" : "UNAVAILABLE"));
+                "; manual_play_source=" + (HasManualPlayHook ? "INSTALLED" : "UNAVAILABLE") +
+                "; ui_play_begin_source=" + (HasUiPlayBeginHook ? "INSTALLED" : "UNAVAILABLE"));
         }
         catch (Exception error)
         {
@@ -76,6 +79,7 @@ internal static class NativeV111InputHooks
             catch (Exception) { }
             HasHandMenuHook = false;
             HasManualPlayHook = false;
+            HasUiPlayBeginHook = false;
             GD.PushError("[Sts2ReferenceMod] INPUT_HOOK_STATUS=UNAVAILABLE;" +
                 " reason=" + error.GetType().Name);
         }
@@ -106,6 +110,52 @@ internal static class NativeV111InputHooks
             GD.PushError("[Sts2ReferenceMod] HAND_MENU_HOOK_STATUS=UNAVAILABLE;" +
                 " reason=" + error.GetType().Name);
             return false;
+        }
+    }
+
+    private static bool TryPatchUiPlayBegin(Harmony patches)
+    {
+        try
+        {
+            // The source paths for click and shortcut call this private
+            // method only after their respective hand-action UI gates.
+            // This is a UI interaction start, not confirmed card play.
+            var target = AccessTools.Method(typeof(NPlayerHand),
+                "StartCardPlay",
+                [typeof(NHandCardHolder), typeof(bool)]);
+            if (target is null)
+                throw new MissingMethodException("NPlayerHand.StartCardPlay");
+            patches.Patch(target, prefix: new HarmonyMethod(
+                typeof(NativeV111InputHooks).GetMethod(
+                    nameof(PrefixUiPlayBegin),
+                    BindingFlags.NonPublic | BindingFlags.Static)!));
+            return true;
+        }
+        catch (Exception error)
+        {
+            GD.PushError("[Sts2ReferenceMod] UI_PLAY_BEGIN_HOOK_STATUS=UNAVAILABLE;" +
+                " reason=" + error.GetType().Name);
+            return false;
+        }
+    }
+
+    private static void PrefixUiPlayBegin(
+        NHandCardHolder holder, bool startedViaShortcut)
+    {
+        if (!NativeV111PassiveBridge.HasActionSidecar) return;
+        try
+        {
+            var card = holder.CardNode?.Model;
+            if (card is null) return;
+            long? id = NetCombatCardDb.Instance.TryGetCardId(
+                card, out uint nativeId) ? (long)nativeId : null;
+            NativeV111PassiveBridge.NativeUiPlayBegin(
+                id, card.Id.Entry, startedViaShortcut);
+        }
+        catch (Exception error)
+        {
+            NativeV111PassiveBridge.NativeInputHookFailure(
+                error.GetType().Name);
         }
     }
 
