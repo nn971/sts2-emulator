@@ -118,6 +118,18 @@ def assess(preflight: dict, records: list[dict], read_error: str | None,
         "native_source_input_observation": {
             "input_hook_reported_installed":
                 envelope.get("native_input_hook_installed", False),
+            "hand_menu_hook_reported_installed":
+                envelope.get("native_hand_menu_hook_installed", False),
+            "manual_play_hook_reported_installed":
+                envelope.get("native_manual_play_hook_installed", False),
+            "native_filtered_hand_menus":
+                len(envelope.get("native_hand_menus", [])),
+            "hand_menus_with_complete_ui_id_projection":
+                sum(item.get("coverage") ==
+                    "SOURCE_NATIVE_UI_VISIBLE_HAND_OPTIONS"
+                    for item in envelope.get("native_hand_menus", [])),
+            "native_manual_play_results":
+                len(envelope.get("native_manual_play_results", [])),
             "source_requests": len(envelope.get("native_input_requests", [])),
             "source_return_outcomes":
                 len(envelope.get("native_input_outcomes", [])),
