@@ -128,7 +128,8 @@ class RunPreludeAuditTests(unittest.TestCase):
     def test_paired_combat_requires_its_own_independent_audit(self):
         self.assertEqual(
             "INVALID_PRELUDE",
-            audit(prelude(), combat(), "UNVERIFIED")["status"])
+            audit(prelude(), combat_sidecar=combat(),
+                  combat_audit_status="UNVERIFIED")["status"])
         paired = audit(prelude(), combat_sidecar=combat(),
                        combat_audit_status="CALLBACK_TIMELINE_CONSISTENT")
         self.assertEqual("RUN_PRELUDE_PAIRED_SOURCE_OBSERVED",
