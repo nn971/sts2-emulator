@@ -351,6 +351,19 @@ and queue-acceptance uncertainty**, and the independent
 `RoomEntered` callback provides actual visited coordinates without
 asserting that a particular queued request caused them.
 
+The same existing pinned `RequestEnqueue` hook now also captures
+**opaque precombat queue action types** using only
+`GameAction.GetType().FullName`, paired with their source
+`RequestEnqueue` returns by reference identity. The
+`opaque_action_request` / `opaque_action_outcome` records help identify
+which previously missing precombat decisions reach the native action queue.
+No payload, choice value, owner or accepted executor action is inferred.
+The independent auditor checks these pairs and reports
+`observed_precombat_queue_action_types` separately from mapped moves.
+An unreturned opaque request keeps the prelude open or marks it incomplete.
+This leaves Neow/event/reward selection and replay completeness explicitly
+**unverified**, particularly for decisions implemented outside the queue.
+
 On its first combat, the run prelude records a `combat_link` containing
 the exact combat trace run ID and filename. The actual
 `RunManager.RoomEntered` callback runs **after** awaited native

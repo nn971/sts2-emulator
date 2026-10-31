@@ -219,6 +219,63 @@ public sealed class NativeRunPreludeRecorderTests
     }
 
     [Fact]
+    public async Task OpaquePrecombatQueueActionsAreTypedButNeverDecoded()
+    {
+        object action = new();
+        var rows = await Record(recorder =>
+        {
+            recorder.OpaqueActionRequested(action, "Example.NativeMacroAction");
+            recorder.MapActionOutcome(action, "Deferred", null);
+            recorder.RoomEntered(0, "OVERGROWTH", 2, 2,
+                3, 1, "Monster", "MAWLER", 70, 99);
+            recorder.CombatLink("combat-uuid", "passive.jsonl", 0, 3, 1);
+            recorder.Finish("First combat");
+        });
+        var request = Assert.Single(rows, r =>
+            r.GetProperty("type").GetString() == "opaque_action_request")
+            .GetProperty("data");
+        Assert.Equal("Example.NativeMacroAction",
+            request.GetProperty("native_action_type").GetString());
+        Assert.Equal("UNVERIFIED",
+            request.GetProperty("human_origin").GetString());
+        Assert.False(request.TryGetProperty("choice", out _));
+        var outcome = Assert.Single(rows, r =>
+            r.GetProperty("type").GetString() == "opaque_action_outcome")
+            .GetProperty("data");
+        Assert.Equal(request.GetProperty("request_id").GetInt64(),
+            outcome.GetProperty("request_id").GetInt64());
+        Assert.Equal("Deferred",
+            outcome.GetProperty("native_action_state").GetString());
+        Assert.Equal("SOURCE_PRELUDE_OBSERVED",
+            rows[^1].GetProperty("data").GetProperty("status").GetString());
+        Assert.Equal(0, rows[^1].GetProperty("data")
+            .GetProperty("opaque_requests_missing_postfix").GetInt32());
+    }
+
+    [Fact]
+    public async Task PendingOpaquePostfixPreventsPrematurePreludeClose()
+    {
+        object action = new();
+        bool settledBefore = true;
+        bool settledAfter = false;
+        var rows = await Record(recorder =>
+        {
+            recorder.OpaqueActionRequested(action, "Example.NativeMacroAction");
+            recorder.RoomEntered(0, "OVERGROWTH", 2, 2,
+                3, 1, "Monster", "MAWLER", 70, 99);
+            recorder.CombatLink("combat-uuid", "passive.jsonl", 0, 3, 1);
+            settledBefore = recorder.HasLinkedCombatRoomAndSettledMapRequests;
+            recorder.MapActionOutcome(action, "Finished", 15);
+            settledAfter = recorder.HasLinkedCombatRoomAndSettledMapRequests;
+            recorder.Finish("All queue returns recorded");
+        });
+        Assert.False(settledBefore);
+        Assert.True(settledAfter);
+        Assert.Equal("SOURCE_PRELUDE_OBSERVED",
+            rows[^1].GetProperty("data").GetProperty("status").GetString());
+    }
+
+    [Fact]
     public async Task MissingCombatLinkIsNotReportedAsCompletePrelude()
     {
         var rows = await Record(recorder =>

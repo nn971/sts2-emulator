@@ -293,5 +293,56 @@ class RunPreludeAuditTests(unittest.TestCase):
         self.assertEqual("INVALID_PRELUDE", audit(rows)["status"])
 
 
+    def test_opaque_precombat_queue_request_remains_non_executable(self):
+        rows = prelude()
+        insert = next(i for i, r in enumerate(rows)
+                      if r["type"] == "map_action_request")
+        request = {"type": "opaque_action_request", "data": {
+            "request_id": 3,
+            "native_action_type": "Example.NativeMacroAction",
+            "source": "ActionQueueSynchronizer.RequestEnqueue.prefix",
+            "action_identity": "SAME_NATIVE_GAME_ACTION_OBJECT",
+            "queue_acceptance": "UNVERIFIED",
+            "human_origin": "UNVERIFIED",
+            "emulator_action": "NOT_MAPPED"}}
+        outcome = {"type": "opaque_action_outcome", "data": {
+            "request_id": 3, "native_action_state": "Deferred",
+            "native_action_id": None,
+            "source": "ActionQueueSynchronizer.RequestEnqueue.postfix",
+            "native_executor_completion": "NOT_OBSERVED"}}
+        rows[insert:insert] = [request, outcome]
+        for i, row in enumerate(rows, 1):
+            row["ordinal"] = i
+        report = audit(rows)
+        self.assertEqual("RUN_PRELUDE_SOURCE_OBSERVED", report["status"])
+        self.assertEqual(["Example.NativeMacroAction"],
+                         report["observed_precombat_queue_action_types"])
+        self.assertEqual(1, len(report["source_opaque_queue_requests"]))
+        self.assertEqual(1, len(report["source_opaque_queue_outcomes"]))
+        self.assertFalse(report["native_macro_action_transcript_complete"])
+        self.assertEqual("NOT_EXECUTED", report["emulator_combat_bootstrap"])
+
+        rows[insert + 1]["data"]["request_id"] = 999
+        self.assertEqual("INVALID_PRELUDE", audit(rows)["status"])
+
+    def test_opaque_queue_missing_outcome_or_spoofed_terminal_fails(self):
+        rows = prelude()
+        index = next(i for i, r in enumerate(rows)
+                     if r["type"] == "combat_link")
+        rows.insert(index, {"type": "opaque_action_request", "data": {
+            "request_id": 3, "native_action_type": "Example.NativeMacroAction",
+            "source": "ActionQueueSynchronizer.RequestEnqueue.prefix",
+            "action_identity": "SAME_NATIVE_GAME_ACTION_OBJECT",
+            "queue_acceptance": "UNVERIFIED",
+            "human_origin": "UNVERIFIED",
+            "emulator_action": "NOT_MAPPED"}})
+        for i, row in enumerate(rows, 1):
+            row["ordinal"] = i
+        self.assertEqual("INVALID_PRELUDE", audit(rows)["status"])
+        rows[-1]["data"]["opaque_requests_missing_postfix"] = 1
+        self.assertEqual("INVALID_PRELUDE", audit(rows)["status"])
+
+
+
 if __name__ == "__main__":
     unittest.main()

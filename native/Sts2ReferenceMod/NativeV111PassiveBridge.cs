@@ -342,6 +342,14 @@ internal static class NativeV111PassiveBridge
                 from?.col, from?.row,
                 to?.coord.col, to?.coord.row, to?.mapGenerationCount);
         }
+        else
+        {
+            // Non-map source requests remain opaque: observing their CLR
+            // class and queue return is safe, but does not capture an
+            // executable Neow/reward/event choice.
+            _runPrelude.OpaqueActionRequested(action,
+                action.GetType().FullName ?? action.GetType().Name);
+        }
     }
 
     private static void CapturePreludeRng(

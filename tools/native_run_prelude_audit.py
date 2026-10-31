@@ -18,7 +18,8 @@ from native_action_envelope_audit import load as load_sidecar
 _TYPES = {
     "run_started", "room_entered", "run_rng_snapshot",
     "map_action_request",
-    "map_action_outcome", "combat_link", "observation_failure", "terminal",
+    "map_action_outcome", "opaque_action_request", "opaque_action_outcome",
+    "combat_link", "observation_failure", "terminal",
 }
 _EXPLICIT_GAPS = [
     "NEOW_CHOICE_NOT_CAPTURED",
@@ -53,6 +54,12 @@ def _status(status, errors, events, **additional):
         "precombat_rng_call_history_complete": False,
         "source_map_requests": events.get("requests", []),
         "source_map_outcomes": events.get("outcomes", []),
+        "source_opaque_queue_requests": events.get("opaque_requests", []),
+        "source_opaque_queue_outcomes": events.get("opaque_outcomes", []),
+        "observed_precombat_queue_action_types": sorted({
+            item["native_action_type"]
+            for item in events.get("opaque_requests", [])
+        }),
         "source_observed_map_arrival_matches": events.get("arrivals", []),
         "map_vote_is_human_proof": False,
         "map_request_proves_room_arrival": False,
@@ -70,6 +77,7 @@ def audit(records: list[dict], error: str | None = None,
           combat_audit_status: str | None = None) -> dict:
     errors = []
     events = {"rooms": [], "requests": [], "outcomes": [],
+              "opaque_requests": [], "opaque_outcomes": [],
               "arrivals": [], "rng_snapshots": []}
     if error:
         errors.append(error)
@@ -235,11 +243,30 @@ def audit(records: list[dict], error: str | None = None,
                 or data.get("emulator_action") != "NOT_MAPPED"):
                 errors.append(f"Invalid native map request at {ordinal}")
             else:
-                request_ids[request_id] = {"ordinal": ordinal, **data}
+                request_ids[request_id] = {"ordinal": ordinal, "opaque": False,
+                                           **data}
                 events["requests"].append({"ordinal": ordinal, **data})
+        elif typ == "opaque_action_request":
+            request_id = data.get("request_id")
+            if (not _nonnegative(request_id) or request_id == 0
+                or request_id in request_ids
+                or not isinstance(data.get("native_action_type"), str)
+                or not data["native_action_type"].strip()
+                or data.get("source") !=
+                    "ActionQueueSynchronizer.RequestEnqueue.prefix"
+                or data.get("action_identity") != "SAME_NATIVE_GAME_ACTION_OBJECT"
+                or data.get("queue_acceptance") != "UNVERIFIED"
+                or data.get("human_origin") != "UNVERIFIED"
+                or data.get("emulator_action") != "NOT_MAPPED"):
+                errors.append(f"Invalid opaque queue request at {ordinal}")
+            else:
+                request_ids[request_id] = {"ordinal": ordinal, "opaque": True,
+                                           **data}
+                events["opaque_requests"].append({"ordinal": ordinal, **data})
         elif typ == "map_action_outcome":
             request_id = data.get("request_id")
             if (request_id not in request_ids
+                or request_ids[request_id]["opaque"]
                 or request_id in outcomes_seen
                 or data.get("source") !=
                     "ActionQueueSynchronizer.RequestEnqueue.postfix"
@@ -249,6 +276,21 @@ def audit(records: list[dict], error: str | None = None,
             else:
                 outcomes_seen.add(request_id)
                 events["outcomes"].append({"ordinal": ordinal, **data})
+        elif typ == "opaque_action_outcome":
+            request_id = data.get("request_id")
+            if (request_id not in request_ids
+                or not request_ids[request_id]["opaque"]
+                or request_id in outcomes_seen
+                or not isinstance(data.get("native_action_state"), str)
+                or (data.get("native_action_id") is not None
+                    and not _nonnegative(data["native_action_id"]))
+                or data.get("source") !=
+                    "ActionQueueSynchronizer.RequestEnqueue.postfix"
+                or data.get("native_executor_completion") != "NOT_OBSERVED"):
+                errors.append(f"Invalid opaque queue outcome at {ordinal}")
+            else:
+                outcomes_seen.add(request_id)
+                events["opaque_outcomes"].append({"ordinal": ordinal, **data})
         elif typ == "combat_link":
             if (link is not None
                 or not isinstance(data.get("combat_run_id"), str)
@@ -268,7 +310,7 @@ def audit(records: list[dict], error: str | None = None,
         elif typ == "observation_failure":
             errors.append(f"Source observer reported failure at {ordinal}")
     if set(request_ids) != outcomes_seen:
-        errors.append("Native map requests missing queue return observations")
+        errors.append("Native precombat queue requests missing return observations")
     if terminal.get("status") != "SOURCE_PRELUDE_OBSERVED":
         errors.append("Native prelude terminal is incomplete or lacks combat")
     if (terminal.get("combat_link_recorded") is not True
@@ -295,6 +337,8 @@ def audit(records: list[dict], error: str | None = None,
             errors.append("Terminal did not verify linked combat room arrival")
         if terminal.get("map_requests_missing_postfix") != 0:
             errors.append("Terminal has pending native map queue returns")
+        if terminal.get("opaque_requests_missing_postfix", 0) != 0:
+            errors.append("Terminal has pending native opaque queue returns")
 
     # A coincident request/arrival is useful diagnostic evidence only.
     # It never proves which queued action caused an actual map traversal.

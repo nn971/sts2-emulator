@@ -5,7 +5,7 @@ namespace Sts2ReferenceMod.Trace;
 
 /// <summary>
 /// Source-only run-start to first-combat chronology. Captures native run
-/// identity, visited room coordinates, source map action requests/outcomes
+/// identity, visited room coordinates, precombat queue request types/outcomes
 /// and the first combat trace link without executing commands or RNG.
 ///
 /// This is intentionally NOT a complete macro choice journal: Neow,
@@ -15,7 +15,7 @@ public sealed class NativeRunPreludeRecorder : IAsyncDisposable
 {
     public const string Schema = "native-run-prelude-v1";
     private readonly AsyncTraceWriter _writer;
-    private readonly Dictionary<object, long> _requests =
+    private readonly Dictionary<object, (long Id, bool Opaque)> _requests =
         new(ReferenceEqualityComparer.Instance);
     private long _ordinal;
     private long _nextRequestId;
@@ -168,7 +168,7 @@ public sealed class NativeRunPreludeRecorder : IAsyncDisposable
             return;
         }
         long id = ++_nextRequestId;
-        _requests[action] = id;
+        _requests[action] = (id, false);
         Write("map_action_request", new
         {
             request_id = id, kind,
@@ -184,13 +184,51 @@ public sealed class NativeRunPreludeRecorder : IAsyncDisposable
         });
     }
 
+    /// <summary>
+    /// Record every other precombat queue request by CLR type only. This
+    /// deliberately avoids ToNetAction, choice inference and extra RNG calls.
+    /// </summary>
+    public void OpaqueActionRequested(object action, string nativeActionType)
+    {
+        if (_closed) return;
+        if (string.IsNullOrWhiteSpace(nativeActionType)
+            || _requests.ContainsKey(action))
+        {
+            ObservationFailure("opaque_action_request",
+                "INVALID_OR_DUPLICATE_NATIVE_ACTION");
+            return;
+        }
+        long id = ++_nextRequestId;
+        _requests[action] = (id, true);
+        Write("opaque_action_request", new
+        {
+            request_id = id, native_action_type = nativeActionType,
+            source = "ActionQueueSynchronizer.RequestEnqueue.prefix",
+            action_identity = "SAME_NATIVE_GAME_ACTION_OBJECT",
+            queue_acceptance = "UNVERIFIED",
+            human_origin = "UNVERIFIED",
+            emulator_action = "NOT_MAPPED"
+        });
+    }
+
     public void MapActionOutcome(object action, string nativeActionState,
                                  uint? nativeActionId)
     {
-        if (_closed || !_requests.Remove(action, out long id)) return;
+        if (_closed || !_requests.Remove(action, out var pending)) return;
+        if (pending.Opaque)
+        {
+            Write("opaque_action_outcome", new
+            {
+                request_id = pending.Id, native_action_state = nativeActionState,
+                native_action_id = nativeActionId,
+                source = "ActionQueueSynchronizer.RequestEnqueue.postfix",
+                native_executor_completion = "NOT_OBSERVED"
+            });
+            return;
+        }
         Write("map_action_outcome", new
         {
-            request_id = id, native_action_state = nativeActionState,
+            request_id = pending.Id, native_action_state = nativeActionState,
             native_action_id = nativeActionId,
             source = "ActionQueueSynchronizer.RequestEnqueue.postfix",
             native_executor_completion = "NOT_OBSERVED",
@@ -246,7 +284,8 @@ public sealed class NativeRunPreludeRecorder : IAsyncDisposable
             linked_combat_room_arrival_observed =
                 _linked && _sourceRoomArrivals.Contains((
                     _linkedActIndex, _linkedMapColumn, _linkedMapRow)),
-            map_requests_missing_postfix = _requests.Count,
+            map_requests_missing_postfix = _requests.Values.Count(p => !p.Opaque),
+            opaque_requests_missing_postfix = _requests.Values.Count(p => p.Opaque),
             source_macro_choices_complete = false,
             native_rng_parity = "NOT_TESTED",
             emulator_bootstrap = "NOT_TESTED"
