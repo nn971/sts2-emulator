@@ -262,6 +262,91 @@ public sealed class NativeActionEnvelopeRecorderTests
     }
 
     [Fact]
+    public async Task NativeMenuRevalidationAndPeekAreVersionedWithoutRecheckingFilter()
+    {
+        object hand = new();
+        var entries = await Record(recorder =>
+        {
+            recorder.NativeHandMenu("SimpleSelect", "SURVIVOR",
+                1, 1, false, 3, 0,
+                [
+                    new NativeHandMenuOption(7, "DEFEND_SILENT", 0),
+                    new NativeHandMenuOption(9, "STRIKE_SILENT", 2)
+                ], 1UL, 4U, "SOURCE_ASYNC_FLOW_RESERVED_ID", hand);
+            // An unchanged original native refresh has no new evidence.
+            recorder.NativeHandMenuRefresh(hand, "SimpleSelect",
+                false, 3, 0,
+                [
+                    new NativeHandMenuOption(7, "DEFEND_SILENT", 0),
+                    new NativeHandMenuOption(9, "STRIKE_SILENT", 2)
+                ]);
+            recorder.NativeHandMenuRefresh(hand, "SimpleSelect",
+                false, 3, 0,
+                [new NativeHandMenuOption(9, "STRIKE_SILENT", 2)]);
+            // Peek mode may show every card; none is a selectable offer.
+            recorder.NativeHandMenuRefresh(hand, "SimpleSelect",
+                true, 3, 0, []);
+            recorder.NativeHandMenuRefresh(hand, "SimpleSelect",
+                false, 3, 0,
+                [
+                    new NativeHandMenuOption(7, "DEFEND_SILENT", 0),
+                    new NativeHandMenuOption(9, "STRIKE_SILENT", 2)
+                ]);
+            recorder.NativeHandMenuClosed(hand, "AfterCardsSelected");
+            recorder.NativeHandMenuClosed(hand, "NativeHandExitTree");
+            recorder.NativeHandMenuRefresh(hand, "SimpleSelect", false, 0, 0, []);
+            recorder.Finish("Combat ended", State(2));
+        });
+        var revisions = entries.Where(x =>
+            x.GetProperty("type").GetString() == "native_hand_menu_revision").ToArray();
+        Assert.Equal(3, revisions.Length);
+        Assert.Equal(2, revisions[0].GetProperty("data")
+            .GetProperty("revision").GetInt32());
+        Assert.Equal(4, revisions[2].GetProperty("data")
+            .GetProperty("revision").GetInt32());
+        Assert.Equal("NATIVE_PEEK_VIEW_NOT_SELECTABLE",
+            revisions[1].GetProperty("data").GetProperty("coverage").GetString());
+        Assert.True(revisions[1].GetProperty("data")
+            .GetProperty("peek_mode").GetBoolean());
+        Assert.Equal(0, revisions[1].GetProperty("data")
+            .GetProperty("options").GetArrayLength());
+        Assert.All(revisions, rev => Assert.Equal(4U,
+            rev.GetProperty("data").GetProperty("selection_choice_id").GetUInt32()));
+        var closed = Assert.Single(entries, x =>
+            x.GetProperty("type").GetString() == "native_hand_menu_closed");
+        Assert.Equal(4, closed.GetProperty("data")
+            .GetProperty("final_revision").GetInt32());
+        Assert.Equal("AfterCardsSelected",
+            closed.GetProperty("data").GetProperty("native_reason").GetString());
+        Assert.Equal("OBSERVED", entries[^1].GetProperty("data")
+            .GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task InvalidNativeMenuRefreshFailsClosedWithoutInventingOptions()
+    {
+        object hand = new();
+        var entries = await Record(recorder =>
+        {
+            recorder.NativeHandMenu("SimpleSelect", "SURVIVOR",
+                1, 1, false, 1, 0,
+                [new NativeHandMenuOption(7, "DEFEND_SILENT", 0)],
+                nativeHand: hand);
+            recorder.NativeHandMenuRefresh(hand, "SimpleSelect",
+                true, 1, 0,
+                [new NativeHandMenuOption(7, "DEFEND_SILENT", 0)]);
+            recorder.NativeHandMenuClosed(hand, "NativeHandExitTree");
+            recorder.Finish("Combat ended", State(2));
+        });
+        Assert.Empty(entries.Where(x =>
+            x.GetProperty("type").GetString() == "native_hand_menu_revision"));
+        Assert.Single(entries, x =>
+            x.GetProperty("type").GetString() == "observation_failure");
+        Assert.Equal("INCOMPLETE_CAPTURE", entries[^1]
+            .GetProperty("data").GetProperty("status").GetString());
+    }
+
+    [Fact]
     public async Task UnmappedUiCardPreventsCompleteMenuAndInvalidProjectionFailsClosed()
     {
         var entries = await Record(recorder =>
