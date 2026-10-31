@@ -139,6 +139,13 @@ internal static class NativeV111PassiveBridge
     internal static void NativeHandMenuClosed(object nativeHand, string reason) =>
         _actionEnvelopes?.NativeHandMenuClosed(nativeHand, reason);
 
+    /// <summary>Read the original native hand-click/shortcut UI gate result.</summary>
+    internal static void NativeUiHandGate(
+        string sourceMethod, bool allowed, string nativeMode,
+        bool existingCardPlay) =>
+        _actionEnvelopes?.NativeUiHandGate(
+            sourceMethod, allowed, nativeMode, existingCardPlay);
+
     /// <summary>Original native UI card interaction before drag/targeting.</summary>
     internal static void NativeUiPlayBegin(
         long? combatCardId, string cardModelId, bool viaShortcut) =>
@@ -440,7 +447,8 @@ internal static class NativeV111PassiveBridge
             nativeHandChoiceFlowHookInstalled:
                 NativeV111InputHooks.HasHandChoiceFlowHook,
             nativeManualPlayHookInstalled: NativeV111InputHooks.HasManualPlayHook,
-            nativeUiPlayBeginHookInstalled: NativeV111InputHooks.HasUiPlayBeginHook);
+            nativeUiPlayBeginHookInstalled: NativeV111InputHooks.HasUiPlayBeginHook,
+            nativeUiGateHookInstalled: NativeV111InputHooks.HasUiGateHook);
         if (!string.IsNullOrWhiteSpace(actualSeed))
             _actionEnvelopes.NativeRunIdentity(actualSeed, actualAscension);
         // A source-audited initial shuffle executes before the rendered
