@@ -25,8 +25,10 @@ internal static class NativeV111InputHooks
 {
     private const string Owner = "nn971.sts2-inspector.native-input-v111";
     private const string ChoiceOwner = Owner + ".choice-flow";
+    private const string HandMenuOwner = Owner + ".hand-menu";
     private static Harmony? _patches;
     private static Harmony? _choicePatches;
+    private static Harmony? _handMenuPatches;
     internal static bool IsInstalled => _patches is not null;
     internal static bool HasHandMenuHook { get; private set; }
     internal static bool HasHandChoiceFlowHook { get; private set; }
@@ -67,7 +69,7 @@ internal static class NativeV111InputHooks
                 postfix: new HarmonyMethod(postfix));
             // Optional UI sources. Native RequestEnqueue evidence stays usable
             // if either local game signature has changed since the pinned source.
-            HasHandMenuHook = TryPatchHandMenu(patches);
+            HasHandMenuHook = TryPatchHandMenu();
             HasHandChoiceFlowHook = TryPatchHandChoiceFlow();
             HasManualPlayHook = TryPatchManualPlay(patches);
             HasUiPlayBeginHook = TryPatchUiPlayBegin(patches);
@@ -86,7 +88,10 @@ internal static class NativeV111InputHooks
             catch (Exception) { }
             try { _choicePatches?.UnpatchAll(ChoiceOwner); }
             catch (Exception) { }
+            try { _handMenuPatches?.UnpatchAll(HandMenuOwner); }
+            catch (Exception) { }
             _choicePatches = null;
+            _handMenuPatches = null;
             HasHandChoiceFlowHook = false;
             HasHandMenuHook = false;
             HasManualPlayHook = false;
@@ -96,28 +101,54 @@ internal static class NativeV111InputHooks
         }
     }
 
-    private static bool TryPatchHandMenu(Harmony patches)
+    private static bool TryPatchHandMenu()
     {
+        Harmony? instance = null;
         try
         {
-            // The async method initializes the native hand selection UI,
-            // runs UpdateSelectModeCardVisibility (which evaluates the native
-            // filter once), then awaits the user's choice. The ordinary method
-            // postfix reads the resulting UI; it never invokes the predicate.
-            var target = AccessTools.Method(typeof(NPlayerHand),
+            // The original async method initializes the UI and runs the
+            // native filter. Its postfix captures the initial menu. Subsequent
+            // calls to the original visibility updater produce *revisions*.
+            // No observer invokes the source filter a second time.
+            var start = AccessTools.Method(typeof(NPlayerHand),
                 nameof(NPlayerHand.SelectCards),
                 [typeof(CardSelectorPrefs), typeof(Func<CardModel, bool>),
-                 typeof(AbstractModel), typeof(NPlayerHand.Mode)]);
-            if (target is null)
-                throw new MissingMethodException("NPlayerHand.SelectCards");
-            patches.Patch(target, postfix: new HarmonyMethod(
+                 typeof(AbstractModel), typeof(NPlayerHand.Mode)])
+                ?? throw new MissingMethodException("NPlayerHand.SelectCards");
+            var refresh = AccessTools.Method(typeof(NPlayerHand),
+                "UpdateSelectModeCardVisibility", Type.EmptyTypes)
+                ?? throw new MissingMethodException(
+                    "NPlayerHand.UpdateSelectModeCardVisibility");
+            var close = AccessTools.Method(typeof(NPlayerHand),
+                "AfterCardsSelected", [typeof(AbstractModel)])
+                ?? throw new MissingMethodException("NPlayerHand.AfterCardsSelected");
+            var exit = AccessTools.Method(typeof(NPlayerHand),
+                nameof(NPlayerHand._ExitTree), Type.EmptyTypes)
+                ?? throw new MissingMethodException("NPlayerHand._ExitTree");
+            instance = new Harmony(HandMenuOwner);
+            instance.Patch(start, postfix: new HarmonyMethod(
                 typeof(NativeV111InputHooks).GetMethod(
                     nameof(PostfixHandSelect),
                     BindingFlags.NonPublic | BindingFlags.Static)!));
+            instance.Patch(refresh, postfix: new HarmonyMethod(
+                typeof(NativeV111InputHooks).GetMethod(
+                    nameof(PostfixHandVisibilityRefresh),
+                    BindingFlags.NonPublic | BindingFlags.Static)!));
+            instance.Patch(close, postfix: new HarmonyMethod(
+                typeof(NativeV111InputHooks).GetMethod(
+                    nameof(PostfixHandSelectionClosed),
+                    BindingFlags.NonPublic | BindingFlags.Static)!));
+            instance.Patch(exit, prefix: new HarmonyMethod(
+                typeof(NativeV111InputHooks).GetMethod(
+                    nameof(PrefixHandExitTree),
+                    BindingFlags.NonPublic | BindingFlags.Static)!));
+            _handMenuPatches = instance;
             return true;
         }
         catch (Exception error)
         {
+            try { instance?.UnpatchAll(HandMenuOwner); }
+            catch (Exception) { }
             GD.PushError("[Sts2ReferenceMod] HAND_MENU_HOOK_STATUS=UNAVAILABLE;" +
                 " reason=" + error.GetType().Name);
             return false;
@@ -278,9 +309,40 @@ internal static class NativeV111InputHooks
         }
     }
 
-    // This postfix observes the native UI *after* its own hand-card filter
-    // and visibility update. Reading the existing holders and looking up
-    // preassigned NetCombatCardDb IDs is side-effect-free in pinned v111.
+    /// <summary>
+    /// Projects only the game's existing holder.Visible flags and registered
+    /// combat card IDs. In peek mode, visible holders are not selectable:
+    /// omit them from the selectable candidate set.
+    /// </summary>
+    private static (int HolderCount, int MissingIds,
+        List<NativeHandMenuOption> Options) ReadNativeHandVisibility(
+            NPlayerHand hand, bool peekMode)
+    {
+        var holders = hand.CardHolderContainer.GetChildren()
+            .OfType<NHandCardHolder>().ToArray();
+        var options = new List<NativeHandMenuOption>();
+        int missingIds = 0;
+        if (peekMode) return (holders.Length, missingIds, options);
+        for (int i = 0; i < holders.Length; i++)
+        {
+            var holder = holders[i];
+            if (!holder.Visible || holder.CardNode?.Model is not CardModel card)
+                continue;
+            // Pinned native NetCombatCardDb.TryGetCardId is a dictionary lookup.
+            if (!NetCombatCardDb.Instance.TryGetCardId(card, out uint id))
+            {
+                ++missingIds;
+                continue;
+            }
+            options.Add(new NativeHandMenuOption(
+                (long)id, card.Id.Entry, i));
+        }
+        return (holders.Length, missingIds, options);
+    }
+
+    // Captures the initial selection after the game's first native
+    // UpdateSelectModeCardVisibility has finished. The exact choice ID, when
+    // available, comes from the earlier same-async-flow source reservation.
     private static void PostfixHandSelect(
         NPlayerHand __instance, CardSelectorPrefs prefs,
         AbstractModel? source, NPlayerHand.Mode mode)
@@ -293,31 +355,69 @@ internal static class NativeV111InputHooks
                 || __instance.PeekButton.IsPeeking
                 || __instance.CardHolderContainer is null)
                 return;
-            var holders = __instance.CardHolderContainer.GetChildren()
-                .OfType<NHandCardHolder>().ToArray();
-            var options = new List<NativeHandMenuOption>();
-            int missingIds = 0;
-            for (int i = 0; i < holders.Length; i++)
-            {
-                var holder = holders[i];
-                if (!holder.Visible || holder.CardNode?.Model is not CardModel card)
-                    continue;
-                // TryGetCardId is a Dictionary.TryGetValue on an already
-                // registered native combat card; it never assigns a new ID.
-                if (!NetCombatCardDb.Instance.TryGetCardId(card, out uint id))
-                {
-                    ++missingIds;
-                    continue;
-                }
-                options.Add(new NativeHandMenuOption(
-                    (long)id, card.Id.Entry, i));
-            }
+            var observed = ReadNativeHandVisibility(__instance, false);
             NativeHandChoiceFlow.Binding flow = NativeHandChoiceFlow.Current();
             NativeV111PassiveBridge.NativeHandMenu(
                 mode.ToString(), source?.Id.Entry,
                 prefs.MinSelect, prefs.MaxSelect,
-                prefs.RequireManualConfirmation, holders.Length,
-                missingIds, options, flow.OwnerId, flow.ChoiceId, flow.Status);
+                prefs.RequireManualConfirmation, observed.HolderCount,
+                observed.MissingIds, observed.Options,
+                flow.OwnerId, flow.ChoiceId, flow.Status, __instance);
+        }
+        catch (Exception error)
+        {
+            NativeV111PassiveBridge.NativeInputHookFailure(
+                error.GetType().Name);
+        }
+    }
+
+    // The original method has already evaluated the real native selection
+    // predicate and assigned holder.Visible. This can be called by native
+    // hand insertions, state revalidation, and peek-mode transitions.
+    private static void PostfixHandVisibilityRefresh(NPlayerHand __instance)
+    {
+        if (!NativeV111PassiveBridge.HasActionSidecar) return;
+        try
+        {
+            if (!__instance.IsInCardSelection
+                || __instance.PeekButton is null
+                || __instance.CardHolderContainer is null)
+                return;
+            bool peeking = __instance.PeekButton.IsPeeking;
+            var observed = ReadNativeHandVisibility(__instance, peeking);
+            NativeV111PassiveBridge.NativeHandMenuRefresh(
+                __instance, __instance.CurrentMode.ToString(), peeking,
+                observed.HolderCount, observed.MissingIds, observed.Options);
+        }
+        catch (Exception error)
+        {
+            NativeV111PassiveBridge.NativeInputHookFailure(
+                error.GetType().Name);
+        }
+    }
+
+    private static void PostfixHandSelectionClosed(NPlayerHand __instance)
+    {
+        try
+        {
+            if (NativeV111PassiveBridge.HasActionSidecar)
+                NativeV111PassiveBridge.NativeHandMenuClosed(
+                    __instance, "AfterCardsSelected");
+        }
+        catch (Exception error)
+        {
+            NativeV111PassiveBridge.NativeInputHookFailure(
+                error.GetType().Name);
+        }
+    }
+
+    private static void PrefixHandExitTree(NPlayerHand __instance)
+    {
+        try
+        {
+            if (NativeV111PassiveBridge.HasActionSidecar)
+                NativeV111PassiveBridge.NativeHandMenuClosed(
+                    __instance, "NativeHandExitTree");
         }
         catch (Exception error)
         {
