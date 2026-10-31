@@ -51,7 +51,8 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
         bool nativeRngFloatHookInstalled = false,
         bool nativeInputHookInstalled = false,
         bool nativeHandMenuHookInstalled = false,
-        bool nativeManualPlayHookInstalled = false)
+        bool nativeManualPlayHookInstalled = false,
+        bool nativeUiPlayBeginHookInstalled = false)
     {
         _gameBuild = gameBuild;
         _writer = new AsyncTraceWriter(path, queueCapacity);
@@ -70,6 +71,7 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
                 native_input_hook_installed = nativeInputHookInstalled,
                 native_hand_menu_hook_installed = nativeHandMenuHookInstalled,
                 native_manual_play_hook_installed = nativeManualPlayHookInstalled,
+                native_ui_play_begin_hook_installed = nativeUiPlayBeginHookInstalled,
                 native_rng_stream_checkpoints_enabled = nativeRngStreamCheckpointsEnabled,
                 native_monster_ai_scope_installed = nativeMonsterAiScopeInstalled,
                 native_shuffle_scope_installed = nativeShuffleScopeInstalled,
@@ -229,6 +231,35 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
                 selection_id_binding = "UNVERIFIED",
                 predicate_re_evaluated_by_inspector = false,
                 source = "NPlayerHand.SelectCards.postfix_after_native_visibility_update",
+                emulator_parity = "NOT_TESTED"
+            })));
+    }
+
+    /// <summary>
+    /// Native hand input was initiated from click or shortcut and passed
+    /// NPlayerHand's existing UI guards. Drag/targeting may still cancel it.
+    /// </summary>
+    public void NativeUiPlayBegin(long? cardId, string modelId, bool shortcut)
+    {
+        if (_closed) return;
+        if (string.IsNullOrWhiteSpace(modelId) || cardId is < 0)
+        {
+            ObservationFailure("native_ui_play_begin", "INVALID_NATIVE_CARD_ID");
+            return;
+        }
+        Write(new NativeActionEnvelopeRecord(
+            "native_ui_play_begin", Next(),
+            Data: JsonSerializer.SerializeToElement(new
+            {
+                combat_card_id = cardId,
+                card_model_id = modelId,
+                started_via_shortcut = shortcut,
+                source = "NPlayerHand.StartCardPlay.prefix",
+                native_ui_gate = "SOURCE_CALLSITE_PASSED",
+                manual_play_accepted = "NOT_TESTED",
+                queue_acceptance = "NOT_TESTED",
+                human_origin = "UNVERIFIED",
+                full_legal_menu = "NOT_TESTED",
                 emulator_parity = "NOT_TESTED"
             })));
     }
