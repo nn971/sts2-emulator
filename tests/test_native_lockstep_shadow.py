@@ -18,6 +18,7 @@ def snapshot(seed=SOURCE_SEED, ascension=10, phase="Combat"):
         "game_build": "v111-fixture",
         "state": {
             "run_seed": seed, "ascension": ascension, "phase": phase,
+            "world": {"combat": {} if phase == "Combat" else None},
         },
     })
 
@@ -113,6 +114,11 @@ def setup(legal=None, after_energy=2):
 
 
 class NativeShadowTests(unittest.TestCase):
+    def test_malformed_journal_fails_closed_without_opening_session(self):
+        report = run_shadow([], snapshot(), crosswalk(), None)
+        self.assertEqual("BLOCKED_NATIVE_SOURCE", report["status"])
+        self.assertEqual("NOT_TESTED", report["native_game_parity"])
+
     def test_missing_snapshot_blocks_without_starting_emulator(self):
         result = run_shadow(journal(), None, crosswalk(), None)
         self.assertEqual("BLOCKED_EMULATOR_BOOTSTRAP", result["status"])
