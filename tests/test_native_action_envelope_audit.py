@@ -225,6 +225,30 @@ class EnvelopeAuditTests(unittest.TestCase):
         missing[5]["data"]["missing_card_ids"] = 1
         self.assertEqual("INCOMPLETE_CAPTURE", audit(missing)["status"])
 
+    def test_native_ui_card_interaction_is_before_optional_manual_acceptance(self):
+        rows = sample()
+        ui = {"type": "native_ui_play_begin", "data": {
+            "combat_card_id": 19, "card_model_id": "SHIV",
+            "started_via_shortcut": True,
+            "source": "NPlayerHand.StartCardPlay.prefix",
+            "native_ui_gate": "SOURCE_CALLSITE_PASSED",
+            "manual_play_accepted": "NOT_TESTED",
+            "queue_acceptance": "NOT_TESTED",
+            "human_origin": "UNVERIFIED",
+            "full_legal_menu": "NOT_TESTED",
+            "emulator_parity": "NOT_TESTED"}}
+        rows.insert(3, ui)
+        for i, row in enumerate(rows, 1):
+            row["ordinal"] = i
+        result = audit(rows)
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", result["status"])
+        self.assertEqual(1, len(result["native_ui_play_begins"]))
+        self.assertTrue(
+            result["native_ui_play_begins"][0]["started_via_shortcut"])
+        forged = copy.deepcopy(rows)
+        forged[3]["data"]["full_legal_menu"] = "VERIFIED"
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(forged)["status"])
+
     def test_native_manual_play_result_does_not_prove_queue_acceptance(self):
         rows = sample()
         manual = {"type": "native_manual_play_result", "data": {
