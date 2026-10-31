@@ -98,6 +98,13 @@ class NativeL0EvidenceTests(unittest.TestCase):
     def test_source_input_evidence_is_reported_but_never_counts_as_menu_parity(self):
         self.envelope.update({
             "native_input_hook_installed": True,
+            "native_hand_menu_hook_installed": True,
+            "native_manual_play_hook_installed": True,
+            "native_hand_menus": [
+                {"coverage": "SOURCE_NATIVE_UI_VISIBLE_HAND_OPTIONS"},
+                {"coverage": "INCOMPLETE_NATIVE_CARD_ID_MAPPING"}],
+            "native_manual_play_results": [
+                {"returned_success": True}, {"returned_success": False}],
             "native_input_requests": [
                 {"input_request_id": 1}, {"input_request_id": 2}],
             "native_input_outcomes": [
@@ -112,6 +119,11 @@ class NativeL0EvidenceTests(unittest.TestCase):
         report = self.assess()
         observed = report["native_source_input_observation"]
         self.assertTrue(observed["input_hook_reported_installed"])
+        self.assertTrue(observed["hand_menu_hook_reported_installed"])
+        self.assertTrue(observed["manual_play_hook_reported_installed"])
+        self.assertEqual(2, observed["native_filtered_hand_menus"])
+        self.assertEqual(1, observed["hand_menus_with_complete_ui_id_projection"])
+        self.assertEqual(2, observed["native_manual_play_results"])
         self.assertEqual(2, observed["source_requests"])
         self.assertEqual(1, observed["source_return_outcomes"])
         self.assertEqual(1, observed["requests_linked_to_executor"])
