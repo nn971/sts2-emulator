@@ -58,6 +58,81 @@ class EnvelopeAuditTests(unittest.TestCase):
         self.assertEqual(0, installed["native_rng_source_calls"])
         self.assertEqual("NOT_TESTED", installed["exact_rng_parity"])
 
+    def test_source_request_seed_and_choice_are_audited_without_acceptance_claim(self):
+        records = sample()
+        records[0]["data"]["native_input_hook_installed"] = True
+        identity = {"type": "native_run_identity", "data": {
+            "seed": "6JK8MD0VQQTA", "ascension": 10,
+            "source": "RunState.Rng.StringSeed",
+            "rng_draws_performed": 0,
+            "emulator_run_identity_parity": "NOT_TESTED"}}
+        request = {"type": "native_input_request",
+            "native_type": "PlayCardAction",
+            "canonical_action": records[2]["canonical_action"],
+            "data": {"input_request_id": 1,
+                "source": "ActionQueueSynchronizer.RequestEnqueue.prefix",
+                "native_acceptance": "UNVERIFIED",
+                "human_origin": "UNVERIFIED",
+                "input_injected": False}}
+        records[2]["data"] = {
+            "input_request_id": 1,
+            "request_execution_link": "SAME_NATIVE_ACTION_OBJECT",
+            "human_origin": "UNVERIFIED"}
+        selection = {"type": "native_player_choice",
+            "action_id": 1,
+            "data": {"owner_id": 1, "choice_id": 0,
+                "choice_type": "CombatCard",
+                "selected_combat_card_ids": [5],
+                "selected_indexes": None,
+                "selected_canonical_card_models": None,
+                "selected_player_id": None,
+                "selection_projection": "EXACT_COMBAT_CARD_IDS",
+                "origin": "PlayerChoiceSynchronizer.PlayerChoiceReceived",
+                "accepted_choice_menu": "NOT_CAPTURED",
+                "human_origin": "UNVERIFIED"}}
+        records.insert(1, identity)
+        records.insert(3, request)
+        records.insert(7, selection)
+        for i, record in enumerate(records):
+            record["ordinal"] = i + 1
+        result = audit(records)
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", result["status"])
+        self.assertTrue(result["native_input_hook_installed"])
+        self.assertEqual("6JK8MD0VQQTA",
+                         result["native_run_identity"]["seed"])
+        self.assertEqual(1, result["source_request_execution_links"])
+        self.assertEqual(1, len(result["native_input_requests"]))
+        self.assertEqual("UNVERIFIED",
+                         result["native_input_requests"][0]["acceptance"])
+        self.assertEqual([5],
+                         result["native_player_choices"][0]["selected_combat_card_ids"])
+        self.assertEqual("NOT_TESTED", result["native_game_parity"])
+
+        forged = copy.deepcopy(records)
+        forged[4]["data"]["input_request_id"] = 999
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(forged)["status"])
+        forged = copy.deepcopy(records)
+        forged[7]["data"]["accepted_choice_menu"] = "EXACT"
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(forged)["status"])
+
+    def test_canceled_or_deferred_request_never_becomes_accepted_by_auditor(self):
+        records = sample()
+        request = {"type": "native_input_request", "native_type": "PlayCardAction",
+            "canonical_action": records[2]["canonical_action"],
+            "data": {"input_request_id": 1,
+                "source": "ActionQueueSynchronizer.RequestEnqueue.prefix",
+                "native_acceptance": "UNVERIFIED",
+                "human_origin": "UNVERIFIED",
+                "input_injected": False}}
+        records.insert(2, request)
+        for i, row in enumerate(records):
+            row["ordinal"] = i + 1
+        result = audit(records)
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", result["status"])
+        self.assertEqual(0, result["source_request_execution_links"])
+        self.assertEqual("UNVERIFIED",
+                         result["native_input_requests"][0]["acceptance"])
+
     def test_valid_nested_action_window_and_measured_delta(self):
         report = audit(sample())
         self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", report["status"])
