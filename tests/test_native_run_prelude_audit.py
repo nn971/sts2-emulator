@@ -87,6 +87,8 @@ def prelude():
             "status": "SOURCE_PRELUDE_OBSERVED",
             "reason": "First observed combat capture",
             "combat_link_recorded": True,
+            "linked_combat_room_arrival_observed": True,
+            "map_requests_missing_postfix": 0,
             "source_macro_choices_complete": False,
             "native_rng_parity": "NOT_TESTED",
             "emulator_bootstrap": "NOT_TESTED"}},
@@ -179,6 +181,37 @@ class RunPreludeAuditTests(unittest.TestCase):
         self.assertIn("Native map requests missing queue return observations",
                       result["errors"])
         self.assertFalse(result["map_request_proves_room_arrival"])
+
+    def test_combat_link_can_precede_native_room_entered_callback(self):
+        rows = prelude()
+        link = rows.pop(-2)
+        rows.insert(6, link)  # Earlier than source RoomEntered
+        for n, row in enumerate(rows, 1):
+            row["ordinal"] = n
+        result = audit(rows)
+        self.assertEqual("RUN_PRELUDE_SOURCE_OBSERVED", result["status"])
+        self.assertEqual(6, result["first_combat_link"]["ordinal"])
+
+    def test_missing_linked_combat_room_or_unsettled_postfix_fails(self):
+        rows = prelude()
+        rows.pop(6)  # Remove real Monster RoomEntered
+        for n, row in enumerate(rows, 1):
+            row["ordinal"] = n
+        result = audit(rows)
+        self.assertEqual("INVALID_PRELUDE", result["status"])
+        self.assertIn("Linked combat source RoomEntered not observed",
+                      result["errors"])
+
+        rows = prelude()
+        rows[-1]["data"]["map_requests_missing_postfix"] = 1
+        result = audit(rows)
+        self.assertEqual("INVALID_PRELUDE", result["status"])
+        self.assertIn("Terminal has pending native map queue returns",
+                      result["errors"])
+
+        rows = prelude()
+        rows[-1]["data"]["linked_combat_room_arrival_observed"] = False
+        self.assertEqual("INVALID_PRELUDE", audit(rows)["status"])
 
     def test_no_macro_completeness_promotion_even_if_causal_destination_matches(self):
         rows = prelude()
