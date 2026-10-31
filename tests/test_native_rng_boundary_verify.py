@@ -1,5 +1,6 @@
 """Actual pinned xoshiro and sampling assertions for native RNG source calls."""
 import copy
+import json
 import sys
 import struct
 import unittest
@@ -298,8 +299,42 @@ class NativeRngBoundaryVerifyTests(unittest.TestCase):
         self.assertEqual("INVALID_SCALAR_VALUE", verify_scalar_call(data))
         data["selected_float"] = 1.125  # valid binary32, incorrect result
         self.assertEqual("SCALAR_FLOAT_RESULT_MISMATCH", verify_scalar_call(data))
-        data["selected_float"] = 1.000000001 # cannot roundtrip float32
-        self.assertEqual("INVALID_SCALAR_VALUE", verify_scalar_call(data))
+        # JSON decimals represent the underlying binary32; extra decimal
+        # digits that decode to the same single do not change native evidence.
+        data["selected_float"] = 1.000000001
+        self.assertIsNone(verify_scalar_call(data))
+        data["selected_float"] = 1.000001
+        self.assertEqual("SCALAR_FLOAT_RESULT_MISMATCH",
+                         verify_scalar_call(data))
+
+    def test_real_serialized_native_nextfloat_float32_witnesses(self):
+        # The native JSON writer emits short decimals (0.3, 0.05109327,
+        # 0.24701074), not Python's exact binary32 decimal expansions.
+        # Two source records from independent user-supplied combat captures
+        # preserve the actual xoshiro words, counters and scalar values.
+        fixture = (Path(__file__).parent / "fixtures"
+                   / "native_nextfloat_json_single_v111.jsonl")
+        records = [json.loads(line) for line in
+                   fixture.read_text(encoding="utf-8").splitlines()
+                   if line and not line.startswith("#")]
+        self.assertEqual(2, len(records))
+        for record in records:
+            self.assertIsNone(verify_scalar_call(record["data"]))
+        report = audit(records)
+        self.assertEqual("OBSERVED_NATIVE_RNG_PRIMITIVES_VALID",
+                         report["status"])
+        self.assertEqual(2, report["float_calls"])
+        self.assertEqual(2, report["validated_calls"])
+        self.assertEqual(0, report["stream_conflict_count"])
+
+        changed = copy.deepcopy(records[0])
+        changed["data"]["selected_float"] += 0.01
+        self.assertEqual("SCALAR_FLOAT_RESULT_MISMATCH",
+                         verify_scalar_call(changed["data"]))
+        changed = copy.deepcopy(records[1])
+        changed["data"]["cursor_after"]["State3"] ^= 1
+        self.assertEqual("XOSHIRO_STATE_TRANSITION_MISMATCH",
+                         verify_scalar_call(changed["data"]))
 
     def test_float_and_integer_share_monster_ai_stream_without_overlap(self):
         first = sample()
