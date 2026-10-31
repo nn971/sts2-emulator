@@ -95,6 +95,33 @@ class NativeL0EvidenceTests(unittest.TestCase):
         self.assertEqual(7, report["strict_decision_count"])
         self.assertEqual("NOT_TESTED", report["native_emulator_mechanics_parity"])
 
+    def test_source_input_evidence_is_reported_but_never_counts_as_menu_parity(self):
+        self.envelope.update({
+            "native_input_hook_installed": True,
+            "native_input_requests": [
+                {"input_request_id": 1}, {"input_request_id": 2}],
+            "native_input_outcomes": [
+                {"input_request_id": 1, "queue_result": "CANCELED_AT_RETURN"}],
+            "source_request_execution_links": 1,
+            "native_player_choices": [
+                {"choice_type": "CombatCard", "selected_combat_card_ids": [7]}],
+            "native_run_identity": {
+                "source": "RunState.Rng.StringSeed",
+                "seed": "6JK8MD0VQQTA", "ascension": 10},
+        })
+        report = self.assess()
+        observed = report["native_source_input_observation"]
+        self.assertTrue(observed["input_hook_reported_installed"])
+        self.assertEqual(2, observed["source_requests"])
+        self.assertEqual(1, observed["source_return_outcomes"])
+        self.assertEqual(1, observed["requests_linked_to_executor"])
+        self.assertEqual(1, observed["source_choice_results"])
+        self.assertEqual("6JK8MD0VQQTA",
+                         observed["native_run_identity"]["seed"])
+        self.assertEqual("NOT_TESTED", observed["legal_menu_coverage"])
+        self.assertEqual("NOT_TESTED", observed["native_input_nonperturbation"])
+        self.assertEqual("NOT_TESTED", report["native_emulator_mechanics_parity"])
+
     def test_missing_real_game_log_is_not_a_pass(self):
         result = self.assess(log=False)
         self.assertEqual("L0_SOURCE_EVIDENCE_PARTIAL", result["status"])
