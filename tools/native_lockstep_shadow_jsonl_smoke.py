@@ -71,7 +71,9 @@ def test_real_jsonl(command: list[str]) -> dict:
             if action["kind"] != "play_card":
                 return False
             payload = json.loads(action["payloadJson"])
-            return hand_by_id.get(payload.get("card_instance_id")) in (
+            native_id = payload.get("CardInstanceId",
+                                    payload.get("card_instance_id"))
+            return hand_by_id.get(native_id) in (
                 "defend_silent", "strike_silent")
         selected = next((a for a in legal if is_basic_card(a)), None)
         if selected is None:
@@ -85,11 +87,20 @@ def test_real_jsonl(command: list[str]) -> dict:
             raise AssertionError("No playable card or end_turn in first combat")
         payload = json.loads(selected["payloadJson"])
         if selected["kind"] == "play_card":
-            target = payload.get("target_enemy_id")
+            # The actual C# GameAction.Create<T> wire carries PascalCase
+            # keys inside its JsonElement payload.
+            instance = payload.get("CardInstanceId",
+                                   payload.get("card_instance_id"))
+            target = payload.get("TargetEnemyId",
+                                 payload.get("target_enemy_id"))
+            if type(instance) is not int:
+                raise AssertionError(
+                    "Unrecognized emulator play_card payload keys: " +
+                    repr(sorted(payload)))
             source_action = {
                 "kind": "play_card",
                 "payload": {
-                    "card_instance_id": payload["card_instance_id"],
+                    "card_instance_id": instance,
                     "target_id": "creature:" + str(target)
                     if target is not None else None,
                 },
