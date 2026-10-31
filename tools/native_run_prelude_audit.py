@@ -16,7 +16,8 @@ from native_action_envelope_audit import audit as audit_sidecar
 from native_action_envelope_audit import load as load_sidecar
 
 _TYPES = {
-    "run_started", "room_entered", "map_action_request",
+    "run_started", "room_entered", "run_rng_snapshot",
+    "map_action_request",
     "map_action_outcome", "combat_link", "observation_failure", "terminal",
 }
 _EXPLICIT_GAPS = [
@@ -47,6 +48,9 @@ def _status(status, errors, events, **additional):
         "run_identity": additional.get("identity"),
         "first_combat_link": additional.get("combat_link"),
         "source_room_arrivals": events.get("rooms", []),
+        "source_run_rng_snapshots": events.get("rng_snapshots", []),
+        "source_run_rng_state_observed": bool(events.get("rng_snapshots")),
+        "precombat_rng_call_history_complete": False,
         "source_map_requests": events.get("requests", []),
         "source_map_outcomes": events.get("outcomes", []),
         "source_observed_map_arrival_matches": events.get("arrivals", []),
@@ -65,7 +69,8 @@ def audit(records: list[dict], error: str | None = None,
           combat_sidecar: list[dict] | None = None,
           combat_audit_status: str | None = None) -> dict:
     errors = []
-    events = {"rooms": [], "requests": [], "outcomes": [], "arrivals": []}
+    events = {"rooms": [], "requests": [], "outcomes": [],
+              "arrivals": [], "rng_snapshots": []}
     if error:
         errors.append(error)
     if not records or not isinstance(records, list):
@@ -99,6 +104,8 @@ def audit(records: list[dict], error: str | None = None,
     identity["run_id"] = run_id
     request_ids: dict[int, dict] = {}
     outcomes_seen = set()
+    source_rng_streams = None
+    player_rng_seed = None
     link = None
     terminal = records[-1].get("data") or {}
     for ordinal, record in enumerate(records, 1):
@@ -143,6 +150,69 @@ def audit(records: list[dict], error: str | None = None,
                     "room_model_id": data.get("room_model_id"),
                     "player_hp": data["player_hp"],
                     "player_gold": data["player_gold"],
+                })
+        elif typ == "run_rng_snapshot":
+            site = data.get("site")
+            streams = data.get("streams")
+            valid = (
+                site in ("run_started", "room_entered", "combat_attach")
+                and _nonnegative(data.get("player_rng_seed"))
+                and isinstance(streams, list) and len(streams) > 0
+                and data.get("source") ==
+                    "RunRngSet.ToSerializable+PlayerRngSet.ToSerializable"
+                and data.get("source_rng_consumed_by_inspector") is False
+                and data.get("native_rng_precombat_history_complete") is False
+                and data.get("emulator_rng_alignment") == "NOT_TESTED")
+            keys = []
+            if valid:
+                for value in streams:
+                    if not isinstance(value, dict):
+                        valid = False
+                        break
+                    pair = (value.get("scope"), value.get("stream_id"))
+                    if (pair[0] not in ("run", "player")
+                        or not isinstance(pair[1], str) or not pair[1]
+                        or not _nonnegative(value.get("counter"))
+                        or any(not _nonnegative(value.get(key))
+                               or value[key] > 2**64 - 1
+                               for key in ("s0", "s1", "s2", "s3"))):
+                        valid = False
+                        break
+                    keys.append(pair)
+                if (len(keys) != len(set(keys))
+                    or not any(scope == "run" for scope, _ in keys)
+                    or not any(scope == "player" for scope, _ in keys)
+                    or keys != sorted(keys)):
+                    valid = False
+                if source_rng_streams is not None and keys != source_rng_streams:
+                    valid = False
+                if (player_rng_seed is not None
+                    and data["player_rng_seed"] != player_rng_seed):
+                    valid = False
+                if site == "run_started" and (
+                    len(events["rng_snapshots"]) > 0 or ordinal != 2):
+                    valid = False
+                if site == "room_entered" and (
+                    not events["rooms"]
+                    or events["rooms"][-1]["ordinal"] != ordinal - 1):
+                    valid = False
+                if site == "combat_attach" and (
+                    link is not None
+                    or not any(r.get("type") == "combat_link"
+                               for r in records[ordinal:])):
+                    valid = False
+            if not valid:
+                errors.append(f"Invalid native run RNG snapshot at {ordinal}")
+            else:
+                source_rng_streams = keys
+                player_rng_seed = data["player_rng_seed"]
+                events["rng_snapshots"].append({
+                    "ordinal": ordinal,
+                    "site": site,
+                    "player_rng_seed": player_rng_seed,
+                    "stream_count": len(streams),
+                    "streams": streams,
+                    "emulator_rng_alignment": "NOT_TESTED"
                 })
         elif typ == "map_action_request":
             request_id = data.get("request_id")
@@ -208,6 +278,11 @@ def audit(records: list[dict], error: str | None = None,
         errors.append("Prelude terminal improperly claims complete macro/RNG fidelity")
     if link is None:
         errors.append("Missing first combat link")
+    if (not events["rng_snapshots"]
+        or events["rng_snapshots"][0]["site"] != "run_started"
+        or not any(s["site"] == "combat_attach"
+                   for s in events["rng_snapshots"])):
+        errors.append("Missing native run-start or first-combat RNG snapshot")
     else:
         matching_room_arrival = any(
             room["act_index"] == link["act_index"]
