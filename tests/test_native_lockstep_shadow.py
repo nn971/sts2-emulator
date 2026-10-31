@@ -104,7 +104,7 @@ class FakeSession:
 def card_action(target=None):
     return [{"kind": "play_card", "actionId": "emu-action-1",
              "payloadJson": json.dumps({
-                 "card_instance_id": 101, "target_enemy_id": target})}]
+                 "CardInstanceId": 101, "TargetEnemyId": target})}]
 
 
 def setup(legal=None, after_energy=2):
@@ -177,6 +177,32 @@ class NativeShadowTests(unittest.TestCase):
         self.assertEqual("NOT_TESTED", result["emulator_rng_alignment"])
         self.assertEqual("UNVERIFIED", result["native_boundary_settlement"])
         self.assertFalse(result["verified_native_state_import"])
+
+    def test_legacy_snake_case_wire_is_explicitly_accepted(self):
+        after = FakeState(emulator_state(2, hand=False), [])
+        before = FakeState(emulator_state(3), [
+            {"kind": "play_card", "actionId": "legacy-card",
+             "payloadJson": json.dumps({
+                 "card_instance_id": 101, "target_enemy_id": None})}
+        ], after)
+        session = FakeSession(before)
+        result = run_shadow(journal(), snapshot(), crosswalk(), session)
+        self.assertEqual("SHADOW_STEPPED_VISIBLE_ONLY", result["status"])
+        self.assertEqual(["legacy-card"], before.step_calls)
+
+    def test_wrong_emulator_card_payload_schema_is_not_guessed(self):
+        after = FakeState(emulator_state(2, hand=False), [])
+        before = FakeState(emulator_state(3), [
+            {"kind": "play_card", "actionId": "unknown",
+             "payloadJson": json.dumps({
+                 "card": 101, "enemy": None})}
+        ], after)
+        session = FakeSession(before)
+        result = run_shadow(journal(), snapshot(), crosswalk(), session)
+        self.assertEqual("BLOCKED_ACTION_ALIGNMENT", result["status"])
+        self.assertEqual("UNSUPPORTED_EMULATOR_ACTION_PAYLOAD_SCHEMA",
+                         result["reason"])
+        self.assertEqual([], before.step_calls)
 
     def test_prestate_mismatch_blocks_step_and_is_not_certified_divergence(self):
         session, first, _ = setup()
