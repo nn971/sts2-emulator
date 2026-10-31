@@ -6,7 +6,8 @@ The [Silent all-Act gameplay baseline](SILENT_V111_FROZEN_BASELINE.md) is the fr
 
 - [Repository overview](../README.md) — build and project scope.
 - [Silent v111 gameplay baseline](SILENT_V111_FROZEN_BASELINE.md) — exact emulator revision, supported routes and known gaps.
-- [Current next steps](NEXT_STEPS.md) — active work and acceptance targets.
+- **[Live lockstep native fidelity plan](LIVE_LOCKSTEP_NATIVE_FIDELITY_PLAN.md)** — canonical Silent A10 same-seed native/emulator session, Inspector implementation gates and historical PR ownership (issue #122).
+- [Current next steps](NEXT_STEPS.md) — previous broader priorities; live-fidelity ordering is in the canonical plan.
 - [Development history](HISTORY.md) — dated milestones and source links.
 - [Pinned source and mechanics evidence](reference-builds/INDEX.md) — reference-build note index.
 
@@ -17,9 +18,9 @@ The [Silent all-Act gameplay baseline](SILENT_V111_FROZEN_BASELINE.md) is the fr
 - [Silent card inventory](SILENT_CARD_CATALOG.md) and [colorless card generation](COLORLESS_GENERATION.md).
 - [Implementation status](V111_IMPLEMENTATION_STATUS.md) — pointer to the archived cumulative status ledger; the [machine-readable coverage](../data/coverage/v111-baseline.json) supplies item classifications.
 
-## Proposed RNG and fidelity-checker designs — preserved unchanged
+## Earlier RNG and fidelity-checker designs
 
-These design documents remain in their original locations with their original contents. The implementation state of their proposals is tracked separately by the active review branches and tests.
+These documents retain useful design/evidence context. For the active native-game same-seed live-inspector objective, use [the canonical lockstep plan](LIVE_LOCKSTEP_NATIVE_FIDELITY_PLAN.md) and [issue #122](https://github.com/nn971/sts2-emulator/issues/122); prior milestone ordering is historical.
 
 - [Desired RNG implementation](DESIRED_RNG_IMPLEMENTATION.md).
 - [Native Fidelity Inspector plan](NATIVE_FIDELITY_INSPECTOR_PLAN.md).
