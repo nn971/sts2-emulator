@@ -47,6 +47,10 @@ internal static class NativeV111PassiveBridge
     // Independent action observer: remains active after the strict decision
     // trace reaches an unsupported nested choice or an unstable input boundary.
     private static NativeActionEnvelopeRecorder? _actionEnvelopes;
+    // Independent source-run prelude, begun at RunManager.RunStarted.
+    // Its first-combat link is retained even before a combat sidecar exists.
+    private static NativeRunPreludeRecorder? _runPrelude;
+    private static MegaCrit.Sts2.Core.Runs.RunState? _preludeRunState;
     private static NativeCombatAdapter? _adapter;
     private static int _decisionGeneration;
     private static int _lastCapturedGeneration = -1;
@@ -98,13 +102,25 @@ internal static class NativeV111PassiveBridge
     internal static void NativeRngHookFailure(string exceptionType) =>
         _actionEnvelopes?.ObservationFailure("native_rng_source_hook", exceptionType);
 
-    internal static void NativeInputHookFailure(string exceptionType) =>
+    internal static void NativeInputHookFailure(string exceptionType)
+    {
         _actionEnvelopes?.ObservationFailure("native_input_source_hook", exceptionType);
+        _runPrelude?.ObservationFailure("native_input_source_hook", exceptionType);
+    }
 
     // Called by a source method Harmony PREFIX, while the original native
     // request is still pending. Acceptance and human provenance are unknown.
     internal static void NativeInputRequested(NativeGameAction action)
     {
+        if (_combat is null && _runPrelude is not null)
+        {
+            try { ObservePrecombatMapRequest(action); }
+            catch (Exception error)
+            {
+                _runPrelude.ObservationFailure("precombat_map_request",
+                    error.GetType().Name);
+            }
+        }
         if (_actionEnvelopes is null || _combat is null) return;
         _actionEnvelopes.NativeInputRequest(action,
             action.GetType().FullName ?? action.GetType().Name,
@@ -113,8 +129,11 @@ internal static class NativeV111PassiveBridge
     }
 
     internal static void NativeInputRequestOutcome(
-        NativeGameAction action, string nativeState, uint? nativeActionId) =>
+        NativeGameAction action, string nativeState, uint? nativeActionId)
+    {
         _actionEnvelopes?.NativeInputOutcome(action, nativeState, nativeActionId);
+        _runPrelude?.MapActionOutcome(action, nativeState, nativeActionId);
+    }
 
     /// <summary>Read-only capture of the original UI-filtered hand options.</summary>
     internal static void NativeHandMenu(
@@ -217,6 +236,10 @@ internal static class NativeV111PassiveBridge
         }
         if (_tree is not null) return;
         _tree = tree;
+        // RunStarted provides the only source-verifiable initial run identity;
+        // subscribing after a run began deliberately does not invent it.
+        RunManager.Instance.RunStarted += OnRunStarted;
+        RunManager.Instance.RoomEntered += OnRunRoomEntered;
         StartSpectatorIfRequested();
         tree.ProcessFrame += OnFrame;
         Godot.GD.Print("[Sts2ReferenceMod] CAPTURE_STATUS=HOOK_ENABLED; " +
@@ -224,6 +247,105 @@ internal static class NativeV111PassiveBridge
             (System.Environment.GetEnvironmentVariable("STS2_FIDELITY_TRACE_DIR")
                 ?? Path.Combine(OS.GetUserDataDir(), "native_fidelity_traces")) +
             "; native parity NOT_TESTED.");
+    }
+
+    private static void OnRunStarted(MegaCrit.Sts2.Core.Runs.RunState state)
+    {
+        try
+        {
+            if (_runPrelude is not null)
+            {
+                _runPrelude.Finish("A new RunStarted replaced the previous prelude");
+                _ = FinishRunPreludeAsync(_runPrelude);
+                _runPrelude = null;
+            }
+            _preludeRunState = state;
+            if (state.Players.Count != 1) return;
+            string seed = state.Rng.StringSeed;
+            if (string.IsNullOrWhiteSpace(seed)) return;
+            string runId = Guid.NewGuid().ToString("N");
+            string root = System.Environment.GetEnvironmentVariable(
+                "STS2_FIDELITY_TRACE_DIR")
+                ?? Path.Combine(OS.GetUserDataDir(), "native_fidelity_traces");
+            Directory.CreateDirectory(root);
+            string path = Path.Combine(root,
+                "run-prelude-" +
+                DateTimeOffset.UtcNow.ToString("yyyyMMdd-HHmmssfff") +
+                "-" + runId + ".jsonl");
+            _runPrelude = new NativeRunPreludeRecorder(
+                path, BuildId, runId, seed, state.AscensionLevel,
+                state.Players[0].Character.Id.Entry, state.Act.Id.Entry,
+                state.Players.Count);
+            GD.Print("[Sts2ReferenceMod] RUN_PRELUDE_STATUS=RUN_STARTED; " +
+                "source=RunManager.RunStarted; path=" + path);
+        }
+        catch (Exception error)
+        {
+            _runPrelude?.ObservationFailure("run_started", error.GetType().Name);
+            GD.PushError("[Sts2ReferenceMod] RUN_PRELUDE_STATUS=FAILED;" +
+                " reason=" + error.GetType().Name);
+        }
+    }
+
+    private static void OnRunRoomEntered()
+    {
+        if (_runPrelude is null || _preludeRunState is not { } state
+            || state.Players.Count != 1) return;
+        try
+        {
+            var coord = state.CurrentMapCoord;
+            var room = state.CurrentRoom;
+            _runPrelude.RoomEntered(
+                state.CurrentActIndex, state.Act.Id.Entry,
+                state.ActFloor, state.TotalFloor,
+                coord?.col, coord?.row,
+                room?.RoomType.ToString() ?? "UNAVAILABLE",
+                room?.ModelId?.Entry,
+                state.Players[0].Creature.CurrentHp,
+                state.Players[0].Gold);
+        }
+        catch (Exception error)
+        {
+            _runPrelude.ObservationFailure("room_entered",
+                error.GetType().Name);
+        }
+    }
+
+    private static void ObservePrecombatMapRequest(NativeGameAction action)
+    {
+        if (_runPrelude is null || _preludeRunState is null) return;
+        // Pinned source ToNetAction() for these two actions only constructs
+        // a value-type envelope from existing private fields; no RNG/queue.
+        if (action is MoveToMapCoordAction move
+            && move.ToNetAction() is NetMoveToMapCoordAction netMove)
+        {
+            var prior = _preludeRunState.CurrentMapCoord;
+            _runPrelude.MapActionRequested(
+                action, "map_move", _preludeRunState.CurrentActIndex,
+                prior?.col, prior?.row,
+                netMove.destination.col, netMove.destination.row, null);
+        }
+        else if (action is VoteForMapCoordAction vote
+            && vote.ToNetAction() is NetVoteForMapCoordAction netVote)
+        {
+            var from = netVote.source.coord;
+            var to = netVote.destination;
+            _runPrelude.MapActionRequested(
+                action, "map_vote", netVote.source.actIndex,
+                from?.col, from?.row,
+                to?.coord.col, to?.coord.row, to?.mapGenerationCount);
+        }
+    }
+
+    private static async Task FinishRunPreludeAsync(
+        NativeRunPreludeRecorder recorder)
+    {
+        try { await recorder.DisposeAsync().ConfigureAwait(false); }
+        catch (Exception error)
+        {
+            GD.PushError("[Sts2ReferenceMod] RUN_PRELUDE_STATUS=WRITE_FAILED;" +
+                " reason=" + error.GetType().Name);
+        }
     }
 
     private static void StartSpectatorIfRequested()
@@ -430,6 +552,27 @@ internal static class NativeV111PassiveBridge
         _recording = new NativeRecordingSession(_currentFile, header);
         // A separate append-only action timeline survives unsupported player
         // input semantics, and retains automatic actions before the first hand.
+        // Link the independently captured source run prelude to precisely
+        // this combat trace, then close the precombat journal. A run that
+        // started before the Inspector attached has no such claim.
+        if (_runPrelude is { } prelude)
+        {
+            try
+            {
+                var coord = _preludeRunState?.CurrentMapCoord;
+                prelude.CombatLink(runId, _currentFile,
+                    _preludeRunState?.CurrentActIndex ?? 0,
+                    coord?.col, coord?.row);
+                prelude.Finish("First observed combat capture");
+            }
+            catch (Exception error)
+            {
+                prelude.ObservationFailure("combat_link", error.GetType().Name);
+            }
+            _runPrelude = null;
+            _preludeRunState = null;
+            _ = FinishRunPreludeAsync(prelude);
+        }
         _actionEnvelopes = new NativeActionEnvelopeRecorder(
             _currentFile[..^".jsonl".Length] + ".actions.jsonl",
             BuildId, runId,
