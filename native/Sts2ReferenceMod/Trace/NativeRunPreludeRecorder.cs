@@ -196,7 +196,9 @@ public sealed class NativeRunPreludeRecorder : IAsyncDisposable
         if (_closed) return;
         Write("terminal", new
         {
-            status = _incomplete ? "INCOMPLETE_CAPTURE"
+            status = _incomplete ||
+                (_linked && !HasLinkedCombatRoomAndSettledMapRequests)
+                ? "INCOMPLETE_CAPTURE"
                 : _linked ? "SOURCE_PRELUDE_OBSERVED" : "NO_COMBAT_LINK",
             reason, combat_link_recorded = _linked,
             linked_combat_room_arrival_observed =
