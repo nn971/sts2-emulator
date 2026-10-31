@@ -120,6 +120,14 @@ def assess(preflight: dict, records: list[dict], read_error: str | None,
                 envelope.get("native_input_hook_installed", False),
             "hand_menu_hook_reported_installed":
                 envelope.get("native_hand_menu_hook_installed", False),
+            "hand_choice_id_hook_reported_installed":
+                envelope.get("native_hand_choice_flow_hook_installed", False),
+            "source_reserved_hand_menu_bindings":
+                sum(x.get("choice_id_binding") ==
+                    "SOURCE_ASYNC_FLOW_RESERVED_ID"
+                    for x in envelope.get("native_hand_menus", [])),
+            "hand_menu_choice_result_correlations":
+                len(envelope.get("native_hand_menu_choice_matches", [])),
             "manual_play_hook_reported_installed":
                 envelope.get("native_manual_play_hook_installed", False),
             "ui_play_begin_hook_reported_installed":
