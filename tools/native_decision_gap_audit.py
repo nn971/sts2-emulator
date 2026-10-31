@@ -194,6 +194,18 @@ def audit(strict: list[dict], sidecar: list[dict]) -> dict:
             matching_manual = []
         gap["source_matching_manual_play_return_candidates"] = matching_manual
         gap["manual_play_correlation"] = "TEMPORAL_CANDIDATES_NOT_UNIQUE_PROOF"
+        gap["source_matching_ui_play_begin_candidates"] = [
+            {
+                "ordinal": r.get("ordinal"),
+                "started_via_shortcut":
+                    (r.get("data") or {}).get("started_via_shortcut"),
+                "native_ui_gate":
+                    (r.get("data") or {}).get("native_ui_gate")
+            } for r in sidecar
+            if r.get("type") == "native_ui_play_begin"
+            and (r.get("data") or {}).get("combat_card_id") == cid
+        ] if candidate.get("kind") == "play_card" else []
+        gap["ui_play_correlation"] = "CARD_ID_CANDIDATES_NOT_UNIQUE_PROOF"
     unpaired_strict = sorted(set(actions) - consumed)
     if unpaired_strict:
         report["errors"].append("STRICT_ACTION_WITHOUT_MATCHED_EXECUTOR_START")
