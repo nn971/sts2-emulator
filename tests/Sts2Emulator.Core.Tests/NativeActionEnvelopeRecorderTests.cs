@@ -35,6 +35,74 @@ public sealed class NativeActionEnvelopeRecorderTests
     }
 
     [Fact]
+    public async Task NativeRequestAndExecutionRetainSameObjectIdentityAndUnknownAcceptance()
+    {
+        object action = new();
+        var canonical = new Sts2Emulator.Core.GameAction("play_card",
+            JsonSerializer.SerializeToElement(new
+            {
+                card_instance_id = 5L,
+                target_id = (string?)null
+            }));
+        var entries = await Record(recorder =>
+        {
+            recorder.NativeRunIdentity("6JK8MD0VQQTA", 10);
+            recorder.NativeInputRequest(action, "PlayCardAction", State(3),
+                canonical);
+            recorder.Start(action, "PlayCardAction", State(3), canonical);
+            recorder.Complete(action, State(2));
+            recorder.Finish("Combat ended", State(2));
+        });
+        var identity = Assert.Single(entries,
+            x => x.GetProperty("type").GetString() == "native_run_identity");
+        Assert.Equal("6JK8MD0VQQTA",
+            identity.GetProperty("data").GetProperty("seed").GetString());
+        Assert.Equal(10,
+            identity.GetProperty("data").GetProperty("ascension").GetInt32());
+        var request = Assert.Single(entries,
+            x => x.GetProperty("type").GetString() == "native_input_request");
+        Assert.Equal("UNVERIFIED", request.GetProperty("data")
+            .GetProperty("native_acceptance").GetString());
+        Assert.False(request.GetProperty("data")
+            .GetProperty("input_injected").GetBoolean());
+        var started = Assert.Single(entries,
+            x => x.GetProperty("type").GetString() == "action_started");
+        Assert.Equal(1, started.GetProperty("data")
+            .GetProperty("input_request_id").GetInt64());
+        Assert.Equal("SAME_NATIVE_ACTION_OBJECT", started.GetProperty("data")
+            .GetProperty("request_execution_link").GetString());
+        Assert.Equal("OBSERVED", entries[^1].GetProperty("data")
+            .GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task NativeChoiceResultSurvivesStrictNestedCaptureStop()
+    {
+        object survivor = new();
+        var entries = await Record(recorder =>
+        {
+            recorder.Start(survivor, "PlayCardAction", State(3));
+            recorder.ChoicePause(survivor, State(2));
+            recorder.NativePlayerChoice(1, 0, "CombatCard",
+                [7L], null, null, null);
+            recorder.Start(survivor, "PlayCardAction", State(2));
+            recorder.Complete(survivor, State(2));
+            recorder.Finish("Combat ended", State(2));
+        });
+        var observed = Assert.Single(entries,
+            x => x.GetProperty("type").GetString() == "native_player_choice");
+        var data = observed.GetProperty("data");
+        Assert.Equal(1, data.GetProperty("owner_id").GetUInt64());
+        Assert.Equal(0, data.GetProperty("choice_id").GetUInt32());
+        Assert.Equal("CombatCard", data.GetProperty("choice_type").GetString());
+        Assert.Equal(7, data.GetProperty("selected_combat_card_ids")[0].GetInt64());
+        Assert.Equal("NOT_CAPTURED",
+            data.GetProperty("accepted_choice_menu").GetString());
+        Assert.Equal("OBSERVED", entries[^1].GetProperty("data")
+            .GetProperty("status").GetString());
+    }
+
+    [Fact]
     public async Task AllExecutorActionsSurviveUnsupportedNestedPlayerChoice()
     {
         object play = new();
