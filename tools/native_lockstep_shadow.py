@@ -50,6 +50,8 @@ def _dict_int_map(obj, field):
 
 def check_inputs(journal: dict, snapshot: str | None,
                  crosswalk: dict | None) -> tuple[str, str] | None:
+    if not isinstance(journal, dict):
+        return "BLOCKED_NATIVE_SOURCE", "Journal must be a JSON object"
     if (journal.get("schema") != "native-source-action-journal-v1"
         or journal.get("status") != "SOURCE_ACTION_CHRONOLOGY_OBSERVED"
         or journal.get("source_audit") != "CALLBACK_TIMELINE_CONSISTENT"
@@ -74,12 +76,16 @@ def check_inputs(journal: dict, snapshot: str | None,
         or not isinstance(exact.get("state"), dict)):
         return "BLOCKED_EMULATOR_SNAPSHOT", "Expected sts2-exact-snapshot-v1 envelope"
     state = exact["state"]
+    # RunSnapshot uses canonical JSON; C# phase enums can serialize as
+    # numeric values. Require the actual combat continuation instead.
+    world = state.get("world")
+    combat = world.get("combat") if isinstance(world, dict) else None
     if (state.get("run_seed") != journal["run_seed"]
         or state.get("ascension") != journal["ascension"]
-        or state.get("phase") != "Combat"):
+        or not isinstance(combat, dict)):
         return "BLOCKED_EMULATOR_IDENTITY", (
-            "Emulator snapshot does not have the same seed, ascension, "
-            "and Combat phase as native source")
+            "Emulator exact snapshot must match native seed/ascension and "
+            "contain a real combat continuation")
     if not isinstance(crosswalk, dict) or crosswalk.get("schema") != (
             "native-emulator-id-crosswalk-v1"):
         return "BLOCKED_ID_CROSSWALK", "Explicit native-emulator identity crosswalk required"
@@ -180,7 +186,9 @@ def _resolve(action: dict, legal: list[dict], cards: dict,
 
 def run_shadow(journal: dict, snapshot: str | None, crosswalk: dict | None,
                session: Any | None) -> dict:
-    total = len(journal.get("source_linked_commands", []))
+    total = (len(journal.get("source_linked_commands", []))
+             if isinstance(journal, dict)
+             and isinstance(journal.get("source_linked_commands"), list) else 0)
     check = check_inputs(journal, snapshot, crosswalk)
     if check is not None:
         return _result(*check, source_actions=total)
@@ -302,7 +310,9 @@ def run_shadow(journal: dict, snapshot: str | None, crosswalk: dict | None,
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--journal", type=Path, required=True)
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument("--journal", type=Path)
+    source.add_argument("--sidecar", type=Path)
     parser.add_argument("--emulator-snapshot", type=Path)
     parser.add_argument("--identity-crosswalk", type=Path)
     parser.add_argument("--dotnet", default="dotnet")
@@ -310,7 +320,13 @@ def main() -> int:
     parser.add_argument("--out", type=Path)
     args = parser.parse_args()
     try:
-        journal = json.loads(args.journal.read_text(encoding="utf-8"))
+        if args.sidecar:
+            from native_lockstep_source_journal import build as build_journal
+            from native_action_envelope_audit import load as load_sidecar
+            records, error = load_sidecar(args.sidecar)
+            journal = build_journal(records, error)
+        else:
+            journal = json.loads(args.journal.read_text(encoding="utf-8"))
         snapshot = (args.emulator_snapshot.read_text(encoding="utf-8")
                     if args.emulator_snapshot else None)
         crosswalk = (json.loads(args.identity_crosswalk.read_text(encoding="utf-8"))
