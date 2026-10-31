@@ -65,7 +65,8 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
         bool nativeHandMenuHookInstalled = false,
         bool nativeHandChoiceFlowHookInstalled = false,
         bool nativeManualPlayHookInstalled = false,
-        bool nativeUiPlayBeginHookInstalled = false)
+        bool nativeUiPlayBeginHookInstalled = false,
+        bool nativeUiGateHookInstalled = false)
     {
         _gameBuild = gameBuild;
         _writer = new AsyncTraceWriter(path, queueCapacity);
@@ -87,6 +88,7 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
                     nativeHandChoiceFlowHookInstalled,
                 native_manual_play_hook_installed = nativeManualPlayHookInstalled,
                 native_ui_play_begin_hook_installed = nativeUiPlayBeginHookInstalled,
+                native_ui_gate_hook_installed = nativeUiGateHookInstalled,
                 native_rng_stream_checkpoints_enabled = nativeRngStreamCheckpointsEnabled,
                 native_monster_ai_scope_installed = nativeMonsterAiScopeInstalled,
                 native_shuffle_scope_installed = nativeShuffleScopeInstalled,
@@ -389,6 +391,40 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
                     : "NPlayerHand._ExitTree.prefix",
                 native_choice_result_verified = false,
                 complete_menu_history = "NOT_VERIFIED"
+            })));
+    }
+
+    /// <summary>
+    /// Source NPlayerHand click/shortcut entry has already evaluated its
+    /// private native gate. We capture the return value without calling a
+    /// second eligibility check or projecting a full legal action menu.
+    /// </summary>
+    public void NativeUiHandGate(
+        string sourceMethod, bool allowed, string nativeMode,
+        bool existingCardPlay)
+    {
+        if (_closed) return;
+        if (sourceMethod is not ("CanPlayCards" or "AreCardActionsAllowed")
+            || nativeMode is not ("Play" or "None"
+                or "SimpleSelect" or "UpgradeSelect"))
+        {
+            ObservationFailure("native_ui_hand_gate", "INVALID_NATIVE_UI_GATE");
+            return;
+        }
+        Write(new NativeActionEnvelopeRecord(
+            "native_ui_hand_gate", Next(),
+            Data: JsonSerializer.SerializeToElement(new
+            {
+                gate = sourceMethod,
+                returned_allowed = allowed,
+                native_hand_mode = nativeMode,
+                existing_card_play_active = existingCardPlay,
+                source = "NPlayerHand." + sourceMethod + ".postfix",
+                result_basis = "ORIGINAL_NATIVE_RETURN_VALUE",
+                source_evaluation_only = true,
+                human_origin = "UNVERIFIED",
+                full_legal_menu = "NOT_TESTED",
+                emulator_parity = "NOT_TESTED"
             })));
     }
 
