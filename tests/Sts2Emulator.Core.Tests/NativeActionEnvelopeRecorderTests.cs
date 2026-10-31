@@ -190,10 +190,21 @@ public sealed class NativeActionEnvelopeRecorderTests
     {
         var entries = await Record(recorder =>
         {
+            recorder.NativeUiPlayBegin(5, "SHIV", true);
             recorder.NativeManualPlayResult(5, "SHIV", "creature:2", true);
+            recorder.NativeUiPlayBegin(6, "DEFEND_SILENT", false);
             recorder.NativeManualPlayResult(6, "DEFEND_SILENT", null, false);
             recorder.Finish("Combat ended", State(3));
         });
+        var uiStarts = entries.Where(x =>
+            x.GetProperty("type").GetString() == "native_ui_play_begin").ToArray();
+        Assert.Equal(2, uiStarts.Length);
+        Assert.True(uiStarts[0].GetProperty("data")
+            .GetProperty("started_via_shortcut").GetBoolean());
+        Assert.Equal("NOT_TESTED", uiStarts[0].GetProperty("data")
+            .GetProperty("manual_play_accepted").GetString());
+        Assert.Equal("SOURCE_CALLSITE_PASSED", uiStarts[0].GetProperty("data")
+            .GetProperty("native_ui_gate").GetString());
         var results = entries.Where(x =>
             x.GetProperty("type").GetString() == "native_manual_play_result").ToArray();
         Assert.Equal(2, results.Length);
