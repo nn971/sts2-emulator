@@ -168,6 +168,34 @@ executed within the user's installed v111 game DLL. The static source audit
 and standard .NET contract tests alone cannot certify Harmony attachment,
 actual native input event ordering, nonperturbation, or emulator parity.
 
+### Remaining exact-menu hook, identified but not yet certified
+
+Pinned `src/Core/Models/Cards/Survivor.cs` invokes
+`CardSelectCmd.FromHandForDiscard`, which delegates to
+`CardSelectCmd.FromHand`. That method reserves a choice ID, suspends
+the player action, filters the offered hand-card list, invokes
+`NPlayerHand.SelectCards`, and synchronizes the selected
+`MutableCombatCards` result. The synchronizer event now captures the
+**selected** card's real combat ID; it provides neither the exact
+pre-choice offered list nor the native menu's acceptance predicate.
+
+Pinned `NPlayerHand.SelectCards` enters selection mode, updates the
+selection filter and refreshes selectable holder visibility before
+awaiting a user choice. The filter can be evaluated inside the native
+UI; re-running it from the Inspector would risk observer side effects.
+Capture the original eligible candidates at the engine/UI production
+boundary, with unique card-instance identities, filter/prompt provenance,
+choice ID and selection bounds; retain `accepted_choice_menu=NOT_CAPTURED`
+until this is supported.
+
+Consecutive plays (Leading Strike → Shivs) are a distinct gate:
+`ActionQueueSynchronizer.RequestEnqueue` may run while the preceding
+card's executor/animation is still busy. Its prefix and return event
+now provide genuine request and queue chronology; a distinct **source
+input-ready legal menu** is required before declaring a strict decision,
+even if the same requested action later executes. Do not derive an
+invented menu by polling the next frame after it has already changed.
+
 **Next combined native validation:** only after all source hooks, seed
 projection, strict menu/source acceptance and tests are ready, rebuild the
 mod once against the installed game, enable the new
