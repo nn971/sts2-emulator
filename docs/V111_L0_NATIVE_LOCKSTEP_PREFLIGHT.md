@@ -326,6 +326,21 @@ gold. An independent bounded, nonblocking
 `NativeRunPreludeRecorder` writes to a
 `run-prelude-<timestamp>-<run-id>.jsonl` file.
 
+At run start, each source room arrival, and first combat attachment,
+the mod now also reads **both** the native `RunRngSet.ToSerializable()`
+and `PlayerRngSet.ToSerializable()` values. These methods copy the
+source RNG counters and all four xoshiro words from each named run and
+player stream; they do not sample or advance RNG. The resulting
+`run_rng_snapshot` records include the source site, player RNG seed,
+scope/stream identity, exact counters and unsigned 64-bit words. The
+offline auditor checks the 64-bit ranges, stream set consistency,
+source ordering, read-only status and run-to-combat linkage. These
+checkpoints are significant for diagnosing **precombat RNG cursor
+differences**, while `native_rng_precombat_history_complete=false`
+and `emulator_rng_alignment=NOT_TESTED` remain explicit: snapshots
+do not reveal every stochastic call or guarantee equivalent
+emulator world-generation state.
+
 When the source input hook is separately enabled, it also observes
 precombat `VoteForMapCoordAction` and `MoveToMapCoordAction`
 `RequestEnqueue` prefix/postfix pairs. In the pinned v111 source
@@ -476,8 +491,9 @@ boundary attribution.
 
 
 
-The new async choice-ID, menu-refresh and UI-gate hooks still need a
-single combined validation against the installed v111 assembly.
+The new native run-prelude and RNG snapshot observers, async
+choice-ID, menu-refresh and UI-gate hooks still need a single
+combined validation against the installed v111 assembly.
 Opening, revising and closing the native hand-selection UI are now
 instrumented offline; further unobserved UI transitions are possible.
 The current source linkage is verified by isolated flow tests but
