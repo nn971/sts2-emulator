@@ -12,26 +12,26 @@ continuation learning. It is *not* a new native STS2 Act 1 map claim.
 
 ## Route
 
-The existing `PrototypeGoldenPathMapV111.Generate(1)` is the authoritative
-room-order source for this research derivative. Remove its **second Monster**
-(room 3), renumber, and preserve all other room types:
+This hand-authored research route takes the single-path topology of Golden
+Compass as a reference. Its room sequence is explicitly specified for
+the resource-credit pilot (version 2):
 
 | Floor | Room |
 |---:|---|
 | 1 | Combat |
-| 2 | Unknown |
-| 3 | Rest |
-| 4 | Combat |
-| 5 | Rest |
-| 6 | Unknown |
-| 7 | Treasure |
-| 8 | Unknown |
-| 9 | Treasure |
-| 10 | Unknown |
-| 11 | Shop |
-| 12 | Elite |
-| 13 | Rest |
-| 14 | Elite |
+| 2 | Combat |
+| 3 | Unknown |
+| 4 | Shop |
+| 5 | Combat |
+| 6 | Rest |
+| 7 | Elite |
+| 8 | Treasure |
+| 9 | Unknown |
+| 10 | Combat |
+| 11 | Rest |
+| 12 | Combat |
+| 13 | Elite |
+| 14 | Unknown |
 | 15 | Rest |
 | 16 | Boss |
 
@@ -39,7 +39,8 @@ Exactly one column (3), one entry, and one edge from each room to the next.
 The boss floor (16) matches the **existing emulator native-structure
 Overgrowth profile**, which has 15 map-room rows plus boss. This profile
 does not assert parity with the installed game's actual native map length.
-The Golden Path original has 17 total map nodes.
+The Golden Path original has 17 total map nodes, but this training
+sequence is separately authored rather than mechanically shortened from it.
 
 Unknown rooms retain the existing Overgrowth resolution mechanics and
 stochastic odds, so their resolved room kinds may differ between Nature
@@ -53,7 +54,7 @@ this training map.
 JSONL:
 
 ```json
-{"op":"reset_native_overgrowth","request_id":"fixed-1","seed":"credit-pilot-1","ascension":10,"map_profile_id":"experimental-act1-golden-path-minus-combat-v1"}
+{"op":"reset_native_overgrowth","request_id":"fixed-1","seed":"credit-pilot-1","ascension":10,"map_profile_id":"experimental-act1-fixed-route-credit-v2"}
 ```
 
 Python binding:
@@ -61,7 +62,7 @@ Python binding:
 ```python
 state = emulator.reset_native_overgrowth(
     "credit-pilot-1", ascension=10,
-    map_profile_id="experimental-act1-golden-path-minus-combat-v1")
+    map_profile_id="experimental-act1-fixed-route-credit-v2")
 ```
 
 Omit `map_profile_id` to retain the original native-structure Overgrowth map.
