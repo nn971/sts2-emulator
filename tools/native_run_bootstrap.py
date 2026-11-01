@@ -14,6 +14,7 @@ import re
 from pathlib import Path
 
 from native_run_prelude_audit import audit, load
+from native_neow_rng_probe_audit import compare as compare_neow_rng, has_pinned_native_build
 
 SCHEMA = "native-first-combat-bootstrap-v1"
 # Names verified against the pinned v111 Neow.cs and emulator Neow catalogue.
@@ -43,6 +44,10 @@ def _report(status, reason, *, first=None, steps=None, snapshot=None, checks=Non
         "native_mechanics_parity": "NOT_TESTED",
         "native_rng_alignment": "NOT_TESTED",
         "event_local_rng_alignment": "NOT_COMPARABLE",
+        "source_neow_rng_seed_recomputation": (
+            "MATCHED" if (checks or {}).get("native_neow_rng_comparison", {})
+                .get("source_rng_recomputation") == "MATCHED"
+            else "NOT_TESTED"),
         "native_effect_settlement": "UNVERIFIED",
         "native_to_emulator_identity_parity": "NOT_TESTED",
         "ready_for_native_lockstep": False,
@@ -172,6 +177,33 @@ def run_bootstrap(source: dict, session):
         return _report("BLOCKED_SOURCE_NEOW_IDENTITIES", str(exc), checks=checks)
     if len(source_offers) != len(set(source_offers)):
         return _report("BLOCKED_DUPLICATE_NEOW_OPTIONS", "Repeated source Neow IDs",
+                       checks=checks)
+    # Only native pinned-assembly captures undergo seed-to-event RNG
+    # reconstruction. Explicitly synthetic fixtures skip it; an unknown
+    # provenance must never be silently treated as verified native data.
+    build = ident.get("game_build")
+    if has_pinned_native_build(ident):
+        try:
+            probe = session.call("native_neow_rng_probe", seed=ident["seed"])
+            comparison = compare_neow_rng(
+                source_offers, neow.get("event_rng"), probe)
+        except (RuntimeError, ValueError, TypeError) as exc:
+            return _report("BLOCKED_NATIVE_NEOW_RNG_PROBE",
+                           type(exc).__name__ + ": " + str(exc),
+                           checks=checks)
+        checks["native_neow_rng_comparison"] = comparison
+        if comparison["status"] != "SOURCE_NEOW_EVENT_RNG_AND_OFFERS_RECOMPUTED":
+            return _report("SOURCE_NEOW_NATIVE_RNG_DIVERGENCE",
+                           "Pinned native Neow event RNG/offer could not be reproduced",
+                           first=comparison.get("first_difference") or {
+                               "reason": comparison["status"]},
+                           checks=checks)
+    elif build == "EMULATOR-DERIVED-SYNTHETIC-NOT-NATIVE":
+        checks["native_neow_rng_comparison"] = {
+            "status": "SKIPPED_EXPLICITLY_EMULATOR_DERIVED_SYNTHETIC"}
+    else:
+        return _report("BLOCKED_UNRECOGNIZED_SOURCE_BUILD",
+                       "Source build is neither pinned native-assembly format nor explicit synthetic",
                        checks=checks)
     try:
         root = session.reset(ident["seed"], mode="v111", character="silent",
